@@ -152,11 +152,11 @@ pub async fn update(
     );
 
     // Update the status if necessary.
-    if None == payload.status
-        && model.private.clone().unwrap() == false
-        && (model.status.clone().unwrap() == "PUBLISHED".to_string()
-            || model.status.clone().unwrap() == "UNDER_REVIEW".to_string()
-            || model.status.clone().unwrap() == "REVISION".to_string())
+    if payload.status.is_none()
+        && !model.private.clone().unwrap()
+        && (model.status.clone().unwrap() == *"PUBLISHED"
+            || model.status.clone().unwrap() == *"UNDER_REVIEW"
+            || model.status.clone().unwrap() == *"REVISION")
     {
         model.status = Set("UPDATED".to_string());
     }

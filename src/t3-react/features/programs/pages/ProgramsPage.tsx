@@ -46,10 +46,13 @@ import {
   ArrowSortRegular,
   ErrorCircleRegular,
   InfoRegular,
+  CodeRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
-import { ProgramRefreshApiService } from '../services/programRefreshApi';
+import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
+import { SyncStatusBar } from '../../../shared/components/SyncStatusBar';
+import { ProgrammingDrawer } from '../components/ProgrammingDrawer';
 import styles from './ProgramsPage.module.css';
 
 // Types based on Rust entity (programs.rs) and C++ BacnetProgram structure
@@ -74,6 +77,11 @@ export const ProgramsPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
+  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
+
+  // Programming drawer state
+  const [isProgrammingOpen, setIsProgrammingOpen] = useState(false);
+  const [selectedProgramForProgramming, setSelectedProgramForProgramming] = useState<ProgramPoint | null>(null);
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -124,35 +132,45 @@ export const ProgramsPage: React.FC = () => {
     fetchPrograms();
   }, [fetchPrograms]);
 
-  // Auto-refresh once after page load (Trigger #1)
+  // Reset autoRefreshed flag when device changes
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed) return;
+    setPrograms([]);
+    setAutoRefreshed(false);
+    hasAutoRefreshedRef.current = false;
+  }, [selectedDevice?.serialNumber]);
 
-    // Wait for initial load to complete, then auto-refresh from device
-    const timer = setTimeout(async () => {
+  // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
+  useEffect(() => {
+    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
+
+    // Check immediately if database has program data
+    const checkAndRefresh = async () => {
+      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+
       try {
-        console.log('[ProgramsPage] Auto-refreshing from device...');
-        const refreshResponse = await ProgramRefreshApiService.refreshAllPrograms(selectedDevice.serialNumber);
-        console.log('[ProgramsPage] Refresh response:', refreshResponse);
-
-        // Save to database
-        if (refreshResponse.items && refreshResponse.items.length > 0) {
-          await ProgramRefreshApiService.saveRefreshedPrograms(selectedDevice.serialNumber, refreshResponse.items);
-          // Only reload from database if save was successful
-          await fetchPrograms();
-        } else {
-          console.warn('[ProgramsPage] Auto-refresh: No items received, keeping existing data');
+        // Check if database has program data
+        if (programs.length > 0) {
+          console.log('[ProgramsPage] Database has data, skipping auto-refresh');
+          setAutoRefreshed(true);
+          return;
         }
+
+        console.log('[ProgramsPage] Database empty, auto-refreshing from device...');
+        const result = await PanelDataRefreshService.refreshAllPrograms(selectedDevice.serialNumber);
+        console.log('[ProgramsPage] Auto-refresh result:', result);
+
+        // Reload from database (data already saved by service)
+        await fetchPrograms();
         setAutoRefreshed(true);
       } catch (error) {
         console.error('[ProgramsPage] Auto-refresh failed:', error);
         // Don't reload from database on error - preserve existing programs
         setAutoRefreshed(true); // Mark as attempted to prevent retry loops
       }
-    }, 500);
+    };
 
-    return () => clearTimeout(timer);
-  }, [loading, selectedDevice, autoRefreshed, fetchPrograms]);
+    checkAndRefresh();
+  }, [loading, selectedDevice, autoRefreshed, fetchPrograms, programs.length]);
 
   // Handlers
   const handleRefresh = async () => {
@@ -168,22 +186,11 @@ export const ProgramsPage: React.FC = () => {
     setRefreshing(true);
     try {
       console.log('[ProgramsPage] Refreshing all programs from device...');
-      const refreshResponse = await ProgramRefreshApiService.refreshAllPrograms(selectedDevice.serialNumber);
-      console.log('[ProgramsPage] Refresh response:', refreshResponse);
+      const result = await PanelDataRefreshService.refreshAllPrograms(selectedDevice.serialNumber);
+      console.log('[ProgramsPage] Refresh result:', result);
 
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await ProgramRefreshApiService.saveRefreshedPrograms(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[ProgramsPage] Save response:', saveResponse);
-
-        // Only reload from database if save was successful
-        await fetchPrograms();
-      } else {
-        console.warn('[ProgramsPage] No items received from refresh, keeping existing data');
-      }
+      // Reload from database (data already saved by service)
+      await fetchPrograms();
     } catch (error) {
       console.error('[ProgramsPage] Failed to refresh from device:', error);
       setError(error instanceof Error ? error.message : 'Failed to refresh from device');
@@ -206,19 +213,10 @@ export const ProgramsPage: React.FC = () => {
     setRefreshingItems(prev => new Set(prev).add(programId));
     try {
       console.log(`[ProgramsPage] Refreshing program ${index} from device...`);
-      const refreshResponse = await ProgramRefreshApiService.refreshProgram(selectedDevice.serialNumber, index);
-      console.log('[ProgramsPage] Refresh response:', refreshResponse);
+      const refreshResponse = await PanelDataRefreshService.refreshSingleProgram(selectedDevice.serialNumber, index);
+      console.log('[ProgramsPage] Refresh result:', refreshResponse);
 
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await ProgramRefreshApiService.saveRefreshedPrograms(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[ProgramsPage] Save response:', saveResponse);
-      }
-
-      // Reload data from database after save
+      // Reload data from database (data already saved by service)
       await fetchPrograms();
     } catch (error) {
       console.error(`[ProgramsPage] Failed to refresh program ${index}:`, error);
@@ -349,6 +347,34 @@ export const ProgramsPage: React.FC = () => {
     }
   };
 
+  const handleOpenProgramming = useCallback((program: ProgramPoint) => {
+    if (!program.programId) return;
+    setSelectedProgramForProgramming(program);
+    setIsProgrammingOpen(true);
+    console.log('📝 [ProgramsPage] Opening programming for program:', program.programId);
+  }, []);
+
+  // Display data with 10 empty rows when no programs
+  const displayPrograms = React.useMemo(() => {
+    if (programs.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        serialNumber: selectedDevice?.serialNumber || 0,
+        programId: '',
+        switchNode: '',
+        programLabel: '',
+        programList: '',
+        programSize: '',
+        programPointer: '',
+        programStatus: '',
+        autoManual: '',
+      }));
+    }
+    return programs;
+  }, [programs, selectedDevice]);
+
+  // Helper to identify empty rows
+  const isEmptyRow = (item: ProgramPoint) => !item.programId && programs.length === 0;
+
   // Column definitions matching C++ BacnetProgram: Program, Full Label, Status, Auto/Manual, Size, Execution time, Label
   const columns: TableColumnDefinition<ProgramPoint>[] = [
     // 1. Program (ID) with refresh icon
@@ -365,6 +391,10 @@ export const ProgramsPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         const programId = item.programId || '';
         const isRefreshingThis = refreshingItems.has(programId);
 
@@ -405,6 +435,10 @@ export const ProgramsPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
                           editingCell?.programId === item.programId &&
                           editingCell?.field === 'programLabel';
@@ -427,10 +461,10 @@ export const ProgramsPage: React.FC = () => {
             ) : (
               <div
                 className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'programLabel', item.programLabel || '')}
+                onDoubleClick={() => handleCellDoubleClick(item, 'programLabel', item.programLabel ?? '')}
                 title="Double-click to edit"
               >
-                <Text size={200} weight="regular">{item.programLabel || 'Unnamed'}</Text>
+                <Text size={200} weight="regular">{item.programLabel ?? ''}</Text>
               </div>
             )}
           </TableCellLayout>
@@ -451,6 +485,10 @@ export const ProgramsPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         const isOn = item.programStatus?.toLowerCase() === 'on' || item.programStatus === '1';
 
         const handleToggle = () => {
@@ -490,6 +528,10 @@ export const ProgramsPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         const value = item.autoManual?.toString().toLowerCase();
         const isAuto = value === 'auto' || value === '1';
 
@@ -535,7 +577,11 @@ export const ProgramsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.programSize || '0'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.programSize || '0')}
+        </TableCellLayout>
+      ),
     }),
     // 6. Execution time (Run Status)
     createTableColumn<ProgramPoint>({
@@ -545,7 +591,11 @@ export const ProgramsPage: React.FC = () => {
           <span>Execution Time</span>
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.programPointer || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.programPointer || '---')}
+        </TableCellLayout>
+      ),
     }),
     // 7. Label (short label, editable)
     createTableColumn<ProgramPoint>({
@@ -561,6 +611,10 @@ export const ProgramsPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
                           editingCell?.programId === item.programId &&
                           editingCell?.field === 'programList';
@@ -589,6 +643,33 @@ export const ProgramsPage: React.FC = () => {
                 <Text size={200} weight="regular">{item.programList || '---'}</Text>
               </div>
             )}
+          </TableCellLayout>
+        );
+      },
+    }),
+    // 8. Programming column (last position)
+    createTableColumn<ProgramPoint>({
+      columnId: 'programming',
+      renderHeaderCell: () => <span>Programming</span>,
+      renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
+        return (
+          <TableCellLayout>
+            <Button
+              size="small"
+              appearance="subtle"
+              icon={<CodeRegular />}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenProgramming(item);
+              }}
+              title="Open programming editor"
+            >
+              Edit
+            </Button>
           </TableCellLayout>
         );
       },
@@ -622,8 +703,11 @@ export const ProgramsPage: React.FC = () => {
                 </div>
               )}
 
-              {/* TOOLBAR */}
+              {/* ========================================
+                  TOOLBAR
+                  ======================================== */}
               {selectedDevice && (
+              <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   {/* Refresh Button - Refresh from Device */}
@@ -690,19 +774,20 @@ export const ProgramsPage: React.FC = () => {
                   </Tooltip>
                 </div>
               </div>
-              )}
 
               {/* HORIZONTAL DIVIDER */}
               <div style={{ padding: '0' }}>
                 <hr className={styles.overviewHr} />
               </div>
+              </>
+              )}
 
               {/* DOCKING BODY */}
               <div className={styles.dockingBody}>
 
                 {loading && programs.length === 0 && (
                   <div className={styles.loadingBar}>
-                    <Spinner size="tiny" />
+                    <ArrowSyncRegular />
                     <Text size={200} weight="regular">Loading programs...</Text>
                   </div>
                 )}
@@ -710,9 +795,9 @@ export const ProgramsPage: React.FC = () => {
                 {!selectedDevice && !loading && (
                   <div className={styles.noData}>
                     <div style={{ textAlign: 'center' }}>
-                      <Text size={500} weight="semibold">No device selected</Text>
+                      <Text size={400} weight="semibold">No device selected</Text>
                       <br />
-                      <Text size={300}>Please select a device from the tree to view programs</Text>
+                      <Text size={200}>Please select a device from the tree to view programs</Text>
                     </div>
                   </div>
                 )}
@@ -725,7 +810,7 @@ export const ProgramsPage: React.FC = () => {
                     onWheel={handleWheel}
                   >
                   <DataGrid
-                    items={programs}
+                    items={displayPrograms}
                     columns={columns}
                     sortable
                     resizableColumns
@@ -751,12 +836,16 @@ export const ProgramsPage: React.FC = () => {
                         defaultWidth: 80,
                       },
                       executionTime: {
-                        minWidth: 100,
-                        defaultWidth: 130,
+                        minWidth: 120,
+                        defaultWidth: 180,
                       },
                       label: {
-                        minWidth: 100,
-                        defaultWidth: 150,
+                        minWidth: 130,
+                        defaultWidth: 200,
+                      },
+                      programming: {
+                        minWidth: 80,
+                        defaultWidth: 100,
                       },
                     }}
                   >
@@ -779,7 +868,7 @@ export const ProgramsPage: React.FC = () => {
                   </DataGrid>
 
                   {/* No Data Message - Show below grid when empty */}
-                  {programs.length === 0 && (
+                  {/* {programs.length === 0 && (
                     <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
@@ -797,13 +886,20 @@ export const ProgramsPage: React.FC = () => {
                         Refresh
                       </Button>
                       </div>
-                    )}
+                    )} */}
                   </div>
                 )}              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Programming Drawer */}
+      <ProgrammingDrawer
+        open={isProgrammingOpen}
+        onOpenChange={setIsProgrammingOpen}
+        selectedProgram={selectedProgramForProgramming}
+      />
     </div>
   );
 };

@@ -46,7 +46,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
-import { HolidayRefreshApiService } from '../services/holidayRefreshApi';
+import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import styles from './HolidaysPage.module.css';
 
 // Types based on C++ BacnetAnnualRoutine structure
@@ -60,7 +60,7 @@ interface HolidayPoint {
 }
 
 export const HolidaysPage: React.FC = () => {
-  const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const { selectedDevice, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
 
   const [holidays, setHolidays] = useState<HolidayPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -74,6 +74,7 @@ export const HolidaysPage: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
+  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
   const isAtBottomRef = useRef(false);
@@ -99,7 +100,7 @@ export const HolidaysPage: React.FC = () => {
     setError(null);
 
     try {
-      const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/ANNUAL_TABLE`;
+      const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/HOLIDAYS`;
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -122,28 +123,42 @@ export const HolidaysPage: React.FC = () => {
     fetchHolidays();
   }, [fetchHolidays]);
 
-  // Auto-refresh on page load (Trigger #1)
+  // Reset autoRefreshed flag when device changes
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed) return;
+    setHolidays([]);
+    setAutoRefreshed(false);
+    hasAutoRefreshedRef.current = false;
+  }, [selectedDevice?.serialNumber]);
 
-    const timer = setTimeout(async () => {
-      console.log('🔄 Auto-refreshing holidays from device on page load...');
+  // Auto-refresh on page load (Trigger #1) - ONLY if database is empty
+  useEffect(() => {
+    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
+
+    const checkAndRefresh = async () => {
+      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+
+      // Check if database has holiday data
+      if (holidays.length > 0) {
+        console.log('🔄 Database has data, skipping auto-refresh');
+        setAutoRefreshed(true);
+        return;
+      }
+
+      console.log('🔄 Database empty, auto-refreshing holidays from device on page load...');
       try {
         const serial = selectedDevice.serialNumber;
-        const response = await HolidayRefreshApiService.refreshAllHolidays(serial);
-        console.log('✅ Auto-refresh response:', response);
-        if (response && response.items) {
-          await HolidayRefreshApiService.saveRefreshedHolidays(serial, response.items);
-          await fetchHolidays();
-        }
+        const result = await PanelDataRefreshService.refreshAllHolidays(serial);
+        console.log('✅ Auto-refresh result:', result);
+        // Data already saved by service, just reload from database
+        await fetchHolidays();
         setAutoRefreshed(true);
       } catch (err) {
         console.error('❌ Auto-refresh failed:', err);
       }
-    }, 500);
+    };
 
-    return () => clearTimeout(timer);
-  }, [loading, selectedDevice, autoRefreshed, fetchHolidays]);
+    checkAndRefresh();
+  }, [loading, selectedDevice, autoRefreshed, fetchHolidays, holidays.length]);
 
   // Refresh from database
   const handleRefreshFromDatabase = async () => {
@@ -161,13 +176,10 @@ export const HolidaysPage: React.FC = () => {
     try {
       const serial = selectedDevice.serialNumber;
       console.log('🔄 Refreshing all holidays from device...');
-      const response = await HolidayRefreshApiService.refreshAllHolidays(serial);
-      console.log('✅ Device refresh response:', response);
-
-      if (response && response.items) {
-        await HolidayRefreshApiService.saveRefreshedHolidays(serial, response.items);
-        await fetchHolidays();
-      }
+      const result = await PanelDataRefreshService.refreshAllHolidays(serial);
+      console.log('✅ Device refresh result:', result);
+      // Data already saved by service, just reload from database
+      await fetchHolidays();
     } catch (err) {
       console.error('❌ Refresh from device failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh from device');
@@ -188,13 +200,10 @@ export const HolidaysPage: React.FC = () => {
       const holidayIndex = parseInt(item.holidayId);
       console.log(`🔄 Refreshing single holiday from device: ${holidayIndex}`);
 
-      const response = await HolidayRefreshApiService.refreshHoliday(serial, holidayIndex);
-      console.log('✅ Single holiday refresh response:', response);
-
-      if (response && response.items) {
-        await HolidayRefreshApiService.saveRefreshedHolidays(serial, response.items);
-        await fetchHolidays();
-      }
+      const result = await PanelDataRefreshService.refreshSingleHoliday(serial, holidayIndex);
+      console.log('✅ Single holiday refresh result:', result);
+      // Data already saved by service, just reload from database
+      await fetchHolidays();
     } catch (err) {
       console.error('❌ Single holiday refresh failed:', err);
     } finally {
@@ -272,6 +281,26 @@ export const HolidaysPage: React.FC = () => {
     }
   }, [selectedDevice, isLoadingNextDevice]);
 
+  // Display holidays with empty rows when no data (show 10 empty rows)
+  const displayHolidays = React.useMemo(() => {
+    if (holidays.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        serialNumber: 0,
+        holidayId: '',
+        fullLabel: '',
+        autoManual: '',
+        value: '',
+        label: '',
+      } as HolidayPoint));
+    }
+    return holidays;
+  }, [holidays]);
+
+  // Helper to check if row is an empty placeholder
+  const isEmptyRow = (holiday: HolidayPoint) => {
+    return !holiday.holidayId && holidays.length === 0;
+  };
+
   // Inline editing handlers
   const handleCellDoubleClick = (item: HolidayPoint, field: string, currentValue: string) => {
     setEditingCell({ serialNumber: item.serialNumber, holidayId: item.holidayId || '', field });
@@ -336,12 +365,12 @@ export const HolidaysPage: React.FC = () => {
     createTableColumn<HolidayPoint>({
       columnId: 'holidayId',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('holidayId')}>
-          <span>NUM</span>
+        <div className={styles.headerCellSort} onClick={() => handleSort('holidayId')}>
+          <span>Holiday</span>
           {sortColumn === 'holidayId' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -349,21 +378,23 @@ export const HolidaysPage: React.FC = () => {
         const isRefreshing = item.holidayId && refreshingItems.has(item.holidayId);
         return (
           <TableCellLayout>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button
-                className={`${styles.refreshIconButton} ${isRefreshing ? styles.rotating : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRefreshSingleHoliday(item);
-                }}
-                disabled={isRefreshing}
-                title="Refresh this holiday from device"
-                aria-label="Refresh holiday"
-              >
-                <ArrowSyncRegular fontSize={16} />
-              </button>
-              <span>{item.holidayId || '---'}</span>
-            </div>
+            {!isEmptyRow(item) && (
+              <div className={styles.flexCenter8Gap}>
+                <button
+                  className={`${styles.refreshIconButton} ${isRefreshing ? styles.rotating : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRefreshSingleHoliday(item);
+                  }}
+                  disabled={!!isRefreshing}
+                  title="Refresh this holiday from device"
+                  aria-label="Refresh holiday"
+                >
+                  <ArrowSyncRegular fontSize={16} />
+                </button>
+                <span>{item.holidayId || '---'}</span>
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -373,12 +404,12 @@ export const HolidaysPage: React.FC = () => {
     createTableColumn<HolidayPoint>({
       columnId: 'fullLabel',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('fullLabel')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('fullLabel')}>
           <span>Full Label</span>
           {sortColumn === 'fullLabel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -389,24 +420,26 @@ export const HolidaysPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <Input
-                value={editValue}
-                onChange={(e, data) => setEditValue(data.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                size="small"
-                style={{ width: '100%' }}
-              />
-            ) : (
-              <div
-                onDoubleClick={() => handleCellDoubleClick(item, 'fullLabel', item.fullLabel || '')}
-                style={{ cursor: 'text', minHeight: '20px' }}
-              >
-                <Text size={200}>{item.fullLabel || 'Unnamed'}</Text>
-              </div>
+            {!isEmptyRow(item) && (
+              isEditing ? (
+                <Input
+                  value={editValue}
+                  onChange={(_e, data) => setEditValue(data.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  size="small"
+                  className={styles.fullWidth}
+                />
+              ) : (
+                <div
+                  onDoubleClick={() => handleCellDoubleClick(item, 'fullLabel', item.fullLabel || '')}
+                  className={styles.editableCell}
+                >
+                  <Text size={200}>{item.fullLabel || 'Unnamed'}</Text>
+                </div>
+              )
             )}
           </TableCellLayout>
         );
@@ -417,8 +450,8 @@ export const HolidaysPage: React.FC = () => {
     createTableColumn<HolidayPoint>({
       columnId: 'autoManual',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span>Auto/Manual</span>
+        <div className={styles.headerCell}>
+          <span>Auto/Man</span>
         </div>
       ),
       renderCell: (item) => {
@@ -426,13 +459,15 @@ export const HolidaysPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Switch
-                checked={isAuto}
-                onChange={() => handleAutoManualToggle(item)}
-              />
-              <Text size={200}>{isAuto ? 'Auto' : 'Manual'}</Text>
-            </div>
+            {!isEmptyRow(item) && (
+              <div className={styles.headerCellWith8Gap}>
+                <Switch
+                  checked={isAuto}
+                  onChange={() => handleAutoManualToggle(item)}
+                />
+                <Text size={200}>{isAuto ? 'Auto' : 'Manual'}</Text>
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -442,28 +477,32 @@ export const HolidaysPage: React.FC = () => {
     createTableColumn<HolidayPoint>({
       columnId: 'value',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('value')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('value')}>
           <span>Value</span>
           {sortColumn === 'value' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.value || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.value || '---')}
+        </TableCellLayout>
+      ),
     }),
 
     // 5. Label (editable)
     createTableColumn<HolidayPoint>({
       columnId: 'label',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('label')}>
           <span>Label</span>
           {sortColumn === 'label' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -474,24 +513,26 @@ export const HolidaysPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <Input
-                value={editValue}
-                onChange={(e, data) => setEditValue(data.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                size="small"
-                style={{ width: '100%' }}
-              />
-            ) : (
-              <div
-                onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
-                style={{ cursor: 'text', minHeight: '20px' }}
-              >
-                <Text size={200}>{item.label || '---'}</Text>
-              </div>
+            {!isEmptyRow(item) && (
+              isEditing ? (
+                <Input
+                  value={editValue}
+                  onChange={(_e, data) => setEditValue(data.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  size="small"
+                  className={styles.fullWidth}
+                />
+              ) : (
+                <div
+                  onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
+                  className={styles.editableCell}
+                >
+                  <Text size={200}>{item.label || '---'}</Text>
+                </div>
+              )
             )}
           </TableCellLayout>
         );
@@ -514,8 +555,8 @@ export const HolidaysPage: React.FC = () => {
                 ======================================== */}
             {error && (
               <div className={styles.errorMessage}>
-                <ErrorCircleRegular style={{ color: '#d13438', fontSize: '14px', flexShrink: 0 }} />
-                <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '12px' }}>
+                <ErrorCircleRegular className={styles.iconError} />
+                <Text className={styles.textError}>
                   {error}
                 </Text>
               </div>
@@ -526,6 +567,7 @@ export const HolidaysPage: React.FC = () => {
                 Matches: ext-overview-assistant-toolbar azc-toolbar
                 ======================================== */}
             {selectedDevice && (
+            <>
             <div className={styles.toolbar}>
               <div className={styles.toolbarContainer}>
                 <button
@@ -581,8 +623,7 @@ export const HolidaysPage: React.FC = () => {
                   relationship="description"
                 >
                   <button
-                    className={styles.toolbarButton}
-                    style={{ marginLeft: '8px' }}
+                    className={`${styles.toolbarButton} ${styles.marginLeft8}`}
                     title="Information"
                     aria-label="Information about this page"
                   >
@@ -591,12 +632,13 @@ export const HolidaysPage: React.FC = () => {
                 </Tooltip>
               </div>
             </div>
-            )}
 
-            {/* HORIZONTAL DIVIDER */}
-            <div style={{ padding: '0' }}>
-              <hr className={styles.overviewHr} />
-            </div>
+          {/* HORIZONTAL DIVIDER */}
+          <div className={styles.noPadding}>
+            <hr className={styles.overviewHr} />
+          </div>
+          </>
+          )}
 
             {/* DOCKING BODY */}
             <div className={styles.dockingBody}>
@@ -610,10 +652,10 @@ export const HolidaysPage: React.FC = () => {
 
               {!selectedDevice && !loading && (
                 <div className={styles.noData}>
-                  <div style={{ textAlign: 'center' }}>
-                    <Text size={500} weight="semibold">No device selected</Text>
+                  <div className={styles.centerText}>
+                    <Text size={400} weight="semibold">No device selected</Text>
                     <br />
-                    <Text size={300}>Please select a device from the tree to view holidays</Text>
+                    <Text size={200}>Please select a device from the tree to view holidays</Text>
                   </div>
                 </div>
               )}
@@ -626,30 +668,30 @@ export const HolidaysPage: React.FC = () => {
                   onWheel={handleWheel}
                 >
                   <DataGrid
-                    items={holidays}
+                    items={displayHolidays}
                     columns={columns}
                     sortable
                     resizableColumns
                     columnSizingOptions={{
                       holidayId: {
                         minWidth: 60,
-                        defaultWidth: 80,
+                        idealWidth: 100,
                       },
                       fullLabel: {
                         minWidth: 150,
-                        defaultWidth: 200,
+                        idealWidth: 200,
                       },
                       autoManual: {
                         minWidth: 100,
-                        defaultWidth: 120,
+                        idealWidth: 130,
                       },
                       value: {
                         minWidth: 80,
-                        defaultWidth: 100,
+                        idealWidth: 100,
                       },
                       label: {
                         minWidth: 90,
-                        defaultWidth: 120,
+                        idealWidth: 130,
                       },
                     }}
                   >
@@ -671,11 +713,11 @@ export const HolidaysPage: React.FC = () => {
                     </DataGridBody>
                   </DataGrid>
 
-                  {/* No Data Message - Show below grid when empty */}
+                  {/* No Data Message - Commented out - showing empty grid instead
                   {holidays.length === 0 && (
-                    <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                    <div className={styles.emptyStateContainer}>
+                      <div className={styles.emptyStateHeader}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={styles.emptyStateIcon}>
                           <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
                         </svg>
                         <Text size={400} weight="semibold">No holidays found</Text>
@@ -691,6 +733,7 @@ export const HolidaysPage: React.FC = () => {
                       </Button>
                     </div>
                   )}
+                  */}
 
                   {isLoadingNextDevice && (
                     <div className={styles.autoLoadIndicator}>

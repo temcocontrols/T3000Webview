@@ -1,0 +1,80 @@
+/* System Overview Styles - Aliyun Style */
+
+.overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 32px;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  padding: 20px 16px;
+  display: flex;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.card:hover {
+  border-color: #0078d4;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.cardContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cardLabel {
+  font-size: 11px;
+  color: #8a8886;
+  font-weight: 500;
+  letter-spacing: 0;
+  margin-bottom: 8px;
+}
+
+.cardValue {
+  font-size: 28px;
+  font-weight: 600;
+  color: #323130;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.cardDetail {
+  font-size: 12px;
+  color: #605e5c;
+  margin-top: 46;
+  margin-top: 2px;
+}
+
+.success {
+  color: #107c10;
+}
+
+.warning {
+  color: #f7630c;
+}
+
+.muted {
+  color: #8a8886;
+}
+
+.link {
+  color: #0078d4;
+  cursor: pointer;
+}
+
+.link:hover {
+  text-decoration: underline;
+}

@@ -259,6 +259,26 @@
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f5f5f5;
+}
+
+.container :global(.fui-DataGridBody)::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.container :global(.fui-DataGridBody)::-webkit-scrollbar-track {
+  background-color: #f5f5f5;
+}
+
+.container :global(.fui-DataGridBody)::-webkit-scrollbar-thumb {
+  background-color: #c1c1c1;
+  border-radius: 3px;
+}
+
+.container :global(.fui-DataGridBody)::-webkit-scrollbar-thumb:hover {
+  background-color: #a1a1a1;
 }
 
 /* Header cell styling - matches fxc-gc-columnheader fxc-gc-bold */

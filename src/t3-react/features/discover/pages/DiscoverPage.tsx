@@ -1,12 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Button,
-  Input,
-  Spinner,
-  Badge,
-  makeStyles,
-  shorthands,
-  tokens,
   DataGrid,
   DataGridHeader,
   DataGridHeaderCell,
@@ -16,14 +9,22 @@ import {
   TableColumnDefinition,
   createTableColumn,
   TableCellLayout,
-  TableRowId,
+  Button,
+  Spinner,
+  Text,
+  Badge,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
   AddRegular,
   DeleteRegular,
   SearchRegular,
+  ArrowSortUpRegular,
+  ArrowSortDownRegular,
+  ArrowSortRegular,
+  ErrorCircleRegular,
 } from '@fluentui/react-icons';
+import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './DiscoverPage.module.css';
 
@@ -42,15 +43,17 @@ interface Device {
   modbusId: string;        // SCAN_TABLE_MODBUSID (ID)
 }
 
-const DiscoverPage: React.FC = () => {
+export const DiscoverPage: React.FC = () => {
+  const { selectedDevice } = useDeviceTreeStore();
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRows, setSelectedRows] = useState<Set<TableRowId>>(new Set());
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
 
-  // Fetch devices
+  // Fetch devices - only called manually
   const fetchDevices = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -69,9 +72,10 @@ const DiscoverPage: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchDevices();
-  }, [fetchDevices]);
+  // DO NOT auto-fetch on mount - wait for user to click "Start Scan"
+  // useEffect(() => {
+  //   fetchDevices();
+  // }, [fetchDevices]);
 
   // Refresh handler
   const handleRefresh = async () => {
@@ -80,25 +84,31 @@ const DiscoverPage: React.FC = () => {
     setRefreshing(false);
   };
 
-  // Add device handler
+  // Start Scan handler
   const handleAddDevice = () => {
-    console.log('Add device clicked');
-    // TODO: Implement add device dialog
+    console.log('Start scan clicked');
+    fetchDevices();
   };
 
   // Delete device handler
   const handleDeleteDevice = () => {
-    if (selectedRows.size === 0) {
-      alert('Please select at least one device to delete');
-      return;
-    }
-    console.log('Delete devices:', Array.from(selectedRows));
+    console.log('Delete device clicked');
     // TODO: Implement delete device functionality
   };
 
   // Search handler
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
+  };
+
+  // Sort handler
+  const handleSort = (columnId: string) => {
+    if (sortColumn === columnId) {
+      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
+    } else {
+      setSortColumn(columnId);
+      setSortDirection('ascending');
+    }
   };
 
   // Filter devices based on search query
@@ -119,141 +129,222 @@ const DiscoverPage: React.FC = () => {
     );
   });
 
+  // Display data with 10 empty rows when no devices
+  const displayDevices = React.useMemo(() => {
+    if (devices.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        id: '',
+        model: '',
+        building: '',
+        floor: '',
+        room: '',
+        subnet: '',
+        serialNumber: '',
+        ipAddress: '',
+        port: '',
+        protocol: '',
+        modbusId: '',
+      }));
+    }
+    return filteredDevices;
+  }, [devices.length, filteredDevices]);
+
+  // Helper to identify empty rows
+  const isEmptyRow = (item: Device) => !item.id && devices.length === 0;
+
   // Column definitions matching C++ InitScanGrid()
   const columns: TableColumnDefinition<Device>[] = [
     createTableColumn<Device>({
       columnId: 'model',
       compare: (a, b) => a.model.localeCompare(b.model),
-      renderHeaderCell: () => 'Model',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('model')}>
+          <span>Model</span>
+          {sortColumn === 'model' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.model}>
-          {item.model}
+          {!isEmptyRow(item) && item.model}
         </TableCellLayout>
       ),
     }),
     createTableColumn<Device>({
       columnId: 'building',
       compare: (a, b) => a.building.localeCompare(b.building),
-      renderHeaderCell: () => 'Building',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('building')}>
+          <span>Building</span>
+          {sortColumn === 'building' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.building}>
-          {item.building}
+          {!isEmptyRow(item) && item.building}
         </TableCellLayout>
       ),
     }),
     createTableColumn<Device>({
       columnId: 'floor',
       compare: (a, b) => a.floor.localeCompare(b.floor),
-      renderHeaderCell: () => 'Floor',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('floor')}>
+          <span>Floor</span>
+          {sortColumn === 'floor' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.floor}>
-          {item.floor}
+          {!isEmptyRow(item) && item.floor}
         </TableCellLayout>
       ),
     }),
     createTableColumn<Device>({
       columnId: 'room',
       compare: (a, b) => a.room.localeCompare(b.room),
-      renderHeaderCell: () => 'Room',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('room')}>
+          <span>Room</span>
+          {sortColumn === 'room' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.room}>
-          {item.room}
+          {!isEmptyRow(item) && item.room}
         </TableCellLayout>
       ),
     }),
     createTableColumn<Device>({
       columnId: 'subnet',
       compare: (a, b) => a.subnet.localeCompare(b.subnet),
-      renderHeaderCell: () => 'Sub_net',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('subnet')}>
+          <span>Sub_net</span>
+          {sortColumn === 'subnet' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.subnet}>
-          {item.subnet}
+          {!isEmptyRow(item) && item.subnet}
         </TableCellLayout>
       ),
     }),
     createTableColumn<Device>({
       columnId: 'serialNumber',
       compare: (a, b) => a.serialNumber.localeCompare(b.serialNumber),
-      renderHeaderCell: () => 'Serial#',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('serialNumber')}>
+          <span>Serial#</span>
+          {sortColumn === 'serialNumber' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.serialNumber}>
-          {item.serialNumber}
+          {!isEmptyRow(item) && item.serialNumber}
         </TableCellLayout>
       ),
     }),
     createTableColumn<Device>({
       columnId: 'ipAddress',
       compare: (a, b) => a.ipAddress.localeCompare(b.ipAddress),
-      renderHeaderCell: () => 'IP Address',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('ipAddress')}>
+          <span>IP Address</span>
+          {sortColumn === 'ipAddress' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.ipAddress}>
-          {item.ipAddress}
+          {!isEmptyRow(item) && item.ipAddress}
         </TableCellLayout>
       ),
     }),
     createTableColumn<Device>({
       columnId: 'port',
       compare: (a, b) => a.port.localeCompare(b.port),
-      renderHeaderCell: () => 'Port',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('port')}>
+          <span>Port</span>
+          {sortColumn === 'port' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.port}>
-          {item.port}
+          {!isEmptyRow(item) && item.port}
         </TableCellLayout>
       ),
     }),
     createTableColumn<Device>({
       columnId: 'protocol',
       compare: (a, b) => a.protocol.localeCompare(b.protocol),
-      renderHeaderCell: () => 'Protocol',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('protocol')}>
+          <span>Protocol</span>
+          {sortColumn === 'protocol' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.protocol}>
-          {item.protocol}
+          {!isEmptyRow(item) && item.protocol}
         </TableCellLayout>
       ),
     }),
     createTableColumn<Device>({
       columnId: 'modbusId',
       compare: (a, b) => a.modbusId.localeCompare(b.modbusId),
-      renderHeaderCell: () => 'ID',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('modbusId')}>
+          <span>ID</span>
+          {sortColumn === 'modbusId' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.modbusId}>
-          {item.modbusId}
+          {!isEmptyRow(item) && item.modbusId}
         </TableCellLayout>
       ),
     }),
   ];
-
-  // Empty state
-  if (!loading && devices.length === 0 && !error) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.bladeContentContainer}>
-          <div className={styles.bladeContentWrapper}>
-            <div className={styles.bladeContent}>
-              <div className={styles.partContent}>
-                <div className={styles.emptyState}>
-                  <div className={styles.emptyStateIcon}>
-                    <SearchRegular fontSize={48} />
-                  </div>
-                  <div className={styles.emptyStateText}>
-                    <h3>No devices discovered</h3>
-                    <p>Start a scan to discover devices on the network</p>
-                  </div>
-                  <Button
-                    appearance="primary"
-                    icon={<AddRegular />}
-                    onClick={handleAddDevice}
-                  >
-                    Start Scan
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={styles.container}>
@@ -261,81 +352,152 @@ const DiscoverPage: React.FC = () => {
         <div className={styles.bladeContentWrapper}>
           <div className={styles.bladeContent}>
             <div className={styles.partContent}>
-              {/* Toolbar */}
-              <div className={styles.toolbar}>
-                <div className={styles.toolbarLeft}>
-                  <Button
-                    appearance="subtle"
-                    icon={<ArrowSyncRegular />}
-                    onClick={handleRefresh}
-                    disabled={refreshing}
-                  >
-                    {refreshing ? 'Refreshing...' : 'Refresh'}
-                  </Button>
-                  <Button
-                    appearance="subtle"
-                    icon={<AddRegular />}
-                    onClick={handleAddDevice}
-                  >
-                    Start Scan
-                  </Button>
-                  <Button
-                    appearance="subtle"
-                    icon={<DeleteRegular />}
-                    onClick={handleDeleteDevice}
-                    disabled={selectedRows.size === 0}
-                  >
-                    Delete Device
-                  </Button>
-                  {selectedRows.size > 0 && (
-                    <Badge appearance="filled" color="informative">
-                      {selectedRows.size} selected
-                    </Badge>
-                  )}
-                </div>
-                <div className={styles.toolbarRight}>
-                  <Input
-                    className={styles.searchInput}
-                    placeholder="Search devices..."
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                    contentBefore={<SearchRegular />}
-                  />
-                </div>
-              </div>
-
-              {/* Error message */}
+              {/* ========================================
+                  ERROR MESSAGE (if any)
+                  ======================================== */}
               {error && (
-                <div className={styles.errorMessage}>
-                  <Badge appearance="filled" color="danger">
-                    Error
-                  </Badge>
-                  <span>{error}</span>
+                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
+                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                    {error}
+                  </Text>
                 </div>
               )}
 
-              {/* Loading spinner */}
-              {loading ? (
-                <div className={styles.loadingContainer}>
-                  <Spinner size="large" label="Loading devices..." />
+              {/* Toolbar */}
+              {selectedDevice && (
+              <>
+              <div className={styles.toolbar}>
+                <div className={styles.toolbarContainer}>
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    title="Refresh"
+                    aria-label="Refresh"
+                  >
+                    <ArrowSyncRegular />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+                  </button>
+
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleAddDevice}
+                    title="Start Scan"
+                    aria-label="Start Scan"
+                  >
+                    <AddRegular />
+                    <span>Start Scan</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
+
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleDeleteDevice}
+                    title="Delete Device"
+                    aria-label="Delete Device"
+                  >
+                    <DeleteRegular />
+                    <span>Delete Device</span>
+                  </button>
+
+                  <div className={styles.searchInputWrapper}>
+                    <SearchRegular className={styles.searchIcon} />
+                    <input
+                      className={styles.searchInput}
+                      type="text"
+                      placeholder="Search devices..."
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      spellCheck="false"
+                      role="searchbox"
+                      aria-label="Search devices"
+                    />
+                  </div>
                 </div>
-              ) : (
-                /* Data grid */
-                <div className={styles.gridContainer}>
+              </div>
+
+              <div style={{ padding: '0' }}>
+                <hr className={styles.overviewHr} />
+              </div>
+              </>
+              )}
+
+              <div className={styles.dockingBody}>
+                {/* Loading State */}
+                {loading && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px' }}>
+                    <Spinner size="tiny" />
+                    <Text size={200} weight="regular">Loading devices...</Text>
+                  </div>
+                )}
+
+                {/* No Device Selected */}
+                {!selectedDevice && !loading && (
+                  <div className={styles.noData}>
+                    <div className={styles.centerText}>
+                      <Text size={400} weight="semibold">No device selected</Text>
+                      <br />
+                      <Text size={200}>Please select a device from the tree to view inputs</Text>
+                    </div>
+                  </div>
+                )}
+
+                {/* Data Grid - Always show grid with headers */}
+                {selectedDevice && !loading && (
+                  <>
                   <DataGrid
-                    items={filteredDevices}
+                    items={displayDevices}
                     columns={columns}
                     sortable
-                    selectionMode="multiselect"
-                    selectedItems={selectedRows}
-                    onSelectionChange={(e, data) => setSelectedRows(data.selectedItems)}
-                    getRowId={(item) => item.id}
-                    focusMode="composite"
-                    size="small"
                     resizableColumns
+                    columnSizingOptions={{
+                      model: {
+                        minWidth: 150,
+                        defaultWidth: 200,
+                      },
+                      building: {
+                        minWidth: 100,
+                        defaultWidth: 130,
+                      },
+                      floor: {
+                        minWidth: 80,
+                        defaultWidth: 100,
+                      },
+                      room: {
+                        minWidth: 80,
+                        defaultWidth: 100,
+                      },
+                      subnet: {
+                        minWidth: 80,
+                        defaultWidth: 100,
+                      },
+                      serialNumber: {
+                        minWidth: 100,
+                        defaultWidth: 120,
+                      },
+                      ipAddress: {
+                        minWidth: 120,
+                        defaultWidth: 150,
+                      },
+                      port: {
+                        minWidth: 80,
+                        defaultWidth: 100,
+                      },
+                      protocol: {
+                        minWidth: 100,
+                        defaultWidth: 120,
+                      },
+                      modbusId: {
+                        minWidth: 60,
+                        defaultWidth: 80,
+                      },
+                    }}
+                    focusMode="composite"
                   >
                     <DataGridHeader>
-                      <DataGridRow selectionCell={{ checkboxIndicator: { 'aria-label': 'Select all rows' } }}>
+                      <DataGridRow>
                         {({ renderHeaderCell }) => (
                           <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
                         )}
@@ -343,10 +505,7 @@ const DiscoverPage: React.FC = () => {
                     </DataGridHeader>
                     <DataGridBody<Device>>
                       {({ item, rowId }) => (
-                        <DataGridRow<Device>
-                          key={rowId}
-                          selectionCell={{ checkboxIndicator: { 'aria-label': 'Select row' } }}
-                        >
+                        <DataGridRow<Device> key={rowId}>
                           {({ renderCell }) => (
                             <DataGridCell>{renderCell(item)}</DataGridCell>
                           )}
@@ -354,8 +513,30 @@ const DiscoverPage: React.FC = () => {
                       )}
                     </DataGridBody>
                   </DataGrid>
-                </div>
-              )}
+
+                  {/* No Data Message - Show below grid when empty */}
+                  {/* {devices.length === 0 && (
+                    <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                          <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
+                        </svg>
+                        <Text size={400} weight="semibold">No devices found</Text>
+                      </div>
+                      <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>Click "Start Scan" to discover devices on the network</Text>
+                      <Button
+                        appearance="subtle"
+                        icon={<ArrowSyncRegular />}
+                        onClick={handleRefresh}
+                        style={{ minWidth: '120px', fontWeight: 'normal' }}
+                      >
+                        Refresh
+                      </Button>
+                    </div>
+                  )} */}
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -363,5 +544,3 @@ const DiscoverPage: React.FC = () => {
     </div>
   );
 };
-
-export default DiscoverPage;

@@ -1,6 +1,7 @@
 use std::panic;
 use utils::{copy_database_if_not_exists, SHUTDOWN_CHANNEL};
 use db_connection::establish_t3_device_connection;
+use database_management::partition_monitor_service;
 
 pub mod app_state;
 pub mod auth;
@@ -10,6 +11,7 @@ pub mod db_schema;  // NEW: Embedded SQL schema for dynamic database creation
 pub mod entity;
 pub mod error;
 pub mod file;
+pub mod log;
 pub mod logger;
 pub mod modbus_register;
 pub mod server;
@@ -22,6 +24,9 @@ pub mod database_management;
 // T3000 device modules
 pub mod t3_device;
 pub mod t3_socket;
+
+// Developer tools modules
+pub mod t3_develop;
 
 #[repr(C)]
 pub enum RustError {
@@ -187,31 +192,47 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Start T3000 FFI Sync Service in background with immediate trigger
-    let main_service_handle = tokio::spawn(async move {
-        if let Err(e) = start_logging_sync().await {
-            let error_msg = format!("T3000 FFI Sync Service (FFI + DeviceSync + WebSocket) failed: {}", e);
-            let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Error);
-        }
-    });
+    let main_service_handle = if crate::constants::ENABLE_FFI_SYNC_SERVICE {
+        let handle = tokio::spawn(async move {
+            if let Err(e) = start_logging_sync().await {
+                let error_msg = format!("T3000 FFI Sync Service (FFI + DeviceSync + WebSocket) failed: {}", e);
+                let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Error);
+            }
+        });
 
-    let _ = write_structured_log_with_level("T3_Webview_Initialize", "T3000 FFI Sync Service started in background (1-minute sync intervals with immediate startup sync)", LogLevel::Info);
+        let _ = write_structured_log_with_level("T3_Webview_Initialize", "✅ T3000 FFI Sync Service started in background (15-minute sync intervals with immediate startup sync)", LogLevel::Info);
+        Some(handle)
+    } else {
+        let _ = write_structured_log_with_level("T3_Webview_Initialize", "⏸️  T3000 FFI Sync Service DISABLED by constant (ENABLE_FFI_SYNC_SERVICE = false)", LogLevel::Warn);
+        None
+    };
 
     // Start partition monitor service (hourly background checks)
-    use crate::database_management::partition_monitor_service;
-    if let Err(e) = partition_monitor_service::start_partition_monitor_service().await {
-        let error_msg = format!("Partition monitor service initialization failed: {}", e);
-        let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Warn);
+    if crate::constants::ENABLE_PARTITION_MONITOR_SERVICE {
+        if let Err(e) = partition_monitor_service::start_partition_monitor_service().await {
+            let error_msg = format!("Partition monitor service initialization failed: {}", e);
+            let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Warn);
+        } else {
+            let _ = write_structured_log_with_level("T3_Webview_Initialize", "✅ Partition monitor service started (hourly checks)", LogLevel::Info);
+        }
     } else {
-        let _ = write_structured_log_with_level("T3_Webview_Initialize", "Partition monitor service started (checks every hour)", LogLevel::Info);
+        let _ = write_structured_log_with_level("T3_Webview_Initialize", "⏸️  Partition monitor service DISABLED by constant (ENABLE_PARTITION_MONITOR_SERVICE = false)", LogLevel::Warn);
     }
 
-    // Schedule startup partition migration check (10 second delay)
+    // Schedule startup partition migration check (5 minute delay to allow database stabilization)
     tokio::spawn(async {
-        tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+        let wait_secs = 300; // 5 minutes
+        let _ = write_structured_log_with_level(
+            "T3_Webview_Initialize",
+            &format!("⏳ Scheduled partition check in {} seconds ({} minutes) to allow database stabilization...", wait_secs, wait_secs / 60),
+            LogLevel::Info
+        );
+
+        tokio::time::sleep(tokio::time::Duration::from_secs(wait_secs)).await;
 
         let _ = write_structured_log_with_level(
             "T3_Webview_Initialize",
-            "🔍 Checking for pending partition migrations on startup...",
+            "🔍 Starting scheduled partition migration check (after 5-minute stabilization period)...",
             LogLevel::Info
         );
 
@@ -247,7 +268,9 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
 
     // If HTTP server stops, we should stop background services too
     websocket_handle.abort();
-    main_service_handle.abort();
+    if let Some(handle) = main_service_handle {
+        handle.abort();
+    }
 
     http_result
 }

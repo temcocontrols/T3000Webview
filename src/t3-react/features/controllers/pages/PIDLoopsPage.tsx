@@ -35,7 +35,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
-import { PidLoopRefreshApiService } from '../services/pidLoopRefreshApi';
+import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import styles from './PIDLoopsPage.module.css';
 
 // PID Controller interface matching PID_TABLE entity
@@ -78,9 +78,53 @@ const PIDLoopsPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
+  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
   const isAtBottomRef = useRef(false);
+
+  // Create empty rows when no data exists
+  const displayPidLoops = useMemo(() => {
+    if (pidLoops.length === 0) {
+      // Return 10 completely empty rows
+      return Array(10).fill(null).map((_, index) => ({
+        loop_field: '',
+        input_field: '',
+        input_value: '',
+        units: '',
+        auto_manual: '',
+        output_field: '',
+        output_value: '',
+        set_value: '',
+        units_state: '',
+        action_field: '',
+        proportional: '',
+        reset_field: '',
+        rate: '',
+        bias: '',
+        switch_node: '',
+        status: '',
+        type_field: '',
+        setpoint_high: '',
+        setpoint_low: '',
+        variable_state: '',
+      } as PIDController));
+    }
+    return pidLoops;
+  }, [pidLoops]);
+
+  // Check if a row is an empty placeholder row
+  const isEmptyRow = (controller: PIDController) => {
+    return !controller.loop_field && pidLoops.length === 0;
+  };
+
+  // Wrapper to render empty cells for empty rows
+  const renderCellContent = (controller: PIDController, content: React.ReactNode) => {
+    if (isEmptyRow(controller)) {
+      return <TableCellLayout></TableCellLayout>;
+    }
+    return <TableCellLayout>{content}</TableCellLayout>;
+  };
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -123,35 +167,44 @@ const PIDLoopsPage: React.FC = () => {
     fetchPidLoops();
   }, [fetchPidLoops]);
 
-  // Auto-refresh once after page load (Trigger #1)
+  // Reset autoRefreshed flag when device changes
   useEffect(() => {
-    if (isLoading || !selectedDevice || autoRefreshed) return;
+    setPidLoops([]);
+    setAutoRefreshed(false);
+    hasAutoRefreshedRef.current = false;
+  }, [selectedDevice?.serialNumber]);
 
-    // Wait for initial load to complete, then auto-refresh from device
-    const timer = setTimeout(async () => {
+  // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
+  useEffect(() => {
+    if (isLoading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
+
+    // Check immediately if database has PID loop data
+    const checkAndRefresh = async () => {
+      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+
       try {
-        console.log('[PIDLoopsPage] Auto-refreshing from device...');
-        const refreshResponse = await PidLoopRefreshApiService.refreshAllPidLoops(selectedDevice.serialNumber);
-        console.log('[PIDLoopsPage] Refresh response:', refreshResponse);
-
-        // Save to database
-        if (refreshResponse.items && refreshResponse.items.length > 0) {
-          await PidLoopRefreshApiService.saveRefreshedPidLoops(selectedDevice.serialNumber, refreshResponse.items);
-          // Only reload from database if save was successful
-          await fetchPidLoops();
-        } else {
-          console.warn('[PIDLoopsPage] Auto-refresh: No items received, keeping existing data');
+        // Check if database has PID loop data
+        if (pidLoops.length > 0) {
+          console.log('[PIDLoopsPage] Database has data, skipping auto-refresh');
+          setAutoRefreshed(true);
+          return;
         }
+
+        console.log('[PIDLoopsPage] Database empty, auto-refreshing from device...');
+        const result = await PanelDataRefreshService.refreshAllPidLoops(selectedDevice.serialNumber);
+        console.log('[PIDLoopsPage] Auto-refresh result:', result);
+        // Data already saved by service, just reload from database
+        await fetchPidLoops();
         setAutoRefreshed(true);
       } catch (error) {
         console.error('[PIDLoopsPage] Auto-refresh failed:', error);
         // Don't reload from database on error - preserve existing PID loops
         setAutoRefreshed(true); // Mark as attempted to prevent retry loops
       }
-    }, 500);
+    };
 
-    return () => clearTimeout(timer);
-  }, [isLoading, selectedDevice, autoRefreshed, fetchPidLoops]);
+    checkAndRefresh();
+  }, [isLoading, selectedDevice, autoRefreshed, fetchPidLoops, pidLoops.length]);
 
   // Handle field edit
   const handleFieldEdit = (controllerId: string, field: keyof PIDController, value: string) => {
@@ -206,22 +259,10 @@ const PIDLoopsPage: React.FC = () => {
     setRefreshing(true);
     try {
       console.log('[PIDLoopsPage] Refreshing all PID loops from device...');
-      const refreshResponse = await PidLoopRefreshApiService.refreshAllPidLoops(selectedDevice.serialNumber);
-      console.log('[PIDLoopsPage] Refresh response:', refreshResponse);
-
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await PidLoopRefreshApiService.saveRefreshedPidLoops(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[PIDLoopsPage] Save response:', saveResponse);
-
-        // Only reload from database if save was successful
-        await fetchPidLoops();
-      } else {
-        console.warn('[PIDLoopsPage] No items received from refresh, keeping existing data');
-      }
+      const result = await PanelDataRefreshService.refreshAllPidLoops(selectedDevice.serialNumber);
+      console.log('[PIDLoopsPage] Refresh result:', result);
+      // Data already saved by service, just reload from database
+      await fetchPidLoops();
     } catch (error) {
       console.error('[PIDLoopsPage] Failed to refresh from device:', error);
       setError(error instanceof Error ? error.message : 'Failed to refresh from device');
@@ -244,19 +285,9 @@ const PIDLoopsPage: React.FC = () => {
     setRefreshingItems(prev => new Set(prev).add(loopField));
     try {
       console.log(`[PIDLoopsPage] Refreshing PID loop ${index} from device...`);
-      const refreshResponse = await PidLoopRefreshApiService.refreshPidLoop(selectedDevice.serialNumber, index);
-      console.log('[PIDLoopsPage] Refresh response:', refreshResponse);
-
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await PidLoopRefreshApiService.saveRefreshedPidLoops(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[PIDLoopsPage] Save response:', saveResponse);
-      }
-
-      // Reload data from database after save
+      const result = await PanelDataRefreshService.refreshSinglePidLoop(selectedDevice.serialNumber, index);
+      console.log('[PIDLoopsPage] Refresh result:', result);
+      // Data already saved by service, just reload from database
       await fetchPidLoops();
     } catch (error) {
       console.error(`[PIDLoopsPage] Failed to refresh PID loop ${index}:`, error);
@@ -365,6 +396,9 @@ const PIDLoopsPage: React.FC = () => {
         </div>
       ),
       renderCell: (controller) => {
+        if (isEmptyRow(controller)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
         const loopField = controller.loop_field || '';
         const isRefreshingThis = refreshingItems.has(loopField);
 
@@ -403,11 +437,13 @@ const PIDLoopsPage: React.FC = () => {
       ),
       renderCell: (controller) => (
         <TableCellLayout>
-          <Input
-            className={styles.editableInput}
-            value={getCurrentValue(controller, 'input_field')}
-            onChange={(e, data) => handleFieldEdit(controller.loop_field, 'input_field', data.value)}
-          />
+          {!isEmptyRow(controller) && (
+            <Input
+              className={styles.editableInput}
+              value={getCurrentValue(controller, 'input_field')}
+              onChange={(e, data) => handleFieldEdit(controller.loop_field, 'input_field', data.value)}
+            />
+          )}
         </TableCellLayout>
       ),
     }),
@@ -423,12 +459,14 @@ const PIDLoopsPage: React.FC = () => {
       ),
       renderCell: (controller) => (
         <TableCellLayout>
-          <Input
-            className={styles.editableInput}
-            type="number"
-            value={getCurrentValue(controller, 'input_value')}
-            onChange={(e, data) => handleFieldEdit(controller.loop_field, 'input_value', data.value)}
-          />
+          {!isEmptyRow(controller) && (
+            <Input
+              className={styles.editableInput}
+              type="number"
+              value={getCurrentValue(controller, 'input_value')}
+              onChange={(e, data) => handleFieldEdit(controller.loop_field, 'input_value', data.value)}
+            />
+          )}
         </TableCellLayout>
       ),
     }),
@@ -440,7 +478,7 @@ const PIDLoopsPage: React.FC = () => {
       renderHeaderCell: () => <div className={styles.headerText}>Units</div>,
       renderCell: (controller) => (
         <TableCellLayout className={styles.readOnlyCell}>
-          {getCurrentValue(controller, 'units')}
+          {!isEmptyRow(controller) && getCurrentValue(controller, 'units')}
         </TableCellLayout>
       ),
     }),
@@ -455,6 +493,9 @@ const PIDLoopsPage: React.FC = () => {
         </div>
       ),
       renderCell: (controller) => {
+        if (isEmptyRow(controller)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
         const isAuto = getCurrentValue(controller, 'auto_manual') === 'AUTO';
         return (
           <TableCellLayout>
@@ -484,11 +525,13 @@ const PIDLoopsPage: React.FC = () => {
       ),
       renderCell: (controller) => (
         <TableCellLayout>
-          <Input
-            className={styles.editableInput}
-            value={getCurrentValue(controller, 'output_field')}
-            onChange={(e, data) => handleFieldEdit(controller.loop_field, 'output_field', data.value)}
-          />
+          {!isEmptyRow(controller) && (
+            <Input
+              className={styles.editableInput}
+              value={getCurrentValue(controller, 'output_field')}
+              onChange={(e, data) => handleFieldEdit(controller.loop_field, 'output_field', data.value)}
+            />
+          )}
         </TableCellLayout>
       ),
     }),
@@ -504,12 +547,14 @@ const PIDLoopsPage: React.FC = () => {
       ),
       renderCell: (controller) => (
         <TableCellLayout>
-          <Input
-            className={styles.editableInput}
-            type="number"
-            value={getCurrentValue(controller, 'set_value')}
-            onChange={(e, data) => handleFieldEdit(controller.loop_field, 'set_value', data.value)}
-          />
+          {!isEmptyRow(controller) && (
+            <Input
+              className={styles.editableInput}
+              type="number"
+              value={getCurrentValue(controller, 'set_value')}
+              onChange={(e, data) => handleFieldEdit(controller.loop_field, 'set_value', data.value)}
+            />
+          )}
         </TableCellLayout>
       ),
     }),
@@ -525,7 +570,7 @@ const PIDLoopsPage: React.FC = () => {
       renderHeaderCell: () => <div className={styles.headerText}>Units</div>,
       renderCell: (controller) => (
         <TableCellLayout className={styles.readOnlyCell}>
-          {getCurrentValue(controller, 'units_state')}
+          {!isEmptyRow(controller) && getCurrentValue(controller, 'units_state')}
         </TableCellLayout>
       ),
     }),
@@ -541,7 +586,7 @@ const PIDLoopsPage: React.FC = () => {
       ),
       renderCell: (controller) => (
         <TableCellLayout className={styles.readOnlyCell}>
-          {getCurrentValue(controller, 'action_field')}
+          {!isEmptyRow(controller) && getCurrentValue(controller, 'action_field')}
         </TableCellLayout>
       ),
     }),
@@ -557,12 +602,14 @@ const PIDLoopsPage: React.FC = () => {
       ),
       renderCell: (controller) => (
         <TableCellLayout>
-          <Input
-            className={styles.editableInput}
-            type="number"
-            value={getCurrentValue(controller, 'proportional')}
-            onChange={(e, data) => handleFieldEdit(controller.loop_field, 'proportional', data.value)}
-          />
+          {!isEmptyRow(controller) && (
+            <Input
+              className={styles.editableInput}
+              type="number"
+              value={getCurrentValue(controller, 'proportional')}
+              onChange={(e, data) => handleFieldEdit(controller.loop_field, 'proportional', data.value)}
+            />
+          )}
         </TableCellLayout>
       ),
     }),
@@ -578,12 +625,14 @@ const PIDLoopsPage: React.FC = () => {
       ),
       renderCell: (controller) => (
         <TableCellLayout>
-          <Input
-            className={styles.editableInput}
-            type="number"
-            value={getCurrentValue(controller, 'reset_field')}
-            onChange={(e, data) => handleFieldEdit(controller.loop_field, 'reset_field', data.value)}
-          />
+          {!isEmptyRow(controller) && (
+            <Input
+              className={styles.editableInput}
+              type="number"
+              value={getCurrentValue(controller, 'reset_field')}
+              onChange={(e, data) => handleFieldEdit(controller.loop_field, 'reset_field', data.value)}
+            />
+          )}
         </TableCellLayout>
       ),
     }),
@@ -603,12 +652,14 @@ const PIDLoopsPage: React.FC = () => {
       ),
       renderCell: (controller) => (
         <TableCellLayout>
-          <Input
-            className={styles.editableInput}
-            type="number"
-            value={getCurrentValue(controller, 'rate')}
-            onChange={(e, data) => handleFieldEdit(controller.loop_field, 'rate', data.value)}
-          />
+          {!isEmptyRow(controller) && (
+            <Input
+              className={styles.editableInput}
+              type="number"
+              value={getCurrentValue(controller, 'rate')}
+              onChange={(e, data) => handleFieldEdit(controller.loop_field, 'rate', data.value)}
+            />
+          )}
         </TableCellLayout>
       ),
     }),
@@ -624,16 +675,18 @@ const PIDLoopsPage: React.FC = () => {
       ),
       renderCell: (controller) => (
         <TableCellLayout>
-          <Input
-            className={styles.editableInput}
-            type="number"
-            value={getCurrentValue(controller, 'bias')}
-            onChange={(e, data) => handleFieldEdit(controller.loop_field, 'bias', data.value)}
-          />
+          {!isEmptyRow(controller) && (
+            <Input
+              className={styles.editableInput}
+              type="number"
+              value={getCurrentValue(controller, 'bias')}
+              onChange={(e, data) => handleFieldEdit(controller.loop_field, 'bias', data.value)}
+            />
+          )}
         </TableCellLayout>
       ),
     }),
-  ], [editedValues, sortColumn, sortDirection, handleSort, handleFieldEdit, handleAutoManualToggle, getCurrentValue]);
+  ], [editedValues, sortColumn, sortDirection, handleSort, handleFieldEdit, handleAutoManualToggle, getCurrentValue, isEmptyRow]);
 
   return (
     <div className={styles.container}>
@@ -659,6 +712,7 @@ const PIDLoopsPage: React.FC = () => {
 
         {/* Toolbar Section */}
         {selectedDevice && (
+        <>
         <div className={styles.toolbar}>
           <div className={styles.toolbarContainer}>
             {/* Refresh Button - Refresh from Device */}
@@ -752,12 +806,13 @@ const PIDLoopsPage: React.FC = () => {
             )}
           </div>
         </div>
-        )}
 
         {/* Horizontal Divider */}
         <div style={{ padding: '0' }}>
           <hr className={styles.overviewHr} />
         </div>
+        </>
+        )}
 
         {/* Docking Body - Main Content */}
         <div className={styles.dockingBody}>
@@ -773,9 +828,9 @@ const PIDLoopsPage: React.FC = () => {
         {!selectedDevice && !isLoading && (
           <div className={styles.noData}>
             <div style={{ textAlign: 'center' }}>
-              <Text size={500} weight="semibold">No device selected</Text>
+              <Text size={400} weight="semibold">No device selected</Text>
               <br />
-              <Text size={300}>Please select a device from the tree to view PID loops</Text>
+              <Text size={200}>Please select a device from the tree to view pid loops</Text>
             </div>
           </div>
         )}
@@ -789,7 +844,7 @@ const PIDLoopsPage: React.FC = () => {
             onWheel={handleWheel}
           >
             <DataGrid
-              items={pidLoops}
+              items={displayPidLoops}
               columns={columns}
               sortable
               resizableColumns
@@ -867,6 +922,7 @@ const PIDLoopsPage: React.FC = () => {
             </DataGrid>
 
             {/* No Data Message - Show below grid when empty */}
+            {/* Commented out - showing empty grid instead
             {pidLoops.length === 0 && (
               <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -886,6 +942,7 @@ const PIDLoopsPage: React.FC = () => {
                 </Button>
               </div>
             )}
+            */}
 
             {isLoadingNextDevice && (
               <div className={styles.autoLoadIndicator}>

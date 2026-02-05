@@ -18,7 +18,6 @@ use crate::error::Error;
 use crate::logger::ServiceLogger;
 use crate::app_state::T3AppState;
 use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA};
-use winapi::shared::minwindef::HINSTANCE;
 
 // FFI function type
 type BacnetWebViewHandleWebViewMsgFn = unsafe extern "C" fn(action: i32, msg: *mut c_char, len: i32) -> i32;
@@ -35,7 +34,7 @@ pub struct T3000FfiApiService {
 impl T3000FfiApiService {
     pub fn new() -> Self {
         Self {
-            max_buffer_size: 8192, // 8KB buffer
+            max_buffer_size: 10485760, // 10MB buffer (increased from 8KB to handle large graphics data)
         }
     }
 
@@ -53,8 +52,6 @@ impl T3000FfiApiService {
                 "T3000.exe",  // Same directory as Rust API
                 "./T3000.exe",  // Current directory explicitly
                 "../T3000.exe",  // Parent directory
-                r"E:\1025\github\temcocontrols\T3000_Building_Automation_System\T3000 Output\Debug\T3000.exe",
-                r"C:\T3000\T3000.exe"
             ];
 
             for path in &t3000_paths {
@@ -90,17 +87,39 @@ impl T3000FfiApiService {
         let mut api_logger = ServiceLogger::api().unwrap_or_else(|_| ServiceLogger::new("fallback_api").unwrap());
 
         // Parse the JSON to extract the action number
+        api_logger.info(&format!("🔍 Parsing message JSON: {}", message));
+
         let action = match serde_json::from_str::<serde_json::Value>(message) {
             Ok(json) => {
-                json.get("message")
-                    .and_then(|m| m.get("action"))
-                    .and_then(|a| a.as_i64())
-                    .unwrap_or(0) as i32
+                api_logger.info(&format!("✅ JSON parsed successfully"));
+
+                // Log the full JSON structure
+                api_logger.info(&format!("📦 Full JSON: {}", serde_json::to_string_pretty(&json).unwrap_or_default()));
+
+                // Support BOTH patterns:
+                // 1. Top-level action: {"action": 0, "panelId": 123} (trendlog_webmsg_service)
+                // 2. Nested action: {"header": {...}, "message": {"action": 4}} (TransportTesterPage)
+                let action_field = json.get("action")  // Try top level first
+                    .or_else(|| {
+                        // If not found, try nested in "message" field
+                        json.get("message").and_then(|m| m.get("action"))
+                    });
+
+                api_logger.info(&format!("🔍 action field found: {:?}", action_field));
+
+                // Try to convert to i64
+                let action_value = action_field.and_then(|a| a.as_i64()).unwrap_or(0) as i32;
+                api_logger.info(&format!("🔍 action value extracted: {}", action_value));
+
+                action_value
             }
-            Err(_) => 0
+            Err(e) => {
+                api_logger.error(&format!("❌ Failed to parse JSON: {}", e));
+                0
+            }
         };
 
-        api_logger.info(&format!("📡 FFI Call - Action: {}, Message: {}", action, message));
+        api_logger.info(&format!("📡 FFI Call - Final Action: {}, Calling C++ now...", action));
 
         unsafe {
             if !Self::load_t3000_function() {
@@ -108,26 +127,82 @@ impl T3000FfiApiService {
             }
 
             if let Some(func) = BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN {
-                let message_cstring = CString::new(message)
-                    .map_err(|e| Error::ServerError(format!("Invalid message string: {}", e)))?;
+                // Allocate buffer large enough for both input and output
+                let mut buffer: Vec<u8> = vec![0; self.max_buffer_size];
+                let input_bytes = message.as_bytes();
 
-                let mut buffer = vec![0u8; self.max_buffer_size];
+                if input_bytes.len() >= self.max_buffer_size {
+                    return Err(Error::ServerError("Input message too large for buffer".to_string()));
+                }
+
+                // Copy input message into buffer
+                buffer[..input_bytes.len()].copy_from_slice(input_bytes);
+                buffer[input_bytes.len()] = 0;  // Null terminate
+
+                // Call FFI - buffer contains input, will be modified to contain output
                 let result = func(
-                    action,  // Use extracted action from JSON message
-                    message_cstring.as_ptr() as *mut c_char,
-                    message.len() as i32
+                    action,
+                    buffer.as_mut_ptr() as *mut c_char,
+                    buffer.len() as i32
                 );
 
-                if result > 0 {
-                    let response = String::from_utf8(buffer[..result as usize].to_vec())
-                        .map_err(|e| Error::ServerError(format!("Invalid UTF-8 response: {}", e)))?;
+                match result {
+                    code if code >= 0 => {
+                        // Non-negative codes (0, 1, 2, etc.) are success or "no data" states
+                        // Extract response from buffer
+                        let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
+                        let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
 
-                    api_logger.info(&format!("📡 FFI Response - Size: {} bytes", result));
-                    Ok(response)
-                } else {
-                    let error_msg = format!("FFI call returned error code: {}", result);
-                    api_logger.error(&format!("❌ {}", error_msg));
-                    Err(Error::ServerError(error_msg))
+                        if code == 0 {
+                            api_logger.info(&format!("✅ FFI Success - {} bytes", null_pos));
+                        } else {
+                            // Positive codes often mean "no new data" for trendlog/polling operations
+                            api_logger.info(&format!("ℹ️  FFI returned code {} (no new data/empty result) - {} bytes", code, null_pos));
+                        }
+
+                        // Parse and log response action if JSON
+                        if let Ok(response_json) = serde_json::from_str::<serde_json::Value>(&response) {
+                            let response_action = response_json.get("action")
+                                .and_then(|a| a.as_str())
+                                .unwrap_or("UNKNOWN");
+                            api_logger.info(&format!("🔍 C++ Response Action: {}", response_action));
+
+                            // Only log full response for code 0 (actual success), not for "no data" codes
+                            if code == 0 {
+                                api_logger.info(&format!("📦 C++ Response: {}", serde_json::to_string_pretty(&response_json).unwrap_or_default()));
+                            }
+                        }
+
+                        // Return response even if buffer is empty (frontend can handle empty responses)
+                        Ok(response)
+                    }
+                    -2 => {
+                        let error_msg = "MFC application not initialized".to_string();
+                        api_logger.error(&format!("❌ {}", error_msg));
+                        Err(Error::ServerError(error_msg))
+                    }
+                    -1 => {
+                        // C++ returned -1, but buffer may contain error JSON (e.g., device offline)
+                        // Read buffer content to get actual error message
+                        let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
+                        let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
+
+                        // If buffer has JSON content, return it (allows frontend to parse error)
+                        if !response.is_empty() && (response.starts_with('{') || response.starts_with('[')) {
+                            api_logger.info(&format!("⚠️  FFI returned -1 with JSON response: {}", response));
+                            Ok(response)  // Return the JSON error response
+                        } else {
+                            let error_msg = format!("FFI call returned error code: -1");
+                            api_logger.error(&format!("❌ {}", error_msg));
+                            Err(Error::ServerError(error_msg))
+                        }
+                    }
+                    code => {
+                        // Only negative codes < -2 are treated as hard errors
+                        let error_msg = format!("FFI call returned error code: {}", code);
+                        api_logger.error(&format!("❌ {}", error_msg));
+                        Err(Error::ServerError(error_msg))
+                    }
                 }
             } else {
                 Err(Error::ServerError("FFI function not loaded".to_string()))
@@ -151,15 +226,30 @@ async fn handle_ffi_call(
 
     // Convert payload to string for FFI call
     let message = payload.to_string();
-    api_logger.info(&format!("📡 FFI API Request - Message: {}", message));
+
+    // Extract action for logging - support both top-level and nested patterns
+    let action = payload.get("action")  // Try top level first (old services)
+        .or_else(|| payload.get("message").and_then(|m| m.get("action")))  // Then nested (new TransportTesterPage)
+        .and_then(|a| a.as_i64())
+        .unwrap_or(0);
+
+    api_logger.info(&format!("📡 FFI API Request - Action: {}, Full payload: {}", action, message));
 
     let service = T3000FfiApiService::new();
 
     match service.call_ffi(&message).await {
         Ok(response) => {
+            api_logger.info(&format!("📡 FFI Response from C++: {}", response));
+
             // Try to parse response as JSON, otherwise return as string
             match serde_json::from_str::<JsonValue>(&response) {
-                Ok(json_response) => Ok(Json(json_response)),
+                Ok(json_response) => {
+                    let response_action = json_response.get("action")
+                        .and_then(|a| a.as_str())
+                        .unwrap_or("UNKNOWN");
+                    api_logger.info(&format!("✅ C++ returned action: {}", response_action));
+                    Ok(Json(json_response))
+                },
                 Err(_) => Ok(Json(serde_json::json!({
                     "status": "success",
                     "data": response,

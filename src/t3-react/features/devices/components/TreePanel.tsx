@@ -22,26 +22,52 @@ import { TreeFilter } from './TreeFilter/TreeFilter';
 import { useDeviceTreeStore } from '../store/deviceTreeStore';
 import { useDeviceStatusMonitor } from '../../../shared/hooks/useDeviceStatusMonitor';
 import { useDeviceSyncService } from '../../../shared/hooks/useDeviceSyncService';
+import { useStatusBarStore } from '../../../store/statusBarStore';
 import styles from './TreePanel.module.css';
 
 /**
  * TreePanel Component
  */
 export const TreePanel: React.FC = () => {
-  const { viewMode, fetchDevices, isLoading, error, devices, treeData } = useDeviceTreeStore();
+  const { viewMode, fetchDevices, loadDevicesWithSync, isLoading, error, devices, treeData } = useDeviceTreeStore();
   const [showFilter, setShowFilter] = React.useState(false);
+  const hasInitialized = React.useRef(false);
 
   // Background services
   // Status monitor: polls device status every 30s (C++ m_pCheck_net_device_online)
   useDeviceStatusMonitor({ enabled: true, intervalMs: 30000 });
 
-  // Sync service: refreshes device list every 60s (C++ m_pFreshTree)
-  useDeviceSyncService({ enabled: true, intervalMs: 60000 });
+  // Sync service: refreshes device list every 5 minutes (C++ m_pFreshTree)
+  useDeviceSyncService({ enabled: true, intervalMs: 300000 });
 
-  // Initial data fetch
+  // Initial data fetch with auto-sync if database is empty
+  // Use ref to prevent React StrictMode from running this twice
   useEffect(() => {
-    fetchDevices();
-  }, [fetchDevices]);
+    const initializeDevices = async () => {
+      // Prevent duplicate runs in StrictMode
+      if (hasInitialized.current) {
+        console.log('[TreePanel] Already initialized, skipping...');
+        return;
+      }
+      hasInitialized.current = true;
+
+      console.log('[TreePanel] First-time initialization...');
+
+      // First, check database
+      await fetchDevices();
+
+      // If database is empty, auto-sync from T3000
+      const { devices } = useDeviceTreeStore.getState();
+      if (devices.length === 0) {
+        console.log('[TreePanel] No devices in database, auto-syncing from T3000...');
+        await loadDevicesWithSync();
+      } else {
+        console.log(`[TreePanel] Found ${devices.length} devices in database, skipping auto-sync`);
+      }
+    };
+
+    initializeDevices();
+  }, []);
 
   const toggleFilter = () => {
     setShowFilter(!showFilter);
@@ -49,6 +75,10 @@ export const TreePanel: React.FC = () => {
 
   const handleRetry = () => {
     fetchDevices();
+  };
+
+  const handleLoadDevices = async () => {
+    await loadDevicesWithSync();
   };
 
   return (
@@ -74,37 +104,37 @@ export const TreePanel: React.FC = () => {
         )}
 
         {/* Error state */}
-              {!isLoading && error && (
-        <div className={styles.errorContainer}>
-          <div className={styles.errorTitle}>No devices to display</div>
-          <div className={styles.errorMessage}>
-            There was a problem connecting to the server. Please check your connection and try again.
+        {!isLoading && error && (
+          <div className={styles.errorContainer}>
+            <div className={styles.errorTitle}>No devices to display</div>
+            <div className={styles.errorMessage}>
+              There was a problem connecting to the server. Please check your connection and try again.
+            </div>
+            <button
+              className={styles.retryButton}
+              onClick={handleRetry}
+            >
+              <ArrowClockwise16Regular className={styles.buttonIcon} />
+              Refresh
+            </button>
           </div>
-          <button
-            className={styles.retryButton}
-            onClick={handleRetry}
-          >
-            <ArrowClockwise16Regular className={styles.buttonIcon} />
-            Refresh
-          </button>
-        </div>
-      )}
+        )}
 
         {/* Empty state - no devices at all */}
         {!isLoading && !error && devices.length === 0 && (
           <div className={styles.emptyContainer}>
             <div className={styles.emptyIconWrapper}>
-              <RouterRegular className={styles.emptyIcon} />
+              <RouterRegular className={styles.emptyIcon} fontSize={32} />
             </div>
             <div className={styles.emptyTitle}>No Devices Found</div>
             <div className={styles.emptyMessage}>
-              Start by scanning for devices on your network
+              Load your devices to get started
             </div>
             <button
               className={styles.scanButton}
-              onClick={() => fetchDevices()}
+              onClick={handleLoadDevices}
             >
-              Scan for Devices
+              Load Devices
             </button>
           </div>
         )}

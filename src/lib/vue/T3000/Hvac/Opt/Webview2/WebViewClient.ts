@@ -396,11 +396,95 @@ class WebViewClient {
   };
 
   private processMessageData(msgData: any) {
+    // Check for ANY error first (matching WebSocketClient pattern)
+    const hasError = msgData.error !== undefined || msgData?.status === false;
+    if (hasError) {
+      this.handleError(msgData);
+      return;
+    }
+
     const handler = this.messageHandlers[msgData.action];
     if (handler) {
       handler(msgData);
     } else {
       LogUtil.Warn('No handler for message action:', msgData.action, msgData);
+    }
+  }
+
+  private handleError(msgData: any) {
+    if (!msgData || (!msgData.error && msgData.status !== false)) return;
+    T3Util.Error('= wv2: handleError/ messageData:', msgData);
+
+    const errorMsg = msgData?.error ?? "Unknown error";
+    const action = msgData.action;
+    const isSpecial = action === MessageType.GET_PANEL_DATA_RES ||
+                     action === MessageType.GET_INITIAL_DATA_RES ||
+                     action === MessageType.GET_PANELS_LIST_RES;
+
+    if (isSpecial) {
+      // Handle special messages (GET_PANEL_DATA_RES, GET_INITIAL_DATA_RES, GET_PANELS_LIST_RES)
+      this.handleSpecialMessage(msgData);
+    } else {
+      // Show error for other message types
+      if (errorMsg !== "") {
+        T3Util.Error('WebView message error:', errorMsg);
+      }
+    }
+  }
+
+  private handleSpecialMessage(msgData: any) {
+    const action = msgData.action;
+
+    // Handle "No cached data" error specifically
+    if (action === MessageType.GET_PANEL_DATA_RES || action === MessageType.GET_PANELS_LIST_RES) {
+      if (msgData.error && msgData.error.includes('No cached data')) {
+        LogUtil.Info('📦 No cached data available for this panel, dismissing loading');
+
+        // Clear loading state to dismiss the loading dialog
+        T3000_Data.value.loadingPanel = null;
+
+        // Load demo data as fallback ONLY if we have no data at all
+        if (T3000_Data.value.panelsData.length === 0) {
+          LogUtil.Info('📦 No panel data exists, loading demo data as fallback');
+          this.loadDemoDataFallback();
+        }
+
+        return; // Don't retry - data genuinely doesn't exist for this panel
+      }
+
+      // Handle other panel data errors
+      const errorMsg = `Load device data failed with error: "${msgData.error}". Please check whether the T3000 application is running.`;
+      LogUtil.Warn(errorMsg);
+      T3Util.Error(errorMsg);
+    }
+
+    if (action === MessageType.GET_INITIAL_DATA_RES) {
+      const errorMsg = `Load initial data failed with error: "${msgData.error}". Please try not to update the graphic area, this may cause data loss.`;
+      LogUtil.Warn(errorMsg);
+      T3Util.Error(errorMsg);
+    }
+  }
+
+  private async loadDemoDataFallback() {
+    try {
+      LogUtil.Info('📦 Loading demo device data as fallback');
+      const { demoDeviceData } = await import('../../../../common');
+      const demoData = await demoDeviceData();
+
+      if (demoData && demoData.data) {
+        T3000_Data.value.panelsData = demoData.data;
+        selectPanelOptions.value = demoData.data;
+
+        if (demoData.ranges) {
+          T3000_Data.value.panelsRanges = demoData.ranges;
+        }
+
+        LogUtil.Info(`✅ Demo data loaded successfully: ${demoData.data.length} panels`);
+      } else {
+        LogUtil.Warn('⚠️ Demo data load returned empty or invalid data');
+      }
+    } catch (error) {
+      LogUtil.Error('❌ Failed to load demo data:', error);
     }
   }
 
@@ -751,13 +835,13 @@ class WebViewClient {
           let updatedCount = 0;
           fieldsToUpdate.forEach(field => {
             if (existingItem[field] !== item[field]) {
-              // LogUtil.Debug(`🔄 HandleGetEntriesRes / Updating field '${field}': '${existingItem[field]}' �?'${item[field]}'`);
+              // LogUtil.Debug(`🔄 HandleGetEntriesRes / Updating field '${field}': '${existingItem[field]}' �?'${item[field]}'`);
               existingItem[field] = item[field];
               updatedCount++;
             }
           });
 
-          // LogUtil.Info(`�?HandleGetEntriesRes / Smart partial update applied for ${item.id}: ${updatedCount} fields updated, ${criticalFields.length} critical fields protected`);
+          // LogUtil.Info(`�?HandleGetEntriesRes / Smart partial update applied for ${item.id}: ${updatedCount} fields updated, ${criticalFields.length} critical fields protected`);
         } else if (potentialDataLoss) {
           // Handle other types of potential data loss (not just monitors)
           // LogUtil.Warn(`⚠️ POTENTIAL DATA LOSS DETECTED! Applying smart update for ${item.type} item:`, {
@@ -778,17 +862,17 @@ class WebViewClient {
           let updatedCount = 0;
           fieldsToUpdate.forEach(field => {
             if (existingItem[field] !== item[field]) {
-              // LogUtil.Debug(`🔄 HandleGetEntriesRes / Updating ${item.type} field '${field}': '${existingItem[field]}' �?'${item[field]}'`);
+              // LogUtil.Debug(`🔄 HandleGetEntriesRes / Updating ${item.type} field '${field}': '${existingItem[field]}' �?'${item[field]}'`);
               existingItem[field] = item[field];
               updatedCount++;
             }
           });
 
-          // LogUtil.Info(`�?HandleGetEntriesRes / Smart update for ${item.type} ${item.id}: ${updatedCount} fields updated, ${complexFields.length} complex fields protected`);
+          // LogUtil.Info(`�?HandleGetEntriesRes / Smart update for ${item.type} ${item.id}: ${updatedCount} fields updated, ${complexFields.length} complex fields protected`);
         } else {
           // Safe to do full replacement
           T3000_Data.value.panelsData[itemIndex] = item;
-          // LogUtil.Debug(`�?HandleGetEntriesRes / Full replacement done for ${item.id}`);
+          // LogUtil.Debug(`�?HandleGetEntriesRes / Full replacement done for ${item.id}`);
         }
       } else {
         // LogUtil.Debug(`= Wv2: HandleGetEntriesRes / item ${itemIdx}: NOT FOUND in panelsData:`, {

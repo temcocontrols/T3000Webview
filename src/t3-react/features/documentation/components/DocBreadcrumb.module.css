@@ -1,0 +1,15 @@
+/* Documentation Breadcrumb Styles */
+
+.container {
+  padding: 0 24px;
+  background: #fafafa;
+  border-bottom: 1px solid #edebe9;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.current {
+  color: #323130;
+  font-size: 12px;
+}

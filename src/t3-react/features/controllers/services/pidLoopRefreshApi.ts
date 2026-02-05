@@ -1,154 +1,134 @@
 /**
- * PID Loop Refresh API Service
+ * PID Loop Refresh API
  *
- * Handles PID loop data refresh operations using REFRESH_WEBVIEW_LIST (Action 17)
- * Reads data FROM device (opposite of UPDATE_WEBVIEW_LIST which writes TO device)
+ * Wraps PanelDataRefreshService for PID loop-specific operations.
+ * Provides both device refresh (via FFI Action 17) and database load methods.
+ *
+ * Architecture:
+ * - Device refresh → delegates to PanelDataRefreshService (shared core)
+ * - Database load → direct T3Database calls (cached data)
+ * - Future: Add PID loop-specific validation, transformations, etc.
  */
 
-import { API_BASE_URL } from '../../../config/constants';
-
-export interface RefreshPidLoopRequest {
-  index?: number; // Optional: omit for refresh all, include for single item
-}
-
-export interface RefreshResponse {
-  success: boolean;
-  message: string;
-  items: any[];
-  count: number;
-  timestamp: string;
-}
-
-export interface SaveResponse {
-  success: boolean;
-  message: string;
-  savedCount: number;
-  timestamp: string;
-}
+import { PanelDataRefreshService, RefreshResult } from '../../../shared/services/panelDataRefreshService';
+import { T3Database } from '../../../../lib/t3-database';
+import type { Controller } from '../types/controller.types';
 
 /**
- * PID Loop Refresh API Service
- * Implements REFRESH_WEBVIEW_LIST action for PID controller points
+ * PID Loop Refresh API
+ *
+ * Thin wrapper around PanelDataRefreshService + T3Database
+ * for PID loop-specific operations
  */
-export class PidLoopRefreshApiService {
-  private static baseUrl = `${API_BASE_URL}/api/t3_device`;
+export class PidLoopRefreshApi {
+
+  // ============================================
+  // DEVICE REFRESH (Action 17 via PanelDataRefreshService)
+  // ============================================
 
   /**
-   * Refresh single PID loop from device
-   * POST /api/t3_device/pid-loops/:serial/refresh
+   * Refresh all PID loops from device and auto-save to database
+   *
+   * Uses Action 17 (GET_WEBVIEW_LIST) via PanelDataRefreshService
+   * Reads indexes 0-15 from device and saves to database
+   *
+   * NOTE: C++ BacnetWebView.cpp needs update to handle BAC_PID (3) case
+   *
    * @param serialNumber - Device serial number
-   * @param index - PID loop index to refresh
-   * @returns Raw data from device (not saved to database yet)
+   * @returns Refresh result with counts and status
    */
-  static async refreshPidLoop(
-    serialNumber: number,
-    index: number
-  ): Promise<RefreshResponse> {
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/pid-loops/${serialNumber}/refresh`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ index }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `HTTP ${response.status}: ${errorText || response.statusText}`
-        );
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error(
-        `Failed to refresh PID loop ${index} for device ${serialNumber}:`,
-        error
-      );
-      throw error;
-    }
+  static async refreshAllFromDevice(serialNumber: number): Promise<RefreshResult> {
+    return PanelDataRefreshService.refreshAllPidLoops(serialNumber);
   }
 
   /**
-   * Refresh all PID loops from device
-   * POST /api/t3_device/pid-loops/:serial/refresh
+   * Refresh single PID loop from device and auto-save to database
+   *
+   * Uses Action 17 (GET_WEBVIEW_LIST) via PanelDataRefreshService
+   * Reads specific index from device and saves to database
+   *
+   * NOTE: C++ BacnetWebView.cpp needs update to handle BAC_PID (3) case
+   *
    * @param serialNumber - Device serial number
-   * @returns Raw data from device (not saved to database yet)
+   * @param index - PID loop index (0-15)
+   * @returns Refresh result with counts and status
    */
-  static async refreshAllPidLoops(
-    serialNumber: number
-  ): Promise<RefreshResponse> {
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/pid-loops/${serialNumber}/refresh`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({}), // Empty body = refresh all
-        }
-      );
+  static async refreshSingleFromDevice(serialNumber: number, index: number): Promise<RefreshResult> {
+    return PanelDataRefreshService.refreshSinglePidLoop(serialNumber, index);
+  }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `HTTP ${response.status}: ${errorText || response.statusText}`
-        );
-      }
+  // ============================================
+  // DATABASE LOAD (Cached data, no device communication)
+  // ============================================
 
-      return await response.json();
-    } catch (error) {
-      console.error(
-        `Failed to refresh all PID loops for device ${serialNumber}:`,
-        error
-      );
-      throw error;
-    }
+  /**
+   * Load all PID loops from database (cached data)
+   *
+   * Does NOT communicate with device - returns last saved data
+   * Use refreshAllFromDevice() to get fresh data from device
+   *
+   * @param serialNumber - Device serial number
+   * @returns Array of PID loops from database
+   */
+  static async loadAllFromDB(serialNumber: number): Promise<Controller[]> {
+    return T3Database.getAllControllers(serialNumber);
   }
 
   /**
-   * Save refreshed data to database
-   * POST /api/t3_device/pid-loops/:serial/save-refreshed
+   * Load single PID loop from database by index
+   *
+   * Does NOT communicate with device - returns last saved data
+   * Use refreshSingleFromDevice() to get fresh data from device
+   *
    * @param serialNumber - Device serial number
-   * @param items - Array of PID loop data from refresh response
+   * @param index - PID loop index (0-15)
+   * @returns PID loop if found, undefined otherwise
    */
-  static async saveRefreshedPidLoops(
-    serialNumber: number,
-    items: any[]
-  ): Promise<SaveResponse> {
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/pid-loops/${serialNumber}/save-refreshed`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ items }),
-        }
-      );
+  static async loadFromDB(serialNumber: number, index: number): Promise<Controller | undefined> {
+    const controllers = await T3Database.getAllControllers(serialNumber);
+    return controllers.find(controller => controller.index === index);
+  }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `HTTP ${response.status}: ${errorText || response.statusText}`
-        );
-      }
+  /**
+   * Load single PID loop from database by ID
+   *
+   * @param id - PID loop database ID
+   * @returns PID loop if found, undefined otherwise
+   */
+  static async loadByIdFromDB(id: string): Promise<Controller | undefined> {
+    return T3Database.getControllerById(id);
+  }
 
-      return await response.json();
-    } catch (error) {
-      console.error(
-        `Failed to save refreshed PID loops for device ${serialNumber}:`,
-        error
-      );
-      throw error;
+  // ============================================
+  // FUTURE: Type-specific methods
+  // ============================================
+
+  /**
+   * Validate PID loop data
+   *
+   * Example placeholder for future validation logic:
+   * - Check index range (0-15)
+   * - Validate required fields
+   * - Check PID parameters (Kp, Ki, Kd)
+   *
+   * @param controller - PID loop to validate
+   * @returns Validation result with errors
+   */
+  static async validate(controller: Controller): Promise<{ valid: boolean; errors: string[] }> {
+    const errors: string[] = [];
+
+    // Example validations (extend as needed)
+    if (controller.index < 0 || controller.index > 15) {
+      errors.push('Index must be between 0-15');
     }
+
+    if (!controller.label || controller.label.trim() === '') {
+      errors.push('Label is required');
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors
+    };
   }
 }
-
-export default PidLoopRefreshApiService;

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <a-config-provider :theme="{
     token: {
       colorPrimary: '#0064c8',
@@ -7,8 +7,9 @@
       colorBorder: '#d9d9d9',
     },
   }">
-    <!-- Remove the modal wrapper - this is now just the chart content -->
-    <!-- Top Controls Bar - Flexible Layout with Individual Item Wrapping -->
+    <div style="position: relative;">
+      <!-- Remove the modal wrapper - this is now just the chart content -->
+      <!-- Top Controls Bar - Flexible Layout with Individual Item Wrapping -->
     <div class="top-controls-bar">
       <a-flex wrap="wrap" gap="small" class="controls-main-flex">
         <!-- Time Base Control -->
@@ -40,11 +41,11 @@
         <!-- Scroll Left/Right Controls -->
         <a-flex align="center" class="control-group">
           <a-button-group size="small">
-            <a-button @click="moveTimeLeft" :disabled="isRealTime" title="Scroll Left (←)"
+            <a-button @click="moveTimeLeft" :disabled="!canScroll" title="Scroll Left (←)"
                       style="display: flex; align-items: center; justify-content: center; padding: 4px 8px;">
               <ArrowLeftOutlined style="font-size: 12px;" />
             </a-button>
-            <a-button @click="moveTimeRight" :disabled="isRealTime" title="Scroll Right (→)"
+            <a-button @click="moveTimeRight" :disabled="!canScroll" title="Scroll Right (→)"
                       style="display: flex; align-items: center; justify-content: center; padding: 4px 8px;">
               <ArrowRightOutlined style="font-size: 12px;" />
             </a-button>
@@ -168,244 +169,441 @@
         <div class="empty-description">
           Select items to track to start monitoring specific data points.
         </div>
-        <a-button type="primary" @click="showItemSelector = true" size="large" class="select-items-btn">
+        <a-button type="primary" @click="showItemSelector = true" class="select-items-btn">
           Select Items to Track
         </a-button>
       </div>
     </div> <!-- Show timeseries container only for View 1, or View 2/3 with selected items -->
     <div v-if="currentView === 1 || (currentView !== 1 && hasTrackedItems)" class="timeseries-container">
-      <div class="left-panel">
-        <!-- Loading overlay - inside left panel, only shows after 300ms delay -->
-        <div v-if="showLoadingOverlay" class="loading-overlay">
-          <a-spin size="large" />
-          <div class="loading-text">Loading trend log data...</div>
-        </div>
+      <!-- Global loading indicator -->
+      <div v-show="shouldShowLoading" class="global-loading-indicator">
+        <a-spin size="small" />
+        <span style="margin-left: 8px;">Loading trendlog data...</span>
+      </div>
 
-        <!-- Data Series -->
-        <div class="control-section">
-          <div class="data-series-header">
-            <!-- Single line: Title, count, and status -->
-            <div class="header-line-1">
-              <div :title="devVersion" class="chart-title-with-version">
-                {{ chartTitle }} ({{ visibleSeriesCount }}/{{ displayedSeries.length }})
+      <!-- ANALOG AREA (Top Section) -->
+      <div v-if="showAnalogArea" class="analog-area">
+        <div class="left-panel">
+          <!-- Loading overlay - inside left panel, only shows after 300ms delay -->
+          <div v-if="showLoadingOverlay" class="loading-overlay">
+            <a-spin size="large" />
+            <div class="loading-text">Loading trend log data...</div>
+          </div>
+
+          <!-- Data Series - Analog Only -->
+          <div class="control-section">
+            <div class="data-series-header">
+              <!-- Single line: Title, count, and status -->
+              <div class="header-line-1">
+                <div :title="devVersion" class="chart-title-with-version">
+                  {{ chartTitle }} ({{ visibleAnalogSeriesCount }}/{{ analogSeriesList.length }})
+                </div>
+                <!-- Data Source Indicator -->
+                <div class="data-source-indicator">
+                  <span v-if="shouldShowLoading" class="source-badge loading">
+                    Loading...
+                  </span>
+                  <span v-else-if="dataSource === 'realtime'" class="source-badge realtime">
+                    <ThunderboltFilled :style="{ fontSize: '12px', marginRight: '4px' }" /> Live ({{ timeBase }})
+                  </span>
+                  <span v-else-if="dataSource === 'api'" class="source-badge historical">
+                    📚 Historical (Custom Date)
+                  </span>
+                  <span v-else-if="hasConnectionError" class="source-badge error">
+                    ⚠️ Connection Error
+                  </span>
+                </div>
+              </div> <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
+              <div class="header-line-2">
+                <div class="left-controls">
+                  <a-dropdown>
+                    <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
+                      <span>All</span>
+                      <DownOutlined style="margin-left: 4px;" />
+                    </a-button>
+                    <template #overlay>
+                      <a-menu @click="handleAllMenu" class="all-dropdown-menu">
+                        <a-menu-item key="enable-all" :disabled="!hasDisabledSeries">
+                          <CheckOutlined />
+                          Enable All
+                        </a-menu-item>
+                        <a-menu-item key="disable-all" :disabled="!hasEnabledSeries">
+                          <DisconnectOutlined />
+                          Disable All
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
+                  <a-dropdown>
+                    <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
+                      <span>By Type</span>
+                      <DownOutlined style="margin-left: 4px;" />
+                    </a-button>
+                    <template #overlay>
+                      <a-menu @click="handleByTypeMenu" class="bytype-dropdown-menu">
+                        <a-menu-item key="toggle-analog" :disabled="!hasAnalogSeries">
+                          <LineChartOutlined />
+                          {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
+                        </a-menu-item>
+                        <a-menu-item key="toggle-digital" :disabled="!hasDigitalSeries">
+                          <BarChartOutlined />
+                          {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
+                        </a-menu-item>
+                        <a-menu-item key="toggle-input" :disabled="!hasInputSeries">
+                          <ImportOutlined />
+                          {{ allInputEnabled ? 'Disable' : 'Enable' }} Input ({{ inputCount }})
+                        </a-menu-item>
+                        <a-menu-item key="toggle-output" :disabled="!hasOutputSeries">
+                          <ExportOutlined />
+                          {{ allOutputEnabled ? 'Disable' : 'Enable' }} Output ({{ outputCount }})
+                        </a-menu-item>
+                        <a-menu-item key="toggle-variable" :disabled="!hasVariableSeries">
+                          <FunctionOutlined />
+                          {{ allVariableEnabled ? 'Disable' : 'Enable' }} Variable ({{ variableCount }})
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
+                </div>
+                <div class="auto-scroll-toggle">
+                  <a-typography-text class="toggle-label">Auto Scroll:</a-typography-text>
+                  <a-switch v-model:checked="isRealTime" size="small" @change="onRealTimeToggle" />
+                </div>
               </div>
-              <!-- Data Source Indicator -->
-              <div class="data-source-indicator">
-                <span v-if="shouldShowLoading" class="source-badge loading">
-                  Loading...
-                </span>
-                <span v-else-if="dataSource === 'realtime'" class="source-badge realtime">
-                  <ThunderboltFilled :style="{ fontSize: '12px', marginRight: '4px' }" /> Live
-                </span>
-                <span v-else-if="dataSource === 'api'" class="source-badge historical">
-                  📚 Historical ({{ timeBase }})
-                </span>
-                <span v-else-if="hasConnectionError" class="source-badge error">
-                  ⚠️ Connection Error
-                </span>
+            </div>
+            <div class="series-list">
+              <!-- Empty state when no valid data series available -->
+              <div v-if="analogSeriesList.length === 0" class="series-empty-state">
+                <div class="empty-state-content">
+                  <div v-if="shouldShowLoading" class="empty-state-icon">
+                    <a-spin size="small" />
+                  </div>
+                  <div v-else-if="showLoadingTimeout" class="empty-state-icon">⏱️</div>
+                  <div v-else-if="hasConnectionError" class="empty-state-icon">
+                    <ExclamationCircleOutlined :style="{ fontSize: '32px' }" />
+                  </div>
+                  <div v-else class="empty-state-icon">📊</div>
+
+                  <div v-if="shouldShowLoading" class="empty-state-text">Loading T3000 device data...</div>
+                  <div v-else-if="showLoadingTimeout" class="empty-state-text">Loading Timeout</div>
+                  <div v-else-if="hasConnectionError" class="empty-state-text" style="font-size: 14px; font-weight: 500;">Data Connection Error</div>
+                  <div v-else class="empty-state-text">No valid analog data available</div>
+
+                  <div v-if="shouldShowLoading" class="empty-state-subtitle">
+                    Connecting to your T3000 devices to retrieve trend data...
+                  </div>
+                  <div v-else-if="showLoadingTimeout" class="empty-state-subtitle">
+                    Loading took too long (>30s). The system may be busy or experiencing connection issues.
+                  </div>
+                  <div v-else-if="hasConnectionError" class="empty-state-subtitle" style="font-size: 12px;">
+                    Unable to load real-time or historical data. Check system connections.
+                  </div>
+                  <div v-else class="empty-state-subtitle">
+                    Configure analog monitor points to see data series
+                  </div>
+
+                  <!-- Refresh button for timeout and error states -->
+                  <div v-if="showLoadingTimeout || hasConnectionError" class="empty-state-actions"
+                       style="margin-top: 16px;">
+                    <a-button type="primary" @click="manualRefresh" :loading="isLoading" size="small" style="font-size: 12px;">
+                      <ReloadOutlined :style="{ fontSize: '12px', verticalAlign: 'middle' }" /> Refresh Data
+                    </a-button>
+                  </div>
+                </div>
               </div>
-            </div> <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
-            <div class="header-line-2">
-              <div class="left-controls">
-                <a-dropdown>
-                  <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
-                    <span>All</span>
-                    <DownOutlined style="margin-left: 4px;" />
-                  </a-button>
-                  <template #overlay>
-                    <a-menu @click="handleAllMenu" class="all-dropdown-menu">
-                      <a-menu-item key="enable-all" :disabled="!hasDisabledSeries">
-                        <CheckOutlined />
-                        Enable All
-                      </a-menu-item>
-                      <a-menu-item key="disable-all" :disabled="!hasEnabledSeries">
-                        <DisconnectOutlined />
-                        Disable All
-                      </a-menu-item>
-                    </a-menu>
+
+              <!-- Regular series list when data is available - Analog Only -->
+              <div v-for="(series, index) in analogSeriesList" :key="series.name" class="series-item" :class="{
+                'series-disabled': !series.visible,
+                'keyboard-selected': selectedItemIndex === index && keyboardEnabled
+              }">
+                <!-- Delete button overlay for View 2 & 3 tracked items -->
+                <a-button v-if="currentView !== 1" size="small" type="text" class="delete-series-btn delete-overlay"
+                          @click="(e) => removeFromTracking(series.name, e)" :title="'Remove from tracking'">
+                  <template #icon>
+                    <CloseOutlined class="delete-icon" />
                   </template>
-                </a-dropdown>
-                <a-dropdown>
-                  <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
-                    <span>By Type</span>
-                    <DownOutlined style="margin-left: 4px;" />
-                  </a-button>
-                  <template #overlay>
-                    <a-menu @click="handleByTypeMenu" class="bytype-dropdown-menu">
-                      <a-menu-item key="toggle-analog" :disabled="!hasAnalogSeries">
-                        <LineChartOutlined />
-                        {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
-                      </a-menu-item>
-                      <a-menu-item key="toggle-digital" :disabled="!hasDigitalSeries">
-                        <BarChartOutlined />
-                        {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
-                      </a-menu-item>
-                      <a-menu-item key="toggle-input" :disabled="!hasInputSeries">
-                        <ImportOutlined />
-                        {{ allInputEnabled ? 'Disable' : 'Enable' }} Input ({{ inputCount }})
-                      </a-menu-item>
-                      <a-menu-item key="toggle-output" :disabled="!hasOutputSeries">
-                        <ExportOutlined />
-                        {{ allOutputEnabled ? 'Disable' : 'Enable' }} Output ({{ outputCount }})
-                      </a-menu-item>
-                      <a-menu-item key="toggle-variable" :disabled="!hasVariableSeries">
-                        <FunctionOutlined />
-                        {{ allVariableEnabled ? 'Disable' : 'Enable' }} Variable ({{ variableCount }})
-                      </a-menu-item>
-                    </a-menu>
-                  </template>
-                </a-dropdown>
-              </div>
-              <div class="auto-scroll-toggle">
-                <a-typography-text class="toggle-label">Auto Scroll:</a-typography-text>
-                <a-switch v-model:checked="isRealTime" size="small" @change="onRealTimeToggle" />
+                </a-button>
+
+                <div class="series-header" @click="toggleSeriesVisibility(index, $event)">
+                  <div class="series-toggle-indicator" :class="{ 'active': series.visible, 'inactive': !series.visible }"
+                       :style="{ backgroundColor: series.visible ? series.color : '#d9d9d9' }">
+                    <div class="toggle-inner" :class="{ 'visible': series.visible }"></div>
+                    <!-- ⌨️ Keyboard shortcut badge for left panel -->
+                    <div v-if="keyboardEnabled && getKeyboardShortcut(series.name)"
+                         class="keyboard-shortcut-badge left-panel-badge"
+                         :class="{ 'active': lastKeyboardAction === getKeyboardShortcutCode(series.name) }"
+                         :data-key="getKeyboardShortcut(series.name)"
+                         :title="`Press ${getKeyboardShortcut(series.name)} to toggle`">
+                      {{ getKeyboardShortcut(series.name) }}
+                    </div>
+                  </div>
+                  <div class="series-info">
+                    <div class="series-name-line">
+                      <!-- Series Name takes most space on left -->
+                      <div class="series-name-col">
+                        <a-tooltip :title="getSeriesNameText(series)" placement="topLeft">
+                          <span class="series-name">{{ getSeriesNameText(series) }}</span>
+                        </a-tooltip>
+                      </div>
+                      <!-- Right side: Chip + Unit + Expand button grouped together -->
+                      <div class="series-right-group">
+                        <div class="series-chip-col">
+                          <q-chip v-if="series.prefix" :label="getChipLabelText(series.prefix)" color="grey-4"
+                                  text-color="grey-8" size="xs" dense class="series-prefix-tag-small" />
+                        </div>
+                        <div class="series-tags-col">
+                          <span class="series-inline-tags">
+                            <span class="unit-info" :style="{ color: series.color }">
+                              {{ getDisplayUnit(series) }}
+                            </span>
+                          </span>
+                        </div>
+                        <div class="series-controls">
+                          <a-button size="small" type="text" class="expand-toggle"
+                                    @click="(e) => toggleSeriesExpansion(index, e)">
+                            <template #icon>
+                              <DownOutlined v-if="expandedSeries.has(index)" class="expand-icon expanded" />
+                              <RightOutlined v-else class="expand-icon" />
+                            </template>
+                          </a-button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div v-if="expandedSeries.has(index)" class="series-stats">
+                  <div class="stat-item">
+                    <span class="stat-label">Last:</span>
+                    <span class="stat-value">{{ getLastValue(series.data, series) }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Avg:</span>
+                    <span class="stat-value">{{ getAverageValue(series.data, series) }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Min:</span>
+                    <span class="stat-value">{{ getMinValue(series.data, series) }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Max:</span>
+                    <span class="stat-value">{{ getMaxValue(series.data, series) }}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          <div class="series-list">
-            <!-- Empty state when no valid data series available -->
-            <div v-if="dataSeries.length === 0" class="series-empty-state">
-              <div class="empty-state-content">
-                <div v-if="shouldShowLoading" class="empty-state-icon">
-                  <a-spin size="small" />
-                </div>
-                <div v-else-if="showLoadingTimeout" class="empty-state-icon">⏱️</div>
-                <div v-else-if="hasConnectionError" class="empty-state-icon">⚠️</div>
-                <div v-else class="empty-state-icon">📊</div>
+        </div>
 
-                <div v-if="shouldShowLoading" class="empty-state-text">Loading T3000 device data...</div>
-                <div v-else-if="showLoadingTimeout" class="empty-state-text">Loading Timeout</div>
-                <div v-else-if="hasConnectionError" class="empty-state-text">Data Connection Error</div>
-                <div v-else class="empty-state-text">No valid trend log data available</div>
-
-                <div v-if="shouldShowLoading" class="empty-state-subtitle">
-                  Connecting to your T3000 devices to retrieve trend data...
-                </div>
-                <div v-else-if="showLoadingTimeout" class="empty-state-subtitle">
-                  Loading took too long (>30s). The system may be busy or experiencing connection issues.
-                </div>
-                <div v-else-if="hasConnectionError" class="empty-state-subtitle">
-                  Unable to load real-time or historical data. Check system connections.
-                </div>
-                <div v-else class="empty-state-subtitle">
-                  Configure monitor points with valid T3000 devices to see data
-                  series
-                </div>
-
-                <!-- Refresh button for timeout and error states -->
-                <div v-if="showLoadingTimeout || hasConnectionError" class="empty-state-actions"
-                     style="margin-top: 16px;">
-                  <a-button type="primary" @click="manualRefresh" :loading="isLoading" size="small">
-                    <template #icon>
-                      <ReloadOutlined />
-                    </template>
-                    Refresh Data
-                  </a-button>
-                </div>
-              </div>
+        <!-- Right Panel: Analog Chart Only -->
+        <div class="right-panel">
+          <div class="oscilloscope-container" @wheel="handleMouseWheel">
+            <!-- Always show canvas when there are visible series, never show error on canvas -->
+            <div v-if="visibleAnalogSeries.length > 0" class="combined-analog-chart">
+              <canvas ref="analogChartCanvas" id="analog-chart"></canvas>
             </div>
+            <!-- Show empty state when no series are visible (user disabled all) -->
+            <div v-else class="empty-chart-message">
 
-            <!-- Regular series list when data is available -->
-            <div v-for="(series, index) in displayedSeries" :key="series.name" class="series-item" :class="{
-              'series-disabled': !series.visible,
-              'keyboard-selected': selectedItemIndex === index && keyboardEnabled
-            }">
-              <!-- Delete button overlay for View 2 & 3 tracked items -->
-              <a-button v-if="currentView !== 1" size="small" type="text" class="delete-series-btn delete-overlay"
-                        @click="(e) => removeFromTracking(series.name, e)" :title="'Remove from tracking'">
-                <template #icon>
-                  <CloseOutlined class="delete-icon" />
-                </template>
-              </a-button>
-
-              <div class="series-header" @click="toggleSeriesVisibility(index, $event)">
-                <div class="series-toggle-indicator" :class="{ 'active': series.visible, 'inactive': !series.visible }"
-                     :style="{ backgroundColor: series.visible ? series.color : '#d9d9d9' }">
-                  <div class="toggle-inner" :class="{ 'visible': series.visible }"></div>
-                  <!-- ⌨️ Keyboard shortcut badge for left panel -->
-                  <div v-if="keyboardEnabled && getKeyboardShortcut(series.name)"
-                       class="keyboard-shortcut-badge left-panel-badge"
-                       :class="{ 'active': lastKeyboardAction === getKeyboardShortcutCode(series.name) }"
-                       :data-key="getKeyboardShortcut(series.name)"
-                       :title="`Press ${getKeyboardShortcut(series.name)} to toggle`">
-                    {{ getKeyboardShortcut(series.name) }}
-                  </div>
-                </div>
-                <div class="series-info">
-                  <div class="series-name-line">
-                    <!-- Series Name takes most space on left -->
-                    <div class="series-name-col">
-                      <a-tooltip :title="getSeriesNameText(series)" placement="topLeft">
-                        <span class="series-name">{{ getSeriesNameText(series) }}</span>
-                      </a-tooltip>
-                    </div>
-                    <!-- Right side: Chip + Unit + Expand button grouped together -->
-                    <div class="series-right-group">
-                      <div class="series-chip-col">
-                        <q-chip v-if="series.prefix" :label="getChipLabelText(series.prefix)" color="grey-4"
-                                text-color="grey-8" size="xs" dense class="series-prefix-tag-small" />
-                      </div>
-                      <div class="series-tags-col">
-                        <span class="series-inline-tags">
-                          <span class="unit-info" :style="{ color: series.color }">
-                            {{ getDisplayUnit(series) }}
-                          </span>
-                        </span>
-                      </div>
-                      <div class="series-controls">
-                        <a-button size="small" type="text" class="expand-toggle"
-                                  @click="(e) => toggleSeriesExpansion(index, e)">
-                          <template #icon>
-                            <DownOutlined v-if="expandedSeries.has(index)" class="expand-icon expanded" />
-                            <RightOutlined v-else class="expand-icon" />
-                          </template>
-                        </a-button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              <div class="empty-state-text">
+                <span class="empty-state-icon">🔍</span>
+                No analog series enabled
               </div>
-              <div v-if="expandedSeries.has(index)" class="series-stats">
-                <div class="stat-item">
-                  <span class="stat-label">Last:</span>
-                  <span class="stat-value">{{ getLastValue(series.data, series) }}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Avg:</span>
-                  <span class="stat-value">{{ getAverageValue(series.data, series) }}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Min:</span>
-                  <span class="stat-value">{{ getMinValue(series.data, series) }}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Max:</span>
-                  <span class="stat-value">{{ getMaxValue(series.data, series) }}</span>
-                </div>
-              </div>
+              <div class="empty-state-subtitle">Enable analog series from the left panel to see charts</div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Right Panel: Oscilloscope Charts -->
-      <div class="right-panel">
-        <div class="oscilloscope-container" @wheel="handleMouseWheel">
-          <!-- Combined Analog Chart with Multiple Signals -->
-          <!-- Only show analog chart if there are visible analog series -->
-          <div v-if="visibleAnalogSeries.length > 0" class="combined-analog-chart">
-            <canvas ref="analogChartCanvas" id="analog-chart"></canvas>
-          </div>
+      <!-- RESIZABLE DIVIDER -->
+      <div
+        v-if="showResizableDivider"
+        class="resizable-divider"
+        @mousedown="startResize"
+        :style="{ cursor: isResizing ? 'row-resize' : 'row-resize' }"
+      >
+        <div class="divider-handle">
+          <div class="divider-grip"></div>
+        </div>
+      </div>
 
-          <!-- Separate Digital Channels -->
-          <template v-for="(series, index) in visibleDigitalSeries" :key="series.name">
-            <div class="channel-chart" :class="{ 'last-channel': index === visibleDigitalSeries.length - 1 }">
-              <div class="channel-label" :style="{ color: series.color }">
-                {{ series.name }}
+      <!-- DIGITAL AREA (Bottom Section) -->
+      <div v-if="showDigitalArea" class="digital-area">
+        <!-- Digital Left Panel -->
+        <div class="digital-left-panel">
+          <div class="control-section">
+            <!-- Show full header when only digital series exist -->
+            <div v-if="showDigitalHeader" class="data-series-header">
+              <div class="header-line-1">
+                <div :title="devVersion" class="chart-title-with-version">
+                  {{ chartTitle }} ({{ visibleDigitalSeriesCount }}/{{ digitalSeriesList.length }})
+                </div>
+                <!-- Data Source Indicator -->
+                <div class="data-source-indicator">
+                  <span v-if="shouldShowLoading" class="source-badge loading">
+                    Loading...
+                  </span>
+                  <span v-else-if="dataSource === 'realtime'" class="source-badge realtime">
+                    <ThunderboltFilled :style="{ fontSize: '12px', marginRight: '4px' }" /> Live ({{ timeBase }})
+                  </span>
+                  <span v-else-if="dataSource === 'api'" class="source-badge historical">
+                    📚 Historical (Custom Date)
+                  </span>
+                  <span v-else-if="hasConnectionError" class="source-badge error">
+                    ⚠️ Connection Error
+                  </span>
+                </div>
               </div>
-              <canvas :ref="(el) => setDigitalChartRef(el, index)" :id="`digital-${index}-chart`"></canvas>
+              <div class="header-line-2">
+                <div class="left-controls">
+                  <a-dropdown>
+                    <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
+                      <span>All</span>
+                      <DownOutlined style="margin-left: 4px;" />
+                    </a-button>
+                    <template #overlay>
+                      <a-menu @click="handleAllMenu" class="all-dropdown-menu">
+                        <a-menu-item key="enable-all" :disabled="!hasDisabledSeries">
+                          <CheckOutlined />
+                          Enable All
+                        </a-menu-item>
+                        <a-menu-item key="disable-all" :disabled="!hasEnabledSeries">
+                          <DisconnectOutlined />
+                          Disable All
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
+                  <a-dropdown>
+                    <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
+                      <span>By Type</span>
+                      <DownOutlined style="margin-left: 4px;" />
+                    </a-button>
+                    <template #overlay>
+                      <a-menu @click="handleByTypeMenu" class="bytype-dropdown-menu">
+                        <a-menu-item key="toggle-analog" :disabled="!hasAnalogSeries">
+                          <LineChartOutlined />
+                          {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
+                        </a-menu-item>
+                        <a-menu-item key="toggle-digital" :disabled="!hasDigitalSeries">
+                          <BarChartOutlined />
+                          {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
+                        </a-menu-item>
+                        <a-menu-item key="toggle-input" :disabled="!hasInputSeries">
+                          <ImportOutlined />
+                          {{ allInputEnabled ? 'Disable' : 'Enable' }} Input ({{ inputCount }})
+                        </a-menu-item>
+                        <a-menu-item key="toggle-output" :disabled="!hasOutputSeries">
+                          <ExportOutlined />
+                          {{ allOutputEnabled ? 'Disable' : 'Enable' }} Output ({{ outputCount }})
+                        </a-menu-item>
+                        <a-menu-item key="toggle-variable" :disabled="!hasVariableSeries">
+                          <FunctionOutlined />
+                          {{ allVariableEnabled ? 'Disable' : 'Enable' }} Variable ({{ variableCount }})
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
+                </div>
+                <div class="auto-scroll-toggle">
+                  <a-typography-text class="toggle-label">Auto Scroll:</a-typography-text>
+                  <a-switch v-model:checked="isRealTime" size="small" @change="onRealTimeToggle" />
+                </div>
+              </div>
             </div>
-          </template>
+            <div class="series-list">
+              <!-- Digital series list -->
+              <div v-for="(series, index) in digitalSeriesList" :key="series.name" class="series-item" :class="{
+                'series-disabled': !series.visible
+              }">
+                <!-- Delete button overlay for View 2 & 3 tracked items -->
+                <a-button v-if="currentView !== 1" size="small" type="text" class="delete-series-btn delete-overlay"
+                          @click="(e) => removeFromTracking(series.name, e)" :title="'Remove from tracking'">
+                  <template #icon>
+                    <CloseOutlined class="delete-icon" />
+                  </template>
+                </a-button>
+
+                <div class="series-header" @click="toggleSeriesVisibility(analogSeriesList.length + index, $event)">
+                  <div class="series-toggle-indicator" :class="{ 'active': series.visible, 'inactive': !series.visible }"
+                       :style="{ backgroundColor: series.visible ? series.color : '#d9d9d9' }">
+                    <div class="toggle-inner" :class="{ 'visible': series.visible }"></div>
+                    <!-- ⌨️ Keyboard shortcut badge for left panel -->
+                    <div v-if="keyboardEnabled && getKeyboardShortcut(series.name)"
+                         class="keyboard-shortcut-badge left-panel-badge"
+                         :class="{ 'active': lastKeyboardAction === getKeyboardShortcutCode(series.name) }"
+                         :data-key="getKeyboardShortcut(series.name)"
+                         :title="`Press ${getKeyboardShortcut(series.name)} to toggle`">
+                      {{ getKeyboardShortcut(series.name) }}
+                    </div>
+                  </div>
+                  <div class="series-info">
+                    <div class="series-name-line">
+                      <!-- Series Name takes most space on left -->
+                      <div class="series-name-col">
+                        <a-tooltip :title="getSeriesNameText(series)" placement="topLeft">
+                          <span class="series-name">{{ getSeriesNameText(series) }}</span>
+                        </a-tooltip>
+                      </div>
+                      <!-- Right side: Chip + Unit + Expand button grouped together -->
+                      <div class="series-right-group">
+                        <div class="series-chip-col">
+                          <q-chip v-if="series.prefix" :label="getChipLabelText(series.prefix)" color="grey-4"
+                                  text-color="grey-8" size="xs" dense class="series-prefix-tag-small" />
+                        </div>
+                        <div class="series-tags-col">
+                          <span class="series-inline-tags">
+                            <span class="unit-info" :style="{ color: series.color }">
+                              {{ getDisplayUnit(series) }}
+                            </span>
+                          </span>
+                        </div>
+                        <div class="series-controls">
+                          <a-button size="small" type="text" class="expand-toggle"
+                                    @click="(e) => toggleSeriesExpansion(analogSeriesList.length + index, e)">
+                            <template #icon>
+                              <DownOutlined v-if="expandedSeries.has(analogSeriesList.length + index)" class="expand-icon expanded" />
+                              <RightOutlined v-else class="expand-icon" />
+                            </template>
+                          </a-button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div v-if="expandedSeries.has(analogSeriesList.length + index)" class="series-stats">
+                  <div class="stat-item">
+                    <span class="stat-label">Last:</span>
+                    <span class="stat-value">{{ getLastValue(series.data, series) }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Avg:</span>
+                    <span class="stat-value">{{ getAverageValue(series.data, series) }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Min:</span>
+                    <span class="stat-value">{{ getMinValue(series.data, series) }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Max:</span>
+                    <span class="stat-value">{{ getMaxValue(series.data, series) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Digital Right Panel -->
+        <div class="digital-right-panel">
+          <div class="digital-oscilloscope-container" @wheel="handleMouseWheel">
+            <!-- Separate Digital Channels (Original Canvas Style) -->
+            <template v-for="(series, index) in visibleDigitalSeries" :key="series.name">
+              <div class="channel-chart" :class="{ 'last-channel': index === visibleDigitalSeries.length - 1 }">
+                <canvas :ref="(el) => setDigitalChartRef(el, index)" :id="`digital-${index}-chart`"></canvas>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
     </div>
@@ -889,22 +1087,22 @@
 
       <template #footer>
         <div class="drawer-footer">
-          <a-button @click="toggleSelectAll" :type="isAllSelected ? 'default' : 'primary'" class="select-toggle-btn">
+          <a-button @click="toggleSelectAll" :type="isAllSelected ? 'default' : 'primary'" class="select-toggle-btn" :disabled="dataSeries.length === 0">
             {{ isAllSelected ? 'Unselect All' : 'Select All' }}
           </a-button>
 
           <div class="footer-actions">
-            <a-button @click="showItemSelector = false">
+            <a-button @click="showItemSelector = false" :disabled="dataSeries.length === 0">
               Cancel
             </a-button>
-            <a-button type="primary" @click="applyAndCloseDrawer">
+            <a-button type="primary" @click="applyAndCloseDrawer" :disabled="dataSeries.length === 0">
               Apply Selection
             </a-button>
           </div>
         </div>
       </template>
     </a-drawer>
-
+  </div>
   </a-config-provider>
 </template>
 
@@ -946,6 +1144,7 @@
     CloseOutlined,
     DatabaseOutlined,
     SaveOutlined,
+    ExclamationCircleOutlined,
     ThunderboltOutlined,
     ThunderboltFilled,
     DeleteOutlined
@@ -954,11 +1153,10 @@
   import { scheduleItemData } from '@/lib/vue/T3000/Hvac/Data/Constant/RefConstant'
   import { T3000_Data, devVersion } from '@/lib/vue/T3000/Hvac/Data/T3Data'
   import { ranges as rangeDefinitions, T3_Types } from '@/lib/vue/T3000/Hvac/Data/Constant/T3Range'
-  import WebViewClient from '@/lib/vue/T3000/Hvac/Opt/Webview2/WebViewClient'
-  import Hvac from '@/lib/vue/T3000/Hvac/Hvac'
   import { t3000DataManager, DataReadiness, type DataValidationResult } from '@/lib/vue/T3000/Hvac/Data/Manager/T3000DataManager'
-  import { useTrendlogDataAPI, type RealtimeDataRequest } from '@/lib/vue/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
+  import { useTrendlogDataAPI, type RealtimeDataRequest, type TrendlogHistoryRequest } from '@/lib/vue/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
   import { databaseService, DatabaseUtils, DatabaseConfigAPI, FfiSyncConfigAPI, RediscoverConfigAPI, type DatabaseConfig } from '@/lib/vue/T3000/Hvac/Opt/FFI/DatabaseApi'
+  import { useT3000FfiApi } from '@/lib/vue/T3000/Hvac/Opt/FFI/T3000FfiApi'
 
   // BAC Units Constants - Digital/Analog Type Indicators
   const BAC_UNITS_DIGITAL = 0
@@ -1211,7 +1409,7 @@
       String(d.pid) === String(panelId) && d.id === idToFind
     )
 
-    if (!device || device.unit === undefined) return ''
+    if (!device || device.range === undefined) return ''
 
     // Check for custom range data first
     if (panelsRanges?.length) {
@@ -1223,20 +1421,20 @@
       }
     }
 
-    // Use rangeDefinitions lookup
+    // Use rangeDefinitions lookup - use device.range instead of device.unit
     let ranges: any[] = []
     if (pointTypeInfo.category === 'IN') ranges = rangeDefinitions.analog.input
     else if (pointTypeInfo.category === 'OUT') ranges = rangeDefinitions.analog.output
     else if (pointTypeInfo.category === 'VAR') ranges = rangeDefinitions.analog.variable
 
-    const rangeInfo = ranges.find(r => r.id === device.unit)
+    const rangeInfo = ranges.find(r => r.id === device.range)
     if (rangeInfo) {
       // If unit is empty, return the label (e.g., "Unused")
       return rangeInfo.unit || rangeInfo.label
     }
 
-    // Check digital ranges
-    const digitalRange = rangeDefinitions.digital.find(d => d.id === device.unit)
+    // Check digital ranges - use device.range instead of device.unit
+    const digitalRange = rangeDefinitions.digital.find(d => d.id === device.range)
     if (digitalRange) return `${digitalRange.off}/${digitalRange.on}`
 
     return ''
@@ -1349,6 +1547,11 @@
 
   // 🆕 Chart update debouncing to prevent UI freezing in C++ embedded WebView
   let chartUpdatePending = false
+
+  // 🆕 Gap detection threshold (minutes) - configurable threshold for breaking lines when data gaps occur
+  // Default: 1 minute (reasonable since Action 15 runs every 15s minimum - detects ~4 missed data points)
+  const gapDetectionThreshold = ref(1) // Default: 1 minute
+  const getGapThresholdMs = () => gapDetectionThreshold.value * 60 * 1000
 
   // View-specific series tracking for View 2 & 3
   const viewTrackedSeries = ref({
@@ -1513,7 +1716,7 @@
   // Dynamic interval calculation based on T3000 monitorConfig
   const calculateT3000Interval = (monitorConfig: any): number => {
     if (!monitorConfig) {
-      return 15000 // Default fallback: 1 minute
+      return 15000 // Default fallback: 15 seconds
     }
 
     const {
@@ -1527,10 +1730,10 @@
       (minute_interval_time * 60) +
       second_interval_time
 
-    // If no intervals specified at all, default to 1 minute, otherwise use calculated value
+    // If no intervals specified at all, default to 15 seconds, otherwise use calculated value
     const intervalMs = totalSeconds > 0
       ? Math.max(totalSeconds * 1000, 15000)  // Minimum 15 seconds
-      : 15000  // Default 1 minute if all intervals are 0
+      : 15000  // Default 15 seconds if all intervals are 0
 
     return intervalMs
   }
@@ -1557,6 +1760,7 @@
 
   // API integration for timebase data fetching
   const trendlogAPI = useTrendlogDataAPI()
+  const ffiApi = useT3000FfiApi()
   const dataSource = ref<'realtime' | 'api'>('realtime') // Track data source for timebase changes
   const hasConnectionError = ref(false) // Track connection errors for UI display
   const hasLoadedInitialHistory = ref(false) // Track if initial history has been loaded
@@ -1588,6 +1792,12 @@
 
   // Route for URL parameter extraction
   const route = useRoute()
+
+  // NEW: Resizable divider state
+  const analogAreaHeight = ref(60) // Default 60% height (bottom 40%)
+  const isResizing = ref(false)
+  const resizeStartY = ref(0)
+  const resizeStartHeight = ref(0)
 
   // Reactive monitor configuration
   const monitorConfig = ref(null as any)
@@ -1634,8 +1844,14 @@
       return ''
     }
 
-    // Priority order: description (contains full label) → fullLabel → label → command → id
-    const description = device.description || device.fullLabel || device.label || device.command || device.id || ''
+    // Priority order: label (if not empty) → description → fullLabel → command → id
+    // Use label first if it exists and is not empty, otherwise fall back to description
+    const description = (device.label && device.label.trim())
+      || device.description
+      || device.fullLabel
+      || device.command
+      || device.id
+      || ''
 
     if (!description) {
       LogUtil.Debug('⚠️ TrendLogChart: Device found but no description fields available', { device })
@@ -1949,6 +2165,14 @@
 
   // Watch T3000_Data for panels data changes
   watch(() => T3000_Data.value?.panelsData, async (newPanelsData, oldPanelsData) => {
+    LogUtil.Debug('🔔 T3000_Data.panelsData watcher TRIGGERED', {
+      hasNewData: !!newPanelsData,
+      newDataLength: newPanelsData?.length || 0,
+      isRealTime: isRealTime.value,
+      timeBase: timeBase.value,
+      timestamp: new Date().toLocaleTimeString()
+    })
+
     LogUtil.Info('🔔 T3000_Data.panelsData watcher TRIGGERED', {
       hasNewData: !!newPanelsData,
       newDataLength: newPanelsData?.length || 0,
@@ -1983,14 +2207,18 @@
       updateChartWithNewData(chartDataFormat)
 
       // Store real-time data to database if in real-time mode
+      // 🔥 FIX: Only save Action 15 real-time data, NOT Action 0 initial data
+      // Skip batch save on initial load - let history load first
       LogUtil.Info('💾 T3000_Data watcher: Checking storage conditions', {
         isRealTime: isRealTime.value,
         chartDataLength: chartDataFormat.length,
         dataSeriesLength: dataSeries.value?.length || 0,
-        willStore: isRealTime.value && chartDataFormat.length > 0 && dataSeries.value?.length > 0
+        hasLoadedInitialHistory: hasLoadedInitialHistory.value,
+        willStore: isRealTime.value && chartDataFormat.length > 0 && dataSeries.value?.length > 0 && hasLoadedInitialHistory.value
       })
 
-      if (isRealTime.value && chartDataFormat.length > 0 && dataSeries.value?.length > 0) {
+      // Only batch save after initial history is loaded (prevents blocking history load with Action 0 data)
+      if (isRealTime.value && chartDataFormat.length > 0 && dataSeries.value?.length > 0 && hasLoadedInitialHistory.value) {
 
         /*
         LogUtil.Info('💾 T3000_Data watcher: Filtering for chart series storage', {
@@ -2002,6 +2230,13 @@
         */
 
         // OPTION 1: Filter chartDataFormat to only include items from current chart series
+        // Get current panel ID and serial number from URL or first panel in list
+        const urlSerialNumber = route.query.sn ? parseInt(route.query.sn as string) : 0
+        const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : 0
+        const panelsList = T3000_Data.value.panelsList || []
+        const currentSN = urlSerialNumber || (panelsList.length > 0 ? panelsList[0].serial_number : 0)
+        const currentPanelId = urlPanelId || (panelsList.length > 0 ? panelsList[0].panel_number : 1)
+
         // Get chart series identifiers for filtering
         const chartSeriesItems = dataSeries.value.map(series => ({
           id: series.id,
@@ -2030,6 +2265,9 @@
           item.value !== null &&
           item.value !== undefined &&
           item.id &&
+          item.pid === currentPanelId &&  // Only save items for current panel
+          (!item.serial_number || item.serial_number === currentSN) &&  // If serial_number exists, it must match
+          (!item.sn || item.sn === currentSN) &&  // If sn exists, it must match
           // Only include items that match current chart series
           chartSeriesItems.some(chartItem =>
             item.id === chartItem.id && item.pid === chartItem.panelId
@@ -2058,7 +2296,10 @@
         validateFilteringResults(chartDataFormat.length, chartRelevantItems.length, dataSeries.value.length)
 
         if (chartRelevantItems.length > 0) {
-          storeRealtimeDataToDatabase(chartRelevantItems)
+          // Fire and forget - don't await, don't block history loading
+          storeRealtimeDataToDatabase(chartRelevantItems).catch(err => {
+            LogUtil.Warn('Background batch save failed (non-critical)', err)
+          })
         } else {
           LogUtil.Warn('⚠️ No chart-relevant items found for storage', {
             totalItems: chartDataFormat.length,
@@ -2091,6 +2332,50 @@
 
   // Watch timeBase for changes and hybrid data loading with debouncing and cancellation
   watch(timeBase, async (newTimeBase, oldTimeBase) => {
+    // 🛡️ SKIP: Custom timebase is handled by onCustomDateChange() separately
+    // This prevents duplicate API calls when custom date range is applied
+    if (newTimeBase === 'custom') {
+      LogUtil.Debug('⏭️ Skipping timebase watcher for custom - handled by onCustomDateChange()', {
+        oldTimeBase,
+        newTimeBase
+      })
+      return
+    }
+
+    // 🔄 RESET: When switching FROM custom TO regular timebase, re-enable real-time mode
+    if (oldTimeBase === 'custom' && newTimeBase !== 'custom') {
+      LogUtil.Info('🔄 Switching from custom date to regular timebase - re-enabling real-time mode', {
+        oldTimeBase,
+        newTimeBase
+      })
+      isRealTime.value = true
+      dataSource.value = 'realtime'
+
+      // 🧹 CLEANUP: Clear custom date values to prevent X-axis from using custom range
+      customStartDate.value = null
+      customEndDate.value = null
+      customStartTime.value = null
+      customEndTime.value = null
+
+      // 🔄 Reset time offset when returning to real-time
+      timeOffset.value = 0
+
+      // 🆕 DESTROY CHARTS: Force complete recreation to reset x-axis scales
+      destroyAllCharts()
+      await nextTick()
+
+      LogUtil.Info('✅ Cleared custom date settings and destroyed charts, will reload data for new timebase', {
+        timeBase: newTimeBase,
+        isRealTime: isRealTime.value
+      })
+
+      // 🆕 FIX: When switching from custom back to preset, call API directly instead of relying on debounced logic
+      // This ensures fresh data is loaded immediately
+      LogUtil.Info('🔄 Calling onTimeBaseChange() directly for custom→preset transition')
+      await onTimeBaseChange()
+      return // Exit early - onTimeBaseChange handles everything
+    }
+
     // 🆕 DEBOUNCE: Cancel previous pending timebase change
     if (timebaseChangeTimeout) {
       clearTimeout(timebaseChangeTimeout)
@@ -2181,44 +2466,24 @@
         // Load data based on current Auto Scroll state (preserve user's choice)
         if (isRealTime.value) {
           // Auto Scroll ON: Load real-time + historical data
-          // LogUtil.Info(`📊 ${newTimeBase} timebase: Auto Scroll ON - Loading real-time + historical data`)
-
-          // 🆕 FIX: Only initialize series structure if we don't already have it
-          // This prevents unnecessary loading state when switching back to 5m
-          const needsSeriesInit = dataSeries.value.length === 0 ||
-            dataSeries.value.every(s => s.data.length === 0)
-
-          if (needsSeriesInit) {
-            // Step 1: Initialize real-time data series structure
-            await initializeRealDataSeries()
-          } else {
-            LogUtil.Info('�?Series structure already exists, skipping initializeRealDataSeries', {
-              seriesCount: dataSeries.value.length,
-              dataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0)
-            })
-          }
-
-          // Step 2: Load historical data to populate the series
           await loadHistoricalDataFromDatabase()
 
           // Step 3: Ensure real-time updates are active
           if (!realtimeInterval) {
-            // LogUtil.Info(`🔄 Starting real-time updates for ${newTimeBase} timebase`)
             startRealTimeUpdates()
           }
         } else {
           // Auto Scroll OFF: Load historical data only
-          // LogUtil.Info(`📚 ${newTimeBase} timebase: Auto Scroll OFF - Loading historical data only`)
           await loadHistoricalDataFromDatabase()
         }
 
-        // Update charts with loaded data
-        LogUtil.Info('🎨 Updating charts with loaded data', {
-          totalSeries: dataSeries.value.length,
-          seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
-          autoScrollEnabled: isRealTime.value,
-          totalDataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0)
-        })
+        // 🆕 RECREATE CHARTS: After data loaded, recreate charts if switching from custom date
+        if (oldTimeBase === 'custom' && newTimeBase !== 'custom') {
+          await nextTick()
+          LogUtil.Info('🎨 Recreating charts with fresh configuration after custom→regular transition')
+          createCharts()
+          await nextTick()
+        }
 
         // Force Vue reactivity update
         await nextTick()
@@ -2247,9 +2512,13 @@
           return
         }
 
-        LogUtil.Error('Error loading data for new timebase:', error)
+        // Don't treat initialization delays as connection errors
+        LogUtil.Info('ℹ️ Timebase change skipped (component still initializing)', {
+          error: error?.message,
+          timeBase: newTimeBase
+        })
         clearLoadingTimeout() // Clear timeout on error
-        hasConnectionError.value = true
+        // Don't set hasConnectionError - component is just initializing
       } finally {
         clearLoadingTimeout() // Always clear timeout when done
         stopLoading()
@@ -2452,6 +2721,10 @@
   let digitalChartInstances: { [key: number]: Chart } = {}
   let realtimeInterval: NodeJS.Timeout | null = null
 
+  // 🆔 Unique instance ID to track and prevent duplicate intervals across HMR reloads
+  const instanceId = Math.random().toString(36).substring(7)
+  LogUtil.Debug(`📊 TrendLogChart instance created: ${instanceId}`)
+
   // Function to set digital chart refs from template
   const setDigitalChartRef = (el: Element | ComponentPublicInstance | null, index: number) => {
     if (el && 'tagName' in el && el.tagName === 'CANVAS') {
@@ -2545,13 +2818,23 @@
   // Timebase progression for zoom functionality (shorter to longer)
   const timebaseProgression = ['5m', '10m', '30m', '1h', '4h', '12h', '1d', '4d']
 
-  // Computed properties for zoom button states
+  // Computed properties for navigation button states
+  const canScroll = computed(() => {
+    // Scroll buttons only work for regular timebases in non-real-time mode
+    // Disabled for: real-time mode (always current) and custom dates (fixed range)
+    return !isRealTime.value && timeBase.value !== 'custom'
+  })
+
   const canZoomIn = computed(() => {
+    // Can't zoom for custom date ranges
+    if (timeBase.value === 'custom') return false
     const currentIndex = timebaseProgression.indexOf(timeBase.value)
     return currentIndex > 0 // Can zoom in if not already at shortest timebase
   })
 
   const canZoomOut = computed(() => {
+    // Can't zoom for custom date ranges
+    if (timeBase.value === 'custom') return false
     const currentIndex = timebaseProgression.indexOf(timeBase.value)
     return currentIndex >= 0 && currentIndex < timebaseProgression.length - 1 // Can zoom out if not at longest timebase
   })
@@ -2597,13 +2880,10 @@
       return
     }
 
-    // 🆕 FIX: Update isRealTime BEFORE changing timebase
-    // This ensures the timebase watcher sees the correct Auto Scroll state
-    if (value === '5m') {
-      isRealTime.value = true // Enable real-time UI mode (current time view, nav buttons disabled)
-    } else {
-      isRealTime.value = false // Enable historical UI mode (allows time navigation with arrow buttons)
-    }
+    // 🔧 FIX: Timebase only controls X-axis display range (5m, 10m, 30m, 1h)
+    // Real-time mode should stay active for all timebases - only 'custom' disables it
+    // The Auto Scroll toggle is the primary control for real-time mode
+    // Note: Custom date ranges will disable real-time mode separately
 
     // Now set timebase - the watcher will see the correct isRealTime value
     timeBase.value = value
@@ -2690,8 +2970,23 @@
   })
 
   // Enhanced loading state - show loading when waiting for valid T3000 device data
+  // Show global loading when:
+  // 1. Actually loading (isLoading is true) OR
+  // 2. We have no data yet but also no confirmed error (neither timeout nor connection error)
   const shouldShowLoading = computed(() => {
-    return (isLoading.value || hasInputDataButNoValidSeries.value) && !showLoadingTimeout.value
+    const noDataYet = analogSeriesList.value.length === 0
+    const noConfirmedError = !showLoadingTimeout.value && !hasConnectionError.value
+    const result = isLoading.value || (noDataYet && noConfirmedError)
+
+    LogUtil.Debug('🔍 shouldShowLoading:', result, {
+      isLoading: isLoading.value,
+      noDataYet,
+      noConfirmedError,
+      hasTimeout: showLoadingTimeout.value,
+      hasError: hasConnectionError.value,
+      seriesCount: analogSeriesList.value.length
+    })
+    return result
   })
 
   const allAnalogEnabled = computed(() => {
@@ -2723,6 +3018,49 @@
   const visibleDigitalSeries = computed(() => {
     return digitalSeries.value.filter(series => series.visible)
   })
+
+  // NEW: Analog series list for left panel (filtered by displayedSeries logic)
+  const analogSeriesList = computed(() => {
+    const displayed = displayedSeries.value
+    return displayed.filter(series => series.unitType === 'analog')
+  })
+
+  // NEW: Digital series list for digital area (filtered by displayedSeries logic)
+  const digitalSeriesList = computed(() => {
+    const displayed = displayedSeries.value
+    return displayed.filter(series => series.unitType === 'digital')
+  })
+
+  // NEW: Count of visible analog series
+  const visibleAnalogSeriesCount = computed(() => {
+    return analogSeriesList.value.filter(series => series.visible).length
+  })
+
+  // NEW: Count of visible digital series
+  const visibleDigitalSeriesCount = computed(() => {
+    return digitalSeriesList.value.filter(series => series.visible).length
+  })
+
+  // NEW: Scenario detection for conditional display - based on tracked/selected items
+  const showAnalogArea = computed(() => {
+    // Show analog area if:
+    // 1. There are analog series available, OR
+    // 2. There's a connection error AND no data at all (truly failed state)
+    const hasAnalogSeries = analogSeriesList.value.length > 0
+    const hasAnyData = dataSeries.value.some(s => s.data && s.data.length > 0)
+    const shouldShowError = hasConnectionError.value && !hasAnyData
+
+    return hasAnalogSeries || shouldShowError
+  })
+  const showDigitalArea = computed(() => digitalSeriesList.value.length > 0)
+  const showResizableDivider = computed(() => analogSeriesList.value.length > 0 && digitalSeriesList.value.length > 0)
+  const showAnalogXAxis = computed(() => {
+    const hasTrackedAnalog = analogSeriesList.value.length > 0
+    const hasTrackedDigital = digitalSeriesList.value.length > 0
+    // Show top X-axis only when we have analog AND no digital tracked
+    return hasTrackedAnalog && !hasTrackedDigital
+  })
+  const showDigitalHeader = computed(() => analogSeriesList.value.length === 0 && digitalSeriesList.value.length > 0)
 
   // Helper function to get digital state label using T3Range
   const getDigitalStateLabel = (series: SeriesConfig): string => {
@@ -2771,6 +3109,7 @@
 
   // Manual refresh function
   const manualRefresh = async () => {
+    LogUtil.Debug('🔄 === MANUAL REFRESH START ===')
     LogUtil.Info('🔄 Manual refresh initiated')
 
     // Reset all states
@@ -2779,40 +3118,63 @@
     hasConnectionError.value = false
     startLoading()
 
-    // Clear existing data
-    dataSeries.value.forEach(series => {
-      series.data = []
-    })
+    // Clear existing data completely
+    dataSeries.value = []
+    LogUtil.Debug('🔄 Step 1: Cleared dataSeries, length:', dataSeries.value.length)
 
     try {
       // Start timeout for this refresh attempt
       startLoadingTimeout()
 
-      // Regenerate data series and reload data
-      regenerateDataSeries()
+      LogUtil.Debug('🔄 Step 2: Loading historical data...')
+      // Just reload historical data - it will populate the series
+      await loadHistoricalDataFromDatabase(true) // Force reload from device
+      LogUtil.Debug('🔄 Step 3: After loadHistoricalDataFromDatabase, dataSeries length:', dataSeries.value.length)
 
-      // Reload data based on current mode
-      if (isRealTime.value) {
-        await initializeRealDataSeries()
-        await loadHistoricalDataFromDatabase()
-        if (!realtimeInterval) {
-          startRealTimeUpdates()
-        }
-      } else {
-        await loadHistoricalDataFromDatabase()
+      // 🔧 FIX: Check if chart was destroyed during refresh and recreate it
+      if (!analogChartInstance && analogSeriesList.value.length > 0) {
+        LogUtil.Debug('🔧 Recreating analog chart instance after refresh')
+        createAnalogChart()
+        await nextTick()
       }
 
-      // Success - clear timeout
+      // 🔧 FIX: Call updateCharts to display the newly loaded data
+      updateCharts()
+
+      // Restart real-time updates if needed
+      if (isRealTime.value && !realtimeInterval) {
+        startRealTimeUpdates()
+      }
+
+      // Success - clear timeout and error state
       clearLoadingTimeout()
-      stopLoading()
+      hasConnectionError.value = false
+      LogUtil.Debug('🔄 === MANUAL REFRESH SUCCESS ===', {
+        dataSeriesLength: dataSeries.value.length,
+        analogSeriesLength: analogSeriesList.value.length
+      })
 
     } catch (error) {
-      LogUtil.Error('�?Manual refresh failed:', error)
+      LogUtil.Debug('🔄 === MANUAL REFRESH ERROR ===')
+      LogUtil.Error('❌ Manual refresh failed:', error)
       clearLoadingTimeout()
       hasConnectionError.value = true
+      dataSeries.value = [] // Ensure series is cleared on error
+
+      LogUtil.Debug('❌ Error state set:', {
+        hasConnectionError: hasConnectionError.value,
+        isLoading: isLoading.value,
+        analogSeriesCount: analogSeriesList.value.length,
+        dataSeriesCount: dataSeries.value.length,
+        error: error
+      })
+    } finally {
+      // 🔧 FIX: Always ensure loading state is cleared
       stopLoading()
     }
   }
+
+  // Helper to get the data interval (in minutes) for the current time base
 
   // Helper to get the data interval (in minutes) for the current time base
   const getDataPointInterval = (timeBase: string): number => {
@@ -2842,31 +3204,38 @@
     }
   }
 
-  // Custom plugin for y-axis units
+  // Custom plugin for y-axis units with multi-axis indicators
   const yAxisUnitsPlugin = {
     id: 'yAxisUnits',
     afterDraw: (chart: any) => {
       const yScale = chart.scales.y
+      const y1Scale = chart.scales.y1
       if (!yScale) return
 
       const ctx = chart.ctx
       ctx.save()
 
-      // Get unit groups with colors from visible analog series (preserve original sequence)
+      // Get unit groups with colors and axis assignment from visible analog series
       const unitGroups = new Map()
       const visibleAnalog = visibleAnalogSeries.value
 
-      // Loop through series in original order to find first occurrence of each unit
-      visibleAnalog.forEach(series => {
-        if (series.unit && !unitGroups.has(series.unit)) {
-          unitGroups.set(series.unit, {
+      // Loop through datasets to determine axis assignment
+      chart.data.datasets.forEach((dataset: any) => {
+        const series = visibleAnalog.find(s => s.name === dataset.label)
+        if (!series || !series.unit) return
+
+        const axisId = dataset.yAxisID || 'y'
+        const key = `${series.unit}_${axisId}`
+
+        if (!unitGroups.has(key)) {
+          unitGroups.set(key, {
+            unit: series.unit,
             color: series.color,
+            axisId: axisId,
             count: 0
           })
         }
-        if (series.unit && unitGroups.has(series.unit)) {
-          unitGroups.get(series.unit).count++
-        }
+        unitGroups.get(key).count++
       })
 
       if (unitGroups.size === 0) {
@@ -2874,77 +3243,69 @@
         return
       }
 
-      // Build display text based on unit count
-      const units = Array.from(unitGroups.keys())
-      let displayText = ''
-      let xOffset = yScale.left
+      // Build display text with axis indicators
+      const groups = Array.from(unitGroups.values())
       const chartArea = chart.chartArea
       const y = chartArea.top - 15
 
       // Set font
       ctx.font = '11px Inter, Helvetica, Arial, sans-serif'
-      ctx.textAlign = 'left'
       ctx.textBaseline = 'middle'
 
-      if (units.length === 1) {
-        // Single unit: "°C" or "°C (14 sensors)" if all same
-        const unit = units[0]
-        const group = unitGroups.get(unit)
-        const totalSensors = visibleAnalog.length
+      // Group by axis for display
+      const leftGroups = groups.filter(g => g.axisId === 'y')
+      const rightGroups = groups.filter(g => g.axisId === 'y1')
 
-        ctx.fillStyle = group.color
-        if (group.count === totalSensors && totalSensors > 1) {
-          displayText = `${unit} (${totalSensors} sensors)`
-        } else {
-          displayText = unit
-        }
-        ctx.fillText(displayText, xOffset, y)
+      // 🐛 DEBUG: Log header grouping
+      LogUtil.Info('📊 Header label groups:', {
+        totalGroups: groups.length,
+        leftCount: leftGroups.length,
+        rightCount: rightGroups.length,
+        leftUnits: leftGroups.map(g => g.unit),
+        rightUnits: rightGroups.map(g => g.unit),
+        allGroups: groups.map(g => ({ unit: g.unit, axis: g.axisId, count: g.count }))
+      })
 
-      } else if (units.length <= 3) {
-        // 2-3 units: "°C | Pa | CFM" (each colored)
-        units.forEach((unit, index) => {
-          const group = unitGroups.get(unit)
-          ctx.fillStyle = group.color
+      // ✅ Draw LEFT axis units on the LEFT side (no [L] indicator)
+      if (leftGroups.length > 0) {
+        let xOffset = yScale.left
+        ctx.textAlign = 'left'
+
+        // Only show unique units for left axis
+        const uniqueLeftUnits = Array.from(new Set(leftGroups.map(g => g.unit)))
+        uniqueLeftUnits.forEach((unit, index) => {
+          const group = leftGroups.find(g => g.unit === unit)
+          ctx.fillStyle = group?.color || '#666666'
           ctx.fillText(unit, xOffset, y)
-
-          // Measure text width for next position
-          const textWidth = ctx.measureText(unit).width
-          xOffset += textWidth
-
-          // Add separator if not last
-          if (index < units.length - 1) {
+          xOffset += ctx.measureText(unit).width
+          if (index < uniqueLeftUnits.length - 1) {
             ctx.fillStyle = '#666666'
-            ctx.fillText(' | ', xOffset, y)
-            xOffset += ctx.measureText(' | ').width
+            ctx.fillText(', ', xOffset, y)
+            xOffset += ctx.measureText(', ').width
           }
         })
+      }
 
-      } else {
-        // 4+ units: "°C | Pa ... +X more"
-        // Show first 2 units
-        for (let i = 0; i < 2; i++) {
-          const unit = units[i]
-          const group = unitGroups.get(unit)
-          ctx.fillStyle = group.color
-          ctx.fillText(unit, xOffset, y)
+      // ✅ Draw RIGHT axis units on the RIGHT side (no [R] indicator)
+      if (rightGroups.length > 0 && y1Scale && y1Scale.display !== false) {
+        let xOffset = y1Scale.right
+        ctx.textAlign = 'right'
 
-          const textWidth = ctx.measureText(unit).width
-          xOffset += textWidth
-
-          if (i < 1) {
+        // Only show unique units for right axis
+        const uniqueRightUnits = Array.from(new Set(rightGroups.map(g => g.unit))).reverse()
+        uniqueRightUnits.forEach((unit, index) => {
+          if (index > 0) {
             ctx.fillStyle = '#666666'
-            ctx.fillText(' | ', xOffset, y)
-            xOffset += ctx.measureText(' | ').width
+            const separatorWidth = ctx.measureText(', ').width
+            xOffset -= separatorWidth
+            ctx.fillText(', ', xOffset, y)
           }
-        }
-
-        // Add "... +X more"
-        const moreCount = units.length - 2
-        ctx.fillStyle = '#999999'
-        ctx.fillText(` ... +${moreCount} more`, xOffset, y)
-
-        // Store full unit info for tooltip (could be used later)
-        chart.fullUnitInfo = unitGroups
+          const group = rightGroups.find(g => g.unit === unit)
+          ctx.fillStyle = group?.color || group?.axisId === 'y1' ? '#1890ff' : '#666666'
+          const unitWidth = ctx.measureText(unit).width
+          xOffset -= unitWidth
+          ctx.fillText(unit, xOffset, y)
+        })
       }
 
       ctx.restore()
@@ -2957,7 +3318,59 @@
     data: {
       datasets: [] // Will be populated in updateAnalogChart
     },
-    plugins: [yAxisUnitsPlugin],
+    plugins: [
+      {
+        id: 'yAxisTitleBackground',
+        beforeDraw: (chart: any) => {
+          const ctx = chart.ctx
+          const yAxes = ['y', 'y1', 'y2', 'y3']
+
+          yAxes.forEach(axisId => {
+            const scale = chart.scales[axisId]
+            if (!scale) return
+
+            const titleText = scale.options.title.text
+            if (!titleText) return
+
+            const color = scale.options.title.color
+
+            ctx.save()
+
+            ctx.font = '9px Inter, sans-serif'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+
+            const centerY = (scale.top + scale.bottom) / 2
+            const boxWidth = 18
+            const x = scale.left + boxWidth / 2 + 2
+
+            const textWidth = ctx.measureText(titleText).width
+            const boxPadding = 4
+            const boxHeight = textWidth + (boxPadding * 2)
+
+            // Draw colored background
+            ctx.fillStyle = color
+            ctx.beginPath()
+            ctx.roundRect(
+              x - boxWidth / 2,
+              centerY - boxHeight / 2,
+              boxWidth,
+              boxHeight,
+              6
+            )
+            ctx.fill()
+
+            // Draw white text
+            ctx.fillStyle = '#ffffff'
+            ctx.translate(x, centerY)
+            ctx.rotate(-Math.PI / 2)
+            ctx.fillText(titleText, 0, 0)
+
+            ctx.restore()
+          })
+        }
+      }
+    ],
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -2966,12 +3379,17 @@
         line: {
           borderWidth: 2,
           skipNull: false
+        },
+        point: {
+          radius: 0,
+          hitRadius: 8,
+          hoverRadius: 4
         }
       },
       layout: {
         padding: {
-          left: 2,
-          right: 20,
+          left: 5,
+          right: 10,
           top: 25,
           bottom: 10
         }
@@ -2995,29 +3413,162 @@
             boxHeight: 12
           }
         },
+        interaction: {
+          mode: 'index',
+          intersect: false,
+          axis: 'x'
+        },
         tooltip: {
-          enabled: true,
-          backgroundColor: '#ffffff',
-          titleColor: '#000000',
-          bodyColor: '#000000',
-          borderColor: '#d9d9d9',
-          borderWidth: 1,
-          cornerRadius: 4,
-          displayColors: true,
-          usePointStyle: true,
-          callbacks: {
-            title: (context: any) => {
-              const timestamp = context[0].parsed.x
-              if (typeof timestamp === 'number' && timestamp > 1e9) {
-                return formatTimestampToLocal(timestamp)
-              }
-              return new Date(timestamp).toLocaleString()
-            },
-            label: (context: any) => {
-              const series = visibleAnalogSeries.value.find(s => s.name === context.dataset.label)
-              if (!series) return `${context.parsed.y}`
+          enabled: false, // Disable default, use custom multi-tooltip
+          position: 'nearest',
+          external: (context: any) => {
+            const { chart, tooltip } = context
 
-              return `   ${context.parsed.y.toFixed(2)}`
+            // Remove all existing tooltips and crosshair
+            document.querySelectorAll('.chartjs-multi-tooltip').forEach(el => el.remove())
+            document.querySelectorAll('.chartjs-crosshair').forEach(el => el.remove())
+
+            // Hide if no tooltip
+            if (tooltip.opacity === 0) {
+              return
+            }
+
+            // Draw vertical crosshair line at hover position
+            if (tooltip.dataPoints && tooltip.dataPoints.length > 0) {
+              const position = chart.canvas.getBoundingClientRect()
+              const scrollX = window.pageXOffset || document.documentElement.scrollLeft
+              const scrollY = window.pageYOffset || document.documentElement.scrollTop
+
+              const firstPoint = tooltip.dataPoints[0]
+              const pointX = position.left + scrollX + firstPoint.element.x
+
+              // Create crosshair line element
+              const crosshairEl = document.createElement('div')
+              crosshairEl.className = 'chartjs-crosshair'
+              crosshairEl.style.position = 'absolute'
+              crosshairEl.style.left = pointX + 'px'
+              crosshairEl.style.top = (position.top + scrollY + chart.chartArea.top) + 'px'
+              crosshairEl.style.width = '0px'
+              crosshairEl.style.height = (chart.chartArea.bottom - chart.chartArea.top) + 'px'
+              crosshairEl.style.borderLeft = '2px dashed #999'
+              crosshairEl.style.pointerEvents = 'none'
+              crosshairEl.style.zIndex = '999'
+
+              document.body.appendChild(crosshairEl)
+
+              // Create time display at top of crosshair
+              const timeEl = document.createElement('div')
+              timeEl.className = 'chartjs-crosshair'
+              timeEl.style.position = 'absolute'
+              timeEl.style.left = (pointX - 30) + 'px' // Center the time box
+              timeEl.style.top = (position.top + scrollY + chart.chartArea.top - 20) + 'px'
+              timeEl.style.pointerEvents = 'none'
+              timeEl.style.zIndex = '1000'
+
+              // Get time from the data point
+              const timeLabel = tooltip.dataPoints[0].label || ''
+
+              timeEl.innerHTML = `
+                <div style="
+                  background: white;
+                  color: #000;
+                  border: 1px solid #ff4d4f;
+                  border-radius: 3px;
+                  padding: 2px 6px;
+                  font-size: 10px;
+                  font-weight: 500;
+                  white-space: nowrap;
+                  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                ">
+                  ${timeLabel}
+                </div>
+              `
+
+              document.body.appendChild(timeEl)
+            }
+
+            // Create individual tooltip for each data point
+            if (tooltip.body && tooltip.dataPoints && tooltip.dataPoints.length > 0) {
+              const position = chart.canvas.getBoundingClientRect()
+              const scrollX = window.pageXOffset || document.documentElement.scrollLeft
+              const scrollY = window.pageYOffset || document.documentElement.scrollTop
+
+              // Sort points by Y position to handle overlaps
+              const sortedPoints = [...tooltip.dataPoints].sort((a, b) => a.element.y - b.element.y)
+
+              // Track occupied vertical spaces to prevent overlap
+              const tooltipPositions: Array<{top: number, bottom: number}> = []
+              const tooltipHeight = 24 // Approximate height of tooltip
+              const minSpacing = 4 // Minimum space between tooltips
+
+              sortedPoints.forEach((point: any) => {
+                const series = visibleAnalogSeries.value.find(s => s.name === point.dataset.label)
+                const value = point.parsed.y.toFixed(2)
+                const unit = series?.unit || ''
+                const label = point.dataset.label || ''
+
+                // Format display text - hide "Unused" unit
+                const displayText = unit === 'Unused' ? `${label}: ${value}` : `${label}: ${value} ${unit}`
+
+                // Create individual tooltip element
+                const tooltipEl = document.createElement('div')
+                tooltipEl.className = 'chartjs-multi-tooltip'
+                tooltipEl.style.opacity = '1'
+                tooltipEl.style.position = 'absolute'
+                tooltipEl.style.pointerEvents = 'none'
+                tooltipEl.style.transition = 'all 0.1s ease'
+                tooltipEl.style.zIndex = '1000'
+
+                // Tooltip content - compact, label with value and unit
+                tooltipEl.innerHTML = `
+                  <div style="
+                    background: #f5f5f5;
+                    color: #000;
+                    border: 1px solid #d9d9d9;
+                    border-radius: 4px;
+                    padding: 3px 6px;
+                    font-size: 10px;
+                    font-weight: 500;
+                    white-space: nowrap;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+                  ">
+                    ${displayText}
+                  </div>
+                `
+
+                // Position to the right of the data point
+                const pointX = position.left + scrollX + point.element.x
+                const pointY = position.top + scrollY + point.element.y
+
+                // Calculate initial vertical position
+                let tooltipTop = pointY - 12
+
+                // Check for overlaps and adjust position
+                let adjusted = true
+                while (adjusted) {
+                  adjusted = false
+                  for (const occupied of tooltipPositions) {
+                    // Check if this position overlaps with an existing tooltip
+                    if (tooltipTop < occupied.bottom && tooltipTop + tooltipHeight > occupied.top) {
+                      // Move below the overlapping tooltip
+                      tooltipTop = occupied.bottom + minSpacing
+                      adjusted = true
+                      break
+                    }
+                  }
+                }
+
+                // Record this tooltip's position
+                tooltipPositions.push({
+                  top: tooltipTop,
+                  bottom: tooltipTop + tooltipHeight
+                })
+
+                tooltipEl.style.left = (pointX + 10) + 'px'
+                tooltipEl.style.top = tooltipTop + 'px'
+
+                document.body.appendChild(tooltipEl)
+              })
             }
           }
         },
@@ -3048,6 +3599,8 @@
                 if (totalRangeSec > 0) {
                   zoomLevel.value = Math.max(1, Math.round(totalRangeSec / currentRangeSec))
                 }
+                // Force chart update to recalculate Y-axis and header with resize mode
+                setTimeout(() => chart.update('resize'), 10)
               }
             }
           },
@@ -3061,30 +3614,82 @@
         }
       },
       scales: {
-        x: {
-          type: 'time' as const,
-          display: true, // Show x-axis on analog chart
-          grid: {
-            color: showGrid.value ? '#e0e0e0' : 'transparent',
-            display: showGrid.value,
-            lineWidth: 1
-          },
-          ticks: {
-            color: '#595959',
-            font: {
-              size: 11,
-              family: 'Inter, Helvetica, Arial, sans-serif'
-            },
-            maxRotation: 0,
-            minRotation: 0,
-            maxTicksLimit: 14, // Show up to 14 ticks to accommodate all data points
-            autoSkip: false, // Don't skip ticks automatically
-            callback: formatXAxisTick
+        x: (() => {
+          // Get initial time window based on current timebase
+          const timeWindow = getCurrentTimeWindow()
+
+          // Get tick configuration
+          let tickConfig: any
+          let displayFormat: string
+          let maxTicks: number
+
+          if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
+            const customConfig = getCustomTickConfig(
+              customStartDate.value.toDate(),
+              customEndDate.value.toDate()
+            )
+            tickConfig = { unit: customConfig.unit, stepMinutes: customConfig.stepSize }
+            displayFormat = customConfig.displayFormat
+            maxTicks = customConfig.maxTicks
+          } else {
+            tickConfig = getXAxisTickConfig(timeBase.value)
+            displayFormat = getDisplayFormat(timeBase.value)
+            const maxTicksConfigs = {
+              '5m': 6, '10m': 6, '30m': 7, '1h': 7,
+              '4h': 9, '12h': 13, '1d': 13, '4d': 13
+            }
+            maxTicks = maxTicksConfigs[timeBase.value] || 7
           }
-        },
+
+          return {
+            type: 'time' as const,
+            display: true, // Keep x-axis displayed for grid lines
+            min: timeWindow.min,
+            max: timeWindow.max,
+            time: {
+              unit: tickConfig.unit,
+              stepSize: tickConfig.stepMinutes,
+              displayFormats: {
+                minute: displayFormat,
+                hour: displayFormat,
+                day: 'yyyy-MM-dd HH:mm'
+              },
+              minUnit: 'second'
+            },
+            grid: {
+              color: showGrid.value ? '#e0e0e0' : 'transparent',
+              display: showGrid.value,
+              lineWidth: 1,
+              drawTicks: showAnalogXAxis.value // Only show tick marks when analog-only
+            },
+            ticks: {
+              display: showAnalogXAxis.value, // Show labels only when analog-only (no digital series)
+              color: '#595959',
+              font: {
+                size: 11,
+                family: 'Inter, Helvetica, Arial, sans-serif'
+              },
+              maxRotation: 0,
+              minRotation: 0,
+              maxTicksLimit: maxTicks,
+              autoSkip: false, // Don't skip ticks automatically
+              callback: formatXAxisTick,
+              includeBounds: true
+            }
+          }
+        })(),
         y: {
           display: true,
           position: 'left' as const,
+          title: {
+            display: false, // Plugin renders with background
+            text: '', // Will be set dynamically
+            color: '#595959',
+            font: {
+              size: 11,
+              weight: 'bold' as const
+            }
+          },
           grid: {
             color: showGrid.value ? '#e0e0e0' : 'transparent',
             display: showGrid.value,
@@ -3093,23 +3698,45 @@
           ticks: {
             color: '#595959',
             font: {
-              size: 11,
+              size: 10,
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
-            padding: 2,
+            padding: 4,
+            autoSkip: true,
+            maxTicksLimit: 8,
+            align: 'end',
             // stepSize will be calculated dynamically in afterDataLimits
             callback: function (value: any) {
-              return Math.round(Number(value))
+              const formatted = Math.round(Number(value)).toString();
+              return formatted.padStart(5, ' '); // Fixed width for alignment
             }
           },
-          // Dynamic Y-axis scaling with round grid numbers
+          afterFit: function(scale: any) {
+            // Check how many y-axes are actually displayed
+            const chart = scale.chart
+            if (chart?.options?.scales) {
+              const visibleAxes = ['y', 'y1', 'y2', 'y3'].filter(axisId => {
+                const axis = chart.options.scales[axisId]
+                return axis && axis.display !== false
+              })
+              // If only one y-axis, use smaller width
+              scale.width = visibleAxes.length === 1 ? 25 : 45
+            } else {
+              scale.width = 45
+            }
+          },
+          // 🆕 ENHANCED: Smart Y-axis scaling (axis assignment done in updateAnalogChart)
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
             if (data.length === 0) return
 
-            // Get all data values
+            // Filter datasets assigned to this axis (y)
+            const yDatasets = data.filter((ds: any) => !ds.yAxisID || ds.yAxisID === 'y')
+            if (yDatasets.length === 0) return
+
+            // Get all values for left Y-axis
             const allValues: number[] = []
-            data.forEach((dataset: any) => {
+            yDatasets.forEach((dataset: any) => {
               if (dataset.data && dataset.data.length > 0) {
                 dataset.data.forEach((point: any) => {
                   if (point && typeof point.y === 'number' && isFinite(point.y) && point.y > -99999 && point.y < 999999) {
@@ -3124,6 +3751,8 @@
             const min = Math.min(...allValues)
             const max = Math.max(...allValues)
             const range = max - min
+
+            LogUtil.Debug('📊 Y-axis afterDataLimits:', { min, max, range, valueCount: allValues.length, datasets: yDatasets.length })
 
             // Enhanced auto-ranging for better visibility
             if (range === 0) {
@@ -3145,8 +3774,305 @@
 
             // Calculate nice step size for more ticks
             const newRange = scale.max - scale.min
-            const niceSteps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+            const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
             const roughStep = newRange / 10 // Target 10 grid lines for more ticks
+            const stepSize = niceSteps.find(s => s >= roughStep) || 1
+            scale.options.ticks.stepSize = stepSize
+          }
+        },
+        // 🆕 Y1 axis (left side, 2nd unit type)
+        y1: {
+          display: true,
+          position: 'left' as const,
+          stack: 'y-axis' as const,
+          stackWeight: 1,
+          grid: {
+            drawOnChartArea: false,
+            display: false
+          },
+          title: {
+            display: false, // Plugin renders with background
+            text: '', // Will be set dynamically
+            color: '#1890ff',
+            font: {
+              size: 11,
+              weight: 'bold' as const
+            }
+          },
+          ticks: {
+            color: '#1890ff',
+            font: {
+              size: 10,
+              family: 'Inter, Helvetica, Arial, sans-serif'
+            },
+            padding: 4,
+            autoSkip: true,
+            maxTicksLimit: 8,
+            align: 'end',
+            callback: function (value: any) {
+              return Math.round(Number(value)).toString().padStart(5, ' ');
+            }
+          },
+          afterFit: function(scale: any) {
+            const chart = scale.chart
+            if (chart?.options?.scales) {
+              const visibleAxes = ['y', 'y1', 'y2', 'y3'].filter(axisId => {
+                const axis = chart.options.scales[axisId]
+                return axis && axis.display !== false
+              })
+              scale.width = visibleAxes.length === 1 ? 25 : 45
+            } else {
+              scale.width = 45
+            }
+          },
+          afterDataLimits: function (scale: any) {
+            const data = scale.chart.data.datasets
+            const y1Datasets = data.filter((ds: any) => ds.yAxisID === 'y1')
+
+            if (y1Datasets.length === 0) {
+              scale.display = false
+              return
+            }
+
+            scale.display = true
+
+            // Get all values for y1 axis
+            const allValues: number[] = []
+            y1Datasets.forEach((dataset: any) => {
+              if (dataset.data && dataset.data.length > 0) {
+                dataset.data.forEach((point: any) => {
+                  if (point && typeof point.y === 'number' && isFinite(point.y) && point.y > -99999 && point.y < 999999) {
+                    allValues.push(point.y)
+                  }
+                })
+              }
+            })
+
+            if (allValues.length === 0) {
+              scale.display = false
+              return
+            }
+
+            const min = Math.min(...allValues)
+            const max = Math.max(...allValues)
+            const range = max - min
+
+            LogUtil.Debug('📊 Y1-axis afterDataLimits:', { min, max, range, valueCount: allValues.length, datasets: y1Datasets.length })
+
+            if (range === 0) {
+              scale.min = min * 0.9
+              scale.max = max * 1.1
+            } else if (range < 2) {
+              const center = (min + max) / 2
+              const expandedRange = Math.max(range * 3, 1)
+              scale.min = center - expandedRange / 2
+              scale.max = center + expandedRange / 2
+            } else {
+              const padding = range * 0.1
+              scale.min = min - padding
+              scale.max = max + padding
+            }
+
+            // Calculate nice step size
+            const newRange = scale.max - scale.min
+            const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+            const roughStep = newRange / 10
+            const stepSize = niceSteps.find(s => s >= roughStep) || 1
+            scale.options.ticks.stepSize = stepSize
+
+            LogUtil.Debug('📊 Y1-axis final scale:', { min: scale.min, max: scale.max, stepSize })
+          }
+        },
+        // 🆕 Y2 axis (left side, 3rd unit type)
+        y2: {
+          display: true,
+          position: 'left' as const,
+          stack: 'y-axis' as const,
+          stackWeight: 1,
+          grid: {
+            drawOnChartArea: false,
+            display: false
+          },
+          title: {
+            display: false, // Plugin renders with background
+            text: '', // Will be set dynamically
+            color: '#52c41a',
+            font: {
+              size: 11,
+              weight: 'bold' as const
+            }
+          },
+          ticks: {
+            color: '#52c41a',
+            font: {
+              size: 10,
+              family: 'Inter, Helvetica, Arial, sans-serif'
+            },
+            padding: 4,
+            autoSkip: true,
+            maxTicksLimit: 8,
+            align: 'end',
+            callback: function (value: any) {
+              return Math.round(Number(value)).toString().padStart(5, ' ');
+            }
+          },
+          afterFit: function(scale: any) {
+            const chart = scale.chart
+            if (chart?.options?.scales) {
+              const visibleAxes = ['y', 'y1', 'y2', 'y3'].filter(axisId => {
+                const axis = chart.options.scales[axisId]
+                return axis && axis.display !== false
+              })
+              scale.width = visibleAxes.length === 1 ? 25 : 45
+            } else {
+              scale.width = 45
+            }
+          },
+          afterDataLimits: function (scale: any) {
+            const data = scale.chart.data.datasets
+            const y2Datasets = data.filter((ds: any) => ds.yAxisID === 'y2')
+
+            if (y2Datasets.length === 0) {
+              scale.display = false
+              return
+            }
+
+            scale.display = true
+            const allValues: number[] = []
+            y2Datasets.forEach((dataset: any) => {
+              if (dataset.data && dataset.data.length > 0) {
+                dataset.data.forEach((point: any) => {
+                  if (point && typeof point.y === 'number' && isFinite(point.y) && point.y > -99999 && point.y < 999999) {
+                    allValues.push(point.y)
+                  }
+                })
+              }
+            })
+
+            if (allValues.length === 0) {
+              scale.display = false
+              return
+            }
+
+            const min = Math.min(...allValues)
+            const max = Math.max(...allValues)
+            const range = max - min
+
+            if (range === 0) {
+              scale.min = min * 0.9
+              scale.max = max * 1.1
+            } else if (range < 2) {
+              const center = (min + max) / 2
+              const expandedRange = Math.max(range * 3, 1)
+              scale.min = center - expandedRange / 2
+              scale.max = center + expandedRange / 2
+            } else {
+              const padding = range * 0.1
+              scale.min = min - padding
+              scale.max = max + padding
+            }
+
+            // Calculate nice step size
+            const newRange = scale.max - scale.min
+            const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+            const roughStep = newRange / 10
+            const stepSize = niceSteps.find(s => s >= roughStep) || 1
+            scale.options.ticks.stepSize = stepSize
+          }
+        },
+        // 🆕 Y3 axis (left side, 4th unit type)
+        y3: {
+          display: true,
+          position: 'left' as const,
+          stack: 'y-axis' as const,
+          stackWeight: 1,
+          grid: {
+            drawOnChartArea: false,
+            display: false
+          },
+          title: {
+            display: false, // Plugin renders with background
+            text: '', // Will be set dynamically
+            color: '#fa8c16',
+            font: {
+              size: 11,
+              weight: 'bold' as const
+            }
+          },
+          ticks: {
+            color: '#fa8c16',
+            font: {
+              size: 10,
+              family: 'Inter, Helvetica, Arial, sans-serif'
+            },
+            padding: 4,
+            autoSkip: true,
+            maxTicksLimit: 8,
+            align: 'end',
+            callback: function (value: any) {
+              return Math.round(Number(value)).toString().padStart(5, ' ');
+            }
+          },
+          afterFit: function(scale: any) {
+            const chart = scale.chart
+            if (chart?.options?.scales) {
+              const visibleAxes = ['y', 'y1', 'y2', 'y3'].filter(axisId => {
+                const axis = chart.options.scales[axisId]
+                return axis && axis.display !== false
+              })
+              scale.width = visibleAxes.length === 1 ? 25 : 45
+            } else {
+              scale.width = 45
+            }
+          },
+          afterDataLimits: function (scale: any) {
+            const data = scale.chart.data.datasets
+            const y3Datasets = data.filter((ds: any) => ds.yAxisID === 'y3')
+
+            if (y3Datasets.length === 0) {
+              scale.display = false
+              return
+            }
+
+            scale.display = true
+            const allValues: number[] = []
+            y3Datasets.forEach((dataset: any) => {
+              if (dataset.data && dataset.data.length > 0) {
+                dataset.data.forEach((point: any) => {
+                  if (point && typeof point.y === 'number' && isFinite(point.y) && point.y > -99999 && point.y < 999999) {
+                    allValues.push(point.y)
+                  }
+                })
+              }
+            })
+
+            if (allValues.length === 0) {
+              scale.display = false
+              return
+            }
+
+            const min = Math.min(...allValues)
+            const max = Math.max(...allValues)
+            const range = max - min
+
+            if (range === 0) {
+              scale.min = min * 0.9
+              scale.max = max * 1.1
+            } else if (range < 2) {
+              const center = (min + max) / 2
+              const expandedRange = Math.max(range * 3, 1)
+              scale.min = center - expandedRange / 2
+              scale.max = center + expandedRange / 2
+            } else {
+              const padding = range * 0.1
+              scale.min = min - padding
+              scale.max = max + padding
+            }
+
+            // Calculate nice step size
+            const newRange = scale.max - scale.min
+            const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+            const roughStep = newRange / 10
             const stepSize = niceSteps.find(s => s >= roughStep) || 1
             scale.options.ticks.stepSize = stepSize
           }
@@ -3177,7 +4103,7 @@
         layout: {
           padding: {
             left: 5,
-            right: 5,
+            right: 10,
             top: 0,
             bottom: isLastChart ? 10 : 0
           }
@@ -3209,7 +4135,11 @@
                 return new Date(timestamp).toLocaleString()
               },
               label: (context: any) => {
-                const stateIndex = context.parsed.y === 1 ? 1 : 0
+                // context.parsed.y contains the actual control value (0 or 1)
+                // control=0 → digitalStates[0] (first value in pair)
+                // control=1 → digitalStates[1] (second value in pair)
+                const controlValue = context.parsed.y
+                const stateIndex = controlValue > 0.5 ? 1 : 0
                 const stateText = digitalStates[stateIndex]
                 return `   ${stateText}`
               }
@@ -3217,31 +4147,75 @@
           }
         },
         scales: {
-          x: {
-            type: 'time' as const,
-            display: isLastChart, // Only show x-axis on last chart
-            grid: {
-              color: '#e0e0e0',
-              display: true,
-              lineWidth: 1, // Make vertical grid lines more visible
-              drawOnChartArea: true, // Ensure grid lines are drawn over chart area
-              drawTicks: isLastChart // Only draw tick marks on last chart
-            },
-            ticks: {
-              display: isLastChart, // Only display ticks on last chart
-              color: '#595959',
-              font: {
-                size: 10,
-                family: 'Inter, Helvetica, Arial, sans-serif'
-              },
-              maxRotation: 0,
-              minRotation: 0,
-              callback: formatXAxisTick
+          x: (() => {
+            // Get initial time window based on current timebase
+            const timeWindow = getCurrentTimeWindow()
+
+            // Get tick configuration
+            let tickConfig: any
+            let displayFormat: string
+            let maxTicks: number
+
+            if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
+              const customConfig = getCustomTickConfig(
+                customStartDate.value.toDate(),
+                customEndDate.value.toDate()
+              )
+              tickConfig = { unit: customConfig.unit, stepMinutes: customConfig.stepSize }
+              displayFormat = customConfig.displayFormat
+              maxTicks = customConfig.maxTicks
+            } else {
+              tickConfig = getXAxisTickConfig(timeBase.value)
+              displayFormat = getDisplayFormat(timeBase.value)
+              const maxTicksConfigs = {
+                '5m': 6, '10m': 6, '30m': 7, '1h': 7,
+                '4h': 9, '12h': 13, '1d': 13, '4d': 13
+              }
+              maxTicks = maxTicksConfigs[timeBase.value] || 7
             }
-          },
+
+            return {
+              type: 'time' as const,
+              display: isLastChart, // Only show x-axis on last chart
+              min: timeWindow.min,
+              max: timeWindow.max,
+              time: {
+                unit: tickConfig.unit,
+                stepSize: tickConfig.stepMinutes,
+                displayFormats: {
+                  minute: displayFormat,
+                  hour: displayFormat,
+                  day: 'yyyy-MM-dd HH:mm'
+                },
+                minUnit: 'second'
+              },
+              grid: {
+                color: '#e0e0e0',
+                display: true,
+                lineWidth: 1, // Make vertical grid lines more visible
+                drawOnChartArea: true, // Ensure grid lines are drawn over chart area
+                drawTicks: isLastChart // Only draw tick marks on last chart
+              },
+              ticks: {
+                display: isLastChart, // Only display ticks on last chart
+                color: '#595959',
+                font: {
+                  size: 10,
+                  family: 'Inter, Helvetica, Arial, sans-serif'
+                },
+                maxRotation: 0,
+                minRotation: 0,
+                maxTicksLimit: maxTicks,
+                autoSkip: false,
+                callback: formatXAxisTick,
+                includeBounds: true
+              }
+            }
+          })(),
           y: {
             min: 0,
-            max: 1,
+            max: 1.4,
+            reverse: true, // CRITICAL: Reverse Y-axis so control=0 appears at TOP, control=1 at BOTTOM
             display: true, // Show y-axis for digital charts
             grid: {
               color: '#F0F0F0',
@@ -3255,11 +4229,20 @@
                 size: 8,
                 family: 'Inter, Helvetica, Arial, sans-serif'
               },
-              padding: 5, // Match analog chart padding for alignment
+              padding: 2, // Match analog chart padding for alignment
+              autoSkip: false,
+              align: 'end',
               maxTicksLimit: 2, // Limit to only the two states
               callback: function (value: any) {
-                return value > 0.5 ? digitalStates[1] : digitalStates[0];
+                // With reverse=true: value=0 appears at TOP, value=1 at BOTTOM
+                // control=0 → digitalStates[0] (first value) → at TOP (e.g., "Close")
+                // control=1 → digitalStates[1] (second value) → at BOTTOM (e.g., "Open")
+                const label = value > 0.5 ? digitalStates[1] : digitalStates[0];
+                return label.padStart(5, ' '); // Fixed width for alignment
               }
+            },
+            afterFit: function(scale: any) {
+              scale.width = 50; // Fixed width for Y-axis to ensure alignment
             }
           }
         }
@@ -3324,9 +4307,22 @@
   const getCurrentTimeWindow = () => {
     // For custom date range, use the exact start/end times selected by user
     if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
+      const minTime = customStartDate.value.valueOf()
+      const maxTime = customEndDate.value.valueOf()
+
+      LogUtil.Info('📅 Custom Date Range Time Window:', {
+        customStartDate: customStartDate.value.format('YYYY-MM-DD HH:mm:ss'),
+        customEndDate: customEndDate.value.format('YYYY-MM-DD HH:mm:ss'),
+        minTimestamp: minTime,
+        maxTimestamp: maxTime,
+        minISO: new Date(minTime).toISOString(),
+        maxISO: new Date(maxTime).toISOString(),
+        rangeDuration: `${Math.round((maxTime - minTime) / 60000)} minutes`
+      })
+
       return {
-        min: customStartDate.value.valueOf(), // Use Dayjs valueOf() to get timestamp
-        max: customEndDate.value.valueOf()
+        min: minTime,
+        max: maxTime
       }
     }
 
@@ -3519,21 +4515,12 @@
 
 
   /**
-   * Initialize WebSocket and WebView clients for data communication
+   * Initialize FFI API client for data communication
+   * Now using HTTP-based FFI API for all operations instead of WebSocket
    */
   const initializeDataClients = () => {
-    // Check if we're running in built-in browser (WebView) or external browser (WebSocket)
-    const isBuiltInBrowser = window.location.protocol === 'ms-appx-web:' ||
-      (window as any).chrome?.webview !== undefined ||
-      (window as any).external?.sendMessage !== undefined
-
-    if (isBuiltInBrowser) {
-      // Use WebView client for built-in browser
-      return new WebViewClient()
-    } else {
-      // Use WebSocket client for external browser
-      return Hvac.WsClient
-    }
+    // Return FFI API instance for all data operations
+    return ffiApi
   }
 
   /**
@@ -3553,6 +4540,71 @@
     }
 
     return false
+  }
+
+  /**
+   * Process GET_PANEL_DATA (Action 0) response to extract point metadata and values
+   * Matches points from monitor config with current values from panel data
+   */
+  const processPanelDataResponse = (response: any, monitorConfigData: any): DataPoint[][] => {
+    const results: DataPoint[][] = []
+
+    if (!response?.data) {
+      LogUtil.Warn('⚠️ processPanelDataResponse: No data in response')
+      return results
+    }
+
+    LogUtil.Info('📊 Processing GET_PANEL_DATA response (Action 0)', {
+      hasInputs: !!response.data.inputs,
+      hasOutputs: !!response.data.outputs,
+      hasVariables: !!response.data.variables,
+      inputItemsCount: monitorConfigData.inputItems?.length || 0
+    })
+
+    // Combine all point types into single array (Action 0 returns separate arrays)
+    const allPoints = [
+      ...(response.data.inputs || []),
+      ...(response.data.outputs || []),
+      ...(response.data.variables || [])
+    ]
+
+    // Match each monitor input item with corresponding point from panel data
+    monitorConfigData.inputItems.forEach((inputItem: any, index: number) => {
+      const rangeValue = monitorConfigData.ranges[index] || 0
+
+      // Find matching point by panel, point_number, and point_type
+      const matchingPoint = allPoints.find((point: any) => {
+        const pointPanel = point.panel || point.pid
+        const pointIndex = point.index
+        // point_type: 1=INPUT, 2=OUTPUT, 3=VARIABLE
+        const expectedIndex = inputItem.point_number
+
+        return pointPanel === inputItem.panel && pointIndex === expectedIndex
+      })
+
+      if (matchingPoint) {
+        const processedValue = processDeviceValue(matchingPoint, rangeValue)
+        results.push([{
+          timestamp: Date.now(),
+          value: processedValue.value
+        }])
+
+        LogUtil.Info(`✅ Matched point ${index}:`, {
+          inputItem,
+          matchingPoint: { index: matchingPoint.index, value: matchingPoint.value, label: matchingPoint.label }
+        })
+      } else {
+        // Default data point for unmatched items
+        results.push([{
+          timestamp: Date.now(),
+          value: 0
+        }])
+
+        LogUtil.Warn(`⚠️ No matching point for item ${index}`, { inputItem })
+      }
+    })
+
+    return results
   }
 
   /**
@@ -3619,32 +4671,37 @@
       // Note: Database storage is handled by T3000_Data watcher instead of custom handlers
       // setupGetEntriesResponseHandlers(dataClient) // Removed - doesn't work with bound methods
 
-      // Get current device for panelId - use the first available panel as fallback
-      const panelsList = T3000_Data.value.panelsList || []
-      const currentPanelId = panelsList.length > 0 ? panelsList[0].panel_number : 1
+      // 🆕 FFI API: Get panel ID from URL or monitor config
+      const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : null
+      const panelId = urlPanelId || monitorConfigData.pid || 1
 
-      // Get panels data for device mapping
-      const panelsData = T3000_Data.value.panelsData || []
-
-      // Instead of finding a single panel, return all panelData for the currentPanelId
-      const currentPanelData = panelsData.filter(panel => String(panel.pid) === String(currentPanelId))
-
-      if (!currentPanelData) {
-        return []
-      }
-
-      // Use currentPanelData directly as devicesArray
-      let devicesArray = currentPanelData
-
-      if (!Array.isArray(devicesArray) || devicesArray.length === 0) {
-        return []
-      }
-
-      // Fetch data for all input items using BATCH REQUEST (optimized approach)
-      const allDataResults = await fetchAllItemsDataBatch(dataClient, monitorConfigData, {
-        panelId: currentPanelId,
-        panelData: devicesArray
+      LogUtil.Info('📡 FFI API: Using GET_PANEL_DATA (Action 0) for initial data fetch', {
+        panelId,
+        urlPanelId,
+        monitorConfigPid: monitorConfigData.pid,
+        inputItemsCount: monitorConfigData.inputItems?.length || 0
       })
+
+      // 🆕 FFI API: Call Action 0 (GET_PANEL_DATA) to get initial point metadata and values
+      const panelDataResponse = await ffiApi.ffiGetPanelData(panelId)
+
+      if (!panelDataResponse || !panelDataResponse.data) {
+        LogUtil.Error('❌ FFI API: GET_PANEL_DATA returned no data', { panelId })
+        if (!hasExistingData) stopLoading()
+        return []
+      }
+
+      LogUtil.Info('✅ FFI API: GET_PANEL_DATA response received', {
+        hasInputs: !!panelDataResponse.data.inputs,
+        hasOutputs: !!panelDataResponse.data.outputs,
+        hasVariables: !!panelDataResponse.data.variables,
+        inputsCount: panelDataResponse.data.inputs?.length || 0,
+        outputsCount: panelDataResponse.data.outputs?.length || 0,
+        variablesCount: panelDataResponse.data.variables?.length || 0
+      })
+
+      // Process response and match with monitor config to extract point values
+      const allDataResults = processPanelDataResponse(panelDataResponse, monitorConfigData)
 
       return allDataResults
 
@@ -3896,16 +4953,16 @@
         return
       }
 
-      // Send GET_ENTITIES request
-      if (dataClient.GetEntries) {
-        LogUtil.Info('📡 sendGetEntitiesForDataSeries: Sending GET_ENTITIES request (dataseries fallback)', {
-          panelId: currentPanelId,
-          itemCount: batchRequestData.length,
+      // Send LOGGING_DATA request
+      if (dataClient.GetLoggingData) {
+        LogUtil.Info('📡 sendGetEntitiesForDataSeries: Sending LOGGING_DATA request (dataseries fallback)', {
+          serialNumber: currentSN,
+          seriesCount: dataSeries.value.length,
           timestamp: new Date().toISOString()
         })
-        dataClient.GetEntries(currentPanelId, null, batchRequestData)
+        dataClient.GetLoggingData(currentSN)
       } else {
-        LogUtil.Error('�?sendGetEntitiesForDataSeries: GetEntries method not available')
+        LogUtil.Error('❌ sendGetEntitiesForDataSeries: GetLoggingData method not available')
       }
     } catch (error) {
       LogUtil.Error('�?sendGetEntitiesForDataSeries: Error in dataseries fallback mode:', error)
@@ -3913,110 +4970,103 @@
   }
 
   /**
-   * Send batch GET_ENTRIES request for periodic real-time updates
-   * Used by interval timer to efficiently update all monitored items at once
+   * 🆕 FFI API: Get logging data directly using synchronous FFI call
+   * Uses action 15 (LOGGING_DATA) - gets all inputs, outputs, variables in one call
    */
   const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> => {
-    LogUtil.Info('🚀 sendPeriodicBatchRequest CALLED', {
+    LogUtil.Info('🚀 sendPeriodicBatchRequest (FFI API action=15)', {
       hasMonitorConfig: !!monitorConfigData,
       inputItemsCount: monitorConfigData?.inputItems?.length || 0,
       timestamp: new Date().toISOString()
     })
 
     try {
-      // 🆕 FIX: Use query parameters as PRIMARY source for panelId (most reliable)
-      let currentPanelId: number | null = null
+      // Get serial number and panel ID for LOGGING_DATA request
+      const urlSerialNumber = route.query.sn ? parseInt(route.query.sn as string) : 0
+      const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : 0
+      const panelsList = T3000_Data.value.panelsList || []
+      const currentSN = urlSerialNumber || (panelsList.length > 0 ? panelsList[0].serial_number : 0)
+      const currentPanelId = urlPanelId || (panelsList.length > 0 ? panelsList[0].panel_number : 1)
 
-      // FIRST PRIORITY: Query parameters from URL (most reliable - user specified)
-      currentPanelId = getPanelIdFromQuery()
-      if (currentPanelId !== null) {
-        LogUtil.Debug('🔧 sendPeriodicBatchRequest: Using panelId from query parameters (RELIABLE)', {
-          queryPanelId: currentPanelId,
-          source: 'route.query.panel_id'
-        })
-      } else {
-        // SECOND PRIORITY: Monitor config pid (if available)
-        if (monitorConfigData.pid !== undefined && monitorConfigData.pid !== null) {
-          currentPanelId = monitorConfigData.pid
-          LogUtil.Debug('🔧 sendPeriodicBatchRequest: Using panelId from monitor config', {
-            monitorConfigPid: monitorConfigData.pid,
-            isTemporary: monitorConfigData.isTemporary || false
-          })
-        } else {
-          // CRITICAL ERROR: No panelId available from reliable sources
-          LogUtil.Error('�?sendPeriodicBatchRequest: No panelId available from query params or monitor config', {
-            queryPanelId: route.query.panel_id,
-            monitorConfigPid: monitorConfigData.pid,
-            hasMonitorConfig: !!monitorConfigData
-          })
-          return // Don't fallback to unreliable sources
-        }
-      }
-
-      // Get panels data for device mapping using the determined panelId
-      const panelsData = T3000_Data.value.panelsData || []
-      const currentPanelData = panelsData.filter(panel => String(panel.pid) === String(currentPanelId))
-
-      LogUtil.Debug('🔧 sendPeriodicBatchRequest: PanelId determination result', {
-        finalPanelId: currentPanelId,
-        panelsDataCount: panelsData.length,
-        matchingPanelDataCount: currentPanelData.length,
-        monitorConfigHasPid: monitorConfigData.pid !== undefined
-      })
-
-      if (!currentPanelData || currentPanelData.length === 0) {
-        LogUtil.Debug('GET_ENTRIES Batch Request -> No panel data available')
+      if (!currentSN) {
+        LogUtil.Error('❌ No serial number available for LOGGING_DATA')
         return
       }
 
-      // Initialize data client
-      const dataClient = initializeDataClients()
-      if (!dataClient) {
-        LogUtil.Debug('GET_ENTRIES Batch Request -> No data client available')
-        return
-      }
-
-      // Build batch request for ALL monitored items
-      const batchRequestData: any[] = []
-
-      monitorConfigData.inputItems.forEach((inputItem: any, index: number) => {
-        const matchingDevice = findPanelDataDevice(inputItem, currentPanelData)
-
-        if (matchingDevice) {
-          batchRequestData.push({
-            panelId: currentPanelId,
-            index: parseInt(matchingDevice.index) || 0,
-            type: TransferTdlPointType(inputItem.point_type) // Adjusted for TrendLog
-          })
-        }
-      })
-
-      LogUtil.Debug('GET_ENTRIES Batch Request -> Sending periodic batch:', {
-        itemCount: batchRequestData.length,
+      // 🆕 Use FFI API with action 15 (LOGGING_DATA) - single synchronous call
+      // C++ expects both panelId and serialNumber in the JSON payload
+      LogUtil.Info('📡 FFI API ffiGetLoggingData (action=15, single call)', {
         panelId: currentPanelId,
-        batchSample: batchRequestData.slice(0, 3),
-        timestamp: new Date().toISOString(),
-        monitorConfigData: monitorConfigData
+        serialNumber: currentSN
       })
 
-      if (batchRequestData.length === 0) {
-        LogUtil.Debug('GET_ENTRIES Batch Request -> No valid items for batch request')
-        return
+      const response = await ffiApi.ffiGetLoggingData(currentPanelId, currentSN)
+
+      LogUtil.Debug('📊 Action 15 response received:', {
+        hasResponse: !!response,
+        hasData: !!(response && response.data),
+        responseType: response?.debug ? 'empty' : 'data',
+        timestamp: new Date().toLocaleTimeString()
+      })
+
+      if (response && response.data) {
+        // LOGGING_DATA returns: response.data = [{ panel_id, panel_name, device_data: [...] }]
+        // Extract device_data from all devices
+        let allPanelItems: any[] = []
+
+        if (Array.isArray(response.data)) {
+          response.data.forEach((device: any) => {
+            if (device.device_data && Array.isArray(device.device_data)) {
+              allPanelItems = allPanelItems.concat(device.device_data)
+            }
+          })
+        }
+
+        LogUtil.Info('📊 LOGGING_DATA extracted items', {
+          deviceCount: response.data.length,
+          totalItems: allPanelItems.length
+        })
+
+        // Note: Action 15 already queries specific device by currentPanelId + currentSN
+        // So items returned are already filtered to current device - just validate data quality
+        const validDataItems = allPanelItems.filter(item =>
+          item &&
+          typeof item === 'object' &&
+          item.hasOwnProperty('value') &&
+          item.value !== null &&
+          item.value !== undefined &&
+          item.id
+        )
+
+        LogUtil.Debug('📊 Action 15 processed:', {
+          totalItems: allPanelItems.length,
+          validItems: validDataItems.length,
+          willUpdate: validDataItems.length > 0,
+          timestamp: new Date().toLocaleTimeString()
+        })
+
+        if (validDataItems.length > 0) {
+          LogUtil.Debug('✅ Calling updateChartWithNewData with', validDataItems.length, 'items')
+          updateChartWithNewData(validDataItems)
+          // Batch save is done inside updateChartWithNewData - no duplicate call needed
+        } else {
+          LogUtil.Debug('⚠️ No valid data items - chart will NOT be updated, only scrolled')
+        }
+
+        lastSyncTime.value = new Date().toLocaleTimeString()
+        if (hasConnectionError.value) {
+          hasConnectionError.value = false
+        }
+      } else {
+        LogUtil.Debug('⚠️ Action 15 response is EMPTY - no data property', {
+          response: response,
+          timestamp: new Date().toLocaleTimeString()
+        })
       }
 
-      // Send single batch GET_ENTRIES request for ALL items
-      if (dataClient.GetEntries) {
-        LogUtil.Info('📡 Sending GET_ENTRIES request', {
-          panelId: currentPanelId,
-          itemCount: batchRequestData.length,
-          timestamp: new Date().toISOString()
-        })
-        dataClient.GetEntries(null, null, batchRequestData)
-      } else {
-        LogUtil.Error('GET_ENTRIES Batch Request -> ERROR: GetEntries method not available')
-      }
     } catch (error) {
-      LogUtil.Error('GET_ENTRIES Batch Request -> ERROR in sendBatchGetEntriesRequest:', error)
+      LogUtil.Error('❌ FFI API (action=15) failed:', error)
+      hasConnectionError.value = true
     }
   }
 
@@ -4138,21 +5188,28 @@
 
       // 🆕 NOW fetch real-time data in background to populate the series
       // This happens AFTER series structure is created, so it won't block historical load
-      LogUtil.Info('📡 Fetching real-time data in background (non-blocking)')
+      LogUtil.Info('📡 Fetching real-time data in background (non-blocking) - THIS WILL CALL ACTION 0')
       fetchRealTimeMonitorData().then(realTimeData => {
+        LogUtil.Info('✅ fetchRealTimeMonitorData completed', {
+          hasData: !!realTimeData,
+          dataLength: realTimeData?.length || 0,
+          dataItemsCount: realTimeData ? realTimeData.reduce((sum, arr) => sum + arr.length, 0) : 0
+        })
         if (realTimeData && realTimeData.length > 0) {
           // Merge real-time data into existing series
           realTimeData.forEach((itemData, index) => {
             if (dataSeries.value[index] && itemData.length > 0) {
               const existingData = dataSeries.value[index].data || []
               dataSeries.value[index].data = mergeAndDeduplicate(existingData, itemData)
-              LogUtil.Info(`📡 Added ${itemData.length} real-time points to ${dataSeries.value[index].name}`)
+              LogUtil.Info(`📡 Added ${itemData.length} real-time points to ${dataSeries.value[index].name}`);
             }
           })
           updateCharts()
+        } else {
+          LogUtil.Warn('⚠️ fetchRealTimeMonitorData returned no data')
         }
       }).catch(error => {
-        LogUtil.Warn('Real-time data fetch failed (will retry on next interval)', error)
+        LogUtil.Error('❌ fetchRealTimeMonitorData failed (will retry on next interval)', error)
       })
 
     } catch (error) {
@@ -4205,14 +5262,12 @@
   }
 
   /**
-   * Scale large values for display: if value >= 1000, divide by 1000
-   * Matches the backend scaling logic for consistency between real-time and historical data
+   * Scale raw value from T3000 integer format to decimal
+   * Database and C++ always store/return values as integers (multiplied by 1000)
+   * Examples: 5000 → 5, 500 → 0.5, 2500 → 2.5
    */
   const scaleValueIfNeeded = (rawValue: number): number => {
-    if (rawValue >= 1000) {
-      return rawValue / 1000
-    }
-    return rawValue
+    return rawValue / 1000
   }
 
   /**
@@ -4240,21 +5295,22 @@
   }
 
   /**
-   * Get the correct value from panel data based on device type
+   * Get the correct RAW value from panel data based on device type
+   * Returns raw value WITHOUT scaling - scaling is done later by processDeviceValue
    */
   const getDeviceValue = (panelData: any, isAnalog: boolean): number => {
     let rawValue: number
 
     if (isAnalog) {
-      // Analog devices: use 'value' field
-      rawValue = scaleValueIfNeeded(parseFloat(panelData.value) || 0)
+      // Analog devices: use 'value' field (raw value from C++)
+      rawValue = parseFloat(panelData.value) || 0
     } else {
       // Digital devices: For OUT1/OUT2, check multiple potential fields
       if (panelData.id === 'OUT1' || panelData.id === 'OUT2') {
         // Try different fields for digital outputs
-        const controlValue = scaleValueIfNeeded(parseFloat(panelData.control) || 0)
-        const valueValue = scaleValueIfNeeded(parseFloat(panelData.value) || 0)
-        const autoManualValue = scaleValueIfNeeded(parseFloat(panelData.auto_manual) || 0)
+        const controlValue = parseFloat(panelData.control) || 0
+        const valueValue = parseFloat(panelData.value) || 0
+        const autoManualValue = parseFloat(panelData.auto_manual) || 0
 
         // Use the field with the highest non-zero value, or control as fallback
         if (valueValue > 0) {
@@ -4266,7 +5322,7 @@
         }
       } else {
         // Regular digital devices: use 'control' field
-        rawValue = scaleValueIfNeeded(parseFloat(panelData.control) || 0)
+        rawValue = parseFloat(panelData.control) || 0
       }
     }
 
@@ -4363,6 +5419,34 @@
   }
 
   /**
+   * Map point type string back to number (reverse of mapPointTypeFromNumber)
+   * Used when loading data from database that stores point types as strings
+   */
+  const mapPointTypeToNumber = (pointTypeStr: string): number => {
+    switch (pointTypeStr?.toUpperCase()) {
+      case 'OUTPUT': return 1    // BAC_OUT = 0, T3000 = 1
+      case 'INPUT': return 2     // BAC_IN = 1, T3000 = 2
+      case 'VARIABLE': return 3  // BAC_VAR = 2, T3000 = 3
+      case 'PID': return 4       // BAC_PID = 3, T3000 = 4
+      case 'SCHEDULE': return 5  // BAC_SCH = 4, T3000 = 5
+      case 'HOLIDAY': return 6   // BAC_HOL = 5, T3000 = 6
+      case 'PROGRAM': return 7   // BAC_PRG = 6, T3000 = 7
+      case 'TABLE': return 8     // BAC_TBL = 7, T3000 = 8
+      case 'DMON': return 9      // BAC_DMON = 8, T3000 = 9
+      case 'AMON': return 10     // BAC_AMON = 9, T3000 = 10
+      case 'GROUP': return 11    // BAC_GRP = 10, T3000 = 11
+      case 'ARRAY': return 12    // BAC_AY = 11, T3000 = 12
+      case 'ALARMM': return 13   // BAC_ALARMM = 12, T3000 = 13
+      case 'UNIT': return 14     // BAC_UNIT = 13, T3000 = 14
+      case 'USER_NAME': return 15 // BAC_USER_NAME = 14, T3000 = 15
+      case 'ALARMS': return 16   // BAC_ALARMS = 15, T3000 = 16
+      case 'WR_TIME': return 17  // BAC_WR_TIME = 16, T3000 = 17
+      case 'AR_Y': return 18     // BAC_AR_Y = 17, T3000 = 18
+      default: return 2          // Default to INPUT if unknown
+    }
+  }
+
+  /**
    * Get point type info for debugging (using existing function)
    */
 
@@ -4377,14 +5461,9 @@
     const rawValue = getDeviceValue(panelData, isAnalog)
 
     if (isAnalog) {
-      // Analog processing: only divide by 1000 if value is larger than 1000
-      // This handles cases where some values are already in correct scale
-      let processedValue: number
-      if (rawValue > 1000) {
-        processedValue = rawValue / 1000
-      } else {
-        processedValue = rawValue
-      }
+      // Analog processing: always divide by 1000 (T3000 stores values as integers)
+      // Examples: 5000 → 5, 567 → 0.567, 2500 → 2.5
+      const processedValue = scaleValueIfNeeded(rawValue)
 
       const unit = getAnalogUnit(panelData.range, panelData.type)
 
@@ -4394,12 +5473,13 @@
         unit: unit
       }
     } else {
-      // Digital processing: use control value as-is with state labels
+      // Digital processing: divide by 1000 first, then use state labels
+      const scaledValue = scaleValueIfNeeded(rawValue)
       const digitalStates = getDigitalStatesFromRange(panelData.range)
-      const displayValue = rawValue > 0 ? `1 (${digitalStates[1]})` : `0 (${digitalStates[0]})`
+      const displayValue = scaledValue > 0 ? `1 (${digitalStates[1]})` : `0 (${digitalStates[0]})`
 
       return {
-        value: rawValue,
+        value: scaledValue,
         displayValue: displayValue,
         unit: ''
       }
@@ -4715,7 +5795,7 @@
           limit: 10000 // Reasonable limit for backfill
         }
 
-        const response = await DatabaseQueryAPI.queryTrendlogData(queryOptions)
+        const response = await trendlogAPI.getTrendlogHistory(queryOptions)
 
         if (response && response.data && response.data.length > 0) {
           // Merge new data into existing series
@@ -4751,13 +5831,17 @@
   /**
    * Load historical data from database based on current timebase
    */
-  const loadHistoricalDataFromDatabase = async () => {
+  const loadHistoricalDataFromDatabase = async (forceReload: boolean = false) => {
     LogUtil.Info('🔍 loadHistoricalDataFromDatabase CALLED', {
       hasMonitorConfig: !!monitorConfig.value,
       monitorConfigInputItems: monitorConfig.value?.inputItems?.length || 0,
       dataSeriesLength: dataSeries.value.length,
+      forceReload: forceReload,
       timestamp: new Date().toISOString()
     })
+
+    // Clear connection error flag when starting to load data
+    hasConnectionError.value = false
 
     try {
       // 🆕 FIX: Use extractDeviceParameters for reliable device info from query params
@@ -4772,19 +5856,23 @@
       })
 
       if (!currentSN) {
-        LogUtil.Warn('�?loadHistoricalDataFromDatabase: No serial number from reliable sources', {
+        const errorMsg = 'No serial number available - cannot load historical data'
+        LogUtil.Error('❌ loadHistoricalDataFromDatabase: No serial number from reliable sources', {
           queryParams: route.query,
           panelsList: T3000_Data.value.panelsList?.length || 0
         })
-        return
+        hasConnectionError.value = true
+        throw new Error(errorMsg)
       }
 
       if (!currentPanelId) {
-        LogUtil.Warn('�?loadHistoricalDataFromDatabase: No panel ID from reliable sources', {
+        const errorMsg = 'No panel ID available - cannot load historical data'
+        LogUtil.Error('❌ loadHistoricalDataFromDatabase: No panel ID from reliable sources', {
           queryParams: route.query,
           panelsList: T3000_Data.value.panelsList?.length || 0
         })
-        return
+        hasConnectionError.value = true
+        throw new Error(errorMsg)
       }
 
       // 🆕 FIX: Don't require monitorConfig - use dataseries as fallback
@@ -4798,9 +5886,14 @@
         })
         shouldUseDataSeriesForPoints = true
 
-        // If no dataseries either, we can't determine what to load
+        // If no dataseries either, we can't determine what to load - just return empty gracefully
         if (dataSeries.value.length === 0) {
-          LogUtil.Warn('�?loadHistoricalDataFromDatabase: No monitor config AND no dataseries available')
+          LogUtil.Info('ℹ️ loadHistoricalDataFromDatabase: No monitor config or dataseries yet - skipping load (component still initializing)', {
+            hasMonitorConfig: !!monitorConfigData,
+            dataSeriesLength: dataSeries.value.length
+          })
+          // Don't set connection error - this is normal during initialization
+          // Just return empty structure
           return
         }
       }
@@ -4823,12 +5916,12 @@
       const offsetEndTime = new Date(chartTimeWindow.max)
       const timeRangeMinutes = Math.round((offsetEndTime.getTime() - offsetStartTime.getTime()) / 60000)
 
-      // 🆕 SMART LOADING: Check if we already have data in this time range
-      const existingDataRange = getExistingDataTimeRange()
+      // 🆕 SMART LOADING: Check if we already have data in this time range (unless force reload)
+      const existingDataRange = !forceReload ? getExistingDataTimeRange() : null
       let actualStartTime = offsetStartTime
       let actualEndTime = offsetEndTime
 
-      if (existingDataRange) {
+      if (existingDataRange && !forceReload) {
         LogUtil.Info('📊 Existing data detected - optimizing load range', {
           requestedRange: {
             start: offsetStartTime.toISOString(),
@@ -4850,12 +5943,20 @@
             gapMinutes: Math.round((actualEndTime.getTime() - actualStartTime.getTime()) / 60000)
           })
         } else {
-          LogUtil.Info('�?All requested data already exists in memory - skipping database load', {
+          LogUtil.Info('✅All requested data already exists in memory - skipping database load', {
             requestedStart: offsetStartTime.toISOString(),
             existingStart: new Date(existingDataRange.earliest).toISOString()
           })
           return // No need to load anything
         }
+      } else if (forceReload) {
+        LogUtil.Info('🔄 Force reload requested - skipping existing data optimization', {
+          requestedRange: {
+            start: offsetStartTime.toISOString(),
+            end: offsetEndTime.toISOString(),
+            durationMinutes: timeRangeMinutes
+          }
+        })
       }
 
       const endTime = actualEndTime
@@ -5008,7 +6109,7 @@
         trendlog_id: trendlogId,
         start_time: formattedStartTime,
         end_time: formattedEndTime,
-        // No limit - return all data in the time range
+        // No limit - return all data in the time range for timebase changes
         point_types: ['INPUT', 'OUTPUT', 'VARIABLE', 'MONITOR'], // All point types (matching working API)
         specific_points: specificPoints
       }
@@ -5021,27 +6122,65 @@
         trendlogId: trendlogId
       })
 
-      LogUtil.Debug('🔍 Historical data request:', {
-        timeRange: `${formattedStartTime} to ${formattedEndTime}`,
-        timeRangeMinutes: timeRangeMinutes,
-        timeBase: timeBase.value,
-        pointsCount: specificPoints.length,
-        limit: historyRequest.limit,
-        trendlogId: trendlogId
-      })
-
       // Fetch historical data
       const historyResponse = await trendlogAPI.getTrendlogHistory(historyRequest)
 
-      if (historyResponse?.data?.length > 0) {
+      // Check for errors in response
+      if (!historyResponse) {
+        const errorMsg = 'Failed to fetch historical data - API returned null'
+        LogUtil.Error('Historical data fetch failed:', errorMsg)
+        hasConnectionError.value = true
+        throw new Error(errorMsg)
+      }
+
+      if (historyResponse?.error) {
+        LogUtil.Error('Historical data fetch returned error:', historyResponse.error)
+        hasConnectionError.value = true
+        throw new Error(historyResponse.error)
+      }
+
+      // Extract the actual data array from the response
+      // Response structure: { count: N, data: [...], device_id: X, ... }
+      const historyData = historyResponse.data?.data || historyResponse.data
+
+      // Check if response has no data
+      if (!historyData || historyData.length === 0) {
+        LogUtil.Info('📭 No historical data available for the selected time range - keeping existing data', {
+          timeRange: `${timeRangeMinutes} minutes`,
+          timeRangeFormatted: `${formattedStartTime} to ${formattedEndTime}`,
+          existingSeriesCount: dataSeries.value.length,
+          note: 'Series list and existing data will remain visible'
+        })
+
+        // DON'T clear data arrays - keep the existing 14 items with their current values
+        // Just clear error and stop loading
+
+        // Clear connection error - successful API response with no data is NOT an error
+        hasConnectionError.value = false
+
+        // Stop loading indicator
+        stopLoading()
+
+        return // Exit gracefully without throwing
+      }
+
+      // Data exists, process it
+      if (historyData.length > 0) {
         LogUtil.Info('📚 Historical data loaded:', {
-          dataPointsCount: historyResponse.data.length,
+          dataPointsCount: historyData.length,
+          totalCount: historyResponse.data?.count || historyData.length,
           timeRange: `${timeRangeMinutes} minutes`,
           actualTimeRange: `${formattedStartTime} to ${formattedEndTime}`
         })
 
+        // 🆕 If dataSeries is empty, create series from historical data
+        if (dataSeries.value.length === 0) {
+          LogUtil.Info('📊 Creating series from historical data (no existing series)')
+          await createSeriesFromHistoricalData(historyData)
+        }
+
         // 🆕 Convert historical data to chart format and populate data series (now async)
-        await populateDataSeriesWithHistoricalData(historyResponse.data)
+        await populateDataSeriesWithHistoricalData(historyData)
 
         // 🆕 CRITICAL: Update charts immediately after historical data is populated
         LogUtil.Info('🎨 Updating charts to display historical data', {
@@ -5062,6 +6201,85 @@
 
     } catch (error) {
       LogUtil.Error('Failed to load historical data from database:', error)
+      hasConnectionError.value = true
+      throw error // Re-throw so manualRefresh can handle it properly
+    }
+  }
+
+  /**
+   * Create data series structure from historical data
+   * Used when dataSeries is empty and we have historical data to display
+   */
+  const createSeriesFromHistoricalData = async (historicalData: any[]) => {
+    try {
+      // Group data by unique point identifiers
+      const pointsMap = new Map<string, any>()
+
+      historicalData.forEach(item => {
+        const key = `${item.point_id}_${item.point_type}`
+        if (!pointsMap.has(key)) {
+          pointsMap.set(key, item)
+        }
+      })
+
+      LogUtil.Info('📊 Creating series from historical data:', {
+        totalDataPoints: historicalData.length,
+        uniquePoints: pointsMap.size,
+        points: Array.from(pointsMap.keys())
+      })
+
+      // Create series for each unique point
+      const newSeries: DataSeries[] = []
+      let colorIndex = 0
+
+      for (const [key, firstItem] of pointsMap) {
+        const pointId = firstItem.point_id
+        const pointType = firstItem.point_type
+
+        // Get device description for better naming
+        const description = await getDeviceDescription(
+          firstItem.panel_id,
+          pointId,
+          pointType,
+          firstItem.point_index || 0
+        )
+
+        // Create series with proper naming
+        const seriesName = description && description.trim() &&
+          !description.includes('(P0)') &&
+          !description.match(/^\d+\s*\([P]\d+\)$/)
+          ? description
+          : pointId
+
+        const series: DataSeries = {
+          id: pointId,
+          panelId: firstItem.panel_id,
+          name: seriesName,
+          description: description || pointId,
+          color: SERIES_COLORS[colorIndex % SERIES_COLORS.length],
+          data: [],
+          visible: true,
+          pointType: mapPointTypeToNumber(pointType),
+          pointNumber: firstItem.point_index || 0,
+          unit: firstItem.unit || '',
+          digital_analog: firstItem.digital_analog || 1
+        }
+
+        newSeries.push(series)
+        colorIndex++
+      }
+
+      // Assign the new series
+      dataSeries.value = newSeries
+
+      LogUtil.Info('✅ Series created from historical data:', {
+        seriesCount: newSeries.length,
+        seriesNames: newSeries.map(s => s.name)
+      })
+
+    } catch (error) {
+      LogUtil.Error('Error creating series from historical data:', error)
+      throw error
     }
   }
 
@@ -5138,7 +6356,12 @@
         totalHistoricalItems: historicalData.length,
         availableDataSeries: dataSeries.value.length,
         seriesIds: dataSeries.value.map(s => s.id),
-        dataGroupKeys: Array.from(dataByPoint.keys())
+        dataGroupKeys: Array.from(dataByPoint.keys()),
+        seriesDetails: dataSeries.value.map(s => ({
+          id: s.id,
+          pointType: s.pointType,
+          expectedKey: `${s.id}_${mapPointTypeFromNumber(s.pointType || 1)}`
+        }))
       })
 
       // 🆕 Process series asynchronously with yield points to prevent UI blocking
@@ -5153,13 +6376,15 @@
         const seriesKey = `${series.id}_${mapPointTypeFromNumber(series.pointType || 1)}`
         const seriesHistoricalData = dataByPoint.get(seriesKey) || []
 
-        LogUtil.Debug(`📊 Processing series ${seriesIndex}: ${series.name}`, {
+        LogUtil.Info(`📊 Processing series ${seriesIndex}: ${series.name}`, {
           seriesId: series.id,
           seriesKey: seriesKey,
           pointType: series.pointType,
           mappedPointType: mapPointTypeFromNumber(series.pointType || 1),
           historicalDataCount: seriesHistoricalData.length,
-          currentDataCount: series.data?.length || 0
+          currentDataCount: series.data?.length || 0,
+          keyExists: dataByPoint.has(seriesKey),
+          availableKeys: Array.from(dataByPoint.keys())
         })
 
         if (seriesHistoricalData.length > 0) {
@@ -5370,8 +6595,38 @@
         return
       }
 
+      // Filter items to only include those matching current device (serial_number and panel_id from URL query)
+      const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : 0
+      const queryPanelId = urlPanelId || currentPanelId
+
+      const currentDeviceItems = validDataItems.filter(item => {
+        const itemPanelId = item.pid || item.panel_id
+        const itemSerialNumber = item.serial_number || item.sn
+
+        // Match panel_id (required)
+        const panelMatches = itemPanelId === queryPanelId
+
+        // Match serial_number (if item has it, it must match; if item doesn't have it, allow through)
+        const serialMatches = !itemSerialNumber || itemSerialNumber === currentSN
+
+        return panelMatches && serialMatches
+      })
+
+      LogUtil.Info('🔍 Filtered items for current device', {
+        originalCount: validDataItems.length,
+        filteredCount: currentDeviceItems.length,
+        currentSN,
+        queryPanelId,
+        dropped: validDataItems.length - currentDeviceItems.length
+      })
+
+      if (currentDeviceItems.length === 0) {
+        LogUtil.Warn('⚠️ No items match current device after filtering - skipping batch save')
+        return
+      }
+
       // Convert GET_ENTRIES response to RealtimeDataRequest format
-      const realtimeDataPoints: RealtimeDataRequest[] = validDataItems.map(item => {
+      const realtimeDataPoints: RealtimeDataRequest[] = currentDeviceItems.map(item => {
         // Enhanced debugging for point type determination
         const pointId = item.id || 'UNKNOWN'
         const pointType = getCorrectPointTypeFromId(pointId, item.point_type)
@@ -5403,14 +6658,32 @@
         })
         */
 
+        // 🎯 CRITICAL FIX: Use correct value field based on digital_analog
+        // Digital outputs (digital_analog=0): use 'control' field
+        // Analog outputs (digital_analog=1): use 'value' field
+        // This must match the display logic to ensure database consistency
+        const valueToStore = item.digital_analog === 1
+          ? (item.value || 0)      // Analog: use 'value' field
+          : (item.control || 0);   // Digital: use 'control' field (per Str_out_point struct)
+
+        // 🔍 DEBUG: Log value selection for digital outputs
+        if (item.digital_analog === 0 && pointId.startsWith('OUT')) {
+          LogUtil.Debug(`🎯 Digital OUTPUT ${pointId}:`, {
+            digital_analog: item.digital_analog,
+            control: item.control,
+            value: item.value,
+            valueToStore,
+            auto_manual: item.auto_manual
+          })
+        }
+
         return {
-          // Required fields
           serial_number: currentSN,
           panel_id: item.pid || currentPanelId,
           point_id: pointId,
           point_index: pointIndex,
           point_type: pointType,
-          value: String(item.value || 0),
+          value: String(valueToStore), // Store correct field based on digital_analog
           // Optional fields - with enhanced logic
           range_field: item.range ? String(item.range) : undefined,
           digital_analog: item.digital_analog ? String(item.digital_analog) : undefined,
@@ -5497,14 +6770,27 @@
     LogUtil.Debug('🔥 updateChartWithNewData CALLED', {
       itemsCount: validDataItems?.length || 0,
       hasDataSeries: !!dataSeries.value?.length,
-      isRealTime: isRealTime.value
+      isRealTime: isRealTime.value,
+      currentDataState: dataSeries.value.map(s => ({
+        name: s.name,
+        dataCount: s.data?.length || 0,
+        hasDataArray: !!s.data
+      }))
     })
 
-    if (!dataSeries.value?.length || !Array.isArray(validDataItems) || !validDataItems.length) {
-      LogUtil.Debug('📈 TrendLogChart: No data to process', {
-        hasSeriesConfig: !!dataSeries.value?.length,
-        dataItemsCount: validDataItems?.length || 0
-      })
+    if (!dataSeries.value?.length) {
+      LogUtil.Debug('📈 TrendLogChart: No series configured')
+      return
+    }
+
+    const hasData = Array.isArray(validDataItems) && validDataItems.length > 0
+
+    if (!hasData) {
+      LogUtil.Debug('📈 TrendLogChart: No new data points, but updating charts for time window scroll')
+      // Skip data processing but still update charts for x-axis scroll
+      if (isRealTime.value && (analogChartInstance || Object.keys(digitalChartInstances).length > 0)) {
+        updateCharts()  // ✅ CRITICAL: Keeps x-axis scrolling
+      }
       return
     }
 
@@ -5512,14 +6798,71 @@
     let matched = 0
     let unmatched = 0
 
+    LogUtil.Debug('🔍 updateChartWithNewData matching attempt:', {
+      seriesCount: dataSeries.value.length,
+      incomingItemsCount: validDataItems.length,
+      firstSeries: dataSeries.value[0] ? {
+        name: dataSeries.value[0].name,
+        id: dataSeries.value[0].id,
+        panelId: dataSeries.value[0].panelId,
+        allKeys: Object.keys(dataSeries.value[0])
+      } : null,
+      firstIncomingItem: validDataItems[0] ? {
+        id: validDataItems[0].id,
+        pid: validDataItems[0].pid,
+        label: validDataItems[0].label
+      } : null
+    })
+
+    // 🔎 DEBUG: Show ALL properties of first series to understand structure
+    if (dataSeries.value[0]) {
+      LogUtil.Debug('🔎 First series FULL object:', dataSeries.value[0])
+    }
+
     // 🚀 OPTIMIZED APPROACH: Loop through dataSeries (14 max) instead of validDataItems (328)
     dataSeries.value.forEach((series, seriesIndex) => {
+      // 🔧 DEFENSIVE FIX: Reconstruct id and panelId from itemType if missing
+      // itemType format: "144IN40" = panelId (144) + prefix (IN) + number (40)
+      if ((!series.id || !series.panelId) && series.itemType && series.prefix) {
+        const match = series.itemType.match(/^(\d+)([A-Z]+)(\d+)$/)
+        if (match) {
+          const extractedPanelId = parseInt(match[1])
+          const extractedPrefix = match[2]
+          const extractedNumber = match[3]
+          const extractedId = `${extractedPrefix}${extractedNumber}`
+
+          console.warn(`🔧 FIX: Reconstructing missing properties for series ${seriesIndex}:`, {
+            originalName: series.name,
+            itemType: series.itemType,
+            extractedPanelId,
+            extractedId,
+            beforeFix: { id: series.id, panelId: series.panelId },
+            willSetTo: { id: extractedId, panelId: extractedPanelId }
+          })
+
+          // Add the missing properties
+          series.id = extractedId
+          series.panelId = extractedPanelId
+        } else {
+          console.error(`❌ CRITICAL: Cannot parse itemType for series ${seriesIndex}:`, {
+            seriesName: series.name,
+            itemType: series.itemType,
+            prefix: series.prefix,
+            allProperties: Object.keys(series)
+          })
+          unmatched++
+          return
+        }
+      }
+
       // Skip empty series that don't have matching criteria
       if (!series.id || !series.panelId) {
-        LogUtil.Debug(`⚠️ Series ${seriesIndex} missing id or panelId`, {
+        console.error(`❌ CRITICAL: Series ${seriesIndex} STILL missing id or panelId after fix attempt!`, {
           seriesName: series.name,
-          hasId: !!series.id,
-          hasPanelId: !!series.panelId
+          itemType: series.itemType,
+          id: series.id,
+          panelId: series.panelId,
+          allProperties: Object.keys(series)
         })
         unmatched++
         return
@@ -5531,6 +6874,11 @@
       )
 
       if (!matchedItem) {
+        LogUtil.Debug(`❌ No match for series ${series.name}:`, {
+          searchingFor: { id: series.id, panelId: series.panelId },
+          seriesIndex,
+          sampleIncomingIds: validDataItems.slice(0, 3).map(item => ({ id: item.id, pid: item.pid }))
+        })
         LogUtil.Debug(`No match found for series ${series.name}`, {
           searchingFor: { id: series.id, panelId: series.panelId },
           seriesIndex
@@ -5539,18 +6887,39 @@
         return
       }
 
-      // 🎯 VALUE SELECTION: Use correct field based on digital_analog
+      LogUtil.Debug(`✅ MATCHED series ${series.name}:`, {
+        series: { id: series.id, panelId: series.panelId },
+        item: { id: matchedItem.id, pid: matchedItem.pid }
+      })
+
+      // 🎯 VALUE SELECTION: Use correct field based on digital_analog (per C struct definition)
+      // digital_analog: 0=digital, 1=analog
+      // For digital (digital_analog=0): use 'control' field (0=off, 1=on)
+      // For analog (digital_analog=1): use 'value' field (int32_t)
       let actualValue;
       if (matchedItem.digital_analog === 1) {
         // Analog: use 'value' field
         actualValue = matchedItem.value;
       } else {
-        // Digital: use 'control' field
+        // Digital: use 'control' field (per Str_out_point struct)
         actualValue = matchedItem.control;
+
+        // 🔍 DEBUG: Log for digital outputs
+        if (matchedItem.id && matchedItem.id.startsWith('OUT')) {
+          LogUtil.Debug(`📊 DISPLAY Digital OUTPUT ${matchedItem.id}:`, {
+            digital_analog: matchedItem.digital_analog,
+            control: matchedItem.control,
+            value: matchedItem.value,
+            actualValue,
+            seriesName: series.name
+          })
+        }
       }
 
       const rawValue = actualValue || 0
-      const scaledValue = scaleValueIfNeeded(rawValue)
+      // 🎯 CRITICAL: Don't scale digital values - control field is already 0 or 1
+      // Only scale analog values (which are multiplied by 1000 in database)
+      const scaledValue = matchedItem.digital_analog === 0 ? rawValue : scaleValueIfNeeded(rawValue)
 
       // 📊 VALUE PRECISION LOGGING: Track how scaling affects small variations
       if (rawValue >= 1000) {
@@ -5594,12 +6963,27 @@
       if (existingIndex >= 0) {
         // Update existing data point
         series.data[existingIndex] = dataPoint
+        LogUtil.Debug(`🔄 Updated existing point in ${series.name}:`, {
+          timestamp: new Date(dataPoint.timestamp).toLocaleTimeString(),
+          value: dataPoint.value,
+          totalPoints: series.data.length
+        })
       } else {
         // Add new data point
         series.data.push(dataPoint)
 
         // Sort data points by timestamp to maintain chronological order
         series.data.sort((a, b) => a.timestamp - b.timestamp)
+
+        LogUtil.Debug(`➕ Added NEW point to ${series.name}:`, {
+          timestamp: new Date(dataPoint.timestamp).toLocaleTimeString(),
+          value: dataPoint.value,
+          totalPoints: series.data.length,
+          timeRange: series.data.length > 1 ? {
+            first: new Date(series.data[0].timestamp).toLocaleTimeString(),
+            last: new Date(series.data[series.data.length - 1].timestamp).toLocaleTimeString()
+          } : null
+        })
       }
 
       LogUtil.Debug(`📊 After adding batch point to ${series.name}:`, {
@@ -5639,13 +7023,12 @@
       validDataItems: validDataItems
     })
 
-    // 💾 Store real-time data to database if in real-time mode
+    // 💾 Store real-time data to database if in real-time mode (async, non-blocking)
     if (isRealTime.value && validDataItems.length > 0) {
-      LogUtil.Info('💾 updateChartWithNewData: Storing to database', {
-        isRealTime: isRealTime.value,
-        itemsCount: validDataItems.length
+      // Fire and forget - don't await, don't block chart updates
+      storeRealtimeDataToDatabase(validDataItems).catch(err => {
+        LogUtil.Warn('Background batch save failed (non-critical)', err)
       })
-      storeRealtimeDataToDatabase(validDataItems)
     }
 
     // Update charts if instances exist
@@ -5966,14 +7349,10 @@
 
     if (monitorConfigData && monitorConfigData.inputItems && monitorConfigData.inputItems.length > 0) {
       try {
-        // Step 1: Initialize real-time data series structure
-        LogUtil.Info('🔧 Initializing data series structure')
-        await initializeRealDataSeries()
-
-        LogUtil.Info('✅ Data series structure initialized, history will load via panelsData watcher')
-
-        // Note: Historical data loading happens in the panelsData watcher
-        // when charts are ready. This ensures proper timing.
+        // Try to load historical data - this will create series structure if successful
+        LogUtil.Info('🔧 Loading historical data from database')
+        await loadHistoricalDataFromDatabase()
+        LogUtil.Info('✅ Historical data loaded successfully')
 
       } catch (error) {
         LogUtil.Error('= TLChart: Error in data initialization:', error)
@@ -6070,99 +7449,84 @@
   }
 
   const addRealtimeDataPoint = async () => {
-    LogUtil.Info('🔄 addRealtimeDataPoint CALLED', {
-      isRealTime: isRealTime.value,
-      dataSeriesLength: dataSeries.value.length,
-      hasMonitorConfig: !!monitorConfig.value,
-      timestamp: new Date().toISOString()
-    })
+    // 🛡️ CRITICAL: Wrap entire function in try-catch to ensure interval NEVER stops
+    // Even if any error occurs (network, parsing, backend errors), the interval must continue
+    try {
+      LogUtil.Debug('⏰ addRealtimeDataPoint FIRED at', new Date().toLocaleTimeString() + '.' + new Date().getMilliseconds())
 
-    // Only add data if we're in real-time mode
-    if (!isRealTime.value) {
-      LogUtil.Warn('�?addRealtimeDataPoint: Not in real-time mode')
-      return
-    }
-
-    // Safety check: If no data series exist, skip processing
-    if (dataSeries.value.length === 0) {
-      LogUtil.Warn('�?addRealtimeDataPoint: No data series exist, trying to regenerate from props.itemData')
-
-      // 🆕 FIX: Try to regenerate dataseries from props if monitorConfig is not ready yet
-      if (props.itemData?.t3Entry?.input?.length > 0) {
-        LogUtil.Info('🔄 addRealtimeDataPoint: Attempting to regenerate dataSeries from props.itemData')
-        regenerateDataSeries()
-
-        // If still no data series after regeneration, exit
-        if (dataSeries.value.length === 0) {
-          LogUtil.Warn('�?addRealtimeDataPoint: No data series exist after regeneration attempt')
-          return
-        }
-      } else {
-        LogUtil.Warn('�?addRealtimeDataPoint: No props.itemData available for dataseries regeneration')
+      // Only add data if we're in real-time mode
+      if (!isRealTime.value) {
+        LogUtil.Debug('❌ EXIT: Not in real-time mode')
         return
       }
-    }
 
-    // Check if we have real monitor configuration for live data
-    const monitorConfigData = monitorConfig.value
+      // Safety check: If no data series exist, skip processing
+      if (dataSeries.value.length === 0) {
+        LogUtil.Debug('❌ EXIT: No data series exist')
+        return
+      }
 
-    if (!monitorConfigData) {
-      LogUtil.Info('🔄 addRealtimeDataPoint: No monitor config - sending GET_ENTITIES based on existing dataseries', {
-        dataSeriesLength: dataSeries.value.length,
-        hasPropsItemData: !!props.itemData?.t3Entry,
-        propsInputItemsLength: props.itemData?.t3Entry?.input?.length || 0
-      })
+      // Check if we have real monitor configuration for live data
+      const monitorConfigData = monitorConfig.value
 
-      // 🆕 FIX: Send GET_ENTITIES using existing dataseries info (keep data flowing even without monitorConfig)
-      await sendGetEntitiesForDataSeries()
-      return
-    }
+      if (!monitorConfigData) {
+        LogUtil.Debug('❌ EXIT: No monitor config')
+        return
+      }
 
-    if (!monitorConfigData.inputItems || monitorConfigData.inputItems.length === 0) {
-      LogUtil.Warn('�?addRealtimeDataPoint: No input items in monitor config')
-      return
-    }
+      if (!monitorConfigData.inputItems || monitorConfigData.inputItems.length === 0) {
+        LogUtil.Debug('❌ EXIT: No input items in monitor config')
+        return
+      }
 
-    try {
-      LogUtil.Info('📡 addRealtimeDataPoint: About to send batch request')
+      LogUtil.Debug('✅ All checks passed - calling sendPeriodicBatchRequest')
 
-      // 🆕 CRITICAL FIX: Load historical data on FIRST batch request
-      // This ensures history API is called when real-time monitoring starts
-      if (!hasLoadedInitialHistory.value && monitorConfigData) {
-        LogUtil.Info('📚 addRealtimeDataPoint: First batch request - loading historical data before starting real-time updates')
-        hasLoadedInitialHistory.value = true // Set flag immediately to prevent duplicate calls
+      try {
+        // 🆕 CRITICAL FIX: Load historical data on FIRST batch request
+        // This ensures history API is called when real-time monitoring starts
+        if (!hasLoadedInitialHistory.value && monitorConfigData) {
+          LogUtil.Info('📚 addRealtimeDataPoint: First batch request - loading historical data before starting real-time updates')
+          hasLoadedInitialHistory.value = true // Set flag immediately to prevent duplicate calls
 
-        try {
-          await loadHistoricalDataFromDatabase()
-          LogUtil.Info('✅ addRealtimeDataPoint: Historical data loaded successfully, now starting real-time updates')
-        } catch (error) {
-          LogUtil.Warn('⚠️ addRealtimeDataPoint: Historical data load failed, continuing with real-time only', error)
+          try {
+            await loadHistoricalDataFromDatabase()
+            LogUtil.Info('✅ addRealtimeDataPoint: Historical data loaded successfully, now starting real-time updates')
+          } catch (error) {
+            LogUtil.Warn('⚠️ addRealtimeDataPoint: Historical data load failed, continuing with real-time only', error)
+          }
         }
+
+        // Send batch GET_ENTRIES request for ALL items at once
+        LogUtil.Debug('📤 Sending batch request at', new Date().toLocaleTimeString())
+        await sendPeriodicBatchRequest(monitorConfigData)
+        LogUtil.Debug('📥 Batch request completed, waiting for T3000_Data watcher to process response...')
+
+        // Note: Real data will come through T3000_Data watcher -> updateChartWithNewData
+        // which calls updateChartWithNewData() to update dataSeries automatically
+
+        // Update sync time since batch request was sent successfully
+        lastSyncTime.value = new Date().toLocaleTimeString()
+
+        // If we had connection error but successfully sent request, clear error state
+        if (hasConnectionError.value) {
+          LogUtil.Info('TrendLogChart: Auto-recovering from connection error - batch request sent successfully')
+          hasConnectionError.value = false
+        }
+
+      } catch (error) {
+        LogUtil.Warn('TrendLogChart: Failed to send batch request, setting connection error:', error)
+        // Set connection error state - but keep accumulated data
+        hasConnectionError.value = true
+        // Don't clear data - let accumulated points remain visible
       }
 
-      // Send batch GET_ENTRIES request for ALL items at once
-      await sendPeriodicBatchRequest(monitorConfigData)
-
-      // Note: Real data will come through T3000_Data watcher -> updateChartWithNewData
-      // which calls updateChartWithNewData() to update dataSeries automatically
-
-      // Update sync time since batch request was sent successfully
-      lastSyncTime.value = new Date().toLocaleTimeString()
-
-      // If we had connection error but successfully sent request, clear error state
-      if (hasConnectionError.value) {
-        LogUtil.Info('TrendLogChart: Auto-recovering from connection error - batch request sent successfully')
-        hasConnectionError.value = false
-      }
-
+      updateCharts()
     } catch (error) {
-      LogUtil.Warn('TrendLogChart: Failed to send batch request, setting connection error:', error)
-      // Set connection error state - but keep accumulated data
+      // 🛡️ CRITICAL ERROR HANDLER: Catch ANY error to prevent interval from stopping
+      // This ensures the polling continues even if there are unexpected errors
+      LogUtil.Error('❌ CRITICAL: addRealtimeDataPoint encountered unexpected error (interval will continue):', error)
       hasConnectionError.value = true
-      // Don't clear data - let accumulated points remain visible
     }
-
-    updateCharts()
   }
 
   // Demo data generation function completely removed - only real T3000 data allowed
@@ -6328,7 +7692,15 @@
       totalDataSeries: dataSeries.value.length,
       seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
       visibleAnalogCount: visibleAnalogSeries.value.length,
-      visibleDigitalCount: visibleDigitalSeries.value.length
+      visibleDigitalCount: visibleDigitalSeries.value.length,
+      // 🚨 CRITICAL: Log individual series data counts
+      seriesDataCounts: dataSeries.value.map(s => ({
+        name: s.name,
+        id: s.id,
+        dataCount: s.data?.length || 0,
+        hasDataArray: !!s.data,
+        visible: s.visible
+      }))
     })
 
     // Ensure analog chart exists if we have visible analog series
@@ -6363,6 +7735,24 @@
 
     const visibleAnalog = visibleAnalogSeries.value.filter(series => series.data.length > 0)
 
+    // 🚨 CRITICAL DEBUG: Check if we're about to empty the chart
+    if (visibleAnalog.length === 0 && visibleAnalogSeries.value.length > 0) {
+      LogUtil.Error('🚨 CRITICAL: All visible analog series have NO DATA - chart will be empty!', {
+        totalVisibleSeries: visibleAnalogSeries.value.length,
+        allSeriesDetails: visibleAnalogSeries.value.map(s => ({
+          name: s.name,
+          id: s.id,
+          dataCount: s.data?.length || 0,
+          visible: s.visible,
+          hasDataArray: !!s.data,
+          dataType: typeof s.data
+        })),
+        timestamp: new Date().toISOString()
+      })
+      // Don't proceed with empty update - keep existing chart data
+      return
+    }
+
     LogUtil.Info('📊 updateAnalogChart: Processing analog series', {
       totalVisibleSeries: visibleAnalogSeries.value.length,
       seriesWithData: visibleAnalog.length,
@@ -6378,6 +7768,223 @@
     // Process each series sequentially with yield points for C++ WebView
     const datasets: any[] = []
 
+    // 🆕 ENHANCED MULTI-AXIS STRATEGY: Group by UNIT TYPE with color matching
+    // Each unit group's Y-axis will match the color of the FIRST series in that group
+
+    const seriesInfo: {
+      series: any,
+      min: number,
+      max: number,
+      unit: string,
+      unitGroup: string,
+      color: string
+    }[] = []
+
+    // Helper: Normalize units into groups
+    const normalizeUnitGroup = (unit: string): string => {
+      if (!unit || unit === 'Unused' || unit === 'Off') return 'dimensionless'
+
+      const unitLower = unit.toLowerCase()
+
+      // Temperature group
+      if (unitLower.includes('deg') || unitLower.includes('°') ||
+          unitLower.includes('f') || unitLower.includes('c') ||
+          unitLower.includes('temp')) {
+        return 'temperature'
+      }
+
+      // Electrical - Voltage
+      if (unitLower.includes('volt') || unitLower.includes('v') || unitLower === 'mv') {
+        return 'voltage'
+      }
+
+      // Electrical - Current
+      if (unitLower.includes('amp') || unitLower.includes('ma') || unitLower.includes('a')) {
+        return 'current'
+      }
+
+      // Electrical - Power
+      if (unitLower.includes('watt') || unitLower.includes('w') ||
+          unitLower.includes('kw') || unitLower.includes('mw')) {
+        return 'power'
+      }
+
+      // Pressure
+      if (unitLower.includes('pa') || unitLower.includes('psi') ||
+          unitLower.includes('bar') || unitLower.includes('pressure')) {
+        return 'pressure'
+      }
+
+      // Air Quality / Flow
+      if (unitLower.includes('ppm') || unitLower.includes('ppb') ||
+          unitLower.includes('co2') || unitLower.includes('voc') ||
+          unitLower.includes('fps') || unitLower.includes('fpm') ||
+          unitLower.includes('cfm')) {
+        return 'airquality'
+      }
+
+      // Humidity
+      if (unitLower.includes('rh') || unitLower.includes('humid') || unitLower.includes('%rh')) {
+        return 'humidity'
+      }
+
+      // Percentage
+      if (unitLower === '%' || unitLower === 'percent') {
+        return 'percentage'
+      }
+
+      // Frequency
+      if (unitLower.includes('hz') || unitLower.includes('hertz')) {
+        return 'frequency'
+      }
+
+      // Default: use the unit itself as group
+      return unit.toLowerCase().replace(/[^a-z0-9]/g, '')
+    }
+
+    // Analyze all series
+    for (const series of visibleAnalog) {
+      if (!series.data || series.data.length === 0) continue
+
+      const values = series.data
+        .map((point: any) => point?.value)
+        .filter((y: any) => typeof y === 'number' && isFinite(y) && y > -99999 && y < 999999)
+
+      if (values.length === 0) continue
+
+      const min = Math.min(...values)
+      const max = Math.max(...values)
+      const unit = series.unit || 'Unused'
+      const unitGroup = normalizeUnitGroup(unit)
+      const color = series.color || '#666666'
+
+      seriesInfo.push({ series, min, max, unit, unitGroup, color })
+    }
+
+    // Group by unit type
+    const unitGroups: { [key: string]: typeof seriesInfo } = {}
+    seriesInfo.forEach(item => {
+      if (!unitGroups[item.unitGroup]) {
+        unitGroups[item.unitGroup] = []
+      }
+      unitGroups[item.unitGroup].push(item)
+    })
+
+    // Sort groups by count (most series first) then by total range
+    const sortedGroups = Object.entries(unitGroups).sort((a, b) => {
+      // First by count
+      if (b[1].length !== a[1].length) {
+        return b[1].length - a[1].length
+      }
+      // Then by range
+      const rangeA = Math.max(...a[1].map(i => i.max)) - Math.min(...a[1].map(i => i.min))
+      const rangeB = Math.max(...b[1].map(i => i.max)) - Math.min(...b[1].map(i => i.min))
+      return rangeB - rangeA
+    })
+
+// Assign axes: Support up to 4 axes (y, y1, y2, y3) ALL ON LEFT SIDE
+    // y = left position 0 (primary), y1 = left position 1, y2 = left position 2, y3 = left position 3
+    const axisAssignment = new Map<string, string>()
+    const axisColors = new Map<string, string>() // Axis ID → Color of first series
+    const axisUnits = new Map<string, Set<string>>() // Axis ID → Set of all units
+
+    sortedGroups.forEach(([groupName, items], index) => {
+      const axisId = index === 0 ? 'y' :
+                     index === 1 ? 'y1' :
+                     index === 2 ? 'y2' : 'y3'
+
+      // 🎨 KEY: Use the color of the FIRST series in this unit group
+      if (!axisColors.has(axisId)) {
+        const firstSeriesColor = items[0].color
+        axisColors.set(axisId, firstSeriesColor)
+      }
+
+      // Collect all unique units for this axis
+      if (!axisUnits.has(axisId)) {
+        axisUnits.set(axisId, new Set<string>())
+      }
+      const unitSet = axisUnits.get(axisId)!
+      items.forEach(item => {
+        const unit = item.unit
+        if (unit && unit !== 'Unused' && unit !== 'Off') {
+          unitSet.add(unit)
+        }
+      })
+
+      items.forEach(item => {
+        axisAssignment.set(item.series.id, axisId)
+      })
+    })
+
+    const useMultipleAxes = sortedGroups.length > 1
+
+    // 🐛 DEBUG: Log unit-based axis assignments with colors
+    LogUtil.Info('📊 Unit-based axis assignments with color matching:', {
+      useMultipleAxes,
+      unitGroupCount: sortedGroups.length,
+      unitGroups: sortedGroups.map(([groupName, items]) => ({
+        groupName,
+        seriesCount: items.length,
+        unit: items[0].unit,
+        firstSeriesColor: items[0].color
+      })),
+      assignments: Array.from(axisAssignment.entries()).map(([id, axis]) => {
+        const series = visibleAnalog.find(s => s.id === id)
+        return {
+          id,
+          name: series?.name,
+          unit: series?.unit,
+          axis,
+          axisColor: axisColors.get(axis)
+        }
+      }),
+      axisConfiguration: Array.from(axisUnits.entries()).map(([axisId, unit]) => ({
+        axisId,
+        unit,
+        color: axisColors.get(axisId),
+        position: 'left' // All axes on left side
+      }))
+    })
+
+    // 🎨 Update axis colors and titles dynamically
+    if (analogChartInstance.options.scales) {
+      const scales = analogChartInstance.options.scales as any
+
+      axisUnits.forEach((unitSet, axisId) => {
+        const axisColor = axisColors.get(axisId) || '#666666'
+
+        if (scales[axisId]) {
+          // Update title - join all units with " | " separator
+          if (scales[axisId].title) {
+            const unitsArray = Array.from(unitSet)
+            const unitText = unitsArray.length > 0 ? unitsArray.join(' | ') : ''
+            scales[axisId].title.text = unitText
+            scales[axisId].title.color = axisColor
+          }
+
+          // Update tick colors
+          if (scales[axisId].ticks) {
+            scales[axisId].ticks.color = axisColor
+          }
+
+          // Show the axis
+          scales[axisId].display = true
+        }
+      })
+
+      // Hide axes that aren't being used
+      const allAxes = ['y', 'y1', 'y2', 'y3']
+      allAxes.forEach(axisId => {
+        if (scales[axisId] && !axisUnits.has(axisId)) {
+          scales[axisId].display = false
+          if (scales[axisId].title) {
+            scales[axisId].title.text = ''
+          }
+        }
+      })
+    }
+
+    // 🆕 STEP 4: Create datasets with assigned yAxisID
     for (let i = 0; i < visibleAnalog.length; i++) {
       const series = visibleAnalog[i]
 
@@ -6386,30 +7993,74 @@
         await new Promise(resolve => setTimeout(resolve, 0))
       }
 
-      // Clone and sort data
+      // Clone, filter null/undefined values, and sort data
       const sortedData = series.data
         .slice()
+        .filter(point => point.value !== null && point.value !== undefined) // ✅ Filter invalid values
         .sort((a, b) => a.timestamp - b.timestamp)
         .map(point => ({
           x: point.timestamp,
           y: point.value
         }))
 
+      // 🆕 Detect large gaps and insert null to break line visualization
+      const dataWithGaps: Array<{ x: number; y: number | null }> = []
+      const maxGapMs = getGapThresholdMs()
+
+      for (let i = 0; i < sortedData.length; i++) {
+        dataWithGaps.push(sortedData[i])
+
+        // Check if next point has a large time gap
+        if (i < sortedData.length - 1) {
+          const currentTime = sortedData[i].x
+          const nextTime = sortedData[i + 1].x
+          const gap = nextTime - currentTime
+
+          if (gap > maxGapMs) {
+            // Insert null point to break the line
+            dataWithGaps.push({
+              x: currentTime + gap / 2,
+              y: null
+            })
+          }
+        }
+      }
+
+      LogUtil.Debug(`📊 Building dataset for ${series.name}:`, {
+        rawDataPoints: series.data.length,
+        filteredDataPoints: sortedData.length,
+        dataWithGaps: dataWithGaps.length,
+        timeRange: sortedData.length > 0 ? {
+          first: new Date(sortedData[0].x).toLocaleTimeString(),
+          last: new Date(sortedData[sortedData.length - 1].x).toLocaleTimeString()
+        } : null,
+        samplePoints: sortedData.slice(-3) // Last 3 points
+      })
+
+      // Get axis assignment (default to 'y' if not found)
+      const yAxisID = axisAssignment.get(series.id) || 'y'
+
+      // Determine whether to show a point marker: respect global `showPoints`,
+      // but always show a marker when there is only a single data point to
+      // provide immediate feedback for single-point real-time updates.
+      const shouldShowPoint = showPoints.value || (sortedData.length === 1)
+
       datasets.push({
         label: series.name,
-        data: sortedData,
+        data: dataWithGaps, // ✅ Use data with gap detection
         borderColor: series.color,
         backgroundColor: series.color + '20',
         borderWidth: 2,
         fill: false,
         tension: smoothLines.value ? 0.4 : 0,
-        pointRadius: showPoints.value ? 3 : 0,
+        pointRadius: shouldShowPoint ? 3 : 0,
         pointHoverRadius: 6,
         pointBackgroundColor: series.color,
         pointBorderColor: '#fff',
         pointBorderWidth: 2,
         pointStyle: 'circle' as const,
-        spanGaps: false
+        spanGaps: false, // Keep false - null values will break lines
+        yAxisID: yAxisID // ✅ Assign axis here!
       })
     }
 
@@ -6494,8 +8145,20 @@
       xScale.min = timeWindow.min
       xScale.max = timeWindow.max
 
+      LogUtil.Debug('⏰ Chart Time Window:', {
+        timeBase: timeBase.value,
+        windowMin: new Date(timeWindow.min).toLocaleTimeString(),
+        windowMax: new Date(timeWindow.max).toLocaleTimeString(),
+        windowRangeMinutes: Math.round((timeWindow.max - timeWindow.min) / 60000),
+        currentTime: new Date().toLocaleTimeString(),
+        datasetsCount: datasets.length,
+        totalPoints: datasets.reduce((sum, ds) => sum + ds.data.length, 0)
+      })
+
       LogUtil.Info('⏰ Chart Time Window Set:', {
         timeBase: timeBase.value,
+        customStartDate: customStartDate.value?.format('YYYY-MM-DD HH:mm:ss') || null,
+        customEndDate: customEndDate.value?.format('YYYY-MM-DD HH:mm:ss') || null,
         min: new Date(timeWindow.min).toISOString(),
         max: new Date(timeWindow.max).toISOString(),
         rangeMinutes: Math.round((timeWindow.max - timeWindow.min) / 60000),
@@ -6549,9 +8212,27 @@
     })
 
     // 🆕 FIX: Update chart without blocking UI thread
-    // Using 'none' mode prevents animations but still allows async rendering
-    // Removed synchronous render() call that was blocking the entire application
-    analogChartInstance.update('none')
+    // Using 'resize' mode forces Y-axis recalculation and header redraw
+    // This ensures dynamic updates when zooming or changing time series
+
+    // CRITICAL: For custom dates, use 'none' mode to force scale recalculation
+    // 'resize' mode skips afterDataLimits callbacks, causing Y-axis compression
+    // 'none' mode bypasses animations but MUST trigger all scale callbacks
+    if (timeBase.value === 'custom') {
+      LogUtil.Debug('📊 Custom date: Using update("none") to trigger afterDataLimits')
+      LogUtil.Info('📊 Custom date: Using update("none") to trigger afterDataLimits')
+      analogChartInstance.update('none') // No animation but full scale recalculation
+    } else {
+      analogChartInstance.update('resize') // Fast resize for preset timebases
+    }
+
+    // Scroll right-panel to bottom by default
+    nextTick(() => {
+      const rightPanel = document.querySelector('.analog-area .right-panel') as HTMLElement
+      if (rightPanel) {
+        rightPanel.scrollTop = rightPanel.scrollHeight
+      }
+    })
   }
 
   const updateDigitalCharts = async () => {
@@ -6559,6 +8240,23 @@
     if (Object.keys(digitalChartInstances).length === 0) {
       LogUtil.Debug('📊 updateDigitalCharts: No digital chart instances available')
       return
+    }
+
+    // 🚨 CRITICAL DEBUG: Check if all digital series have no data
+    const seriesWithData = visibleDigitalSeries.value.filter(s => s.data && s.data.length > 0)
+    if (seriesWithData.length === 0 && visibleDigitalSeries.value.length > 0) {
+      LogUtil.Error('🚨 CRITICAL: All visible digital series have NO DATA - charts will be empty!', {
+        totalVisibleSeries: visibleDigitalSeries.value.length,
+        allSeriesDetails: visibleDigitalSeries.value.map(s => ({
+          name: s.name,
+          id: s.id,
+          dataCount: s.data?.length || 0,
+          visible: s.visible,
+          hasDataArray: !!s.data,
+          dataType: typeof s.data
+        })),
+        timestamp: new Date().toISOString()
+      })
     }
 
     // 🆕 Process digital charts asynchronously to prevent UI blocking
@@ -6587,15 +8285,36 @@
 
       const sortedData = series.data
         .slice()
+        .filter(point => point.value !== null && point.value !== undefined) // ✅ Filter invalid values
         .sort((a, b) => a.timestamp - b.timestamp)
         .map(point => ({
           x: point.timestamp,
           y: point.value > 0.5 ? 1.2 : 0.2  // Map to HTML demo range: HIGH=1.2, LOW=0.2
         }))
 
+      // 🆕 Detect large gaps and insert null to break line visualization
+      const dataWithGaps: Array<{ x: number; y: number | null }> = []
+      const maxGapMs = getGapThresholdMs()
+
+      for (let i = 0; i < sortedData.length; i++) {
+        dataWithGaps.push(sortedData[i])
+
+        // Check if next point has a large time gap
+        if (i < sortedData.length - 1) {
+          const gap = sortedData[i + 1].x - sortedData[i].x
+          if (gap > maxGapMs) {
+            // Insert null point to break the line
+            dataWithGaps.push({
+              x: sortedData[i].x + gap / 2,
+              y: null
+            })
+          }
+        }
+      }
+
       chart.data.datasets = [{
         label: series.name,
-        data: sortedData,
+        data: dataWithGaps, // ✅ Use data with gap detection
         borderColor: series.color,
         backgroundColor: 'transparent', // No background fill
         borderWidth: 2,
@@ -6662,17 +8381,50 @@
         const timeWindow = getCurrentTimeWindow()
         xScale.min = timeWindow.min
         xScale.max = timeWindow.max
+
+        LogUtil.Info(`⏰ Digital Chart ${index} (${series.name}) Time Window Set:`, {
+          timeBase: timeBase.value,
+          customStartDate: customStartDate.value?.format('YYYY-MM-DD HH:mm:ss') || null,
+          customEndDate: customEndDate.value?.format('YYYY-MM-DD HH:mm:ss') || null,
+          min: new Date(timeWindow.min).toISOString(),
+          max: new Date(timeWindow.max).toISOString(),
+          rangeMinutes: Math.round((timeWindow.max - timeWindow.min) / 60000),
+          dataPoints: sortedData.length,
+          firstPoint: sortedData[0] ? {
+            x: new Date(sortedData[0].x).toISOString(),
+            y: sortedData[0].y
+          } : null,
+          lastPoint: sortedData[sortedData.length - 1] ? {
+            x: new Date(sortedData[sortedData.length - 1].x).toISOString(),
+            y: sortedData[sortedData.length - 1].y
+          } : null
+        })
+
+        // Force recalculation of bounds
+        delete xScale._range
+        delete xScale._reversePixels
+        delete xScale._startValue
+        delete xScale._valueRange
       }
 
       // 🆕 FIX: Final check before update - chart might be destroyed during async processing
       if (chart && chart.canvas && chart.ctx) {
         try {
-          chart.update('none')
+          // Force full update to recalculate all scales including x-axis time window
+          chart.update()
         } catch (error) {
           LogUtil.Warn(`⚠️ updateDigitalCharts: Failed to update chart ${index}`, error)
         }
       }
     } // End of for loop
+
+    // Scroll digital right-panel to bottom by default
+    nextTick(() => {
+      const digitalRightPanel = document.querySelector('.digital-area .digital-right-panel') as HTMLElement
+      if (digitalRightPanel) {
+        digitalRightPanel.scrollTop = digitalRightPanel.scrollHeight
+      }
+    })
   }
 
   // Series control methods
@@ -6747,7 +8499,8 @@
 
   // New control functions - Updated to use timeOffset and regenerate data
   const moveTimeLeft = async () => {
-    if (isRealTime.value) return
+    // Guard: Don't allow scroll for real-time mode or custom date ranges
+    if (isRealTime.value || timeBase.value === 'custom') return
 
     // Move time window left by exactly the timebase period
     const shiftMinutes = getTimeRangeMinutes(timeBase.value)
@@ -6762,7 +8515,8 @@
   }
 
   const moveTimeRight = async () => {
-    if (isRealTime.value) return
+    // Guard: Don't allow scroll for real-time mode or custom date ranges
+    if (isRealTime.value || timeBase.value === 'custom') return
 
     // Move time window right by exactly the timebase period
     const shiftMinutes = getTimeRangeMinutes(timeBase.value)
@@ -6777,17 +8531,15 @@
   }
 
   const zoomIn = () => {
+    // Guard: Don't allow zoom for custom date ranges
+    if (timeBase.value === 'custom') return
+
     const currentIndex = timebaseProgression.indexOf(timeBase.value)
     if (currentIndex > 0) {
       const newTimebase = timebaseProgression[currentIndex - 1]
 
-      // 🆕 FIX: Update isRealTime BEFORE changing timebase (same as setTimeBase)
-      if (newTimebase === '5m') {
-        isRealTime.value = true
-      } else {
-        isRealTime.value = false
-      }
-
+      // 🔧 FIX: Timebase only controls X-axis range, not real-time mode
+      // Real-time updates continue regardless of timebase selection
       // Just change timebase - let the watcher handle data loading with smart detection
       timeBase.value = newTimebase
 
@@ -6800,17 +8552,15 @@
   }
 
   const zoomOut = () => {
+    // Guard: Don't allow zoom for custom date ranges
+    if (timeBase.value === 'custom') return
+
     const currentIndex = timebaseProgression.indexOf(timeBase.value)
     if (currentIndex >= 0 && currentIndex < timebaseProgression.length - 1) {
       const newTimebase = timebaseProgression[currentIndex + 1]
 
-      // 🆕 FIX: Update isRealTime BEFORE changing timebase (same as setTimeBase)
-      if (newTimebase === '5m') {
-        isRealTime.value = true
-      } else {
-        isRealTime.value = false
-      }
-
+      // 🔧 FIX: Timebase only controls X-axis range, not real-time mode
+      // Real-time updates continue regardless of timebase selection
       // Just change timebase - let the watcher handle data loading with smart detection
       timeBase.value = newTimebase
 
@@ -7650,6 +9400,12 @@
         LogUtil.Debug('= TLChart DataFlow: 5m timebase - using real-time data initialization')
         await initializeData()
       }
+
+      // 🔥 FIX: Restart realtime updates if in realtime mode after timebase change
+      if (isRealTime.value && monitorConfig.value) {
+        LogUtil.Info('🔄 Restarting realtime updates after timebase change')
+        startRealTimeUpdates()
+      }
     }
   }
 
@@ -7711,21 +9467,37 @@
       dataSeries.value = [...dataSeries.value]
       await nextTick()
 
-      // Force charts recreation to ensure proper axis scaling
-      if (analogChartInstance || Object.keys(digitalChartInstances).length > 0) {
-        destroyAllCharts()
-        await nextTick()
-        createCharts()
-        await nextTick()
-        // Update charts with the loaded data
-        updateCharts()
+      // Simply update existing charts with new data and time window - no need to destroy/recreate
+      LogUtil.Debug('= TLChart DataFlow: Updating charts with custom date range data', {
+        seriesCount: dataSeries.value.length,
+        seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
+        totalDataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0),
+        hasAnalogChart: !!analogChartInstance,
+        hasDigitalCharts: Object.keys(digitalChartInstances).length > 0
+      })
 
-        LogUtil.Debug('= TLChart DataFlow: Charts recreated and updated with custom range data', {
-          seriesCount: dataSeries.value.length,
-          seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
-          totalDataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0)
-        })
+      // If charts don't exist yet, create them
+      if (!analogChartInstance && visibleAnalogSeries.value.length > 0) {
+        LogUtil.Debug('= TLChart DataFlow: Creating analog chart for first time')
+        createAnalogChart()
+        await nextTick()
       }
+
+      // CRITICAL: Directly call updateAnalogChart() instead of async updateCharts()
+      // The async flow (requestAnimationFrame → setTimeout) doesn't complete properly for custom dates
+      // causing afterDataLimits callbacks to never fire, breaking Y-axis scaling
+      if (analogChartInstance) {
+        LogUtil.Debug('= TLChart DataFlow: Directly calling updateAnalogChart() for custom date')
+        await updateAnalogChart()
+      }
+
+      // Also update digital charts if present
+      if (Object.keys(digitalChartInstances).length > 0) {
+        LogUtil.Debug('= TLChart DataFlow: Updating digital charts for custom date')
+        await updateDigitalCharts()
+      }
+
+      LogUtil.Debug('= TLChart DataFlow: Charts updated with custom range data')
     }
   }
 
@@ -7755,14 +9527,22 @@
       customStartDate.value = startDateTime
       customEndDate.value = endDateTime
 
+      LogUtil.Info('📅 Custom Date Range Applied:', {
+        startDate: customStartDate.value.format('YYYY-MM-DD HH:mm:ss'),
+        endDate: customEndDate.value.format('YYYY-MM-DD HH:mm:ss'),
+        startTimestamp: customStartDate.value.valueOf(),
+        endTimestamp: customEndDate.value.valueOf(),
+        durationMinutes: Math.round((customEndDate.value.valueOf() - customStartDate.value.valueOf()) / 60000),
+        durationHours: Math.round((customEndDate.value.valueOf() - customStartDate.value.valueOf()) / (60000 * 60))
+      })
+
       // Set timebase to custom and apply changes
       timeBase.value = 'custom'
       isRealTime.value = false // Disable Auto Scroll for custom date ranges (historical data)
       customDateModalVisible.value = false
       onCustomDateChange()
-      message.success('Custom date range applied successfully')
     } else {
-      message.error('Please select both start and end date/time')
+      LogUtil.Warn('Custom date range incomplete - missing start or end date/time')
     }
   }
 
@@ -7902,6 +9682,14 @@
     }
 
     if (dataSeries.value[index].isEmpty) return
+
+    // Clear connection error when user interacts with series that has data
+    // This prevents error state from showing when data is already loaded
+    if (hasConnectionError.value && dataSeries.value[index].data?.length > 0) {
+      hasConnectionError.value = false
+      LogUtil.Info('Cleared connection error - series has valid data')
+    }
+
     dataSeries.value[index].visible = !dataSeries.value[index].visible
     updateCharts()
     LogUtil.Debug(`Toggled visibility for series ${dataSeries.value[index].name} to ${dataSeries.value[index].visible}`)
@@ -7923,51 +9711,26 @@
   }
 
   const startRealTimeUpdates = () => {
-    LogUtil.Info('🔄 startRealTimeUpdates CALLED', {
-      hasExistingInterval: !!realtimeInterval,
-      isRealTime: isRealTime.value,
-      hasMonitorConfig: !!monitorConfig.value,
-      timestamp: new Date().toISOString()
-    })
+    LogUtil.Debug('🔥 startRealTimeUpdates CALLED - Current interval ID:', realtimeInterval)
 
     if (realtimeInterval) {
+      LogUtil.Debug('⚠️ Clearing existing interval:', realtimeInterval)
       clearInterval(realtimeInterval)
+      realtimeInterval = null
     }
 
     // Use monitor config data interval if available, otherwise fallback to default
     const monitorConfigData = monitorConfig.value
     const dataInterval = monitorConfigData?.dataIntervalMs || updateInterval.value
 
-    // 🔍 DEBUG: Add detailed logging to trace interval calculation
-    const setupTime = new Date()
-    const setupTimeString = setupTime.toLocaleTimeString() + '.' + setupTime.getMilliseconds().toString().padStart(3, '0')
-
-    LogUtil.Info(`🔄 TrendLogModal: Starting real-time updates [${setupTimeString}] with detailed interval analysis:`, {
-      'monitorConfig.value exists': !!monitorConfig.value,
-      'monitorConfigData': monitorConfigData,
-      'monitorConfigData?.dataIntervalMs': monitorConfigData?.dataIntervalMs,
-      'updateInterval.value (computed)': updateInterval.value,
-      'actualInterval selected': dataInterval,
-      intervalSeconds: dataInterval / 1000,
-      intervalMinutes: dataInterval / 60000,
-      'Raw monitorConfig': monitorConfig.value
-    })
-
-    // 🔍 If using computed updateInterval, log the calculation details
-    if (!monitorConfigData?.dataIntervalMs) {
-      LogUtil.Info('📊 TrendLogModal: Using computed updateInterval, calculating from monitorConfig:')
-      const calculatedInterval = calculateT3000Interval(monitorConfig.value)
-      LogUtil.Info('📊 TrendLogModal: Calculated interval result:', calculatedInterval)
-    }
-
-    // Track when timer starts
-    LogUtil.Info(`�?TrendLogModal: Setting up polling timer [${setupTimeString}] - Next request expected at: ${new Date(Date.now() + dataInterval).toLocaleTimeString()}`)
-
+    LogUtil.Debug('📡 Creating new interval with', dataInterval, 'ms interval')
     realtimeInterval = setInterval(addRealtimeDataPoint, dataInterval)
+    LogUtil.Debug('✅ Interval created - ID:', realtimeInterval)
   }
 
   const stopRealTimeUpdates = () => {
     if (realtimeInterval) {
+      LogUtil.Debug(`🛑 Stopping real-time updates for instance: ${instanceId}`)
       clearInterval(realtimeInterval)
       realtimeInterval = null
     }
@@ -8033,6 +9796,65 @@
         exportDataJSON()
         break
     }
+  }
+
+  // NEW: Toggle digital channel visibility
+  const toggleDigitalVisibility = (seriesName: string) => {
+    const series = dataSeries.value.find(s => s.name === seriesName)
+    if (series) {
+      series.visible = !series.visible
+      // Trigger chart update
+      nextTick(() => {
+        renderCharts()
+      })
+    }
+  }
+
+  // NEW: Get last digital state (for display)
+  const getLastDigitalState = (series: SeriesConfig): boolean => {
+    if (series.data.length === 0) return false
+    const lastValue = series.data[series.data.length - 1].value
+    return lastValue > 0.5
+  }
+
+  // NEW: Resizable divider functions
+  const startResize = (event: MouseEvent) => {
+    isResizing.value = true
+    resizeStartY.value = event.clientY
+    resizeStartHeight.value = analogAreaHeight.value
+
+    document.addEventListener('mousemove', handleResize)
+    document.addEventListener('mouseup', stopResize)
+    event.preventDefault()
+  }
+
+  const handleResize = (event: MouseEvent) => {
+    if (!isResizing.value) return
+
+    const container = document.querySelector('.timeseries-container')
+    if (!container) return
+
+    const containerHeight = container.clientHeight
+    const deltaY = event.clientY - resizeStartY.value
+    const deltaPercent = (deltaY / containerHeight) * 100
+
+    let newHeight = resizeStartHeight.value + deltaPercent
+
+    // Constrain between 20% and 100%
+    newHeight = Math.max(20, Math.min(100, newHeight))
+
+    analogAreaHeight.value = newHeight
+  }
+
+  const stopResize = () => {
+    isResizing.value = false
+    document.removeEventListener('mousemove', handleResize)
+    document.removeEventListener('mouseup', stopResize)
+
+    // Trigger chart resize after resize complete
+    nextTick(() => {
+      renderCharts()
+    })
   }
 
   const handleByTypeMenu = ({ key }: { key: string }) => {
@@ -8196,70 +10018,100 @@
       return points
     }
 
+    LogUtil.Debug('🔍 CUSTOM DATE PAYLOAD - Extracting points from dataSeries:', {
+      totalSeries: dataSeries.value.length,
+      seriesTypes: dataSeries.value.map(s => ({ name: s.name, itemType: s.itemType, unitType: s.unitType }))
+    })
+
     LogUtil.Debug('= TLChart DataFlow: Extracting 14 panel items from series data')
 
     // Extract points from current series configuration
+    // 🔄 REFACTORED: Use same approach as loadHistoricalDataFromDatabase for consistency
+    const deviceParams = extractDeviceParameters()
+
     dataSeries.value.forEach((series, index) => {
       try {
-        // Parse the itemType format: "2Input1" -> Panel=2, Type=Input, Index=0
-        const itemType = series.itemType || `${extractDeviceParameters().panel_id}VAR${index + 1}`
+        // Method 1: Use pointType and pointNumber directly (same as default timebase)
+        if (series.pointType !== undefined && series.pointNumber !== undefined) {
+          const pointTypeString = mapPointTypeFromNumber(series.pointType)
+          const pointId = generateDeviceId(series.pointType, series.pointNumber)
 
-        // Extract panel ID from itemType (first digit(s))
-        const panelMatch = itemType.match(/^(\d+)/)
-        const panelId = panelMatch ? parseInt(panelMatch[1]) : extractDeviceParameters().panel_id || 2
+          points.push({
+            point_id: pointId,
+            point_type: pointTypeString,
+            point_index: series.pointNumber + 1, // Convert 0-based to 1-based
+            panel_id: series.panelId || deviceParams.panel_id
+          })
 
-        // Extract point type and convert to API format
-        let pointType: string
-        let pointIndex: number
-
-        if (itemType.includes('Input')) {
-          pointType = 'INPUT'
-          const indexMatch = itemType.match(/Input(\d+)$/)
-          pointIndex = indexMatch ? parseInt(indexMatch[1]) - 1 : index // Convert to 0-based index
-        } else if (itemType.includes('Output')) {
-          pointType = 'OUTPUT'
-          const indexMatch = itemType.match(/Output(\d+)$/)
-          pointIndex = indexMatch ? parseInt(indexMatch[1]) - 1 : index
-        } else if (itemType.includes('VAR')) {
-          pointType = 'VARIABLE'
-          const indexMatch = itemType.match(/VAR(\d+)$/)
-          pointIndex = indexMatch ? parseInt(indexMatch[1]) - 1 : index
-        } else if (itemType.includes('HOL')) {
-          pointType = 'MONITOR'
-          const indexMatch = itemType.match(/HOL(\d+)$/)
-          pointIndex = indexMatch ? parseInt(indexMatch[1]) - 1 : index
-        } else {
-          pointType = 'VARIABLE' // Default fallback
-          pointIndex = index
+          LogUtil.Debug('✅ Extracted point (method 1 - direct):', {
+            name: series.name,
+            pointType: series.pointType,
+            pointNumber: series.pointNumber,
+            result: { point_id: pointId, point_type: pointTypeString, point_index: series.pointNumber + 1 }
+          })
         }
+        // Method 2: Fallback to parsing itemType if pointType/pointNumber not available
+        else {
+          console.warn('⚠️ Series missing pointType/pointNumber, using itemType fallback:', series.name)
+          const itemType = series.itemType || `${deviceParams.panel_id}VAR${index + 1}`
+          const panelMatch = itemType.match(/^(\d+)/)
+          const panelId = panelMatch ? parseInt(panelMatch[1]) : deviceParams.panel_id || 2
 
-        // Generate point_id in database-compatible format
-        let pointId: string
-        if (pointType === 'INPUT') {
-          pointId = `IN${pointIndex + 1}`
-        } else if (pointType === 'OUTPUT') {
-          pointId = `OUT${pointIndex + 1}`
-        } else if (pointType === 'VARIABLE') {
-          pointId = `VAR${pointIndex + 1}`
-        } else if (pointType === 'MONITOR') {
-          pointId = `HOL${pointIndex + 1}`
-        } else {
-          pointId = `VAR${pointIndex + 1}`
+          let pointType: string
+          let pointIndex: number
+
+          // Check for INPUT: supports both "144Input40" and "144IN40" formats
+          if (itemType.includes('Input') || /IN\d+/.test(itemType)) {
+            pointType = 'INPUT'
+            let indexMatch = itemType.match(/Input(\d+)$/)
+            if (!indexMatch) {
+              indexMatch = itemType.match(/IN(\d+)$/)
+            }
+            pointIndex = indexMatch ? parseInt(indexMatch[1]) : index + 1
+          }
+          // Check for OUTPUT: supports both "144Output40" and "144OUT40" formats
+          else if (itemType.includes('Output') || /OUT\d+/.test(itemType)) {
+            pointType = 'OUTPUT'
+            let indexMatch = itemType.match(/Output(\d+)$/)
+            if (!indexMatch) {
+              indexMatch = itemType.match(/OUT(\d+)$/)
+            }
+            pointIndex = indexMatch ? parseInt(indexMatch[1]) : index + 1
+          }
+          else if (itemType.includes('VAR')) {
+            pointType = 'VARIABLE'
+            const indexMatch = itemType.match(/VAR(\d+)$/)
+            pointIndex = indexMatch ? parseInt(indexMatch[1]) : index + 1
+          }
+          else if (itemType.includes('HOL')) {
+            pointType = 'MONITOR'
+            const indexMatch = itemType.match(/HOL(\d+)$/)
+            pointIndex = indexMatch ? parseInt(indexMatch[1]) : index + 1
+          }
+          else {
+            pointType = 'VARIABLE'
+            pointIndex = index + 1
+          }
+
+          const pointId = pointType === 'INPUT' ? `IN${pointIndex}` :
+                         pointType === 'OUTPUT' ? `OUT${pointIndex}` :
+                         pointType === 'VARIABLE' ? `VAR${pointIndex}` :
+                         pointType === 'MONITOR' ? `HOL${pointIndex}` :
+                         `VAR${pointIndex}`
+
+          points.push({
+            point_id: pointId,
+            point_type: pointType,
+            point_index: pointIndex,
+            panel_id: panelId
+          })
+
+          LogUtil.Debug('✅ Extracted point (method 2 - itemType):', {
+            name: series.name,
+            itemType: itemType,
+            result: { point_id: pointId, point_type: pointType, point_index: pointIndex }
+          })
         }
-
-        points.push({
-          point_id: pointId,
-          point_type: pointType,
-          point_index: pointIndex,
-          panel_id: panelId
-        })
-
-        LogUtil.Debug('= TLChart DataFlow: Extracted panel item:', {
-          itemNumber: index + 1,
-          itemType: itemType,
-          pointId: pointId, // Database-compatible format like "IN1", "OUT2", "VAR3"
-          pointType: pointType
-        })
 
       } catch (error) {
         console.warn('= TLChart DataFlow: Failed to extract point info for item', index, ':', error)
@@ -8312,7 +10164,8 @@
     try {
       LogUtil.Debug('= TLChart DataFlow: Starting API request to fetch historical data for panel items')
 
-      startLoading()
+      // Don't show loading state for custom date - series already exist
+      // startLoading() - removed to prevent unnecessary loading indicator
       dataSource.value = 'api'
       isRealTime.value = false // Auto Scroll should be off for historical data
 
@@ -8410,13 +10263,14 @@
         lastSyncTime.value = dayjs().format('HH:mm:ss')
 
       } else {
-        LogUtil.Debug('= TLChart DataFlow: No historical data available - setting connection error')
-        hasConnectionError.value = true
-        // Clear all data when connection error occurs
-        dataSeries.value = []
+        LogUtil.Debug('= TLChart DataFlow: No historical data available for custom date range - keeping existing series')
 
-        // Fall back to standard initialization if API fails
-        await initializeData()
+        // DON'T set connection error - no data for a time range is not an error
+        // DON'T clear dataSeries - keep the 14 items visible
+        // Just keep existing data and UI state
+
+        // Clear connection error flag if it was set
+        hasConnectionError.value = false
       }
 
     } catch (error) {
@@ -8435,7 +10289,7 @@
       // Fall back to standard initialization
       await initializeData()
     } finally {
-      stopLoading()
+      // stopLoading() - removed since we don't call startLoading() for custom date
     }
   }
 
@@ -9603,6 +11457,15 @@
     })
   })
 
+  // Watch for showAnalogXAxis changes to update X-axis visibility
+  watch(showAnalogXAxis, (newValue) => {
+    if (analogChartInstance?.options?.scales?.x) {
+      analogChartInstance.options.scales.x.ticks.display = newValue
+      analogChartInstance.options.scales.x.grid.drawTicks = newValue
+      analogChartInstance.update('none') // Update without animation for immediate response
+    }
+  })
+
   // Watch for changes in visible analog series to ensure proper chart updates
   watch(visibleAnalogSeries, async (newSeries, oldSeries) => {
     // LogUtil.Debug(`📊 visibleAnalogSeries watcher triggered`, {
@@ -9747,13 +11610,13 @@
 
       // 🆕 CONTINUOUS MONITORING: Listen for page visibility changes to auto-backfill missing data
       document.addEventListener('visibilitychange', handleVisibilityChange)
-      LogUtil.Info('�?TrendLogChart: Continuous monitoring enabled - will backfill data gaps on return')
+      LogUtil.Info('TrendLogChart: Continuous monitoring enabled - will backfill data gaps on return')
 
       // 🆕 DATABASE PARTITIONING: Ensure required partitions exist when trendlog opens
-      LogUtil.Info('🗄�?TrendLogChart: Checking database partitions...')
+      LogUtil.Info('TrendLogChart: Checking database partitions...')
       try {
         const partitionResult = await DatabaseConfigAPI.ensurePartitionsOnTrendlogOpen()
-        LogUtil.Info('�?TrendLogChart: Partition check completed', {
+        LogUtil.Info('TrendLogChart: Partition check completed', {
           partitionsChecked: partitionResult.partitions_checked,
           partitionsCreated: partitionResult.partitions_created,
           dataMigratedMB: partitionResult.data_migrated_mb,
@@ -9765,6 +11628,167 @@
         }
       } catch (error) {
         LogUtil.Warn('⚠️ TrendLogChart: Partition check failed (continuing with normal initialization)', error)
+      }
+
+      // 🆕 STEP 0: Call Action 0 FIRST to get fresh monitor configuration from device
+      // This provides the interval settings (hour_interval_time, minute_interval_time, second_interval_time)
+      // that determine how often we should poll with Action 15
+      LogUtil.Debug('═══════════════════════════════════════════════════════════════')
+      LogUtil.Debug('🔄 STEP 0: Calling Action 0 to get fresh monitor configuration')
+      LogUtil.Debug('═══════════════════════════════════════════════════════════════')
+
+      // Log full query string
+      const fullQueryString = window.location.href
+      const queryParams = Object.fromEntries(new URLSearchParams(window.location.hash.split('?')[1] || ''))
+      LogUtil.Debug('📋 Full URL Query String:', fullQueryString)
+      LogUtil.Debug('📋 Parsed Query Parameters:', queryParams)
+      LogUtil.Debug('  - sn (serial_number):', route.query.sn)
+      LogUtil.Debug('  - panel_id:', route.query.panel_id)
+      LogUtil.Debug('  - trendlog_id:', route.query.trendlog_id)
+      LogUtil.Debug('  - all_data:', route.query.all_data ? JSON.parse(decodeURIComponent(route.query.all_data as string)) : null)
+      LogUtil.Debug('─────────────────────────────────────────────────────────────')
+
+      const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : null
+      const urlTrendlogId = route.query.trendlog_id ? parseInt(route.query.trendlog_id as string) : null
+
+      if (urlPanelId) {
+        try {
+          const action0Response = await ffiApi.ffiGetPanelData(urlPanelId)
+
+          if (action0Response && action0Response.data) {
+            LogUtil.Debug('✅ Action 0 Response Received')
+            LogUtil.Debug('  - Total items:', action0Response.data?.length)
+            LogUtil.Debug('  - Looking for trendlog_id:', urlTrendlogId, '(index:', urlTrendlogId, ')')
+            LogUtil.Debug('─────────────────────────────────────────────────────────────')
+
+            // Find the specific monitor configuration using trendlog_id from URL
+            let matchingMonitor = null
+            if (urlTrendlogId !== undefined && urlTrendlogId !== null && action0Response.data) {
+              // Search through the data array for matching monitor
+              // trendlog_id is 0-based and directly matches monitor.index
+              for (const item of action0Response.data) {
+                if (item.type === 'MON' && item.index === urlTrendlogId) {
+                  matchingMonitor = item
+                  break
+                }
+              }
+            }
+
+            if (matchingMonitor) {
+              LogUtil.Debug('✅ MATCHED TRENDLOG INFO FROM ACTION 0:')
+              LogUtil.Debug('  - FULL MONITOR DATA:', JSON.stringify(matchingMonitor, null, 2))
+              LogUtil.Debug('─────────────────────────────────────────────────────────────')
+              LogUtil.Debug('  - id:', matchingMonitor.id)
+              LogUtil.Debug('  - label:', matchingMonitor.label)
+              LogUtil.Debug('  - index:', matchingMonitor.index)
+              LogUtil.Debug('  - pid:', matchingMonitor.pid)
+              LogUtil.Debug('  - type:', matchingMonitor.type)
+              LogUtil.Debug('  - status:', matchingMonitor.status)
+              LogUtil.Debug('  - num_inputs:', matchingMonitor.num_inputs)
+              LogUtil.Debug('  - an_inputs:', matchingMonitor.an_inputs)
+              LogUtil.Debug('  - INTERVAL SETTINGS:')
+              LogUtil.Debug('    * hour_interval_time:', matchingMonitor.hour_interval_time)
+              LogUtil.Debug('    * minute_interval_time:', matchingMonitor.minute_interval_time)
+              LogUtil.Debug('    * second_interval_time:', matchingMonitor.second_interval_time)
+              LogUtil.Debug('─────────────────────────────────────────────────────────────')
+
+              // 🆕 FIX: Create temporary monitor config from Action 0 response
+              // This is needed because monitorConfig.value hasn't been set yet (set later at line ~10507)
+              const tempMonitorConfig = {
+                hour_interval_time: matchingMonitor.hour_interval_time || 0,
+                minute_interval_time: matchingMonitor.minute_interval_time || 0,
+                second_interval_time: matchingMonitor.second_interval_time || 0,
+                pid: matchingMonitor.pid,
+                id: matchingMonitor.id,
+                label: matchingMonitor.label,
+                status: matchingMonitor.status,
+                inputItems: matchingMonitor.input || []  // 🔥 FIX: Add inputItems from Action 0 response
+              }
+
+              LogUtil.Debug('✅ Created temporary monitor config from Action 0:', tempMonitorConfig)
+
+              // Calculate interval using temporary config since monitorConfig.value is still null
+              const calculatedIntervalMs = calculateT3000Interval(tempMonitorConfig)
+              const calculatedIntervalSec = calculatedIntervalMs / 1000
+              const rawTotalSeconds = (matchingMonitor.hour_interval_time * 3600 +
+                                      matchingMonitor.minute_interval_time * 60 +
+                                      matchingMonitor.second_interval_time)
+
+              LogUtil.Debug('📊 CALCULATED POLLING INTERVAL:')
+              LogUtil.Debug('  - Formula: (hour * 3600 + minute * 60 + second) * 1000')
+              LogUtil.Debug('  - Calculation: (' + matchingMonitor.hour_interval_time + ' * 3600 + ' +
+                         matchingMonitor.minute_interval_time + ' * 60 + ' +
+                         matchingMonitor.second_interval_time + ') * 1000')
+              LogUtil.Debug('  - Raw total seconds:', rawTotalSeconds)
+              LogUtil.Debug('  - Raw total milliseconds:', rawTotalSeconds * 1000)
+              LogUtil.Debug('  - Minimum enforced: 5 seconds (5000 ms) [TESTING]')
+              LogUtil.Debug('  - Final interval (ms):', calculatedIntervalMs)
+              LogUtil.Debug('  - Final interval (seconds):', calculatedIntervalSec)
+              if (rawTotalSeconds * 1000 < 5000) {
+                LogUtil.Debug('  ⚠️  NOTE: Configured interval (' + rawTotalSeconds + 's) is less than minimum (5s), using 5s [TESTING]')
+              }
+              LogUtil.Debug('  - Action 15 will be called every', calculatedIntervalSec, 'seconds')
+              LogUtil.Debug('═══════════════════════════════════════════════════════════════')
+
+              // 🔥 CRITICAL FIX: Set monitorConfig.value to tempMonitorConfig so startRealTimeUpdates() can access it
+              LogUtil.Debug('🔥 SETTING monitorConfig.value to tempMonitorConfig to enable polling...')
+              if (!monitorConfig.value) {
+                monitorConfig.value = tempMonitorConfig
+                LogUtil.Debug('✅ monitorConfig.value set from tempMonitorConfig')
+              } else {
+                // If it already exists, update the interval fields
+                monitorConfig.value.hour_interval_time = matchingMonitor.hour_interval_time || 0
+                monitorConfig.value.minute_interval_time = matchingMonitor.minute_interval_time || 0
+                monitorConfig.value.second_interval_time = matchingMonitor.second_interval_time || 0
+                LogUtil.Debug('✅ Updated existing monitorConfig.value with interval settings')
+              }
+
+              // 🆕 FORCE START: Always start realtime updates after setting monitorConfig
+              LogUtil.Debug('🔄 FORCING startRealTimeUpdates after Action 0 response...')
+              LogUtil.Debug('  - isRealTime.value:', isRealTime.value)
+              LogUtil.Debug('  - monitorConfig.value:', monitorConfig.value)
+              LogUtil.Debug('  - typeof startRealTimeUpdates:', typeof startRealTimeUpdates)
+              LogUtil.Debug('  - startRealTimeUpdates function:', startRealTimeUpdates)
+              LogUtil.Debug('  - Calling startRealTimeUpdates() now...')
+
+              try {
+                startRealTimeUpdates()
+                LogUtil.Debug('✅ startRealTimeUpdates() returned successfully')
+                LogUtil.Debug('  - realtimeInterval is now:', realtimeInterval)
+              } catch (error) {
+                console.error('❌ ERROR calling startRealTimeUpdates():', error)
+              }
+            } else {
+              console.warn('⚠️ NO MATCHING MONITOR FOUND IN ACTION 0 RESPONSE')
+              LogUtil.Debug('  - Searched for trendlog_id:', urlTrendlogId, '(index:', urlTrendlogId, ')')
+              LogUtil.Debug('  - Total monitors returned:', action0Response.data?.filter((d: any) => d.type === 'MON').length)
+              LogUtil.Debug('  - Available monitors (FULL DATA):')
+              action0Response.data?.filter((d: any) => d.type === 'MON').forEach((mon: any) => {
+                LogUtil.Debug('    Monitor:', JSON.stringify({
+                  id: mon.id,
+                  index: mon.index,
+                  label: mon.label,
+                  type: mon.type,
+                  hour_interval_time: mon.hour_interval_time,
+                  minute_interval_time: mon.minute_interval_time,
+                  second_interval_time: mon.second_interval_time
+                }, null, 2))
+              })
+              LogUtil.Debug('  - Using DEFAULT interval: 15 seconds (15000 ms)')
+              LogUtil.Debug('═══════════════════════════════════════════════════════════════')
+            }
+          }
+        } catch (error) {
+          console.error('❌ ACTION 0 CALL FAILED')
+          console.error('  - Error:', error)
+          LogUtil.Debug('  - Using DEFAULT interval: 15 seconds (15000 ms)')
+          LogUtil.Debug('═══════════════════════════════════════════════════════════════')
+        }
+      } else {
+        console.warn('⚠️ NO PANEL_ID IN URL')
+        LogUtil.Debug('  - Cannot call Action 0 without panel_id')
+        LogUtil.Debug('  - Using DEFAULT interval: 15 seconds (15000 ms)')
+        LogUtil.Debug('═══════════════════════════════════════════════════════════════')
       }
 
       // Initialize monitor configuration
@@ -9866,6 +11890,9 @@
 
       if (!analogChartCanvas.value) {
         LogUtil.Error('❌ Canvas not available after waiting, cannot create charts')
+        // Don't return - show error message instead of blank page
+        hasConnectionError.value = true
+        stopLoading()
         return
       }
 
@@ -10444,55 +12471,239 @@
       historyAbortController.abort()
     }
   })
+
+  // 🔥 HMR (Hot Module Reload) Cleanup - prevent multiple intervals when saving file
+  if (import.meta.hot) {
+    import.meta.hot.dispose(() => {
+      LogUtil.Debug('🔥 HMR: Cleaning up old component instance to prevent duplicate intervals')
+      stopRealTimeUpdates()
+      destroyAllCharts()
+      if (timebaseChangeTimeout) {
+        clearTimeout(timebaseChangeTimeout)
+      }
+      if (historyAbortController) {
+        historyAbortController.abort()
+      }
+    })
+  }
 </script>
 
 <style scoped>
+  /* Global loading indicator */
+  .global-loading-indicator {
+    background: linear-gradient(to right, #e6f7ff, #bae7ff);
+    border-bottom: 2px solid #1890ff;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(24, 144, 255, 0.2);
+    font-size: 13px;
+    font-weight: 500;
+    color: #096dd9;
+  }
+
   .timeseries-container {
     display: flex;
+    flex-direction: column;
     height: calc(97vh - 40px);
-    /* Full viewport height minus top controls */
-    /* min-height: 400px; */
-    /* Minimum for small screens */
-    gap: 6px;
-    /* Ultra-minimal gap for maximum space */
+    gap: 0;
     background: #ffffff;
     border-radius: 0px;
-    /* No border radius */
     overflow: hidden;
-    /* Prevent main container scrollbars */
     padding: 0;
-    /* Remove any default padding */
+  }
+
+  /* ANALOG AREA (Top Section) */
+  .analog-area {
+    display: flex;
+    flex-direction: row;
+    height: v-bind('showDigitalArea ? analogAreaHeight + "%" : "100%"');
+    min-height: 200px;
+    gap: 6px;
+    overflow: hidden;
+    padding: 4px;
+    background: #f5f5f5;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
   }
 
   .left-panel {
     width: clamp(210px, 23vw, 330px);
-    /* Responsive width - adjusted values */
     background: #fafafa;
     border: 1px solid #e8e8e8;
     border-radius: 0px;
-    /* No border radius */
     overflow-y: auto;
     overflow-x: hidden;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    position: relative; /* For loading overlay positioning */
+    position: relative;
   }
 
   .right-panel {
     flex: 1;
     background: #fafafa;
-    border: 1px solid #e8e8e8;
+    border: none;
     border-radius: 0px;
-    /* No border radius */
     display: flex;
     flex-direction: column;
     min-width: 200px;
-    /* Ensure readability */
     overflow-y: auto;
-    /* Make scrollable when content overflows */
     overflow-x: hidden;
-    /* Hide horizontal overflow */
+  }
+
+  /* RESIZABLE DIVIDER */
+  .resizable-divider {
+    height: 12px;
+    background: linear-gradient(to bottom, #e8e8e8 0%, #d9d9d9 50%, #e8e8e8 100%);
+    cursor: row-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 10;
+    transition: background 0.2s ease;
+  }
+
+  .resizable-divider:hover {
+    background: linear-gradient(to bottom, #bfbfbf 0%, #999 50%, #bfbfbf 100%);
+  }
+
+  .divider-handle {
+    width: 60px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .divider-grip {
+    width: 40px;
+    height: 3px;
+    background: #8c8c8c;
+    border-radius: 2px;
+    box-shadow: 0 -1px 0 #fff, 0 1px 0 #fff;
+  }
+
+  .resizable-divider:hover .divider-grip {
+    background: #595959;
+  }
+
+  /* RESIZABLE DIVIDER */
+  .resizable-divider {
+    height: 3px;
+    background: linear-gradient(to bottom, #e1e4e8 0%, #d1d5da 50%, #e1e4e8 100%);
+    cursor: row-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 10;
+    transition: background 0.2s ease;
+  }
+
+  .resizable-divider:hover {
+    background: linear-gradient(to bottom, #c6cbd1 0%, #959da5 50%, #c6cbd1 100%);
+  }
+
+  .divider-handle {
+    width: 60px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .divider-grip {
+    width: 40px;
+    height: 1.5px;
+    background: #959da5;
+    border-radius: 2px;
+    box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.5), 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+
+  .resizable-divider:hover .divider-grip {
+    background: #6a737d;
+  }
+
+  /* DIGITAL AREA (Bottom Section) */
+  .digital-area {
+    flex: 1;
+    min-height: 150px;
+    background: #f5f5f5;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    padding: 4px;
+    display: flex;
+    flex-direction: row;
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .digital-left-panel {
+    width: clamp(210px, 23vw, 330px);
+    background: #fafafa;
+    border: 1px solid #e8e8e8;
+    border-radius: 0px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .digital-right-panel {
+    flex: 1;
+    background: #fafafa;
+    border: none;
+    border-radius: 0px;
+    display: flex;
+    flex-direction: column;
+    min-width: 200px;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .digital-oscilloscope-container {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0px;
+  }
+
+  /* Empty chart message */
+  .empty-chart-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    height: 100%;
+    padding: 40px 20px 20px;
+    min-height: 200px;
+  }
+
+  .empty-chart-message .empty-state-icon {
+    font-size: 20px;
+    margin-right: 8px;
+    display: inline;
+  }
+
+  .empty-chart-message .empty-state-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: #595959;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .empty-chart-message .empty-state-subtitle {
+    font-size: 12px;
+    color: #8c8c8c;
+    text-align: center;
   }
 
   /* Loading overlay - centered in left panel */
@@ -10712,9 +12923,9 @@
   .series-empty-state {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     min-height: 200px;
-    padding: 20px;
+    padding: 40px 20px 20px;
   }
 
   .empty-state-content {
@@ -11144,12 +13355,12 @@
   }
 
   .combined-analog-chart {
-    height: 400px;
+    flex: 1;
     background: white;
-    border: 1px solid #ddd;
+    border: none;
     border-radius: 4px;
-    margin-bottom: 8px;
     position: relative;
+    min-height: 0;
   }
 
     .combined-analog-chart canvas {
@@ -11181,7 +13392,7 @@
   }
 
     .channel-chart.last-channel {
-      height: 85px;
+      height: 90px;
     }
 
     /* Add border to first channel-chart (top) */
@@ -11969,7 +14180,7 @@
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    font-size: 14px;
+    font-size: 13px !important;
     font-weight: 500;
   }
 
@@ -12006,8 +14217,19 @@
     gap: 8px;
   }
 
+  .drawer-footer .ant-btn {
+    height: 32px !important;
+    padding: 0 15px !important;
+    font-size: 12px !important;
+    font-weight: normal !important;
+  }
+
   .select-toggle-btn {
     min-width: 90px;
+    height: 32px !important;
+    padding: 0 15px !important;
+    font-size: 12px !important;
+    font-weight: normal !important;
   }
 
   /* Compact item list with detailed info */
@@ -12230,30 +14452,35 @@
   }
 
   .empty-icon {
-    font-size: 48px;
+    font-size: 36px;
     margin-bottom: 16px;
     opacity: 0.6;
   }
 
   .empty-title {
-    font-size: 18px;
+    font-size: 14px;
     font-weight: 600;
     color: #262626;
     margin-bottom: 8px;
   }
 
   .empty-description {
-    font-size: 14px;
+    font-size: 13px;
     color: #8c8c8c;
     line-height: 1.5;
     margin-bottom: 24px;
   }
 
   .select-items-btn {
-    height: 40px;
-    padding: 0 24px;
-    font-size: 14px;
-    font-weight: 500;
+    height: 32px !important;
+    padding: 0 16px !important;
+    font-size: 14px !important;
+    font-weight: normal !important;
+  }
+
+  .select-items-btn span {
+    font-size: 14px !important;
+    font-weight: normal !important;
   }
 
   /* ⌨️ Keyboard Navigation Styles */

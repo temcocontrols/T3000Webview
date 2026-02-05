@@ -1,0 +1,167 @@
+/**
+ * Documentation Content Area
+ * Renders markdown content with User Guide / Technical tabs
+ */
+
+import React, { useEffect, useState, useMemo } from 'react';
+import { Text, Spinner } from '@fluentui/react-components';
+import { Marked } from 'marked';
+import { useMarkdownContent } from '../hooks/useMarkdownContent';
+import { ControlMessagesPage } from './ControlMessagesPage';
+import { DOCS_CONFIG } from '@t3-react/config/constants';
+import styles from './DocContent.module.css';
+
+interface DocContentProps {
+  path: string;
+  onNavigate?: (path: string) => void;
+}
+
+type DocMode = 'user' | 'technical';
+
+interface ParsedContent {
+  hasUserGuide: boolean;
+  hasTechnical: boolean;
+  userGuideHtml: string;
+  technicalHtml: string;
+  fullHtml: string;
+}
+
+export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
+  const { content, loading, error } = useMarkdownContent(path);
+  const [mode, setMode] = useState<DocMode>('user');
+
+  const parsedContent = useMemo<ParsedContent>(() => {
+    if (!content) {
+      return {
+        hasUserGuide: false,
+        hasTechnical: false,
+        userGuideHtml: '',
+        technicalHtml: '',
+        fullHtml: '',
+      };
+    }
+
+    // Check for section markers
+    const hasUserGuide = content.includes('<!-- USER-GUIDE -->');
+    const hasTechnical = content.includes('<!-- TECHNICAL -->');
+
+    const marked = new Marked({
+      gfm: true,
+      breaks: true,
+    });
+
+    if (!hasUserGuide && !hasTechnical) {
+      // No sections, render all content
+      return {
+        hasUserGuide: false,
+        hasTechnical: false,
+        userGuideHtml: '',
+        technicalHtml: '',
+        fullHtml: marked.parse(content) as string,
+      };
+    }
+
+    // Extract user guide section
+    let userGuideContent = '';
+    if (hasUserGuide) {
+      if (hasTechnical) {
+        // Extract content between USER-GUIDE and TECHNICAL
+        const userGuideMatch = content.match(/<!-- USER-GUIDE -->([\s\S]*?)<!-- TECHNICAL -->/);
+        if (userGuideMatch) {
+          userGuideContent = userGuideMatch[1].trim();
+        }
+      } else {
+        // No technical section, take everything after USER-GUIDE
+        const userGuideMatch = content.match(/<!-- USER-GUIDE -->([\s\S]*)/);
+        if (userGuideMatch) {
+          userGuideContent = userGuideMatch[1].trim();
+        }
+      }
+    }
+
+    // Extract technical section
+    let technicalContent = '';
+    if (hasTechnical) {
+      // Take everything after TECHNICAL marker
+      const technicalMatch = content.match(/<!-- TECHNICAL -->([\s\S]*)/);
+      if (technicalMatch) {
+        technicalContent = technicalMatch[1].trim();
+      }
+    }
+
+    return {
+      hasUserGuide,
+      hasTechnical,
+      userGuideHtml: userGuideContent ? marked.parse(userGuideContent) as string : '',
+      technicalHtml: technicalContent ? marked.parse(technicalContent) as string : '',
+      fullHtml: marked.parse(content) as string,
+    };
+  }, [content]);
+
+  // Show custom Control Messages component for the message index
+  if (path === 't3000/building-platform/control-messages/message-index' && onNavigate) {
+    return <ControlMessagesPage onNavigate={onNavigate} />;
+  }
+
+  if (loading) {
+    return (
+      <div className={styles.contentLoading}>
+        <div className={styles.loading}>
+          <Spinner size="tiny" />
+          <Text size={200} weight="regular">Loading documentation...</Text>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    const errorPath = path.startsWith('legacy/')
+      ? `${DOCS_CONFIG.baseUrl}/${path.replace('legacy/', '')}`
+      : `${DOCS_CONFIG.baseUrl}/${path}.md`;
+
+    return (
+      <div className={styles.error}>
+        <Text weight="semibold" size={500}>Error loading documentation</Text>
+        <Text size={300}>{error.message}</Text>
+        <Text size={200} className={styles.errorHint}>
+          Make sure the markdown file exists at: {errorPath}
+        </Text>
+      </div>
+    );
+  }
+
+  const showTabs = parsedContent.hasUserGuide || parsedContent.hasTechnical;
+  const htmlToRender = showTabs
+    ? (mode === 'user' ? parsedContent.userGuideHtml : parsedContent.technicalHtml)
+    : parsedContent.fullHtml;
+
+  return (
+    <div className={styles.content}>
+      {showTabs && (
+        <div className={styles.docTabs}>
+          <button
+            className={`${styles.docTab} ${mode === 'user' ? styles.docTabActive : ''}`}
+            onClick={() => setMode('user')}
+            disabled={!parsedContent.hasUserGuide}
+          >
+            <span className={styles.docTabIcon}>☰</span>
+            <span>Overview</span>
+          </button>
+          {parsedContent.hasTechnical && (
+            <button
+              className={`${styles.docTab} ${mode === 'technical' ? styles.docTabActive : ''}`}
+              onClick={() => setMode('technical')}
+            >
+              <span className={styles.docTabIcon}>&lt;/&gt;</span>
+              <span>Developer</span>
+            </button>
+          )}
+        </div>
+      )}
+      <div
+        className={styles.markdown}
+        dangerouslySetInnerHTML={{ __html: htmlToRender }}
+      />
+    </div>
+  );
+};

@@ -4,7 +4,7 @@
  * Manage trend log configurations with device refresh
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   DataGrid,
   DataGridHeader,
@@ -34,9 +34,9 @@ import {
   InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
-import { TrendlogRefreshApiService } from '../services/trendlogRefreshApi';
+import { TrendlogRefreshApi } from '../services/trendlogRefreshApi';
 import { API_BASE_URL } from '../../../config/constants';
-import { TrendChartDrawer } from '../../trends/components/TrendChartDrawer';
+import { TrendChartDrawer } from '../components/TrendChartDrawer';
 import styles from './TrendLogsPage.module.css';
 
 interface TrendLogData {
@@ -48,6 +48,23 @@ interface TrendLogData {
   bufferSize?: number;
   autoManual?: string;
   status?: string;
+  _uniqueIndex?: number;
+  panelId?: number;
+}
+
+interface TrendLogInput {
+  id?: number;
+  serialNumber?: number;
+  panelId?: number;
+  trendlogId?: string;
+  pointType: string;
+  pointIndex: string;
+  pointPanel?: string;
+  pointLabel?: string;
+  status?: string;
+  viewType?: string;
+  viewNumber?: number;
+  isSelected?: number;
 }
 
 export const TrendLogsPage: React.FC = () => {
@@ -59,11 +76,19 @@ export const TrendLogsPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
+  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
   const [selectedMonitor, setSelectedMonitor] = useState<TrendLogData | null>(null);
-  const [monitorInputs, setMonitorInputs] = useState<string[]>(Array(14).fill(''));
+  const [monitorInputs, setMonitorInputs] = useState<TrendLogInput[]>([]);
+  const [loadingInputs, setLoadingInputs] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+
+  // Helper function to get row ID for a trendlog
+  const getRowIdForItem = useCallback((item: TrendLogData) => {
+    return `${item.serialNumber}-${item.trendlogId || item.trendlogIndex}-${item._uniqueIndex}`;
+  }, []);
 
   // Chart drawer state
   const [chartDrawerOpen, setChartDrawerOpen] = useState(false);
@@ -73,6 +98,7 @@ export const TrendLogsPage: React.FC = () => {
     trendlogId?: string;
     monitorId?: string;
     itemData?: any; // Complete monitor configuration data (Vue pattern)
+    monitorInputs?: any[]; // Monitor inputs for the selected trendlog
   }>({});
 
   // Handle opening trend chart drawer - construct itemData from trendlog info
@@ -171,6 +197,7 @@ export const TrendLogsPage: React.FC = () => {
           trendlogId: trendlog.trendlogId || '0',
           monitorId: monitorIndex,
           itemData,
+          monitorInputs: monitorInputs, // Pass the loaded monitor inputs
         });
         setChartDrawerOpen(true);
       } catch (error) {
@@ -192,11 +219,12 @@ export const TrendLogsPage: React.FC = () => {
           trendlogId: trendlog.trendlogId || '0',
           monitorId: monitorIndex,
           itemData,
+          monitorInputs: monitorInputs, // Pass the loaded monitor inputs
         });
         setChartDrawerOpen(true);
       }
     },
-    [selectedDevice]
+    [selectedDevice, monitorInputs]
   );  // Debug log to verify new component is loading
   useEffect(() => {
     console.log('🔍 [TrendLogsPage] NEW DataGrid version loaded!', {
@@ -230,6 +258,8 @@ export const TrendLogsPage: React.FC = () => {
   const fetchTrendLogs = useCallback(async () => {
     if (!selectedDevice) {
       setTrendLogs([]);
+      setSelectedMonitor(null);
+      setMonitorInputs([]);
       return;
     }
 
@@ -266,6 +296,23 @@ export const TrendLogsPage: React.FC = () => {
       }));
 
       setTrendLogs(trendlogsWithIndex);
+
+      // Auto-select first trendlog and load its inputs
+      if (trendlogsWithIndex.length > 0) {
+        console.log('🎯 [TrendLogsPage] Auto-selecting first trendlog:', trendlogsWithIndex[0]);
+        const firstTrendlog = trendlogsWithIndex[0];
+
+        // Use loadTrendlogInputs to handle the loading with deduplication
+        setSelectedMonitor(firstTrendlog);
+
+        // Select the first row's radio button
+        const firstRowId = `${firstTrendlog.serialNumber}-${firstTrendlog.trendlogId || firstTrendlog.trendlogIndex}-${firstTrendlog._uniqueIndex}`;
+        setSelectedItems(new Set([firstRowId]));
+
+        if (firstTrendlog.trendlogId) {
+          await loadTrendlogInputsInternal(firstTrendlog);
+        }
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load trendlogs';
       setError(errorMessage);
@@ -275,34 +322,118 @@ export const TrendLogsPage: React.FC = () => {
     }
   }, [selectedDevice]);
 
+  // Internal function to load inputs with deduplication
+  const loadTrendlogInputsInternal = async (trendlog: TrendLogData) => {
+    if (!selectedDevice || !trendlog.trendlogId) {
+      setMonitorInputs([]);
+      return;
+    }
+
+    setLoadingInputs(true);
+    try {
+      const fallbackUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/TRENDLOG_INPUTS`;
+      const fallbackResponse = await fetch(fallbackUrl);
+
+      if (fallbackResponse.ok) {
+        const inputsData = await fallbackResponse.json();
+
+        const trendlogInputs = (inputsData.data || []).filter(
+          (input: any) => {
+            const trendlogMatch = input.trendlogId === trendlog.trendlogId || input.Trendlog_ID === trendlog.trendlogId;
+            const viewMatch = input.viewType === 'MAIN' || input.view_type === 'MAIN' ||
+                             input.viewType === 'VIEW' || input.view_type === 'VIEW' ||
+                             !input.viewType;
+            return trendlogMatch && viewMatch;
+          }
+        );
+
+        // Remove duplicates
+        const uniqueInputsMap = new Map<string, any>();
+        trendlogInputs.forEach((input: any) => {
+          const pointType = input.Point_Type || input.pointType;
+          const pointIndex = input.Point_Index || input.pointIndex;
+          const key = `${pointType}-${pointIndex}`;
+
+          if (!uniqueInputsMap.has(key)) {
+            uniqueInputsMap.set(key, input);
+          } else {
+            const existing = uniqueInputsMap.get(key);
+            const existingViewType = existing.view_type || existing.viewType;
+            const currentViewType = input.view_type || input.viewType;
+
+            if (currentViewType === 'MAIN' && existingViewType !== 'MAIN') {
+              uniqueInputsMap.set(key, input);
+            }
+          }
+        });
+
+        const uniqueInputs = Array.from(uniqueInputsMap.values());
+
+        const formattedInputs: TrendLogInput[] = uniqueInputs.map((input: any) => ({
+          id: input.id,
+          serialNumber: input.SerialNumber || input.serialNumber,
+          panelId: input.PanelId || input.panelId,
+          trendlogId: input.Trendlog_ID || input.trendlogId,
+          pointType: input.Point_Type || input.pointType,
+          pointIndex: input.Point_Index || input.pointIndex,
+          pointPanel: input.Point_Panel || input.pointPanel,
+          pointLabel: input.Point_Label || input.pointLabel,
+          status: input.Status || input.status,
+          viewType: input.view_type || input.viewType,
+          viewNumber: input.view_number || input.viewNumber,
+          isSelected: input.is_selected || input.isSelected,
+        }));
+
+        setMonitorInputs(formattedInputs);
+      } else {
+        setMonitorInputs([]);
+      }
+    } catch (error) {
+      console.error('❌ [TrendLogsPage] Error loading inputs:', error);
+      setMonitorInputs([]);
+    } finally {
+      setLoadingInputs(false);
+    }
+  };
+
+  // Load inputs for a specific trendlog
+  const loadTrendlogInputs = useCallback(async (trendlog: TrendLogData) => {
+    if (!selectedDevice || !trendlog.trendlogId) {
+      console.log('⚠️ [TrendLogsPage] Missing device or trendlog ID');
+      setSelectedMonitor(trendlog);
+      setMonitorInputs([]);
+      return;
+    }
+
+    console.log('📡 [TrendLogsPage] Loading inputs for trendlog:', trendlog.trendlogId);
+    setSelectedMonitor(trendlog);
+    await loadTrendlogInputsInternal(trendlog);
+  }, [selectedDevice]);
+
   useEffect(() => {
     fetchTrendLogs();
   }, [fetchTrendLogs]);
 
   // Auto-refresh once after page load (Trigger #1)
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed) return;
+    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
 
-    const timer = setTimeout(async () => {
+    const checkAndRefresh = async () => {
+      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+
       try {
         console.log('[TrendLogsPage] Auto-refreshing from device...');
-        const refreshResponse = await TrendlogRefreshApiService.refreshAllTrendlogs(selectedDevice.serialNumber);
+        const refreshResponse = await TrendlogRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);
         console.log('[TrendLogsPage] Refresh response:', refreshResponse);
-
-        if (refreshResponse.items && refreshResponse.items.length > 0) {
-          await TrendlogRefreshApiService.saveRefreshedTrendlogs(selectedDevice.serialNumber, refreshResponse.items);
-          await fetchTrendLogs();
-        } else {
-          console.warn('[TrendLogsPage] Auto-refresh: No items received, keeping existing data');
-        }
+        await fetchTrendLogs();
         setAutoRefreshed(true);
       } catch (error) {
         console.error('[TrendLogsPage] Auto-refresh failed:', error);
         setAutoRefreshed(true);
       }
-    }, 500);
+    };
 
-    return () => clearTimeout(timer);
+    checkAndRefresh();
   }, [loading, selectedDevice, autoRefreshed, fetchTrendLogs]);
 
   // Refresh all trendlogs from device (Trigger #2: Manual "Refresh All" button)
@@ -312,19 +443,9 @@ export const TrendLogsPage: React.FC = () => {
     setRefreshing(true);
     try {
       console.log('[TrendLogsPage] Refreshing all trendlogs from device...');
-      const refreshResponse = await TrendlogRefreshApiService.refreshAllTrendlogs(selectedDevice.serialNumber);
+      const refreshResponse = await TrendlogRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);
       console.log('[TrendLogsPage] Refresh response:', refreshResponse);
-
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await TrendlogRefreshApiService.saveRefreshedTrendlogs(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[TrendLogsPage] Save response:', saveResponse);
-        await fetchTrendLogs();
-      } else {
-        console.warn('[TrendLogsPage] No items received from refresh, keeping existing data');
-      }
+      await fetchTrendLogs();
     } catch (error) {
       console.error('[TrendLogsPage] Failed to refresh from device:', error);
       setError(error instanceof Error ? error.message : 'Failed to refresh from device');
@@ -346,17 +467,8 @@ export const TrendLogsPage: React.FC = () => {
     setRefreshingItems(prev => new Set(prev).add(trendlogIndex));
     try {
       console.log(`[TrendLogsPage] Refreshing trendlog ${index} from device...`);
-      const refreshResponse = await TrendlogRefreshApiService.refreshTrendlog(selectedDevice.serialNumber, index);
+      const refreshResponse = await TrendlogRefreshApi.refreshSingleFromDevice(selectedDevice.serialNumber, index);
       console.log('[TrendLogsPage] Refresh response:', refreshResponse);
-
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await TrendlogRefreshApiService.saveRefreshedTrendlogs(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[TrendLogsPage] Save response:', saveResponse);
-      }
-
       await fetchTrendLogs();
     } catch (error) {
       console.error(`[TrendLogsPage] Failed to refresh trendlog ${index}:`, error);
@@ -379,70 +491,14 @@ export const TrendLogsPage: React.FC = () => {
 
   const handleMonitorSelect = useCallback(async (monitor: TrendLogData) => {
     console.log('🔵 [TrendLogsPage] handleMonitorSelect called with:', monitor);
-    setSelectedMonitor(monitor);
+    console.log('🔵 [TrendLogsPage] VERSION: 2025-12-12-v2 - Using NEW input loading code');
 
-    if (!selectedDevice) {
-      console.log('⚠️ [TrendLogsPage] No device selected, skipping input fetch');
-      setMonitorInputs(Array(14).fill(''));
-      return;
-    }
+    // Update radio button selection
+    const rowId = getRowIdForItem(monitor);
+    setSelectedItems(new Set([rowId]));
 
-    try {
-      console.log('📡 [TrendLogsPage] Fetching inputs for monitor:', monitor.trendlogId, 'device:', selectedDevice.serialNumber);
-
-      // Fetch TRENDLOG_INPUTS for this device
-      const inputsUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/TRENDLOG_INPUTS`;
-      const response = await fetch(inputsUrl);
-
-      if (response.ok) {
-        const inputsData = await response.json();
-        console.log('✅ [TrendLogsPage] Inputs data received:', inputsData);
-
-        // Filter inputs for this specific trendlog
-        if (inputsData.data && Array.isArray(inputsData.data)) {
-          const trendlogInputs = inputsData.data.filter(
-            (input: any) =>
-              (input.trendlogId === monitor.trendlogId || input.Trendlog_ID === monitor.trendlogId) &&
-              (input.viewType === 'MAIN' || input.view_type === 'MAIN' || !input.viewType)
-          );
-
-          console.log('✅ [TrendLogsPage] Filtered inputs for monitor:', trendlogInputs);
-
-          // Create array of 14 inputs (standard monitor size)
-          const inputs = Array(14).fill('');
-
-          // Fill in the configured inputs
-          trendlogInputs.forEach((input: any) => {
-            const pointIndex = parseInt(input.pointIndex || input.point_index || '0');
-            const pointType = input.pointType || input.point_type || '';
-            const pointLabel = input.pointLabel || input.point_label || '';
-
-            // Calculate display index (0-13)
-            if (pointIndex > 0 && pointIndex <= 14) {
-              const displayIndex = pointIndex - 1;
-              // Format: "IN1: Label" or "OUT1: Label"
-              const prefix = pointType === 'INPUT' ? 'IN' :
-                           pointType === 'OUTPUT' ? 'OUT' :
-                           pointType === 'VARIABLE' ? 'VAR' : '';
-              inputs[displayIndex] = pointLabel || `${prefix}${pointIndex}`;
-            }
-          });
-
-          setMonitorInputs(inputs);
-          console.log('✅ [TrendLogsPage] Monitor inputs set:', inputs);
-        } else {
-          console.warn('⚠️ [TrendLogsPage] No data in response');
-          setMonitorInputs(Array(14).fill(''));
-        }
-      } else {
-        console.warn('⚠️ [TrendLogsPage] Failed to fetch inputs:', response.status);
-        setMonitorInputs(Array(14).fill(''));
-      }
-    } catch (error) {
-      console.error('❌ [TrendLogsPage] Error fetching monitor inputs:', error);
-      setMonitorInputs(Array(14).fill(''));
-    }
-  }, [selectedDevice]);
+    await loadTrendlogInputs(monitor);
+  }, [loadTrendlogInputs, getRowIdForItem]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -457,6 +513,28 @@ export const TrendLogsPage: React.FC = () => {
     }
   };
 
+  // Display data with 10 empty rows when no trendlogs
+  const displayTrendLogs = React.useMemo(() => {
+    if (trendLogs.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        serialNumber: selectedDevice?.serialNumber || 0,
+        trendlogId: '',
+        trendlogIndex: '',
+        trendlogLabel: '',
+        intervalSeconds: undefined,
+        bufferSize: undefined,
+        autoManual: '',
+        status: '',
+        _uniqueIndex: index,
+        panelId: selectedDevice?.panelId,
+      }));
+    }
+    return trendLogs;
+  }, [trendLogs, selectedDevice]);
+
+  // Helper to identify empty rows
+  const isEmptyRow = (item: TrendLogData) => !item.trendlogId && !item.trendlogIndex && trendLogs.length === 0;
+
   // Column definitions
   const columns: TableColumnDefinition<TrendLogData>[] = [
     createTableColumn<TrendLogData>({
@@ -467,12 +545,12 @@ export const TrendLogsPage: React.FC = () => {
         return aVal - bVal;
       },
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('trendlogId')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('trendlogId')}>
           <span>Trendlog ID</span>
           {sortColumn === 'trendlogId' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -482,23 +560,24 @@ export const TrendLogsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <div className={styles.refreshContainer}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRefreshSingleTrendlog(trendlogIndex);
-                }}
-                className={`${styles.refreshIconButton} ${isRefreshingThis ? styles.isRefreshing : ''}`}
-                title="Refresh this trendlog from device"
-                disabled={isRefreshingThis}
-              >
-                <ArrowSyncRegular
-                  style={{ fontSize: '14px' }}
-                  className={isRefreshingThis ? styles.rotating : ''}
-                />
-              </button>
-              <Text size={200} weight="regular">{trendlogIndex || '---'}</Text>
-            </div>
+            {!isEmptyRow(item) && (
+              <div className={styles.refreshContainer}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRefreshSingleTrendlog(trendlogIndex);
+                  }}
+                  className={`${styles.refreshIconButton} ${isRefreshingThis ? styles.isRefreshing : ''}`}
+                  title="Refresh this trendlog from device"
+                  disabled={isRefreshingThis}
+                >
+                  <ArrowSyncRegular
+                    className={`${styles.iconSmall} ${isRefreshingThis ? styles.rotating : ''}`}
+                  />
+                </button>
+                <Text size={200} weight="regular">{trendlogIndex || '---'}</Text>
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -507,18 +586,18 @@ export const TrendLogsPage: React.FC = () => {
       columnId: 'trendlogLabel',
       compare: (a, b) => (a.trendlogLabel || '').localeCompare(b.trendlogLabel || ''),
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('trendlogLabel')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('trendlogLabel')}>
           <span>Label</span>
           {sortColumn === 'trendlogLabel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          <Text size={200}>{item.trendlogLabel || '---'}</Text>
+          {!isEmptyRow(item) && <Text size={200}>{item.trendlogLabel || '---'}</Text>}
         </TableCellLayout>
       ),
     }),
@@ -527,7 +606,7 @@ export const TrendLogsPage: React.FC = () => {
       renderHeaderCell: () => <span>Interval (sec)</span>,
       renderCell: (item) => (
         <TableCellLayout>
-          <Text size={200}>{item.intervalSeconds ?? '---'}</Text>
+          {!isEmptyRow(item) && <Text size={200}>{item.intervalSeconds ?? '---'}</Text>}
         </TableCellLayout>
       ),
     }),
@@ -536,7 +615,7 @@ export const TrendLogsPage: React.FC = () => {
       renderHeaderCell: () => <span>Buffer Size</span>,
       renderCell: (item) => (
         <TableCellLayout>
-          <Text size={200}>{item.bufferSize ?? '---'}</Text>
+          {!isEmptyRow(item) && <Text size={200}>{item.bufferSize ?? '---'}</Text>}
         </TableCellLayout>
       ),
       compare: (a, b) => (a.bufferSize || 0) - (b.bufferSize || 0),
@@ -546,9 +625,11 @@ export const TrendLogsPage: React.FC = () => {
       renderHeaderCell: () => <span>Auto/Manual</span>,
       renderCell: (item) => (
         <TableCellLayout>
-          <Badge appearance={item.autoManual === '1' ? 'filled' : 'outline'} color="informative">
-            {item.autoManual === '1' ? 'Auto' : item.autoManual === '0' ? 'Manual' : '---'}
-          </Badge>
+          {!isEmptyRow(item) && (
+            <Badge appearance={item.autoManual === '1' ? 'filled' : 'outline'} color="informative">
+              {item.autoManual === '1' ? 'Auto' : item.autoManual === '0' ? 'Manual' : '---'}
+            </Badge>
+          )}
         </TableCellLayout>
       ),
       compare: (a, b) => (a.autoManual || '').localeCompare(b.autoManual || ''),
@@ -558,9 +639,11 @@ export const TrendLogsPage: React.FC = () => {
       renderHeaderCell: () => <span>Status</span>,
       renderCell: (item) => (
         <TableCellLayout>
-          <Badge appearance="tint" color={item.status === 'ON' ? 'success' : 'subtle'}>
-            {item.status || 'OFF'}
-          </Badge>
+          {!isEmptyRow(item) && (
+            <Badge appearance="tint" color={item.status === 'ON' ? 'success' : 'subtle'}>
+              {item.status || 'OFF'}
+            </Badge>
+          )}
         </TableCellLayout>
       ),
       compare: (a, b) => (a.status || '').localeCompare(b.status || ''),
@@ -571,14 +654,16 @@ export const TrendLogsPage: React.FC = () => {
       renderHeaderCell: () => <span>Actions</span>,
       renderCell: (item) => (
         <TableCellLayout>
-          <Button
-            size="small"
-            icon={<ChartMultipleRegular style={{ fontSize: '14px' }} />}
-            onClick={() => handleViewChart(item)}
-            title="View trend chart for this trendlog"
-          >
-            View Graphic
-          </Button>
+          {!isEmptyRow(item) && (
+            <Button
+              size="small"
+              icon={<ChartMultipleRegular className={styles.iconSmall} />}
+              onClick={() => handleViewChart(item)}
+              title="View trend chart for this trendlog"
+            >
+              View Graphic
+            </Button>
+          )}
         </TableCellLayout>
       ),
     }),
@@ -590,7 +675,11 @@ export const TrendLogsPage: React.FC = () => {
     return (
       <div className={styles.container}>
         <div className={styles.noData}>
-          <Text size={300} weight="semibold">No Device Selected</Text>
+          <div style={{ textAlign: 'center' }}>
+            <Text size={400} weight="semibold">No device selected</Text>
+            <br />
+            <Text size={200}>Please select a device from the tree to view trendlogs</Text>
+          </div>
         </div>
       </div>
     );
@@ -623,9 +712,9 @@ export const TrendLogsPage: React.FC = () => {
                   ERROR MESSAGE (if any)
                   ======================================== */}
               {error && (
-                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
-                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                <div className={styles.errorNotice}>
+                  <ErrorCircleRegular className={styles.iconError} />
+                  <Text className={styles.textError}>
                     {error}
                   </Text>
                 </div>
@@ -698,8 +787,7 @@ export const TrendLogsPage: React.FC = () => {
                     relationship="description"
                   >
                     <button
-                      className={styles.toolbarButton}
-                      style={{ marginLeft: '8px' }}
+                      className={`${styles.toolbarButton} ${styles.marginLeft8}`}
                       title="Information"
                       aria-label="Information about this page"
                     >
@@ -728,58 +816,68 @@ export const TrendLogsPage: React.FC = () => {
                 {!selectedDevice && !loading && (
                   <div className={styles.noData}>
                     <div style={{ textAlign: 'center' }}>
-                      <Text size={500} weight="semibold">No device selected</Text>
+                      <Text size={400} weight="semibold">No device selected</Text>
                       <br />
-                      <Text size={300}>Please select a device from the tree to view trendlogs</Text>
+                      <Text size={200}>Please select a device from the tree to view trendlogs</Text>
                     </div>
                   </div>
                 )}
 
                 {/* Dual Grid Layout - Main Grid (80%) + Input Grid (20%) */}
-                {selectedDevice && !loading && !error && trendLogs.length > 0 && (
+                {selectedDevice && !loading && !error && (
                   <div className={styles.gridContainer}>
                     {/* Main Monitor List - Left Side (80%) */}
-                    <div className={styles.mainGrid}>
+                    <div className={`${styles.mainGrid} ${styles.scrollContainerAuto}`}>
                       <DataGrid
-                        items={trendLogs}
+                        key="trendlogs-grid-v5"
+                        items={displayTrendLogs}
                         columns={columns}
                         sortable
                         resizableColumns
                         selectionMode="single"
+                        selectedItems={selectedItems}
+                        onSelectionChange={(_e, data) => {
+                          setSelectedItems(data.selectedItems as Set<string>);
+                        }}
+                        className={styles.fullWidth}
                         columnSizingOptions={{
+                          __selection__: {
+                            idealWidth: '5%',
+                            minWidth: 44,
+                          },
                           trendlogId: {
-                            minWidth: 120,
-                            defaultWidth: 150,
+                            idealWidth: '12%',
+                            minWidth: 95,
                           },
                           trendlogLabel: {
+                            idealWidth: '26%',
                             minWidth: 150,
-                            defaultWidth: 200,
                           },
                           intervalSeconds: {
-                            minWidth: 100,
-                            defaultWidth: 120,
+                            idealWidth: '12%',
+                            minWidth: 80,
                           },
                           bufferSize: {
+                            idealWidth: '10%',
                             minWidth: 90,
-                            defaultWidth: 110,
                           },
                           autoManual: {
-                            minWidth: 100,
-                            defaultWidth: 130,
+                            idealWidth: '12%',
+                            minWidth: 90,
                           },
                           status: {
+                            idealWidth: '8%',
                             minWidth: 70,
-                            defaultWidth: 80,
                           },
                           actions: {
-                            minWidth: 150,
-                            defaultWidth: 180,
+                            idealWidth: '15%',
+                            minWidth: 120,
                           },
                         }}
                         getRowId={(item) => `${item.serialNumber}-${item.trendlogId || item.trendlogIndex}-${item._uniqueIndex}`}
                       >
                         <DataGridHeader>
-                          <DataGridRow selectionCell={{ renderHeaderCell: () => <span>#</span> }}>
+                          <DataGridRow>
                             {({ renderHeaderCell }) => (
                               <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
                             )}
@@ -790,10 +888,7 @@ export const TrendLogsPage: React.FC = () => {
                             <DataGridRow<TrendLogData>
                               key={rowId}
                               onClick={() => handleMonitorSelect(item)}
-                              style={{
-                                cursor: 'pointer',
-                                backgroundColor: selectedMonitor?.trendlogId === item.trendlogId ? '#e6f2ff' : undefined
-                              }}
+                              className={selectedMonitor?.trendlogId === item.trendlogId ? styles.rowSelected : styles.rowClickable}
                             >
                               {({ renderCell }) => (
                                 <DataGridCell>{renderCell(item)}</DataGridCell>
@@ -807,31 +902,64 @@ export const TrendLogsPage: React.FC = () => {
                     {/* Monitor Input List - Right Side (20%) */}
                     <div className={styles.subGrid}>
                       <div className={styles.subGridHeader}>
-                        <Text size={300} weight="semibold">Monitor Inputs</Text>
+                        <Text size={300} weight="semibold">
+                          Monitor Inputs {loadingInputs && <Spinner size="tiny" className={styles.marginLeft8} />}
+                        </Text>
+                        {monitorInputs.length > 0 && (
+                          <Badge appearance="filled" color="informative" size="small">
+                            {monitorInputs.length} inputs
+                          </Badge>
+                        )}
                       </div>
                       <div className={styles.subGridBody}>
-                        {monitorInputs.map((input, index) => (
-                          <div key={index} className={styles.inputRow}>
-                            <div className={styles.inputNum}>{index + 1}</div>
-                            <div className={styles.inputValue}>{input || '-'}</div>
+                        {loadingInputs ? (
+                          <div className={styles.centerPadding}>
+                            <Spinner size="small" label="Loading inputs..." />
                           </div>
-                        ))}
+                        ) : monitorInputs.length > 0 ? (
+                          monitorInputs.map((input, index) => {
+                            const pointTypeShort =
+                              input.pointType === 'IN' ? 'IN' :
+                              input.pointType === 'OUT' ? 'OUT' :
+                              input.pointType === 'VAR' ? 'VAR' :
+                              input.pointType;
+
+                            const displayLabel = input.pointLabel ||
+                              `${pointTypeShort}${input.pointIndex}`;
+
+                            return (
+                              <div key={`${input.pointType}-${input.pointIndex}-${index}`} className={styles.inputRow}>
+                                <div className={styles.inputNum}>{index + 1}</div>
+                                <Tooltip
+                                  content={`${pointTypeShort}${input.pointIndex}: ${input.pointLabel || 'No label'}`}
+                                  relationship="label"
+                                >
+                                  <div className={styles.inputValue}>{displayLabel}</div>
+                                </Tooltip>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className={styles.centerPaddingMuted}>
+                            <Text size={200}>No inputs configured</Text>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
                 )}
 
                 {/* No Data Message - Show when device selected but no trendlogs */}
-                {selectedDevice && !loading && !error && trendLogs.length === 0 && (
-                  <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+                {/* {selectedDevice && !loading && !error && trendLogs.length === 0 && (
+                  <div className={styles.emptyStateContainer}>
+                    <div className={styles.emptyStateHeader}>
                       <Text size={400} weight="semibold">No trendlogs found</Text>
                     </div>
-                    <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>
+                    <Text size={300} className={styles.emptyStateText}>
                       This device has no configured trendlog monitors
                     </Text>
                   </div>
-                )}
+                )} */}
 
               </div>
             </div>
@@ -848,6 +976,7 @@ export const TrendLogsPage: React.FC = () => {
         trendlogId={chartParams.trendlogId}
         monitorId={chartParams.monitorId}
         itemData={chartParams.itemData}
+        monitorInputs={chartParams.monitorInputs}
       />
     </div>
   );

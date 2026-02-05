@@ -130,13 +130,38 @@ export const NetworkPage: React.FC = () => {
     setSearchQuery(e.target.value);
   };
 
+  // Display networks with empty rows when no data (show 10 empty rows)
+  const displayNetworks = React.useMemo(() => {
+    if (networks.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        networkId: '',
+        networkNumber: undefined,
+        buildingName: '',
+        deviceCount: undefined,
+        status: '',
+        protocol: '',
+        description: '',
+      } as NetworkItem));
+    }
+    return networks;
+  }, [networks]);
+
+  // Helper to check if row is an empty placeholder
+  const isEmptyRow = (network: NetworkItem) => {
+    return !network.networkId && networks.length === 0;
+  };
+
   // Column definitions for network topology
   const columns: TableColumnDefinition<NetworkItem>[] = useMemo(() => [
     // Column 0: Network ID
     createTableColumn<NetworkItem>({
       columnId: 'networkId',
       renderHeaderCell: () => <span>Network ID</span>,
-      renderCell: (network) => <TableCellLayout>{network.networkId}</TableCellLayout>,
+      renderCell: (network) => (
+        <TableCellLayout>
+          {!isEmptyRow(network) && network.networkId}
+        </TableCellLayout>
+      ),
     }),
 
     // Column 1: Network Number
@@ -145,7 +170,7 @@ export const NetworkPage: React.FC = () => {
       renderHeaderCell: () => <span>Number</span>,
       renderCell: (network) => (
         <TableCellLayout>
-          {network.networkNumber ?? '---'}
+          {!isEmptyRow(network) && (network.networkNumber ?? '---')}
         </TableCellLayout>
       ),
     }),
@@ -156,7 +181,7 @@ export const NetworkPage: React.FC = () => {
       renderHeaderCell: () => <span>Building Name</span>,
       renderCell: (network) => (
         <TableCellLayout>
-          {network.buildingName || '---'}
+          {!isEmptyRow(network) && (network.buildingName || '---')}
         </TableCellLayout>
       ),
     }),
@@ -167,7 +192,7 @@ export const NetworkPage: React.FC = () => {
       renderHeaderCell: () => <span>Devices</span>,
       renderCell: (network) => (
         <TableCellLayout>
-          {network.deviceCount ?? 0}
+          {!isEmptyRow(network) && (network.deviceCount ?? 0)}
         </TableCellLayout>
       ),
     }),
@@ -178,7 +203,7 @@ export const NetworkPage: React.FC = () => {
       renderHeaderCell: () => <span>Status</span>,
       renderCell: (network) => (
         <TableCellLayout>
-          {network.status || '---'}
+          {!isEmptyRow(network) && (network.status || '---')}
         </TableCellLayout>
       ),
     }),
@@ -189,7 +214,7 @@ export const NetworkPage: React.FC = () => {
       renderHeaderCell: () => <span>Protocol</span>,
       renderCell: (network) => (
         <TableCellLayout>
-          {network.protocol || '---'}
+          {!isEmptyRow(network) && (network.protocol || '---')}
         </TableCellLayout>
       ),
     }),
@@ -200,7 +225,7 @@ export const NetworkPage: React.FC = () => {
       renderHeaderCell: () => <span>Description</span>,
       renderCell: (network) => (
         <TableCellLayout>
-          {network.description || '---'}
+          {!isEmptyRow(network) && (network.description || '---')}
         </TableCellLayout>
       ),
     }),
@@ -238,6 +263,7 @@ export const NetworkPage: React.FC = () => {
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
               {selectedDevice && (
+              <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   {/* Refresh Button */}
@@ -310,7 +336,6 @@ export const NetworkPage: React.FC = () => {
                   )}
                 </div>
               </div>
-              )}
 
               {/* ========================================
                   HORIZONTAL DIVIDER
@@ -319,6 +344,8 @@ export const NetworkPage: React.FC = () => {
               <div style={{ padding: '0' }}>
                 <hr className={styles.overviewHr} />
               </div>
+              </>
+              )}
 
               {/* ========================================
                   DOCKING BODY - Main Content
@@ -338,9 +365,9 @@ export const NetworkPage: React.FC = () => {
                 {!selectedDevice && !loading && (
                   <div className={styles.noData}>
                     <div style={{ textAlign: 'center' }}>
-                      <Text size={500} weight="semibold">No device selected</Text>
+                      <Text size={400} weight="semibold">No device selected</Text>
                       <br />
-                      <Text size={300}>Please select a device from the tree to view networks</Text>
+                      <Text size={200}>Please select a device from the tree to view network</Text>
                     </div>
                   </div>
                 )}
@@ -349,7 +376,7 @@ export const NetworkPage: React.FC = () => {
                 {selectedDevice && !loading && (
                   <>
                     <DataGrid
-                      items={networks}
+                      items={displayNetworks}
                       columns={columns}
                       sortable
                       resizableColumns
@@ -402,7 +429,7 @@ export const NetworkPage: React.FC = () => {
                       </DataGridBody>
                     </DataGrid>
 
-                    {/* No Data Message - Show below grid when empty */}
+                    {/* No Data Message - Commented out - showing empty grid instead
                     {networks.length === 0 && (
                       <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -414,6 +441,7 @@ export const NetworkPage: React.FC = () => {
                         <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>This device has no configured networks</Text>
                       </div>
                     )}
+                    */}
                   </>
                 )}
 

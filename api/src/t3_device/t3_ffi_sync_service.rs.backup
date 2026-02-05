@@ -64,7 +64,7 @@ pub enum WebViewMessageType {
     SAVE_NEW_LIBRARY_DATA = 14,
     LOGGING_DATA = 15, // Used for full device data sync
     UPDATE_WEBVIEW_LIST = 16, // Used for updating full records (inputs/outputs/variables)
-    REFRESH_WEBVIEW_LIST = 17, // Used for refreshing data from device (inputs/outputs/variables)
+    GET_WEBVIEW_LIST = 17, // Used for refreshing data from device (inputs/outputs/variables)
 }
 
 // Global function pointers - will be loaded from T3000.exe at runtime

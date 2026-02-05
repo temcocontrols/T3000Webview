@@ -12,6 +12,7 @@ extern "system" {
 }
 
 type T3000IsDeviceOnlineFn = unsafe extern "C" fn(c_int) -> c_int;
+#[allow(dead_code)]
 type T3000ConnectToDeviceFn = unsafe extern "C" fn(c_int) -> c_int;
 
 fn main() {

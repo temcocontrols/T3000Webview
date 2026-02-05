@@ -3,7 +3,7 @@
 // Expected space savings: 41-55% for typical datasets
 
 use sea_orm::{
-    entity::*, query::*, DatabaseConnection, DbBackend, Statement, FromQueryResult,
+    query::*, DatabaseConnection, DbBackend, Statement, FromQueryResult,
 };
 use std::collections::HashMap;
 use chrono::NaiveDateTime;
@@ -19,9 +19,9 @@ struct OldTrendlogData {
     value: String,
     logging_time: String,
     logging_time_fmt: String,
-    digital_analog: Option<String>,
-    range_field: Option<String>,
-    units: Option<String>,
+    _digital_analog: Option<String>,
+    _range_field: Option<String>,
+    _units: Option<String>,
     data_source: Option<String>,
     sync_interval: Option<i32>,
     created_by: Option<String>,
@@ -281,7 +281,7 @@ pub async fn migrate_trendlog_data(db: &DatabaseConnection) -> Result<(), Box<dy
     // Step 6: Calculate space savings
     println!("\nStep 6: Calculating space savings...");
 
-    let old_size_query = "SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()";
+    let _old_size_query = "SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()";
 
     // Note: This is approximate - actual savings calculated after VACUUM
     println!("  Estimated space savings: 41-55%");
@@ -303,6 +303,7 @@ pub async fn migrate_trendlog_data(db: &DatabaseConnection) -> Result<(), Box<dy
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
 
     #[tokio::test]

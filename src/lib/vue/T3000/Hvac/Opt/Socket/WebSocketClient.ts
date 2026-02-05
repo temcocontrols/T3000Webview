@@ -8,6 +8,7 @@ import T3Util from "../../Util/T3Util"
 import { grpNav, library, T3000_Data, linkT3EntryDialog, selectPanelOptions, appState, globalMsg, locked, rulersGridVisible } from '../../Data/T3Data'
 import T3UIUtil from "../UI/T3UIUtil"
 import LogUtil from "../../Util/LogUtil"
+import { demoDeviceData } from '../../../../common'
 
 class WebSocketClient {
 
@@ -17,6 +18,12 @@ class WebSocketClient {
   private pingInterval: number = 10000; // 10 seconds
   private pingIntervalId: NodeJS.Timeout | null = null;
   private reconnectTimeoutId: NodeJS.Timeout | null = null;
+
+  // Error tracking for data requests
+  private dataRequestErrorCount: number = 0; // Track consecutive errors
+  private maxDataRequestErrors: number = 3; // Stop after 3 consecutive errors
+  private lastErrorTime: number = 0; // Track when last error occurred
+
   private uri: string;
   public messageModel: MessageModel;
   public messageData: string;
@@ -303,6 +310,31 @@ class WebSocketClient {
     LogUtil.Debug('= ws: WebSocketClient destroyed');
   }
 
+  /**
+   * Load demo data as fallback when real panel data is unavailable
+   */
+  private async loadDemoDataFallback() {
+    try {
+      LogUtil.Info('📦 Loading demo device data as fallback');
+      const demoData = await demoDeviceData();
+
+      if (demoData && demoData.data) {
+        T3000_Data.value.panelsData = demoData.data;
+        selectPanelOptions.value = demoData.data;
+
+        if (demoData.ranges) {
+          T3000_Data.value.panelsRanges = demoData.ranges;
+        }
+
+        LogUtil.Info(`✅ Demo data loaded successfully: ${demoData.data.length} panels`);
+      } else {
+        LogUtil.Warn('⚠️ Demo data load returned empty or invalid data');
+      }
+    } catch (error) {
+      LogUtil.Error('❌ Failed to load demo data:', error);
+    }
+  }
+
   //#region  Format Message
 
   public FormatMessageData(action: number, panelId: number, viewitem: number, data: any) {
@@ -515,7 +547,7 @@ class WebSocketClient {
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_INITIAL_DATA }));
   }
 
-  // action: 2,  // SAVE_GRAPHIC_DATA / SAVE_GRAPHIC_DATA_RES �?
+  // action: 2,  // SAVE_GRAPHIC_DATA / SAVE_GRAPHIC_DATA_RES �?
   public SaveGraphic(panelId, graphicId, data?: {}) {
     this.FormatMessageData(MessageType.SAVE_GRAPHIC_DATA, panelId, graphicId, data);
     this.sendMessage(this.messageData);
@@ -609,6 +641,25 @@ class WebSocketClient {
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_ENTRIES }));
+  }
+
+  public GetLoggingData(serialNumber?: number) {
+    // action: 15, // LOGGING_DATA
+    console.log('= ws: GetLoggingData / serialNumber:', serialNumber);
+
+    const currentDevice = this.deviceOpt?.getCurrentDevice();
+    if (currentDevice === null || currentDevice === undefined) return;
+
+    const panelId = currentDevice.deviceId;
+    const graphicId = currentDevice.graphic;
+    const sn = serialNumber || currentDevice.serialNumber;
+
+    this.FormatMessageData(MessageType.LOGGING_DATA, panelId, graphicId, null);
+    this.messageModel.message.serialNumber = sn;
+
+    const msgData = this.messageModel.formatMessageData();
+    this.messageData = JSON.stringify(msgData);
+    this.sendMessage(this.messageData);
   }
 
   public LoadGraphicEntry(data) {
@@ -730,6 +781,7 @@ class WebSocketClient {
     [MessageType.UPDATE_ENTRY_RES]: this.HandleUpdateEntryRes.bind(this),
     [MessageType.GET_PANELS_LIST_RES]: this.HandleGetPanelsListRes.bind(this),
     [MessageType.GET_ENTRIES_RES]: this.HandleGetEntriesRes.bind(this),
+    [MessageType.LOGGING_DATA_RES]: this.HandleLoggingDataRes.bind(this),
     [MessageType.LOAD_GRAPHIC_ENTRY_RES]: this.HandleLoadGraphicEntryRes.bind(this),
     [MessageType.OPEN_ENTRY_EDIT_WINDOW_RES]: this.HandleOpenEntryEditWindowRes.bind(this),
     [MessageType.SAVE_IMAGE_RES]: this.HandleSaveImageRes.bind(this),
@@ -906,6 +958,9 @@ class WebSocketClient {
   public HandleGetInitialDataRes(msgData) {
 
     LogUtil.Debug('= ws: HandleGetInitialDataRes / msgData:', msgData);
+
+    // Reset error count on successful response
+    this.dataRequestErrorCount = 0;
 
     const isCrtDevice = this.deviceOpt?.isCurrentDeviceMessage(msgData);
 
@@ -1103,13 +1158,13 @@ class WebSocketClient {
           let updatedCount = 0;
           fieldsToUpdate.forEach(field => {
             if (existingItem[field] !== item[field]) {
-              // LogUtil.Debug(`🔄 HandleGetEntriesRes / Updating field '${field}': '${existingItem[field]}' �?'${item[field]}'`);
+              // LogUtil.Debug(`🔄 HandleGetEntriesRes / Updating field '${field}': '${existingItem[field]}' �?'${item[field]}'`);
               existingItem[field] = item[field];
               updatedCount++;
             }
           });
 
-          // LogUtil.Info(`�?HandleGetEntriesRes / Smart partial update applied for ${item.id}: ${updatedCount} fields updated, ${criticalFields.length} critical fields protected`);
+          // LogUtil.Info(`�?HandleGetEntriesRes / Smart partial update applied for ${item.id}: ${updatedCount} fields updated, ${criticalFields.length} critical fields protected`);
         } else if (potentialDataLoss) {
           // Handle other types of potential data loss (not just monitors)
           // LogUtil.Warn(`⚠️ POTENTIAL DATA LOSS DETECTED! Applying smart update for ${item.type} item:`, {
@@ -1130,17 +1185,17 @@ class WebSocketClient {
           let updatedCount = 0;
           fieldsToUpdate.forEach(field => {
             if (existingItem[field] !== item[field]) {
-              // LogUtil.Debug(`🔄 HandleGetEntriesRes / Updating ${item.type} field '${field}': '${existingItem[field]}' �?'${item[field]}'`);
+              // LogUtil.Debug(`🔄 HandleGetEntriesRes / Updating ${item.type} field '${field}': '${existingItem[field]}' �?'${item[field]}'`);
               existingItem[field] = item[field];
               updatedCount++;
             }
           });
 
-          // LogUtil.Info(`�?HandleGetEntriesRes / Smart update for ${item.type} ${item.id}: ${updatedCount} fields updated, ${complexFields.length} complex fields protected`);
+          // LogUtil.Info(`�?HandleGetEntriesRes / Smart update for ${item.type} ${item.id}: ${updatedCount} fields updated, ${complexFields.length} complex fields protected`);
         } else {
           // Safe to do full replacement
           T3000_Data.value.panelsData[itemIndex] = item;
-          // LogUtil.Debug(`�?HandleGetEntriesRes / Full replacement done for ${item.id}`);
+          // LogUtil.Debug(`�?HandleGetEntriesRes / Full replacement done for ${item.id}`);
         }
       } else {
         // LogUtil.Debug(`= ws: HandleGetEntriesRes / item ${itemIdx}: NOT FOUND in panelsData:`, {
@@ -1160,6 +1215,129 @@ class WebSocketClient {
 
     // LogUtil.Debug('= ws: HandleGetEntriesRes / AFTER - panelsData length:', T3000_Data.value.panelsData.length);
     // LogUtil.Debug('= ws: HandleGetEntriesRes END ===================');
+  }
+
+  public HandleLoggingDataRes(msgData) {
+    // action: 15, // LOGGING_DATA_RES
+    LogUtil.Debug('= ws: HandleLoggingDataRes START =================');
+    LogUtil.Debug('= ws: HandleLoggingDataRes / response structure:', {
+      hasData: !!(msgData?.data),
+      dataLength: msgData?.data?.length || 0,
+    });
+
+    // Extract and flatten device_data arrays from nested structure
+    let allPoints = [];
+
+    if (msgData.data && Array.isArray(msgData.data)) {
+      msgData.data.forEach((device, deviceIdx) => {
+        LogUtil.Debug(`= ws: HandleLoggingDataRes / device ${deviceIdx}:`, {
+          panel_id: device.panel_id,
+          panel_name: device.panel_name,
+          panel_serial_number: device.panel_serial_number,
+          hasDeviceData: !!(device.device_data),
+          deviceDataLength: device.device_data?.length || 0
+        });
+
+        if (device.device_data && Array.isArray(device.device_data)) {
+          allPoints = allPoints.concat(device.device_data);
+        }
+      });
+    }
+
+    LogUtil.Debug('= ws: HandleLoggingDataRes / total points extracted:', allPoints.length);
+
+    // Normalize fields to match GET_ENTRIES_RES format
+    allPoints.forEach((item, itemIdx) => {
+      // Fix 1: Rename "unit" → "units"
+      if (item.unit !== undefined && item.units === undefined) {
+        item.units = item.unit;
+        delete item.unit;
+      }
+
+      // Fix 2: Convert type format: "INPUT" → "IN", "OUTPUT" → "OUT", "VARIABLE" → "VAR"
+      if (item.type) {
+        const typeMap = {
+          'INPUT': 'IN',
+          'OUTPUT': 'OUT',
+          'VARIABLE': 'VAR'
+        };
+        if (typeMap[item.type]) {
+          item.type = typeMap[item.type];
+        }
+      }
+
+      // Fix 3: Rename calibration fields (for compatibility)
+      if (item.calibration_h !== undefined && item.calibration === undefined) {
+        item.calibration = item.calibration_h;
+      }
+      if (item.calibration_sign !== undefined && item.sign === undefined) {
+        item.sign = item.calibration_sign;
+      }
+
+      // Update T3000_Data.panelsData (same logic as GET_ENTRIES_RES)
+      const itemIndex = T3000_Data.value.panelsData.findIndex(
+        (ii) =>
+          ii.index === item.index &&
+          ii.type === item.type &&
+          ii.pid === item.pid
+      );
+
+      if (itemIndex !== -1) {
+        const existingItem = T3000_Data.value.panelsData[itemIndex];
+
+        // Same smart update logic as GET_ENTRIES_RES
+        const existingIsDetailedMonitor = existingItem.type === 'MON' &&
+          (Array.isArray(existingItem.input) || Array.isArray(existingItem.range) || existingItem.num_inputs > 0);
+        const newIsSimplifiedMonitor = item.type === 'MON' &&
+          !Array.isArray(item.input) && !Array.isArray(item.range) && !item.num_inputs;
+
+        const existingHasComplexData = this.hasComplexDataStructures(existingItem);
+        const newLacksComplexData = !this.hasComplexDataStructures(item);
+        const potentialDataLoss = existingHasComplexData && newLacksComplexData;
+
+        if (existingIsDetailedMonitor && newIsSimplifiedMonitor) {
+          LogUtil.Warn(`🚨 DATA CORRUPTION PREVENTED! [LOGGING_DATA] Attempted to replace detailed monitor with simplified version:`, {
+            id: item.id,
+            pid: item.pid
+          });
+
+          const criticalFields = ['input', 'range', 'num_inputs', 'an_inputs'];
+          const existingKeys = Object.keys(existingItem);
+          const newKeys = Object.keys(item);
+          const commonFields = existingKeys.filter(key => newKeys.includes(key));
+          const fieldsToUpdate = commonFields.filter(key => !criticalFields.includes(key));
+
+          fieldsToUpdate.forEach(field => {
+            if (existingItem[field] !== item[field]) {
+              existingItem[field] = item[field];
+            }
+          });
+        } else if (potentialDataLoss) {
+          const complexFields = this.getComplexFields(existingItem);
+          const existingKeys = Object.keys(existingItem);
+          const newKeys = Object.keys(item);
+          const commonFields = existingKeys.filter(key => newKeys.includes(key));
+          const fieldsToUpdate = commonFields.filter(key => !complexFields.includes(key));
+
+          fieldsToUpdate.forEach(field => {
+            if (existingItem[field] !== item[field]) {
+              existingItem[field] = item[field];
+            }
+          });
+        } else {
+          T3000_Data.value.panelsData[itemIndex] = item;
+        }
+      }
+    });
+
+    if (!linkT3EntryDialog.value.active) {
+      selectPanelOptions.value = T3000_Data.value.panelsData;
+    }
+    IdxUtils.refreshLinkedEntries(allPoints);
+    IdxUtils.refreshLinkedEntries2(allPoints);
+
+    LogUtil.Debug('= ws: HandleLoggingDataRes / AFTER - panelsData length:', T3000_Data.value.panelsData.length);
+    LogUtil.Debug('= ws: HandleLoggingDataRes END ===================');
   }
 
   public HandleLoadGraphicEntryRes(msgData) {
@@ -1305,22 +1483,84 @@ class WebSocketClient {
     // GET_PANEL_DATA_RES | GET_INITIAL_DATA_RES | GET_PANELS_LIST_RES
     const action = messageData.action;
 
-    if (action == MessageType.GET_PANEL_DATA_RES || action == MessageType.GET_PANELS_LIST_RES) {
-      const errorMsg = `Load device data failed with error: "${messageData.error}". Please check whether the T3000 application is running or not.`;
-      // Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
-      T3UIUtil.ShowWebSocketError(errorMsg);
+    // Track consecutive errors and stop retrying after limit
+    const now = Date.now();
+    const timeSinceLastError = now - this.lastErrorTime;
 
-      this.GetPanelsList();
+    // Reset error count if more than 60 seconds since last error
+    if (timeSinceLastError > 60000) {
+      this.dataRequestErrorCount = 0;
+    }
+
+    this.dataRequestErrorCount++;
+    this.lastErrorTime = now;
+
+    // Stop retrying if we've hit the error limit
+    if (this.dataRequestErrorCount > this.maxDataRequestErrors) {
+      LogUtil.Warn(`⚠️ Stopped retrying after ${this.maxDataRequestErrors} consecutive errors for action: ${action}`);
+      LogUtil.Warn(`Error message: ${messageData.error}`);
+      // Show a single error message and stop
+      if (this.dataRequestErrorCount === this.maxDataRequestErrors + 1) {
+        const errorMsg = `Unable to load panel data after ${this.maxDataRequestErrors} attempts. ${messageData.error}`;
+        T3UIUtil.ShowWebSocketError(errorMsg);
+      }
+
+      // Load demo data as fallback if panel data is empty
+      if (action == MessageType.GET_PANEL_DATA_RES && T3000_Data.value.panelsData.length === 0) {
+        LogUtil.Info('📦 Loading demo data as fallback after max retries');
+        this.loadDemoDataFallback();
+      }
+
+      return; // Don't retry anymore
+    }
+
+    if (action == MessageType.GET_PANEL_DATA_RES || action == MessageType.GET_PANELS_LIST_RES) {
+      const errorMsg = `Load device data failed with error: "${messageData.error}". Retry ${this.dataRequestErrorCount}/${this.maxDataRequestErrors}`;
+      LogUtil.Warn(errorMsg);
+
+      // Check if this is a 'no cached data' error - don't retry since data doesn't exist
+      if (messageData.error && messageData.error.includes('No cached data')) {
+        LogUtil.Info('📦 No cached data available for this panel, dismissing loading and stopping retry');
+
+        // Clear loading state to dismiss the loading dialog
+        T3000_Data.value.loadingPanel = null;
+
+        // Load demo data as fallback ONLY if we have no data at all
+        if (T3000_Data.value.panelsData.length === 0) {
+          LogUtil.Info('📦 No panel data exists, loading demo data as fallback');
+          this.loadDemoDataFallback();
+        }
+
+        // Reset error count since this is expected behavior, not a real error
+        this.dataRequestErrorCount = 0;
+
+        // Don't retry - data genuinely doesn't exist for this panel
+        return;
+      }
+
+      // Only show error on last retry
+      if (this.dataRequestErrorCount === this.maxDataRequestErrors) {
+        T3UIUtil.ShowWebSocketError(errorMsg);
+      }
+
+      // Add delay before retry to prevent flooding
+      setTimeout(() => {
+        this.GetPanelsList();
+      }, 5000); // Wait 5 seconds before retry
     }
 
     if (action == MessageType.GET_INITIAL_DATA_RES) {
-      const errorMsg = `Load initial data failed with error: "${messageData.error}". Please try not update the graphic area, this may cause data loss. Please check whether the T3000 application is running or not.`;
-      // Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
-      T3UIUtil.ShowWebSocketError(errorMsg);
-      this.reloadInitialData();
+      const errorMsg = `Load initial data failed with error: "${messageData.error}". Retry ${this.dataRequestErrorCount}/${this.maxDataRequestErrors}`;
+      LogUtil.Warn(errorMsg);
+      // Only show error on last retry
+      if (this.dataRequestErrorCount === this.maxDataRequestErrors) {
+        T3UIUtil.ShowWebSocketError(errorMsg);
+        // add global error message for blocking auto save
+        this.quasarUtil?.setGlobalMsg("error", errorMsg, false, "get_initial_data", null);
+      }
 
-      // add global error message for blocking auto save
-      this.quasarUtil?.setGlobalMsg("error", errorMsg, false, "get_initial_data", null);
+      // Don't call reloadInitialData here - let the existing interval handle it
+      // this.reloadInitialData(); // REMOVED - causes infinite loop
     }
   }
 
@@ -1331,7 +1571,7 @@ class WebSocketClient {
 
     // LogUtil.Debug('= ws: reload-initial-interval start', this.reloadInitialDataInterval);
 
-    // Set a timer to reload the initial data every 5 minutes
+    // Set a timer to reload the initial data every 30 seconds (reduced from 2 seconds to prevent flooding)
     this.reloadInitialDataInterval = setInterval(() => {
       const currentDevice = this.deviceOpt?.getCurrentDevice();
       const panelId = currentDevice?.deviceId;
@@ -1340,7 +1580,7 @@ class WebSocketClient {
       if (panelId && graphicId) {
         this.GetInitialData(panelId, graphicId);
       }
-    }, 2000);
+    }, 30000); // 30 seconds instead of 2 seconds
 
     // LogUtil.Debug('= ws: reload-initial-interval end', this.reloadInitialDataInterval);
   }

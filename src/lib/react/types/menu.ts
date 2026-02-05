@@ -61,6 +61,7 @@ export interface ToolbarConfig {
 // Menu action types
 export enum MenuAction {
   // File menu
+  NewProject = 'new-project',
   NewBuilding = 'new-building',
   Open = 'open',
   Save = 'save',
@@ -72,30 +73,81 @@ export enum MenuAction {
   Exit = 'exit',
 
   // Tools menu
+  Connect = 'connect',
+  ChangeModbusId = 'change-modbus-id',
+  BacnetTool = 'bacnet-tool',
+  ModbusPoll = 'modbus-poll',
+  RegisterViewer = 'register-viewer',
+  ModbusRegisterV2 = 'modbus-register-v2',
+  RegisterListDatabaseFolder = 'registerlist-database-folder',
+  LoadFirmwareSingle = 'load-firmware-single',
+  LoadFirmwareMany = 'load-firmware-many',
+  FlashSN = 'flash-sn',
+  Psychrometry = 'psychrometry',
+  PhChart = 'ph-chart',
+  Options = 'options',
+  Disconnect = 'disconnect',
+  LoginMyAccount = 'login-my-account',
   Discover = 'discover',
   Buildings = 'buildings',
   Refresh = 'refresh',
   Settings = 'settings',
 
   // View menu
-  ShowLeftPanel = 'show-left-panel',
+  ShowToolBar = 'show-tool-bar',
+  ShowBuildingPane = 'show-building-pane',
   ShowStatusBar = 'show-status-bar',
+  ThemeOffice2003 = 'theme-office-2003',
+  ThemeOffice2007Blue = 'theme-office-2007-blue',
+  ThemeOffice2007Silver = 'theme-office-2007-silver',
+  ViewRefresh = 'view-refresh',
+  ShowLeftPanel = 'show-left-panel',
   ZoomIn = 'zoom-in',
   ZoomOut = 'zoom-out',
   ResetZoom = 'reset-zoom',
 
   // Database menu
+  BuildingConfigDatabase = 'building-config-database',
+  AllNodesDatabase = 'all-nodes-database',
+  IONameConfig = 'ioname-config',
+  LogDetail = 'log-detail',
   DatabaseManagement = 'database-management',
   BackupDatabase = 'backup-database',
   RestoreDatabase = 'restore-database',
 
   // Control menu
+  ControlGraphics = 'control-graphics',
+  ControlPrograms = 'control-programs',
+  ControlInputs = 'control-inputs',
+  ControlOutputs = 'control-outputs',
+  ControlVariables = 'control-variables',
+  ControlLoops = 'control-loops',
+  ControlSchedules = 'control-schedules',
+  ControlHolidays = 'control-holidays',
+  ControlTrendLogs = 'control-trend-logs',
+  ControlAlarms = 'control-alarms',
+  ControlNetworkPanel = 'control-network-panel',
+  ControlRemotePoints = 'control-remote-points',
+  ControlConfiguration = 'control-configuration',
   ControlSettings = 'control-settings',
   StartControl = 'start-control',
   StopControl = 'stop-control',
 
+  // Miscellaneous menu
+  LoadDescriptors = 'load-descriptors',
+  WriteIntoFlash = 'write-into-flash',
+  GSMConnection = 'gsm-connection',
+
   // Help menu
+  HelpContents = 'help-contents',
+  VersionHistory = 'version-history',
+  AboutSoftware = 'about-software',
   Help = 'help',
+  OpenDocumentation = 'open-documentation',
+  OpenQuickStart = 'open-quick-start',
+  ReportBug = 'report-bug',
+  SendFeedback = 'send-feedback',
+  ShowAbout = 'show-about',
   About = 'about',
   CheckUpdates = 'check-updates',
 }

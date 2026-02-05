@@ -1,122 +1,175 @@
 /**
  * Dashboard Page
  *
- * Main dashboard view for T3000 application
+ * Main dashboard view for T3000 Building Automation System
+ * Features: System overview, alarms, health metrics, quick access, recent activity
  */
 
-import React from 'react';
-import { makeStyles, Title1, Card, Text, Button } from '@fluentui/react-components';
-import { useStatusBarStore } from '@t3-react/store';
-
-const useStyles = makeStyles({
-  container: {
-    padding: '24px',
-    height: '100%',
-    overflowY: 'auto',
-  },
-  header: {
-    marginBottom: '20px',
-  },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-    gap: '16px',
-    marginTop: '20px',
-  },
-  card: {
-    padding: '20px',
-  },
-  demoSection: {
-    marginTop: '40px',
-    padding: '20px',
-    backgroundColor: '#f5f5f5',
-    borderRadius: '4px',
-  },
-  buttonGroup: {
-    display: 'flex',
-    gap: '8px',
-    marginTop: '12px',
-    flexWrap: 'wrap',
-  },
-});
+import React, { useEffect, useState } from 'react';
+import { Text } from '@fluentui/react-components';
+import { InfoLabel } from '@fluentui/react-components';
+import { GaugeRegular } from '@fluentui/react-icons';
+import { ChevronRightRegular } from '@fluentui/react-icons';
+import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import {
+  DashboardWidget,
+  SystemOverview,
+  RecentAlarms,
+  SystemHealth,
+  QuickAccess,
+  RecentActivity,
+  TrendLogs,
+  Schedules,
+} from '../components';
+import styles from './DashboardPage.module.css';
 
 /**
  * Dashboard Page Component
  */
 export const DashboardPage: React.FC = () => {
-  const styles = useStyles();
+  const { devices, deviceStatuses, lastSyncTime } = useDeviceTreeStore();
+  const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Get status bar actions
-  const setMessage = useStatusBarStore((state) => state.setMessage);
-  const setConnection = useStatusBarStore((state) => state.setConnection);
-  const setProtocol = useStatusBarStore((state) => state.setProtocol);
-  const incrementRx = useStatusBarStore((state) => state.incrementRx);
-  const incrementTx = useStatusBarStore((state) => state.incrementTx);
-  const reset = useStatusBarStore((state) => state.reset);
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
-  // Demo handlers
-  const handleConnect = () => {
-    setConnection('Main Building', 'Tstat-101');
-    setProtocol('BACnet IP', '192.168.1.100');
-    setMessage('Connected to device');
+  const onlineDevices = Array.from(deviceStatuses.values()).filter(
+    (status) => status === 'online'
+  ).length;
+
+  const formatTime = (date: Date | null) => {
+    if (!date) return 'Never';
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
-  const handleDisconnect = () => {
-    setConnection('', '');
-    setProtocol('', '');
-    setMessage('Disconnected');
-  };
-
-  const handleSimulateTraffic = () => {
-    incrementRx();
-    incrementTx();
-    setMessage('Data transferred');
-  };
-
-  const handleReset = () => {
-    reset();
+  const getTimeSince = (date: Date | null) => {
+    if (!date) return 'Not synced';
+    const seconds = Math.floor((currentTime.getTime() - date.getTime()) / 1000);
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours} hr ago`;
   };
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <Title1>Dashboard</Title1>
-        <Text>Welcome to T3000 Building Automation System</Text>
+      {/* Info Bar Header */}
+      <div className={styles.infoBar}>
+        <div className={styles.infoBarLeft}>
+          <div className={styles.infoBarIcon}>
+            <GaugeRegular />
+          </div>
+          <div className={styles.infoBarContent}>
+            <h1 className={styles.infoBarTitle}>T3000 Building Automation System</h1>
+            <Text className={styles.infoBarDescription}>
+              Real-time monitoring and control dashboard • {devices.length} devices configured
+              {onlineDevices > 0 && ` • ${onlineDevices} online`}
+              {deviceStatuses.size > 0 && ` • Last sync: ${getTimeSince(lastSyncTime)}`}
+            </Text>
+          </div>
+        </div>
+        <div className={styles.infoBarRight}>
+          <div className={styles.infoBarStat}>
+            <span className={styles.infoBarStatLabel}>System Status</span>
+            <span className={styles.infoBarStatValue}>
+              <span className={styles.statusDot}></span>
+              Operational
+            </span>
+          </div>
+          <div className={styles.infoBarStat}>
+            <span className={styles.infoBarStatLabel}>Current Time</span>
+            <span className={styles.infoBarStatValue}>
+              {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div className={styles.grid}>
-        <Card className={styles.card}>
-          <Title1 as="h3">System Status</Title1>
-          <Text>All systems operational</Text>
-        </Card>
+      {/* Main Content */}
+      <div className={styles.content}>
+        {/* Quick Access - Horizontal Scroll */}
+        <div className={styles.quickAccessSection}>
+          <QuickAccess />
+        </div>
 
-        <Card className={styles.card}>
-          <Title1 as="h3">Active Alarms</Title1>
-          <Text>No active alarms</Text>
-        </Card>
+        {/* System Overview Section */}
+        <div className={styles.section}>
+          <div className={styles.sectionTitle}>System Overview</div>
+          <SystemOverview />
+        </div>
 
-        <Card className={styles.card}>
-          <Title1 as="h3">Connected Devices</Title1>
-          <Text>0 devices connected</Text>
-        </Card>
+        {/* Data & Planning Section */}
+        <div className={styles.section}>
+          <div className={styles.sectionTitle}>Data & Planning</div>
+          <div className={styles.dataPlanningGrid}>
+            <DashboardWidget
+              title="Trend Logs"
+              size="large"
+              actions={
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', color: '#0078d4' }}
+                  onClick={() => window.location.href = '/t3000/trendlog'}
+                >
+                  <span style={{ fontSize: '12px', fontWeight: 500 }}>View All</span>
+                  <ChevronRightRegular style={{ fontSize: '14px' }} />
+                </div>
+              }
+            >
+              <TrendLogs />
+            </DashboardWidget>
 
-        <Card className={styles.card}>
-          <Title1 as="h3">Recent Activity</Title1>
-          <Text>No recent activity</Text>
-        </Card>
-      </div>
+            <DashboardWidget
+              title="Schedules"
+              size="medium"
+              actions={
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', color: '#0078d4' }}
+                  onClick={() => window.location.href = '/t3000/schedule'}
+                >
+                  <span style={{ fontSize: '12px', fontWeight: 500 }}>View All</span>
+                  <ChevronRightRegular style={{ fontSize: '14px' }} />
+                </div>
+              }
+            >
+              <Schedules />
+            </DashboardWidget>
+          </div>
+        </div>
 
-      {/* Demo Section for Status Bar */}
-      <div className={styles.demoSection}>
-        <Title1 as="h3">Status Bar Demo</Title1>
-        <Text>Use these buttons to test the status bar at the bottom of the page:</Text>
-        <div className={styles.buttonGroup}>
-          <Button appearance="primary" onClick={handleConnect}>
-            Connect to Device
-          </Button>
-          <Button onClick={handleDisconnect}>Disconnect</Button>
-          <Button onClick={handleSimulateTraffic}>Simulate Traffic</Button>
-          <Button onClick={handleReset}>Reset Status Bar</Button>
+        {/* Monitoring Section */}
+        <div className={styles.section}>
+          <div className={styles.sectionTitle}>Monitoring</div>
+          <div className={styles.monitoringGrid}>
+            <DashboardWidget title="Recent Alarms" size="medium">
+              <RecentAlarms />
+            </DashboardWidget>
+
+            <DashboardWidget
+              title="System Health"
+              size="medium"
+              actions={
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#107c10' }}></span>
+                    <span style={{ fontSize: '12px', color: '#605e5c' }}>API Server</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#107c10' }}></span>
+                    <span style={{ fontSize: '12px', color: '#605e5c' }}>Database</span>
+                  </div>
+                </div>
+              }
+            >
+              <SystemHealth />
+            </DashboardWidget>
+
+            <DashboardWidget title="Recent Activity" size="medium">
+              <RecentActivity />
+            </DashboardWidget>
+          </div>
         </div>
       </div>
     </div>

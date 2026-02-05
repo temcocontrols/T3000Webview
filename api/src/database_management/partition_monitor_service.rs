@@ -15,6 +15,7 @@ pub async fn start_partition_monitor_service() -> Result<()> {
         let mut logger = match ServiceLogger::new("T3_PartitionMonitor") {
             Ok(l) => l,
             Err(e) => {
+                // Logger creation failed during bootstrap - fall back to stderr
                 eprintln!("Failed to create partition monitor logger: {}", e);
                 return;
             }
@@ -109,7 +110,10 @@ pub async fn start_partition_monitor_service() -> Result<()> {
 
 /// Check on startup for any missing partitions (called with 10s delay after T3000 starts)
 pub async fn check_startup_migrations() -> Result<()> {
-    println!("🔍 Checking for pending partition migrations on startup...");
+    let mut logger = ServiceLogger::new("T3_PartitionMonitor")
+        .unwrap_or_else(|_| ServiceLogger::new("fallback_partition").unwrap());
+
+    logger.info("Checking for pending partition migrations on startup...");
 
     // First, clean up any orphaned WAL/SHM files for partition databases
     cleanup_partition_wal_shm_files();
@@ -119,30 +123,30 @@ pub async fn check_startup_migrations() -> Result<()> {
     let config = DatabaseConfigService::get_config(&db).await?;
 
     if !config.is_active {
-        println!("ℹ️ Partitioning is disabled - skipping migration check");
+        logger.info("Partitioning is disabled - skipping migration check");
         return Ok(());
     }
 
-    println!("📋 Partition strategy: {:?}", config.strategy);
+    logger.info(&format!("Partition strategy: {:?}", config.strategy));
 
     // Check database size on startup - handle case where T3000 was off for long time
-    println!("📊 Checking database size on startup...");
+    logger.info("Checking database size on startup...");
     match check_and_partition_by_size().await {
         Ok(created) => {
             if created {
-                println!("✅ Size-based partition created on startup");
+                logger.info("Size-based partition created on startup");
             } else {
-                println!("ℹ️ Database size is within limit");
+                logger.info("Database size is within limit");
             }
         }
         Err(e) => {
-            println!("⚠️ Startup size check failed: {}", e);
+            logger.warn(&format!("Startup size check failed: {}", e));
         }
     }
 
     // Get current date
     let current_date = Utc::now().date_naive();
-    println!("📅 Current date: {}", current_date);
+    logger.info(&format!("Current date: {}", current_date));
 
     // Query DATABASE_FILES table for existing partitions
     let existing_partitions = database_files::Entity::find()
@@ -152,12 +156,12 @@ pub async fn check_startup_migrations() -> Result<()> {
         .all(&db)
         .await?;
 
-    println!("📁 Found {} existing partition records", existing_partitions.len());
+    logger.info(&format!("Found {} existing partition records", existing_partitions.len()));
 
     // Determine what needs to be migrated
     let periods_to_migrate = if existing_partitions.is_empty() {
         // DATABASE_FILES is empty - add 1 missing period (yesterday)
-        println!("⚠️ No partition records found - will migrate 1 previous period");
+        logger.info("No partition records found - will migrate 1 previous period");
         vec![calculate_previous_period(&config, current_date)]
     } else {
         // DATABASE_FILES has records - find gaps between last partition and current date
@@ -167,37 +171,37 @@ pub async fn check_startup_migrations() -> Result<()> {
             .map(|dt| dt.date())
             .unwrap_or_else(|| current_date.pred_opt().unwrap());
 
-        println!("📊 Last partition date: {}", last_partition_date);
+        logger.info(&format!("Last partition date: {}", last_partition_date));
 
         // Generate all missing periods between last partition and current date
         generate_missing_periods(&config, last_partition_date, current_date)
     };
 
     if periods_to_migrate.is_empty() {
-        println!("✅ No migration needed - partitions are up to date");
+        logger.info("No migration needed - partitions are up to date");
         return Ok(());
     }
 
-    println!("🔄 Need to migrate {} periods", periods_to_migrate.len());
+    logger.info(&format!("Need to migrate {} periods", periods_to_migrate.len()));
 
     // Migrate each missing period
     for (index, period_date) in periods_to_migrate.iter().enumerate() {
         let partition_id = generate_partition_identifier(&config, period_date);
-        println!("📦 Migrating period {}/{}: {} ({})",
-                 index + 1, periods_to_migrate.len(), period_date, partition_id);
+        logger.info(&format!("Migrating period {}/{}: {} ({})",
+                 index + 1, periods_to_migrate.len(), period_date, partition_id));
 
         match migrate_single_period(&db, &config, &partition_id, *period_date).await {
             Ok(count) => {
-                println!("✅ Migrated {} records for period {}", count, partition_id);
+                logger.info(&format!("Migrated {} records for period {}", count, partition_id));
             }
             Err(e) => {
-                println!("❌ Failed to migrate period {}: {}", partition_id, e);
+                logger.error(&format!("Failed to migrate period {}: {}", partition_id, e));
                 // Continue with next period instead of failing completely
             }
         }
     }
 
-    println!("✅ Startup migration check completed");
+    logger.info("Startup migration check completed");
     Ok(())
 }
 

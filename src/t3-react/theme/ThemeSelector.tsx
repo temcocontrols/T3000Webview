@@ -28,6 +28,10 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
+    fontSize: '12px',
+  },
+  icon: {
+    marginRight: '8px',
   },
 });
 
@@ -44,7 +48,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
   const { themeName, setTheme } = useTheme();
 
   const themeOptions: Array<{ name: ThemeName; label: string; icon: React.ReactElement }> = [
-    { name: 'azure', label: 'Azure Portal', icon: <CloudRegular /> },
+    { name: 'azure', label: 'Blue Mode', icon: <CloudRegular /> },
     { name: 'light', label: 'Light Mode', icon: <WeatherSunnyRegular /> },
     { name: 'dark', label: 'Dark Mode', icon: <WeatherMoonRegular /> },
   ];
@@ -71,7 +75,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
               onClick={() => setTheme(option.name)}
               disabled={themeName === option.name}
             >
-              {option.icon}
+              <span className={styles.icon}>{option.icon}</span>
               <span>{option.label}</span>
               {themeName === option.name && <span> ✓</span>}
             </MenuItem>

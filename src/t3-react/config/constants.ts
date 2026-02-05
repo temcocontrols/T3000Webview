@@ -3,8 +3,36 @@
  * Re-export window constants, routes, and other shared constants
  */
 
-// API Configuration
-export const API_BASE_URL = 'http://localhost:9103';
+// API Configuration - Dynamic based on current host
+const getApiBaseUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol; // http: or https:
+    const hostname = window.location.hostname; // localhost, 192.168.x.x, etc.
+    return `${protocol}//${hostname}:9103`;
+  }
+  // Fallback for SSR or build time
+  return 'http://localhost:9103';
+};
+
+export const API_BASE_URL = getApiBaseUrl();
+
+/**
+ * Documentation Configuration
+ * Controls where documentation markdown files are loaded from
+ */
+export const DOCS_CONFIG = {
+  // Base URL for documentation files
+  // Always uses '/docs' which loads from public/docs/ directory
+  // This works for both development and production builds
+  baseUrl: '/docs',
+
+  // GitHub URL for viewing documentation on GitHub
+  // Example: https://github.com/temcocontrols/T3000Webview/blob/main/docs/analysis/LEFT_PANEL_ANALYSIS.md
+  githubUrl: 'https://github.com/temcocontrols/T3000Webview/blob/main/docs',
+
+  // Local path for development
+  localPath: '/docs',
+} as const;
 
 // Re-export window constants
 export {
@@ -81,22 +109,22 @@ export const routes = {
 
 /**
  * Window route mapping
- * Maps window IDs to routes
+ * Maps window IDs to routes (matching C++ global_define.h constants)
  */
 export const windowRoutes: Record<number, string> = {
-  1: routes.inputs,       // WINDOW_INPUT
-  2: routes.outputs,      // WINDOW_OUTPUT
-  3: routes.variables,    // WINDOW_VARIABLE
-  4: routes.programs,     // WINDOW_PROGRAM
-  5: routes.controllers,  // WINDOW_CONTROLLER
-  6: routes.graphics,     // WINDOW_SCREEN
-  7: routes.schedules,    // WINDOW_WEEKLY
-  8: routes.holidays,     // WINDOW_ANNUAL
-  9: routes.trendLogs,    // WINDOW_MONITOR
-  10: routes.alarms,      // WINDOW_ALARMLOG
-  11: routes.settings,    // WINDOW_SETTING
-  14: routes.array,       // WINDOW_ARRAY
-  15: routes.network,     // WINDOW_REMOTE_POINT
+  1: routes.inputs,       // WINDOW_INPUT = 0 (but using 1-based)
+  2: routes.outputs,      // WINDOW_OUTPUT = 1
+  3: routes.variables,    // WINDOW_VARIABLE = 2
+  4: routes.programs,     // WINDOW_PROGRAM = 3
+  5: routes.pidloops,     // WINDOW_CONTROLLER = 4
+  6: routes.graphics,     // WINDOW_SCREEN = 5
+  7: routes.schedules,    // WINDOW_WEEKLY = 6
+  8: routes.holidays,     // WINDOW_ANNUAL = 7
+  9: routes.trendLogs,    // WINDOW_MONITOR = 8
+  10: routes.alarms,      // WINDOW_ALARMLOG = 9
+  11: routes.settings,    // WINDOW_SETTING = 11
+  14: routes.array,       // WINDOW_ARRAY = 14
+  15: routes.network,     // WINDOW_REMOTE_POINT = 13
 };
 
 /**

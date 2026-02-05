@@ -27,6 +27,19 @@ import DeviceApiService from '../../../services/deviceApi';
 import { buildTreeFromDevices } from '../lib/treeBuilder';
 import { useStatusBarStore } from '../../../store/statusBarStore';
 import { API_BASE_URL } from '../../../config/constants';
+import { T3Transport } from '../../../../lib/t3-transport/core/T3Transport';
+import { T3Database } from '../../../../lib/t3-database';
+import PanelDataRefreshService from '../../../shared/services/panelDataRefreshService';
+
+/**
+ * Clean device name: remove null bytes and garbage characters from C++ buffers
+ */
+const cleanDeviceName = (name: string | undefined | null, fallback: string = 'Unknown'): string => {
+  if (!name) return fallback;
+  // Remove null bytes and everything after, then trim
+  const cleaned = name.split('\0')[0].trim();
+  return cleaned || fallback;
+};
 
 /**
  * Device Tree State Interface
@@ -69,6 +82,10 @@ interface DeviceTreeState {
   fetchDevices: () => Promise<void>;
   refreshDevices: () => Promise<void>;
   scanForDevices: (options?: ScanOptions) => Promise<void>;
+  loadDevicesWithSync: () => Promise<void>;
+  syncDatabaseWithCpp: () => Promise<void>; // Manual cleanup: sync DB with C++ side
+  syncDevicePoints: (device: DeviceInfo) => Promise<void>;
+  checkIfDeviceNeedsSync: (serialNumber: number) => Promise<boolean>;
 
   // Actions: Device operations
   addDevice: (device: Partial<DeviceInfo>) => Promise<void>;
@@ -147,8 +164,16 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         set({ isLoading: true, error: null });
         try {
           const response = await DeviceApiService.getAllDevices();
+
+          // Clean device names from database (remove null bytes and garbage from C++ buffers)
+          const cleanedDevices = response.devices.map(device => ({
+            ...device,
+            nameShowOnTree: cleanDeviceName(device.nameShowOnTree, `Device ${device.serialNumber}`),
+            productName: cleanDeviceName(device.productName, ''),
+          }));
+
           set({
-            devices: response.devices,
+            devices: cleanedDevices,
             isLoading: false,
             lastSyncTime: new Date(),
           });
@@ -171,6 +196,19 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           }
 
           get().buildTreeStructure();
+
+          // Auto-select first device if none is selected
+          const { selectedDevice, selectDevice, devices } = get();
+          console.log(`[fetchDevices] Devices loaded:`, response.devices.map((d, idx) => `[${idx}] ${d.nameShowOnTree} (SN: ${d.serialNumber})`));
+          console.log(`[fetchDevices] Current selectedDevice:`, selectedDevice?.nameShowOnTree || 'none');
+
+          if (!selectedDevice && devices.length > 0) {
+            // Sort devices alphabetically to match tree order
+            const sortedDevices = [...devices].sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
+            const firstDevice = sortedDevices[0];
+            console.log(`[fetchDevices] Auto-selecting first device (alphabetically): ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
+            selectDevice(firstDevice);
+          }
 
           // Update status bar with success message
           useStatusBarStore.getState().setMessage(`Loaded ${response.devices.length} devices`, 'success');
@@ -205,6 +243,213 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             error: error instanceof Error ? error.message : 'Failed to scan for devices',
             isLoading: false,
           });
+        }
+      },
+
+      // Load devices with full sync (device list + selected device points)
+      loadDevicesWithSync: async () => {
+        const { setMessage } = useStatusBarStore.getState();
+
+        try {
+          // Step 1: Load from DB (instant)
+          setMessage('Loading devices from database...', 'info');
+          await get().fetchDevices();
+
+          const { devices } = get();
+          if (devices.length === 0) {
+            setMessage('No devices in database', 'warning');
+          }
+
+          // Step 2: Sync device list with T3000
+          setMessage('Syncing device list with T3000...', 'info');
+
+          // Initialize T3Transport with FFI
+          const transport = new T3Transport({
+            apiBaseUrl: `${API_BASE_URL}/api`
+          });
+          await transport.connect('ffi');
+
+          // Call action 4: GET_PANELS_LIST
+          const response = await transport.getDeviceList();
+
+          // Check if response has data
+          if (response && response.data && response.data.data) {
+            const panels = response.data.data;
+            console.log('[loadDevicesWithSync] FFI returned panels:', panels);
+            console.log(`[loadDevicesWithSync] Total panels: ${panels.length}`);
+
+            // Log detailed panel information for debugging
+            panels.forEach((panel: any, idx: number) => {
+              console.log(`[loadDevicesWithSync] Panel ${idx + 1}:`, {
+                panel_name: panel.panel_name,
+                panel_number: panel.panel_number,
+                serial_number: panel.serial_number,
+                pid: panel.pid,
+                object_instance: panel.object_instance,
+                online_time: panel.online_time
+              });
+            });
+
+            // Save to database (best effort)
+            let savedCount = 0;
+            let failedCount = 0;
+            try {
+              const db = new T3Database(`${API_BASE_URL}/api`);
+
+              for (const panel of panels) {
+                let serialNumber: number | undefined;
+                let deviceData: any = undefined;
+                try {
+                  serialNumber = panel.serial_number || panel.serialNumber;
+
+                  // Clean panel name - keep "(Unknown)" as-is, don't generate fake names
+                  const rawPanelName = panel.panel_name || panel.panelName;
+                  const panelName = cleanDeviceName(rawPanelName, '(Unknown)');
+
+                  deviceData = {
+                    SerialNumber: serialNumber,
+                    Product_Name: panelName,
+                    Product_ID: panel.pid || panel.Product_ID || null,
+                    Panel_Number: panel.panel_number || panel.Panel_Number || null,
+                    MainBuilding_Name: 'Default_Building',
+                    Building_Name: 'Local View',
+                    show_label_name: panelName,
+                    // Don't set description - let backend handle it or leave null
+                  };
+
+                  // Add BACnet_MSTP_MAC_ID if available (from object_instance)
+                  if (panel.object_instance !== undefined && panel.object_instance !== null) {
+                    deviceData.BACnet_MSTP_MAC_ID = panel.object_instance;
+                    console.log(`[loadDevicesWithSync] Panel ${serialNumber} - Setting BACnet_MSTP_MAC_ID = ${panel.object_instance}`);
+                  }
+
+                  console.log(`[loadDevicesWithSync] Creating device ${serialNumber}:`, JSON.stringify(deviceData, null, 2));
+                  await db.devices.create(deviceData);
+                  console.log(`[loadDevicesWithSync] ✅ Device ${serialNumber} (${panelName}) saved successfully`);
+                  savedCount++;
+                } catch (error: any) {
+                  failedCount++;
+                  console.error(`[loadDevicesWithSync] ❌ Failed to save device ${serialNumber ?? 'UNKNOWN'}:`, error);
+                  console.error('[loadDevicesWithSync] Device data was:', deviceData ?? 'NOT_SET');
+                  console.error('[loadDevicesWithSync] Error details:', error?.message || error);
+                }
+              }
+            } catch (dbError) {
+              console.warn('[loadDevicesWithSync] Database operations failed:', dbError);
+            }
+
+            // Show detailed statistics
+            console.log(`[loadDevicesWithSync] Save statistics: ${savedCount} saved, ${failedCount} failed out of ${panels.length} total`);
+            if (savedCount > 0) {
+              setMessage(`Found ${panels.length} device(s), saved ${savedCount} successfully${failedCount > 0 ? `, ${failedCount} failed` : ''}`, savedCount === panels.length ? 'success' : 'warning');
+            } else {
+              setMessage(`Found ${panels.length} device(s) but failed to save any to database`, 'error');
+            }
+
+            // Step 3: Reload from DB to get updated list
+            await get().fetchDevices();
+
+            // Step 4: Auto-select first device (point sync handled by each page)
+            const { devices: updatedDevices, selectDevice } = get();
+            console.log(`[loadDevicesWithSync] Devices after reload:`, updatedDevices.map((d, idx) => `[${idx}] ${d.nameShowOnTree} (SN: ${d.serialNumber})`));
+
+            if (updatedDevices.length > 0) {
+              // Sort devices alphabetically to match tree order
+              const sortedDevices = [...updatedDevices].sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
+              const firstDevice = sortedDevices[0];
+              console.log(`[loadDevicesWithSync] Selecting first device (alphabetically): ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
+              selectDevice(firstDevice);
+            }
+          } else {
+            console.warn('[loadDevicesWithSync] No data in response:', response);
+            setMessage('No devices found in T3000', 'warning');
+          }
+
+          await transport.disconnect();
+        } catch (error) {
+          console.error('[loadDevicesWithSync] Failed:', error);
+          const errorMsg = error instanceof Error ? error.message : 'Failed to load devices';
+          setMessage(errorMsg, 'error');
+        }
+      },
+
+      // Check if device needs sync (DB is empty)
+      checkIfDeviceNeedsSync: async (serialNumber: number): Promise<boolean> => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/t3_device/devices/${serialNumber}/points-count`);
+          if (!response.ok) return false;
+
+          const data = await response.json();
+          const { inputCount, outputCount, variableCount } = data;
+
+          // If all counts are zero, DB is empty - need sync
+          return inputCount === 0 && outputCount === 0 && variableCount === 0;
+        } catch (error) {
+          console.warn('[checkIfDeviceNeedsSync] Failed:', error);
+          return false; // On error, don't auto-sync
+        }
+      },
+
+      // Clear all devices from database via API
+      syncDatabaseWithCpp: async () => {
+        const { setMessage } = useStatusBarStore.getState();
+
+        try {
+          setMessage('Clearing all devices from database...', 'info');
+
+          // Call API to delete all devices
+          const response = await fetch(`${API_BASE_URL}/api/t3_device/devices`, {
+            method: 'DELETE',
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const result = await response.json();
+          const deletedCount = result.rows_affected || 0;
+
+          if (deletedCount > 0) {
+            setMessage(`Cleared ${deletedCount} device(s) from database`, 'success');
+          } else {
+            setMessage('No devices to clear', 'info');
+          }
+
+          // Clear the state and reload
+          set({ devices: [], selectedDevice: null, selectedNodeId: null });
+          get().buildTreeStructure();
+
+        } catch (error) {
+          console.error('[syncDatabaseWithCpp] Error:', error);
+          setMessage('Failed to clear database', 'error');
+        }
+      },
+
+      // Sync device point data from T3000 via FFI
+      syncDevicePoints: async (device: DeviceInfo) => {
+        const { setMessage } = useStatusBarStore.getState();
+
+        setMessage(`Syncing data for ${device.nameShowOnTree}...`, 'info');
+
+        try {
+          const [inputsResult, outputsResult, variablesResult] = await Promise.all([
+            PanelDataRefreshService.refreshAllInputs(device.serialNumber),
+            PanelDataRefreshService.refreshAllOutputs(device.serialNumber),
+            PanelDataRefreshService.refreshAllVariables(device.serialNumber),
+          ]);
+
+          const inputCount = inputsResult.count || 0;
+          const outputCount = outputsResult.count || 0;
+          const variableCount = variablesResult.count || 0;
+          const totalPoints = inputCount + outputCount + variableCount;
+
+          setMessage(
+            `✓ Synced ${device.nameShowOnTree}: ${inputCount} inputs, ${outputCount} outputs, ${variableCount} variables`,
+            'success'
+          );
+        } catch (error) {
+          console.error('[syncDevicePoints] Failed:', error);
+          setMessage(`Failed to sync ${device.nameShowOnTree}, showing cached data`, 'warning');
         }
       },
 
@@ -267,16 +512,18 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
       // Check device online status
       checkDeviceStatus: async (serialNumber: number) => {
-        try {
-          const statusResult = await DeviceApiService.checkDeviceStatus(serialNumber);
-          set((state) => {
-            const newStatuses = new Map(state.deviceStatuses);
-            newStatuses.set(serialNumber, statusResult.status);
-            return { deviceStatuses: newStatuses };
-          });
-        } catch (error) {
-          console.error(`Failed to check status for device ${serialNumber}:`, error);
-        }
+        // TODO: Commented out - API endpoint not implemented yet
+        // try {
+        //   const statusResult = await DeviceApiService.checkDeviceStatus(serialNumber);
+        //   set((state) => {
+        //     const newStatuses = new Map(state.deviceStatuses);
+        //     newStatuses.set(serialNumber, statusResult.status);
+        //     return { deviceStatuses: newStatuses };
+        //   });
+        // } catch (error) {
+        //   console.error(`Failed to check status for device ${serialNumber}:`, error);
+        // }
+        console.log(`checkDeviceStatus called for device ${serialNumber} (disabled)`);
       },
 
       // Connect to device
@@ -404,6 +651,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
       // Select tree node
       selectNode: (nodeId: string) => {
+        console.log(`[selectNode] Called with nodeId: ${nodeId}`);
         const findNode = (nodes: TreeNode[], id: string): TreeNode | null => {
           for (const node of nodes) {
             if (node.id === id) return node;
@@ -416,6 +664,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         };
 
         const node = findNode(get().treeData, nodeId);
+        console.log(`[selectNode] Found node:`, node?.data ? `${node.data.nameShowOnTree} (SN: ${node.data.serialNumber})` : 'none');
         set({
           selectedNodeId: nodeId,
           selectedDevice: node?.data || null,
@@ -423,11 +672,24 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
       },
 
       // Select device directly
-      selectDevice: (device: DeviceInfo | null) => {
+      selectDevice: async (device: DeviceInfo | null) => {
+        console.log(`[selectDevice] Called with device:`, device ? `${device.nameShowOnTree} (SN: ${device.serialNumber})` : 'null');
         set({
           selectedDevice: device,
           selectedNodeId: device ? `device-${device.serialNumber}` : null,
         });
+
+        // Smart auto-sync: Check if device needs sync (DB is empty)
+        if (device) {
+          const needsSync = await get().checkIfDeviceNeedsSync(device.serialNumber);
+          if (needsSync) {
+            // DB is empty, auto-sync from device
+            console.log(`[selectDevice] Auto-syncing ${device.nameShowOnTree} (DB empty)`);
+            await get().syncDevicePoints(device);
+          } else {
+            console.log(`[selectDevice] Using cached data for ${device.nameShowOnTree}`);
+          }
+        }
       },
 
       // Filter actions

@@ -3,21 +3,19 @@
  * Quasar app entry point for CSS
  */
 
-/* Tailwind CSS */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* Import global styles */
+/* Import statements MUST come before @tailwind directives */
 @import './global.css';
 @import './lib.css';
 @import './shape.css';
-
-/* Import t3-vue specific styles */
 @import '../t3-vue/css/main.css';
 @import '../t3-vue/css/global.css';
 @import '../t3-vue/css/lib.css';
 @import '../t3-vue/css/shape.css';
+
+/* Tailwind CSS - loaded after imports */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* Application-wide styles */
 * {

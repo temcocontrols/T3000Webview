@@ -1,35 +1,45 @@
-/// T3000 Application Runtime Constants
-///
-/// This module contains shared constants used across the T3000 WebView API,
-/// particularly paths and configurations related to the T3000 runtime environment.
-
 use std::path::PathBuf;
-use std::env;
+
+/// Enable/disable T3000 FFI Sync Service (calls C++ LOGGING_DATA every 15 min)
+/// Set to false to disable automatic device data syncing from T3000.exe
+pub const ENABLE_FFI_SYNC_SERVICE: bool = false;
+
+/// Enable/disable Partition Monitor Service (hourly database maintenance)
+/// Set to false to disable partition checks, WAL cleanup, and size monitoring
+pub const ENABLE_PARTITION_MONITOR_SERVICE: bool = false;
 
 /// Get the base runtime directory where T3000 application stores its files
-/// In development: uses hardcoded path for debugging
-/// In production: uses current executable directory (where DLL is deployed)
+/// Checks TEMCO_T3000_PATH environment variable first, then falls back to exe directory
 pub fn get_t3000_runtime_path() -> PathBuf {
+    // First check if environment variable is set (for both dev and production)
+    if let Ok(env_path) = std::env::var("TEMCO_T3000_PATH") {
+        let path = PathBuf::from(env_path);
+        if path.exists() {
+            return path;
+        }
+    }
+
     #[cfg(debug_assertions)]
     {
-        // Development mode: use hardcoded path
-        PathBuf::from("D:\\1025\\github\\temcocontrols\\T3000_Building_Automation_System\\T3000 Output\\Debug")
+        // Development mode: use relative path from project root
+        let dev_path = PathBuf::from("../T3000_Building_Automation_System/T3000 Output/Debug");
+        if dev_path.exists() {
+            return dev_path;
+        }
     }
+
     #[cfg(not(debug_assertions))]
     {
         // Production mode: use current executable directory
-        match env::current_exe() {
-            Ok(exe_path) => {
-                exe_path.parent()
-                    .unwrap_or_else(|| std::path::Path::new("."))
-                    .to_path_buf()
-            }
-            Err(_) => {
-                // Fallback to current directory if we can't get exe path
-                env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+        if let Ok(exe_path) = std::env::current_exe() {
+            if let Some(parent) = exe_path.parent() {
+                return parent.to_path_buf();
             }
         }
     }
+
+    // Final fallback to current directory
+    std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
 
 /// Get the database directory path within the T3000 runtime folder

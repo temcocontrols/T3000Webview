@@ -66,7 +66,7 @@ async fn upload_file(
         let mut file_path = "/uploads/".to_string();
         if query_params.path.is_some() {
             file_path.push_str(&query_params.path.unwrap());
-            file_path.push_str("/");
+            file_path.push('/');
         }
         path_str.push_str(&file_path);
 

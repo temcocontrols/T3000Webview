@@ -52,7 +52,9 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
 import { getRangeLabel } from '../data/rangeData';
 import { API_BASE_URL } from '../../../config/constants';
-import { OutputRefreshApiService } from '../services/outputRefreshApi';
+import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
+import { useStatusBarStore } from '../../../store/statusBarStore';
+import { SyncStatusBar } from '../../../shared/components/SyncStatusBar';
 import styles from './OutputsPage.module.css';
 
 // Types based on Rust entity (output_points.rs)
@@ -80,6 +82,7 @@ interface OutputPoint {
 
 export const OutputsPage: React.FC = () => {
   const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const setMessage = useStatusBarStore((state) => state.setMessage);
 
   const [outputs, setOutputs] = useState<OutputPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -87,13 +90,17 @@ export const OutputsPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
+  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
   const isAtBottomRef = useRef(false); // Track if user is already at bottom
 
-  // Auto-select first device on page load if no device is selected
+  // Auto-select first device on page load - DISABLED
+  // TreePanel's loadDevicesWithSync already handles auto-selection
+  // This prevents conflicts where both components try to select different devices
+  /*
   useEffect(() => {
     if (!selectedDevice && treeData.length > 0) {
       // Get the first device from filtered devices list (respects current filters)
@@ -112,6 +119,7 @@ export const OutputsPage: React.FC = () => {
       }
     }
   }, [selectedDevice, treeData, selectDevice, getFilteredDevices]);
+  */
 
   // Fetch outputs for selected device
   const fetchOutputs = useCallback(async () => {
@@ -148,35 +156,56 @@ export const OutputsPage: React.FC = () => {
     fetchOutputs();
   }, [fetchOutputs]);
 
-  // Auto-refresh once after page load (Trigger #1)
+  // Reset autoRefreshed flag when device changes
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed) return;
+    setOutputs([]);
+    setAutoRefreshed(false);
+    hasAutoRefreshedRef.current = false;
+  }, [selectedDevice?.serialNumber]);
 
-    // Wait for initial load to complete, then auto-refresh from device
-    const timer = setTimeout(async () => {
-      try {
-        console.log('[OutputsPage] Auto-refreshing from device...');
-        const refreshResponse = await OutputRefreshApiService.refreshAllOutputs(selectedDevice.serialNumber);
-        console.log('[OutputsPage] Refresh response:', refreshResponse);
+  // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
+  useEffect(() => {
+    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
 
-        // Save to database
-        if (refreshResponse.items && refreshResponse.items.length > 0) {
-          await OutputRefreshApiService.saveRefreshedOutputs(selectedDevice.serialNumber, refreshResponse.items);
-          // Only reload from database if save was successful
-          await fetchOutputs();
-        } else {
-          console.warn('[OutputsPage] Auto-refresh: No items received, keeping existing data');
-        }
+    // Check immediately if database has output data
+    const checkAndRefresh = async () => {
+      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+
+      if (outputs.length > 0) {
+        console.log('[OutputsPage] Database has data, skipping auto-refresh');
         setAutoRefreshed(true);
+        return;
+      }
+
+      console.log('[OutputsPage] Database empty, auto-refreshing from device...');
+      setLoading(true);
+
+      try {
+        // Pass loading callback to show loading state during Action 17 FFI call
+        const result = await PanelDataRefreshService.refreshFromDevice({
+          serialNumber: selectedDevice.serialNumber,
+          type: 'output',
+          onLoadingChange: (loading) => {
+            if (loading) {
+              setMessage(`Loading outputs from ${selectedDevice.nameShowOnTree} (Action 17)...`, 'info');
+            }
+          }
+        });
+        console.log('[OutputsPage] Auto-refresh result:', result);
+        setMessage(`✓ Synced ${result.itemCount} outputs from ${selectedDevice.nameShowOnTree}`, 'success');
       } catch (error) {
         console.error('[OutputsPage] Auto-refresh failed:', error);
-        // Don't reload from database on error - preserve existing outputs
-        setAutoRefreshed(true); // Mark as attempted to prevent retry loops
+        setMessage(`Failed to sync outputs: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      } finally {
+        // Always reload from database to show what was actually saved
+        await fetchOutputs();
+        setAutoRefreshed(true);
+        setLoading(false);
       }
-    }, 500);
+    };
 
-    return () => clearTimeout(timer);
-  }, [loading, selectedDevice, autoRefreshed, fetchOutputs]);
+    checkAndRefresh();
+  }, [loading, selectedDevice, autoRefreshed, fetchOutputs, outputs.length, setMessage]);
 
   // Handlers
   const handleRefresh = async () => {
@@ -190,29 +219,30 @@ export const OutputsPage: React.FC = () => {
     if (!selectedDevice) return;
 
     setRefreshing(true);
+    setMessage('Refreshing outputs from device...', 'info');
+
     try {
-      console.log('[OutputsPage] Refreshing all outputs from device...');
-      const refreshResponse = await OutputRefreshApiService.refreshAllOutputs(selectedDevice.serialNumber);
-      console.log('[OutputsPage] Refresh response:', refreshResponse);
-
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await OutputRefreshApiService.saveRefreshedOutputs(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[OutputsPage] Save response:', saveResponse);
-
-        // Only reload from database if save was successful
-        await fetchOutputs();
-      } else {
-        console.warn('[OutputsPage] No items received from refresh, keeping existing data');
-      }
+      console.log('[OutputsPage] Refreshing all outputs from device via FFI...');
+      // Pass loading callback to show loading state during Action 17 FFI call
+      const result = await PanelDataRefreshService.refreshFromDevice({
+        serialNumber: selectedDevice.serialNumber,
+        type: 'output',
+        onLoadingChange: (loading) => {
+          if (loading) {
+            setMessage('Loading data from device (Action 17)...', 'info');
+          }
+        }
+      });
+      console.log('[OutputsPage] Refresh result:', result);
+      setMessage(result.message, 'success');
     } catch (error) {
       console.error('[OutputsPage] Failed to refresh from device:', error);
-      setError(error instanceof Error ? error.message : 'Failed to refresh from device');
-      // Don't call fetchOutputs() on error - preserve existing outputs in UI
+      const errorMsg = error instanceof Error ? error.message : 'Failed to refresh from device';
+      setError(errorMsg);
+      setMessage(errorMsg, 'error');
     } finally {
+      // Always reload from database to show what was actually saved
+      await fetchOutputs();
       setRefreshing(false);
     }
   };
@@ -229,18 +259,9 @@ export const OutputsPage: React.FC = () => {
 
     setRefreshingItems(prev => new Set(prev).add(outputIndex));
     try {
-      console.log(`[OutputsPage] Refreshing output ${index} from device...`);
-      const refreshResponse = await OutputRefreshApiService.refreshOutput(selectedDevice.serialNumber, index);
-      console.log('[OutputsPage] Refresh response:', refreshResponse);
-
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await OutputRefreshApiService.saveRefreshedOutputs(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[OutputsPage] Save response:', saveResponse);
-      }
+      console.log(`[OutputsPage] Refreshing output ${index} from device via FFI...`);
+      const result = await PanelDataRefreshService.refreshSingleOutput(selectedDevice.serialNumber, index);
+      console.log('[OutputsPage] Refresh result:', result);
 
       // Reload data from database after save
       await fetchOutputs();
@@ -349,19 +370,68 @@ export const OutputsPage: React.FC = () => {
 
     setIsSaving(true);
     try {
-      // TODO: Replace with actual API call to update the backend
-      // if (editingCell.field === 'fullLabel') {
-      //   await updateOutputLabel(editingCell.serialNumber, editingCell.outputIndex, editValue);
-      // } else if (editingCell.field === 'fValue') {
-      //   await updateOutputValue(editingCell.serialNumber, editingCell.outputIndex, editValue);
-      // }
+      // Use Action 16 for editable fields (fullLabel, fValue)
+      if (selectedDevice && ['fullLabel', 'fValue'].includes(editingCell.field)) {
+        console.log(`=== Updating ${editingCell.field} ===`);
+        console.log(`Device: ${selectedDevice.serialNumber}, Output: ${editingCell.outputIndex}, New Value: "${editValue}"`);
+        console.log('Using Action 16 (UPDATE_WEBVIEW_LIST)');
+
+        // Use CURRENT UI STATE as baseline (has most recent changes)
+        const currentOutput = outputs.find(
+          output => output.serialNumber === editingCell.serialNumber && output.outputIndex === editingCell.outputIndex
+        );
+
+        if (!currentOutput) {
+          throw new Error('Current output data not found');
+        }
+
+        console.log('[Action 16] Using current UI state as baseline:', currentOutput);
+
+        // Build payload with current UI values + the one changed field
+        const payload = {
+          fullLabel: editingCell.field === 'fullLabel' ? editValue : (currentOutput.fullLabel || ''),
+          label: currentOutput.label || '',
+          value: editingCell.field === 'fValue' ? parseFloat(editValue || '0') * 1000 : parseFloat(currentOutput.fValue || '0'),
+          range: parseInt(currentOutput.range || '0'),
+          autoManual: parseInt(currentOutput.autoManual || '0'),
+          control: 0,
+          digitalAnalog: parseInt(currentOutput.digitalAnalog || '0'),
+          decom: 0,
+          lowVoltage: 0,
+          highVoltage: 0,
+        };
+
+        console.log('[Action 16] Full payload:', payload);
+
+        const response = await fetch(
+          `${API_BASE_URL}/api/t3_device/outputs/${selectedDevice.serialNumber}/${editingCell.outputIndex}`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const result = await response.json();
+        console.log(`✅ ${editingCell.field} updated successfully!`, result);
+      }
 
       // Update local state optimistically
       setOutputs(prevOutputs =>
         prevOutputs.map(output =>
           output.serialNumber === editingCell.serialNumber &&
           output.outputIndex === editingCell.outputIndex
-            ? { ...output, [editingCell.field]: editValue }
+            ? {
+                ...output,
+                [editingCell.field]: editingCell.field === 'fValue'
+                  ? (parseFloat(editValue || '0') * 1000).toString()  // Convert back to raw value for storage
+                  : editValue
+              }
             : output
         )
       );
@@ -370,7 +440,7 @@ export const OutputsPage: React.FC = () => {
       setEditingCell(null);
     } catch (error) {
       console.error('Failed to update:', error);
-      // Optionally show error message to user
+      alert(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }
@@ -408,22 +478,57 @@ export const OutputsPage: React.FC = () => {
     setRangeDrawerOpen(true);
   };
 
-  const handleRangeSave = (newRange: number) => {
+  const handleRangeSave = async (newRange: number) => {
     if (!selectedOutput) return;
 
-    // Update local state optimistically
-    setOutputs(prevOutputs =>
-      prevOutputs.map(output =>
-        output.serialNumber === selectedOutput.serialNumber &&
-        output.outputIndex === selectedOutput.outputIndex
-          ? { ...output, range: newRange.toString() }
-          : output
-      )
-    );
+    try {
+      console.log(`[Action 16] Updating Range for Output ${selectedOutput.outputIndex} (SN: ${selectedOutput.serialNumber})`);
 
-    console.log('Range updated:', selectedOutput.serialNumber, selectedOutput.outputIndex, newRange);
-    // TODO: Call API to update range value
-    // Example: await updateOutputRange(selectedOutput.serialNumber, selectedOutput.outputIndex, newRange);
+      // Action 16 requires ALL fields
+      const payload = {
+        fullLabel: selectedOutput.fullLabel || '',
+        label: selectedOutput.label || '',
+        value: parseFloat(selectedOutput.fValue || '0'),
+        range: newRange,
+        autoManual: parseInt(selectedOutput.autoManual || '0'),
+        control: 0,
+        lowVoltage: parseFloat(selectedOutput.lowVoltage || '0'),
+        highVoltage: parseFloat(selectedOutput.highVoltage || '0'),
+        pwmPeriod: parseInt(selectedOutput.pwmPeriod || '0'),
+      };
+
+      console.log('[Action 16] Full payload:', payload);
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/t3_device/outputs/${selectedOutput.serialNumber}/${selectedOutput.outputIndex}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('[Action 16] Range updated successfully:', result);
+
+      // Update local state optimistically
+      setOutputs(prevOutputs =>
+        prevOutputs.map(output =>
+          output.serialNumber === selectedOutput.serialNumber &&
+          output.outputIndex === selectedOutput.outputIndex
+            ? { ...output, range: newRange.toString() }
+            : output
+        )
+      );
+    } catch (error) {
+      console.error('Failed to update Range:', error);
+      alert(`Failed to update Range: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -444,33 +549,68 @@ export const OutputsPage: React.FC = () => {
     }
   };
 
+  // Display data with 10 empty rows when no outputs
+  const displayOutputs = React.useMemo(() => {
+    if (outputs.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        serialNumber: selectedDevice?.serialNumber || 0,
+        outputId: '',
+        outputIndex: '',
+        panel: '',
+        fullLabel: '',
+        autoManual: '',
+        hwSwitchStatus: '',
+        fValue: '',
+        units: '',
+        range: '',
+        rangeField: '',
+        lowVoltage: '',
+        highVoltage: '',
+        pwmPeriod: '',
+        status: '',
+        signalType: '',
+        digitalAnalog: '',
+        label: '',
+        typeField: '',
+      }));
+    }
+    return outputs;
+  }, [outputs, selectedDevice]);
+
+  // Helper to identify empty rows
+  const isEmptyRow = (item: OutputPoint) => !item.outputIndex && !item.outputId && outputs.length === 0;
+
   // Column definitions matching the sequence: Panel, Output, Full Label, Label, Auto/Man, HOA Switch, Value, Units, Range, Low V, High V, PWM Period, Status, Type
   const columns: TableColumnDefinition<OutputPoint>[] = [
     // 1. Panel ID
     createTableColumn<OutputPoint>({
       columnId: 'panel',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('panel')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('panel')}>
           <span>Panel</span>
           {sortColumn === 'panel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.panel || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.panel || '---')}
+        </TableCellLayout>
+      ),
     }),
     // 2. Output (Index/ID)
     createTableColumn<OutputPoint>({
       columnId: 'output',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('output')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('output')}>
           <span>Output</span>
           {sortColumn === 'output' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -479,23 +619,26 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRefreshSingleOutput(item.outputIndex || '');
-                }}
-                className={`${styles.refreshIconButton} ${isRefreshing ? styles.isRefreshing : ''}`}
-                title="Refresh this output from device"
-                disabled={isRefreshing}
-              >
-                <ArrowSyncRegular
-                  style={{ fontSize: '14px' }}
-                  className={isRefreshing ? styles.rotating : ''}
-                />
-              </button>
-              <Text size={200} weight="regular">{item.outputId || item.outputIndex || '---'}</Text>
-            </div>
+            {!isEmptyRow(item) && (
+              <div className={styles.cellFlexContainer}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRefreshSingleOutput(item.outputIndex || '');
+                  }}
+                  className={`${styles.refreshIconButton} ${isRefreshing ? styles.isRefreshing : ''}`}
+                  title="Refresh this output from device"
+                  disabled={isRefreshing}
+                >
+                  <ArrowSyncRegular
+                    className={`${styles.iconSmall} ${isRefreshing ? styles.rotating : ''}`}
+                  />
+                </button>
+                <Text size={200} weight="regular">
+                  {item.outputId || (item.outputIndex ? `OUT${parseInt(item.outputIndex) + 1}` : '---')}
+                </Text>
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -504,12 +647,12 @@ export const OutputsPage: React.FC = () => {
     createTableColumn<OutputPoint>({
       columnId: 'fullLabel',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('fullLabel')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('fullLabel')}>
           <span>Full Label</span>
           {sortColumn === 'fullLabel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -520,41 +663,42 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
-                <input
-                  type="text"
-                  className={styles.editInput}
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onBlur={handleEditSave}
-                  onKeyDown={handleEditKeyDown}
-                  autoFocus
-                  disabled={isSaving}
-                  placeholder="Enter label"
-                  aria-label="Edit full label"
-                  style={{ flex: 1 }}
-                />
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditSave();
-                  }}
-                  disabled={isSaving}
-                  className={styles.saveButton}
-                  title="Save"
+            {!isEmptyRow(item) && (
+              isEditing ? (
+                <div className={styles.editInputContainer}>
+                  <input
+                    type="text"
+                    className={`${styles.editInput} ${styles.flex1}`}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={handleEditSave}
+                    onKeyDown={handleEditKeyDown}
+                    autoFocus
+                    disabled={isSaving}
+                    placeholder="Enter label"
+                    aria-label="Edit full label"
+                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditSave();
+                    }}
+                    disabled={isSaving}
+                    className={styles.saveButton}
+                    title="Save"
+                  >
+                    <SaveRegular className={styles.iconMedium} />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  className={styles.editableCell}
+                  onDoubleClick={() => handleCellDoubleClick(item, 'fullLabel', item.fullLabel || '')}
+                  title="Double-click to edit"
                 >
-                  <SaveRegular style={{ fontSize: '18px' }} />
-                </button>
-              </div>
-            ) : (
-              <div
-                className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'fullLabel', item.fullLabel || '')}
-                title="Double-click to edit"
-              >
-                <Text size={200} weight="regular">{item.fullLabel || 'Unnamed'}</Text>
-              </div>
+                  <Text size={200} weight="regular">{item.fullLabel || 'Unnamed'}</Text>
+                </div>
+              )
             )}
           </TableCellLayout>
         );
@@ -564,12 +708,12 @@ export const OutputsPage: React.FC = () => {
     createTableColumn<OutputPoint>({
       columnId: 'label',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('label')}>
           <span>Label</span>
           {sortColumn === 'label' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -580,41 +724,42 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
-                <input
-                  type="text"
-                  className={styles.editInput}
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onBlur={handleEditSave}
-                  onKeyDown={handleEditKeyDown}
-                  autoFocus
-                  disabled={isSaving}
-                  placeholder="Enter label"
-                  aria-label="Edit label"
-                  style={{ flex: 1 }}
-                />
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditSave();
-                  }}
-                  disabled={isSaving}
-                  className={styles.saveButton}
-                  title="Save"
+            {!isEmptyRow(item) && (
+              isEditing ? (
+                <div className={styles.editInputContainer}>
+                  <input
+                    type="text"
+                    className={`${styles.editInput} ${styles.flex1}`}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={handleEditSave}
+                    onKeyDown={handleEditKeyDown}
+                    autoFocus
+                    disabled={isSaving}
+                    placeholder="Enter label"
+                    aria-label="Edit label"
+                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditSave();
+                    }}
+                    disabled={isSaving}
+                    className={styles.saveButton}
+                    title="Save"
+                  >
+                    <SaveRegular className={styles.iconMedium} />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  className={styles.editableCell}
+                  onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
+                  title="Double-click to edit"
                 >
-                  <SaveRegular style={{ fontSize: '18px' }} />
-                </button>
-              </div>
-            ) : (
-              <div
-                className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
-                title="Double-click to edit"
-              >
-                <Text size={200} weight="regular">{item.label || '---'}</Text>
-              </div>
+                  <Text size={200} weight="regular">{item.label || '---'}</Text>
+                </div>
+              )
             )}
           </TableCellLayout>
         );
@@ -624,7 +769,7 @@ export const OutputsPage: React.FC = () => {
     createTableColumn<OutputPoint>({
       columnId: 'autoManual',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>Auto/Man</span>
         </div>
       ),
@@ -695,15 +840,17 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <div
-              onClick={handleToggle}
-              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-            >
-              <Switch
-                checked={isAuto}
-                style={{ transform: 'scale(0.8)' }}
-              />
-            </div>
+            {!isEmptyRow(item) && (
+              <div
+                onClick={handleToggle}
+                className={styles.switchContainer}
+              >
+                <Switch
+                  checked={isAuto}
+                  className={styles.switchScale}
+                />
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -712,7 +859,7 @@ export const OutputsPage: React.FC = () => {
     createTableColumn<OutputPoint>({
       columnId: 'hoaSwitch',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>HOA Switch</span>
         </div>
       ),
@@ -735,9 +882,11 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <Badge appearance="filled" color={badgeColor} size="small">
-              {switchText}
-            </Badge>
+            {!isEmptyRow(item) && (
+              <Badge appearance="filled" color={badgeColor} size="small">
+                {switchText}
+              </Badge>
+            )}
           </TableCellLayout>
         );
       },
@@ -746,12 +895,12 @@ export const OutputsPage: React.FC = () => {
     createTableColumn<OutputPoint>({
       columnId: 'value',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('value')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('value')}>
           <span>Value</span>
           {sortColumn === 'value' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -762,42 +911,43 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
-                <input
-                  type="number"
-                  step="0.01"
-                  className={styles.editInput}
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onBlur={handleEditSave}
-                  onKeyDown={handleEditKeyDown}
-                  autoFocus
-                  disabled={isSaving}
-                  placeholder="Enter value"
-                  aria-label="Edit value"
-                  style={{ flex: 1 }}
-                />
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditSave();
-                  }}
-                  disabled={isSaving}
-                  className={styles.saveButton}
-                  title="Save"
+            {!isEmptyRow(item) && (
+              isEditing ? (
+                <div className={styles.editInputContainer}>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className={`${styles.editInput} ${styles.flex1}`}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={handleEditSave}
+                    onKeyDown={handleEditKeyDown}
+                    autoFocus
+                    disabled={isSaving}
+                    placeholder="Enter value"
+                    aria-label="Edit value"
+                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditSave();
+                    }}
+                    disabled={isSaving}
+                    className={styles.saveButton}
+                    title="Save"
+                  >
+                    <SaveRegular className={styles.iconMedium} />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  className={styles.editableCell}
+                  onDoubleClick={() => handleCellDoubleClick(item, 'fValue', item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '0')}
+                  title="Double-click to edit"
                 >
-                  <SaveRegular style={{ fontSize: '18px' }} />
-                </button>
-              </div>
-            ) : (
-              <div
-                className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'fValue', item.fValue?.toString() || '0')}
-                title="Double-click to edit"
-              >
-                <Text size={200} weight="regular">{item.fValue || '---'}</Text>
-              </div>
+                  <Text size={200} weight="regular">{item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}</Text>
+                </div>
+              )
             )}
           </TableCellLayout>
         );
@@ -807,16 +957,20 @@ export const OutputsPage: React.FC = () => {
     createTableColumn<OutputPoint>({
       columnId: 'units',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('units')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('units')}>
           <span>Units</span>
           {sortColumn === 'units' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.units || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.units || '---')}
+        </TableCellLayout>
+      ),
     }),
     // 7. Range
     createTableColumn<OutputPoint>({
@@ -827,12 +981,12 @@ export const OutputsPage: React.FC = () => {
         return aVal.localeCompare(bVal);
       },
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('range')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('range')}>
           <span>Range</span>
           {sortColumn === 'range' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -844,13 +998,15 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <div
-              onClick={() => handleRangeClick(item)}
-              style={{ cursor: 'pointer', color: '#0078d4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-              title="Click to change range"
-            >
-              <Text size={200} weight="regular">{rangeLabel}</Text>
-            </div>
+            {!isEmptyRow(item) && (
+              <div
+                onClick={() => handleRangeClick(item)}
+                className={styles.rangeLink}
+                title="Click to change range"
+              >
+                <Text size={200} weight="regular">{rangeLabel}</Text>
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -859,12 +1015,12 @@ export const OutputsPage: React.FC = () => {
     createTableColumn<OutputPoint>({
       columnId: 'lowVoltage',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('lowVoltage')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('lowVoltage')}>
           <span>Low V</span>
           {sortColumn === 'lowVoltage' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -875,28 +1031,30 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <input
-                type="number"
-                step="0.01"
-                className={styles.editInput}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                placeholder="Enter voltage"
-                aria-label="Edit low voltage"
-              />
-            ) : (
-              <div
-                className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'lowVoltage', item.lowVoltage?.toString() || '0')}
-                title="Double-click to edit"
-              >
-                <Text size={200} weight="regular">{item.lowVoltage || '---'}</Text>
-              </div>
+            {!isEmptyRow(item) && (
+              isEditing ? (
+                <input
+                  type="number"
+                  step="0.01"
+                  className={styles.editInput}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  placeholder="Enter voltage"
+                  aria-label="Edit low voltage"
+                />
+              ) : (
+                <div
+                  className={styles.editableCell}
+                  onDoubleClick={() => handleCellDoubleClick(item, 'lowVoltage', item.lowVoltage?.toString() || '0')}
+                  title="Double-click to edit"
+                >
+                  <Text size={200} weight="regular">{item.lowVoltage || '---'}</Text>
+                </div>
+              )
             )}
           </TableCellLayout>
         );
@@ -906,12 +1064,12 @@ export const OutputsPage: React.FC = () => {
     createTableColumn<OutputPoint>({
       columnId: 'highVoltage',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('highVoltage')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('highVoltage')}>
           <span>High V</span>
           {sortColumn === 'highVoltage' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -922,28 +1080,30 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <input
-                type="number"
-                step="0.01"
-                className={styles.editInput}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                placeholder="Enter voltage"
-                aria-label="Edit high voltage"
-              />
-            ) : (
-              <div
-                className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'highVoltage', item.highVoltage?.toString() || '0')}
-                title="Double-click to edit"
-              >
-                <Text size={200} weight="regular">{item.highVoltage || '---'}</Text>
-              </div>
+            {!isEmptyRow(item) && (
+              isEditing ? (
+                <input
+                  type="number"
+                  step="0.01"
+                  className={styles.editInput}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  placeholder="Enter voltage"
+                  aria-label="Edit high voltage"
+                />
+              ) : (
+                <div
+                  className={styles.editableCell}
+                  onDoubleClick={() => handleCellDoubleClick(item, 'highVoltage', item.highVoltage?.toString() || '0')}
+                  title="Double-click to edit"
+                >
+                  <Text size={200} weight="regular">{item.highVoltage || '---'}</Text>
+                </div>
+              )
             )}
           </TableCellLayout>
         );
@@ -953,7 +1113,7 @@ export const OutputsPage: React.FC = () => {
     createTableColumn<OutputPoint>({
       columnId: 'pwmPeriod',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>PWM Period</span>
         </div>
       ),
@@ -964,28 +1124,30 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <input
-                type="number"
-                step="1"
-                className={styles.editInput}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                placeholder="Enter period"
-                aria-label="Edit PWM period"
-              />
-            ) : (
-              <div
-                className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'pwmPeriod', item.pwmPeriod?.toString() || '0')}
-                title="Double-click to edit"
-              >
-                <Text size={200} weight="regular">{item.pwmPeriod || '---'}</Text>
-              </div>
+            {!isEmptyRow(item) && (
+              isEditing ? (
+                <input
+                  type="number"
+                  step="1"
+                  className={styles.editInput}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  placeholder="Enter period"
+                  aria-label="Edit PWM period"
+                />
+              ) : (
+                <div
+                  className={styles.editableCell}
+                  onDoubleClick={() => handleCellDoubleClick(item, 'pwmPeriod', item.pwmPeriod?.toString() || '0')}
+                  title="Double-click to edit"
+                >
+                  <Text size={200} weight="regular">{item.pwmPeriod || '---'}</Text>
+                </div>
+              )
             )}
           </TableCellLayout>
         );
@@ -995,12 +1157,12 @@ export const OutputsPage: React.FC = () => {
     createTableColumn<OutputPoint>({
       columnId: 'status',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('status')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('status')}>
           <span>Status</span>
           {sortColumn === 'status' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -1024,12 +1186,14 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <Badge
-              appearance="filled"
-              color={statusColor}
-            >
-              {statusText}
-            </Badge>
+            {!isEmptyRow(item) && (
+              <Badge
+                appearance="filled"
+                color={statusColor}
+              >
+                {statusText}
+              </Badge>
+            )}
           </TableCellLayout>
         );
       },
@@ -1038,7 +1202,7 @@ export const OutputsPage: React.FC = () => {
     createTableColumn<OutputPoint>({
       columnId: 'signalType',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>Type</span>
         </div>
       ),
@@ -1080,9 +1244,11 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <Badge appearance="outline" color={badgeColor}>
-              {typeText}
-            </Badge>
+            {!isEmptyRow(item) && (
+              <Badge appearance="outline" color={badgeColor}>
+                {typeText}
+              </Badge>
+            )}
           </TableCellLayout>
         );
       },
@@ -1108,9 +1274,9 @@ export const OutputsPage: React.FC = () => {
                   ERROR MESSAGE (if any)
                   ======================================== */}
               {error && (
-                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
-                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                <div className={styles.errorNotice}>
+                  <ErrorCircleRegular className={styles.iconError} />
+                  <Text className={styles.textError}>
                     {error}
                   </Text>
                 </div>
@@ -1121,6 +1287,7 @@ export const OutputsPage: React.FC = () => {
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
               {selectedDevice && (
+              <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   {/* Refresh Button */}
@@ -1181,8 +1348,7 @@ export const OutputsPage: React.FC = () => {
                     relationship="description"
                   >
                     <button
-                      className={styles.toolbarButton}
-                      style={{ marginLeft: '8px' }}
+                      className={`${styles.toolbarButton} ${styles.marginLeft8}`}
                       title="Information"
                       aria-label="Information about this page"
                     >
@@ -1191,15 +1357,16 @@ export const OutputsPage: React.FC = () => {
                   </Tooltip>
                 </div>
               </div>
-              )}
 
               {/* ========================================
                   HORIZONTAL DIVIDER
                   Matches: ext-overview-hr
                   ======================================== */}
-              <div style={{ padding: '0' }}>
+              <div className={styles.noPadding}>
                 <hr className={styles.overviewHr} />
               </div>
+              </>
+              )}
 
               {/* ========================================
                   DOCKING BODY - Main Content
@@ -1218,10 +1385,10 @@ export const OutputsPage: React.FC = () => {
                 {/* No Device Selected */}
                 {!selectedDevice && !loading && (
                   <div className={styles.noData}>
-                    <div style={{ textAlign: 'center' }}>
-                      <Text size={500} weight="semibold">No device selected</Text>
+                    <div className={styles.centerText}>
+                      <Text size={400} weight="semibold">No device selected</Text>
                       <br />
-                      <Text size={300}>Please select a device from the tree to view outputs</Text>
+                      <Text size={200}>Please select a device from the tree to view outputs</Text>
                     </div>
                   </div>
                 )}
@@ -1235,7 +1402,7 @@ export const OutputsPage: React.FC = () => {
                     onWheel={handleWheel}
                   >
                     <DataGrid
-                      items={outputs}
+                      items={displayOutputs}
                       columns={columns}
                       sortable
                       resizableColumns
@@ -1325,25 +1492,25 @@ export const OutputsPage: React.FC = () => {
                     )}
 
                     {/* No Data Message - Show below grid when empty */}
-                    {outputs.length === 0 && (
-                      <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                    {/* {outputs.length === 0 && (
+                      <div className={styles.emptyStateContainer}>
+                        <div className={styles.emptyStateHeader}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={styles.emptyStateIcon}>
                             <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
                           </svg>
                           <Text size={400} weight="semibold">No outputs found</Text>
                         </div>
-                        <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>This device has no configured output points</Text>
+                        <Text size={300} className={styles.emptyStateText}>This device has no configured output points</Text>
                         <Button
                           appearance="subtle"
                           icon={<ArrowSyncRegular />}
                           onClick={handleRefresh}
-                          style={{ minWidth: '120px', fontWeight: 'normal' }}
+                          className={styles.refreshButton}
                         >
                           Refresh
                         </Button>
                       </div>
-                    )}
+                    )} */}
                   </div>
                 )}
 

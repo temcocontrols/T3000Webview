@@ -17,6 +17,7 @@ import LogUtil from "../../Util/LogUtil"
 import DataOpt from "../Data/DataOpt"
 
 let panzoomInstance = null;
+let isRestoringPanzoom = false;
 
 class IdxPage {
 
@@ -204,7 +205,11 @@ class IdxPage {
       triggerRef(appState);
 
       IdxPage.restDocumentAreaPosition(e.getTransform());
-      Hvac.QuasarUtil.setLocalSettings('transform', e.getTransform());
+
+      // Don't save during initialization/restoration
+      if (!isRestoringPanzoom) {
+        Hvac.QuasarUtil.setLocalSettings('transform', e.getTransform());
+      }
     });
   }
 
@@ -217,9 +222,71 @@ class IdxPage {
       transform = Hvac.QuasarUtil.getLocalSettings('transform');
     }
 
+    // Validate if the saved transform actually shows any items
+    if (transform && appState.value.items && appState.value.items.length > 0) {
+      const items = appState.value.items;
+      const viewportWidth = viewport.value?.clientWidth || 800;
+      const viewportHeight = viewport.value?.clientHeight || 600;
+
+      // Calculate visible area in document coordinates
+      const visibleLeft = -transform.x / transform.scale;
+      const visibleRight = visibleLeft + viewportWidth / transform.scale;
+      const visibleTop = -transform.y / transform.scale;
+      const visibleBottom = visibleTop + viewportHeight / transform.scale;
+
+      // Check if ANY item is visible with this transform
+      const anyItemVisible = items.some(item => {
+        const itemX = item.translate[0];
+        const itemY = item.translate[1];
+        const itemWidth = item.width || 100;
+        const itemHeight = item.height || 100;
+
+        // Check if item overlaps with visible area
+        return !(itemX + itemWidth < visibleLeft ||
+                 itemX > visibleRight ||
+                 itemY + itemHeight < visibleTop ||
+                 itemY > visibleBottom);
+      });
+
+      if (!anyItemVisible) {
+        LogUtil.Warn('⚠️ Saved viewport position shows NO items - will auto-center');
+        transform = null; // Clear bad transform, will auto-center below
+      }
+    }
+
+    // Priority 3: Auto-center if NO valid saved position or saved position is bad
+    if (!transform && appState.value.items && appState.value.items.length > 0) {
+      const items = appState.value.items;
+      const xs = items.map(item => item.translate[0]);
+      const ys = items.map(item => item.translate[1]);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+
+      // Get viewport dimensions
+      const viewportWidth = viewport.value?.clientWidth || 800;
+      const viewportHeight = viewport.value?.clientHeight || 600;
+
+      transform = {
+        x: viewportWidth / 2 - centerX,
+        y: viewportHeight / 2 - centerY,
+        scale: 0.7  // Zoom out to show all items
+      };
+
+      LogUtil.Debug('🎯 Auto-centering viewport on items:', transform);
+    }
+
     if (transform && panzoomInstance) {
+      isRestoringPanzoom = true;
       panzoomInstance.zoomAbs(transform.x, transform.y, transform.scale);
       panzoomInstance.moveTo(transform.x, transform.y);
+      // Allow a small delay for transform events to settle
+      setTimeout(() => {
+        isRestoringPanzoom = false;
+      }, 100);
     }
   }
 

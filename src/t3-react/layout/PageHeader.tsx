@@ -22,6 +22,11 @@ import {
 } from '@fluentui/react-components';
 import { ChevronRight20Regular } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../features/devices/store/deviceTreeStore';
+import { SyncStatusBar } from '../shared/components/SyncStatusBar';
+import { InputRefreshApi } from '../features/inputs/services/inputRefreshApi';
+import { OutputRefreshApi } from '../features/outputs/services/outputRefreshApi';
+import { VariableRefreshApi } from '../features/variables/services/variableRefreshApi';
+import { ProgramRefreshApi } from '../features/programs/services/programRefreshApi';
 
 const useStyles = makeStyles({
   container: {
@@ -37,6 +42,21 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
+  },
+  pageHeaderBar: {
+    width: '4px',
+    height: '16px',
+    background: 'linear-gradient(to bottom, #0078d4, #106ebe)',
+    borderRadius: '2px',
+    flexShrink: 0,
+  },
+  pageTitle: {
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#323130',
+    margin: 0,
+    letterSpacing: '0.3px',
+    lineHeight: '16px',
   },
   deviceInfo: {
     display: 'flex',
@@ -55,41 +75,46 @@ const useStyles = makeStyles({
     fontWeight: '600',
     color: '#323130',
   },
-  pageTitle: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#201f1e',
-    letterSpacing: '-0.01em',
+  syncSection: {
+    flexShrink: 0,
+    paddingLeft: '16px',
+    marginLeft: '16px',
+    borderLeft: '1px solid #d1d1d1',
   },
 });
 
 interface PageHeaderProps {
   title?: string;
+  syncConfig?: {
+    dataType: string;
+    serialNumber: string;
+    onRefresh: () => void;
+  };
 }
 
 /**
  * Route to breadcrumb mapping
  */
 const routeToBreadcrumb: Record<string, { label: string; segments?: string[] }> = {
-  '/t3000/dashboard': { label: 'Dashboard', segments: ['T3000', 'Dashboard'] },
-  '/t3000/inputs': { label: 'Inputs', segments: ['T3000', 'Inputs'] },
-  '/t3000/outputs': { label: 'Outputs', segments: ['T3000', 'Outputs'] },
-  '/t3000/variables': { label: 'Variables', segments: ['T3000', 'Variables'] },
-  '/t3000/programs': { label: 'Programs', segments: ['T3000', 'Programs'] },
-  '/t3000/pidloops': { label: 'PID Loops', segments: ['T3000', 'PID Loops'] },
-  '/t3000/graphics': { label: 'Graphics', segments: ['T3000', 'Graphics'] },
-  '/t3000/schedules': { label: 'Schedules', segments: ['T3000', 'Schedules'] },
-  '/t3000/holidays': { label: 'Holidays', segments: ['T3000', 'Holidays'] },
-  '/t3000/trend-logs': { label: 'Trend Logs', segments: ['T3000', 'Trend Logs'] },
-  '/t3000/alarms': { label: 'Alarms', segments: ['T3000', 'Alarms'] },
-  '/t3000/array': { label: 'Array', segments: ['T3000', 'Array'] },
-  '/t3000/network': { label: 'Network', segments: ['T3000', 'Network'] },
-  '/t3000/settings': { label: 'Settings', segments: ['T3000', 'Settings'] },
-  '/t3000/discover': { label: 'Discover', segments: ['T3000', 'Discover'] },
-  '/t3000/buildings': { label: 'Buildings', segments: ['T3000', 'Buildings'] },
+  '/t3000/dashboard': { label: 'Dashboard', segments: ['Dashboard'] },
+  '/t3000/inputs': { label: 'Inputs', segments: ['Inputs'] },
+  '/t3000/outputs': { label: 'Outputs', segments: ['Outputs'] },
+  '/t3000/variables': { label: 'Variables', segments: ['Variables'] },
+  '/t3000/programs': { label: 'Programs', segments: ['Programs'] },
+  '/t3000/pidloops': { label: 'PID Loops', segments: ['PID Loops'] },
+  '/t3000/graphics': { label: 'Graphics', segments: ['Graphics'] },
+  '/t3000/schedules': { label: 'Schedules', segments: ['Schedules'] },
+  '/t3000/holidays': { label: 'Holidays', segments: ['Holidays'] },
+  '/t3000/trend-logs': { label: 'Trend Logs', segments: ['Trend Logs'] },
+  '/t3000/alarms': { label: 'Alarms', segments: ['Alarms'] },
+  '/t3000/array': { label: 'Array', segments: ['Array'] },
+  '/t3000/network': { label: 'Network', segments: ['Network'] },
+  '/t3000/settings': { label: 'Settings', segments: ['Settings'] },
+  '/t3000/discover': { label: 'Discover', segments: ['Discover'] },
+  '/t3000/buildings': { label: 'Buildings', segments: ['Buildings'] },
 };
 
-export const PageHeader: React.FC<PageHeaderProps> = ({ title }) => {
+export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => {
   const styles = useStyles();
   const location = useLocation();
   const navigate = useNavigate();
@@ -100,6 +125,16 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title }) => {
   const pageTitle = title || breadcrumbInfo?.label || 'T3000';
   const segments = breadcrumbInfo?.segments || ['T3000'];
 
+  // Determine if current page should show sync status
+  const dataTypeByRoute: Record<string, string> = {
+    '/t3000/inputs': 'INPUTS',
+    '/t3000/outputs': 'OUTPUTS',
+    '/t3000/variables': 'VARIABLES',
+    '/t3000/programs': 'PROGRAMS',
+  };
+  const dataType = dataTypeByRoute[location.pathname];
+  const shouldShowSync = !!dataType && !!selectedDevice;
+
   const handleBreadcrumbClick = (index: number) => {
     if (index === 0) {
       // Home - go to dashboard
@@ -108,36 +143,48 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title }) => {
     // Could add more navigation logic for intermediate segments if needed
   };
 
+  const handleRefreshFromDevice = async () => {
+    if (!selectedDevice || !dataType) return;
+
+    try {
+      console.log(`[PageHeader] Refreshing ${dataType} from device ${selectedDevice.serialNumber}...`);
+
+      let refreshResponse;
+
+      // Call the appropriate refresh API based on data type
+      switch (dataType) {
+        case 'INPUTS':
+          refreshResponse = await InputRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);
+          break;
+        case 'OUTPUTS':
+          refreshResponse = await OutputRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);
+          break;
+        case 'VARIABLES':
+          refreshResponse = await VariableRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);
+          break;
+        case 'PROGRAMS':
+          refreshResponse = await ProgramRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);
+          break;
+        default:
+          console.warn(`[PageHeader] No refresh handler for data type: ${dataType}`);
+          return;
+      }
+
+      console.log(`[PageHeader] Refresh completed - ${refreshResponse.savedCount} records saved`);
+
+      // Trigger page reload via custom event
+      window.dispatchEvent(new CustomEvent('data-refreshed', { detail: { dataType } }));
+    } catch (error) {
+      console.error('[PageHeader] Refresh failed:', error);
+      throw error;
+    }
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.breadcrumbSection}>
-        <Breadcrumb size="small">
-          <BreadcrumbItem>
-            <BreadcrumbButton onClick={() => handleBreadcrumbClick(0)}>
-              Home
-            </BreadcrumbButton>
-          </BreadcrumbItem>
-          <BreadcrumbDivider>
-            <ChevronRight20Regular />
-          </BreadcrumbDivider>
-          {segments.map((segment, index) => (
-            <React.Fragment key={segment}>
-              <BreadcrumbItem>
-                <BreadcrumbButton
-                  current={index === segments.length - 1}
-                  onClick={() => index < segments.length - 1 && handleBreadcrumbClick(index + 1)}
-                >
-                  {segment}
-                </BreadcrumbButton>
-              </BreadcrumbItem>
-              {index < segments.length - 1 && (
-                <BreadcrumbDivider>
-                  <ChevronRight20Regular />
-                </BreadcrumbDivider>
-              )}
-            </React.Fragment>
-          ))}
-        </Breadcrumb>
+        <div className={styles.pageHeaderBar}></div>
+        <h1 className={styles.pageTitle}>{pageTitle.toUpperCase()}</h1>
         {selectedDevice && (
           <div className={styles.deviceInfo}>
             <Text className={styles.deviceLabel}>Device:</Text>
@@ -147,6 +194,15 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title }) => {
           </div>
         )}
       </div>
+      {shouldShowSync && (
+        <div className={styles.syncSection}>
+          <SyncStatusBar
+            dataType={dataType}
+            serialNumber={selectedDevice.serialNumber.toString()}
+            onRefresh={handleRefreshFromDevice}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -78,22 +78,22 @@ export const routes = {
 
 /**
  * Window route mapping
- * Maps window IDs to routes
+ * Maps window IDs to routes (matching C++ global_define.h constants)
  */
 export const windowRoutes: Record<number, string> = {
-  1: routes.inputs,       // WINDOW_INPUT
-  2: routes.outputs,      // WINDOW_OUTPUT
-  3: routes.variables,    // WINDOW_VARIABLE
-  4: routes.programs,     // WINDOW_PROGRAM
-  5: routes.controllers,  // WINDOW_CONTROLLER
-  6: routes.graphics,     // WINDOW_SCREEN
-  7: routes.schedules,    // WINDOW_WEEKLY
-  8: routes.holidays,     // WINDOW_ANNUAL
-  9: routes.trendLogs,    // WINDOW_MONITOR
-  10: routes.alarms,      // WINDOW_ALARMLOG
-  11: routes.settings,    // WINDOW_SETTING
-  14: routes.array,       // WINDOW_ARRAY
-  15: routes.network,     // WINDOW_REMOTE_POINT
+  1: routes.inputs,       // WINDOW_INPUT = 0
+  2: routes.outputs,      // WINDOW_OUTPUT = 1
+  3: routes.variables,    // WINDOW_VARIABLE = 2
+  4: routes.programs,     // WINDOW_PROGRAM = 3
+  5: routes.pidloops,     // WINDOW_CONTROLLER = 4 (PID Loops)
+  6: routes.graphics,     // WINDOW_SCREEN = 5
+  7: routes.schedules,    // WINDOW_WEEKLY = 6
+  8: routes.holidays,     // WINDOW_ANNUAL = 7
+  9: routes.trendLogs,    // WINDOW_MONITOR = 8
+  10: routes.alarms,      // WINDOW_ALARMLOG = 9
+  11: routes.settings,    // WINDOW_SETTING = 11
+  14: routes.array,       // WINDOW_ARRAY = 14
+  15: routes.network,     // WINDOW_REMOTE_POINT = 13
 };
 
 /**

@@ -5,11 +5,13 @@
 
 import { lazy } from 'react';
 import type { RouteObject } from 'react-router-dom';
+import { createResponsiveRoute } from '../../../shared/core/router/ViewRouter';
 
 // Lazy load page components for code splitting
 const HomePage = lazy(() => import('../pages').then(m => ({ default: m.HomePage })));
 const DashboardPage = lazy(() => import('../pages').then(m => ({ default: m.DashboardPage })));
 const InputsPage = lazy(() => import('../pages').then(m => ({ default: m.InputsPage })));
+const InputsPageMobile = lazy(() => import('../../../t3-mobile/features/inputs/pages/InputsPageMobile').then(m => ({ default: m.InputsPageMobile })));
 const OutputsPage = lazy(() => import('../pages').then(m => ({ default: m.OutputsPage })));
 const VariablesPage = lazy(() => import('../pages').then(m => ({ default: m.VariablesPage })));
 const ProgramsPage = lazy(() => import('../pages').then(m => ({ default: m.ProgramsPage })));
@@ -18,13 +20,29 @@ const GraphicsPage = lazy(() => import('../pages').then(m => ({ default: m.Graph
 const SchedulesPage = lazy(() => import('../pages').then(m => ({ default: m.SchedulesPage })));
 const HolidaysPage = lazy(() => import('../pages').then(m => ({ default: m.HolidaysPage })));
 const TrendLogsPage = lazy(() => import('../pages').then(m => ({ default: m.TrendLogsPage })));
-const TrendChartPage = lazy(() => import('../../features/trends/pages/TrendChartPage').then(m => ({ default: m.TrendChartPage })));
+const TrendChartPage = lazy(() => import('../pages').then(m => ({ default: m.TrendChartPage })));
 const AlarmsPage = lazy(() => import('../pages').then(m => ({ default: m.AlarmsPage })));
 const NetworkPage = lazy(() => import('../pages').then(m => ({ default: m.NetworkPage })));
 const ArrayPage = lazy(() => import('../pages').then(m => ({ default: m.ArrayPage })));
 const SettingsPage = lazy(() => import('../pages').then(m => ({ default: m.SettingsPage })));
 const DiscoverPage = lazy(() => import('../pages').then(m => ({ default: m.DiscoverPage })));
 const BuildingsPage = lazy(() => import('../pages').then(m => ({ default: m.BuildingsPage })));
+
+// Create responsive route components that switch between desktop and mobile
+const InputsPageResponsive = lazy(() =>
+  Promise.all([
+    import('../pages').then(m => m.InputsPage),
+    import('../../../t3-mobile/features/inputs/pages/InputsPageMobile').then(m => m.InputsPageMobile),
+  ]).then(([InputsPage, InputsPageMobile]) => ({
+    default: createResponsiveRoute(InputsPage, InputsPageMobile)
+  }))
+);
+
+// Develop section pages
+const FileBrowserPage = lazy(() => import('../../features/develop/pages/FileBrowserPage'));
+const DatabaseViewerPage = lazy(() => import('../../features/develop/pages/DatabaseViewerPage'));
+const TransportTesterPage = lazy(() => import('../../features/develop/pages/TransportTesterPage'));
+const SystemLogsPage = lazy(() => import('../../features/develop/pages/SystemLogsPage'));
 
 /**
  * Route configuration with metadata
@@ -55,7 +73,7 @@ export const t3000Routes: T3000Route[] = [
   },
   {
     path: '/t3000/inputs',
-    element: InputsPage,
+    element: InputsPageResponsive,
     title: 'Inputs',
     windowId: 1, // WINDOW_INPUT
     shortcut: 'Alt+I',
@@ -118,7 +136,7 @@ export const t3000Routes: T3000Route[] = [
     requiresDevice: true,
   },
   {
-    path: '/t3000/trend-logs',
+    path: '/t3000/trendlogs',
     element: TrendLogsPage,
     title: 'Trend Logs',
     windowId: 9, // WINDOW_MONITOR
@@ -173,6 +191,27 @@ export const t3000Routes: T3000Route[] = [
     element: BuildingsPage,
     title: 'Buildings',
     windowId: 16, // WINDOW_BUILDINGS
+  },
+  // Develop section routes
+  {
+    path: '/develop/files',
+    element: FileBrowserPage,
+    title: 'File Browser',
+  },
+  {
+    path: '/develop/database',
+    element: DatabaseViewerPage,
+    title: 'Database Viewer',
+  },
+  {
+    path: '/develop/transport',
+    element: TransportTesterPage,
+    title: 'Transport Tester',
+  },
+  {
+    path: '/develop/logs',
+    element: SystemLogsPage,
+    title: 'T3000 Logs',
   },
 ];
 

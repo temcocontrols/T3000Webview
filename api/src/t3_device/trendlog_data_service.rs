@@ -9,8 +9,6 @@ use crate::t3_device::trendlog_parent_cache::{TrendlogParentCache, ParentKey};
 use crate::error::AppError;
 use std::sync::Arc;
 
-// Default sync interval to match T3000MainConfig::sync_interval_secs
-const DEFAULT_SYNC_INTERVAL_SECS: i32 = 30;
 use crate::logger::{write_structured_log_with_level, LogLevel};
 
 #[derive(Debug, Serialize, Deserialize, FromQueryResult)]
@@ -98,18 +96,14 @@ impl T3TrendlogDataService {
         &PARENT_CACHE
     }
 
-    /// Scale large values: if value >= 1000, divide by 1000
-    /// Returns (scaled_value, original_value, was_scaled)
-    fn scale_value_if_needed(raw_value: &str) -> (f64, f64, bool) {
+    /// Always divide values by 1000 when reading from database
+    /// Database stores raw values, API returns scaled values
+    /// Returns (scaled_value, original_value)
+    fn scale_value_from_db(raw_value: &str) -> (f64, f64) {
         let original_value = raw_value.parse::<f64>().unwrap_or(0.0);
-        let mut scaled_value = original_value;
-        let was_scaled = original_value >= 1000.0;
+        let scaled_value = original_value / 1000.0;
 
-        if was_scaled {
-            scaled_value = original_value / 1000.0;
-        }
-
-        (scaled_value, original_value, was_scaled)
+        (scaled_value, original_value)
     }
 
     /// Get historical trendlog data for a specific device and trendlog
@@ -167,12 +161,12 @@ impl T3TrendlogDataService {
         #[derive(Debug, FromQueryResult)]
         struct JoinedTrendlogData {
             // From TRENDLOG_DATA_DETAIL (child) - OPTIMIZED SCHEMA (removed id, LoggingTime, SyncInterval, CreatedBy, DataSource, SyncMetadataId)
-            parent_id: i32,
+            _parent_id: i32,
             value: String,
             logging_time_fmt: String,
             // From TRENDLOG_DATA (parent)
-            serial_number: i32,
-            panel_id: i32,
+            _serial_number: i32,
+            _panel_id: i32,
             point_id: String,
             point_index: i32,
             point_type: String,
@@ -183,11 +177,11 @@ impl T3TrendlogDataService {
 
         let mut sql = r#"
             SELECT
-                d.ParentId as parent_id,
+                d.ParentId as _parent_id,
                 d.Value as value,
                 d.LoggingTime_Fmt as logging_time_fmt,
-                p.SerialNumber as serial_number,
-                p.PanelId as panel_id,
+                p.SerialNumber as _serial_number,
+                p.PanelId as _panel_id,
                 p.PointId as point_id,
                 p.PointIndex as point_index,
                 p.PointType as point_type,
@@ -252,10 +246,14 @@ impl T3TrendlogDataService {
             }
         }
 
-        // Apply time range filter if provided
+        // PERFORMANCE OPTIMIZATION: Apply time range filter if provided
+        // If no time filter provided, default to last 24 hours to prevent scanning all historical data
+        let mut applied_time_filter = false;
+
         if let Some(start_time) = &request.start_time {
             sql.push_str(" AND d.LoggingTime_Fmt >= ?");
             params.push(start_time.clone().into());
+            applied_time_filter = true;
 
             let time_filter_info = format!(
                 "⏰ [TrendlogDataService] Applied start time filter: {}",
@@ -267,6 +265,7 @@ impl T3TrendlogDataService {
         if let Some(end_time) = &request.end_time {
             sql.push_str(" AND d.LoggingTime_Fmt <= ?");
             params.push(end_time.clone().into());
+            applied_time_filter = true;
 
             let time_filter_info = format!(
                 "⏰ [TrendlogDataService] Applied end time filter: {}",
@@ -275,10 +274,25 @@ impl T3TrendlogDataService {
             let _ = write_structured_log_with_level("T3_Webview_API", &time_filter_info, LogLevel::Info);
         }
 
+        // SAFETY: If no time filters provided, default to last 24 hours to prevent slow queries
+        if !applied_time_filter {
+            let default_start = chrono::Local::now() - chrono::Duration::hours(24);
+            let default_start_str = default_start.format("%Y-%m-%d %H:%M:%S").to_string();
+            sql.push_str(" AND d.LoggingTime_Fmt >= ?");
+            params.push(default_start_str.clone().into());
+
+            let safety_info = format!(
+                "🛡️ [TrendlogDataService] No time filter provided - applying 24-hour safety limit from: {}",
+                default_start_str
+            );
+            let _ = write_structured_log_with_level("T3_Webview_API", &safety_info, LogLevel::Warn);
+        }
+
         // Order by logging time (newest first)
         sql.push_str(" ORDER BY d.LoggingTime_Fmt DESC");
 
-        // Apply limit if provided
+        // PERFORMANCE: Apply default limit if not provided to prevent huge result sets
+        let default_limit = 50000; // Safety limit to prevent OOM on huge datasets
         if let Some(limit) = request.limit {
             sql.push_str(&format!(" LIMIT {}", limit));
             let limit_info = format!(
@@ -286,6 +300,13 @@ impl T3TrendlogDataService {
                 limit
             );
             let _ = write_structured_log_with_level("T3_Webview_API", &limit_info, LogLevel::Info);
+        } else {
+            sql.push_str(&format!(" LIMIT {}", default_limit));
+            let safety_info = format!(
+                "🛡️ [TrendlogDataService] No limit provided - applying safety limit: {}",
+                default_limit
+            );
+            let _ = write_structured_log_with_level("T3_Webview_API", &safety_info, LogLevel::Warn);
         }
 
         // Log query execution start
@@ -334,18 +355,10 @@ impl T3TrendlogDataService {
 
         // Format the data for the TrendLogChart component
         let format_start_time = std::time::Instant::now();
-        let formatted_data: Vec<serde_json::Value> = trendlog_data_list.iter().map(|data| {
-            // Scale value if needed (divide by 1000 if >= 1000)
-            let (scaled_value, original_value, was_scaled) = Self::scale_value_if_needed(&data.value);
 
-            // Log scaling operations for debugging
-            if was_scaled {
-                let scale_info = format!(
-                    "📏 [TrendlogDataService] Value scaled - Point: {}, Original: {:.2}, Scaled: {:.3}",
-                    data.point_id, original_value, scaled_value
-                );
-                let _ = write_structured_log_with_level("T3_Webview_API", &scale_info, LogLevel::Info);
-            }
+        let formatted_data: Vec<serde_json::Value> = trendlog_data_list.iter().map(|data| {
+            // Always divide by 1000 when reading from database
+            let (scaled_value, original_value) = Self::scale_value_from_db(&data.value);
 
             serde_json::json!({
                 "time": data.logging_time_fmt,
@@ -356,12 +369,13 @@ impl T3TrendlogDataService {
                 "units": data.units,
                 "range": data.range_field,
                 "raw_value": data.value,
-                "original_value": original_value, // Include original value for reference
-                "was_scaled": was_scaled, // Indicate if value was scaled
+                "original_value": original_value,
                 "is_analog": data.digital_analog.as_ref().map(|da| da == "1").unwrap_or(true)
             })
         }).collect();
         let format_duration = format_start_time.elapsed();
+
+
 
         // Log data formatting completion
         let format_info = format!(
@@ -449,7 +463,6 @@ impl T3TrendlogDataService {
 
         // Generate timestamp for logging - use Local time instead of UTC
         let now = chrono::Local::now();
-        let logging_time = now.timestamp();
         let logging_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
 
         // Step 1: Get or create parent record (with caching)
@@ -478,7 +491,7 @@ impl T3TrendlogDataService {
         };
 
         match detail_record.insert(db).await {
-            Ok(saved_detail) => {
+            Ok(_saved_detail) => {
                 // Log successful save
                 let success_info = format!(
                     "✅ [TrendlogDataService] Realtime data saved - Parent ID: {}, Point: {}, Time: {}",
@@ -527,7 +540,6 @@ impl T3TrendlogDataService {
 
         // Use Local time instead of UTC to match user's timezone
         let now = chrono::Local::now();
-        let logging_time = now.timestamp();
         let logging_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
 
         let batch_start_time = std::time::Instant::now();
@@ -563,8 +575,10 @@ impl T3TrendlogDataService {
         let count = detail_records.len() as u64;
 
         // Step 3: Batch insert with retry logic for database locks
-        // Retry configuration: max 5 attempts with exponential backoff (50ms, 100ms, 200ms, 400ms)
-        let max_retries = 5;
+        // Fast-fail strategy: 3 attempts with short delays (100ms, 200ms)
+        // WAL mode + busy_timeout should handle most locks automatically
+        // If all retries fail, return error to frontend - it will retry on next poll
+        let max_retries = 3;
         let mut retry_count = 0;
         let mut last_error = None;
 
@@ -604,8 +618,10 @@ impl T3TrendlogDataService {
                         || error_string.contains("code: 5");
 
                     if is_lock_error && retry_count < max_retries - 1 {
-                        // Calculate exponential backoff delay: 50ms * 2^retry_count
-                        let delay_ms = 50 * (1 << retry_count);
+                        // Short exponential backoff: 100ms * 2^retry_count (100ms, 200ms)
+                        // Total max wait: ~300ms for fast API response
+                        // Frontend auto-retry will handle temporary lock failures
+                        let delay_ms = 100 * (1 << retry_count);
 
                         let retry_info = format!(
                             "⏳ [TrendlogDataService] Database locked, retrying in {}ms (attempt {}/{})",
@@ -953,9 +969,9 @@ impl T3TrendlogDataService {
             raw_data
         };
 
-        // Format data with scaling
+        // Format data - always divide by 1000
         let formatted_data: Vec<serde_json::Value> = final_data.into_iter().map(|data| {
-            let (scaled_value, original_value, was_scaled) = Self::scale_value_if_needed(&data.value);
+            let (scaled_value, original_value) = Self::scale_value_from_db(&data.value);
 
             serde_json::json!({
                 "time": data.logging_time_fmt,
@@ -967,7 +983,6 @@ impl T3TrendlogDataService {
                 "range": data.range_field,
                 "raw_value": data.value,
                 "original_value": original_value,
-                "was_scaled": was_scaled,
                 "is_analog": data.digital_analog.as_deref() == Some("1"),
                 "data_source": "N/A",  // Not queried in JOIN
                 "sync_interval": 30     // Not queried in JOIN

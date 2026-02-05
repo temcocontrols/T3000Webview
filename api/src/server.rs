@@ -48,6 +48,7 @@ pub async fn create_app(app_state: AppState) -> Result<Router, Box<dyn Error>> {
             modbus_register_routes()
                 .merge(user_routes())
                 .merge(file_routes())
+                .merge(crate::log::log_routes())
                 .route("/health", get(health_check_handler)),
         )
         .with_state(app_state)
@@ -74,8 +75,14 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
             modbus_register_routes()
                 .merge(user_routes())
                 .merge(file_routes())
+                .merge(crate::log::log_routes())
                 .route("/health", get(health_check_handler))
                 .with_state(original_state)
+                .merge(
+                    // Data Sync Metadata API routes with T3AppState
+                    crate::database_management::data_sync_endpoints::create_sync_status_routes()
+                        .with_state(app_state.clone())
+                )
         )
         // T3000 device routes with T3AppState
         .nest("/api/t3_device", t3_device_routes())
@@ -85,6 +92,8 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         .merge(crate::database_management::endpoints::database_management_routes())
         // Application Configuration API routes
         .merge(crate::database_management::config_api::config_routes())
+        // Developer Tools routes
+        .nest("/api/develop", crate::t3_develop::create_develop_routes())
         // Real-time trend data routes - TEMPORARILY DISABLED
         // .nest("/api", crate::t3_device::trend_routes::trend_data_routes())
         .with_state(app_state)

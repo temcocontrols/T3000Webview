@@ -207,7 +207,12 @@ async fn save_alarm_to_db(
             active_model.acknowledged = Set(Some(val.to_string()));
         }
 
-        active_model.update(db).await
+        alarms::Entity::update_many()
+            .filter(alarms::Column::SerialNumber.eq(serial))
+            .filter(alarms::Column::AlarmId.eq(index.to_string()))
+            .set(active_model)
+            .exec(db)
+            .await
             .map_err(|e| format!("Failed to update alarm in database: {}", e))?;
 
         Ok(())

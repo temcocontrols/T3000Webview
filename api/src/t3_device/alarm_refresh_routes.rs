@@ -1,5 +1,5 @@
 // Alarm Refresh API Routes
-// Provides RESTful endpoints for refreshing alarm data using REFRESH_WEBVIEW_LIST action
+// Provides RESTful endpoints for refreshing alarm data using GET_WEBVIEW_LIST action
 
 use axum::{
     extract::{Path, State},
@@ -62,7 +62,7 @@ pub fn create_alarm_refresh_routes() -> Router<T3AppState> {
         .route("/alarms/:serial/save-refreshed", axum::routing::post(save_refreshed_alarms))
 }
 
-/// Refresh alarm(s) from device using REFRESH_WEBVIEW_LIST action (Action 17)
+/// Refresh alarm(s) from device using GET_WEBVIEW_LIST action (Action 17)
 pub async fn refresh_alarms(
     State(state): State<T3AppState>,
     Path(serial): Path<i32>,
@@ -70,10 +70,10 @@ pub async fn refresh_alarms(
 ) -> Result<Json<RefreshResponse>, (StatusCode, String)> {
     match payload.index {
         Some(idx) => {
-            info!("REFRESH_WEBVIEW_LIST: Refreshing single alarm - Serial: {}, Index: {}", serial, idx);
+            info!("GET_WEBVIEW_LIST: Refreshing single alarm - Serial: {}, Index: {}", serial, idx);
         }
         None => {
-            info!("REFRESH_WEBVIEW_LIST: Refreshing all alarms - Serial: {}", serial);
+            info!("GET_WEBVIEW_LIST: Refreshing all alarms - Serial: {}", serial);
         }
     }
 
@@ -102,7 +102,7 @@ pub async fn refresh_alarms(
     };
 
     let mut refresh_json = json!({
-        "action": WebViewMessageType::REFRESH_WEBVIEW_LIST as i32,
+        "action": WebViewMessageType::GET_WEBVIEW_LIST as i32,
         "panelId": panel_id,
         "serialNumber": serial,
         "entryType": BAC_ALM,
@@ -112,7 +112,7 @@ pub async fn refresh_alarms(
         refresh_json["entryIndex"] = json!(idx);
     }
 
-    match call_refresh_ffi(WebViewMessageType::REFRESH_WEBVIEW_LIST as i32, refresh_json).await {
+    match call_refresh_ffi(WebViewMessageType::GET_WEBVIEW_LIST as i32, refresh_json).await {
         Ok(response) => {
             let response_json: Value = match serde_json::from_str(&response) {
                 Ok(json) => json,
@@ -129,7 +129,7 @@ pub async fn refresh_alarms(
 
                 if debug_msg.contains("empty response") || error_msg.contains("not implemented") {
                     error!("❌ Action 17 not implemented in C++: {}", debug_msg);
-                    return Err((StatusCode::NOT_IMPLEMENTED, "REFRESH_WEBVIEW_LIST (Action 17) not yet implemented in C++".to_string()));
+                    return Err((StatusCode::NOT_IMPLEMENTED, "GET_WEBVIEW_LIST (Action 17) not yet implemented in C++".to_string()));
                 }
 
                 error!("❌ Device refresh failed: {}", error_msg);
@@ -151,7 +151,7 @@ pub async fn refresh_alarms(
         Err(e) => {
             error!("❌ Failed to refresh alarms: {}", e);
             if e.contains("not implemented") || e.contains("empty response") {
-                return Err((StatusCode::NOT_IMPLEMENTED, "REFRESH_WEBVIEW_LIST (Action 17) not yet implemented in C++".to_string()));
+                return Err((StatusCode::NOT_IMPLEMENTED, "GET_WEBVIEW_LIST (Action 17) not yet implemented in C++".to_string()));
             }
             Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to refresh alarms: {}", e)))
         }

@@ -44,13 +44,17 @@ import {
   SaveRegular,
   SettingsRegular,
   ArrowSyncRegular,
+  ArrowClockwiseRegular,
   ErrorCircleRegular,
   InfoRegular,
   ArrowResetRegular,
   PowerRegular,
   WarningRegular,
+  BroomRegular,
+  DeleteRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { SettingsRefreshApi, type DeviceSettings } from '../services/settingsRefreshApi';
 import cssStyles from './SettingsPage.module.css';
 
 const useStyles = makeStyles({
@@ -83,11 +87,20 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     overflow: 'hidden',
   },
-  tabList: {
-    padding: '0',
+  tabHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
+    paddingRight: '8px',
+  },
+  tabList: {
+    padding: '0',
+    borderBottom: 'none',
+    backgroundColor: tokens.colorNeutralBackground1,
     fontSize: '5px',
+    flex: 1,
     '& button': {
       fontSize: '5px',
     },
@@ -95,11 +108,34 @@ const useStyles = makeStyles({
       fontSize: '5px',
     },
   },
+  refreshButton: {
+    fontSize: '12px',
+    height: '28px',
+    minWidth: '28px',
+    padding: '0 8px',
+    fontWeight: 'normal',
+  },
   tabContent: {
     flex: 1,
-    padding: '8px 0 8px 12px',
+    padding: '8px 0 0 12px',
     overflow: 'auto',
     backgroundColor: tokens.colorNeutralBackground1,
+    scrollbarWidth: 'thin',
+    scrollbarColor: '#c1c1c1 #f5f5f5',
+    '&::-webkit-scrollbar': {
+      width: '6px',
+      height: '6px',
+    },
+    '&::-webkit-scrollbar-track': {
+      backgroundColor: '#f5f5f5',
+    },
+    '&::-webkit-scrollbar-thumb': {
+      backgroundColor: '#c1c1c1',
+      borderRadius: '3px',
+      '&:hover': {
+        backgroundColor: '#a1a1a1',
+      },
+    },
   },
   section: {
     marginBottom: '24px',
@@ -211,6 +247,96 @@ const useStyles = makeStyles({
     fontSize: '10px',
     padding: '8px 12px',
   },
+  // Basic Information Tab Styles
+  basicTwoColumn: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '16px',
+    marginBottom: '16px',
+  },
+  basicPanel: {
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: '4px',
+    padding: '12px',
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  basicPanelTitle: {
+    fontSize: '13px',
+    fontWeight: tokens.fontWeightSemibold,
+    marginBottom: '12px',
+    color: tokens.colorNeutralForeground1,
+  },
+  basicField: {
+    marginBottom: '10px',
+    fontSize: '12px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  basicFieldLabel: {
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground2,
+    minWidth: '140px',
+    flexShrink: 0,
+  },
+  basicFieldValue: {
+    flex: 1,
+    fontSize: '12px',
+    padding: '6px 8px',
+    backgroundColor: '#f5f5f5',
+    borderRadius: '2px',
+    color: tokens.colorNeutralForeground1,
+  },
+  horizontalField: {
+    display: 'grid',
+    gridTemplateColumns: '140px 1fr',
+    gap: '12px',
+    alignItems: 'center',
+    marginBottom: '14px',
+    '& label': {
+      fontSize: '12px',
+      margin: 0,
+    },
+    '& input': {
+      fontSize: '12px',
+    },
+  },
+  lcdOptions: {
+    marginTop: '16px',
+    padding: '12px',
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: '4px',
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  lcdRadioGroup: {
+    display: 'flex',
+    gap: '16px',
+    marginBottom: '12px',
+    alignItems: 'center',
+  },
+  lcdButtons: {
+    display: 'flex',
+    gap: '8px',
+  },
+  tabContentWrapper: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    minHeight: 0,
+  },
+  actionsSection: {
+    marginTop: 'auto',
+    padding: '12px 12px 0 12px',
+    borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
+    backgroundColor: tokens.colorNeutralBackground1,
+    flexShrink: 0,
+  },
+  actionButtons: {
+    display: 'flex',
+    gap: '8px',
+    flexWrap: 'wrap',
+  },
 });
 
 type TabValue = 'basic' | 'communication' | 'time' | 'dyndns' | 'email' | 'users' | 'expansion';
@@ -272,11 +398,16 @@ interface DyndnsSettings {
 }
 
 interface HardwareInfo {
-  Hardware_Rev?: number;
+  Hardware_Rev?: string;
   Firmware0_Rev_Main?: number;
   Firmware0_Rev_Sub?: number;
+  Firmware1_Rev?: number;
+  Firmware2_Rev?: number;
+  Bootloader_Rev?: number;
+  Mini_Type?: number;
   Panel_Type?: number;
   USB_Mode?: number;
+  SD_Exist?: number;
 }
 
 interface FeatureFlags {
@@ -284,6 +415,14 @@ interface FeatureFlags {
   Customer_Unite_Enable?: number;
   Enable_Panel_Name?: number;
   LCD_Display?: number;
+  LCD_Mode?: number; // 0=Always On, 1=Off, 2=Delay
+  LCD_Delay_Seconds?: number;
+}
+
+interface DeviceInfo {
+  SerialNumber?: number;
+  PanelId?: string; // Panel Name
+  Panel_Number?: number;
 }
 
 export const SettingsPage: React.FC = () => {
@@ -306,6 +445,7 @@ export const SettingsPage: React.FC = () => {
   const [dyndnsSettings, setDyndnsSettings] = useState<DyndnsSettings>({});
   const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo>({});
   const [featureFlags, setFeatureFlags] = useState<FeatureFlags>({});
+  const [deviceInfo, setDeviceInfo] = useState<DeviceInfo>({});
 
   // Auto-select first device if none is selected
   useEffect(() => {
@@ -324,71 +464,155 @@ export const SettingsPage: React.FC = () => {
     try {
       const serial = selectedDevice.serialNumber;
 
-      switch (selectedTab) {
-        case 'basic':
-          // Fetch protocol settings and hardware info
-          const [protocolRes, hardwareRes, featuresRes] = await Promise.all([
-            fetch(`/api/v1/devices/${serial}/settings/protocol`),
-            fetch(`/api/v1/devices/${serial}/settings/hardware`),
-            fetch(`/api/v1/devices/${serial}/settings/features`),
-          ]);
-          if (protocolRes.ok) setProtocolSettings(await protocolRes.json());
-          if (hardwareRes.ok) setHardwareInfo(await hardwareRes.json());
-          if (featuresRes.ok) setFeatureFlags(await featuresRes.json());
-          break;
+      // Use SettingsRefreshApi to get device settings
+      // Try loading from DB first (fast), fall back to device refresh if needed
+      let settings: DeviceSettings | undefined = await SettingsRefreshApi.loadFromDB(serial);
 
-        case 'communication':
-          // Fetch network and communication settings
-          const [networkRes, commRes] = await Promise.all([
-            fetch(`/api/v1/devices/${serial}/settings/network`),
-            fetch(`/api/v1/devices/${serial}/settings/communication`),
-          ]);
-          if (networkRes.ok) setNetworkSettings(await networkRes.json());
-          if (commRes.ok) setCommSettings(await commRes.json());
-          break;
+      if (!settings) {
+        // No cached data - fetch from device
+        console.log('[SettingsPage] No cached settings, refreshing from device...');
+        const result = await SettingsRefreshApi.refreshFromDevice(serial);
 
-        case 'time':
-          const timeRes = await fetch(`/api/v1/devices/${serial}/settings/time`);
-          if (timeRes.ok) setTimeSettings(await timeRes.json());
-          break;
+        if (!result.success || !result.data) {
+          throw new Error(result.message || 'Failed to refresh settings from device');
+        }
 
-        case 'dyndns':
-          const dyndnsRes = await fetch(`/api/v1/devices/${serial}/settings/dyndns`);
-          if (dyndnsRes.ok) setDyndnsSettings(await dyndnsRes.json());
-          break;
-
-        case 'email':
-          // Email settings will be handled separately (EMAIL_ALARMS table)
-          break;
-
-        case 'users':
-          // Users are managed in separate UsersPage
-          break;
-
-        case 'expansion':
-          // Expansion IO devices will be handled separately (EXTIO_DEVICES table)
-          break;
+        settings = result.data;
       }
+
+      // Map DeviceSettings to component state
+      setNetworkSettings({
+        IP_Address: settings.ip_addr,
+        Subnet: settings.subnet,
+        Gateway: settings.gate_addr,
+        MAC_Address: settings.mac_addr,
+        TCP_Type: settings.tcp_type,
+      });
+
+      setCommSettings({
+        COM0_Config: settings.com0_config,
+        COM1_Config: settings.com1_config,
+        COM2_Config: settings.com2_config,
+        COM_Baudrate0: settings.com_baudrate0,
+        COM_Baudrate1: settings.com_baudrate1,
+        COM_Baudrate2: settings.com_baudrate2,
+        UART_Parity0: settings.uart_parity?.[0],
+        UART_Parity1: settings.uart_parity?.[1],
+        UART_Parity2: settings.uart_parity?.[2],
+        UART_Stopbit0: settings.uart_stopbit?.[0],
+        UART_Stopbit1: settings.uart_stopbit?.[1],
+        UART_Stopbit2: settings.uart_stopbit?.[2],
+        Fix_COM_Config: settings.fix_com_config,
+      });
+
+      setProtocolSettings({
+        Modbus_ID: settings.modbus_id,
+        Modbus_Port: settings.modbus_port,
+        MSTP_ID: settings.mstp_id,
+        MSTP_Network_Number: settings.mstp_network_number,
+        Max_Master: settings.max_master,
+        Object_Instance: settings.object_instance,
+        BBMD_Enable: settings.BBMD_EN,
+        Network_Number: settings.network_number,
+      });
+
+      setTimeSettings({
+        Time_Zone: settings.time_zone,
+        Time_Zone_Summer_Daytime: settings.time_zone_summer_daytime,
+        Enable_SNTP: settings.en_sntp,
+        SNTP_Server: settings.sntp_server,
+        Time_Sync_Auto_Manual: settings.time_sync_auto_manual,
+        Start_Month: settings.start_month,
+        Start_Day: settings.start_day,
+        End_Month: settings.end_month,
+        End_Day: settings.end_day,
+      });
+
+      setDyndnsSettings({
+        Enable_DynDNS: settings.en_dyndns,
+        DynDNS_Provider: settings.dyndns_provider,
+        DynDNS_User: settings.dyndns_user,
+        DynDNS_Pass: settings.dyndns_pass,
+        DynDNS_Domain: settings.dyndns_domain,
+        DynDNS_Update_Time: settings.dyndns_update_time,
+      });
+
+      setHardwareInfo({
+        Mini_Type: settings.mini_type,
+        Panel_Type: settings.panel_type,
+        USB_Mode: settings.usb_mode,
+        SD_Exist: settings.sd_exist,
+      });
+
+      setFeatureFlags({
+        User_Name_Enable: settings.user_name,
+        Customer_Unite_Enable: settings.custmer_unite,
+        Enable_Panel_Name: settings.en_panel_name,
+        LCD_Display: settings.LCD_Display,
+      });
+
+      setDeviceInfo({
+        SerialNumber: settings.n_serial_number,
+        PanelId: settings.panel_name,
+        Panel_Number: settings.panel_number,
+      });
+
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load settings');
-      console.error('Error fetching settings:', err);
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      setError(errorMsg);
+      console.error('[SettingsPage] Failed to fetch settings:', err);
     } finally {
       setLoading(false);
     }
-  }, [selectedDevice, selectedTab]);
+  }, [selectedDevice]);
 
+  // Refresh from device (force fresh data)
+  const handleRefresh = useCallback(async () => {
+    if (!selectedDevice) return;
+
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const result = await SettingsRefreshApi.refreshFromDevice(selectedDevice.serialNumber);
+
+      if (!result.success) {
+        throw new Error(result.message);
+      }
+
+      // Reload settings after refresh
+      await fetchSettings();
+
+      setSuccessMessage('Settings refreshed successfully from device');
+
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000);
+
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      setError(errorMsg);
+      console.error('[SettingsPage] Failed to refresh settings:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedDevice, fetchSettings]);
+
+  // Load settings when tab or device changes
   useEffect(() => {
     fetchSettings();
-  }, [fetchSettings]);
+  }, [fetchSettings, selectedTab]);
+  // Load settings when tab or device changes
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings, selectedTab]);
 
   const handleTabSelect = (_event: SelectTabEvent, data: SelectTabData) => {
     setSelectedTab(data.value as TabValue);
     setError(null);
     setSuccessMessage(null);
-  };
-
-  const handleRefresh = () => {
-    fetchSettings();
   };
 
   const handleSaveNetwork = async () => {
@@ -600,18 +824,18 @@ export const SettingsPage: React.FC = () => {
     if (!selectedDevice) {
       return (
         <div className={styles.noDevice}>
-          <Text size={500} weight="semibold">No device selected</Text>
+          <Text size={400} weight="semibold">No device selected</Text>
           <br />
-          <Text size={300}>Please select a device from the tree to view settings</Text>
+          <Text size={200}>Please select a device from the tree to view settings</Text>
         </div>
       );
     }
 
     if (loading && Object.keys(networkSettings).length === 0) {
       return (
-        <div className={styles.loadingContainer}>
-          <Spinner size="small" />
-          <Text>Loading settings...</Text>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', marginBottom: '12px' }}>
+          <Spinner size="tiny" />
+          <Text size={200} weight="regular">Loading settings...</Text>
         </div>
       );
     }
@@ -620,105 +844,195 @@ export const SettingsPage: React.FC = () => {
       case 'basic':
         return (
           <>
-            <div className={styles.section}>
-              <div className={styles.sectionTitle}>Protocol Configuration</div>
-              <div className={styles.formGrid}>
-                <Field label="Object Instance">
+            {/* Two-Column Layout: Device Info | Panel Info */}
+            <div className={styles.basicTwoColumn}>
+              {/* Left Panel - Device Information (Read-Only) */}
+              <div className={styles.basicPanel}>
+                <div className={styles.basicPanelTitle}>Device Information</div>
+                <div className={styles.basicField}>
+                  <label className={styles.basicFieldLabel}>Module Number:</label>
+                  <span className={styles.basicFieldValue}>{hardwareInfo.Mini_Type ?? 'N/A'}</span>
+                </div>
+                <div className={styles.basicField}>
+                  <label className={styles.basicFieldLabel}>Hardware Version:</label>
+                  <span className={styles.basicFieldValue}>{hardwareInfo.Hardware_Rev ?? 'N/A'}</span>
+                </div>
+                <div className={styles.basicField}>
+                  <label className={styles.basicFieldLabel}>MCU Version:</label>
+                  <span className={styles.basicFieldValue}>
+                    {hardwareInfo.Firmware0_Rev_Main ?? 0}.{hardwareInfo.Firmware0_Rev_Sub ?? 0}
+                  </span>
+                </div>
+                <div className={styles.basicField}>
+                  <label className={styles.basicFieldLabel}>PIC Version:</label>
+                  <span className={styles.basicFieldValue}>{hardwareInfo.Firmware1_Rev ?? 'N/A'}</span>
+                </div>
+                <div className={styles.basicField}>
+                  <label className={styles.basicFieldLabel}>Top Version:</label>
+                  <span className={styles.basicFieldValue}>{hardwareInfo.Firmware2_Rev ?? 'N/A'}</span>
+                </div>
+                <div className={styles.basicField}>
+                  <label className={styles.basicFieldLabel}>Bootloader Version:</label>
+                  <span className={styles.basicFieldValue}>{hardwareInfo.Bootloader_Rev ?? 'N/A'}</span>
+                </div>
+                <div className={styles.basicField}>
+                  <label className={styles.basicFieldLabel}>MCU Type:</label>
+                  <span className={styles.basicFieldValue}>{hardwareInfo.Panel_Type ?? 'N/A'}</span>
+                </div>
+                <div className={styles.basicField}>
+                  <label className={styles.basicFieldLabel}>SD Card:</label>
+                  <span className={styles.basicFieldValue}>
+                    {hardwareInfo.SD_Exist === 1 ? 'Present' : 'Not Present'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Right Panel - Panel Information (Editable) */}
+              <div className={styles.basicPanel}>
+                <div className={styles.basicPanelTitle}>Panel Information</div>
+                <Field label="Bacnet Instance" size="small" className={styles.horizontalField}>
                   <Input
                     type="number"
+                    size="small"
                     value={String(protocolSettings.Object_Instance ?? '')}
                     onChange={(_, data) =>
                       setProtocolSettings({ ...protocolSettings, Object_Instance: Number(data.value) })
                     }
                   />
                 </Field>
-                <Field label="Modbus ID">
+                <Field label="Serial Number" size="small" className={styles.horizontalField}>
                   <Input
                     type="number"
-                    value={String(protocolSettings.Modbus_ID ?? '')}
-                    onChange={(_, data) =>
-                      setProtocolSettings({ ...protocolSettings, Modbus_ID: Number(data.value) })
-                    }
+                    size="small"
+                    value={String(deviceInfo.SerialNumber ?? selectedDevice?.serialNumber ?? '')}
+                    disabled
                   />
                 </Field>
-                <Field label="MSTP ID">
+                <Field label="MAC Address" size="small" className={styles.horizontalField}>
                   <Input
-                    type="number"
-                    value={String(protocolSettings.MSTP_ID ?? '')}
+                    size="small"
+                    value={networkSettings.MAC_Address ?? ''}
                     onChange={(_, data) =>
-                      setProtocolSettings({ ...protocolSettings, MSTP_ID: Number(data.value) })
+                      setNetworkSettings({ ...networkSettings, MAC_Address: data.value })
                     }
+                    placeholder="00:11:22:33:44:55"
                   />
                 </Field>
-                <Field label="Max Master">
+                <Field label="MSTP Network" size="small" className={styles.horizontalField}>
                   <Input
                     type="number"
-                    value={String(protocolSettings.Max_Master ?? '')}
-                    onChange={(_, data) =>
-                      setProtocolSettings({ ...protocolSettings, Max_Master: Number(data.value) })
-                    }
-                  />
-                </Field>
-                <Field label="MSTP Network Number">
-                  <Input
-                    type="number"
+                    size="small"
                     value={String(protocolSettings.MSTP_Network_Number ?? '')}
                     onChange={(_, data) =>
                       setProtocolSettings({ ...protocolSettings, MSTP_Network_Number: Number(data.value) })
                     }
                   />
                 </Field>
-                <Field label="BACnet IP Network">
+                <Field size="small" className={styles.horizontalField}>
+                  <label style={{ fontSize: '12px', lineHeight: '1.3' }}>Modbus RTU ID /<br/>BACnet MSTP MAC</label>
                   <Input
                     type="number"
+                    size="small"
+                    value={String(protocolSettings.Modbus_ID ?? '')}
+                    onChange={(_, data) => {
+                      const value = Number(data.value);
+                      setProtocolSettings({
+                        ...protocolSettings,
+                        Modbus_ID: value,
+                        MSTP_ID: value
+                      });
+                    }}
+                  />
+                </Field>
+                <Field label="BIP Network" size="small" className={styles.horizontalField}>
+                  <Input
+                    type="number"
+                    size="small"
                     value={String(protocolSettings.Network_Number ?? '')}
                     onChange={(_, data) =>
                       setProtocolSettings({ ...protocolSettings, Network_Number: Number(data.value) })
                     }
                   />
                 </Field>
-              </div>
-            </div>
-
-            <div className={styles.section}>
-              <div className={styles.sectionTitle}>Hardware Information</div>
-              <div className={styles.formGrid}>
-                <Field label="Hardware Revision">
-                  <Input value={String(hardwareInfo.Hardware_Rev ?? 'N/A')} disabled />
-                </Field>
-                <Field label="Firmware Version">
+                <Field label="Max Master" size="small" className={styles.horizontalField}>
                   <Input
-                    value={`${hardwareInfo.Firmware0_Rev_Main ?? 0}.${hardwareInfo.Firmware0_Rev_Sub ?? 0}`}
-                    disabled
+                    type="number"
+                    size="small"
+                    value={String(protocolSettings.Max_Master ?? '')}
+                    onChange={(_, data) =>
+                      setProtocolSettings({ ...protocolSettings, Max_Master: Number(data.value) })
+                    }
                   />
                 </Field>
-                <Field label="Panel Type">
-                  <Input value={String(hardwareInfo.Panel_Type ?? 'N/A')} disabled />
+                <Field label="Panel Number" size="small" className={styles.horizontalField}>
+                  <Input
+                    type="number"
+                    size="small"
+                    value={String(deviceInfo.Panel_Number ?? '')}
+                    onChange={(_, data) =>
+                      setDeviceInfo({ ...deviceInfo, Panel_Number: Number(data.value) })
+                    }
+                  />
                 </Field>
-                <Field label="USB Mode">
-                  <Input value={hardwareInfo.USB_Mode === 0 ? 'Device' : 'Host'} disabled />
+                <Field label="Panel Name" size="small" className={styles.horizontalField}>
+                  <Input
+                    size="small"
+                    value={deviceInfo.PanelId ?? ''}
+                    onChange={(_, data) =>
+                      setDeviceInfo({ ...deviceInfo, PanelId: data.value })
+                    }
+                  />
                 </Field>
               </div>
             </div>
 
-            <div className={styles.section}>
-              <div className={styles.sectionTitle}>Features</div>
-              <Field label="LCD Display">
-                <Switch
-                  checked={featureFlags.LCD_Display === 1}
-                  onChange={(_, data) =>
-                    setFeatureFlags({ ...featureFlags, LCD_Display: data.checked ? 1 : 0 })
-                  }
-                />
-              </Field>
-              <Field label="Enable Panel Name">
-                <Switch
-                  checked={featureFlags.Enable_Panel_Name === 1}
-                  onChange={(_, data) =>
-                    setFeatureFlags({ ...featureFlags, Enable_Panel_Name: data.checked ? 1 : 0 })
-                  }
-                />
-              </Field>
+            {/* LCD Options */}
+            <div className={styles.lcdOptions}>
+              <div className={styles.basicPanelTitle}>LCD Options</div>
+              <div className={styles.lcdRadioGroup}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                  <input
+                    type="radio"
+                    name="lcdMode"
+                    checked={featureFlags.LCD_Mode === 0}
+                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Mode: 0 })}
+                  />
+                  Always On
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                  <input
+                    type="radio"
+                    name="lcdMode"
+                    checked={featureFlags.LCD_Mode === 1}
+                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Mode: 1 })}
+                  />
+                  Off
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                  <input
+                    type="radio"
+                    name="lcdMode"
+                    checked={featureFlags.LCD_Mode === 2}
+                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Mode: 2 })}
+                  />
+                  Delay
+                  <Input
+                    type="number"
+                    size="small"
+                    value={String(featureFlags.LCD_Delay_Seconds ?? 30)}
+                    onChange={(_, data) =>
+                      setFeatureFlags({ ...featureFlags, LCD_Delay_Seconds: Number(data.value) })
+                    }
+                    disabled={featureFlags.LCD_Mode !== 2}
+                    style={{ width: '100px', marginLeft: '4px' }}
+                  />
+                  <span style={{ fontSize: '12px', color: '#605e5c' }}>(s)</span>
+                </label>
+              </div>
+              <div className={styles.lcdButtons}>
+                <Button size="small" appearance="secondary">Parameter</Button>
+                <Button size="small" appearance="secondary">Advanced Settings</Button>
+              </div>
             </div>
           </>
         );
@@ -1066,82 +1380,98 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      {/* Header */}
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <SettingsRegular style={{ fontSize: '16px' }} />
-          <Text size={400} weight="semibold">
-            Device Settings
-          </Text>
-          {selectedDevice && (
-            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-              {selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})
-            </Text>
-          )}
-        </div>
-        <div className={styles.headerActions}>
-          <Button
-            appearance="subtle"
-            icon={<ArrowResetRegular />}
-            onClick={() => setShowResetDialog(true)}
-            disabled={loading || !selectedDevice}
-            style={{ fontWeight: 'normal', fontSize: '12px' }}
-          >
-            Reset to Defaults
-          </Button>
-          <Button
-            appearance="subtle"
-            icon={<PowerRegular />}
-            onClick={() => setShowRebootDialog(true)}
-            disabled={loading || !selectedDevice}
-            style={{ fontWeight: 'normal', fontSize: '12px' }}
-          >
-            Reboot Device
-          </Button>
-          <Button
-            appearance="subtle"
-            icon={<ArrowSyncRegular />}
-            onClick={handleRefresh}
-            disabled={loading}
-            style={{ fontWeight: 'normal', fontSize: '12px' }}
-          >
-            Refresh
-          </Button>
-        </div>
-      </div>
-
       {/* Tab Container */}
       <div className={styles.tabContainer}>
-        {/* Tab List */}
-        <TabList selectedValue={selectedTab} onTabSelect={handleTabSelect} className={`${styles.tabList} ${cssStyles.customTabList}`} style={{ fontSize: '5px' }}>
-          <Tab value="basic" style={{ fontSize: '5px' }}>Basic Information</Tab>
-          <Tab value="communication" style={{ fontSize: '5px' }}>Communication</Tab>
-          <Tab value="time" style={{ fontSize: '5px' }}>Time</Tab>
-          <Tab value="dyndns" style={{ fontSize: '5px' }}>Dyndns</Tab>
-          <Tab value="email" style={{ fontSize: '5px' }}>Email</Tab>
-          <Tab value="users" style={{ fontSize: '5px' }}>User Login</Tab>
-          <Tab value="expansion" style={{ fontSize: '5px' }}>Expansion IO</Tab>
-        </TabList>
+        {/* Tab Header with Refresh Button */}
+        <div className={styles.tabHeader}>
+          {/* Tab List */}
+          <TabList selectedValue={selectedTab} onTabSelect={handleTabSelect} className={`${styles.tabList} ${cssStyles.customTabList}`} style={{ fontSize: '5px' }}>
+            <Tab value="basic" style={{ fontSize: '5px' }}>Basic Information</Tab>
+            <Tab value="communication" style={{ fontSize: '5px' }}>Communication</Tab>
+            <Tab value="time" style={{ fontSize: '5px' }}>Time</Tab>
+            <Tab value="dyndns" style={{ fontSize: '5px' }}>Dyndns</Tab>
+            <Tab value="email" style={{ fontSize: '5px' }}>Email</Tab>
+            <Tab value="users" style={{ fontSize: '5px' }}>User Login</Tab>
+            <Tab value="expansion" style={{ fontSize: '5px' }}>Expansion IO</Tab>
+          </TabList>
 
-        {/* Tab Content */}
-        <div className={styles.tabContent}>
-          {/* Error Message */}
-          {error && (
-            <div className={styles.errorMessage}>
-              <ErrorCircleRegular style={{ fontSize: '14px', color: '#d13438' }} />
-              <Text style={{ color: '#d13438', fontSize: '12px' }}>{error}</Text>
+          {/* Refresh Button */}
+          {selectedDevice && (
+            <Button
+              appearance="subtle"
+              icon={<ArrowClockwiseRegular />}
+              onClick={handleRefresh}
+              disabled={loading}
+              className={styles.refreshButton}
+              title="Refresh settings from device"
+            >
+              Refresh
+            </Button>
+          )}
+        </div>
+
+        {/* Tab Content Wrapper */}
+        <div className={styles.tabContentWrapper}>
+          {/* Tab Content - Scrollable Area */}
+          <div className={styles.tabContent}>
+            {/* Error Message */}
+            {error && (
+              <div className={styles.errorMessage}>
+                <ErrorCircleRegular style={{ fontSize: '14px', color: '#d13438' }} />
+                <Text style={{ color: '#d13438', fontSize: '12px' }}>{error}</Text>
+              </div>
+            )}
+
+            {/* Success Message */}
+            {successMessage && (
+              <div className={styles.successMessage}>
+                <InfoRegular style={{ fontSize: '14px', color: '#0078d4' }} />
+                <Text style={{ color: '#0078d4', fontSize: '12px' }}>{successMessage}</Text>
+              </div>
+            )}
+
+            {/* Loading Message */}
+            {loading && (
+              <div className={styles.successMessage}>
+                <Spinner size="extra-tiny" style={{ fontSize: '12px' }} />
+                <Text style={{ color: '#0078d4', fontSize: '12px' }}>Refreshing settings from device...</Text>
+              </div>
+            )}
+
+            {/* Disable all fields when loading */}
+            <fieldset disabled={loading} style={{ border: 'none', margin: 0, padding: 0 }}>
+              {renderTabContent()}
+            </fieldset>
+          </div>
+
+          {/* Actions Section - Sticky Bottom */}
+          {selectedDevice && selectedTab === 'basic' && (
+            <div className={styles.actionsSection}>
+              <div className={styles.actionButtons}>
+                <Button appearance="secondary" icon={<InfoRegular />} disabled={loading} style={{ fontWeight: 'normal', fontSize: '12px' }}>
+                  Identify Device
+                </Button>
+                <Button appearance="secondary" icon={<DeleteRegular />} disabled={loading} style={{ fontWeight: 'normal', fontSize: '12px' }}>
+                  Clear Device
+                </Button>
+                <Button appearance="secondary" icon={<BroomRegular />} disabled={loading} style={{ fontWeight: 'normal', fontSize: '12px' }}>
+                  Clear Subnet Database
+                </Button>
+                <Button
+                  appearance="secondary"
+                  icon={<PowerRegular />}
+                  onClick={() => setShowRebootDialog(true)}
+                  disabled={loading || !selectedDevice}
+                  style={{ fontWeight: '600', color: '#d13438', borderColor: '#d13438' }}
+                >
+                  Reboot Device
+                </Button>
+                <Button appearance="secondary" icon={<SaveRegular />} disabled={loading} style={{ fontWeight: 'normal', fontSize: '12px' }}>
+                  Done
+                </Button>
+              </div>
             </div>
           )}
-
-          {/* Success Message */}
-          {successMessage && (
-            <div className={styles.successMessage}>
-              <InfoRegular style={{ fontSize: '14px', color: '#0078d4' }} />
-              <Text style={{ color: '#0078d4', fontSize: '12px' }}>{successMessage}</Text>
-            </div>
-          )}
-
-          {renderTabContent()}
         </div>
       </div>
 
@@ -1154,7 +1484,7 @@ export const SettingsPage: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                 <WarningRegular style={{ fontSize: '24px', color: '#f7630c', marginTop: '2px' }} />
                 <div>
-                  <Text weight="semibold" style={{ display: 'block', marginBottom: '8px' }}>
+                  <Text style={{ display: 'block', marginBottom: '8px', color: '#d13438' }}>
                     Are you sure you want to reboot this device?
                   </Text>
                   <Text size={300} style={{ display: 'block', marginBottom: '8px' }}>
@@ -1172,10 +1502,10 @@ export const SettingsPage: React.FC = () => {
               </div>
             </DialogContent>
             <DialogActions>
-              <Button appearance="secondary" onClick={() => setShowRebootDialog(false)} disabled={rebootCountdown > 0}>
+              <Button size="small" appearance="secondary" onClick={() => setShowRebootDialog(false)} disabled={rebootCountdown > 0} style={{ fontWeight: 'normal', fontSize: '13px' }}>
                 Cancel
               </Button>
-              <Button appearance="primary" onClick={handleRebootDevice} disabled={rebootCountdown > 0}>
+              <Button size="small" appearance="primary" onClick={handleRebootDevice} disabled={rebootCountdown > 0} style={{ fontWeight: 'normal', fontSize: '13px' }}>
                 Reboot Now
               </Button>
             </DialogActions>

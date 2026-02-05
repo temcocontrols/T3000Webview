@@ -1,0 +1,116 @@
+/* Recent Activity Styles */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  text-align: center;
+  flex: 1;
+}
+
+.emptyText {
+  font-size: 14px;
+  color: #8a8886;
+}
+
+.activityList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.activityItem {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px;
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+}
+
+.activityItem:hover {
+  background: #faf9f8;
+}
+
+.activityIcon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+}
+
+.activityContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.activityTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.activityDevice {
+  font-size: 13px;
+  font-weight: 600;
+  color: #323130;
+}
+
+.activityMessage {
+  font-size: 12px;
+  color: #605e5c;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.activityTimeInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.activityTime {
+  font-size: 12px;
+  color: #8a8886;
+  white-space: nowrap;
+  line-height: 18px;
+}
+
+.activityTimestamp {
+  font-size: 12px;
+  color: #a19f9d;
+  font-family: 'Consolas', 'Courier New', monospace;
+  white-space: nowrap;
+  line-height: 18px;
+}
+
+.timeDivider {
+  font-size: 12px;
+  color: #c8c6c4;
+  line-height: 18px;
+}
+
+.activitySyncType {
+  font-size: 12px;
+  color: #8a8886;
+  white-space: nowrap;
+  line-height: 18px;
+}

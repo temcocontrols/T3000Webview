@@ -41,7 +41,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
-import { ScheduleRefreshApiService } from '../services/scheduleRefreshApi';
+import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import styles from './SchedulesPage.module.css';
 
 // Types based on Rust entity (schedules.rs) and C++ BacnetWeeklyRoutine structure
@@ -76,6 +76,7 @@ export const SchedulesPage: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
+  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
   const isAtBottomRef = useRef(false);
@@ -130,28 +131,42 @@ export const SchedulesPage: React.FC = () => {
     fetchSchedules();
   }, [fetchSchedules]);
 
-  // Auto-refresh on page load (Trigger #1)
+  // Reset autoRefreshed flag when device changes
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed) return;
+    setSchedules([]);
+    setAutoRefreshed(false);
+    hasAutoRefreshedRef.current = false;
+  }, [selectedDevice?.serialNumber]);
 
-    const timer = setTimeout(async () => {
-      console.log('🔄 Auto-refreshing schedules from device on page load...');
+  // Auto-refresh on page load (Trigger #1) - ONLY if database is empty
+  useEffect(() => {
+    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
+
+    const checkAndRefresh = async () => {
+      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+
+      // Check if database has schedule data
+      if (schedules.length > 0) {
+        console.log('🔄 Database has data, skipping auto-refresh');
+        setAutoRefreshed(true);
+        return;
+      }
+
+      console.log('🔄 Database empty, auto-refreshing schedules from device on page load...');
       try {
         const serial = selectedDevice.serialNumber;
-        const response = await ScheduleRefreshApiService.refreshAllSchedules(serial);
-        console.log('✅ Auto-refresh response:', response);
-        if (response && response.items) {
-          await ScheduleRefreshApiService.saveRefreshedSchedules(serial, response.items);
-          await fetchSchedules();
-        }
+        const result = await PanelDataRefreshService.refreshAllSchedules(serial);
+        console.log('✅ Auto-refresh result:', result);
+        // Data already saved by service, just reload from database
+        await fetchSchedules();
         setAutoRefreshed(true);
       } catch (err) {
         console.error('❌ Auto-refresh failed:', err);
       }
-    }, 500);
+    };
 
-    return () => clearTimeout(timer);
-  }, [loading, selectedDevice, autoRefreshed, fetchSchedules]);
+    checkAndRefresh();
+  }, [loading, selectedDevice, autoRefreshed, fetchSchedules, schedules.length]);
 
   // Refresh from database (toolbar button)
   const handleRefreshFromDatabase = () => {
@@ -168,13 +183,10 @@ export const SchedulesPage: React.FC = () => {
     try {
       const serial = selectedDevice.serialNumber;
       console.log('🔄 Refreshing all schedules from device...');
-      const response = await ScheduleRefreshApiService.refreshAllSchedules(serial);
-      console.log('✅ Device refresh response:', response);
-
-      if (response && response.items) {
-        await ScheduleRefreshApiService.saveRefreshedSchedules(serial, response.items);
-        await fetchSchedules();
-      }
+      const result = await PanelDataRefreshService.refreshAllSchedules(serial);
+      console.log('✅ Device refresh result:', result);
+      // Data already saved by service, just reload from database
+      await fetchSchedules();
     } catch (err) {
       console.error('❌ Refresh from device failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh from device');
@@ -195,13 +207,10 @@ export const SchedulesPage: React.FC = () => {
       const scheduleIndex = parseInt(item.scheduleId);
       console.log(`🔄 Refreshing single schedule from device: ${scheduleIndex}`);
 
-      const response = await ScheduleRefreshApiService.refreshSchedule(serial, scheduleIndex);
-      console.log('✅ Single schedule refresh response:', response);
-
-      if (response && response.items) {
-        await ScheduleRefreshApiService.saveRefreshedSchedules(serial, response.items);
-        await fetchSchedules();
-      }
+      const result = await PanelDataRefreshService.refreshSingleSchedule(serial, scheduleIndex);
+      console.log('✅ Single schedule refresh result:', result);
+      // Data already saved by service, just reload from database
+      await fetchSchedules();
     } catch (err) {
       console.error('❌ Single schedule refresh failed:', err);
     } finally {
@@ -283,6 +292,36 @@ export const SchedulesPage: React.FC = () => {
     }
   }, [selectedDevice, isLoadingNextDevice]);
 
+  // Display schedules with empty rows when no data (show 10 empty rows)
+  const displaySchedules = React.useMemo(() => {
+    if (schedules.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        serialNumber: 0,
+        scheduleId: '',
+        autoManual: '',
+        outputField: '',
+        variableField: '',
+        holiday1: '',
+        status1: '',
+        holiday2: '',
+        status2: '',
+        intervalField: '',
+        scheduleTime: '',
+        mondayTime: '',
+        tuesdayTime: '',
+        wednesdayTime: '',
+        thursdayTime: '',
+        fridayTime: '',
+      } as SchedulePoint));
+    }
+    return schedules;
+  }, [schedules]);
+
+  // Helper to check if row is an empty placeholder
+  const isEmptyRow = (schedule: SchedulePoint) => {
+    return !schedule.scheduleId && schedules.length === 0;
+  };
+
   // Auto/Manual toggle handler
   const handleAutoManualToggle = async (item: SchedulePoint) => {
     const newValue = item.autoManual === '1' ? '0' : '1';
@@ -306,12 +345,12 @@ export const SchedulesPage: React.FC = () => {
     createTableColumn<SchedulePoint>({
       columnId: 'scheduleId',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('scheduleId')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('scheduleId')}>
           <span>Schedule</span>
           {sortColumn === 'scheduleId' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -319,21 +358,23 @@ export const SchedulesPage: React.FC = () => {
         const isRefreshing = item.scheduleId && refreshingItems.has(item.scheduleId);
         return (
           <TableCellLayout>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button
-                className={`${styles.refreshIconButton} ${isRefreshing ? styles.rotating : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRefreshSingleSchedule(item);
-                }}
-                disabled={isRefreshing}
-                title="Refresh this schedule from device"
-                aria-label="Refresh schedule"
-              >
-                <ArrowSyncRegular fontSize={16} />
-              </button>
-              <span>{item.scheduleId || '---'}</span>
-            </div>
+            {!isEmptyRow(item) && (
+              <div className={styles.headerCellWith8Gap}>
+                <button
+                  className={`${styles.refreshIconButton} ${isRefreshing ? styles.rotating : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRefreshSingleSchedule(item);
+                  }}
+                  disabled={isRefreshing}
+                  title="Refresh this schedule from device"
+                  aria-label="Refresh schedule"
+                >
+                  <ArrowSyncRegular fontSize={16} />
+                </button>
+                <span>{item.scheduleId || '---'}</span>
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -343,7 +384,7 @@ export const SchedulesPage: React.FC = () => {
     createTableColumn<SchedulePoint>({
       columnId: 'autoManual',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>Auto/Man</span>
         </div>
       ),
@@ -351,13 +392,15 @@ export const SchedulesPage: React.FC = () => {
         const isAuto = item.autoManual === '1';
         return (
           <TableCellLayout>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Switch
-                checked={isAuto}
-                onChange={() => handleAutoManualToggle(item)}
-              />
-              <Text size={200}>{isAuto ? 'AUTO' : 'MAN'}</Text>
-            </div>
+            {!isEmptyRow(item) && (
+              <div className={styles.headerCellWith8Gap}>
+                <Switch
+                  checked={isAuto}
+                  onChange={() => handleAutoManualToggle(item)}
+                />
+                <Text size={200}>{isAuto ? 'AUTO' : 'MAN'}</Text>
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -367,91 +410,115 @@ export const SchedulesPage: React.FC = () => {
     createTableColumn<SchedulePoint>({
       columnId: 'outputField',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('outputField')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('outputField')}>
           <span>Output</span>
           {sortColumn === 'outputField' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.outputField || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.outputField || '---')}
+        </TableCellLayout>
+      ),
     }),
 
     // 4. Variable
     createTableColumn<SchedulePoint>({
       columnId: 'variableField',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('variableField')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('variableField')}>
           <span>Variable</span>
           {sortColumn === 'variableField' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.variableField || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.variableField || '---')}
+        </TableCellLayout>
+      ),
     }),
 
     // 5. Holiday1
     createTableColumn<SchedulePoint>({
       columnId: 'holiday1',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('holiday1')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('holiday1')}>
           <span>Holiday1</span>
           {sortColumn === 'holiday1' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.holiday1 || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.holiday1 || '---')}
+        </TableCellLayout>
+      ),
     }),
 
     // 6. Status1
     createTableColumn<SchedulePoint>({
       columnId: 'status1',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span>Status1</span>
+        <div className={styles.headerCell}>
+          <span>Label</span>
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.status1 || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.status1 || '---')}
+        </TableCellLayout>
+      ),
     }),
 
     // 7. Holiday2
     createTableColumn<SchedulePoint>({
       columnId: 'holiday2',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('holiday2')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('holiday2')}>
           <span>Holiday2</span>
           {sortColumn === 'holiday2' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.holiday2 || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.holiday2 || '---')}
+        </TableCellLayout>
+      ),
     }),
 
     // 8. Status2
     createTableColumn<SchedulePoint>({
       columnId: 'status2',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span>Status2</span>
+        <div className={styles.headerCell}>
+          <span>Status</span>
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.status2 || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.status2 || '---')}
+        </TableCellLayout>
+      ),
     }),
   ];
 
-  // Filtered and sorted schedules
-  const filteredSchedules = schedules.filter(schedule =>
+  // Filtered and sorted schedules (use displaySchedules to include empty rows)
+  const filteredSchedules = displaySchedules.filter(schedule =>
     searchQuery === '' ||
     schedule.scheduleId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     schedule.outputField?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -480,9 +547,9 @@ export const SchedulesPage: React.FC = () => {
                   ERROR MESSAGE (if any)
                   ======================================== */}
               {error && (
-                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
-                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                <div className={styles.errorNotice}>
+                  <ErrorCircleRegular className={styles.iconError} />
+                  <Text className={styles.textError}>
                     {error}
                   </Text>
                 </div>
@@ -493,6 +560,7 @@ export const SchedulesPage: React.FC = () => {
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
               {selectedDevice && (
+              <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   {/* Refresh Button */}
@@ -553,8 +621,7 @@ export const SchedulesPage: React.FC = () => {
                     relationship="description"
                   >
                     <button
-                      className={styles.toolbarButton}
-                      style={{ marginLeft: '8px' }}
+                      className={`${styles.toolbarButton} ${styles.clearFiltersButton}`}
                       title="Information"
                       aria-label="Information about this page"
                     >
@@ -563,15 +630,16 @@ export const SchedulesPage: React.FC = () => {
                   </Tooltip>
                 </div>
               </div>
-              )}
 
               {/* ========================================
                   HORIZONTAL DIVIDER
                   Matches: ext-overview-hr
                   ======================================== */}
-              <div style={{ padding: '0' }}>
+              <div className={styles.noPadding}>
                 <hr className={styles.overviewHr} />
               </div>
+              </>
+              )}
 
               {/* ========================================
                   DOCKING BODY - Main Content
@@ -590,10 +658,10 @@ export const SchedulesPage: React.FC = () => {
                 {/* No Device Selected */}
                 {!selectedDevice && !loading && (
                   <div className={styles.noData}>
-                    <div style={{ textAlign: 'center' }}>
-                      <Text size={500} weight="semibold">No device selected</Text>
+                    <div className={styles.centerText}>
+                      <Text size={400} weight="semibold">No device selected</Text>
                       <br />
-                      <Text size={300}>Please select a device from the tree to view schedules</Text>
+                      <Text size={200}>Please select a device from the tree to view schedules</Text>
                     </div>
                   </div>
                 )}
@@ -614,35 +682,35 @@ export const SchedulesPage: React.FC = () => {
                     columnSizingOptions={{
                       scheduleId: {
                         minWidth: 70,
-                        defaultWidth: 90,
+                        idealWidth: '10%',
                       },
                       autoManual: {
                         minWidth: 100,
-                        defaultWidth: 120,
+                        idealWidth: '15%',
                       },
                       outputField: {
                         minWidth: 80,
-                        defaultWidth: 100,
+                        idealWidth: '12%',
                       },
                       variableField: {
                         minWidth: 80,
-                        defaultWidth: 100,
+                        idealWidth: '12%',
                       },
                       holiday1: {
                         minWidth: 80,
-                        defaultWidth: 100,
+                        idealWidth: '15%',
                       },
                       status1: {
                         minWidth: 80,
-                        defaultWidth: 100,
+                        idealWidth: '12%',
                       },
                       holiday2: {
                         minWidth: 80,
-                        defaultWidth: 100,
+                        idealWidth: '12%',
                       },
                       status2: {
                         minWidth: 80,
-                        defaultWidth: 100,
+                        idealWidth: '12%',
                       },
                     }}
                   >
@@ -664,11 +732,11 @@ export const SchedulesPage: React.FC = () => {
                     </DataGridBody>
                   </DataGrid>
 
-                  {/* No Data Message - Show below grid when empty */}
+                  {/* No Data Message - Commented out - showing empty grid instead
                   {schedules.length === 0 && (
-                    <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                    <div className={styles.emptyStateContainer}>
+                      <div className={styles.emptyStateHeader}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={styles.emptyStateIcon}>
                           <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
                         </svg>
                         <Text size={400} weight="semibold">No schedules found</Text>
@@ -684,6 +752,7 @@ export const SchedulesPage: React.FC = () => {
                       </Button>
                     </div>
                   )}
+                  */}
 
                   {isLoadingNextDevice && (
                     <div className={styles.autoLoadIndicator}>
@@ -691,8 +760,8 @@ export const SchedulesPage: React.FC = () => {
                       <Text>Loading next device...</Text>
                     </div>
                   )}
-                  </div>
-                )}
+                </div>
+              )}
 
               </div>
             </div>

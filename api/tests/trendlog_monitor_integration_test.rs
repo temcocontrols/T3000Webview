@@ -9,7 +9,7 @@ use serde_json::json;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use t3_webview_api::t3_device::trendlog_monitor_service::{TrendlogMonitorService, initialize_trendlog_monitor_service};
+use t3_webview_api::t3_device::trendlog_monitor_service::initialize_trendlog_monitor_service;
 use t3_webview_api::db_connection::establish_t3_device_connection;
 use t3_webview_api::error::AppError;
 

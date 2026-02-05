@@ -41,8 +41,10 @@ import {
   BuildingMultipleRegular,
   ClockRegular,
   ArchiveRegular,
+  DatabaseRegular,
   ArrowCounterclockwiseRegular,
   ArrowClockwiseRegular,
+  ArrowSyncRegular,
   ArrowResetRegular,
   CheckmarkCircleRegular,
   Wifi1Regular,
@@ -61,7 +63,34 @@ import {
   FullScreenMaximizeRegular,
   PanelLeftRegular,
   PlugConnectedRegular,
+  PlugDisconnectedRegular,
   ShareScreenStartRegular,
+  DocumentAddRegular,
+  NumberSymbolRegular,
+  ChartMultipleRegular,
+  TableRegular,
+  TableSimpleRegular,
+  FlashRegular,
+  TemperatureRegular,
+  LineHorizontal3Regular,
+  PersonAccountsRegular,
+  ColorBackgroundRegular,
+  ColorRegular,
+  ToolboxRegular,
+  CodeRegular,
+  DataHistogramRegular,
+  CalendarRegular,
+  CalendarDateRegular,
+  DataLineRegular,
+  RemoteRegular,
+  OptionsRegular,
+  DeveloperBoardRegular,
+  CircleMultipleConcentricRegular,
+  FlowRegular,
+  ImageRegular,
+  ListRegular,
+  NetworkCheckRegular,
+  HistoryRegular,
 } from '@fluentui/react-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { menuConfig } from '@t3-react/config/menuConfig';
@@ -70,6 +99,16 @@ import { toolbarConfig } from '@t3-react/config/toolbarConfig';
 import { useAuthStore } from '@t3-react/store';
 import { t3000Routes } from '@t3-react/app/router/routes';
 import { ThemeSelector, useTheme } from '@t3-react/theme';
+import { devVersion } from '@common/vue/T3000/Hvac/Data/T3Data';
+import { useFileMenu } from '@t3-react/shared/hooks/useFileMenu';
+import { useToolsMenu } from '@t3-react/shared/hooks/useToolsMenu';
+import { useViewMenu } from '@t3-react/shared/hooks/useViewMenu';
+import { useDatabaseMenu } from '@t3-react/shared/hooks/useDatabaseMenu';
+import { useControlMenu } from '@t3-react/shared/hooks/useControlMenu';
+import { useMiscellaneousMenu } from '@t3-react/shared/hooks/useMiscellaneousMenu';
+import { useHelpMenu } from '@t3-react/shared/hooks/useHelpMenu';
+import { useDeviceData } from '@t3-react/shared/hooks/useDeviceData';
+import type { DeviceInfo } from '@t3-react/shared/types/device';
 
 const useStyles = makeStyles({
   header: {
@@ -147,17 +186,86 @@ const useStyles = makeStyles({
     alignItems: 'center',
     gap: '8px',
   },
+  menuPopover: {
+    minWidth: '300px',
+  },
+  menuItemWide: {
+    minWidth: '300px',
+  },
 });
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  showToolbar?: boolean;
+}
+
+export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
   const styles = useStyles();
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const { theme } = useTheme();
+  const { selectedDevice, getDeviceById } = useDeviceData();
+
+  // File menu handlers
+  const { handlers: fileHandlers, state: fileState } = useFileMenu(
+    (message) => {
+      // Show success notification
+      console.log('✅ File operation success:', message);
+      // TODO: Show toast notification
+    },
+    (error) => {
+      // Show error notification
+      console.error('❌ File operation error:', error);
+      // TODO: Show error toast
+    }
+  );
+
+  // Tools menu handlers
+  const { handlers: toolsHandlers, state: toolsState } = useToolsMenu(
+    (message) => {
+      // Show success notification
+      console.log('✅ Tools operation success:', message);
+      // TODO: Show toast notification
+    },
+    (error) => {
+      // Show error notification
+      console.error('❌ Tools operation error:', error);
+      // TODO: Show error toast
+    }
+  );
+
+  // View menu handlers
+  const { handlers: viewHandlers, viewState } = useViewMenu();
+
+  // Database menu handlers
+  const { handlers: databaseHandlers } = useDatabaseMenu();
+
+  // Control menu handlers
+  const { handlers: controlHandlers } = useControlMenu();
+
+  // Miscellaneous menu handlers
+  const { handlers: miscHandlers } = useMiscellaneousMenu();
+
+  // Help menu handlers
+  const { handlers: helpHandlers } = useHelpMenu();
 
   console.log('🎯 Header rendering...', { location: location.pathname, user, toolbarConfig });
+
+  // Helper function to convert TreeNode to DeviceInfo
+  const convertTreeNodeToDeviceInfo = (node: any): DeviceInfo => ({
+    serialNumber: node.id,
+    productName: node.label,
+    nameShowOnTree: node.label,
+    protocol: node.data?.protocol || 'MODBUS',
+    parentId: node.data?.parentId || 0,
+    buildingName: node.data?.buildingName || '',
+    mainSubName: node.data?.mainSubName || '',
+    screenName: node.data?.screenName || '',
+    stationNumber: node.data?.stationNumber || 0,
+    portNumber: node.data?.portNumber || 0,
+    onlineStatus: node.data?.onlineStatus || 0,
+  });
 
   // Handle menu item clicks
   const handleMenuClick = (action?: MenuAction | (() => void)) => {
@@ -166,6 +274,212 @@ export const Header: React.FC = () => {
       action();
     } else {
       console.log('Menu action:', action);
+
+      // Handle specific menu actions
+      switch (action) {
+        case MenuAction.NewProject:
+          fileHandlers.handleNewProject();
+          break;
+        case MenuAction.SaveAs:
+          if (selectedDevice) {
+            const deviceInfo = convertTreeNodeToDeviceInfo(selectedDevice);
+            fileHandlers.handleSaveAs(deviceInfo);
+          } else {
+            console.warn('No device selected for Save As operation');
+            // TODO: Show notification to select a device
+          }
+          break;
+        case MenuAction.Load:
+          if (selectedDevice) {
+            const deviceInfo = convertTreeNodeToDeviceInfo(selectedDevice);
+            fileHandlers.handleLoadFile(deviceInfo);
+          } else {
+            console.warn('No device selected for Load operation');
+            // TODO: Show notification to select a device
+          }
+          break;
+        case MenuAction.Import:
+          fileHandlers.handleImport();
+          break;
+        case MenuAction.Exit:
+          fileHandlers.handleExit();
+          break;
+
+        // Tools menu
+        case MenuAction.Connect:
+          toolsHandlers.handleConnect();
+          break;
+        case MenuAction.Disconnect:
+          toolsHandlers.handleDisconnect();
+          break;
+        case MenuAction.ChangeModbusId:
+          if (selectedDevice) {
+            const deviceInfo = convertTreeNodeToDeviceInfo(selectedDevice);
+            toolsHandlers.handleChangeModbusId(deviceInfo);
+          } else {
+            console.warn('No device selected for Change Modbus ID');
+          }
+          break;
+        case MenuAction.BacnetTool:
+          toolsHandlers.handleBacnetTool();
+          break;
+        case MenuAction.ModbusPoll:
+          toolsHandlers.handleModbusPoll();
+          break;
+        case MenuAction.RegisterViewer:
+          toolsHandlers.handleRegisterViewer();
+          break;
+        case MenuAction.ModbusRegisterV2:
+          toolsHandlers.handleModbusRegisterV2();
+          break;
+        case MenuAction.RegisterListDatabaseFolder:
+          toolsHandlers.handleRegisterListFolder();
+          break;
+        case MenuAction.LoadFirmwareSingle:
+          if (selectedDevice) {
+            const deviceInfo = convertTreeNodeToDeviceInfo(selectedDevice);
+            toolsHandlers.handleLoadFirmwareSingle(deviceInfo);
+          } else {
+            console.warn('No device selected for firmware upload');
+          }
+          break;
+        case MenuAction.LoadFirmwareMany:
+          toolsHandlers.handleLoadFirmwareMany();
+          break;
+        case MenuAction.FlashSN:
+          if (selectedDevice) {
+            const deviceInfo = convertTreeNodeToDeviceInfo(selectedDevice);
+            toolsHandlers.handleFlashSN(deviceInfo);
+          } else {
+            console.warn('No device selected for Flash SN');
+          }
+          break;
+        case MenuAction.Psychrometry:
+          toolsHandlers.handlePsychrometry();
+          break;
+        case MenuAction.PhChart:
+          toolsHandlers.handlePhChart();
+          break;
+        case MenuAction.Options:
+          toolsHandlers.handleOptions();
+          break;
+        case MenuAction.LoginMyAccount:
+          toolsHandlers.handleLoginMyAccount();
+          break;
+
+        // View menu
+        case MenuAction.ShowToolBar:
+          viewHandlers.handleShowToolBar();
+          break;
+        case MenuAction.ShowBuildingPane:
+          viewHandlers.handleShowBuildingPane();
+          break;
+        case MenuAction.ShowStatusBar:
+          viewHandlers.handleShowStatusBar();
+          break;
+        case MenuAction.ThemeOffice2003:
+          viewHandlers.handleThemeOffice2003();
+          break;
+        case MenuAction.ThemeOffice2007Blue:
+          viewHandlers.handleThemeOffice2007Blue();
+          break;
+        case MenuAction.ThemeOffice2007Silver:
+          viewHandlers.handleThemeOffice2007Silver();
+          break;
+        case MenuAction.ViewRefresh:
+          viewHandlers.handleRefresh();
+          break;
+
+        // Database menu
+        case MenuAction.BuildingConfigDatabase:
+          databaseHandlers.handleBuildingConfigDatabase();
+          break;
+        case MenuAction.AllNodesDatabase:
+          databaseHandlers.handleAllNodesDatabase();
+          break;
+        case MenuAction.IONameConfig:
+          databaseHandlers.handleIONameConfig();
+          break;
+        case MenuAction.LogDetail:
+          databaseHandlers.handleLogDetail();
+          break;
+
+        // Control menu
+        case MenuAction.ControlGraphics:
+          controlHandlers.handleGraphics();
+          break;
+        case MenuAction.ControlPrograms:
+          controlHandlers.handlePrograms();
+          break;
+        case MenuAction.ControlInputs:
+          controlHandlers.handleInputs();
+          break;
+        case MenuAction.ControlOutputs:
+          controlHandlers.handleOutputs();
+          break;
+        case MenuAction.ControlVariables:
+          controlHandlers.handleVariables();
+          break;
+        case MenuAction.ControlLoops:
+          controlHandlers.handleLoops();
+          break;
+        case MenuAction.ControlSchedules:
+          controlHandlers.handleSchedules();
+          break;
+        case MenuAction.ControlHolidays:
+          controlHandlers.handleHolidays();
+          break;
+        case MenuAction.ControlTrendLogs:
+          controlHandlers.handleTrendLogs();
+          break;
+        case MenuAction.ControlAlarms:
+          controlHandlers.handleAlarms();
+          break;
+        case MenuAction.ControlNetworkPanel:
+          controlHandlers.handleNetworkPanel();
+          break;
+        case MenuAction.ControlRemotePoints:
+          controlHandlers.handleRemotePoints();
+          break;
+        case MenuAction.ControlConfiguration:
+          controlHandlers.handleConfiguration();
+          break;
+
+        // Miscellaneous menu
+        case MenuAction.LoadDescriptors:
+          miscHandlers.handleLoadDescriptors();
+          break;
+        case MenuAction.WriteIntoFlash:
+          miscHandlers.handleWriteIntoFlash();
+          break;
+        case MenuAction.GSMConnection:
+          miscHandlers.handleGSMConnection();
+          break;
+
+        // Help menu
+        case MenuAction.HelpContents:
+          helpHandlers.handleContents();
+          break;
+        case MenuAction.VersionHistory:
+          helpHandlers.handleVersionHistory();
+          break;
+        case MenuAction.AboutSoftware:
+          helpHandlers.handleAboutSoftware();
+          break;
+        case MenuAction.CheckUpdates:
+          helpHandlers.handleCheckUpdates();
+          break;
+
+        case MenuAction.OpenDocumentation:
+          navigate('/t3000/documentation');
+          break;
+        case MenuAction.OpenQuickStart:
+          navigate('/t3000/documentation'); // Will open to quick start section
+          break;
+        // Add other menu actions as needed
+        default:
+          console.log('Unhandled menu action:', action);
+      }
     }
   };
 
@@ -175,6 +489,7 @@ export const Header: React.FC = () => {
     const iconMap: Record<string, React.ComponentType> = {
       'Save': SaveRegular,
       'SaveAs': SaveRegular, // Use Save icon for SaveAs
+      'DocumentAdd': DocumentAddRegular,
       'FolderOpen': FolderOpenRegular,
       'ArrowUpload': ArrowUploadRegular,
       'ArrowDownload': ArrowDownloadRegular,
@@ -183,8 +498,10 @@ export const Header: React.FC = () => {
       'BuildingMultiple': BuildingMultipleRegular,
       'Clock': ClockRegular,
       'Archive': ArchiveRegular,
+      'Database': DatabaseRegular,
       'ArrowCounterclockwise': ArrowCounterclockwiseRegular,
       'ArrowClockwise': ArrowClockwiseRegular,
+      'ArrowSync': ArrowSyncRegular,
       'ArrowReset': ArrowResetRegular,
       'CheckmarkCircle': CheckmarkCircleRegular,
       'Settings': SettingsRegular,
@@ -203,6 +520,7 @@ export const Header: React.FC = () => {
       'Stop': StopRegular,
       'Power': PowerRegular,
       'PowerOff': PowerRegular,
+      'Alert': AlertRegular,
       'AlertCheck': AlertRegular,
       'AlertOff': AlertRegular,
       'RecordStart': PlayRegular,
@@ -211,9 +529,38 @@ export const Header: React.FC = () => {
       'TreeView': PanelLeftRegular,
       'ToolbarSettings': SettingsRegular,
       'StatusBar': PanelLeftRegular,
+      'PlugConnected': PlugConnectedRegular,
+      'PlugDisconnected': PlugDisconnectedRegular,
       'DataConnection': PlugConnectedRegular,
       'Network': ShareScreenStartRegular,
       'SignOut': SignOutRegular,
+      'NumberSymbol': NumberSymbolRegular,
+      'ChartMultiple': ChartMultipleRegular,
+      'Table': TableRegular,
+      'TableSimple': TableSimpleRegular,
+      'FolderDatabase': DatabaseRegular,
+      'ArrowUploadMultiple': ArrowUploadRegular,
+      'Flash': FlashRegular,
+      'Temperature': TemperatureRegular,
+      'ChartLine': DataLineRegular,
+      'PersonAccounts': PersonAccountsRegular,
+      'ColorBackground': ColorBackgroundRegular,
+      'Color': ColorRegular,
+      'Toolbox': ToolboxRegular,
+      'Code': CodeRegular,
+      'DataHistogram': DataHistogramRegular,
+      'Calendar': CalendarRegular,
+      'CalendarEvent': CalendarDateRegular,
+      'CalendarDate': CalendarDateRegular,
+      'Remote': RemoteRegular,
+      'Options': OptionsRegular,
+      'DeveloperBoard': DeveloperBoardRegular,
+      'CircleMultipleConcentric': CircleMultipleConcentricRegular,
+      'Flow': FlowRegular,
+      'Image': ImageRegular,
+      'List': ListRegular,
+      'NetworkCheck': NetworkCheckRegular,
+      'History': HistoryRegular,
     };
     return iconMap[icon];
   };
@@ -251,7 +598,7 @@ export const Header: React.FC = () => {
             <MenuTrigger>
               <div className={styles.menuItem}>{menu.label}</div>
             </MenuTrigger>
-            <MenuPopover>
+            <MenuPopover className={menu.id === 'tools' ? styles.menuPopover : undefined}>
               <MenuList>
                 {menu.children?.map((item) => {
                   if (item.type === 'divider') {
@@ -267,6 +614,7 @@ export const Header: React.FC = () => {
                       onClick={() => handleMenuClick(item.action)}
                       disabled={item.disabled}
                       icon={IconComponent ? <IconComponent /> : undefined}
+                      className={menu.id === 'tools' ? styles.menuItemWide : undefined}
                       style={{
                         fontSize: 'var(--t3-font-size-small)', // 12px for dropdown items
                         padding: '8px 16px',
@@ -297,14 +645,17 @@ export const Header: React.FC = () => {
 
         {/* Theme Selector and User Avatar on right side of menu bar */}
         <div className={styles.menuBarRight}>
+          <span style={{ fontSize: '12px', color: 'var(--t3-color-header-text)', marginRight: '8px' }}>
+            {devVersion.value}
+          </span>
           <ThemeSelector appearance="subtle" size="small" />
 
           <Popover>
             <PopoverTrigger>
               <div className={styles.userAvatar}>
-                <span className={styles.userName}>{user?.username || 'Guest'}</span>
+                <span className={styles.userName}>{user?.username || 'T3000'}</span>
                 <Avatar
-                  name={user?.username || 'Guest'}
+                  name={user?.username || 'T3000'}
                   color="brand"
                   size={28}
                 />
@@ -353,6 +704,7 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Row 2: Toolbar with icon buttons */}
+      {showToolbar && (
       <div className={styles.toolbarContainer}>
         <div className={styles.toolbarSection}>
           <Toolbar>
@@ -394,6 +746,7 @@ export const Header: React.FC = () => {
           </Toolbar>
         </div>
       </div>
+      )}
     </div>
   );
 };

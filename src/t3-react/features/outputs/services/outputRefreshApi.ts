@@ -1,159 +1,130 @@
 /**
- * Output Refresh API Service
+ * Output Refresh API
  *
- * Handles output data refresh operations using REFRESH_WEBVIEW_LIST (Action 17)
- * Reads data FROM device (opposite of UPDATE_WEBVIEW_LIST which writes TO device)
+ * Wraps PanelDataRefreshService for output-specific operations.
+ * Provides both device refresh (via FFI Action 17) and database load methods.
  *
- * C++ Reference:
- * - REFRESH_WEBVIEW_LIST = 17
- * - Reads output points from device via BACnet
- * - Updates database with fresh values
+ * Architecture:
+ * - Device refresh → delegates to PanelDataRefreshService (shared core)
+ * - Database load → direct T3Database calls (cached data)
+ * - Future: Add output-specific validation, transformations, etc.
  */
 
-import { API_BASE_URL } from '../../../config/constants';
-
-export interface RefreshOutputRequest {
-  index?: number; // Optional: omit for refresh all, include for single item
-}
-
-export interface RefreshResponse {
-  success: boolean;
-  message: string;
-  items: any[];
-  count: number;
-  timestamp: string;
-}
-
-export interface SaveResponse {
-  success: boolean;
-  message: string;
-  savedCount: number;
-  timestamp: string;
-}
+import { PanelDataRefreshService, RefreshResult } from '../../../shared/services/panelDataRefreshService';
+import { T3Database } from '../../../../lib/t3-database';
+import type { Output } from '../types/output.types';
 
 /**
- * Output Refresh API Service
- * Implements REFRESH_WEBVIEW_LIST action for output points
+ * Output Refresh API
+ *
+ * Thin wrapper around PanelDataRefreshService + T3Database
+ * for output-specific operations
  */
-export class OutputRefreshApiService {
-  private static baseUrl = `${API_BASE_URL}/api/t3_device`;
+export class OutputRefreshApi {
+
+  // ============================================
+  // DEVICE REFRESH (Action 17 via PanelDataRefreshService)
+  // ============================================
 
   /**
-   * Refresh single output from device
-   * POST /api/t3-device/outputs/:serial/refresh
+   * Refresh all outputs from device and auto-save to database
+   *
+   * Uses Action 17 (GET_WEBVIEW_LIST) via PanelDataRefreshService
+   * Reads indexes 0-63 from device and saves to database
+   *
    * @param serialNumber - Device serial number
-   * @param index - Output index to refresh
-   * @returns Raw data from device (not saved to database yet)
+   * @returns Refresh result with counts and status
    */
-  static async refreshOutput(
-    serialNumber: number,
-    index: number
-  ): Promise<RefreshResponse> {
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/outputs/${serialNumber}/refresh`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ index }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `HTTP ${response.status}: ${errorText || response.statusText}`
-        );
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error(
-        `Failed to refresh output ${index} for device ${serialNumber}:`,
-        error
-      );
-      throw error;
-    }
+  static async refreshAllFromDevice(serialNumber: number): Promise<RefreshResult> {
+    return PanelDataRefreshService.refreshAllOutputs(serialNumber);
   }
 
   /**
-   * Refresh all outputs from device
-   * POST /api/t3-device/outputs/:serial/refresh
+   * Refresh single output from device and auto-save to database
+   *
+   * Uses Action 17 (GET_WEBVIEW_LIST) via PanelDataRefreshService
+   * Reads specific index from device and saves to database
+   *
    * @param serialNumber - Device serial number
-   * @returns Raw data from device (not saved to database yet)
+   * @param index - Output index (0-63)
+   * @returns Refresh result with counts and status
    */
-  static async refreshAllOutputs(
-    serialNumber: number
-  ): Promise<RefreshResponse> {
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/outputs/${serialNumber}/refresh`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({}), // Empty body = refresh all
-        }
-      );
+  static async refreshSingleFromDevice(serialNumber: number, index: number): Promise<RefreshResult> {
+    return PanelDataRefreshService.refreshSingleOutput(serialNumber, index);
+  }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `HTTP ${response.status}: ${errorText || response.statusText}`
-        );
-      }
+  // ============================================
+  // DATABASE LOAD (Cached data, no device communication)
+  // ============================================
 
-      return await response.json();
-    } catch (error) {
-      console.error(
-        `Failed to refresh all outputs for device ${serialNumber}:`,
-        error
-      );
-      throw error;
-    }
+  /**
+   * Load all outputs from database (cached data)
+   *
+   * Does NOT communicate with device - returns last saved data
+   * Use refreshAllFromDevice() to get fresh data from device
+   *
+   * @param serialNumber - Device serial number
+   * @returns Array of outputs from database
+   */
+  static async loadAllFromDB(serialNumber: number): Promise<Output[]> {
+    return T3Database.getAllOutputs(serialNumber);
   }
 
   /**
-   * Save refreshed data to database
-   * POST /api/t3-device/outputs/:serial/save-refreshed
+   * Load single output from database by index
+   *
+   * Does NOT communicate with device - returns last saved data
+   * Use refreshSingleFromDevice() to get fresh data from device
+   *
    * @param serialNumber - Device serial number
-   * @param items - Array of output data from refresh response
+   * @param index - Output index (0-63)
+   * @returns Output if found, undefined otherwise
    */
-  static async saveRefreshedOutputs(
-    serialNumber: number,
-    items: any[]
-  ): Promise<SaveResponse> {
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/outputs/${serialNumber}/save-refreshed`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ items }),
-        }
-      );
+  static async loadFromDB(serialNumber: number, index: number): Promise<Output | undefined> {
+    const outputs = await T3Database.getAllOutputs(serialNumber);
+    return outputs.find(output => output.index === index);
+  }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `HTTP ${response.status}: ${errorText || response.statusText}`
-        );
-      }
+  /**
+   * Load single output from database by ID
+   *
+   * @param id - Output database ID
+   * @returns Output if found, undefined otherwise
+   */
+  static async loadByIdFromDB(id: string): Promise<Output | undefined> {
+    return T3Database.getOutputById(id);
+  }
 
-      return await response.json();
-    } catch (error) {
-      console.error(
-        `Failed to save refreshed outputs for device ${serialNumber}:`,
-        error
-      );
-      throw error;
+  // ============================================
+  // FUTURE: Type-specific methods
+  // ============================================
+
+  /**
+   * Validate output data
+   *
+   * Example placeholder for future validation logic:
+   * - Check index range (0-63)
+   * - Validate required fields
+   * - Check value ranges
+   *
+   * @param output - Output to validate
+   * @returns Validation result with errors
+   */
+  static async validate(output: Output): Promise<{ valid: boolean; errors: string[] }> {
+    const errors: string[] = [];
+
+    // Example validations (extend as needed)
+    if (output.index < 0 || output.index > 63) {
+      errors.push('Index must be between 0-63');
     }
+
+    if (!output.label || output.label.trim() === '') {
+      errors.push('Label is required');
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors
+    };
   }
 }
-
-export default OutputRefreshApiService;

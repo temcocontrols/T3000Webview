@@ -12,3 +12,4 @@ pub use super::application_settings::Entity as ApplicationSettings;
 pub use super::database_partitions::Entity as DatabasePartitions;
 pub use super::database_partition_config::Entity as DatabasePartitionConfig;
 pub use super::database_files::Entity as DatabaseFiles;
+pub use super::data_sync_metadata::Entity as DataSyncMetadata;

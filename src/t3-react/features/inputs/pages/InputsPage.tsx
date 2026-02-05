@@ -52,7 +52,9 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
 import { getRangeLabel } from '../data/rangeData';
 import { API_BASE_URL } from '../../../config/constants';
-import { InputRefreshApiService } from '../services/inputRefreshApi';
+import { T3Database } from '../../../../lib/t3-database';
+import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
+import { useStatusBarStore } from '../../../store/statusBarStore';
 import styles from './InputsPage.module.css';
 
 // Types based on Rust entity (input_points.rs)
@@ -79,6 +81,7 @@ interface InputPoint {
 
 export const InputsPage: React.FC = () => {
   const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const setMessage = useStatusBarStore((state) => state.setMessage);
 
   const [inputs, setInputs] = useState<InputPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -86,13 +89,18 @@ export const InputsPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
+  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
   const isAtBottomRef = useRef(false); // Track if user is already at bottom
+  const savedScrollPosition = useRef<number>(0); // Save scroll position for restoration
 
-  // Auto-select first device on page load if no device is selected
+  // Auto-select first device on page load - DISABLED
+  // TreePanel's loadDevicesWithSync already handles auto-selection
+  // This prevents conflicts where both components try to select different devices
+  /*
   useEffect(() => {
     if (!selectedDevice && treeData.length > 0) {
       // Get the first device from filtered devices list (respects current filters)
@@ -111,6 +119,7 @@ export const InputsPage: React.FC = () => {
       }
     }
   }, [selectedDevice, treeData, selectDevice, getFilteredDevices]);
+  */
 
   // Fetch inputs for selected device
   const fetchInputs = useCallback(async () => {
@@ -147,38 +156,64 @@ export const InputsPage: React.FC = () => {
     fetchInputs();
   }, [fetchInputs]);
 
-  // Auto-refresh once after page load (Trigger #1)
+  // Reset autoRefreshed flag when device changes
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed) return;
+    setInputs([]);
+    setAutoRefreshed(false);
+    hasAutoRefreshedRef.current = false;
+  }, [selectedDevice?.serialNumber]);
 
-    // Wait for initial load to complete, then auto-refresh from device
-    const timer = setTimeout(async () => {
-      try {
-        console.log('[InputsPage] Auto-refreshing from device...');
-        const refreshResponse = await InputRefreshApiService.refreshAllInputs(selectedDevice.serialNumber);
-        console.log('[InputsPage] Refresh response:', refreshResponse);
+  // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
+  useEffect(() => {
+    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
 
-        // Save to database
-        if (refreshResponse.items && refreshResponse.items.length > 0) {
-          await InputRefreshApiService.saveRefreshedInputs(selectedDevice.serialNumber, refreshResponse.items);
-          // Only reload from database if save was successful
-          await fetchInputs();
-        } else {
-          console.warn('[InputsPage] Auto-refresh: No items received, keeping existing data');
-        }
+    // Check immediately if database has input data
+    const checkAndRefresh = async () => {
+      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+
+      if (inputs.length > 0) {
+        console.log('[InputsPage] Database has data, skipping auto-refresh');
         setAutoRefreshed(true);
+        return;
+      }
+
+      console.log('[InputsPage] Database empty, auto-refreshing from device...');
+      setLoading(true);
+
+      try {
+        // Use PanelDataRefreshService which handles Action 17 without needing panel_id from DB
+        // Pass loading callback to show loading state during Action 17 FFI call
+        const result = await PanelDataRefreshService.refreshFromDevice({
+          serialNumber: selectedDevice.serialNumber,
+          type: 'input',
+          onLoadingChange: (loading) => {
+            if (loading) {
+              setMessage(`Loading inputs from ${selectedDevice.nameShowOnTree} (Action 17)...`, 'info');
+            }
+          }
+        });
+        setMessage(`✓ Synced ${result.itemCount} inputs from ${selectedDevice.nameShowOnTree}`, 'success');
       } catch (error) {
         console.error('[InputsPage] Auto-refresh failed:', error);
-        // Don't reload from database on error - preserve existing inputs
-        setAutoRefreshed(true); // Mark as attempted to prevent retry loops
+        setMessage(`Failed to sync inputs: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      } finally {
+        // Always reload from database to show what was actually saved (even if batch had errors)
+        await fetchInputs();
+        setAutoRefreshed(true);
+        setLoading(false);
       }
-    }, 500);
+    };
 
-    return () => clearTimeout(timer);
-  }, [loading, selectedDevice, autoRefreshed, fetchInputs]);
+    checkAndRefresh();
+  }, [loading, selectedDevice, autoRefreshed, fetchInputs, inputs.length, setMessage]);
 
   // Handlers
   const handleRefresh = async () => {
+    // Save current scroll position before refresh
+    if (scrollContainerRef.current) {
+      savedScrollPosition.current = scrollContainerRef.current.scrollTop;
+    }
+
     setRefreshing(true);
     await fetchInputs();
     setRefreshing(false);
@@ -188,30 +223,36 @@ export const InputsPage: React.FC = () => {
   const handleRefreshFromDevice = async () => {
     if (!selectedDevice) return;
 
+    // Save current scroll position before refresh
+    if (scrollContainerRef.current) {
+      savedScrollPosition.current = scrollContainerRef.current.scrollTop;
+    }
+
     setRefreshing(true);
+    setMessage('Refreshing inputs from device...', 'info');
+
     try {
-      console.log('[InputsPage] Refreshing all inputs from device...');
-      const refreshResponse = await InputRefreshApiService.refreshAllInputs(selectedDevice.serialNumber);
-      console.log('[InputsPage] Refresh response:', refreshResponse);
-
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await InputRefreshApiService.saveRefreshedInputs(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[InputsPage] Save response:', saveResponse);
-
-        // Only reload from database if save was successful
-        await fetchInputs();
-      } else {
-        console.warn('[InputsPage] No items received from refresh, keeping existing data');
-      }
+      console.log('[InputsPage] Refreshing all inputs from device via FFI...');
+      // Pass loading callback to show loading state during Action 17 FFI call
+      const result = await PanelDataRefreshService.refreshFromDevice({
+        serialNumber: selectedDevice.serialNumber,
+        type: 'input',
+        onLoadingChange: (loading) => {
+          if (loading) {
+            setMessage('Loading data from device (Action 17)...', 'info');
+          }
+        }
+      });
+      console.log('[InputsPage] Refresh result:', result);
+      setMessage(result.message, 'success');
     } catch (error) {
       console.error('[InputsPage] Failed to refresh from device:', error);
-      setError(error instanceof Error ? error.message : 'Failed to refresh from device');
-      // Don't call fetchInputs() on error - preserve existing inputs in UI
+      const errorMsg = error instanceof Error ? error.message : 'Failed to refresh from device';
+      setError(errorMsg);
+      setMessage(errorMsg, 'error');
     } finally {
+      // Always reload from database to show what was actually saved
+      await fetchInputs();
       setRefreshing(false);
     }
   };  // Refresh single input from device (Trigger #3: Per-row refresh icon)
@@ -226,18 +267,9 @@ export const InputsPage: React.FC = () => {
 
     setRefreshingItems(prev => new Set(prev).add(inputIndex));
     try {
-      console.log(`[InputsPage] Refreshing input ${index} from device...`);
-      const refreshResponse = await InputRefreshApiService.refreshInput(selectedDevice.serialNumber, index);
-      console.log('[InputsPage] Refresh response:', refreshResponse);
-
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await InputRefreshApiService.saveRefreshedInputs(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[InputsPage] Save response:', saveResponse);
-      }
+      console.log(`[InputsPage] Refreshing input ${index} from device via FFI...`);
+      const result = await PanelDataRefreshService.refreshSingleInput(selectedDevice.serialNumber, index);
+      console.log('[InputsPage] Refresh result:', result);
 
       // Reload data from database after save
       await fetchInputs();
@@ -326,6 +358,21 @@ export const InputsPage: React.FC = () => {
     }
   }, [selectedDevice, isLoadingNextDevice]);
 
+  // Restore scroll position after data refresh (but not on device change)
+  useEffect(() => {
+    if (!refreshing && !loading && savedScrollPosition.current > 0 && scrollContainerRef.current) {
+      // Restore scroll position after a short delay to ensure DOM is ready
+      const timeoutId = setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = savedScrollPosition.current;
+          savedScrollPosition.current = 0; // Reset after restoration
+        }
+      }, 50);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [inputs, refreshing, loading]);
+
   // Inline editing handlers
   const handleCellDoubleClick = (item: InputPoint, field: string, currentValue: string) => {
     setEditingCell({ serialNumber: item.serialNumber, inputIndex: item.inputIndex || '', field });
@@ -369,6 +416,7 @@ export const InputsPage: React.FC = () => {
 
   // Generic function: Update input field using UPDATE_WEBVIEW_LIST (Action 16 - full record)
   // NOTE: Action 16 requires ALL fields to be provided, not just the changed field
+  // CRITICAL: Must read current device values first to avoid overwriting with stale database values
   const updateInputFieldUsingAction16 = async (
     serialNumber: number,
     inputIndex: string,
@@ -379,14 +427,18 @@ export const InputsPage: React.FC = () => {
     try {
       console.log(`[Action 16] Updating ${field} for Input ${inputIndex} (SN: ${serialNumber})`);
 
-      // Action 16 requires ALL fields, so we send current values + the new field value
+      // Step 1: Use CURRENT UI STATE as baseline (has most recent changes)
+      // The currentInput parameter already reflects any previous edits made in the UI
+      console.log('[Action 16] Using current UI state as baseline:', currentInput);
+
+      // Step 2: Build payload with current UI values + the one changed field
       const payload = {
         fullLabel: field === 'fullLabel' ? newValue : (currentInput.fullLabel || ''),
         label: field === 'label' ? newValue : (currentInput.label || ''),
-        value: field === 'fValue' ? parseFloat(newValue || '0') : parseFloat(currentInput.fValue || '0'),
+        value: field === 'fValue' ? parseFloat(newValue || '0') : parseFloat(currentInput.fValue || '0') / 1000,
         range: field === 'range' ? parseInt(newValue || '0', 10) : parseInt(currentInput.rangeField || currentInput.range || '0', 10),
         autoManual: field === 'autoManual' ? parseInt(newValue || '0', 10) : parseInt(currentInput.autoManual || '0', 10),
-        control: 0, // control field not part of InputPoint interface
+        control: 0, // control field not typically editable
         filter: parseInt(currentInput.filterField || '0', 10),
         digitalAnalog: parseInt(currentInput.digitalAnalog || '0', 10),
         calibrationSign: parseInt(currentInput.sign || '0', 10),
@@ -412,7 +464,8 @@ export const InputsPage: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log('[Action 16] Success:', result);
+      console.log('[Action 16] Success - Device updated via FFI and saved to database:', result);
+
       return result;
     } catch (error) {
       console.error('[Action 16] Failed:', error);
@@ -466,7 +519,12 @@ export const InputsPage: React.FC = () => {
         prevInputs.map(input =>
           input.serialNumber === editingCell.serialNumber &&
           input.inputIndex === editingCell.inputIndex
-            ? { ...input, [editingCell.field]: editValue }
+            ? {
+                ...input,
+                [editingCell.field]: editingCell.field === 'fValue'
+                  ? (parseFloat(editValue || '0') * 1000).toString()  // Convert back to raw value for storage
+                  : editValue
+              }
             : input
         )
       );
@@ -573,33 +631,67 @@ export const InputsPage: React.FC = () => {
     }
   };
 
+  // Display data with 10 empty rows when no inputs
+  const displayInputs = React.useMemo(() => {
+    if (inputs.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        serialNumber: selectedDevice?.serialNumber || 0,
+        inputId: '',
+        inputIndex: '',
+        panel: '',
+        fullLabel: '',
+        autoManual: '',
+        fValue: '',
+        units: '',
+        range: '',
+        rangeField: '',
+        calibration: '',
+        sign: '',
+        filterField: '',
+        status: '',
+        signalType: '',
+        digitalAnalog: '',
+        label: '',
+        typeField: '',
+      }));
+    }
+    return inputs;
+  }, [inputs, selectedDevice]);
+
+  // Helper to identify empty rows
+  const isEmptyRow = (item: InputPoint) => !item.inputIndex && !item.inputId && inputs.length === 0;
+
   // Column definitions matching the sequence: Panel, Input, Full Label, Label, Auto/Man, Value, Units, Range, Calibration, Sign, Filter, Status, Signal Type, Type
   const columns: TableColumnDefinition<InputPoint>[] = [
     // 1. Panel ID
     createTableColumn<InputPoint>({
       columnId: 'panel',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('panel')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('panel')}>
           <span>Panel</span>
           {sortColumn === 'panel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.panel || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.panel || '---')}
+        </TableCellLayout>
+      ),
     }),
     // 2. Input (Index/ID)
     createTableColumn<InputPoint>({
       columnId: 'input',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('input')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('input')}>
           <span>Input</span>
           {sortColumn === 'input' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -609,23 +701,26 @@ export const InputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRefreshSingleInput(inputIndex);
-                }}
-                className={`${styles.refreshIconButton} ${isRefreshingThis ? styles.isRefreshing : ''}`}
-                title="Refresh this input from device"
-                disabled={isRefreshingThis}
-              >
-                <ArrowSyncRegular
-                  style={{ fontSize: '14px' }}
-                  className={isRefreshingThis ? styles.rotating : ''}
-                />
-              </button>
-              <Text size={200} weight="regular">{item.inputId || item.inputIndex || '---'}</Text>
-            </div>
+            {!isEmptyRow(item) && (
+              <div className={styles.cellFlexContainer}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRefreshSingleInput(inputIndex);
+                  }}
+                  className={`${styles.refreshIconButton} ${isRefreshingThis ? styles.isRefreshing : ''}`}
+                  title="Refresh this input from device"
+                  disabled={isRefreshingThis}
+                >
+                  <ArrowSyncRegular
+                    className={`${styles.iconSmall} ${isRefreshingThis ? styles.rotating : ''}`}
+                  />
+                </button>
+                <Text size={200} weight="regular">
+                  {item.inputId || (item.inputIndex ? `IN${parseInt(item.inputIndex) + 1}` : '---')}
+                </Text>
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -634,12 +729,12 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'fullLabel',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('fullLabel')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('fullLabel')}>
           <span>Full Label</span>
           {sortColumn === 'fullLabel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -650,41 +745,42 @@ export const InputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
-                <input
-                  type="text"
-                  className={styles.editInput}
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onBlur={handleEditSave}
-                  onKeyDown={handleEditKeyDown}
-                  autoFocus
-                  disabled={isSaving}
-                  placeholder="Enter label"
-                  aria-label="Edit full label"
-                  style={{ flex: 1 }}
-                />
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditSave();
-                  }}
-                  disabled={isSaving}
-                  className={styles.saveButton}
-                  title="Save"
+            {!isEmptyRow(item) && (
+              isEditing ? (
+                <div className={styles.editInputContainer}>
+                  <input
+                    type="text"
+                    className={`${styles.editInput} ${styles.flex1}`}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={handleEditSave}
+                    onKeyDown={handleEditKeyDown}
+                    autoFocus
+                    disabled={isSaving}
+                    placeholder="Enter label"
+                    aria-label="Edit full label"
+                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditSave();
+                    }}
+                    disabled={isSaving}
+                    className={styles.saveButton}
+                    title="Save"
+                  >
+                    <SaveRegular className={styles.iconMedium} />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  className={styles.editableCell}
+                  onDoubleClick={() => handleCellDoubleClick(item, 'fullLabel', item.fullLabel || '')}
+                  title="Double-click to edit"
                 >
-                  <SaveRegular style={{ fontSize: '18px' }} />
-                </button>
-              </div>
-            ) : (
-              <div
-                className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'fullLabel', item.fullLabel || '')}
-                title="Double-click to edit"
-              >
-                <Text size={200} weight="regular">{item.fullLabel || 'Unnamed'}</Text>
-              </div>
+                  <Text size={200} weight="regular">{item.fullLabel || 'Unnamed'}</Text>
+                </div>
+              )
             )}
           </TableCellLayout>
         );
@@ -694,12 +790,12 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'label',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('label')}>
           <span>Label</span>
           {sortColumn === 'label' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -710,41 +806,42 @@ export const InputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
-                <input
-                  type="text"
-                  className={styles.editInput}
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onBlur={handleEditSave}
-                  onKeyDown={handleEditKeyDown}
-                  autoFocus
-                  disabled={isSaving}
-                  placeholder="Enter label"
-                  aria-label="Edit label"
-                  style={{ flex: 1 }}
-                />
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditSave();
-                  }}
-                  disabled={isSaving}
-                  className={styles.saveButton}
-                  title="Save"
+            {!isEmptyRow(item) && (
+              isEditing ? (
+                <div className={styles.editInputContainer}>
+                  <input
+                    type="text"
+                    className={`${styles.editInput} ${styles.flex1}`}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={handleEditSave}
+                    onKeyDown={handleEditKeyDown}
+                    autoFocus
+                    disabled={isSaving}
+                    placeholder="Enter label"
+                    aria-label="Edit label"
+                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditSave();
+                    }}
+                    disabled={isSaving}
+                    className={styles.saveButton}
+                    title="Save"
+                  >
+                    <SaveRegular className={styles.iconMedium} />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  className={styles.editableCell}
+                  onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
+                  title="Double-click to edit"
                 >
-                  <SaveRegular style={{ fontSize: '18px' }} />
-                </button>
-              </div>
-            ) : (
-              <div
-                className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
-                title="Double-click to edit"
-              >
-                <Text size={200} weight="regular">{item.label || '---'}</Text>
-              </div>
+                  <Text size={200} weight="regular">{item.label || '---'}</Text>
+                </div>
+              )
             )}
           </TableCellLayout>
         );
@@ -754,7 +851,7 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'autoManual',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>Auto/Man</span>
         </div>
       ),
@@ -804,15 +901,17 @@ export const InputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <div
-              onClick={handleToggle}
-              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-            >
-              <Switch
-                checked={isAuto}
-                style={{ transform: 'scale(0.8)' }}
-              />
-            </div>
+            {!isEmptyRow(item) && (
+              <div
+                onClick={handleToggle}
+                className={styles.switchContainer}
+              >
+                <Switch
+                  checked={isAuto}
+                  className={styles.switchScale}
+                />
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -821,12 +920,12 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'value',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('value')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('value')}>
           <span>Value</span>
           {sortColumn === 'value' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -837,42 +936,43 @@ export const InputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
-                <input
-                  type="number"
-                  step="0.01"
-                  className={styles.editInput}
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onBlur={handleEditSave}
-                  onKeyDown={handleEditKeyDown}
-                  autoFocus
-                  disabled={isSaving}
-                  placeholder="Enter value"
-                  aria-label="Edit value"
-                  style={{ flex: 1 }}
-                />
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditSave();
-                  }}
-                  disabled={isSaving}
-                  className={styles.saveButton}
-                  title="Save"
+            {!isEmptyRow(item) && (
+              isEditing ? (
+                <div className={styles.editInputContainer}>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className={`${styles.editInput} ${styles.flex1}`}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={handleEditSave}
+                    onKeyDown={handleEditKeyDown}
+                    autoFocus
+                    disabled={isSaving}
+                    placeholder="Enter value"
+                    aria-label="Edit value"
+                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditSave();
+                    }}
+                    disabled={isSaving}
+                    className={styles.saveButton}
+                    title="Save"
+                  >
+                    <SaveRegular className={styles.iconMedium} />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  className={styles.editableCell}
+                  onDoubleClick={() => handleCellDoubleClick(item, 'fValue', item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '0')}
+                  title="Double-click to edit"
                 >
-                  <SaveRegular style={{ fontSize: '18px' }} />
-                </button>
-              </div>
-            ) : (
-              <div
-                className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'fValue', item.fValue?.toString() || '0')}
-                title="Double-click to edit"
-              >
-                <Text size={200} weight="regular">{item.fValue || '---'}</Text>
-              </div>
+                  <Text size={200} weight="regular">{item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}</Text>
+                </div>
+              )
             )}
           </TableCellLayout>
         );
@@ -882,27 +982,31 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'units',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('units')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('units')}>
           <span>Units</span>
           {sortColumn === 'units' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.units || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.units || '---')}
+        </TableCellLayout>
+      ),
     }),
     // 7. Range
     createTableColumn<InputPoint>({
       columnId: 'range',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('range')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('range')}>
           <span>Range</span>
           {sortColumn === 'range' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -914,13 +1018,15 @@ export const InputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <div
-              onClick={() => handleRangeClick(item)}
-              style={{ cursor: 'pointer', color: '#0078d4' }}
-              title="Click to change range"
-            >
-              <Text size={200} weight="regular">{rangeLabel}</Text>
-            </div>
+            {!isEmptyRow(item) && (
+              <div
+                onClick={() => handleRangeClick(item)}
+                className={styles.rangeLink}
+                title="Click to change range"
+              >
+                <Text size={200} weight="regular">{rangeLabel}</Text>
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -929,42 +1035,54 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'calibration',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>Calibration</span>
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.calibration || '0'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.calibration || '0')}
+        </TableCellLayout>
+      ),
     }),
     // 9. Sign
     createTableColumn<InputPoint>({
       columnId: 'sign',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>Sign</span>
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.sign || '+'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.sign || '+')}
+        </TableCellLayout>
+      ),
     }),
     // 10. Filter
     createTableColumn<InputPoint>({
       columnId: 'filter',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>Filter</span>
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.filterField || '0'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.filterField || '0')}
+        </TableCellLayout>
+      ),
     }),
     // 11. Status
     createTableColumn<InputPoint>({
       columnId: 'status',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('status')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('status')}>
           <span>Status</span>
           {sortColumn === 'status' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -988,12 +1106,14 @@ export const InputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <Badge
-              appearance="filled"
-              color={statusColor}
-            >
-              {statusText}
-            </Badge>
+            {!isEmptyRow(item) && (
+              <Badge
+                appearance="filled"
+                color={statusColor}
+              >
+                {statusText}
+              </Badge>
+            )}
           </TableCellLayout>
         );
       },
@@ -1002,17 +1122,17 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'signalType',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>Signal Type</span>
         </div>
       ),
-      renderCell: () => <TableCellLayout>---</TableCellLayout>,
+      renderCell: () => <TableCellLayout></TableCellLayout>,
     }),
     // 13. Type (Digital/Analog)
     createTableColumn<InputPoint>({
       columnId: 'type',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>Type</span>
         </div>
       ),
@@ -1020,12 +1140,14 @@ export const InputsPage: React.FC = () => {
         const isDigital = item.digitalAnalog === '0';
         return (
           <TableCellLayout>
-            <Badge
-              appearance="outline"
-              color={isDigital ? 'informative' : 'brand'}
-            >
-              {isDigital ? 'Digital' : 'Analog'}
-            </Badge>
+            {!isEmptyRow(item) && (
+              <Badge
+                appearance="outline"
+                color={isDigital ? 'informative' : 'brand'}
+              >
+                {isDigital ? 'Digital' : 'Analog'}
+              </Badge>
+            )}
           </TableCellLayout>
         );
       },
@@ -1051,9 +1173,9 @@ export const InputsPage: React.FC = () => {
                   ERROR MESSAGE (if any)
                   ======================================== */}
               {error && (
-                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
-                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                <div className={styles.errorNotice}>
+                  <ErrorCircleRegular className={styles.iconError} />
+                  <Text className={styles.textError}>
                     {error}
                   </Text>
                 </div>
@@ -1064,6 +1186,7 @@ export const InputsPage: React.FC = () => {
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
               {selectedDevice && (
+              <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   {/* Refresh Button - Refresh from Device */}
@@ -1124,8 +1247,7 @@ export const InputsPage: React.FC = () => {
                     relationship="description"
                   >
                     <button
-                      className={styles.toolbarButton}
-                      style={{ marginLeft: '8px' }}
+                      className={`${styles.toolbarButton} ${styles.marginLeft8}`}
                       title="Information"
                       aria-label="Information about this page"
                     >
@@ -1134,15 +1256,16 @@ export const InputsPage: React.FC = () => {
                   </Tooltip>
                 </div>
               </div>
-              )}
 
               {/* ========================================
                   HORIZONTAL DIVIDER
                   Matches: ext-overview-hr
                   ======================================== */}
-              <div style={{ padding: '0' }}>
+              <div className={styles.noPadding}>
                 <hr className={styles.overviewHr} />
               </div>
+              </>
+              )}
 
               {/* ========================================
                   DOCKING BODY - Main Content
@@ -1161,16 +1284,26 @@ export const InputsPage: React.FC = () => {
                 {/* No Device Selected */}
                 {!selectedDevice && !loading && (
                   <div className={styles.noData}>
-                    <div style={{ textAlign: 'center' }}>
-                      <Text size={500} weight="semibold">No device selected</Text>
+                    <div className={styles.centerText}>
+                      <Text size={400} weight="semibold">No device selected</Text>
                       <br />
-                      <Text size={300}>Please select a device from the tree to view inputs</Text>
+                      <Text size={200}>Please select a device from the tree to view inputs</Text>
                     </div>
                   </div>
                 )}
 
-                {/* Scrollable Container for DataGrid */}
-                {selectedDevice && !loading && (
+                {/* Device Selected but No Data */}
+                {selectedDevice && !loading && inputs.length === 0 && (
+                  <div className={styles.noData}>
+                    <div className={styles.centerText}>
+                      <Text size={400} weight="semibold">No inputs found</Text>
+                      <br />
+                      <Text size={200}>This device has no configured input points</Text>
+                    </div>
+                  </div>
+                )}
+
+                {selectedDevice && !loading && inputs.length > 0 && (
                   <div
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}
@@ -1178,7 +1311,7 @@ export const InputsPage: React.FC = () => {
                     onWheel={handleWheel}
                   >
                     <DataGrid
-                      items={inputs}
+                      items={displayInputs}
                       columns={columns}
                       sortable
                       resizableColumns
@@ -1264,27 +1397,6 @@ export const InputsPage: React.FC = () => {
                     <div className={styles.autoLoadIndicator}>
                       <Spinner size="tiny" />
                       <Text size={200} weight="regular">Loading next device...</Text>
-                    </div>
-                  )}
-
-                  {/* No Data Message - Show below grid when empty */}
-                  {inputs.length === 0 && (
-                    <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
-                          <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
-                        </svg>
-                        <Text size={400} weight="semibold">No inputs found</Text>
-                      </div>
-                      <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>This device has no configured input points</Text>
-                      <Button
-                        appearance="subtle"
-                        icon={<ArrowSyncRegular />}
-                        onClick={handleRefresh}
-                        style={{ minWidth: '120px', fontWeight: 'normal' }}
-                      >
-                        Refresh
-                      </Button>
                     </div>
                   )}
                   </div>

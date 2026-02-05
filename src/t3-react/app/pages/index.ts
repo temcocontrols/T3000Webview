@@ -22,6 +22,7 @@ export { HolidaysPage } from '../../features/schedules/pages/HolidaysPage';
 
 // Monitoring
 export { TrendLogsPage } from '../../features/trendlogs/pages/TrendLogsPage';
+export { TrendChartPage } from '../../features/trendlogs/pages/TrendChartPage';
 export { default as AlarmsPage } from '../../features/alarms/pages/AlarmsPage';
 
 // Configuration
@@ -33,5 +34,5 @@ export { default as ArrayPage } from '../../features/controllers/pages/ArrayPage
 export { GraphicsPage } from '../../features/graphics/pages/GraphicsPage';
 
 // Discovery
-export { default as DiscoverPage } from '../../features/discover/pages/DiscoverPage';
+export { DiscoverPage } from '../../features/discover/pages/DiscoverPage';
 export { BuildingsPage } from '../../features/buildings/pages/BuildingsPage';

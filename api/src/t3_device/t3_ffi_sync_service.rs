@@ -11,6 +11,7 @@ use crate::entity::t3_device::{
     devices, input_points, output_points, trendlog_data_detail, trendlog_data_sync_metadata,
     variable_points,
 };
+use crate::database_management::data_sync_service::{DataSyncMetadataService, InsertSyncMetadataRequest};
 use crate::error::AppError;
 use crate::logger::ServiceLogger;
 use crate::t3_device::trendlog_parent_cache::{ParentKey, TrendlogParentCache};
@@ -46,6 +47,7 @@ type GetDeviceNetworkConfigFn =
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
 #[allow(dead_code)]
+#[allow(non_camel_case_types)]
 pub enum WebViewMessageType {
     GET_PANEL_DATA = 0,
     GET_INITIAL_DATA = 1,
@@ -64,7 +66,7 @@ pub enum WebViewMessageType {
     SAVE_NEW_LIBRARY_DATA = 14,
     LOGGING_DATA = 15, // Used for full device data sync
     UPDATE_WEBVIEW_LIST = 16, // Used for updating full records (inputs/outputs/variables)
-    REFRESH_WEBVIEW_LIST = 17, // Used for refreshing data from device (inputs/outputs/variables)
+    GET_WEBVIEW_LIST = 17, // Used for refreshing data from device (inputs/outputs/variables)
 }
 
 // Global function pointers - will be loaded from T3000.exe at runtime
@@ -285,7 +287,7 @@ fn get_trendlog_cache() -> &'static TrendlogParentCache {
 // ═══════════════════════════════════════════════════════════════════════════
 // TWO-TIER SYNC STATE MANAGEMENT
 // ═══════════════════════════════════════════════════════════════════════════
-use chrono::{DateTime, Local, Utc};
+use chrono::{DateTime, Utc};
 use tokio::sync::RwLock;
 
 lazy_static::lazy_static! {
@@ -332,6 +334,9 @@ struct PanelInfo {
     panel_number: i32,
     serial_number: i32,
     panel_name: String,
+    pid: Option<i32>,              // Product ID from GET_PANELS_LIST
+    object_instance: Option<i32>,  // BACnet object instance (used for MSTP MAC ID)
+    online_time: Option<i64>,      // Last online timestamp
 }
 
 /// Device information structure from T3000 LOGGING_DATA JSON
@@ -357,6 +362,28 @@ pub struct DeviceInfo {
     pub bacnet_ip_port: Option<i32>,     // from BACnet IP configuration
     pub show_label_name: Option<String>, // from panel settings
     pub connection_type: Option<String>, // from communication type
+}
+
+/// Clean C++ buffer garbage: remove null bytes, control characters, and everything after
+fn clean_cpp_string(input: &str, fallback: &str) -> String {
+    let cleaned = input
+        .split('\0')
+        .next()
+        .unwrap_or("")
+        .chars()
+        .filter(|c| {
+            // Keep only printable ASCII and common whitespace
+            c.is_ascii_graphic() || *c == ' ' || *c == '\t'
+        })
+        .collect::<String>()
+        .trim()
+        .to_string();
+
+    if cleaned.is_empty() {
+        fallback.to_string()
+    } else {
+        cleaned
+    }
 }
 
 /// Point data structure from T3000 LOGGING_DATA JSON
@@ -877,7 +904,7 @@ impl T3000MainService {
                         device_info.show_label_name = settings_value
                             .get("panel_name")
                             .and_then(|v| v.as_str())
-                            .map(|s| s.to_string());
+                            .map(|s| clean_cpp_string(s, "(Unknown)")); // Keep "(Unknown)" as-is from C++
 
                         // Try to get BACnet object instance for BACnet devices
                         if let Some(obj_instance) = settings_value
@@ -912,7 +939,7 @@ impl T3000MainService {
                 // Fallback: populate what we can from existing LOGGING_DATA
                 device_info.ip_address = Some(device_info.panel_ipaddress.clone());
                 device_info.port = Some(device_info.panel_id);
-                device_info.show_label_name = Some(device_info.panel_name.clone());
+                device_info.show_label_name = Some(clean_cpp_string(&device_info.panel_name, "(Unknown)")); // Keep "(Unknown)" as-is from C++
                 device_info.connection_type = Some("LOGGING_DATA".to_string()); // Indicate data source
             }
             Err(e) => {
@@ -926,7 +953,7 @@ impl T3000MainService {
                 // Fallback: populate what we can from existing LOGGING_DATA
                 device_info.ip_address = Some(device_info.panel_ipaddress.clone());
                 device_info.port = Some(device_info.panel_id);
-                device_info.show_label_name = Some(device_info.panel_name.clone());
+                device_info.show_label_name = Some(clean_cpp_string(&device_info.panel_name, "(Unknown)")); // Keep "(Unknown)" as-is from C++
                 device_info.connection_type = Some("FALLBACK".to_string()); // Indicate fallback data source
             }
         }
@@ -1060,6 +1087,21 @@ impl T3000MainService {
                 })?;
 
             sync_logger.info("✅ GET_PANELS_LIST metadata record created");
+
+            // Also insert into new DATA_SYNC_METADATA table
+            let new_metadata_request = InsertSyncMetadataRequest {
+                data_type: "GET_PANELS_LIST".to_string(),
+                serial_number: "ALL".to_string(),
+                panel_id: None,
+                records_synced: panels.len() as i32,
+                sync_method: "FFI_BACKEND".to_string(),
+                success: true,
+                error_message: None,
+            };
+
+            if let Err(e) = DataSyncMetadataService::insert_sync_metadata(&db, new_metadata_request).await {
+                sync_logger.error(&format!("❌ Failed to insert GET_PANELS_LIST to DATA_SYNC_METADATA: {}", e));
+            }
         } else {
             sync_logger
                 .info("⚡ QUICK SYNC: Using cached device list, skipping GET_PANELS_LIST...");
@@ -1132,6 +1174,33 @@ impl T3000MainService {
             "📋 LOGGING_DATA sync metadata created - ID: {}",
             sync_metadata_id
         ));
+
+        // Also insert into new DATA_SYNC_METADATA table for sync cycle start
+        // Note: Using txn.into_transaction_log() for inline insertion to avoid database lock
+        let now = chrono::Utc::now();
+        let sync_time = now.timestamp();
+        let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
+
+        let cycle_metadata = crate::entity::data_sync_metadata::ActiveModel {
+            sync_time: Set(sync_time),
+            sync_time_fmt: Set(sync_time_fmt.clone()),
+            data_type: Set("LOGGING_DATA_CYCLE".to_string()),
+            serial_number: Set("ALL".to_string()),
+            panel_id: Set(None),
+            records_synced: Set(0),
+            sync_method: Set("FFI_BACKEND".to_string()),
+            success: Set(1),
+            error_message: Set(None),
+            created_at: Set(sync_time),
+            ..Default::default()
+        };
+
+        if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(cycle_metadata)
+            .exec(&txn)
+            .await
+        {
+            sync_logger.error(&format!("❌ Failed to insert LOGGING_DATA_CYCLE to DATA_SYNC_METADATA: {}", e));
+        }
 
         // STEP 2: Process each device sequentially with per-device LOGGING_DATA calls
         let total_devices = panels.len();
@@ -1228,6 +1297,31 @@ impl T3000MainService {
                     serial_number, device_with_points.device_info.panel_name
                 ));
 
+                // Validate serial number - skip devices with invalid SerialNumber=0
+                if serial_number == 0 {
+                    sync_logger.warn(&format!(
+                        "⚠️ SKIPPING device with invalid SerialNumber=0 - Name: '{}', IP: '{}', Panel ID: {}",
+                        device_with_points.device_info.panel_name,
+                        device_with_points.device_info.ip_address.as_ref().unwrap_or(&"unknown".to_string()),
+                        device_with_points.device_info.panel_id
+                    ));
+                    sync_logger.warn("⚠️ This indicates missing or invalid panel_serial_number in JSON response - check C++ HandleWebViewMsg implementation");
+                    sync_logger.error(&format!(
+                        "🔍 DEBUG INFO for invalid device - Expected Serial: {} (from GET_PANELS_LIST), Got: {} (from LOGGING_DATA)",
+                        panel_info.serial_number, serial_number
+                    ));
+                    sync_logger.error(&format!(
+                        "💡 HINT: Device with Panel#{} probably has records in INPUTS/OUTPUTS/VARIABLES tables but won't show sync status due to SerialNumber=0",
+                        device_with_points.device_info.panel_id
+                    ));
+                    sync_logger.error(&format!(
+                        "💡 FIX: Update C++ code to properly set panel_serial_number field in LOGGING_DATA response for Panel#{}",
+                        device_with_points.device_info.panel_id
+                    ));
+                    skipped_devices += 1;
+                    continue;
+                }
+
                 // UPSERT device basic info (INSERT or UPDATE)
                 sync_logger.info(&format!(
                     "📝 Syncing device basic info - Serial: {}, Name: {}",
@@ -1275,6 +1369,32 @@ impl T3000MainService {
                         }
                     }
                     sync_logger.info("✅ INPUT points completed");
+
+                    // Insert DATA_SYNC_METADATA for INPUTS sync
+                    let now = chrono::Utc::now();
+                    let sync_time = now.timestamp();
+                    let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
+
+                    let input_metadata = crate::entity::data_sync_metadata::ActiveModel {
+                        sync_time: Set(sync_time),
+                        sync_time_fmt: Set(sync_time_fmt),
+                        data_type: Set("INPUTS".to_string()),
+                        serial_number: Set(serial_number.to_string()),
+                        panel_id: Set(Some(device_with_points.device_info.panel_id)),
+                        records_synced: Set(device_with_points.input_points.len() as i32),
+                        sync_method: Set("FFI_BACKEND".to_string()),
+                        success: Set(1),
+                        error_message: Set(None),
+                        created_at: Set(sync_time),
+                        ..Default::default()
+                    };
+
+                    if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(input_metadata)
+                        .exec(&txn)
+                        .await
+                    {
+                        sync_logger.error(&format!("❌ Failed to insert INPUTS sync metadata: {}", e));
+                    }
                 }
 
                 // UPSERT output points (INSERT or UPDATE)
@@ -1300,6 +1420,32 @@ impl T3000MainService {
                         }
                     }
                     sync_logger.info("✅ OUTPUT points completed");
+
+                    // Insert DATA_SYNC_METADATA for OUTPUTS sync
+                    let now = chrono::Utc::now();
+                    let sync_time = now.timestamp();
+                    let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
+
+                    let output_metadata = crate::entity::data_sync_metadata::ActiveModel {
+                        sync_time: Set(sync_time),
+                        sync_time_fmt: Set(sync_time_fmt),
+                        data_type: Set("OUTPUTS".to_string()),
+                        serial_number: Set(serial_number.to_string()),
+                        panel_id: Set(Some(device_with_points.device_info.panel_id)),
+                        records_synced: Set(device_with_points.output_points.len() as i32),
+                        sync_method: Set("FFI_BACKEND".to_string()),
+                        success: Set(1),
+                        error_message: Set(None),
+                        created_at: Set(sync_time),
+                        ..Default::default()
+                    };
+
+                    if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(output_metadata)
+                        .exec(&txn)
+                        .await
+                    {
+                        sync_logger.error(&format!("❌ Failed to insert OUTPUTS sync metadata: {}", e));
+                    }
                 }
 
                 // UPSERT variable points (INSERT or UPDATE)
@@ -1320,6 +1466,32 @@ impl T3000MainService {
                         }
                     }
                     sync_logger.info("✅ VARIABLE points completed");
+
+                    // Insert DATA_SYNC_METADATA for VARIABLES sync
+                    let now = chrono::Utc::now();
+                    let sync_time = now.timestamp();
+                    let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
+
+                    let variable_metadata = crate::entity::data_sync_metadata::ActiveModel {
+                        sync_time: Set(sync_time),
+                        sync_time_fmt: Set(sync_time_fmt),
+                        data_type: Set("VARIABLES".to_string()),
+                        serial_number: Set(serial_number.to_string()),
+                        panel_id: Set(Some(device_with_points.device_info.panel_id)),
+                        records_synced: Set(device_with_points.variable_points.len() as i32),
+                        sync_method: Set("FFI_BACKEND".to_string()),
+                        success: Set(1),
+                        error_message: Set(None),
+                        created_at: Set(sync_time),
+                        ..Default::default()
+                    };
+
+                    if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(variable_metadata)
+                        .exec(&txn)
+                        .await
+                    {
+                        sync_logger.error(&format!("❌ Failed to insert VARIABLES sync metadata: {}", e));
+                    }
                 }
 
                 // INSERT trend log data (ALWAYS INSERT for historical data)
@@ -1497,13 +1669,10 @@ impl T3000MainService {
             serial_number: Set(serial_number),
             panel_id: Set(Some(device_info.panel_id)),
             building_name: Set(Some(device_info.panel_name.clone())),
-            product_name: Set(Some("T3000 Panel".to_string())),
+            product_name: Set(Some(device_info.panel_name.clone())), // Use actual panel name from C++
             address: Set(Some(device_info.panel_ipaddress.clone())),
             status: Set(Some("Online".to_string())),
-            description: Set(Some(format!(
-                "Panel {} - {}",
-                device_info.panel_id, device_info.panel_name
-            ))),
+            description: Set(None), // Don't generate fake descriptions - keep what C++ provides
 
             // Extended network configuration fields from Device_Basic_Setting
             ip_address: Set(device_info.ip_address.clone()),
@@ -1582,6 +1751,7 @@ impl T3000MainService {
     }
 
     /// Format timestamp to "YYYY-MM-DD HH:MM:SS" format for LoggingTime_Fmt - using Local time
+    #[allow(dead_code)]
     fn format_logging_time() -> String {
         chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
     }
@@ -2216,6 +2386,12 @@ impl T3000MainService {
                                     .map(|arr| {
                                         arr.iter()
                                             .filter_map(|panel_json| {
+                                                let panel_name = clean_cpp_string(
+                                                    panel_json
+                                                        .get("panel_name")?
+                                                        .as_str()?,
+                                                    "(Unknown)" // Keep "(Unknown)" as-is from C++
+                                                );
                                                 Some(PanelInfo {
                                                     panel_number: panel_json
                                                         .get("panel_number")?
@@ -2225,10 +2401,18 @@ impl T3000MainService {
                                                         .get("serial_number")?
                                                         .as_i64()?
                                                         as i32,
-                                                    panel_name: panel_json
-                                                        .get("panel_name")?
-                                                        .as_str()?
-                                                        .to_string(),
+                                                    panel_name,
+                                                    pid: panel_json
+                                                        .get("pid")
+                                                        .and_then(|v| v.as_i64())
+                                                        .map(|v| v as i32),
+                                                    object_instance: panel_json
+                                                        .get("object_instance")
+                                                        .and_then(|v| v.as_i64())
+                                                        .map(|v| v as i32),
+                                                    online_time: panel_json
+                                                        .get("online_time")
+                                                        .and_then(|v| v.as_i64()),
                                                 })
                                             })
                                             .collect()
@@ -2523,11 +2707,13 @@ impl T3000MainService {
                         .get("panel_id")
                         .and_then(|v| v.as_i64())
                         .unwrap_or(0) as i32,
-                    panel_name: device_json
-                        .get("panel_name")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("Unknown")
-                        .to_string(),
+                    panel_name: clean_cpp_string(
+                        device_json
+                            .get("panel_name")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("Unknown"),
+                        "Unknown"
+                    ),
                     panel_serial_number,
                     panel_ipaddress: device_json
                         .get("panel_ipaddress")

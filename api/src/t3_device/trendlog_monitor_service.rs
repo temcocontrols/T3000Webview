@@ -15,15 +15,13 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use std::ffi::CString;
 
-use crate::entity::t3_device::{trendlogs, trendlog_inputs};
+use crate::entity::t3_device::trendlogs;
 use crate::error::AppError;
 use crate::logger::{write_structured_log_with_level, LogLevel};
 
 // Dynamic loading approach to avoid linking errors
 #[cfg(target_os = "windows")]
 use winapi::um::libloaderapi::{GetProcAddress, GetModuleHandleA};
-#[cfg(target_os = "windows")]
-use winapi::shared::minwindef::HINSTANCE;
 
 // Function pointer types for dynamic loading
 type GetTrendlogListFn = unsafe extern "C" fn(panel_id: c_int, result_buffer: *mut c_char, buffer_size: c_int) -> c_int;
@@ -61,6 +59,7 @@ pub struct TrendlogEntryResponse {
     pub panel_id: i32,
     pub monitor_index: i32,
     pub trendlog: TrendlogMonitorData,
+    #[serde(default)]  // Make inputs optional - default to empty vec if missing
     pub inputs: Vec<TrendlogInputData>,
     pub timestamp: i64,
 }
@@ -236,7 +235,7 @@ impl TrendlogMonitorService {
                         // Log successful retrieval
                         let _ = write_structured_log_with_level(
                             "T3_Webview_Trendlog_Monitor",
-                            &format!("Retrieved trendlog entry panel_id {} monitor {}", panel_id, monitor_index),
+                            &format!("Retrieved trendlog entry panel_id {} monitor {} with {} inputs", panel_id, monitor_index, response.inputs.len()),
                             LogLevel::Info,
                         );
                         return Ok(response);
@@ -244,7 +243,7 @@ impl TrendlogMonitorService {
                     Err(e) => {
                         let _ = write_structured_log_with_level(
                             "T3_Webview_Trendlog_Monitor",
-                            &format!("Failed to parse C++ entry JSON response: {}", e),
+                            &format!("Failed to parse C++ entry JSON response: {} | JSON preview: {}", e, &json_str.chars().take(300).collect::<String>()),
                             LogLevel::Warn,
                         );
                     }

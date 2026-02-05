@@ -52,6 +52,8 @@ pub struct StrMonitorPoint {
 #[link(name = "kernel32")]
 extern "system" {
     // Windows API for dynamic library loading
+    #[allow(non_snake_case)]
+    #[allow(dead_code)]
     fn LoadLibraryA(name: *const u8) -> *mut std::ffi::c_void;
     fn GetProcAddress(handle: *mut std::ffi::c_void, name: *const u8) -> *mut std::ffi::c_void;
     fn GetModuleHandleA(name: *const u8) -> *mut std::ffi::c_void;
@@ -87,6 +89,8 @@ fn check_t3000_availability() -> Result<(), String> {
 }
 
 // T3000 FFI function wrappers with dynamic loading
+#[allow(dead_code)]
+#[allow(non_snake_case)]
 unsafe fn Post_Refresh_Message(device_id: c_int, point_type: c_int, start_instance: c_int, end_instance: c_int) -> c_int {
     let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
     if handle.is_null() {
@@ -104,6 +108,7 @@ unsafe fn Post_Refresh_Message(device_id: c_int, point_type: c_int, start_instan
     func(device_id, point_type, start_instance, end_instance)
 }
 
+#[allow(non_snake_case)]
 unsafe fn GetMonitorBlockData(device_id: c_int, monitor_index: c_int, monitor_data: *mut StrMonitorPoint) -> c_int {
     let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
     if handle.is_null() {
@@ -121,6 +126,7 @@ unsafe fn GetMonitorBlockData(device_id: c_int, monitor_index: c_int, monitor_da
     func(device_id, monitor_index, monitor_data)
 }
 
+#[allow(non_snake_case)]
 unsafe fn T3000_GetMonitorCount(device_id: c_int) -> c_int {
     let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
     if handle.is_null() {
@@ -138,6 +144,8 @@ unsafe fn T3000_GetMonitorCount(device_id: c_int) -> c_int {
     func(device_id)
 }
 
+#[allow(dead_code)]
+#[allow(non_snake_case)]
 unsafe fn T3000_GetMonitorById(device_id: c_int, monitor_id: c_int, monitor_data: *mut StrMonitorPoint) -> c_int {
     let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
     if handle.is_null() {
@@ -155,6 +163,7 @@ unsafe fn T3000_GetMonitorById(device_id: c_int, monitor_id: c_int, monitor_data
     func(device_id, monitor_id, monitor_data)
 }
 
+#[allow(non_snake_case)]
 unsafe fn T3000_IsDeviceOnline(device_id: c_int) -> c_int {
     let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
     if handle.is_null() {
@@ -173,6 +182,7 @@ unsafe fn T3000_IsDeviceOnline(device_id: c_int) -> c_int {
     func(device_id)
 }
 
+#[allow(non_snake_case)]
 unsafe fn T3000_ConnectToDevice(device_id: c_int) -> c_int {
     let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
     if handle.is_null() {
@@ -379,7 +389,7 @@ impl TrendLogFFIService {
                     // Extract related points
                     let mut related_points = Vec::new();
                     if let Some(inputs) = entry.get("input").and_then(|i| i.as_array()) {
-                        for (idx, input_entry) in inputs.iter().enumerate().take(num_inputs as usize) {
+                        for (_idx, input_entry) in inputs.iter().enumerate().take(num_inputs as usize) {
                             if let (Some(panel), Some(point_type), Some(point_number)) = (
                                 input_entry.get("panel").and_then(|p| p.as_u64()),
                                 input_entry.get("point_type").and_then(|t| t.as_u64()),
@@ -412,7 +422,7 @@ impl TrendLogFFIService {
 
                     return Ok(TrendLogInfo {
                         serial_number: device_id as i32,
-                        panel_id: panel_id,
+                        panel_id,
                         trendlog_id: trendlog_id.to_string(),
                         trendlog_label: label.to_string(),
                         interval_seconds: total_interval_minutes * 60, // Convert minutes to seconds
@@ -480,9 +490,9 @@ impl TrendLogFFIService {
 
         let basic_info = TrendLogInfo {
             serial_number: device_id as i32,
-            panel_id: panel_id, // Use provided panel ID
+            panel_id, // Use provided panel ID
             trendlog_id: normalized_trendlog_id,  // Use normalized ID (MON1-MON12)
-            trendlog_label: trendlog_label,
+            trendlog_label,
             interval_seconds: 15, // Default interval (15 seconds)
             status: "UNKNOWN".to_string(), // Will be updated by FFI
             num_inputs: 0, // Will be updated by FFI

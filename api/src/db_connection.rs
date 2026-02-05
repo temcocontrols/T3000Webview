@@ -59,12 +59,12 @@ pub async fn establish_t3_device_connection() -> Result<DatabaseConnection, Box<
         "PRAGMA cache_size = -64000;".to_owned()
     )).await?;
 
-    // 🆕 FIX: Increase WAL autocheckpoint to reduce lock contention with 308K+ records
-    // Default is 1000 pages (~4MB), increase to 10000 pages (~40MB)
-    // This reduces frequency of checkpoint operations which can cause "database is locked" errors
+    // WAL autocheckpoint: Checkpoint when WAL reaches 1000 pages (~4MB)
+    // Smaller WAL = shorter checkpoint times = less lock contention
+    // Default is 1000, which is optimal for most workloads
     db.execute(sea_orm::Statement::from_string(
         sea_orm::DatabaseBackend::Sqlite,
-        "PRAGMA wal_autocheckpoint = 10000;".to_owned()
+        "PRAGMA wal_autocheckpoint = 1000;".to_owned()
     )).await?;
 
     // 🆕 FIX: Set locking mode to NORMAL for better concurrency
@@ -87,6 +87,13 @@ pub async fn establish_t3_device_connection() -> Result<DatabaseConnection, Box<
         sea_orm::DatabaseBackend::Sqlite,
         "PRAGMA mmap_size = 268435456;".to_owned()
     )).await?;
+
+    // Force WAL checkpoint on startup to clear any accumulated WAL file
+    // This prevents starting with a large WAL that causes lock contention
+    db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "PRAGMA wal_checkpoint(TRUNCATE);".to_owned()
+    )).await.ok(); // Ignore errors - checkpoint might fail if database is busy
 
     Ok(db)
 }

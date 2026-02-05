@@ -1,5 +1,5 @@
 // Program Refresh API Routes
-// Provides RESTful endpoints for refreshing program data using REFRESH_WEBVIEW_LIST action
+// Provides RESTful endpoints for refreshing program data using GET_WEBVIEW_LIST action
 
 use axum::{
     extract::{Path, State},
@@ -62,7 +62,7 @@ pub fn create_program_refresh_routes() -> Router<T3AppState> {
         .route("/programs/:serial/save-refreshed", axum::routing::post(save_refreshed_programs))
 }
 
-/// Refresh program(s) from device using REFRESH_WEBVIEW_LIST action (Action 17)
+/// Refresh program(s) from device using GET_WEBVIEW_LIST action (Action 17)
 /// POST /api/t3-device/programs/:serial/refresh
 /// Body: { "index": 5 } for single item, or {} for all items
 /// Returns the raw data from device without saving to database
@@ -73,10 +73,10 @@ pub async fn refresh_programs(
 ) -> Result<Json<RefreshResponse>, (StatusCode, String)> {
     match payload.index {
         Some(idx) => {
-            info!("REFRESH_WEBVIEW_LIST: Refreshing single program - Serial: {}, Index: {}", serial, idx);
+            info!("GET_WEBVIEW_LIST: Refreshing single program - Serial: {}, Index: {}", serial, idx);
         }
         None => {
-            info!("REFRESH_WEBVIEW_LIST: Refreshing all programs - Serial: {}", serial);
+            info!("GET_WEBVIEW_LIST: Refreshing all programs - Serial: {}", serial);
         }
     }
 
@@ -106,11 +106,12 @@ pub async fn refresh_programs(
         }
     };
 
-    // Prepare refresh JSON for REFRESH_WEBVIEW_LIST action
+    // Prepare refresh JSON for GET_WEBVIEW_LIST action (Action 17)
     let mut refresh_json = json!({
-        "action": WebViewMessageType::REFRESH_WEBVIEW_LIST as i32,
+        "action": WebViewMessageType::GET_WEBVIEW_LIST as i32,
         "panelId": panel_id,
         "serialNumber": serial,
+        "object_instance": serial,
         "entryType": BAC_PRG,  // 6 = PROGRAM
     });
 
@@ -120,7 +121,7 @@ pub async fn refresh_programs(
     }
 
     // Call FFI function
-    match call_refresh_ffi(WebViewMessageType::REFRESH_WEBVIEW_LIST as i32, refresh_json).await {
+    match call_refresh_ffi(WebViewMessageType::GET_WEBVIEW_LIST as i32, refresh_json).await {
         Ok(response) => {
             // Parse C++ response
             let response_json: Value = match serde_json::from_str(&response) {
@@ -150,7 +151,7 @@ pub async fn refresh_programs(
                     error!("❌ Action 17 not implemented in C++: {}", debug_msg);
                     return Err((
                         StatusCode::NOT_IMPLEMENTED,
-                        "REFRESH_WEBVIEW_LIST (Action 17) is not yet implemented in C++. Please add case 17 to BacnetWebView_HandleWebViewMsg in T3000.exe".to_string(),
+                        "GET_WEBVIEW_LIST (Action 17) is not yet implemented in C++. Please add case 17 to BacnetWebView_HandleWebViewMsg in T3000.exe".to_string(),
                     ));
                 }
 
@@ -168,9 +169,22 @@ pub async fn refresh_programs(
             let count = items.len() as i32;
 
             info!("✅ Refreshed {} program(s) from device", count);
+
+            // Auto-save to database (matching PanelDataRefreshService behavior)
+            let saved_count = match save_programs_to_db(&db_connection, serial, &items).await {
+                Ok(saved) => {
+                    info!("✅ Auto-saved {} program(s) to database", saved);
+                    saved
+                }
+                Err(e) => {
+                    error!("❌ Auto-save failed: {}", e);
+                    0 // Continue even if save fails, return 0 saved count
+                }
+            };
+
             Ok(Json(RefreshResponse {
                 success: true,
-                message: format!("Refreshed {} program(s) from device", count),
+                message: format!("Refreshed {} program(s) from device, saved {} to database", count, saved_count),
                 items,
                 count,
                 timestamp: chrono::Utc::now().to_rfc3339(),
@@ -183,7 +197,7 @@ pub async fn refresh_programs(
             if e.contains("not implemented") || e.contains("empty response") {
                 return Err((
                     StatusCode::NOT_IMPLEMENTED,
-                    "REFRESH_WEBVIEW_LIST (Action 17) is not yet implemented in C++. Please implement BacnetWebView_HandleWebViewMsg case 17 in T3000.exe".to_string(),
+                    "GET_WEBVIEW_LIST (Action 17) is not yet implemented in C++. Please implement BacnetWebView_HandleWebViewMsg case 17 in T3000.exe".to_string(),
                 ));
             }
 

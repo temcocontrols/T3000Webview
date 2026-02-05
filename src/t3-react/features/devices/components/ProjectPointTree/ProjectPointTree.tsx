@@ -7,7 +7,7 @@
  * Matches C++ Project Point View (DLG_DIALOG_BUILDING_MANAGEMENT mode)
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Tree,
   TreeItem,
@@ -18,44 +18,81 @@ import {
   ServerRegular,
   Checkmark20Regular,
   Dismiss20Regular,
-  DatabaseRegular,
-  GaugeRegular,
+  WrenchRegular,
+  OptionsRegular,
+  CircleMultipleConcentricRegular,
+  DeveloperBoardRegular,
+  FlowRegular,
   CalendarRegular,
-  CalendarLtrRegular,
-  CodeRegular,
+  CalendarDateRegular,
   ImageRegular,
   ChartMultipleRegular,
 } from '@fluentui/react-icons';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useDeviceTreeStore } from '../../store/deviceTreeStore';
 import { CapacityBar } from './CapacityBar';
 import styles from './ProjectPointTree.module.css';
 
 /**
- * Get icon for point type
+ * Get icon for point type (matching toolbar icons)
  */
 const getPointTypeIcon = (pointType: string) => {
   switch (pointType) {
     case 'inputs':
-      return <DatabaseRegular className={styles.icon} />;
+      return <WrenchRegular className={styles.icon} />;
     case 'outputs':
-      return <DatabaseRegular className={styles.icon} />;
+      return <OptionsRegular className={styles.icon} />;
     case 'variables':
-      return <DatabaseRegular className={styles.icon} />;
-    case 'pid':
-      return <GaugeRegular className={styles.icon} />;
+      return <CircleMultipleConcentricRegular className={styles.icon} />;
+    case 'programs':
+      return <DeveloperBoardRegular className={styles.icon} />;
+    case 'pidloops':
+      return <FlowRegular className={styles.icon} />;
     case 'schedules':
       return <CalendarRegular className={styles.icon} />;
     case 'holidays':
-      return <CalendarLtrRegular className={styles.icon} />;
-    case 'programs':
-      return <CodeRegular className={styles.icon} />;
+      return <CalendarDateRegular className={styles.icon} />;
     case 'graphics':
       return <ImageRegular className={styles.icon} />;
     case 'trendlogs':
       return <ChartMultipleRegular className={styles.icon} />;
     default:
-      return <DatabaseRegular className={styles.icon} />;
+      return <WrenchRegular className={styles.icon} />;
   }
+};
+
+/**
+ * Map route to point type for selection
+ */
+const getPointTypeFromRoute = (pathname: string): string | null => {
+  if (pathname.includes('/inputs')) return 'inputs';
+  if (pathname.includes('/outputs')) return 'outputs';
+  if (pathname.includes('/variables')) return 'variables';
+  if (pathname.includes('/programs')) return 'programs';
+  if (pathname.includes('/pidloops')) return 'pidloops';
+  if (pathname.includes('/schedules')) return 'schedules';
+  if (pathname.includes('/holidays')) return 'holidays';
+  if (pathname.includes('/graphics')) return 'graphics';
+  if (pathname.includes('/trendlogs')) return 'trendlogs';
+  return null;
+};
+
+/**
+ * Map point type to route for navigation
+ */
+const getRouteFromPointType = (pointType: string): string => {
+  const routeMap: Record<string, string> = {
+    'inputs': '/t3000/inputs',
+    'outputs': '/t3000/outputs',
+    'variables': '/t3000/variables',
+    'programs': '/t3000/programs',
+    'pidloops': '/t3000/pidloops',
+    'schedules': '/t3000/schedules',
+    'holidays': '/t3000/holidays',
+    'graphics': '/t3000/graphics',
+    'trendlogs': '/t3000/trendlogs',
+  };
+  return routeMap[pointType] || '/t3000/dashboard';
 };
 
 /**
@@ -71,77 +108,147 @@ const StatusIcon: React.FC<{ status: string }> = ({ status }) => {
 /**
  * Recursive tree node renderer for Project Point View
  */
-const ProjectTreeNode: React.FC<{ node: any; level: number }> = React.memo(({ node, level }) => {
-  const hasChildren = node.children && node.children.length > 0;
+const ProjectTreeNode: React.FC<{
+  node: any;
+  level: number;
+  selectedPointType: string | null;
+  onNavigate: (pointType: string) => void;
+}> = React.memo(
+  ({ node, level, selectedPointType, onNavigate }) => {
+    const hasChildren = node.children && node.children.length > 0;
 
-  // Point type node with capacity bar
-  if (node.node_type === 'point_type') {
-    return (
-      <TreeItem itemType="leaf" value={node.name}>
-        <TreeItemLayout className={styles.pointTypeItem}>
-          {getPointTypeIcon(node.point_type)}
-          <span className={styles.pointTypeName}>{node.name}</span>
-          {node.used !== undefined && node.total !== undefined && (
-            <CapacityBar
-              used={node.used}
-              total={node.total}
-              percentage={node.percentage || 0}
-            />
+    // Point type node with capacity bar
+    if (node.node_type === 'point_type') {
+      const isSelected = node.point_type === selectedPointType;
+
+      const handleClick = () => {
+        if (node.point_type) {
+          onNavigate(node.point_type);
+        }
+      };
+
+      return (
+        <TreeItem itemType="leaf" value={node.name}>
+          <TreeItemLayout
+            className={isSelected ? styles.treeItemSelected : styles.treeItemNormal}
+            style={{ '--tree-level': level, cursor: 'pointer' } as React.CSSProperties}
+            onClick={handleClick}
+          >
+            {getPointTypeIcon(node.point_type)}
+            <span className={styles.pointTypeName}>{node.name}</span>
+            {node.used !== undefined && node.total !== undefined && (
+              <CapacityBar
+                used={node.used}
+                total={node.total}
+                percentage={node.percentage || 0}
+              />
+            )}
+          </TreeItemLayout>
+        </TreeItem>
+      );
+    }
+
+    // Device node with status
+    if (node.node_type === 'device') {
+      return (
+        <TreeItem itemType="branch" value={node.name}>
+          <TreeItemLayout
+            className={styles.treeItemNormal}
+            style={{ '--tree-level': level } as React.CSSProperties}
+            iconBefore={<ServerRegular style={{ color: '#605e5c', width: '20px', height: '20px' }} />}
+            aside={node.status ? <StatusIcon status={node.status} /> : undefined}
+          >
+            {node.name}
+          </TreeItemLayout>
+          {hasChildren && (
+            <Tree>
+              {node.children.map((child: any, index: number) => (
+                <ProjectTreeNode
+                  key={`${child.name}-${index}`}
+                  node={child}
+                  level={level + 1}
+                  selectedPointType={selectedPointType}
+                  onNavigate={onNavigate}
+                />
+              ))}
+            </Tree>
           )}
-        </TreeItemLayout>
-      </TreeItem>
-    );
-  }
+        </TreeItem>
+      );
+    }
 
-  // Device node with status
-  if (node.node_type === 'device') {
+    // System or root nodes
     return (
       <TreeItem itemType="branch" value={node.name}>
-        <TreeItemLayout>
-          <ServerRegular className={styles.icon} />
-          <span>{node.name}</span>
-          {node.status && <StatusIcon status={node.status} />}
+        <TreeItemLayout
+          className={styles.treeItemNormal}
+          style={{ '--tree-level': level } as React.CSSProperties}
+          iconBefore={<FolderRegular style={{ color: '#605e5c', width: '20px', height: '20px' }} />}
+        >
+          {node.name}
         </TreeItemLayout>
         {hasChildren && (
           <Tree>
             {node.children.map((child: any, index: number) => (
-              <ProjectTreeNode key={`${child.name}-${index}`} node={child} level={level + 1} />
+              <ProjectTreeNode
+                key={`${child.name}-${index}`}
+                node={child}
+                level={level + 1}
+                selectedPointType={selectedPointType}
+                onNavigate={onNavigate}
+              />
             ))}
           </Tree>
         )}
       </TreeItem>
     );
   }
-
-  // System or root nodes
-  return (
-    <TreeItem itemType="branch" value={node.name}>
-      <TreeItemLayout>
-        <FolderRegular className={styles.icon} />
-        <span>{node.name}</span>
-      </TreeItemLayout>
-      {hasChildren && (
-        <Tree>
-          {node.children.map((child: any, index: number) => (
-            <ProjectTreeNode key={`${child.name}-${index}`} node={child} level={level + 1} />
-          ))}
-        </Tree>
-      )}
-    </TreeItem>
-  );
-});
+);
 
 /**
  * ProjectPointTree Component
  */
 export const ProjectPointTree: React.FC = () => {
   const { projectTreeData, isLoading, error, fetchProjectPointTree } = useDeviceTreeStore();
+  const [openItems, setOpenItems] = useState<string[]>([]);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const selectedPointType = getPointTypeFromRoute(location.pathname);
+
+  const handleNavigate = (pointType: string) => {
+    const route = getRouteFromPointType(pointType);
+    navigate(route);
+  };
 
   useEffect(() => {
     if (!projectTreeData) {
       fetchProjectPointTree();
     }
   }, [projectTreeData, fetchProjectPointTree]);
+
+  // Auto-expand first device when tree data loads
+  useEffect(() => {
+    if (projectTreeData && openItems.length === 0) {
+      const itemsToExpand: string[] = [];
+
+      // Expand root "Point List"
+      itemsToExpand.push(projectTreeData.name);
+
+      // Expand "System List" (first child)
+      if (projectTreeData.children && projectTreeData.children.length > 0) {
+        const systemList = projectTreeData.children[0];
+        itemsToExpand.push(systemList.name);
+
+        // Expand first device
+        if (systemList.children && systemList.children.length > 0) {
+          const firstDevice = systemList.children[0];
+          itemsToExpand.push(firstDevice.name);
+        }
+      }
+
+      setOpenItems(itemsToExpand);
+    }
+  }, [projectTreeData, openItems.length]);
 
   if (isLoading) {
     return (
@@ -171,8 +278,16 @@ export const ProjectPointTree: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      <Tree>
-        <ProjectTreeNode node={projectTreeData} level={0} />
+      <Tree
+        openItems={openItems}
+        onOpenChange={(_, data) => setOpenItems(data.openItems as string[])}
+      >
+        <ProjectTreeNode
+          node={projectTreeData}
+          level={0}
+          selectedPointType={selectedPointType}
+          onNavigate={handleNavigate}
+        />
       </Tree>
     </div>
   );

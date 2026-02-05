@@ -35,3 +35,7 @@
 .checkbox {
   margin-top: 4px;
 }
+
+.checkbox label {
+  font-size: 12px !important;
+}

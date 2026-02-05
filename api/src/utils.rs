@@ -49,7 +49,7 @@ pub fn copy_database_if_not_exists() -> Result<(), Box<dyn std::error::Error>> {
     // Create the destination directory if it doesn't exist.
     if !destination_dir.exists() {
         fs::create_dir_all(destination_dir)?;
-        println!("Created destination directory: {:?}", destination_dir);
+        crate::logger::write_structured_log_with_level("T3_Database_Migration", &format!("Created destination directory: {:?}", destination_dir), crate::logger::LogLevel::Info).ok();
     }
 
     // Copy the database file if it doesn't exist in the destination directory.
@@ -63,10 +63,7 @@ pub fn copy_database_if_not_exists() -> Result<(), Box<dyn std::error::Error>> {
         }
         // Copy the source database file to the destination.
         fs::copy(&source_db_path, &destination_db_path)?;
-        println!(
-            "Copied database file from {:?} to {:?}",
-            source_db_path, destination_db_path
-        );
+        crate::logger::write_structured_log("T3_Database_Migration", &format!("Copied database file from {:?} to {:?}", source_db_path, destination_db_path)).ok();
     }
 
     Ok(())
@@ -100,7 +97,191 @@ lazy_static! {
 
 /// Abstracted enhanced logging for T3000 operations
 pub fn t3_enhanced_logging(message: &str) {
-    println!("{}", message);
+    crate::logger::write_structured_log("T3_Database_Migration", &message).ok();
+}
+
+/// Check if a file is locked by another process
+fn is_file_locked(path: &Path) -> bool {
+    use std::fs::OpenOptions;
+
+    // Try to open the file with write access
+    match OpenOptions::new().write(true).open(path) {
+        Ok(_) => false, // File is not locked
+        Err(e) => {
+            // Check if error is due to file being locked
+            if let Some(os_error) = e.raw_os_error() {
+                // Windows: ERROR_SHARING_VIOLATION (32) or ERROR_LOCK_VIOLATION (33)
+                // Linux: EWOULDBLOCK (11) or EAGAIN (11)
+                os_error == 32 || os_error == 33 || os_error == 11
+            } else {
+                false
+            }
+        }
+    }
+}
+
+/// Format file size in human-readable format
+fn format_file_size(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = KB * 1024;
+    const GB: u64 = MB * 1024;
+
+    if bytes >= GB {
+        format!("{:.2} GB", bytes as f64 / GB as f64)
+    } else if bytes >= MB {
+        format!("{:.2} MB", bytes as f64 / MB as f64)
+    } else if bytes >= KB {
+        format!("{:.2} KB", bytes as f64 / KB as f64)
+    } else {
+        format!("{} bytes", bytes)
+    }
+}
+
+/// Copy database file with retry logic and fast backoff
+///
+/// Attempts to copy a file with multiple retries if it fails.
+/// Uses fast backoff optimized for small files (<1MB): 200ms, 500ms, 1s, 2s, 3s
+///
+/// Returns the number of bytes copied on success
+fn copy_database_with_retry(
+    source: &Path,
+    destination: &Path,
+    max_retries: u32,
+) -> Result<u64, Box<dyn std::error::Error>> {
+    use std::thread;
+    use std::time::Duration;
+
+    t3_enhanced_logging(&format!("🔄 Starting copy with retry (max {} attempts)...", max_retries));
+
+    for attempt in 1..=max_retries {
+        t3_enhanced_logging(&format!("   Attempt {}/{}", attempt, max_retries));
+
+        // Check if source file is locked
+        if is_file_locked(source) {
+            t3_enhanced_logging(&format!("   ⚠️  Source file is locked by another process"));
+
+            if attempt < max_retries {
+                // Fast backoff for small files: 200ms, 500ms, 1000ms, 2000ms, 3000ms
+                let delay_ms = match attempt {
+                    1 => 200,
+                    2 => 500,
+                    3 => 1000,
+                    4 => 2000,
+                    _ => 3000,
+                };
+                t3_enhanced_logging(&format!("   ⏳ Waiting {} ms before retry...", delay_ms));
+                thread::sleep(Duration::from_millis(delay_ms));
+                continue;
+            } else {
+                return Err(From::from("Source file is locked after all retries"));
+            }
+        }
+
+        // Check if destination is locked (if it exists)
+        if destination.exists() && is_file_locked(destination) {
+            t3_enhanced_logging(&format!("   ⚠️  Destination file is locked by another process"));
+
+            if attempt < max_retries {
+                // Fast backoff for small files: 200ms, 500ms, 1000ms, 2000ms, 3000ms
+                let delay_ms = match attempt {
+                    1 => 200,
+                    2 => 500,
+                    3 => 1000,
+                    4 => 2000,
+                    _ => 3000,
+                };
+                t3_enhanced_logging(&format!("   ⏳ Waiting {} ms before retry...", delay_ms));
+                thread::sleep(Duration::from_millis(delay_ms));
+                continue;
+            } else {
+                return Err(From::from("Destination file is locked after all retries"));
+            }
+        }
+
+        // Get source file size for logging
+        let source_size = match fs::metadata(source) {
+            Ok(metadata) => metadata.len(),
+            Err(e) => {
+                t3_enhanced_logging(&format!("   ⚠️  Cannot read source file metadata: {}", e));
+                0
+            }
+        };
+
+        if source_size > 0 {
+            t3_enhanced_logging(&format!("   📊 Source file size: {} ({})", source_size, format_file_size(source_size)));
+        }
+
+        // Attempt to copy
+        match fs::copy(source, destination) {
+            Ok(bytes_copied) => {
+                t3_enhanced_logging(&format!("   ✅ Copy successful: {} bytes", bytes_copied));
+
+                // Verify destination file exists and has correct size
+                match fs::metadata(destination) {
+                    Ok(dest_metadata) => {
+                        let dest_size = dest_metadata.len();
+                        if dest_size == bytes_copied {
+                            t3_enhanced_logging(&format!("   ✅ Verification passed: destination size matches ({})", dest_size));
+                            return Ok(bytes_copied);
+                        } else {
+                            t3_enhanced_logging(&format!("   ⚠️  Size mismatch: copied {} bytes but destination is {} bytes", bytes_copied, dest_size));
+
+                            if attempt < max_retries {
+                                // Fast backoff for small files: 200ms, 500ms, 1000ms, 2000ms, 3000ms
+                                let delay_ms = match attempt {
+                                    1 => 200,
+                                    2 => 500,
+                                    3 => 1000,
+                                    4 => 2000,
+                                    _ => 3000,
+                                };
+                                t3_enhanced_logging(&format!("   ⏳ Retrying after {} ms...", delay_ms));
+                                thread::sleep(Duration::from_millis(delay_ms));
+                                continue;
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        t3_enhanced_logging(&format!("   ⚠️  Cannot verify destination: {}", e));
+
+                        if attempt < max_retries {
+                            // Fast backoff for small files: 200ms, 500ms, 1000ms, 2000ms, 3000ms
+                            let delay_ms = match attempt {
+                                1 => 200,
+                                2 => 500,
+                                3 => 1000,
+                                4 => 2000,
+                                _ => 3000,
+                            };
+                            t3_enhanced_logging(&format!("   ⏳ Retrying after {} ms...", delay_ms));
+                            thread::sleep(Duration::from_millis(delay_ms));
+                            continue;
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                t3_enhanced_logging(&format!("   ❌ Copy failed: {}", e));
+
+                if attempt < max_retries {
+                    // Fast backoff for small files: 200ms, 500ms, 1000ms, 2000ms, 3000ms
+                    let delay_ms = match attempt {
+                        1 => 200,
+                        2 => 500,
+                        3 => 1000,
+                        4 => 2000,
+                        _ => 3000,
+                    };
+                    t3_enhanced_logging(&format!("   ⏳ Waiting {} ms before retry...", delay_ms));
+                    thread::sleep(Duration::from_millis(delay_ms));
+                } else {
+                    return Err(From::from(format!("Copy failed after {} attempts: {}", max_retries, e)));
+                }
+            }
+        }
+    }
+
+    Err(From::from(format!("Copy failed after {} retries", max_retries)))
 }
 
 /// Abstracted T3000 device database copy functionality
@@ -288,26 +469,48 @@ pub fn copy_t3_device_database_if_not_exists() -> Result<(), Box<dyn std::error:
             for alt_path in &alt_source_paths {
                 if alt_path.exists() {
                     t3_enhanced_logging(&format!("Found webview_t3_device database at alternative location: {:?}", alt_path));
-                    fs::copy(alt_path, &destination_db_path)?;
-                    t3_enhanced_logging(&format!("Copied webview_t3_device database from {:?} to {:?}", alt_path, destination_db_path));
-                    source_found = true;
-                    break;
+
+                    // Retry logic for alternative path copy
+                    match copy_database_with_retry(alt_path, &destination_db_path, 5) {
+                        Ok(bytes) => {
+                            t3_enhanced_logging(&format!("✅ Copied {} bytes from {:?} to {:?}", bytes, alt_path, destination_db_path));
+                            source_found = true;
+                            break;
+                        }
+                        Err(e) => {
+                            t3_enhanced_logging(&format!("❌ Failed to copy from alternative location {:?}: {}", alt_path, e));
+                            continue; // Try next alternative location
+                        }
+                    }
                 }
             }
 
             if !source_found {
-                t3_enhanced_logging("No source webview_t3_device database found in any expected location");
+                t3_enhanced_logging("❌ No source webview_t3_device database found in any expected location");
                 return Err(From::from(format!(
                     "Source webview_t3_device database file does not exist: {:?}",
                     source_db_path
                 )));
             }
         } else {
-            fs::copy(&source_db_path, &destination_db_path)?;
-            t3_enhanced_logging(&format!(
-                "Copied webview_t3_device database file from {:?} to {:?}",
-                source_db_path, destination_db_path
-            ));
+            // Main database copy with retry logic
+            t3_enhanced_logging(&format!("📂 Starting database copy with retry logic..."));
+            t3_enhanced_logging(&format!("   Source: {:?}", source_db_path));
+            t3_enhanced_logging(&format!("   Destination: {:?}", destination_db_path));
+
+            match copy_database_with_retry(&source_db_path, &destination_db_path, 5) {
+                Ok(bytes) => {
+                    t3_enhanced_logging(&format!("✅ Successfully copied {} bytes ({})",
+                        bytes, format_file_size(bytes)));
+                }
+                Err(e) => {
+                    t3_enhanced_logging(&format!("❌ Database copy failed after all retries: {}", e));
+                    return Err(From::from(format!(
+                        "Failed to copy webview_t3_device database after retries: {}",
+                        e
+                    )));
+                }
+            }
         }
 
         // If this was a force copy due to version update, mark update as completed
@@ -489,7 +692,7 @@ pub fn log_message(message: &str, log_to_file: bool) {
     }
 
     if print_to_console {
-        println!("{}", formatted_message);
+        crate::logger::write_structured_log("T3_Database_Migration", &formatted_message).ok();
     }
 }
 
@@ -522,7 +725,7 @@ pub async fn cleanup_orphaned_migrations() -> Result<(), Box<dyn std::error::Err
 
     let conn = establish_connection().await?;
 
-    println!("🧹 Cleaning up orphaned migration records...");
+    crate::logger::write_structured_log("T3_Database_Migration", "Cleaning up orphaned migration records...").ok();
 
     // Get applied migrations from database - using direct SQL to avoid missing file issues
     let applied_migrations: Vec<String> = {
@@ -545,8 +748,8 @@ pub async fn cleanup_orphaned_migrations() -> Result<(), Box<dyn std::error::Err
         .map(|m| m.name().to_string())
         .collect();
 
-    println!("   Applied migrations: {}", applied_migrations.len());
-    println!("   Available migration files: {}", available_migrations.len());
+    crate::logger::write_structured_log("T3_Database_Migration", &format!("   Applied migrations: {}", applied_migrations.len())).ok();
+    crate::logger::write_structured_log("T3_Database_Migration", &format!("   Available migration files: {}", available_migrations.len())).ok();
 
     // Find orphaned migrations (applied but file missing)
     let orphaned: Vec<String> = applied_migrations
@@ -556,11 +759,11 @@ pub async fn cleanup_orphaned_migrations() -> Result<(), Box<dyn std::error::Err
         .collect();
 
     if orphaned.is_empty() {
-        println!("   ✅ No orphaned migration records found");
+        crate::logger::write_structured_log("T3_Database_Migration", "   No orphaned migration records found").ok();
     } else {
-        println!("   🗑️  Found {} orphaned migration(s):", orphaned.len());
+        crate::logger::write_structured_log_with_level("T3_Database_Migration", &format!("   Found {} orphaned migration(s):", orphaned.len()), crate::logger::LogLevel::Warn).ok();
         for version in &orphaned {
-            println!("      - {}", version);
+            crate::logger::write_structured_log_with_level("T3_Database_Migration", &format!("      - {}", version), crate::logger::LogLevel::Warn).ok();
         }
 
         // Remove orphaned migrations
@@ -572,13 +775,12 @@ pub async fn cleanup_orphaned_migrations() -> Result<(), Box<dyn std::error::Err
                 )
             ).await?;
 
-            println!("      ✅ Removed migration record: {} ({} row(s) affected)",
-                     version, result.rows_affected());
+            crate::logger::write_structured_log("T3_Database_Migration", &format!("      ✅ Removed migration record: {} ({} row(s) affected)", version, result.rows_affected())).ok();
         }
     }
 
     drop(conn);
-    println!("✅ Migration cleanup completed");
+    crate::logger::write_structured_log("T3_Database_Migration", "✅ Migration cleanup completed").ok();
     Ok(())
 }
 
@@ -586,29 +788,31 @@ pub async fn cleanup_orphaned_migrations() -> Result<(), Box<dyn std::error::Err
 pub async fn run_migrations_if_pending() -> Result<(), Box<dyn std::error::Error>> {
     // First, cleanup any orphaned migration records
     if let Err(e) = cleanup_orphaned_migrations().await {
-        println!("⚠️  Could not cleanup orphaned migrations: {}", e);
-        println!("   Continuing with migration check...");
+        crate::logger::write_structured_log_with_level("T3_Database_Migration", &format!("⚠️  Could not cleanup orphaned migrations: {}", e), crate::logger::LogLevel::Warn).ok();
+        crate::logger::write_structured_log("T3_Database_Migration", "   Continuing with migration check...").ok();
     }
 
     match has_pending_migrations().await {
         Ok(true) => {
-            println!("🔄 New migrations detected, running...");
+            crate::logger::write_structured_log("T3_Database_Migration", "🔄 New migrations detected, running...").ok();
             match run_migrations().await {
-                Ok(_) => println!("✅ Database migrations completed"),
+                Ok(_) => {
+                    crate::logger::write_structured_log("T3_Database_Migration", "OK Database migrations completed").ok();
+                },
                 Err(e) => {
-                    println!("⚠️  Migration error encountered: {}", e);
-                    println!("   This might be due to missing migration files or schema inconsistencies.");
-                    println!("   The system will continue without applying migrations.");
+                    crate::logger::write_structured_log_with_level("T3_Database_Migration", &format!("WARNING Migration error encountered: {}", e), crate::logger::LogLevel::Warn).ok();
+                    crate::logger::write_structured_log("T3_Database_Migration", "   This might be due to missing migration files or schema inconsistencies.").ok();
+                    crate::logger::write_structured_log("T3_Database_Migration", "   The system will continue without applying migrations.").ok();
                 }
             }
         },
         Ok(false) => {
-            println!("✅ Database schema up to date, no migrations needed");
+            crate::logger::write_structured_log("T3_Database_Migration", "✅ Database schema up to date, no migrations needed").ok();
         },
         Err(e) => {
-            println!("⚠️  Could not check migration status: {}", e);
-            println!("   This might be due to missing migration files or database issues.");
-            println!("   The system will continue without applying migrations.");
+            crate::logger::write_structured_log_with_level("T3_Database_Migration", &format!("⚠️  Could not check migration status: {}", e), crate::logger::LogLevel::Warn).ok();
+            crate::logger::write_structured_log("T3_Database_Migration", "   This might be due to missing migration files or database issues.").ok();
+            crate::logger::write_structured_log("T3_Database_Migration", "   The system will continue without applying migrations.").ok();
         }
     }
     Ok(())

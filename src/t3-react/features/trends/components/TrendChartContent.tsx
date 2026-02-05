@@ -22,14 +22,10 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   Dropdown,
   Option,
-  Switch,
   Text,
   Spinner,
-  Badge,
   makeStyles,
   tokens,
-  ToolbarButton,
-  ToolbarDivider,
   Menu,
   MenuTrigger,
   MenuPopover,
@@ -38,51 +34,142 @@ import {
   Button,
   Tooltip,
   Tag,
+  Badge,
 } from '@fluentui/react-components';
 import {
-  ArrowSyncRegular,
   ArrowDownloadRegular,
-  PlayRegular,
-  PauseRegular,
   ArrowResetRegular,
-  ChevronDownRegular,
   DatabaseRegular,
   ImageRegular,
   ArrowUpRegular,
   ArrowDownRegular,
   ArrowLeftRegular,
   ArrowRightRegular,
-  DocumentRegular,
   SettingsRegular,
   FlashRegular,
   HistoryRegular,
-  ErrorCircleRegular,
-  DismissRegular,
   ChevronRightRegular,
   ChevronDownFilled,
 } from '@fluentui/react-icons';
-import { TrendChart, TrendSeries } from './TrendChart';
+import { TrendChart, TrendSeries } from '../../trendlogs/components/TrendChart';
 import { TrendChartApiService, TrendDataRequest, SpecificPoint } from '../services/trendChartApi';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 
 const useStyles = makeStyles({
   container: {
     display: 'flex',
-    flexDirection: 'row',
+    flexDirection: 'column',
     height: '100%',
     backgroundColor: tokens.colorNeutralBackground1,
     gap: '0',
-    padding: '5px',
     overflow: 'hidden',
   },
+  topControlsBar: {
+    padding: '8px 12px',
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    flexShrink: 0,
+  },
+  controlsMainFlex: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    alignItems: 'center',
+  },
+  // ANALOG AREA (Top Section)
+  analogArea: {
+    display: 'flex',
+    flexDirection: 'row',
+    // Dynamic height: 100% if no digital series, 60% if digital series exist
+    flex: 1, // Use flex instead of fixed height
+    minHeight: '200px',
+    gap: '6px',
+    overflow: 'hidden',
+    padding: '4px',
+    backgroundColor: '#f5f5f5',
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: '4px',
+  },
   leftPanel: {
+    width: 'clamp(210px, 23vw, 330px)',
+    backgroundColor: '#fafafa',
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: '0px',
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    flexShrink: 0,
     display: 'flex',
     flexDirection: 'column',
-    gap: '0',
-    overflow: 'hidden',
+    position: 'relative',
+  },
+  rightPanel: {
+    flex: 1,
+    backgroundColor: '#fafafa',
+    border: 'none',
+    borderRadius: '0px',
+    display: 'flex',
+    flexDirection: 'column',
+    minWidth: '200px',
+    overflowY: 'auto',
+    overflowX: 'hidden',
+  },
+  // RESIZABLE DIVIDER
+  resizableDivider: {
+    height: '3px',
+    background: 'linear-gradient(to bottom, #e1e4e8 0%, #d1d5da 50%, #e1e4e8 100%)',
+    cursor: 'row-resize',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    zIndex: 10,
+    transition: 'background 0.2s ease',
+    ':hover': {
+      background: 'linear-gradient(to bottom, #c6cbd1 0%, #959da5 50%, #c6cbd1 100%)',
+    },
+  },
+  dividerGrip: {
+    width: '40px',
+    height: '1.5px',
+    background: '#959da5',
+    borderRadius: '2px',
+    boxShadow: '0 -1px 0 rgba(255, 255, 255, 0.5), 0 1px 0 rgba(255, 255, 255, 0.5)',
+  },
+  // DIGITAL AREA (Bottom Section)
+  digitalArea: {
+    flex: 1,
+    minHeight: '150px',
+    backgroundColor: '#f5f5f5',
     border: `1px solid ${tokens.colorNeutralStroke1}`,
-    borderRadius: tokens.borderRadiusMedium,
-    padding: '5px',
+    borderRadius: '4px',
+    padding: '4px',
+    display: 'flex',
+    flexDirection: 'row',
+    gap: '6px',
+    overflow: 'hidden',
+  },
+  digitalLeftPanel: {
+    width: 'clamp(210px, 23vw, 330px)',
+    backgroundColor: '#fafafa',
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: '0px',
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    flexShrink: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    position: 'relative',
+  },
+  digitalRightPanel: {
+    flex: 1,
+    backgroundColor: '#fafafa',
+    border: 'none',
+    borderRadius: '0px',
+    display: 'flex',
+    flexDirection: 'column',
+    minWidth: '200px',
+    overflowY: 'auto',
+    overflowX: 'hidden',
   },
   seriesPanelHeader: {
     padding: '4px',
@@ -188,10 +275,17 @@ const useStyles = makeStyles({
     transition: 'all 0.2s ease',
     position: 'relative',
     boxShadow: tokens.shadow4,
+    backgroundColor: 'var(--series-color)',
     ':hover': {
       transform: 'scale(1.1)',
       boxShadow: tokens.shadow8,
     },
+  },
+  digitalSeriesLabel: {
+    fontSize: '11px',
+    fontWeight: tokens.fontWeightBold,
+    marginBottom: '4px',
+    color: 'var(--series-color)',
   },
   keyboardBadge: {
     position: 'absolute',
@@ -386,6 +480,38 @@ const useStyles = makeStyles({
     alignItems: 'center',
     gap: '6px',
   },
+  statusTag: {
+    padding: '1px 6px',
+    borderRadius: '3px',
+    fontSize: '10px',
+    fontWeight: '500',
+    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '3px',
+    whiteSpace: 'nowrap',
+    border: '1px solid',
+    transition: 'all 0.2s ease',
+  },
+  statusTagLive: {
+    backgroundColor: '#f6ffed',
+    border: '1px solid #b7eb8f',
+    color: '#389e0d',
+  },
+  statusTagHistorical: {
+    backgroundColor: '#e6f7ff',
+    border: '1px solid #91d5ff',
+    color: '#0958d9',
+  },
+  statusTagTimeBase: {
+    backgroundColor: '#f5f5f5',
+    border: '1px solid #d9d9d9',
+    color: '#595959',
+  },
+  liveIndicator: {
+    fontSize: '10px',
+    animation: 'pulse 1.5s ease-in-out infinite',
+  },
   spacer: {
     flex: 1,
   },
@@ -471,17 +597,12 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   // State
   const [series, setSeries] = useState<TrendSeries[]>([]);
   const [timeBase, setTimeBase] = useState<TimeBase>('5m');
-  const [showGrid, setShowGrid] = useState(true);
-  const [isRealtime, setIsRealtime] = useState(true);
+  const [showGrid] = useState(true);
+  const [isRealtime] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [currentView, setCurrentView] = useState<1 | 2 | 3>(1);
-  const [keyboardEnabled, setKeyboardEnabled] = useState(false);
   const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set());
   const [dataSource, setDataSource] = useState<'realtime' | 'api' | 'loading' | 'error'>('loading');
-  const [hasConnectionError, setHasConnectionError] = useState(false);
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
-  const [leftPanelWidth, setLeftPanelWidth] = useState(280);
 
   // Refs
   const realtimeIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -489,28 +610,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const timebaseChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const historyAbortControllerRef = useRef<AbortController | null>(null);
   const hasLoadedInitialDataRef = useRef<boolean>(false);
-
-  // Handle left panel resize (similar to MainLayout pattern)
-  const handleLeftPanelResize = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-
-    const startX = e.clientX;
-    const startWidth = leftPanelWidth;
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const delta = moveEvent.clientX - startX;
-      const newWidth = Math.min(Math.max(startWidth + delta, 200), 400);
-      setLeftPanelWidth(newWidth);
-    };
-
-    const handleMouseUp = () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  }, [leftPanelWidth]);
 
   /**
    * Computed: Visible analog series (Vue pattern)
@@ -529,37 +628,20 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   );
 
   /**
-   * Helper: Get series counts by type for dropdown labels
+   * Computed: All analog series (for counts and rendering)
    */
-  const getSeriesCounts = useMemo(() => {
-    const counts = {
-      analog: 0,
-      digital: 0,
-      input: 0,
-      output: 0,
-      variable: 0,
-    };
-
-    series.forEach((s) => {
-      if (s.digitalAnalog === 'Analog') counts.analog++;
-      if (s.digitalAnalog === 'Digital') counts.digital++;
-      if (s.pointType === 'IN') counts.input++;
-      if (s.pointType === 'OUT') counts.output++;
-      if (s.pointType === 'VAR') counts.variable++;
-    });
-
-    return counts;
-  }, [series]);
+  const analogSeries = useMemo(
+    () => series.filter((s) => s.digitalAnalog === 'Analog'),
+    [series]
+  );
 
   /**
-   * Helper: Get keyboard shortcut for series
+   * Computed: All digital series (for counts and rendering)
    */
-  const getKeyboardShortcut = useCallback((index: number): string | null => {
-    if (!keyboardEnabled) return null;
-    if (index < 9) return `${index + 1}`;
-    if (index === 9) return '0';
-    return null;
-  }, [keyboardEnabled]);
+  const digitalSeries = useMemo(
+    () => series.filter((s) => s.digitalAnalog === 'Digital'),
+    [series]
+  );
 
   /**
    * Helper: Toggle series expansion
@@ -577,17 +659,11 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   }, []);
 
   /**
-   * Helper: Remove series from tracking (for View 2/3)
+   * Helper: Get prefix tag for series (updated from Vue)
    */
-  const removeFromTracking = useCallback((seriesKey: string) => {
-    setSeries(prev => prev.filter(s => `${s.pointType}-${s.pointIndex}` !== seriesKey));
-  }, []);
-
-  /**
-   * Helper: Get prefix tag for series
-   */
-  const getPrefixTag = useCallback((pointType: string): string => {
-    return pointType || 'N/A';
+  const getPrefixTag = useCallback((pointType: string, prefix?: string): string => {
+    // Use prefix if available (from series data), otherwise fall back to pointType
+    return prefix || pointType || 'N/A';
   }, []);
 
   /**
@@ -625,7 +701,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     }
 
     setLoading(true);
-    setHasConnectionError(false);
 
     try {
       // Calculate time range based on timeBase
@@ -667,7 +742,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             gapEnd: new Date(endTime).toISOString(),
           });
         } else {
-          console.log('✅ TrendChartContent: All requested data already exists in memory - skipping database load');
+          console.log('�?TrendChartContent: All requested data already exists in memory - skipping database load');
           setLoading(false);
           return;
         }
@@ -706,14 +781,14 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
       const response = await TrendChartApiService.getTrendHistory(request);
 
-      console.log('✅ TrendChartContent: Historical data received', {
+      console.log('�?TrendChartContent: Historical data received', {
         totalRecords: response.total_records,
         dataPoints: response.data.length,
       });
 
       // 🆕 Process and MERGE data into series (don't replace)
       const updatedSeries = [...series];
-      response.data.forEach((point) => {
+      response.data.forEach((point: any) => {
         const seriesIndex = updatedSeries.findIndex(
           (s) => s.pointId === point.point_id && s.pointType === point.point_type
         );
@@ -742,11 +817,9 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       });
 
       setSeries(updatedSeries);
-      setLastUpdate(new Date());
       setDataSource('api'); // Track that data came from API
     } catch (error) {
-      console.error('❌ TrendChartContent: Failed to load historical data', error);
-      setHasConnectionError(true);
+      console.error('�?TrendChartContent: Failed to load historical data', error);
     } finally {
       setLoading(false);
     }
@@ -764,7 +837,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         const inputData = props.itemData.t3Entry.input;
         const rangeData = props.itemData.t3Entry.range;
 
-        console.log('✅ TrendChartContent: Initializing series from itemData', {
+        console.log('�?TrendChartContent: Initializing series from itemData', {
           inputCount: inputData.length,
           rangeCount: rangeData.length,
         });
@@ -778,7 +851,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           const rangeItem = rangeData[index];
 
           // Extract point information
-          const panelIdFromInput = inputItem.panel || panelId;
           const pointType = inputItem.point_type; // INPUT=0, OUTPUT=1, VARIABLE=2
           const pointNumber = inputItem.point_number; // 0-based
 
@@ -804,7 +876,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         }
 
         setSeries(generatedSeries);
-        console.log('✅ TrendChartContent: Series initialized from itemData', {
+        console.log('�?TrendChartContent: Series initialized from itemData', {
           count: generatedSeries.length,
           serialNumber,
           panelId,
@@ -852,13 +924,13 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
       setSeries(sampleSeries);
 
-      console.log('✅ TrendChartContent: Series initialized', {
+      console.log('�?TrendChartContent: Series initialized', {
         count: sampleSeries.length,
         serialNumber,
         panelId,
       });
     } catch (error) {
-      console.error('❌ TrendChartContent: Failed to initialize series', error);
+      console.error('�?TrendChartContent: Failed to initialize series', error);
     }
   }, [serialNumber, panelId, props.itemData]);
 
@@ -918,12 +990,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         });
 
         setSeries(updatedSeries);
-        setLastUpdate(new Date());
         setDataSource('realtime'); // Track that data came from real-time updates
       }
     } catch (error) {
-      console.error('❌ TrendChartContent: Realtime update failed', error);
-      setHasConnectionError(true);
+      console.error('�?TrendChartContent: Realtime update failed', error);
     }
   }, [isRealtime, serialNumber, panelId, series, timeBase]);
 
@@ -963,12 +1033,12 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       // Step 1: Initialize series from monitor config (Vue: regenerateDataSeries)
       await initializeSeries();
 
-      console.log('✅ TrendChartContent: Series initialized, waiting for series state update');
+      console.log('�?TrendChartContent: Series initialized, waiting for series state update');
 
       // Wait for series state to be updated before loading data
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      console.log('✅ TrendChartContent: Series state updated, loading historical data');
+      console.log('�?TrendChartContent: Series state updated, loading historical data');
 
       // Step 2: Load initial historical data (Vue: initializeData -> loadHistoricalDataFromDatabase)
       await loadHistoricalData();
@@ -976,7 +1046,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       // Step 3: Mark as initialized
       hasLoadedInitialDataRef.current = true;
 
-      console.log('✅ TrendChartContent: Initialization completed');
+      console.log('�?TrendChartContent: Initialization completed');
     };
 
     initializeData();
@@ -1012,7 +1082,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
     // Debounce: wait 300ms before executing
     timebaseChangeTimeoutRef.current = setTimeout(async () => {
-      console.log('⏰ TrendChartContent: TimeBase changed - loading data', {
+      console.log('�?TrendChartContent: TimeBase changed - loading data', {
         timeBase,
         isRealtime,
         seriesCount: series.length,
@@ -1027,7 +1097,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         const hasExistingData = existingRange && existingRange.totalPoints > 0;
 
         if (hasExistingData) {
-          console.log('✅ TrendChartContent: Existing data found - merging with historical', {
+          console.log('�?TrendChartContent: Existing data found - merging with historical', {
             existingPoints: existingRange?.totalPoints,
           });
         }
@@ -1056,7 +1126,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           await loadHistoricalData();
         }
 
-        console.log('✅ TrendChartContent: Timebase change completed', {
+        console.log('�?TrendChartContent: Timebase change completed', {
           timeBase,
           isRealtime,
           totalPoints: series.reduce((sum, s) => sum + s.data.length, 0),
@@ -1068,8 +1138,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           return;
         }
 
-        console.error('❌ TrendChartContent: Error loading data for new timebase:', error);
-        setHasConnectionError(true);
+        console.error('�?TrendChartContent: Error loading data for new timebase:', error);
       }
     }, 300); // 300ms debounce delay
 
@@ -1137,8 +1206,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
    * Zoom controls
    */
   const timeBaseOrder: TimeBase[] = ['5m', '10m', '30m', '1h', '4h', '12h', '1d', '4d'];
-  const canZoomIn = timeBaseOrder.indexOf(timeBase) > 0;
-  const canZoomOut = timeBaseOrder.indexOf(timeBase) < timeBaseOrder.length - 1;
 
   const zoomIn = useCallback(() => {
     const currentIndex = timeBaseOrder.indexOf(timeBase);
@@ -1156,22 +1223,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
   const resetTimeBase = useCallback(() => {
     setTimeBase('5m');
-  }, []);
-
-  /**
-   * View switching
-   */
-  const handleViewChange = useCallback((view: 1 | 2 | 3) => {
-    setCurrentView(view);
-    // View 2 & 3 could show different time ranges or configurations
-    // For now, just track the view state
-  }, []);
-
-  /**
-   * Toggle keyboard shortcuts
-   */
-  const toggleKeyboard = useCallback(() => {
-    setKeyboardEnabled((prev) => !prev);
   }, []);
 
   /**
@@ -1377,15 +1428,18 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
       {/* Status Tags */}
       <div className={styles.statusTags}>
-        <Badge
-          appearance="filled"
-          color={isRealtime ? 'success' : 'informative'}
-          size="small"
-        >
-          {isRealtime ? `Live-${new Date().toLocaleTimeString('en-US', { hour12: false })}` : 'Historical'}
-        </Badge>
-        <Badge appearance="outline" size="small">
-          {timeBase === '5m' ? '5 minutes' :
+        <div className={`${styles.statusTag} ${isRealtime ? styles.statusTagLive : styles.statusTagHistorical}`}>
+          {isRealtime ? (
+            <>
+              <span className={styles.liveIndicator}>●</span>
+              {`Live-${new Date().toLocaleTimeString('en-US', { hour12: false })}`}
+            </>
+          ) : (
+            'Historical'
+          )}
+        </div>
+        <div className={`${styles.statusTag} ${styles.statusTagTimeBase}`}>
+         {timeBase === '5m' ? '5 minutes' :
            timeBase === '10m' ? '10 minutes' :
            timeBase === '30m' ? '30 minutes' :
            timeBase === '1h' ? '1 hour' :
@@ -1393,7 +1447,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
            timeBase === '12h' ? '12 hours' :
            timeBase === '1d' ? '1 day' :
            timeBase === '4d' ? '4 days' : timeBase}
-        </Badge>
+        </div>
       </div>
 
       <div className={styles.divider} />
@@ -1473,520 +1527,241 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
   return (
     <div className={styles.container}>
-      {/* Left Panel - Series List */}
-      <div className={styles.leftPanel} style={{ width: `${leftPanelWidth}px` }}>
-        {/* C1: Header Section */}
-        <div className={styles.seriesPanelHeader}>
-          <div className={styles.headerLine}>
-            <Text size={200} weight="semibold" style={{ marginLeft: '2px', fontSize: '12px' }}>
-              Data Series ({series.filter(s => s.visible !== false).length}/{series.length})
-            </Text>
-            <div className={styles.dataSourceIndicator}>
-              {dataSource === 'loading' ? (
-                <Badge appearance="tint" color="warning" size="small" icon={<Spinner size="tiny" />}>
-                  Loading...
-                </Badge>
-              ) : dataSource === 'realtime' ? (
-                <Badge appearance="filled" color="success" size="small" icon={<FlashRegular />}>
-                  Live
-                </Badge>
-              ) : dataSource === 'api' ? (
-                <Badge appearance="filled" color="informative" size="small" icon={<HistoryRegular />}>
-                  Historical
-                </Badge>
-              ) : hasConnectionError ? (
-                <Badge appearance="filled" color="danger" size="small" icon={<ErrorCircleRegular />}>
-                  Error
-                </Badge>
-              ) : null}
+      {/* ANALOG AREA (Top Section) */}
+      {visibleAnalogSeries.length > 0 && (
+        <div className={styles.analogArea}>
+          {/* Analog Left Panel - Series List */}
+          <div className={styles.leftPanel}>
+            <div className={styles.seriesPanelHeader}>
+              <div className={styles.headerLine}>
+                <Text size={200} weight="semibold">
+                  Analog ({visibleAnalogSeries.length}/{analogSeries.length})
+                </Text>
+                <div className={styles.dataSourceIndicator}>
+                  {dataSource === 'realtime' && (
+                    <Badge appearance="filled" color="success" size="small" icon={<FlashRegular />}>
+                      Live
+                    </Badge>
+                  )}
+                  {dataSource === 'api' && (
+                    <Badge appearance="filled" color="informative" size="small" icon={<HistoryRegular />}>
+                      Historical
+                    </Badge>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* C2: Toolbar Section */}
-        <div className={styles.seriesPanelToolbar}>
-          <div className={styles.headerControls}>
-            <div className={styles.leftControls}>
-              <Dropdown
-                placeholder="All"
-                value=""
-                size="small"
-                style={{
-                  minWidth: '70px',
-                  fontSize: '10px',
-                  border: 'none',
-                  borderBottom: '1px solid #d1d1d1',
-                  borderRadius: 0
-                }}
-                onOptionSelect={(e, data) => {
-                  if (data.optionValue === 'enable-all') {
-                    series.forEach((_, i) => toggleSeriesVisibility(i, true));
-                  } else if (data.optionValue === 'disable-all') {
-                    series.forEach((_, i) => toggleSeriesVisibility(i, false));
-                  }
-                }}
-              >
-                <Option value="enable-all" style={{ paddingLeft: '8px', fontSize: '11px' }}>
-                  Enable All
-                </Option>
-                <Option value="disable-all" style={{ paddingLeft: '8px', fontSize: '11px' }}>
-                  Disable All
-                </Option>
-              </Dropdown>
-              <Dropdown
-                placeholder="By Type"
-                value=""
-                size="small"
-                style={{
-                  minWidth: '80px',
-                  fontSize: '10px',
-                  border: 'none',
-                  borderBottom: '1px solid #d1d1d1',
-                  borderRadius: 0
-                }}
-                onOptionSelect={(e, data) => {
-                  const type = data.optionValue as string;
-                  series.forEach((s, i) => {
-                    if (type === 'analog' && s.digitalAnalog === 'Analog') {
-                      toggleSeriesVisibility(i);
-                    } else if (type === 'digital' && s.digitalAnalog === 'Digital') {
-                      toggleSeriesVisibility(i);
-                    } else if (type === 'input' && s.pointType === 'IN') {
-                      toggleSeriesVisibility(i);
-                    } else if (type === 'output' && s.pointType === 'OUT') {
-                      toggleSeriesVisibility(i);
-                    } else if (type === 'variable' && s.pointType === 'VAR') {
-                      toggleSeriesVisibility(i);
-                    }
-                  });
-                }}
-              >
-                <Option value="analog" style={{ paddingLeft: '8px', fontSize: '11px' }}>
-                  Toggle Analog ({getSeriesCounts.analog})
-                </Option>
-                <Option value="digital" style={{ paddingLeft: '8px', fontSize: '11px' }}>
-                  Toggle Digital ({getSeriesCounts.digital})
-                </Option>
-                <Option value="input" style={{ paddingLeft: '8px', fontSize: '11px' }}>
-                  Toggle Input ({getSeriesCounts.input})
-                </Option>
-                <Option value="output" style={{ paddingLeft: '8px', fontSize: '11px' }}>
-                  Toggle Output ({getSeriesCounts.output})
-                </Option>
-                <Option value="variable" style={{ paddingLeft: '8px', fontSize: '11px' }}>
-                  Toggle Variable ({getSeriesCounts.variable})
-                </Option>
-              </Dropdown>
-            </div>
-            <div className={styles.autoScrollToggle}>
-              <Text size={100}>Auto Scroll:</Text>
-              <Switch
-                checked={isRealtime}
-                onChange={(_, data) => setIsRealtime(data.checked)}
-                style={{ transform: 'scale(0.7)', marginRight: '-10px', marginLeft: '-10px' }}
-              />
-            </div>
-          </div>
-        </div>
+            {/* Analog Series List */}
+            <div className={styles.seriesPanel}>
+              {analogSeries.map((s, index) => {
+                const seriesKey = `${s.pointId}-${s.pointIndex}`;
+                const isExpanded = expandedSeries.has(seriesKey);
 
-        {/* C3: Data Series List Section */}
-        <div className={styles.seriesPanel}>
-          {series.length === 0 ? (
-            <div className={styles.emptyStateCenter}>
-              {dataSource === 'loading' ? (
-                <>
-                  <Spinner size="large" />
-                  <Text size={300} weight="semibold">Loading trend log data...</Text>
-                  <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                    Connecting to your T3000 devices to retrieve trend data...
-                  </Text>
-                </>
-              ) : loadingTimeout ? (
-                <>
-                  <Text size={500}>⏱️</Text>
-                  <Text size={300} weight="semibold">Loading Timeout</Text>
-                  <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                    Loading took too long (&gt;30s). The system may be busy or experiencing connection issues.
-                  </Text>
-                  <Button
-                    appearance="primary"
-                    icon={<ArrowSyncRegular />}
-                    onClick={() => window.location.reload()}
-                  >
-                    Refresh Data
-                  </Button>
-                </>
-              ) : hasConnectionError ? (
-                <>
-                  <Text size={500}>⚠️</Text>
-                  <Text size={300} weight="semibold">Data Connection Error</Text>
-                  <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                    Unable to load real-time or historical data. Check system connections.
-                  </Text>
-                  <Button
-                    appearance="primary"
-                    icon={<ArrowSyncRegular />}
-                    onClick={() => window.location.reload()}
-                  >
-                    Refresh Data
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Text size={500}>📊</Text>
-                  <Text size={300} weight="semibold">No valid trend log data available</Text>
-                  <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                    Configure monitor points with valid T3000 devices to see data series
-                  </Text>
-                </>
-              )}
-            </div>
-          ) : (
-            series.map((s, index) => {
-              const seriesKey = `${s.pointType}-${s.pointIndex}`;
-              const isExpanded = expandedSeries.has(seriesKey);
-              const shortcut = getKeyboardShortcut(index);
-
-              return (
-                <React.Fragment key={seriesKey}>
-                  <div
-                    className={`${styles.seriesItem} ${isExpanded ? styles.seriesItemExpanded : ''}`}
-                    style={{ opacity: s.visible !== false ? 1 : 0.5 }}
-                  >
-                    {/* Delete button for View 2/3 */}
-                    {currentView !== 1 && (
-                      <Button
-                        appearance="subtle"
-                        icon={<DismissRegular />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeFromTracking(seriesKey);
-                        }}
-                        className={styles.deleteButton}
-                        size="small"
+                return (
+                  <React.Fragment key={seriesKey}>
+                    <div className={`${styles.seriesItem} ${isExpanded ? styles.seriesItemExpanded : ''}`}>
+                      {/* eslint-disable-next-line */}
+                      <div
+                        className={styles.colorIndicator}
+                        style={{ '--series-color': s.color } as React.CSSProperties}
+                        onClick={() => toggleSeriesVisibility(index)}
                       />
-                    )}
-
-                    {/* Color indicator with keyboard badge */}
-                    <div
-                      className={styles.colorIndicator}
-                      style={{ backgroundColor: s.visible !== false ? s.color : '#d9d9d9' }}
-                      onClick={() => toggleSeriesVisibility(index)}
-                    >
-                      {shortcut && keyboardEnabled && (
-                        <div className={styles.keyboardBadge}>{shortcut}</div>
-                      )}
-                    </div>
-
-                    {/* Series content */}
-                    <Tooltip content={s.name} relationship="label">
-                      <div className={styles.seriesItemContent} onClick={() => toggleSeriesVisibility(index)}>
-                        <div className={styles.seriesItemInfo}>
-                          <Text className={styles.seriesItemName}>
-                            {s.name}
-                          </Text>
-                          <div className={styles.seriesItemMeta}>
-                            {s.pointType && (
-                              <Tag size="extra-small" appearance="outline">
-                                {getPrefixTag(s.pointType)}
-                              </Tag>
-                            )}
-                            <Text className={styles.seriesItemUnit} style={{ color: s.color }}>
-                              {s.unit || 'N/A'}
+                      <Tooltip content={s.name} relationship="label">
+                        <div className={styles.seriesItemContent} onClick={() => toggleSeriesVisibility(index)}>
+                          <div className={styles.seriesItemInfo}>
+                            <Text className={styles.seriesItemName}>
+                              {s.name}
                             </Text>
+                            <div className={styles.seriesItemMeta}>
+                              {(s.prefix || s.pointType) && (
+                                <Tag size="extra-small" appearance="outline">
+                                  {getPrefixTag(s.pointType, s.prefix)}
+                                </Tag>
+                              )}
+                              <Text className={styles.seriesItemUnit}>
+                                {s.unit || 'N/A'}
+                              </Text>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </Tooltip>
+                      </Tooltip>
 
-                    {/* Expand button */}
-                    <Button
-                      appearance="subtle"
-                      icon={isExpanded ? <ChevronDownFilled /> : <ChevronRightRegular />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleSeriesExpand(seriesKey);
-                      }}
-                      className={styles.expandButton}
-                      size="small"
-                    />
-                  </div>
-
-                  {/* Expanded details */}
-                  {isExpanded && (
-                    <div className={styles.seriesDetails}>
-                      <Text size={100}>
-                        <strong>Last:</strong> {s.data && s.data.length > 0
-                          ? `${s.data[s.data.length - 1].value.toFixed(2)} ${s.unit || ''}`
-                          : 'N/A'}
-                      </Text>
-                      <Text size={100}>
-                        <strong>Avg:</strong> {s.data && s.data.length > 0
-                          ? `${(s.data.reduce((sum, p) => sum + p.value, 0) / s.data.length).toFixed(2)} ${s.unit || ''}`
-                          : 'N/A'}
-                      </Text>
-                      <Text size={100}>
-                        <strong>Min:</strong> {s.data && s.data.length > 0
-                          ? `${Math.min(...s.data.map(p => p.value)).toFixed(2)} ${s.unit || ''}`
-                          : 'N/A'}
-                      </Text>
-                      <Text size={100}>
-                        <strong>Max:</strong> {s.data && s.data.length > 0
-                          ? `${Math.max(...s.data.map(p => p.value)).toFixed(2)} ${s.unit || ''}`
-                          : 'N/A'}
-                      </Text>
+                      <Button
+                        appearance="subtle"
+                        icon={isExpanded ? <ChevronDownFilled /> : <ChevronRightRegular />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSeriesExpand(seriesKey);
+                        }}
+                        className={styles.expandButton}
+                        size="small"
+                      />
                     </div>
-                  )}
-                </React.Fragment>
-              );
-            })
-          )}
-        </div>
-      </div>
 
-      {/* Resizer */}
-      <div
-        className={styles.resizer}
-        onMouseDown={handleLeftPanelResize}
-      />
-
-      {/* Right Panel - Trend Chart Viewer */}
-      <div className={styles.chartViewerContainer}>
-        {/* Chart Viewer Header - hide in drawer mode */}
-        {!isDrawerMode && (
-        <div className={styles.chartViewerHeader}>
-          {/* Title */}
-          <div className={styles.chartTitle}>
-            <Text size={400} weight="semibold">
-              Trend Chart Viewer
-            </Text>
+                    {isExpanded && (
+                      <div className={styles.seriesDetails}>
+                        <div className={styles.seriesStats}>
+                          <Text size={100}>
+                            <strong>Last:</strong> {s.data && s.data.length > 0
+                              ? `${s.data[s.data.length - 1].value.toFixed(2)} ${s.unit || ''}`
+                              : 'N/A'}
+                          </Text>
+                          <Text size={100}>
+                            <strong>Avg:</strong> {s.data && s.data.length > 0
+                              ? `${(s.data.reduce((sum, p) => sum + p.value, 0) / s.data.length).toFixed(2)} ${s.unit || ''}`
+                              : 'N/A'}
+                          </Text>
+                          <Text size={100}>
+                            <strong>Min:</strong> {s.data && s.data.length > 0
+                              ? `${Math.min(...s.data.map(p => p.value)).toFixed(2)} ${s.unit || ''}`
+                              : 'N/A'}
+                          </Text>
+                          <Text size={100}>
+                            <strong>Max:</strong> {s.data && s.data.length > 0
+                              ? `${Math.max(...s.data.map(p => p.value)).toFixed(2)} ${s.unit || ''}`
+                              : 'N/A'}
+                          </Text>
+                        </div>
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Toolbar - conditionally rendered */}
-          {!(isDrawerMode && onToolbarRender) && (
-            <div className={styles.toolbar}>
-            {/* Time Base */}
-            <div className={styles.controlGroup}>
-              <Text size={200}>Time:</Text>
-              <Dropdown
-                value={timeBase}
-                onOptionSelect={(_, data) => setTimeBase(data.optionValue as TimeBase)}
-                size="small"
-                style={{ minWidth: '120px' }}
-              >
-                <Option value="5m">5 minutes</Option>
-                <Option value="10m">10 minutes</Option>
-                <Option value="30m">30 minutes</Option>
-                <Option value="1h">1 hour</Option>
-                <Option value="4h">4 hours</Option>
-                <Option value="12h">12 hours</Option>
-                <Option value="1d">1 day</Option>
-                <Option value="4d">4 days</Option>
-              </Dropdown>
-            </div>
-
-            <ToolbarDivider />
-
-            {/* Zoom Controls */}
-            <div className={styles.controlGroup}>
-              <ToolbarButton
-                icon={<ZoomOutRegular />}
-                onClick={zoomOut}
-                disabled={!canZoomOut}
-                title="Zoom Out (Longer timebase)"
-              >
-                Zoom Out
-              </ToolbarButton>
-              <ToolbarButton
-                icon={<ZoomInRegular />}
-                onClick={zoomIn}
-                disabled={!canZoomIn}
-                title="Zoom In (Shorter timebase)"
-              >
-                Zoom In
-              </ToolbarButton>
-            </div>
-
-            <ToolbarDivider />
-
-            {/* Reset */}
-            <ToolbarButton
-              icon={<ArrowResetRegular />}
-              onClick={resetTimeBase}
-              title="Reset to default 5 minutes timebase"
-            >
-              Reset
-            </ToolbarButton>
-
-            <ToolbarDivider />
-
-            {/* View Buttons */}
-            <div className={styles.controlGroup}>
-              <Button
-                size="small"
-                appearance={currentView === 1 ? 'primary' : 'secondary'}
-                onClick={() => handleViewChange(1)}
-              >
-                View 1
-              </Button>
-              <Button
-                size="small"
-                appearance={currentView === 2 ? 'primary' : 'secondary'}
-                onClick={() => handleViewChange(2)}
-              >
-                View 2
-              </Button>
-              <Button
-                size="small"
-                appearance={currentView === 3 ? 'primary' : 'secondary'}
-                onClick={() => handleViewChange(3)}
-              >
-                View 3
-              </Button>
-            </div>
-
-            <ToolbarDivider />
-
-            {/* Live Status with timestamp */}
-            {isRealtime && lastUpdate && (
-              <Badge appearance="filled" color="success" size="small">
-                ● Live-{lastUpdate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/:/g, '')}
-              </Badge>
-            )}
-            {!isRealtime && (
-              <Badge appearance="outline" color="informative" size="small">
-                Historical
-              </Badge>
-            )}
-
-            <ToolbarDivider />
-
-            {/* Keyboard Shortcut Toggle */}
-            <Button
-              size="small"
-              appearance={keyboardEnabled ? 'primary' : 'secondary'}
-              onClick={toggleKeyboard}
-              title={keyboardEnabled ? 'Keyboard shortcuts enabled' : 'Keyboard shortcuts disabled'}
-            >
-              ⌨️ {keyboardEnabled ? 'KB On' : 'KB Off'}
-            </Button>
-
-            <ToolbarDivider />
-
-            {/* Grid Toggle */}
-            <div className={styles.controlGroup}>
-              <Switch checked={showGrid} onChange={(_, data) => setShowGrid(data.checked)} />
-              <Text size={200}>Grid</Text>
-            </div>
-
-            <ToolbarDivider />
-
-            {/* Config Button */}
-            <ToolbarButton
-              icon={<DatabaseRegular />}
-              onClick={() => console.log('Config - Not yet implemented')}
-              title="Trendlog Configuration"
-            >
-              Config
-            </ToolbarButton>
-
-            {/* Export Menu */}
-            <Menu>
-              <MenuTrigger disableButtonEnhancement>
-                <Button
-                  size="small"
-                  icon={<ArrowDownloadRegular />}
-                  iconPosition="before"
-                  disabled={series.length === 0}
-                >
-                  Export <ChevronDownRegular style={{ fontSize: '12px', marginLeft: '2px' }} />
-                </Button>
-              </MenuTrigger>
-              <MenuPopover>
-                <MenuList>
-                  <MenuItem icon={<ImageRegular />} onClick={exportToPNG}>
-                    Export as PNG
-                  </MenuItem>
-                  <MenuItem icon={<DocumentRegular />} onClick={exportToCSV}>
-                    Export Data (CSV)
-                  </MenuItem>
-                  <MenuItem icon={<DocumentRegular />} onClick={exportToJSON}>
-                    Export Data (JSON)
-                  </MenuItem>
-                </MenuList>
-              </MenuPopover>
-            </Menu>
-
-            <ToolbarDivider />
-
-            {/* Live/Pause & Refresh Controls */}
-            <ToolbarButton
-              icon={isRealtime ? <PauseRegular /> : <PlayRegular />}
-              onClick={() => setIsRealtime(!isRealtime)}
-            >
-              {isRealtime ? 'Pause' : 'Live'}
-            </ToolbarButton>
-
-            <ToolbarButton
-              icon={<ArrowSyncRegular />}
-              onClick={loadHistoricalData}
-              disabled={loading}
-            >
-              Refresh
-            </ToolbarButton>
-
-            <div className={styles.spacer} />
-
-            {loading && <Spinner size="tiny" label="Loading..." />}
-            </div>
-          )}
+          {/* Analog Right Panel - Chart */}
+          <div className={styles.rightPanel}>
+            <TrendChart
+              series={visibleAnalogSeries}
+              timeBase={timeBase}
+              showGrid={showGrid}
+              chartType="analog"
+            />
+          </div>
         </div>
-        )}
+      )}
 
-        {/* Chart Container - Multi-canvas oscilloscope approach (Vue pattern) */}
-        <div className={styles.chartContainer}>
-          {series.length > 0 ? (
-            <div className={styles.oscilloscopeContainer}>
-              {/* Combined Analog Chart - Only show if there are visible analog series */}
-              {visibleAnalogSeries.length > 0 && (
-                <div className={styles.combinedAnalogChart}>
-                  <TrendChart
-                    series={visibleAnalogSeries}
-                    timeBase={timeBase}
-                    showGrid={showGrid}
-                    chartType="analog"
-                  />
-                </div>
-              )}
-
-              {/* Separate Digital Channels - One canvas per digital signal */}
-              {visibleDigitalSeries.map((digitalSeries, index) => (
-                <div
-                  key={digitalSeries.name}
-                  className={`${styles.channelChart} ${index === visibleDigitalSeries.length - 1 ? styles.lastChannel : ''}`}
-                >
-                  <div className={styles.channelLabel} style={{ color: digitalSeries.color }}>
-                    {digitalSeries.name}
-                  </div>
-                  <TrendChart
-                    series={[digitalSeries]}
-                    timeBase={timeBase}
-                    showGrid={showGrid}
-                    chartType="digital"
-                  />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: '16px' }}>
-              <Text size={500} weight="semibold">No Data Available</Text>
-              <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
-                Please select a device and monitor configuration.
-              </Text>
-            </div>
-          )}
+      {/* RESIZABLE DIVIDER */}
+      {visibleAnalogSeries.length > 0 && visibleDigitalSeries.length > 0 && (
+        <div className={styles.resizableDivider}>
+          <div className={styles.dividerGrip} />
         </div>
-      </div>
+      )}
+
+      {/* DIGITAL AREA (Bottom Section) */}
+      {visibleDigitalSeries.length > 0 && (
+        <div className={styles.digitalArea}>
+          {/* Digital Left Panel - Series List */}
+          <div className={styles.digitalLeftPanel}>
+            <div className={styles.seriesPanelHeader}>
+              <div className={styles.headerLine}>
+                <Text size={200} weight="semibold">
+                  Digital ({visibleDigitalSeries.length}/{digitalSeries.length})
+                </Text>
+              </div>
+            </div>
+
+            {/* Digital Series List */}
+            <div className={styles.seriesPanel}>
+              {digitalSeries.map((s, index) => {
+                const seriesKey = `digital-${s.pointId}-${s.pointIndex}`;
+                const isExpanded = expandedSeries.has(seriesKey);
+                const actualIndex = analogSeries.length + index;
+
+                return (
+                  <React.Fragment key={seriesKey}>
+                    <div className={`${styles.seriesItem} ${isExpanded ? styles.seriesItemExpanded : ''}`}>
+                      {/* eslint-disable-next-line */}
+                      <div
+                        className={styles.colorIndicator}
+                        style={{ '--series-color': s.color } as React.CSSProperties}
+                        onClick={() => toggleSeriesVisibility(actualIndex)}
+                      />
+
+                      <Tooltip content={s.name} relationship="label">
+                        <div className={styles.seriesItemContent} onClick={() => toggleSeriesVisibility(actualIndex)}>
+                          <div className={styles.seriesItemInfo}>
+                            <Text className={styles.seriesItemName}>
+                              {s.name}
+                            </Text>
+                            <div className={styles.seriesItemMeta}>
+                              {(s.prefix || s.pointType) && (
+                                <Tag size="extra-small" appearance="outline">
+                                  {getPrefixTag(s.pointType, s.prefix)}
+                                </Tag>
+                              )}
+                              <Text className={styles.seriesItemUnit}>
+                                {s.unit || 'ON/OFF'}
+                              </Text>
+                            </div>
+                          </div>
+                        </div>
+                      </Tooltip>
+
+                      <Button
+                        appearance="subtle"
+                        icon={isExpanded ? <ChevronDownFilled /> : <ChevronRightRegular />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSeriesExpand(seriesKey);
+                        }}
+                        className={styles.expandButton}
+                        size="small"
+                      />
+                    </div>
+
+                    {isExpanded && (
+                      <div className={styles.seriesDetails}>
+                        <div className={styles.seriesStats}>
+                          <Text size={100}>
+                            <strong>Last:</strong> {s.data && s.data.length > 0
+                              ? (s.data[s.data.length - 1].value === 1 ? 'ON' : 'OFF')
+                              : 'N/A'}
+                          </Text>
+                          <Text size={100}>
+                            <strong>Points:</strong> {s.data?.length || 0}
+                          </Text>
+                        </div>
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Digital Right Panel - Oscilloscope */}
+          <div className={styles.digitalRightPanel}>
+            {visibleDigitalSeries.map((digitalSeries) => (
+              <div key={digitalSeries.name} className={styles.channelChart}>
+                {/* eslint-disable-next-line */}
+                <div className={styles.digitalSeriesLabel} style={{ '--series-color': digitalSeries.color } as React.CSSProperties}>
+                  {digitalSeries.name}
+                </div>
+                <TrendChart
+                  series={[digitalSeries]}
+                  timeBase={timeBase}
+                  showGrid={showGrid}
+                  chartType="digital"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {series.length === 0 && (
+        <div className={styles.emptyStateCenter}>
+          <Text size={500} weight="semibold">No Data Available</Text>
+          <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+            Please select a device and monitor configuration.
+          </Text>
+        </div>
+      )}
     </div>
   );
 };
+

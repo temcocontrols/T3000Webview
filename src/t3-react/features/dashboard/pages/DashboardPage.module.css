@@ -1,0 +1,229 @@
+/* Dashboard Page Styles - Azure Portal Design */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Info Bar Header */
+.infoBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: #faf9f8;
+  border-bottom: 1px solid #edebe9;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  margin-bottom: 12px;
+}
+
+.infoBarLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.infoBarIcon {
+  font-size: 24px;
+  line-height: 1;
+  color: #0078d4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.infoBarIcon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.infoBarContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.infoBarTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #323130;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.infoBarDescription {
+  font-size: 12px;
+  color: #605e5c;
+  line-height: 1.4;
+}
+
+.infoBarRight {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+.infoBarStat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.infoBarStatLabel {
+  font-size: 10px;
+  color: #8a8886;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+.infoBarStatValue {
+  font-size: 13px;
+  font-weight: 600;
+  color: #323130;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #0078d4;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(0, 120, 212, 0.7);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 0 4px rgba(0, 120, 212, 0);
+  }
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+  background: #ffffff;
+  scrollbar-width: thin;
+  scrollbar-color: #c8c6c4 #f3f2f1;
+}
+
+/* Quick Access Section - No padding, full width */
+.quickAccessSection {
+  padding: 12px 10px 10px 10px;
+  background: #fafafa;
+  /* border-bottom: 1px solid #edebe9; */
+}
+
+/* Section styling */
+.section {
+  padding: 12px;
+  margin-top: 12px;
+  margin-bottom: 0;
+  background: #fafafa;
+  /* border-bottom: 1px solid #edebe9; */
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #323130;
+  margin: 0 0 16px 0;
+  padding: 8px 12px;
+  border-bottom: none;
+  position: relative;
+  line-height: 1.2;
+  background: #f3f2f1;
+  border-radius: 2px;
+}
+
+.sectionTitle::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 14px;
+  background: #0078d4;
+  border-radius: 2px;
+}
+
+/* Monitoring grid - 3 columns */
+.monitoringGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+/* Data & Planning grid - same as monitoring, widgets use size to span columns */
+.dataPlanningGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+/* Scrollbar styling */
+.content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.content::-webkit-scrollbar-track {
+  background: #f3f2f1;
+}
+
+.content::-webkit-scrollbar-thumb {
+  background: #c8c6c4;
+  border-radius: 3px;
+}
+
+.content::-webkit-scrollbar-thumb:hover {
+  background: #a19f9d;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .monitoringGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .monitoringGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .content {
+    padding: 16px;
+  }
+
+  .section {
+    margin-bottom: 24px;
+  }
+
+  .infoBar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .infoBarRight {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .infoBarStat {
+    align-items: flex-start;
+  }
+}

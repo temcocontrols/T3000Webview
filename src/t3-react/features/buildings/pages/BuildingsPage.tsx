@@ -25,7 +25,9 @@ import {
   AddRegular,
   DeleteRegular,
   SearchRegular,
+  ErrorCircleRegular,
 } from '@fluentui/react-icons';
+import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './BuildingsPage.module.css';
 
@@ -42,6 +44,7 @@ interface Building {
 }
 
 export const BuildingsPage: React.FC = () => {
+  const { selectedDevice } = useDeviceTreeStore();
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +95,26 @@ export const BuildingsPage: React.FC = () => {
     console.log('Search query:', e.target.value);
   };
 
+  // Display data with 10 empty rows when no buildings
+  const displayBuildings = React.useMemo(() => {
+    if (buildings.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        id: undefined,
+        buildingName: '',
+        protocol: '',
+        ipAddress: '',
+        ipPort: '',
+        comPort: '',
+        baudRate: '',
+        buildingPath: '',
+      }));
+    }
+    return buildings;
+  }, [buildings]);
+
+  // Helper to identify empty rows
+  const isEmptyRow = (item: Building) => !item.id && buildings.length === 0;
+
   // Columns definition - matches C++ BuildingConfigration columns
   const columns: TableColumnDefinition<Building>[] = [
     createTableColumn<Building>({
@@ -100,7 +123,7 @@ export const BuildingsPage: React.FC = () => {
       renderHeaderCell: () => 'Item',
       renderCell: (item) => (
         <TableCellLayout>
-          {item.id || '-'}
+          {!isEmptyRow(item) && (item.id || '-')}
         </TableCellLayout>
       ),
     }),
@@ -110,7 +133,7 @@ export const BuildingsPage: React.FC = () => {
       renderHeaderCell: () => 'Building',
       renderCell: (item) => (
         <TableCellLayout>
-          {item.buildingName || '-'}
+          {!isEmptyRow(item) && (item.buildingName || '-')}
         </TableCellLayout>
       ),
     }),
@@ -120,7 +143,7 @@ export const BuildingsPage: React.FC = () => {
       renderHeaderCell: () => 'Protocol',
       renderCell: (item) => (
         <TableCellLayout>
-          {item.protocol || '-'}
+          {!isEmptyRow(item) && (item.protocol || '-')}
         </TableCellLayout>
       ),
     }),
@@ -130,7 +153,7 @@ export const BuildingsPage: React.FC = () => {
       renderHeaderCell: () => 'IP/Domain/Tel#/SerialNumber',
       renderCell: (item) => (
         <TableCellLayout>
-          {item.ipAddress || '-'}
+          {!isEmptyRow(item) && (item.ipAddress || '-')}
         </TableCellLayout>
       ),
     }),
@@ -140,7 +163,7 @@ export const BuildingsPage: React.FC = () => {
       renderHeaderCell: () => 'Modbus TCP Port',
       renderCell: (item) => (
         <TableCellLayout>
-          {item.ipPort || '-'}
+          {!isEmptyRow(item) && (item.ipPort || '-')}
         </TableCellLayout>
       ),
     }),
@@ -150,7 +173,7 @@ export const BuildingsPage: React.FC = () => {
       renderHeaderCell: () => 'COM Port',
       renderCell: (item) => (
         <TableCellLayout>
-          {item.comPort || '-'}
+          {!isEmptyRow(item) && (item.comPort || '-')}
         </TableCellLayout>
       ),
     }),
@@ -160,7 +183,7 @@ export const BuildingsPage: React.FC = () => {
       renderHeaderCell: () => 'Baud Rate',
       renderCell: (item) => (
         <TableCellLayout>
-          {item.baudRate || '-'}
+          {!isEmptyRow(item) && (item.baudRate || '-')}
         </TableCellLayout>
       ),
     }),
@@ -170,7 +193,7 @@ export const BuildingsPage: React.FC = () => {
       renderHeaderCell: () => 'Building Path',
       renderCell: (item) => (
         <TableCellLayout>
-          {item.buildingPath || '-'}
+          {!isEmptyRow(item) && (item.buildingPath || '-')}
         </TableCellLayout>
       ),
     }),
@@ -188,9 +211,23 @@ export const BuildingsPage: React.FC = () => {
             <div className={styles.partContent}>
 
               {/* ========================================
+                  ERROR MESSAGE (if any)
+                  ======================================== */}
+              {error && (
+                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
+                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                    {error}
+                  </Text>
+                </div>
+              )}
+
+              {/* ========================================
                   TOOLBAR - Top Actions Bar
                   Matches: ext-overview-assistant-toolbar azc-toolbar
                   ======================================== */}
+              {selectedDevice && (
+              <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   {/* Refresh Button */}
@@ -248,6 +285,8 @@ export const BuildingsPage: React.FC = () => {
               <div style={{ padding: '0' }}>
                 <hr className={styles.overviewHr} />
               </div>
+              </>
+              )}
 
               {/* ========================================
                   DOCKING BODY - Main Content
@@ -256,18 +295,29 @@ export const BuildingsPage: React.FC = () => {
               <div className={styles.dockingBody}>
 
                 {/* Loading State */}
-                {loading && buildings.length === 0 && (
-                  <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Spinner size="large" />
-                    <Text style={{ marginLeft: '12px' }}>Loading buildings...</Text>
+                {(loading || refreshing) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px' }}>
+                    <Spinner size="tiny" />
+                    <Text size={200} weight="regular">Loading buildings...</Text>
                   </div>
                 )}
 
-                {/* Data Grid */}
-                {!loading && (
+                {/* No Device Selected */}
+                {!selectedDevice && !loading && (
+                  <div className={styles.noData}>
+                    <div className={styles.centerText}>
+                      <Text size={400} weight="semibold">No device selected</Text>
+                      <br />
+                      <Text size={200}>Please select a device from the tree to view inputs</Text>
+                    </div>
+                  </div>
+                )}
+
+                {/* Data Grid - Always show grid with headers */}
+                {selectedDevice && !loading && (
                   <>
-                    <DataGrid
-                      items={buildings}
+                  <DataGrid
+                      items={displayBuildings}
                       columns={columns}
                       sortable
                       resizableColumns
@@ -325,7 +375,7 @@ export const BuildingsPage: React.FC = () => {
                     </DataGrid>
 
                     {/* No Data Message */}
-                    {buildings.length === 0 && (
+                    {/* {buildings.length === 0 && (
                       <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
@@ -335,8 +385,8 @@ export const BuildingsPage: React.FC = () => {
                         </div>
                         <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>No buildings configured in the system</Text>
                       </div>
-                    )}
-                  </>
+                    )} */}
+                </>
                 )}
 
               </div>

@@ -48,7 +48,9 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
 import { getRangeLabel } from '../data/rangeData';
 import { API_BASE_URL } from '../../../config/constants';
-import { VariableRefreshApiService } from '../services/variableRefreshApi';
+import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
+import { useStatusBarStore } from '../../../store/statusBarStore';
+import { SyncStatusBar } from '../../../shared/components/SyncStatusBar';
 import styles from './VariablesPage.module.css';
 
 // Types based on Rust entity (variable_points.rs)
@@ -73,6 +75,7 @@ interface VariablePoint {
 
 export const VariablesPage: React.FC = () => {
   const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const setMessage = useStatusBarStore((state) => state.setMessage);
 
   const [variables, setVariables] = useState<VariablePoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -80,13 +83,17 @@ export const VariablesPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
+  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
   const isAtBottomRef = useRef(false); // Track if user is already at bottom
 
-  // Auto-select first device on page load if no device is selected
+  // Auto-select first device on page load - DISABLED
+  // TreePanel's loadDevicesWithSync already handles auto-selection
+  // This prevents conflicts where both components try to select different devices
+  /*
   useEffect(() => {
     if (!selectedDevice && treeData.length > 0) {
       // Get the first device from filtered devices list (respects current filters)
@@ -105,6 +112,7 @@ export const VariablesPage: React.FC = () => {
       }
     }
   }, [selectedDevice, treeData, selectDevice, getFilteredDevices]);
+  */
 
   // Fetch variables for selected device
   const fetchVariables = useCallback(async () => {
@@ -141,35 +149,56 @@ export const VariablesPage: React.FC = () => {
     fetchVariables();
   }, [fetchVariables]);
 
-  // Auto-refresh once after page load (Trigger #1)
+  // Reset autoRefreshed flag when device changes
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed) return;
+    setVariables([]);
+    setAutoRefreshed(false);
+    hasAutoRefreshedRef.current = false;
+  }, [selectedDevice?.serialNumber]);
 
-    // Wait for initial load to complete, then auto-refresh from device
-    const timer = setTimeout(async () => {
-      try {
-        console.log('[VariablesPage] Auto-refreshing from device...');
-        const refreshResponse = await VariableRefreshApiService.refreshAllVariables(selectedDevice.serialNumber);
-        console.log('[VariablesPage] Refresh response:', refreshResponse);
+  // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
+  useEffect(() => {
+    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
 
-        // Save to database
-        if (refreshResponse.items && refreshResponse.items.length > 0) {
-          await VariableRefreshApiService.saveRefreshedVariables(selectedDevice.serialNumber, refreshResponse.items);
-          // Only reload from database if save was successful
-          await fetchVariables();
-        } else {
-          console.warn('[VariablesPage] Auto-refresh: No items received, keeping existing data');
-        }
+    // Check immediately if database has variable data
+    const checkAndRefresh = async () => {
+      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+
+      if (variables.length > 0) {
+        console.log('[VariablesPage] Database has data, skipping auto-refresh');
         setAutoRefreshed(true);
+        return;
+      }
+
+      console.log('[VariablesPage] Database empty, auto-refreshing from device...');
+      setLoading(true);
+
+      try {
+        // Pass loading callback to show loading state during Action 17 FFI call
+        const result = await PanelDataRefreshService.refreshFromDevice({
+          serialNumber: selectedDevice.serialNumber,
+          type: 'variable',
+          onLoadingChange: (loading) => {
+            if (loading) {
+              setMessage(`Loading variables from ${selectedDevice.nameShowOnTree} (Action 17)...`, 'info');
+            }
+          }
+        });
+        console.log('[VariablesPage] Auto-refresh result:', result);
+        setMessage(`✓ Synced ${result.itemCount} variables from ${selectedDevice.nameShowOnTree}`, 'success');
       } catch (error) {
         console.error('[VariablesPage] Auto-refresh failed:', error);
-        // Don't reload from database on error - preserve existing variables
-        setAutoRefreshed(true); // Mark as attempted to prevent retry loops
+        setMessage(`Failed to sync variables: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      } finally {
+        // Always reload from database to show what was actually saved
+        await fetchVariables();
+        setAutoRefreshed(true);
+        setLoading(false);
       }
-    }, 500);
+    };
 
-    return () => clearTimeout(timer);
-  }, [loading, selectedDevice, autoRefreshed, fetchVariables]);
+    checkAndRefresh();
+  }, [loading, selectedDevice, autoRefreshed, fetchVariables, variables.length, setMessage]);
 
   // Handlers
   const handleRefresh = async () => {
@@ -183,29 +212,30 @@ export const VariablesPage: React.FC = () => {
     if (!selectedDevice) return;
 
     setRefreshing(true);
+    setMessage('Refreshing variables from device...', 'info');
+
     try {
-      console.log('[VariablesPage] Refreshing all variables from device...');
-      const refreshResponse = await VariableRefreshApiService.refreshAllVariables(selectedDevice.serialNumber);
-      console.log('[VariablesPage] Refresh response:', refreshResponse);
-
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await VariableRefreshApiService.saveRefreshedVariables(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[VariablesPage] Save response:', saveResponse);
-
-        // Only reload from database if save was successful
-        await fetchVariables();
-      } else {
-        console.warn('[VariablesPage] No items received from refresh, keeping existing data');
-      }
+      console.log('[VariablesPage] Refreshing all variables from device via FFI...');
+      // Pass loading callback to show loading state during Action 17 FFI call
+      const result = await PanelDataRefreshService.refreshFromDevice({
+        serialNumber: selectedDevice.serialNumber,
+        type: 'variable',
+        onLoadingChange: (loading) => {
+          if (loading) {
+            setMessage('Loading data from device (Action 17)...', 'info');
+          }
+        }
+      });
+      console.log('[VariablesPage] Refresh result:', result);
+      setMessage(result.message, 'success');
     } catch (error) {
       console.error('[VariablesPage] Failed to refresh from device:', error);
-      setError(error instanceof Error ? error.message : 'Failed to refresh from device');
-      // Don't call fetchVariables() on error - preserve existing variables in UI
+      const errorMsg = error instanceof Error ? error.message : 'Failed to refresh from device';
+      setError(errorMsg);
+      setMessage(errorMsg, 'error');
     } finally {
+      // Always reload from database to show what was actually saved
+      await fetchVariables();
       setRefreshing(false);
     }
   };
@@ -222,18 +252,9 @@ export const VariablesPage: React.FC = () => {
 
     setRefreshingItems(prev => new Set(prev).add(variableIndex));
     try {
-      console.log(`[VariablesPage] Refreshing variable ${index} from device...`);
-      const refreshResponse = await VariableRefreshApiService.refreshVariable(selectedDevice.serialNumber, index);
-      console.log('[VariablesPage] Refresh response:', refreshResponse);
-
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await VariableRefreshApiService.saveRefreshedVariables(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[VariablesPage] Save response:', saveResponse);
-      }
+      console.log(`[VariablesPage] Refreshing variable ${index} from device via FFI...`);
+      const result = await PanelDataRefreshService.refreshSingleVariable(selectedDevice.serialNumber, index);
+      console.log('[VariablesPage] Refresh result:', result);
 
       // Reload data from database after save
       await fetchVariables();
@@ -342,19 +363,67 @@ export const VariablesPage: React.FC = () => {
 
     setIsSaving(true);
     try {
-      // TODO: Replace with actual API call to update the backend
-      // if (editingCell.field === 'fullLabel') {
-      //   await updateVariableLabel(editingCell.serialNumber, editingCell.variableIndex, editValue);
-      // } else if (editingCell.field === 'fValue') {
-      //   await updateVariableValue(editingCell.serialNumber, editingCell.variableIndex, editValue);
-      // }
+      // Use Action 16 for editable fields (fullLabel, fValue)
+      if (selectedDevice && ['fullLabel', 'fValue'].includes(editingCell.field)) {
+        console.log(`=== Updating ${editingCell.field} ===`);
+        console.log(`Device: ${selectedDevice.serialNumber}, Variable: ${editingCell.variableIndex}, New Value: "${editValue}"`);
+        console.log('Using Action 16 (UPDATE_WEBVIEW_LIST)');
+
+        // Use CURRENT UI STATE as baseline (has most recent changes)
+        const currentVariable = variables.find(
+          variable => variable.serialNumber === editingCell.serialNumber && variable.variableIndex === editingCell.variableIndex
+        );
+
+        if (!currentVariable) {
+          throw new Error('Current variable data not found');
+        }
+
+        console.log('[Action 16] Using current UI state as baseline:', currentVariable);
+
+        // Build payload with current UI values + the one changed field
+        const payload = {
+          fullLabel: editingCell.field === 'fullLabel' ? editValue : (currentVariable.fullLabel || ''),
+          label: currentVariable.label || '',
+          value: editingCell.field === 'fValue' ? parseFloat(editValue || '0') * 1000 : parseFloat(currentVariable.fValue || '0'),
+          range: parseInt(currentVariable.rangeField || '0'),
+          autoManual: parseInt(currentVariable.autoManual || '0'),
+          control: 0,
+          filter: parseInt(currentVariable.filterField || '0'),
+          digitalAnalog: currentVariable.digitalAnalog === '1' ? 1 : 0,
+          decom: 0,
+        };
+
+        console.log('[Action 16] Full payload:', payload);
+
+        const response = await fetch(
+          `${API_BASE_URL}/api/t3_device/variables/${selectedDevice.serialNumber}/${editingCell.variableIndex}`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const result = await response.json();
+        console.log(`✅ ${editingCell.field} updated successfully!`, result);
+      }
 
       // Update local state optimistically
       setVariables(prevVariables =>
         prevVariables.map(variable =>
           variable.serialNumber === editingCell.serialNumber &&
           variable.variableIndex === editingCell.variableIndex
-            ? { ...variable, [editingCell.field]: editValue }
+            ? {
+                ...variable,
+                [editingCell.field]: editingCell.field === 'fValue'
+                  ? (parseFloat(editValue || '0') * 1000).toString()  // Convert back to raw value for storage
+                  : editValue
+              }
             : variable
         )
       );
@@ -363,7 +432,7 @@ export const VariablesPage: React.FC = () => {
       setEditingCell(null);
     } catch (error) {
       console.error('Failed to update:', error);
-      // Optionally show error message to user
+      alert(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }
@@ -401,22 +470,59 @@ export const VariablesPage: React.FC = () => {
     setRangeDrawerOpen(true);
   };
 
-  const handleRangeSave = (newRange: number) => {
+  const handleRangeSave = async (newRange: number) => {
     if (!selectedVariableForRange) return;
 
-    // Update local state optimistically
-    setVariables(prevVariables =>
-      prevVariables.map(variable =>
-        variable.serialNumber === selectedVariableForRange.serialNumber &&
-        variable.variableIndex === selectedVariableForRange.variableIndex
-          ? { ...variable, rangeField: newRange.toString() }
-          : variable
-      )
-    );
+    try {
+      console.log(`[Action 16] Updating Range/Units for Variable ${selectedVariableForRange.variableIndex} (SN: ${selectedVariableForRange.serialNumber})`);
 
-    console.log('Range updated:', selectedVariableForRange.serialNumber, selectedVariableForRange.variableIndex, newRange);
-    // TODO: Call API to update range value
-    // Example: await updateVariableRange(selectedVariableForRange.serialNumber, selectedVariableForRange.variableIndex, newRange);
+      // Action 16 requires ALL fields
+      const payload = {
+        fullLabel: selectedVariableForRange.fullLabel || '',
+        label: selectedVariableForRange.label || '',
+        value: parseFloat(selectedVariableForRange.fValue || '0'),
+        range: newRange,
+        autoManual: parseInt(selectedVariableForRange.autoManual || '0'),
+        control: 0,
+        filter: parseInt(selectedVariableForRange.filterField || '0'),
+        digitalAnalog: selectedVariableForRange.digitalAnalog === '1' ? 1 : 0,
+        calibrationSign: parseInt(selectedVariableForRange.sign || '0'),
+        calibrationH: 0,
+        calibrationL: 0,
+      };
+
+      console.log('[Action 16] Full payload:', payload);
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/t3_device/variables/${selectedVariableForRange.serialNumber}/${selectedVariableForRange.variableIndex}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('[Action 16] Range/Units updated successfully:', result);
+
+      // Update local state optimistically
+      setVariables(prevVariables =>
+        prevVariables.map(variable =>
+          variable.serialNumber === selectedVariableForRange.serialNumber &&
+          variable.variableIndex === selectedVariableForRange.variableIndex
+            ? { ...variable, rangeField: newRange.toString() }
+            : variable
+        )
+      );
+    } catch (error) {
+      console.error('Failed to update Range/Units:', error);
+      alert(`Failed to update Range/Units: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -437,42 +543,78 @@ export const VariablesPage: React.FC = () => {
     }
   };
 
+  // Display data with 10 empty rows when no variables
+  const displayVariables = React.useMemo(() => {
+    if (variables.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        serialNumber: selectedDevice?.serialNumber || 0,
+        variableId: '',
+        variableIndex: '',
+        panel: '',
+        fullLabel: '',
+        autoManual: '',
+        fValue: '',
+        units: '',
+        rangeField: '',
+        calibration: '',
+        sign: '',
+        filterField: '',
+        status: '',
+        digitalAnalog: '',
+        label: '',
+        typeField: '',
+      }));
+    }
+    return variables;
+  }, [variables, selectedDevice]);
+
+  // Helper to identify empty rows
+  const isEmptyRow = (item: VariablePoint) => !item.variableIndex && !item.variableId && variables.length === 0;
+
   // Column definitions matching the sequence: Panel, Variable, Full Label, Label, Auto/Manual, Value, Units
   const columns: TableColumnDefinition<VariablePoint>[] = [
     // 1. Panel ID
     createTableColumn<VariablePoint>({
       columnId: 'panel',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('panel')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('panel')}>
           <span>Panel</span>
           {sortColumn === 'panel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.panel || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.panel || '---')}
+        </TableCellLayout>
+      ),
     }),
     // 2. Variable (Index/ID)
     createTableColumn<VariablePoint>({
       columnId: 'variable',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('variable')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('variable')}>
           <span>Variable</span>
           {sortColumn === 'variable' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         const isRefreshing = refreshingItems.has(item.variableIndex || '');
 
         return (
           <TableCellLayout>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div className={styles.cellFlexContainer}>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -483,11 +625,12 @@ export const VariablesPage: React.FC = () => {
                 disabled={isRefreshing}
               >
                 <ArrowSyncRegular
-                  style={{ fontSize: '14px' }}
-                  className={isRefreshing ? styles.rotating : ''}
+                  className={`${styles.iconSmall} ${isRefreshing ? styles.rotating : ''}`}
                 />
               </button>
-              <Text size={200} weight="regular">{item.variableId || item.variableIndex || '---'}</Text>
+              <Text size={200} weight="regular">
+                {item.variableId || (item.variableIndex ? `VAR${parseInt(item.variableIndex) + 1}` : '---')}
+              </Text>
             </div>
           </TableCellLayout>
         );
@@ -497,16 +640,20 @@ export const VariablesPage: React.FC = () => {
     createTableColumn<VariablePoint>({
       columnId: 'fullLabel',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('fullLabel')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('fullLabel')}>
           <span>Full Label</span>
           {sortColumn === 'fullLabel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
                           editingCell?.variableIndex === item.variableIndex &&
                           editingCell?.field === 'fullLabel';
@@ -514,10 +661,10 @@ export const VariablesPage: React.FC = () => {
         return (
           <TableCellLayout>
             {isEditing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+              <div className={styles.editInputContainer}>
                 <input
                   type="text"
-                  className={styles.editInput}
+                  className={`${styles.editInput} ${styles.flex1}`}
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                   onBlur={handleEditSave}
@@ -526,7 +673,6 @@ export const VariablesPage: React.FC = () => {
                   disabled={isSaving}
                   placeholder="Enter label"
                   aria-label="Edit full label"
-                  style={{ flex: 1 }}
                 />
                 <button
                   onClick={(e) => {
@@ -537,7 +683,7 @@ export const VariablesPage: React.FC = () => {
                   className={styles.saveButton}
                   title="Save"
                 >
-                  <SaveRegular style={{ fontSize: '18px' }} />
+                  <SaveRegular className={styles.iconMedium} />
                 </button>
               </div>
             ) : (
@@ -557,16 +703,20 @@ export const VariablesPage: React.FC = () => {
     createTableColumn<VariablePoint>({
       columnId: 'label',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('label')}>
           <span>Label</span>
           {sortColumn === 'label' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
                           editingCell?.variableIndex === item.variableIndex &&
                           editingCell?.field === 'label';
@@ -574,10 +724,10 @@ export const VariablesPage: React.FC = () => {
         return (
           <TableCellLayout>
             {isEditing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+              <div className={styles.editInputContainer}>
                 <input
                   type="text"
-                  className={styles.editInput}
+                  className={`${styles.editInput} ${styles.flex1}`}
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                   onBlur={handleEditSave}
@@ -586,7 +736,6 @@ export const VariablesPage: React.FC = () => {
                   disabled={isSaving}
                   placeholder="Enter label"
                   aria-label="Edit label"
-                  style={{ flex: 1 }}
                 />
                 <button
                   onClick={(e) => {
@@ -597,7 +746,7 @@ export const VariablesPage: React.FC = () => {
                   className={styles.saveButton}
                   title="Save"
                 >
-                  <SaveRegular style={{ fontSize: '18px' }} />
+                  <SaveRegular className={styles.iconMedium} />
                 </button>
               </div>
             ) : (
@@ -617,11 +766,15 @@ export const VariablesPage: React.FC = () => {
     createTableColumn<VariablePoint>({
       columnId: 'autoManual',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>Auto/Manual</span>
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         // Check if Auto: value could be 'auto', 'Auto', or '1' (Manual is '0')
         const value = item.autoManual?.toString().toLowerCase();
         const isAuto = value === 'auto' || value === '1';
@@ -692,11 +845,11 @@ export const VariablesPage: React.FC = () => {
           <TableCellLayout>
             <div
               onClick={handleToggle}
-              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              className={styles.switchContainer}
             >
               <Switch
                 checked={isAuto}
-                style={{ transform: 'scale(0.8)' }}
+                className={styles.switchScale}
               />
             </div>
           </TableCellLayout>
@@ -707,16 +860,20 @@ export const VariablesPage: React.FC = () => {
     createTableColumn<VariablePoint>({
       columnId: 'value',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('value')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('value')}>
           <span>Value</span>
           {sortColumn === 'value' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
                           editingCell?.variableIndex === item.variableIndex &&
                           editingCell?.field === 'fValue';
@@ -724,11 +881,11 @@ export const VariablesPage: React.FC = () => {
         return (
           <TableCellLayout>
             {isEditing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+              <div className={styles.editInputContainer}>
                 <input
                   type="number"
                   step="0.01"
-                  className={styles.editInput}
+                  className={`${styles.editInput} ${styles.flex1}`}
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                   onBlur={handleEditSave}
@@ -737,7 +894,6 @@ export const VariablesPage: React.FC = () => {
                   disabled={isSaving}
                   placeholder="Enter value"
                   aria-label="Edit value"
-                  style={{ flex: 1 }}
                 />
                 <button
                   onClick={(e) => {
@@ -748,16 +904,16 @@ export const VariablesPage: React.FC = () => {
                   className={styles.saveButton}
                   title="Save"
                 >
-                  <SaveRegular style={{ fontSize: '18px' }} />
+                  <SaveRegular className={styles.iconMedium} />
                 </button>
               </div>
             ) : (
               <div
                 className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'fValue', item.fValue?.toString() || '0')}
+                onDoubleClick={() => handleCellDoubleClick(item, 'fValue', item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '0')}
                 title="Double-click to edit"
               >
-                <Text size={200} weight="regular">{item.fValue || '---'}</Text>
+                <Text size={200} weight="regular">{item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}</Text>
               </div>
             )}
           </TableCellLayout>
@@ -768,16 +924,20 @@ export const VariablesPage: React.FC = () => {
     createTableColumn<VariablePoint>({
       columnId: 'units',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('units')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('units')}>
           <span>Units</span>
           {sortColumn === 'units' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         // Parse range value and digital_analog type
         const rangeValue = item.rangeField ? parseInt(item.rangeField) : 0;
         const digitalAnalog = item.digitalAnalog === '1' ? 1 : 0;
@@ -787,7 +947,7 @@ export const VariablesPage: React.FC = () => {
           <TableCellLayout>
             <div
               onClick={() => handleUnitsClick(item)}
-              style={{ cursor: 'pointer', color: '#0078d4' }}
+              className={styles.rangeLink}
               title="Click to change range/units"
             >
               <Text size={200} weight="regular">{rangeLabel}</Text>
@@ -817,9 +977,9 @@ export const VariablesPage: React.FC = () => {
                   ERROR MESSAGE (if any)
                   ======================================== */}
               {error && (
-                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
-                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                <div className={styles.errorNotice}>
+                  <ErrorCircleRegular className={styles.iconError} />
+                  <Text className={styles.textError}>
                     {error}
                   </Text>
                 </div>
@@ -830,6 +990,7 @@ export const VariablesPage: React.FC = () => {
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
               {selectedDevice && (
+              <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   {/* Refresh Button */}
@@ -890,8 +1051,7 @@ export const VariablesPage: React.FC = () => {
                     relationship="description"
                   >
                     <button
-                      className={styles.toolbarButton}
-                      style={{ marginLeft: '8px' }}
+                      className={`${styles.toolbarButton} ${styles.marginLeft8}`}
                       title="Information"
                       aria-label="Information about this page"
                     >
@@ -900,15 +1060,16 @@ export const VariablesPage: React.FC = () => {
                   </Tooltip>
                 </div>
               </div>
-              )}
 
               {/* ========================================
                   HORIZONTAL DIVIDER
                   Matches: ext-overview-hr
                   ======================================== */}
-              <div style={{ padding: '0' }}>
+              <div className={styles.noPadding}>
                 <hr className={styles.overviewHr} />
               </div>
+              </>
+              )}
 
               {/* ========================================
                   DOCKING BODY - Main Content
@@ -921,17 +1082,16 @@ export const VariablesPage: React.FC = () => {
                   <div className={styles.loadingBar}>
                     <Spinner size="tiny" />
                     <Text size={200} weight="regular">Loading variables...</Text>
-                    <Text>Loading variables...</Text>
                   </div>
                 )}
 
                 {/* No Device Selected */}
                 {!selectedDevice && !loading && (
                   <div className={styles.noData}>
-                    <div style={{ textAlign: 'center' }}>
-                      <Text size={500} weight="semibold">No device selected</Text>
+                    <div className={styles.centerText}>
+                      <Text size={400} weight="semibold">No device selected</Text>
                       <br />
-                      <Text size={300}>Please select a device from the tree to view variables</Text>
+                      <Text size={200}>Please select a device from the tree to view variables</Text>
                     </div>
                   </div>
                 )}
@@ -945,7 +1105,7 @@ export const VariablesPage: React.FC = () => {
                     onWheel={handleWheel}
                   >
                   <DataGrid
-                    items={variables}
+                    items={displayVariables}
                     columns={columns}
                     sortable
                     resizableColumns
@@ -1007,25 +1167,25 @@ export const VariablesPage: React.FC = () => {
                   )}
 
                   {/* No Data Message - Show below grid when empty */}
-                  {variables.length === 0 && (
-                    <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                  {/* {variables.length === 0 && (
+                    <div className={styles.emptyStateContainer}>
+                      <div className={styles.emptyStateHeader}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={styles.emptyStateIcon}>
                           <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
                         </svg>
                         <Text size={400} weight="semibold">No variables found</Text>
                       </div>
-                      <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>This device has no configured variable points</Text>
+                      <Text size={300} className={styles.emptyStateText}>This device has no configured variable points</Text>
                       <Button
                         appearance="subtle"
                         icon={<ArrowSyncRegular />}
                         onClick={handleRefresh}
-                        style={{ minWidth: '120px', fontWeight: 'normal' }}
+                        className={styles.refreshButton}
                       >
                         Refresh
                       </Button>
                       </div>
-                    )}
+                    )} */}
                   </div>
                 )}              </div>
             </div>

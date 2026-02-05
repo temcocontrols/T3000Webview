@@ -1,0 +1,68 @@
+/* System Health Styles */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.metricHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.metricLabel {
+  font-size: 13px;
+  font-weight: 400;
+  color: #323130;
+}
+
+.metricValue {
+  font-size: 13px;
+  font-weight: 600;
+  color: #605e5c;
+}
+
+.progressBar {
+  height: 8px;
+  background-color: #f3f2f1;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  transition: width 0.3s ease, background-color 0.3s ease;
+  border-radius: 4px;
+}
+
+.statusRow {
+  display: flex;
+  gap: 16px;
+  padding-top: 8px;
+  border-top: 1px solid #edebe9;
+}
+
+.statusItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.statusText {
+  font-size: 12px;
+  color: #605e5c;
+}

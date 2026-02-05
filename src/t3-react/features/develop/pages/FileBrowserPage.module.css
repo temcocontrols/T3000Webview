@@ -1,0 +1,317 @@
+/**
+ * File Browser Page Styles
+ */
+
+.container {
+  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: #292827;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background-color: #ffffff;
+}
+
+.navigationBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  height: 40px;
+  min-height: 40px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #edebe9;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.navDivider {
+  width: 1px;
+  height: 24px;
+  background-color: #edebe9;
+  margin: 0 8px;
+  flex-shrink: 0;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.navButtons {
+  display: flex;
+  gap: 2px;
+  padding-right: 8px;
+  border-right: 1px solid #edebe9;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.breadcrumbButton {
+  min-width: auto;
+  padding: 4px 8px;
+  height: 28px;
+}
+
+.breadcrumbButton:hover {
+  background-color: #f3f2f1;
+}
+
+.breadcrumbSeparator {
+  color: #605e5c;
+  font-size: 14px;
+  padding: 0 4px;
+  user-select: none;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.splitView {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.fileGrid {
+  flex: 1;
+  overflow: auto;
+  padding: 0;
+  margin: 0;
+}
+
+.fileGrid :global(.fui-DataGrid) {
+  font-size: 12px;
+  color: #292827;
+  background: #ffffff;
+  border: none;
+  border-radius: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: fit-content;
+  min-width: max-content;
+}
+
+.fileGrid :global(.fui-DataGridHeader) {
+  background-color: #fafafa;
+  border-bottom: 1px solid #edebe9;
+  flex-shrink: 0;
+  width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.fileGrid :global(.fui-DataGridBody) {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.fileGrid :global(.fui-DataGridHeaderCell) {
+  font-weight: 600;
+  padding: 0 8px;
+  height: 32px;
+  line-height: 32px;
+  background-color: transparent;
+}
+
+.fileGrid :global(.fui-DataGridCell) {
+  padding: 0 8px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+.fileGrid :global(.fui-DataGridHeaderCell),
+.fileGrid :global(.fui-DataGridCell) {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+}
+
+/* Loading Bar - Info Bar Style */
+.loadingBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background-color: transparent;
+  border: none;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #323130;
+}
+
+.detailsPanel {
+  width: 40%;
+  min-width: 400px;
+  max-width: 700px;
+  border-left: 1px solid #edebe9;
+  display: flex;
+  flex-direction: column;
+  background-color: #fafafa;
+}
+
+.detailsHeader {
+  padding: 0 8px 0 12px;
+  height: 32px;
+  min-height: 32px;
+  max-height: 32px;
+  line-height: 32px;
+  border-bottom: 1px solid #edebe9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.detailsContent {
+  padding: 8px 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detailRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detailDivider {
+  height: 1px;
+  background-color: #edebe9;
+  margin: 8px 0;
+}
+
+.previewSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.previewText {
+  padding: 12px;
+  background-color: #ffffff;
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  font-family: 'Consolas', monospace;
+  font-size: 11px;
+  overflow: auto;
+  max-height: 400px;
+}
+
+.previewText pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.drawerOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.drawerPanel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 720px;
+  background: #ffffff;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.drawerHeader {
+  padding: 10px 16px;
+  border-bottom: 1px solid #edebe9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  min-height: 40px;
+  flex-shrink: 0;
+}
+
+.drawerBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.drawerFooter {
+  padding: 16px 24px;
+  border-top: 1px solid #edebe9;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Loading and No Data States */
+.noData {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 48px;
+}
+
+.centerText {
+  text-align: center;
+}
+
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  color: #605e5c;
+}

@@ -1,4 +1,4 @@
-//! Database Management Module
+﻿//! Database Management Module
 //!
 //! Comprehensive database management system including:
 //! - Application settings storage (localStorage replacement)
@@ -21,6 +21,8 @@ pub mod endpoints;
 pub mod config_api;
 pub mod partition_monitor_service;
 pub mod partition_query_service;
+pub mod data_sync_service;
+pub mod data_sync_endpoints;
 
 /// Partition metadata cache for faster queries
 static PARTITION_CACHE: std::sync::OnceLock<Arc<RwLock<HashMap<String, PartitionMetadata>>>> = std::sync::OnceLock::new();
@@ -522,7 +524,7 @@ fn create_sqlite_url(file_path: &std::path::Path) -> String {
 
         // Handle UNC paths and long paths on Windows
         if normalized_path.len() > 260 {
-            println!("⚠️ Warning: Path length ({}) exceeds Windows MAX_PATH limit (260)", normalized_path.len());
+            crate::logger::write_structured_log_with_level("T3_Database", &format!("WARNING: Path length ({}) exceeds Windows MAX_PATH limit (260)", normalized_path.len()), crate::logger::LogLevel::Warn).ok();
         }
 
         // Use proper SQLite URI format for Windows with mode=rwc to enable auto-create
@@ -632,16 +634,16 @@ impl DatabaseConfigService {
     pub async fn initialize_database_partitioning(
         db: &DatabaseConnection
     ) -> Result<database_files::DatabaseInitializationResult> {
-        println!("🚀 Initializing T3000 Database Partitioning System...");
+        crate::logger::write_structured_log("T3_Database", " Initializing T3000 Database Partitioning System...").ok();
 
         // Step 1: Check partition configuration (default to weekly if not found)
         let config = match Self::get_config(db).await {
             Ok(existing_config) => {
-                println!("📋 Found existing partition configuration: {:?}", existing_config.strategy);
+                crate::logger::write_structured_log("T3_Database", &format!(" Found existing partition configuration: {:?}", existing_config.strategy)).ok();
                 existing_config
             },
             Err(_) => {
-                println!("📋 No partition configuration found, creating default (Monthly)");
+                crate::logger::write_structured_log("T3_Database", " No partition configuration found, creating default (Monthly)").ok();
                 let default_config = database_partition_config::DatabasePartitionConfig {
                     id: None,
                     strategy: database_partition_config::PartitionStrategy::Monthly,
@@ -660,7 +662,7 @@ impl DatabaseConfigService {
         let runtime_path = get_t3000_database_path();
         let main_db_path = runtime_path.join("webview_t3_device.db");
 
-        println!("📁 Checking runtime folder: {}", runtime_path.display());
+        crate::logger::write_structured_log("T3_Database", &format!(" Checking runtime folder: {}", runtime_path.display())).ok();
 
         if !runtime_path.exists() {
             return Err(crate::error::Error::ServerError(
@@ -677,21 +679,18 @@ impl DatabaseConfigService {
             0
         };
 
-        println!("💾 Main database: {} (Size: {} MB)",
-                 if main_db_exists { "Found" } else { "Not Found" },
-                 main_db_size / 1024 / 1024);
+        crate::logger::write_structured_log("T3_Database", &format!(" Main database: {} (Size: {} MB)", if main_db_exists { "Found" } else { "Not Found" }, main_db_size / 1024 / 1024)).ok();
 
         // Step 3: Scan runtime folder for existing partition files
         let existing_partitions = Self::scan_and_register_existing_partitions(db, &runtime_path).await?;
 
-        println!("🔍 Found {} existing partition files", existing_partitions.len());
+        crate::logger::write_structured_log("T3_Database", &format!(" Found {} existing partition files", existing_partitions.len())).ok();
 
         // Step 3.5: Validate database records against physical files
         let validation_result = Self::validate_and_fix_partition_records(db, &runtime_path).await?;
 
         if validation_result.orphaned_records > 0 || validation_result.missing_files > 0 {
-            println!("🔧 Validation: {} orphaned records, {} missing files",
-                     validation_result.orphaned_records, validation_result.missing_files);
+            crate::logger::write_structured_log("T3_Database", &format!(" Validation: {} orphaned records, {} missing files", validation_result.orphaned_records, validation_result.missing_files)).ok();
         }
 
         // Step 4: Check if partitioning is needed
@@ -703,11 +702,11 @@ impl DatabaseConfigService {
         let total_size: i64 = all_files.iter().map(|f| f.size_bytes).sum();
         let active_files: Vec<_> = all_files.iter().filter(|f| f.is_active).collect();
 
-        println!("�?Database initialization complete:");
-        println!("   - Strategy: {:?}", config.strategy);
-        println!("   - Total files: {}", total_files);
-        println!("   - Total size: {} MB", total_size / 1024 / 1024);
-        println!("   - Active files: {}", active_files.len());
+        crate::logger::write_structured_log("T3_Database", "Database initialization complete:").ok();
+        crate::logger::write_structured_log("T3_Database", &format!("   - Strategy: {:?}", config.strategy)).ok();
+        crate::logger::write_structured_log("T3_Database", &format!("   - Total files: {}", total_files)).ok();
+        crate::logger::write_structured_log("T3_Database", &format!("   - Total size: {} MB", total_size / 1024 / 1024)).ok();
+        crate::logger::write_structured_log("T3_Database", &format!("   - Active files: {}", active_files.len())).ok();
 
         Ok(database_files::DatabaseInitializationResult {
             config,
@@ -774,15 +773,15 @@ impl DatabaseConfigService {
 
                             match new_file.insert(db).await {
                                 Ok(saved) => {
-                                    println!("📝 Registered existing partition: {}", file_name);
+                                    crate::logger::write_structured_log("T3_Database", &format!(" Registered existing partition: {}", file_name)).ok();
                                     found_partitions.push(database_files::DatabaseFileInfo::from_model(saved));
                                 },
                                 Err(e) => {
-                                    println!("⚠️ Failed to register partition {}: {}", file_name, e);
+                                    crate::logger::write_structured_log_with_level("T3_Database", &format!("WARNING Failed to register partition {}: {}", file_name, e), crate::logger::LogLevel::Warn).ok();
                                 }
                             }
                         } else {
-                            println!("�?Partition already registered: {}", file_name);
+                            crate::logger::write_structured_log("T3_Database", &format!("Partition already registered: {}", file_name)).ok();
                             if let Some(existing) = existing_record {
                                 found_partitions.push(database_files::DatabaseFileInfo::from_model(existing));
                             }
@@ -810,12 +809,12 @@ impl DatabaseConfigService {
 
             if !file_path.exists() {
                 // File record exists but physical file is missing
-                println!("🚨 Orphaned record found: {} (physical file missing)", record.file_name);
+                crate::logger::write_structured_log_with_level("T3_Database", &format!("ERROR Orphaned record found: {} (physical file missing)", record.file_name), crate::logger::LogLevel::Warn).ok();
                 result.orphaned_records += 1;
 
                 // For active files, try to create the missing file
                 if record.is_active {
-                    println!("🔨 Attempting to create missing active file: {}", record.file_name);
+                    crate::logger::write_structured_log("T3_Database", &format!(" Attempting to create missing active file: {}", record.file_name)).ok();
 
                     // Create the missing file using the same logic as partition creation
                     // Create SQLite URL using helper function
@@ -835,21 +834,21 @@ impl DatabaseConfigService {
                                 sea_orm::DatabaseBackend::Sqlite,
                                 init_sql.to_string()
                             )).await {
-                                println!("⚠️ Failed to create missing file {}: {}", record.file_name, e);
+                                crate::logger::write_structured_log_with_level("T3_Database", &format!("WARNING Failed to create missing file {}: {}", record.file_name, e), crate::logger::LogLevel::Warn).ok();
                             } else {
-                                println!("�?Created missing active file: {}", record.file_name);
+                                crate::logger::write_structured_log("T3_Database", &format!("�?Created missing active file: {}", record.file_name)).ok();
                                 result.created_files += 1;
                             }
 
                             let _ = partition_conn.close().await;
                         },
                         Err(e) => {
-                            println!("�?Failed to create missing file {}: {}", record.file_name, e);
+                            crate::logger::write_structured_log_with_level("T3_Database", &format!("�?Failed to create missing file {}: {}", record.file_name, e), crate::logger::LogLevel::Warn).ok();
                         }
                     }
                 } else {
                     // For inactive files, deactivate the orphaned record
-                    println!("🔧 Marking orphaned inactive record as archived: {}", record.file_name);
+                    crate::logger::write_structured_log("T3_Database", &format!(" Marking orphaned inactive record as archived: {}", record.file_name)).ok();
 
                     let file_name = record.file_name.clone();
                     let mut active_model: database_files::ActiveModel = record.into();
@@ -857,7 +856,7 @@ impl DatabaseConfigService {
                     active_model.is_active = Set(false);
 
                     if let Err(e) = active_model.update(db).await {
-                        println!("⚠️ Failed to update orphaned record {}: {}", file_name, e);
+                        crate::logger::write_structured_log_with_level("T3_Database", &format!("WARNING Failed to update orphaned record {}: {}", file_name, e), crate::logger::LogLevel::Warn).ok();
                     } else {
                         result.fixed_records += 1;
                     }
@@ -868,8 +867,8 @@ impl DatabaseConfigService {
                     let current_size = metadata.len() as i64;
 
                     if record.file_size_bytes != current_size {
-                        println!("📊 Updating file size for {}: {} -> {} bytes",
-                                record.file_name, record.file_size_bytes, current_size);
+                        crate::logger::write_structured_log("T3_Database", &format!("📊 Updating file size for {}: {} -> {} bytes",
+                                record.file_name, record.file_size_bytes, current_size)).ok();
 
                         let file_name = record.file_name.clone();
                         let mut active_model: database_files::ActiveModel = record.into();
@@ -877,7 +876,7 @@ impl DatabaseConfigService {
                         active_model.last_accessed_at = Set(Utc::now().naive_utc());
 
                         if let Err(e) = active_model.update(db).await {
-                            println!("⚠️ Failed to update file size for {}: {}", file_name, e);
+                            crate::logger::write_structured_log_with_level("T3_Database", &format!("WARNING Failed to update file size for {}: {}", file_name, e), crate::logger::LogLevel::Warn).ok();
                         } else {
                             result.fixed_records += 1;
                         }
@@ -897,16 +896,16 @@ impl DatabaseConfigService {
     pub async fn ensure_partitions_on_trendlog_open(
         db: &DatabaseConnection
     ) -> Result<database_files::PartitionCheckResult> {
-        println!("🔍 TrendLog Open: Checking partition requirements...");
+        crate::logger::write_structured_log("T3_Database", " TrendLog Open: Checking partition requirements...").ok();
 
         // Step 1: Ensure partition configuration exists (default to Monthly)
         let config = match Self::get_config(db).await {
             Ok(existing_config) => {
-                println!("📋 Partition config found: {:?}", existing_config.strategy);
+                crate::logger::write_structured_log("T3_Database", &format!(" Partition config found: {:?}", existing_config.strategy)).ok();
                 existing_config
             },
             Err(_) => {
-                println!("📋 Creating default partition config (Monthly)");
+                crate::logger::write_structured_log("T3_Database", " Creating default partition config (Monthly)").ok();
                 let default_config = database_partition_config::DatabasePartitionConfig {
                     id: None,
                     strategy: database_partition_config::PartitionStrategy::Monthly,
@@ -931,7 +930,7 @@ impl DatabaseConfigService {
 
         // Only proceed if partitioning is active
         if !config.is_active {
-            println!("⏸️ Partitioning is disabled, skipping checks");
+            crate::logger::write_structured_log("T3_Database", "⏸️ Partitioning is disabled, skipping checks").ok();
             return Ok(result);
         }
 
@@ -939,7 +938,7 @@ impl DatabaseConfigService {
         let required_partitions = Self::calculate_required_partitions_from_data(db, &config).await?;
         result.partitions_checked = required_partitions.len() as i32;
 
-        println!("📅 Strategy: {:?}, Required partitions: {:?}", config.strategy, required_partitions);
+        crate::logger::write_structured_log("T3_Database", &format!("📅 Strategy: {:?}, Required partitions: {:?}", config.strategy, required_partitions)).ok();
 
         // Step 3: Check each required partition and create if missing
         for partition_id in required_partitions {
@@ -950,27 +949,27 @@ impl DatabaseConfigService {
                 .await?;
 
             if existing_partition.is_none() {
-                println!("🔨 Creating missing partition: {}", partition_id);
+                crate::logger::write_structured_log("T3_Database", &format!(" Creating missing partition: {}", partition_id)).ok();
 
                 match Self::create_partition_and_migrate_data(db, &config, &partition_id).await {
                     Ok(migrated_size) => {
                         result.partitions_created += 1;
                         result.data_migrated_mb += migrated_size;
-                        println!("�?Created partition {} and migrated {} MB", partition_id, migrated_size);
+                        crate::logger::write_structured_log("T3_Database", &format!("�?Created partition {} and migrated {} MB", partition_id, migrated_size)).ok();
                     },
                     Err(e) => {
                         let error_msg = format!("Failed to create partition {}: {}", partition_id, e);
-                        println!("�?{}", error_msg);
+                        crate::logger::write_structured_log("T3_Database", &format!("�?{}", error_msg)).ok();
                         result.errors.push(error_msg);
                     }
                 }
             } else {
-                println!("�?Partition {} already exists", partition_id);
+                crate::logger::write_structured_log("T3_Database", &format!("�?Partition {} already exists", partition_id)).ok();
             }
         }
 
-        println!("�?TrendLog partition check complete: {} checked, {} created",
-                 result.partitions_checked, result.partitions_created);
+        crate::logger::write_structured_log("T3_Database", &format!("�?TrendLog partition check complete: {} checked, {} created",
+                 result.partitions_checked, result.partitions_created)).ok();
 
         Ok(result)
     }
@@ -981,7 +980,7 @@ impl DatabaseConfigService {
         db: &DatabaseConnection,
         config: &database_partition_config::DatabasePartitionConfig
     ) -> Result<Vec<String>> {
-        println!("🔍 Checking database for actual data to determine partition needs...");
+        crate::logger::write_structured_log("T3_Database", " Checking database for actual data to determine partition needs...").ok();
 
         // Query TRENDLOG_DATA to find distinct date periods with data
         let data_periods_query = match config.strategy {
@@ -995,7 +994,7 @@ impl DatabaseConfigService {
                 "SELECT DISTINCT strftime('%Y-%m', LoggingTime_Fmt) as period FROM TRENDLOG_DATA WHERE LoggingTime_Fmt IS NOT NULL ORDER BY period DESC LIMIT 5"
             },
             _ => {
-                println!("📝 Strategy {:?} doesn't support data-based partition creation", config.strategy);
+                crate::logger::write_structured_log("T3_Database", &format!(" Strategy {:?} doesn't support data-based partition creation", config.strategy)).ok();
                 return Ok(Vec::new());
             }
         };
@@ -1015,7 +1014,7 @@ impl DatabaseConfigService {
             data_periods_query.to_string()
         )).await {
             Ok(rows) => {
-                println!("📊 Found {} data periods in database", rows.len());
+                crate::logger::write_structured_log("T3_Database", &format!("📊 Found {} data periods in database", rows.len())).ok();
 
                 for row in rows {
                     if let Ok(period) = row.try_get::<String>("", "period") {
@@ -1034,16 +1033,16 @@ impl DatabaseConfigService {
                                 _ => period.clone(),
                             };
 
-                            println!("📅 Found data period: {} -> partition: {}", period, partition_id);
+                            crate::logger::write_structured_log("T3_Database", &format!("📅 Found data period: {} -> partition: {}", period, partition_id)).ok();
                             required_partitions.push(partition_id);
                         } else {
-                            println!("📅 Skipping current period: {} (keeping in main DB)", period);
+                            crate::logger::write_structured_log("T3_Database", &format!("📅 Skipping current period: {} (keeping in main DB)", period)).ok();
                         }
                     }
                 }
             },
             Err(e) => {
-                println!("⚠️ Warning: Could not query database for data periods: {}", e);
+                crate::logger::write_structured_log_with_level("T3_Database", &format!("WARNING Warning: Could not query database for data periods: {}", e), crate::logger::LogLevel::Warn).ok();
                 // Fallback: create just one previous period partition
                 match config.strategy {
                     database_partition_config::PartitionStrategy::Daily => {
@@ -1066,7 +1065,7 @@ impl DatabaseConfigService {
             }
         }
 
-        println!("�?Determined {} partitions needed based on actual data", required_partitions.len());
+        crate::logger::write_structured_log("T3_Database", &format!("�?Determined {} partitions needed based on actual data", required_partitions.len())).ok();
         Ok(required_partitions)
     }
 
@@ -1076,16 +1075,16 @@ impl DatabaseConfigService {
         config: &database_partition_config::DatabasePartitionConfig,
         partition_id: &str,
     ) -> Result<i32> {
-        println!("🔨 Creating partition {} and migrating data...", partition_id);
+        crate::logger::write_structured_log("T3_Database", &format!(" Creating partition {} and migrating data...", partition_id)).ok();
 
         // Step 1: Create partition file
         let runtime_path = get_t3000_database_path();
 
         // Ensure the runtime directory exists and create it if needed
         if !runtime_path.exists() {
-            println!("📁 Creating runtime database directory: {}", runtime_path.display());
+            crate::logger::write_structured_log("T3_Database", &format!(" Creating runtime database directory: {}", runtime_path.display())).ok();
             if let Err(e) = std::fs::create_dir_all(&runtime_path) {
-                println!("�?Failed to create runtime directory: {}", e);
+                crate::logger::write_structured_log("T3_Database", &format!("�?Failed to create runtime directory: {}", e)).ok();
                 return Err(crate::error::Error::ServerError(
                     format!("Failed to create T3000 runtime database folder: {}", e)
                 ));
@@ -1095,28 +1094,28 @@ impl DatabaseConfigService {
         let partition_file_name = format!("webview_t3_device_{}.db", partition_id);
         let partition_file_path = runtime_path.join(&partition_file_name);
 
-        println!("📁 Creating partition file: {}", partition_file_path.display());
+        crate::logger::write_structured_log("T3_Database", &format!(" Creating partition file: {}", partition_file_path.display())).ok();
 
         // Create SQLite URL using helper function for cross-platform compatibility
         // Add create mode to ensure SQLite creates the file if it doesn't exist
         let partition_db_url = format!("{}?mode=rwc", create_sqlite_url(&partition_file_path));
-        println!("🔗 SQLite URL: {}", partition_db_url);
+        crate::logger::write_structured_log("T3_Database", &format!("🔗 SQLite URL: {}", partition_db_url)).ok();
 
         // Pre-flight checks for better error diagnostics
-        println!("🔍 Pre-flight checks:");
-        println!("  - Runtime path exists: {}", runtime_path.exists());
-        println!("  - Runtime path is dir: {}", runtime_path.is_dir());
-        println!("  - Partition file path: {}", partition_file_path.display());
+        crate::logger::write_structured_log("T3_Database", " Pre-flight checks:").ok();
+        crate::logger::write_structured_log("T3_Database", &format!("  - Runtime path exists: {}", runtime_path.exists())).ok();
+        crate::logger::write_structured_log("T3_Database", &format!("  - Runtime path is dir: {}", runtime_path.is_dir())).ok();
+        crate::logger::write_structured_log("T3_Database", &format!("  - Partition file path: {}", partition_file_path.display())).ok();
 
         // Check parent directory permissions by trying to create a test file
         let test_file = runtime_path.join("test_permissions.tmp");
         match std::fs::File::create(&test_file) {
             Ok(_) => {
                 let _ = std::fs::remove_file(&test_file);
-                println!("  - Directory permissions: �?OK");
+                crate::logger::write_structured_log("T3_Database", &format!("  - Directory permissions: �?OK")).ok();
             },
             Err(perm_err) => {
-                println!("  - Directory permissions: �?FAILED - {}", perm_err);
+                crate::logger::write_structured_log("T3_Database", &format!("  - Directory permissions: �?FAILED - {}", perm_err)).ok();
                 return Err(crate::error::Error::ServerError(
                     format!("Directory permission error in {}: {}", runtime_path.display(), perm_err)
                 ));
@@ -1126,34 +1125,34 @@ impl DatabaseConfigService {
         // Create the partition database file with better error handling
         let partition_conn = match sea_orm::Database::connect(&partition_db_url).await {
             Ok(conn) => {
-                println!("�?Successfully connected to partition database");
+                crate::logger::write_structured_log("T3_Database", &format!("�?Successfully connected to partition database")).ok();
                 conn
             },
             Err(e) => {
-                println!("�?Failed to connect to partition database: {}", e);
+                crate::logger::write_structured_log("T3_Database", &format!("�?Failed to connect to partition database: {}", e)).ok();
 
                 // Enhanced error diagnostics
-                println!("🔍 Detailed diagnostics:");
-                println!("  - SQLite URL: {}", partition_db_url);
-                println!("  - File path exists: {}", partition_file_path.exists());
-                println!("  - Parent dir exists: {}", partition_file_path.parent().map_or(false, |p| p.exists()));
+                crate::logger::write_structured_log("T3_Database", &format!(" Detailed diagnostics:")).ok();
+                crate::logger::write_structured_log("T3_Database", &format!("  - SQLite URL: {}", partition_db_url)).ok();
+                crate::logger::write_structured_log("T3_Database", &format!("  - File path exists: {}", partition_file_path.exists())).ok();
+                crate::logger::write_structured_log("T3_Database", &format!("  - Parent dir exists: {}", partition_file_path.parent().map_or(false, |p| p.exists()))).ok();
 
                 // Check if it's a specific SQLite error
                 if e.to_string().contains("code: 14") {
-                    println!("  - SQLite Error Code 14: Unable to open database file");
-                    println!("  - Common causes: Permission denied, path too long, or invalid path");
+                    crate::logger::write_structured_log("T3_Database", "  - SQLite Error Code 14: Unable to open database file").ok();
+                    crate::logger::write_structured_log("T3_Database", "  - Common causes: Permission denied, path too long, or invalid path").ok();
                 }
 
                 // Try to create the file manually for additional diagnostics
                 match std::fs::File::create(&partition_file_path) {
                     Ok(_) => {
-                        println!("  - Manual file creation: �?SUCCESS");
-                        println!("📝 Created empty partition file, retrying connection...");
+                        crate::logger::write_structured_log("T3_Database", &format!("  - Manual file creation: �?SUCCESS")).ok();
+                        crate::logger::write_structured_log("T3_Database", &format!(" Created empty partition file, retrying connection...")).ok();
 
                         // Retry the connection once more
                         match sea_orm::Database::connect(&partition_db_url).await {
                             Ok(retry_conn) => {
-                                println!("�?Retry connection successful!");
+                                crate::logger::write_structured_log("T3_Database", &format!("�?Retry connection successful!")).ok();
                                 retry_conn
                             },
                             Err(retry_err) => {
@@ -1165,7 +1164,7 @@ impl DatabaseConfigService {
                         }
                     },
                     Err(file_err) => {
-                        println!("  - Manual file creation: �?FAILED - {}", file_err);
+                        crate::logger::write_structured_log("T3_Database", &format!("  - Manual file creation: �?FAILED - {}", file_err)).ok();
                         return Err(crate::error::Error::ServerError(
                             format!("Failed to create partition database file {}: Connection error: {} | File creation error: {}",
                                 partition_file_name, e, file_err)
@@ -1206,7 +1205,7 @@ impl DatabaseConfigService {
         let migrated_size = {
             // For now, return a dummy size. In a real implementation,
             // you would query and transfer the actual data.
-            println!("📦 Would migrate data from {} to {}", start_date, end_date);
+            crate::logger::write_structured_log("T3_Database", &format!("📦 Would migrate data from {} to {}", start_date, end_date)).ok();
             0 // MB
         };
 
@@ -1235,7 +1234,7 @@ impl DatabaseConfigService {
         // Close partition connection
         let _ = partition_conn.close().await;
 
-        println!("�?Partition {} created successfully", partition_id);
+        crate::logger::write_structured_log("T3_Database", &format!("�?Partition {} created successfully", partition_id)).ok();
         Ok(migrated_size)
     }
 
@@ -1312,7 +1311,7 @@ impl DatabaseConfigService {
                 .await?;
 
             if existing_file.is_some() {
-                println!("Partition file '{}' already exists, no new partition needed", file_name);
+                crate::logger::write_structured_log("T3_Database", &format!("Partition file '{}' already exists, no new partition needed", file_name)).ok();
                 return Ok(None);
             }
 
@@ -1331,15 +1330,15 @@ impl DatabaseConfigService {
         let now = Utc::now().naive_utc();
         let partition_id = config.generate_partition_identifier(&now);
 
-        println!("🎯 Applying {:?} partitioning strategy", config.strategy);
-        println!("📅 Current time: {}", now.format("%Y-%m-%d %H:%M:%S"));
-        println!("🏷�?Generated partition ID: {}", partition_id);
+        crate::logger::write_structured_log("T3_Database", &format!("🎯 Applying {:?} partitioning strategy", config.strategy)).ok();
+        crate::logger::write_structured_log("T3_Database", &format!("📅 Current time: {}", now.format("%Y-%m-%d %H:%M:%S"))).ok();
+        crate::logger::write_structured_log("T3_Database", &format!("🏷�?Generated partition ID: {}", partition_id)).ok();
 
         let file_name = format!("webview_t3_device_{}.db", partition_id);
         let file_path = get_t3000_database_path().join(&file_name);
         let file_path_str = file_path.to_string_lossy().to_string();
 
-        println!("📂 Target file path: {}", file_path_str);
+        crate::logger::write_structured_log("T3_Database", &format!("📂 Target file path: {}", file_path_str)).ok();
 
         // Check if file already exists in database to avoid UNIQUE constraint violation
         let existing_file = database_files::Entity::find()
@@ -1349,13 +1348,13 @@ impl DatabaseConfigService {
 
         if existing_file.is_some() {
             // File record already exists, just return current files without creating duplicate
-            println!("Database file record '{}' already exists, skipping creation", file_name);
+            crate::logger::write_structured_log("T3_Database", &format!("Database file record '{}' already exists, skipping creation", file_name)).ok();
             return Self::get_database_files(db).await;
         }
 
         // Create the actual database file on disk
         if !file_path.exists() {
-            println!("🔨 Creating physical partition file: {}", file_path.display());
+            crate::logger::write_structured_log("T3_Database", &format!(" Creating physical partition file: {}", file_path.display())).ok();
 
             // Ensure the directory exists
             if let Some(parent_dir) = file_path.parent() {
@@ -1370,7 +1369,7 @@ impl DatabaseConfigService {
 
             // Create SQLite URL using helper function for cross-platform compatibility
             let partition_db_url = create_sqlite_url(&file_path);
-            println!("🔗 SQLite URL: {}", partition_db_url);
+            crate::logger::write_structured_log("T3_Database", &format!("🔗 SQLite URL: {}", partition_db_url)).ok();
 
             match sea_orm::Database::connect(&partition_db_url).await {
                 Ok(partition_conn) => {
@@ -1387,14 +1386,14 @@ impl DatabaseConfigService {
                         sea_orm::DatabaseBackend::Sqlite,
                         init_sql.to_string()
                     )).await {
-                        println!("⚠️ Warning: Failed to initialize partition database: {}", e);
+                        crate::logger::write_structured_log("T3_Database", &format!("WARNING Warning: Failed to initialize partition database: {}", e)).ok();
                     } else {
-                        println!("�?Partition file created successfully: {}", file_name);
+                        crate::logger::write_structured_log("T3_Database", &format!("�?Partition file created successfully: {}", file_name)).ok();
                     }
 
                     // Close the connection
                     if let Err(e) = partition_conn.close().await {
-                        println!("⚠️ Warning: Failed to close partition connection: {}", e);
+                        crate::logger::write_structured_log("T3_Database", &format!("WARNING Warning: Failed to close partition connection: {}", e)).ok();
                     }
                 },
                 Err(e) => {
@@ -1404,7 +1403,7 @@ impl DatabaseConfigService {
                 }
             }
         } else {
-            println!("📁 Partition file already exists: {}", file_name);
+            crate::logger::write_structured_log("T3_Database", &format!(" Partition file already exists: {}", file_name)).ok();
         }
 
         // Get file size after creation
@@ -1441,15 +1440,15 @@ impl DatabaseConfigService {
         // Insert new active file with error handling for UNIQUE constraint
         match new_file.insert(db).await {
             Ok(_saved_file) => {
-                println!("Successfully created database file record: {}", file_name);
+                crate::logger::write_structured_log("T3_Database", &format!("Successfully created database file record: {}", file_name)).ok();
             },
             Err(sea_orm::DbErr::Exec(sea_orm::RuntimeErr::SqlxError(sqlx::Error::Database(db_err))))
                 if db_err.message().contains("UNIQUE constraint failed") => {
                 // Handle UNIQUE constraint error gracefully
-                println!("Database file record '{}' already exists (UNIQUE constraint), continuing...", file_name);
+                crate::logger::write_structured_log("T3_Database", &format!("Database file record '{}' already exists (UNIQUE constraint), continuing...", file_name)).ok();
             },
             Err(e) => {
-                println!("Error creating database file record: {}", e);
+                crate::logger::write_structured_log("T3_Database", &format!("Error creating database file record: {}", e)).ok();
                 return Err(e.into());
             }
         }
@@ -1457,7 +1456,7 @@ impl DatabaseConfigService {
         // CRITICAL: Migrate historical data from main database to the new partition
         // This is what was missing - the actual data movement!
         if let Err(e) = Self::migrate_data_to_partition(db, config, &file_path, &partition_id).await {
-            println!("Warning: Failed to migrate data to partition {}: {}", partition_id, e);
+            crate::logger::write_structured_log("T3_Database", &format!("Warning: Failed to migrate data to partition {}: {}", partition_id, e)).ok();
             // Continue even if migration fails to avoid breaking the system
         }
 
@@ -1472,13 +1471,13 @@ impl DatabaseConfigService {
         partition_path: &std::path::Path,
         partition_id: &str,
     ) -> Result<()> {
-        println!("🔄 Starting data migration to partition: {}", partition_id);
+        crate::logger::write_structured_log("T3_Database", &format!("🔄 Starting data migration to partition: {}", partition_id)).ok();
 
         // Calculate the date range for data to migrate based on strategy
         let (start_date, end_date) = Self::calculate_partition_date_range(config, partition_id)?;
 
-        println!("📅 Migrating data from {} to {} for partition {}",
-                 start_date.format("%Y-%m-%d"), end_date.format("%Y-%m-%d"), partition_id);
+        crate::logger::write_structured_log("T3_Database", &format!("📅 Migrating data from {} to {} for partition {}",
+                 start_date.format("%Y-%m-%d"), end_date.format("%Y-%m-%d"), partition_id)).ok();
 
         // Get the main database path
         let _main_db_path = get_t3000_database_path().join("webview_t3_device.db");
@@ -1551,7 +1550,7 @@ impl DatabaseConfigService {
         )).await?;
 
         let migrated_count = migration_result.rows_affected();
-        println!("📦 Migrated {} records to partition {}", migrated_count, partition_id);
+        crate::logger::write_structured_log("T3_Database", &format!("📦 Migrated {} records to partition {}", migrated_count, partition_id)).ok();
 
         // Delete migrated data from main database if migration was successful
         if migrated_count > 0 {
@@ -1570,7 +1569,7 @@ impl DatabaseConfigService {
                 delete_sql
             )).await?;
 
-            println!("🗑�?Removed {} records from main database", delete_result.rows_affected());
+            crate::logger::write_structured_log("T3_Database", &format!("🗑�?Removed {} records from main database", delete_result.rows_affected())).ok();
         }
 
         // Update partition file metadata with actual record count and date range
@@ -1588,7 +1587,7 @@ impl DatabaseConfigService {
             "DETACH DATABASE partition_db".to_string()
         )).await?;
 
-        println!("�?Data migration completed for partition: {}", partition_id);
+        crate::logger::write_structured_log("T3_Database", &format!("�?Data migration completed for partition: {}", partition_id)).ok();
         Ok(())
     }
 
@@ -1689,7 +1688,7 @@ impl DatabaseConfigService {
         db: &DatabaseConnection,
         runtime_config: &PartitioningRuntimeConfig,
     ) -> Result<PartitionTransitionResult> {
-        println!("🕐 Checking for period transition and partition rotation...");
+        crate::logger::write_structured_log("T3_Database", &format!("🕐 Checking for period transition and partition rotation...")).ok();
 
         let config = Self::get_config(db).await?;
         if !config.is_active {
@@ -1697,7 +1696,7 @@ impl DatabaseConfigService {
         }
 
         let current_period = Self::get_current_time_period(&config);
-        println!("📅 Current period: {}", current_period);
+        crate::logger::write_structured_log("T3_Database", &format!("📅 Current period: {}", current_period)).ok();
 
         // Get the last known period from application settings
         let last_period_setting = crate::database_management::ApplicationConfigService::get_setting(
@@ -1708,7 +1707,7 @@ impl DatabaseConfigService {
             .map(|s| s.config_value)
             .unwrap_or_else(|| current_period.clone());
 
-        println!("📋 Last known period: {}", last_known_period);
+        crate::logger::write_structured_log("T3_Database", &format!(" Last known period: {}", last_known_period)).ok();
 
         let mut result = PartitionTransitionResult {
             period_changed: current_period != last_known_period,
@@ -1721,19 +1720,19 @@ impl DatabaseConfigService {
         };
 
         if result.period_changed {
-            println!("🔄 Period transition detected: {} �?{}", last_known_period, current_period);
+            crate::logger::write_structured_log("T3_Database", &format!("🔄 Period transition detected: {} �?{}", last_known_period, current_period)).ok();
 
             // Step 1: Create partition for previous period if it has data
             match Self::create_partition_for_previous_period(db, &config, &last_known_period).await {
                 Ok(created) => {
                     if created {
                         result.partitions_created += 1;
-                        println!("�?Created partition for previous period: {}", last_known_period);
+                        crate::logger::write_structured_log("T3_Database", &format!("�?Created partition for previous period: {}", last_known_period)).ok();
                     }
                 },
                 Err(e) => {
                     let error_msg = format!("Failed to create partition for {}: {}", last_known_period, e);
-                    println!("�?{}", error_msg);
+                    crate::logger::write_structured_log("T3_Database", &format!("�?{}", error_msg)).ok();
                     result.errors.push(error_msg);
                 }
             }
@@ -1743,11 +1742,11 @@ impl DatabaseConfigService {
                 Ok(migrated_mb) => {
                     result.data_migrated_mb = migrated_mb;
                     result.overlap_maintained = true;
-                    println!("📦 Migrated {} MB with {}h overlap maintained", migrated_mb, runtime_config.overlap_hours);
+                    crate::logger::write_structured_log("T3_Database", &format!("📦 Migrated {} MB with {}h overlap maintained", migrated_mb, runtime_config.overlap_hours)).ok();
                 },
                 Err(e) => {
                     let error_msg = format!("Failed to migrate data with overlap: {}", e);
-                    println!("�?{}", error_msg);
+                    crate::logger::write_structured_log("T3_Database", &format!("�?{}", error_msg)).ok();
                     result.errors.push(error_msg);
                 }
             }
@@ -1755,7 +1754,7 @@ impl DatabaseConfigService {
             // Step 3: Manage partition retention (archive old partitions)
             if let Err(e) = Self::manage_partition_retention(db, runtime_config).await {
                 let error_msg = format!("Failed to manage partition retention: {}", e);
-                println!("�?{}", error_msg);
+                crate::logger::write_structured_log("T3_Database", &format!("�?{}", error_msg)).ok();
                 result.errors.push(error_msg);
             }
 
@@ -1774,10 +1773,10 @@ impl DatabaseConfigService {
                 Self::refresh_partition_cache(db).await?;
             }
         } else {
-            println!("📅 No period transition, current period {} is still active", current_period);
+            crate::logger::write_structured_log("T3_Database", &format!("📅 No period transition, current period {} is still active", current_period)).ok();
         }
 
-        println!("�?Period transition check complete");
+        crate::logger::write_structured_log("T3_Database", &format!("�?Period transition check complete")).ok();
         Ok(result)
     }
 
@@ -1794,7 +1793,7 @@ impl DatabaseConfigService {
             .await?;
 
         if existing_partition.is_some() {
-            println!("�?Partition {} already exists, skipping creation", previous_period);
+            crate::logger::write_structured_log("T3_Database", &format!("�?Partition {} already exists, skipping creation", previous_period)).ok();
             return Ok(false);
         }
 
@@ -1830,11 +1829,11 @@ impl DatabaseConfigService {
         };
 
         if record_count == 0 {
-            println!("📝 No data found for period {}, skipping partition creation", previous_period);
+            crate::logger::write_structured_log("T3_Database", &format!(" No data found for period {}, skipping partition creation", previous_period)).ok();
             return Ok(false);
         }
 
-        println!("📊 Found {} records for period {}, creating partition", record_count, previous_period);
+        crate::logger::write_structured_log("T3_Database", &format!("📊 Found {} records for period {}, creating partition", record_count, previous_period)).ok();
 
         // Create the partition
         Self::create_partition_and_migrate_data(db, config, previous_period).await?;
@@ -1848,7 +1847,7 @@ impl DatabaseConfigService {
         previous_period: &str,
         overlap_hours: i32,
     ) -> Result<i32> {
-        println!("🔄 Migrating data for {} with {}h overlap...", previous_period, overlap_hours);
+        crate::logger::write_structured_log("T3_Database", &format!("🔄 Migrating data for {} with {}h overlap...", previous_period, overlap_hours)).ok();
 
         let overlap_cutoff = Utc::now() - chrono::Duration::hours(overlap_hours as i64);
         let (period_start, period_end) = Self::calculate_partition_date_range(config, previous_period)?;
@@ -1861,12 +1860,12 @@ impl DatabaseConfigService {
         };
 
         if period_start >= migration_end {
-            println!("📅 All data for period {} is within overlap window, no migration needed", previous_period);
+            crate::logger::write_structured_log("T3_Database", &format!("📅 All data for period {} is within overlap window, no migration needed", previous_period)).ok();
             return Ok(0);
         }
 
-        println!("📦 Migrating data from {} to {} (preserving {}h overlap)",
-                 period_start.format("%Y-%m-%d %H:%M"), migration_end.format("%Y-%m-%d %H:%M"), overlap_hours);
+        crate::logger::write_structured_log("T3_Database", &format!("📦 Migrating data from {} to {} (preserving {}h overlap)",
+                 period_start.format("%Y-%m-%d %H:%M"), migration_end.format("%Y-%m-%d %H:%M"), overlap_hours)).ok();
 
         // Use the existing migration logic with adjusted date range
         let runtime_path = get_t3000_database_path();
@@ -1909,7 +1908,7 @@ impl DatabaseConfigService {
         )).await?;
 
         let migrated_count = migration_result.rows_affected();
-        println!("📦 Migrated {} records to partition {}", migrated_count, previous_period);
+        crate::logger::write_structured_log("T3_Database", &format!("📦 Migrated {} records to partition {}", migrated_count, previous_period)).ok();
 
         // Delete only the migrated data (preserving overlap)
         if migrated_count > 0 {
@@ -1928,8 +1927,8 @@ impl DatabaseConfigService {
                 delete_sql
             )).await?;
 
-            println!("🗑�?Removed {} records from main database ({}h overlap preserved)",
-                     delete_result.rows_affected(), overlap_hours);
+            crate::logger::write_structured_log("T3_Database", &format!("🗑�?Removed {} records from main database ({}h overlap preserved)",
+                     delete_result.rows_affected(), overlap_hours)).ok();
         }
 
         // Detach partition database
@@ -1948,7 +1947,7 @@ impl DatabaseConfigService {
         db: &DatabaseConnection,
         runtime_config: &PartitioningRuntimeConfig,
     ) -> Result<()> {
-        println!("🗂�?Managing partition retention (max: {} partitions)...", runtime_config.max_partitions);
+        crate::logger::write_structured_log("T3_Database", &format!("🗂�?Managing partition retention (max: {} partitions)...", runtime_config.max_partitions)).ok();
 
         // Get all non-archived partitions ordered by creation date
         let all_partitions = database_files::Entity::find()
@@ -1959,15 +1958,15 @@ impl DatabaseConfigService {
             .await?;
 
         let partition_count = all_partitions.len() as i32;
-        println!("📊 Found {} historical partitions", partition_count);
+        crate::logger::write_structured_log("T3_Database", &format!("📊 Found {} historical partitions", partition_count)).ok();
 
         if partition_count <= runtime_config.max_partitions {
-            println!("�?Partition count within limits, no archiving needed");
+            crate::logger::write_structured_log("T3_Database", &format!("�?Partition count within limits, no archiving needed")).ok();
             return Ok(());
         }
 
         let excess_count = partition_count - runtime_config.max_partitions;
-        println!("📦 Need to archive {} old partitions", excess_count);
+        crate::logger::write_structured_log("T3_Database", &format!("📦 Need to archive {} old partitions", excess_count)).ok();
 
         // Archive oldest partitions (using existing cleanup management logic)
         let partitions_to_archive: Vec<_> = all_partitions
@@ -1981,14 +1980,14 @@ impl DatabaseConfigService {
 
         if !archive_path.exists() {
             if let Err(e) = std::fs::create_dir_all(&archive_path) {
-                println!("⚠️ Failed to create archive folder {}: {}", archive_path.display(), e);
+                crate::logger::write_structured_log("T3_Database", &format!("WARNING Failed to create archive folder {}: {}", archive_path.display(), e)).ok();
                 return Ok(()); // Continue without archiving
             }
-            println!("📁 Created archive folder: {}", archive_path.display());
+            crate::logger::write_structured_log("T3_Database", &format!(" Created archive folder: {}", archive_path.display())).ok();
         }
 
         for partition in partitions_to_archive {
-            println!("📦 Archiving partition: {}", partition.file_name);
+            crate::logger::write_structured_log("T3_Database", &format!("📦 Archiving partition: {}", partition.file_name)).ok();
 
             // Move file to archive folder
             let source_path = runtime_path.join(&partition.file_name);
@@ -1996,7 +1995,7 @@ impl DatabaseConfigService {
 
             if source_path.exists() {
                 if let Err(e) = std::fs::rename(&source_path, &archive_file_path) {
-                    println!("⚠️ Failed to move {} to archive: {}", partition.file_name, e);
+                    crate::logger::write_structured_log("T3_Database", &format!("WARNING Failed to move {} to archive: {}", partition.file_name, e)).ok();
                     continue;
                 }
             }
@@ -2008,19 +2007,19 @@ impl DatabaseConfigService {
 
             let file_name = active_model.file_name.as_ref().to_string();
             if let Err(e) = active_model.update(db).await {
-                println!("⚠️ Failed to update archive status for {}: {}", file_name, e);
+                crate::logger::write_structured_log("T3_Database", &format!("WARNING Failed to update archive status for {}: {}", file_name, e)).ok();
             } else {
-                println!("�?Archived partition: {}", file_name);
+                crate::logger::write_structured_log("T3_Database", &format!("�?Archived partition: {}", file_name)).ok();
             }
         }
 
-        println!("�?Partition retention management complete");
+        crate::logger::write_structured_log("T3_Database", &format!("�?Partition retention management complete")).ok();
         Ok(())
     }
 
     /// Initialize and refresh partition metadata cache for faster queries
     pub async fn refresh_partition_cache(db: &DatabaseConnection) -> Result<()> {
-        println!("🔄 Refreshing partition metadata cache...");
+        crate::logger::write_structured_log("T3_Database", &format!("🔄 Refreshing partition metadata cache...")).ok();
 
         let cache = PARTITION_CACHE.get_or_init(|| Arc::new(RwLock::new(HashMap::new())));
 
@@ -2052,7 +2051,7 @@ impl DatabaseConfigService {
         // Update cache
         if let Ok(mut cache_guard) = cache.write() {
             *cache_guard = cache_map;
-            println!("�?Partition cache refreshed with {} entries", cache_guard.len());
+            crate::logger::write_structured_log("T3_Database", &format!("�?Partition cache refreshed with {} entries", cache_guard.len())).ok();
         }
 
         Ok(())
@@ -2067,8 +2066,8 @@ impl DatabaseConfigService {
         end_date: DateTime<Utc>,
         runtime_config: &PartitioningRuntimeConfig,
     ) -> Result<SmartQueryPlan> {
-        println!("🔍 Creating smart query plan for timebase: {}min, range: {} to {}",
-                 timebase_minutes, start_date.format("%Y-%m-%d"), end_date.format("%Y-%m-%d"));
+        crate::logger::write_structured_log("T3_Database", &format!(" Creating smart query plan for timebase: {}min, range: {} to {}",
+                 timebase_minutes, start_date.format("%Y-%m-%d"), end_date.format("%Y-%m-%d"))).ok();
 
         let mut query_plan = SmartQueryPlan {
             query_main_db: false,
@@ -2083,7 +2082,7 @@ impl DatabaseConfigService {
 
         if end_date > overlap_cutoff {
             query_plan.query_main_db = true;
-            println!("📊 Will query main DB for recent data (within {}h overlap)", runtime_config.overlap_hours);
+            crate::logger::write_structured_log("T3_Database", &format!("📊 Will query main DB for recent data (within {}h overlap)", runtime_config.overlap_hours)).ok();
         }
 
         // Determine which partitions contain needed historical data
@@ -2098,8 +2097,8 @@ impl DatabaseConfigService {
                             query_plan.partition_files.push(metadata.clone());
                             query_plan.estimated_records += metadata.record_count;
 
-                            println!("📅 Will query partition: {} (records: {})",
-                                     metadata.partition_id, metadata.record_count);
+                            crate::logger::write_structured_log("T3_Database", &format!("📅 Will query partition: {} (records: {})",
+                                     metadata.partition_id, metadata.record_count)).ok();
                         }
                     }
                 }
@@ -2108,7 +2107,7 @@ impl DatabaseConfigService {
 
         // Fallback: scan database if cache miss
         if !query_plan.cache_hit {
-            println!("⚠️ Cache miss, scanning database for relevant partitions");
+            crate::logger::write_structured_log("T3_Database", &format!("WARNING Cache miss, scanning database for relevant partitions")).ok();
 
             let partitions = database_files::Entity::find()
                 .filter(database_files::Column::IsArchived.eq(false))
@@ -2143,8 +2142,8 @@ impl DatabaseConfigService {
         // Optimize query plan based on timebase
         Self::optimize_query_plan(&mut query_plan, timebase_minutes);
 
-        println!("�?Smart query plan: Main DB: {}, Partitions: {}, Est. records: {}",
-                 query_plan.query_main_db, query_plan.partition_files.len(), query_plan.estimated_records);
+        crate::logger::write_structured_log("T3_Database", &format!("�?Smart query plan: Main DB: {}, Partitions: {}, Est. records: {}",
+                 query_plan.query_main_db, query_plan.partition_files.len(), query_plan.estimated_records)).ok();
 
         Ok(query_plan)
     }
@@ -2153,7 +2152,7 @@ impl DatabaseConfigService {
     fn optimize_query_plan(query_plan: &mut SmartQueryPlan, timebase_minutes: i32) {
         // For longer timebases (1day+), we can sample partitions instead of querying all
         if timebase_minutes >= 1440 { // 1 day or longer
-            println!("🎯 Optimizing for long timebase ({}min), sampling partitions", timebase_minutes);
+            crate::logger::write_structured_log("T3_Database", &format!("🎯 Optimizing for long timebase ({}min), sampling partitions", timebase_minutes)).ok();
 
             // Sort partitions by date and sample every N partitions based on timebase
             query_plan.partition_files.sort_by(|a, b| a.start_date.cmp(&b.start_date));
@@ -2175,8 +2174,8 @@ impl DatabaseConfigService {
                     .collect();
                 query_plan.partition_files = sampled_partitions;
 
-                println!("📊 Optimized partition queries: {} �?{} (sample rate: {})",
-                         original_count, query_plan.partition_files.len(), sample_rate);
+                crate::logger::write_structured_log("T3_Database", &format!("📊 Optimized partition queries: {} �?{} (sample rate: {})",
+                         original_count, query_plan.partition_files.len(), sample_rate)).ok();
             }
         }
     }
@@ -2187,26 +2186,26 @@ impl DatabaseConfigService {
         db: &DatabaseConnection,
         runtime_config: &PartitioningRuntimeConfig,
     ) -> Result<()> {
-        println!("🔄 Background partition monitor running (interval: {}h)", runtime_config.check_interval_hours);
+        crate::logger::write_structured_log("T3_Database", &format!("🔄 Background partition monitor running (interval: {}h)", runtime_config.check_interval_hours)).ok();
 
         // Check for period transitions
         match Self::check_period_transition_and_rotate(db, runtime_config).await {
             Ok(result) => {
                 if result.period_changed {
-                    println!("�?Background monitor: Period transition handled");
+                    crate::logger::write_structured_log("T3_Database", &format!("�?Background monitor: Period transition handled")).ok();
                 } else {
-                    println!("📅 Background monitor: No period transition needed");
+                    crate::logger::write_structured_log("T3_Database", &format!("📅 Background monitor: No period transition needed")).ok();
                 }
             },
             Err(e) => {
-                println!("�?Background monitor error: {}", e);
+                crate::logger::write_structured_log("T3_Database", &format!("�?Background monitor error: {}", e)).ok();
             }
         }
 
         // Refresh cache periodically
         if runtime_config.enable_caching {
             if let Err(e) = Self::refresh_partition_cache(db).await {
-                println!("⚠️ Background monitor: Failed to refresh cache: {}", e);
+                crate::logger::write_structured_log("T3_Database", &format!("WARNING Background monitor: Failed to refresh cache: {}", e)).ok();
             }
         }
 
@@ -2219,7 +2218,7 @@ impl DatabaseConfigService {
         db: &DatabaseConnection,
         _runtime_config: &PartitioningRuntimeConfig,
     ) -> Result<Vec<String>> {
-        println!("🔍 Checking for missed period transitions during T3000 downtime...");
+        crate::logger::write_structured_log("T3_Database", &format!(" Checking for missed period transitions during T3000 downtime...")).ok();
 
         let config = Self::get_config(db).await?;
         if !config.is_active {
@@ -2237,18 +2236,18 @@ impl DatabaseConfigService {
 
         if let Some(shutdown_setting) = last_shutdown_setting {
             if let Ok(last_shutdown) = shutdown_setting.config_value.parse::<DateTime<Utc>>() {
-                println!("📅 Last shutdown: {}", last_shutdown.format("%Y-%m-%d %H:%M"));
+                crate::logger::write_structured_log("T3_Database", &format!("📅 Last shutdown: {}", last_shutdown.format("%Y-%m-%d %H:%M"))).ok();
 
                 // Calculate all periods between shutdown and now
                 missed_periods = Self::calculate_missed_periods(&config, last_shutdown, Utc::now());
 
                 if !missed_periods.is_empty() {
-                    println!("⚠️ Found {} missed periods: {:?}", missed_periods.len(), missed_periods);
+                    crate::logger::write_structured_log("T3_Database", &format!("WARNING Found {} missed periods: {:?}", missed_periods.len(), missed_periods)).ok();
 
                     // Process each missed period
                     for period in &missed_periods {
                         if let Err(e) = Self::create_partition_for_previous_period(db, &config, period).await {
-                            println!("�?Failed to create partition for missed period {}: {}", period, e);
+                            crate::logger::write_structured_log("T3_Database", &format!("�?Failed to create partition for missed period {}: {}", period, e)).ok();
                         }
                     }
                 }
@@ -2266,7 +2265,7 @@ impl DatabaseConfigService {
         ).await;
 
         if missed_periods.is_empty() {
-            println!("�?No missed period transitions found");
+            crate::logger::write_structured_log("T3_Database", &format!("�?No missed period transitions found")).ok();
         }
 
         Ok(missed_periods)
@@ -2351,7 +2350,7 @@ impl DatabaseFilesService {
                 let file_path = get_t3000_database_path().join(&file_model.file_name);
                 if file_path.exists() {
                     if let Err(e) = std::fs::remove_file(&file_path) {
-                        println!("⚠️ Warning: Failed to delete file from filesystem: {}", e);
+                        crate::logger::write_structured_log("T3_Database", &format!("WARNING Warning: Failed to delete file from filesystem: {}", e)).ok();
                         // Continue anyway since database record is deleted
                     }
                 }
@@ -2362,17 +2361,17 @@ impl DatabaseFilesService {
 
                 if wal_path.exists() {
                     if let Err(e) = std::fs::remove_file(&wal_path) {
-                        println!("⚠️ Warning: Failed to delete WAL file: {}", e);
+                        crate::logger::write_structured_log("T3_Database", &format!("WARNING Warning: Failed to delete WAL file: {}", e)).ok();
                     }
                 }
 
                 if shm_path.exists() {
                     if let Err(e) = std::fs::remove_file(&shm_path) {
-                        println!("⚠️ Warning: Failed to delete SHM file: {}", e);
+                        crate::logger::write_structured_log("T3_Database", &format!("WARNING Warning: Failed to delete SHM file: {}", e)).ok();
                     }
                 }
 
-                println!("🗑️ Database file deleted: {}", file_model.file_name);
+                crate::logger::write_structured_log("T3_Database", &format!("🗑�?Database file deleted: {}", file_model.file_name)).ok();
                 Ok(true)
             }
             None => Ok(false)

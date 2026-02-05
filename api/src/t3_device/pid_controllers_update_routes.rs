@@ -207,7 +207,12 @@ async fn save_pid_controller_to_db(
             active_model.bias = Set(Some(val.to_string()));
         }
 
-        active_model.update(db).await
+        pid_controllers::Entity::update_many()
+            .filter(pid_controllers::Column::SerialNumber.eq(serial))
+            .filter(pid_controllers::Column::LoopField.eq(index.to_string()))
+            .set(active_model)
+            .exec(db)
+            .await
             .map_err(|e| format!("Failed to update PID controller in database: {}", e))?;
 
         Ok(())

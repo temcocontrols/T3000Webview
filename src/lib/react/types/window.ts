@@ -50,7 +50,7 @@ export const WINDOW_ROUTES: Record<WindowType, string> = {
   [WindowType.PROGRAM]: '/t3000/programs',
   [WindowType.WEEKLY]: '/t3000/schedules',
   [WindowType.ANNUAL]: '/t3000/holidays',
-  [WindowType.CONTROLLER]: '/t3000/controllers',
+  [WindowType.CONTROLLER]: '/t3000/pidloops',
   [WindowType.SCREEN]: '/t3000/graphics',
   [WindowType.MONITOR]: '/t3000/trend-logs',
   [WindowType.ALARMLOG]: '/t3000/alarms',

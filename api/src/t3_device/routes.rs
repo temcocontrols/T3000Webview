@@ -5,13 +5,14 @@ use axum::{
     routing::{delete, get, post, put},
     Router,
 };
-use sea_orm::{DatabaseBackend, Statement, ConnectionTrait};
+use sea_orm::{DatabaseBackend, Statement, ConnectionTrait, EntityTrait, ColumnTrait, QueryFilter, PaginatorTrait};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::app_state::T3AppState;
 use crate::t3_device::services::{T3DeviceService, CreateDeviceRequest, UpdateDeviceRequest};
 use crate::t3_device::points_service::{T3PointsService, CreateInputPointRequest, CreateOutputPointRequest, CreateVariablePointRequest};
+use crate::entity::t3_device::{input_points, output_points, variable_points};
 use crate::t3_device::schedules_service::{T3ScheduleService, CreateScheduleRequest, UpdateScheduleRequest};
 use crate::t3_device::programs_service::{T3ProgramService, CreateProgramRequest, UpdateProgramRequest};
 use crate::t3_device::trendlogs_service::{T3TrendlogService, CreateTrendlogRequest, UpdateTrendlogRequest};
@@ -21,6 +22,14 @@ use crate::t3_device::trendlog_webmsg_routes::create_trendlog_webmsg_routes;
 use crate::t3_device::input_update_routes::create_input_update_routes;
 use crate::t3_device::output_update_routes::create_output_update_routes;
 use crate::t3_device::variable_update_routes::create_variable_update_routes;
+use crate::t3_device::input_batch_routes::create_input_batch_routes;
+use crate::t3_device::output_batch_routes::create_output_batch_routes;
+use crate::t3_device::variable_batch_routes::create_variable_batch_routes;
+use crate::t3_device::programs_batch_routes::create_programs_batch_routes;
+use crate::t3_device::schedules_batch_routes::create_schedules_batch_routes;
+use crate::t3_device::holidays_batch_routes::create_holidays_batch_routes;
+use crate::t3_device::pid_batch_routes::create_pid_batch_routes;
+use crate::t3_device::graphics_batch_routes::create_graphics_batch_routes;
 use crate::t3_device::input_refresh_routes::create_input_refresh_routes;
 use crate::t3_device::output_refresh_routes::create_output_refresh_routes;
 use crate::t3_device::variable_refresh_routes::create_variable_refresh_routes;
@@ -44,6 +53,7 @@ use crate::t3_device::schedules_update_routes::create_schedules_update_routes;
 use crate::t3_device::holidays_update_routes::create_holidays_update_routes;
 use crate::t3_device::pid_controllers_update_routes::create_pid_controllers_update_routes;
 use crate::t3_device::graphics_update_routes::create_graphics_update_routes;
+use crate::t3_device::graphics_refresh_routes::create_graphics_refresh_routes;
 use crate::t3_device::alarms_update_routes::create_alarms_update_routes;
 use crate::t3_device::settings_routes::create_settings_routes;
 use crate::t3_device::specialized_routes::create_specialized_routes;
@@ -76,7 +86,7 @@ fn get_valid_table_names() -> &'static [&'static str] {
     &[
         "DEVICES", "INPUTS", "OUTPUTS", "VARIABLES", "PROGRAMS",
         "SCHEDULES", "PID_TABLE", "HOLIDAYS", "GRAPHICS", "ALARMS",
-        "MONITORDATA", "TRENDLOGS", "TRENDLOG_INPUTS", "TRENDLOG_DATA"
+        "MONITORDATA", "TRENDLOGS", "TRENDLOG_INPUTS", "TRENDLOG_DATA", "ARRAYS"
     ]
 }
 
@@ -471,7 +481,10 @@ async fn create_device(
             "device": device,
             "message": "Device created successfully"
         }))),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+        Err(err) => {
+            eprintln!("❌ [create_device] Error: {:?}", err);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 
@@ -523,6 +536,26 @@ async fn delete_device(
     }
 }
 
+async fn delete_all_devices(
+    State(state): State<T3AppState>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    // Delete all devices using raw SQL for efficiency
+    let query = Statement::from_string(DatabaseBackend::Sqlite, "DELETE FROM DEVICES".to_string());
+
+    match db.execute(query).await {
+        Ok(result) => Ok(Json(json!({
+            "message": "All devices deleted successfully",
+            "rows_affected": result.rows_affected()
+        }))),
+        Err(err) => {
+            eprintln!("[delete_all_devices] Error: {:?}", err);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
 async fn get_device_with_points(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
@@ -554,6 +587,43 @@ async fn get_all_points_by_device(
         }))),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
     }
+}
+
+/// Check device online status
+/// GET /api/t3_device/devices/:id/status
+/// Get device points count (for smart auto-sync decision)
+/// GET /api/t3_device/devices/:serial/points-count
+async fn get_device_points_count(
+    State(state): State<T3AppState>,
+    Path(serial): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    let db_guard = get_t3_device_conn!(state);
+    let db: &sea_orm::DatabaseConnection = &*db_guard;
+
+    let input_count = input_points::Entity::find()
+        .filter(input_points::Column::SerialNumber.eq(serial))
+        .count(db)
+        .await
+        .unwrap_or(0);
+
+    let output_count = output_points::Entity::find()
+        .filter(output_points::Column::SerialNumber.eq(serial))
+        .count(db)
+        .await
+        .unwrap_or(0);
+
+    let variable_count = variable_points::Entity::find()
+        .filter(variable_points::Column::SerialNumber.eq(serial))
+        .count(db)
+        .await
+        .unwrap_or(0);
+
+    Ok(Json(json!({
+        "inputCount": input_count,
+        "outputCount": output_count,
+        "variableCount": variable_count,
+        "totalCount": input_count + output_count + variable_count
+    })))
 }
 
 /// Check device online status
@@ -1070,10 +1140,12 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         // T3000 Device endpoints
         .route("/devices", get(get_devices_with_stats))
         .route("/devices", post(create_device))
+        .route("/devices", delete(delete_all_devices))  // DELETE all devices
         .route("/devices/:id", get(get_device_by_id))
         .route("/devices/:id", put(update_device))
         .route("/devices/:id", delete(delete_device))
         .route("/devices/:id/status", get(check_device_status))
+        .route("/devices/:serial/points-count", get(get_device_points_count))
         .route("/devices/:id/points", get(get_device_with_points))
         .route("/devices/:id/all-points", get(get_all_points_by_device))
         .route("/devices/:serial/table/:table", get(get_device_table_data))  // Generic table query by serial number
@@ -1141,6 +1213,16 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .merge(create_input_update_routes())
         .merge(create_output_update_routes())
         .merge(create_variable_update_routes())
+
+        // 🆕 Point Batch Save Routes (batch update multiple points)
+        .merge(create_input_batch_routes())
+        .merge(create_output_batch_routes())
+        .merge(create_variable_batch_routes())
+        .merge(create_programs_batch_routes())  // ✅ NEW
+        .merge(create_schedules_batch_routes())  // ✅ NEW
+        .merge(create_holidays_batch_routes())  // ✅ NEW
+        .merge(create_pid_batch_routes())  // ✅ NEW
+        .merge(create_graphics_batch_routes())  // ✅ NEW
         .merge(create_arrays_update_routes())  // ✅ PASSED
         .merge(create_conversion_tables_update_routes())  // ✅ ENABLED (renamed from tables)
         .merge(create_users_update_routes())  // ✅ PASSED
@@ -1158,7 +1240,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         // 🆕 Specialized Features Routes (supplementary data tables)
         .merge(create_specialized_routes())  // ✅ ENABLED
 
-        // 🆕 Point Refresh Routes (REFRESH_WEBVIEW_LIST Action 17)
+        // 🆕 Point Refresh Routes (GET_WEBVIEW_LIST Action 17)
         .merge(create_input_refresh_routes())
         .merge(create_output_refresh_routes())
         .merge(create_variable_refresh_routes())
@@ -1168,6 +1250,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .merge(create_holiday_refresh_routes())
         .merge(create_alarm_refresh_routes())
         .merge(create_trendlog_refresh_routes())
+        .merge(create_graphics_refresh_routes())  // ✅ ENABLED
         .merge(create_arrays_refresh_routes())  // ✅ ENABLED
         .merge(create_conversion_tables_refresh_routes())  // ✅ ENABLED (renamed from tables)
         .merge(create_users_refresh_routes())  // ✅ ENABLED
@@ -1816,10 +1899,12 @@ async fn get_project_point_tree(
 ) -> Result<Json<ProjectTreeNode>, StatusCode> {
     let db = get_t3_device_conn!(state);
 
-    // Get all devices
+    // Get all devices - Sort by show_label_name/Screen_Name to match Equipment View
     let devices_query = Statement::from_string(
         DatabaseBackend::Sqlite,
-        "SELECT SerialNumber, Product_Name, Product_Class_ID FROM DEVICES ORDER BY Product_Name".to_string()
+        "SELECT SerialNumber, Product_Name, Product_Class_ID, show_label_name, Screen_Name
+         FROM DEVICES
+         ORDER BY COALESCE(show_label_name, Screen_Name, Product_Name)".to_string()
     );
 
     let devices_result = db.query_all(devices_query).await
@@ -1832,8 +1917,16 @@ async fn get_project_point_tree(
         let serial_number: i32 = device.try_get("", "SerialNumber")
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         let serial_str = serial_number.to_string();
-        let device_name: String = device.try_get("", "Product_Name")
-            .unwrap_or_else(|_| format!("Device {}", serial_str));
+
+        // Use show_label_name or Screen_Name, fallback to Product_Name
+        let show_label: Option<String> = device.try_get("", "show_label_name").ok().flatten();
+        let screen_name: Option<String> = device.try_get("", "Screen_Name").ok().flatten();
+        let product_name: Option<String> = device.try_get("", "Product_Name").ok().flatten();
+
+        let device_name = show_label
+            .or(screen_name)
+            .or(product_name)
+            .unwrap_or_else(|| format!("Device {}", serial_str));
         // Note: Online_Status column doesn't exist, default to offline for now
         let online_status: i32 = 0; // TODO: Add online status detection
         let product_class_id: i32 = device.try_get("", "Product_Class_ID").unwrap_or(0);
@@ -1862,19 +1955,8 @@ async fn get_project_point_tree(
             if total == 0 { 0.0 } else { (used as f32 / total as f32) * 100.0 }
         };
 
-        // Build point type children nodes
+        // Build point type children nodes (ordered: Input, Output, Variable, Program, PID, Schedule, Holiday, Graphic, Trendlog)
         let point_children = vec![
-            ProjectTreeNode {
-                name: format!("Output ({}/{})", output_count, output_total),
-                node_type: "point_type".to_string(),
-                serial_number: None,
-                status: None,
-                point_type: Some("outputs".to_string()),
-                used: Some(output_count),
-                total: Some(output_total),
-                percentage: Some(calc_percentage(output_count, output_total)),
-                children: vec![],
-            },
             ProjectTreeNode {
                 name: format!("Input ({}/{})", input_count, input_total),
                 node_type: "point_type".to_string(),
@@ -1884,6 +1966,17 @@ async fn get_project_point_tree(
                 used: Some(input_count),
                 total: Some(input_total),
                 percentage: Some(calc_percentage(input_count, input_total)),
+                children: vec![],
+            },
+            ProjectTreeNode {
+                name: format!("Output ({}/{})", output_count, output_total),
+                node_type: "point_type".to_string(),
+                serial_number: None,
+                status: None,
+                point_type: Some("outputs".to_string()),
+                used: Some(output_count),
+                total: Some(output_total),
+                percentage: Some(calc_percentage(output_count, output_total)),
                 children: vec![],
             },
             ProjectTreeNode {
@@ -1898,11 +1991,22 @@ async fn get_project_point_tree(
                 children: vec![],
             },
             ProjectTreeNode {
-                name: format!("Pid ({}/16)", pid_count),
+                name: format!("Program ({}/16)", program_count),
                 node_type: "point_type".to_string(),
                 serial_number: None,
                 status: None,
-                point_type: Some("pid".to_string()),
+                point_type: Some("programs".to_string()),
+                used: Some(program_count),
+                total: Some(16),
+                percentage: Some(calc_percentage(program_count, 16)),
+                children: vec![],
+            },
+            ProjectTreeNode {
+                name: format!("PID Loop ({}/16)", pid_count),
+                node_type: "point_type".to_string(),
+                serial_number: None,
+                status: None,
+                point_type: Some("pidloops".to_string()),
                 used: Some(pid_count),
                 total: Some(16),
                 percentage: Some(calc_percentage(pid_count, 16)),
@@ -1928,17 +2032,6 @@ async fn get_project_point_tree(
                 used: Some(holiday_count),
                 total: Some(4),
                 percentage: Some(calc_percentage(holiday_count, 4)),
-                children: vec![],
-            },
-            ProjectTreeNode {
-                name: format!("Program ({}/16)", program_count),
-                node_type: "point_type".to_string(),
-                serial_number: None,
-                status: None,
-                point_type: Some("programs".to_string()),
-                used: Some(program_count),
-                total: Some(16),
-                percentage: Some(calc_percentage(program_count, 16)),
                 children: vec![],
             },
             ProjectTreeNode {

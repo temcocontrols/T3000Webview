@@ -24,7 +24,7 @@ class HvConstant {
    * Contains environment configuration values
    */
   static Default = {
-    Environment: "prd",
+    Environment: "prod",
   }
 
   /**

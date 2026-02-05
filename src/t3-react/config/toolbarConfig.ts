@@ -26,19 +26,29 @@ import {
   InfoRegular,
   ArrowCircleDownRegular,
   ArrowCircleUpRegular,
-  CodeRegular,
   SettingsRegular,
+  OptionsRegular,
+  WrenchRegular,
+  CodeRegular,
+  CircleFilled,
+  CircleMultipleConcentricRegular,
+  DeveloperBoardRegular,
+  DeskMultipleRegular,
+  FlowRegular,
   ImageRegular,
   CalendarRegular,
+  CalendarDateRegular,
   CalendarStarRegular,
   ChartMultipleRegular,
   AlertRegular,
   TableRegular,
+  ListRegular,
   NetworkCheckRegular,
   SettingsRegular as SettingsGearRegular,
   SearchRegular,
   BuildingMultipleRegular,
   ArrowClockwiseRegular,
+  ArrowSyncRegular,
 } from '@fluentui/react-icons';
 
 /**
@@ -48,7 +58,7 @@ import {
 export const toolbarConfig: ToolbarButton[] = [
   {
     id: 'toolbar-dashboard',
-    icon: InfoRegular,
+    icon: DeskMultipleRegular,
     label: 'Dashboard',
     tooltip: 'Dashboard',
     action: 'openWindow',
@@ -57,7 +67,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-inputs',
-    icon: ArrowCircleDownRegular,
+    icon: WrenchRegular,
     label: 'Inputs',
     tooltip: 'Inputs (Alt+I)',
     action: 'openWindow',
@@ -67,7 +77,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-outputs',
-    icon: ArrowCircleUpRegular,
+    icon: OptionsRegular,
     label: 'Outputs',
     tooltip: 'Outputs (Alt+O)',
     action: 'openWindow',
@@ -77,7 +87,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-variables',
-    icon: CodeRegular,
+    icon: CircleMultipleConcentricRegular,
     label: 'Variables',
     tooltip: 'Variables (Alt+V)',
     action: 'openWindow',
@@ -87,7 +97,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-programs',
-    icon: CodeRegular,
+    icon: DeveloperBoardRegular,
     label: 'Programs',
     tooltip: 'Programs (Alt+P)',
     action: 'openWindow',
@@ -97,7 +107,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-pidloops',
-    icon: SettingsRegular,
+    icon: FlowRegular,
     label: 'PID Loops',
     tooltip: 'PID Loops (Alt+L)',
     action: 'openWindow',
@@ -127,7 +137,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-holidays',
-    icon: CalendarStarRegular,
+    icon: CalendarDateRegular,
     label: 'Holidays',
     tooltip: 'Annual Routines (Alt+H)',
     action: 'openWindow',
@@ -142,7 +152,7 @@ export const toolbarConfig: ToolbarButton[] = [
     tooltip: 'Trend Logs (Alt+T)',
     action: 'openWindow',
     windowId: WINDOW_MONITOR,
-    route: '/t3000/trend-logs',
+    route: '/t3000/trendlogs',
     shortcut: 'Alt+T',
   },
   {
@@ -157,7 +167,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-array',
-    icon: TableRegular,
+    icon: ListRegular,
     label: 'Array',
     tooltip: 'Array Data',
     action: 'openWindow',

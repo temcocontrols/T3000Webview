@@ -179,7 +179,12 @@ async fn save_program_to_db(
             active_model.switch_node = Set(Some(val.to_string()));
         }
 
-        active_model.update(db).await
+        programs::Entity::update_many()
+            .filter(programs::Column::SerialNumber.eq(serial))
+            .filter(programs::Column::ProgramId.eq(index.to_string()))
+            .set(active_model)
+            .exec(db)
+            .await
             .map_err(|e| format!("Failed to update program in database: {}", e))?;
 
         Ok(())

@@ -6,10 +6,13 @@
 
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { FluentProvider, webLightTheme, webDarkTheme } from '@fluentui/react-components';
+import { FluentProvider, webLightTheme, webDarkTheme, Spinner } from '@fluentui/react-components';
 import { ErrorBoundary } from '../shared/components/ErrorBoundary';
 import { ThemeProvider } from '../theme/ThemeProvider';
+import { NotificationProvider } from '../shared/components/NotificationCenter';
 import { MainLayout } from '../layout/MainLayout';
+import { MinimalLayout } from '../layout/MinimalLayout';
+import styles from './App.module.css';
 
 // Lazy load pages from features
 const DashboardPage = React.lazy(() =>
@@ -64,10 +67,39 @@ const SettingsPage = React.lazy(() =>
   import('../features/settings/pages/SettingsPage')
 );
 const DiscoverPage = React.lazy(() =>
-  import('../features/network/pages/DiscoverPage').then((m) => ({ default: m.DiscoverPage }))
+  import('../features/discover/pages/DiscoverPage').then((m) => ({ default: m.DiscoverPage }))
 );
 const BuildingsPage = React.lazy(() =>
   import('../features/buildings/pages/BuildingsPage').then((m) => ({ default: m.BuildingsPage }))
+);
+const HvacDesignerPage = React.lazy(() =>
+  import('../features/hvac-designer/pages/HvacDesignerPage').then((m) => ({ default: m.HvacDesignerPage }))
+);
+const DocumentationPage = React.lazy(() =>
+  import('../features/documentation/pages/DocumentationPage').then((m) => ({ default: m.DocumentationPage }))
+);
+
+// Develop section - special layout
+const DevelopLayoutWrapper = React.lazy(() =>
+  import('../features/develop/layout/DevelopLayoutWrapper').then((m) => ({ default: m.DevelopLayoutWrapper }))
+);
+const DevelopLayout = React.lazy(() =>
+  import('../features/develop/layout/DevelopLayout').then((m) => ({ default: m.DevelopLayout }))
+);
+const FileBrowserPage = React.lazy(() =>
+  import('../features/develop/pages/FileBrowserPage').then((m) => ({ default: m.FileBrowserPage }))
+);
+const DatabaseViewerPage = React.lazy(() =>
+  import('../features/develop/pages/DatabaseViewerPage').then((m) => ({ default: m.DatabaseViewerPage }))
+);
+const TransportTesterPage = React.lazy(() =>
+  import('../features/develop/pages/TransportTesterPage').then((m) => ({ default: m.TransportTesterPage }))
+);
+const SystemLogsPage = React.lazy(() =>
+  import('../features/develop/pages/SystemLogsPage').then((m) => ({ default: m.SystemLogsPage }))
+);
+const SyncConfigurationPage = React.lazy(() =>
+  import('../features/system/pages/SyncConfigurationPage').then((m) => ({ default: m.SyncConfigurationPage }))
 );
 
 /**
@@ -94,11 +126,12 @@ export const App: React.FC = () => {
   console.log('🚀 React App component rendering...');
 
   return (
-    <div style={{ width: '100%', height: '100%', minHeight: '100vh', background: '#ffffff' }}>
+    <div className={styles.appContainer}>
       <ThemeProvider>
         <FluentProvider theme={theme === 'light' ? webLightTheme : webDarkTheme}>
-          <ErrorBoundary>
-            <HashRouter>
+          <NotificationProvider>
+            <ErrorBoundary>
+              <HashRouter>
               <Routes>
                   {/* T3000 Routes - All protected with MainLayout wrapper */}
                   <Route
@@ -191,7 +224,7 @@ export const App: React.FC = () => {
                   }
                 />
                 <Route
-                  path="trend-logs"
+                  path="trendlogs"
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <TrendLogsPage />
@@ -270,13 +303,110 @@ export const App: React.FC = () => {
                     </React.Suspense>
                   }
                 />
+                <Route
+                  path="system/sync"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <SyncConfigurationPage />
+                    </React.Suspense>
+                  }
+                />
+
+                {/* Develop Routes - Special layout with left navigation */}
+              </Route>
+
+              {/* HVAC Designer & Documentation - Minimal layout with just top menu bar */}
+              <Route path="/t3000" element={<MinimalLayout />}>
+                <Route
+                  path="hvac-designer/:graphicId?"
+                  element={
+                    <React.Suspense fallback={
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '20px' }}>
+                        <Spinner size="extra-tiny" />
+                        <span style={{ fontSize: '13px' }}>Loading...</span>
+                      </div>
+                    }>
+                      <HvacDesignerPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="documentation/*"
+                  element={
+                    <React.Suspense fallback={
+                      <div style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', gap: '8px' }}>
+                        <Spinner size="tiny" />
+                        <span style={{ fontSize: '13px', color: '#323130' }}>Loading...</span>
+                      </div>
+                    }>
+                      <DocumentationPage />
+                    </React.Suspense>
+                  }
+                />
+              </Route>
+
+              {/* Develop Routes - Separate from t3000, no device tree */}
+              <Route
+                path="/t3000/develop"
+                element={
+                  <ProtectedRoute>
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <DevelopLayoutWrapper />
+                    </React.Suspense>
+                  </ProtectedRoute>
+                }
+              >
+                <Route
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <DevelopLayout />
+                    </React.Suspense>
+                  }
+                >
+                  <Route
+                    index
+                    element={<Navigate to="/t3000/develop/files" replace />}
+                  />
+                  <Route
+                    path="files"
+                    element={
+                      <React.Suspense fallback={<div>Loading...</div>}>
+                        <FileBrowserPage />
+                      </React.Suspense>
+                    }
+                  />
+                  <Route
+                    path="database"
+                    element={
+                      <React.Suspense fallback={<div>Loading...</div>}>
+                        <DatabaseViewerPage />
+                      </React.Suspense>
+                    }
+                  />
+                  <Route
+                    path="transport"
+                    element={
+                      <React.Suspense fallback={<div>Loading...</div>}>
+                        <TransportTesterPage />
+                      </React.Suspense>
+                    }
+                  />
+                  <Route
+                    path="logs"
+                    element={
+                      <React.Suspense fallback={<div>Loading...</div>}>
+                        <SystemLogsPage />
+                      </React.Suspense>
+                    }
+                  />
+                </Route>
               </Route>
 
               {/* Fallback route */}
-              <Route path="*" element={<Navigate to="/t3000" replace />} />
-            </Routes>
-          </HashRouter>
-        </ErrorBoundary>
+              </Routes>
+            </HashRouter>
+          </ErrorBoundary>
+        </NotificationProvider>
       </FluentProvider>
       </ThemeProvider>
     </div>

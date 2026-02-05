@@ -64,27 +64,27 @@
 }
 
 .cur-anchor {
-  cursor: url("assets/cursor/cur1012.cur"), pointer
+  cursor: url("/assets/cursor/cur1012.cur"), pointer
 }
 
 .cur-rotate {
-  cursor: url("assets/cursor/rotate.cur"), move
+  cursor: url("/assets/cursor/rotate.cur"), move
 }
 
 .cur-pencil {
-  cursor: url("assets/cursor/edit.cur"), pointer
+  cursor: url("/assets/cursor/edit.cur"), pointer
 }
 
 .cur-pencil-close {
-  cursor: url("assets/cursor/edit-close.cur"), pointer
+  cursor: url("/assets/cursor/edit-close.cur"), pointer
 }
 
 .cur-add {
-  cursor: url("assets/cursor/cur1012.cur"), pointer
+  cursor: url("/assets/cursor/cur1012.cur"), pointer
 }
 
 .cur-stamp {
-  cursor: url("assets/cursor/cur1012.cur"), pointer
+  cursor: url("/assets/cursor/cur1012.cur"), pointer
 }
 
 .cur-cross {

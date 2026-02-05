@@ -810,11 +810,77 @@ fn format_interval_value(value: &str) -> Option<String> {
     }
 }
 
+/// Get APPLICATION_CONFIG value (nested path support)
+async fn get_application_config(
+    State(state): State<T3AppState>,
+    Path(key_suffix): Path<String>,
+) -> Result<Json<Option<application_settings::Model>>> {
+    let db = match &state.t3_device_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
+
+    let full_key = format!("application/{}", key_suffix);
+
+    let config = ApplicationConfigService::get_config(
+        db,
+        &full_key,
+        None,
+        None,
+        None,
+    )
+    .await?;
+
+    Ok(Json(config))
+}
+
+/// Set or update APPLICATION_CONFIG value (nested path support)
+#[derive(Debug, Deserialize)]
+pub struct UpdateApplicationConfigRequest {
+    pub config_value: String,
+    pub config_type: Option<String>,
+    pub description: Option<String>,
+}
+
+async fn update_application_config(
+    State(state): State<T3AppState>,
+    Path(key_suffix): Path<String>,
+    Json(request): Json<UpdateApplicationConfigRequest>,
+) -> Result<Json<application_settings::Model>> {
+    let db = match &state.t3_device_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
+
+    let full_key = format!("application/{}", key_suffix);
+
+    // Parse value as JSON
+    let json_value: serde_json::Value = serde_json::from_str(&request.config_value)
+        .unwrap_or(serde_json::Value::String(request.config_value.clone()));
+
+    let config = ApplicationConfigService::set_config(
+        db,
+        full_key,
+        json_value,
+        None,
+        None,
+        None,
+        None,
+    )
+    .await?;
+
+    Ok(Json(config))
+}
+
 /// Create router with all config endpoints
 pub fn config_routes() -> axum::Router<T3AppState> {
     use axum::routing::{get, post, delete, put};
 
     axum::Router::new()
+        // Application config with nested paths (must come before generic :key route)
+        .route("/api/config/application/*key_suffix", get(get_application_config))
+        .route("/api/config/application/*key_suffix", put(update_application_config))
+        // Generic config routes
         .route("/api/config/:key", get(get_config))
         .route("/api/config", post(set_config))
         .route("/api/config/:key", delete(delete_config))

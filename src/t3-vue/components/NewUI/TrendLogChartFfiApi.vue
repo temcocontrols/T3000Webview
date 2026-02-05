@@ -2492,26 +2492,15 @@ const processDeviceValue = (panelData: any, inputRangeValue: number): { value: n
   }
 
   if (isAnalog) {
-    // Analog processing: only divide by 1000 if value is larger than 1000
-    // This handles cases where some values are already in correct scale
-    let processedValue: number
-    if (rawValue > 1000) {
-      processedValue = rawValue / 1000
-      LogUtil.Info(`📊 TrendLogModal: Large analog value divided by 1000:`, {
-        deviceId: panelData.id,
-        rawValue,
-        processedValue,
-        operation: 'DIVIDED_BY_1000'
-      })
-    } else {
-      processedValue = rawValue
-      LogUtil.Info(`📊 TrendLogModal: Small analog value used as-is:`, {
-        deviceId: panelData.id,
-        rawValue,
-        processedValue,
-        operation: 'USED_AS_IS'
-      })
-    }
+    // Analog processing: always divide by 1000
+    const processedValue = rawValue / 1000
+
+    LogUtil.Info(`📊 TrendLogModal: Analog value divided by 1000:`, {
+      deviceId: panelData.id,
+      rawValue,
+      processedValue,
+      operation: 'DIVIDED_BY_1000'
+    })
 
     const unit = getAnalogUnit(panelData.range)
 
@@ -2529,7 +2518,6 @@ const processDeviceValue = (panelData: any, inputRangeValue: number): { value: n
         deviceId: 'IN1',
         rawValue,
         processedValue,
-        wasLargerThan1000: rawValue > 1000,
         expectedIfRawWas8000: 8000 / 1000,
         expectedIfRawWas8: 8,
         actualResult: processedValue

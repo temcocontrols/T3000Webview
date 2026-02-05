@@ -1,0 +1,64 @@
+/* Dashboard Widget Styles */
+
+.widget {
+  background: #ffffff;
+  border: 1px solid #edebe9;
+  border-radius: 2px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.2s ease;
+}
+
+.widget:hover {
+  border-color: #c8c6c4;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #f3f2f1;
+}
+
+.title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #323130;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.content {
+  flex: 1;
+  overflow: auto;
+}
+
+/* Size variants */
+.small {
+  grid-column: span 1;
+  min-height: 180px;
+}
+
+.medium {
+  grid-column: span 1;
+  min-height: 180px;
+}
+
+.large {
+  grid-column: span 2;
+  min-height: 180px;
+}
+
+.full {
+  grid-column: 1 / -1;
+  min-height: 240px;
+}
