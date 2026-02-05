@@ -1614,7 +1614,7 @@ function linkT3EntrySave() {
   }
 
   // set the default to be divided by 1000
-  const checkHasValue = linkT3EntryDialog.value.data.value !== undefined && linkT3EntryDialog.value.data.value !== null && linkT3EntryDialog.value.data.value >= 1000;
+  const checkHasValue = linkT3EntryDialog.value.data.value !== undefined && linkT3EntryDialog.value.data.value !== null;
   if (checkHasValue) {
     linkT3EntryDialog.value.data.value = linkT3EntryDialog.value.data.value / 1000;
   }
