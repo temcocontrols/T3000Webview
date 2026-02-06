@@ -280,7 +280,13 @@ export class SettingsRefreshApi {
       panel_name: bytesToString(52, 20),               // offset 52-71
       en_panel_name: all[72] ?? 0,                     // offset 72
       panel_number: all[73] ?? 0,                      // offset 73
-      n_serial_number: bytesToUint32(151),             // offset 151-154
+      n_serial_number: (() => {
+        // Try offset 198 since pattern [104,171,3,0] also found there
+        const bytes = [all[198], all[199], all[200], all[201]];
+        const value = bytesToUint32(198);
+        LogUtil.Debug(`[SettingsRefreshApi] n_serial_number bytes [198-201]:`, bytes, `value: ${value}`);
+        return value;
+      })(),             // offset 198-201 (testing)
       object_instance: (() => {
         const bytes = [all[177], all[178], all[179], all[180]];
         const value = bytesToUint32(177);
