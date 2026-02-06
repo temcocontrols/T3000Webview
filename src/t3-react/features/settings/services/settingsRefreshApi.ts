@@ -140,11 +140,17 @@ export class SettingsRefreshApi {
 
       await transport.disconnect();
 
-      if (!response || !response.data) {
-        throw new Error('No data received from device');
+      LogUtil.Debug('[SettingsRefreshApi] Raw response:', JSON.stringify(response).substring(0, 500));
+
+      // Check if device returned an error
+      if (!response || response.success === false) {
+        const errorMsg = response?.data?.error || 'Device returned error response';
+        throw new Error(errorMsg);
       }
 
-      LogUtil.Debug('[SettingsRefreshApi] Raw response:', JSON.stringify(response).substring(0, 500));
+      if (!response.data) {
+        throw new Error('No data received from device');
+      }
 
       // Parse response data
       const settings = this.parseSettingsData(response.data, serialNumber, timestamp);
@@ -190,115 +196,291 @@ export class SettingsRefreshApi {
   /**
    * Parse raw device data into DeviceSettings object
    *
-   * Converts byte arrays to readable formats:
-   * - IP addresses: [192,168,1,100] → "192.168.1.100"
-   * - MAC address: [0x00,0x1A,0x2B,0x3C,0x4D,0x5E] → "00:1A:2B:3C:4D:5E"
-   * - Strings: byte arrays → UTF-8 strings
+   * Parses 400-byte Str_Setting_Info structure from device response
+   * See SETTINGS_FIELD_MAPPING.md for complete byte offset documentation
    *
-   * @param rawData - Raw response data from device
+   * @param rawData - Raw response data from device containing 400-byte array
    * @param serialNumber - Device serial number
    * @param timestamp - Refresh timestamp
    * @returns Parsed settings object
    */
   private static parseSettingsData(rawData: any, serialNumber: number, timestamp: string): DeviceSettings {
-    // Helper: Convert byte array to IP string
-    const bytesToIP = (bytes: number[]): string => {
-      return bytes.slice(0, 4).join('.');
+    LogUtil.Debug('[SettingsRefreshApi] Parsing settings data:', JSON.stringify(rawData).substring(0, 300));
+
+    // Extract the 400-byte array from response
+    // Response structure: {data: {device_data: [{All: [...]}]}}
+    const deviceData = rawData.data?.device_data?.[0] || rawData.device_data?.[0] || rawData;
+    const all: number[] = deviceData.All || [];
+
+    LogUtil.Debug(`[SettingsRefreshApi] Extracted array length: ${all.length}`);
+    LogUtil.Debug(`[SettingsRefreshApi] First 20 bytes:`, all.slice(0, 20));
+
+    if (!all || all.length < 400) {
+      LogUtil.Warn(`[SettingsRefreshApi] Invalid data array length: ${all?.length || 0}, expected 400 bytes`);
+    }
+
+    // Helper functions for byte parsing
+    const bytesToIP = (offset: number): string => {
+      return `${all[offset]}.${all[offset + 1]}.${all[offset + 2]}.${all[offset + 3]}`;
     };
 
-    // Helper: Convert byte array to MAC string
-    const bytesToMAC = (bytes: number[]): string => {
-      return bytes.slice(0, 6).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(':');
+    const bytesToMAC = (offset: number): string => {
+      return all.slice(offset, offset + 6)
+        .map(b => b.toString(16).padStart(2, '0').toUpperCase())
+        .join(':');
     };
 
-    // Helper: Convert byte array to string
-    const bytesToString = (bytes: number[]): string => {
-      return String.fromCharCode(...bytes.filter(b => b !== 0));
+    const bytesToString = (offset: number, length: number): string => {
+      const bytes = all.slice(offset, offset + length);
+      const nullIndex = bytes.indexOf(0);
+      const validBytes = nullIndex >= 0 ? bytes.slice(0, nullIndex) : bytes;
+      return String.fromCharCode(...validBytes);
     };
 
-    // TODO: Update this parsing logic based on actual response structure
-    // For now, assume response.data contains the parsed fields
-    const data = rawData.device_data?.[0] || rawData;
+    const bytesToUint16 = (offset: number): number => {
+      return all[offset] | (all[offset + 1] << 8);
+    };
 
-    return {
-      // Network Settings
-      ip_addr: Array.isArray(data.ip_addr) ? bytesToIP(data.ip_addr) : data.ip_addr || '0.0.0.0',
-      subnet: Array.isArray(data.subnet) ? bytesToIP(data.subnet) : data.subnet || '255.255.255.0',
-      gate_addr: Array.isArray(data.gate_addr) ? bytesToIP(data.gate_addr) : data.gate_addr || '0.0.0.0',
-      mac_addr: Array.isArray(data.mac_addr) ? bytesToMAC(data.mac_addr) : data.mac_addr || '00:00:00:00:00:00',
-      tcp_type: data.tcp_type ?? 0,
+    const bytesToUint32 = (offset: number): number => {
+      return all[offset] | (all[offset + 1] << 8) | (all[offset + 2] << 16) | (all[offset + 3] << 24);
+    };
+
+    const bytesToInt16 = (offset: number): number => {
+      const value = all[offset] | (all[offset + 1] << 8);
+      return value > 32767 ? value - 65536 : value; // Convert to signed
+    };
+
+    // Parse all fields according to C++ structure (see SETTINGS_FIELD_MAPPING.md)
+    const parsed = {
+      // Network Settings (bytes 0-18)
+      ip_addr: bytesToIP(0),                          // offset 0-3
+      subnet: bytesToIP(4),                            // offset 4-7
+      gate_addr: bytesToIP(8),                         // offset 8-11
+      mac_addr: bytesToMAC(12),                        // offset 12-17
+      tcp_type: all[18] ?? 0,                          // offset 18
 
       // Device Info
-      mini_type: data.mini_type ?? 0,
-      panel_type: data.panel_type ?? 0,
-      panel_name: Array.isArray(data.panel_name) ? bytesToString(data.panel_name) : data.panel_name || '',
-      en_panel_name: data.en_panel_name ?? 0,
-      panel_number: data.panel_number ?? 0,
-      n_serial_number: data.n_serial_number ?? serialNumber,
-      object_instance: data.object_instance ?? 0,
+      mini_type: all[19] ?? 0,                         // offset 19
+      panel_type: all[51] ?? 0,                        // offset 51
+      panel_name: bytesToString(52, 20),               // offset 52-71
+      en_panel_name: all[72] ?? 0,                     // offset 72
+      panel_number: all[73] ?? 0,                      // offset 73
+      n_serial_number: bytesToUint32(151),             // offset 151-154
+      object_instance: bytesToUint32(186),             // offset 186-189
 
       // Communication Settings
-      com0_config: data.com0_config ?? 0,
-      com1_config: data.com1_config ?? 0,
-      com2_config: data.com2_config ?? 0,
-      com_baudrate0: data.com_baudrate0 ?? 0,
-      com_baudrate1: data.com_baudrate1 ?? 0,
-      com_baudrate2: data.com_baudrate2 ?? 0,
-      uart_parity: data.uart_parity || [0, 0, 0],
-      uart_stopbit: data.uart_stopbit || [0, 0, 0],
+      com0_config: all[38] ?? 0,                       // offset 38
+      com1_config: all[39] ?? 0,                       // offset 39
+      com2_config: all[40] ?? 0,                       // offset 40
+      com_baudrate0: all[44] ?? 0,                     // offset 44
+      com_baudrate1: all[45] ?? 0,                     // offset 45
+      com_baudrate2: all[46] ?? 0,                     // offset 46
+      uart_parity: [all[235] ?? 0, all[236] ?? 0, all[237] ?? 0],    // offset 235-237
+      uart_stopbit: [all[238] ?? 0, all[239] ?? 0, all[240] ?? 0],   // offset 238-240
 
       // Protocol Settings
-      network_number: data.network_number ?? 0,
-      network_number_hi: data.network_number_hi ?? 0,
-      mstp_network_number: data.mstp_network_number ?? 0,
-      mstp_id: data.mstp_id ?? 0,
-      max_master: data.max_master ?? 127,
-      modbus_port: data.modbus_port ?? 502,
-      modbus_id: data.modbus_id ?? 1,
-      BBMD_EN: data.BBMD_EN ?? 0,
+      network_number: all[50] ?? 0,                    // offset 50
+      network_number_hi: all[252] ?? 0,                // offset 252
+      mstp_network_number: bytesToUint16(179),         // offset 179-180
+      mstp_id: all[230] ?? 0,                          // offset 230
+      max_master: all[233] ?? 127,                     // offset 233
+      modbus_port: bytesToUint16(183),                 // offset 183-184
+      modbus_id: all[185] ?? 1,                        // offset 185
+      BBMD_EN: all[181] ?? 0,                          // offset 181
 
       // Time Settings
-      time_zone: data.time_zone ?? 0,
-      time_update_since_1970: data.time_update_since_1970 ?? 0,
-      en_sntp: data.en_sntp ?? 0,
-      sntp_server: Array.isArray(data.sntp_server) ? bytesToString(data.sntp_server) : data.sntp_server || '',
-      time_zone_summer_daytime: data.time_zone_summer_daytime ?? 0,
-      time_sync_auto_manual: data.time_sync_auto_manual ?? 0,
-      start_month: data.start_month ?? 3,
-      start_day: data.start_day ?? 10,
-      end_month: data.end_month ?? 11,
-      end_day: data.end_day ?? 3,
+      time_zone: bytesToInt16(149),                    // offset 149-150 (signed)
+      time_update_since_1970: bytesToUint32(190),      // offset 190-193
+      en_sntp: all[148] ?? 0,                          // offset 148
+      sntp_server: (() => {
+        const sntpBytes = all.slice(195, 225);
+        LogUtil.Debug('[SettingsRefreshApi] SNTP server bytes:', sntpBytes);
+        const result = bytesToString(195, 30);
+        LogUtil.Debug('[SettingsRefreshApi] SNTP server parsed:', result);
+        return result;
+      })(),                                             // offset 195-224
+      time_zone_summer_daytime: all[194] ?? 0,         // offset 194
+      time_sync_auto_manual: all[228] ?? 0,            // offset 228
+      start_month: all[248] ?? 3,                      // offset 248
+      start_day: all[249] ?? 10,                       // offset 249
+      end_month: all[250] ?? 11,                       // offset 250
+      end_day: all[251] ?? 3,                          // offset 251
 
       // DynDNS Settings
-      en_dyndns: data.en_dyndns ?? 0,
-      dyndns_provider: data.dyndns_provider ?? 0,
-      dyndns_user: Array.isArray(data.dyndns_user) ? bytesToString(data.dyndns_user) : data.dyndns_user || '',
-      dyndns_pass: Array.isArray(data.dyndns_pass) ? bytesToString(data.dyndns_pass) : data.dyndns_pass || '',
-      dyndns_domain: Array.isArray(data.dyndns_domain) ? bytesToString(data.dyndns_domain) : data.dyndns_domain || '',
-      dyndns_update_time: data.dyndns_update_time ?? 60,
+      en_dyndns: all[144] ?? 0,                        // offset 144
+      dyndns_provider: all[145] ?? 0,                  // offset 145
+      dyndns_user: bytesToString(74, 20),              // offset 74-93
+      dyndns_pass: bytesToString(94, 20),              // offset 94-113
+      dyndns_domain: bytesToString(114, 30),           // offset 114-143
+      dyndns_update_time: bytesToUint16(146),          // offset 146-147
 
-      // Hardware/Features
-      debug: data.debug ?? 0,
-      en_plug_n_play: data.en_plug_n_play ?? 0,
-      refresh_flash_timer: data.refresh_flash_timer ?? 0,
-      user_name: data.user_name ?? 0,
-      custmer_unite: data.custmer_unite ?? 0,
-      usb_mode: data.usb_mode ?? 0,
-      sd_exist: data.sd_exist ?? 1,
-      zegbee_exsit: data.zegbee_exsit ?? 0,
-      zigbee_panid: data.zigbee_panid ?? 0,
-      LCD_Display: data.LCD_Display ?? 1,
-      special_flag: data.special_flag ?? 0,
-      webview_json_flash: data.webview_json_flash ?? 0,
-      max_var: data.max_var ?? 0,
-      max_in: data.max_in ?? 0,
-      max_out: data.max_out ?? 0,
-      fix_com_config: data.fix_com_config ?? 0,
+      // Hardware/Features (metadata)
+      debug: all[20] ?? 0,                             // offset 20
+      en_plug_n_play: all[42] ?? 0,                    // offset 42
+      refresh_flash_timer: all[41] ?? 0,               // offset 41
+      user_name: all[47] ?? 0,                         // offset 47
+      custmer_unite: all[48] ?? 0,                     // offset 48
+      usb_mode: all[49] ?? 0,                          // offset 49
+      sd_exist: all[182] ?? 1,                         // offset 182
+      zegbee_exsit: all[225] ?? 0,                     // offset 225
+      zigbee_panid: bytesToUint16(231),                // offset 231-232
+      LCD_Display: all[226] ?? 1,                      // offset 226
+      special_flag: all[234] ?? 0,                     // offset 234
+      webview_json_flash: all[253] ?? 0,               // offset 253
+      max_var: all[254] ?? 0,                          // offset 254
+      max_in: all[255] ?? 0,                           // offset 255
+      max_out: all[256] ?? 0,                          // offset 256
+      fix_com_config: all[257] ?? 0,                   // offset 257
 
       // Metadata
       serialNumber,
       lastUpdated: timestamp,
     };
+
+    LogUtil.Debug('[SettingsRefreshApi] Parsed settings:', {
+      ip_addr: parsed.ip_addr,
+      subnet: parsed.subnet,
+      gate_addr: parsed.gate_addr,
+      mac_addr: parsed.mac_addr,
+      panel_name: parsed.panel_name,
+      object_instance: parsed.object_instance,
+    });
+
+    return parsed;
+  }
+
+  /**
+   * Serialize DeviceSettings object into 400-byte array for device update
+   *
+   * Converts typed fields back to raw bytes matching C++ Str_Setting_Info structure
+   * See SETTINGS_FIELD_MAPPING.md for complete byte offset documentation
+   *
+   * @param settings - Settings object to serialize
+   * @returns 400-byte array ready for device update
+   */
+  static serializeSettingsData(settings: DeviceSettings): number[] {
+    const all = new Array(400).fill(0);
+
+    // Helper functions for byte serialization
+    const ipToBytes = (ip: string, offset: number) => {
+      const parts = ip.split('.').map(Number);
+      for (let i = 0; i < 4; i++) {
+        all[offset + i] = parts[i] || 0;
+      }
+    };
+
+    const macToBytes = (mac: string, offset: number) => {
+      const parts = mac.split(':').map(hex => parseInt(hex, 16));
+      for (let i = 0; i < 6; i++) {
+        all[offset + i] = parts[i] || 0;
+      }
+    };
+
+    const stringToBytes = (str: string, offset: number, maxLen: number) => {
+      for (let i = 0; i < maxLen; i++) {
+        all[offset + i] = i < str.length ? str.charCodeAt(i) : 0;
+      }
+    };
+
+    const uint16ToBytes = (value: number, offset: number) => {
+      all[offset] = value & 0xFF;
+      all[offset + 1] = (value >> 8) & 0xFF;
+    };
+
+    const uint32ToBytes = (value: number, offset: number) => {
+      all[offset] = value & 0xFF;
+      all[offset + 1] = (value >> 8) & 0xFF;
+      all[offset + 2] = (value >> 16) & 0xFF;
+      all[offset + 3] = (value >> 24) & 0xFF;
+    };
+
+    const int16ToBytes = (value: number, offset: number) => {
+      const unsigned = value < 0 ? value + 65536 : value;
+      all[offset] = unsigned & 0xFF;
+      all[offset + 1] = (unsigned >> 8) & 0xFF;
+    };
+
+    // Serialize all fields (see SETTINGS_FIELD_MAPPING.md)
+
+    // Network Settings
+    ipToBytes(settings.ip_addr, 0);
+    ipToBytes(settings.subnet, 4);
+    ipToBytes(settings.gate_addr, 8);
+    macToBytes(settings.mac_addr, 12);
+    all[18] = settings.tcp_type;
+
+    // Device Info
+    all[19] = settings.mini_type;
+    all[51] = settings.panel_type;
+    stringToBytes(settings.panel_name, 52, 20);
+    all[72] = settings.en_panel_name;
+    all[73] = settings.panel_number;
+    uint32ToBytes(settings.n_serial_number, 151);
+    uint32ToBytes(settings.object_instance, 186);
+
+    // Communication Settings
+    all[38] = settings.com0_config;
+    all[39] = settings.com1_config;
+    all[40] = settings.com2_config;
+    all[44] = settings.com_baudrate0;
+    all[45] = settings.com_baudrate1;
+    all[46] = settings.com_baudrate2;
+    all[235] = settings.uart_parity[0];
+    all[236] = settings.uart_parity[1];
+    all[237] = settings.uart_parity[2];
+    all[238] = settings.uart_stopbit[0];
+    all[239] = settings.uart_stopbit[1];
+    all[240] = settings.uart_stopbit[2];
+
+    // Protocol Settings
+    all[50] = settings.network_number;
+    all[252] = settings.network_number_hi;
+    uint16ToBytes(settings.mstp_network_number, 179);
+    all[230] = settings.mstp_id;
+    all[233] = settings.max_master;
+    uint16ToBytes(settings.modbus_port, 183);
+    all[185] = settings.modbus_id;
+    all[181] = settings.BBMD_EN;
+
+    // Time Settings
+    int16ToBytes(settings.time_zone, 149);
+    uint32ToBytes(settings.time_update_since_1970, 190);
+    all[148] = settings.en_sntp;
+    stringToBytes(settings.sntp_server, 195, 30);
+    all[194] = settings.time_zone_summer_daytime;
+    all[228] = settings.time_sync_auto_manual;
+    all[248] = settings.start_month;
+    all[249] = settings.start_day;
+    all[250] = settings.end_month;
+    all[251] = settings.end_day;
+
+    // DynDNS Settings
+    all[144] = settings.en_dyndns;
+    all[145] = settings.dyndns_provider;
+    stringToBytes(settings.dyndns_user, 74, 20);
+    stringToBytes(settings.dyndns_pass, 94, 20);
+    stringToBytes(settings.dyndns_domain, 114, 30);
+    uint16ToBytes(settings.dyndns_update_time, 146);
+
+    // Hardware/Features
+    all[20] = settings.debug;
+    all[42] = settings.en_plug_n_play;
+    all[41] = settings.refresh_flash_timer;
+    all[47] = settings.user_name;
+    all[48] = settings.custmer_unite;
+    all[49] = settings.usb_mode;
+    all[182] = settings.sd_exist;
+    all[225] = settings.zegbee_exsit;
+    uint16ToBytes(settings.zigbee_panid, 231);
+    all[226] = settings.LCD_Display;
+    all[234] = settings.special_flag;
+    all[253] = settings.webview_json_flash;
+    all[254] = settings.max_var;
+    all[255] = settings.max_in;
+    all[256] = settings.max_out;
+    all[257] = settings.fix_com_config;
+
+    return all;
   }
 
   /**
