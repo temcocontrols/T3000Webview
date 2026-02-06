@@ -55,6 +55,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { SettingsRefreshApi, type DeviceSettings } from '../services/settingsRefreshApi';
+import { SettingsUpdateApi } from '../services/settingsUpdateApi';
 import cssStyles from './SettingsPage.module.css';
 
 const useStyles = makeStyles({
@@ -438,6 +439,7 @@ export const SettingsPage: React.FC = () => {
   const [rebootCountdown, setRebootCountdown] = useState(0);
 
   // Settings state for each tab
+  const [settings, setSettings] = useState<DeviceSettings | null>(null); // Unified settings for save operations
   const [networkSettings, setNetworkSettings] = useState<NetworkSettings>({});
   const [commSettings, setCommSettings] = useState<CommunicationSettings>({});
   const [protocolSettings, setProtocolSettings] = useState<ProtocolSettings>({});
@@ -481,6 +483,8 @@ export const SettingsPage: React.FC = () => {
       }
 
       // Map DeviceSettings to component state
+      setSettings(settings); // Store unified settings for save operations
+
       setNetworkSettings({
         IP_Address: settings.ip_addr,
         Subnet: settings.subnet,
@@ -598,16 +602,12 @@ export const SettingsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedDevice, fetchSettings]);
+  }, [selectedDevice]); // Removed fetchSettings from dependencies
 
-  // Load settings when tab or device changes
+  // Load settings when device changes
   useEffect(() => {
     fetchSettings();
-  }, [fetchSettings, selectedTab]);
-  // Load settings when tab or device changes
-  useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings, selectedTab]);
+  }, [fetchSettings]);
 
   const handleTabSelect = (_event: SelectTabEvent, data: SelectTabData) => {
     setSelectedTab(data.value as TabValue);
@@ -615,25 +615,37 @@ export const SettingsPage: React.FC = () => {
     setSuccessMessage(null);
   };
 
+  // Helper to update unified settings object
+  const updateSettings = (updates: Partial<DeviceSettings>) => {
+    if (!settings) return;
+    setSettings({ ...settings, ...updates });
+  };
+
   const handleSaveNetwork = async () => {
-    if (!selectedDevice) return;
+    if (!selectedDevice || !settings) return;
 
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
 
     try {
-      const response = await fetch(
-        `/api/v1/devices/${selectedDevice.serialNumber}/settings/network`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(networkSettings),
-        }
-      );
+      // Validate settings before update
+      const validation = SettingsUpdateApi.validateSettings(settings);
+      if (!validation.valid) {
+        throw new Error(validation.errors.join(', '));
+      }
 
-      if (!response.ok) throw new Error('Failed to save network settings');
-      setSuccessMessage('Network settings saved successfully');
+      // Update device settings via FFI (action 16)
+      const result = await SettingsUpdateApi.updateDeviceSettings(settings);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update device');
+      }
+
+      setSuccessMessage('Network settings saved to device successfully');
+
+      // Refresh settings to confirm
+      await fetchSettings();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
@@ -642,24 +654,26 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleSaveCommunication = async () => {
-    if (!selectedDevice) return;
+    if (!selectedDevice || !settings) return;
 
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
 
     try {
-      const response = await fetch(
-        `/api/v1/devices/${selectedDevice.serialNumber}/settings/communication`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(commSettings),
-        }
-      );
+      const validation = SettingsUpdateApi.validateSettings(settings);
+      if (!validation.valid) {
+        throw new Error(validation.errors.join(', '));
+      }
 
-      if (!response.ok) throw new Error('Failed to save communication settings');
-      setSuccessMessage('Communication settings saved successfully');
+      const result = await SettingsUpdateApi.updateDeviceSettings(settings);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update device');
+      }
+
+      setSuccessMessage('Communication settings saved to device successfully');
+      await fetchSettings();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
@@ -668,24 +682,26 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleSaveTime = async () => {
-    if (!selectedDevice) return;
+    if (!selectedDevice || !settings) return;
 
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
 
     try {
-      const response = await fetch(
-        `/api/v1/devices/${selectedDevice.serialNumber}/settings/time`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(timeSettings),
-        }
-      );
+      const validation = SettingsUpdateApi.validateSettings(settings);
+      if (!validation.valid) {
+        throw new Error(validation.errors.join(', '));
+      }
 
-      if (!response.ok) throw new Error('Failed to save time settings');
-      setSuccessMessage('Time settings saved successfully');
+      const result = await SettingsUpdateApi.updateDeviceSettings(settings);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update device');
+      }
+
+      setSuccessMessage('Time settings saved to device successfully');
+      await fetchSettings();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
@@ -694,24 +710,26 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleSaveDyndns = async () => {
-    if (!selectedDevice) return;
+    if (!selectedDevice || !settings) return;
 
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
 
     try {
-      const response = await fetch(
-        `/api/v1/devices/${selectedDevice.serialNumber}/settings/dyndns`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(dyndnsSettings),
-        }
-      );
+      const validation = SettingsUpdateApi.validateSettings(settings);
+      if (!validation.valid) {
+        throw new Error(validation.errors.join(', '));
+      }
 
-      if (!response.ok) throw new Error('Failed to save DynDNS settings');
-      setSuccessMessage('DynDNS settings saved successfully');
+      const result = await SettingsUpdateApi.updateDeviceSettings(settings);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update device');
+      }
+
+      setSuccessMessage('DynDNS settings saved to device successfully');
+      await fetchSettings();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
@@ -1058,9 +1076,10 @@ export const SettingsPage: React.FC = () => {
                 >
                   <Input
                     value={networkSettings.IP_Address ?? ''}
-                    onChange={(_, data) =>
-                      setNetworkSettings({ ...networkSettings, IP_Address: data.value })
-                    }
+                    onChange={(_, data) => {
+                      setNetworkSettings({ ...networkSettings, IP_Address: data.value });
+                      updateSettings({ ip_addr: data.value });
+                    }}
                     placeholder="192.168.1.100"
                   />
                 </Field>
@@ -1079,9 +1098,10 @@ export const SettingsPage: React.FC = () => {
                 >
                   <Input
                     value={networkSettings.Subnet ?? ''}
-                    onChange={(_, data) =>
-                      setNetworkSettings({ ...networkSettings, Subnet: data.value })
-                    }
+                    onChange={(_, data) => {
+                      setNetworkSettings({ ...networkSettings, Subnet: data.value });
+                      updateSettings({ subnet: data.value });
+                    }}
                     placeholder="255.255.255.0"
                   />
                 </Field>
@@ -1100,9 +1120,10 @@ export const SettingsPage: React.FC = () => {
                 >
                   <Input
                     value={networkSettings.Gateway ?? ''}
-                    onChange={(_, data) =>
-                      setNetworkSettings({ ...networkSettings, Gateway: data.value })
-                    }
+                    onChange={(_, data) => {
+                      setNetworkSettings({ ...networkSettings, Gateway: data.value });
+                      updateSettings({ gate_addr: data.value });
+                    }}
                     placeholder="192.168.1.1"
                   />
                 </Field>
@@ -1112,12 +1133,11 @@ export const SettingsPage: React.FC = () => {
                 <Field label="IP Configuration">
                   <Dropdown
                     value={networkSettings.TCP_Type === 0 ? 'DHCP' : 'Static'}
-                    onOptionSelect={(_, data) =>
-                      setNetworkSettings({
-                        ...networkSettings,
-                        TCP_Type: data.optionValue === 'DHCP' ? 0 : 1,
-                      })
-                    }
+                    onOptionSelect={(_, data) => {
+                      const tcpType = data.optionValue === 'DHCP' ? 0 : 1;
+                      setNetworkSettings({ ...networkSettings, TCP_Type: tcpType });
+                      updateSettings({ tcp_type: tcpType });
+                    }}
                   >
                     <Option value="DHCP">DHCP (Auto)</Option>
                     <Option value="Static">Static (Manual)</Option>
