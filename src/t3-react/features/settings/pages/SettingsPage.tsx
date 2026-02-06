@@ -591,8 +591,76 @@ export const SettingsPage: React.FC = () => {
         throw new Error(result.message);
       }
 
-      // Reload settings after refresh
-      await fetchSettings();
+      // Use the refreshed data directly instead of calling fetchSettings again
+      if (result.data) {
+        const settings = result.data;
+
+        // Update all state with the refreshed settings
+        setNetworkSettings({
+          IP_Address: settings.ip_addr,
+          Subnet_Mask: settings.subnet,
+          Gateway: settings.gate_addr,
+          MAC_Address: settings.mac_addr,
+          TCP_Type: settings.tcp_type,
+        });
+
+        setProtocolSettings({
+          Modbus_ID: settings.modbus_id,
+          Modbus_Port: settings.modbus_port,
+          MSTP_ID: settings.mstp_id,
+          MSTP_Network_Number: settings.mstp_network_number,
+          Max_Master: settings.max_master,
+          Object_Instance: settings.object_instance,
+          BBMD_Enable: settings.BBMD_EN,
+          Network_Number: settings.network_number,
+        });
+
+        setTimeSettings({
+          Time_Zone: settings.time_zone,
+          Time_Zone_Summer_Daytime: settings.time_zone_summer_daytime,
+          Enable_SNTP: settings.en_sntp,
+          SNTP_Server: settings.sntp_server,
+          Start_Month: settings.start_month,
+          Start_Day: settings.start_day,
+          End_Month: settings.end_month,
+          End_Day: settings.end_day,
+        });
+
+        setDyndnsSettings({
+          Enable_DynDNS: settings.en_dyndns,
+          DynDNS_Provider: settings.dyndns_provider,
+          DynDNS_Username: settings.dyndns_user,
+          DynDNS_Password: settings.dyndns_pass,
+          DynDNS_Domain: settings.dyndns_domain,
+          DynDNS_Update_Time: settings.dyndns_update_time,
+        });
+
+        setHardwareInfo({
+          Mini_Type: settings.mini_type,
+          Panel_Type: settings.panel_type,
+          USB_Mode: settings.usb_mode,
+          SD_Exist: settings.sd_exist,
+          Hardware_Rev: String(settings.harware_rev),
+          Firmware0_Rev_Main: settings.firmware0_rev_main,
+          Firmware0_Rev_Sub: settings.firmware0_rev_sub,
+          Firmware1_Rev: settings.frimware1_rev,
+          Firmware2_Rev: settings.frimware2_rev,
+          Bootloader_Rev: settings.bootloader_rev,
+        });
+
+        setFeatureFlags({
+          User_Name_Enable: settings.user_name,
+          Customer_Unite_Enable: settings.custmer_unite,
+          Enable_Panel_Name: settings.en_panel_name,
+          LCD_Display: settings.LCD_Display,
+        });
+
+        setDeviceInfo({
+          SerialNumber: settings.n_serial_number,
+          PanelId: settings.panel_name,
+          PanelNumber: settings.panel_number,
+        });
+      }
 
       setSuccessMessage('Settings refreshed successfully from device');
 

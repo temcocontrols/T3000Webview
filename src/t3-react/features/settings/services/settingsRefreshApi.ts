@@ -223,10 +223,38 @@ export class SettingsRefreshApi {
     LogUtil.Debug(`[SettingsRefreshApi] First 20 bytes:`, all.slice(0, 20));
     LogUtil.Debug(`[SettingsRefreshApi] Bytes 150-180:`, all.slice(150, 180));
 
+    // Search for value 1 (potential mstp_id or mstp_network)
+    for (let i = 0; i < all.length; i++) {
+      if (all[i] === 1) {
+        LogUtil.Debug(`[SettingsRefreshApi] Found byte 1 at offset ${i}`);
+      }
+    }
+
     // Search for the pattern [104, 171, 3, 0] which is 240488 in little-endian
     for (let i = 0; i < all.length - 3; i++) {
       if (all[i] === 104 && all[i+1] === 171 && all[i+2] === 3 && all[i+3] === 0) {
         LogUtil.Debug(`[SettingsRefreshApi] Found pattern [104,171,3,0] at offset ${i}`);
+      }
+    }
+
+    // Search for BIP Network value 65535 (0xFFFF) = [255, 255] in little-endian
+    for (let i = 0; i < all.length - 1; i++) {
+      if (all[i] === 255 && all[i+1] === 255) {
+        LogUtil.Debug(`[SettingsRefreshApi] Found pattern [255,255] (65535) at offset ${i}`);
+      }
+    }
+
+    // Search for Max Master value 254 (0xFE)
+    for (let i = 0; i < all.length; i++) {
+      if (all[i] === 254) {
+        LogUtil.Debug(`[SettingsRefreshApi] Found byte 254 at offset ${i}`);
+      }
+    }
+
+    // Search for Panel Number 144 (0x90)
+    for (let i = 0; i < all.length; i++) {
+      if (all[i] === 144) {
+        LogUtil.Debug(`[SettingsRefreshApi] Found byte 144 at offset ${i}`);
       }
     }
 
@@ -242,7 +270,7 @@ export class SettingsRefreshApi {
     const bytesToMAC = (offset: number): string => {
       return all.slice(offset, offset + 6)
         .map(b => b.toString(16).padStart(2, '0').toUpperCase())
-        .join(':');
+        .join('-');
     };
 
     const bytesToString = (offset: number, length: number): string => {
@@ -305,14 +333,34 @@ export class SettingsRefreshApi {
       uart_stopbit: [all[224] ?? 0, all[225] ?? 0, all[226] ?? 0],   // offset 224-226 (FIXED!)
 
       // Protocol Settings
-      network_number: all[50] ?? 0,                    // offset 50
-      network_number_hi: all[238] ?? 0,                // offset 238 (FIXED!)
-      mstp_network_number: bytesToUint16(165),         // offset 165-166 (FIXED!)
-      mstp_id: all[216] ?? 0,                          // offset 216 (FIXED!)
-      max_master: all[219] ?? 127,                     // offset 219 (FIXED!)
-      modbus_port: bytesToUint16(169),                 // offset 169-170 (FIXED!)
-      modbus_id: all[171] ?? 1,                        // offset 171 (FIXED!)
-      BBMD_EN: all[167] ?? 0,                          // offset 167 (FIXED!)
+      network_number: (() => {
+        // BIP Network should be 65535, found at offset 223-224
+        const value = bytesToUint16(223);
+        LogUtil.Debug(`[SettingsRefreshApi] network_number (BIP) [223-224]:`, [all[223], all[224]], `value: ${value}`);
+        return value;
+      })(),
+      network_number_hi: all[238] ?? 0,                // offset 238
+      mstp_network_number: (() => {
+        // MSTP Network should be 1, single byte at offset 72
+        const value = all[72] ?? 0;
+        LogUtil.Debug(`[SettingsRefreshApi] mstp_network_number [72]:`, value);
+        return value;
+      })(),
+      mstp_id: (() => {
+        // MSTP ID should be 1, trying offset 246 (after max_master at 245)
+        const value = all[246] ?? 0;
+        LogUtil.Debug(`[SettingsRefreshApi] mstp_id [246]:`, value);
+        return value;
+      })(),
+      max_master: (() => {
+        // Max Master should be 254, found at offset 245
+        const value = all[245] ?? 127;
+        LogUtil.Debug(`[SettingsRefreshApi] max_master [245]:`, value);
+        return value;
+      })(),
+      modbus_port: bytesToUint16(169),                 // offset 169-170
+      modbus_id: all[171] ?? 1,                        // offset 171
+      BBMD_EN: all[167] ?? 0,                          // offset 167
 
       // Time Settings
       time_zone: bytesToInt16(149),                    // offset 149-150 (signed)
