@@ -944,7 +944,7 @@ export const SettingsPage: React.FC = () => {
                 <div className={styles.basicField}>
                   <label className={styles.basicFieldLabel}>SD Card:</label>
                   <span className={styles.basicFieldValue}>
-                    {hardwareInfo.SD_Exist === 1 ? 'Present' : 'Not Present'}
+                    {hardwareInfo.SD_Exist === 1 ? 'Present' : 'No SD Card'}
                   </span>
                 </div>
               </div>

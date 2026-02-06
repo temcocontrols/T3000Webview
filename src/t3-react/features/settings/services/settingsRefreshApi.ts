@@ -221,6 +221,14 @@ export class SettingsRefreshApi {
 
     LogUtil.Debug(`[SettingsRefreshApi] Extracted array length: ${all.length}`);
     LogUtil.Debug(`[SettingsRefreshApi] First 20 bytes:`, all.slice(0, 20));
+    LogUtil.Debug(`[SettingsRefreshApi] Bytes 150-180:`, all.slice(150, 180));
+
+    // Search for the pattern [104, 171, 3, 0] which is 240488 in little-endian
+    for (let i = 0; i < all.length - 3; i++) {
+      if (all[i] === 104 && all[i+1] === 171 && all[i+2] === 3 && all[i+3] === 0) {
+        LogUtil.Debug(`[SettingsRefreshApi] Found pattern [104,171,3,0] at offset ${i}`);
+      }
+    }
 
     if (!all || all.length < 400) {
       LogUtil.Warn(`[SettingsRefreshApi] Invalid data array length: ${all?.length || 0}, expected 400 bytes`);
@@ -273,7 +281,12 @@ export class SettingsRefreshApi {
       en_panel_name: all[72] ?? 0,                     // offset 72
       panel_number: all[73] ?? 0,                      // offset 73
       n_serial_number: bytesToUint32(151),             // offset 151-154
-      object_instance: bytesToUint32(172),             // offset 172-175 (FIXED!)
+      object_instance: (() => {
+        const bytes = [all[177], all[178], all[179], all[180]];
+        const value = bytesToUint32(177);
+        LogUtil.Debug(`[SettingsRefreshApi] object_instance bytes [177-180]:`, bytes, `value: ${value}`);
+        return value;
+      })(),             // offset 177-180 (VERIFIED!)
 
       // Communication Settings
       com0_config: all[38] ?? 0,                       // offset 38
