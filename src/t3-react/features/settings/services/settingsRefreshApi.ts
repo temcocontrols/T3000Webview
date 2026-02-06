@@ -359,7 +359,12 @@ export class SettingsRefreshApi {
         return value;
       })(),
       modbus_port: bytesToUint16(169),                 // offset 169-170
-      modbus_id: all[171] ?? 1,                        // offset 171
+      modbus_id: (() => {
+        // Modbus ID should be 1, found at offset 170
+        const value = all[170] ?? 1;
+        LogUtil.Debug(`[SettingsRefreshApi] modbus_id [170]:`, value);
+        return value;
+      })(),
       BBMD_EN: all[167] ?? 0,                          // offset 167
 
       // Time Settings
