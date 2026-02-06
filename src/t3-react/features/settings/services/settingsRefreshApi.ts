@@ -79,6 +79,13 @@ export interface DeviceSettings {
 
   // Hardware/Features
   debug: number;                // Debug flag
+  harware_rev: number;          // Hardware revision (offset 21)
+  firmware0_rev_main: number;   // Firmware 0 main revision (offset 22)
+  firmware0_rev_sub: number;    // Firmware 0 sub revision (offset 23)
+  frimware1_rev: number;        // Firmware 1 revision - PIC (offset 24)
+  frimware2_rev: number;        // Firmware 2 revision - C8051 (offset 25)
+  frimware3_rev: number;        // Firmware 3 revision - SM5964 (offset 26)
+  bootloader_rev: number;       // Bootloader revision (offset 27)
   en_plug_n_play: number;       // Enable plug and play
   refresh_flash_timer: number;  // Flash refresh timer
   user_name: number;            // 0=no, 1=disable, 2=enable
@@ -266,7 +273,7 @@ export class SettingsRefreshApi {
       en_panel_name: all[72] ?? 0,                     // offset 72
       panel_number: all[73] ?? 0,                      // offset 73
       n_serial_number: bytesToUint32(151),             // offset 151-154
-      object_instance: bytesToUint32(186),             // offset 186-189
+      object_instance: bytesToUint32(172),             // offset 172-175 (FIXED!)
 
       // Communication Settings
       com0_config: all[38] ?? 0,                       // offset 38
@@ -275,36 +282,36 @@ export class SettingsRefreshApi {
       com_baudrate0: all[44] ?? 0,                     // offset 44
       com_baudrate1: all[45] ?? 0,                     // offset 45
       com_baudrate2: all[46] ?? 0,                     // offset 46
-      uart_parity: [all[235] ?? 0, all[236] ?? 0, all[237] ?? 0],    // offset 235-237
-      uart_stopbit: [all[238] ?? 0, all[239] ?? 0, all[240] ?? 0],   // offset 238-240
+      uart_parity: [all[221] ?? 0, all[222] ?? 0, all[223] ?? 0],    // offset 221-223 (FIXED!)
+      uart_stopbit: [all[224] ?? 0, all[225] ?? 0, all[226] ?? 0],   // offset 224-226 (FIXED!)
 
       // Protocol Settings
       network_number: all[50] ?? 0,                    // offset 50
-      network_number_hi: all[252] ?? 0,                // offset 252
-      mstp_network_number: bytesToUint16(179),         // offset 179-180
-      mstp_id: all[230] ?? 0,                          // offset 230
-      max_master: all[233] ?? 127,                     // offset 233
-      modbus_port: bytesToUint16(183),                 // offset 183-184
-      modbus_id: all[185] ?? 1,                        // offset 185
-      BBMD_EN: all[181] ?? 0,                          // offset 181
+      network_number_hi: all[238] ?? 0,                // offset 238 (FIXED!)
+      mstp_network_number: bytesToUint16(165),         // offset 165-166 (FIXED!)
+      mstp_id: all[216] ?? 0,                          // offset 216 (FIXED!)
+      max_master: all[219] ?? 127,                     // offset 219 (FIXED!)
+      modbus_port: bytesToUint16(169),                 // offset 169-170 (FIXED!)
+      modbus_id: all[171] ?? 1,                        // offset 171 (FIXED!)
+      BBMD_EN: all[167] ?? 0,                          // offset 167 (FIXED!)
 
       // Time Settings
       time_zone: bytesToInt16(149),                    // offset 149-150 (signed)
-      time_update_since_1970: bytesToUint32(190),      // offset 190-193
+      time_update_since_1970: bytesToUint32(176),      // offset 176-179 (FIXED!)
       en_sntp: all[148] ?? 0,                          // offset 148
       sntp_server: (() => {
-        const sntpBytes = all.slice(195, 225);
+        const sntpBytes = all.slice(181, 211);
         LogUtil.Debug('[SettingsRefreshApi] SNTP server bytes:', sntpBytes);
-        const result = bytesToString(195, 30);
+        const result = bytesToString(181, 30);        // offset 181-210 (FIXED!)
         LogUtil.Debug('[SettingsRefreshApi] SNTP server parsed:', result);
         return result;
-      })(),                                             // offset 195-224
-      time_zone_summer_daytime: all[194] ?? 0,         // offset 194
-      time_sync_auto_manual: all[228] ?? 0,            // offset 228
-      start_month: all[248] ?? 3,                      // offset 248
-      start_day: all[249] ?? 10,                       // offset 249
-      end_month: all[250] ?? 11,                       // offset 250
-      end_day: all[251] ?? 3,                          // offset 251
+      })(),
+      time_zone_summer_daytime: all[180] ?? 0,         // offset 180 (FIXED!)
+      time_sync_auto_manual: all[214] ?? 0,            // offset 214 (FIXED!)
+      start_month: all[234] ?? 3,                      // offset 234 (FIXED!)
+      start_day: all[235] ?? 10,                       // offset 235 (FIXED!)
+      end_month: all[236] ?? 11,                       // offset 236 (FIXED!)
+      end_day: all[237] ?? 3,                          // offset 237 (FIXED!)
 
       // DynDNS Settings
       en_dyndns: all[144] ?? 0,                        // offset 144
@@ -316,21 +323,28 @@ export class SettingsRefreshApi {
 
       // Hardware/Features (metadata)
       debug: all[20] ?? 0,                             // offset 20
+      harware_rev: all[21] ?? 0,                       // offset 21 - Hardware revision
+      firmware0_rev_main: all[22] ?? 0,                // offset 22 - Firmware 0 main revision
+      firmware0_rev_sub: all[23] ?? 0,                 // offset 23 - Firmware 0 sub revision
+      frimware1_rev: all[24] ?? 0,                     // offset 24 - Firmware 1 revision (PIC)
+      frimware2_rev: all[25] ?? 0,                     // offset 25 - Firmware 2 revision (C8051)
+      frimware3_rev: all[26] ?? 0,                     // offset 26 - Firmware 3 revision (SM5964)
+      bootloader_rev: all[27] ?? 0,                    // offset 27 - Bootloader revision
       en_plug_n_play: all[42] ?? 0,                    // offset 42
       refresh_flash_timer: all[41] ?? 0,               // offset 41
       user_name: all[47] ?? 0,                         // offset 47
       custmer_unite: all[48] ?? 0,                     // offset 48
       usb_mode: all[49] ?? 0,                          // offset 49
-      sd_exist: all[182] ?? 1,                         // offset 182
-      zegbee_exsit: all[225] ?? 0,                     // offset 225
-      zigbee_panid: bytesToUint16(231),                // offset 231-232
-      LCD_Display: all[226] ?? 1,                      // offset 226
-      special_flag: all[234] ?? 0,                     // offset 234
-      webview_json_flash: all[253] ?? 0,               // offset 253
-      max_var: all[254] ?? 0,                          // offset 254
-      max_in: all[255] ?? 0,                           // offset 255
-      max_out: all[256] ?? 0,                          // offset 256
-      fix_com_config: all[257] ?? 0,                   // offset 257
+      sd_exist: all[168] ?? 1,                         // offset 168 (FIXED!)
+      zegbee_exsit: all[211] ?? 0,                     // offset 211 (FIXED!)
+      zigbee_panid: bytesToUint16(217),                // offset 217-218 (FIXED!)
+      LCD_Display: all[212] ?? 1,                      // offset 212 (FIXED!)
+      special_flag: all[220] ?? 0,                     // offset 220 (FIXED!)
+      webview_json_flash: all[239] ?? 0,               // offset 239 (FIXED!)
+      max_var: all[240] ?? 0,                          // offset 240 (FIXED!)
+      max_in: all[241] ?? 0,                           // offset 241 (FIXED!)
+      max_out: all[242] ?? 0,                          // offset 242 (FIXED!)
+      fix_com_config: all[243] ?? 0,                   // offset 243 (FIXED!)
 
       // Metadata
       serialNumber,

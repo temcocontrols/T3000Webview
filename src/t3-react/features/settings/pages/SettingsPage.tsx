@@ -546,6 +546,12 @@ export const SettingsPage: React.FC = () => {
         Panel_Type: settings.panel_type,
         USB_Mode: settings.usb_mode,
         SD_Exist: settings.sd_exist,
+        Hardware_Rev: String(settings.harware_rev),
+        Firmware0_Rev_Main: settings.firmware0_rev_main,
+        Firmware0_Rev_Sub: settings.firmware0_rev_sub,
+        Firmware1_Rev: settings.frimware1_rev,
+        Firmware2_Rev: settings.frimware2_rev,
+        Bootloader_Rev: settings.bootloader_rev,
       });
 
       setFeatureFlags({
@@ -837,6 +843,40 @@ export const SettingsPage: React.FC = () => {
     await handleSaveNetwork();
   };
 
+  // Map mini_type to module name
+  const getMiniTypeName = (miniType: number | undefined): string => {
+    if (miniType === undefined) return 'N/A';
+
+    const mapping: { [key: number]: string } = {
+      0: 'CM5',
+      1: 'T3-BB',
+      2: 'T3-LB',
+      3: 'T3-TB',
+      4: 'T3-TB',
+      5: 'T3-BB',      // MINIPANELARM
+      6: 'T3-LB',      // MINIPANELARM_LB
+      7: 'T3-TB',      // MINIPANELARM_TB
+      8: 'T3-Nano',    // MINIPANELARM_NB
+      9: 'TSTAT10',
+      11: 'T3-OEM',
+      12: 'T3-TB-11I',
+      13: 'T3-FAN-MODULE',
+      14: 'T3-OEM-12I',
+      15: 'T3-AIRLAB',
+      16: 'T3-ESP-TRANSDUCER',
+      17: 'T3-ESP-TSTAT9',
+      18: 'T3-ESP-SAUTER',
+      19: 'T3-RMC',
+      21: 'T3-ESP-LW',
+      22: 'T3-NG2',
+      26: 'T3-3IIC',
+      43: 'T322AI',
+      44: 'T38AI8AO6DO',
+    };
+
+    return mapping[miniType] || `Unknown (${miniType})`;
+  };
+
   // Render tab content based on selected tab
   const renderTabContent = () => {
     if (!selectedDevice) {
@@ -869,7 +909,7 @@ export const SettingsPage: React.FC = () => {
                 <div className={styles.basicPanelTitle}>Device Information</div>
                 <div className={styles.basicField}>
                   <label className={styles.basicFieldLabel}>Module Number:</label>
-                  <span className={styles.basicFieldValue}>{hardwareInfo.Mini_Type ?? 'N/A'}</span>
+                  <span className={styles.basicFieldValue}>{getMiniTypeName(hardwareInfo.Mini_Type)}</span>
                 </div>
                 <div className={styles.basicField}>
                   <label className={styles.basicFieldLabel}>Hardware Version:</label>
@@ -895,7 +935,11 @@ export const SettingsPage: React.FC = () => {
                 </div>
                 <div className={styles.basicField}>
                   <label className={styles.basicFieldLabel}>MCU Type:</label>
-                  <span className={styles.basicFieldValue}>{hardwareInfo.Panel_Type ?? 'N/A'}</span>
+                  <span className={styles.basicFieldValue}>
+                    {hardwareInfo.Mini_Type !== undefined
+                      ? `0x${((hardwareInfo.Mini_Type & 0xC0) >>> 0).toString(16).toUpperCase().padStart(2, '0')}`
+                      : 'N/A'}
+                  </span>
                 </div>
                 <div className={styles.basicField}>
                   <label className={styles.basicFieldLabel}>SD Card:</label>
