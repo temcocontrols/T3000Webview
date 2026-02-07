@@ -8553,11 +8553,12 @@
         .sort((a, b) => a.timestamp - b.timestamp)
         .map(point => {
           // Stack each series vertically
-          // Series 0: y = 0.3 (low) or 0.9 (high)
-          // Series 1: y = 1.5 (low) or 2.1 (high)
-          // Series 2: y = 2.7 (low) or 3.3 (high), etc.
+          // control=1 (second state) goes to bottom, control=0 (first state) goes to top
+          // Series 0: y = 0.3 (bottom, control=1) or 0.9 (top, control=0)
+          // Series 1: y = 1.5 (bottom, control=1) or 2.1 (top, control=0)
+          // Series 2: y = 2.7 (bottom, control=1) or 3.3 (top, control=0), etc.
           const baseY = index * 1.2
-          const y = point.value > 0.5 ? baseY + 0.9 : baseY + 0.3
+          const y = point.value > 0.5 ? baseY + 0.3 : baseY + 0.9
           return {
             x: point.timestamp,
             y: y
