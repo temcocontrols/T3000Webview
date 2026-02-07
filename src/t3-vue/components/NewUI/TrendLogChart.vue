@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <a-config-provider :theme="{
     token: {
       colorPrimary: '#0064c8',
@@ -4138,31 +4138,157 @@
             display: false // Digital charts don't need legends (shown in channel label)
           },
           tooltip: {
-            enabled: true,
-            backgroundColor: '#ffffff',
-            titleColor: '#000000',
-            bodyColor: '#000000',
-            borderColor: '#d9d9d9',
-            borderWidth: 1,
-            cornerRadius: 4,
-            displayColors: true,
-            usePointStyle: true,
-            callbacks: {
-              title: (context: any) => {
-                const timestamp = context[0].parsed.x
-                if (typeof timestamp === 'number' && timestamp > 1e9) {
-                  return formatTimestampToLocal(timestamp)
-                }
-                return new Date(timestamp).toLocaleString()
-              },
-              label: (context: any) => {
-                // context.parsed.y contains the actual control value (0 or 1)
-                // control=0 → digitalStates[0] (first value in pair)
-                // control=1 → digitalStates[1] (second value in pair)
-                const controlValue = context.parsed.y
-                const stateIndex = controlValue > 0.5 ? 1 : 0
-                const stateText = digitalStates[stateIndex]
-                return `   ${stateText}`
+            enabled: false,
+            position: 'nearest',
+            external: (context: any) => {
+              const { chart, tooltip } = context
+
+              // Remove all existing tooltips and crosshair
+              document.querySelectorAll('.chartjs-multi-tooltip').forEach(el => el.remove())
+              document.querySelectorAll('.chartjs-crosshair').forEach(el => el.remove())
+
+              // Hide if no tooltip
+              if (tooltip.opacity === 0) {
+                return
+              }
+
+              // Draw vertical crosshair line at hover position
+              if (tooltip.dataPoints && tooltip.dataPoints.length > 0) {
+                const position = chart.canvas.getBoundingClientRect()
+                const scrollX = window.pageXOffset || document.documentElement.scrollLeft
+                const scrollY = window.pageYOffset || document.documentElement.scrollTop
+
+                const firstPoint = tooltip.dataPoints[0]
+                const pointX = position.left + scrollX + firstPoint.element.x
+
+                // Create crosshair line element
+                const crosshairEl = document.createElement('div')
+                crosshairEl.className = 'chartjs-crosshair'
+                crosshairEl.style.position = 'absolute'
+                crosshairEl.style.left = pointX + 'px'
+                crosshairEl.style.top = (position.top + scrollY + chart.chartArea.top) + 'px'
+                crosshairEl.style.width = '0px'
+                crosshairEl.style.height = (chart.chartArea.bottom - chart.chartArea.top) + 'px'
+                crosshairEl.style.borderLeft = '2px dashed #999'
+                crosshairEl.style.pointerEvents = 'none'
+                crosshairEl.style.zIndex = '999'
+
+                document.body.appendChild(crosshairEl)
+
+                // Create time display at top of crosshair
+                const timeEl = document.createElement('div')
+                timeEl.className = 'chartjs-crosshair'
+                timeEl.style.position = 'absolute'
+                timeEl.style.left = (pointX - 30) + 'px'
+                timeEl.style.top = (position.top + scrollY + chart.chartArea.top - 20) + 'px'
+                timeEl.style.pointerEvents = 'none'
+                timeEl.style.zIndex = '1000'
+
+                // Get time from the data point
+                const timeLabel = tooltip.dataPoints[0].label || ''
+
+                timeEl.innerHTML = `
+                  <div style="
+                    background: white;
+                    color: #000;
+                    border: 1px solid #ff4d4f;
+                    border-radius: 3px;
+                    padding: 2px 6px;
+                    font-size: 10px;
+                    font-weight: 500;
+                    white-space: nowrap;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                  ">
+                    ${timeLabel}
+                  </div>
+                `
+
+                document.body.appendChild(timeEl)
+              }
+
+              // Create individual tooltip for each data point
+              if (tooltip.body && tooltip.dataPoints && tooltip.dataPoints.length > 0) {
+                const position = chart.canvas.getBoundingClientRect()
+                const scrollX = window.pageXOffset || document.documentElement.scrollLeft
+                const scrollY = window.pageYOffset || document.documentElement.scrollTop
+
+                // Sort points by Y position to handle overlaps
+                const sortedPoints = [...tooltip.dataPoints].sort((a, b) => a.element.y - b.element.y)
+
+                // Track occupied vertical spaces to prevent overlap
+                const tooltipPositions: Array<{top: number, bottom: number}> = []
+                const tooltipHeight = 24
+                const minSpacing = 4
+
+                sortedPoints.forEach((point: any) => {
+                  const series = visibleDigitalSeries.value.find(s => s.name === point.dataset.label)
+                  const label = point.dataset.label || ''
+
+                  // Get control value from raw data (stored during data mapping)
+                  const controlValue = point.raw?.control
+
+                  // Get digital states for this series
+                  const digitalStates = getDigitalStatesForYAxis(series?.unitCode || 1)
+                  const stateText = digitalStates[controlValue] || ''
+
+                  const displayText = `${label}: ${stateText}`
+
+                  // Create individual tooltip element
+                  const tooltipEl = document.createElement('div')
+                  tooltipEl.className = 'chartjs-multi-tooltip'
+                  tooltipEl.style.opacity = '1'
+                  tooltipEl.style.position = 'absolute'
+                  tooltipEl.style.pointerEvents = 'none'
+                  tooltipEl.style.transition = 'all 0.1s ease'
+                  tooltipEl.style.zIndex = '1000'
+
+                  tooltipEl.innerHTML = `
+                    <div style="
+                      background: #f5f5f5;
+                      color: #000;
+                      border: 1px solid #d9d9d9;
+                      border-radius: 4px;
+                      padding: 3px 6px;
+                      font-size: 10px;
+                      font-weight: 500;
+                      white-space: nowrap;
+                      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+                    ">
+                      ${displayText}
+                    </div>
+                  `
+
+                  // Position to the right of the data point
+                  const pointX = position.left + scrollX + point.element.x
+                  const pointY = position.top + scrollY + point.element.y
+
+                  // Calculate initial vertical position
+                  let tooltipTop = pointY - 12
+
+                  // Check for overlaps and adjust position
+                  let adjusted = true
+                  while (adjusted) {
+                    adjusted = false
+                    for (const occupied of tooltipPositions) {
+                      if (tooltipTop < occupied.bottom && tooltipTop + tooltipHeight > occupied.top) {
+                        tooltipTop = occupied.bottom + minSpacing
+                        adjusted = true
+                        break
+                      }
+                    }
+                  }
+
+                  // Record this tooltip's position
+                  tooltipPositions.push({
+                    top: tooltipTop,
+                    bottom: tooltipTop + tooltipHeight
+                  })
+
+                  tooltipEl.style.left = (pointX + 10) + 'px'
+                  tooltipEl.style.top = tooltipTop + 'px'
+
+                  document.body.appendChild(tooltipEl)
+                })
               }
             }
           }
@@ -4335,36 +4461,157 @@
             display: false // Hide legend to use full width
           },
           tooltip: {
-            enabled: true,
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            titleColor: '#000000',
-            bodyColor: '#000000',
-            borderColor: '#d9d9d9',
-            borderWidth: 1,
-            cornerRadius: 4,
-            displayColors: true,
-            usePointStyle: true,
-            callbacks: {
-              title: (context: any) => {
-                const timestamp = context[0].parsed.x
-                if (typeof timestamp === 'number' && timestamp > 1e9) {
-                  return formatTimestampToLocal(timestamp)
-                }
-                return new Date(timestamp).toLocaleString()
-              },
-              label: (context: any) => {
-                const seriesIndex = context.datasetIndex
-                const series = visibleDigitalSeries.value[seriesIndex]
-                if (!series) return ''
+            enabled: false,
+            position: 'nearest',
+            external: (context: any) => {
+              const { chart, tooltip } = context
 
-                const digitalStates = getDigitalStatesFromRange(series.unitCode || 1)
-                const rawY = context.parsed.y
-                // Extract the fractional part (0.2 or 1.2) to determine state
-                const fractionalPart = rawY % 1
-                const stateIndex = fractionalPart > 0.5 ? 1 : 0
-                const stateText = digitalStates[stateIndex]
+              // Remove all existing tooltips and crosshair
+              document.querySelectorAll('.chartjs-multi-tooltip').forEach(el => el.remove())
+              document.querySelectorAll('.chartjs-crosshair').forEach(el => el.remove())
 
-                return `${series.name}: ${stateText}`
+              // Hide if no tooltip
+              if (tooltip.opacity === 0) {
+                return
+              }
+
+              // Draw vertical crosshair line at hover position
+              if (tooltip.dataPoints && tooltip.dataPoints.length > 0) {
+                const position = chart.canvas.getBoundingClientRect()
+                const scrollX = window.pageXOffset || document.documentElement.scrollLeft
+                const scrollY = window.pageYOffset || document.documentElement.scrollTop
+
+                const firstPoint = tooltip.dataPoints[0]
+                const pointX = position.left + scrollX + firstPoint.element.x
+
+                // Create crosshair line element
+                const crosshairEl = document.createElement('div')
+                crosshairEl.className = 'chartjs-crosshair'
+                crosshairEl.style.position = 'absolute'
+                crosshairEl.style.left = pointX + 'px'
+                crosshairEl.style.top = (position.top + scrollY + chart.chartArea.top) + 'px'
+                crosshairEl.style.width = '0px'
+                crosshairEl.style.height = (chart.chartArea.bottom - chart.chartArea.top) + 'px'
+                crosshairEl.style.borderLeft = '2px dashed #999'
+                crosshairEl.style.pointerEvents = 'none'
+                crosshairEl.style.zIndex = '999'
+
+                document.body.appendChild(crosshairEl)
+
+                // Create time display at top of crosshair
+                const timeEl = document.createElement('div')
+                timeEl.className = 'chartjs-crosshair'
+                timeEl.style.position = 'absolute'
+                timeEl.style.left = (pointX - 30) + 'px'
+                timeEl.style.top = (position.top + scrollY + chart.chartArea.top - 20) + 'px'
+                timeEl.style.pointerEvents = 'none'
+                timeEl.style.zIndex = '1000'
+
+                // Get time from the data point
+                const timeLabel = tooltip.dataPoints[0].label || ''
+
+                timeEl.innerHTML = `
+                  <div style="
+                    background: white;
+                    color: #000;
+                    border: 1px solid #ff4d4f;
+                    border-radius: 3px;
+                    padding: 2px 6px;
+                    font-size: 10px;
+                    font-weight: 500;
+                    white-space: nowrap;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                  ">
+                    ${timeLabel}
+                  </div>
+                `
+
+                document.body.appendChild(timeEl)
+              }
+
+              // Create individual tooltip for each data point
+              if (tooltip.body && tooltip.dataPoints && tooltip.dataPoints.length > 0) {
+                const position = chart.canvas.getBoundingClientRect()
+                const scrollX = window.pageXOffset || document.documentElement.scrollLeft
+                const scrollY = window.pageYOffset || document.documentElement.scrollTop
+
+                // Sort points by Y position to handle overlaps
+                const sortedPoints = [...tooltip.dataPoints].sort((a, b) => a.element.y - b.element.y)
+
+                // Track occupied vertical spaces to prevent overlap
+                const tooltipPositions: Array<{top: number, bottom: number}> = []
+                const tooltipHeight = 24
+                const minSpacing = 4
+
+                sortedPoints.forEach((point: any) => {
+                  const series = visibleDigitalSeries.value.find(s => s.name === point.dataset.label)
+                  const label = point.dataset.label || ''
+
+                  // Get control value from raw data (stored during data mapping)
+                  const controlValue = point.raw?.control
+
+                  // Get digital states for this series
+                  const digitalStates = getDigitalStatesForYAxis(series?.unitCode || 1)
+                  const stateText = digitalStates[controlValue] || ''
+
+                  const displayText = `${label}: ${stateText}`
+
+                  // Create individual tooltip element
+                  const tooltipEl = document.createElement('div')
+                  tooltipEl.className = 'chartjs-multi-tooltip'
+                  tooltipEl.style.opacity = '1'
+                  tooltipEl.style.position = 'absolute'
+                  tooltipEl.style.pointerEvents = 'none'
+                  tooltipEl.style.transition = 'all 0.1s ease'
+                  tooltipEl.style.zIndex = '1000'
+
+                  tooltipEl.innerHTML = `
+                    <div style="
+                      background: #f5f5f5;
+                      color: #000;
+                      border: 1px solid #d9d9d9;
+                      border-radius: 4px;
+                      padding: 3px 6px;
+                      font-size: 10px;
+                      font-weight: 500;
+                      white-space: nowrap;
+                      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+                    ">
+                      ${displayText}
+                    </div>
+                  `
+
+                  // Position to the right of the data point
+                  const pointX = position.left + scrollX + point.element.x
+                  const pointY = position.top + scrollY + point.element.y
+
+                  // Calculate initial vertical position
+                  let tooltipTop = pointY - 12
+
+                  // Check for overlaps and adjust position
+                  let adjusted = true
+                  while (adjusted) {
+                    adjusted = false
+                    for (const occupied of tooltipPositions) {
+                      if (tooltipTop < occupied.bottom && tooltipTop + tooltipHeight > occupied.top) {
+                        tooltipTop = occupied.bottom + minSpacing
+                        adjusted = true
+                        break
+                      }
+                    }
+                  }
+
+                  // Record this tooltip's position
+                  tooltipPositions.push({
+                    top: tooltipTop,
+                    bottom: tooltipTop + tooltipHeight
+                  })
+
+                  tooltipEl.style.left = (pointX + 10) + 'px'
+                  tooltipEl.style.top = tooltipTop + 'px'
+
+                  document.body.appendChild(tooltipEl)
+                })
               }
             }
           }
@@ -8561,7 +8808,8 @@
           const y = point.value > 0.5 ? baseY + 0.3 : baseY + 0.9
           return {
             x: point.timestamp,
-            y: y
+            y: y,
+            control: point.value > 0.5 ? 1 : 0  // Store original control value for tooltip
           }
         })
 
