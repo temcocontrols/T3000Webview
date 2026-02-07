@@ -4459,14 +4459,14 @@
 
                 const withinSeriesValue = numValue - (seriesIndex * 1.2)
 
-                // control=0 → y=0.3 (bottom), control=1 → y=0.9 (top)
-                // digitalStates[0] = "Off" (first state), digitalStates[1] = "On" (second state)
-                // Display labels in visual top-to-bottom order matching left panel
-                if (Math.abs(withinSeriesValue - 0.9) < 0.01) {
-                  return digitalStates[0]  // Top position shows first state (e.g., "Off")
+                // Y-axis goes bottom to top, but we want labels to match left panel top-to-bottom order
+                // Show second state from label at 0.3 (lower position, bottom)
+                if (Math.abs(withinSeriesValue - 0.3) < 0.01) {
+                  return digitalStates[1]
                 }
-                else if (Math.abs(withinSeriesValue - 0.3) < 0.01) {
-                  return digitalStates[1]  // Bottom position shows second state (e.g., "On")
+                // Show first state from label at 0.9 (higher position, top)
+                else if (Math.abs(withinSeriesValue - 0.9) < 0.01) {
+                  return digitalStates[0]
                 }
 
                 return ''
