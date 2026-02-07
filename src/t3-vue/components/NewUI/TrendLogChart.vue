@@ -4392,9 +4392,11 @@
               align: 'center' as const,
               callback: function (value: any, index: number, ticks: any[]) {
                 const numValue = Number(value)
-                const seriesIndex = Math.floor(numValue / 1.2)
+                const displayIndex = Math.floor(numValue / 1.2)
+                // Reverse index to match data order (top chart = first in array)
+                const seriesIndex = visibleDigitalSeries.value.length - 1 - displayIndex
 
-                if (seriesIndex >= visibleDigitalSeries.value.length) {
+                if (seriesIndex < 0 || seriesIndex >= visibleDigitalSeries.value.length) {
                   return ''
                 }
 
@@ -4409,9 +4411,9 @@
                   return ''
                 }
 
-                const withinSeriesValue = numValue - (seriesIndex * 1.2)
+                const withinSeriesValue = numValue - (displayIndex * 1.2)
 
-                // Y-axis goes bottom to top, but we want labels to match left panel top-to-bottom order
+                // Y-axis shows states separately at two positions
                 // Show second state from label at 0.3 (lower position, bottom)
                 if (Math.abs(withinSeriesValue - 0.3) < 0.01) {
                   return digitalStates[1]
@@ -8454,12 +8456,11 @@
         .filter(point => point.value !== null && point.value !== undefined) // ✅ Filter invalid values
         .sort((a, b) => a.timestamp - b.timestamp)
         .map(point => {
-          // Stack each series vertically
+          // Stack each series vertically - REVERSED to match left panel order
+          // First series in array (index 0) appears at TOP of chart
           // control=1 (second state) goes to bottom, control=0 (first state) goes to top
-          // Series 0: y = 0.3 (bottom, control=1) or 0.9 (top, control=0)
-          // Series 1: y = 1.5 (bottom, control=1) or 2.1 (top, control=0)
-          // Series 2: y = 2.7 (bottom, control=1) or 3.3 (top, control=0), etc.
-          const baseY = index * 1.2
+          // With 2 series: Series 0 (OUT1): baseY = 1.2 (top), Series 1 (OUT6): baseY = 0 (bottom)
+          const baseY = (visibleDigitalSeries.value.length - 1 - index) * 1.2
           const y = point.value > 0.5 ? baseY + 0.3 : baseY + 0.9
           return {
             x: point.timestamp,
