@@ -4376,25 +4376,9 @@
             display: true,
             position: 'left' as const,
             grid: {
-              color: (context: any) => {
-                const value = context.tick.value
-                const seriesIndex = Math.floor(value / 1.2)
-                const withinSeriesValue = value - (seriesIndex * 1.2)
-                // Draw thicker lines between series (at 0, 1.2, 2.4, 3.6...)
-                if (Math.abs(withinSeriesValue) < 0.01) {
-                  return '#b0b0b0'
-                }
-                // Draw lighter lines for state separators within series
-                return '#e0e0e0'
-              },
+              color: '#e8e8e8',  // Uniform light gray for all gridlines
               display: true,
-              lineWidth: (context: any) => {
-                const value = context.tick.value
-                const seriesIndex = Math.floor(value / 1.2)
-                const withinSeriesValue = value - (seriesIndex * 1.2)
-                // Thicker line between series
-                return Math.abs(withinSeriesValue) < 0.01 ? 1.5 : 0.5
-              },
+              lineWidth: 0.8,
               drawOnChartArea: true,
               drawTicks: false
             },
@@ -4444,8 +4428,20 @@
                 return ''
               },
               autoSkip: false,
-              stepSize: 0.3,
               maxTicksLimit: 150
+            },
+            afterBuildTicks: function(axis: any) {
+              // Generate ticks only at state levels (0.3 and 0.9), not at series boundaries
+              const ticks = []
+              const numSeries = visibleDigitalSeries.value.length
+
+              for (let i = 0; i < numSeries; i++) {
+                const baseY = i * 1.2
+                ticks.push({ value: baseY + 0.3 })    // Bottom state (Off/On)
+                ticks.push({ value: baseY + 0.9 })    // Top state (On/Off)
+              }
+
+              axis.ticks = ticks
             },
             afterFit: function (scale: any) {
               scale.width = 55
