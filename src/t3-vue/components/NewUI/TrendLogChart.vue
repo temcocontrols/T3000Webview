@@ -4135,6 +4135,18 @@
       data: {
         datasets: [] // Will be populated in updateDigitalCharts
       },
+      plugins: [
+        {
+          id: 'canvasBackground',
+          beforeDraw: (chart: any) => {
+            const ctx = chart.ctx
+            ctx.save()
+            ctx.fillStyle = '#ffffff'
+            ctx.fillRect(0, 0, chart.width, chart.height)
+            ctx.restore()
+          }
+        }
+      ],
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -4368,15 +4380,21 @@
                 const value = context.tick.value
                 const seriesIndex = Math.floor(value / 1.2)
                 const withinSeriesValue = value - (seriesIndex * 1.2)
-                // Only draw lines between series (at 0, 1.2, 2.4, 3.6...)
+                // Draw thicker lines between series (at 0, 1.2, 2.4, 3.6...)
                 if (Math.abs(withinSeriesValue) < 0.01) {
                   return '#b0b0b0'
                 }
-                // No other gridlines
-                return 'transparent'
+                // Draw lighter lines for state separators within series
+                return '#e0e0e0'
               },
               display: true,
-              lineWidth: 1,
+              lineWidth: (context: any) => {
+                const value = context.tick.value
+                const seriesIndex = Math.floor(value / 1.2)
+                const withinSeriesValue = value - (seriesIndex * 1.2)
+                // Thicker line between series
+                return Math.abs(withinSeriesValue) < 0.01 ? 1.5 : 0.5
+              },
               drawOnChartArea: true,
               drawTicks: false
             },
@@ -12849,7 +12867,10 @@
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 0px;
+    padding: 2px;
+    background: #f8f9fa;
+    border-radius: 3px;
+    border: 1px solid #e8e8e8;
   }
 
   /* Empty chart message */
