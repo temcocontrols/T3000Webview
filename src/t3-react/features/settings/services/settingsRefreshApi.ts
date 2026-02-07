@@ -269,48 +269,112 @@ export class SettingsRefreshApi {
       LogUtil.Warn(`[SettingsRefreshApi] Invalid data array length: ${all?.length || 0}, expected 400 bytes`);
     }
 
-    // Helper functions for byte parsing
+    // Helper functions for byte parsing with detailed logging
     const bytesToIP = (offset: number): string => {
-      return `${all[offset]}.${all[offset + 1]}.${all[offset + 2]}.${all[offset + 3]}`;
+      const result = `${all[offset]}.${all[offset + 1]}.${all[offset + 2]}.${all[offset + 3]}`;
+      LogUtil.Debug(`[Parse] IP [${offset}-${offset+3}]: [${all[offset]}, ${all[offset+1]}, ${all[offset+2]}, ${all[offset+3]}] → "${result}"`);
+      return result;
     };
 
     const bytesToMAC = (offset: number): string => {
-      return all.slice(offset, offset + 6)
-        .map(b => b.toString(16).padStart(2, '0').toUpperCase())
-        .join('-');
+      const bytes = all.slice(offset, offset + 6);
+      const result = bytes.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join('-');
+      LogUtil.Debug(`[Parse] MAC [${offset}-${offset+5}]: [${bytes.join(', ')}] → "${result}"`);
+      return result;
     };
 
     const bytesToString = (offset: number, length: number): string => {
       const bytes = all.slice(offset, offset + length);
       const nullIndex = bytes.indexOf(0);
       const validBytes = nullIndex >= 0 ? bytes.slice(0, nullIndex) : bytes;
-      return String.fromCharCode(...validBytes);
+      const result = String.fromCharCode(...validBytes);
+      LogUtil.Debug(`[Parse] String [${offset}-${offset+length-1}]: [${bytes.slice(0, Math.min(10, bytes.length)).join(', ')}...] → "${result}" (stopped at null: ${nullIndex})`);
+      return result;
     };
 
     const bytesToUint16 = (offset: number): number => {
-      return all[offset] | (all[offset + 1] << 8);
+      const result = all[offset] | (all[offset + 1] << 8);
+      LogUtil.Debug(`[Parse] Uint16 [${offset}-${offset+1}]: [${all[offset]}, ${all[offset+1]}] → ${result} (little-endian)`);
+      return result;
     };
 
     const bytesToUint32 = (offset: number): number => {
-      return all[offset] | (all[offset + 1] << 8) | (all[offset + 2] << 16) | (all[offset + 3] << 24);
+      const result = all[offset] | (all[offset + 1] << 8) | (all[offset + 2] << 16) | (all[offset + 3] << 24);
+      LogUtil.Debug(`[Parse] Uint32 [${offset}-${offset+3}]: [${all[offset]}, ${all[offset+1]}, ${all[offset+2]}, ${all[offset+3]}] → ${result} (little-endian)`);
+      return result;
     };
 
     const bytesToInt16 = (offset: number): number => {
       const value = all[offset] | (all[offset + 1] << 8);
-      return value > 32767 ? value - 65536 : value; // Convert to signed
+      const result = value > 32767 ? value - 65536 : value;
+      LogUtil.Debug(`[Parse] Int16 [${offset}-${offset+1}]: [${all[offset]}, ${all[offset+1]}] → ${result} (signed)`);
+      return result;
+    };
+
+    // Helper to get device name from mini_type
+    const getMiniTypeName = (miniType: number): string => {
+      const deviceType = miniType & 0x3F;
+      const deviceNames: { [key: number]: string } = {
+        0: 'T3-8O', 1: 'T3-32I', 2: 'T3-8I13O', 3: 'T3-16I/O',
+        4: 'T3-BBA', 5: 'T3-BB', 6: 'T3-TB', 7: 'T3-LC',
+        8: 'T3-LB', 9: 'T3-3I0A', 10: 'T3-4O', 11: 'T3-SV6',
+        12: 'T3-6I/O', 13: 'T3-MUR1'
+      };
+      return deviceNames[deviceType] || `Unknown(${deviceType})`;
     };
 
     // Parse all fields according to C++ structure (see SETTINGS_FIELD_MAPPING.md)
+    LogUtil.Info(`[Parse] ========== Starting 400-byte Settings Parsing ==========`);
+    LogUtil.Info(`[Parse] Raw array first 100 bytes: [${all.slice(0, 100).join(',')}]`);
+    LogUtil.Info(`[Parse] BYTE POSITION MAP:`);
+    LogUtil.Info(`  [0-3]   = IP Address (4 bytes)`);
+    LogUtil.Info(`  [4-7]   = Subnet Mask (4 bytes)`);
+    LogUtil.Info(`  [8-11]  = Gateway (4 bytes)`);
+    LogUtil.Info(`  [12-17] = MAC Address (6 bytes)`);
+    LogUtil.Info(`  [18]    = TCP Type (1 byte: 0=DHCP, 1=STATIC)`);
+    LogUtil.Info(`  [19]    = Mini Type / Device Type (1 byte: 0=T3-8O, 5=T3-BB, 6=T3-TB, etc.)`);
+    LogUtil.Info(`  [20]    = Panel Type (1 byte)`);
+    LogUtil.Info(`  [21-37] = Str_Pro_Info (17 bytes: HW version, firmware versions)`);
+    LogUtil.Info(`  [52-71] = Panel Name (20 bytes string)`);
+    LogUtil.Info(`  [73]    = Panel Number (1 byte)`);
+    LogUtil.Info(`  [170]   = Modbus RTU ID (1 byte)`);
+    LogUtil.Info(`  [177-180] = Object Instance (4 bytes little-endian)`);
+    LogUtil.Info(`  [198-201] = Serial Number (4 bytes little-endian)`);
+    LogUtil.Info(`  [212]   = LCD Display Mode (1 byte)`);
+    LogUtil.Info(`  [223-224] = BIP Network Number (2 bytes little-endian)`);
+    LogUtil.Info(`  [245]   = Max Master (1 byte)`);
+    LogUtil.Info(`  [246]   = MSTP ID (1 byte)`);
+    LogUtil.Info(`────────────────────────────────────────────────────`);
+
     const parsed = {
       // Network Settings (bytes 0-18)
       ip_addr: bytesToIP(0),                          // offset 0-3
       subnet: bytesToIP(4),                            // offset 4-7
       gate_addr: bytesToIP(8),                         // offset 8-11
       mac_addr: bytesToMAC(12),                        // offset 12-17
-      tcp_type: all[18] ?? 0,                          // offset 18
+      tcp_type: (() => {
+        const value = all[18] ?? 0;
+        LogUtil.Debug(`[Parse] TCP Type [18]: ${value} → ${value === 0 ? 'DHCP' : 'STATIC'}`);
+        return value;
+      })(),
 
       // Device Info
-      mini_type: all[19] ?? 0,                         // offset 19
+      mini_type: (() => {
+        const rawValue = all[19] ?? 0;
+        const deviceType = rawValue & 0x3F; // Lower 6 bits
+        const mcuType = (rawValue & 0xC0) >>> 6; // Upper 2 bits
+        const deviceNames: { [key: number]: string } = {
+          0: 'T3-8O', 1: 'T3-32I', 2: 'T3-8I13O', 3: 'T3-16I/O',
+          4: 'T3-BBA', 5: 'T3-BB', 6: 'T3-TB', 7: 'T3-LC',
+          8: 'T3-LB', 9: 'T3-3I0A', 10: 'T3-4O', 11: 'T3-SV6',
+          12: 'T3-6I/O', 13: 'T3-MUR1'
+        };
+        const mcuNames = ['', '(GD)', '(APM)', ''];
+        LogUtil.Info(`[Parse] Mini Type [19]: rawByte=${rawValue} → deviceType=${deviceType} (${deviceNames[deviceType] || 'Unknown'}), MCU=${mcuType} ${mcuNames[mcuType]}`);
+        LogUtil.Info(`  ✓ Byte[0]=${all[0]} is NOT mini_type, it's the first octet of IP!`);
+        LogUtil.Info(`  ✓ Byte[19]=${all[19]} is mini_type = ${deviceNames[deviceType] || 'Unknown'}`);
+        return rawValue;
+      })(),
       panel_type: all[51] ?? 0,                        // offset 51
       panel_name: bytesToString(52, 20),               // offset 52-71
       en_panel_name: all[72] ?? 0,                     // offset 72
@@ -433,6 +497,16 @@ export class SettingsRefreshApi {
       serialNumber,
       lastUpdated: timestamp,
     };
+
+    // Summary log showing key transformations
+    LogUtil.Info('=== Settings Parsing Summary ===');
+    LogUtil.Info(`Network: IP=${parsed.ip_addr}, MAC=${parsed.mac_addr}`);
+    LogUtil.Info(`Device: "${parsed.panel_name}" (Panel#${parsed.panel_number})`);
+    LogUtil.Info(`Module: ${getMiniTypeName(parsed.mini_type)} (raw=${parsed.mini_type}, MCU=${((parsed.mini_type & 0xC0) >>> 0).toString(16).toUpperCase()})`);
+    LogUtil.Info(`IDs: Object Instance=${parsed.object_instance}, Serial=${parsed.n_serial_number}`);
+    LogUtil.Info(`Protocol: Modbus=${parsed.modbus_id}, MSTP=${parsed.mstp_id}, MSTP Net=${parsed.mstp_network_number}, BIP Net=${parsed.network_number}, Max Master=${parsed.max_master}`);
+    LogUtil.Info(`LCD: mode=${parsed.LCD_Display} (0=Off, 1=On, 2+=Delay)`);
+    LogUtil.Info('================================');
 
     LogUtil.Debug('[SettingsRefreshApi] Parsed settings:', {
       ip_addr: parsed.ip_addr,
