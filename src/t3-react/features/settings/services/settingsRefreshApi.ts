@@ -223,6 +223,13 @@ export class SettingsRefreshApi {
     LogUtil.Debug(`[SettingsRefreshApi] First 20 bytes:`, all.slice(0, 20));
     LogUtil.Debug(`[SettingsRefreshApi] Bytes 150-180:`, all.slice(150, 180));
 
+    // Search for value 111 (LCD_Display showing wrong value)
+    for (let i = 0; i < all.length; i++) {
+      if (all[i] === 111) {
+        LogUtil.Debug(`[SettingsRefreshApi] Found byte 111 at offset ${i}`);
+      }
+    }
+
     // Search for value 1 (potential mstp_id or mstp_network)
     for (let i = 0; i < all.length; i++) {
       if (all[i] === 1) {
@@ -410,7 +417,11 @@ export class SettingsRefreshApi {
       sd_exist: all[168] ?? 1,                         // offset 168 (FIXED!)
       zegbee_exsit: all[211] ?? 0,                     // offset 211 (FIXED!)
       zigbee_panid: bytesToUint16(217),                // offset 217-218 (FIXED!)
-      LCD_Display: all[212] ?? 1,                      // offset 212 (FIXED!)
+      LCD_Display: (() => {
+        const value = all[212] ?? 1;
+        LogUtil.Debug(`[SettingsRefreshApi] LCD_Display [212]:`, value);
+        return value;
+      })(),                      // offset 212
       special_flag: all[220] ?? 0,                     // offset 220 (FIXED!)
       webview_json_flash: all[239] ?? 0,               // offset 239 (FIXED!)
       max_var: all[240] ?? 0,                          // offset 240 (FIXED!)

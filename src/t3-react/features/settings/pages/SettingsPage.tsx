@@ -312,7 +312,6 @@ const useStyles = makeStyles({
   lcdRadioGroup: {
     display: 'flex',
     gap: '16px',
-    marginBottom: '12px',
     alignItems: 'center',
   },
   lcdButtons: {
@@ -415,9 +414,7 @@ interface FeatureFlags {
   User_Name_Enable?: number;
   Customer_Unite_Enable?: number;
   Enable_Panel_Name?: number;
-  LCD_Display?: number;
-  LCD_Mode?: number; // 0=Always On, 1=Off, 2=Delay
-  LCD_Delay_Seconds?: number;
+  LCD_Display?: number; // 0=Always Off, 1=Always On, 2+=Delay off (value is seconds)
 }
 
 interface DeviceInfo {
@@ -446,7 +443,9 @@ export const SettingsPage: React.FC = () => {
   const [timeSettings, setTimeSettings] = useState<TimeSettings>({});
   const [dyndnsSettings, setDyndnsSettings] = useState<DyndnsSettings>({});
   const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo>({});
-  const [featureFlags, setFeatureFlags] = useState<FeatureFlags>({});
+  const [featureFlags, setFeatureFlags] = useState<FeatureFlags>({
+    LCD_Display: 0, // Default to LCD Always Off
+  });
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo>({});
 
   // Auto-select first device if none is selected
@@ -1124,44 +1123,44 @@ export const SettingsPage: React.FC = () => {
                   <input
                     type="radio"
                     name="lcdMode"
-                    checked={featureFlags.LCD_Mode === 0}
-                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Mode: 0 })}
+                    checked={featureFlags.LCD_Display === 1}
+                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Display: 1 })}
                   />
-                  Always On
+                  LCD Always On
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
                   <input
                     type="radio"
                     name="lcdMode"
-                    checked={featureFlags.LCD_Mode === 1}
-                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Mode: 1 })}
+                    checked={featureFlags.LCD_Display === 0}
+                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Display: 0 })}
                   />
-                  Off
+                  LCD Always Off
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
                   <input
                     type="radio"
                     name="lcdMode"
-                    checked={featureFlags.LCD_Mode === 2}
-                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Mode: 2 })}
+                    checked={featureFlags.LCD_Display !== undefined && featureFlags.LCD_Display > 1}
+                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Display: 30 })}
                   />
-                  Delay
+                  LCD Delay off
                   <Input
                     type="number"
                     size="small"
-                    value={String(featureFlags.LCD_Delay_Seconds ?? 30)}
+                    value={featureFlags.LCD_Display !== undefined && featureFlags.LCD_Display > 1 ? String(featureFlags.LCD_Display) : ''}
                     onChange={(_, data) =>
-                      setFeatureFlags({ ...featureFlags, LCD_Delay_Seconds: Number(data.value) })
+                      setFeatureFlags({ ...featureFlags, LCD_Display: Number(data.value) || 2 })
                     }
-                    disabled={featureFlags.LCD_Mode !== 2}
+                    disabled={featureFlags.LCD_Display === undefined || featureFlags.LCD_Display <= 1}
                     style={{ width: '100px', marginLeft: '4px' }}
                   />
                   <span style={{ fontSize: '12px', color: '#605e5c' }}>(s)</span>
                 </label>
-              </div>
-              <div className={styles.lcdButtons}>
-                <Button size="small" appearance="secondary">Parameter</Button>
-                <Button size="small" appearance="secondary">Advanced Settings</Button>
+                <div className={styles.lcdButtons}>
+                  <Button size="small" appearance="secondary">Parameter</Button>
+                  <Button size="small" appearance="secondary">Advanced Settings</Button>
+                </div>
               </div>
             </div>
           </>
