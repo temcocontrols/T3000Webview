@@ -187,9 +187,15 @@ const sntpServer = String.fromCharCode(...bytes);
 
 export const DeviceSettingsExample: React.FC = () => {
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [highlightedRow, setHighlightedRow] = useState<number | null>(null);
 
   const toggleRow = (offset: number) => {
     setExpandedRow(expandedRow === offset ? null : offset);
+  };
+
+  const toggleHighlight = (offset: number, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setHighlightedRow(highlightedRow === offset ? null : offset);
   };
 
   const getActualValue = (row: MappingRow): string => {
@@ -260,10 +266,26 @@ export const DeviceSettingsExample: React.FC = () => {
       </p>
 
       {/* Raw Data Display */}
+      <h3>Full 400-Byte Array</h3>
       <div className={styles.rawDataSection}>
-        <h3>Full 400-Byte Array</h3>
         <div className={styles.rawData}>
-          [{SAMPLE_DATA.join(', ')}]
+          [{SAMPLE_DATA.map((byte, index) => {
+            const highlightedField = highlightedRow !== null
+              ? MAPPING_TABLE.find(row => row.offset === highlightedRow)
+              : null;
+            const isHighlighted = highlightedField &&
+              index >= highlightedField.offset &&
+              index < highlightedField.offset + highlightedField.size;
+
+            return (
+              <span
+                key={index}
+                className={isHighlighted ? styles.highlighted : ''}
+              >
+                {byte}{index < SAMPLE_DATA.length - 1 ? ', ' : ''}
+              </span>
+            );
+          })}]
         </div>
       </div>
 
@@ -299,12 +321,22 @@ export const DeviceSettingsExample: React.FC = () => {
                   <td><code className={styles.codeSmall}>{row.frontField}</code></td>
                   <td><strong>{getActualValue(row)}</strong></td>
                   <td>
-                    <button
-                      className={styles.actionButton}
-                      onClick={() => toggleRow(row.offset)}
-                    >
-                      {expandedRow === row.offset ? '▼' : '▶'}
-                    </button>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button
+                        className={styles.actionButton}
+                        onClick={(e) => { e.stopPropagation(); toggleRow(row.offset); }}
+                        title="Expand details"
+                      >
+                        {expandedRow === row.offset ? '−' : '+'}
+                      </button>
+                      <button
+                        className={`${styles.actionButton} ${highlightedRow === row.offset ? styles.highlighted : ''}`}
+                        onClick={(e) => toggleHighlight(row.offset, e)}
+                        title="Highlight bytes in array"
+                      >
+                        ⊙
+                      </button>
+                    </div>
                   </td>
                 </tr>
                 {expandedRow === row.offset && (

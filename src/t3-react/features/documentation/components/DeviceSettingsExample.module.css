@@ -20,13 +20,12 @@
 
 /* Raw Data Section */
 .rawDataSection {
-  margin-bottom: 32px;
+  margin-bottom: 16px;
   position: sticky;
   top: 0;
   z-index: 5;
   background: #ffffff;
-  padding-top: 8px;
-  padding-bottom: 8px;
+  padding: 8px 0;
 }
 
 .rawDataSection h3 {
@@ -46,6 +45,14 @@
   font-family: 'Consolas', 'Courier New', monospace;
   line-height: 1.6;
   word-wrap: break-word;
+}
+
+.rawData .highlighted {
+  background: #ffeb3b;
+  font-weight: 900;
+  padding: 1px 2px;
+  border-radius: 2px;
+  color: #000000;
 }
 
 .rawData pre {
