@@ -34,8 +34,7 @@ export interface DeviceSettings {
   panel_name: string;           // Panel name (max 20 chars)
   en_panel_name: number;        // Enable panel name
   panel_number: number;         // Panel number
-  n_serial_number: number;      // Serial number
-  object_instance: number;      // BACnet object instance
+  object_instance: number;      // BACnet object instance (198-201)
 
   // Communication Settings
   com0_config: number;          // COM0 configuration
@@ -48,37 +47,41 @@ export interface DeviceSettings {
   uart_stopbit: number[];       // UART stop bits [3]
 
   // Protocol Settings
-  network_number: number;       // Network number
-  network_number_hi: number;    // Network number high byte
-  mstp_network_number: number;  // MSTP network number
-  mstp_id: number;              // MSTP ID
-  max_master: number;           // Max master value
-  modbus_port: number;          // Modbus port
-  modbus_id: number;            // Modbus ID
-  BBMD_EN: number;              // BBMD enable
+  network_number: number;       // Network number (offset 50)
+  network_number_hi: number;    // Network number high byte (offset 264)
+  BBMD_EN: number;              // BBMD enable (offset 193)
+  sd_exist: number;             // SD card status (offset 194)
+  modbus_port: number;          // Modbus port (195-196)
+  modbus_id: number;            // Modbus ID (offset 197)
+  mstp_id: number;              // MSTP ID (offset 242)
+  zigbee_panid: number;         // Zigbee PAN ID (243-244)
+  max_master: number;           // Max master value (offset 245)
 
   // Time Settings
-  time_zone: number;            // Time zone offset (signed short)
-  time_update_since_1970: number; // Unix timestamp
-  en_sntp: number;              // Enable SNTP
-  sntp_server: string;          // SNTP server address
-  time_zone_summer_daytime: number; // Daylight saving time
-  time_sync_auto_manual: number;    // Auto/manual time sync
-  start_month: number;          // DST start month
-  start_day: number;            // DST start day
-  end_month: number;            // DST end month
-  end_day: number;              // DST end day
+  en_sntp: number;              // Enable SNTP (offset 174)
+  time_zone: number;            // Time zone offset signed short (175-176)
+  n_serial_number: number;      // Serial number (177-180)
+  // update_dyndns: UN_Time      // 10 bytes (181-190)
+  mstp_network_number: number;  // MSTP network (191-192)
+  time_update_since_1970: number; // Unix timestamp (202-205)
+  time_zone_summer_daytime: number; // DST flag (offset 206)
+  sntp_server: string;          // SNTP server address (207-236, 30 bytes)
+  time_sync_auto_manual: number;    // Auto/manual time sync (offset 240)
+  start_month: number;          // DST start month (offset 260)
+  start_day: number;            // DST start day (offset 261)
+  end_month: number;            // DST end month (offset 262)
+  end_day: number;              // DST end day (offset 263)
 
-  // DynDNS Settings
-  en_dyndns: number;            // 0=no, 1=disable, 2=enable
-  dyndns_provider: number;      // DynDNS provider
-  dyndns_user: string;          // DynDNS username
-  dyndns_pass: string;          // DynDNS password
-  dyndns_domain: string;        // DynDNS domain
-  dyndns_update_time: number;   // Update interval (minutes)
+  // DynDNS Settings (bytes 74-173)
+  dyndns_user: string;          // DynDNS username (74-105, 32 bytes)
+  dyndns_pass: string;          // DynDNS password (106-137, 32 bytes)
+  dyndns_domain: string;        // DynDNS domain (138-169, 32 bytes)
+  en_dyndns: number;            // 0=no, 1=disable, 2=enable (offset 170)
+  dyndns_provider: number;      // DynDNS provider (offset 171)
+  dyndns_update_time: number;   // Update interval minutes (172-173)
 
   // Hardware/Features
-  debug: number;                // Debug flag
+  debug: number;                // Debug flag (offset 20)
   harware_rev: number;          // Hardware revision (offset 21)
   firmware0_rev_main: number;   // Firmware 0 main revision (offset 22)
   firmware0_rev_sub: number;    // Firmware 0 sub revision (offset 23)
@@ -86,21 +89,22 @@ export interface DeviceSettings {
   frimware2_rev: number;        // Firmware 2 revision - C8051 (offset 25)
   frimware3_rev: number;        // Firmware 3 revision - SM5964 (offset 26)
   bootloader_rev: number;       // Bootloader revision (offset 27)
-  en_plug_n_play: number;       // Enable plug and play
-  refresh_flash_timer: number;  // Flash refresh timer
-  user_name: number;            // 0=no, 1=disable, 2=enable
-  custmer_unite: number;        // Customer units
-  usb_mode: number;             // 0=device, 1=host
-  sd_exist: number;             // SD card: 1=no, 2=yes
-  zegbee_exsit: number;         // Zigbee exists
-  zigbee_panid: number;         // Zigbee PAN ID
-  LCD_Display: number;          // LCD display: 1=on, 0=off
-  special_flag: number;         // Special flags
-  webview_json_flash: number;   // Webview JSON flash
-  max_var: number;              // Max variables (ESP32 only)
-  max_in: number;               // Max inputs (ESP32 only)
-  max_out: number;              // Max outputs (ESP32 only)
-  fix_com_config: number;       // Fixed COM config
+  en_plug_n_play: number;       // Enable plug and play (offset 42)
+  refresh_flash_timer: number;  // Flash refresh timer (offset 41)
+  user_name: number;            // 0=no, 1=disable, 2=enable (offset 47)
+  custmer_unite: number;        // Customer units (offset 48)
+  usb_mode: number;             // 0=device, 1=host (offset 49)
+  zegbee_exsit: number;         // Zigbee exists (offset 237)
+  LCD_Display: number;          // LCD display: 1=on, 0=off (offset 238)
+  flag_time_sync_pc: number;    // Time sync PC flag (offset 239)
+  sync_time_results: number;    // Sync results (offset 241)
+  special_flag: number;         // Special flags (offset 246)
+  webview_json_flash: number;   // Webview JSON flash (offset 265)
+  max_var: number;              // Max variables ESP32 (offset 266)
+  max_in: number;               // Max inputs ESP32 (offset 267)
+  max_out: number;              // Max outputs ESP32 (offset 268)
+  fix_com_config: number;       // Fixed COM config (offset 269)
+  write_flash: number;          // Write flash interval (offset 270)
 
   // Metadata
   serialNumber: number;         // Device serial number
@@ -379,19 +383,7 @@ export class SettingsRefreshApi {
       panel_name: bytesToString(52, 20),               // offset 52-71
       en_panel_name: all[72] ?? 0,                     // offset 72
       panel_number: all[73] ?? 0,                      // offset 73
-      n_serial_number: (() => {
-        // Try offset 198 since pattern [104,171,3,0] also found there
-        const bytes = [all[198], all[199], all[200], all[201]];
-        const value = bytesToUint32(198);
-        LogUtil.Debug(`[SettingsRefreshApi] n_serial_number bytes [198-201]:`, bytes, `value: ${value}`);
-        return value;
-      })(),             // offset 198-201 (testing)
-      object_instance: (() => {
-        const bytes = [all[177], all[178], all[179], all[180]];
-        const value = bytesToUint32(177);
-        LogUtil.Debug(`[SettingsRefreshApi] object_instance bytes [177-180]:`, bytes, `value: ${value}`);
-        return value;
-      })(),             // offset 177-180 (VERIFIED!)
+      object_instance: bytesToUint32(198),             // offset 198-201 (CORRECTED!)
 
       // Communication Settings
       com0_config: all[38] ?? 0,                       // offset 38
@@ -400,69 +392,42 @@ export class SettingsRefreshApi {
       com_baudrate0: all[44] ?? 0,                     // offset 44
       com_baudrate1: all[45] ?? 0,                     // offset 45
       com_baudrate2: all[46] ?? 0,                     // offset 46
-      uart_parity: [all[221] ?? 0, all[222] ?? 0, all[223] ?? 0],    // offset 221-223 (FIXED!)
-      uart_stopbit: [all[224] ?? 0, all[225] ?? 0, all[226] ?? 0],   // offset 224-226 (FIXED!)
+      uart_parity: [all[247] ?? 0, all[248] ?? 0, all[249] ?? 0],    // offset 247-249 (CORRECTED!)
+      uart_stopbit: [all[250] ?? 0, all[251] ?? 0, all[252] ?? 0],   // offset 250-252 (CORRECTED!)
 
-      // Protocol Settings
-      network_number: (() => {
-        // BIP Network should be 65535, found at offset 223-224
-        const value = bytesToUint16(223);
-        LogUtil.Debug(`[SettingsRefreshApi] network_number (BIP) [223-224]:`, [all[223], all[224]], `value: ${value}`);
-        return value;
-      })(),
-      network_number_hi: all[238] ?? 0,                // offset 238
-      mstp_network_number: (() => {
-        // MSTP Network should be 1, single byte at offset 72
-        const value = all[72] ?? 0;
-        LogUtil.Debug(`[SettingsRefreshApi] mstp_network_number [72]:`, value);
-        return value;
-      })(),
-      mstp_id: (() => {
-        // MSTP ID should be 1, trying offset 246 (after max_master at 245)
-        const value = all[246] ?? 0;
-        LogUtil.Debug(`[SettingsRefreshApi] mstp_id [246]:`, value);
-        return value;
-      })(),
-      max_master: (() => {
-        // Max Master should be 254, found at offset 245
-        const value = all[245] ?? 127;
-        LogUtil.Debug(`[SettingsRefreshApi] max_master [245]:`, value);
-        return value;
-      })(),
-      modbus_port: bytesToUint16(169),                 // offset 169-170
-      modbus_id: (() => {
-        // Modbus ID should be 1, found at offset 170
-        const value = all[170] ?? 1;
-        LogUtil.Debug(`[SettingsRefreshApi] modbus_id [170]:`, value);
-        return value;
-      })(),
-      BBMD_EN: all[167] ?? 0,                          // offset 167
+      // Protocol Settings (CORRECTED to match C++ structure)
+      network_number: all[50] ?? 0,                    // offset 50 (CORRECTED!)
+      network_number_hi: all[264] ?? 0,                // offset 264 (CORRECTED!)
+      BBMD_EN: all[193] ?? 0,                          // offset 193 (CORRECTED!)
+      sd_exist: all[194] ?? 0,                         // offset 194 (CORRECTED!)
+      modbus_port: bytesToUint16(195),                 // offset 195-196 (CORRECTED!)
+      modbus_id: all[197] ?? 1,                        // offset 197 (CORRECTED!)
+      mstp_id: all[242] ?? 0,                          // offset 242 (CORRECTED!)
+      zigbee_panid: bytesToUint16(243),                // offset 243-244 (CORRECTED!)
+      max_master: all[245] ?? 127,                     // offset 245 (CORRECTED!)
 
-      // Time Settings
-      time_zone: bytesToInt16(149),                    // offset 149-150 (signed)
-      time_update_since_1970: bytesToUint32(176),      // offset 176-179 (FIXED!)
-      en_sntp: all[148] ?? 0,                          // offset 148
-      sntp_server: (() => {
-        const sntpBytes = all.slice(181, 211);
-        LogUtil.Debug('[SettingsRefreshApi] SNTP server bytes:', sntpBytes);
-        const result = bytesToString(181, 30);        // offset 181-210 (FIXED!)
-        LogUtil.Debug('[SettingsRefreshApi] SNTP server parsed:', result);
-        return result;
-      })(),
-      time_zone_summer_daytime: all[180] ?? 0,         // offset 180 (FIXED!)
-      time_sync_auto_manual: all[214] ?? 0,            // offset 214 (FIXED!)
-      start_month: all[234] ?? 3,                      // offset 234 (FIXED!)
-      start_day: all[235] ?? 10,                       // offset 235 (FIXED!)
-      end_month: all[236] ?? 11,                       // offset 236 (FIXED!)
-      end_day: all[237] ?? 3,                          // offset 237 (FIXED!)
+      // Time Settings (CORRECTED to match C++ structure)
+      en_sntp: all[174] ?? 0,                          // offset 174 (CORRECTED!)
+      time_zone: bytesToInt16(175),                    // offset 175-176 (CORRECTED!)
+      n_serial_number: bytesToUint32(177),             // offset 177-180 (CORRECTED!)
+      // update_dyndns (UN_Time): offsets 181-190 (10 bytes, not parsed individually)
+      mstp_network_number: bytesToUint16(191),         // offset 191-192 (CORRECTED!)
+      time_update_since_1970: bytesToUint32(202),      // offset 202-205 (CORRECTED!)
+      time_zone_summer_daytime: all[206] ?? 0,         // offset 206 (CORRECTED!)
+      sntp_server: bytesToString(207, 30),             // offset 207-236 (CORRECTED!)
+      time_sync_auto_manual: all[240] ?? 0,            // offset 240 (CORRECTED!)
+      start_month: all[260] ?? 0,                      // offset 260 (CORRECTED!)
+      start_day: all[261] ?? 0,                        // offset 261 (CORRECTED!)
+      end_month: all[262] ?? 0,                        // offset 262 (CORRECTED!)
+      end_day: all[263] ?? 0,                          // offset 263 (CORRECTED!)
 
-      // DynDNS Settings
-      en_dyndns: all[144] ?? 0,                        // offset 144
-      dyndns_provider: all[145] ?? 0,                  // offset 145
-      dyndns_user: bytesToString(74, 20),              // offset 74-93
-      dyndns_pass: bytesToString(94, 20),              // offset 94-113
-      dyndns_domain: bytesToString(114, 30),           // offset 114-143
-      dyndns_update_time: bytesToUint16(146),          // offset 146-147
+      // DynDNS Settings (CORRECTED to match C++ structure)
+      dyndns_user: bytesToString(74, 32),              // offset 74-105 (32 bytes!)
+      dyndns_pass: bytesToString(106, 32),             // offset 106-137 (32 bytes!)
+      dyndns_domain: bytesToString(138, 32),           // offset 138-169 (32 bytes!)
+      en_dyndns: all[170] ?? 0,                        // offset 170 (CORRECTED!)
+      dyndns_provider: all[171] ?? 0,                  // offset 171 (CORRECTED!)
+      dyndns_update_time: bytesToUint16(172),          // offset 172-173 (CORRECTED!)
 
       // Hardware/Features (metadata)
       debug: all[20] ?? 0,                             // offset 20
@@ -478,20 +443,17 @@ export class SettingsRefreshApi {
       user_name: all[47] ?? 0,                         // offset 47
       custmer_unite: all[48] ?? 0,                     // offset 48
       usb_mode: all[49] ?? 0,                          // offset 49
-      sd_exist: all[168] ?? 1,                         // offset 168 (FIXED!)
-      zegbee_exsit: all[211] ?? 0,                     // offset 211 (FIXED!)
-      zigbee_panid: bytesToUint16(217),                // offset 217-218 (FIXED!)
-      LCD_Display: (() => {
-        const value = all[212] ?? 1;
-        LogUtil.Debug(`[SettingsRefreshApi] LCD_Display [212]:`, value);
-        return value;
-      })(),                      // offset 212
-      special_flag: all[220] ?? 0,                     // offset 220 (FIXED!)
-      webview_json_flash: all[239] ?? 0,               // offset 239 (FIXED!)
-      max_var: all[240] ?? 0,                          // offset 240 (FIXED!)
-      max_in: all[241] ?? 0,                           // offset 241 (FIXED!)
-      max_out: all[242] ?? 0,                          // offset 242 (FIXED!)
-      fix_com_config: all[243] ?? 0,                   // offset 243 (FIXED!)
+      zegbee_exsit: all[237] ?? 0,                     // offset 237 (CORRECTED!)
+      LCD_Display: all[238] ?? 0,                      // offset 238 (CORRECTED!)
+      flag_time_sync_pc: all[239] ?? 0,                // offset 239 (CORRECTED!)
+      sync_time_results: all[241] ?? 0,                // offset 241 (CORRECTED!)
+      special_flag: all[246] ?? 0,                     // offset 246 (CORRECTED!)
+      webview_json_flash: all[265] ?? 0,               // offset 265 (CORRECTED!)
+      max_var: all[266] ?? 0,                          // offset 266 (CORRECTED!)
+      max_in: all[267] ?? 0,                           // offset 267 (CORRECTED!)
+      max_out: all[268] ?? 0,                          // offset 268 (CORRECTED!)
+      fix_com_config: all[269] ?? 0,                   // offset 269 (CORRECTED!)
+      write_flash: all[270] ?? 0,                      // offset 270 (CORRECTED!)
 
       // Metadata
       serialNumber,
