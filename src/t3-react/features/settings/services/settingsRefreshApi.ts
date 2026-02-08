@@ -17,98 +17,113 @@ import { API_BASE_URL } from '../../../config/constants';
 import LogUtil from '../../../../lib/t3-hvac/Util/LogUtil';
 
 /**
- * Settings data structure matching C++ Str_Setting_Info
- * Based on T3000-Source/T3000/ud_str.h structure definition
+ * Settings data structure matching C++ Str_Setting_Info EXACTLY
+ * Based on T3000-Source/T3000/CM5/ud_str.h lines 825-918
+ *
+ * IMPORTANT: Fields are in EXACT same order as C++ structure
  */
 export interface DeviceSettings {
-  // Network Settings
-  ip_addr: string;              // IP address (e.g., "192.168.1.100")
-  subnet: string;               // Subnet mask (e.g., "255.255.255.0")
-  gate_addr: string;            // Gateway address
-  mac_addr: string;             // MAC address (e.g., "00:1A:2B:3C:4D:5E")
-  tcp_type: number;             // 0=DHCP, 1=STATIC
+  // Bytes 0-17: Network Configuration
+  ip_addr: string;                    // uint8_t[4]  - offset 0-3
+  subnet: string;                     // uint8_t[4]  - offset 4-7
+  gate_addr: string;                  // uint8_t[4]  - offset 8-11
+  mac_addr: string;                   // uint8_t[6]  - offset 12-17
 
-  // Device Info
-  mini_type: number;            // Device type
-  panel_type: number;           // Panel type
-  panel_name: string;           // Panel name (max 20 chars)
-  en_panel_name: number;        // Enable panel name
-  panel_number: number;         // Panel number
-  object_instance: number;      // BACnet object instance (198-201)
+  // Bytes 18-20: Device Type
+  tcp_type: number;                   // uint8_t     - offset 18 (0=DHCP, 1=STATIC)
+  mini_type: number;                  // uint8_t     - offset 19
+  debug: number;                      // uint8_t     - offset 20
 
-  // Communication Settings
-  com0_config: number;          // COM0 configuration
-  com1_config: number;          // COM1 configuration
-  com2_config: number;          // COM2 configuration
-  com_baudrate0: number;        // COM0 baud rate
-  com_baudrate1: number;        // COM1 baud rate
-  com_baudrate2: number;        // COM2 baud rate
-  uart_parity: number[];        // UART parity [3]
-  uart_stopbit: number[];       // UART stop bits [3]
+  // Bytes 21-37: Protocol Info (Str_Pro_Info - 17 bytes)
+  harware_rev: number;                // offset 21
+  firmware0_rev_main: number;         // offset 22
+  firmware0_rev_sub: number;          // offset 23
+  frimware1_rev: number;              // offset 24 (PIC)
+  frimware2_rev: number;              // offset 25 (C8051)
+  frimware3_rev: number;              // offset 26 (SM5964)
+  bootloader_rev: number;             // offset 27
+  // ... rest of pro_info (28-37)
 
-  // Protocol Settings
-  network_number: number;       // Network number (offset 50)
-  network_number_hi: number;    // Network number high byte (offset 264)
-  BBMD_EN: number;              // BBMD enable (offset 193)
-  sd_exist: number;             // SD card status (offset 194)
-  modbus_port: number;          // Modbus port (195-196)
-  modbus_id: number;            // Modbus ID (offset 197)
-  mstp_id: number;              // MSTP ID (offset 242)
-  zigbee_panid: number;         // Zigbee PAN ID (243-244)
-  max_master: number;           // Max master value (offset 245)
+  // Bytes 38-46: COM Port Configuration
+  com0_config: number;                // uint8_t     - offset 38
+  com1_config: number;                // uint8_t     - offset 39
+  com2_config: number;                // uint8_t     - offset 40
+  refresh_flash_timer: number;        // uint8_t     - offset 41
+  en_plug_n_play: number;             // uint8_t     - offset 42
+  reset_default: number;              // uint8_t     - offset 43 (write 88=reset, 77=identify)
+  com_baudrate0: number;              // uint8_t     - offset 44
+  com_baudrate1: number;              // uint8_t     - offset 45
+  com_baudrate2: number;              // uint8_t     - offset 46
 
-  // Time Settings
-  en_sntp: number;              // Enable SNTP (offset 174)
-  time_zone: number;            // Time zone offset signed short (175-176)
-  n_serial_number: number;      // Serial number (177-180)
-  // update_dyndns: UN_Time      // 10 bytes (181-190)
-  mstp_network_number: number;  // MSTP network (191-192)
-  time_update_since_1970: number; // Unix timestamp (202-205)
-  time_zone_summer_daytime: number; // DST flag (offset 206)
-  sntp_server: string;          // SNTP server address (207-236, 30 bytes)
-  time_sync_auto_manual: number;    // Auto/manual time sync (offset 240)
-  start_month: number;          // DST start month (offset 260)
-  start_day: number;            // DST start day (offset 261)
-  end_month: number;            // DST end month (offset 262)
-  end_day: number;              // DST end day (offset 263)
+  // Bytes 47-51: User Settings
+  user_name: number;                  // uint8_t     - offset 47 (0=no, 1=disable, 2=enable)
+  custmer_unite: number;              // uint8_t     - offset 48 (0=no)
+  usb_mode: number;                   // uint8_t     - offset 49 (0=device, 1=host)
+  network_number: number;             // uint8_t     - offset 50
+  panel_type: number;                 // uint8_t     - offset 51
 
-  // DynDNS Settings (bytes 74-173)
-  dyndns_user: string;          // DynDNS username (74-105, 32 bytes)
-  dyndns_pass: string;          // DynDNS password (106-137, 32 bytes)
-  dyndns_domain: string;        // DynDNS domain (138-169, 32 bytes)
-  en_dyndns: number;            // 0=no, 1=disable, 2=enable (offset 170)
-  dyndns_provider: number;      // DynDNS provider (offset 171)
-  dyndns_update_time: number;   // Update interval minutes (172-173)
+  // Bytes 52-71: Panel Name
+  panel_name: string;                 // char[20]    - offset 52-71
 
-  // Hardware/Features
-  debug: number;                // Debug flag (offset 20)
-  harware_rev: number;          // Hardware revision (offset 21)
-  firmware0_rev_main: number;   // Firmware 0 main revision (offset 22)
-  firmware0_rev_sub: number;    // Firmware 0 sub revision (offset 23)
-  frimware1_rev: number;        // Firmware 1 revision - PIC (offset 24)
-  frimware2_rev: number;        // Firmware 2 revision - C8051 (offset 25)
-  frimware3_rev: number;        // Firmware 3 revision - SM5964 (offset 26)
-  bootloader_rev: number;       // Bootloader revision (offset 27)
-  en_plug_n_play: number;       // Enable plug and play (offset 42)
-  refresh_flash_timer: number;  // Flash refresh timer (offset 41)
-  user_name: number;            // 0=no, 1=disable, 2=enable (offset 47)
-  custmer_unite: number;        // Customer units (offset 48)
-  usb_mode: number;             // 0=device, 1=host (offset 49)
-  zegbee_exsit: number;         // Zigbee exists (offset 237)
-  LCD_Display: number;          // LCD display: 1=on, 0=off (offset 238)
-  flag_time_sync_pc: number;    // Time sync PC flag (offset 239)
-  sync_time_results: number;    // Sync results (offset 241)
-  special_flag: number;         // Special flags (offset 246)
-  webview_json_flash: number;   // Webview JSON flash (offset 265)
-  max_var: number;              // Max variables ESP32 (offset 266)
-  max_in: number;               // Max inputs ESP32 (offset 267)
-  max_out: number;              // Max outputs ESP32 (offset 268)
-  fix_com_config: number;       // Fixed COM config (offset 269)
-  write_flash: number;          // Write flash interval (offset 270)
+  // Bytes 72-73: Panel Configuration
+  en_panel_name: number;              // uint8_t     - offset 72
+  panel_number: number;               // uint8_t     - offset 73
 
-  // Metadata
-  serialNumber: number;         // Device serial number
-  lastUpdated: string;          // ISO timestamp
+  // Bytes 74-173: DynDNS Configuration
+  dyndns_user: string;                // char[32]    - offset 74-105
+  dyndns_pass: string;                // char[32]    - offset 106-137
+  dyndns_domain: string;              // char[32]    - offset 138-169
+  en_dyndns: number;                  // uint8_t     - offset 170 (0=no, 1=disable, 2=enable)
+  dyndns_provider: number;            // uint8_t     - offset 171 (0=3322.org, 1=dyndns.com, 2=no-ip.com)
+  dyndns_update_time: number;         // uint16_t    - offset 172-173 (minutes)
+
+  // Bytes 174-190: Time Configuration
+  en_sntp: number;                    // uint8_t     - offset 174 (0=no, 1=disable)
+  time_zone: number;                  // signed short - offset 175-176
+  n_serial_number: number;            // unsigned int - offset 177-180
+  // update_dyndns: UN_Time (10 bytes) - offset 181-190
+
+  // Bytes 191-236: Advanced Settings
+  mstp_network_number: number;        // uint16_t    - offset 191-192
+  BBMD_EN: number;                    // uint8_t     - offset 193
+  sd_exist: number;                   // uint8_t     - offset 194 (1=no, 2=yes, 3=format error)
+  modbus_port: number;                // unsigned short - offset 195-196
+  modbus_id: number;                  // unsigned char - offset 197
+  object_instance: number;            // unsigned int - offset 198-201
+  time_update_since_1970: number;     // unsigned int - offset 202-205
+  time_zone_summer_daytime: number;   // unsigned char - offset 206
+  sntp_server: string;                // char[30]    - offset 207-236
+
+  // Bytes 237-252: Device Capabilities
+  zegbee_exsit: number;               // unsigned char - offset 237
+  LCD_Display: number;                // unsigned char - offset 238 (1=always on, 0=off)
+  flag_time_sync_pc: number;          // unsigned char - offset 239 (0=no need, 1=sync)
+  time_sync_auto_manual: number;      // unsigned char - offset 240 (0=NTP server, 1=PC sync)
+  sync_time_results: number;          // unsigned char - offset 241 (0=failed, 1=success)
+  mstp_id: number;                    // unsigned char - offset 242
+  zigbee_panid: number;               // unsigned short - offset 243-244
+  max_master: number;                 // unsigned char - offset 245 (max 245)
+  special_flag: number;               // unsigned char - offset 246 (bit0=PT1K, bit1=PT100)
+  uart_parity: number[];              // unsigned char[3] - offset 247-249
+  uart_stopbit: number[];             // unsigned char[3] - offset 250-252
+
+  // Bytes 253-270: Display & System Settings
+  // display_lcd: lcdconfig (7 bytes) - offset 253-259
+  start_month: number;                // unsigned char - offset 260
+  start_day: number;                  // unsigned char - offset 261
+  end_month: number;                  // unsigned char - offset 262
+  end_day: number;                    // unsigned char - offset 263
+  network_number_hi: number;          // unsigned char - offset 264
+  webview_json_flash: number;         // unsigned char - offset 265 (0=old, 2=new JSON)
+  max_var: number;                    // unsigned char - offset 266 (ESP32 only, ST fixed 128)
+  max_in: number;                     // unsigned char - offset 267 (ESP32 only, ST fixed 64)
+  max_out: number;                    // unsigned char - offset 268 (ESP32 only, ST fixed 64)
+  fix_com_config: number;             // unsigned char - offset 269 (0=auto, non-0=fixed)
+  write_flash: number;                // unsigned char - offset 270 (minutes, 0=disabled)
+
+  // Metadata (not from C++ structure)
+  serialNumber: number;               // For compatibility
+  lastUpdated: string;                // ISO timestamp
 }
 
 export interface RefreshResult {
