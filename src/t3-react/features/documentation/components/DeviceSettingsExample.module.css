@@ -36,7 +36,10 @@
   padding: 12px;
   max-height: 200px;
   overflow-y: auto;
-  font-size: 10px;
+  font-size: 13px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  line-height: 1.6;
+  word-wrap: break-word;
 }
 
 .rawData pre {

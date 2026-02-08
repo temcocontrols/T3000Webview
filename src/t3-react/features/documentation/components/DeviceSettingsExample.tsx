@@ -263,7 +263,7 @@ export const DeviceSettingsExample: React.FC = () => {
       <div className={styles.rawDataSection}>
         <h3>Full 400-Byte Array</h3>
         <div className={styles.rawData}>
-          <pre>{JSON.stringify(SAMPLE_DATA, null, 2)}</pre>
+          [{SAMPLE_DATA.join(', ')}]
         </div>
       </div>
 
