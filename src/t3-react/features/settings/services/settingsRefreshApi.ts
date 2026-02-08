@@ -404,71 +404,75 @@ export class SettingsRefreshApi {
       com0_config: all[38] ?? 0,                       // offset 38
       com1_config: all[39] ?? 0,                       // offset 39
       com2_config: all[40] ?? 0,                       // offset 40
+      refresh_flash_timer: all[41] ?? 0,               // offset 41
+      en_plug_n_play: all[42] ?? 0,                    // offset 42
+      reset_default: all[43] ?? 0,                     // offset 43 (write 88=reset, 77=identify)
       com_baudrate0: all[44] ?? 0,                     // offset 44
       com_baudrate1: all[45] ?? 0,                     // offset 45
       com_baudrate2: all[46] ?? 0,                     // offset 46
-      uart_parity: [all[247] ?? 0, all[248] ?? 0, all[249] ?? 0],    // offset 247-249 (CORRECTED!)
-      uart_stopbit: [all[250] ?? 0, all[251] ?? 0, all[252] ?? 0],   // offset 250-252 (CORRECTED!)
 
-      // Protocol Settings (CORRECTED to match C++ structure)
-      network_number: all[50] ?? 0,                    // offset 50 (CORRECTED!)
-      network_number_hi: all[264] ?? 0,                // offset 264 (CORRECTED!)
-      BBMD_EN: all[193] ?? 0,                          // offset 193 (CORRECTED!)
-      sd_exist: all[194] ?? 0,                         // offset 194 (CORRECTED!)
-      modbus_port: bytesToUint16(195),                 // offset 195-196 (CORRECTED!)
-      modbus_id: all[197] ?? 1,                        // offset 197 (CORRECTED!)
-      mstp_id: all[242] ?? 0,                          // offset 242 (CORRECTED!)
-      zigbee_panid: bytesToUint16(243),                // offset 243-244 (CORRECTED!)
-      max_master: all[245] ?? 127,                     // offset 245 (CORRECTED!)
-
-      // Time Settings (CORRECTED to match C++ structure)
-      en_sntp: all[174] ?? 0,                          // offset 174 (CORRECTED!)
-      time_zone: bytesToInt16(175),                    // offset 175-176 (CORRECTED!)
-      n_serial_number: bytesToUint32(177),             // offset 177-180 (CORRECTED!)
-      // update_dyndns (UN_Time): offsets 181-190 (10 bytes, not parsed individually)
-      mstp_network_number: bytesToUint16(191),         // offset 191-192 (CORRECTED!)
-      time_update_since_1970: bytesToUint32(202),      // offset 202-205 (CORRECTED!)
-      time_zone_summer_daytime: all[206] ?? 0,         // offset 206 (CORRECTED!)
-      sntp_server: bytesToString(207, 30),             // offset 207-236 (CORRECTED!)
-      time_sync_auto_manual: all[240] ?? 0,            // offset 240 (CORRECTED!)
-      start_month: all[260] ?? 0,                      // offset 260 (CORRECTED!)
-      start_day: all[261] ?? 0,                        // offset 261 (CORRECTED!)
-      end_month: all[262] ?? 0,                        // offset 262 (CORRECTED!)
-      end_day: all[263] ?? 0,                          // offset 263 (CORRECTED!)
-
-      // DynDNS Settings (CORRECTED to match C++ structure)
-      dyndns_user: bytesToString(74, 32),              // offset 74-105 (32 bytes!)
-      dyndns_pass: bytesToString(106, 32),             // offset 106-137 (32 bytes!)
-      dyndns_domain: bytesToString(138, 32),           // offset 138-169 (32 bytes!)
-      en_dyndns: all[170] ?? 0,                        // offset 170 (CORRECTED!)
-      dyndns_provider: all[171] ?? 0,                  // offset 171 (CORRECTED!)
-      dyndns_update_time: bytesToUint16(172),          // offset 172-173 (CORRECTED!)
-
-      // Hardware/Features (metadata)
-      debug: all[20] ?? 0,                             // offset 20
-      harware_rev: all[21] ?? 0,                       // offset 21 - Hardware revision
-      firmware0_rev_main: all[22] ?? 0,                // offset 22 - Firmware 0 main revision
-      firmware0_rev_sub: all[23] ?? 0,                 // offset 23 - Firmware 0 sub revision
-      frimware1_rev: all[24] ?? 0,                     // offset 24 - Firmware 1 revision (PIC)
-      frimware2_rev: all[25] ?? 0,                     // offset 25 - Firmware 2 revision (C8051)
-      frimware3_rev: all[26] ?? 0,                     // offset 26 - Firmware 3 revision (SM5964)
-      bootloader_rev: all[27] ?? 0,                    // offset 27 - Bootloader revision
-      en_plug_n_play: all[42] ?? 0,                    // offset 42
-      refresh_flash_timer: all[41] ?? 0,               // offset 41
+      // User Settings
       user_name: all[47] ?? 0,                         // offset 47
       custmer_unite: all[48] ?? 0,                     // offset 48
       usb_mode: all[49] ?? 0,                          // offset 49
-      zegbee_exsit: all[237] ?? 0,                     // offset 237 (CORRECTED!)
-      LCD_Display: all[238] ?? 0,                      // offset 238 (CORRECTED!)
-      flag_time_sync_pc: all[239] ?? 0,                // offset 239 (CORRECTED!)
-      sync_time_results: all[241] ?? 0,                // offset 241 (CORRECTED!)
-      special_flag: all[246] ?? 0,                     // offset 246 (CORRECTED!)
-      webview_json_flash: all[265] ?? 0,               // offset 265 (CORRECTED!)
-      max_var: all[266] ?? 0,                          // offset 266 (CORRECTED!)
-      max_in: all[267] ?? 0,                           // offset 267 (CORRECTED!)
-      max_out: all[268] ?? 0,                          // offset 268 (CORRECTED!)
-      fix_com_config: all[269] ?? 0,                   // offset 269 (CORRECTED!)
-      write_flash: all[270] ?? 0,                      // offset 270 (CORRECTED!)
+      network_number: all[50] ?? 0,                    // offset 50
+
+      uart_parity: [all[247] ?? 0, all[248] ?? 0, all[249] ?? 0],    // offset 247-249
+      uart_stopbit: [all[250] ?? 0, all[251] ?? 0, all[252] ?? 0],   // offset 250-252
+
+      // Protocol Settings
+      network_number_hi: all[264] ?? 0,                // offset 264
+      BBMD_EN: all[193] ?? 0,                          // offset 193
+      sd_exist: all[194] ?? 0,                         // offset 194
+      modbus_port: bytesToUint16(195),                 // offset 195-196
+      modbus_id: all[197] ?? 1,                        // offset 197
+      mstp_id: all[242] ?? 0,                          // offset 242
+      zigbee_panid: bytesToUint16(243),                // offset 243-244
+      max_master: all[245] ?? 127,                     // offset 245
+
+      // Time Settings
+      en_sntp: all[174] ?? 0,                          // offset 174
+      time_zone: bytesToInt16(175),                    // offset 175-176
+      n_serial_number: bytesToUint32(177),             // offset 177-180
+      // update_dyndns (UN_Time): offsets 181-190 (10 bytes, not parsed individually)
+      mstp_network_number: bytesToUint16(191),         // offset 191-192
+      time_update_since_1970: bytesToUint32(202),      // offset 202-205
+      time_zone_summer_daytime: all[206] ?? 0,         // offset 206
+      sntp_server: bytesToString(207, 30),             // offset 207-236
+      time_sync_auto_manual: all[240] ?? 0,            // offset 240
+      start_month: all[260] ?? 0,                      // offset 260
+      start_day: all[261] ?? 0,                        // offset 261
+      end_month: all[262] ?? 0,                        // offset 262
+      end_day: all[263] ?? 0,                          // offset 263
+
+      // DynDNS Settings
+      dyndns_user: bytesToString(74, 32),              // offset 74-105 (32 bytes)
+      dyndns_pass: bytesToString(106, 32),             // offset 106-137 (32 bytes)
+      dyndns_domain: bytesToString(138, 32),           // offset 138-169 (32 bytes)
+      en_dyndns: all[170] ?? 0,                        // offset 170
+      dyndns_provider: all[171] ?? 0,                  // offset 171
+      dyndns_update_time: bytesToUint16(172),          // offset 172-173
+
+      // Hardware/Features
+      debug: all[20] ?? 0,                             // offset 20
+      harware_rev: all[21] ?? 0,                       // offset 21
+      firmware0_rev_main: all[22] ?? 0,                // offset 22
+      firmware0_rev_sub: all[23] ?? 0,                 // offset 23
+      frimware1_rev: all[24] ?? 0,                     // offset 24 (PIC)
+      frimware2_rev: all[25] ?? 0,                     // offset 25 (C8051)
+      frimware3_rev: all[26] ?? 0,                     // offset 26 (SM5964)
+      bootloader_rev: all[27] ?? 0,                    // offset 27
+      zegbee_exsit: all[237] ?? 0,                     // offset 237
+      LCD_Display: all[238] ?? 0,                      // offset 238
+      flag_time_sync_pc: all[239] ?? 0,                // offset 239
+      sync_time_results: all[241] ?? 0,                // offset 241
+      special_flag: all[246] ?? 0,                     // offset 246
+      webview_json_flash: all[265] ?? 0,               // offset 265
+      max_var: all[266] ?? 0,                          // offset 266
+      max_in: all[267] ?? 0,                           // offset 267
+      max_out: all[268] ?? 0,                          // offset 268
+      fix_com_config: all[269] ?? 0,                   // offset 269
+      write_flash: all[270] ?? 0,                      // offset 270
 
       // Metadata
       serialNumber,
@@ -548,85 +552,108 @@ export class SettingsRefreshApi {
       all[offset + 1] = (unsigned >> 8) & 0xFF;
     };
 
-    // Serialize all fields (see SETTINGS_FIELD_MAPPING.md)
+    // Serialize all fields matching C++ structure exactly
 
-    // Network Settings
+    // Network Settings (bytes 0-18)
     ipToBytes(settings.ip_addr, 0);
     ipToBytes(settings.subnet, 4);
     ipToBytes(settings.gate_addr, 8);
     macToBytes(settings.mac_addr, 12);
     all[18] = settings.tcp_type;
 
-    // Device Info
+    // Device Type (bytes 19-20)
     all[19] = settings.mini_type;
-    all[51] = settings.panel_type;
-    stringToBytes(settings.panel_name, 52, 20);
-    all[72] = settings.en_panel_name;
-    all[73] = settings.panel_number;
-    uint32ToBytes(settings.n_serial_number, 151);
-    uint32ToBytes(settings.object_instance, 186);
+    all[20] = settings.debug;
 
-    // Communication Settings
+    // Protocol Info (bytes 21-27)
+    all[21] = settings.harware_rev;
+    all[22] = settings.firmware0_rev_main;
+    all[23] = settings.firmware0_rev_sub;
+    all[24] = settings.frimware1_rev;
+    all[25] = settings.frimware2_rev;
+    all[26] = settings.frimware3_rev;
+    all[27] = settings.bootloader_rev;
+
+    // COM Port Configuration (bytes 38-46)
     all[38] = settings.com0_config;
     all[39] = settings.com1_config;
     all[40] = settings.com2_config;
+    all[41] = settings.refresh_flash_timer;
+    all[42] = settings.en_plug_n_play;
+    all[43] = settings.reset_default;
     all[44] = settings.com_baudrate0;
     all[45] = settings.com_baudrate1;
     all[46] = settings.com_baudrate2;
-    all[235] = settings.uart_parity[0];
-    all[236] = settings.uart_parity[1];
-    all[237] = settings.uart_parity[2];
-    all[238] = settings.uart_stopbit[0];
-    all[239] = settings.uart_stopbit[1];
-    all[240] = settings.uart_stopbit[2];
 
-    // Protocol Settings
-    all[50] = settings.network_number;
-    all[252] = settings.network_number_hi;
-    uint16ToBytes(settings.mstp_network_number, 179);
-    all[230] = settings.mstp_id;
-    all[233] = settings.max_master;
-    uint16ToBytes(settings.modbus_port, 183);
-    all[185] = settings.modbus_id;
-    all[181] = settings.BBMD_EN;
-
-    // Time Settings
-    int16ToBytes(settings.time_zone, 149);
-    uint32ToBytes(settings.time_update_since_1970, 190);
-    all[148] = settings.en_sntp;
-    stringToBytes(settings.sntp_server, 195, 30);
-    all[194] = settings.time_zone_summer_daytime;
-    all[228] = settings.time_sync_auto_manual;
-    all[248] = settings.start_month;
-    all[249] = settings.start_day;
-    all[250] = settings.end_month;
-    all[251] = settings.end_day;
-
-    // DynDNS Settings
-    all[144] = settings.en_dyndns;
-    all[145] = settings.dyndns_provider;
-    stringToBytes(settings.dyndns_user, 74, 20);
-    stringToBytes(settings.dyndns_pass, 94, 20);
-    stringToBytes(settings.dyndns_domain, 114, 30);
-    uint16ToBytes(settings.dyndns_update_time, 146);
-
-    // Hardware/Features
-    all[20] = settings.debug;
-    all[42] = settings.en_plug_n_play;
-    all[41] = settings.refresh_flash_timer;
+    // User Settings (bytes 47-51)
     all[47] = settings.user_name;
     all[48] = settings.custmer_unite;
     all[49] = settings.usb_mode;
-    all[182] = settings.sd_exist;
-    all[225] = settings.zegbee_exsit;
-    uint16ToBytes(settings.zigbee_panid, 231);
-    all[226] = settings.LCD_Display;
-    all[234] = settings.special_flag;
-    all[253] = settings.webview_json_flash;
-    all[254] = settings.max_var;
-    all[255] = settings.max_in;
-    all[256] = settings.max_out;
-    all[257] = settings.fix_com_config;
+    all[50] = settings.network_number;
+    all[51] = settings.panel_type;
+
+    // Panel Name (bytes 52-71)
+    stringToBytes(settings.panel_name, 52, 20);
+
+    // Panel Configuration (bytes 72-73)
+    all[72] = settings.en_panel_name;
+    all[73] = settings.panel_number;
+
+    // DynDNS Configuration (bytes 74-173)
+    stringToBytes(settings.dyndns_user, 74, 32);
+    stringToBytes(settings.dyndns_pass, 106, 32);
+    stringToBytes(settings.dyndns_domain, 138, 32);
+    all[170] = settings.en_dyndns;
+    all[171] = settings.dyndns_provider;
+    uint16ToBytes(settings.dyndns_update_time, 172);
+
+    // Time Configuration (bytes 174-190)
+    all[174] = settings.en_sntp;
+    int16ToBytes(settings.time_zone, 175);
+    uint32ToBytes(settings.n_serial_number, 177);
+    // update_dyndns (UN_Time): 181-190 (10 bytes, not serialized individually)
+
+    // Advanced Settings (bytes 191-236)
+    uint16ToBytes(settings.mstp_network_number, 191);
+    all[193] = settings.BBMD_EN;
+    all[194] = settings.sd_exist;
+    uint16ToBytes(settings.modbus_port, 195);
+    all[197] = settings.modbus_id;
+    uint32ToBytes(settings.object_instance, 198);
+    uint32ToBytes(settings.time_update_since_1970, 202);
+    all[206] = settings.time_zone_summer_daytime;
+    stringToBytes(settings.sntp_server, 207, 30);
+
+    // Device Capabilities (bytes 237-252)
+    all[237] = settings.zegbee_exsit;
+    all[238] = settings.LCD_Display;
+    all[239] = settings.flag_time_sync_pc;
+    all[240] = settings.time_sync_auto_manual;
+    all[241] = settings.sync_time_results;
+    all[242] = settings.mstp_id;
+    uint16ToBytes(settings.zigbee_panid, 243);
+    all[245] = settings.max_master;
+    all[246] = settings.special_flag;
+    all[247] = settings.uart_parity[0];
+    all[248] = settings.uart_parity[1];
+    all[249] = settings.uart_parity[2];
+    all[250] = settings.uart_stopbit[0];
+    all[251] = settings.uart_stopbit[1];
+    all[252] = settings.uart_stopbit[2];
+
+    // Display & System Settings (bytes 253-270)
+    // display_lcd: 253-259 (7 bytes, not serialized individually)
+    all[260] = settings.start_month;
+    all[261] = settings.start_day;
+    all[262] = settings.end_month;
+    all[263] = settings.end_day;
+    all[264] = settings.network_number_hi;
+    all[265] = settings.webview_json_flash;
+    all[266] = settings.max_var;
+    all[267] = settings.max_in;
+    all[268] = settings.max_out;
+    all[269] = settings.fix_com_config;
+    all[270] = settings.write_flash;
 
     return all;
   }
