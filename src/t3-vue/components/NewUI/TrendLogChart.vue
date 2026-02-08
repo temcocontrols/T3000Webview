@@ -4444,7 +4444,7 @@
               axis.ticks = ticks
             },
             afterFit: function (scale: any) {
-              scale.width = 55
+              scale.width = 50
             }
           }
         }
