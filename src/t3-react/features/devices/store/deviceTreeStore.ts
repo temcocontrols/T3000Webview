@@ -523,7 +523,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         // } catch (error) {
         //   console.error(`Failed to check status for device ${serialNumber}:`, error);
         // }
-        console.log(`checkDeviceStatus called for device ${serialNumber} (disabled)`);
+        // console.log(`checkDeviceStatus called for device ${serialNumber} (disabled)`);
       },
 
       // Connect to device

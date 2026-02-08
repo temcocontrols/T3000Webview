@@ -50,9 +50,9 @@ class HvConstant {
    * HvConstant.LogConfig.Debug = false;
    */
   static LogConfig = {
-    Debug: false,
-    Info: false,
-    Error: true,
+    Debug: true,   // ✅ TESTING: Enable debug logs
+    Info: true,    // ✅ TESTING: Enable info logs
+    Error: true,   // ✅ Keep error logs enabled
   }
 
   static T3Config = {

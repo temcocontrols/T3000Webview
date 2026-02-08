@@ -17,87 +17,113 @@ import { API_BASE_URL } from '../../../config/constants';
 import LogUtil from '../../../../lib/t3-hvac/Util/LogUtil';
 
 /**
- * Settings data structure matching C++ Str_Setting_Info
- * Based on T3000-Source/T3000/ud_str.h structure definition
+ * Settings data structure matching C++ Str_Setting_Info EXACTLY
+ * Based on T3000-Source/T3000/CM5/ud_str.h lines 825-918
+ *
+ * IMPORTANT: Fields are in EXACT same order as C++ structure
  */
 export interface DeviceSettings {
-  // Network Settings
-  ip_addr: string;              // IP address (e.g., "192.168.1.100")
-  subnet: string;               // Subnet mask (e.g., "255.255.255.0")
-  gate_addr: string;            // Gateway address
-  mac_addr: string;             // MAC address (e.g., "00:1A:2B:3C:4D:5E")
-  tcp_type: number;             // 0=DHCP, 1=STATIC
+  // Bytes 0-17: Network Configuration
+  ip_addr: string;                    // uint8_t[4]  - offset 0-3
+  subnet: string;                     // uint8_t[4]  - offset 4-7
+  gate_addr: string;                  // uint8_t[4]  - offset 8-11
+  mac_addr: string;                   // uint8_t[6]  - offset 12-17
 
-  // Device Info
-  mini_type: number;            // Device type
-  panel_type: number;           // Panel type
-  panel_name: string;           // Panel name (max 20 chars)
-  en_panel_name: number;        // Enable panel name
-  panel_number: number;         // Panel number
-  n_serial_number: number;      // Serial number
-  object_instance: number;      // BACnet object instance
+  // Bytes 18-20: Device Type
+  tcp_type: number;                   // uint8_t     - offset 18 (0=DHCP, 1=STATIC)
+  mini_type: number;                  // uint8_t     - offset 19
+  debug: number;                      // uint8_t     - offset 20
 
-  // Communication Settings
-  com0_config: number;          // COM0 configuration
-  com1_config: number;          // COM1 configuration
-  com2_config: number;          // COM2 configuration
-  com_baudrate0: number;        // COM0 baud rate
-  com_baudrate1: number;        // COM1 baud rate
-  com_baudrate2: number;        // COM2 baud rate
-  uart_parity: number[];        // UART parity [3]
-  uart_stopbit: number[];       // UART stop bits [3]
+  // Bytes 21-37: Protocol Info (Str_Pro_Info - 17 bytes)
+  harware_rev: number;                // offset 21
+  firmware0_rev_main: number;         // offset 22
+  firmware0_rev_sub: number;          // offset 23
+  frimware1_rev: number;              // offset 24 (PIC)
+  frimware2_rev: number;              // offset 25 (C8051)
+  frimware3_rev: number;              // offset 26 (SM5964)
+  bootloader_rev: number;             // offset 27
+  // ... rest of pro_info (28-37)
 
-  // Protocol Settings
-  network_number: number;       // Network number
-  network_number_hi: number;    // Network number high byte
-  mstp_network_number: number;  // MSTP network number
-  mstp_id: number;              // MSTP ID
-  max_master: number;           // Max master value
-  modbus_port: number;          // Modbus port
-  modbus_id: number;            // Modbus ID
-  BBMD_EN: number;              // BBMD enable
+  // Bytes 38-46: COM Port Configuration
+  com0_config: number;                // uint8_t     - offset 38
+  com1_config: number;                // uint8_t     - offset 39
+  com2_config: number;                // uint8_t     - offset 40
+  refresh_flash_timer: number;        // uint8_t     - offset 41
+  en_plug_n_play: number;             // uint8_t     - offset 42
+  reset_default: number;              // uint8_t     - offset 43 (write 88=reset, 77=identify)
+  com_baudrate0: number;              // uint8_t     - offset 44
+  com_baudrate1: number;              // uint8_t     - offset 45
+  com_baudrate2: number;              // uint8_t     - offset 46
 
-  // Time Settings
-  time_zone: number;            // Time zone offset (signed short)
-  time_update_since_1970: number; // Unix timestamp
-  en_sntp: number;              // Enable SNTP
-  sntp_server: string;          // SNTP server address
-  time_zone_summer_daytime: number; // Daylight saving time
-  time_sync_auto_manual: number;    // Auto/manual time sync
-  start_month: number;          // DST start month
-  start_day: number;            // DST start day
-  end_month: number;            // DST end month
-  end_day: number;              // DST end day
+  // Bytes 47-51: User Settings
+  user_name: number;                  // uint8_t     - offset 47 (0=no, 1=disable, 2=enable)
+  custmer_unite: number;              // uint8_t     - offset 48 (0=no)
+  usb_mode: number;                   // uint8_t     - offset 49 (0=device, 1=host)
+  network_number: number;             // uint8_t     - offset 50
+  panel_type: number;                 // uint8_t     - offset 51
 
-  // DynDNS Settings
-  en_dyndns: number;            // 0=no, 1=disable, 2=enable
-  dyndns_provider: number;      // DynDNS provider
-  dyndns_user: string;          // DynDNS username
-  dyndns_pass: string;          // DynDNS password
-  dyndns_domain: string;        // DynDNS domain
-  dyndns_update_time: number;   // Update interval (minutes)
+  // Bytes 52-71: Panel Name
+  panel_name: string;                 // char[20]    - offset 52-71
 
-  // Hardware/Features
-  debug: number;                // Debug flag
-  en_plug_n_play: number;       // Enable plug and play
-  refresh_flash_timer: number;  // Flash refresh timer
-  user_name: number;            // 0=no, 1=disable, 2=enable
-  custmer_unite: number;        // Customer units
-  usb_mode: number;             // 0=device, 1=host
-  sd_exist: number;             // SD card: 1=no, 2=yes
-  zegbee_exsit: number;         // Zigbee exists
-  zigbee_panid: number;         // Zigbee PAN ID
-  LCD_Display: number;          // LCD display: 1=on, 0=off
-  special_flag: number;         // Special flags
-  webview_json_flash: number;   // Webview JSON flash
-  max_var: number;              // Max variables (ESP32 only)
-  max_in: number;               // Max inputs (ESP32 only)
-  max_out: number;              // Max outputs (ESP32 only)
-  fix_com_config: number;       // Fixed COM config
+  // Bytes 72-73: Panel Configuration
+  en_panel_name: number;              // uint8_t     - offset 72
+  panel_number: number;               // uint8_t     - offset 73
 
-  // Metadata
-  serialNumber: number;         // Device serial number
-  lastUpdated: string;          // ISO timestamp
+  // Bytes 74-173: DynDNS Configuration
+  dyndns_user: string;                // char[32]    - offset 74-105
+  dyndns_pass: string;                // char[32]    - offset 106-137
+  dyndns_domain: string;              // char[32]    - offset 138-169
+  en_dyndns: number;                  // uint8_t     - offset 170 (0=no, 1=disable, 2=enable)
+  dyndns_provider: number;            // uint8_t     - offset 171 (0=3322.org, 1=dyndns.com, 2=no-ip.com)
+  dyndns_update_time: number;         // uint16_t    - offset 172-173 (minutes)
+
+  // Bytes 174-190: Time Configuration
+  en_sntp: number;                    // uint8_t     - offset 174 (0=no, 1=disable)
+  time_zone: number;                  // signed short - offset 175-176
+  n_serial_number: number;            // unsigned int - offset 177-180
+  // update_dyndns: UN_Time (10 bytes) - offset 181-190
+
+  // Bytes 191-236: Advanced Settings
+  mstp_network_number: number;        // uint16_t    - offset 191-192
+  BBMD_EN: number;                    // uint8_t     - offset 193
+  sd_exist: number;                   // uint8_t     - offset 194 (1=no, 2=yes, 3=format error)
+  modbus_port: number;                // unsigned short - offset 195-196
+  modbus_id: number;                  // unsigned char - offset 197
+  object_instance: number;            // unsigned int - offset 198-201
+  time_update_since_1970: number;     // unsigned int - offset 202-205
+  time_zone_summer_daytime: number;   // unsigned char - offset 206
+  sntp_server: string;                // char[30]    - offset 207-236
+
+  // Bytes 237-252: Device Capabilities
+  zegbee_exsit: number;               // unsigned char - offset 237
+  LCD_Display: number;                // unsigned char - offset 238 (1=always on, 0=off)
+  flag_time_sync_pc: number;          // unsigned char - offset 239 (0=no need, 1=sync)
+  time_sync_auto_manual: number;      // unsigned char - offset 240 (0=NTP server, 1=PC sync)
+  sync_time_results: number;          // unsigned char - offset 241 (0=failed, 1=success)
+  mstp_id: number;                    // unsigned char - offset 242
+  zigbee_panid: number;               // unsigned short - offset 243-244
+  max_master: number;                 // unsigned char - offset 245 (max 245)
+  special_flag: number;               // unsigned char - offset 246 (bit0=PT1K, bit1=PT100)
+  uart_parity: number[];              // unsigned char[3] - offset 247-249
+  uart_stopbit: number[];             // unsigned char[3] - offset 250-252
+
+  // Bytes 253-270: Display & System Settings
+  // display_lcd: lcdconfig (7 bytes) - offset 253-259
+  start_month: number;                // unsigned char - offset 260
+  start_day: number;                  // unsigned char - offset 261
+  end_month: number;                  // unsigned char - offset 262
+  end_day: number;                    // unsigned char - offset 263
+  network_number_hi: number;          // unsigned char - offset 264
+  webview_json_flash: number;         // unsigned char - offset 265 (0=old, 2=new JSON)
+  max_var: number;                    // unsigned char - offset 266 (ESP32 only, ST fixed 128)
+  max_in: number;                     // unsigned char - offset 267 (ESP32 only, ST fixed 64)
+  max_out: number;                    // unsigned char - offset 268 (ESP32 only, ST fixed 64)
+  fix_com_config: number;             // unsigned char - offset 269 (0=auto, non-0=fixed)
+  write_flash: number;                // unsigned char - offset 270 (minutes, 0=disabled)
+
+  // Metadata (not from C++ structure)
+  serialNumber: number;               // For compatibility
+  lastUpdated: string;                // ISO timestamp
 }
 
 export interface RefreshResult {
@@ -140,11 +166,17 @@ export class SettingsRefreshApi {
 
       await transport.disconnect();
 
-      if (!response || !response.data) {
-        throw new Error('No data received from device');
+      LogUtil.Debug('[SettingsRefreshApi] Raw response:', JSON.stringify(response).substring(0, 500));
+
+      // Check if device returned an error
+      if (!response || response.success === false) {
+        const errorMsg = response?.data?.error || 'Device returned error response';
+        throw new Error(errorMsg);
       }
 
-      LogUtil.Debug('[SettingsRefreshApi] Raw response:', JSON.stringify(response).substring(0, 500));
+      if (!response.data) {
+        throw new Error('No data received from device');
+      }
 
       // Parse response data
       const settings = this.parseSettingsData(response.data, serialNumber, timestamp);
@@ -190,115 +222,440 @@ export class SettingsRefreshApi {
   /**
    * Parse raw device data into DeviceSettings object
    *
-   * Converts byte arrays to readable formats:
-   * - IP addresses: [192,168,1,100] → "192.168.1.100"
-   * - MAC address: [0x00,0x1A,0x2B,0x3C,0x4D,0x5E] → "00:1A:2B:3C:4D:5E"
-   * - Strings: byte arrays → UTF-8 strings
+   * Parses 400-byte Str_Setting_Info structure from device response
+   * See SETTINGS_FIELD_MAPPING.md for complete byte offset documentation
    *
-   * @param rawData - Raw response data from device
+   * @param rawData - Raw response data from device containing 400-byte array
    * @param serialNumber - Device serial number
    * @param timestamp - Refresh timestamp
    * @returns Parsed settings object
    */
   private static parseSettingsData(rawData: any, serialNumber: number, timestamp: string): DeviceSettings {
-    // Helper: Convert byte array to IP string
-    const bytesToIP = (bytes: number[]): string => {
-      return bytes.slice(0, 4).join('.');
+    LogUtil.Debug('[SettingsRefreshApi] Parsing settings data:', JSON.stringify(rawData).substring(0, 300));
+
+    // Extract the 400-byte array from response
+    // Response structure: {data: {device_data: [{All: [...]}]}}
+    const deviceData = rawData.data?.device_data?.[0] || rawData.device_data?.[0] || rawData;
+    const all: number[] = deviceData.All || [];
+
+    LogUtil.Debug(`[SettingsRefreshApi] Extracted array length: ${all.length}`);
+    LogUtil.Debug(`[SettingsRefreshApi] First 20 bytes:`, all.slice(0, 20));
+    LogUtil.Debug(`[SettingsRefreshApi] Bytes 150-180:`, all.slice(150, 180));
+
+    // Search for value 111 (LCD_Display showing wrong value)
+    for (let i = 0; i < all.length; i++) {
+      if (all[i] === 111) {
+        LogUtil.Debug(`[SettingsRefreshApi] Found byte 111 at offset ${i}`);
+      }
+    }
+
+    // Search for value 1 (potential mstp_id or mstp_network)
+    for (let i = 0; i < all.length; i++) {
+      if (all[i] === 1) {
+        LogUtil.Debug(`[SettingsRefreshApi] Found byte 1 at offset ${i}`);
+      }
+    }
+
+    // Search for the pattern [104, 171, 3, 0] which is 240488 in little-endian
+    for (let i = 0; i < all.length - 3; i++) {
+      if (all[i] === 104 && all[i+1] === 171 && all[i+2] === 3 && all[i+3] === 0) {
+        LogUtil.Debug(`[SettingsRefreshApi] Found pattern [104,171,3,0] at offset ${i}`);
+      }
+    }
+
+    // Search for BIP Network value 65535 (0xFFFF) = [255, 255] in little-endian
+    for (let i = 0; i < all.length - 1; i++) {
+      if (all[i] === 255 && all[i+1] === 255) {
+        LogUtil.Debug(`[SettingsRefreshApi] Found pattern [255,255] (65535) at offset ${i}`);
+      }
+    }
+
+    // Search for Max Master value 254 (0xFE)
+    for (let i = 0; i < all.length; i++) {
+      if (all[i] === 254) {
+        LogUtil.Debug(`[SettingsRefreshApi] Found byte 254 at offset ${i}`);
+      }
+    }
+
+    // Search for Panel Number 144 (0x90)
+    for (let i = 0; i < all.length; i++) {
+      if (all[i] === 144) {
+        LogUtil.Debug(`[SettingsRefreshApi] Found byte 144 at offset ${i}`);
+      }
+    }
+
+    if (!all || all.length < 400) {
+      LogUtil.Warn(`[SettingsRefreshApi] Invalid data array length: ${all?.length || 0}, expected 400 bytes`);
+    }
+
+    // Helper functions for byte parsing with detailed logging
+    const bytesToIP = (offset: number): string => {
+      const result = `${all[offset]}.${all[offset + 1]}.${all[offset + 2]}.${all[offset + 3]}`;
+      LogUtil.Debug(`[Parse] IP [${offset}-${offset+3}]: [${all[offset]}, ${all[offset+1]}, ${all[offset+2]}, ${all[offset+3]}] → "${result}"`);
+      return result;
     };
 
-    // Helper: Convert byte array to MAC string
-    const bytesToMAC = (bytes: number[]): string => {
-      return bytes.slice(0, 6).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(':');
+    const bytesToMAC = (offset: number): string => {
+      const bytes = all.slice(offset, offset + 6);
+      const result = bytes.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join('-');
+      LogUtil.Debug(`[Parse] MAC [${offset}-${offset+5}]: [${bytes.join(', ')}] → "${result}"`);
+      return result;
     };
 
-    // Helper: Convert byte array to string
-    const bytesToString = (bytes: number[]): string => {
-      return String.fromCharCode(...bytes.filter(b => b !== 0));
+    const bytesToString = (offset: number, length: number): string => {
+      const bytes = all.slice(offset, offset + length);
+      const nullIndex = bytes.indexOf(0);
+      const validBytes = nullIndex >= 0 ? bytes.slice(0, nullIndex) : bytes;
+      const result = String.fromCharCode(...validBytes);
+      LogUtil.Debug(`[Parse] String [${offset}-${offset+length-1}]: [${bytes.slice(0, Math.min(10, bytes.length)).join(', ')}...] → "${result}" (stopped at null: ${nullIndex})`);
+      return result;
     };
 
-    // TODO: Update this parsing logic based on actual response structure
-    // For now, assume response.data contains the parsed fields
-    const data = rawData.device_data?.[0] || rawData;
+    const bytesToUint16 = (offset: number): number => {
+      const result = all[offset] | (all[offset + 1] << 8);
+      LogUtil.Debug(`[Parse] Uint16 [${offset}-${offset+1}]: [${all[offset]}, ${all[offset+1]}] → ${result} (little-endian)`);
+      return result;
+    };
 
-    return {
-      // Network Settings
-      ip_addr: Array.isArray(data.ip_addr) ? bytesToIP(data.ip_addr) : data.ip_addr || '0.0.0.0',
-      subnet: Array.isArray(data.subnet) ? bytesToIP(data.subnet) : data.subnet || '255.255.255.0',
-      gate_addr: Array.isArray(data.gate_addr) ? bytesToIP(data.gate_addr) : data.gate_addr || '0.0.0.0',
-      mac_addr: Array.isArray(data.mac_addr) ? bytesToMAC(data.mac_addr) : data.mac_addr || '00:00:00:00:00:00',
-      tcp_type: data.tcp_type ?? 0,
+    const bytesToUint32 = (offset: number): number => {
+      const result = all[offset] | (all[offset + 1] << 8) | (all[offset + 2] << 16) | (all[offset + 3] << 24);
+      LogUtil.Debug(`[Parse] Uint32 [${offset}-${offset+3}]: [${all[offset]}, ${all[offset+1]}, ${all[offset+2]}, ${all[offset+3]}] → ${result} (little-endian)`);
+      return result;
+    };
+
+    const bytesToInt16 = (offset: number): number => {
+      const value = all[offset] | (all[offset + 1] << 8);
+      const result = value > 32767 ? value - 65536 : value;
+      LogUtil.Debug(`[Parse] Int16 [${offset}-${offset+1}]: [${all[offset]}, ${all[offset+1]}] → ${result} (signed)`);
+      return result;
+    };
+
+    // Helper to get device name from mini_type
+    const getMiniTypeName = (miniType: number): string => {
+      const deviceType = miniType & 0x3F;
+      const deviceNames: { [key: number]: string } = {
+        0: 'T3-8O', 1: 'T3-32I', 2: 'T3-8I13O', 3: 'T3-16I/O',
+        4: 'T3-BBA', 5: 'T3-BB', 6: 'T3-TB', 7: 'T3-LC',
+        8: 'T3-LB', 9: 'T3-3I0A', 10: 'T3-4O', 11: 'T3-SV6',
+        12: 'T3-6I/O', 13: 'T3-MUR1'
+      };
+      return deviceNames[deviceType] || `Unknown(${deviceType})`;
+    };
+
+    // Parse all fields according to C++ structure (see SETTINGS_FIELD_MAPPING.md)
+    LogUtil.Info(`[Parse] ========== Starting 400-byte Settings Parsing ==========`);
+    LogUtil.Info(`[Parse] Raw array first 100 bytes: [${all.slice(0, 100).join(',')}]`);
+    LogUtil.Info(`[Parse] BYTE POSITION MAP:`);
+    LogUtil.Info(`  [0-3]   = IP Address (4 bytes)`);
+    LogUtil.Info(`  [4-7]   = Subnet Mask (4 bytes)`);
+    LogUtil.Info(`  [8-11]  = Gateway (4 bytes)`);
+    LogUtil.Info(`  [12-17] = MAC Address (6 bytes)`);
+    LogUtil.Info(`  [18]    = TCP Type (1 byte: 0=DHCP, 1=STATIC)`);
+    LogUtil.Info(`  [19]    = Mini Type / Device Type (1 byte: 0=T3-8O, 5=T3-BB, 6=T3-TB, etc.)`);
+    LogUtil.Info(`  [20]    = Panel Type (1 byte)`);
+    LogUtil.Info(`  [21-37] = Str_Pro_Info (17 bytes: HW version, firmware versions)`);
+    LogUtil.Info(`  [52-71] = Panel Name (20 bytes string)`);
+    LogUtil.Info(`  [73]    = Panel Number (1 byte)`);
+    LogUtil.Info(`  [170]   = Modbus RTU ID (1 byte)`);
+    LogUtil.Info(`  [177-180] = Object Instance (4 bytes little-endian)`);
+    LogUtil.Info(`  [198-201] = Serial Number (4 bytes little-endian)`);
+    LogUtil.Info(`  [212]   = LCD Display Mode (1 byte)`);
+    LogUtil.Info(`  [223-224] = BIP Network Number (2 bytes little-endian)`);
+    LogUtil.Info(`  [245]   = Max Master (1 byte)`);
+    LogUtil.Info(`  [246]   = MSTP ID (1 byte)`);
+    LogUtil.Info(`────────────────────────────────────────────────────`);
+
+    const parsed = {
+      // Network Settings (bytes 0-18)
+      ip_addr: bytesToIP(0),                          // offset 0-3
+      subnet: bytesToIP(4),                            // offset 4-7
+      gate_addr: bytesToIP(8),                         // offset 8-11
+      mac_addr: bytesToMAC(12),                        // offset 12-17
+      tcp_type: (() => {
+        const value = all[18] ?? 0;
+        LogUtil.Debug(`[Parse] TCP Type [18]: ${value} → ${value === 0 ? 'DHCP' : 'STATIC'}`);
+        return value;
+      })(),
 
       // Device Info
-      mini_type: data.mini_type ?? 0,
-      panel_type: data.panel_type ?? 0,
-      panel_name: Array.isArray(data.panel_name) ? bytesToString(data.panel_name) : data.panel_name || '',
-      en_panel_name: data.en_panel_name ?? 0,
-      panel_number: data.panel_number ?? 0,
-      n_serial_number: data.n_serial_number ?? serialNumber,
-      object_instance: data.object_instance ?? 0,
+      mini_type: (() => {
+        const rawValue = all[19] ?? 0;
+        const deviceType = rawValue & 0x3F; // Lower 6 bits
+        const mcuType = (rawValue & 0xC0) >>> 6; // Upper 2 bits
+        const deviceNames: { [key: number]: string } = {
+          0: 'T3-8O', 1: 'T3-32I', 2: 'T3-8I13O', 3: 'T3-16I/O',
+          4: 'T3-BBA', 5: 'T3-BB', 6: 'T3-TB', 7: 'T3-LC',
+          8: 'T3-LB', 9: 'T3-3I0A', 10: 'T3-4O', 11: 'T3-SV6',
+          12: 'T3-6I/O', 13: 'T3-MUR1'
+        };
+        const mcuNames = ['', '(GD)', '(APM)', ''];
+        LogUtil.Info(`[Parse] Mini Type [19]: rawByte=${rawValue} → deviceType=${deviceType} (${deviceNames[deviceType] || 'Unknown'}), MCU=${mcuType} ${mcuNames[mcuType]}`);
+        LogUtil.Info(`  ✓ Byte[0]=${all[0]} is NOT mini_type, it's the first octet of IP!`);
+        LogUtil.Info(`  ✓ Byte[19]=${all[19]} is mini_type = ${deviceNames[deviceType] || 'Unknown'}`);
+        return rawValue;
+      })(),
+      panel_type: all[51] ?? 0,                        // offset 51
+      panel_name: bytesToString(52, 20),               // offset 52-71
+      en_panel_name: all[72] ?? 0,                     // offset 72
+      panel_number: all[73] ?? 0,                      // offset 73
+      object_instance: bytesToUint32(198),             // offset 198-201 (CORRECTED!)
 
       // Communication Settings
-      com0_config: data.com0_config ?? 0,
-      com1_config: data.com1_config ?? 0,
-      com2_config: data.com2_config ?? 0,
-      com_baudrate0: data.com_baudrate0 ?? 0,
-      com_baudrate1: data.com_baudrate1 ?? 0,
-      com_baudrate2: data.com_baudrate2 ?? 0,
-      uart_parity: data.uart_parity || [0, 0, 0],
-      uart_stopbit: data.uart_stopbit || [0, 0, 0],
+      com0_config: all[38] ?? 0,                       // offset 38
+      com1_config: all[39] ?? 0,                       // offset 39
+      com2_config: all[40] ?? 0,                       // offset 40
+      refresh_flash_timer: all[41] ?? 0,               // offset 41
+      en_plug_n_play: all[42] ?? 0,                    // offset 42
+      reset_default: all[43] ?? 0,                     // offset 43 (write 88=reset, 77=identify)
+      com_baudrate0: all[44] ?? 0,                     // offset 44
+      com_baudrate1: all[45] ?? 0,                     // offset 45
+      com_baudrate2: all[46] ?? 0,                     // offset 46
+
+      // User Settings
+      user_name: all[47] ?? 0,                         // offset 47
+      custmer_unite: all[48] ?? 0,                     // offset 48
+      usb_mode: all[49] ?? 0,                          // offset 49
+      network_number: all[50] ?? 0,                    // offset 50
+
+      uart_parity: [all[247] ?? 0, all[248] ?? 0, all[249] ?? 0],    // offset 247-249
+      uart_stopbit: [all[250] ?? 0, all[251] ?? 0, all[252] ?? 0],   // offset 250-252
 
       // Protocol Settings
-      network_number: data.network_number ?? 0,
-      network_number_hi: data.network_number_hi ?? 0,
-      mstp_network_number: data.mstp_network_number ?? 0,
-      mstp_id: data.mstp_id ?? 0,
-      max_master: data.max_master ?? 127,
-      modbus_port: data.modbus_port ?? 502,
-      modbus_id: data.modbus_id ?? 1,
-      BBMD_EN: data.BBMD_EN ?? 0,
+      network_number_hi: all[264] ?? 0,                // offset 264
+      BBMD_EN: all[193] ?? 0,                          // offset 193
+      sd_exist: all[194] ?? 0,                         // offset 194
+      modbus_port: bytesToUint16(195),                 // offset 195-196
+      modbus_id: all[197] ?? 1,                        // offset 197
+      mstp_id: all[242] ?? 0,                          // offset 242
+      zigbee_panid: bytesToUint16(243),                // offset 243-244
+      max_master: all[245] ?? 127,                     // offset 245
 
       // Time Settings
-      time_zone: data.time_zone ?? 0,
-      time_update_since_1970: data.time_update_since_1970 ?? 0,
-      en_sntp: data.en_sntp ?? 0,
-      sntp_server: Array.isArray(data.sntp_server) ? bytesToString(data.sntp_server) : data.sntp_server || '',
-      time_zone_summer_daytime: data.time_zone_summer_daytime ?? 0,
-      time_sync_auto_manual: data.time_sync_auto_manual ?? 0,
-      start_month: data.start_month ?? 3,
-      start_day: data.start_day ?? 10,
-      end_month: data.end_month ?? 11,
-      end_day: data.end_day ?? 3,
+      en_sntp: all[174] ?? 0,                          // offset 174
+      time_zone: bytesToInt16(175),                    // offset 175-176
+      n_serial_number: bytesToUint32(177),             // offset 177-180
+      // update_dyndns (UN_Time): offsets 181-190 (10 bytes, not parsed individually)
+      mstp_network_number: bytesToUint16(191),         // offset 191-192
+      time_update_since_1970: bytesToUint32(202),      // offset 202-205
+      time_zone_summer_daytime: all[206] ?? 0,         // offset 206
+      sntp_server: bytesToString(207, 30),             // offset 207-236
+      time_sync_auto_manual: all[240] ?? 0,            // offset 240
+      start_month: all[260] ?? 0,                      // offset 260
+      start_day: all[261] ?? 0,                        // offset 261
+      end_month: all[262] ?? 0,                        // offset 262
+      end_day: all[263] ?? 0,                          // offset 263
 
       // DynDNS Settings
-      en_dyndns: data.en_dyndns ?? 0,
-      dyndns_provider: data.dyndns_provider ?? 0,
-      dyndns_user: Array.isArray(data.dyndns_user) ? bytesToString(data.dyndns_user) : data.dyndns_user || '',
-      dyndns_pass: Array.isArray(data.dyndns_pass) ? bytesToString(data.dyndns_pass) : data.dyndns_pass || '',
-      dyndns_domain: Array.isArray(data.dyndns_domain) ? bytesToString(data.dyndns_domain) : data.dyndns_domain || '',
-      dyndns_update_time: data.dyndns_update_time ?? 60,
+      dyndns_user: bytesToString(74, 32),              // offset 74-105 (32 bytes)
+      dyndns_pass: bytesToString(106, 32),             // offset 106-137 (32 bytes)
+      dyndns_domain: bytesToString(138, 32),           // offset 138-169 (32 bytes)
+      en_dyndns: all[170] ?? 0,                        // offset 170
+      dyndns_provider: all[171] ?? 0,                  // offset 171
+      dyndns_update_time: bytesToUint16(172),          // offset 172-173
 
       // Hardware/Features
-      debug: data.debug ?? 0,
-      en_plug_n_play: data.en_plug_n_play ?? 0,
-      refresh_flash_timer: data.refresh_flash_timer ?? 0,
-      user_name: data.user_name ?? 0,
-      custmer_unite: data.custmer_unite ?? 0,
-      usb_mode: data.usb_mode ?? 0,
-      sd_exist: data.sd_exist ?? 1,
-      zegbee_exsit: data.zegbee_exsit ?? 0,
-      zigbee_panid: data.zigbee_panid ?? 0,
-      LCD_Display: data.LCD_Display ?? 1,
-      special_flag: data.special_flag ?? 0,
-      webview_json_flash: data.webview_json_flash ?? 0,
-      max_var: data.max_var ?? 0,
-      max_in: data.max_in ?? 0,
-      max_out: data.max_out ?? 0,
-      fix_com_config: data.fix_com_config ?? 0,
+      debug: all[20] ?? 0,                             // offset 20
+      harware_rev: all[21] ?? 0,                       // offset 21
+      firmware0_rev_main: all[22] ?? 0,                // offset 22
+      firmware0_rev_sub: all[23] ?? 0,                 // offset 23
+      frimware1_rev: all[24] ?? 0,                     // offset 24 (PIC)
+      frimware2_rev: all[25] ?? 0,                     // offset 25 (C8051)
+      frimware3_rev: all[26] ?? 0,                     // offset 26 (SM5964)
+      bootloader_rev: all[27] ?? 0,                    // offset 27
+      zegbee_exsit: all[237] ?? 0,                     // offset 237
+      LCD_Display: all[238] ?? 0,                      // offset 238
+      flag_time_sync_pc: all[239] ?? 0,                // offset 239
+      sync_time_results: all[241] ?? 0,                // offset 241
+      special_flag: all[246] ?? 0,                     // offset 246
+      webview_json_flash: all[265] ?? 0,               // offset 265
+      max_var: all[266] ?? 0,                          // offset 266
+      max_in: all[267] ?? 0,                           // offset 267
+      max_out: all[268] ?? 0,                          // offset 268
+      fix_com_config: all[269] ?? 0,                   // offset 269
+      write_flash: all[270] ?? 0,                      // offset 270
 
       // Metadata
       serialNumber,
       lastUpdated: timestamp,
     };
+
+    // Summary log showing key transformations
+    LogUtil.Info('=== Settings Parsing Summary ===');
+    LogUtil.Info(`Network: IP=${parsed.ip_addr}, MAC=${parsed.mac_addr}`);
+    LogUtil.Info(`Device: "${parsed.panel_name}" (Panel#${parsed.panel_number})`);
+    LogUtil.Info(`Module: ${getMiniTypeName(parsed.mini_type)} (raw=${parsed.mini_type}, MCU=${((parsed.mini_type & 0xC0) >>> 0).toString(16).toUpperCase()})`);
+    LogUtil.Info(`IDs: Object Instance=${parsed.object_instance}, Serial=${parsed.n_serial_number}`);
+    LogUtil.Info(`Protocol: Modbus=${parsed.modbus_id}, MSTP=${parsed.mstp_id}, MSTP Net=${parsed.mstp_network_number}, BIP Net=${parsed.network_number}, Max Master=${parsed.max_master}`);
+    LogUtil.Info(`LCD: mode=${parsed.LCD_Display} (0=Off, 1=On, 2+=Delay)`);
+    LogUtil.Info('================================');
+
+    LogUtil.Debug('[SettingsRefreshApi] Parsed settings:', {
+      ip_addr: parsed.ip_addr,
+      subnet: parsed.subnet,
+      gate_addr: parsed.gate_addr,
+      mac_addr: parsed.mac_addr,
+      panel_name: parsed.panel_name,
+      object_instance: parsed.object_instance,
+    });
+
+    return parsed;
+  }
+
+  /**
+   * Serialize DeviceSettings object into 400-byte array for device update
+   *
+   * Converts typed fields back to raw bytes matching C++ Str_Setting_Info structure
+   * See SETTINGS_FIELD_MAPPING.md for complete byte offset documentation
+   *
+   * @param settings - Settings object to serialize
+   * @returns 400-byte array ready for device update
+   */
+  static serializeSettingsData(settings: DeviceSettings): number[] {
+    const all = new Array(400).fill(0);
+
+    // Helper functions for byte serialization
+    const ipToBytes = (ip: string, offset: number) => {
+      const parts = ip.split('.').map(Number);
+      for (let i = 0; i < 4; i++) {
+        all[offset + i] = parts[i] || 0;
+      }
+    };
+
+    const macToBytes = (mac: string, offset: number) => {
+      const parts = mac.split(':').map(hex => parseInt(hex, 16));
+      for (let i = 0; i < 6; i++) {
+        all[offset + i] = parts[i] || 0;
+      }
+    };
+
+    const stringToBytes = (str: string, offset: number, maxLen: number) => {
+      for (let i = 0; i < maxLen; i++) {
+        all[offset + i] = i < str.length ? str.charCodeAt(i) : 0;
+      }
+    };
+
+    const uint16ToBytes = (value: number, offset: number) => {
+      all[offset] = value & 0xFF;
+      all[offset + 1] = (value >> 8) & 0xFF;
+    };
+
+    const uint32ToBytes = (value: number, offset: number) => {
+      all[offset] = value & 0xFF;
+      all[offset + 1] = (value >> 8) & 0xFF;
+      all[offset + 2] = (value >> 16) & 0xFF;
+      all[offset + 3] = (value >> 24) & 0xFF;
+    };
+
+    const int16ToBytes = (value: number, offset: number) => {
+      const unsigned = value < 0 ? value + 65536 : value;
+      all[offset] = unsigned & 0xFF;
+      all[offset + 1] = (unsigned >> 8) & 0xFF;
+    };
+
+    // Serialize all fields matching C++ structure exactly
+
+    // Network Settings (bytes 0-18)
+    ipToBytes(settings.ip_addr, 0);
+    ipToBytes(settings.subnet, 4);
+    ipToBytes(settings.gate_addr, 8);
+    macToBytes(settings.mac_addr, 12);
+    all[18] = settings.tcp_type;
+
+    // Device Type (bytes 19-20)
+    all[19] = settings.mini_type;
+    all[20] = settings.debug;
+
+    // Protocol Info (bytes 21-27)
+    all[21] = settings.harware_rev;
+    all[22] = settings.firmware0_rev_main;
+    all[23] = settings.firmware0_rev_sub;
+    all[24] = settings.frimware1_rev;
+    all[25] = settings.frimware2_rev;
+    all[26] = settings.frimware3_rev;
+    all[27] = settings.bootloader_rev;
+
+    // COM Port Configuration (bytes 38-46)
+    all[38] = settings.com0_config;
+    all[39] = settings.com1_config;
+    all[40] = settings.com2_config;
+    all[41] = settings.refresh_flash_timer;
+    all[42] = settings.en_plug_n_play;
+    all[43] = settings.reset_default;
+    all[44] = settings.com_baudrate0;
+    all[45] = settings.com_baudrate1;
+    all[46] = settings.com_baudrate2;
+
+    // User Settings (bytes 47-51)
+    all[47] = settings.user_name;
+    all[48] = settings.custmer_unite;
+    all[49] = settings.usb_mode;
+    all[50] = settings.network_number;
+    all[51] = settings.panel_type;
+
+    // Panel Name (bytes 52-71)
+    stringToBytes(settings.panel_name, 52, 20);
+
+    // Panel Configuration (bytes 72-73)
+    all[72] = settings.en_panel_name;
+    all[73] = settings.panel_number;
+
+    // DynDNS Configuration (bytes 74-173)
+    stringToBytes(settings.dyndns_user, 74, 32);
+    stringToBytes(settings.dyndns_pass, 106, 32);
+    stringToBytes(settings.dyndns_domain, 138, 32);
+    all[170] = settings.en_dyndns;
+    all[171] = settings.dyndns_provider;
+    uint16ToBytes(settings.dyndns_update_time, 172);
+
+    // Time Configuration (bytes 174-190)
+    all[174] = settings.en_sntp;
+    int16ToBytes(settings.time_zone, 175);
+    uint32ToBytes(settings.n_serial_number, 177);
+    // update_dyndns (UN_Time): 181-190 (10 bytes, not serialized individually)
+
+    // Advanced Settings (bytes 191-236)
+    uint16ToBytes(settings.mstp_network_number, 191);
+    all[193] = settings.BBMD_EN;
+    all[194] = settings.sd_exist;
+    uint16ToBytes(settings.modbus_port, 195);
+    all[197] = settings.modbus_id;
+    uint32ToBytes(settings.object_instance, 198);
+    uint32ToBytes(settings.time_update_since_1970, 202);
+    all[206] = settings.time_zone_summer_daytime;
+    stringToBytes(settings.sntp_server, 207, 30);
+
+    // Device Capabilities (bytes 237-252)
+    all[237] = settings.zegbee_exsit;
+    all[238] = settings.LCD_Display;
+    all[239] = settings.flag_time_sync_pc;
+    all[240] = settings.time_sync_auto_manual;
+    all[241] = settings.sync_time_results;
+    all[242] = settings.mstp_id;
+    uint16ToBytes(settings.zigbee_panid, 243);
+    all[245] = settings.max_master;
+    all[246] = settings.special_flag;
+    all[247] = settings.uart_parity[0];
+    all[248] = settings.uart_parity[1];
+    all[249] = settings.uart_parity[2];
+    all[250] = settings.uart_stopbit[0];
+    all[251] = settings.uart_stopbit[1];
+    all[252] = settings.uart_stopbit[2];
+
+    // Display & System Settings (bytes 253-270)
+    // display_lcd: 253-259 (7 bytes, not serialized individually)
+    all[260] = settings.start_month;
+    all[261] = settings.start_day;
+    all[262] = settings.end_month;
+    all[263] = settings.end_day;
+    all[264] = settings.network_number_hi;
+    all[265] = settings.webview_json_flash;
+    all[266] = settings.max_var;
+    all[267] = settings.max_in;
+    all[268] = settings.max_out;
+    all[269] = settings.fix_com_config;
+    all[270] = settings.write_flash;
+
+    return all;
   }
 
   /**

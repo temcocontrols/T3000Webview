@@ -8,6 +8,7 @@ import { Text, Spinner } from '@fluentui/react-components';
 import { Marked } from 'marked';
 import { useMarkdownContent } from '../hooks/useMarkdownContent';
 import { ControlMessagesPage } from './ControlMessagesPage';
+import { DeviceSettingsExample } from './DeviceSettingsExample';
 import { DOCS_CONFIG } from '@t3-react/config/constants';
 import styles from './DocContent.module.css';
 
@@ -16,11 +17,12 @@ interface DocContentProps {
   onNavigate?: (path: string) => void;
 }
 
-type DocMode = 'user' | 'technical';
+type DocMode = 'user' | 'technical' | 'example';
 
 interface ParsedContent {
   hasUserGuide: boolean;
   hasTechnical: boolean;
+  hasExample: boolean;
   userGuideHtml: string;
   technicalHtml: string;
   fullHtml: string;
@@ -35,6 +37,7 @@ export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
       return {
         hasUserGuide: false,
         hasTechnical: false,
+        hasExample: false,
         userGuideHtml: '',
         technicalHtml: '',
         fullHtml: '',
@@ -44,6 +47,7 @@ export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
     // Check for section markers
     const hasUserGuide = content.includes('<!-- USER-GUIDE -->');
     const hasTechnical = content.includes('<!-- TECHNICAL -->');
+    const hasExample = path === 't3000/building-platform/device-settings-structure';
 
     const marked = new Marked({
       gfm: true,
@@ -55,6 +59,7 @@ export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
       return {
         hasUserGuide: false,
         hasTechnical: false,
+        hasExample,
         userGuideHtml: '',
         technicalHtml: '',
         fullHtml: marked.parse(content) as string,
@@ -92,11 +97,12 @@ export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
     return {
       hasUserGuide,
       hasTechnical,
+      hasExample,
       userGuideHtml: userGuideContent ? marked.parse(userGuideContent) as string : '',
       technicalHtml: technicalContent ? marked.parse(technicalContent) as string : '',
       fullHtml: marked.parse(content) as string,
     };
-  }, [content]);
+  }, [content, path]);
 
   // Show custom Control Messages component for the message index
   if (path === 't3000/building-platform/control-messages/message-index' && onNavigate) {
@@ -130,10 +136,22 @@ export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
     );
   }
 
-  const showTabs = parsedContent.hasUserGuide || parsedContent.hasTechnical;
-  const htmlToRender = showTabs
-    ? (mode === 'user' ? parsedContent.userGuideHtml : parsedContent.technicalHtml)
-    : parsedContent.fullHtml;
+  const showTabs = parsedContent.hasUserGuide || parsedContent.hasTechnical || parsedContent.hasExample;
+
+  let contentToRender;
+  if (mode === 'example' && parsedContent.hasExample) {
+    contentToRender = <DeviceSettingsExample />;
+  } else {
+    const htmlToRender = showTabs
+      ? (mode === 'user' ? parsedContent.userGuideHtml : parsedContent.technicalHtml)
+      : parsedContent.fullHtml;
+    contentToRender = (
+      <div
+        className={styles.markdown}
+        dangerouslySetInnerHTML={{ __html: htmlToRender }}
+      />
+    );
+  }
 
   return (
     <div className={styles.content}>
@@ -156,12 +174,18 @@ export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
               <span>Developer</span>
             </button>
           )}
+          {parsedContent.hasExample && (
+            <button
+              className={`${styles.docTab} ${mode === 'example' ? styles.docTabActive : ''}`}
+              onClick={() => setMode('example')}
+            >
+              <span className={styles.docTabIcon}>○</span>
+              <span>Example</span>
+            </button>
+          )}
         </div>
       )}
-      <div
-        className={styles.markdown}
-        dangerouslySetInnerHTML={{ __html: htmlToRender }}
-      />
+      {contentToRender}
     </div>
   );
 };

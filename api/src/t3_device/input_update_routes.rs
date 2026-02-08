@@ -62,6 +62,7 @@ pub struct ApiResponse {
 pub fn create_input_update_routes() -> Router<T3AppState> {
     Router::new()
         // More specific route must come first to avoid being shadowed by less specific route
+        .route("/inputs/:serial/:index/device", axum::routing::put(update_input_device_only))
         .route("/inputs/:serial/:index/db", axum::routing::put(update_input_database_only))
         .route("/inputs/:serial/:index",
             axum::routing::get(get_input_by_serial_index)

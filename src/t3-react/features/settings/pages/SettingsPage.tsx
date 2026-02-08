@@ -55,6 +55,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { SettingsRefreshApi, type DeviceSettings } from '../services/settingsRefreshApi';
+import { SettingsUpdateApi } from '../services/settingsUpdateApi';
 import cssStyles from './SettingsPage.module.css';
 
 const useStyles = makeStyles({
@@ -311,7 +312,6 @@ const useStyles = makeStyles({
   lcdRadioGroup: {
     display: 'flex',
     gap: '16px',
-    marginBottom: '12px',
     alignItems: 'center',
   },
   lcdButtons: {
@@ -414,9 +414,7 @@ interface FeatureFlags {
   User_Name_Enable?: number;
   Customer_Unite_Enable?: number;
   Enable_Panel_Name?: number;
-  LCD_Display?: number;
-  LCD_Mode?: number; // 0=Always On, 1=Off, 2=Delay
-  LCD_Delay_Seconds?: number;
+  LCD_Display?: number; // 0=Always Off, 1=Always On, 2+=Delay off (value is seconds)
 }
 
 interface DeviceInfo {
@@ -438,13 +436,16 @@ export const SettingsPage: React.FC = () => {
   const [rebootCountdown, setRebootCountdown] = useState(0);
 
   // Settings state for each tab
+  const [settings, setSettings] = useState<DeviceSettings | null>(null); // Unified settings for save operations
   const [networkSettings, setNetworkSettings] = useState<NetworkSettings>({});
   const [commSettings, setCommSettings] = useState<CommunicationSettings>({});
   const [protocolSettings, setProtocolSettings] = useState<ProtocolSettings>({});
   const [timeSettings, setTimeSettings] = useState<TimeSettings>({});
   const [dyndnsSettings, setDyndnsSettings] = useState<DyndnsSettings>({});
   const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo>({});
-  const [featureFlags, setFeatureFlags] = useState<FeatureFlags>({});
+  const [featureFlags, setFeatureFlags] = useState<FeatureFlags>({
+    LCD_Display: 0, // Default to LCD Always Off
+  });
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo>({});
 
   // Auto-select first device if none is selected
@@ -481,6 +482,8 @@ export const SettingsPage: React.FC = () => {
       }
 
       // Map DeviceSettings to component state
+      setSettings(settings); // Store unified settings for save operations
+
       setNetworkSettings({
         IP_Address: settings.ip_addr,
         Subnet: settings.subnet,
@@ -542,6 +545,12 @@ export const SettingsPage: React.FC = () => {
         Panel_Type: settings.panel_type,
         USB_Mode: settings.usb_mode,
         SD_Exist: settings.sd_exist,
+        Hardware_Rev: String(settings.harware_rev),
+        Firmware0_Rev_Main: settings.firmware0_rev_main,
+        Firmware0_Rev_Sub: settings.firmware0_rev_sub,
+        Firmware1_Rev: settings.frimware1_rev,
+        Firmware2_Rev: settings.frimware2_rev,
+        Bootloader_Rev: settings.bootloader_rev,
       });
 
       setFeatureFlags({
@@ -581,8 +590,76 @@ export const SettingsPage: React.FC = () => {
         throw new Error(result.message);
       }
 
-      // Reload settings after refresh
-      await fetchSettings();
+      // Use the refreshed data directly instead of calling fetchSettings again
+      if (result.data) {
+        const settings = result.data;
+
+        // Update all state with the refreshed settings
+        setNetworkSettings({
+          IP_Address: settings.ip_addr,
+          Subnet_Mask: settings.subnet,
+          Gateway: settings.gate_addr,
+          MAC_Address: settings.mac_addr,
+          TCP_Type: settings.tcp_type,
+        });
+
+        setProtocolSettings({
+          Modbus_ID: settings.modbus_id,
+          Modbus_Port: settings.modbus_port,
+          MSTP_ID: settings.mstp_id,
+          MSTP_Network_Number: settings.mstp_network_number,
+          Max_Master: settings.max_master,
+          Object_Instance: settings.object_instance,
+          BBMD_Enable: settings.BBMD_EN,
+          Network_Number: settings.network_number,
+        });
+
+        setTimeSettings({
+          Time_Zone: settings.time_zone,
+          Time_Zone_Summer_Daytime: settings.time_zone_summer_daytime,
+          Enable_SNTP: settings.en_sntp,
+          SNTP_Server: settings.sntp_server,
+          Start_Month: settings.start_month,
+          Start_Day: settings.start_day,
+          End_Month: settings.end_month,
+          End_Day: settings.end_day,
+        });
+
+        setDyndnsSettings({
+          Enable_DynDNS: settings.en_dyndns,
+          DynDNS_Provider: settings.dyndns_provider,
+          DynDNS_Username: settings.dyndns_user,
+          DynDNS_Password: settings.dyndns_pass,
+          DynDNS_Domain: settings.dyndns_domain,
+          DynDNS_Update_Time: settings.dyndns_update_time,
+        });
+
+        setHardwareInfo({
+          Mini_Type: settings.mini_type,
+          Panel_Type: settings.panel_type,
+          USB_Mode: settings.usb_mode,
+          SD_Exist: settings.sd_exist,
+          Hardware_Rev: String(settings.harware_rev),
+          Firmware0_Rev_Main: settings.firmware0_rev_main,
+          Firmware0_Rev_Sub: settings.firmware0_rev_sub,
+          Firmware1_Rev: settings.frimware1_rev,
+          Firmware2_Rev: settings.frimware2_rev,
+          Bootloader_Rev: settings.bootloader_rev,
+        });
+
+        setFeatureFlags({
+          User_Name_Enable: settings.user_name,
+          Customer_Unite_Enable: settings.custmer_unite,
+          Enable_Panel_Name: settings.en_panel_name,
+          LCD_Display: settings.LCD_Display,
+        });
+
+        setDeviceInfo({
+          SerialNumber: settings.n_serial_number,
+          PanelId: settings.panel_name,
+          PanelNumber: settings.panel_number,
+        });
+      }
 
       setSuccessMessage('Settings refreshed successfully from device');
 
@@ -598,16 +675,12 @@ export const SettingsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedDevice, fetchSettings]);
+  }, [selectedDevice]); // Removed fetchSettings from dependencies
 
-  // Load settings when tab or device changes
+  // Load settings when device changes
   useEffect(() => {
     fetchSettings();
-  }, [fetchSettings, selectedTab]);
-  // Load settings when tab or device changes
-  useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings, selectedTab]);
+  }, [fetchSettings]);
 
   const handleTabSelect = (_event: SelectTabEvent, data: SelectTabData) => {
     setSelectedTab(data.value as TabValue);
@@ -615,25 +688,37 @@ export const SettingsPage: React.FC = () => {
     setSuccessMessage(null);
   };
 
+  // Helper to update unified settings object
+  const updateSettings = (updates: Partial<DeviceSettings>) => {
+    if (!settings) return;
+    setSettings({ ...settings, ...updates });
+  };
+
   const handleSaveNetwork = async () => {
-    if (!selectedDevice) return;
+    if (!selectedDevice || !settings) return;
 
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
 
     try {
-      const response = await fetch(
-        `/api/v1/devices/${selectedDevice.serialNumber}/settings/network`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(networkSettings),
-        }
-      );
+      // Validate settings before update
+      const validation = SettingsUpdateApi.validateSettings(settings);
+      if (!validation.valid) {
+        throw new Error(validation.errors.join(', '));
+      }
 
-      if (!response.ok) throw new Error('Failed to save network settings');
-      setSuccessMessage('Network settings saved successfully');
+      // Update device settings via FFI (action 16)
+      const result = await SettingsUpdateApi.updateDeviceSettings(settings);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update device');
+      }
+
+      setSuccessMessage('Network settings saved to device successfully');
+
+      // Refresh settings to confirm
+      await fetchSettings();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
@@ -642,24 +727,26 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleSaveCommunication = async () => {
-    if (!selectedDevice) return;
+    if (!selectedDevice || !settings) return;
 
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
 
     try {
-      const response = await fetch(
-        `/api/v1/devices/${selectedDevice.serialNumber}/settings/communication`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(commSettings),
-        }
-      );
+      const validation = SettingsUpdateApi.validateSettings(settings);
+      if (!validation.valid) {
+        throw new Error(validation.errors.join(', '));
+      }
 
-      if (!response.ok) throw new Error('Failed to save communication settings');
-      setSuccessMessage('Communication settings saved successfully');
+      const result = await SettingsUpdateApi.updateDeviceSettings(settings);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update device');
+      }
+
+      setSuccessMessage('Communication settings saved to device successfully');
+      await fetchSettings();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
@@ -668,24 +755,26 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleSaveTime = async () => {
-    if (!selectedDevice) return;
+    if (!selectedDevice || !settings) return;
 
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
 
     try {
-      const response = await fetch(
-        `/api/v1/devices/${selectedDevice.serialNumber}/settings/time`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(timeSettings),
-        }
-      );
+      const validation = SettingsUpdateApi.validateSettings(settings);
+      if (!validation.valid) {
+        throw new Error(validation.errors.join(', '));
+      }
 
-      if (!response.ok) throw new Error('Failed to save time settings');
-      setSuccessMessage('Time settings saved successfully');
+      const result = await SettingsUpdateApi.updateDeviceSettings(settings);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update device');
+      }
+
+      setSuccessMessage('Time settings saved to device successfully');
+      await fetchSettings();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
@@ -694,24 +783,26 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleSaveDyndns = async () => {
-    if (!selectedDevice) return;
+    if (!selectedDevice || !settings) return;
 
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
 
     try {
-      const response = await fetch(
-        `/api/v1/devices/${selectedDevice.serialNumber}/settings/dyndns`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(dyndnsSettings),
-        }
-      );
+      const validation = SettingsUpdateApi.validateSettings(settings);
+      if (!validation.valid) {
+        throw new Error(validation.errors.join(', '));
+      }
 
-      if (!response.ok) throw new Error('Failed to save DynDNS settings');
-      setSuccessMessage('DynDNS settings saved successfully');
+      const result = await SettingsUpdateApi.updateDeviceSettings(settings);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update device');
+      }
+
+      setSuccessMessage('DynDNS settings saved to device successfully');
+      await fetchSettings();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
@@ -819,6 +910,40 @@ export const SettingsPage: React.FC = () => {
     await handleSaveNetwork();
   };
 
+  // Map mini_type to module name
+  const getMiniTypeName = (miniType: number | undefined): string => {
+    if (miniType === undefined) return 'N/A';
+
+    const mapping: { [key: number]: string } = {
+      0: 'CM5',
+      1: 'T3-BB',
+      2: 'T3-LB',
+      3: 'T3-TB',
+      4: 'T3-TB',
+      5: 'T3-BB',      // MINIPANELARM
+      6: 'T3-LB',      // MINIPANELARM_LB
+      7: 'T3-TB',      // MINIPANELARM_TB
+      8: 'T3-Nano',    // MINIPANELARM_NB
+      9: 'TSTAT10',
+      11: 'T3-OEM',
+      12: 'T3-TB-11I',
+      13: 'T3-FAN-MODULE',
+      14: 'T3-OEM-12I',
+      15: 'T3-AIRLAB',
+      16: 'T3-ESP-TRANSDUCER',
+      17: 'T3-ESP-TSTAT9',
+      18: 'T3-ESP-SAUTER',
+      19: 'T3-RMC',
+      21: 'T3-ESP-LW',
+      22: 'T3-NG2',
+      26: 'T3-3IIC',
+      43: 'T322AI',
+      44: 'T38AI8AO6DO',
+    };
+
+    return mapping[miniType] || `Unknown (${miniType})`;
+  };
+
   // Render tab content based on selected tab
   const renderTabContent = () => {
     if (!selectedDevice) {
@@ -851,7 +976,7 @@ export const SettingsPage: React.FC = () => {
                 <div className={styles.basicPanelTitle}>Device Information</div>
                 <div className={styles.basicField}>
                   <label className={styles.basicFieldLabel}>Module Number:</label>
-                  <span className={styles.basicFieldValue}>{hardwareInfo.Mini_Type ?? 'N/A'}</span>
+                  <span className={styles.basicFieldValue}>{getMiniTypeName(hardwareInfo.Mini_Type)}</span>
                 </div>
                 <div className={styles.basicField}>
                   <label className={styles.basicFieldLabel}>Hardware Version:</label>
@@ -877,12 +1002,16 @@ export const SettingsPage: React.FC = () => {
                 </div>
                 <div className={styles.basicField}>
                   <label className={styles.basicFieldLabel}>MCU Type:</label>
-                  <span className={styles.basicFieldValue}>{hardwareInfo.Panel_Type ?? 'N/A'}</span>
+                  <span className={styles.basicFieldValue}>
+                    {hardwareInfo.Mini_Type !== undefined
+                      ? `0x${((hardwareInfo.Mini_Type & 0xC0) >>> 0).toString(16).toUpperCase().padStart(2, '0')}`
+                      : 'N/A'}
+                  </span>
                 </div>
                 <div className={styles.basicField}>
                   <label className={styles.basicFieldLabel}>SD Card:</label>
                   <span className={styles.basicFieldValue}>
-                    {hardwareInfo.SD_Exist === 1 ? 'Present' : 'Not Present'}
+                    {hardwareInfo.SD_Exist === 1 ? 'Present' : 'No SD Card'}
                   </span>
                 </div>
               </div>
@@ -994,44 +1123,44 @@ export const SettingsPage: React.FC = () => {
                   <input
                     type="radio"
                     name="lcdMode"
-                    checked={featureFlags.LCD_Mode === 0}
-                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Mode: 0 })}
+                    checked={featureFlags.LCD_Display === 1}
+                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Display: 1 })}
                   />
-                  Always On
+                  LCD Always On
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
                   <input
                     type="radio"
                     name="lcdMode"
-                    checked={featureFlags.LCD_Mode === 1}
-                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Mode: 1 })}
+                    checked={featureFlags.LCD_Display === 0}
+                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Display: 0 })}
                   />
-                  Off
+                  LCD Always Off
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
                   <input
                     type="radio"
                     name="lcdMode"
-                    checked={featureFlags.LCD_Mode === 2}
-                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Mode: 2 })}
+                    checked={featureFlags.LCD_Display !== undefined && featureFlags.LCD_Display > 1}
+                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Display: 30 })}
                   />
-                  Delay
+                  LCD Delay off
                   <Input
                     type="number"
                     size="small"
-                    value={String(featureFlags.LCD_Delay_Seconds ?? 30)}
+                    value={featureFlags.LCD_Display !== undefined && featureFlags.LCD_Display > 1 ? String(featureFlags.LCD_Display) : ''}
                     onChange={(_, data) =>
-                      setFeatureFlags({ ...featureFlags, LCD_Delay_Seconds: Number(data.value) })
+                      setFeatureFlags({ ...featureFlags, LCD_Display: Number(data.value) || 2 })
                     }
-                    disabled={featureFlags.LCD_Mode !== 2}
+                    disabled={featureFlags.LCD_Display === undefined || featureFlags.LCD_Display <= 1}
                     style={{ width: '100px', marginLeft: '4px' }}
                   />
                   <span style={{ fontSize: '12px', color: '#605e5c' }}>(s)</span>
                 </label>
-              </div>
-              <div className={styles.lcdButtons}>
-                <Button size="small" appearance="secondary">Parameter</Button>
-                <Button size="small" appearance="secondary">Advanced Settings</Button>
+                <div className={styles.lcdButtons}>
+                  <Button size="small" appearance="secondary">Parameter</Button>
+                  <Button size="small" appearance="secondary">Advanced Settings</Button>
+                </div>
               </div>
             </div>
           </>
@@ -1058,9 +1187,10 @@ export const SettingsPage: React.FC = () => {
                 >
                   <Input
                     value={networkSettings.IP_Address ?? ''}
-                    onChange={(_, data) =>
-                      setNetworkSettings({ ...networkSettings, IP_Address: data.value })
-                    }
+                    onChange={(_, data) => {
+                      setNetworkSettings({ ...networkSettings, IP_Address: data.value });
+                      updateSettings({ ip_addr: data.value });
+                    }}
                     placeholder="192.168.1.100"
                   />
                 </Field>
@@ -1079,9 +1209,10 @@ export const SettingsPage: React.FC = () => {
                 >
                   <Input
                     value={networkSettings.Subnet ?? ''}
-                    onChange={(_, data) =>
-                      setNetworkSettings({ ...networkSettings, Subnet: data.value })
-                    }
+                    onChange={(_, data) => {
+                      setNetworkSettings({ ...networkSettings, Subnet: data.value });
+                      updateSettings({ subnet: data.value });
+                    }}
                     placeholder="255.255.255.0"
                   />
                 </Field>
@@ -1100,9 +1231,10 @@ export const SettingsPage: React.FC = () => {
                 >
                   <Input
                     value={networkSettings.Gateway ?? ''}
-                    onChange={(_, data) =>
-                      setNetworkSettings({ ...networkSettings, Gateway: data.value })
-                    }
+                    onChange={(_, data) => {
+                      setNetworkSettings({ ...networkSettings, Gateway: data.value });
+                      updateSettings({ gate_addr: data.value });
+                    }}
                     placeholder="192.168.1.1"
                   />
                 </Field>
@@ -1112,12 +1244,11 @@ export const SettingsPage: React.FC = () => {
                 <Field label="IP Configuration">
                   <Dropdown
                     value={networkSettings.TCP_Type === 0 ? 'DHCP' : 'Static'}
-                    onOptionSelect={(_, data) =>
-                      setNetworkSettings({
-                        ...networkSettings,
-                        TCP_Type: data.optionValue === 'DHCP' ? 0 : 1,
-                      })
-                    }
+                    onOptionSelect={(_, data) => {
+                      const tcpType = data.optionValue === 'DHCP' ? 0 : 1;
+                      setNetworkSettings({ ...networkSettings, TCP_Type: tcpType });
+                      updateSettings({ tcp_type: tcpType });
+                    }}
                   >
                     <Option value="DHCP">DHCP (Auto)</Option>
                     <Option value="Static">Static (Manual)</Option>

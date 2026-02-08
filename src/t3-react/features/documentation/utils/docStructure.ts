@@ -98,6 +98,7 @@ export const docStructure: DocSection[] = [
       { title: 'Control Messages', path: 't3000/building-platform/control-messages/message-index' },
       { title: 'BACnet Commands', path: 't3000/building-platform/bacnet-commands' },
       { title: 'Data Structures', path: 't3000/building-platform/data-structures' },
+      { title: 'Device Settings Structure', path: 't3000/building-platform/device-settings-structure' },
     ],
   },
 ];

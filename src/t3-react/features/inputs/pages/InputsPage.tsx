@@ -414,10 +414,9 @@ export const InputsPage: React.FC = () => {
   };
   */
 
-  // Generic function: Update input field using UPDATE_WEBVIEW_LIST (Action 16 - full record)
-  // NOTE: Action 16 requires ALL fields to be provided, not just the changed field
-  // CRITICAL: Must read current device values first to avoid overwriting with stale database values
-  const updateInputFieldUsingAction16 = async (
+  // Step 1: Update device using FFI call (Action 16 - UPDATE_WEBVIEW_LIST)
+  const updateDeviceUsingFFI = async (
+    panelId: number,
     serialNumber: number,
     inputIndex: string,
     field: string,
@@ -425,32 +424,77 @@ export const InputsPage: React.FC = () => {
     currentInput: InputPoint
   ) => {
     try {
-      console.log(`[Action 16] Updating ${field} for Input ${inputIndex} (SN: ${serialNumber})`);
+      console.log(`[FFI Action 16] Updating ${field} on device - Input ${inputIndex} (SN: ${serialNumber})`);
 
-      // Step 1: Use CURRENT UI STATE as baseline (has most recent changes)
-      // The currentInput parameter already reflects any previous edits made in the UI
-      console.log('[Action 16] Using current UI state as baseline:', currentInput);
+      // Build FFI message for UPDATE_WEBVIEW_LIST (Action 16)
+      const ffiMessage = {
+        action: 16, // UPDATE_WEBVIEW_LIST
+        panelId: panelId,
+        serialNumber: serialNumber,
+        entryType: 1, // BAC_IN (INPUT)
+        entryIndex: parseInt(inputIndex, 10),
+        control: 0,
+        value: field === 'fValue' ? parseFloat(newValue || '0') : parseFloat(currentInput.fValue || '0') / 1000,
+        description: field === 'fullLabel' ? newValue : (currentInput.fullLabel || ''),
+        label: field === 'label' ? newValue : (currentInput.label || ''),
+        range: field === 'range' ? parseInt(newValue || '0', 10) : parseInt(currentInput.rangeField || currentInput.range || '0', 10),
+        auto_manual: field === 'autoManual' ? parseInt(newValue || '0', 10) : parseInt(currentInput.autoManual || '0', 10),
+        filter: parseInt(currentInput.filterField || '0', 10),
+        digital_analog: parseInt(currentInput.digitalAnalog || '0', 10),
+        calibration_sign: parseInt(currentInput.sign || '0', 10),
+        calibration_h: parseInt(currentInput.calibration?.split('.')[0] || '0', 10),
+        calibration_l: parseInt(currentInput.calibration?.split('.')[1] || '0', 10),
+        decom: 0,
+      };
 
-      // Step 2: Build payload with current UI values + the one changed field
+      console.log('[FFI Action 16] Sending to device:', ffiMessage);
+
+      const response = await fetch(`${API_BASE_URL}/api/t3000/ffi/call`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ffiMessage)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Device update failed: ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('[FFI Action 16] Device updated successfully:', result);
+      return result;
+    } catch (error) {
+      console.error('[FFI Action 16] Device update failed:', error);
+      throw error;
+    }
+  };
+
+  // Step 2: Update database only
+  const updateDatabaseOnly = async (
+    serialNumber: number,
+    inputIndex: string,
+    field: string,
+    newValue: string,
+    currentInput: InputPoint
+  ) => {
+    try {
+      console.log(`[Database] Updating ${field} in database - Input ${inputIndex} (SN: ${serialNumber})`);
+
       const payload = {
         fullLabel: field === 'fullLabel' ? newValue : (currentInput.fullLabel || ''),
         label: field === 'label' ? newValue : (currentInput.label || ''),
         value: field === 'fValue' ? parseFloat(newValue || '0') : parseFloat(currentInput.fValue || '0') / 1000,
         range: field === 'range' ? parseInt(newValue || '0', 10) : parseInt(currentInput.rangeField || currentInput.range || '0', 10),
         autoManual: field === 'autoManual' ? parseInt(newValue || '0', 10) : parseInt(currentInput.autoManual || '0', 10),
-        control: 0, // control field not typically editable
         filter: parseInt(currentInput.filterField || '0', 10),
         digitalAnalog: parseInt(currentInput.digitalAnalog || '0', 10),
         calibrationSign: parseInt(currentInput.sign || '0', 10),
         calibrationH: parseInt(currentInput.calibration?.split('.')[0] || '0', 10),
         calibrationL: parseInt(currentInput.calibration?.split('.')[1] || '0', 10),
-        decom: 0,
       };
 
-      console.log('[Action 16] Full payload:', payload);
-
       const response = await fetch(
-        `${API_BASE_URL}/api/t3_device/inputs/${serialNumber}/${inputIndex}`,
+        `${API_BASE_URL}/api/t3_device/inputs/${serialNumber}/${inputIndex}/db`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -460,15 +504,14 @@ export const InputsPage: React.FC = () => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+        throw new Error(`Database update failed: ${response.status}: ${errorText}`);
       }
 
       const result = await response.json();
-      console.log('[Action 16] Success - Device updated via FFI and saved to database:', result);
-
+      console.log('[Database] Database updated successfully:', result);
       return result;
     } catch (error) {
-      console.error('[Action 16] Failed:', error);
+      console.error('[Database] Database update failed:', error);
       throw error;
     }
   };
@@ -487,13 +530,12 @@ export const InputsPage: React.FC = () => {
 
     setIsSaving(true);
     try {
-      // Use Action 16 for all editable fields (fullLabel, label, fValue, range, autoManual)
+      // Process for all editable fields (fullLabel, label, fValue, range, autoManual)
       if (selectedDevice && ['fullLabel', 'label', 'fValue', 'range', 'autoManual'].includes(editingCell.field)) {
-        console.log(`=== Updating ${editingCell.field} ===`);
+        console.log(`=== Updating ${editingCell.field} (Two-Step Process) ===`);
         console.log(`Device: ${selectedDevice.serialNumber}, Input: ${editingCell.inputIndex}, New Value: "${editValue}"`);
-        console.log('Using Action 16 (UPDATE_WEBVIEW_LIST)');
 
-        // Find the current input data to pass all fields for Action 16
+        // Find the current input data
         const currentInput = inputs.find(
           input => input.serialNumber === editingCell.serialNumber && input.inputIndex === editingCell.inputIndex
         );
@@ -502,16 +544,33 @@ export const InputsPage: React.FC = () => {
           throw new Error('Current input data not found');
         }
 
-        // Use Action 16 (UPDATE_WEBVIEW_LIST) for all fields
-        await updateInputFieldUsingAction16(
+        // Get panel_id for FFI call (assuming it's available in selectedDevice)
+        const panelId = selectedDevice.panelId || 1;
+
+        // Step 1: Update device FIRST using FFI (Action 16)
+        console.log('Step 1/2: Updating device via FFI...');
+        await updateDeviceUsingFFI(
+          panelId,
           selectedDevice.serialNumber,
           editingCell.inputIndex,
           editingCell.field,
           editValue,
           currentInput
         );
+        console.log('✅ Device updated successfully');
 
-        console.log(`✅ ${editingCell.field} updated successfully!`);
+        // Step 2: Update database SECOND
+        console.log('Step 2/2: Updating database...');
+        await updateDatabaseOnly(
+          selectedDevice.serialNumber,
+          editingCell.inputIndex,
+          editingCell.field,
+          editValue,
+          currentInput
+        );
+        console.log('✅ Database updated successfully');
+
+        console.log(`✅ ${editingCell.field} updated successfully (device + database)!`);
       }
 
       // Update local state optimistically
@@ -575,10 +634,10 @@ export const InputsPage: React.FC = () => {
     if (!selectedInputForRange || !selectedDevice) return;
 
     try {
-      console.log(`=== Updating range ===`);
+      console.log(`=== Updating range (Two-Step Process) ===`);
       console.log(`Device: ${selectedDevice.serialNumber}, Input: ${selectedInputForRange.inputIndex}, New Range: ${newRange}`);
 
-      // Find the current input data to pass all fields for Action 16
+      // Find the current input data
       const currentInput = inputs.find(
         input => input.serialNumber === selectedInputForRange.serialNumber && input.inputIndex === selectedInputForRange.inputIndex
       );
@@ -587,14 +646,30 @@ export const InputsPage: React.FC = () => {
         throw new Error('Current input data not found');
       }
 
-      // Use Action 16 (UPDATE_WEBVIEW_LIST) for range field
-      await updateInputFieldUsingAction16(
+      const panelId = selectedDevice.panelId || 1;
+
+      // Step 1: Update device FIRST using FFI
+      console.log('Step 1/2: Updating device via FFI...');
+      await updateDeviceUsingFFI(
+        panelId,
         selectedDevice.serialNumber,
         selectedInputForRange.inputIndex,
         'range',
         newRange.toString(),
         currentInput
       );
+      console.log('✅ Device updated successfully');
+
+      // Step 2: Update database SECOND
+      console.log('Step 2/2: Updating database...');
+      await updateDatabaseOnly(
+        selectedDevice.serialNumber,
+        selectedInputForRange.inputIndex,
+        'range',
+        newRange.toString(),
+        currentInput
+      );
+      console.log('✅ Database updated successfully');
 
       // Update local state optimistically
       setInputs(prevInputs =>
@@ -862,10 +937,11 @@ export const InputsPage: React.FC = () => {
 
         const handleToggle = async () => {
           const newValue = !isAuto ? '1' : '0';
-          console.log('Auto/Man toggled:', item.serialNumber, item.inputIndex, newValue);
+          console.log('=== Auto/Man toggled (Two-Step Process) ===');
+          console.log('Device:', item.serialNumber, 'Input:', item.inputIndex, 'New Value:', newValue);
 
           try {
-            // Find the current input data to pass all fields for Action 16
+            // Find the current input data
             const currentInput = inputs.find(
               input => input.serialNumber === item.serialNumber && input.inputIndex === item.inputIndex
             );
@@ -874,14 +950,34 @@ export const InputsPage: React.FC = () => {
               throw new Error('Current input data not found');
             }
 
-            // Use Action 16 (UPDATE_WEBVIEW_LIST) for autoManual field
-            await updateInputFieldUsingAction16(
+            if (!selectedDevice) {
+              throw new Error('No device selected');
+            }
+
+            const panelId = selectedDevice.panelId || 1;
+
+            // Step 1: Update device FIRST using FFI
+            console.log('Step 1/2: Updating device via FFI...');
+            await updateDeviceUsingFFI(
+              panelId,
               item.serialNumber,
               item.inputIndex,
               'autoManual',
               newValue,
               currentInput
             );
+            console.log('✅ Device updated successfully');
+
+            // Step 2: Update database SECOND
+            console.log('Step 2/2: Updating database...');
+            await updateDatabaseOnly(
+              item.serialNumber,
+              item.inputIndex,
+              'autoManual',
+              newValue,
+              currentInput
+            );
+            console.log('✅ Database updated successfully');
 
             // Update local state optimistically
             setInputs(prevInputs =>
@@ -892,7 +988,7 @@ export const InputsPage: React.FC = () => {
               )
             );
 
-            console.log('✅ Auto/Man updated successfully!');
+            console.log('✅ Auto/Man updated successfully (device + database)!');
           } catch (error) {
             console.error('Failed to update Auto/Man:', error);
             alert(`Failed to update Auto/Man: ${error instanceof Error ? error.message : 'Unknown error'}`);

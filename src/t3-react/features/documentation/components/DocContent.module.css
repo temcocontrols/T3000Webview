@@ -47,10 +47,17 @@
   border-bottom: 2px solid #edebe9;
   padding-bottom: 0;
   position: sticky;
-  top: 0;
+  top: -16px;
   background: #ffffff;
   z-index: 10;
-  padding-top: 16px;
+  padding-top: 0;
+  margin-top: -16px;
+  margin-left: -24px;
+  margin-right: -24px;
+  padding-left: 24px;
+  padding-right: 24px;
+  width: auto;
+  align-self: stretch;
 }
 
 .docTab {
@@ -67,6 +74,7 @@
   font-weight: 500;
   color: #605e5c;
   transition: all 0.2s ease;
+  border-radius: 4px 4px 0 0;
 }
 
 .docTab:hover:not(:disabled) {
@@ -120,11 +128,13 @@
 
 /* Markdown content styling */
 .markdown {
+  width: 100%;
   max-width: 100%;
   line-height: 1.6;
   color: #323130;
   margin-top: 0;
   padding-top: 0;
+  align-self: stretch;
 }
 
 .markdown h1 {
@@ -139,14 +149,14 @@
 .markdown h2 {
   font-size: 14px;
   font-weight: 600;
-  margin: 20px 0 10px 0;
+  margin: 12px 0 10px 0;
   color: #323130;
 }
 
 .markdown h3 {
   font-size: 13px;
   font-weight: 600;
-  margin: 16px 0 8px 0;
+  margin: 12px 0 8px 0;
   color: #323130;
 }
 
