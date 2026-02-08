@@ -1,0 +1,190 @@
+/* Device Settings Example Styles */
+
+.container {
+  width: 100%;
+  padding: 0;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: #323130;
+}
+
+.description {
+  font-size: 12px;
+  color: #605e5c;
+  margin: 0 0 20px 0;
+}
+
+/* Raw Data Section */
+.rawDataSection {
+  margin-bottom: 32px;
+}
+
+.rawDataSection h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: #323130;
+}
+
+.rawData {
+  background: #f3f2f1;
+  border: 1px solid #edebe9;
+  padding: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 10px;
+}
+
+.rawData pre {
+  margin: 0;
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+/* Table Section */
+.tableSection {
+  margin-bottom: 24px;
+}
+
+.tableSection h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: #323130;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  background: #ffffff;
+  border: 1px solid #edebe9;
+}
+
+.table thead {
+  background: #fafafa;
+  border-bottom: 2px solid #edebe9;
+}
+
+.table th {
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #323130;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #edebe9;
+  vertical-align: middle;
+}
+
+.table tbody tr {
+  transition: background-color 0.15s;
+}
+
+.table tbody tr:hover:not(.detailsRow) {
+  background: #f9f9f9;
+}
+
+.rowExpanded {
+  background: #deecf9 !important;
+}
+
+.format {
+  display: inline-block;
+  padding: 2px 6px;
+  background: #e1dfdd;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.codeSmall {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 10px;
+  color: #0078d4;
+}
+
+.actionButton {
+  background: transparent;
+  border: 1px solid #d2d0ce;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 10px;
+  transition: all 0.15s;
+}
+
+.actionButton:hover {
+  background: #edebe9;
+  border-color: #0078d4;
+}
+
+.actionButton:active {
+  background: #d2d0ce;
+}
+
+/* Details Row */
+.detailsRow {
+  background: #f3f2f1 !important;
+}
+
+.detailsRow:hover {
+  background: #f3f2f1 !important;
+}
+
+.details {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detailSection {
+  background: #ffffff;
+  padding: 12px;
+  border: 1px solid #edebe9;
+}
+
+.detailSection h4 {
+  font-size: 11px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: #0078d4;
+}
+
+.rawBytes {
+  display: block;
+  background: #f9f9f9;
+  padding: 6px 8px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  color: #323130;
+}
+
+.parseCode {
+  margin: 0;
+  background: #282c34;
+  color: #abb2bf;
+  padding: 12px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-x: auto;
+}
+
+.result {
+  background: #e1f5e1;
+  padding: 8px 12px;
+  border-left: 3px solid #10893e;
+}
+
+.result code {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: #107c10;
+}
