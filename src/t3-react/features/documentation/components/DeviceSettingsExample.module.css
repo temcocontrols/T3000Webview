@@ -21,6 +21,12 @@
 /* Raw Data Section */
 .rawDataSection {
   margin-bottom: 32px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #ffffff;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
 .rawDataSection h3 {
@@ -36,7 +42,7 @@
   padding: 12px;
   max-height: 200px;
   overflow-y: auto;
-  font-size: 13px;
+  font-size: 12px;
   font-family: 'Consolas', 'Courier New', monospace;
   line-height: 1.6;
   word-wrap: break-word;
@@ -140,49 +146,55 @@
 }
 
 .details {
-  padding: 16px;
+  padding: 2px;
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  flex-direction: row;
+  gap: 4px;
 }
 
 .detailSection {
   background: #ffffff;
-  padding: 12px;
+  padding: 4px;
   border: 1px solid #edebe9;
+  border-radius: 4px;
+  flex: 1;
+  min-width: 0;
 }
 
 .detailSection h4 {
   font-size: 11px;
   font-weight: 600;
-  margin: 0 0 8px 0;
+  margin: 0 0 3px 0;
   color: #0078d4;
 }
 
 .rawBytes {
   display: block;
   background: #f9f9f9;
-  padding: 6px 8px;
+  padding: 4px 6px;
   font-family: 'Consolas', 'Courier New', monospace;
   font-size: 11px;
   color: #323130;
+  border-radius: 2px;
 }
 
 .parseCode {
   margin: 0;
   background: #282c34;
   color: #abb2bf;
-  padding: 12px;
+  padding: 8px;
   font-family: 'Consolas', 'Courier New', monospace;
   font-size: 11px;
   line-height: 1.5;
   overflow-x: auto;
+  border-radius: 2px;
 }
 
 .result {
   background: #e1f5e1;
-  padding: 8px 12px;
+  padding: 6px 8px;
   border-left: 3px solid #10893e;
+  border-radius: 2px;
 }
 
 .result code {

@@ -286,7 +286,11 @@ export const DeviceSettingsExample: React.FC = () => {
           <tbody>
             {MAPPING_TABLE.map((row) => (
               <React.Fragment key={row.offset}>
-                <tr className={expandedRow === row.offset ? styles.rowExpanded : ''}>
+                <tr
+                  className={expandedRow === row.offset ? styles.rowExpanded : ''}
+                  onClick={() => toggleRow(row.offset)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <td><code>{row.offset}</code></td>
                   <td>{row.size}</td>
                   <td><strong>{row.field}</strong></td>
