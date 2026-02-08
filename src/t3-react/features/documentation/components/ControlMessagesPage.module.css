@@ -19,6 +19,7 @@
   background: transparent;
   border: none;
   border-bottom: 3px solid transparent;
+  border-radius: 0;
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
@@ -30,6 +31,7 @@
 .tab:hover {
   background: #f0f0f0;
   color: #333;
+  border-radius: 0;
 }
 
 .tabActive {
