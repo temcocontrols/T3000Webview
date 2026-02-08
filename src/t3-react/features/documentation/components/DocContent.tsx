@@ -179,7 +179,7 @@ export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
               className={`${styles.docTab} ${mode === 'example' ? styles.docTabActive : ''}`}
               onClick={() => setMode('example')}
             >
-              <span className={styles.docTabIcon}>⚡</span>
+              <span className={styles.docTabIcon}>○</span>
               <span>Example</span>
             </button>
           )}
