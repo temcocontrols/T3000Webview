@@ -5,10 +5,10 @@
  * Maps to C++ CImageTreeCtrl class
  *
  * C++ Reference (LEFT_PANEL_CPP_DESIGN.md Section 4):
- * - CImageTreeCtrl �?DeviceTree component
- * - InsertItem() �?TreeItem rendering
- * - SetItemImage() �?Icon component
- * - OnSelChanged() �?onOpenChange handler
+ * - CImageTreeCtrl DeviceTree component
+ * - InsertItem() TreeItem rendering
+ * - SetItemImage() Icon component
+ * - OnSelChanged() onOpenChange handler
  */
 
 import React, { useCallback } from 'react';

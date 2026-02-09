@@ -12,7 +12,7 @@
 
 ## 2024-11-22
 
-#### 1. Updated the “Weld Selected�?function to make the welded item resizable and moveable.
+#### 1. Updated the “Weld Selectedfunction to make the welded item resizable and moveable.
 
 ![1](./pic/2024-11-22/1.png)
 
@@ -20,11 +20,11 @@
 
 ![1](./pic/2024-11-22/2.png)
 
-#### 3. Added a new tool category “General�?with some basic shapes.
+#### 3. Added a new tool category “Generalwith some basic shapes.
 
 ![1](./pic/2024-11-22/3.png)
 
-#### 4. Added a new type of wall “Interior/Exterior Wall�?to Room tool category.
+#### 4. Added a new type of wall “Interior/Exterior Wallto Room tool category.
 
 ![1](./pic/2024-11-22/4.png)
 

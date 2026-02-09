@@ -5,9 +5,9 @@
  * Maps to C++ CImageTreeCtrl::BuildTree logic
  *
  * C++ Reference (LEFT_PANEL_CPP_DESIGN.md Section 4):
- * - CImageTreeCtrl::BuildTree() �?buildTreeFromDevices()
- * - SortByParent() �?groupByBuilding()
- * - InsertItem() �?createTreeNode()
+ * - CImageTreeCtrl::BuildTree() buildTreeFromDevices()
+ * - SortByParent() groupByBuilding()
+ * - InsertItem() createTreeNode()
  */
 
 import type { DeviceInfo, TreeNode, DeviceStatus } from '../../../types/device';

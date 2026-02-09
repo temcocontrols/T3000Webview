@@ -742,7 +742,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             gapEnd: new Date(endTime).toISOString(),
           });
         } else {
-          console.log('�?TrendChartContent: All requested data already exists in memory - skipping database load');
+          console.log('TrendChartContent: All requested data already exists in memory - skipping database load');
           setLoading(false);
           return;
         }
@@ -781,7 +781,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
       const response = await TrendChartApiService.getTrendHistory(request);
 
-      console.log('�?TrendChartContent: Historical data received', {
+      console.log('TrendChartContent: Historical data received', {
         totalRecords: response.total_records,
         dataPoints: response.data.length,
       });
@@ -819,7 +819,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       setSeries(updatedSeries);
       setDataSource('api'); // Track that data came from API
     } catch (error) {
-      console.error('�?TrendChartContent: Failed to load historical data', error);
+      console.error('TrendChartContent: Failed to load historical data', error);
     } finally {
       setLoading(false);
     }
@@ -837,7 +837,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         const inputData = props.itemData.t3Entry.input;
         const rangeData = props.itemData.t3Entry.range;
 
-        console.log('�?TrendChartContent: Initializing series from itemData', {
+        console.log('TrendChartContent: Initializing series from itemData', {
           inputCount: inputData.length,
           rangeCount: rangeData.length,
         });
@@ -876,7 +876,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         }
 
         setSeries(generatedSeries);
-        console.log('�?TrendChartContent: Series initialized from itemData', {
+        console.log('TrendChartContent: Series initialized from itemData', {
           count: generatedSeries.length,
           serialNumber,
           panelId,
@@ -924,13 +924,13 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
       setSeries(sampleSeries);
 
-      console.log('�?TrendChartContent: Series initialized', {
+      console.log('TrendChartContent: Series initialized', {
         count: sampleSeries.length,
         serialNumber,
         panelId,
       });
     } catch (error) {
-      console.error('�?TrendChartContent: Failed to initialize series', error);
+      console.error('TrendChartContent: Failed to initialize series', error);
     }
   }, [serialNumber, panelId, props.itemData]);
 
@@ -993,7 +993,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         setDataSource('realtime'); // Track that data came from real-time updates
       }
     } catch (error) {
-      console.error('�?TrendChartContent: Realtime update failed', error);
+      console.error('TrendChartContent: Realtime update failed', error);
     }
   }, [isRealtime, serialNumber, panelId, series, timeBase]);
 
@@ -1033,12 +1033,12 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       // Step 1: Initialize series from monitor config (Vue: regenerateDataSeries)
       await initializeSeries();
 
-      console.log('�?TrendChartContent: Series initialized, waiting for series state update');
+      console.log('TrendChartContent: Series initialized, waiting for series state update');
 
       // Wait for series state to be updated before loading data
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      console.log('�?TrendChartContent: Series state updated, loading historical data');
+      console.log('TrendChartContent: Series state updated, loading historical data');
 
       // Step 2: Load initial historical data (Vue: initializeData -> loadHistoricalDataFromDatabase)
       await loadHistoricalData();
@@ -1046,7 +1046,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       // Step 3: Mark as initialized
       hasLoadedInitialDataRef.current = true;
 
-      console.log('�?TrendChartContent: Initialization completed');
+      console.log('TrendChartContent: Initialization completed');
     };
 
     initializeData();
@@ -1082,7 +1082,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
     // Debounce: wait 300ms before executing
     timebaseChangeTimeoutRef.current = setTimeout(async () => {
-      console.log('�?TrendChartContent: TimeBase changed - loading data', {
+      console.log('TrendChartContent: TimeBase changed - loading data', {
         timeBase,
         isRealtime,
         seriesCount: series.length,
@@ -1097,7 +1097,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         const hasExistingData = existingRange && existingRange.totalPoints > 0;
 
         if (hasExistingData) {
-          console.log('�?TrendChartContent: Existing data found - merging with historical', {
+          console.log('TrendChartContent: Existing data found - merging with historical', {
             existingPoints: existingRange?.totalPoints,
           });
         }
@@ -1126,7 +1126,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           await loadHistoricalData();
         }
 
-        console.log('�?TrendChartContent: Timebase change completed', {
+        console.log('TrendChartContent: Timebase change completed', {
           timeBase,
           isRealtime,
           totalPoints: series.reduce((sum, s) => sum + s.data.length, 0),
@@ -1138,7 +1138,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           return;
         }
 
-        console.error('�?TrendChartContent: Error loading data for new timebase:', error);
+        console.error('TrendChartContent: Error loading data for new timebase:', error);
       }
     }, 300); // 300ms debounce delay
 

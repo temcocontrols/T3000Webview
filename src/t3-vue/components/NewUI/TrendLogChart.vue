@@ -910,7 +910,7 @@
                     ACTIVE
                   </a-tag>
                 </div>
-                <!-- <div style="font-size: 9px; color: #666;">{{ file.size }} �?{{ file.records }} records</div> -->
+                <!-- <div style="font-size: 9px; color: #666;">{{ file.size }} {{ file.records }} records</div> -->
               </div>
               <a-button size="small" type="text" danger :disabled="file.is_active"
                         @click="deleteDbFile(file.id, file.name)" style="padding: 2px 6px;"
@@ -1018,7 +1018,7 @@
             <template v-else-if="column.key === 'change'">
               <div style="font-size: 11px;">
                 <span style="color: #ff4d4f;">{{ record.old_value_display }}</span>
-                <span style="margin: 0 4px;">�?/span>
+                <span style="margin: 0 4px;">/span>
                 <span style="color: #52c41a;">{{ record.new_value_display }}</span>
               </div>
             </template>
@@ -2066,8 +2066,8 @@
           // UPDATED ITEM: Use latest config but preserve user preferences
           LogUtil.Debug(`📝 Item updated: ${newSeriesItem.name}`, {
             changes: {
-              name: existingSeries.name !== newSeriesItem.name ? `${existingSeries.name} �?${newSeriesItem.name}` : 'unchanged',
-              unitType: existingSeries.unitType !== newSeriesItem.unitType ? `${existingSeries.unitType} �?${newSeriesItem.unitType}` : 'unchanged',
+              name: existingSeries.name !== newSeriesItem.name ? `${existingSeries.name} ${newSeriesItem.name}` : 'unchanged',
+              unitType: existingSeries.unitType !== newSeriesItem.unitType ? `${existingSeries.unitType} ${newSeriesItem.unitType}` : 'unchanged',
               description: existingSeries.description !== newSeriesItem.description ? 'changed' : 'unchanged'
             }
           })
@@ -2082,7 +2082,7 @@
           }
         } else {
           // UNCHANGED ITEM: Preserve everything from existing series
-          // LogUtil.Debug(`�?Item unchanged: ${existingSeries.name}`)
+          // LogUtil.Debug(`Item unchanged: ${existingSeries.name}`)
 
           return {
             ...existingSeries,  // Keep existing series as-is
@@ -2092,7 +2092,7 @@
         }
       } else {
         // NEW ITEM: Use default settings
-        // LogUtil.Debug(`�?New item added: ${newSeriesItem.name}`)
+        // LogUtil.Debug(`New item added: ${newSeriesItem.name}`)
 
         return {
           ...newSeriesItem,  // Use new configuration with defaults
@@ -2443,7 +2443,7 @@
           // Update charts immediately with extended data
           updateCharts()
 
-          LogUtil.Info('�?Seamless timebase transition completed', {
+          LogUtil.Info('Seamless timebase transition completed', {
             newTimeBase,
             totalDataPoints: dataSeries.value.reduce((sum, series) => sum + series.data.length, 0)
           })
@@ -2469,7 +2469,7 @@
             willLoadHistorical: true
           })
         } else {
-          LogUtil.Debug('�?Existing data found - skipping loading state', {
+          LogUtil.Debug('Existing data found - skipping loading state', {
             existingDataPoints: existingDataRange.totalPoints,
             existingTimeRange: {
               start: new Date(existingDataRange.earliest).toISOString(),
@@ -2545,7 +2545,7 @@
         stopLoading()
       }
 
-      LogUtil.Info('�?Timebase change completed', {
+      LogUtil.Info('Timebase change completed', {
         newTimeBase,
         autoScrollState: isRealTime.value,
         dataSeriesCount: dataSeries.value.length,
@@ -3116,7 +3116,7 @@
     loadingTimeout.value = setTimeout(() => {
       showLoadingTimeout.value = true
       stopLoading()
-      LogUtil.Warn('�?Loading timeout reached after 30 seconds')
+      LogUtil.Warn('Loading timeout reached after 30 seconds')
     }, loadingTimeoutDuration)
   }
 
@@ -4526,7 +4526,7 @@
     })
 
     if (!monitorId) {
-      LogUtil.Warn('�?getMonitorConfigFromT3000Data: No monitor ID available', {
+      LogUtil.Warn('getMonitorConfigFromT3000Data: No monitor ID available', {
         currentItemData: currentItemData.value,
         propsItemData: props.itemData
       })
@@ -4534,7 +4534,7 @@
     }
 
     if (!panelId && panelId !== 0) {
-      LogUtil.Warn('�?getMonitorConfigFromT3000Data: No panel ID available', {
+      LogUtil.Warn('getMonitorConfigFromT3000Data: No panel ID available', {
         monitorId,
         panelId,
         currentItemData: currentItemData.value
@@ -4780,7 +4780,7 @@
       // Use the reactive monitor config
       const monitorConfigData = monitorConfig.value
       if (!monitorConfigData) {
-        LogUtil.Error('�?fetchRealTimeMonitorData: No monitor config available')
+        LogUtil.Error('fetchRealTimeMonitorData: No monitor config available')
         if (!hasExistingData) stopLoading()
         return []
       }
@@ -4797,7 +4797,7 @@
       }
 
       if (!panelsDataReady) {
-        LogUtil.Error('�?fetchRealTimeMonitorData: Timeout waiting for panels data', {
+        LogUtil.Error('fetchRealTimeMonitorData: Timeout waiting for panels data', {
           waitTimeout: '5000ms',
           currentPanelsDataLength: T3000_Data.value.panelsData?.length || 0,
           T3000DataExists: !!T3000_Data.value
@@ -4816,7 +4816,7 @@
       })
 
       if (!dataClient) {
-        LogUtil.Error('�?fetchRealTimeMonitorData: Failed to initialize data client')
+        LogUtil.Error('fetchRealTimeMonitorData: Failed to initialize data client')
         return []
       }
 
@@ -4987,12 +4987,12 @@
           // Send one request with all items
           dataClient.GetEntries(config.panelId, null, batchRequestData)
 
-          LogUtil.Info('�?BATCH GET_ENTRIES request sent successfully', {
+          LogUtil.Info('BATCH GET_ENTRIES request sent successfully', {
             panelId: config.panelId,
             itemCount: batchRequestData.length
           })
         } catch (error) {
-          LogUtil.Error('�?Error sending batch GET_ENTRIES request:', error)
+          LogUtil.Error('Error sending batch GET_ENTRIES request:', error)
         }
       }
 
@@ -5018,7 +5018,7 @@
       return results
 
     } catch (error) {
-      LogUtil.Error('�?Error in fetchAllItemsDataBatch:', error)
+      LogUtil.Error('Error in fetchAllItemsDataBatch:', error)
       return []
     }
   }
@@ -5050,7 +5050,7 @@
       // Get panelId from query parameters (most reliable)
       const currentPanelId = getPanelIdFromQuery()
       if (!currentPanelId) {
-        LogUtil.Error('�?sendGetEntitiesForDataSeries: No panelId from query parameters')
+        LogUtil.Error('sendGetEntitiesForDataSeries: No panelId from query parameters')
         return
       }
 
@@ -5059,14 +5059,14 @@
       const currentPanelData = panelsData.filter(panel => String(panel.pid) === String(currentPanelId))
 
       if (!currentPanelData || currentPanelData.length === 0) {
-        LogUtil.Debug('�?sendGetEntitiesForDataSeries: No panel data available for panelId', { currentPanelId })
+        LogUtil.Debug('sendGetEntitiesForDataSeries: No panel data available for panelId', { currentPanelId })
         return
       }
 
       // Initialize data client
       const dataClient = initializeDataClients()
       if (!dataClient) {
-        LogUtil.Debug('�?sendGetEntitiesForDataSeries: No data client available')
+        LogUtil.Debug('sendGetEntitiesForDataSeries: No data client available')
         return
       }
 
@@ -5101,7 +5101,7 @@
       })
 
       if (batchRequestData.length === 0) {
-        LogUtil.Warn('�?sendGetEntitiesForDataSeries: No valid items for batch request')
+        LogUtil.Warn('sendGetEntitiesForDataSeries: No valid items for batch request')
         return
       }
 
@@ -5117,7 +5117,7 @@
         LogUtil.Error('❌ sendGetEntitiesForDataSeries: GetLoggingData method not available')
       }
     } catch (error) {
-      LogUtil.Error('�?sendGetEntitiesForDataSeries: Error in dataseries fallback mode:', error)
+      LogUtil.Error('sendGetEntitiesForDataSeries: Error in dataseries fallback mode:', error)
     }
   }
 
@@ -5665,16 +5665,16 @@
         // - Your test: GetEntries(undefined, undefined, [testRequest])
         dataClient.GetEntries(panelId, null, requestData)
 
-        LogUtil.Info('�?TrendLogChart: GetEntries request sent with CORRECT format', {
+        LogUtil.Info('TrendLogChart: GetEntries request sent with CORRECT format', {
           panelId,
           viewitem: null,
           requestData
         })
       } catch (error) {
-        LogUtil.Error('�?Error calling GetEntries:', error)
+        LogUtil.Error('Error calling GetEntries:', error)
       }
     } else {
-      LogUtil.Error('�?GetEntries method not available on data client')
+      LogUtil.Error('GetEntries method not available on data client')
     }
   }
 
@@ -5695,7 +5695,7 @@
       // CORRECT FORMAT: GetEntries(panelId?, viewitem?, data?)
       dataClient.GetEntries(primaryPanelId, null, requests)
     } else {
-      LogUtil.Error('�?No GetEntries method available on data client')
+      LogUtil.Error('No GetEntries method available on data client')
     }
   }
 
@@ -5806,7 +5806,7 @@
       }
     }
 
-    LogUtil.Info('�?Custom HandleGetEntriesRes handler setup complete', {
+    LogUtil.Info('Custom HandleGetEntriesRes handler setup complete', {
       handlerOverridden: typeof dataClient.HandleGetEntriesRes === 'function',
       hasOriginalHandler: typeof originalHandler === 'function',
       timestamp: new Date().toISOString()
@@ -5862,7 +5862,7 @@
     }
 
     // Page became visible - user returned
-    LogUtil.Info('�?TrendLogChart: Page visible - user returned, checking for data gaps', {
+    LogUtil.Info('TrendLogChart: Page visible - user returned, checking for data gaps', {
       isRealTime: isRealTime.value,
       hasData: dataSeries.value.length > 0,
       timestamp: new Date().toISOString()
@@ -5886,7 +5886,7 @@
       const now = Date.now()
       const gapSeconds = Math.floor((now - lastTimestamp) / 1000)
 
-      LogUtil.Info('�?TrendLogChart: Detected data gap', {
+      LogUtil.Info('TrendLogChart: Detected data gap', {
         lastTimestamp: new Date(lastTimestamp).toISOString(),
         now: new Date(now).toISOString(),
         gapSeconds,
@@ -5968,7 +5968,7 @@
           series.data = Array.from(uniqueData.values())
             .sort((a, b) => a.timestamp - b.timestamp)
 
-          LogUtil.Debug('�?Backfilled data for series', {
+          LogUtil.Debug('Backfilled data for series', {
             seriesName: series.name,
             newPoints: newDataPoints.length,
             totalPoints: series.data.length
@@ -6740,7 +6740,7 @@
         */
 
       if (!currentSN) {
-        LogUtil.Warn('�?No serial number available for data storage', {
+        LogUtil.Warn('No serial number available for data storage', {
           panelsList: panelsList.slice(0, 2),
           T3000DataExists: !!T3000_Data.value
         })
@@ -6878,7 +6878,7 @@
         const rowsAffected = await trendlogAPI.saveRealtimeBatch(realtimeDataPoints)
 
         /*
-        LogUtil.Info(`�?Successfully stored ${rowsAffected} real-time data points`, {
+        LogUtil.Info(`Successfully stored ${rowsAffected} real-time data points`, {
           pointsCount: realtimeDataPoints.length,
           rowsAffected,
           serialNumber: currentSN,
@@ -6906,7 +6906,7 @@
       filteredDataCount: filteredCount,
       chartSeriesCount: chartSeriesCount,
       reductionRatio: filteredCount > 0 ? `${((filteredCount / originalCount) * 100).toFixed(1)}%` : '0%',
-      expectedRange: `�?${chartSeriesCount} items`,
+      expectedRange: `${chartSeriesCount} items`,
       isReasonableFilter: filteredCount > 0 && filteredCount <= chartSeriesCount && filteredCount < originalCount,
       message: filteredCount === 0 ? 'No matches found - check filtering logic' :
         filteredCount > chartSeriesCount ? 'More items than chart series - check filtering logic' :
@@ -6983,7 +6983,7 @@
           const extractedNumber = match[3]
           const extractedId = `${extractedPrefix}${extractedNumber}`
 
-          console.warn(`🔧 FIX: Reconstructing missing properties for series ${seriesIndex}:`, {
+          LogUtil.Debug(`🔧 FIX: Reconstructing missing properties for series ${seriesIndex}:`, {
             originalName: series.name,
             itemType: series.itemType,
             extractedPanelId,
@@ -6996,7 +6996,7 @@
           series.id = extractedId
           series.panelId = extractedPanelId
         } else {
-          console.error(`❌ CRITICAL: Cannot parse itemType for series ${seriesIndex}:`, {
+          LogUtil.Error(`❌ CRITICAL: Cannot parse itemType for series ${seriesIndex}:`, {
             seriesName: series.name,
             itemType: series.itemType,
             prefix: series.prefix,
@@ -7009,7 +7009,7 @@
 
       // Skip empty series that don't have matching criteria
       if (!series.id || !series.panelId) {
-        console.error(`❌ CRITICAL: Series ${seriesIndex} STILL missing id or panelId after fix attempt!`, {
+        LogUtil.Error(`❌ CRITICAL: Series ${seriesIndex} STILL missing id or panelId after fix attempt!`, {
           seriesName: series.name,
           itemType: series.itemType,
           id: series.id,
@@ -7156,7 +7156,7 @@
       matched++
 
       /*
-      LogUtil.Debug(`�?Matched series ${series.name}`, {
+      LogUtil.Debug(`Matched series ${series.name}`, {
         matchedItem: {
           id: matchedItem.id,
           pid: matchedItem.pid,
@@ -7209,7 +7209,7 @@
   const checkDataReuseOptimization = async (oldTimeBase: string, newTimeBase: string): Promise<boolean> => {
     // Only optimize for real-time mode (5m) or when time offset is 0 (current time view)
     if (!isRealTime.value && timeOffset.value !== 0) {
-      LogUtil.Debug('�?Cannot optimize: Not real-time and has time offset', { timeOffset: timeOffset.value })
+      LogUtil.Debug('Cannot optimize: Not real-time and has time offset', { timeOffset: timeOffset.value })
       return false
     }
 
@@ -7218,28 +7218,28 @@
     const newMinutes = getTimeRangeMinutes(newTimeBase)
 
     if (newMinutes <= oldMinutes) {
-      LogUtil.Debug('�?Cannot optimize: New timebase is not longer', { oldMinutes, newMinutes })
+      LogUtil.Debug('Cannot optimize: New timebase is not longer', { oldMinutes, newMinutes })
       return false
     }
 
     // Must have existing data to reuse
     const hasExistingData = dataSeries.value.some(series => series.data && series.data.length > 0)
     if (!hasExistingData) {
-      LogUtil.Debug('�?Cannot optimize: No existing data to reuse')
+      LogUtil.Debug('Cannot optimize: No existing data to reuse')
       return false
     }
 
-    // Only optimize for simple progression (e.g., 5m�?0m, 10m�?0m, 30m�?h, etc.)
+    // Only optimize for simple progression (e.g., 5m0m, 10m0m, 30mh, etc.)
     const timebaseProgression = ['5m', '10m', '30m', '1h', '4h', '12h', '1d', '4d']
     const oldIndex = timebaseProgression.indexOf(oldTimeBase)
     const newIndex = timebaseProgression.indexOf(newTimeBase)
 
     if (oldIndex === -1 || newIndex === -1 || newIndex !== oldIndex + 1) {
-      LogUtil.Debug('�?Cannot optimize: Not a simple progression', { oldTimeBase, newTimeBase, oldIndex, newIndex })
+      LogUtil.Debug('Cannot optimize: Not a simple progression', { oldTimeBase, newTimeBase, oldIndex, newIndex })
       return false
     }
 
-    LogUtil.Info('�?Data reuse optimization possible', {
+    LogUtil.Info('Data reuse optimization possible', {
       oldTimeBase,
       newTimeBase,
       oldMinutes,
@@ -7286,7 +7286,7 @@
       const { sn: currentSN, panel_id: currentPanelId } = deviceParams
 
       if (!currentSN || !currentPanelId) {
-        LogUtil.Warn('�?loadHistoricalDataGap: Missing device parameters')
+        LogUtil.Warn('loadHistoricalDataGap: Missing device parameters')
         return
       }
 
@@ -7309,7 +7309,7 @@
       })
 
       if (specificPoints.length === 0) {
-        LogUtil.Warn('�?loadHistoricalDataGap: No points to load gap for')
+        LogUtil.Warn('loadHistoricalDataGap: No points to load gap for')
         return
       }
 
@@ -7352,7 +7352,7 @@
         // Process and prepend gap data to existing series
         processAndPrependGapData(gapDataResponse.data)
 
-        LogUtil.Info('�?Gap data successfully loaded and merged', {
+        LogUtil.Info('Gap data successfully loaded and merged', {
           gapDataPoints: gapDataResponse.data.length,
           totalDataPointsAfter: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
         })
@@ -7361,7 +7361,7 @@
       }
 
     } catch (error) {
-      LogUtil.Error('�?Error loading historical data gap:', error)
+      LogUtil.Error('Error loading historical data gap:', error)
       // Don't throw - fall back to showing existing data
     }
   }
@@ -7780,13 +7780,13 @@
     // Create single chart for all digital series
     const canvas = digitalChartCanvas.value
     if (!canvas) {
-      console.warn('= TLChart createDigitalCharts - Canvas ref not available')
+      LogUtil.Debug('= TLChart createDigitalCharts - Canvas ref not available')
       return
     }
 
     const ctx = canvas.getContext('2d')
     if (!ctx) {
-      console.error('= TLChart createDigitalCharts - Failed to get 2D context')
+      LogUtil.Error('= TLChart createDigitalCharts - Failed to get 2D context')
       return
     }
 
@@ -7795,7 +7795,7 @@
       digitalChartInstance = new Chart(ctx, config)
       LogUtil.Info(`= TLChart DataFlow: Combined digital chart created for ${visibleDigitalSeries.value.length} series`)
     } catch (error) {
-      console.error('= TLChart createDigitalCharts - Error creating chart:', error)
+      LogUtil.error('= TLChart createDigitalCharts - Error creating chart:', error)
     }
   }
 
@@ -8830,18 +8830,18 @@
 
     // Apply series visibility based on view
     if (viewNumber === 1) {
-      // View 1: Show all items (UNCHANGED LOGIC) �?
+      // View 1: Show all items (UNCHANGED LOGIC)
       dataSeries.value.forEach(series => {
         series.visible = true
       })
 
-      LogUtil.Info(`�?Set View: View 1 activated - showing all items`, {
+      LogUtil.Info(`Set View: View 1 activated - showing all items`, {
         totalSeries: dataSeries.value.length,
         visibleSeries: dataSeries.value.length,
         behavior: 'AUTO_SHOW_ALL'
       })
     } else {
-      // View 2 & 3: Show only user selected items with FFI persistence �?
+      // View 2 & 3: Show only user selected items with FFI persistence
       const trackedItems = viewTrackedSeries.value[viewNumber] || []
 
       LogUtil.Info(`🔍 Set View: Processing View ${viewNumber} selections`, {
@@ -8922,7 +8922,7 @@
         series.visible = activeTrackedItems.includes(series.name)
 
         if (wasVisible !== series.visible) {
-          LogUtil.Debug(`👁�?Set View: Series visibility changed`, {
+          LogUtil.Debug(`👁Set View: Series visibility changed`, {
             seriesName: series.name,
             from: wasVisible,
             to: series.visible,
@@ -8933,7 +8933,7 @@
 
       const finalVisibleSeries = dataSeries.value.filter(s => s.visible)
 
-      LogUtil.Info(`�?Set View: View ${viewNumber} applied successfully`, {
+      LogUtil.Info(`Set View: View ${viewNumber} applied successfully`, {
         viewNumber,
         selectionSource: ffiTrackedNames.length > 0 ? 'FFI_DATABASE' : 'LOCAL_MEMORY',
         ffiSelectionsCount: ffiSelections.length,
@@ -9004,7 +9004,7 @@
   // Item tracking functions for View 2 & 3 - 🐛 FIXED: Made async to prevent race conditions
   const toggleItemTracking = async (seriesName: string) => {
     if (isSavingSelections.value) {
-      LogUtil.Info(`�?Toggle Item Tracking: Already saving, skipping duplicate request for "${seriesName}"`)
+      LogUtil.Info(`Toggle Item Tracking: Already saving, skipping duplicate request for "${seriesName}"`)
       return
     }
 
@@ -9044,7 +9044,7 @@
 
       afterTracked = viewTrackedSeries.value[currentView.value]
 
-      LogUtil.Info(`�?Toggle Item Tracking: Updated tracking state`, {
+      LogUtil.Info(`Toggle Item Tracking: Updated tracking state`, {
         seriesName,
         currentView: currentView.value,
         action: wasTracked ? 'removed' : 'added',
@@ -9062,7 +9062,7 @@
 
       await saveViewTracking(currentView.value, viewTrackedSeries.value[currentView.value])
 
-      LogUtil.Info(`�?Toggle Item Tracking: Database save completed`, {
+      LogUtil.Info(`Toggle Item Tracking: Database save completed`, {
         seriesName,
         currentView: currentView.value,
         dbSaveSuccessful: true
@@ -9072,7 +9072,7 @@
       setView(currentView.value)
 
     } catch (error) {
-      LogUtil.Error(`�?Toggle Item Tracking: Database save failed`, {
+      LogUtil.Error(`Toggle Item Tracking: Database save failed`, {
         seriesName,
         currentView: currentView.value,
         error: error.message,
@@ -9100,7 +9100,7 @@
 
     const beforeCount = (viewTrackedSeries.value[currentView.value] || []).length
 
-    LogUtil.Info(`🗑�?Clear All Tracking: Clearing all selections for View ${currentView.value}`, {
+    LogUtil.Info(`🗑Clear All Tracking: Clearing all selections for View ${currentView.value}`, {
       currentView: currentView.value,
       beforeCount,
       action: 'CLEAR_ALL',
@@ -9113,20 +9113,20 @@
       viewTrackedSeries.value[currentView.value] = []
 
       await saveViewTracking(currentView.value, [])
-      LogUtil.Info(`�?Clear All Tracking: Database cleared successfully`, {
+      LogUtil.Info(`Clear All Tracking: Database cleared successfully`, {
         currentView: currentView.value,
         dbClearSuccessful: true
       })
 
       setView(currentView.value)
 
-      LogUtil.Info(`�?Clear All Tracking: All selections cleared`, {
+      LogUtil.Info(`Clear All Tracking: All selections cleared`, {
         currentView: currentView.value,
         clearedCount: beforeCount,
         finalState: []
       })
     } catch (error) {
-      LogUtil.Error(`�?Clear All Tracking: Database clear failed`, {
+      LogUtil.Error(`Clear All Tracking: Database clear failed`, {
         currentView: currentView.value,
         error: error.message
       })
@@ -9159,20 +9159,20 @@
       viewTrackedSeries.value[currentView.value] = [...allSeriesNames]
 
       await saveViewTracking(currentView.value, allSeriesNames)
-      LogUtil.Info(`�?Select All Items: Database save successful`, {
+      LogUtil.Info(`Select All Items: Database save successful`, {
         currentView: currentView.value,
         dbSaveSuccessful: true
       })
 
       setView(currentView.value)
 
-      LogUtil.Info(`�?Select All Items: All items selected`, {
+      LogUtil.Info(`Select All Items: All items selected`, {
         currentView: currentView.value,
         selectedCount: allSeriesNames.length,
         finalState: allSeriesNames
       })
     } catch (error) {
-      LogUtil.Error(`�?Select All Items: Database save failed`, {
+      LogUtil.Error(`Select All Items: Database save failed`, {
         currentView: currentView.value,
         error: error.message
       })
@@ -9211,7 +9211,7 @@
     saveViewTracking(currentView.value, viewTrackedSeries.value[currentView.value])
     setView(currentView.value)
 
-    LogUtil.Info(`�?Apply Selection: View ${currentView.value} changes applied successfully`, {
+    LogUtil.Info(`Apply Selection: View ${currentView.value} changes applied successfully`, {
       finalSelectedCount: selectedItems.length
     })
   }
@@ -9465,7 +9465,7 @@
     const currentTracked = viewTrackedSeries.value[currentView.value] || []
     const wasTracked = currentTracked.includes(seriesName)
 
-    LogUtil.Info(`🗑�?Remove From Tracking: Removing "${seriesName}" from View ${currentView.value}`, {
+    LogUtil.Info(`🗑Remove From Tracking: Removing "${seriesName}" from View ${currentView.value}`, {
       seriesName,
       currentView: currentView.value,
       wasTracked,
@@ -9480,7 +9480,7 @@
       viewTrackedSeries.value[currentView.value] = currentTracked.filter(name => name !== seriesName)
       const afterTracked = viewTrackedSeries.value[currentView.value]
 
-      LogUtil.Info(`�?Remove From Tracking: Item removed successfully`, {
+      LogUtil.Info(`Remove From Tracking: Item removed successfully`, {
         seriesName,
         currentView: currentView.value,
         afterCount: afterTracked.length,
@@ -9494,7 +9494,7 @@
         // Apply visibility after save
         setView(currentView.value)
       } catch (error) {
-        LogUtil.Error(`�?Remove From Tracking: Failed to save changes`, {
+        LogUtil.Error(`Remove From Tracking: Failed to save changes`, {
           seriesName,
           currentView: currentView.value,
           error: error.message
@@ -9524,7 +9524,7 @@
         await saveFFIViewSelections(viewNumber)
 
         const saveTime = Date.now() - saveStartTime
-        LogUtil.Info(`�?Save View Tracking: View ${viewNumber} selections saved successfully`, {
+        LogUtil.Info(`Save View Tracking: View ${viewNumber} selections saved successfully`, {
           viewNumber,
           trackedSeries,
           count: trackedSeries.length,
@@ -9541,7 +9541,7 @@
       }
     } catch (error) {
       const saveTime = Date.now() - saveStartTime
-      LogUtil.Error(`�?Save View Tracking: Failed to save view ${viewNumber} tracking`, {
+      LogUtil.Error(`Save View Tracking: Failed to save view ${viewNumber} tracking`, {
         viewNumber,
         trackedSeries,
         error: error.message,
@@ -9558,7 +9558,7 @@
       // This function is kept for compatibility but the real loading happens in FFI init
       LogUtil.Info('📋 View tracking loaded via FFI integration during initialization')
     } catch (error) {
-      LogUtil.Error('�?Failed to load view tracking:', error)
+      LogUtil.Error('Failed to load view tracking:', error)
     }
   }
 
@@ -10143,7 +10143,7 @@
         return !isNaN(panelId) ? panelId : null
       }
     } catch (error) {
-      LogUtil.Warn('�?getPanelIdFromQuery: Failed to parse panel_id from route', {
+      LogUtil.Warn('getPanelIdFromQuery: Failed to parse panel_id from route', {
         error,
         queryPanelId: route.query.panel_id
       })
@@ -10255,7 +10255,7 @@
         }
         // Method 2: Fallback to parsing itemType if pointType/pointNumber not available
         else {
-          console.warn('⚠️ Series missing pointType/pointNumber, using itemType fallback:', series.name)
+          LogUtil.Debug('⚠️ Series missing pointType/pointNumber, using itemType fallback:', series.name)
           const itemType = series.itemType || `${deviceParams.panel_id}VAR${index + 1}`
           const panelMatch = itemType.match(/^(\d+)/)
           const panelId = panelMatch ? parseInt(panelMatch[1]) : deviceParams.panel_id || 2
@@ -10317,7 +10317,7 @@
         }
 
       } catch (error) {
-        console.warn('= TLChart DataFlow: Failed to extract point info for item', index, ':', error)
+        LogUtil.Debug('= TLChart DataFlow: Failed to extract point info for item', index, ':', error)
         // Add fallback point with database-compatible format
         const deviceParams = extractDeviceParameters()
         points.push({
@@ -10477,7 +10477,7 @@
       }
 
     } catch (error) {
-      console.error('= TLChart DataFlow: API request failed:', error instanceof Error ? error.message : error)
+      LogUtil.Error('= TLChart DataFlow: API request failed:', error instanceof Error ? error.message : error)
       hasConnectionError.value = true
       // Clear all data when connection error occurs
       dataSeries.value = []
@@ -10666,7 +10666,7 @@
     // LogUtil.Debug('🔥 FFI DEBUG: Extracted parameters', { sn, panel_id, trendlog_id, route_query: route.query })
 
     if (!sn || trendlog_id === null || trendlog_id === undefined) {
-      LogUtil.Warn('�?FFI Initialization: Missing required parameters', { sn, panel_id, trendlog_id })
+      LogUtil.Warn('FFI Initialization: Missing required parameters', { sn, panel_id, trendlog_id })
       LogUtil.Debug('🔥 FFI DEBUG: Early return due to missing parameters')
       return
     }
@@ -10702,7 +10702,7 @@
         ffiSyncStatus.value.completed = true
         ffiSyncStatus.value.lastSync = new Date().toISOString()
 
-        LogUtil.Info('�?FFI: Complete TrendLog initialization successful', {
+        LogUtil.Info('FFI: Complete TrendLog initialization successful', {
           initial_info: completeResult.initial?.trendlog_info,
           ffi_info: completeResult.ffi?.trendlog_info,
           num_points: ffiTrendlogInfo.value?.related_points?.length || 0
@@ -10718,7 +10718,7 @@
       }
 
     } catch (error) {
-      LogUtil.Error('�?FFI: Sync failed', error)
+      LogUtil.Error('FFI: Sync failed', error)
       ffiSyncStatus.value.error = error.message
 
       // Continue with existing logic as fallback
@@ -10793,7 +10793,7 @@
               )
 
               if (matchingSeries) {
-                LogUtil.Debug(`�?FFI Load: Found matching series by type/index`, {
+                LogUtil.Debug(`FFI Load: Found matching series by type/index`, {
                   selection,
                   matchedSeries: {
                     name: matchingSeries.name,
@@ -10830,7 +10830,7 @@
 
           viewTrackedSeries.value[viewNum] = trackedNames
 
-          LogUtil.Info(`�?FFI Load API: View ${viewNum} selections processed successfully`, {
+          LogUtil.Info(`FFI Load API: View ${viewNum} selections processed successfully`, {
             totalSelections: selections.length,
             selectedCount: selections.filter(s => s.is_selected).length,
             mappedNamesCount: trackedNames.length,
@@ -10853,7 +10853,7 @@
       }
 
       const totalLoadTime = Date.now() - loadStartTime
-      LogUtil.Info(`�?FFI Load API: Completed loading all view selections`, {
+      LogUtil.Info(`FFI Load API: Completed loading all view selections`, {
         totalTime: `${totalLoadTime}ms`,
         viewsProcessed: [2, 3],
         finalState: {
@@ -10878,7 +10878,7 @@
 
     } catch (error) {
       const totalLoadTime = Date.now() - loadStartTime
-      LogUtil.Error(`�?FFI Load API: Failed to load view selections`, {
+      LogUtil.Error(`FFI Load API: Failed to load view selections`, {
         error: error.message,
         errorType: error.constructor.name,
         totalTime: `${totalLoadTime}ms`,
@@ -11038,7 +11038,7 @@
 
       if (success) {
         viewSelections.value.set(viewNumber, selections)
-        LogUtil.Info(`�?FFI Save API: View ${viewNumber} selections saved successfully`, {
+        LogUtil.Info(`FFI Save API: View ${viewNumber} selections saved successfully`, {
           count: selections.length,
           responseTime: `${responseTime}ms`,
           savedSelections: selections.map(s => ({
@@ -11054,7 +11054,7 @@
       }
     } catch (error) {
       const responseTime = Date.now() - startTime
-      LogUtil.Error(`�?FFI Save API: Failed to save View ${viewNumber} selections`, {
+      LogUtil.Error(`FFI Save API: Failed to save View ${viewNumber} selections`, {
         error: error.message,
         errorType: error.constructor.name,
         responseTime: `${responseTime}ms`,
@@ -11382,7 +11382,7 @@
 
       message.success('PNG exported')
     } catch (error) {
-      console.error('Error exporting PNG:', error)
+      LogUtil.Error('Error exporting PNG:', error)
       message.error('PNG export failed')
     }
   }
@@ -11503,7 +11503,7 @@
 
       message.success('JPG exported')
     } catch (error) {
-      console.error('Error exporting JPG:', error)
+      LogUtil.Error('Error exporting JPG:', error)
       message.error('JPG export failed')
     }
   }
@@ -11949,10 +11949,10 @@
                 LogUtil.Debug('✅ startRealTimeUpdates() returned successfully')
                 LogUtil.Debug('  - realtimeInterval is now:', realtimeInterval)
               } catch (error) {
-                console.error('❌ ERROR calling startRealTimeUpdates():', error)
+                LogUtil.Error('❌ ERROR calling startRealTimeUpdates():', error)
               }
             } else {
-              console.warn('⚠️ NO MATCHING MONITOR FOUND IN ACTION 0 RESPONSE')
+              LogUtil.Debug('⚠️ NO MATCHING MONITOR FOUND IN ACTION 0 RESPONSE')
               LogUtil.Debug('  - Searched for trendlog_id:', urlTrendlogId, '(index:', urlTrendlogId, ')')
               LogUtil.Debug('  - Total monitors returned:', action0Response.data?.filter((d: any) => d.type === 'MON').length)
               LogUtil.Debug('  - Available monitors (FULL DATA):')
@@ -11972,13 +11972,13 @@
             }
           }
         } catch (error) {
-          console.error('❌ ACTION 0 CALL FAILED')
-          console.error('  - Error:', error)
+          LogUtil.Error('❌ ACTION 0 CALL FAILED')
+          LogUtil.Error('  - Error:', error)
           LogUtil.Debug('  - Using DEFAULT interval: 15 seconds (15000 ms)')
           LogUtil.Debug('═══════════════════════════════════════════════════════════════')
         }
       } else {
-        console.warn('⚠️ NO PANEL_ID IN URL')
+        LogUtil.Debug('⚠️ NO PANEL_ID IN URL')
         LogUtil.Debug('  - Cannot call Action 0 without panel_id')
         LogUtil.Debug('  - Using DEFAULT interval: 15 seconds (15000 ms)')
         LogUtil.Debug('═══════════════════════════════════════════════════════════════')
@@ -11998,7 +11998,7 @@
         // 🆕 FIX: Set monitorConfig BEFORE regenerating dataseries to prevent race condition
         monitorConfig.value = monitorConfigData
 
-        LogUtil.Info('�?TrendLogChart: Monitor config set, regenerating dataseries for consistency', {
+        LogUtil.Info('TrendLogChart: Monitor config set, regenerating dataseries for consistency', {
           hasMonitorConfig: !!monitorConfig.value,
           monitorConfigPid: monitorConfig.value?.pid,
           inputItemsCount: monitorConfig.value?.inputItems?.length || 0
@@ -12015,7 +12015,7 @@
         const ffiInfo = await initializeWithCompleteFFI()
 
         if (ffiInfo) {
-          LogUtil.Info('�?TrendLogChart: FFI integration completed', {
+          LogUtil.Info('TrendLogChart: FFI integration completed', {
             ffiInfo,
             hasViewSelections: viewSelections.value.size > 0
           })
@@ -12024,7 +12024,7 @@
         // Initialize data clients
         initializeDataClients()
 
-        LogUtil.Info('�?TrendLogChart: Initialization completed successfully', {
+        LogUtil.Info('TrendLogChart: Initialization completed successfully', {
           finalDataSeriesCount: dataSeries.value.length,
           finalMonitorConfigReady: !!monitorConfig.value,
           finalPanelId: monitorConfig.value?.pid
@@ -12035,7 +12035,7 @@
         // hasConnectionError.value = true // Removed - keep loading instead
       }
     } catch (error) {
-      LogUtil.Error('�?TrendLogChart: Initialization failed:', error)
+      LogUtil.Error('TrendLogChart: Initialization failed:', error)
       // Only show connection error for actual errors, not missing data during startup
       if (error.message && !error.message.includes('timeout')) {
         hasConnectionError.value = true
@@ -12647,9 +12647,9 @@
     document.removeEventListener('keydown', handleKeydown)
     LogUtil.Info('⌨️ Keyboard: Navigation system cleanup completed')
 
-    // �?Cleanup visibility change listener
+    // Cleanup visibility change listener
     document.removeEventListener('visibilitychange', handleVisibilityChange)
-    LogUtil.Info('�?Continuous monitoring: Cleanup completed')
+    LogUtil.Info('Continuous monitoring: Cleanup completed')
 
     // Cleanup FFI countdown timer
     if (ffiCountdownTimer) {
