@@ -898,6 +898,55 @@ export const DeviceSettingsExample: React.FC = () => {
     return `[${bytes.join(', ')}]`;
   };
 
+  // Get tooltip for specific field values
+  const getValueTooltip = (row: MappingRow): string | undefined => {
+    // Mini Type (byte 19) - show module name mapping
+    if (row.offset === 19 && row.field === 'Mini Type') {
+      const miniType = SAMPLE_DATA[19];
+      const moduleNames: { [key: number]: string } = {
+        0: 'CM5',
+        1: 'T3-BB (Asix)', 2: 'T3-LB (Asix)', 3: 'T3-TB (Asix)', 4: 'T3-TB (Asix)',
+        5: 'T3-BB', 6: 'T3-LB', 7: 'T3-TB', 8: 'T3-Nano',
+        9: 'TSTAT10', 11: 'T3-OEM', 12: 'T3-TB-11I',
+        13: 'T3-FAN-MODULE', 14: 'T3-OEM-12I', 15: 'T3-AIRLAB',
+        16: 'T3-ESP-TRANSDUCER', 17: 'T3-ESP-TSTAT9', 18: 'T3-ESP-SAUTER',
+        19: 'T3-RMC', 21: 'T3-ESP-LW', 22: 'T3-NG2',
+        26: 'T3-3IIC', 43: 'T322AI', 44: 'T38AI8AO6DO',
+      };
+      const moduleName = moduleNames[miniType];
+      if (moduleName) {
+        return `Module Type: ${moduleName}
+
+All Module Type Mappings:
+  0  = CM5
+  1  = T3-BB (Asix)
+  2  = T3-LB (Asix)
+  3  = T3-TB (Asix)
+  4  = T3-TB (Asix)
+  5  = T3-BB
+  6  = T3-LB
+  7  = T3-TB
+  8  = T3-Nano
+  9  = TSTAT10
+  11 = T3-OEM
+  12 = T3-TB-11I
+  13 = T3-FAN-MODULE
+  14 = T3-OEM-12I
+  15 = T3-AIRLAB
+  16 = T3-ESP-TRANSDUCER
+  17 = T3-ESP-TSTAT9
+  18 = T3-ESP-SAUTER
+  19 = T3-RMC
+  21 = T3-ESP-LW
+  22 = T3-NG2
+  26 = T3-3IIC
+  43 = T322AI
+  44 = T38AI8AO6DO`;
+      }
+    }
+    return undefined;
+  };
+
   return (
     <div className={styles.container}>
       <h2 className={styles.title}>Device Settings Example</h2>
@@ -959,7 +1008,14 @@ export const DeviceSettingsExample: React.FC = () => {
                   <td><span className={styles.format}>{row.format}</span></td>
                   <td><code className={styles.codeSmall}>{row.cppField}</code></td>
                   <td><code className={styles.codeSmall}>{row.frontField}</code></td>
-                  <td><strong>{getActualValue(row)}</strong></td>
+                  <td>
+                    <strong
+                      title={getValueTooltip(row)}
+                      style={getValueTooltip(row) ? { cursor: 'help', textDecoration: 'underline dotted' } : undefined}
+                    >
+                      {getActualValue(row)}
+                    </strong>
+                  </td>
                   <td>
                     <div style={{ display: 'flex', gap: '4px' }}>
                       <button

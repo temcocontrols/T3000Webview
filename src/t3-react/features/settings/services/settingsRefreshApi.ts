@@ -127,6 +127,7 @@ export interface DeviceSettings {
   // Metadata (not from C++ structure)
   serialNumber: number;               // For compatibility
   lastUpdated: string;                // ISO timestamp
+  MiniTypeName?: string;              // Friendly name for mini_type (computed field)
 }
 
 export interface RefreshResult {
@@ -335,14 +336,33 @@ export class SettingsRefreshApi {
 
     // Helper to get device name from mini_type
     const getMiniTypeName = (miniType: number): string => {
-      const deviceType = miniType & 0x3F;
-      const deviceNames: { [key: number]: string } = {
-        0: 'T3-8O', 1: 'T3-32I', 2: 'T3-8I13O', 3: 'T3-16I/O',
-        4: 'T3-BBA', 5: 'T3-BB', 6: 'T3-TB', 7: 'T3-LC',
-        8: 'T3-LB', 9: 'T3-3I0A', 10: 'T3-4O', 11: 'T3-SV6',
-        12: 'T3-6I/O', 13: 'T3-MUR1'
+      const mapping: { [key: number]: string } = {
+        0: 'CM5',
+        1: 'T3-BB',
+        2: 'T3-LB',
+        3: 'T3-TB',
+        4: 'T3-TB',
+        5: 'T3-BB',      // MINIPANELARM
+        6: 'T3-LB',      // MINIPANELARM_LB
+        7: 'T3-TB',      // MINIPANELARM_TB
+        8: 'T3-Nano',    // MINIPANELARM_NB
+        9: 'TSTAT10',
+        11: 'T3-OEM',
+        12: 'T3-TB-11I',
+        13: 'T3-FAN-MODULE',
+        14: 'T3-OEM-12I',
+        15: 'T3-AIRLAB',
+        16: 'T3-ESP-TRANSDUCER',
+        17: 'T3-ESP-TSTAT9',
+        18: 'T3-ESP-SAUTER',
+        19: 'T3-RMC',
+        21: 'T3-ESP-LW',
+        22: 'T3-NG2',
+        26: 'T3-3IIC',
+        43: 'T322AI',
+        44: 'T38AI8AO6DO',
       };
-      return deviceNames[deviceType] || `Unknown(${deviceType})`;
+      return mapping[miniType] || `Unknown (${miniType})`;
     };
 
     // Parse all fields according to C++ structure (see SETTINGS_FIELD_MAPPING.md)
@@ -486,6 +506,7 @@ export class SettingsRefreshApi {
       // Metadata
       serialNumber,
       lastUpdated: timestamp,
+      MiniTypeName: getMiniTypeName(all[19] ?? 0),  // Computed friendly name
     };
 
     // Summary log showing key transformations
