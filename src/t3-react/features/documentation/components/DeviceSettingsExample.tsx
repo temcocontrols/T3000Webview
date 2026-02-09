@@ -915,33 +915,41 @@ export const DeviceSettingsExample: React.FC = () => {
       };
       const moduleName = moduleNames[miniType];
       if (moduleName) {
-        return `Module Type: ${moduleName}
+        return `Mini Type (Byte 19) - Module Number Mapping
+
+Current Value: ${miniType} = ${moduleName}
 
 All Module Type Mappings:
-  0  = CM5
-  1  = T3-BB (Asix)
-  2  = T3-LB (Asix)
-  3  = T3-TB (Asix)
-  4  = T3-TB (Asix)
-  5  = T3-BB
-  6  = T3-LB
-  7  = T3-TB
-  8  = T3-Nano
-  9  = TSTAT10
-  11 = T3-OEM
-  12 = T3-TB-11I
-  13 = T3-FAN-MODULE
-  14 = T3-OEM-12I
-  15 = T3-AIRLAB
-  16 = T3-ESP-TRANSDUCER
-  17 = T3-ESP-TSTAT9
-  18 = T3-ESP-SAUTER
-  19 = T3-RMC
-  21 = T3-ESP-LW
-  22 = T3-NG2
-  26 = T3-3IIC
-  43 = T322AI
-  44 = T38AI8AO6DO`;
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Value | Constant              | Product Name        | Description
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  0   | PRODUCT_CM5           | CM5                 | Original CM5 controller
+  1   | BIG_MINIPANEL         | T3-BB (Asix)        | BACnet Building Controller (Asix)
+  2   | SMALL_MINIPANEL       | T3-LB (Asix)        | LON Building Controller (Asix)
+  3   | TINY_MINIPANEL        | T3-TB (Asix)        | Tiny Building Controller (Asix)
+  4   | TINY_EX_MINIPANEL     | T3-TB (Asix)        | Tiny Building Controller Ext (Asix)
+  5   | MINIPANELARM          | T3-BB               | BACnet Building Controller (ARM)
+  6   | MINIPANELARM_LB       | T3-LB               | LON Building Controller (ARM)
+  7   | MINIPANELARM_TB       | T3-TB               | Tiny Building Controller (ARM)
+  8   | MINIPANELARM_NB       | T3-Nano             | Nano Building Controller
+  9   | T3_TSTAT10            | TSTAT10             | Thermostat
+  11  | T3_OEM                | T3-OEM              | OEM Controller
+  12  | T3_TB_11I             | T3-TB-11I           | Tiny Building Controller w/11 inputs
+  13  | T3_FAN_MODULE         | T3-FAN-MODULE       | Fan control module
+  14  | T3_OEM_12I            | T3-OEM-12I          | OEM Controller w/12 inputs
+  15  | T3_AIRLAB             | T3-AIRLAB           | Air quality lab controller
+  16  | T3_ESP_TRANSDUCER     | T3-ESP-TRANSDUCER   | ESP32-based transducer
+  17  | T3_ESP_TSTAT9         | T3-ESP-TSTAT9       | ESP32-based thermostat
+  18  | T3_ESP_SAUTER         | T3-ESP-SAUTER       | ESP32-based Sauter integration
+  19  | T3_ESP_RMC            | T3-RMC              | Room Management Controller
+  21  | T3_ESP_LW             | T3-ESP-LW           | ESP32-based lighting controller
+  22  | T3_NG2_TYPE2          | T3-NG2              | Next-gen controller type 2
+  26  | T3_3IIC               | T3-3IIC             | 3-channel IIC controller
+  43  | PID_T322AI            | T322AI              | 22-channel analog input
+  44  | T38AI8AO6DO           | T38AI8AO6DO         | 8 AI, 8 AO, 6 DO controller
+
+Reference: T3000-Source/T3000/global_define.h
+           T3000-Source/T3000/BacnetSetting.cpp::Getminitypename()`;
       }
     }
     return undefined;
@@ -1009,12 +1017,18 @@ All Module Type Mappings:
                   <td><code className={styles.codeSmall}>{row.cppField}</code></td>
                   <td><code className={styles.codeSmall}>{row.frontField}</code></td>
                   <td>
-                    <strong
-                      title={getValueTooltip(row)}
-                      style={getValueTooltip(row) ? { cursor: 'help', textDecoration: 'underline dotted' } : undefined}
-                    >
-                      {getActualValue(row)}
-                    </strong>
+                    {getValueTooltip(row) ? (
+                      <div className={styles.tooltipWrapper}>
+                        <strong className={styles.tooltipValue}>
+                          {getActualValue(row)}
+                        </strong>
+                        <div className={styles.tooltipContent}>
+                          {getValueTooltip(row)}
+                        </div>
+                      </div>
+                    ) : (
+                      <strong>{getActualValue(row)}</strong>
+                    )}
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: '4px' }}>

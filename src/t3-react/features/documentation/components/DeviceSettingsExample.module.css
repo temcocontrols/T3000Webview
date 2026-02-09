@@ -210,3 +210,53 @@
   font-weight: 600;
   color: #107c10;
 }
+
+/* Custom Tooltip */
+.tooltipWrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltipContent {
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-right: 10px;
+  background: #323130;
+  color: #ffffff;
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: pre;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  min-width: 650px;
+  max-width: 800px;
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.tooltipWrapper:hover .tooltipContent,
+.tooltipContent:hover {
+  opacity: 1;
+}
+
+.tooltipContent::after {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 6px solid transparent;
+  border-left-color: #323130;
+}
+
+.tooltipValue {
+  cursor: help;
+  text-decoration: underline dotted;
+  font-weight: 600;
+}
