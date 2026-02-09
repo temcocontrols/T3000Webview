@@ -404,7 +404,7 @@ export function useTrendlogDataAPI() {
         panel_id: panelId
       }
 
-      console.log('🔧 TrendlogAPI: Making save request with device context', {
+      LogUtil.Debug('🔧 TrendlogAPI: Making save request with device context', {
         url: `${TRENDLOG_API_BASE_URL}/api/t3_device/trendlogs/${trendlogId}/views/${viewNumber}/selections`,
         requestBody,
         selectionsCount: selections.length,
@@ -428,7 +428,7 @@ export function useTrendlogDataAPI() {
           url: `${TRENDLOG_API_BASE_URL}/api/t3_device/trendlogs/${trendlogId}/views/${viewNumber}/selections`
         })
       } else {
-        console.log('�?TrendlogAPI: Save successful', {
+        LogUtil.Debug('TrendlogAPI: Save successful', {
           status: response.status,
           trendlogId,
           viewNumber,
@@ -458,7 +458,7 @@ export function useTrendlogDataAPI() {
       const queryString = params.toString()
       const url = `${TRENDLOG_API_BASE_URL}/api/t3_device/trendlogs/${trendlogId}/views/${viewNumber}/selections${queryString ? `?${queryString}` : ''}`
 
-      console.log('🔧 TrendlogAPI: Loading view selections with device context', {
+      LogUtil.Debug('🔧 TrendlogAPI: Loading view selections with device context', {
         url,
         deviceContext: { serialNumber, panelId }
       })

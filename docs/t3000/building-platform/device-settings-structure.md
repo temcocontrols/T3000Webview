@@ -607,6 +607,7 @@ Quick lookup for field locations in the 400-byte array:
 | 8-11 | 4 | Gateway | IPv4 | `[192,168,0,1]` |
 | 12-17 | 6 | MAC Address | Hex | `[00,0E,C6,F2,E0,C3]` |
 | 18 | 1 | TCP Type | 0=DHCP, 1=Static | `0` |
+| 19 | 1 | Mini Type | Module Number | `5` = T3-BB (see below) |
 | 20 | 1 | Debug Mode | Boolean | `0` |
 | 38 | 1 | COM0 Config | Uint8 | `1` |
 | 39 | 1 | COM1 Config | Uint8 | `0` |
@@ -634,7 +635,63 @@ Quick lookup for field locations in the 400-byte array:
 | 268 | 1 | Max Inputs | Uint8 | `255` (or 64) |
 | 269 | 1 | Max Outputs | Uint8 | `255` (or 64) |
 
-## API Integration
+### Mini Type (Byte 19) - Module Number Mapping
+
+The **mini_type** field at byte 19 identifies the hardware module type. This maps to user-friendly product names:
+
+| Value | Constant | Product Name | Description |
+|-------|----------|--------------|-------------|
+| 0 | PRODUCT_CM5 | CM5 | Original CM5 controller |
+| 1 | BIG_MINIPANEL | T3-BB (Asix) | BACnet Building Controller (Asix chip) |
+| 2 | SMALL_MINIPANEL | T3-LB (Asix) | LON Building Controller (Asix chip) |
+| 3 | TINY_MINIPANEL | T3-TB (Asix) | Tiny Building Controller (Asix chip) |
+| 4 | TINY_EX_MINIPANEL | T3-TB (Asix) | Tiny Building Controller Extended (Asix chip) |
+| 5 | MINIPANELARM | **T3-BB** | BACnet Building Controller (ARM chip) |
+| 6 | MINIPANELARM_LB | **T3-LB** | LON Building Controller (ARM chip) |
+| 7 | MINIPANELARM_TB | **T3-TB** | Tiny Building Controller (ARM chip) |
+| 8 | MINIPANELARM_NB | **T3-Nano** | Nano Building Controller |
+| 9 | T3_TSTAT10 | **TSTAT10** | Thermostat |
+| 11 | T3_OEM | **T3-OEM** | OEM Controller |
+| 12 | T3_TB_11I | **T3-TB-11I** | Tiny Building Controller with 11 inputs |
+| 13 | T3_FAN_MODULE | **T3-FAN-MODULE** | Fan control module |
+| 14 | T3_OEM_12I | **T3-OEM-12I** | OEM Controller with 12 inputs |
+| 15 | T3_AIRLAB | **T3-AIRLAB** | Air quality lab controller |
+| 16 | T3_ESP_TRANSDUCER | **T3-ESP-TRANSDUCER** | ESP32-based transducer |
+| 17 | T3_ESP_TSTAT9 | **T3-ESP-TSTAT9** | ESP32-based thermostat |
+| 18 | T3_ESP_SAUTER | **T3-ESP-SAUTER** | ESP32-based Sauter integration |
+| 19 | T3_ESP_RMC | **T3-RMC** | Room Management Controller |
+| 21 | T3_ESP_LW | **T3-ESP-LW** | ESP32-based lighting controller |
+| 22 | T3_NG2_TYPE2 | **T3-NG2** | Next-gen controller type 2 |
+| 26 | T3_3IIC | **T3-3IIC** | 3-channel IIC controller |
+| 43 | PID_T322AI | **T322AI** | 22-channel analog input |
+| 44 | T38AI8AO6DO | **T38AI8AO6DO** | 8 AI, 8 AO, 6 DO controller |
+
+**Code Reference:** `T3000-Source/T3000/global_define.h` and `T3000-Source/T3000/BacnetSetting.cpp::Getminitypename()`
+
+**Usage Example:**
+```typescript
+// Parse mini_type from byte 19
+const miniType = data[19];
+
+// Map to friendly name
+const moduleNames: { [key: number]: string } = {
+  0: 'CM5',
+  1: 'T3-BB', 2: 'T3-LB', 3: 'T3-TB', 4: 'T3-TB',
+  5: 'T3-BB', 6: 'T3-LB', 7: 'T3-TB', 8: 'T3-Nano',
+  9: 'TSTAT10', 11: 'T3-OEM', 12: 'T3-TB-11I',
+  13: 'T3-FAN-MODULE', 14: 'T3-OEM-12I', 15: 'T3-AIRLAB',
+  16: 'T3-ESP-TRANSDUCER', 17: 'T3-ESP-TSTAT9', 18: 'T3-ESP-SAUTER',
+  19: 'T3-RMC', 21: 'T3-ESP-LW', 22: 'T3-NG2',
+  26: 'T3-3IIC', 43: 'T322AI', 44: 'T38AI8AO6DO',
+};
+
+const moduleName = moduleNames[miniType] || `Unknown (${miniType})`;
+console.log(`Module: ${moduleName}`); // "Module: T3-BB"
+```
+
+**Note:** Values 1-4 are legacy Asix-based controllers. Modern ARM-based controllers use values 5-8 and above.
+
+
 
 ### Rust API Endpoint
 

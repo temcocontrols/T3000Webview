@@ -62,7 +62,7 @@
           🔧 FFI API Data (HTTP with Retry)
         </span>
         <span v-else-if="dataSource === 'ffi-realtime'" class="source-badge ffi-realtime">
-          �?FFI Real-time (HTTP Direct)
+          FFI Real-time (HTTP Direct)
         </span>
         <span v-else class="source-badge fallback">
           ⚠️ No Data Available
@@ -295,7 +295,7 @@ const loadTrendLogItemData = async () => {
           scheduleItemData.value = ffiScheduleData
           pageTitle.value = `FFI Real-time: ${deviceData.device_info.panel_name} - TrendLog ${params.trendlog_id || 0}`
 
-          LogUtil.Info('�?FFI Real-time data loaded')
+          LogUtil.Info('FFI Real-time data loaded')
           return
         }
       } catch (ffiError) {
@@ -333,11 +333,11 @@ const loadTrendLogItemData = async () => {
           scheduleItemData.value = ffiScheduleData
           pageTitle.value = `FFI API: ${deviceData.device_info.panel_name} - TrendLog ${params.trendlog_id || 0}`
 
-          LogUtil.Info('�?FFI API data loaded')
+          LogUtil.Info('FFI API data loaded')
           return
         }
       } catch (ffiError) {
-        LogUtil.Error('�?FFI API failed:', ffiError)
+        LogUtil.Error('FFI API failed:', ffiError)
       }
     }
 
@@ -370,9 +370,9 @@ const checkSystemStatus = async () => {
     LogUtil.Info('📊 Checking FFI API system status...')
     const status = await ffiApi.getSystemStatus()
     systemStatus.value = status
-    LogUtil.Info('�?FFI API system status:', status)
+    LogUtil.Info('FFI API system status:', status)
   } catch (err) {
-    LogUtil.Error('�?Failed to get system status:', err)
+    LogUtil.Error('Failed to get system status:', err)
     systemStatus.value = { status: 'error', error: err instanceof Error ? err.message : 'Unknown error' }
   }
 }
@@ -382,10 +382,10 @@ const refreshSystemData = async () => {
   try {
     LogUtil.Info('🔄 Refreshing FFI API system data...')
     await ffiApi.refreshAllData()
-    LogUtil.Info('�?FFI API system data refreshed')
+    LogUtil.Info('FFI API system data refreshed')
     await loadTrendLogItemData()
   } catch (err) {
-    LogUtil.Error('�?Failed to refresh system data:', err)
+    LogUtil.Error('Failed to refresh system data:', err)
   }
 }
 

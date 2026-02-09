@@ -58,17 +58,6 @@ pub struct ApiResponse {
     pub data: Option<Value>,
 }
 
-/// Creates and returns the input update API routes
-pub fn create_input_update_routes() -> Router<T3AppState> {
-    Router::new()
-        // More specific route must come first to avoid being shadowed by less specific route
-        .route("/inputs/:serial/:index/device", axum::routing::put(update_input_device_only))
-        .route("/inputs/:serial/:index/db", axum::routing::put(update_input_database_only))
-        .route("/inputs/:serial/:index",
-            axum::routing::get(get_input_by_serial_index)
-            .put(update_input_full))
-}
-
 /// Update full input record using UPDATE_WEBVIEW_LIST action (Action 16)
 /// PUT /api/t3-device/inputs/:serial/:index (via parent router)
 pub async fn update_input_full(
@@ -233,6 +222,137 @@ pub async fn update_input_full(
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to update input record: {}", e),
+            ))
+        }
+    }
+}
+
+/// Update input in device only (NO database save)
+/// PUT /api/t3_device/inputs/:serial/:index/device
+/// Used for updating the physical device without saving to database
+pub async fn update_input_device_only(
+    State(state): State<T3AppState>,
+    Path((serial, index_str)): Path<(i32, String)>,
+    Json(payload): Json<UpdateInputFullRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let index = index_str.parse::<i32>().unwrap_or(0);
+
+    if let Ok(mut logger) = ServiceLogger::api_inputs() {
+        logger.info(&format!("🔧 DEVICE_ONLY: Updating input in device - Serial: {}, Index: {}", serial, index));
+    }
+    info!("DEVICE_ONLY: Updating input in device - Serial: {}, Index: {}", serial, index);
+
+    // Get database connection from state
+    let db_connection = match &state.t3_device_conn {
+        Some(conn) => conn.lock().await.clone(),
+        None => {
+            if let Ok(mut logger) = ServiceLogger::api_inputs() {
+                logger.error("❌ T3000 device database unavailable");
+            }
+            error!("❌ T3000 device database unavailable");
+            return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+        }
+    };
+
+    // Find panel_id from devices table
+    let panel_id = match devices::Entity::find()
+        .filter(devices::Column::SerialNumber.eq(serial))
+        .one(&db_connection)
+        .await
+    {
+        Ok(Some(device)) => device.panel_id.unwrap_or(0),
+        Ok(None) => {
+            if let Ok(mut logger) = ServiceLogger::api_inputs() {
+                logger.error(&format!("Device not found for serial: {}", serial));
+            }
+            error!("Device not found for serial: {}", serial);
+            return Err((StatusCode::NOT_FOUND, format!("Device with serial {} not found", serial)));
+        }
+        Err(e) => {
+            if let Ok(mut logger) = ServiceLogger::api_inputs() {
+                logger.error(&format!("Database error querying device: {:?}", e));
+            }
+            error!("Database error querying device: {:?}", e);
+            return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)));
+        }
+    };
+
+    // Read current input record from database to get existing values for fields not being updated
+    let current_input = match input_points::Entity::find()
+        .filter(input_points::Column::SerialNumber.eq(serial))
+        .filter(input_points::Column::InputIndex.eq(index))
+        .one(&db_connection)
+        .await
+    {
+        Ok(Some(input)) => input,
+        Ok(None) => {
+            if let Ok(mut logger) = ServiceLogger::api_inputs() {
+                logger.error(&format!("Input record not found - serial: {}, index: {}", serial, index));
+            }
+            error!("Input record not found - serial: {}, index: {}", serial, index);
+            return Err((StatusCode::NOT_FOUND, format!("Input {} not found for serial {}", index, serial)));
+        }
+        Err(e) => {
+            if let Ok(mut logger) = ServiceLogger::api_inputs() {
+                logger.error(&format!("Database error reading input: {:?}", e));
+            }
+            error!("Database error reading input: {:?}", e);
+            return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)));
+        }
+    };
+
+    // Clone payload fields before they're moved in json! macro
+    let full_label_clone = payload.full_label.clone();
+    let label_clone = payload.label.clone();
+
+    // Prepare input JSON for UPDATE_WEBVIEW_LIST action
+    // Note: C++ expects ALL fields, so we merge payload with current database values
+    let input_json = json!({
+        "action": WebViewMessageType::UPDATE_WEBVIEW_LIST as i32,
+        "panelId": panel_id,
+        "serialNumber": serial,
+        "entryType": BAC_IN,  // 1 = INPUT
+        "entryIndex": index,
+        "control": payload.control.unwrap_or(0),  // control not stored in database
+        "value": payload.value.unwrap_or_else(|| current_input.f_value.and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0)),
+        "description": full_label_clone.unwrap_or_else(|| current_input.full_label.unwrap_or_default()),
+        "label": label_clone.unwrap_or_else(|| current_input.label.unwrap_or_default()),
+        "range": payload.range.unwrap_or_else(|| current_input.range_field.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
+        "auto_manual": payload.auto_manual.unwrap_or_else(|| current_input.auto_manual.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
+        "filter": payload.filter.unwrap_or_else(|| current_input.filter_field.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
+        "digital_analog": payload.digital_analog.unwrap_or_else(|| current_input.digital_analog.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
+        "calibration_sign": payload.calibration_sign.unwrap_or_else(|| current_input.sign.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
+        "calibration_h": payload.calibration_h.unwrap_or_else(|| current_input.calibration.as_ref().and_then(|c| c.split('.').next()).and_then(|h| h.parse::<i32>().ok()).unwrap_or(0)),
+        "calibration_l": payload.calibration_l.unwrap_or_else(|| current_input.calibration.as_ref().and_then(|c| c.split('.').nth(1)).and_then(|l| l.parse::<i32>().ok()).unwrap_or(0)),
+        "decom": payload.decom.unwrap_or(0),
+    });
+
+    // Call FFI function to update device only (NO database save)
+    match call_update_ffi(WebViewMessageType::UPDATE_WEBVIEW_LIST as i32, input_json).await {
+        Ok(_response) => {
+            if let Ok(mut logger) = ServiceLogger::api_inputs() {
+                logger.info(&format!("✅ Input updated in device only (database NOT modified) - serial: {}, index: {}", serial, index));
+            }
+            info!("✅ Input updated in device only (database NOT modified) - serial: {}, index: {}", serial, index);
+
+            Ok(Json(json!({
+                "success": true,
+                "message": "Input point updated in device only (database not modified)",
+                "data": {
+                    "serialNumber": serial,
+                    "inputIndex": index,
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                }
+            })))
+        }
+        Err(e) => {
+            if let Ok(mut logger) = ServiceLogger::api_inputs() {
+                logger.error(&format!("❌ Failed to update input in device: {}", e));
+            }
+            error!("❌ Failed to update input in device: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to update input in device: {}", e),
             ))
         }
     }
@@ -534,4 +654,15 @@ pub async fn get_input_by_serial_index(
         "message": "Input retrieved successfully",
         "data": input
     })))
+}
+
+/// Creates and returns the input update API routes
+pub fn create_input_update_routes() -> Router<T3AppState> {
+    Router::new()
+        // More specific route must come first to avoid being shadowed by less specific route
+        .route("/inputs/:serial/:index/device", axum::routing::put(update_input_device_only))
+        .route("/inputs/:serial/:index/db", axum::routing::put(update_input_database_only))
+        .route("/inputs/:serial/:index",
+            axum::routing::get(get_input_by_serial_index)
+            .put(update_input_full))
 }

@@ -109,6 +109,9 @@ export interface DeviceSettings {
 
   // Bytes 253-270: Display & System Settings
   // display_lcd: lcdconfig (7 bytes) - offset 253-259
+  lcd_point_type: number;             // unsigned char - offset 253 (0=Output, 1=Input, 2=Variable)
+  lcd_point_number: number;           // unsigned char - offset 254 (1-128)
+  // lcd_mod_reg padding: bytes 255-259
   start_month: number;                // unsigned char - offset 260
   start_day: number;                  // unsigned char - offset 261
   end_month: number;                  // unsigned char - offset 262
@@ -124,6 +127,7 @@ export interface DeviceSettings {
   // Metadata (not from C++ structure)
   serialNumber: number;               // For compatibility
   lastUpdated: string;                // ISO timestamp
+  MiniTypeName?: string;              // Friendly name for mini_type (computed field)
 }
 
 export interface RefreshResult {
@@ -332,14 +336,33 @@ export class SettingsRefreshApi {
 
     // Helper to get device name from mini_type
     const getMiniTypeName = (miniType: number): string => {
-      const deviceType = miniType & 0x3F;
-      const deviceNames: { [key: number]: string } = {
-        0: 'T3-8O', 1: 'T3-32I', 2: 'T3-8I13O', 3: 'T3-16I/O',
-        4: 'T3-BBA', 5: 'T3-BB', 6: 'T3-TB', 7: 'T3-LC',
-        8: 'T3-LB', 9: 'T3-3I0A', 10: 'T3-4O', 11: 'T3-SV6',
-        12: 'T3-6I/O', 13: 'T3-MUR1'
+      const mapping: { [key: number]: string } = {
+        0: 'CM5',
+        1: 'T3-BB',
+        2: 'T3-LB',
+        3: 'T3-TB',
+        4: 'T3-TB',
+        5: 'T3-BB',      // MINIPANELARM
+        6: 'T3-LB',      // MINIPANELARM_LB
+        7: 'T3-TB',      // MINIPANELARM_TB
+        8: 'T3-Nano',    // MINIPANELARM_NB
+        9: 'TSTAT10',
+        11: 'T3-OEM',
+        12: 'T3-TB-11I',
+        13: 'T3-FAN-MODULE',
+        14: 'T3-OEM-12I',
+        15: 'T3-AIRLAB',
+        16: 'T3-ESP-TRANSDUCER',
+        17: 'T3-ESP-TSTAT9',
+        18: 'T3-ESP-SAUTER',
+        19: 'T3-RMC',
+        21: 'T3-ESP-LW',
+        22: 'T3-NG2',
+        26: 'T3-3IIC',
+        43: 'T322AI',
+        44: 'T38AI8AO6DO',
       };
-      return deviceNames[deviceType] || `Unknown(${deviceType})`;
+      return mapping[miniType] || `Unknown (${miniType})`;
     };
 
     // Parse all fields according to C++ structure (see SETTINGS_FIELD_MAPPING.md)
@@ -467,6 +490,12 @@ export class SettingsRefreshApi {
       flag_time_sync_pc: all[239] ?? 0,                // offset 239
       sync_time_results: all[241] ?? 0,                // offset 241
       special_flag: all[246] ?? 0,                     // offset 246
+
+      // LCD Display Configuration
+      lcd_point_type: all[253] ?? 0,                   // offset 253 (0=Output, 1=Input, 2=Variable)
+      lcd_point_number: all[254] ?? 1,                 // offset 254 (1-128)
+
+      // System Settings
       webview_json_flash: all[265] ?? 0,               // offset 265
       max_var: all[266] ?? 0,                          // offset 266
       max_in: all[267] ?? 0,                           // offset 267
@@ -477,6 +506,7 @@ export class SettingsRefreshApi {
       // Metadata
       serialNumber,
       lastUpdated: timestamp,
+      MiniTypeName: getMiniTypeName(all[19] ?? 0),  // Computed friendly name
     };
 
     // Summary log showing key transformations
@@ -642,7 +672,9 @@ export class SettingsRefreshApi {
     all[252] = settings.uart_stopbit[2];
 
     // Display & System Settings (bytes 253-270)
-    // display_lcd: 253-259 (7 bytes, not serialized individually)
+    all[253] = settings.lcd_point_type;                // LCD point type (0=Output, 1=Input, 2=Variable)
+    all[254] = settings.lcd_point_number;              // LCD point number (1-128)
+    // lcd_mod_reg padding: 255-259 (leave as 0)
     all[260] = settings.start_month;
     all[261] = settings.start_day;
     all[262] = settings.end_month;

@@ -5,11 +5,11 @@
  * Maps to C++ m_product vector and CMainFrame methods
  *
  * C++ Reference:
- * - m_product vector �?devices array
- * - product_register_value �?deviceStatuses map
- * - m_refresh_net_label �?needsRefresh flag
- * - m_pFreshTree thread �?startSync() / stopSync()
- * - m_pCheck_net_device_online �?startStatusMonitor()
+ * - m_product vector devices array
+ * - product_register_value deviceStatuses map
+ * - m_refresh_net_label needsRefresh flag
+ * - m_pFreshTree thread startSync() / stopSync()
+ * - m_pCheck_net_device_online startStatusMonitor()
  *
  * See LEFT_PANEL_CPP_DESIGN.md Section 2 & 3 for threading patterns
  */

@@ -56,6 +56,7 @@ import {
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { SettingsRefreshApi, type DeviceSettings } from '../services/settingsRefreshApi';
 import { SettingsUpdateApi } from '../services/settingsUpdateApi';
+import { AdvancedSettingsDialog } from '../components/AdvancedSettingsDialog';
 import cssStyles from './SettingsPage.module.css';
 
 const useStyles = makeStyles({
@@ -405,6 +406,7 @@ interface HardwareInfo {
   Firmware2_Rev?: number;
   Bootloader_Rev?: number;
   Mini_Type?: number;
+  MiniTypeName?: string;  // Friendly name from API
   Panel_Type?: number;
   USB_Mode?: number;
   SD_Exist?: number;
@@ -415,6 +417,8 @@ interface FeatureFlags {
   Customer_Unite_Enable?: number;
   Enable_Panel_Name?: number;
   LCD_Display?: number; // 0=Always Off, 1=Always On, 2+=Delay off (value is seconds)
+  LCD_Point_Type?: number; // 0=Output, 1=Input, 2=Variable
+  LCD_Point_Number?: number; // 1-128
 }
 
 interface DeviceInfo {
@@ -433,6 +437,7 @@ export const SettingsPage: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showRebootDialog, setShowRebootDialog] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
+  const [showAdvancedSettingsDialog, setShowAdvancedSettingsDialog] = useState(false);
   const [rebootCountdown, setRebootCountdown] = useState(0);
 
   // Settings state for each tab
@@ -542,6 +547,7 @@ export const SettingsPage: React.FC = () => {
 
       setHardwareInfo({
         Mini_Type: settings.mini_type,
+        MiniTypeName: settings.MiniTypeName,  // Friendly name from refresh API
         Panel_Type: settings.panel_type,
         USB_Mode: settings.usb_mode,
         SD_Exist: settings.sd_exist,
@@ -558,6 +564,8 @@ export const SettingsPage: React.FC = () => {
         Customer_Unite_Enable: settings.custmer_unite,
         Enable_Panel_Name: settings.en_panel_name,
         LCD_Display: settings.LCD_Display,
+        LCD_Point_Type: settings.lcd_point_type,
+        LCD_Point_Number: settings.lcd_point_number,
       });
 
       setDeviceInfo({
@@ -910,38 +918,47 @@ export const SettingsPage: React.FC = () => {
     await handleSaveNetwork();
   };
 
-  // Map mini_type to module name
-  const getMiniTypeName = (miniType: number | undefined): string => {
-    if (miniType === undefined) return 'N/A';
+  // Handle advanced settings save
+  const handleAdvancedSettingsSave = async (data: {
+    fixComConfig: boolean;
+    writeFlashMinutes: number;
+    maxInput: number;
+    maxOutput: number;
+    maxVariable: number;
+  }) => {
+    if (!selectedDevice || !settings) return;
 
-    const mapping: { [key: number]: string } = {
-      0: 'CM5',
-      1: 'T3-BB',
-      2: 'T3-LB',
-      3: 'T3-TB',
-      4: 'T3-TB',
-      5: 'T3-BB',      // MINIPANELARM
-      6: 'T3-LB',      // MINIPANELARM_LB
-      7: 'T3-TB',      // MINIPANELARM_TB
-      8: 'T3-Nano',    // MINIPANELARM_NB
-      9: 'TSTAT10',
-      11: 'T3-OEM',
-      12: 'T3-TB-11I',
-      13: 'T3-FAN-MODULE',
-      14: 'T3-OEM-12I',
-      15: 'T3-AIRLAB',
-      16: 'T3-ESP-TRANSDUCER',
-      17: 'T3-ESP-TSTAT9',
-      18: 'T3-ESP-SAUTER',
-      19: 'T3-RMC',
-      21: 'T3-ESP-LW',
-      22: 'T3-NG2',
-      26: 'T3-3IIC',
-      43: 'T322AI',
-      44: 'T38AI8AO6DO',
-    };
+    try {
+      setLoading(true);
+      setError(null);
 
-    return mapping[miniType] || `Unknown (${miniType})`;
+      // Update settings object
+      const updatedSettings: DeviceSettings = {
+        ...settings,
+        fix_com_config: data.fixComConfig ? 1 : 0,
+        write_flash: data.writeFlashMinutes,
+        max_in: data.maxInput,
+        max_out: data.maxOutput,
+        max_var: data.maxVariable,
+      };
+
+      // Send to device
+      const result = await SettingsUpdateApi.updateDeviceSettings(
+        selectedDevice.serialNumber,
+        updatedSettings
+      );
+
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to update advanced settings');
+      }
+
+      setSuccessMessage('Advanced settings updated successfully');
+      setSettings(updatedSettings);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update advanced settings');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Render tab content based on selected tab
@@ -976,7 +993,7 @@ export const SettingsPage: React.FC = () => {
                 <div className={styles.basicPanelTitle}>Device Information</div>
                 <div className={styles.basicField}>
                   <label className={styles.basicFieldLabel}>Module Number:</label>
-                  <span className={styles.basicFieldValue}>{getMiniTypeName(hardwareInfo.Mini_Type)}</span>
+                  <span className={styles.basicFieldValue}>{hardwareInfo.MiniTypeName ?? 'N/A'}</span>
                 </div>
                 <div className={styles.basicField}>
                   <label className={styles.basicFieldLabel}>Hardware Version:</label>
@@ -1159,10 +1176,33 @@ export const SettingsPage: React.FC = () => {
                 </label>
                 <div className={styles.lcdButtons}>
                   <Button size="small" appearance="secondary">Parameter</Button>
-                  <Button size="small" appearance="secondary">Advanced Settings</Button>
+                  <Button
+                    size="small"
+                    appearance="secondary"
+                    onClick={() => setShowAdvancedSettingsDialog(true)}
+                  >
+                    Advanced Settings
+                  </Button>
                 </div>
               </div>
             </div>
+
+            {/* Advanced Settings Dialog */}
+            <AdvancedSettingsDialog
+              isOpen={showAdvancedSettingsDialog}
+              onOpenChange={setShowAdvancedSettingsDialog}
+              fixComConfig={settings?.fix_com_config === 1}
+              writeFlashMinutes={settings?.write_flash ?? 0}
+              maxInput={settings?.max_in ?? 64}
+              maxOutput={settings?.max_out ?? 64}
+              maxVariable={settings?.max_var ?? 128}
+              onSave={handleAdvancedSettingsSave}
+              panelType={hardwareInfo.Panel_Type ?? 0}
+              firmwareVersion={
+                ((hardwareInfo.Firmware0_Rev_Main ?? 0) * 10) +
+                (hardwareInfo.Firmware0_Rev_Sub ?? 0)
+              }
+            />
           </>
         );
 
