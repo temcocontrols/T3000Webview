@@ -109,6 +109,9 @@ export interface DeviceSettings {
 
   // Bytes 253-270: Display & System Settings
   // display_lcd: lcdconfig (7 bytes) - offset 253-259
+  lcd_point_type: number;             // unsigned char - offset 253 (0=Output, 1=Input, 2=Variable)
+  lcd_point_number: number;           // unsigned char - offset 254 (1-128)
+  // lcd_mod_reg padding: bytes 255-259
   start_month: number;                // unsigned char - offset 260
   start_day: number;                  // unsigned char - offset 261
   end_month: number;                  // unsigned char - offset 262
@@ -467,6 +470,12 @@ export class SettingsRefreshApi {
       flag_time_sync_pc: all[239] ?? 0,                // offset 239
       sync_time_results: all[241] ?? 0,                // offset 241
       special_flag: all[246] ?? 0,                     // offset 246
+
+      // LCD Display Configuration
+      lcd_point_type: all[253] ?? 0,                   // offset 253 (0=Output, 1=Input, 2=Variable)
+      lcd_point_number: all[254] ?? 1,                 // offset 254 (1-128)
+
+      // System Settings
       webview_json_flash: all[265] ?? 0,               // offset 265
       max_var: all[266] ?? 0,                          // offset 266
       max_in: all[267] ?? 0,                           // offset 267
@@ -642,7 +651,9 @@ export class SettingsRefreshApi {
     all[252] = settings.uart_stopbit[2];
 
     // Display & System Settings (bytes 253-270)
-    // display_lcd: 253-259 (7 bytes, not serialized individually)
+    all[253] = settings.lcd_point_type;                // LCD point type (0=Output, 1=Input, 2=Variable)
+    all[254] = settings.lcd_point_number;              // LCD point number (1-128)
+    // lcd_mod_reg padding: 255-259 (leave as 0)
     all[260] = settings.start_month;
     all[261] = settings.start_day;
     all[262] = settings.end_month;
