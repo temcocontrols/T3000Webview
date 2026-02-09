@@ -33,23 +33,22 @@ const useStyles = makeStyles({
     alignSelf: 'flex-start',
   },
   dialogBody: {
-    padding: '12px 24px 20px 24px',
+    padding: '8px 12px 12px 12px',
   },
   section: {
-    marginBottom: '12px',
+    marginBottom: '8px',
   },
   checkboxRow: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    marginBottom: '12px',
+    marginBottom: '8px',
   },
   autoSaveRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    marginBottom: '12px',
-    flexWrap: 'wrap',
+    gap: '6px',
+    marginBottom: '8px',
   },
   groupBox: {
     border: `1px solid ${tokens.colorNeutralStroke1}`,
@@ -234,7 +233,7 @@ export const AdvancedSettingsDialog: React.FC<AdvancedSettingsDialogProps> = ({
 
             {/* Auto-save parameters */}
             <div className={styles.autoSaveRow}>
-              <span className={styles.label} style={{ minWidth: 'auto' }}>
+              <span className={styles.label} style={{ minWidth: 'auto', whiteSpace: 'nowrap' }}>
                 Automatically save the parameters of the program within
               </span>
               <Input
@@ -243,9 +242,9 @@ export const AdvancedSettingsDialog: React.FC<AdvancedSettingsDialogProps> = ({
                 value={autoSaveMinutes}
                 onChange={(_, data) => setAutoSaveMinutes(data.value)}
                 disabled={!supportsAutoSave}
-                style={{ width: '80px' }}
+                style={{ width: '70px', flexShrink: 0 }}
               />
-              <span className={styles.label}>minutes</span>
+              <span className={styles.label} style={{ whiteSpace: 'nowrap' }}>minutes</span>
               <Tooltip
                 content="All parameters, input, output, variable, and the values run in the program are saved at regular intervals within the set time. Prevent data loss after an unexpected power outage. You can also modify this value through register 92 of modbus. When this value is set to 0, it means that this function is disabled."
                 relationship="description"
