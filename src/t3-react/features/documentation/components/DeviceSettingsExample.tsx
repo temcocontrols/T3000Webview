@@ -106,7 +106,12 @@ const MAPPING_TABLE: MappingRow[] = [
     field: 'Pro Info',
     format: 'Struct',
     cppField: 'Str_Pro_Info pro_info',
-    frontField: 'proInfo',
+    frontField: `Hardware Version => harware_rev
+MCU Version => firmware0_rev_main.firmware0_rev_sub
+PIC Version => frimware1_rev
+Top Version => frimware2_rev
+SM5964 Version => frimware3_rev
+Bootloader Version => bootloader_rev`,
     example: '[Structure]',
     parseCode: `// Str_Pro_Info is a 17-byte structure
 // Contains protocol information
@@ -923,11 +928,11 @@ Offset | Size | Field Name          | C++ Type | Current Value | Description
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Frontend Display Mapping:
-• Hardware Version: harware_rev (byte 21)
+• Hardware Version: harware_rev (byte 21) → ${SAMPLE_DATA[21]}
 • MCU Version: firmware0_rev_main.firmware0_rev_sub (bytes 22-23) → ${mcuVersion}
-• PIC Version: frimware1_rev (byte 24)
-• Top Version: frimware2_rev (byte 25)
-• Bootloader Version: bootloader_rev (byte 27)
+• PIC Version: frimware1_rev (byte 24) → ${SAMPLE_DATA[24]}
+• Top Version: frimware2_rev (byte 25) → ${SAMPLE_DATA[25]}
+• Bootloader Version: bootloader_rev (byte 27) → ${SAMPLE_DATA[27]}
 
 Reference: T3000-Source/T3000/CM5/ud_str.h (Str_Pro_Info structure)`;
     }
@@ -1063,7 +1068,7 @@ Reference: T3000-Source/T3000/global_define.h
                   <td><strong>{row.field}</strong></td>
                   <td><span className={styles.format}>{row.format}</span></td>
                   <td><code className={styles.codeSmall}>{row.cppField}</code></td>
-                  <td><code className={styles.codeSmall}>{row.frontField}</code></td>
+                  <td><code className={styles.codeSmall} style={{ whiteSpace: 'pre-line' }}>{row.frontField.trim()}</code></td>
                   <td>
                     {getValueTooltip(row) ? (
                       <strong

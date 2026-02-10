@@ -125,6 +125,7 @@
   font-family: 'Consolas', 'Courier New', monospace;
   font-size: 10px;
   color: #0078d4;
+  display: inline-block;
 }
 
 .actionButton {
