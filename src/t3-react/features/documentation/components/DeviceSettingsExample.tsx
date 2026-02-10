@@ -84,7 +84,7 @@ const MAPPING_TABLE: MappingRow[] = [
     field: 'Mini Type',
     format: 'Uint8',
     cppField: 'uint8_t mini_type',
-    frontField: 'miniType',
+    frontField: 'Module Number',
     example: '5',
     parseCode: `const miniType = data[19];
 // Result: 5`
@@ -828,6 +828,8 @@ const displayLcd = data.slice(253, 260);
 export const DeviceSettingsExample: React.FC = () => {
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const [highlightedRow, setHighlightedRow] = useState<number | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerContent, setDrawerContent] = useState<string>('');
 
   const toggleRow = (offset: number) => {
     setExpandedRow(expandedRow === offset ? null : offset);
@@ -900,6 +902,35 @@ export const DeviceSettingsExample: React.FC = () => {
 
   // Get tooltip for specific field values
   const getValueTooltip = (row: MappingRow): string | undefined => {
+    // Pro Info (bytes 21-37) - show Str_Pro_Info structure details
+    if (row.offset === 21 && row.field === 'Pro Info') {
+      const pad = (val: number, width: number) => String(val).padStart(width, ' ');
+      return `Str_Pro_Info Structure (Bytes 21-37) - Protocol Information
+
+Structure Definition (17 bytes):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Offset | Size | Field Name          | C++ Type | Current Value | Description
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  21   |  1   | harware_rev         | uint8_t  | ${pad(SAMPLE_DATA[21], 2)}            | Hardware Revision
+  22   |  1   | firmware0_rev_main  | uint8_t  | ${pad(SAMPLE_DATA[22], 2)}            | Main Firmware Major Version
+  23   |  1   | firmware0_rev_sub   | uint8_t  | ${pad(SAMPLE_DATA[23], 2)}            | Main Firmware Minor Version
+  24   |  1   | frimware1_rev       | uint8_t  | ${pad(SAMPLE_DATA[24], 2)}            | PIC Firmware Version
+  25   |  1   | frimware2_rev       | uint8_t  | ${pad(SAMPLE_DATA[25], 2)}            | C8051/Top Firmware Version
+  26   |  1   | frimware3_rev       | uint8_t  | ${pad(SAMPLE_DATA[26], 2)}            | SM5964 Firmware Version
+  27   |  1   | bootloader_rev      | uint8_t  | ${pad(SAMPLE_DATA[27], 2)}            | Bootloader Version
+ 28-37 | 10   | no_used[10]         | uint8_t  | [Reserved]    | Unused/Reserved bytes
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Frontend Display Mapping:
+• Hardware Version: harware_rev (byte 21)
+• MCU Version: firmware0_rev_main.firmware0_rev_sub (bytes 22-23)
+• PIC Version: frimware1_rev (byte 24)
+• Top Version: frimware2_rev (byte 25)
+• Bootloader Version: bootloader_rev (byte 27)
+
+Reference: T3000-Source/T3000/CM5/ud_str.h (Str_Pro_Info structure)`;
+    }
+
     // Mini Type (byte 19) - show module name mapping
     if (row.offset === 19 && row.field === 'Mini Type') {
       const miniType = SAMPLE_DATA[19];
@@ -962,6 +993,22 @@ Reference: T3000-Source/T3000/global_define.h
         This example shows how to parse the 400-byte device settings array. Click on any row to see the parsing details.
       </p>
 
+      {/* Right Drawer */}
+      {drawerOpen && (
+        <>
+          <div className={styles.drawerOverlay} onClick={() => setDrawerOpen(false)} />
+          <div className={styles.drawer}>
+            <div className={styles.drawerHeader}>
+              <h3>Module Type Mapping</h3>
+              <button className={styles.drawerClose} onClick={() => setDrawerOpen(false)}>×</button>
+            </div>
+            <div className={styles.drawerBody}>
+              <pre>{drawerContent}</pre>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Raw Data Display */}
       <h3>Full 400-Byte Array</h3>
       <div className={styles.rawDataSection}>
@@ -1018,14 +1065,16 @@ Reference: T3000-Source/T3000/global_define.h
                   <td><code className={styles.codeSmall}>{row.frontField}</code></td>
                   <td>
                     {getValueTooltip(row) ? (
-                      <div className={styles.tooltipWrapper}>
-                        <strong className={styles.tooltipValue}>
-                          {getActualValue(row)}
-                        </strong>
-                        <div className={styles.tooltipContent}>
-                          {getValueTooltip(row)}
-                        </div>
-                      </div>
+                      <strong
+                        className={styles.clickableValue}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDrawerContent(getValueTooltip(row) || '');
+                          setDrawerOpen(true);
+                        }}
+                      >
+                        {getActualValue(row)}
+                      </strong>
                     ) : (
                       <strong>{getActualValue(row)}</strong>
                     )}
