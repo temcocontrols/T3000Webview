@@ -21,9 +21,6 @@
 /* Raw Data Section */
 .rawDataSection {
   margin-bottom: 16px;
-  position: sticky;
-  top: 0;
-  z-index: 5;
   background: #ffffff;
   padding: 8px 0;
 }
@@ -91,6 +88,11 @@
   font-weight: 600;
   color: #323130;
   white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: #fafafa;
+  z-index: 10;
+  box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
 }
 
 .table td {
