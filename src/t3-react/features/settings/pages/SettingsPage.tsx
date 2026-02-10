@@ -976,8 +976,8 @@ export const SettingsPage: React.FC = () => {
     if (loading && Object.keys(networkSettings).length === 0) {
       return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', marginBottom: '12px' }}>
-          <Spinner size="tiny" />
-          <Text size={200} weight="regular">Loading settings...</Text>
+          <Spinner size="extra-tiny" style={{ fontSize: '12px' }} />
+          <Text style={{ color: '#0078d4', fontSize: '12px' }}>Loading settings...</Text>
         </div>
       );
     }
@@ -1603,7 +1603,7 @@ export const SettingsPage: React.FC = () => {
 
             {/* Loading Message */}
             {loading && (
-              <div className={styles.successMessage}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', marginBottom: '12px' }}>
                 <Spinner size="extra-tiny" style={{ fontSize: '12px' }} />
                 <Text style={{ color: '#0078d4', fontSize: '12px' }}>Refreshing settings from device...</Text>
               </div>
