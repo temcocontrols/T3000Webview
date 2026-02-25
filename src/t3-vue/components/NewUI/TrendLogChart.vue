@@ -354,7 +354,6 @@
                         </div>
                         <div class="series-tags-col">
                           <span class="series-inline-tags">
-                            <span class="unit-color-swatch" :style="{ backgroundColor: series.color }"></span>
                             <span class="unit-info" :style="{ color: series.color }">
                               {{ getDisplayUnit(series) }}
                             </span>
@@ -554,7 +553,6 @@
                         </div>
                         <div class="series-tags-col">
                           <span class="series-inline-tags">
-                            <span class="unit-color-swatch" :style="{ backgroundColor: series.color }"></span>
                             <span class="unit-info" :style="{ color: series.color }">
                               {{ getDisplayUnit(series) }}
                             </span>
@@ -3526,8 +3524,7 @@
 
               sortedPoints.forEach((point: any) => {
                 const series = visibleAnalogSeries.value.find(s => s.name === point.dataset.label)
-                const rawY = point.parsed.y
-                const value = rawY != null && !isNaN(rawY) ? rawY.toFixed(2) : 'null'
+                const value = point.parsed.y.toFixed(2)
                 const unit = series?.unit || ''
                 const label = point.dataset.label || ''
 
@@ -13347,15 +13344,6 @@
     align-items: center;
     gap: 4px;
     flex-wrap: nowrap;
-  }
-
-  .unit-color-swatch {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 2px;
-    flex-shrink: 0;
-    opacity: 0.85;
   }
 
   .unit-info {
