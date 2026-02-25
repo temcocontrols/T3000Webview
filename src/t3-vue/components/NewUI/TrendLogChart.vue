@@ -3781,7 +3781,41 @@
               maxTicksLimit: maxTicks,
               autoSkip: false, // Don't skip ticks automatically
               callback: formatXAxisTick,
-              includeBounds: true
+              includeBounds: false // We control bounds manually via afterBuildTicks
+            },
+            afterBuildTicks: (scale: any) => {
+              // Calculate stepMs correctly:
+              // - Standard timebases (5m→4d): tickConfig.stepMinutes is always in minutes
+              // - Custom with unit='hour': getCustomTickConfig returns stepSize in HOURS, not minutes
+              let stepMs: number
+              if (timeBase.value === 'custom') {
+                stepMs = tickConfig.unit === 'hour'
+                  ? tickConfig.stepMinutes * 60 * 60 * 1000  // stepMinutes holds hours for custom hour-based ranges
+                  : tickConfig.stepMinutes * 60 * 1000        // stepMinutes holds minutes for custom minute-based ranges
+              } else {
+                stepMs = tickConfig.stepMinutes * 60 * 1000  // all standard timebases store minutes
+              }
+
+              const startMs = scale.min
+              const endMs = scale.max
+
+              // First tick = actual start time (e.g. 17:18:32)
+              const customTicks: Array<{value: number}> = [{ value: startMs }]
+
+              // First clean boundary: e.g. ceil(17:18:32 / 5min) * 5min = 17:20:00
+              const firstCleanMs = Math.ceil(startMs / stepMs) * stepMs
+
+              // Skip the clean boundary only if it falls too close to the start label
+              // Use 25% of the step as the minimum gap (proportional, not a fixed 30s)
+              const minGapMs = stepMs * 0.25
+
+              for (let t = firstCleanMs; t <= endMs; t += stepMs) {
+                if (Math.abs(t - startMs) > minGapMs) {
+                  customTicks.push({ value: t })
+                }
+              }
+
+              scale.ticks = customTicks
             }
           }
         })(),
