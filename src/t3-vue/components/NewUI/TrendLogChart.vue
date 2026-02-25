@@ -3353,41 +3353,83 @@
             const titleText = scale.options.title.text
             if (!titleText) return
 
-            const color = scale.options.title.color
+            // Use per-unit groups if available, otherwise fall back to single group
+            const unitColorGroups: Array<{unit: string, colors: string[]}> =
+              scale.options.title.unitColorGroups?.length
+                ? scale.options.title.unitColorGroups
+                : [{ unit: titleText, colors: (scale.options.title.multiColors || [scale.options.title.color]).filter(Boolean) }]
+
+            if (unitColorGroups.length === 0) return
+
+            // Layout constants
+            const pillH = 15
+            const padX = 5
+            const barW = 5
+            const barGap = 2
+            const barPadL = 3   // gap between unit text and its bars
+            const groupGap = 6  // gap between unit groups
+            const radius = 3
 
             ctx.save()
+            ctx.font = 'bold 9px Inter, sans-serif'
 
-            ctx.font = '9px Inter, sans-serif'
-            ctx.textAlign = 'center'
-            ctx.textBaseline = 'middle'
+            // Calculate total pill width
+            let totalInnerW = 0
+            unitColorGroups.forEach((group, gi) => {
+              const tw = ctx.measureText(group.unit).width
+              const bw = group.colors.length * (barW + barGap) - barGap
+              totalInnerW += tw + barPadL + bw
+              if (gi < unitColorGroups.length - 1) totalInnerW += groupGap
+            })
+            const pillW = padX + totalInnerW + padX
 
+            // Position: centered on the axis, rotated 90°
             const centerY = (scale.top + scale.bottom) / 2
-            const boxWidth = 18
-            const x = scale.left + boxWidth / 2 + 2
+            const x = scale.left + pillH / 2 + 2
 
-            const textWidth = ctx.measureText(titleText).width
-            const boxPadding = 4
-            const boxHeight = textWidth + (boxPadding * 2)
-
-            // Draw colored background
-            ctx.fillStyle = color
-            ctx.beginPath()
-            ctx.roundRect(
-              x - boxWidth / 2,
-              centerY - boxHeight / 2,
-              boxWidth,
-              boxHeight,
-              6
-            )
-            ctx.fill()
-
-            // Draw white text
-            ctx.fillStyle = '#ffffff'
             ctx.translate(x, centerY)
             ctx.rotate(-Math.PI / 2)
-            ctx.fillText(titleText, 0, 0)
 
-            ctx.restore()
+            const px = -pillW / 2
+            const py = -pillH / 2
+
+            // Draw pill background
+            ctx.fillStyle = '#f0f0f0'
+            ctx.beginPath()
+            ctx.roundRect(px, py, pillW, pillH, radius)
+            ctx.fill()
+            ctx.strokeStyle = 'rgba(0,0,0,0.12)'
+            ctx.lineWidth = 0.5
+            ctx.stroke()
+
+            // Clip all drawing to pill shape
+            ctx.save()
+            ctx.beginPath()
+            ctx.roundRect(px, py, pillW, pillH, radius)
+            ctx.clip()
+
+            ctx.textBaseline = 'middle'
+            ctx.textAlign = 'left'
+
+            let cursorX = px + padX
+            unitColorGroups.forEach((group, gi) => {
+              // Draw unit label
+              ctx.fillStyle = group.colors[0] || '#444444'
+              ctx.fillText(group.unit, cursorX, 0)
+              cursorX += ctx.measureText(group.unit).width + barPadL
+
+              // Draw color bars for this unit
+              group.colors.forEach((col: string, ci: number) => {
+                ctx.fillStyle = col
+                ctx.fillRect(cursorX + ci * (barW + barGap), py + 2, barW, pillH - 4)
+              })
+              cursorX += group.colors.length * (barW + barGap) - barGap
+
+              if (gi < unitColorGroups.length - 1) cursorX += groupGap
+            })
+
+            ctx.restore() // remove clip
+            ctx.restore() // remove transform
           })
         }
       }
@@ -8063,7 +8105,9 @@
     // y = left position 0 (primary), y1 = left position 1, y2 = left position 2, y3 = left position 3
     const axisAssignment = new Map<string, string>()
     const axisColors = new Map<string, string>() // Axis ID → Color of first series
+    const axisColorsList = new Map<string, string[]>() // Axis ID → All series colors
     const axisUnits = new Map<string, Set<string>>() // Axis ID → Set of all units
+    const axisUnitColorGroups = new Map<string, Array<{unit: string, colors: string[]}>>() // Axis ID → per-unit color groups
 
     sortedGroups.forEach(([groupName, items], index) => {
       const axisId = index === 0 ? 'y' :
@@ -8075,6 +8119,28 @@
         const firstSeriesColor = items[0].color
         axisColors.set(axisId, firstSeriesColor)
       }
+
+      // Collect ALL colors for this axis
+      if (!axisColorsList.has(axisId)) {
+        axisColorsList.set(axisId, [])
+      }
+      items.forEach(item => axisColorsList.get(axisId)!.push(item.color))
+
+      // Collect per-unit color groups for this axis
+      if (!axisUnitColorGroups.has(axisId)) {
+        axisUnitColorGroups.set(axisId, [])
+      }
+      const unitColorMap = new Map<string, string[]>()
+      items.forEach(item => {
+        const u = item.unit || ''
+        if (u && u !== 'Unused' && u !== 'Off') {
+          if (!unitColorMap.has(u)) unitColorMap.set(u, [])
+          unitColorMap.get(u)!.push(item.color)
+        }
+      })
+      unitColorMap.forEach((cols, u) => {
+        axisUnitColorGroups.get(axisId)!.push({ unit: u, colors: cols })
+      })
 
       // Collect all unique units for this axis
       if (!axisUnits.has(axisId)) {
@@ -8137,6 +8203,8 @@
             const unitText = unitsArray.length > 0 ? unitsArray.join(' | ') : ''
             scales[axisId].title.text = unitText
             scales[axisId].title.color = axisColor
+            scales[axisId].title.multiColors = axisColorsList.get(axisId) || [axisColor]
+            scales[axisId].title.unitColorGroups = axisUnitColorGroups.get(axisId) || []
           }
 
           // Update tick colors
