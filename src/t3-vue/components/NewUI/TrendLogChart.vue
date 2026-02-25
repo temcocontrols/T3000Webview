@@ -3566,12 +3566,13 @@
 
               sortedPoints.forEach((point: any) => {
                 const series = visibleAnalogSeries.value.find(s => s.name === point.dataset.label)
-                const value = point.parsed.y.toFixed(2)
+                const rawY = point.parsed.y
+                const value = rawY != null && !isNaN(rawY) ? rawY.toFixed(2) : 'null'
                 const unit = series?.unit || ''
                 const label = point.dataset.label || ''
 
                 // Format display text - hide "Unused" unit
-                const displayText = unit === 'Unused' ? `${label}: ${value}` : `${label}: ${value} ${unit}`
+                const displayText = unit === 'Unused' || value === 'null' ? `${label}: ${value}` : `${label}: ${value} ${unit}`
 
                 // Create individual tooltip element
                 const tooltipEl = document.createElement('div')
@@ -3630,6 +3631,49 @@
                 tooltipEl.style.left = (pointX + 10) + 'px'
                 tooltipEl.style.top = tooltipTop + 'px'
 
+                document.body.appendChild(tooltipEl)
+              })
+
+              // Show "null" tooltips for visible series that had no data at this crosshair position
+              const presentLabels = new Set(tooltip.dataPoints.map((p: any) => p.dataset.label))
+              const caretX = position.left + scrollX + (tooltip.caretX ?? sortedPoints[0]?.element?.x ?? 0)
+
+              visibleAnalogSeries.value.forEach((series: any) => {
+                if (presentLabels.has(series.name)) return
+
+                const displayText = `${series.name}: null`
+
+                const tooltipEl = document.createElement('div')
+                tooltipEl.className = 'chartjs-multi-tooltip'
+                tooltipEl.style.opacity = '1'
+                tooltipEl.style.position = 'absolute'
+                tooltipEl.style.pointerEvents = 'none'
+                tooltipEl.style.zIndex = '1000'
+                tooltipEl.innerHTML = `
+                  <div style="
+                    background: #f5f5f5;
+                    color: #999;
+                    border: 1px solid #d9d9d9;
+                    border-radius: 4px;
+                    padding: 3px 6px;
+                    font-size: 10px;
+                    font-weight: 500;
+                    white-space: nowrap;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+                  ">
+                    ${displayText}
+                  </div>
+                `
+
+                // Stack below the last occupied position
+                let tooltipTop = tooltipPositions.length > 0
+                  ? tooltipPositions[tooltipPositions.length - 1].bottom + minSpacing
+                  : position.top + scrollY + chart.chartArea.top + 4
+
+                tooltipPositions.push({ top: tooltipTop, bottom: tooltipTop + tooltipHeight })
+
+                tooltipEl.style.left = (caretX + 10) + 'px'
+                tooltipEl.style.top = tooltipTop + 'px'
                 document.body.appendChild(tooltipEl)
               })
             }
