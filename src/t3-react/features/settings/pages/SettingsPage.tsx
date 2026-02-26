@@ -1371,7 +1371,7 @@ export const SettingsPage: React.FC = () => {
                 <div className={styles.basicPanelTitle}>Device Serial Port Config</div>
 
                 {/* Column headers */}
-                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 72px 58px 60px 42px', gap: '4px', alignItems: 'center', marginBottom: '4px', fontSize: '11px', color: '#605e5c', fontWeight: 600 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 0.6fr 1fr 0.6fr', gap: '4px', alignItems: 'center', marginBottom: '4px', fontSize: '11px', color: '#605e5c', fontWeight: 600 }}>
                   <div />
                   <div />
                   <div>Baudrate</div>
@@ -1381,10 +1381,11 @@ export const SettingsPage: React.FC = () => {
                 </div>
 
                 {/* RS485 SUB row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 72px 58px 60px 42px', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 0.6fr 1fr 0.6fr', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
                   <span style={{ fontSize: '12px', fontWeight: 600 }}>RS485 SUB</span>
                   <Dropdown
                     size="small"
+                    style={{ width: '100%', minWidth: 0 }}
                     value={String(commSettings.COM0_Config ?? 0)}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
@@ -1443,13 +1444,13 @@ export const SettingsPage: React.FC = () => {
                   </Dropdown>
                 </div>
 
-                {/* Zigbee row �?mode is configurable but baudrate/parity/stopbit are hardware-fixed */}
-                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 72px 58px 60px 42px', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
+                {/* Zigbee row */}
+                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 0.6fr 1fr 0.6fr', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
                   <span style={{ fontSize: '12px', fontWeight: 600 }}>Zigbee :</span>
                   <Dropdown
                     size="small"
+                    style={{ width: '100%', minWidth: 0 }}
                     value={String(commSettings.COM1_Config ?? 0)}
-                    disabled
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
                       setCommSettings({ ...commSettings, COM1_Config: v });
@@ -1460,25 +1461,57 @@ export const SettingsPage: React.FC = () => {
                       <Option key={idx} value={String(idx)}>{label}</Option>
                     ))}
                   </Dropdown>
-                  <Input size="small" value="19200" disabled />
+                  <Dropdown
+                    size="small"
+                    style={{ width: '100%', minWidth: 0 }}
+                    value={String(commSettings.COM_Baudrate1 ?? 6)}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      setCommSettings({ ...commSettings, COM_Baudrate1: v });
+                      updateSettings({ com_baudrate1: v });
+                    }}
+                  >
+                    {BAUDRATE_OPTIONS.map((baud, idx) => (
+                      <Option key={idx} value={String(idx)} text={String(baud)}>{baud}</Option>
+                    ))}
+                  </Dropdown>
                   <Input size="small" value="8" disabled />
-                  <Dropdown size="small" style={{ width: '100%', minWidth: 0 }} value={String(commSettings.UART_Parity1 ?? 0)} disabled>
+                  <Dropdown
+                    size="small"
+                    style={{ width: '100%', minWidth: 0 }}
+                    value={String(commSettings.UART_Parity1 ?? 0)}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      const parity = [commSettings.UART_Parity0 ?? 0, v, commSettings.UART_Parity2 ?? 0];
+                      setCommSettings({ ...commSettings, UART_Parity1: v });
+                      updateSettings({ uart_parity: parity });
+                    }}
+                  >
                     {PARITY_OPTIONS.map((label, idx) => (
                       <Option key={idx} value={String(idx)}>{label}</Option>
                     ))}
                   </Dropdown>
-                  <Dropdown size="small" style={{ width: '100%', minWidth: 0 }} value={String(commSettings.UART_Stopbit1 ?? 0)} disabled>
+                  <Dropdown
+                    size="small"
+                    style={{ width: '100%', minWidth: 0 }}
+                    value={String(commSettings.UART_Stopbit1 ?? 0)}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      const stopbit = [commSettings.UART_Stopbit0 ?? 0, v, commSettings.UART_Stopbit2 ?? 0];
+                      setCommSettings({ ...commSettings, UART_Stopbit1: v });
+                      updateSettings({ uart_stopbit: stopbit });
+                    }}
+                  >
                     {STOPBIT_OPTIONS.map((label, idx) => (
                       <Option key={idx} value={String(idx)}>{label}</Option>
                     ))}
                   </Dropdown>
                 </div>
-
-                {/* RS485 Main row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 72px 58px 60px 42px', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 0.6fr 1fr 0.6fr', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
                   <span style={{ fontSize: '12px', fontWeight: 600 }}>RS485 Main</span>
                   <Dropdown
                     size="small"
+                    style={{ width: '100%', minWidth: 0 }}
                     value={String(commSettings.COM2_Config ?? 0)}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
