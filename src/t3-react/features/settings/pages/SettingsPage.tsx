@@ -77,7 +77,7 @@ const BAUDRATE_OPTIONS = [
   57600,  // 11
 ];
 
-// com_config index ï¿½?port mode label (from T3000 C++ Device_Serial_Port_Status[])
+// com_config index ï¿?port mode label (from T3000 C++ Device_Serial_Port_Status[])
 const COM_PORT_MODES = [
   'Unused',           // 0
   'BACnet MSTP Slave',// 1
@@ -1371,17 +1371,17 @@ export const SettingsPage: React.FC = () => {
                 <div className={styles.basicPanelTitle}>Device Serial Port Config</div>
 
                 {/* Column headers */}
-                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 0.6fr 1fr 0.6fr', gap: '4px', alignItems: 'center', marginBottom: '4px', fontSize: '11px', color: '#605e5c', fontWeight: 600 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 70px 1fr 1fr', gap: '4px', alignItems: 'center', marginBottom: '4px', fontSize: '11px', color: '#605e5c', fontWeight: 600 }}>
                   <div />
                   <div />
                   <div>Baudrate</div>
-                  <div>Data Bits</div>
-                  <div>Parity Bit</div>
-                  <div>Stop Bit</div>
+                  <div style={{ textAlign: 'center' }}>Data Bits</div>
+                  <div style={{ textAlign: 'center' }}>Parity Bit</div>
+                  <div style={{ textAlign: 'center' }}>Stop Bit</div>
                 </div>
 
                 {/* RS485 SUB row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 0.6fr 1fr 0.6fr', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 70px 1fr 1fr', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
                   <span style={{ fontSize: '12px', fontWeight: 600 }}>RS485 SUB</span>
                   <Dropdown
                     size="small"
@@ -1445,7 +1445,7 @@ export const SettingsPage: React.FC = () => {
                 </div>
 
                 {/* Zigbee row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 0.6fr 1fr 0.6fr', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 70px 1fr 1fr', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
                   <span style={{ fontSize: '12px', fontWeight: 600 }}>Zigbee :</span>
                   <Dropdown
                     size="small"
@@ -1507,7 +1507,8 @@ export const SettingsPage: React.FC = () => {
                     ))}
                   </Dropdown>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 0.6fr 1fr 0.6fr', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
+                {/* RS485 Main row */}
+                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 70px 1fr 1fr', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
                   <span style={{ fontSize: '12px', fontWeight: 600 }}>RS485 Main</span>
                   <Dropdown
                     size="small"
