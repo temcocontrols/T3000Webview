@@ -2740,6 +2740,8 @@
   const digitalChartCanvas = ref<HTMLCanvasElement>()
   let analogChartInstance: Chart | null = null
   let digitalChartInstance: Chart | null = null
+  // Total real (non-null) data points across all visible analog series in current time window
+  const analogTotalPointsInView = ref<number>(-1) // -1 = not yet calculated
   let realtimeInterval: NodeJS.Timeout | null = null
 
   // 🆔 Unique instance ID to track and prevent duplicate intervals across HMR reloads
@@ -3493,6 +3495,11 @@
 
             // Hide if no tooltip
             if (tooltip.opacity === 0) {
+              return
+            }
+
+            // Suppress tooltip entirely when there are no data points in view
+            if (analogTotalPointsInView.value === 0) {
               return
             }
 
@@ -8328,7 +8335,21 @@
 
       // 🆕 Detect large gaps and insert null to break line visualization
       const dataWithGaps: Array<{ x: number; y: number | null }> = []
-      const maxGapMs = getGapThresholdMs()
+
+      // Auto-detect typical recording interval so we only break the line at
+      // genuine gaps (e.g. device offline), not at the normal inter-point spacing.
+      // Use median of consecutive intervals × 2.5; fall back to configured threshold.
+      let maxGapMs = getGapThresholdMs()
+      if (sortedData.length >= 2) {
+        const intervals: number[] = []
+        for (let j = 1; j < sortedData.length; j++) {
+          intervals.push(sortedData[j].x - sortedData[j - 1].x)
+        }
+        intervals.sort((a, b) => a - b)
+        const medianInterval = intervals[Math.floor(intervals.length / 2)]
+        // Only treat as a gap if it's > 2.5× the typical recording interval
+        maxGapMs = Math.max(medianInterval * 2.5, maxGapMs)
+      }
 
       for (let i = 0; i < sortedData.length; i++) {
         dataWithGaps.push(sortedData[i])
@@ -8366,7 +8387,10 @@
       // Determine whether to show a point marker: respect global `showPoints`,
       // but always show a marker when there is only a single data point to
       // provide immediate feedback for single-point real-time updates.
-      const shouldShowPoint = showPoints.value || (sortedData.length === 1)
+      // Also force points visible when data is sparse (< 4 points) so isolated
+      // dots are always visible even when the user has showPoints disabled.
+      const isSparse = sortedData.length > 0 && sortedData.length < 4
+      const shouldShowPoint = showPoints.value || (sortedData.length <= 1) || isSparse
 
       datasets.push({
         label: series.name,
@@ -8376,7 +8400,7 @@
         borderWidth: 2,
         fill: false,
         tension: smoothLines.value ? 0.4 : 0,
-        pointRadius: shouldShowPoint ? 3 : 0,
+        pointRadius: shouldShowPoint ? (isSparse ? 4 : 3) : 0,
         pointHoverRadius: 6,
         pointBackgroundColor: series.color,
         pointBorderColor: '#fff',
@@ -8386,6 +8410,11 @@
         yAxisID: yAxisID // ✅ Assign axis here!
       })
     }
+
+    // Update total non-null points in view so template can show sparse/no-data indicators
+    analogTotalPointsInView.value = datasets.reduce((sum, ds) => {
+      return sum + ds.data.filter((p: any) => p !== null && p?.y !== null && p?.y !== undefined).length
+    }, 0)
 
     // 🆕 FIX: Check if chart still exists before updating (could be destroyed during async processing)
     if (!analogChartInstance) {
@@ -8589,7 +8618,6 @@
 
     // Build datasets for all visible digital series
     const datasets: any[] = []
-    const maxGapMs = getGapThresholdMs()
 
     for (let index = 0; index < visibleDigitalSeries.value.length; index++) {
       const series = visibleDigitalSeries.value[index]
@@ -8631,6 +8659,18 @@
 
       // 🆕 Detect large gaps and insert null to break line visualization
       const dataWithGaps: Array<{ x: number; y: number | null }> = []
+
+      // Auto-detect typical recording interval per series
+      let maxGapMs = getGapThresholdMs()
+      if (sortedData.length >= 2) {
+        const intervals: number[] = []
+        for (let j = 1; j < sortedData.length; j++) {
+          intervals.push(sortedData[j].x - sortedData[j - 1].x)
+        }
+        intervals.sort((a, b) => a - b)
+        const medianInterval = intervals[Math.floor(intervals.length / 2)]
+        maxGapMs = Math.max(medianInterval * 2.5, maxGapMs)
+      }
 
       for (let i = 0; i < sortedData.length; i++) {
         dataWithGaps.push(sortedData[i])
