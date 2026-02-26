@@ -59,9 +59,24 @@ import { SettingsUpdateApi } from '../services/settingsUpdateApi';
 import { AdvancedSettingsDialog } from '../components/AdvancedSettingsDialog';
 import cssStyles from './SettingsPage.module.css';
 
-// Baudrate byte index → actual baud rate (from T3000 C++ Baudrate_Array)
-// com_baudrate0/1/2 stores an index 0-4, NOT the actual baud value
-const BAUDRATE_OPTIONS = [9600, 19200, 38400, 57600, 115200];
+// Full T3000 C++ Baudrate_Array — com_baudrate0/1/2 stores an index 0-11 into this array
+// UART_9600=5, UART_19200=6, UART_38400=7, UART_115200=9, UART_57600=11
+const BAUDRATE_OPTIONS = [
+  1200,   // 0
+  2400,   // 1
+  3600,   // 2
+  4800,   // 3
+  7200,   // 4
+  9600,   // 5 UART_9600
+  19200,  // 6 UART_19200
+  38400,  // 7 UART_38400
+  76800,  // 8
+  115200, // 9 UART_115200
+  921600, // 10 UART_921600
+  57600,  // 11
+];
+// Zigbee (COM1) baudrate is fixed at index 6 (19200) in C++ and cannot be changed
+const ZIGBEE_BAUDRATE_INDEX = 6;
 
 // com_config index → port mode label (from T3000 C++ Device_Serial_Port_Status[])
 const COM_PORT_MODES = [
@@ -1329,8 +1344,8 @@ export const SettingsPage: React.FC = () => {
             <div className={styles.section}>
               <div className={styles.sectionTitle}>Serial Port Configuration</div>
               <div className={styles.formGrid}>
-                {/* COM0 */}
-                <Field label="COM0 Mode">
+                {/* COM0 = RS485 SUB */}
+                <Field label="RS485 SUB Mode">
                   <Dropdown
                     value={String(commSettings.COM0_Config ?? 0)}
                     onOptionSelect={(_, data) => {
@@ -1344,9 +1359,9 @@ export const SettingsPage: React.FC = () => {
                     ))}
                   </Dropdown>
                 </Field>
-                <Field label="COM0 Baudrate">
+                <Field label="RS485 SUB Baudrate">
                   <Dropdown
-                    value={String(commSettings.COM_Baudrate0 ?? 1)}
+                    value={String(commSettings.COM_Baudrate0 ?? 9)}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
                       setCommSettings({ ...commSettings, COM_Baudrate0: v });
@@ -1354,11 +1369,11 @@ export const SettingsPage: React.FC = () => {
                     }}
                   >
                     {BAUDRATE_OPTIONS.map((baud, idx) => (
-                      <Option key={idx} value={String(idx)}>{baud}</Option>
+                      <Option key={idx} value={String(idx)} text={String(baud)}>{baud}</Option>
                     ))}
                   </Dropdown>
                 </Field>
-                <Field label="COM0 Parity">
+                <Field label="RS485 SUB Parity">
                   <Dropdown
                     value={String(commSettings.UART_Parity0 ?? 0)}
                     onOptionSelect={(_, data) => {
@@ -1373,7 +1388,7 @@ export const SettingsPage: React.FC = () => {
                     ))}
                   </Dropdown>
                 </Field>
-                <Field label="COM0 Stop Bits">
+                <Field label="RS485 SUB Stop Bits">
                   <Dropdown
                     value={String(commSettings.UART_Stopbit0 ?? 0)}
                     onOptionSelect={(_, data) => {
@@ -1389,8 +1404,8 @@ export const SettingsPage: React.FC = () => {
                   </Dropdown>
                 </Field>
 
-                {/* COM1 */}
-                <Field label="COM1 Mode">
+                {/* COM1 = Zigbee — baudrate fixed at 19200 (index 6) */}
+                <Field label="Zigbee Mode">
                   <Dropdown
                     value={String(commSettings.COM1_Config ?? 0)}
                     onOptionSelect={(_, data) => {
@@ -1404,23 +1419,19 @@ export const SettingsPage: React.FC = () => {
                     ))}
                   </Dropdown>
                 </Field>
-                <Field label="COM1 Baudrate">
+                <Field label="Zigbee Baudrate">
+                  {/* Zigbee baudrate is hardware-fixed at 19200 */}
                   <Dropdown
-                    value={String(commSettings.COM_Baudrate1 ?? 1)}
-                    onOptionSelect={(_, data) => {
-                      const v = Number(data.optionValue);
-                      setCommSettings({ ...commSettings, COM_Baudrate1: v });
-                      updateSettings({ com_baudrate1: v });
-                    }}
+                    value={String(ZIGBEE_BAUDRATE_INDEX)}
+                    disabled
                   >
-                    {BAUDRATE_OPTIONS.map((baud, idx) => (
-                      <Option key={idx} value={String(idx)}>{baud}</Option>
-                    ))}
+                    <Option value={String(ZIGBEE_BAUDRATE_INDEX)}>19200 (fixed)</Option>
                   </Dropdown>
                 </Field>
-                <Field label="COM1 Parity">
+                <Field label="Zigbee Parity">
                   <Dropdown
                     value={String(commSettings.UART_Parity1 ?? 0)}
+                    disabled
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
                       const parity = [commSettings.UART_Parity0 ?? 0, v, commSettings.UART_Parity2 ?? 0];
@@ -1433,9 +1444,10 @@ export const SettingsPage: React.FC = () => {
                     ))}
                   </Dropdown>
                 </Field>
-                <Field label="COM1 Stop Bits">
+                <Field label="Zigbee Stop Bits">
                   <Dropdown
                     value={String(commSettings.UART_Stopbit1 ?? 0)}
+                    disabled
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
                       const stopbit = [commSettings.UART_Stopbit0 ?? 0, v, commSettings.UART_Stopbit2 ?? 0];
@@ -1449,8 +1461,8 @@ export const SettingsPage: React.FC = () => {
                   </Dropdown>
                 </Field>
 
-                {/* COM2 */}
-                <Field label="COM2 Mode">
+                {/* COM2 = RS485 Main */}
+                <Field label="RS485 Main Mode">
                   <Dropdown
                     value={String(commSettings.COM2_Config ?? 0)}
                     onOptionSelect={(_, data) => {
@@ -1464,9 +1476,9 @@ export const SettingsPage: React.FC = () => {
                     ))}
                   </Dropdown>
                 </Field>
-                <Field label="COM2 Baudrate">
+                <Field label="RS485 Main Baudrate">
                   <Dropdown
-                    value={String(commSettings.COM_Baudrate2 ?? 1)}
+                    value={String(commSettings.COM_Baudrate2 ?? 9)}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
                       setCommSettings({ ...commSettings, COM_Baudrate2: v });
@@ -1474,11 +1486,11 @@ export const SettingsPage: React.FC = () => {
                     }}
                   >
                     {BAUDRATE_OPTIONS.map((baud, idx) => (
-                      <Option key={idx} value={String(idx)}>{baud}</Option>
+                      <Option key={idx} value={String(idx)} text={String(baud)}>{baud}</Option>
                     ))}
                   </Dropdown>
                 </Field>
-                <Field label="COM2 Parity">
+                <Field label="RS485 Main Parity">
                   <Dropdown
                     value={String(commSettings.UART_Parity2 ?? 0)}
                     onOptionSelect={(_, data) => {
@@ -1493,7 +1505,7 @@ export const SettingsPage: React.FC = () => {
                     ))}
                   </Dropdown>
                 </Field>
-                <Field label="COM2 Stop Bits">
+                <Field label="RS485 Main Stop Bits">
                   <Dropdown
                     value={String(commSettings.UART_Stopbit2 ?? 0)}
                     onOptionSelect={(_, data) => {
