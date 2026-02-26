@@ -59,6 +59,30 @@ import { SettingsUpdateApi } from '../services/settingsUpdateApi';
 import { AdvancedSettingsDialog } from '../components/AdvancedSettingsDialog';
 import cssStyles from './SettingsPage.module.css';
 
+// Baudrate byte index → actual baud rate (from T3000 C++ Baudrate_Array)
+// com_baudrate0/1/2 stores an index 0-4, NOT the actual baud value
+const BAUDRATE_OPTIONS = [9600, 19200, 38400, 57600, 115200];
+
+// com_config index → port mode label (from T3000 C++ Device_Serial_Port_Status[])
+const COM_PORT_MODES = [
+  'Unused',           // 0
+  'BACnet MSTP Slave',// 1
+  'Modbus Slave',     // 2
+  'BACnet PTP',       // 3
+  'GSM',              // 4
+  'Main Zigbee',      // 5
+  'Sub Zigbee',       // 6
+  'Modbus Master',    // 7
+  'RS232 Meter',      // 8
+  'BACnet MSTP Master',// 9
+];
+
+// uart_parity: 0=None, 1=Odd, 2=Even
+const PARITY_OPTIONS = ['None', 'Odd', 'Even'];
+
+// uart_stopbit: 0=1 bit, 1=2 bits
+const STOPBIT_OPTIONS = ['1 bit', '2 bits'];
+
 const useStyles = makeStyles({
   container: {
     display: 'flex',
@@ -521,7 +545,9 @@ export const SettingsPage: React.FC = () => {
         Max_Master: settings.max_master,
         Object_Instance: settings.object_instance,
         BBMD_Enable: settings.BBMD_EN,
-        Network_Number: settings.network_number,
+        // BIP Network is a 16-bit split across two uint8 fields:
+        // low byte = network_number (offset 50), high byte = network_number_hi (offset 264)
+        Network_Number: settings.network_number | (settings.network_number_hi << 8),
       });
 
       setTimeSettings({
@@ -619,7 +645,7 @@ export const SettingsPage: React.FC = () => {
           Max_Master: settings.max_master,
           Object_Instance: settings.object_instance,
           BBMD_Enable: settings.BBMD_EN,
-          Network_Number: settings.network_number,
+          Network_Number: settings.network_number | (settings.network_number_hi << 8),
         });
 
         setTimeSettings({
@@ -636,8 +662,8 @@ export const SettingsPage: React.FC = () => {
         setDyndnsSettings({
           Enable_DynDNS: settings.en_dyndns,
           DynDNS_Provider: settings.dyndns_provider,
-          DynDNS_Username: settings.dyndns_user,
-          DynDNS_Password: settings.dyndns_pass,
+          DynDNS_User: settings.dyndns_user,
+          DynDNS_Pass: settings.dyndns_pass,
           DynDNS_Domain: settings.dyndns_domain,
           DynDNS_Update_Time: settings.dyndns_update_time,
         });
@@ -1095,9 +1121,12 @@ export const SettingsPage: React.FC = () => {
                     type="number"
                     size="small"
                     value={String(protocolSettings.Network_Number ?? '')}
-                    onChange={(_, data) =>
-                      setProtocolSettings({ ...protocolSettings, Network_Number: Number(data.value) })
-                    }
+                    onChange={(_, data) => {
+                      const v = Number(data.value) & 0xFFFF;
+                      setProtocolSettings({ ...protocolSettings, Network_Number: v });
+                      // Split 16-bit value back into two uint8 bytes for device
+                      updateSettings({ network_number: v & 0xFF, network_number_hi: (v >> 8) & 0xFF });
+                    }}
                   />
                 </Field>
                 <Field label="Max Master" size="small" className={styles.horizontalField}>
@@ -1300,46 +1329,183 @@ export const SettingsPage: React.FC = () => {
             <div className={styles.section}>
               <div className={styles.sectionTitle}>Serial Port Configuration</div>
               <div className={styles.formGrid}>
+                {/* COM0 */}
+                <Field label="COM0 Mode">
+                  <Dropdown
+                    value={String(commSettings.COM0_Config ?? 0)}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      setCommSettings({ ...commSettings, COM0_Config: v });
+                      updateSettings({ com0_config: v });
+                    }}
+                  >
+                    {COM_PORT_MODES.map((label, idx) => (
+                      <Option key={idx} value={String(idx)}>{label}</Option>
+                    ))}
+                  </Dropdown>
+                </Field>
                 <Field label="COM0 Baudrate">
                   <Dropdown
-                    value={String(commSettings.COM_Baudrate0 ?? 19200)}
-                    onOptionSelect={(_, data) =>
-                      setCommSettings({ ...commSettings, COM_Baudrate0: Number(data.optionValue) })
-                    }
+                    value={String(commSettings.COM_Baudrate0 ?? 1)}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      setCommSettings({ ...commSettings, COM_Baudrate0: v });
+                      updateSettings({ com_baudrate0: v });
+                    }}
                   >
-                    <Option value="9600">9600</Option>
-                    <Option value="19200">19200</Option>
-                    <Option value="38400">38400</Option>
-                    <Option value="57600">57600</Option>
-                    <Option value="115200">115200</Option>
+                    {BAUDRATE_OPTIONS.map((baud, idx) => (
+                      <Option key={idx} value={String(idx)}>{baud}</Option>
+                    ))}
+                  </Dropdown>
+                </Field>
+                <Field label="COM0 Parity">
+                  <Dropdown
+                    value={String(commSettings.UART_Parity0 ?? 0)}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      const parity = [v, commSettings.UART_Parity1 ?? 0, commSettings.UART_Parity2 ?? 0];
+                      setCommSettings({ ...commSettings, UART_Parity0: v });
+                      updateSettings({ uart_parity: parity });
+                    }}
+                  >
+                    {PARITY_OPTIONS.map((label, idx) => (
+                      <Option key={idx} value={String(idx)}>{label}</Option>
+                    ))}
+                  </Dropdown>
+                </Field>
+                <Field label="COM0 Stop Bits">
+                  <Dropdown
+                    value={String(commSettings.UART_Stopbit0 ?? 0)}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      const stopbit = [v, commSettings.UART_Stopbit1 ?? 0, commSettings.UART_Stopbit2 ?? 0];
+                      setCommSettings({ ...commSettings, UART_Stopbit0: v });
+                      updateSettings({ uart_stopbit: stopbit });
+                    }}
+                  >
+                    {STOPBIT_OPTIONS.map((label, idx) => (
+                      <Option key={idx} value={String(idx)}>{label}</Option>
+                    ))}
+                  </Dropdown>
+                </Field>
+
+                {/* COM1 */}
+                <Field label="COM1 Mode">
+                  <Dropdown
+                    value={String(commSettings.COM1_Config ?? 0)}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      setCommSettings({ ...commSettings, COM1_Config: v });
+                      updateSettings({ com1_config: v });
+                    }}
+                  >
+                    {COM_PORT_MODES.map((label, idx) => (
+                      <Option key={idx} value={String(idx)}>{label}</Option>
+                    ))}
                   </Dropdown>
                 </Field>
                 <Field label="COM1 Baudrate">
                   <Dropdown
-                    value={String(commSettings.COM_Baudrate1 ?? 19200)}
-                    onOptionSelect={(_, data) =>
-                      setCommSettings({ ...commSettings, COM_Baudrate1: Number(data.optionValue) })
-                    }
+                    value={String(commSettings.COM_Baudrate1 ?? 1)}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      setCommSettings({ ...commSettings, COM_Baudrate1: v });
+                      updateSettings({ com_baudrate1: v });
+                    }}
                   >
-                    <Option value="9600">9600</Option>
-                    <Option value="19200">19200</Option>
-                    <Option value="38400">38400</Option>
-                    <Option value="57600">57600</Option>
-                    <Option value="115200">115200</Option>
+                    {BAUDRATE_OPTIONS.map((baud, idx) => (
+                      <Option key={idx} value={String(idx)}>{baud}</Option>
+                    ))}
+                  </Dropdown>
+                </Field>
+                <Field label="COM1 Parity">
+                  <Dropdown
+                    value={String(commSettings.UART_Parity1 ?? 0)}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      const parity = [commSettings.UART_Parity0 ?? 0, v, commSettings.UART_Parity2 ?? 0];
+                      setCommSettings({ ...commSettings, UART_Parity1: v });
+                      updateSettings({ uart_parity: parity });
+                    }}
+                  >
+                    {PARITY_OPTIONS.map((label, idx) => (
+                      <Option key={idx} value={String(idx)}>{label}</Option>
+                    ))}
+                  </Dropdown>
+                </Field>
+                <Field label="COM1 Stop Bits">
+                  <Dropdown
+                    value={String(commSettings.UART_Stopbit1 ?? 0)}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      const stopbit = [commSettings.UART_Stopbit0 ?? 0, v, commSettings.UART_Stopbit2 ?? 0];
+                      setCommSettings({ ...commSettings, UART_Stopbit1: v });
+                      updateSettings({ uart_stopbit: stopbit });
+                    }}
+                  >
+                    {STOPBIT_OPTIONS.map((label, idx) => (
+                      <Option key={idx} value={String(idx)}>{label}</Option>
+                    ))}
+                  </Dropdown>
+                </Field>
+
+                {/* COM2 */}
+                <Field label="COM2 Mode">
+                  <Dropdown
+                    value={String(commSettings.COM2_Config ?? 0)}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      setCommSettings({ ...commSettings, COM2_Config: v });
+                      updateSettings({ com2_config: v });
+                    }}
+                  >
+                    {COM_PORT_MODES.map((label, idx) => (
+                      <Option key={idx} value={String(idx)}>{label}</Option>
+                    ))}
                   </Dropdown>
                 </Field>
                 <Field label="COM2 Baudrate">
                   <Dropdown
-                    value={String(commSettings.COM_Baudrate2 ?? 19200)}
-                    onOptionSelect={(_, data) =>
-                      setCommSettings({ ...commSettings, COM_Baudrate2: Number(data.optionValue) })
-                    }
+                    value={String(commSettings.COM_Baudrate2 ?? 1)}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      setCommSettings({ ...commSettings, COM_Baudrate2: v });
+                      updateSettings({ com_baudrate2: v });
+                    }}
                   >
-                    <Option value="9600">9600</Option>
-                    <Option value="19200">19200</Option>
-                    <Option value="38400">38400</Option>
-                    <Option value="57600">57600</Option>
-                    <Option value="115200">115200</Option>
+                    {BAUDRATE_OPTIONS.map((baud, idx) => (
+                      <Option key={idx} value={String(idx)}>{baud}</Option>
+                    ))}
+                  </Dropdown>
+                </Field>
+                <Field label="COM2 Parity">
+                  <Dropdown
+                    value={String(commSettings.UART_Parity2 ?? 0)}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      const parity = [commSettings.UART_Parity0 ?? 0, commSettings.UART_Parity1 ?? 0, v];
+                      setCommSettings({ ...commSettings, UART_Parity2: v });
+                      updateSettings({ uart_parity: parity });
+                    }}
+                  >
+                    {PARITY_OPTIONS.map((label, idx) => (
+                      <Option key={idx} value={String(idx)}>{label}</Option>
+                    ))}
+                  </Dropdown>
+                </Field>
+                <Field label="COM2 Stop Bits">
+                  <Dropdown
+                    value={String(commSettings.UART_Stopbit2 ?? 0)}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      const stopbit = [commSettings.UART_Stopbit0 ?? 0, commSettings.UART_Stopbit1 ?? 0, v];
+                      setCommSettings({ ...commSettings, UART_Stopbit2: v });
+                      updateSettings({ uart_stopbit: stopbit });
+                    }}
+                  >
+                    {STOPBIT_OPTIONS.map((label, idx) => (
+                      <Option key={idx} value={String(idx)}>{label}</Option>
+                    ))}
                   </Dropdown>
                 </Field>
               </div>
@@ -1362,37 +1528,57 @@ export const SettingsPage: React.FC = () => {
             <div className={styles.section}>
               <div className={styles.sectionTitle}>Time Configuration</div>
               <div className={styles.formGrid}>
-                <Field label="Time Zone">
+                <Field label="Time Zone (minutes offset)">
                   <Input
                     type="number"
                     value={String(timeSettings.Time_Zone ?? 0)}
-                    onChange={(_, data) =>
-                      setTimeSettings({ ...timeSettings, Time_Zone: Number(data.value) })
-                    }
+                    onChange={(_, data) => {
+                      const v = Number(data.value);
+                      setTimeSettings({ ...timeSettings, Time_Zone: v });
+                      updateSettings({ time_zone: v });
+                    }}
                   />
                 </Field>
                 <Field label="SNTP Server">
                   <Input
                     value={timeSettings.SNTP_Server ?? ''}
-                    onChange={(_, data) =>
-                      setTimeSettings({ ...timeSettings, SNTP_Server: data.value })
-                    }
+                    onChange={(_, data) => {
+                      setTimeSettings({ ...timeSettings, SNTP_Server: data.value });
+                      updateSettings({ sntp_server: data.value });
+                    }}
                   />
                 </Field>
                 <Field label="Enable SNTP">
                   <Switch
                     checked={timeSettings.Enable_SNTP === 2}
-                    onChange={(_, data) =>
-                      setTimeSettings({ ...timeSettings, Enable_SNTP: data.checked ? 2 : 1 })
-                    }
+                    onChange={(_, data) => {
+                      const v = data.checked ? 2 : 1;
+                      setTimeSettings({ ...timeSettings, Enable_SNTP: v });
+                      updateSettings({ en_sntp: v });
+                    }}
                   />
+                </Field>
+                <Field label="Time Sync Source">
+                  <Dropdown
+                    value={String(timeSettings.Time_Sync_Auto_Manual ?? 0)}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      setTimeSettings({ ...timeSettings, Time_Sync_Auto_Manual: v });
+                      updateSettings({ time_sync_auto_manual: v });
+                    }}
+                  >
+                    <Option value="0">NTP Server (Auto)</Option>
+                    <Option value="1">PC Sync (Manual)</Option>
+                  </Dropdown>
                 </Field>
                 <Field label="Enable DST">
                   <Switch
                     checked={timeSettings.Time_Zone_Summer_Daytime === 1}
-                    onChange={(_, data) =>
-                      setTimeSettings({ ...timeSettings, Time_Zone_Summer_Daytime: data.checked ? 1 : 0 })
-                    }
+                    onChange={(_, data) => {
+                      const v = data.checked ? 1 : 0;
+                      setTimeSettings({ ...timeSettings, Time_Zone_Summer_Daytime: v });
+                      updateSettings({ time_zone_summer_daytime: v });
+                    }}
                   />
                 </Field>
               </div>
@@ -1406,36 +1592,44 @@ export const SettingsPage: React.FC = () => {
                     <Input
                       type="number"
                       value={String(timeSettings.Start_Month ?? 3)}
-                      onChange={(_, data) =>
-                        setTimeSettings({ ...timeSettings, Start_Month: Number(data.value) })
-                      }
+                      onChange={(_, data) => {
+                        const v = Number(data.value);
+                        setTimeSettings({ ...timeSettings, Start_Month: v });
+                        updateSettings({ start_month: v });
+                      }}
                     />
                   </Field>
                   <Field label="DST Start Day">
                     <Input
                       type="number"
                       value={String(timeSettings.Start_Day ?? 1)}
-                      onChange={(_, data) =>
-                        setTimeSettings({ ...timeSettings, Start_Day: Number(data.value) })
-                      }
+                      onChange={(_, data) => {
+                        const v = Number(data.value);
+                        setTimeSettings({ ...timeSettings, Start_Day: v });
+                        updateSettings({ start_day: v });
+                      }}
                     />
                   </Field>
                   <Field label="DST End Month">
                     <Input
                       type="number"
                       value={String(timeSettings.End_Month ?? 11)}
-                      onChange={(_, data) =>
-                        setTimeSettings({ ...timeSettings, End_Month: Number(data.value) })
-                      }
+                      onChange={(_, data) => {
+                        const v = Number(data.value);
+                        setTimeSettings({ ...timeSettings, End_Month: v });
+                        updateSettings({ end_month: v });
+                      }}
                     />
                   </Field>
                   <Field label="DST End Day">
                     <Input
                       type="number"
                       value={String(timeSettings.End_Day ?? 1)}
-                      onChange={(_, data) =>
-                        setTimeSettings({ ...timeSettings, End_Day: Number(data.value) })
-                      }
+                      onChange={(_, data) => {
+                        const v = Number(data.value);
+                        setTimeSettings({ ...timeSettings, End_Day: v });
+                        updateSettings({ end_day: v });
+                      }}
                     />
                   </Field>
                 </div>
@@ -1456,9 +1650,11 @@ export const SettingsPage: React.FC = () => {
               <Field label="Enable DynDNS">
                 <Switch
                   checked={dyndnsSettings.Enable_DynDNS === 2}
-                  onChange={(_, data) =>
-                    setDyndnsSettings({ ...dyndnsSettings, Enable_DynDNS: data.checked ? 2 : 1 })
-                  }
+                  onChange={(_, data) => {
+                    const v = data.checked ? 2 : 1;
+                    setDyndnsSettings({ ...dyndnsSettings, Enable_DynDNS: v });
+                    updateSettings({ en_dyndns: v });
+                  }}
                 />
               </Field>
 
@@ -1467,9 +1663,11 @@ export const SettingsPage: React.FC = () => {
                   <Field label="Provider">
                     <Dropdown
                       value={String(dyndnsSettings.DynDNS_Provider ?? 0)}
-                      onOptionSelect={(_, data) =>
-                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_Provider: Number(data.optionValue) })
-                      }
+                      onOptionSelect={(_, data) => {
+                        const v = Number(data.optionValue);
+                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_Provider: v });
+                        updateSettings({ dyndns_provider: v });
+                      }}
                     >
                       <Option value="0">3322.org</Option>
                       <Option value="1">DynDNS.com</Option>
@@ -1480,34 +1678,39 @@ export const SettingsPage: React.FC = () => {
                     <Input
                       type="number"
                       value={String(dyndnsSettings.DynDNS_Update_Time ?? 60)}
-                      onChange={(_, data) =>
-                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_Update_Time: Number(data.value) })
-                      }
+                      onChange={(_, data) => {
+                        const v = Number(data.value);
+                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_Update_Time: v });
+                        updateSettings({ dyndns_update_time: v });
+                      }}
                     />
                   </Field>
                   <Field label="Username">
                     <Input
                       value={dyndnsSettings.DynDNS_User ?? ''}
-                      onChange={(_, data) =>
-                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_User: data.value })
-                      }
+                      onChange={(_, data) => {
+                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_User: data.value });
+                        updateSettings({ dyndns_user: data.value });
+                      }}
                     />
                   </Field>
                   <Field label="Password">
                     <Input
                       type="password"
                       value={dyndnsSettings.DynDNS_Pass ?? ''}
-                      onChange={(_, data) =>
-                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_Pass: data.value })
-                      }
+                      onChange={(_, data) => {
+                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_Pass: data.value });
+                        updateSettings({ dyndns_pass: data.value });
+                      }}
                     />
                   </Field>
                   <Field label="Domain">
                     <Input
                       value={dyndnsSettings.DynDNS_Domain ?? ''}
-                      onChange={(_, data) =>
-                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_Domain: data.value })
-                      }
+                      onChange={(_, data) => {
+                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_Domain: data.value });
+                        updateSettings({ dyndns_domain: data.value });
+                      }}
                     />
                   </Field>
                 </div>
