@@ -1271,7 +1271,7 @@ export const SettingsPage: React.FC = () => {
       case 'communication':
         return (
           <>
-            <div className={styles.basicTwoColumn}>
+            <div className={styles.basicTwoColumn} style={{ gridTemplateColumns: '0.7fr 1fr' }}>
               {/* LEFT PANEL: IP Address */}
               <div className={styles.basicPanel}>
                 <div className={styles.basicPanelTitle}>IP Address</div>
