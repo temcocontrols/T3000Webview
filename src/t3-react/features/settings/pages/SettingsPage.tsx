@@ -26,6 +26,7 @@ import {
   Switch,
   Dropdown,
   Option,
+  Checkbox,
   Text,
   Spinner,
   Dialog,
@@ -75,8 +76,6 @@ const BAUDRATE_OPTIONS = [
   921600, // 10 UART_921600
   57600,  // 11
 ];
-// Zigbee (COM1) baudrate is fixed at index 6 (19200) in C++ and cannot be changed
-const ZIGBEE_BAUDRATE_INDEX = 6;
 
 // com_config index → port mode label (from T3000 C++ Device_Serial_Port_Status[])
 const COM_PORT_MODES = [
@@ -403,6 +402,7 @@ interface CommunicationSettings {
   UART_Stopbit1?: number;
   UART_Stopbit2?: number;
   Fix_COM_Config?: number;
+  Zigbee_Pan_ID?: number;
 }
 
 interface ProtocolSettings {
@@ -550,6 +550,7 @@ export const SettingsPage: React.FC = () => {
         UART_Stopbit1: settings.uart_stopbit?.[1],
         UART_Stopbit2: settings.uart_stopbit?.[2],
         Fix_COM_Config: settings.fix_com_config,
+        Zigbee_Pan_ID: settings.zigbee_panid,
       });
 
       setProtocolSettings({
@@ -646,10 +647,27 @@ export const SettingsPage: React.FC = () => {
         // Update all state with the refreshed settings
         setNetworkSettings({
           IP_Address: settings.ip_addr,
-          Subnet_Mask: settings.subnet,
+          Subnet: settings.subnet,
           Gateway: settings.gate_addr,
           MAC_Address: settings.mac_addr,
           TCP_Type: settings.tcp_type,
+        });
+
+        setCommSettings({
+          COM0_Config: settings.com0_config,
+          COM1_Config: settings.com1_config,
+          COM2_Config: settings.com2_config,
+          COM_Baudrate0: settings.com_baudrate0,
+          COM_Baudrate1: settings.com_baudrate1,
+          COM_Baudrate2: settings.com_baudrate2,
+          UART_Parity0: settings.uart_parity?.[0],
+          UART_Parity1: settings.uart_parity?.[1],
+          UART_Parity2: settings.uart_parity?.[2],
+          UART_Stopbit0: settings.uart_stopbit?.[0],
+          UART_Stopbit1: settings.uart_stopbit?.[1],
+          UART_Stopbit2: settings.uart_stopbit?.[2],
+          Fix_COM_Config: settings.fix_com_config,
+          Zigbee_Pan_ID: settings.zigbee_panid,
         });
 
         setProtocolSettings({
@@ -1253,100 +1271,120 @@ export const SettingsPage: React.FC = () => {
       case 'communication':
         return (
           <>
-            <div className={styles.section}>
-              <div className={styles.sectionTitle}>Network Settings</div>
-              <div className={styles.formGrid}>
-                <Field
-                  label="IP Address"
-                  validationMessage={
-                    networkSettings.IP_Address && !validateIPAddress(networkSettings.IP_Address)
-                      ? 'Invalid IP address format (e.g., 192.168.1.100)'
-                      : undefined
-                  }
-                  validationState={
-                    networkSettings.IP_Address && !validateIPAddress(networkSettings.IP_Address)
-                      ? 'error'
-                      : 'none'
-                  }
-                >
+            <div className={styles.basicTwoColumn}>
+              {/* LEFT PANEL: IP Address */}
+              <div className={styles.basicPanel}>
+                <div className={styles.basicPanelTitle}>IP Address</div>
+
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="tcpType"
+                      checked={networkSettings.TCP_Type === 0}
+                      onChange={() => {
+                        setNetworkSettings({ ...networkSettings, TCP_Type: 0 });
+                        updateSettings({ tcp_type: 0 });
+                      }}
+                    />
+                    Obtain IP Address Automatically
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="tcpType"
+                      checked={(networkSettings.TCP_Type ?? 0) !== 0}
+                      onChange={() => {
+                        setNetworkSettings({ ...networkSettings, TCP_Type: 1 });
+                        updateSettings({ tcp_type: 1 });
+                      }}
+                    />
+                    Use The Following IP Address
+                  </label>
+                </div>
+
+                <div className={styles.horizontalField}>
+                  <label>IP Address :</label>
                   <Input
+                    size="small"
                     value={networkSettings.IP_Address ?? ''}
+                    disabled={networkSettings.TCP_Type === 0}
                     onChange={(_, data) => {
                       setNetworkSettings({ ...networkSettings, IP_Address: data.value });
                       updateSettings({ ip_addr: data.value });
                     }}
                     placeholder="192.168.1.100"
                   />
-                </Field>
-                <Field
-                  label="Subnet Mask"
-                  validationMessage={
-                    networkSettings.Subnet && !validateIPAddress(networkSettings.Subnet)
-                      ? 'Invalid subnet mask format (e.g., 255.255.255.0)'
-                      : undefined
-                  }
-                  validationState={
-                    networkSettings.Subnet && !validateIPAddress(networkSettings.Subnet)
-                      ? 'error'
-                      : 'none'
-                  }
-                >
+                </div>
+                <div className={styles.horizontalField}>
+                  <label>Subnet Mask</label>
                   <Input
+                    size="small"
                     value={networkSettings.Subnet ?? ''}
+                    disabled={networkSettings.TCP_Type === 0}
                     onChange={(_, data) => {
                       setNetworkSettings({ ...networkSettings, Subnet: data.value });
                       updateSettings({ subnet: data.value });
                     }}
                     placeholder="255.255.255.0"
                   />
-                </Field>
-                <Field
-                  label="Gateway"
-                  validationMessage={
-                    networkSettings.Gateway && !validateIPAddress(networkSettings.Gateway)
-                      ? 'Invalid gateway format (e.g., 192.168.1.1)'
-                      : undefined
-                  }
-                  validationState={
-                    networkSettings.Gateway && !validateIPAddress(networkSettings.Gateway)
-                      ? 'error'
-                      : 'none'
-                  }
-                >
+                </div>
+                <div className={styles.horizontalField}>
+                  <label>Gateway Address :</label>
                   <Input
+                    size="small"
                     value={networkSettings.Gateway ?? ''}
+                    disabled={networkSettings.TCP_Type === 0}
                     onChange={(_, data) => {
                       setNetworkSettings({ ...networkSettings, Gateway: data.value });
                       updateSettings({ gate_addr: data.value });
                     }}
                     placeholder="192.168.1.1"
                   />
-                </Field>
-                <Field label="MAC Address">
-                  <Input value={networkSettings.MAC_Address ?? 'N/A'} disabled />
-                </Field>
-                <Field label="IP Configuration">
-                  <Dropdown
-                    value={networkSettings.TCP_Type === 0 ? 'DHCP' : 'Static'}
-                    onOptionSelect={(_, data) => {
-                      const tcpType = data.optionValue === 'DHCP' ? 0 : 1;
-                      setNetworkSettings({ ...networkSettings, TCP_Type: tcpType });
-                      updateSettings({ tcp_type: tcpType });
+                </div>
+                <div className={styles.horizontalField}>
+                  <label>Modbus TCP Port :</label>
+                  <Input
+                    size="small"
+                    type="number"
+                    value={String(protocolSettings.Modbus_Port ?? 502)}
+                    onChange={(_, data) => {
+                      const v = Number(data.value);
+                      setProtocolSettings({ ...protocolSettings, Modbus_Port: v });
+                      updateSettings({ modbus_port: v });
                     }}
-                  >
-                    <Option value="DHCP">DHCP (Auto)</Option>
-                    <Option value="Static">Static (Manual)</Option>
-                  </Dropdown>
-                </Field>
-              </div>
-            </div>
+                  />
+                </div>
 
-            <div className={styles.section}>
-              <div className={styles.sectionTitle}>Serial Port Configuration</div>
-              <div className={styles.formGrid}>
-                {/* COM0 = RS485 SUB */}
-                <Field label="RS485 SUB Mode">
+                <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                  <Button size="small" appearance="primary" className={styles.saveButton}>
+                    Wifi Configuration
+                  </Button>
+                  <Button size="small" appearance="secondary" onClick={handleSaveNetworkValidated}>
+                    Change IP
+                  </Button>
+                </div>
+              </div>
+
+              {/* RIGHT PANEL: Device Serial Port Config */}
+              <div className={styles.basicPanel}>
+                <div className={styles.basicPanelTitle}>Device Serial Port Config</div>
+
+                {/* Column headers */}
+                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 90px 58px 68px 54px', gap: '4px', alignItems: 'center', marginBottom: '4px', fontSize: '11px', color: '#605e5c', fontWeight: 600 }}>
+                  <div />
+                  <div />
+                  <div>Baudrate</div>
+                  <div>Data Bits</div>
+                  <div>Parity Bit</div>
+                  <div>Stop Bit</div>
+                </div>
+
+                {/* RS485 SUB row */}
+                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 90px 58px 68px 54px', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600 }}>RS485 SUB</span>
                   <Dropdown
+                    size="small"
                     value={String(commSettings.COM0_Config ?? 0)}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
@@ -1358,9 +1396,8 @@ export const SettingsPage: React.FC = () => {
                       <Option key={idx} value={String(idx)}>{label}</Option>
                     ))}
                   </Dropdown>
-                </Field>
-                <Field label="RS485 SUB Baudrate">
                   <Dropdown
+                    size="small"
                     value={String(commSettings.COM_Baudrate0 ?? 9)}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
@@ -1372,9 +1409,9 @@ export const SettingsPage: React.FC = () => {
                       <Option key={idx} value={String(idx)} text={String(baud)}>{baud}</Option>
                     ))}
                   </Dropdown>
-                </Field>
-                <Field label="RS485 SUB Parity">
+                  <Input size="small" value="8" disabled />
                   <Dropdown
+                    size="small"
                     value={String(commSettings.UART_Parity0 ?? 0)}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
@@ -1387,9 +1424,8 @@ export const SettingsPage: React.FC = () => {
                       <Option key={idx} value={String(idx)}>{label}</Option>
                     ))}
                   </Dropdown>
-                </Field>
-                <Field label="RS485 SUB Stop Bits">
                   <Dropdown
+                    size="small"
                     value={String(commSettings.UART_Stopbit0 ?? 0)}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
@@ -1402,12 +1438,15 @@ export const SettingsPage: React.FC = () => {
                       <Option key={idx} value={String(idx)}>{label}</Option>
                     ))}
                   </Dropdown>
-                </Field>
+                </div>
 
-                {/* COM1 = Zigbee — baudrate fixed at 19200 (index 6) */}
-                <Field label="Zigbee Mode">
+                {/* Zigbee row — mode is configurable but baudrate/parity/stopbit are hardware-fixed */}
+                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 90px 58px 68px 54px', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600 }}>Zigbee :</span>
                   <Dropdown
+                    size="small"
                     value={String(commSettings.COM1_Config ?? 0)}
+                    disabled
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
                       setCommSettings({ ...commSettings, COM1_Config: v });
@@ -1418,52 +1457,25 @@ export const SettingsPage: React.FC = () => {
                       <Option key={idx} value={String(idx)}>{label}</Option>
                     ))}
                   </Dropdown>
-                </Field>
-                <Field label="Zigbee Baudrate">
-                  {/* Zigbee baudrate is hardware-fixed at 19200 */}
-                  <Dropdown
-                    value={String(ZIGBEE_BAUDRATE_INDEX)}
-                    disabled
-                  >
-                    <Option value={String(ZIGBEE_BAUDRATE_INDEX)}>19200 (fixed)</Option>
-                  </Dropdown>
-                </Field>
-                <Field label="Zigbee Parity">
-                  <Dropdown
-                    value={String(commSettings.UART_Parity1 ?? 0)}
-                    disabled
-                    onOptionSelect={(_, data) => {
-                      const v = Number(data.optionValue);
-                      const parity = [commSettings.UART_Parity0 ?? 0, v, commSettings.UART_Parity2 ?? 0];
-                      setCommSettings({ ...commSettings, UART_Parity1: v });
-                      updateSettings({ uart_parity: parity });
-                    }}
-                  >
+                  <Input size="small" value="19200" disabled />
+                  <Input size="small" value="8" disabled />
+                  <Dropdown size="small" value={String(commSettings.UART_Parity1 ?? 0)} disabled>
                     {PARITY_OPTIONS.map((label, idx) => (
                       <Option key={idx} value={String(idx)}>{label}</Option>
                     ))}
                   </Dropdown>
-                </Field>
-                <Field label="Zigbee Stop Bits">
-                  <Dropdown
-                    value={String(commSettings.UART_Stopbit1 ?? 0)}
-                    disabled
-                    onOptionSelect={(_, data) => {
-                      const v = Number(data.optionValue);
-                      const stopbit = [commSettings.UART_Stopbit0 ?? 0, v, commSettings.UART_Stopbit2 ?? 0];
-                      setCommSettings({ ...commSettings, UART_Stopbit1: v });
-                      updateSettings({ uart_stopbit: stopbit });
-                    }}
-                  >
+                  <Dropdown size="small" value={String(commSettings.UART_Stopbit1 ?? 0)} disabled>
                     {STOPBIT_OPTIONS.map((label, idx) => (
                       <Option key={idx} value={String(idx)}>{label}</Option>
                     ))}
                   </Dropdown>
-                </Field>
+                </div>
 
-                {/* COM2 = RS485 Main */}
-                <Field label="RS485 Main Mode">
+                {/* RS485 Main row */}
+                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 90px 58px 68px 54px', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600 }}>RS485 Main</span>
                   <Dropdown
+                    size="small"
                     value={String(commSettings.COM2_Config ?? 0)}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
@@ -1475,9 +1487,8 @@ export const SettingsPage: React.FC = () => {
                       <Option key={idx} value={String(idx)}>{label}</Option>
                     ))}
                   </Dropdown>
-                </Field>
-                <Field label="RS485 Main Baudrate">
                   <Dropdown
+                    size="small"
                     value={String(commSettings.COM_Baudrate2 ?? 9)}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
@@ -1489,9 +1500,9 @@ export const SettingsPage: React.FC = () => {
                       <Option key={idx} value={String(idx)} text={String(baud)}>{baud}</Option>
                     ))}
                   </Dropdown>
-                </Field>
-                <Field label="RS485 Main Parity">
+                  <Input size="small" value="8" disabled />
                   <Dropdown
+                    size="small"
                     value={String(commSettings.UART_Parity2 ?? 0)}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
@@ -1504,9 +1515,8 @@ export const SettingsPage: React.FC = () => {
                       <Option key={idx} value={String(idx)}>{label}</Option>
                     ))}
                   </Dropdown>
-                </Field>
-                <Field label="RS485 Main Stop Bits">
                   <Dropdown
+                    size="small"
                     value={String(commSettings.UART_Stopbit2 ?? 0)}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
@@ -1519,17 +1529,55 @@ export const SettingsPage: React.FC = () => {
                       <Option key={idx} value={String(idx)}>{label}</Option>
                     ))}
                   </Dropdown>
-                </Field>
+                </div>
+
+                <div style={{ marginTop: '8px', marginBottom: '8px' }}>
+                  <Checkbox
+                    label="Fixed Serial Port Configuration"
+                    size="medium"
+                    checked={(commSettings.Fix_COM_Config ?? 0) !== 0}
+                    onChange={(_, data) => {
+                      const v = data.checked ? 1 : 0;
+                      setCommSettings({ ...commSettings, Fix_COM_Config: v });
+                      updateSettings({ fix_com_config: v });
+                    }}
+                  />
+                </div>
+
+                <div className={styles.horizontalField}>
+                  <label>Zigbee Pan ID :</label>
+                  <Input
+                    size="small"
+                    type="number"
+                    value={String(commSettings.Zigbee_Pan_ID ?? 0)}
+                    onChange={(_, data) => {
+                      const v = Number(data.value);
+                      setCommSettings({ ...commSettings, Zigbee_Pan_ID: v });
+                      updateSettings({ zigbee_panid: v });
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                  <Button size="small" appearance="secondary" disabled>
+                    Zigbee Information
+                  </Button>
+                  <Button size="small" appearance="secondary">
+                    Network Health
+                  </Button>
+                </div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-              <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveNetworkValidated} className={styles.saveButton}>
-                Save Network Settings
-              </Button>
-              <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveCommunication} className={styles.saveButton}>
-                Save Communication Settings
-              </Button>
+            <div className={styles.actionsSection}>
+              <div className={styles.actionButtons}>
+                <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveNetworkValidated} className={styles.saveButton}>
+                  Save Network Settings
+                </Button>
+                <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveCommunication} className={styles.saveButton}>
+                  Save Communication Settings
+                </Button>
+              </div>
             </div>
           </>
         );
