@@ -60,7 +60,7 @@ import { SettingsUpdateApi } from '../services/settingsUpdateApi';
 import { AdvancedSettingsDialog } from '../components/AdvancedSettingsDialog';
 import cssStyles from './SettingsPage.module.css';
 
-// Full T3000 C++ Baudrate_Array — com_baudrate0/1/2 stores an index 0-11 into this array
+// Full T3000 C++ Baudrate_Array - com_baudrate0/1/2 stores an index 0-11 into this array
 // UART_9600=5, UART_19200=6, UART_38400=7, UART_115200=9, UART_57600=11
 const BAUDRATE_OPTIONS = [
   1200,   // 0
@@ -77,7 +77,7 @@ const BAUDRATE_OPTIONS = [
   57600,  // 11
 ];
 
-// com_config index → port mode label (from T3000 C++ Device_Serial_Port_Status[])
+// com_config index �?port mode label (from T3000 C++ Device_Serial_Port_Status[])
 const COM_PORT_MODES = [
   'Unused',           // 0
   'BACnet MSTP Slave',// 1
@@ -1371,7 +1371,7 @@ export const SettingsPage: React.FC = () => {
                 <div className={styles.basicPanelTitle}>Device Serial Port Config</div>
 
                 {/* Column headers */}
-                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 90px 58px 68px 54px', gap: '4px', alignItems: 'center', marginBottom: '4px', fontSize: '11px', color: '#605e5c', fontWeight: 600 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 72px 58px 60px 42px', gap: '4px', alignItems: 'center', marginBottom: '4px', fontSize: '11px', color: '#605e5c', fontWeight: 600 }}>
                   <div />
                   <div />
                   <div>Baudrate</div>
@@ -1381,7 +1381,7 @@ export const SettingsPage: React.FC = () => {
                 </div>
 
                 {/* RS485 SUB row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 90px 58px 68px 54px', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 72px 58px 60px 42px', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
                   <span style={{ fontSize: '12px', fontWeight: 600 }}>RS485 SUB</span>
                   <Dropdown
                     size="small"
@@ -1398,6 +1398,7 @@ export const SettingsPage: React.FC = () => {
                   </Dropdown>
                   <Dropdown
                     size="small"
+                    style={{ width: '100%', minWidth: 0 }}
                     value={String(commSettings.COM_Baudrate0 ?? 9)}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
@@ -1412,6 +1413,7 @@ export const SettingsPage: React.FC = () => {
                   <Input size="small" value="8" disabled />
                   <Dropdown
                     size="small"
+                    style={{ width: '100%', minWidth: 0 }}
                     value={String(commSettings.UART_Parity0 ?? 0)}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
@@ -1426,6 +1428,7 @@ export const SettingsPage: React.FC = () => {
                   </Dropdown>
                   <Dropdown
                     size="small"
+                    style={{ width: '100%', minWidth: 0 }}
                     value={String(commSettings.UART_Stopbit0 ?? 0)}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
@@ -1440,8 +1443,8 @@ export const SettingsPage: React.FC = () => {
                   </Dropdown>
                 </div>
 
-                {/* Zigbee row — mode is configurable but baudrate/parity/stopbit are hardware-fixed */}
-                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 90px 58px 68px 54px', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
+                {/* Zigbee row �?mode is configurable but baudrate/parity/stopbit are hardware-fixed */}
+                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 72px 58px 60px 42px', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
                   <span style={{ fontSize: '12px', fontWeight: 600 }}>Zigbee :</span>
                   <Dropdown
                     size="small"
@@ -1459,12 +1462,12 @@ export const SettingsPage: React.FC = () => {
                   </Dropdown>
                   <Input size="small" value="19200" disabled />
                   <Input size="small" value="8" disabled />
-                  <Dropdown size="small" value={String(commSettings.UART_Parity1 ?? 0)} disabled>
+                  <Dropdown size="small" style={{ width: '100%', minWidth: 0 }} value={String(commSettings.UART_Parity1 ?? 0)} disabled>
                     {PARITY_OPTIONS.map((label, idx) => (
                       <Option key={idx} value={String(idx)}>{label}</Option>
                     ))}
                   </Dropdown>
-                  <Dropdown size="small" value={String(commSettings.UART_Stopbit1 ?? 0)} disabled>
+                  <Dropdown size="small" style={{ width: '100%', minWidth: 0 }} value={String(commSettings.UART_Stopbit1 ?? 0)} disabled>
                     {STOPBIT_OPTIONS.map((label, idx) => (
                       <Option key={idx} value={String(idx)}>{label}</Option>
                     ))}
@@ -1472,7 +1475,7 @@ export const SettingsPage: React.FC = () => {
                 </div>
 
                 {/* RS485 Main row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 90px 58px 68px 54px', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 72px 58px 60px 42px', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
                   <span style={{ fontSize: '12px', fontWeight: 600 }}>RS485 Main</span>
                   <Dropdown
                     size="small"
@@ -1489,6 +1492,7 @@ export const SettingsPage: React.FC = () => {
                   </Dropdown>
                   <Dropdown
                     size="small"
+                    style={{ width: '100%', minWidth: 0 }}
                     value={String(commSettings.COM_Baudrate2 ?? 9)}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
@@ -1503,6 +1507,7 @@ export const SettingsPage: React.FC = () => {
                   <Input size="small" value="8" disabled />
                   <Dropdown
                     size="small"
+                    style={{ width: '100%', minWidth: 0 }}
                     value={String(commSettings.UART_Parity2 ?? 0)}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
@@ -1517,6 +1522,7 @@ export const SettingsPage: React.FC = () => {
                   </Dropdown>
                   <Dropdown
                     size="small"
+                    style={{ width: '100%', minWidth: 0 }}
                     value={String(commSettings.UART_Stopbit2 ?? 0)}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
