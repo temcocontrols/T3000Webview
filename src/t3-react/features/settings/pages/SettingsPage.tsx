@@ -94,8 +94,15 @@ const COM_PORT_MODES = [
 // uart_parity: 0=None, 1=Odd, 2=Even
 const PARITY_OPTIONS = ['None', 'Odd', 'Even'];
 
-// uart_stopbit: 0=1 bit, 1=2 bits
-const STOPBIT_OPTIONS = ['1 bit', '2 bits'];
+// uart_stopbit: 0=1, 1=0.5, 2=2, 3=1.5
+const STOPBIT_OPTIONS = ['1', '0.5', '2', '1.5'];
+
+// RS485 SUB port mode options — restricted subset of COM_PORT_MODES (values match C++ indices)
+const RS485_SUB_MODES = [
+  { value: 0, label: 'Unused' },
+  { value: 1, label: 'Bacnet Mstp' },
+  { value: 2, label: 'Modbus' },
+];
 
 const useStyles = makeStyles({
   container: {
@@ -1386,21 +1393,23 @@ export const SettingsPage: React.FC = () => {
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
-                    value={String(commSettings.COM0_Config ?? 0)}
+                    value={RS485_SUB_MODES.find(m => m.value === (commSettings.COM0_Config ?? 0))?.label ?? 'Unused'}
+                    selectedOptions={[String(commSettings.COM0_Config ?? 0)]}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
                       setCommSettings({ ...commSettings, COM0_Config: v });
                       updateSettings({ com0_config: v });
                     }}
                   >
-                    {COM_PORT_MODES.map((label, idx) => (
-                      <Option key={idx} value={String(idx)}>{label}</Option>
+                    {RS485_SUB_MODES.map((mode) => (
+                      <Option key={mode.value} value={String(mode.value)}>{mode.label}</Option>
                     ))}
                   </Dropdown>
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
-                    value={String(commSettings.COM_Baudrate0 ?? 9)}
+                    value={String(BAUDRATE_OPTIONS[commSettings.COM_Baudrate0 ?? 9])}
+                    selectedOptions={[String(commSettings.COM_Baudrate0 ?? 9)]}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
                       setCommSettings({ ...commSettings, COM_Baudrate0: v });
@@ -1415,7 +1424,8 @@ export const SettingsPage: React.FC = () => {
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
-                    value={String(commSettings.UART_Parity0 ?? 0)}
+                    value={PARITY_OPTIONS[commSettings.UART_Parity0 ?? 0]}
+                    selectedOptions={[String(commSettings.UART_Parity0 ?? 0)]}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
                       const parity = [v, commSettings.UART_Parity1 ?? 0, commSettings.UART_Parity2 ?? 0];
@@ -1430,7 +1440,8 @@ export const SettingsPage: React.FC = () => {
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
-                    value={String(commSettings.UART_Stopbit0 ?? 0)}
+                    value={STOPBIT_OPTIONS[commSettings.UART_Stopbit0 ?? 0]}
+                    selectedOptions={[String(commSettings.UART_Stopbit0 ?? 0)]}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
                       const stopbit = [v, commSettings.UART_Stopbit1 ?? 0, commSettings.UART_Stopbit2 ?? 0];
@@ -1450,7 +1461,8 @@ export const SettingsPage: React.FC = () => {
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
-                    value={String(commSettings.COM1_Config ?? 0)}
+                    value={COM_PORT_MODES[commSettings.COM1_Config ?? 0]}
+                    selectedOptions={[String(commSettings.COM1_Config ?? 0)]}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
                       setCommSettings({ ...commSettings, COM1_Config: v });
@@ -1464,7 +1476,8 @@ export const SettingsPage: React.FC = () => {
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
-                    value={String(commSettings.COM_Baudrate1 ?? 6)}
+                    value={String(BAUDRATE_OPTIONS[commSettings.COM_Baudrate1 ?? 6])}
+                    selectedOptions={[String(commSettings.COM_Baudrate1 ?? 6)]}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
                       setCommSettings({ ...commSettings, COM_Baudrate1: v });
@@ -1479,7 +1492,8 @@ export const SettingsPage: React.FC = () => {
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
-                    value={String(commSettings.UART_Parity1 ?? 0)}
+                    value={PARITY_OPTIONS[commSettings.UART_Parity1 ?? 0]}
+                    selectedOptions={[String(commSettings.UART_Parity1 ?? 0)]}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
                       const parity = [commSettings.UART_Parity0 ?? 0, v, commSettings.UART_Parity2 ?? 0];
@@ -1494,7 +1508,8 @@ export const SettingsPage: React.FC = () => {
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
-                    value={String(commSettings.UART_Stopbit1 ?? 0)}
+                    value={STOPBIT_OPTIONS[commSettings.UART_Stopbit1 ?? 0]}
+                    selectedOptions={[String(commSettings.UART_Stopbit1 ?? 0)]}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
                       const stopbit = [commSettings.UART_Stopbit0 ?? 0, v, commSettings.UART_Stopbit2 ?? 0];
@@ -1513,7 +1528,8 @@ export const SettingsPage: React.FC = () => {
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
-                    value={String(commSettings.COM2_Config ?? 0)}
+                    value={COM_PORT_MODES[commSettings.COM2_Config ?? 0]}
+                    selectedOptions={[String(commSettings.COM2_Config ?? 0)]}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
                       setCommSettings({ ...commSettings, COM2_Config: v });
@@ -1527,7 +1543,8 @@ export const SettingsPage: React.FC = () => {
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
-                    value={String(commSettings.COM_Baudrate2 ?? 9)}
+                    value={String(BAUDRATE_OPTIONS[commSettings.COM_Baudrate2 ?? 9])}
+                    selectedOptions={[String(commSettings.COM_Baudrate2 ?? 9)]}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
                       setCommSettings({ ...commSettings, COM_Baudrate2: v });
@@ -1542,7 +1559,8 @@ export const SettingsPage: React.FC = () => {
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
-                    value={String(commSettings.UART_Parity2 ?? 0)}
+                    value={PARITY_OPTIONS[commSettings.UART_Parity2 ?? 0]}
+                    selectedOptions={[String(commSettings.UART_Parity2 ?? 0)]}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
                       const parity = [commSettings.UART_Parity0 ?? 0, commSettings.UART_Parity1 ?? 0, v];
@@ -1557,7 +1575,8 @@ export const SettingsPage: React.FC = () => {
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
-                    value={String(commSettings.UART_Stopbit2 ?? 0)}
+                    value={STOPBIT_OPTIONS[commSettings.UART_Stopbit2 ?? 0]}
+                    selectedOptions={[String(commSettings.UART_Stopbit2 ?? 0)]}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
                       const stopbit = [commSettings.UART_Stopbit0 ?? 0, commSettings.UART_Stopbit1 ?? 0, v];
