@@ -1381,7 +1381,7 @@ export const SettingsPage: React.FC = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 70px 1fr 1fr', gap: '4px', alignItems: 'center', marginBottom: '4px', fontSize: '11px', color: '#605e5c', fontWeight: 600 }}>
                   <div />
                   <div />
-                  <div>Baudrate</div>
+                  <div />
                   <div style={{ textAlign: 'center' }}>Data Bits</div>
                   <div style={{ textAlign: 'center' }}>Parity Bit</div>
                   <div style={{ textAlign: 'center' }}>Stop Bit</div>
