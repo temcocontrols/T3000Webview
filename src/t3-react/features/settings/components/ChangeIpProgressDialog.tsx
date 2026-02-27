@@ -45,31 +45,31 @@ const POLL_INTERVAL_MS = 2000;
 
 const useStyles = makeStyles({
   surface: {
-    width: '500px',
+    width: '440px',
     maxWidth: '95vw',
   },
   body: {
-    padding: '16px 20px 8px 20px',
+    padding: '0',
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px',
+    gap: '7px',
   },
   message: {
-    fontSize: '18px',
+    fontSize: '16px',
     fontWeight: tokens.fontWeightSemibold,
     color: '#0000CC',
-    lineHeight: '1.5',
+    lineHeight: '1.45',
     whiteSpace: 'pre-line',
   },
   percentLabel: {
     color: '#CC0000',
-    fontSize: '16px',
+    fontSize: '14px',
     fontWeight: tokens.fontWeightSemibold,
     textAlign: 'center',
   },
   progressTrack: {
     width: '100%',
-    height: '22px',
+    height: '20px',
     backgroundColor: '#D0D0D0',
     borderRadius: '2px',
     overflow: 'hidden',
@@ -81,14 +81,21 @@ const useStyles = makeStyles({
     transition: 'width 0.2s ease',
   },
   actions: {
-    padding: '8px 20px 16px 20px',
+    padding: '0',
+    paddingTop: '8px',
     justifyContent: 'center',
-    gap: '16px',
+    gap: '12px',
   },
   statusText: {
     fontSize: '12px',
     color: tokens.colorNeutralForeground3,
     textAlign: 'center',
+  },
+  actionBtn: {
+    minWidth: '110px',
+    height: '26px',
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightRegular,
   },
 });
 
@@ -262,12 +269,13 @@ export const ChangeIpProgressDialog: React.FC<ChangeIpProgressDialogProps> = ({
         <DialogActions className={styles.actions}>
           <Button
             appearance="primary"
+            className={styles.actionBtn}
             onClick={handleOk}
             disabled={!done}
           >
             OK
           </Button>
-          <Button appearance="secondary" onClick={handleCancel}>
+          <Button appearance="secondary" className={styles.actionBtn} onClick={handleCancel}>
             Cancel
           </Button>
         </DialogActions>
