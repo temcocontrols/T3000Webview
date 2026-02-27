@@ -77,7 +77,7 @@ const BAUDRATE_OPTIONS = [
   57600,  // 11
 ];
 
-// com_config index ï¿?port mode label (from T3000 C++ Device_Serial_Port_Status[])
+// com_config index ï¿½?port mode label (from T3000 C++ Device_Serial_Port_Status[])
 const COM_PORT_MODES = [
   'Unused',           // 0
   'BACnet MSTP Slave',// 1
@@ -385,7 +385,7 @@ interface NetworkSettings {
   Subnet?: string;
   Gateway?: string;
   MAC_Address?: string;
-  TCP_Type?: number; // 0=DHCP, 1=Static
+  TCP_Type?: number; // 0=Static, 1=DHCP
 }
 
 interface CommunicationSettings {
@@ -1281,10 +1281,10 @@ export const SettingsPage: React.FC = () => {
                     <input
                       type="radio"
                       name="tcpType"
-                      checked={networkSettings.TCP_Type === 0}
+                      checked={networkSettings.TCP_Type === 1}
                       onChange={() => {
-                        setNetworkSettings({ ...networkSettings, TCP_Type: 0 });
-                        updateSettings({ tcp_type: 0 });
+                        setNetworkSettings({ ...networkSettings, TCP_Type: 1 });
+                        updateSettings({ tcp_type: 1 });
                       }}
                     />
                     Obtain IP Address Automatically
@@ -1293,10 +1293,10 @@ export const SettingsPage: React.FC = () => {
                     <input
                       type="radio"
                       name="tcpType"
-                      checked={(networkSettings.TCP_Type ?? 0) !== 0}
+                      checked={(networkSettings.TCP_Type ?? 0) === 0}
                       onChange={() => {
-                        setNetworkSettings({ ...networkSettings, TCP_Type: 1 });
-                        updateSettings({ tcp_type: 1 });
+                        setNetworkSettings({ ...networkSettings, TCP_Type: 0 });
+                        updateSettings({ tcp_type: 0 });
                       }}
                     />
                     Use The Following IP Address
@@ -1308,7 +1308,7 @@ export const SettingsPage: React.FC = () => {
                   <Input
                     size="small"
                     value={networkSettings.IP_Address ?? ''}
-                    disabled={networkSettings.TCP_Type === 0}
+                    disabled={networkSettings.TCP_Type === 1}
                     onChange={(_, data) => {
                       setNetworkSettings({ ...networkSettings, IP_Address: data.value });
                       updateSettings({ ip_addr: data.value });
@@ -1321,7 +1321,7 @@ export const SettingsPage: React.FC = () => {
                   <Input
                     size="small"
                     value={networkSettings.Subnet ?? ''}
-                    disabled={networkSettings.TCP_Type === 0}
+                    disabled={networkSettings.TCP_Type === 1}
                     onChange={(_, data) => {
                       setNetworkSettings({ ...networkSettings, Subnet: data.value });
                       updateSettings({ subnet: data.value });
@@ -1334,7 +1334,7 @@ export const SettingsPage: React.FC = () => {
                   <Input
                     size="small"
                     value={networkSettings.Gateway ?? ''}
-                    disabled={networkSettings.TCP_Type === 0}
+                    disabled={networkSettings.TCP_Type === 1}
                     onChange={(_, data) => {
                       setNetworkSettings({ ...networkSettings, Gateway: data.value });
                       updateSettings({ gate_addr: data.value });
@@ -1609,7 +1609,7 @@ export const SettingsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className={styles.actionsSection}>
+            {/* <div className={styles.actionsSection}>
               <div className={styles.actionButtons}>
                 <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveNetworkValidated} className={styles.saveButton}>
                   Save Network Settings
@@ -1618,7 +1618,7 @@ export const SettingsPage: React.FC = () => {
                   Save Communication Settings
                 </Button>
               </div>
-            </div>
+            </div> */}
           </>
         );
 

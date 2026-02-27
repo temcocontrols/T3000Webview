@@ -30,7 +30,7 @@ export interface DeviceSettings {
   mac_addr: string;                   // uint8_t[6]  - offset 12-17
 
   // Bytes 18-20: Device Type
-  tcp_type: number;                   // uint8_t     - offset 18 (0=DHCP, 1=STATIC)
+  tcp_type: number;                   // uint8_t     - offset 18 (0=STATIC, 1=DHCP)
   mini_type: number;                  // uint8_t     - offset 19
   debug: number;                      // uint8_t     - offset 20
 
@@ -373,7 +373,7 @@ export class SettingsRefreshApi {
     LogUtil.Info(`  [4-7]   = Subnet Mask (4 bytes)`);
     LogUtil.Info(`  [8-11]  = Gateway (4 bytes)`);
     LogUtil.Info(`  [12-17] = MAC Address (6 bytes)`);
-    LogUtil.Info(`  [18]    = TCP Type (1 byte: 0=DHCP, 1=STATIC)`);
+    LogUtil.Info(`  [18]    = TCP Type (1 byte: 0=STATIC, 1=DHCP)`);
     LogUtil.Info(`  [19]    = Mini Type / Device Type (1 byte: 0=T3-8O, 5=T3-BB, 6=T3-TB, etc.)`);
     LogUtil.Info(`  [20]    = Panel Type (1 byte)`);
     LogUtil.Info(`  [21-37] = Str_Pro_Info (17 bytes: HW version, firmware versions)`);
@@ -396,7 +396,7 @@ export class SettingsRefreshApi {
       mac_addr: bytesToMAC(12),                        // offset 12-17
       tcp_type: (() => {
         const value = all[18] ?? 0;
-        LogUtil.Debug(`[Parse] TCP Type [18]: ${value} → ${value === 0 ? 'DHCP' : 'STATIC'}`);
+        LogUtil.Debug(`[Parse] TCP Type [18]: ${value} → ${value === 0 ? 'STATIC' : 'DHCP'}`);
         return value;
       })(),
 
