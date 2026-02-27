@@ -15,7 +15,6 @@ import {
   Dialog,
   DialogSurface,
   DialogTitle,
-  DialogTitleAction,
   DialogBody,
   DialogActions,
   DialogContent,
@@ -36,30 +35,37 @@ import type { WifiSettings } from '../../../../lib/t3-database/types/device.type
 
 const useStyles = makeStyles({
   surface: {
-    width: '720px',
+    width: '700px',
     maxWidth: '95vw',
     marginTop: '5vh',
     alignSelf: 'flex-start',
   },
   body: {
-    padding: '8px 12px 4px 12px',
+    padding: '0',
+  },
+  title: {
+    fontSize: '14px',
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  content: {
+    padding: '4px 0 4px 0',
   },
   twoCol: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
-    gap: '16px',
+    gap: '8px',
   },
   panel: {
     border: `1px solid ${tokens.colorNeutralStroke1}`,
     borderRadius: '4px',
-    padding: '12px',
+    padding: '8px',
   },
   row: {
     display: 'grid',
     gridTemplateColumns: '110px 1fr',
     alignItems: 'center',
-    gap: '6px',
-    marginBottom: '8px',
+    gap: '4px',
+    marginBottom: '5px',
   },
   label: {
     fontSize: '12px',
@@ -71,8 +77,8 @@ const useStyles = makeStyles({
     display: 'grid',
     gridTemplateColumns: '110px 1fr',
     alignItems: 'center',
-    gap: '6px',
-    marginBottom: '8px',
+    gap: '4px',
+    marginBottom: '4px',
   },
   ipInputs: {
     display: 'grid',
@@ -89,15 +95,15 @@ const useStyles = makeStyles({
   groupBox: {
     border: `1px solid ${tokens.colorNeutralStroke1}`,
     borderRadius: '4px',
-    padding: '8px 10px',
-    marginTop: '8px',
-    marginBottom: '4px',
+    padding: '6px 8px',
+    marginTop: '4px',
+    marginBottom: '2px',
   },
   radioRow: {
     display: 'flex',
-    gap: '24px',
+    gap: '16px',
     alignItems: 'center',
-    marginTop: '4px',
+    marginTop: '2px',
   },
   statusInput: {
     '& input': {
@@ -105,7 +111,7 @@ const useStyles = makeStyles({
     },
   },
   loadDefaultBtn: {
-    marginTop: '6px',
+    marginTop: '4px',
     width: '100%',
   },
   actions: {
@@ -282,23 +288,22 @@ export const WifiSettingsDialog: React.FC<WifiSettingsDialogProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={(_, d) => onOpenChange(d.open)}>
       <DialogSurface className={styles.surface}>
-        <DialogBody className={styles.body}>
+        <DialogBody className={styles.body} style={{ padding: 0 }}>
           <DialogTitle
+            className={styles.title}
             action={
-              <DialogTitleAction>
-                <Button
-                  appearance="subtle"
-                  aria-label="close"
-                  icon={<Dismiss24Regular />}
-                  onClick={() => onOpenChange(false)}
-                />
-              </DialogTitleAction>
+              <Button
+                appearance="subtle"
+                aria-label="close"
+                icon={<Dismiss24Regular />}
+                onClick={() => onOpenChange(false)}
+              />
             }
           >
             Wifi Setting
           </DialogTitle>
 
-          <DialogContent>
+          <DialogContent className={styles.content}>
             {loading && (
               <div style={{ display: 'flex', justifyContent: 'center', padding: '24px' }}>
                 <Spinner size="medium" label="Loading..." />

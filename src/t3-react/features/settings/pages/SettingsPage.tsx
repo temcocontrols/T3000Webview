@@ -59,6 +59,7 @@ import { SettingsRefreshApi, type DeviceSettings } from '../services/settingsRef
 import { SettingsUpdateApi } from '../services/settingsUpdateApi';
 import { AdvancedSettingsDialog } from '../components/AdvancedSettingsDialog';
 import { WifiSettingsDialog } from '../components/WifiSettingsDialog';
+import { ChangeIpProgressDialog } from '../components/ChangeIpProgressDialog';
 import cssStyles from './SettingsPage.module.css';
 
 // Full T3000 C++ Baudrate_Array - com_baudrate0/1/2 stores an index 0-11 into this array
@@ -486,6 +487,8 @@ export const SettingsPage: React.FC = () => {
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showAdvancedSettingsDialog, setShowAdvancedSettingsDialog] = useState(false);
   const [showWifiDialog, setShowWifiDialog] = useState(false);
+  const [showChangeIpDialog, setShowChangeIpDialog] = useState(false);
+  const [changeIpNewAddress, setChangeIpNewAddress] = useState('');
   const [rebootCountdown, setRebootCountdown] = useState(0);
 
   // Settings state for each tab
@@ -983,7 +986,12 @@ export const SettingsPage: React.FC = () => {
       setError(validationError);
       return;
     }
+    // Capture new IP before saving so progress dialog can poll it
+    const newIp = networkSettings.IP_Address ?? '';
     await handleSaveNetwork();
+    // If we get here without throwing, the save succeeded → show reboot dialog
+    setChangeIpNewAddress(newIp);
+    setShowChangeIpDialog(true);
   };
 
   // Handle advanced settings save
@@ -1975,6 +1983,15 @@ export const SettingsPage: React.FC = () => {
         isOpen={showWifiDialog}
         onOpenChange={setShowWifiDialog}
         serialNumber={selectedDevice?.serialNumber ?? 0}
+      />
+      <ChangeIpProgressDialog
+        isOpen={showChangeIpDialog}
+        onClose={(success) => {
+          setShowChangeIpDialog(false);
+          if (success) fetchSettings();
+        }}
+        serialNumber={selectedDevice?.serialNumber ?? 0}
+        newIpAddress={changeIpNewAddress}
       />
 
       {/* Reboot Device Confirmation Dialog */}
