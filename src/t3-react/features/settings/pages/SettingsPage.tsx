@@ -1461,7 +1461,7 @@ export const SettingsPage: React.FC = () => {
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
-                    value={COM_PORT_MODES[commSettings.COM1_Config ?? 0]}
+                    value={RS485_SUB_MODES.find(m => m.value === (commSettings.COM1_Config ?? 0))?.label ?? 'Unused'}
                     selectedOptions={[String(commSettings.COM1_Config ?? 0)]}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
@@ -1469,8 +1469,8 @@ export const SettingsPage: React.FC = () => {
                       updateSettings({ com1_config: v });
                     }}
                   >
-                    {COM_PORT_MODES.map((label, idx) => (
-                      <Option key={idx} value={String(idx)}>{label}</Option>
+                    {RS485_SUB_MODES.map((mode) => (
+                      <Option key={mode.value} value={String(mode.value)}>{mode.label}</Option>
                     ))}
                   </Dropdown>
                   <Dropdown
@@ -1528,7 +1528,7 @@ export const SettingsPage: React.FC = () => {
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
-                    value={COM_PORT_MODES[commSettings.COM2_Config ?? 0]}
+                    value={RS485_SUB_MODES.find(m => m.value === (commSettings.COM2_Config ?? 0))?.label ?? 'Unused'}
                     selectedOptions={[String(commSettings.COM2_Config ?? 0)]}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
@@ -1536,8 +1536,8 @@ export const SettingsPage: React.FC = () => {
                       updateSettings({ com2_config: v });
                     }}
                   >
-                    {COM_PORT_MODES.map((label, idx) => (
-                      <Option key={idx} value={String(idx)}>{label}</Option>
+                    {RS485_SUB_MODES.map((mode) => (
+                      <Option key={mode.value} value={String(mode.value)}>{mode.label}</Option>
                     ))}
                   </Dropdown>
                   <Dropdown
