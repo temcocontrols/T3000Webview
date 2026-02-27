@@ -58,6 +58,7 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { SettingsRefreshApi, type DeviceSettings } from '../services/settingsRefreshApi';
 import { SettingsUpdateApi } from '../services/settingsUpdateApi';
 import { AdvancedSettingsDialog } from '../components/AdvancedSettingsDialog';
+import { WifiSettingsDialog } from '../components/WifiSettingsDialog';
 import cssStyles from './SettingsPage.module.css';
 
 // Full T3000 C++ Baudrate_Array - com_baudrate0/1/2 stores an index 0-11 into this array
@@ -484,6 +485,7 @@ export const SettingsPage: React.FC = () => {
   const [showRebootDialog, setShowRebootDialog] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showAdvancedSettingsDialog, setShowAdvancedSettingsDialog] = useState(false);
+  const [showWifiDialog, setShowWifiDialog] = useState(false);
   const [rebootCountdown, setRebootCountdown] = useState(0);
 
   // Settings state for each tab
@@ -1364,7 +1366,7 @@ export const SettingsPage: React.FC = () => {
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                  <Button size="small" appearance="primary" className={styles.saveButton}>
+                  <Button size="small" appearance="primary" className={styles.saveButton} onClick={() => setShowWifiDialog(true)}>
                     Wifi Configuration
                   </Button>
                   <Button size="small" appearance="secondary" onClick={handleSaveNetworkValidated}>
@@ -1967,6 +1969,13 @@ export const SettingsPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Wifi Settings Dialog */}
+      <WifiSettingsDialog
+        isOpen={showWifiDialog}
+        onOpenChange={setShowWifiDialog}
+        serialNumber={selectedDevice?.serialNumber ?? 0}
+      />
 
       {/* Reboot Device Confirmation Dialog */}
       <Dialog open={showRebootDialog} onOpenChange={(_, data) => setShowRebootDialog(data.open)}>
