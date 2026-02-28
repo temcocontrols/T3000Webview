@@ -8376,20 +8376,18 @@
       // 🆕 Detect large gaps and insert null to break line visualization
       const dataWithGaps: Array<{ x: number; y: number | null }> = []
 
-      // Auto-detect typical recording interval so we only break the line at
-      // genuine gaps (e.g. device offline), not at the normal inter-point spacing.
-      // Use median of consecutive intervals × 2.5; fall back to configured threshold.
-      let maxGapMs = getGapThresholdMs()
-      if (sortedData.length >= 2) {
-        const intervals: number[] = []
-        for (let j = 1; j < sortedData.length; j++) {
-          intervals.push(sortedData[j].x - sortedData[j - 1].x)
-        }
-        intervals.sort((a, b) => a - b)
-        const medianInterval = intervals[Math.floor(intervals.length / 2)]
-        // Only treat as a gap if it's > 2.5× the typical recording interval
-        maxGapMs = Math.max(medianInterval * 2.5, maxGapMs)
-      }
+      // Gap detection: insert null spacer between points when the time gap
+      // clearly indicates missing recordings (device offline / no data).
+      //
+      // Use the known recording interval (ffiSyncConfig.interval_secs) as the
+      // base. Threshold = 1.5 × recording interval, so any gap spanning 2 or
+      // more missed slots triggers a line break, while normal consecutive
+      // recordings (1 slot apart, including minor jitter) always draw a line.
+      //
+      // Works correctly for all cases including exactly 2 data points, because
+      // we now use the configured interval rather than deriving it from the data.
+      const recordingIntervalMs = ffiSyncConfig.value.interval_secs * 1000
+      const maxGapMs = recordingIntervalMs * 1.5
 
       for (let i = 0; i < sortedData.length; i++) {
         dataWithGaps.push(sortedData[i])
@@ -8711,17 +8709,9 @@
       // 🆕 Detect large gaps and insert null to break line visualization
       const dataWithGaps: Array<{ x: number; y: number | null }> = []
 
-      // Auto-detect typical recording interval per series
-      let maxGapMs = getGapThresholdMs()
-      if (sortedData.length >= 2) {
-        const intervals: number[] = []
-        for (let j = 1; j < sortedData.length; j++) {
-          intervals.push(sortedData[j].x - sortedData[j - 1].x)
-        }
-        intervals.sort((a, b) => a - b)
-        const medianInterval = intervals[Math.floor(intervals.length / 2)]
-        maxGapMs = Math.max(medianInterval * 2.5, maxGapMs)
-      }
+      // Same gap detection logic as analog — use configured recording interval.
+      const recordingIntervalMsD = ffiSyncConfig.value.interval_secs * 1000
+      const maxGapMs = recordingIntervalMsD * 1.5
 
       for (let i = 0; i < sortedData.length; i++) {
         dataWithGaps.push(sortedData[i])
@@ -8739,8 +8729,15 @@
         }
       }
 
-      // Determine whether to show point markers
-      const shouldShowPoint = showPoints.value || (sortedData.length === 1)
+      // Per-point radius: isolated points (both neighbours null/missing) always
+      // get a dot so they're visible; connected points respect showPoints toggle.
+      const pointRadiusArrD: number[] = dataWithGaps.map((pt, idx) => {
+        if (pt.y === null) return 0
+        const prevIsNull = idx === 0 || dataWithGaps[idx - 1].y === null
+        const nextIsNull = idx === dataWithGaps.length - 1 || dataWithGaps[idx + 1].y === null
+        if (prevIsNull && nextIsNull) return 4
+        return showPoints.value ? 3 : 0
+      })
 
       datasets.push({
         label: series.name,
@@ -8750,7 +8747,7 @@
         borderWidth: 2,
         fill: false,
         stepped: 'before' as const, // Step before for digital signals
-        pointRadius: shouldShowPoint ? 3 : 0,
+        pointRadius: pointRadiusArrD,
         pointHoverRadius: 6,
         pointHitRadius: 8,
         pointBackgroundColor: series.color,
