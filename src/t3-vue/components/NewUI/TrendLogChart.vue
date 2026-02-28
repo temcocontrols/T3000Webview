@@ -8424,13 +8424,24 @@
       // Get axis assignment (default to 'y' if not found)
       const yAxisID = axisAssignment.get(series.id) || 'y'
 
-      // Determine whether to show a point marker: respect global `showPoints`,
-      // but always show a marker when there is only a single data point to
-      // provide immediate feedback for single-point real-time updates.
-      // Also force points visible when data is sparse (< 4 points) so isolated
-      // dots are always visible even when the user has showPoints disabled.
-      const isSparse = sortedData.length > 0 && sortedData.length < 4
-      const shouldShowPoint = showPoints.value || (sortedData.length <= 1) || isSparse
+      // Build a per-point radius array so isolated points (surrounded by gaps/nulls)
+      // always show a visible dot even when showPoints is off, while connected
+      // segments respect the user's showPoints toggle.
+      //
+      // dataWithGaps layout: [ realPt, realPt, nullSpacer, realPt, nullSpacer, realPt, realPt ]
+      //   - nullSpacer has y === null and is only there to break the line visually.
+      //   - A real point is "isolated" when both its prev and next neighbours are
+      //     null/missing, meaning it has no drawable line on either side.
+      const pointRadiusArr: number[] = dataWithGaps.map((pt, idx) => {
+        if (pt.y === null) return 0  // spacer – never draw a marker
+
+        const prevIsNull = idx === 0 || dataWithGaps[idx - 1].y === null
+        const nextIsNull = idx === dataWithGaps.length - 1 || dataWithGaps[idx + 1].y === null
+        const isIsolated = prevIsNull && nextIsNull
+
+        if (isIsolated) return 4          // always show dot for isolated point
+        return showPoints.value ? 3 : 0   // connected segment – honour toggle
+      })
 
       datasets.push({
         label: series.name,
@@ -8440,7 +8451,7 @@
         borderWidth: 2,
         fill: false,
         tension: smoothLines.value ? 0.4 : 0,
-        pointRadius: shouldShowPoint ? (isSparse ? 4 : 3) : 0,
+        pointRadius: pointRadiusArr,
         pointHoverRadius: 6,
         pointBackgroundColor: series.color,
         pointBorderColor: '#fff',
