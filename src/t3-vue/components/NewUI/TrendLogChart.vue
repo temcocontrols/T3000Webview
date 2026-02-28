@@ -3346,7 +3346,46 @@
         id: 'yAxisTitleBackground',
         beforeDraw: (chart: any) => {
           const ctx = chart.ctx
+          const chartArea = chart.chartArea
+          if (!chartArea) return
+
           const yAxes = ['y', 'y1', 'y2', 'y3']
+          const visibleScales = yAxes.map(id => chart.scales[id]).filter(s => s && s.display !== false)
+
+          // ── Separator bands ──
+          // • Outer borders: solid 1px line at very top of first strip and very bottom of last strip
+          // • Inner bands: fill the actual pixel gap between scale[i].bottom → scale[i+1].top
+          //   (Chart.js stacked axes leave a real gap here; we paint it as the divider band)
+          ctx.save()
+          const W = chartArea.right - chartArea.left
+          if (visibleScales.length > 0) {
+            // Top outer border
+            ctx.strokeStyle = '#000000'
+            ctx.lineWidth = 1.5
+            ctx.beginPath()
+            ctx.moveTo(chartArea.left, visibleScales[0].top)
+            ctx.lineTo(chartArea.right, visibleScales[0].top)
+            ctx.stroke()
+            // Bottom outer border
+            const last = visibleScales[visibleScales.length - 1]
+            ctx.beginPath()
+            ctx.moveTo(chartArea.left, last.bottom)
+            ctx.lineTo(chartArea.right, last.bottom)
+            ctx.stroke()
+          }
+          for (let i = 0; i < visibleScales.length - 1; i++) {
+            const bandTop = visibleScales[i].bottom
+            const bandBot = visibleScales[i + 1].top
+            // Draw a single bold divider line centered in the gap (or at the boundary if no gap)
+            const lineY = Math.round((bandTop + bandBot) / 2)
+            ctx.strokeStyle = '#000000'
+            ctx.lineWidth = 2
+            ctx.beginPath()
+            ctx.moveTo(chartArea.left, lineY)
+            ctx.lineTo(chartArea.right, lineY)
+            ctx.stroke()
+          }
+          ctx.restore()
 
           yAxes.forEach(axisId => {
             const scale = chart.scales[axisId]
@@ -3829,6 +3868,8 @@
         y: {
           display: true,
           position: 'left' as const,
+          stack: 'y-axis' as const,
+          stackWeight: 1,
           title: {
             display: false, // Plugin renders with background
             text: '', // Will be set dynamically
@@ -3851,12 +3892,19 @@
             },
             padding: 4,
             autoSkip: true,
-            maxTicksLimit: 8,
+            maxTicksLimit: 6,
             align: 'end',
             // stepSize will be calculated dynamically in afterDataLimits
             callback: function (value: any) {
               const formatted = Math.round(Number(value)).toString();
               return formatted.padStart(5, ' '); // Fixed width for alignment
+            }
+          },
+          // Trim the outermost ticks so labels never sit on the strip boundary
+          // where they would visually collide with ticks from the adjacent axis.
+          afterBuildTicks: function(scale: any) {
+            if (scale.ticks.length > 2) {
+              scale.ticks = scale.ticks.slice(1, -1)
             }
           },
           afterFit: function(scale: any) {
@@ -3935,8 +3983,9 @@
           stack: 'y-axis' as const,
           stackWeight: 1,
           grid: {
-            drawOnChartArea: false,
-            display: false
+            color: showGrid.value ? '#e0e0e0' : 'transparent',
+            display: showGrid.value,
+            lineWidth: 1
           },
           title: {
             display: false, // Plugin renders with background
@@ -3955,10 +4004,15 @@
             },
             padding: 4,
             autoSkip: true,
-            maxTicksLimit: 8,
+            maxTicksLimit: 6,
             align: 'end',
             callback: function (value: any) {
               return Math.round(Number(value)).toString().padStart(5, ' ');
+            }
+          },
+          afterBuildTicks: function(scale: any) {
+            if (scale.ticks.length > 2) {
+              scale.ticks = scale.ticks.slice(1, -1)
             }
           },
           afterFit: function(scale: any) {
@@ -4038,8 +4092,9 @@
           stack: 'y-axis' as const,
           stackWeight: 1,
           grid: {
-            drawOnChartArea: false,
-            display: false
+            color: showGrid.value ? '#e0e0e0' : 'transparent',
+            display: showGrid.value,
+            lineWidth: 1
           },
           title: {
             display: false, // Plugin renders with background
@@ -4058,10 +4113,15 @@
             },
             padding: 4,
             autoSkip: true,
-            maxTicksLimit: 8,
+            maxTicksLimit: 6,
             align: 'end',
             callback: function (value: any) {
               return Math.round(Number(value)).toString().padStart(5, ' ');
+            }
+          },
+          afterBuildTicks: function(scale: any) {
+            if (scale.ticks.length > 2) {
+              scale.ticks = scale.ticks.slice(1, -1)
             }
           },
           afterFit: function(scale: any) {
@@ -4135,8 +4195,9 @@
           stack: 'y-axis' as const,
           stackWeight: 1,
           grid: {
-            drawOnChartArea: false,
-            display: false
+            color: showGrid.value ? '#e0e0e0' : 'transparent',
+            display: showGrid.value,
+            lineWidth: 1
           },
           title: {
             display: false, // Plugin renders with background
@@ -4155,10 +4216,15 @@
             },
             padding: 4,
             autoSkip: true,
-            maxTicksLimit: 8,
+            maxTicksLimit: 6,
             align: 'end',
             callback: function (value: any) {
               return Math.round(Number(value)).toString().padStart(5, ' ');
+            }
+          },
+          afterBuildTicks: function(scale: any) {
+            if (scale.ticks.length > 2) {
+              scale.ticks = scale.ticks.slice(1, -1)
             }
           },
           afterFit: function(scale: any) {
