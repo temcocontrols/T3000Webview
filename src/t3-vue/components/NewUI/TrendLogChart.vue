@@ -4013,10 +4013,12 @@
 
             if (y1Datasets.length === 0) {
               scale.display = false
+              scale.options.stackWeight = 0.001
               return
             }
 
             scale.display = true
+            scale.options.stackWeight = 1
 
             // Get all values for y1 axis
             const allValues: number[] = []
@@ -4032,6 +4034,7 @@
 
             if (allValues.length === 0) {
               scale.display = false
+              scale.options.stackWeight = 0.001
               return
             }
 
@@ -4113,10 +4116,12 @@
 
             if (y2Datasets.length === 0) {
               scale.display = false
+              scale.options.stackWeight = 0.001
               return
             }
 
             scale.display = true
+            scale.options.stackWeight = 1
             const allValues: number[] = []
             y2Datasets.forEach((dataset: any) => {
               if (dataset.data && dataset.data.length > 0) {
@@ -4130,6 +4135,7 @@
 
             if (allValues.length === 0) {
               scale.display = false
+              scale.options.stackWeight = 0.001
               return
             }
 
@@ -4207,10 +4213,12 @@
 
             if (y3Datasets.length === 0) {
               scale.display = false
+              scale.options.stackWeight = 0.001
               return
             }
 
             scale.display = true
+            scale.options.stackWeight = 1
             const allValues: number[] = []
             y3Datasets.forEach((dataset: any) => {
               if (dataset.data && dataset.data.length > 0) {
@@ -4224,6 +4232,7 @@
 
             if (allValues.length === 0) {
               scale.display = false
+              scale.options.stackWeight = 0.001
               return
             }
 
@@ -8325,16 +8334,19 @@
             scales[axisId].ticks.color = axisColor
           }
 
-          // Show the axis
+          // Show the axis and give it equal stack weight
           scales[axisId].display = true
+          scales[axisId].stackWeight = 1
         }
       })
 
-      // Hide axes that aren't being used
+      // Hide axes that aren't being used; use a near-zero stackWeight so
+      // Chart.js doesn't allocate height for them while avoiding division-by-zero
       const allAxes = ['y', 'y1', 'y2', 'y3']
       allAxes.forEach(axisId => {
         if (scales[axisId] && !axisUnits.has(axisId)) {
           scales[axisId].display = false
+          scales[axisId].stackWeight = 0.001
           if (scales[axisId].title) {
             scales[axisId].title.text = ''
           }
