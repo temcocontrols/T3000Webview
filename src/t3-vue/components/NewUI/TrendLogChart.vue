@@ -3908,18 +3908,7 @@
             }
           },
           afterFit: function(scale: any) {
-            // Check how many y-axes are actually displayed
-            const chart = scale.chart
-            if (chart?.options?.scales) {
-              const visibleAxes = ['y', 'y1', 'y2', 'y3'].filter(axisId => {
-                const axis = chart.options.scales[axisId]
-                return axis && axis.display !== false
-              })
-              // If only one y-axis, use smaller width
-              scale.width = visibleAxes.length === 1 ? 25 : 45
-            } else {
-              scale.width = 45
-            }
+            scale.width = 55
           },
           // 🆕 ENHANCED: Smart Y-axis scaling (axis assignment done in updateAnalogChart)
           afterDataLimits: function (scale: any) {
@@ -4016,16 +4005,7 @@
             }
           },
           afterFit: function(scale: any) {
-            const chart = scale.chart
-            if (chart?.options?.scales) {
-              const visibleAxes = ['y', 'y1', 'y2', 'y3'].filter(axisId => {
-                const axis = chart.options.scales[axisId]
-                return axis && axis.display !== false
-              })
-              scale.width = visibleAxes.length === 1 ? 25 : 45
-            } else {
-              scale.width = 45
-            }
+            scale.width = 55
           },
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
@@ -4125,16 +4105,7 @@
             }
           },
           afterFit: function(scale: any) {
-            const chart = scale.chart
-            if (chart?.options?.scales) {
-              const visibleAxes = ['y', 'y1', 'y2', 'y3'].filter(axisId => {
-                const axis = chart.options.scales[axisId]
-                return axis && axis.display !== false
-              })
-              scale.width = visibleAxes.length === 1 ? 25 : 45
-            } else {
-              scale.width = 45
-            }
+            scale.width = 55
           },
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
@@ -4228,16 +4199,7 @@
             }
           },
           afterFit: function(scale: any) {
-            const chart = scale.chart
-            if (chart?.options?.scales) {
-              const visibleAxes = ['y', 'y1', 'y2', 'y3'].filter(axisId => {
-                const axis = chart.options.scales[axisId]
-                return axis && axis.display !== false
-              })
-              scale.width = visibleAxes.length === 1 ? 25 : 45
-            } else {
-              scale.width = 45
-            }
+            scale.width = 55
           },
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
