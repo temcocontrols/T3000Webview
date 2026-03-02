@@ -190,19 +190,52 @@ impl TrendlogParentCache {
                     })
                     .collect();
 
-                let insert_result = trendlog_data::Entity::insert_many(new_active_models)
+                trendlog_data::Entity::insert_many(new_active_models)
                     .exec(db)
                     .await?;
 
-                // Get the IDs of newly inserted parents (sequential from last_insert_id)
-                let first_id = insert_result.last_insert_id;
-                for (idx, (original_idx, key, _, _, _, _)) in new_parents_to_insert.iter().enumerate() {
-                    let parent_id = first_id + idx as i32;
-                    parent_ids.push((*original_idx, parent_id));
+                // Re-query DB for actual IDs of newly inserted parents.
+                // Using last_insert_id + idx is unreliable (last_insert_id is the LAST
+                // row, not the first, and IDs may not be strictly sequential if there
+                // is concurrent activity). Re-querying is the only safe approach.
+                let mut new_condition = sea_orm::Condition::any();
+                for (key, _, _, _) in &keys_to_fetch {
+                    // Only re-query keys that were genuinely new (not already in existing_map)
+                    if !existing_map.contains_key(key) {
+                        new_condition = new_condition.add(
+                            sea_orm::Condition::all()
+                                .add(trendlog_data::Column::SerialNumber.eq(key.serial_number))
+                                .add(trendlog_data::Column::PanelId.eq(key.panel_id))
+                                .add(trendlog_data::Column::PointId.eq(&key.point_id))
+                                .add(trendlog_data::Column::PointIndex.eq(key.point_index))
+                                .add(trendlog_data::Column::PointType.eq(&key.point_type))
+                        );
+                    }
+                }
+                let newly_inserted = trendlog_data::Entity::find()
+                    .filter(new_condition)
+                    .all(db)
+                    .await?;
+                let new_id_map: std::collections::HashMap<ParentKey, i32> = newly_inserted
+                    .into_iter()
+                    .map(|p| {
+                        let key = ParentKey {
+                            serial_number: p.serial_number,
+                            panel_id: p.panel_id,
+                            point_id: p.point_id.clone(),
+                            point_index: p.point_index,
+                            point_type: p.point_type.clone(),
+                        };
+                        (key, p.id)
+                    })
+                    .collect();
 
-                    // Cache new parent
-                    if let Ok(mut cache) = self.cache.write() {
-                        cache.insert(key.clone(), parent_id);
+                for (original_idx, key, _, _, _, _) in &new_parents_to_insert {
+                    if let Some(&parent_id) = new_id_map.get(key) {
+                        parent_ids.push((*original_idx, parent_id));
+                        if let Ok(mut cache) = self.cache.write() {
+                            cache.insert(key.clone(), parent_id);
+                        }
                     }
                 }
             }
