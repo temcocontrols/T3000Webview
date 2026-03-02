@@ -8353,58 +8353,56 @@
         await new Promise(resolve => setTimeout(resolve, 0))
       }
 
-      // Clone, filter null/undefined values, and sort data
-      const sortedData = series.data
+      // Sort all data including nulls — we need them to count consecutive runs.
+      const sortedAll = series.data
         .slice()
-        .filter(point => point.value !== null && point.value !== undefined) // ✅ Filter invalid values
+        .filter(point => point.timestamp != null)
         .sort((a, b) => a.timestamp - b.timestamp)
-        .map(point => ({
-          x: point.timestamp,
-          y: point.value
-        }))
 
-      // 🆕 Detect large gaps and insert null to break line visualization
+      // Rule: only break the drawn line when there are ≥ 5 consecutive null/empty
+      // values in a row.  Runs of < 5 are silently skipped and the line bridges
+      // across them.  Time gaps alone never break the line.
+      const MAX_NULL_RUN = 5
       const dataWithGaps: Array<{ x: number; y: number | null }> = []
-
-      // Gap detection: insert null spacer between points when the time gap
-      // clearly indicates missing recordings (device offline / no data).
-      //
-      // Use the actual T3000 recording interval from monitorConfig
-      // (hour/minute/second_interval_time → ms, minimum 15s enforced by
-      // calculateT3000Interval). Threshold = 1.5× so any gap spanning 2 or
-      // more missed slots breaks the line, while normal consecutive recordings
-      // (1 slot apart, including minor jitter) always draw a line.
-      const recordingIntervalMs = calculateT3000Interval(monitorConfig.value) // min 15,000 ms
-      const maxGapMs = recordingIntervalMs * 1.5
-
-      for (let i = 0; i < sortedData.length; i++) {
-        dataWithGaps.push(sortedData[i])
-
-        // Check if next point has a large time gap
-        if (i < sortedData.length - 1) {
-          const currentTime = sortedData[i].x
-          const nextTime = sortedData[i + 1].x
-          const gap = nextTime - currentTime
-
-          if (gap > maxGapMs) {
-            // Insert null point to break the line
-            dataWithGaps.push({
-              x: currentTime + gap / 2,
-              y: null
-            })
+      let j = 0
+      while (j < sortedAll.length) {
+        const pt = sortedAll[j]
+        const isNullPt = pt.value === null || pt.value === undefined || isNaN(Number(pt.value))
+        if (!isNullPt) {
+          dataWithGaps.push({ x: pt.timestamp, y: pt.value })
+          j++
+        } else {
+          // Count the full consecutive null run starting at j
+          let nullCount = 0
+          const runStart = j
+          while (j < sortedAll.length) {
+            const npt = sortedAll[j]
+            if (npt.value === null || npt.value === undefined || isNaN(Number(npt.value))) {
+              nullCount++
+              j++
+            } else { break }
           }
+          if (nullCount >= MAX_NULL_RUN) {
+            // Insert one null spacer at the midpoint to break the line.
+            // After the break, real data resumes and the line re-connects.
+            const prevX = runStart > 0 ? sortedAll[runStart - 1].timestamp : sortedAll[runStart].timestamp
+            const nextX = j < sortedAll.length ? sortedAll[j].timestamp : prevX
+            dataWithGaps.push({ x: (prevX + nextX) / 2, y: null })
+          }
+          // < 5 nulls: skip entirely — surrounding real points stay connected
         }
       }
 
+      const realPoints = dataWithGaps.filter(d => d.y !== null)
       LogUtil.Debug(`📊 Building dataset for ${series.name}:`, {
         rawDataPoints: series.data.length,
-        filteredDataPoints: sortedData.length,
+        filteredDataPoints: realPoints.length,
         dataWithGaps: dataWithGaps.length,
-        timeRange: sortedData.length > 0 ? {
-          first: new Date(sortedData[0].x).toLocaleTimeString(),
-          last: new Date(sortedData[sortedData.length - 1].x).toLocaleTimeString()
+        timeRange: realPoints.length > 0 ? {
+          first: new Date(realPoints[0].x).toLocaleTimeString(),
+          last: new Date(realPoints[realPoints.length - 1].x).toLocaleTimeString()
         } : null,
-        samplePoints: sortedData.slice(-3) // Last 3 points
+        samplePoints: realPoints.slice(-3)
       })
 
       // Get axis assignment (default to 'y' if not found)
@@ -8716,44 +8714,40 @@
         } : null
       })
 
-      const sortedData = series.data
+      const sortedAllD = series.data
         .slice()
-        .filter(point => point.value !== null && point.value !== undefined) // ✅ Filter invalid values
+        .filter(point => point.timestamp != null)
         .sort((a, b) => a.timestamp - b.timestamp)
-        .map(point => {
-          // Stack each series vertically - REVERSED to match left panel order
-          // First series in array (index 0) appears at TOP of chart
-          // control=1 (second state) goes to bottom, control=0 (first state) goes to top
-          // With 2 series: Series 0 (OUT1): baseY = 1.2 (top), Series 1 (OUT6): baseY = 0 (bottom)
-          const baseY = (visibleDigitalSeries.value.length - 1 - index) * 1.2
-          const y = point.value > 0.5 ? baseY + 0.3 : baseY + 0.9
-          return {
-            x: point.timestamp,
-            y: y,
-            control: point.value > 0.5 ? 1 : 0  // Store original control value for tooltip
+
+      const baseY = (visibleDigitalSeries.value.length - 1 - index) * 1.2
+
+      // Same rule as analog: only ≥ 5 consecutive nulls break the line.
+      const MAX_NULL_RUN_D = 5
+      const dataWithGaps: Array<{ x: number; y: number | null; control?: number }> = []
+      let jd = 0
+      while (jd < sortedAllD.length) {
+        const pt = sortedAllD[jd]
+        const isNullPt = pt.value === null || pt.value === undefined || isNaN(Number(pt.value))
+        if (!isNullPt) {
+          const y = pt.value > 0.5 ? baseY + 0.3 : baseY + 0.9
+          dataWithGaps.push({ x: pt.timestamp, y, control: pt.value > 0.5 ? 1 : 0 })
+          jd++
+        } else {
+          let nullCount = 0
+          const runStart = jd
+          while (jd < sortedAllD.length) {
+            const npt = sortedAllD[jd]
+            if (npt.value === null || npt.value === undefined || isNaN(Number(npt.value))) {
+              nullCount++
+              jd++
+            } else { break }
           }
-        })
-
-      // 🆕 Detect large gaps and insert null to break line visualization
-      const dataWithGaps: Array<{ x: number; y: number | null }> = []
-
-      // Same gap detection logic as analog — use actual T3000 recording interval.
-      const recordingIntervalMsD = calculateT3000Interval(monitorConfig.value) // min 15,000 ms
-      const maxGapMs = recordingIntervalMsD * 1.5
-
-      for (let i = 0; i < sortedData.length; i++) {
-        dataWithGaps.push(sortedData[i])
-
-        // Check if next point has a large time gap
-        if (i < sortedData.length - 1) {
-          const gap = sortedData[i + 1].x - sortedData[i].x
-          if (gap > maxGapMs) {
-            // Insert null point to break the line
-            dataWithGaps.push({
-              x: sortedData[i].x + gap / 2,
-              y: null
-            })
+          if (nullCount >= MAX_NULL_RUN_D) {
+            const prevX = runStart > 0 ? sortedAllD[runStart - 1].timestamp : sortedAllD[runStart].timestamp
+            const nextX = jd < sortedAllD.length ? sortedAllD[jd].timestamp : prevX
+            dataWithGaps.push({ x: (prevX + nextX) / 2, y: null })
           }
+          // < 5 nulls: skip entirely — surrounding real points stay connected
         }
       }
 
