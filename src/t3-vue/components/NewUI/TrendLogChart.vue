@@ -3356,18 +3356,21 @@
           if (!chartArea) return
 
           const yAxes = ['y', 'y1', 'y2', 'y3']
-          const visibleScales = yAxes.map(id => chart.scales[id]).filter(s => s && s.display !== false)
+          // Sort scales top-to-bottom by their actual pixel position
+          const visibleScales = yAxes
+            .map(id => chart.scales[id])
+            .filter(s => s && s.display !== false)
+            .sort((a, b) => a.top - b.top)
 
-          // ── Separator bands ──
-          // • Outer borders: solid 1px line at very top of first strip and very bottom of last strip
-          // • Inner bands: fill the actual pixel gap between scale[i].bottom → scale[i+1].top
-          //   (Chart.js stacked axes leave a real gap here; we paint it as the divider band)
+          // ── Separator lines ──
+          // Outer borders at the very top of the first strip and very bottom of the last.
+          // Inner separators are drawn exactly at scale[i].bottom — the true bottom edge of
+          // each upper strip — so lines always land between strips, not inside them.
           ctx.save()
-          const W = chartArea.right - chartArea.left
           if (visibleScales.length > 0) {
-            // Top outer border
             ctx.strokeStyle = '#000000'
             ctx.lineWidth = 1.5
+            // Top outer border
             ctx.beginPath()
             ctx.moveTo(chartArea.left, visibleScales[0].top)
             ctx.lineTo(chartArea.right, visibleScales[0].top)
@@ -3380,10 +3383,8 @@
             ctx.stroke()
           }
           for (let i = 0; i < visibleScales.length - 1; i++) {
-            const bandTop = visibleScales[i].bottom
-            const bandBot = visibleScales[i + 1].top
-            // Draw a single bold divider line centered in the gap (or at the boundary if no gap)
-            const lineY = Math.round((bandTop + bandBot) / 2)
+            // Draw the divider exactly at the bottom edge of the upper strip
+            const lineY = Math.round(visibleScales[i].bottom)
             ctx.strokeStyle = '#000000'
             ctx.lineWidth = 2
             ctx.beginPath()
@@ -3631,14 +3632,17 @@
               const minSpacing = 4 // Minimum space between tooltips
 
               sortedPoints.forEach((point: any) => {
-                const series = visibleAnalogSeries.value.find(s => s.name === point.dataset.label)
                 const rawY = point.parsed.y
-                const value = rawY != null && !isNaN(rawY) ? rawY.toFixed(2) : 'null'
+                // Skip points with no valid data
+                if (rawY == null || isNaN(rawY)) return
+
+                const series = visibleAnalogSeries.value.find(s => s.name === point.dataset.label)
+                const value = rawY.toFixed(2)
                 const unit = series?.unit || ''
                 const label = point.dataset.label || ''
 
                 // Format display text - hide "Unused" unit
-                const displayText = unit === 'Unused' || value === 'null' ? `${label}: ${value}` : `${label}: ${value} ${unit}`
+                const displayText = unit === 'Unused' ? `${label}: ${value}` : `${label}: ${value} ${unit}`
 
                 // Create individual tooltip element
                 const tooltipEl = document.createElement('div')
@@ -3700,47 +3704,7 @@
                 document.body.appendChild(tooltipEl)
               })
 
-              // Show "null" tooltips for visible series that had no data at this crosshair position
-              const presentLabels = new Set(inRangePoints.map((p: any) => p.dataset.label))
-
-              visibleAnalogSeries.value.forEach((series: any) => {
-                if (presentLabels.has(series.name)) return
-
-                const displayText = `${series.name}: null`
-
-                const tooltipEl = document.createElement('div')
-                tooltipEl.className = 'chartjs-multi-tooltip'
-                tooltipEl.style.opacity = '1'
-                tooltipEl.style.position = 'absolute'
-                tooltipEl.style.pointerEvents = 'none'
-                tooltipEl.style.zIndex = '1000'
-                tooltipEl.innerHTML = `
-                  <div style="
-                    background: #f5f5f5;
-                    color: #999;
-                    border: 1px solid #d9d9d9;
-                    border-radius: 4px;
-                    padding: 3px 6px;
-                    font-size: 10px;
-                    font-weight: 500;
-                    white-space: nowrap;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-                  ">
-                    ${displayText}
-                  </div>
-                `
-
-                // Stack below the last occupied position
-                let tooltipTop = tooltipPositions.length > 0
-                  ? tooltipPositions[tooltipPositions.length - 1].bottom + minSpacing
-                  : position.top + scrollY + chart.chartArea.top + 4
-
-                tooltipPositions.push({ top: tooltipTop, bottom: tooltipTop + tooltipHeight })
-
-                tooltipEl.style.left = (crosshairScreenX + 10) + 'px'
-                tooltipEl.style.top = tooltipTop + 'px'
-                document.body.appendChild(tooltipEl)
-              })
+              // Series absent at this crosshair position are not shown
             }
           }
         },
