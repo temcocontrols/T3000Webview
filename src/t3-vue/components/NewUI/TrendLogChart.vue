@@ -3074,15 +3074,12 @@
   const showAnalogArea = computed(() => {
     // Show analog area if:
     // 1. There are analog series available, OR
-    // 2. There's a connection error AND no data at all (truly failed state), OR
-    // 3. There are configured input items (even if none resolved to valid series)
-    //    so the empty-state message in the left panel is visible
+    // 2. There's a connection error AND no data at all (truly failed state)
     const hasAnalogSeries = analogSeriesList.value.length > 0
     const hasAnyData = dataSeries.value.some(s => s.data && s.data.length > 0)
     const shouldShowError = hasConnectionError.value && !hasAnyData
-    const hasConfiguredInputs = (monitorConfig.value?.inputItems?.length || 0) > 0
 
-    return hasAnalogSeries || shouldShowError || hasConfiguredInputs
+    return hasAnalogSeries || shouldShowError
   })
   const showDigitalArea = computed(() => digitalSeriesList.value.length > 0)
   const showResizableDivider = computed(() => analogSeriesList.value.length > 0 && digitalSeriesList.value.length > 0)
@@ -12383,14 +12380,9 @@
       }
 
       if (!analogChartCanvas.value) {
-        if (analogSeriesList.value.length === 0) {
-          // Canvas is not in DOM because there are no valid series — expected, not an error
-          LogUtil.Warn('⚠️ Canvas not available: no valid analog series to display')
-        } else {
-          // Series exist but canvas failed to appear — genuine initialization error
-          LogUtil.Error('❌ Canvas not available after waiting, cannot create charts')
-          hasConnectionError.value = true
-        }
+        LogUtil.Error('❌ Canvas not available after waiting, cannot create charts')
+        // Don't return - show error message instead of blank page
+        hasConnectionError.value = true
         stopLoading()
         return
       }
