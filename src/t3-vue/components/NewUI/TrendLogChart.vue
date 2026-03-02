@@ -8346,9 +8346,8 @@
             scales[axisId].ticks.color = axisColor
           }
 
-          // Show the axis and give it equal stack weight
+          // Show the axis — stackWeight will be set dynamically below from data ranges
           scales[axisId].display = true
-          scales[axisId].stackWeight = 1
         }
       })
 
@@ -8596,6 +8595,46 @@
         display: showGrid.value,
         lineWidth: 1
       }
+    }
+
+    // 🆕 Dynamic stackWeight: set strip heights proportional to each axis's value range.
+    // Algorithm:
+    //   1. Compute the data range (max - min) for every visible axis from its datasets.
+    //   2. Find the largest range across all visible axes.
+    //   3. Assign weight = MIN_W + (MAX_W - MIN_W) * (axisRange / maxRange)
+    //      → every visible strip gets at least MIN_W height; the widest-range strip gets MAX_W.
+    // This prevents small-range axes being squashed when sharing space with large-range axes.
+    if (analogChartInstance?.options?.scales) {
+      const scales = analogChartInstance.options.scales as any
+      const axisIds = ['y', 'y1', 'y2', 'y3']
+      const MIN_W = 2   // minimum strip height weight (every visible axis)
+      const MAX_W = 5   // maximum strip height weight
+
+      // Pass 1: collect ranges
+      const axisRanges = new Map<string, number>()
+      axisIds.forEach(axisId => {
+        if (!scales[axisId] || scales[axisId].display === false) return
+        const axisDatasets = (analogChartInstance!.data.datasets as any[]).filter(
+          ds => (ds.yAxisID || 'y') === axisId
+        )
+        if (axisDatasets.length === 0) return
+        const allVals: number[] = []
+        axisDatasets.forEach(ds => {
+          ds.data.forEach((pt: any) => {
+            if (pt && typeof pt.y === 'number' && isFinite(pt.y)) allVals.push(pt.y)
+          })
+        })
+        if (allVals.length === 0) return
+        const dataRange = Math.max(...allVals) - Math.min(...allVals)
+        axisRanges.set(axisId, Math.max(dataRange, 1)) // floor at 1 to avoid /0
+      })
+
+      // Pass 2: assign proportional weights
+      const maxRange = Math.max(...Array.from(axisRanges.values()), 1)
+      axisRanges.forEach((range, axisId) => {
+        const weight = MIN_W + (MAX_W - MIN_W) * (range / maxRange)
+        scales[axisId].stackWeight = Math.round(weight * 10) / 10 // 1 decimal precision
+      })
     }
 
     // 🆕 FIX: Final safety check before update operations
