@@ -1735,6 +1735,7 @@
   // Dynamic interval calculation based on T3000 monitorConfig
   const calculateT3000Interval = (monitorConfig: any): number => {
     if (!monitorConfig) {
+      LogUtil.Info('⏱️ calculateT3000Interval: no monitorConfig → fallback 15000 ms')
       return 15000 // Default fallback: 15 seconds
     }
 
@@ -1754,6 +1755,11 @@
       ? Math.max(totalSeconds * 1000, 15000)  // Minimum 15 seconds
       : 15000  // Default 15 seconds if all intervals are 0
 
+    LogUtil.Info(
+      `⏱️ calculateT3000Interval: hour=${hour_interval_time} min=${minute_interval_time} sec=${second_interval_time}` +
+      ` → totalSeconds=${totalSeconds} → intervalMs=${intervalMs}` +
+      (totalSeconds > 0 && totalSeconds * 1000 < 15000 ? ' (clamped to 15000 minimum)' : '')
+    )
     return intervalMs
   }
 
@@ -2680,7 +2686,7 @@
 
     const isFirstTick = index === 0
 
-    // Always show time + date (multi-line) for first tick, time only for the rest
+    // First tick: show time + date (multi-line). All others: show time only.
     if (isFirstTick) {
       return formatDateTimeMultiLine() // Show time on top, date below
     } else {
@@ -3542,68 +3548,82 @@
               return
             }
 
-            // Draw vertical crosshair line at hover position
-            if (tooltip.dataPoints && tooltip.dataPoints.length > 0) {
-              const position = chart.canvas.getBoundingClientRect()
-              const scrollX = window.pageXOffset || document.documentElement.scrollLeft
-              const scrollY = window.pageYOffset || document.documentElement.scrollTop
-
-              const firstPoint = tooltip.dataPoints[0]
-              const pointX = position.left + scrollX + firstPoint.element.x
-
-              // Create crosshair line element
-              const crosshairEl = document.createElement('div')
-              crosshairEl.className = 'chartjs-crosshair'
-              crosshairEl.style.position = 'absolute'
-              crosshairEl.style.left = pointX + 'px'
-              crosshairEl.style.top = (position.top + scrollY + chart.chartArea.top) + 'px'
-              crosshairEl.style.width = '0px'
-              crosshairEl.style.height = (chart.chartArea.bottom - chart.chartArea.top) + 'px'
-              crosshairEl.style.borderLeft = '2px dashed #999'
-              crosshairEl.style.pointerEvents = 'none'
-              crosshairEl.style.zIndex = '999'
-
-              document.body.appendChild(crosshairEl)
-
-              // Create time display at top of crosshair
-              const timeEl = document.createElement('div')
-              timeEl.className = 'chartjs-crosshair'
-              timeEl.style.position = 'absolute'
-              timeEl.style.left = (pointX - 30) + 'px' // Center the time box
-              timeEl.style.top = (position.top + scrollY + chart.chartArea.top - 20) + 'px'
-              timeEl.style.pointerEvents = 'none'
-              timeEl.style.zIndex = '1000'
-
-              // Get time from the data point
-              const timeLabel = tooltip.dataPoints[0].label || ''
-
-              timeEl.innerHTML = `
-                <div style="
-                  background: white;
-                  color: #000;
-                  border: 1px solid #ff4d4f;
-                  border-radius: 3px;
-                  padding: 2px 6px;
-                  font-size: 10px;
-                  font-weight: 500;
-                  white-space: nowrap;
-                  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                ">
-                  ${timeLabel}
-                </div>
-              `
-
-              document.body.appendChild(timeEl)
+            if (!tooltip.dataPoints || tooltip.dataPoints.length === 0) {
+              return
             }
 
-            // Create individual tooltip for each data point
-            if (tooltip.body && tooltip.dataPoints && tooltip.dataPoints.length > 0) {
-              const position = chart.canvas.getBoundingClientRect()
-              const scrollX = window.pageXOffset || document.documentElement.scrollLeft
-              const scrollY = window.pageYOffset || document.documentElement.scrollTop
+            const position = chart.canvas.getBoundingClientRect()
+            const scrollX = window.pageXOffset || document.documentElement.scrollLeft
+            const scrollY = window.pageYOffset || document.documentElement.scrollTop
 
-              // Sort points by Y position to handle overlaps
-              const sortedPoints = [...tooltip.dataPoints].sort((a, b) => a.element.y - b.element.y)
+            // ── Filter to only points whose X timestamp is inside the visible window ──
+            const xScale = chart.scales.x
+            const visibleMin = xScale?.min ?? -Infinity
+            const visibleMax = xScale?.max ?? Infinity
+            const inRangePoints = tooltip.dataPoints.filter((p: any) => {
+              const ts = p.parsed?.x ?? p.raw?.x
+              return ts !== undefined && ts >= visibleMin && ts <= visibleMax
+            })
+
+            // If nothing is in range, suppress entirely
+            if (inRangePoints.length === 0) {
+              return
+            }
+
+            // ── Crosshair & time label ──
+            // Use tooltip.caretX (cursor x in canvas pixels) as the anchor so the
+            // crosshair follows the mouse even when some datasets have no nearby point.
+            const caretCanvasX = tooltip.caretX ?? inRangePoints[0].element.x
+            const crosshairScreenX = position.left + scrollX + caretCanvasX
+
+            // Create crosshair line element
+            const crosshairEl = document.createElement('div')
+            crosshairEl.className = 'chartjs-crosshair'
+            crosshairEl.style.position = 'absolute'
+            crosshairEl.style.left = crosshairScreenX + 'px'
+            crosshairEl.style.top = (position.top + scrollY + chart.chartArea.top) + 'px'
+            crosshairEl.style.width = '0px'
+            crosshairEl.style.height = (chart.chartArea.bottom - chart.chartArea.top) + 'px'
+            crosshairEl.style.borderLeft = '2px dashed #999'
+            crosshairEl.style.pointerEvents = 'none'
+            crosshairEl.style.zIndex = '999'
+            document.body.appendChild(crosshairEl)
+
+            // Derive the hover time from the scale (avoids stale/clamped label from out-of-range points)
+            const hoverTimestamp = xScale?.getValueForPixel?.(caretCanvasX) ?? inRangePoints[0].parsed?.x
+            const hoverDate = hoverTimestamp ? new Date(hoverTimestamp) : null
+            const timeLabel = hoverDate
+              ? hoverDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+              : ''
+
+            const timeEl = document.createElement('div')
+            timeEl.className = 'chartjs-crosshair'
+            timeEl.style.position = 'absolute'
+            timeEl.style.left = (crosshairScreenX - 30) + 'px'
+            timeEl.style.top = (position.top + scrollY + chart.chartArea.top - 20) + 'px'
+            timeEl.style.pointerEvents = 'none'
+            timeEl.style.zIndex = '1000'
+            timeEl.innerHTML = `
+              <div style="
+                background: white;
+                color: #000;
+                border: 1px solid #ff4d4f;
+                border-radius: 3px;
+                padding: 2px 6px;
+                font-size: 10px;
+                font-weight: 500;
+                white-space: nowrap;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+              ">
+                ${timeLabel}
+              </div>
+            `
+            document.body.appendChild(timeEl)
+
+            // Create individual tooltip for each data point
+            if (tooltip.body) {
+              // Sort in-range points by Y position to handle overlaps
+              const sortedPoints = [...inRangePoints].sort((a, b) => a.element.y - b.element.y)
 
               // Track occupied vertical spaces to prevent overlap
               const tooltipPositions: Array<{top: number, bottom: number}> = []
@@ -3681,8 +3701,7 @@
               })
 
               // Show "null" tooltips for visible series that had no data at this crosshair position
-              const presentLabels = new Set(tooltip.dataPoints.map((p: any) => p.dataset.label))
-              const caretX = position.left + scrollX + (tooltip.caretX ?? sortedPoints[0]?.element?.x ?? 0)
+              const presentLabels = new Set(inRangePoints.map((p: any) => p.dataset.label))
 
               visibleAnalogSeries.value.forEach((series: any) => {
                 if (presentLabels.has(series.name)) return
@@ -3718,7 +3737,7 @@
 
                 tooltipPositions.push({ top: tooltipTop, bottom: tooltipTop + tooltipHeight })
 
-                tooltipEl.style.left = (caretX + 10) + 'px'
+                tooltipEl.style.left = (crosshairScreenX + 10) + 'px'
                 tooltipEl.style.top = tooltipTop + 'px'
                 document.body.appendChild(tooltipEl)
               })
@@ -4724,8 +4743,18 @@
         return null
       }
 
-      // Calculate the data retrieval interval in milliseconds using the unified function
-      const intervalMs = calculateT3000Interval(monitorConfig)
+      // Calculate the data retrieval interval - props.itemData.t3Entry wins over T3000 data manager (which may have stale values)
+      const propEntryForInterval = (props.itemData as any)?.t3Entry
+      const resolvedHourFull   = propEntryForInterval?.hour_interval_time   ?? monitorConfig.hour_interval_time   ?? 0
+      const resolvedMinuteFull = propEntryForInterval?.minute_interval_time ?? monitorConfig.minute_interval_time ?? 0
+      const resolvedSecondFull = propEntryForInterval?.second_interval_time ?? monitorConfig.second_interval_time ?? 0
+      LogUtil.Info(
+        '📐 getMonitorConfigFromT3000Data interval resolution:' +
+        `\n  props.t3Entry  → hour=${propEntryForInterval?.hour_interval_time} min=${propEntryForInterval?.minute_interval_time} sec=${propEntryForInterval?.second_interval_time}` +
+        `\n  T3000DataMgr   → hour=${monitorConfig.hour_interval_time} min=${monitorConfig.minute_interval_time} sec=${monitorConfig.second_interval_time}` +
+        `\n  RESOLVED (props wins via ??) → hour=${resolvedHourFull} min=${resolvedMinuteFull} sec=${resolvedSecondFull}`
+      )
+      const intervalMs = calculateT3000Interval({ hour_interval_time: resolvedHourFull, minute_interval_time: resolvedMinuteFull, second_interval_time: resolvedSecondFull })
 
       // Extract input items from the configuration
       const inputItems = []
@@ -5981,13 +6010,14 @@
    * Get the time range of existing data across all series
    * Returns null if no data exists
    */
-  const getExistingDataTimeRange = (): { earliest: number, latest: number, totalPoints: number } | null => {
+  const getExistingDataTimeRange = (): { earliest: number, latest: number, totalPoints: number, latestEarliest: number } | null => {
     if (!dataSeries.value || dataSeries.value.length === 0) {
       return null
     }
 
-    let earliest = Infinity
+    let earliest = Infinity      // global min across all series
     let latest = -Infinity
+    let latestEarliest = -Infinity // max of per-series earliest (conservative: ALL series must cover the window)
     let totalPoints = 0
     let hasAnyData = false
 
@@ -6000,6 +6030,9 @@
 
         if (seriesEarliest < earliest) earliest = seriesEarliest
         if (seriesLatest > latest) latest = seriesLatest
+        // Track the LATEST of all per-series earliests so we only skip the history
+        // load when EVERY series has data going back to the window start.
+        if (seriesEarliest > latestEarliest) latestEarliest = seriesEarliest
       }
     })
 
@@ -6007,7 +6040,7 @@
       return null
     }
 
-    return { earliest, latest, totalPoints }
+    return { earliest, latest, totalPoints, latestEarliest }
   }
 
   /**
@@ -6238,6 +6271,12 @@
       let actualEndTime = offsetEndTime
 
       if (existingDataRange && !forceReload) {
+        // Use latestEarliest: the MAXIMUM of all per-series earliest timestamps.
+        // This means we only skip the history load when EVERY series already has
+        // data going back to (or before) the window start.  A single series with
+        // deep history must not prevent loading history for the other series.
+        const coverageStart = existingDataRange.latestEarliest
+
         LogUtil.Info('📊 Existing data detected - optimizing load range', {
           requestedRange: {
             start: offsetStartTime.toISOString(),
@@ -6245,23 +6284,24 @@
             durationMinutes: timeRangeMinutes
           },
           existingRange: {
-            start: new Date(existingDataRange.earliest).toISOString(),
+            globalEarliest: new Date(existingDataRange.earliest).toISOString(),
+            latestEarliest: new Date(existingDataRange.latestEarliest).toISOString(),
             end: new Date(existingDataRange.latest).toISOString()
           }
         })
 
-        // Only load data BEFORE the earliest existing point (historical gap)
-        if (offsetStartTime.getTime() < existingDataRange.earliest) {
-          actualEndTime = new Date(existingDataRange.earliest - 1000) // 1 second before earliest
+        // Only load data BEFORE the coverage start (the series with the least history)
+        if (offsetStartTime.getTime() < coverageStart) {
+          actualEndTime = new Date(coverageStart - 1000) // 1 second before coverage start
           LogUtil.Info('🔍 Loading historical gap BEFORE existing data', {
             gapStart: actualStartTime.toISOString(),
             gapEnd: actualEndTime.toISOString(),
             gapMinutes: Math.round((actualEndTime.getTime() - actualStartTime.getTime()) / 60000)
           })
         } else {
-          LogUtil.Info('✅All requested data already exists in memory - skipping database load', {
+          LogUtil.Info('✅ All series have data covering the full window - skipping database load', {
             requestedStart: offsetStartTime.toISOString(),
-            existingStart: new Date(existingDataRange.earliest).toISOString()
+            coverageStart: new Date(coverageStart).toISOString()
           })
           return // No need to load anything
         }
@@ -8379,14 +8419,12 @@
       // Gap detection: insert null spacer between points when the time gap
       // clearly indicates missing recordings (device offline / no data).
       //
-      // Use the known recording interval (ffiSyncConfig.interval_secs) as the
-      // base. Threshold = 1.5 × recording interval, so any gap spanning 2 or
-      // more missed slots triggers a line break, while normal consecutive
-      // recordings (1 slot apart, including minor jitter) always draw a line.
-      //
-      // Works correctly for all cases including exactly 2 data points, because
-      // we now use the configured interval rather than deriving it from the data.
-      const recordingIntervalMs = ffiSyncConfig.value.interval_secs * 1000
+      // Use the actual T3000 recording interval from monitorConfig
+      // (hour/minute/second_interval_time → ms, minimum 15s enforced by
+      // calculateT3000Interval). Threshold = 1.5× so any gap spanning 2 or
+      // more missed slots breaks the line, while normal consecutive recordings
+      // (1 slot apart, including minor jitter) always draw a line.
+      const recordingIntervalMs = calculateT3000Interval(monitorConfig.value) // min 15,000 ms
       const maxGapMs = recordingIntervalMs * 1.5
 
       for (let i = 0; i < sortedData.length; i++) {
@@ -8709,8 +8747,8 @@
       // 🆕 Detect large gaps and insert null to break line visualization
       const dataWithGaps: Array<{ x: number; y: number | null }> = []
 
-      // Same gap detection logic as analog — use configured recording interval.
-      const recordingIntervalMsD = ffiSyncConfig.value.interval_secs * 1000
+      // Same gap detection logic as analog — use actual T3000 recording interval.
+      const recordingIntervalMsD = calculateT3000Interval(monitorConfig.value) // min 15,000 ms
       const maxGapMs = recordingIntervalMsD * 1.5
 
       for (let i = 0; i < sortedData.length; i++) {
@@ -10148,21 +10186,28 @@
   }
 
   const startRealTimeUpdates = () => {
-    LogUtil.Debug('🔥 startRealTimeUpdates CALLED - Current interval ID:', realtimeInterval)
+    LogUtil.Info('🔥 startRealTimeUpdates CALLED - Current interval ID:', realtimeInterval)
 
     if (realtimeInterval) {
-      LogUtil.Debug('⚠️ Clearing existing interval:', realtimeInterval)
+      LogUtil.Info('⚠️ Clearing existing interval:', realtimeInterval)
       clearInterval(realtimeInterval)
       realtimeInterval = null
     }
 
     // Use monitor config data interval if available, otherwise fallback to default
     const monitorConfigData = monitorConfig.value
-    const dataInterval = monitorConfigData?.dataIntervalMs || updateInterval.value
+    const dataIntervalFromConfig = monitorConfigData?.dataIntervalMs
+    const dataIntervalFromComputed = updateInterval.value
+    const dataInterval = dataIntervalFromConfig || dataIntervalFromComputed
 
-    LogUtil.Debug('📡 Creating new interval with', dataInterval, 'ms interval')
+    LogUtil.Info(
+      `📡 startRealTimeUpdates: polling interval = ${dataInterval} ms (${dataInterval / 1000}s)` +
+      `\n  source: ${dataIntervalFromConfig ? 'monitorConfig.dataIntervalMs=' + dataIntervalFromConfig : 'fallback updateInterval=' + dataIntervalFromComputed}` +
+      `\n  monitorConfig raw intervals: hour=${monitorConfigData?.hour_interval_time} min=${monitorConfigData?.minute_interval_time} sec=${monitorConfigData?.second_interval_time}` +
+      `\n  monitorConfig.dataIntervalMs=${monitorConfigData?.dataIntervalMs}`
+    )
     realtimeInterval = setInterval(addRealtimeDataPoint, dataInterval)
-    LogUtil.Debug('✅ Interval created - ID:', realtimeInterval)
+    LogUtil.Info('✅ Interval created - ID:', realtimeInterval, '- fires every', dataInterval / 1000, 'seconds')
   }
 
   const stopRealTimeUpdates = () => {
@@ -12119,12 +12164,34 @@
               LogUtil.Debug('    * second_interval_time:', matchingMonitor.second_interval_time)
               LogUtil.Debug('─────────────────────────────────────────────────────────────')
 
-              // 🆕 FIX: Create temporary monitor config from Action 0 response
-              // This is needed because monitorConfig.value hasn't been set yet (set later at line ~10507)
+              // 🆕 FIX: Create temporary monitor config from Action 0 response.
+              // IMPORTANT: props.itemData.t3Entry is the authoritative interval source — it is
+              // the MON data passed by T3000 when the chart was opened and reflects what the user
+              // configured.  The Action 0 response can return stale/different cached values for
+              // the same fields (e.g. second_interval_time=30 when the real value is minute=5).
+              // Use ?? (null-coalescing) so an explicit 0 in props still wins over a non-zero
+              // Action 0 value, while a missing/undefined props field falls back to Action 0.
+              const propEntry = (props.itemData as any)?.t3Entry
+              const resolvedHour   = propEntry?.hour_interval_time   ?? matchingMonitor.hour_interval_time   ?? 0
+              const resolvedMinute = propEntry?.minute_interval_time ?? matchingMonitor.minute_interval_time ?? 0
+              const resolvedSecond = propEntry?.second_interval_time ?? matchingMonitor.second_interval_time ?? 0
+
+              LogUtil.Info(
+                '📐 Interval source resolution:' +
+                `\n  props.t3Entry  → hour=${propEntry?.hour_interval_time} min=${propEntry?.minute_interval_time} sec=${propEntry?.second_interval_time}` +
+                `\n  Action0 MON    → hour=${matchingMonitor.hour_interval_time} min=${matchingMonitor.minute_interval_time} sec=${matchingMonitor.second_interval_time}` +
+                `\n  RESOLVED (props wins via ??) → hour=${resolvedHour} min=${resolvedMinute} sec=${resolvedSecond}`
+              )
+
               const tempMonitorConfig = {
-                hour_interval_time: matchingMonitor.hour_interval_time || 0,
-                minute_interval_time: matchingMonitor.minute_interval_time || 0,
-                second_interval_time: matchingMonitor.second_interval_time || 0,
+                hour_interval_time: resolvedHour,
+                minute_interval_time: resolvedMinute,
+                second_interval_time: resolvedSecond,
+                dataIntervalMs: calculateT3000Interval({
+                  hour_interval_time: resolvedHour,
+                  minute_interval_time: resolvedMinute,
+                  second_interval_time: resolvedSecond
+                }),
                 pid: matchingMonitor.pid,
                 id: matchingMonitor.id,
                 label: matchingMonitor.label,
@@ -12161,13 +12228,14 @@
               LogUtil.Debug('🔥 SETTING monitorConfig.value to tempMonitorConfig to enable polling...')
               if (!monitorConfig.value) {
                 monitorConfig.value = tempMonitorConfig
-                LogUtil.Debug('✅ monitorConfig.value set from tempMonitorConfig')
+                LogUtil.Info('✅ monitorConfig.value set from tempMonitorConfig, dataIntervalMs=' + tempMonitorConfig.dataIntervalMs)
               } else {
-                // If it already exists, update the interval fields
-                monitorConfig.value.hour_interval_time = matchingMonitor.hour_interval_time || 0
-                monitorConfig.value.minute_interval_time = matchingMonitor.minute_interval_time || 0
-                monitorConfig.value.second_interval_time = matchingMonitor.second_interval_time || 0
-                LogUtil.Debug('✅ Updated existing monitorConfig.value with interval settings')
+                // If it already exists, update the interval fields AND dataIntervalMs using resolved values
+                monitorConfig.value.hour_interval_time = resolvedHour
+                monitorConfig.value.minute_interval_time = resolvedMinute
+                monitorConfig.value.second_interval_time = resolvedSecond
+                monitorConfig.value.dataIntervalMs = tempMonitorConfig.dataIntervalMs
+                LogUtil.Info('✅ Updated existing monitorConfig.value with resolved interval settings, dataIntervalMs=' + tempMonitorConfig.dataIntervalMs)
               }
 
               // 🆕 FORCE START: Always start realtime updates after setting monitorConfig
@@ -12231,6 +12299,12 @@
       if (monitorConfigData) {
         // 🆕 FIX: Set monitorConfig BEFORE regenerating dataseries to prevent race condition
         monitorConfig.value = monitorConfigData
+
+        // 🔥 FIX: Restart real-time polling with the correct interval from the full config.
+        // tempMonitorConfig (set earlier from Action 0) may have had a different/missing dataIntervalMs.
+        // Now that monitorConfig.value has the authoritative dataIntervalMs, restart the interval.
+        LogUtil.Info('🔄 Restarting real-time updates with full monitorConfig dataIntervalMs:', monitorConfigData.dataIntervalMs)
+        startRealTimeUpdates()
 
         LogUtil.Info('TrendLogChart: Monitor config set, regenerating dataseries for consistency', {
           hasMonitorConfig: !!monitorConfig.value,
