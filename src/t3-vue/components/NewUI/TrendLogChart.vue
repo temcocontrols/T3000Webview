@@ -3479,7 +3479,7 @@
             ctx.restore() // remove transform
           })
         }
-      }
+      },
     ],
     options: {
       responsive: true,
@@ -3911,7 +3911,7 @@
             },
             padding: 4,
             autoSkip: true,
-            maxTicksLimit: 6,
+            maxTicksLimit: 10,
             align: 'end',
             // stepSize will be calculated dynamically in afterDataLimits
             callback: function (value: any) {
@@ -3956,30 +3956,29 @@
             const max = Math.max(...allValues)
             const range = max - min
 
-            LogUtil.Debug('📊 Y-axis afterDataLimits:', { min, max, range, valueCount: allValues.length, datasets: yDatasets.length })
-
-            // Enhanced auto-ranging for better visibility
             if (range === 0) {
-              // All values same - show ±10% range
-              scale.min = min * 0.9
-              scale.max = max * 1.1
+              scale.min = min > 0 ? min * 0.9 : min - 0.5
+              scale.max = max > 0 ? max * 1.1 : max + 0.5
             } else if (range < 2) {
-              // If range is very small (like 0.1-0.3), expand 3x for better visibility
               const center = (min + max) / 2
-              const expandedRange = Math.max(range * 3, 1) // At least 1 unit range, 3x zoom
+              const expandedRange = Math.max(range * 3, 1)
               scale.min = center - expandedRange / 2
               scale.max = center + expandedRange / 2
             } else {
-              // Normal range - add 10% padding top and bottom
               const padding = range * 0.1
               scale.min = min - padding
               scale.max = max + padding
             }
 
-            // Calculate nice step size for more ticks
+            // Dynamic panel height: larger value range → taller panel
+            // log10(range): 1–9→1, 10–99→2, 100–999→3, 1000–9999→4, 10000+→5
+            const displayRange = scale.max - scale.min
+            const logWeight = displayRange > 1 ? Math.log10(displayRange) : 1
+            scale.options.stackWeight = Math.max(1, Math.min(5, Math.ceil(logWeight)))
+
             const newRange = scale.max - scale.min
             const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
-            const roughStep = newRange / 10 // Target 10 grid lines for more ticks
+            const roughStep = newRange / 10
             const stepSize = niceSteps.find(s => s >= roughStep) || 1
             scale.options.ticks.stepSize = stepSize
           }
@@ -4012,7 +4011,7 @@
             },
             padding: 4,
             autoSkip: true,
-            maxTicksLimit: 6,
+            maxTicksLimit: 10,
             align: 'end',
             callback: function (value: any) {
               return Math.round(Number(value)).toString().padStart(5, ' ');
@@ -4061,11 +4060,9 @@
             const max = Math.max(...allValues)
             const range = max - min
 
-            LogUtil.Debug('📊 Y1-axis afterDataLimits:', { min, max, range, valueCount: allValues.length, datasets: y1Datasets.length })
-
             if (range === 0) {
-              scale.min = min * 0.9
-              scale.max = max * 1.1
+              scale.min = min > 0 ? min * 0.9 : min - 0.5
+              scale.max = max > 0 ? max * 1.1 : max + 0.5
             } else if (range < 2) {
               const center = (min + max) / 2
               const expandedRange = Math.max(range * 3, 1)
@@ -4077,14 +4074,15 @@
               scale.max = max + padding
             }
 
-            // Calculate nice step size
+            const displayRange1 = scale.max - scale.min
+            const logWeight1 = displayRange1 > 1 ? Math.log10(displayRange1) : 1
+            scale.options.stackWeight = Math.max(1, Math.min(5, Math.ceil(logWeight1)))
+
             const newRange = scale.max - scale.min
             const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
             const roughStep = newRange / 10
             const stepSize = niceSteps.find(s => s >= roughStep) || 1
             scale.options.ticks.stepSize = stepSize
-
-            LogUtil.Debug('📊 Y1-axis final scale:', { min: scale.min, max: scale.max, stepSize })
           }
         },
         // 🆕 Y2 axis (left side, 3rd unit type)
@@ -4115,7 +4113,7 @@
             },
             padding: 4,
             autoSkip: true,
-            maxTicksLimit: 6,
+            maxTicksLimit: 10,
             align: 'end',
             callback: function (value: any) {
               return Math.round(Number(value)).toString().padStart(5, ' ');
@@ -4163,8 +4161,8 @@
             const range = max - min
 
             if (range === 0) {
-              scale.min = min * 0.9
-              scale.max = max * 1.1
+              scale.min = min > 0 ? min * 0.9 : min - 0.5
+              scale.max = max > 0 ? max * 1.1 : max + 0.5
             } else if (range < 2) {
               const center = (min + max) / 2
               const expandedRange = Math.max(range * 3, 1)
@@ -4176,7 +4174,10 @@
               scale.max = max + padding
             }
 
-            // Calculate nice step size
+            const displayRange2 = scale.max - scale.min
+            const logWeight2 = displayRange2 > 1 ? Math.log10(displayRange2) : 1
+            scale.options.stackWeight = Math.max(1, Math.min(5, Math.ceil(logWeight2)))
+
             const newRange = scale.max - scale.min
             const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
             const roughStep = newRange / 10
@@ -4212,7 +4213,7 @@
             },
             padding: 4,
             autoSkip: true,
-            maxTicksLimit: 6,
+            maxTicksLimit: 10,
             align: 'end',
             callback: function (value: any) {
               return Math.round(Number(value)).toString().padStart(5, ' ');
@@ -4260,8 +4261,8 @@
             const range = max - min
 
             if (range === 0) {
-              scale.min = min * 0.9
-              scale.max = max * 1.1
+              scale.min = min > 0 ? min * 0.9 : min - 0.5
+              scale.max = max > 0 ? max * 1.1 : max + 0.5
             } else if (range < 2) {
               const center = (min + max) / 2
               const expandedRange = Math.max(range * 3, 1)
@@ -4273,7 +4274,10 @@
               scale.max = max + padding
             }
 
-            // Calculate nice step size
+            const displayRange3 = scale.max - scale.min
+            const logWeight3 = displayRange3 > 1 ? Math.log10(displayRange3) : 1
+            scale.options.stackWeight = Math.max(1, Math.min(5, Math.ceil(logWeight3)))
+
             const newRange = scale.max - scale.min
             const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
             const roughStep = newRange / 10
@@ -13823,7 +13827,7 @@
     flex: 1;
     padding: 2px;
     position: relative;
-    min-height: 320px;
+    min-height: 480px;
     display: flex;
     flex-direction: column;
     /* gap: 8px; */
