@@ -283,7 +283,11 @@
                     <ExclamationCircleOutlined :style="{ fontSize: '16px' }" />
                     <span style="font-size: 14px; font-weight: 500;">Data Connection Error</span>
                   </div>
-                  <div v-else class="empty-state-text">No valid analog data available</div>
+                  <div v-else class="empty-state-icon">📊</div>
+
+                  <div v-if="shouldShowLoading" class="empty-state-text">Loading T3000 device data...</div>
+                  <div v-else-if="showLoadingTimeout" class="empty-state-text">Loading Timeout</div>
+                  <div v-else-if="!hasConnectionError" class="empty-state-text">No valid analog data available</div>
 
                   <div v-if="shouldShowLoading" class="empty-state-subtitle">
                     Connecting to your T3000 devices to retrieve trend data...
