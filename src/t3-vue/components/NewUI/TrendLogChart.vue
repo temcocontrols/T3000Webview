@@ -3865,7 +3865,8 @@
           grid: {
             color: showGrid.value ? '#e0e0e0' : 'transparent',
             display: showGrid.value,
-            lineWidth: 1
+            lineWidth: 1,
+            drawTicks: false
           },
           ticks: {
             color: '#595959',
@@ -3956,7 +3957,8 @@
           grid: {
             color: showGrid.value ? '#e0e0e0' : 'transparent',
             display: showGrid.value,
-            lineWidth: 1
+            lineWidth: 1,
+            drawTicks: false
           },
           title: {
             display: false, // Plugin renders with background
@@ -4058,7 +4060,8 @@
           grid: {
             color: showGrid.value ? '#e0e0e0' : 'transparent',
             display: showGrid.value,
-            lineWidth: 1
+            lineWidth: 1,
+            drawTicks: false
           },
           title: {
             display: false, // Plugin renders with background
@@ -4158,7 +4161,8 @@
           grid: {
             color: showGrid.value ? '#e0e0e0' : 'transparent',
             display: showGrid.value,
-            lineWidth: 1
+            lineWidth: 1,
+            drawTicks: false
           },
           title: {
             display: false, // Plugin renders with background
