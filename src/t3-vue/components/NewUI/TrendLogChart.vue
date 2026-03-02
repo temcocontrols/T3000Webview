@@ -279,14 +279,10 @@
                     <a-spin size="small" />
                   </div>
                   <div v-else-if="showLoadingTimeout" class="empty-state-icon">⏱️</div>
-                  <div v-else-if="hasConnectionError" class="empty-state-icon">
-                    <ExclamationCircleOutlined :style="{ fontSize: '32px' }" />
+                  <div v-else-if="hasConnectionError" style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 4px;">
+                    <ExclamationCircleOutlined :style="{ fontSize: '16px' }" />
+                    <span style="font-size: 14px; font-weight: 500;">Data Connection Error</span>
                   </div>
-                  <div v-else class="empty-state-icon">📊</div>
-
-                  <div v-if="shouldShowLoading" class="empty-state-text">Loading T3000 device data...</div>
-                  <div v-else-if="showLoadingTimeout" class="empty-state-text">Loading Timeout</div>
-                  <div v-else-if="hasConnectionError" class="empty-state-text" style="font-size: 14px; font-weight: 500;">Data Connection Error</div>
                   <div v-else class="empty-state-text">No valid analog data available</div>
 
                   <div v-if="shouldShowLoading" class="empty-state-subtitle">
@@ -3876,7 +3872,7 @@
             },
             padding: 4,
             autoSkip: true,
-            maxTicksLimit: 10,
+            maxTicksLimit: 6,
             align: 'end',
             // stepSize will be calculated dynamically in afterDataLimits
             callback: function (value: any) {
@@ -3935,15 +3931,9 @@
               scale.max = max + padding
             }
 
-            // Dynamic panel height: larger value range → taller panel
-            // log10(range): 1–9→1, 10–99→2, 100–999→3, 1000–9999→4, 10000+→5
-            const displayRange = scale.max - scale.min
-            const logWeight = displayRange > 1 ? Math.log10(displayRange) : 1
-            scale.options.stackWeight = Math.max(1, Math.min(5, Math.ceil(logWeight)))
-
             const newRange = scale.max - scale.min
             const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
-            const roughStep = newRange / 10
+            const roughStep = newRange / 6
             const stepSize = niceSteps.find(s => s >= roughStep) || 1
             scale.options.ticks.stepSize = stepSize
           }
@@ -3977,7 +3967,7 @@
             },
             padding: 4,
             autoSkip: true,
-            maxTicksLimit: 10,
+            maxTicksLimit: 6,
             align: 'end',
             callback: function (value: any) {
               return Math.round(Number(value)).toString().padStart(5, ' ');
@@ -4002,7 +3992,6 @@
             }
 
             scale.display = true
-            scale.options.stackWeight = 1
 
             // Get all values for y1 axis
             const allValues: number[] = []
@@ -4040,13 +4029,9 @@
               scale.max = max + padding
             }
 
-            const displayRange1 = scale.max - scale.min
-            const logWeight1 = displayRange1 > 1 ? Math.log10(displayRange1) : 1
-            scale.options.stackWeight = Math.max(1, Math.min(5, Math.ceil(logWeight1)))
-
             const newRange = scale.max - scale.min
             const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
-            const roughStep = newRange / 10
+            const roughStep = newRange / 6
             const stepSize = niceSteps.find(s => s >= roughStep) || 1
             scale.options.ticks.stepSize = stepSize
           }
@@ -4080,7 +4065,7 @@
             },
             padding: 4,
             autoSkip: true,
-            maxTicksLimit: 10,
+            maxTicksLimit: 6,
             align: 'end',
             callback: function (value: any) {
               return Math.round(Number(value)).toString().padStart(5, ' ');
@@ -4105,7 +4090,6 @@
             }
 
             scale.display = true
-            scale.options.stackWeight = 1
             const allValues: number[] = []
             y2Datasets.forEach((dataset: any) => {
               if (dataset.data && dataset.data.length > 0) {
@@ -4141,13 +4125,9 @@
               scale.max = max + padding
             }
 
-            const displayRange2 = scale.max - scale.min
-            const logWeight2 = displayRange2 > 1 ? Math.log10(displayRange2) : 1
-            scale.options.stackWeight = Math.max(1, Math.min(5, Math.ceil(logWeight2)))
-
             const newRange = scale.max - scale.min
             const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
-            const roughStep = newRange / 10
+            const roughStep = newRange / 6
             const stepSize = niceSteps.find(s => s >= roughStep) || 1
             scale.options.ticks.stepSize = stepSize
           }
@@ -4181,7 +4161,7 @@
             },
             padding: 4,
             autoSkip: true,
-            maxTicksLimit: 10,
+            maxTicksLimit: 6,
             align: 'end',
             callback: function (value: any) {
               return Math.round(Number(value)).toString().padStart(5, ' ');
@@ -4206,7 +4186,6 @@
             }
 
             scale.display = true
-            scale.options.stackWeight = 1
             const allValues: number[] = []
             y3Datasets.forEach((dataset: any) => {
               if (dataset.data && dataset.data.length > 0) {
@@ -4242,13 +4221,9 @@
               scale.max = max + padding
             }
 
-            const displayRange3 = scale.max - scale.min
-            const logWeight3 = displayRange3 > 1 ? Math.log10(displayRange3) : 1
-            scale.options.stackWeight = Math.max(1, Math.min(5, Math.ceil(logWeight3)))
-
             const newRange = scale.max - scale.min
             const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
-            const roughStep = newRange / 10
+            const roughStep = newRange / 6
             const stepSize = niceSteps.find(s => s >= roughStep) || 1
             scale.options.ticks.stepSize = stepSize
           }
@@ -13199,12 +13174,6 @@
     min-height: 200px;
   }
 
-  .empty-chart-message .empty-state-icon {
-    font-size: 20px;
-    margin-right: 8px;
-    display: inline;
-  }
-
   .empty-chart-message .empty-state-text {
     font-size: 14px;
     font-weight: 500;
@@ -13449,9 +13418,9 @@
   }
 
   .empty-state-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
+    /* font-size: 48px; */
     opacity: 0.5;
+    margin-right: 5px;
   }
 
   .empty-state-text {
