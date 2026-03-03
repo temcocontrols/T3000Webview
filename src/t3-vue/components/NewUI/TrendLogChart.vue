@@ -3559,9 +3559,10 @@
           external: (context: any) => {
             const { chart, tooltip } = context
 
-            // Remove all existing tooltips and crosshair
+            // Remove all existing tooltips, crosshair and time label
             document.querySelectorAll('.chartjs-multi-tooltip').forEach(el => el.remove())
             document.querySelectorAll('.chartjs-crosshair').forEach(el => el.remove())
+            document.querySelectorAll('.chartjs-timelabel').forEach(el => el.remove())
 
             // Hide if no tooltip
             if (tooltip.opacity === 0) {
@@ -3595,10 +3596,19 @@
               return
             }
 
-            // ── Crosshair & time label ──
-            // Use tooltip.caretX (cursor x in canvas pixels) as the anchor so the
-            // crosshair follows the mouse even when some datasets have no nearby point.
+            // ── Deduplicate: keep only the point closest to the cursor per dataset ──
+            // Chart.js can report multiple nearby points from the same dataset when
+            // using nearest/index mode, causing duplicate tooltip boxes per series.
             const caretCanvasX = tooltip.caretX ?? inRangePoints[0].element.x
+            const closestPerDataset = new Map<number, any>()
+            inRangePoints.forEach((p: any) => {
+              const dx = Math.abs(p.element.x - caretCanvasX)
+              const existing = closestPerDataset.get(p.datasetIndex)
+              if (!existing || dx < Math.abs(existing.element.x - caretCanvasX)) {
+                closestPerDataset.set(p.datasetIndex, p)
+              }
+            })
+            const uniquePoints = Array.from(closestPerDataset.values())
             const crosshairScreenX = position.left + scrollX + caretCanvasX
 
             // Create crosshair line element
@@ -3615,19 +3625,28 @@
             document.body.appendChild(crosshairEl)
 
             // Derive the hover time from the scale (avoids stale/clamped label from out-of-range points)
-            const hoverTimestamp = xScale?.getValueForPixel?.(caretCanvasX) ?? inRangePoints[0].parsed?.x
+            const hoverTimestamp = xScale?.getValueForPixel?.(caretCanvasX) ?? uniquePoints[0].parsed?.x
             const hoverDate = hoverTimestamp ? new Date(hoverTimestamp) : null
             const timeLabel = hoverDate
               ? hoverDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
               : ''
 
+            // Time label uses position:fixed with pure viewport coords so page scroll
+            // and dynamic canvas height never push it out of view.
+            // Clamp Y to always sit within the visible slice of the chart canvas.
+            const chartTopVP    = position.top + chart.chartArea.top     // viewport Y of chart top
+            const chartBottomVP = position.top + chart.chartArea.bottom  // viewport Y of chart bottom
+            const visibleTop    = Math.max(chartTopVP, 0)                // clamp to screen top
+            const visibleBottom = Math.min(chartBottomVP, window.innerHeight) // clamp to screen bottom
+            const timeLabelVY   = visibleTop + 4                         // 4px inside visible area
+
             const timeEl = document.createElement('div')
-            timeEl.className = 'chartjs-crosshair'
-            timeEl.style.position = 'absolute'
-            timeEl.style.left = (crosshairScreenX - 30) + 'px'
-            timeEl.style.top = (position.top + scrollY + chart.chartArea.top - 20) + 'px'
+            timeEl.className = 'chartjs-timelabel'
+            timeEl.style.position = 'fixed'
+            timeEl.style.left = (position.left + caretCanvasX - 30) + 'px'
+            timeEl.style.top = (timeLabelVY < visibleBottom - 20 ? timeLabelVY : visibleBottom - 20) + 'px'
             timeEl.style.pointerEvents = 'none'
-            timeEl.style.zIndex = '1000'
+            timeEl.style.zIndex = '10001'
             timeEl.innerHTML = `
               <div style="
                 background: white;
@@ -3647,8 +3666,8 @@
 
             // Create individual tooltip for each data point
             if (tooltip.body) {
-              // Sort in-range points by Y position to handle overlaps
-              const sortedPoints = [...inRangePoints].sort((a, b) => a.element.y - b.element.y)
+              // Sort deduplicated points by Y position to handle overlaps
+              const sortedPoints = [...uniquePoints].sort((a, b) => a.element.y - b.element.y)
 
               // Track occupied vertical spaces to prevent overlap
               const tooltipPositions: Array<{top: number, bottom: number}> = []
