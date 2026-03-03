@@ -61,6 +61,7 @@ import { AdvancedSettingsDialog } from '../components/AdvancedSettingsDialog';
 import { WifiSettingsDialog } from '../components/WifiSettingsDialog';
 import { ChangeIpProgressDialog } from '../components/ChangeIpProgressDialog';
 import { NetworkHealthDialog } from '../components/NetworkHealthDialog';
+import { TimeSettingsTab } from '../components/TimeSettingsTab';
 import cssStyles from './SettingsPage.module.css';
 
 // Full T3000 C++ Baudrate_Array - com_baudrate0/1/2 stores an index 0-11 into this array
@@ -863,6 +864,28 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
+  // Write current PC time to device (C++: OnBnClickedBtnBacSYNCTime)
+  const handleSyncLocalPC = async () => {
+    if (!selectedDevice || !settings) return;
+    const nowEpoch = Math.floor(Date.now() / 1000);
+    updateSettings({ time_update_since_1970: nowEpoch, time_sync_auto_manual: 1 });
+    await handleSaveTime();
+    setSuccessMessage('Clock synchronised with local PC successfully.');
+  };
+
+  // Trigger NTP sync on device (C++: OnBnClickedButtonSyncTime — sets reset_default=99)
+  const handleSyncTimeServer = async () => {
+    if (!selectedDevice || !settings) return;
+    updateSettings({ reset_default: 99, time_sync_auto_manual: 0 });
+    await handleSaveTime();
+    setSuccessMessage('Time server sync command sent to device.');
+  };
+
+  // Re-read device settings to refresh the displayed device time
+  const handleRefreshDeviceTime = async () => {
+    await fetchSettings();
+  };
+
   const handleSaveDyndns = async () => {
     if (!selectedDevice || !settings) return;
 
@@ -1655,122 +1678,17 @@ export const SettingsPage: React.FC = () => {
 
       case 'time':
         return (
-          <>
-            <div className={styles.section}>
-              <div className={styles.sectionTitle}>Time Configuration</div>
-              <div className={styles.formGrid}>
-                <Field label="Time Zone (minutes offset)">
-                  <Input
-                    type="number"
-                    value={String(timeSettings.Time_Zone ?? 0)}
-                    onChange={(_, data) => {
-                      const v = Number(data.value);
-                      setTimeSettings({ ...timeSettings, Time_Zone: v });
-                      updateSettings({ time_zone: v });
-                    }}
-                  />
-                </Field>
-                <Field label="SNTP Server">
-                  <Input
-                    value={timeSettings.SNTP_Server ?? ''}
-                    onChange={(_, data) => {
-                      setTimeSettings({ ...timeSettings, SNTP_Server: data.value });
-                      updateSettings({ sntp_server: data.value });
-                    }}
-                  />
-                </Field>
-                <Field label="Enable SNTP">
-                  <Switch
-                    checked={timeSettings.Enable_SNTP === 2}
-                    onChange={(_, data) => {
-                      const v = data.checked ? 2 : 1;
-                      setTimeSettings({ ...timeSettings, Enable_SNTP: v });
-                      updateSettings({ en_sntp: v });
-                    }}
-                  />
-                </Field>
-                <Field label="Time Sync Source">
-                  <Dropdown
-                    value={String(timeSettings.Time_Sync_Auto_Manual ?? 0)}
-                    onOptionSelect={(_, data) => {
-                      const v = Number(data.optionValue);
-                      setTimeSettings({ ...timeSettings, Time_Sync_Auto_Manual: v });
-                      updateSettings({ time_sync_auto_manual: v });
-                    }}
-                  >
-                    <Option value="0">NTP Server (Auto)</Option>
-                    <Option value="1">PC Sync (Manual)</Option>
-                  </Dropdown>
-                </Field>
-                <Field label="Enable DST">
-                  <Switch
-                    checked={timeSettings.Time_Zone_Summer_Daytime === 1}
-                    onChange={(_, data) => {
-                      const v = data.checked ? 1 : 0;
-                      setTimeSettings({ ...timeSettings, Time_Zone_Summer_Daytime: v });
-                      updateSettings({ time_zone_summer_daytime: v });
-                    }}
-                  />
-                </Field>
-              </div>
-            </div>
-
-            {timeSettings.Time_Zone_Summer_Daytime === 1 && (
-              <div className={styles.section}>
-                <div className={styles.sectionTitle}>Daylight Saving Time</div>
-                <div className={styles.formGrid}>
-                  <Field label="DST Start Month">
-                    <Input
-                      type="number"
-                      value={String(timeSettings.Start_Month ?? 3)}
-                      onChange={(_, data) => {
-                        const v = Number(data.value);
-                        setTimeSettings({ ...timeSettings, Start_Month: v });
-                        updateSettings({ start_month: v });
-                      }}
-                    />
-                  </Field>
-                  <Field label="DST Start Day">
-                    <Input
-                      type="number"
-                      value={String(timeSettings.Start_Day ?? 1)}
-                      onChange={(_, data) => {
-                        const v = Number(data.value);
-                        setTimeSettings({ ...timeSettings, Start_Day: v });
-                        updateSettings({ start_day: v });
-                      }}
-                    />
-                  </Field>
-                  <Field label="DST End Month">
-                    <Input
-                      type="number"
-                      value={String(timeSettings.End_Month ?? 11)}
-                      onChange={(_, data) => {
-                        const v = Number(data.value);
-                        setTimeSettings({ ...timeSettings, End_Month: v });
-                        updateSettings({ end_month: v });
-                      }}
-                    />
-                  </Field>
-                  <Field label="DST End Day">
-                    <Input
-                      type="number"
-                      value={String(timeSettings.End_Day ?? 1)}
-                      onChange={(_, data) => {
-                        const v = Number(data.value);
-                        setTimeSettings({ ...timeSettings, End_Day: v });
-                        updateSettings({ end_day: v });
-                      }}
-                    />
-                  </Field>
-                </div>
-              </div>
-            )}
-
-            <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveTime} className={styles.saveButton}>
-              Save Time Settings
-            </Button>
-          </>
+          <TimeSettingsTab
+            timeSettings={timeSettings}
+            setTimeSettings={setTimeSettings}
+            updateSettings={updateSettings}
+            onSave={handleSaveTime}
+            onSyncPC={handleSyncLocalPC}
+            onSyncTimeServer={handleSyncTimeServer}
+            onRefreshTime={handleRefreshDeviceTime}
+            loading={loading}
+            deviceEpoch={settings?.time_update_since_1970}
+          />
         );
 
       case 'dyndns':
