@@ -425,6 +425,36 @@ const initializeT3000Data = async () => {
 
     if (panelsListResponse) {
       LogUtil.Info('✅ [IndexPage] GET_PANELS_LIST response received via FFI', panelsListResponse)
+      // Populate T3000_Data.panelsList from response so every panel's own serial_number
+      // is available for per-panel FFI polling (action=15) in TrendLogChart.
+      // Without this, getSerialForPanel() falls back to the URL panel's SN for foreign panels.
+      const rawList = Array.isArray(panelsListResponse)
+        ? panelsListResponse
+        : (panelsListResponse.data ?? panelsListResponse.panels ?? [])
+      if (Array.isArray(rawList) && rawList.length > 0) {
+        rawList.forEach((p: any) => {
+          if (!p || !p.panel_number) return
+          const existing = T3000_Data.value.panelsList.find(
+            (x: any) => x.panel_number === p.panel_number
+          )
+          if (existing) {
+            // Update serial_number in case it changed
+            existing.serial_number = p.serial_number ?? existing.serial_number
+            existing.panel_name = p.panel_name ?? existing.panel_name
+          } else {
+            T3000_Data.value.panelsList.push({
+              panel_number: p.panel_number,
+              serial_number: p.serial_number,
+              panel_name: p.panel_name || `Panel ${p.panel_number}`,
+              online: true
+            })
+          }
+        })
+        LogUtil.Info('✅ [IndexPage] panelsList populated from GET_PANELS_LIST', {
+          count: T3000_Data.value.panelsList.length,
+          panels: T3000_Data.value.panelsList.map((p: any) => ({ pn: p.panel_number, sn: p.serial_number }))
+        })
+      }
     } else {
       LogUtil.Warn('⚠️ [IndexPage] GET_PANELS_LIST returned no data', { panel_id })
     }

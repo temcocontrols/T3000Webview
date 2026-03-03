@@ -2288,6 +2288,17 @@
         // Use chartSeriesItems.some() as the single source of truth for both id AND panelId —
         // this correctly handles multi-panel monitors (e.g. pid=144 monitor watching pid=11 inputs)
         // without the previous hard `item.pid === currentPanelId` check that dropped foreign panels.
+        // Build set of all serial numbers for monitored panels.
+        // Foreign panels each have their own SN — must not restrict to currentSN alone.
+        const monitoredSerialNumbers = new Set<number>()
+        if (currentSN) monitoredSerialNumbers.add(currentSN)
+        chartSeriesItems.forEach(s => {
+          if (s.panelId) {
+            const entry = panelsList.find((p: any) => p.panel_number === s.panelId)
+            if (entry?.serial_number) monitoredSerialNumbers.add(entry.serial_number)
+          }
+        })
+
         const chartRelevantItems = chartDataFormat.filter(item =>
           item &&
           typeof item === 'object' &&
@@ -2295,8 +2306,8 @@
           item.value !== null &&
           item.value !== undefined &&
           item.id &&
-          (!item.serial_number || item.serial_number === currentSN) &&
-          (!item.sn || item.sn === currentSN) &&
+          (!item.serial_number || monitoredSerialNumbers.has(item.serial_number)) &&
+          (!item.sn || monitoredSerialNumbers.has(item.sn)) &&
           chartSeriesItems.some(chartItem =>
             item.id === chartItem.id && item.pid === chartItem.panelId
           )
@@ -5302,15 +5313,25 @@
       )
       if (monitoredPanelIds.size === 0) monitoredPanelIds.add(currentPanelId)
 
+      // Build per-panel serial number lookup from panelsList.
+      // Each panel has its OWN serial_number — we must NOT use the URL panel's SN for foreign panels.
+      // Example: URL panel=144 SN=240488, but panel 53's SN is 249555.
+      const getSerialForPanel = (pid: number): number => {
+        const entry = panelsList.find((p: any) => p.panel_number === pid)
+        return (entry?.serial_number) || currentSN
+      }
+
       LogUtil.Info('📡 FFI API ffiGetLoggingData (action=15)', {
         panelsToPoll: Array.from(monitoredPanelIds),  // only panels with active series
         primaryPanel: currentPanelId,
-        serialNumber: currentSN
+        primarySN: currentSN,
+        perPanelSN: Array.from(monitoredPanelIds).map(pid => ({ pid, sn: getSerialForPanel(pid) }))
       })
 
-      // Fetch Action 15 for every monitored panel (parallel)
+      // Fetch Action 15 for every monitored panel (parallel).
+      // Each call uses that panel's own serial_number — NOT the URL panel's SN.
       const panelResponses = await Promise.all(
-        Array.from(monitoredPanelIds).map(pid => ffiApi.ffiGetLoggingData(pid, currentSN))
+        Array.from(monitoredPanelIds).map(pid => ffiApi.ffiGetLoggingData(pid, getSerialForPanel(pid)))
       )
 
       let allPanelItems: any[] = []
@@ -6940,6 +6961,15 @@
       )
       if (monitoredSeriesPanels.size === 0) monitoredSeriesPanels.add(queryPanelId)
 
+      // Build set of ALL serial numbers for monitored panels.
+      // Foreign panels have their own SNs — do not restrict to currentSN alone.
+      const monitoredSNs = new Set<number>()
+      if (currentSN) monitoredSNs.add(currentSN)
+      monitoredSeriesPanels.forEach(pid => {
+        const entry = panelsList.find((p: any) => p.panel_number === pid)
+        if (entry?.serial_number) monitoredSNs.add(entry.serial_number)
+      })
+
       const currentDeviceItems = validDataItems.filter(item => {
         const itemPanelId = item.pid || item.panel_id
         const itemSerialNumber = item.serial_number || item.sn
@@ -6947,8 +6977,8 @@
         // Accept item if its panel is one we're monitoring
         const panelMatches = monitoredSeriesPanels.has(itemPanelId)
 
-        // Serial number must match if present
-        const serialMatches = !itemSerialNumber || itemSerialNumber === currentSN
+        // Serial number must belong to any of the monitored panels (not just the URL panel)
+        const serialMatches = !itemSerialNumber || monitoredSNs.has(itemSerialNumber)
 
         return panelMatches && serialMatches
       })
