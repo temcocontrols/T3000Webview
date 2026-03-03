@@ -6950,10 +6950,15 @@
       const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : 0
       const queryPanelId = urlPanelId || currentPanelId
 
-      // Build the set of panel IDs that are actively monitored by the current chart series.
-      // This supports multi-panel monitors (e.g. pid=144 monitor with all inputs from pid=11).
-      // We allow saving any item whose (pid, id) pair matches a chart series — regardless of
-      // whether its pid equals the URL panel. Falling back to queryPanelId if no series yet.
+      // Build a lookup set of EXACTLY the (panelId:pointId) pairs that have active chart series.
+      // This is the critical filter — only ≤14 chart series points should ever be saved.
+      // Checking panel alone is NOT sufficient (would pass all ~448 items for a monitored panel).
+      const chartSeriesSet = new Set<string>(
+        dataSeries.value
+          .filter(s => s.panelId && s.id)
+          .map(s => `${s.panelId}:${s.id}`)
+      )
+      // Fallback: if no series yet build from queryPanelId (initial state before series load)
       const monitoredSeriesPanels = new Set<number>(
         dataSeries.value
           .filter(s => s.panelId)
@@ -6961,26 +6966,22 @@
       )
       if (monitoredSeriesPanels.size === 0) monitoredSeriesPanels.add(queryPanelId)
 
-      // Build set of ALL serial numbers for monitored panels.
-      // Foreign panels have their own SNs — do not restrict to currentSN alone.
-      const monitoredSNs = new Set<number>()
-      if (currentSN) monitoredSNs.add(currentSN)
-      monitoredSeriesPanels.forEach(pid => {
+      // Per-panel SN lookup — foreign panels have their own serial_number, must NOT use URL SN
+      const getSerialForPanelInSave = (pid: number): number => {
         const entry = panelsList.find((p: any) => p.panel_number === pid)
-        if (entry?.serial_number) monitoredSNs.add(entry.serial_number)
-      })
+        return entry?.serial_number || currentSN
+      }
 
       const currentDeviceItems = validDataItems.filter(item => {
         const itemPanelId = item.pid || item.panel_id
-        const itemSerialNumber = item.serial_number || item.sn
+        const itemPointId = item.id
 
-        // Accept item if its panel is one we're monitoring
-        const panelMatches = monitoredSeriesPanels.has(itemPanelId)
-
-        // Serial number must belong to any of the monitored panels (not just the URL panel)
-        const serialMatches = !itemSerialNumber || monitoredSNs.has(itemSerialNumber)
-
-        return panelMatches && serialMatches
+        if (chartSeriesSet.size > 0) {
+          // Primary: only save items that exactly match an active chart series (pid:pointId)
+          return chartSeriesSet.has(`${itemPanelId}:${itemPointId}`)
+        }
+        // Fallback when series not yet built: accept by panel membership only
+        return monitoredSeriesPanels.has(itemPanelId)
       })
 
       LogUtil.Info('🔍 Filtered items for current device', {
@@ -7049,7 +7050,7 @@
         }
 
         return {
-          serial_number: currentSN,
+          serial_number: getSerialForPanelInSave(item.pid || currentPanelId),
           panel_id: item.pid || currentPanelId,
           point_id: pointId,
           point_index: pointIndex,
