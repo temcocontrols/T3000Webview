@@ -377,8 +377,23 @@ watch(
 // Initialize T3000_Data for the TrendLogChart component using FFI HTTP API
 const ffiApi = useT3000FfiApi()
 
+// Helper: load one panel's device data into T3000_Data.panelsData
+const loadPanelData = async (targetPanelId: number): Promise<void> => {
+  const response = await ffiApi.ffiGetPanelData(targetPanelId)
+  if (response && response.data) {
+    T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
+      (item: any) => item.pid !== targetPanelId
+    )
+    T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(response.data)
+    T3000_Data.value.panelsData.sort((a: any, b: any) => a.pid - b.pid)
+    LogUtil.Info('✅ [IndexPage] Panel data loaded', { panelId: targetPanelId, itemCount: response.data.length })
+  } else {
+    LogUtil.Warn('⚠️ [IndexPage] GET_PANEL_DATA returned no data', { panelId: targetPanelId })
+  }
+}
+
 const initializeT3000Data = async () => {
-  const { sn, panel_id, trendlog_id } = urlParams.value
+  const { sn, panel_id, trendlog_id, all_data } = urlParams.value
 
   // Check if we have the required parameters
   if (!sn || panel_id === null || trendlog_id === null) {
@@ -414,21 +429,35 @@ const initializeT3000Data = async () => {
       LogUtil.Warn('⚠️ [IndexPage] GET_PANELS_LIST returned no data', { panel_id })
     }
 
-    // Step 2: Action 0 - GET_PANEL_DATA for the specific panel
+    // Step 2: Action 0 - GET_PANEL_DATA for the primary panel (pid in monitor config)
     LogUtil.Info('📡 [IndexPage] Action 0 GET_PANEL_DATA via FFI API', { panel_id })
-    const panelDataResponse = await ffiApi.ffiGetPanelData(panel_id)
+    await loadPanelData(panel_id)
 
-    if (panelDataResponse && panelDataResponse.data) {
-      // Store flat device items in T3000_Data (same pattern as WebViewClient/WebSocketClient)
-      // panelDataResponse.data is Array(N) of device items, each with pid set
-      T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
-        (item: any) => item.pid !== panel_id
-      )
-      T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(panelDataResponse.data)
-      T3000_Data.value.panelsData.sort((a: any, b: any) => a.pid - b.pid)
-      LogUtil.Info('✅ [IndexPage] Panel data loaded via FFI', { panel_id, itemCount: panelDataResponse.data.length })
-    } else {
-      LogUtil.Warn('⚠️ [IndexPage] GET_PANEL_DATA returned no data', { panel_id })
+    // Step 3: Detect foreign panels referenced in monitor config inputs and load them too.
+    // Example: pid=144 but inputs all point to panel:11 — we must also load panel 11's data
+    // so TrendLogChart can resolve device descriptions (pid/id lookup in panelsData).
+    const foreignPanelIds = new Set<number>()
+    try {
+      const monitorConfig = all_data ? JSON.parse(all_data) : null
+      if (monitorConfig?.input && Array.isArray(monitorConfig.input)) {
+        for (const inputItem of monitorConfig.input) {
+          const inputPanel = Number(inputItem.panel)
+          if (inputPanel && inputPanel !== panel_id) {
+            foreignPanelIds.add(inputPanel)
+          }
+        }
+      }
+    } catch {
+      // all_data parse error is non-fatal
+    }
+
+    if (foreignPanelIds.size > 0) {
+      LogUtil.Info('📡 [IndexPage] Loading foreign panel(s) referenced in monitor inputs', {
+        primaryPanel: panel_id,
+        foreignPanels: Array.from(foreignPanelIds)
+      })
+      // Load all foreign panels in parallel
+      await Promise.all(Array.from(foreignPanelIds).map(pid => loadPanelData(pid)))
     }
 
     T3000_Data.value.loadingPanel = null

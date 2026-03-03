@@ -2284,7 +2284,10 @@
         })
         */
 
-        // Filter chartDataFormat to only include chart series items
+        // Filter chartDataFormat to only include chart series items.
+        // Use chartSeriesItems.some() as the single source of truth for both id AND panelId —
+        // this correctly handles multi-panel monitors (e.g. pid=144 monitor watching pid=11 inputs)
+        // without the previous hard `item.pid === currentPanelId` check that dropped foreign panels.
         const chartRelevantItems = chartDataFormat.filter(item =>
           item &&
           typeof item === 'object' &&
@@ -2292,10 +2295,8 @@
           item.value !== null &&
           item.value !== undefined &&
           item.id &&
-          item.pid === currentPanelId &&  // Only save items for current panel
-          (!item.serial_number || item.serial_number === currentSN) &&  // If serial_number exists, it must match
-          (!item.sn || item.sn === currentSN) &&  // If sn exists, it must match
-          // Only include items that match current chart series
+          (!item.serial_number || item.serial_number === currentSN) &&
+          (!item.sn || item.sn === currentSN) &&
           chartSeriesItems.some(chartItem =>
             item.id === chartItem.id && item.pid === chartItem.panelId
           )
@@ -5289,42 +5290,53 @@
         return
       }
 
-      // 🆕 Use FFI API with action 15 (LOGGING_DATA) - single synchronous call
-      // C++ expects both panelId and serialNumber in the JSON payload
-      LogUtil.Info('📡 FFI API ffiGetLoggingData (action=15, single call)', {
-        panelId: currentPanelId,
+      // Build the exact set of panel IDs that have live chart series.
+      // Derived from dataSeries (what's actually on screen) rather than always
+      // adding currentPanelId — this avoids a wasted call when ALL inputs belong
+      // to a foreign panel (e.g. MON1 pid=144 monitors only panel 11 points).
+      // Falls back to currentPanelId when no series exist yet (initial state).
+      const monitoredPanelIds = new Set<number>(
+        dataSeries.value
+          .map(s => s.panelId)
+          .filter((pid): pid is number => !!pid)
+      )
+      if (monitoredPanelIds.size === 0) monitoredPanelIds.add(currentPanelId)
+
+      LogUtil.Info('📡 FFI API ffiGetLoggingData (action=15)', {
+        panelsToPoll: Array.from(monitoredPanelIds),  // only panels with active series
+        primaryPanel: currentPanelId,
         serialNumber: currentSN
       })
 
-      const response = await ffiApi.ffiGetLoggingData(currentPanelId, currentSN)
+      // Fetch Action 15 for every monitored panel (parallel)
+      const panelResponses = await Promise.all(
+        Array.from(monitoredPanelIds).map(pid => ffiApi.ffiGetLoggingData(pid, currentSN))
+      )
 
-      LogUtil.Debug('📊 Action 15 response received:', {
-        hasResponse: !!response,
-        hasData: !!(response && response.data),
-        responseType: response?.debug ? 'empty' : 'data',
-        timestamp: new Date().toLocaleTimeString()
-      })
-
-      if (response && response.data) {
-        // LOGGING_DATA returns: response.data = [{ panel_id, panel_name, device_data: [...] }]
-        // Extract device_data from all devices
-        let allPanelItems: any[] = []
-
-        if (Array.isArray(response.data)) {
+      let allPanelItems: any[] = []
+      panelResponses.forEach(response => {
+        if (response && response.data && Array.isArray(response.data)) {
           response.data.forEach((device: any) => {
             if (device.device_data && Array.isArray(device.device_data)) {
               allPanelItems = allPanelItems.concat(device.device_data)
             }
           })
         }
+      })
 
+      LogUtil.Debug('📊 Action 15 response received:', {
+        panelsPolled: monitoredPanelIds.size,
+        totalItems: allPanelItems.length,
+        timestamp: new Date().toLocaleTimeString()
+      })
+
+      if (allPanelItems.length > 0) {
         LogUtil.Info('📊 LOGGING_DATA extracted items', {
-          deviceCount: response.data.length,
+          panelsPolled: monitoredPanelIds.size,
           totalItems: allPanelItems.length
         })
 
-        // Note: Action 15 already queries specific device by currentPanelId + currentSN
-        // So items returned are already filtered to current device - just validate data quality
+        // Validate data quality across all panel results
         const validDataItems = allPanelItems.filter(item =>
           item &&
           typeof item === 'object' &&
@@ -5354,8 +5366,8 @@
           hasConnectionError.value = false
         }
       } else {
-        LogUtil.Debug('⚠️ Action 15 response is EMPTY - no data property', {
-          response: response,
+        LogUtil.Debug('⚠️ Action 15 returned no items across all panels', {
+          panelsPolled: monitoredPanelIds.size,
           timestamp: new Date().toLocaleTimeString()
         })
       }
@@ -6085,9 +6097,12 @@
       if (!series.id || !series.panelId) continue
 
       try {
+        // FIX: Use series.panelId (actual panel of the point) not currentPanelId (URL panel)
+        // e.g. if this series monitors panel 11, backfill must query panel 11 records
+        const actualPanelId = series.panelId || currentPanelId
         const queryOptions = {
           serial_number: currentSN,
-          panel_id: currentPanelId,
+          panel_id: actualPanelId,
           point_id: series.id,
           point_type: series.pointType,
           from_timestamp: fromTimestamp,
@@ -6298,11 +6313,14 @@
 
             // FIX: Frontend uses 0-based pointNumber, but database expects 1-based PointIndex
             // So IN1 in frontend (pointNumber=0) maps to PointIndex=1 in database
+            // FIX: Use series.panelId (actual panel of the point) not currentPanelId (URL panel)
+            // e.g. MON1 on panel 144 may monitor panel 11 inputs — use 11 for those
+            const actualPanelId = series.panelId || currentPanelId
             specificPoints.push({
               point_id: pointId,
               point_type: pointTypeString,
               point_index: series.pointNumber + 1, // Convert 0-based to 1-based
-              panel_id: currentPanelId
+              panel_id: actualPanelId
             })
           }
         })
@@ -6321,11 +6339,14 @@
 
           // FIX: Frontend uses 0-based point_number, but database expects 1-based PointIndex
           // So IN1 in frontend (point_number=0) maps to PointIndex=1 in database
+          // FIX: Use inputItem.panel (actual panel of the point) not currentPanelId (URL panel)
+          // e.g. MON1 on panel 144 may monitor panel 11 inputs — their DB records use panel 11
+          const actualPanelId = inputItem.panel || currentPanelId
           specificPoints.push({
             point_id: pointId,
             point_type: pointTypeString,
             point_index: inputItem.point_number + 1, // Convert 0-based to 1-based
-            panel_id: currentPanelId
+            panel_id: actualPanelId
           })
         })
 
@@ -6369,11 +6390,13 @@
                 pointId = series.id
               }
 
+              // FIX: Use series.panelId (actual panel of the point) not currentPanelId (URL panel)
+              const actualPanelId = series.panelId || currentPanelId
               specificPoints.push({
                 point_id: pointId,
                 point_type: pointType,
                 point_index: pointIndex,
-                panel_id: currentPanelId
+                panel_id: actualPanelId
               })
             }
           })
@@ -6906,14 +6929,25 @@
       const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : 0
       const queryPanelId = urlPanelId || currentPanelId
 
+      // Build the set of panel IDs that are actively monitored by the current chart series.
+      // This supports multi-panel monitors (e.g. pid=144 monitor with all inputs from pid=11).
+      // We allow saving any item whose (pid, id) pair matches a chart series — regardless of
+      // whether its pid equals the URL panel. Falling back to queryPanelId if no series yet.
+      const monitoredSeriesPanels = new Set<number>(
+        dataSeries.value
+          .filter(s => s.panelId)
+          .map(s => s.panelId as number)
+      )
+      if (monitoredSeriesPanels.size === 0) monitoredSeriesPanels.add(queryPanelId)
+
       const currentDeviceItems = validDataItems.filter(item => {
         const itemPanelId = item.pid || item.panel_id
         const itemSerialNumber = item.serial_number || item.sn
 
-        // Match panel_id (required)
-        const panelMatches = itemPanelId === queryPanelId
+        // Accept item if its panel is one we're monitoring
+        const panelMatches = monitoredSeriesPanels.has(itemPanelId)
 
-        // Match serial_number (if item has it, it must match; if item doesn't have it, allow through)
+        // Serial number must match if present
         const serialMatches = !itemSerialNumber || itemSerialNumber === currentSN
 
         return panelMatches && serialMatches
@@ -7454,11 +7488,13 @@
           const pointId = generateDeviceId(series.pointType, series.pointNumber)
 
           // FIX: Frontend uses 0-based pointNumber, but database expects 1-based PointIndex
+          // FIX: Use series.panelId (actual panel of the point) not currentPanelId (URL panel)
+          const actualPanelId = series.panelId || currentPanelId
           specificPoints.push({
             point_id: pointId,
             point_type: pointTypeString,
             point_index: series.pointNumber + 1, // Convert 0-based to 1-based
-            panel_id: currentPanelId
+            panel_id: actualPanelId
           })
         }
       })
