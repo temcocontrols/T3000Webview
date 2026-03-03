@@ -9220,7 +9220,7 @@
       1: {
         showGrid: true,
         showLegend: false,
-        smoothLines: false,
+        smoothLines: true,
         showPoints: false,
         title: 'All Items View',
         description: 'Show all 14 items for comprehensive analysis'
