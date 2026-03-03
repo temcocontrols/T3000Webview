@@ -196,7 +196,7 @@
               <!-- Single line: Title, count, and status -->
               <div class="header-line-1">
                 <div :title="devVersion" class="chart-title-with-version">
-                  {{ chartTitle }} ({{ visibleAnalogSeriesCount }}/{{ analogSeriesList.length }})
+                  {{ chartTitle }} ({{ totalVisibleSeriesCount }}/{{ totalSeriesCount }})
                 </div>
                 <!-- Data Source Indicator -->
                 <div class="data-source-indicator">
@@ -313,29 +313,29 @@
               </div>
 
               <!-- Regular series list when data is available - Analog Only -->
-              <div v-for="(series, index) in analogSeriesList" :key="series.name" class="series-item" :class="{
+              <div v-for="(series, index) in analogSeriesList" :key="series.key" class="series-item" :class="{
                 'series-disabled': !series.visible,
                 'keyboard-selected': selectedItemIndex === index && keyboardEnabled
               }">
                 <!-- Delete button overlay for View 2 & 3 tracked items -->
                 <a-button v-if="currentView !== 1" size="small" type="text" class="delete-series-btn delete-overlay"
-                          @click="(e) => removeFromTracking(series.name, e)" :title="'Remove from tracking'">
+                          @click="(e) => removeFromTracking(series.key, e)" :title="'Remove from tracking'">
                   <template #icon>
                     <CloseOutlined class="delete-icon" />
                   </template>
                 </a-button>
 
-                <div class="series-header" @click="toggleSeriesVisibility(index, $event)">
+                <div class="series-header" @click="toggleSeriesVisibility(getOriginalSeriesIndex(series), $event)">
                   <div class="series-toggle-indicator" :class="{ 'active': series.visible, 'inactive': !series.visible }"
                        :style="{ backgroundColor: series.visible ? series.color : '#d9d9d9' }">
                     <div class="toggle-inner" :class="{ 'visible': series.visible }"></div>
                     <!-- ⌨️ Keyboard shortcut badge for left panel -->
-                    <div v-if="keyboardEnabled && getKeyboardShortcut(series.name)"
+                    <div v-if="keyboardEnabled && getKeyboardShortcut(series.key)"
                          class="keyboard-shortcut-badge left-panel-badge"
-                         :class="{ 'active': lastKeyboardAction === getKeyboardShortcutCode(series.name) }"
-                         :data-key="getKeyboardShortcut(series.name)"
-                         :title="`Press ${getKeyboardShortcut(series.name)} to toggle`">
-                      {{ getKeyboardShortcut(series.name) }}
+                         :class="{ 'active': lastKeyboardAction === getKeyboardShortcutCode(series.key) }"
+                         :data-key="getKeyboardShortcut(series.key)"
+                         :title="`Press ${getKeyboardShortcut(series.key)} to toggle`">
+                      {{ getKeyboardShortcut(series.key) }}
                     </div>
                   </div>
                   <div class="series-info">
@@ -361,9 +361,9 @@
                         </div>
                         <div class="series-controls">
                           <a-button size="small" type="text" class="expand-toggle"
-                                    @click="(e) => toggleSeriesExpansion(index, e)">
+                                    @click="(e) => toggleSeriesExpansion(getOriginalSeriesIndex(series), e)">
                             <template #icon>
-                              <DownOutlined v-if="expandedSeries.has(index)" class="expand-icon expanded" />
+                              <DownOutlined v-if="expandedSeries.has(getOriginalSeriesIndex(series))" class="expand-icon expanded" />
                               <RightOutlined v-else class="expand-icon" />
                             </template>
                           </a-button>
@@ -436,7 +436,7 @@
             <div v-if="showDigitalHeader" class="data-series-header">
               <div class="header-line-1">
                 <div :title="devVersion" class="chart-title-with-version">
-                  {{ chartTitle }} ({{ visibleDigitalSeriesCount }}/{{ digitalSeriesList.length }})
+                  {{ chartTitle }} ({{ totalVisibleSeriesCount }}/{{ totalSeriesCount }})
                 </div>
                 <!-- Data Source Indicator -->
                 <div class="data-source-indicator">
@@ -513,28 +513,28 @@
             </div>
             <div class="series-list">
               <!-- Digital series list -->
-              <div v-for="(series, index) in digitalSeriesList" :key="series.name" class="series-item" :class="{
+              <div v-for="(series, index) in digitalSeriesList" :key="series.key" class="series-item" :class="{
                 'series-disabled': !series.visible
               }">
                 <!-- Delete button overlay for View 2 & 3 tracked items -->
                 <a-button v-if="currentView !== 1" size="small" type="text" class="delete-series-btn delete-overlay"
-                          @click="(e) => removeFromTracking(series.name, e)" :title="'Remove from tracking'">
+                          @click="(e) => removeFromTracking(series.key, e)" :title="'Remove from tracking'">
                   <template #icon>
                     <CloseOutlined class="delete-icon" />
                   </template>
                 </a-button>
 
-                <div class="series-header" @click="toggleSeriesVisibility(analogSeriesList.length + index, $event)">
+                <div class="series-header" @click="toggleSeriesVisibility(getOriginalSeriesIndex(series), $event)">
                   <div class="series-toggle-indicator" :class="{ 'active': series.visible, 'inactive': !series.visible }"
                        :style="{ backgroundColor: series.visible ? series.color : '#d9d9d9' }">
                     <div class="toggle-inner" :class="{ 'visible': series.visible }"></div>
                     <!-- ⌨️ Keyboard shortcut badge for left panel -->
-                    <div v-if="keyboardEnabled && getKeyboardShortcut(series.name)"
+                    <div v-if="keyboardEnabled && getKeyboardShortcut(series.key)"
                          class="keyboard-shortcut-badge left-panel-badge"
-                         :class="{ 'active': lastKeyboardAction === getKeyboardShortcutCode(series.name) }"
-                         :data-key="getKeyboardShortcut(series.name)"
-                         :title="`Press ${getKeyboardShortcut(series.name)} to toggle`">
-                      {{ getKeyboardShortcut(series.name) }}
+                         :class="{ 'active': lastKeyboardAction === getKeyboardShortcutCode(series.key) }"
+                         :data-key="getKeyboardShortcut(series.key)"
+                         :title="`Press ${getKeyboardShortcut(series.key)} to toggle`">
+                      {{ getKeyboardShortcut(series.key) }}
                     </div>
                   </div>
                   <div class="series-info">
@@ -560,9 +560,9 @@
                         </div>
                         <div class="series-controls">
                           <a-button size="small" type="text" class="expand-toggle"
-                                    @click="(e) => toggleSeriesExpansion(analogSeriesList.length + index, e)">
+                                    @click="(e) => toggleSeriesExpansion(getOriginalSeriesIndex(series), e)">
                             <template #icon>
-                              <DownOutlined v-if="expandedSeries.has(analogSeriesList.length + index)" class="expand-icon expanded" />
+                              <DownOutlined v-if="expandedSeries.has(getOriginalSeriesIndex(series))" class="expand-icon expanded" />
                               <RightOutlined v-else class="expand-icon" />
                             </template>
                           </a-button>
@@ -1046,15 +1046,15 @@
 
       <div class="drawer-content">
         <div class="items-compact-list">
-          <div v-for="series in dataSeries" :key="series.name" class="item-row" :class="{
-            'selected': viewTrackedSeries[currentView]?.includes(series.name),
+          <div v-for="series in dataSeries" :key="series.key" class="item-row" :class="{
+            'selected': viewTrackedSeries[currentView]?.includes(series.key),
             'analog': series.unitType === 'analog',
             'digital': series.unitType === 'digital'
-          }" @click="toggleItemTracking(series.name)">
+          }" @click="toggleItemTracking(series.key)">
             <!-- Checkbox and color indicator -->
             <div class="item-selection" @click.stop>
-              <a-checkbox :checked="viewTrackedSeries[currentView]?.includes(series.name)"
-                          @change="() => toggleItemTracking(series.name)" />
+              <a-checkbox :checked="viewTrackedSeries[currentView]?.includes(series.key)"
+                          @change="() => toggleItemTracking(series.key)" />
               <div class="item-color-dot" :style="{ backgroundColor: series.color }"></div>
             </div>
 
@@ -1342,6 +1342,7 @@
     pointNumber?: number                // NEW: Point number for reference
     panelId?: number                    // NEW: Panel ID for reference
     id?: string                          // NEW: Full ID (e.g., IN1, OUT2, VAR3)
+    key: string                          // NEW: Unique identity key "${panelId}:${id}" — stable across panel/point combos
   }
 
   /**
@@ -1982,6 +1983,7 @@
       // Add valid series to the list
       const newSeries: SeriesConfig = {
         name: seriesName,
+        key: `${panelId}:${itemId}`,
         color: SERIES_COLORS[validSeries.length % SERIES_COLORS.length], // Use validSeries.length for color index
         data: [],
         visible: true,
@@ -2815,7 +2817,7 @@
     } else {
       // View 2 & 3: show only tracked series
       const trackedItems = viewTrackedSeries.value[currentView.value] || []
-      return dataSeries.value.filter(series => trackedItems.includes(series.name))
+      return dataSeries.value.filter(series => trackedItems.includes(series.key))
     }
   })
 
@@ -2873,15 +2875,21 @@
     return currentIndex >= 0 && currentIndex < timebaseProgression.length - 1 // Can zoom out if not at longest timebase
   })
 
-  // ⌨️ Keyboard Navigation: Item mappings (1-9, A-E) - Based on left panel displayed series
+  // ⌨️ Keyboard Navigation: Item mappings (1-9, A-E) - analog first then digital for sequential badge numbers
   const keyboardItemMappings = computed(() => {
     const mappings: { [key: string]: { item: string, display: string, index: number } } = {}
 
-    displayedSeries.value.forEach((series, index) => {
+    // Sort analog before digital so each panel gets sequential badge numbers
+    const sorted = [
+      ...displayedSeries.value.filter(s => s.unitType === 'analog'),
+      ...displayedSeries.value.filter(s => s.unitType === 'digital')
+    ]
+
+    sorted.forEach((series, index) => {
       if (index < 9) {
         // Map 1-9 for first 9 items
         mappings[`Digit${index + 1}`] = {
-          item: series.name,
+          item: series.key,
           display: `${index + 1}`,
           index
         }
@@ -2889,7 +2897,7 @@
         // Map A-E for items 10-14
         const letter = String.fromCharCode(65 + (index - 9)) // A, B, C, D, E
         mappings[`Key${letter}`] = {
-          item: series.name,
+          item: series.key,
           display: letter,
           index
         }
@@ -3082,6 +3090,10 @@
     return digitalSeriesList.value.filter(series => series.visible).length
   })
 
+  // Total counts from ALL series (not filtered by displayedSeries) — used in the header title
+  const totalVisibleSeriesCount = computed(() => dataSeries.value.filter(s => s.visible).length)
+  const totalSeriesCount = computed(() => dataSeries.value.length)
+
   // NEW: Scenario detection for conditional display - based on tracked/selected items
   const showAnalogArea = computed(() => {
     // Show analog area if:
@@ -3127,7 +3139,7 @@
 
   // Helper function to get original series index from filtered series
   const getOriginalSeriesIndex = (series: SeriesConfig): number => {
-    return dataSeries.value.findIndex(s => s.name === series.name)
+    return dataSeries.value.findIndex(s => s.key === series.key)
   }
 
   // Loading timeout management functions
@@ -9164,85 +9176,22 @@
         behavior: 'AUTO_SHOW_ALL'
       })
     } else {
-      // View 2 & 3: Show only user selected items with FFI persistence
+      // View 2 & 3: Show only user selected items.
+      // viewTrackedSeries is the single source of truth — it is populated at init by
+      // loadViewTracking (which maps DB data → series.key) and kept up to date by
+      // toggleItemTracking / removeFromTracking before they call setView.
+      // Never re-read viewSelections here: it can be stale and causes cross-panel interference.
       const trackedItems = viewTrackedSeries.value[viewNumber] || []
 
-      LogUtil.Info(`🔍 Set View: Processing View ${viewNumber} selections`, {
+      LogUtil.Info(`🔍 Set View: Applying View ${viewNumber} from viewTrackedSeries`, {
         viewNumber,
-        localTrackedCount: trackedItems.length,
-        localTrackedItems: trackedItems,
-        hasFFISelections: viewSelections.value.has(viewNumber)
+        trackedCount: trackedItems.length,
+        trackedItems
       })
-
-      // Apply FFI-persisted selections
-      const ffiSelections = viewSelections.value.get(viewNumber) || []
-
-      // 🐛 BUG FIX: Map FFI selections to actual series names, not type_index format
-      const ffiTrackedNames = ffiSelections
-        .filter(s => s.is_selected)
-        .map(selection => {
-          // Find series by matching point type and number to get the actual display name
-          const matchingSeries = dataSeries.value.find(series =>
-            series.prefix === selection.point_type &&
-            series.pointNumber === selection.point_index
-          )
-
-          if (matchingSeries) {
-            return matchingSeries.name  // Return actual name like "Room Temperature"
-          } else {
-            // Fallback: try to find by point_label if direct matching fails
-            const labelMatch = dataSeries.value.find(series => series.name === selection.point_label)
-            if (labelMatch) {
-              return labelMatch.name
-            }
-
-            // Last resort: return the type_index format (old behavior)
-            LogUtil.Warn(`⚠️ Set View: No series found for FFI selection`, {
-              selection,
-              viewNumber,
-              fallbackToTypeIndex: `${selection.point_type}_${selection.point_index}`
-            })
-            return `${selection.point_type}_${selection.point_index}`
-          }
-        })
-        .filter(Boolean) // Remove null/undefined entries
-
-      LogUtil.Debug(`🔍 Set View: FFI selections processing (FIXED)`, {
-        viewNumber,
-        ffiSelectionsTotal: ffiSelections.length,
-        ffiSelectedCount: ffiSelections.filter(s => s.is_selected).length,
-        ffiTrackedNames,
-        mappingFixed: true,
-        ffiSelections: ffiSelections.map(s => ({
-          type: s.point_type,
-          index: s.point_index,
-          label: s.point_label,
-          selected: s.is_selected
-        }))
-      })
-
-      // Use FFI selections if available, otherwise fall back to existing logic
-      const activeTrackedItems = ffiTrackedNames.length > 0 ? ffiTrackedNames : trackedItems
-
-      LogUtil.Info(`📋 Set View: Using ${ffiTrackedNames.length > 0 ? 'FFI' : 'local'} selections for View ${viewNumber}`, {
-        dataSource: ffiTrackedNames.length > 0 ? 'FFI_DATABASE' : 'LOCAL_MEMORY',
-        activeTrackedItems,
-        itemCount: activeTrackedItems.length
-      })
-
-      // 🐛 BUG FIX: Synchronize viewTrackedSeries with corrected FFI names to keep UI state consistent
-      if (ffiTrackedNames.length > 0) {
-        viewTrackedSeries.value[viewNumber] = [...ffiTrackedNames]
-        LogUtil.Debug(`🔄 Set View: Synchronized viewTrackedSeries with corrected FFI names`, {
-          viewNumber,
-          synchronizedNames: ffiTrackedNames,
-          previousLocalNames: trackedItems
-        })
-      }
 
       dataSeries.value.forEach(series => {
         const wasVisible = series.visible
-        series.visible = activeTrackedItems.includes(series.name)
+        series.visible = trackedItems.includes(series.key)
 
         if (wasVisible !== series.visible) {
           LogUtil.Debug(`👁Set View: Series visibility changed`, {
@@ -9258,10 +9207,7 @@
 
       LogUtil.Info(`Set View: View ${viewNumber} applied successfully`, {
         viewNumber,
-        selectionSource: ffiTrackedNames.length > 0 ? 'FFI_DATABASE' : 'LOCAL_MEMORY',
-        ffiSelectionsCount: ffiSelections.length,
-        localTrackedCount: trackedItems.length,
-        activeTrackedCount: activeTrackedItems.length,
+        trackedCount: trackedItems.length,
         visibleSeriesCount: finalVisibleSeries.length,
         totalSeriesCount: dataSeries.value.length,
         visibleSeries: finalVisibleSeries.map(s => s.name),
@@ -9333,7 +9279,7 @@
 
     const currentTracked = viewTrackedSeries.value[currentView.value] || []
     const wasTracked = currentTracked.includes(seriesName)
-    const series = dataSeries.value.find(s => s.name === seriesName)
+    const series = dataSeries.value.find(s => s.key === seriesName)
 
     LogUtil.Info(`🎯 Toggle Item Tracking: Starting for "${seriesName}"`, {
       seriesName,
@@ -9733,7 +9679,7 @@
           selectedItemIndex.value = -1
 
           // Find the series index in the master dataSeries array (not displayedSeries)
-          const masterSeriesIndex = dataSeries.value.findIndex(s => s.name === mapping.item)
+          const masterSeriesIndex = dataSeries.value.findIndex(s => s.key === mapping.item)
 
           if (masterSeriesIndex >= 0) {
             // Toggle series visibility using the correct master index
@@ -11116,45 +11062,27 @@
                 }
               })
 
-              // Find series by matching point type and number
+              // Priority 1: point_label now stores the key (e.g. "144:IN1") — fast exact match
+              const keyMatch = dataSeries.value.find(series => series.key === selection.point_label)
+              if (keyMatch) {
+                return keyMatch.key
+              }
+
+              // Priority 2: legacy data — match by prefix + pointNumber (0-based)
               const matchingSeries = dataSeries.value.find(series =>
                 series.prefix === selection.point_type &&
                 series.pointNumber === selection.point_index
               )
-
               if (matchingSeries) {
-                LogUtil.Debug(`FFI Load: Found matching series by type/index`, {
-                  selection,
-                  matchedSeries: {
-                    name: matchingSeries.name,
-                    prefix: matchingSeries.prefix,
-                    pointNumber: matchingSeries.pointNumber
-                  }
-                })
-                return matchingSeries.name  // Return actual series name like "Room Temperature"
-              } else {
-                // Fallback: try to find by point_label if direct matching fails
-                const labelMatch = dataSeries.value.find(series => series.name === selection.point_label)
-                if (labelMatch) {
-                  LogUtil.Info(`🔄 FFI Load: Found matching series by label fallback`, {
-                    selection,
-                    matchedSeries: labelMatch.name
-                  })
-                  return labelMatch.name
-                }
-
-                LogUtil.Warn(`⚠️ FFI Load: No series found for selection`, {
-                  point_type: selection.point_type,
-                  point_index: selection.point_index,
-                  point_label: selection.point_label,
-                  availableSeries: dataSeries.value.map(s => ({
-                    name: s.name,
-                    prefix: s.prefix,
-                    pointNumber: s.pointNumber
-                  })).slice(0, 5) // Show first 5 for debug
-                })
-                return null
+                return matchingSeries.key
               }
+
+              LogUtil.Warn(`⚠️ FFI Load: No series found for selection`, {
+                point_type: selection.point_type,
+                point_index: selection.point_index,
+                point_label: selection.point_label
+              })
+              return null
             })
             .filter(Boolean) // Remove null entries
 
@@ -11293,7 +11221,7 @@
         LogUtil.Info(`🔧 FFI Save DEBUG: Processing series "${seriesName}"`)
 
         // Find the actual series to get correct point type and number
-        const series = dataSeries.value.find(s => s.name === seriesName)
+        const series = dataSeries.value.find(s => s.key === seriesName)
 
         if (!series) {
           LogUtil.Warn(`⚠️ FFI Save: Series not found for name: ${seriesName}`, {
