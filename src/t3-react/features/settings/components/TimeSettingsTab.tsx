@@ -449,22 +449,24 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
             <div className={styles.row}>
               <span className={styles.label}>Time Server</span>
               <Dropdown
-                style={{ minWidth: 200, fontSize: 12 }}
+                style={{ minWidth: 200, fontSize: 11 }}
+                button={{ style: { fontSize: 11 } }}
                 value={isCustomServer ? 'Custom' : (presetIdx >= 0 ? NTP_PRESETS[presetIdx].label : '—')}
                 onOptionSelect={handleNtpServerSelect}
               >
                 {NTP_PRESETS.map((p, i) => (
-                  <Option key={i} value={String(i)} style={{ fontSize: 12 }}>
+                  <Option key={i} value={String(i)} style={{ fontSize: 11 }}>
                     {p.label}
                   </Option>
                 ))}
-                <Option value="custom" style={{ fontSize: 12 }}>Custom…</Option>
+                <Option value="custom" style={{ fontSize: 11 }}>Custom…</Option>
               </Dropdown>
               <Button
                 size="small"
                 appearance="primary"
                 onClick={handleNtpSync}
                 disabled={loading || ntpLoading}
+                style={{ fontSize: 11 }}
               >
                 {ntpLoading ? 'Syncing…' : 'Update'}
               </Button>
@@ -515,28 +517,31 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
             onChange={(_, d) => handleDstToggle(!!d.checked)}
           />
 
-          {dstEnabled && (
-            <div className={styles.dstDatesRow}>
+          <div className={styles.dstDatesRow} style={{ opacity: dstEnabled ? 1 : 0.45, pointerEvents: dstEnabled ? undefined : 'none' }}>
               {/* Start */}
               <div className={styles.dstGroup}>
                 <span className={styles.dstGroupLabel}>Start Date</span>
                 <div className={styles.dstSelectors}>
                   <Dropdown
-                    style={{ minWidth: 80, fontSize: 12 }}
+                    style={{ minWidth: 80, fontSize: 11 }}
+                    button={{ style: { fontSize: 11 } }}
                     value={MONTHS[startMonth - 1] ?? '—'}
                     onOptionSelect={handleStartMonth}
+                    disabled={!dstEnabled}
                   >
                     {MONTHS.map((m, i) => (
-                      <Option key={i} value={String(i + 1)} style={{ fontSize: 12 }}>{m}</Option>
+                      <Option key={i} value={String(i + 1)} style={{ fontSize: 11 }}>{m}</Option>
                     ))}
                   </Dropdown>
                   <Dropdown
-                    style={{ minWidth: 62, fontSize: 12 }}
+                    style={{ minWidth: 62, fontSize: 11 }}
+                    button={{ style: { fontSize: 11 } }}
                     value={String(startDay)}
                     onOptionSelect={handleStartDay}
+                    disabled={!dstEnabled}
                   >
                     {Array.from({ length: daysInMonth(startMonth) }, (_, i) => (
-                      <Option key={i + 1} value={String(i + 1)} style={{ fontSize: 12 }}>{String(i + 1)}</Option>
+                      <Option key={i + 1} value={String(i + 1)} style={{ fontSize: 11 }}>{String(i + 1)}</Option>
                     ))}
                   </Dropdown>
                 </div>
@@ -547,27 +552,30 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
                 <span className={styles.dstGroupLabel}>End Date</span>
                 <div className={styles.dstSelectors}>
                   <Dropdown
-                    style={{ minWidth: 80, fontSize: 12 }}
+                    style={{ minWidth: 80, fontSize: 11 }}
+                    button={{ style: { fontSize: 11 } }}
                     value={MONTHS[endMonth - 1] ?? '—'}
                     onOptionSelect={handleEndMonth}
+                    disabled={!dstEnabled}
                   >
                     {MONTHS.map((m, i) => (
-                      <Option key={i} value={String(i + 1)} style={{ fontSize: 12 }}>{m}</Option>
+                      <Option key={i} value={String(i + 1)} style={{ fontSize: 11 }}>{m}</Option>
                     ))}
                   </Dropdown>
                   <Dropdown
-                    style={{ minWidth: 62, fontSize: 12 }}
+                    style={{ minWidth: 62, fontSize: 11 }}
+                    button={{ style: { fontSize: 11 } }}
                     value={String(endDay)}
                     onOptionSelect={handleEndDay}
+                    disabled={!dstEnabled}
                   >
                     {Array.from({ length: daysInMonth(endMonth) }, (_, i) => (
-                      <Option key={i + 1} value={String(i + 1)} style={{ fontSize: 12 }}>{String(i + 1)}</Option>
+                      <Option key={i + 1} value={String(i + 1)} style={{ fontSize: 11 }}>{String(i + 1)}</Option>
                     ))}
                   </Dropdown>
                 </div>
               </div>
             </div>
-          )}
         </div>
 
         {/* Save */}
