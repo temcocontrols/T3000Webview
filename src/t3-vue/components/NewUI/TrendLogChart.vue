@@ -8651,9 +8651,10 @@
       }
 
       xScale.grid = {
-        color: showGrid.value ? '#e0e0e0' : 'transparent',
+        color: showGrid.value ? '#999999' : 'transparent',
         display: showGrid.value,
-        lineWidth: 1
+        lineWidth: 1.2,
+        drawTicks: showAnalogXAxis.value
       }
 
       const timeWindow = getCurrentTimeWindow()
@@ -8960,9 +8961,10 @@
       }
 
       xScale.grid = {
-        color: showGrid.value ? '#e0e0e0' : 'transparent',
+        color: showGrid.value ? '#999999' : 'transparent',
         display: showGrid.value,
-        lineWidth: 0.5
+        lineWidth: 1.2,
+        drawTicks: true
       }
 
       const timeWindow = getCurrentTimeWindow()
