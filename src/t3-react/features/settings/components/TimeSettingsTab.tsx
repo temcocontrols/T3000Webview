@@ -25,7 +25,6 @@ import {
 import {
   ArrowClockwiseRegular,
   ArrowSyncRegular,
-  ClockRegular,
   SaveRegular,
 } from '@fluentui/react-icons';
 import type { DeviceSettings } from '../services/settingsRefreshApi';
@@ -94,6 +93,14 @@ function formatEpochAsLocal(epoch: number): string {
   const d = new Date(epoch * 1000);
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}  ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function formatRuntime(seconds: number): string {
+  if (!seconds || seconds <= 0) return '—';
+  const days  = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const mins  = Math.floor((seconds % 3600) / 60);
+  return `${days} Days   ${hours} Hours   ${mins} Minutes`;
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -240,6 +247,8 @@ interface TimeSettingsTabProps {
   loading: boolean;
   /** settings.time_update_since_1970 — device current time as Unix epoch */
   deviceEpoch?: number;
+  /** device uptime in seconds */
+  deviceRuntimeSeconds?: number;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -254,6 +263,7 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
   onRefreshTime,
   loading,
   deviceEpoch,
+  deviceRuntimeSeconds,
 }) => {
   const styles = useStyles();
 
@@ -294,8 +304,6 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
   const pcDateStr = `${pcClock.getFullYear()}-${pad(pcClock.getMonth()+1)}-${pad(pcClock.getDate())}`;
   const pcTimeStr = `${pad(pcClock.getHours())}:${pad(pcClock.getMinutes())}:${pad(pcClock.getSeconds())}`;
 
-  // Device current time display
-  const deviceTimeStr = deviceEpoch ? formatEpochAsLocal(deviceEpoch) : '—';
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -580,22 +588,10 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
       <div className={styles.card}>
         <div className={styles.cardTitle}>Device Status</div>
 
-        <div className={styles.statusLabel}>Device Current Time</div>
-        <div className={styles.statusValue}>
-          <ClockRegular style={{ marginRight: 6, verticalAlign: 'middle', fontSize: 16 }} />
-          {deviceTimeStr}
+        <div className={styles.statusLabel}>Device Running Time</div>
+        <div className={styles.statusValue} style={{ fontFamily: 'monospace', fontSize: 12, letterSpacing: '0.2px' }}>
+          {deviceRuntimeSeconds ? formatRuntime(deviceRuntimeSeconds) : '—'}
         </div>
-
-        <Button
-          size="small"
-          appearance="outline"
-          icon={<ArrowClockwiseRegular />}
-          onClick={handleRefreshTime}
-          disabled={loading || refreshLoading}
-          style={{ fontSize: 12, marginBottom: 12 }}
-        >
-          {refreshLoading ? 'Reading…' : 'Refresh from Device'}
-        </Button>
       </div>
     </div>
   );
