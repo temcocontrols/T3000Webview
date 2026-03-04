@@ -396,8 +396,8 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
             value={isNTP ? 'ntp' : 'pc'}
             onChange={(_, data) => handleSyncModeChange(data.value)}
           >
-            <Radio value="pc"  label="Synchronize with Local PC" />
-            <Radio value="ntp" label="Synchronize with the time server" />
+            <Radio value="pc"  label={{ style: { fontSize: '12px', fontWeight: 'normal' }, children: 'Synchronize with Local PC' }} />
+            <Radio value="ntp" label={{ style: { fontSize: '12px', fontWeight: 'normal' }, children: 'Synchronize with the time server' }} />
           </RadioGroup>
         </div>
 
