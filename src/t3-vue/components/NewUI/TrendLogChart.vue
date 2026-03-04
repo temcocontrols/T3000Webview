@@ -3923,8 +3923,10 @@
             align: 'end',
             // stepSize will be calculated dynamically in afterDataLimits
             callback: function (value: any) {
-              const formatted = Math.round(Number(value)).toString();
-              return formatted.padStart(5, ' '); // Fixed width for alignment
+              const v = Number(value)
+              const stepSize = (this as any).options?.ticks?.stepSize ?? 1
+              if (stepSize < 1) return v.toFixed(1).padStart(6, ' ')
+              return Math.round(v).toString().padStart(5, ' '); // Fixed width for alignment
             }
           },
           // Trim the outermost ticks so labels never sit on the strip boundary
@@ -4017,7 +4019,10 @@
             maxTicksLimit: 6,
             align: 'end',
             callback: function (value: any) {
-              return Math.round(Number(value)).toString().padStart(5, ' ');
+              const v = Number(value)
+              const stepSize = (this as any).options?.ticks?.stepSize ?? 1
+              if (stepSize < 1) return v.toFixed(1).padStart(6, ' ')
+              return Math.round(v).toString().padStart(5, ' ')
             }
           },
           afterBuildTicks: function(scale: any) {
@@ -4115,7 +4120,10 @@
             maxTicksLimit: 6,
             align: 'end',
             callback: function (value: any) {
-              return Math.round(Number(value)).toString().padStart(5, ' ');
+              const v = Number(value)
+              const stepSize = (this as any).options?.ticks?.stepSize ?? 1
+              if (stepSize < 1) return v.toFixed(1).padStart(6, ' ')
+              return Math.round(v).toString().padStart(5, ' ')
             }
           },
           afterBuildTicks: function(scale: any) {
@@ -4211,7 +4219,10 @@
             maxTicksLimit: 6,
             align: 'end',
             callback: function (value: any) {
-              return Math.round(Number(value)).toString().padStart(5, ' ');
+              const v = Number(value)
+              const stepSize = (this as any).options?.ticks?.stepSize ?? 1
+              if (stepSize < 1) return v.toFixed(1).padStart(6, ' ')
+              return Math.round(v).toString().padStart(5, ' ')
             }
           },
           afterBuildTicks: function(scale: any) {
@@ -8596,6 +8607,29 @@
         } : null
       }))
     })
+
+    // 🆕 SAME-VALUE LINE DEDUP: if multiple series on the same axis are constant at
+    // an identical value, hide the duplicate lines visually (they'd overlap exactly).
+    // The datasets stay in the array so crosshair tooltips still list all series.
+    {
+      const seenConstant = new Map<string, boolean>() // key: axisId + '_' + value
+      for (const ds of datasets) {
+        const realPts = (ds.data as any[]).filter((p: any) => p !== null && p?.y !== null && typeof p?.y === 'number')
+        if (realPts.length === 0) continue
+        const firstVal = realPts[0].y
+        const isConstant = realPts.every((p: any) => Math.abs(p.y - firstVal) < 0.001)
+        if (!isConstant) continue
+        const key = `${ds.yAxisID ?? 'y'}_${firstVal.toFixed(4)}`
+        if (seenConstant.has(key)) {
+          // Duplicate constant line — make it invisible but preserve data
+          ds.borderWidth = 0
+          ds.pointRadius = 0
+          if (Array.isArray(ds.pointRadius)) ds.pointRadius = (ds.pointRadius as any[]).map(() => 0)
+        } else {
+          seenConstant.set(key, true)
+        }
+      }
+    }
 
     analogChartInstance.data.datasets = datasets
 
