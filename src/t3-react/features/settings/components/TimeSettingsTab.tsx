@@ -112,14 +112,12 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground1,
   },
   cardTitle: {
-    fontSize: '12px',
-    fontWeight: '600',
+    fontSize: '13px',
+    fontWeight: tokens.fontWeightRegular,
     color: tokens.colorNeutralForeground2,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     paddingBottom: '6px',
     marginBottom: '12px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
   },
   row: {
     display: 'flex',
@@ -197,14 +195,13 @@ const useStyles = makeStyles({
   },
   statusValue: {
     fontFamily: 'monospace',
-    fontSize: '14px',
-    fontWeight: '600',
+    fontSize: '13px',
+    fontWeight: tokens.fontWeightRegular,
     padding: '8px 12px',
     border: `1px solid ${tokens.colorNeutralStroke1}`,
     borderRadius: '4px',
     backgroundColor: tokens.colorNeutralBackground3,
     color: tokens.colorNeutralForeground1,
-    letterSpacing: '0.5px',
     width: '100%',
     marginBottom: '12px',
   },
@@ -565,6 +562,7 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
         {/* Save */}
         <div className={styles.saveRow}>
           <Button
+            size="small"
             appearance="primary"
             icon={<SaveRegular />}
             onClick={onSave}
