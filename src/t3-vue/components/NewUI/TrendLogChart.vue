@@ -8457,17 +8457,43 @@
         .filter(point => point.timestamp != null)
         .sort((a, b) => a.timestamp - b.timestamp)
 
-      // Rule: only break the drawn line when there are ≥ 5 consecutive null/empty
-      // values in a row.  Runs of < 5 are silently skipped and the line bridges
-      // across them.  Time gaps alone never break the line.
+      // ── Gap detection strategy ─────────────────────────────────────────────
+      // 1. Null-run break: ≥ 5 consecutive null/empty values → break the line.
+      // 2. Time-gap break: consecutive real points that are far apart in time
+      //    (> 3× the typical recording interval, min 2 min) → break the line.
+      //    This handles the case where the device simply stopped recording for
+      //    a period (no null entries, just a big timestamp jump).
+      // ──────────────────────────────────────────────────────────────────────
+
+      // Compute median sample interval from first 30 consecutive real-point pairs
+      const realOnly = sortedAll.filter(p => p.value !== null && p.value !== undefined && !isNaN(Number(p.value)))
+      let medianIntervalMs = 5 * 60 * 1000 // default 5 min if not enough data
+      if (realOnly.length >= 2) {
+        const deltas: number[] = []
+        const pairCount = Math.min(30, realOnly.length - 1)
+        for (let k = 0; k < pairCount; k++) {
+          deltas.push(realOnly[k + 1].timestamp - realOnly[k].timestamp)
+        }
+        deltas.sort((a, b) => a - b)
+        medianIntervalMs = deltas[Math.floor(deltas.length / 2)]
+      }
+      // Break when gap > 3× median interval, but never below 2 minutes
+      const gapThresholdMs = Math.max(medianIntervalMs * 3, 2 * 60 * 1000)
+
       const MAX_NULL_RUN = 5
       const dataWithGaps: Array<{ x: number; y: number | null }> = []
+      let lastRealX: number | null = null
       let j = 0
       while (j < sortedAll.length) {
         const pt = sortedAll[j]
         const isNullPt = pt.value === null || pt.value === undefined || isNaN(Number(pt.value))
         if (!isNullPt) {
+          // Time-gap break: insert null spacer if jump is too large
+          if (lastRealX !== null && (pt.timestamp - lastRealX) > gapThresholdMs) {
+            dataWithGaps.push({ x: (lastRealX + pt.timestamp) / 2, y: null })
+          }
           dataWithGaps.push({ x: pt.timestamp, y: pt.value })
+          lastRealX = pt.timestamp
           j++
         } else {
           // Count the full consecutive null run starting at j
@@ -8482,10 +8508,10 @@
           }
           if (nullCount >= MAX_NULL_RUN) {
             // Insert one null spacer at the midpoint to break the line.
-            // After the break, real data resumes and the line re-connects.
             const prevX = runStart > 0 ? sortedAll[runStart - 1].timestamp : sortedAll[runStart].timestamp
             const nextX = j < sortedAll.length ? sortedAll[j].timestamp : prevX
             dataWithGaps.push({ x: (prevX + nextX) / 2, y: null })
+            lastRealX = null // reset so next real point doesn't double-break
           }
           // < 5 nulls: skip entirely — surrounding real points stay connected
         }
