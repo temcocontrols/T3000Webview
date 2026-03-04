@@ -3386,37 +3386,7 @@
             .filter(s => s && s.display !== false)
             .sort((a, b) => a.top - b.top)
 
-          // ── Separator lines ──
-          // Outer borders at the very top of the first strip and very bottom of the last.
-          // Inner separators are drawn exactly at scale[i].bottom — the true bottom edge of
-          // each upper strip — so lines always land between strips, not inside them.
-          ctx.save()
-          if (visibleScales.length > 0) {
-            ctx.strokeStyle = '#000000'
-            ctx.lineWidth = 1.5
-            // Top outer border
-            ctx.beginPath()
-            ctx.moveTo(chartArea.left, visibleScales[0].top)
-            ctx.lineTo(chartArea.right, visibleScales[0].top)
-            ctx.stroke()
-            // Bottom outer border
-            const last = visibleScales[visibleScales.length - 1]
-            ctx.beginPath()
-            ctx.moveTo(chartArea.left, last.bottom)
-            ctx.lineTo(chartArea.right, last.bottom)
-            ctx.stroke()
-          }
-          for (let i = 0; i < visibleScales.length - 1; i++) {
-            // Draw the divider exactly at the bottom edge of the upper strip
-            const lineY = Math.round(visibleScales[i].bottom)
-            ctx.strokeStyle = '#000000'
-            ctx.lineWidth = 2
-            ctx.beginPath()
-            ctx.moveTo(chartArea.left, lineY)
-            ctx.lineTo(chartArea.right, lineY)
-            ctx.stroke()
-          }
-          ctx.restore()
+          // ── Separator lines removed ──
 
           yAxes.forEach(axisId => {
             const scale = chart.scales[axisId]
