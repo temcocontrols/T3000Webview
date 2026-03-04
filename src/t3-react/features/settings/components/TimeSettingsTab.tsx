@@ -410,11 +410,12 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
               <Button
                 size="small"
                 appearance="primary"
-                icon={<ArrowSyncRegular />}
+                icon={<ArrowSyncRegular style={{ fontSize: 12 }} />}
+                style={{ fontSize: 11, minWidth: 110 }}
                 onClick={handleSyncPC}
                 disabled={loading || syncLoading}
               >
-                {syncLoading ? 'Syncing…' : 'SYNC Local PC'}
+                {syncLoading ? 'Syncing…' : 'Sync Local PC'}
               </Button>
             </div>
             <div className={styles.row}>
@@ -422,8 +423,9 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
               <span className={styles.dateTimeBox}>{pcTimeStr}</span>
               <Button
                 size="small"
-                appearance="outline"
-                icon={<ArrowClockwiseRegular />}
+                appearance="primary"
+                icon={<ArrowClockwiseRegular style={{ fontSize: 12 }} />}
+                style={{ fontSize: 11, minWidth: 110 }}
                 onClick={handleRefreshTime}
                 disabled={loading || refreshLoading}
               >
@@ -481,14 +483,15 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
 
         {/* Time Zone */}
         <div className={styles.tzRow}>
-          <Field label="Time Zone" style={{ fontSize: 12 }}>
+          <Field label={<span style={{ fontSize: 13 }}>Time Zone</span>}>
             <Dropdown
-              style={{ width: '100%', fontSize: 12 }}
+              style={{ width: '100%', fontSize: 11 }}
+              button={{ style: { fontSize: 11 } }}
               value={tzDisplayName}
               onOptionSelect={handleTimezoneSelect}
             >
               {TIME_ZONE_NAMES.map((name, i) => (
-                <Option key={i} value={String(i)} style={{ fontSize: 12 }}>
+                <Option key={i} value={String(i)} style={{ fontSize: 11 }}>
                   {name}
                 </Option>
               ))}
@@ -499,7 +502,7 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
         {/* Daylight Saving Time */}
         <div className={styles.dstBlock}>
           <Checkbox
-            label="Enable Daylight Saving Time"
+            label={{ style: { fontSize: '11px', fontWeight: 'normal' }, children: 'Enable Daylight Saving Time' }}
             checked={dstEnabled}
             onChange={(_, d) => handleDstToggle(!!d.checked)}
           />
