@@ -9479,7 +9479,7 @@
       1: {
         showGrid: true,
         showLegend: false,
-        smoothLines: true,
+        smoothLines: false,
         showPoints: false,
         title: 'All Items View',
         description: 'Show all 14 items for comprehensive analysis'
@@ -9487,7 +9487,7 @@
       2: {
         showGrid: true,
         showLegend: false,
-        smoothLines: true,
+        smoothLines: false,
         showPoints: false,
         title: 'Custom Tracking View 2',
         description: 'User-selected items for focused tracking'
@@ -9495,7 +9495,7 @@
       3: {
         showGrid: true,
         showLegend: false,
-        smoothLines: true,
+        smoothLines: false,
         showPoints: false,
         title: 'Custom Tracking View 3',
         description: 'User-selected items with detailed visualization'
