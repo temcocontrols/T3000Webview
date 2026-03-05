@@ -3636,22 +3636,9 @@
               const x2 = chartArea.right
 
               ctx.save()
-              // Subtle grey fill
-              ctx.fillStyle = 'rgba(180,180,180,0.18)'
-              ctx.fillRect(x1, yTop, x2 - x1, height)
-              // Diagonal hatching lines over full width
-              ctx.strokeStyle = 'rgba(140,140,140,0.35)'
-              ctx.lineWidth = 1
-              ctx.beginPath()
-              const spacing = 8
-              for (let x = x1 - height; x < x2 + height; x += spacing) {
-                ctx.moveTo(x, yBottom)
-                ctx.lineTo(x + height, yTop)
-              }
-              ctx.stroke()
-              // Thin border lines at top/bottom of gap band
-              ctx.strokeStyle = 'rgba(120,120,120,0.5)'
-              ctx.lineWidth = 1
+              // Thin border lines at top/bottom of gap band to mark axis breaks
+              ctx.strokeStyle = 'rgba(180,180,180,0.35)'
+              ctx.lineWidth = 0.5
               ctx.beginPath()
               ctx.moveTo(x1, yTop);    ctx.lineTo(x2, yTop)
               ctx.moveTo(x1, yBottom); ctx.lineTo(x2, yBottom)
