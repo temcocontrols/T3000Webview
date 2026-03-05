@@ -166,6 +166,70 @@ if (!(Chart as any).registry?.scales?.get(SCALE_ID)) {
         })
         return this.ticks
       }
+
+      /**
+       * afterFit — prune ticks that would render closer than MIN_PX pixels apart.
+       *
+       * buildTicks() emits a fixed TARGET count per cluster without knowing how
+       * many pixels that cluster occupies.  By afterFit(), this.top / this.bottom
+       * are finalised so we can call getPixelForValue() and drop any tick that
+       * would overlap its neighbour's label.
+       *
+       * Strategy: walk ticks bottom→top (ascending value → descending pixel).
+       * Always keep the very first tick of each cluster (lowest boundary) and
+       * the very last tick of each cluster (highest boundary).  Drop interior
+       * ticks that land closer than MIN_PX pixels from the previously kept tick.
+       */
+      afterFit(this: any) {
+        if (LinearScale.prototype.afterFit) {
+          LinearScale.prototype.afterFit.call(this)
+        }
+
+        const clusters: Cluster[] = this.options._pwClusters
+        if (!clusters || clusters.length <= 1 || !this.ticks?.length) return
+
+        const MIN_PX = 15   // minimum pixel gap between adjacent tick labels (font ≈10px + padding)
+
+        // Build a set of "boundary" tick values — the vMin / vMax of every cluster.
+        // These are always preserved so cluster edges stay visible.
+        const boundaries = new Set<number>()
+        for (const c of clusters) {
+          boundaries.add(Math.round(c.vMin * 1e6))
+          boundaries.add(Math.round(c.vMax * 1e6))
+        }
+
+        const surviving: typeof this.ticks = []
+        let lastPx = Infinity   // start sentinel — canvas y grows downward, so "bottom" = large px
+
+        for (const tick of this.ticks) {
+          const px = this.getPixelForValue(tick.value)
+          const isBoundary = boundaries.has(Math.round(tick.value * 1e6))
+
+          if (isBoundary) {
+            // For boundary ticks: keep, but if it collides with the previous kept tick
+            // remove the previous one instead (boundary is more important than interior).
+            if (surviving.length > 0 && Math.abs(px - lastPx) < MIN_PX) {
+              const prev = surviving[surviving.length - 1]
+              const prevIsBoundary = boundaries.has(Math.round(prev.value * 1e6))
+              if (!prevIsBoundary) {
+                surviving.pop()           // drop the less-important interior tick
+              } else {
+                continue                  // both are boundaries and overlap — skip this one
+              }
+            }
+            surviving.push(tick)
+            lastPx = px
+          } else {
+            // Interior tick: only keep if far enough from last kept tick
+            if (Math.abs(px - lastPx) >= MIN_PX) {
+              surviving.push(tick)
+              lastPx = px
+            }
+          }
+        }
+
+        this.ticks = surviving
+      }
     }
 
     ;(Chart as any).register(PiecewiseLinearScale)

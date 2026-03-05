@@ -2762,6 +2762,11 @@
   const digitalChartCanvas = ref<HTMLCanvasElement>()
   let analogChartInstance: Chart | null = null
   let digitalChartInstance: Chart | null = null
+  // Tracks the currently visible x-axis range (ms timestamps).
+  // Updated by onPanComplete, onZoomComplete, and updateAnalogChart so that
+  // afterDataLimits always reads the correct visible window regardless of
+  // Chart.js internal scale-processing order.
+  let analogXWindow = { min: -Infinity, max: Infinity }
   // Total real (non-null) data points across all visible analog series in current time window
   const analogTotalPointsInView = ref<number>(-1) // -1 = not yet calculated
   let realtimeInterval: NodeJS.Timeout | null = null
@@ -3844,8 +3849,14 @@
             mode: 'x' as const,
             modifierKey: 'shift' as const,
             onPanComplete: ({ chart }: any) => {
+              // Capture the panned x-range BEFORE calling update so that
+              // afterDataLimits reads the correct visible window.
+              if (chart.scales.x) {
+                analogXWindow.min = chart.scales.x.min
+                analogXWindow.max = chart.scales.x.max
+              }
               // Re-run afterDataLimits with the new x window so y-axes rescale
-              setTimeout(() => chart.update('resize'), 10)
+              setTimeout(() => chart.update('none'), 10)
             }
           },
           zoom: {
@@ -3863,14 +3874,18 @@
                 const newEnd = chart.scales.x.max
                 startTimestamp.value = Math.floor(newStart)
                 endTimestamp.value = Math.floor(newEnd)
+                // Capture the zoomed x-range BEFORE calling update so that
+                // afterDataLimits reads the correct visible window.
+                analogXWindow.min = newStart
+                analogXWindow.max = newEnd
                 isCustomDateRange.value = true
                 const currentRangeSec = (endTimestamp.value - startTimestamp.value) / 1000
                 const totalRangeSec = (maxTime.value - minTime.value) / 1000
                 if (totalRangeSec > 0) {
                   zoomLevel.value = Math.max(1, Math.round(totalRangeSec / currentRangeSec))
                 }
-                // Force chart update to recalculate Y-axis and header with resize mode
-                setTimeout(() => chart.update('resize'), 10)
+                // Force chart update to recalculate Y-axis with correct data limits
+                setTimeout(() => chart.update('none'), 10)
               }
             }
           },
@@ -4046,9 +4061,10 @@
 
             // Get all values for left Y-axis — only from the currently visible x range
             // so the y-axis rescales dynamically on zoom / pan / time-base change.
-            const xScale = scale.chart.scales.x
-            const xMin = xScale?.min ?? -Infinity
-            const xMax = xScale?.max ?? Infinity
+            // Use analogXWindow (maintained by pan/zoom/update handlers) instead of
+            // xScale.min/max, which may not be finalized yet when y-scale hooks fire.
+            const xMin = analogXWindow.min
+            const xMax = analogXWindow.max
             const allValues: number[] = []
             yDatasets.forEach((dataset: any) => {
               if (dataset.data && dataset.data.length > 0) {
@@ -4157,9 +4173,8 @@
             scale.display = true
 
             // Get all values for y1 axis — only from the currently visible x range
-            const xScale = scale.chart.scales.x
-            const xMin = xScale?.min ?? -Infinity
-            const xMax = xScale?.max ?? Infinity
+            const xMin = analogXWindow.min
+            const xMax = analogXWindow.max
             const allValues: number[] = []
             y1Datasets.forEach((dataset: any) => {
               if (dataset.data && dataset.data.length > 0) {
@@ -4271,9 +4286,8 @@
 
             scale.display = true
             // Only collect values from the currently visible x range
-            const xScale = scale.chart.scales.x
-            const xMin = xScale?.min ?? -Infinity
-            const xMax = xScale?.max ?? Infinity
+            const xMin = analogXWindow.min
+            const xMax = analogXWindow.max
             const allValues: number[] = []
             y2Datasets.forEach((dataset: any) => {
               if (dataset.data && dataset.data.length > 0) {
@@ -4385,9 +4399,8 @@
 
             scale.display = true
             // Only collect values from the currently visible x range
-            const xScale = scale.chart.scales.x
-            const xMin = xScale?.min ?? -Infinity
-            const xMax = xScale?.max ?? Infinity
+            const xMin = analogXWindow.min
+            const xMax = analogXWindow.max
             const allValues: number[] = []
             y3Datasets.forEach((dataset: any) => {
               if (dataset.data && dataset.data.length > 0) {
@@ -8856,6 +8869,9 @@
       const timeWindow = getCurrentTimeWindow()
       xScale.min = timeWindow.min
       xScale.max = timeWindow.max
+      // Keep analogXWindow in sync so afterDataLimits sees the correct range
+      analogXWindow.min = timeWindow.min
+      analogXWindow.max = timeWindow.max
 
       LogUtil.Debug('⏰ Chart Time Window:', {
         timeBase: timeBase.value,
@@ -8967,16 +8983,12 @@
     // Using 'resize' mode forces Y-axis recalculation and header redraw
     // This ensures dynamic updates when zooming or changing time series
 
-    // CRITICAL: For custom dates, use 'none' mode to force scale recalculation
-    // 'resize' mode skips afterDataLimits callbacks, causing Y-axis compression
-    // 'none' mode bypasses animations but MUST trigger all scale callbacks
-    if (timeBase.value === 'custom') {
-      LogUtil.Debug('📊 Custom date: Using update("none") to trigger afterDataLimits')
-      LogUtil.Info('📊 Custom date: Using update("none") to trigger afterDataLimits')
-      analogChartInstance.update('none') // No animation but full scale recalculation
-    } else {
-      analogChartInstance.update('resize') // Fast resize for preset timebases
-    }
+    // CRITICAL: Always use 'none' mode to force full scale recalculation.
+    // 'resize' mode skips afterDataLimits callbacks, causing Y-axis compression.
+    // 'none' mode bypasses animations but triggers all scale callbacks including
+    // afterDataLimits where y-axes read analogXWindow to filter visible points.
+    LogUtil.Debug('📊 Using update("none") to trigger afterDataLimits for y-axis rescale')
+    analogChartInstance.update('none') // No animation but full scale recalculation
 
     // Scroll right-panel to bottom by default
     nextTick(() => {
