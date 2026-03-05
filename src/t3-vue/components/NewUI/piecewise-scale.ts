@@ -33,47 +33,55 @@ if (!(Chart as any).registry?.scales?.get(SCALE_ID)) {
         const clusters: Cluster[] = this.options._pwClusters
         if (!clusters || clusters.length <= 1) return []
 
-        const n = clusters.length
-        const GAP_FRAC = 0.03
-        const gapCount = n - 1
+        const n        = clusters.length
+        const GAP_PX   = 12    // fixed pixel gap drawn between each pair of clusters
+        const FLAT_PX  = 40    // fixed height for flatline (1 unique value) clusters
+        const MIN_SPREAD_PX = 40  // minimum height for any non-flatline cluster
+
         const totalPx = this.bottom - this.top
         if (totalPx <= 0) return []
 
-        // WEIGHTED HEIGHT: clusters are weighted by log(distinctValues + 1).
-        // A flatline cluster (1 unique value) scores log(2)≈0.69 → tiny band.
-        // A 7-line spread cluster scores log(8)≈2.08 → large band.
-        // This gives the flatline the minimum space it needs while expanding
-        // the real-data clusters so individual lines are clearly readable.
-        //
-        // _pwDistinct is set by afterDataLimits alongside _pwClusters:
-        //   Array<number>  — count of distinct data values per cluster.
-        // Falls back to equal weight if not provided.
         const distinct: number[] = this.options._pwDistinct ?? clusters.map(() => 5)
-        const weights = distinct.map(d => Math.log(Math.max(d, 1) + 1))
-        const totalWeight = weights.reduce((s, w) => s + w, 0)
-        const availFrac = 1 - gapCount * GAP_FRAC
+        const isFlat = distinct.map(d => d <= 1)
 
-        // --- build segments bottom→top (canvas: large pixel = low value) ---
+        // Pixel allocation:
+        //   • Flatline clusters → FLAT_PX (fixed, compact).
+        //   • Spread clusters   → equal share of all remaining pixels.
+        //     Equal share means every band of data gets the same screen real-estate
+        //     regardless of whether its value range is 73 units or 1700 units.
+        //     This maximises px/unit for the tightest cluster (most important for
+        //     seeing closely-spaced lines).
+        const gapCount    = n - 1
+        const totalGapPx  = gapCount * GAP_PX
+        const numFlat     = isFlat.filter(Boolean).length
+        const numSpread   = n - numFlat
+        const afterGapsAndFlats = totalPx - totalGapPx - numFlat * FLAT_PX
+        const spreadPx    = numSpread > 0
+          ? Math.max(afterGapsAndFlats / numSpread, MIN_SPREAD_PX)
+          : MIN_SPREAD_PX
+
+        const clusterPx = isFlat.map(flat => flat ? FLAT_PX : spreadPx)
+
+        // --- build segments bottom→top ---
         const segs: Seg[] = []
         let pCursor = this.bottom
 
         for (let i = 0; i < n; i++) {
           const c       = clusters[i]
-          const segPx   = (weights[i] / totalWeight) * availFrac * totalPx
+          const segPx   = clusterPx[i]
           const pBottom = pCursor
           const pTop    = pCursor - segPx
           segs.push({ vMin: c.vMin, vMax: c.vMax, pTop, pBottom })
           pCursor = pTop
 
           if (i < n - 1) {
-            const gapPx = GAP_FRAC * totalPx
             segs.push({
               vMin:    c.vMax,
               vMax:    clusters[i + 1].vMin,
-              pTop:    pCursor - gapPx,
+              pTop:    pCursor - GAP_PX,
               pBottom: pCursor,
             })
-            pCursor -= gapPx
+            pCursor -= GAP_PX
           }
         }
         return segs
@@ -114,49 +122,52 @@ if (!(Chart as any).registry?.scales?.get(SCALE_ID)) {
         const clusters: Cluster[] = this.options._pwClusters
         if (!clusters || clusters.length <= 1) return LinearScale.prototype.buildTicks.call(this)
 
+        // Nice step ladder — smaller steps for tight clusters, larger for wide ones.
+        // Step is chosen so ~TARGET ticks fit inside the cluster's value range.
         const STEPS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500,
-                       1000, 2000, 5000, 10000, 50000, 100000]
-        const TARGET = 5   // ~5 ticks per cluster
+                       1000, 2000, 5000, 10000, 20000, 50000, 100000]
+        const TARGET = 5
         const ticks: Array<{ value: number; major: boolean }> = []
-        let minStep = Infinity   // track smallest step → drives callback decimal format
+        let minStep = Infinity
 
-        // _pwDistinct[i] = count of distinct data values in cluster i.
-        // If 1 (flatline), we emit exactly one tick at the real data value.
         const distinct: number[] = this.options._pwDistinct ?? clusters.map(() => TARGET)
 
         for (let ci = 0; ci < clusters.length; ci++) {
           const c = clusters[ci]
           const range = c.vMax - c.vMin
 
-          // Flatline cluster: all data is a single value.
-          // The cluster bounds are [realVal - pad, realVal + pad], so midpoint = realVal.
-          // Emit ONE tick — avoids showing 0.5 / 0.2 / 0.0 / -0.2 / -0.4 for a zero flatline.
+          // Flatline: emit one tick at the actual data value (midpoint of padded bounds)
           if (distinct[ci] <= 1 || range < 0.001) {
             const realVal = Math.round(((c.vMin + c.vMax) / 2) * 1e6) / 1e6
             ticks.push({ value: realVal, major: false })
             continue
           }
 
+          // Pick step size proportional to range — large range → large step → readable gaps
           const rough = range / TARGET
           const step  = STEPS.find(s => s >= rough) ?? rough
           if (step < minStep) minStep = step
 
-          // boundary ticks
-          ticks.push({ value: c.vMin, major: false })
-          // interior ticks
-          const start = Math.ceil((c.vMin + step * 0.01) / step) * step
-          for (let v = start; v < c.vMax - step * 0.01; v += step) {
-            ticks.push({ value: Math.round(v * 1e6) / 1e6, major: false })
+          // Emit ONLY clean multiples of `step` that fall inside the cluster.
+          // This avoids raw boundary values like 38817 or 4918.
+          // e.g. cluster 4611–4688, step=20 → ticks at 4620, 4640, 4660, 4680
+          // e.g. cluster 38817–43920, step=1000 → ticks at 39000, 40000, 41000, 42000, 43000
+          const first = Math.ceil(c.vMin / step) * step
+          const last  = Math.floor(c.vMax / step) * step
+          for (let v = first; v <= last + step * 0.001; v += step) {
+            const rounded = Math.round(v / step) * step   // eliminate float drift
+            if (rounded >= c.vMin - step * 0.01 && rounded <= c.vMax + step * 0.01) {
+              ticks.push({ value: rounded, major: false })
+            }
           }
-          ticks.push({ value: c.vMax, major: false })
         }
 
-        // Store the smallest step so the axis ticks.callback knows the right
-        // decimal precision (the callback checks stepSize < 1 for decimals).
+        // Smallest step drives decimal-precision in the tick callback
         if (isFinite(minStep) && this.options.ticks) {
           this.options.ticks.stepSize = minStep
         }
 
+        // Deduplicate
         const seen = new Set<number>()
         this.ticks = ticks.filter(t => {
           const k = Math.round(t.value * 1e6)
@@ -168,17 +179,10 @@ if (!(Chart as any).registry?.scales?.get(SCALE_ID)) {
       }
 
       /**
-       * afterFit — prune ticks that would render closer than MIN_PX pixels apart.
-       *
-       * buildTicks() emits a fixed TARGET count per cluster without knowing how
-       * many pixels that cluster occupies.  By afterFit(), this.top / this.bottom
-       * are finalised so we can call getPixelForValue() and drop any tick that
-       * would overlap its neighbour's label.
-       *
-       * Strategy: walk ticks bottom→top (ascending value → descending pixel).
-       * Always keep the very first tick of each cluster (lowest boundary) and
-       * the very last tick of each cluster (highest boundary).  Drop interior
-       * ticks that land closer than MIN_PX pixels from the previously kept tick.
+       * afterFit — drop ticks whose pixel positions are closer than MIN_PX apart.
+       * By this point this.top/bottom are finalised so getPixelForValue() is accurate.
+       * All ticks are equal-priority (clean step-multiples), so simply walk bottom→top
+       * and keep whichever tick arrived first whenever two collide.
        */
       afterFit(this: any) {
         if (LinearScale.prototype.afterFit) {
@@ -188,43 +192,16 @@ if (!(Chart as any).registry?.scales?.get(SCALE_ID)) {
         const clusters: Cluster[] = this.options._pwClusters
         if (!clusters || clusters.length <= 1 || !this.ticks?.length) return
 
-        const MIN_PX = 15   // minimum pixel gap between adjacent tick labels (font ≈10px + padding)
-
-        // Build a set of "boundary" tick values — the vMin / vMax of every cluster.
-        // These are always preserved so cluster edges stay visible.
-        const boundaries = new Set<number>()
-        for (const c of clusters) {
-          boundaries.add(Math.round(c.vMin * 1e6))
-          boundaries.add(Math.round(c.vMax * 1e6))
-        }
+        const MIN_PX = 14   // ~10px font + 4px padding
 
         const surviving: typeof this.ticks = []
-        let lastPx = Infinity   // start sentinel — canvas y grows downward, so "bottom" = large px
+        let lastPx = Infinity   // sentinel: start from "very bottom" of canvas
 
         for (const tick of this.ticks) {
           const px = this.getPixelForValue(tick.value)
-          const isBoundary = boundaries.has(Math.round(tick.value * 1e6))
-
-          if (isBoundary) {
-            // For boundary ticks: keep, but if it collides with the previous kept tick
-            // remove the previous one instead (boundary is more important than interior).
-            if (surviving.length > 0 && Math.abs(px - lastPx) < MIN_PX) {
-              const prev = surviving[surviving.length - 1]
-              const prevIsBoundary = boundaries.has(Math.round(prev.value * 1e6))
-              if (!prevIsBoundary) {
-                surviving.pop()           // drop the less-important interior tick
-              } else {
-                continue                  // both are boundaries and overlap — skip this one
-              }
-            }
+          if (Math.abs(px - lastPx) >= MIN_PX) {
             surviving.push(tick)
             lastPx = px
-          } else {
-            // Interior tick: only keep if far enough from last kept tick
-            if (Math.abs(px - lastPx) >= MIN_PX) {
-              surviving.push(tick)
-              lastPx = px
-            }
           }
         }
 

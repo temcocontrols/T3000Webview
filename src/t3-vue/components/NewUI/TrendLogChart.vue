@@ -3396,69 +3396,55 @@
   ): Array<{vMin: number; vMax: number}> | null => {
     if (!values.length || totalRange <= 0) return null
 
-    // --- 1. fine histogram (300 buckets → ~90 units/bucket for 28000 range) ---
-    const BUCKETS = 300
-    const bucketSize = totalRange / BUCKETS
-    const hist = new Array(BUCKETS).fill(0)
-    for (const v of values) {
-      const idx = Math.max(0, Math.min(BUCKETS - 1, Math.floor((v - scaleMin) / bucketSize)))
-      hist[idx]++
-    }
-    const maxCount = Math.max(...hist)
-    if (maxCount === 0) return null
+    // --- 1. Deduplicate and sort values ---
+    // Round to 4 decimal places to merge near-identical floats.
+    const sorted = Array.from(
+      new Set(values.map(v => Math.round(v * 1e4) / 1e4))
+    ).sort((a, b) => a - b)
+    if (sorted.length < 2) return null
 
-    // --- 2. 5-bucket moving-average smooth ---
-    const smooth = hist.map((_, i) => {
-      let sum = 0, cnt = 0
-      for (let j = Math.max(0, i - 2); j <= Math.min(BUCKETS - 1, i + 2); j++) {
-        sum += hist[j]; cnt++
-      }
-      return sum / cnt
-    })
-
-    // --- 3. find split values = midpoint of each valley (<5% of peak) ---
-    const VALLEY_THRESH = maxCount * 0.05
-    const splitValues: number[] = []
-    let inCluster = smooth[0] > VALLEY_THRESH
-    let valleyStart = -1
-    for (let i = 1; i < BUCKETS; i++) {
-      const pop = smooth[i] > VALLEY_THRESH
-      if (!pop && inCluster)  { valleyStart = i; inCluster = false }
-      else if (pop && !inCluster) {
-        splitValues.push(scaleMin + ((valleyStart + i) / 2) * bucketSize)
-        inCluster = true
+    // --- 2. Gap-based split ---
+    // Split wherever two consecutive distinct values are more than GAP_THRESH apart.
+    // Using 8% of total range prevents false splits inside ramp data while catching
+    // real gaps (e.g. 0 → 4614 = 4614 units >> threshold; 4684 → 44600 >> threshold).
+    const GAP_THRESH = Math.max(totalRange * 0.08, 1)
+    const splitPoints: number[] = []
+    for (let i = 1; i < sorted.length; i++) {
+      const gap = sorted[i] - sorted[i - 1]
+      if (gap >= GAP_THRESH) {
+        splitPoints.push((sorted[i - 1] + sorted[i]) / 2)
       }
     }
+    if (splitPoints.length === 0) return null
 
-    if (splitValues.length === 0) return null
-
-    // --- 4. partition actual values into groups at each split ---
-    const groups: number[][] = Array.from({ length: splitValues.length + 1 }, () => [])
+    // --- 3. Partition original values into groups ---
+    const groups: number[][] = Array.from({ length: splitPoints.length + 1 }, () => [])
     for (const v of values) {
       let g = 0
-      while (g < splitValues.length && v > splitValues[g]) g++
+      while (g < splitPoints.length && v > splitPoints[g]) g++
       groups[g].push(v)
     }
 
-    // --- 5. build TIGHT cluster bounds: pad = 10% of the cluster's own range ---
-    // Small padding keeps vMax-vMin close to the actual data spread, so the fixed
-    // pixel allocation for this cluster is concentrated on the real data → high
-    // pixels-per-unit → similar-valued lines appear well separated vertically.
-    // (Wider padding = more value range for the same pixels = lines compress together.)
+    // --- 4. Build cluster bounds with tight padding ---
+    // Padding is 1% of the cluster's own range, capped at 2% of total range per side.
+    // Keeping padding small maximises pixels-per-unit inside each cluster band so
+    // nearby lines (e.g. 4657 vs 4660) are visually separated.
     const clusters = groups
       .filter(g => g.length > 0)
       .map(g => {
         const dMin = Math.min(...g)
         const dMax = Math.max(...g)
-        const dRange = Math.max(dMax - dMin, 1)
-        const pad = dRange * 0.05   // 5% each side
+        const dRange = dMax - dMin
+        const pad = dRange < 0.001
+          ? 1                                         // flatline: ±1 unit
+          : Math.min(dRange * 0.01, totalRange * 0.02) // spread: 1% own range, cap 2% total
         return {
           vMin: Math.max(dMin - pad, scaleMin),
           vMax: Math.min(dMax + pad, scaleMax)
         }
       })
 
-    // --- 6. resolve overlaps (clamp adjacent bounds to their midpoint) ---
+    // --- 5. Resolve overlaps ---
     for (let i = 1; i < clusters.length; i++) {
       if (clusters[i].vMin < clusters[i - 1].vMax) {
         const mid = (clusters[i].vMin + clusters[i - 1].vMax) / 2
