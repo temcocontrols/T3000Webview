@@ -4014,12 +4014,16 @@
               return Math.round(v).toString().padStart(5, ' '); // Fixed width for alignment
             }
           },
-          // Trim the outermost ticks so labels never sit on the strip boundary
-          // where they would visually collide with ticks from the adjacent axis.
+          // Trim ticks that sit exactly at the padded scale boundary
+          // (scale.min / scale.max) — these are outer padding artifacts.
+          // Do NOT use slice(1,-1): that removes by position and would delete
+          // a solo flatline tick (e.g. 0) when it's the lowest on the axis.
           afterBuildTicks: function(scale: any) {
-            if (scale.ticks.length > 2) {
-              scale.ticks = scale.ticks.slice(1, -1)
-            }
+            const eps = (scale.max - scale.min) * 0.001
+            scale.ticks = scale.ticks.filter((t: any) => {
+              const v = t.value
+              return v > scale.min + eps && v < scale.max - eps
+            })
           },
           afterFit: function(scale: any) {
             scale.width = 55
@@ -4118,9 +4122,11 @@
             }
           },
           afterBuildTicks: function(scale: any) {
-            if (scale.ticks.length > 2) {
-              scale.ticks = scale.ticks.slice(1, -1)
-            }
+            const eps = (scale.max - scale.min) * 0.001
+            scale.ticks = scale.ticks.filter((t: any) => {
+              const v = t.value
+              return v > scale.min + eps && v < scale.max - eps
+            })
           },
           afterFit: function(scale: any) {
             scale.width = 55
@@ -4226,9 +4232,11 @@
             }
           },
           afterBuildTicks: function(scale: any) {
-            if (scale.ticks.length > 2) {
-              scale.ticks = scale.ticks.slice(1, -1)
-            }
+            const eps = (scale.max - scale.min) * 0.001
+            scale.ticks = scale.ticks.filter((t: any) => {
+              const v = t.value
+              return v > scale.min + eps && v < scale.max - eps
+            })
           },
           afterFit: function(scale: any) {
             scale.width = 55
@@ -4332,9 +4340,11 @@
             }
           },
           afterBuildTicks: function(scale: any) {
-            if (scale.ticks.length > 2) {
-              scale.ticks = scale.ticks.slice(1, -1)
-            }
+            const eps = (scale.max - scale.min) * 0.001
+            scale.ticks = scale.ticks.filter((t: any) => {
+              const v = t.value
+              return v > scale.min + eps && v < scale.max - eps
+            })
           },
           afterFit: function(scale: any) {
             scale.width = 55

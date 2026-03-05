@@ -120,12 +120,23 @@ if (!(Chart as any).registry?.scales?.get(SCALE_ID)) {
         const ticks: Array<{ value: number; major: boolean }> = []
         let minStep = Infinity   // track smallest step → drives callback decimal format
 
-        for (const c of clusters) {
+        // _pwDistinct[i] = count of distinct data values in cluster i.
+        // If 1 (flatline), we emit exactly one tick at the real data value.
+        const distinct: number[] = this.options._pwDistinct ?? clusters.map(() => TARGET)
+
+        for (let ci = 0; ci < clusters.length; ci++) {
+          const c = clusters[ci]
           const range = c.vMax - c.vMin
-          if (range < 0.001) {
-            ticks.push({ value: c.vMin, major: false })
+
+          // Flatline cluster: all data is a single value.
+          // The cluster bounds are [realVal - pad, realVal + pad], so midpoint = realVal.
+          // Emit ONE tick — avoids showing 0.5 / 0.2 / 0.0 / -0.2 / -0.4 for a zero flatline.
+          if (distinct[ci] <= 1 || range < 0.001) {
+            const realVal = Math.round(((c.vMin + c.vMax) / 2) * 1e6) / 1e6
+            ticks.push({ value: realVal, major: false })
             continue
           }
+
           const rough = range / TARGET
           const step  = STEPS.find(s => s >= rough) ?? rough
           if (step < minStep) minStep = step
