@@ -3435,15 +3435,18 @@
       groups[g].push(v)
     }
 
-    // --- 5. build TIGHT cluster bounds: pad = 50% of the cluster's own range ---
-    // This means data fills the middle 50% of the band → good zoom, no wasted space.
+    // --- 5. build TIGHT cluster bounds: pad = 10% of the cluster's own range ---
+    // Small padding keeps vMax-vMin close to the actual data spread, so the fixed
+    // pixel allocation for this cluster is concentrated on the real data → high
+    // pixels-per-unit → similar-valued lines appear well separated vertically.
+    // (Wider padding = more value range for the same pixels = lines compress together.)
     const clusters = groups
       .filter(g => g.length > 0)
       .map(g => {
         const dMin = Math.min(...g)
         const dMax = Math.max(...g)
         const dRange = Math.max(dMax - dMin, 1)
-        const pad = dRange * 0.5   // 50% padding each side = 2× zoom on the data
+        const pad = dRange * 0.1   // 10% each side — just enough margin so lines aren't clipped
         return {
           vMin: Math.max(dMin - pad, scaleMin),
           vMax: Math.min(dMax + pad, scaleMax)
