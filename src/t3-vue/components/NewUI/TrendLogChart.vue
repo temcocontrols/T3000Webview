@@ -3427,12 +3427,40 @@
       groups[g].push(v)
     }
 
+    // --- 3b. Local sub-split within each group ---
+    // A group can itself contain a large internal gap (e.g. 0 and 4200 land in the
+    // same group because their gap of 4200 < global GAP_THRESH of 4880).
+    // Re-run gap detection using the group's *own* span × 15% as the threshold so
+    // these intra-group voids also get compressed.
+    const finalGroups: number[][] = []
+    for (const grp of groups.filter(g => g.length > 0)) {
+      const gSorted = Array.from(
+        new Set(grp.map(v => Math.round(v * 1e4) / 1e4))
+      ).sort((a, b) => a - b)
+      if (gSorted.length < 2) { finalGroups.push(grp); continue }
+      const gSpan = gSorted[gSorted.length - 1] - gSorted[0]
+      const localThresh = Math.max(gSpan * 0.15, 1)
+      const localSplits: number[] = []
+      for (let i = 1; i < gSorted.length; i++) {
+        if (gSorted[i] - gSorted[i - 1] >= localThresh) {
+          localSplits.push((gSorted[i - 1] + gSorted[i]) / 2)
+        }
+      }
+      if (localSplits.length === 0) { finalGroups.push(grp); continue }
+      const subGroups: number[][] = Array.from({ length: localSplits.length + 1 }, () => [])
+      for (const v of grp) {
+        let sg = 0
+        while (sg < localSplits.length && v > localSplits[sg]) sg++
+        subGroups[sg].push(v)
+      }
+      finalGroups.push(...subGroups.filter(sg => sg.length > 0))
+    }
+
     // --- 4. Build cluster bounds with tight padding ---
     // Padding is 1% of the cluster's own range, capped at 2% of total range per side.
     // Keeping padding small maximises pixels-per-unit inside each cluster band so
     // nearby lines (e.g. 4657 vs 4660) are visually separated.
-    const clusters = groups
-      .filter(g => g.length > 0)
+    const clusters = finalGroups
       .map(g => {
         const dMin = Math.min(...g)
         const dMax = Math.max(...g)

@@ -5,10 +5,13 @@
  * Registered under the id 'piecewise'.
  *
  * PIXEL ALLOCATION per cluster:
- *   Each cluster gets a guaranteed FLOOR (15% of chart height) plus a proportional
- *   bonus based on its value-range.  This ensures a tiny cluster like "0–5" and a
- *   tight cluster like "4600–4700" both get enough pixels to be readable, even when
- *   a third cluster spans "25000–26000" (a much larger value range).
+ *   Flatline clusters (1 unique value) get a fixed FLAT_PX band.
+ *   All other clusters share the remaining pixels equally — every data band
+ *   gets the same screen real-estate regardless of its value range.
+ *   This maximises px/unit for tight clusters (e.g. 4620–4660) so closely-
+ *   spaced lines are visually separated.
+ *   A fixed EDGE_PAD_PX buffer is reserved at the top and bottom of each axis
+ *   so line strokes at the extreme values are never clipped by the canvas edge.
  *
  * Each axis stores cluster definitions in scale.options._pwClusters
  *   Array<{ vMin: number; vMax: number }>
