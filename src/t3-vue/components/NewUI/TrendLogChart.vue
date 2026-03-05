@@ -3405,9 +3405,11 @@
 
     // --- 2. Gap-based split ---
     // Split wherever two consecutive distinct values are more than GAP_THRESH apart.
-    // Using 8% of total range prevents false splits inside ramp data while catching
-    // real gaps (e.g. 0 → 4614 = 4614 units >> threshold; 4684 → 44600 >> threshold).
-    const GAP_THRESH = Math.max(totalRange * 0.08, 1)
+    // IMPORTANT: use the actual data span (sorted max − sorted min), NOT the padded
+    // scale range passed in totalRange.  Scale padding can be 10–20% of the range,
+    // which inflates the threshold and causes real gaps (e.g. 0 → 4400) to be missed.
+    const dataSpan = sorted[sorted.length - 1] - sorted[0]
+    const GAP_THRESH = Math.max(dataSpan * 0.08, 1)
     const splitPoints: number[] = []
     for (let i = 1; i < sorted.length; i++) {
       const gap = sorted[i] - sorted[i - 1]
@@ -3582,6 +3584,54 @@
             ctx.restore() // remove transform
           })
         }
+      },
+      {
+        id: 'pwGapIndicator',
+        beforeDatasetsDraw: (chart: any) => {
+          const ctx = chart.ctx
+          const chartArea = chart.chartArea
+          if (!chartArea) return
+          ;['y', 'y1', 'y2', 'y3'].forEach((axisId: string) => {
+            const scale = chart.scales[axisId]
+            if (!scale?._getSegs) return
+            const clusters: { vMin: number; vMax: number }[] = scale.options?._pwClusters
+            if (!clusters || clusters.length <= 1) return
+            const segs: { vMin: number; vMax: number; pTop: number; pBottom: number }[] = scale._getSegs()
+            // Gap segs sit at odd indices: cluster0, gap01, cluster1, gap12, ...
+            for (let si = 1; si < segs.length; si += 2) {
+              const seg = segs[si]
+              const yTop    = seg.pTop
+              const yBottom = seg.pBottom
+              const height  = yBottom - yTop
+              if (height <= 0) continue
+              const x1 = chartArea.left
+              const x2 = chartArea.right
+
+              ctx.save()
+              // Subtle grey fill
+              ctx.fillStyle = 'rgba(180,180,180,0.18)'
+              ctx.fillRect(x1, yTop, x2 - x1, height)
+              // Diagonal hatching lines over full width
+              ctx.strokeStyle = 'rgba(140,140,140,0.35)'
+              ctx.lineWidth = 1
+              ctx.beginPath()
+              const spacing = 8
+              for (let x = x1 - height; x < x2 + height; x += spacing) {
+                ctx.moveTo(x, yBottom)
+                ctx.lineTo(x + height, yTop)
+              }
+              ctx.stroke()
+              // Thin border lines at top/bottom of gap band
+              ctx.strokeStyle = 'rgba(120,120,120,0.5)'
+              ctx.lineWidth = 1
+              ctx.beginPath()
+              ctx.moveTo(x1, yTop);    ctx.lineTo(x2, yTop)
+              ctx.moveTo(x1, yBottom); ctx.lineTo(x2, yBottom)
+              ctx.stroke()
+              ctx.restore()
+            }
+          })
+        },
       },
     ],
     options: {
@@ -4079,7 +4129,11 @@
               scale.min = center - expandedRange / 2
               scale.max = center + expandedRange / 2
             } else {
-              const padding = range * 0.1
+              // 2% padding — keeps scale boundary close to actual data.
+              // Piecewise clusters add their own tight per-cluster padding,
+              // so a large outer margin here only bloats totalRange and can
+              // cause the gap-detection threshold to miss real cluster gaps.
+              const padding = range * 0.02
               scale.min = min - padding
               scale.max = max + padding
             }
@@ -4193,7 +4247,7 @@
               scale.min = center - expandedRange / 2
               scale.max = center + expandedRange / 2
             } else {
-              const padding = range * 0.1
+              const padding = range * 0.02
               scale.min = min - padding
               scale.max = max + padding
             }
@@ -4306,7 +4360,7 @@
               scale.min = center - expandedRange / 2
               scale.max = center + expandedRange / 2
             } else {
-              const padding = range * 0.1
+              const padding = range * 0.02
               scale.min = min - padding
               scale.max = max + padding
             }
@@ -4419,7 +4473,7 @@
               scale.min = center - expandedRange / 2
               scale.max = center + expandedRange / 2
             } else {
-              const padding = range * 0.1
+              const padding = range * 0.02
               scale.min = min - padding
               scale.max = max + padding
             }

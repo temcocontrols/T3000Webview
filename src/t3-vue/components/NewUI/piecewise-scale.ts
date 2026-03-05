@@ -34,11 +34,12 @@ if (!(Chart as any).registry?.scales?.get(SCALE_ID)) {
         if (!clusters || clusters.length <= 1) return []
 
         const n        = clusters.length
-        const GAP_PX   = 12    // fixed pixel gap drawn between each pair of clusters
+        const GAP_PX   = 18    // fixed pixel gap drawn between each pair of clusters
         const FLAT_PX  = 40    // fixed height for flatline (1 unique value) clusters
         const MIN_SPREAD_PX = 40  // minimum height for any non-flatline cluster
+        const EDGE_PAD_PX = 4   // reserved pixels at top & bottom so line strokes aren't clipped
 
-        const totalPx = this.bottom - this.top
+        const totalPx = this.bottom - this.top - 2 * EDGE_PAD_PX
         if (totalPx <= 0) return []
 
         const distinct: number[] = this.options._pwDistinct ?? clusters.map(() => 5)
@@ -62,9 +63,9 @@ if (!(Chart as any).registry?.scales?.get(SCALE_ID)) {
 
         const clusterPx = isFlat.map(flat => flat ? FLAT_PX : spreadPx)
 
-        // --- build segments bottom→top ---
+        // --- build segments bottom→top (leave EDGE_PAD_PX breathing room at each edge) ---
         const segs: Seg[] = []
-        let pCursor = this.bottom
+        let pCursor = this.bottom - EDGE_PAD_PX
 
         for (let i = 0; i < n; i++) {
           const c       = clusters[i]
@@ -89,19 +90,31 @@ if (!(Chart as any).registry?.scales?.get(SCALE_ID)) {
 
       getPixelForValue(this: any, value: number): number {
         const segs = this._getSegs()
-        if (!segs.length) return LinearScale.prototype.getPixelForValue.call(this, value)
-        for (const seg of segs) {
-          if (value >= seg.vMin && value <= seg.vMax) {
-            const t = seg.vMax === seg.vMin
-              ? 0
-              : (value - seg.vMin) / (seg.vMax - seg.vMin)
-            return seg.pBottom - t * (seg.pBottom - seg.pTop)
+        let px: number
+        if (!segs.length) {
+          px = LinearScale.prototype.getPixelForValue.call(this, value)
+        } else {
+          let found = false
+          for (const seg of segs) {
+            if (value >= seg.vMin && value <= seg.vMax) {
+              const t = seg.vMax === seg.vMin
+                ? 0
+                : (value - seg.vMin) / (seg.vMax - seg.vMin)
+              px = seg.pBottom - t * (seg.pBottom - seg.pTop)
+              found = true
+              break
+            }
+          }
+          if (!found) {
+            // outside all segments — clamp to scale boundary
+            px = value < segs[0].vMin
+              ? segs[0].pBottom
+              : segs[segs.length - 1].pTop
           }
         }
-        // outside all segments — clamp
-        return value < segs[0].vMin
-          ? segs[0].pBottom
-          : segs[segs.length - 1].pTop
+        // Always clamp to this axis's own pixel range so out-of-range values
+        // never bleed into an adjacent stacked axis's visual space.
+        return Math.max(this.top, Math.min(this.bottom, px!))
       }
 
       getValueForPixel(this: any, pixel: number): number {
