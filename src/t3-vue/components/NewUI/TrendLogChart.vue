@@ -1563,6 +1563,7 @@
 
   // 🆕 Chart update debouncing to prevent UI freezing in C++ embedded WebView
   let chartUpdatePending = false
+  let chartUpdateQueued = false  // queued while an update is in-flight
 
   // 🆕 Chart creation retry tracking to prevent infinite loops
   let chartCreationRetries = 0
@@ -8091,7 +8092,8 @@
 
     // 🆕 FIX: Prevent multiple concurrent chart updates (critical for C++ WebView)
     if (chartUpdatePending) {
-      LogUtil.Debug('⏸️ Chart update already pending, skipping duplicate call')
+      chartUpdateQueued = true  // remember to re-run once current update finishes
+      LogUtil.Debug('⏸️ Chart update already pending, queuing for after completion')
       return
     }
 
@@ -8125,15 +8127,28 @@
     requestAnimationFrame(() => {
       // Second defer ensures browser message pump runs (critical for C++ embedding)
       setTimeout(async () => {
-        // Update analog chart (now async with yield points)
-        await updateAnalogChart()
+        try {
+          // Update analog chart (now async with yield points)
+          await updateAnalogChart()
 
-        // Update digital charts after another yield (also async now)
-        requestAnimationFrame(async () => {
-          await updateDigitalCharts()
-          chartUpdatePending = false // Reset flag
+          // Update digital charts after another yield (also async now)
+          await new Promise<void>(resolve => requestAnimationFrame(async () => {
+            try {
+              await updateDigitalCharts()
+            } finally {
+              resolve()
+            }
+          }))
+        } catch (e) {
+          LogUtil.Warn('⚠️ updateCharts: error during chart update', e)
+        } finally {
+          chartUpdatePending = false // Always reset, even on error
           LogUtil.Info('🎨 updateCharts: Chart updates completed')
-        })
+          if (chartUpdateQueued) {
+            chartUpdateQueued = false
+            updateCharts()
+          }
+        }
       }, 0)
     })
   }
