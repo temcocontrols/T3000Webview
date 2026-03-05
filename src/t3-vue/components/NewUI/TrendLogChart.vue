@@ -1111,6 +1111,7 @@
   import dayjs, { type Dayjs } from 'dayjs'
   import Chart from 'chart.js/auto'
   import 'chartjs-adapter-date-fns'
+  import './piecewise-scale' // registers 'piecewise' scale with Chart.js
   import {
     LeftOutlined,
     RightOutlined,
@@ -3367,6 +3368,118 @@
   }
 
   // Multi-canvas chart configuration functions
+
+  // Helper: given a flat array of numeric values and a pre-computed scale range,
+  // detect clusters separated by large gaps and return them ordered low→high.
+  // Returns null when only 1 cluster is found (fall back to linear scale).
+  // Detects value clusters using histogram density rather than sorted-value gaps.
+  // This correctly handles continuously-transitioning series (e.g. a line that
+  // ramps from 0 → 4600 → 25000): the ramp fills all intermediate sorted values
+  // and defeats gap-based detection, but the histogram shows clearly that data
+  // SPENDS most of its time near 0, near 4600 and near 25000 — the transition
+  // bins are sparsely populated and are identified as valleys → split points.
+  //
+  // KEY: after finding split points via histogram, we partition the actual values
+  // and build TIGHT cluster bounds (padding = 50% of the cluster's own range).
+  // This avoids the "2000-unit cluster for 70-unit data" problem that caused all
+  // lines to stack when the histogram bucket size was coarser than the data spread.
+  const computePwClusters = (
+    values: number[],
+    totalRange: number,
+    scaleMin: number,
+    scaleMax: number
+  ): Array<{vMin: number; vMax: number}> | null => {
+    if (!values.length || totalRange <= 0) return null
+
+    // --- 1. fine histogram (300 buckets → ~90 units/bucket for 28000 range) ---
+    const BUCKETS = 300
+    const bucketSize = totalRange / BUCKETS
+    const hist = new Array(BUCKETS).fill(0)
+    for (const v of values) {
+      const idx = Math.max(0, Math.min(BUCKETS - 1, Math.floor((v - scaleMin) / bucketSize)))
+      hist[idx]++
+    }
+    const maxCount = Math.max(...hist)
+    if (maxCount === 0) return null
+
+    // --- 2. 5-bucket moving-average smooth ---
+    const smooth = hist.map((_, i) => {
+      let sum = 0, cnt = 0
+      for (let j = Math.max(0, i - 2); j <= Math.min(BUCKETS - 1, i + 2); j++) {
+        sum += hist[j]; cnt++
+      }
+      return sum / cnt
+    })
+
+    // --- 3. find split values = midpoint of each valley (<5% of peak) ---
+    const VALLEY_THRESH = maxCount * 0.05
+    const splitValues: number[] = []
+    let inCluster = smooth[0] > VALLEY_THRESH
+    let valleyStart = -1
+    for (let i = 1; i < BUCKETS; i++) {
+      const pop = smooth[i] > VALLEY_THRESH
+      if (!pop && inCluster)  { valleyStart = i; inCluster = false }
+      else if (pop && !inCluster) {
+        splitValues.push(scaleMin + ((valleyStart + i) / 2) * bucketSize)
+        inCluster = true
+      }
+    }
+
+    if (splitValues.length === 0) return null
+
+    // --- 4. partition actual values into groups at each split ---
+    const groups: number[][] = Array.from({ length: splitValues.length + 1 }, () => [])
+    for (const v of values) {
+      let g = 0
+      while (g < splitValues.length && v > splitValues[g]) g++
+      groups[g].push(v)
+    }
+
+    // --- 5. build TIGHT cluster bounds: pad = 50% of the cluster's own range ---
+    // This means data fills the middle 50% of the band → good zoom, no wasted space.
+    const clusters = groups
+      .filter(g => g.length > 0)
+      .map(g => {
+        const dMin = Math.min(...g)
+        const dMax = Math.max(...g)
+        const dRange = Math.max(dMax - dMin, 1)
+        const pad = dRange * 0.5   // 50% padding each side = 2× zoom on the data
+        return {
+          vMin: Math.max(dMin - pad, scaleMin),
+          vMax: Math.min(dMax + pad, scaleMax)
+        }
+      })
+
+    // --- 6. resolve overlaps (clamp adjacent bounds to their midpoint) ---
+    for (let i = 1; i < clusters.length; i++) {
+      if (clusters[i].vMin < clusters[i - 1].vMax) {
+        const mid = (clusters[i].vMin + clusters[i - 1].vMax) / 2
+        clusters[i - 1].vMax = mid
+        clusters[i].vMin = mid
+      }
+    }
+
+    return clusters.length > 1 ? clusters : null
+  }
+
+  /**
+   * For each cluster, count how many distinct data values from `allValues`
+   * fall inside [c.vMin, c.vMax].  This drives the weighted-height allocation
+   * in piecewise-scale.ts: a flatline cluster (1 distinct value) gets a
+   * proportionally small band; a spread cluster gets more vertical space.
+   */
+  const computePwDistinct = (
+    clusters: { vMin: number; vMax: number }[],
+    allValues: number[]
+  ): number[] => {
+    return clusters.map(c => {
+      const inCluster = allValues.filter(v => v >= c.vMin && v <= c.vMax)
+      // Round to 6 sf so near-duplicate floats still count as one
+      const distinct = new Set(inCluster.map(v => parseFloat(v.toPrecision(6))))
+      return Math.max(distinct.size, 1)
+    })
+  }
+
   const getAnalogChartConfig = () => ({
     type: 'line' as const,
     data: {
@@ -3863,6 +3976,7 @@
           }
         })(),
         y: {
+          type: 'piecewise' as const,
           display: true,
           position: 'left' as const,
           stack: 'y-axis' as const,
@@ -3890,7 +4004,7 @@
             },
             padding: 4,
             autoSkip: true,
-            maxTicksLimit: 6,
+            maxTicksLimit: 20,
             align: 'end',
             // stepSize will be calculated dynamically in afterDataLimits
             callback: function (value: any) {
@@ -3952,14 +4066,21 @@
             }
 
             const newRange = scale.max - scale.min
-            const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
-            const roughStep = newRange / 6
-            const stepSize = niceSteps.find(s => s >= roughStep) || 1
-            scale.options.ticks.stepSize = stepSize
+            scale.options._pwClusters = computePwClusters(allValues, newRange, scale.min, scale.max)
+            scale.options._pwDistinct = scale.options._pwClusters
+              ? computePwDistinct(scale.options._pwClusters, allValues)
+              : null
+            if (!scale.options._pwClusters) {
+              const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
+              const step = niceSteps.find(s => s >= newRange / 10) || 1
+              scale.options.ticks.stepSize = step
+              scale.options.ticks.maxTicksLimit = Math.ceil(newRange / step) + 2
+            }
           }
         },
         // 🆕 Y1 axis (left side, 2nd unit type)
         y1: {
+          type: 'piecewise' as const,
           display: true,
           position: 'left' as const,
           stack: 'y-axis' as const,
@@ -3987,7 +4108,7 @@
             },
             padding: 4,
             autoSkip: true,
-            maxTicksLimit: 6,
+            maxTicksLimit: 20,
             align: 'end',
             callback: function (value: any) {
               const v = Number(value)
@@ -4053,14 +4174,21 @@
             }
 
             const newRange = scale.max - scale.min
-            const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
-            const roughStep = newRange / 6
-            const stepSize = niceSteps.find(s => s >= roughStep) || 1
-            scale.options.ticks.stepSize = stepSize
+            scale.options._pwClusters = computePwClusters(allValues, newRange, scale.min, scale.max)
+            scale.options._pwDistinct = scale.options._pwClusters
+              ? computePwDistinct(scale.options._pwClusters, allValues)
+              : null
+            if (!scale.options._pwClusters) {
+              const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
+              const step = niceSteps.find(s => s >= newRange / 10) || 1
+              scale.options.ticks.stepSize = step
+              scale.options.ticks.maxTicksLimit = Math.ceil(newRange / step) + 2
+            }
           }
         },
         // 🆕 Y2 axis (left side, 3rd unit type)
         y2: {
+          type: 'piecewise' as const,
           display: true,
           position: 'left' as const,
           stack: 'y-axis' as const,
@@ -4088,7 +4216,7 @@
             },
             padding: 4,
             autoSkip: true,
-            maxTicksLimit: 6,
+            maxTicksLimit: 20,
             align: 'end',
             callback: function (value: any) {
               const v = Number(value)
@@ -4152,14 +4280,21 @@
             }
 
             const newRange = scale.max - scale.min
-            const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
-            const roughStep = newRange / 6
-            const stepSize = niceSteps.find(s => s >= roughStep) || 1
-            scale.options.ticks.stepSize = stepSize
+            scale.options._pwClusters = computePwClusters(allValues, newRange, scale.min, scale.max)
+            scale.options._pwDistinct = scale.options._pwClusters
+              ? computePwDistinct(scale.options._pwClusters, allValues)
+              : null
+            if (!scale.options._pwClusters) {
+              const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
+              const step = niceSteps.find(s => s >= newRange / 10) || 1
+              scale.options.ticks.stepSize = step
+              scale.options.ticks.maxTicksLimit = Math.ceil(newRange / step) + 2
+            }
           }
         },
         // 🆕 Y3 axis (left side, 4th unit type)
         y3: {
+          type: 'piecewise' as const,
           display: true,
           position: 'left' as const,
           stack: 'y-axis' as const,
@@ -4187,7 +4322,7 @@
             },
             padding: 4,
             autoSkip: true,
-            maxTicksLimit: 6,
+            maxTicksLimit: 20,
             align: 'end',
             callback: function (value: any) {
               const v = Number(value)
@@ -4251,10 +4386,16 @@
             }
 
             const newRange = scale.max - scale.min
-            const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
-            const roughStep = newRange / 6
-            const stepSize = niceSteps.find(s => s >= roughStep) || 1
-            scale.options.ticks.stepSize = stepSize
+            scale.options._pwClusters = computePwClusters(allValues, newRange, scale.min, scale.max)
+            scale.options._pwDistinct = scale.options._pwClusters
+              ? computePwDistinct(scale.options._pwClusters, allValues)
+              : null
+            if (!scale.options._pwClusters) {
+              const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
+              const step = niceSteps.find(s => s >= newRange / 10) || 1
+              scale.options.ticks.stepSize = step
+              scale.options.ticks.maxTicksLimit = Math.ceil(newRange / step) + 2
+            }
           }
         }
       }
@@ -8308,13 +8449,13 @@
       return rangeB - rangeA
     })
 
-// Assign axes: Support up to 4 axes (y, y1, y2, y3) ALL ON LEFT SIDE
-    // y = left position 0 (primary), y1 = left position 1, y2 = left position 2, y3 = left position 3
+    // Assign axes by unit group: up to 4 axes (y, y1, y2, y3) ALL ON LEFT SIDE.
+    // Value-cluster separation is handled inside each axis by PiecewiseLinearScale.
     const axisAssignment = new Map<string, string>()
-    const axisColors = new Map<string, string>() // Axis ID → Color of first series
-    const axisColorsList = new Map<string, string[]>() // Axis ID → All series colors
-    const axisUnits = new Map<string, Set<string>>() // Axis ID → Set of all units
-    const axisUnitColorGroups = new Map<string, Array<{unit: string, colors: string[]}>>() // Axis ID → per-unit color groups
+    const axisColors = new Map<string, string>()
+    const axisColorsList = new Map<string, string[]>()
+    const axisUnits = new Map<string, Set<string>>()
+    const axisUnitColorGroups = new Map<string, Array<{unit: string, colors: string[]}>>()
 
     sortedGroups.forEach(([groupName, items], index) => {
       const axisId = index === 0 ? 'y' :
