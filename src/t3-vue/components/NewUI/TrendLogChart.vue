@@ -3839,7 +3839,11 @@
           pan: {
             enabled: true,
             mode: 'x' as const,
-            modifierKey: 'shift' as const
+            modifierKey: 'shift' as const,
+            onPanComplete: ({ chart }: any) => {
+              // Re-run afterDataLimits with the new x window so y-axes rescale
+              setTimeout(() => chart.update('resize'), 10)
+            }
           },
           zoom: {
             drag: {
@@ -4037,12 +4041,18 @@
             const yDatasets = data.filter((ds: any) => !ds.yAxisID || ds.yAxisID === 'y')
             if (yDatasets.length === 0) return
 
-            // Get all values for left Y-axis
+            // Get all values for left Y-axis — only from the currently visible x range
+            // so the y-axis rescales dynamically on zoom / pan / time-base change.
+            const xScale = scale.chart.scales.x
+            const xMin = xScale?.min ?? -Infinity
+            const xMax = xScale?.max ?? Infinity
             const allValues: number[] = []
             yDatasets.forEach((dataset: any) => {
               if (dataset.data && dataset.data.length > 0) {
                 dataset.data.forEach((point: any) => {
                   if (point && typeof point.y === 'number' && isFinite(point.y) && point.y > -99999 && point.y < 999999) {
+                    const px = typeof point.x === 'number' ? point.x : (point.x ? +new Date(point.x) : null)
+                    if (px !== null && (px < xMin || px > xMax)) return
                     allValues.push(point.y)
                   }
                 })
@@ -4143,12 +4153,17 @@
 
             scale.display = true
 
-            // Get all values for y1 axis
+            // Get all values for y1 axis — only from the currently visible x range
+            const xScale = scale.chart.scales.x
+            const xMin = xScale?.min ?? -Infinity
+            const xMax = xScale?.max ?? Infinity
             const allValues: number[] = []
             y1Datasets.forEach((dataset: any) => {
               if (dataset.data && dataset.data.length > 0) {
                 dataset.data.forEach((point: any) => {
                   if (point && typeof point.y === 'number' && isFinite(point.y) && point.y > -99999 && point.y < 999999) {
+                    const px = typeof point.x === 'number' ? point.x : (point.x ? +new Date(point.x) : null)
+                    if (px !== null && (px < xMin || px > xMax)) return
                     allValues.push(point.y)
                   }
                 })
@@ -4252,11 +4267,17 @@
             }
 
             scale.display = true
+            // Only collect values from the currently visible x range
+            const xScale = scale.chart.scales.x
+            const xMin = xScale?.min ?? -Infinity
+            const xMax = xScale?.max ?? Infinity
             const allValues: number[] = []
             y2Datasets.forEach((dataset: any) => {
               if (dataset.data && dataset.data.length > 0) {
                 dataset.data.forEach((point: any) => {
                   if (point && typeof point.y === 'number' && isFinite(point.y) && point.y > -99999 && point.y < 999999) {
+                    const px = typeof point.x === 'number' ? point.x : (point.x ? +new Date(point.x) : null)
+                    if (px !== null && (px < xMin || px > xMax)) return
                     allValues.push(point.y)
                   }
                 })
@@ -4360,11 +4381,17 @@
             }
 
             scale.display = true
+            // Only collect values from the currently visible x range
+            const xScale = scale.chart.scales.x
+            const xMin = xScale?.min ?? -Infinity
+            const xMax = xScale?.max ?? Infinity
             const allValues: number[] = []
             y3Datasets.forEach((dataset: any) => {
               if (dataset.data && dataset.data.length > 0) {
                 dataset.data.forEach((point: any) => {
                   if (point && typeof point.y === 'number' && isFinite(point.y) && point.y > -99999 && point.y < 999999) {
+                    const px = typeof point.x === 'number' ? point.x : (point.x ? +new Date(point.x) : null)
+                    if (px !== null && (px < xMin || px > xMax)) return
                     allValues.push(point.y)
                   }
                 })
