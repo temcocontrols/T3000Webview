@@ -66,6 +66,15 @@ if (!(Chart as any).registry?.scales?.get(SCALE_ID)) {
 
         const clusterPx = isFlat.map(flat => flat ? FLAT_PX : spreadPx)
 
+        // Normalize: always fill the full available height so clusters never
+        // leave a large empty gap at the top (e.g. when all clusters are flat).
+        const available  = totalPx - totalGapPx
+        const rawTotal   = clusterPx.reduce((s, v) => s + v, 0)
+        if (rawTotal > 0 && rawTotal < available) {
+          const scale = available / rawTotal
+          for (let i = 0; i < clusterPx.length; i++) clusterPx[i] *= scale
+        }
+
         // --- build segments bottom→top (leave EDGE_PAD_PX breathing room at each edge) ---
         const segs: Seg[] = []
         let pCursor = this.bottom - EDGE_PAD_PX
