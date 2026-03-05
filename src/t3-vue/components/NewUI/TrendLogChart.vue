@@ -3446,7 +3446,7 @@
         const dMin = Math.min(...g)
         const dMax = Math.max(...g)
         const dRange = Math.max(dMax - dMin, 1)
-        const pad = dRange * 0.1   // 10% each side — just enough margin so lines aren't clipped
+        const pad = dRange * 0.05   // 5% each side
         return {
           vMin: Math.max(dMin - pad, scaleMin),
           vMax: Math.min(dMax + pad, scaleMax)
