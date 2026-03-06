@@ -31,65 +31,75 @@ if (!(Chart as any).registry?.scales?.get(SCALE_ID)) {
       static id = SCALE_ID
       static defaults = {}
 
-      /** Compute pixel-mapped segments from cluster definitions. */
+      /** Compute pixel-mapped segments from cluster definitions.
+       *
+       * PIXEL ALLOCATION — equal height for every spread cluster:
+       *   • Flatline clusters (1 unique value) → fixed FLATLINE_PX compact band.
+       *   • Spread clusters → equal share of the remaining pixel budget so every
+       *     group of similar values (e.g. 4600–4660) gets the same vertical space
+       *     as a wide-range cluster (e.g. 49000–51000).  This makes tightly-spaced
+       *     lines visually separated instead of squeezed into a tiny band.
+       *     A MIN_PX floor ensures every cluster is tall enough to show tick labels.
+       *   Constants are adaptive (% of axis height H) so they scale with the canvas.
+       */
       _getSegs(this: any): Seg[] {
         const clusters: Cluster[] = this.options._pwClusters
         if (!clusters || clusters.length <= 1) return []
 
-        const n        = clusters.length
-        const GAP_PX   = 18    // fixed pixel gap drawn between each pair of clusters
-        const FLAT_PX  = 40    // fixed height for flatline (1 unique value) clusters
-        const MIN_SPREAD_PX = 40  // minimum height for any non-flatline cluster
-        const EDGE_PAD_PX = 4   // reserved pixels at top & bottom so line strokes aren't clipped
+        const n = clusters.length
+        const H = this.bottom - this.top
 
-        const totalPx = this.bottom - this.top - 2 * EDGE_PAD_PX
-        if (totalPx <= 0) return []
+        // Adaptive constants — scale with axis height so small canvases stay usable
+        const GAP_PX      = Math.max(6,  Math.min(18, Math.floor(H * 0.025)))
+        const FLATLINE_PX = Math.max(20, Math.min(40, Math.floor(H * 0.10)))
+        const MIN_PX      = Math.max(30, Math.min(55, Math.floor(H * 0.15)))
+        const EDGE_PAD    = 4
+
+        const budget = H - 2 * EDGE_PAD - (n - 1) * GAP_PX
+        if (budget <= 0) return []
 
         const distinct: number[] = this.options._pwDistinct ?? clusters.map(() => 5)
-        const isFlat = distinct.map(d => d <= 1)
+        const isFlat = distinct.map((d: number) => d <= 1)
 
-        // Pixel allocation:
-        //   • Flatline clusters → FLAT_PX (fixed, compact).
-        //   • Spread clusters   → equal share of all remaining pixels.
-        //     Equal share means every band of data gets the same screen real-estate
-        //     regardless of whether its value range is 73 units or 1700 units.
-        //     This maximises px/unit for the tightest cluster (most important for
-        //     seeing closely-spaced lines).
-        const gapCount    = n - 1
-        const totalGapPx  = gapCount * GAP_PX
-        const numFlat     = isFlat.filter(Boolean).length
-        const numSpread   = n - numFlat
-        const afterGapsAndFlats = totalPx - totalGapPx - numFlat * FLAT_PX
-        const spreadPx    = numSpread > 0
-          ? Math.max(afterGapsAndFlats / numSpread, MIN_SPREAD_PX)
-          : MIN_SPREAD_PX
+        const flatCount   = isFlat.filter(Boolean).length
+        const spreadCount = n - flatCount
+        const flatTotal   = flatCount * FLATLINE_PX
+        const spreadBudget = budget - flatTotal
 
-        const clusterPx = isFlat.map(flat => flat ? FLAT_PX : spreadPx)
+        // Equal allocation: every spread cluster gets the same vertical space
+        // regardless of its value range.  A tight cluster (e.g. 4600–4660) gets
+        // the same pixels as a wide cluster (e.g. 49000–51000), so closely-spaced
+        // lines are visually separated instead of squeezed into a tiny band.
+        const equalPx = spreadCount > 0 ? spreadBudget / spreadCount : MIN_PX
+        const clusterPx: number[] = clusters.map((_: Cluster, i: number) => {
+          if (isFlat[i]) return FLATLINE_PX
+          return Math.max(MIN_PX, equalPx)
+        })
 
-        // Normalize: always fill the full available height so clusters never
-        // leave a large empty gap at the top (e.g. when all clusters are flat).
-        const available  = totalPx - totalGapPx
-        const rawTotal   = clusterPx.reduce((s, v) => s + v, 0)
-        if (rawTotal > 0 && rawTotal < available) {
-          const scale = available / rawTotal
-          for (let i = 0; i < clusterPx.length; i++) clusterPx[i] *= scale
+        // Normalize spread clusters so they exactly fill spreadBudget
+        // (handles edge cases where MIN_PX floors push sum over budget).
+        const spreadSum = clusterPx.reduce(
+          (s: number, px: number, i: number) => s + (isFlat[i] ? 0 : px), 0
+        )
+        if (spreadSum > 0 && spreadCount > 0) {
+          const scale = spreadBudget / spreadSum
+          for (let i = 0; i < n; i++) {
+            if (!isFlat[i]) clusterPx[i] = Math.max(MIN_PX, clusterPx[i] * scale)
+          }
         }
 
-        // --- build segments bottom→top (leave EDGE_PAD_PX breathing room at each edge) ---
+        // Build segments bottom→top (EDGE_PAD breathing room at each edge)
         const segs: Seg[] = []
-        let pCursor = this.bottom - EDGE_PAD_PX
-
+        let pCursor = this.bottom - EDGE_PAD
         for (let i = 0; i < n; i++) {
-          const c       = clusters[i]
-          const segPx   = clusterPx[i]
           const pBottom = pCursor
-          const pTop    = pCursor - segPx
-          segs.push({ vMin: c.vMin, vMax: c.vMax, pTop, pBottom })
+          const pTop    = pCursor - clusterPx[i]
+          segs.push({ vMin: clusters[i].vMin, vMax: clusters[i].vMax, pTop, pBottom })
           pCursor = pTop
 
           if (i < n - 1) {
             segs.push({
-              vMin:    c.vMax,
+              vMin:    clusters[i].vMax,
               vMax:    clusters[i + 1].vMin,
               pTop:    pCursor - GAP_PX,
               pBottom: pCursor,
@@ -151,11 +161,13 @@ if (!(Chart as any).registry?.scales?.get(SCALE_ID)) {
         // Step is chosen so ~TARGET ticks fit inside the cluster's value range.
         const STEPS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500,
                        1000, 2000, 5000, 10000, 20000, 50000, 100000]
-        const TARGET = 5
         const ticks: Array<{ value: number; major: boolean }> = []
         let minStep = Infinity
 
-        const distinct: number[] = this.options._pwDistinct ?? clusters.map(() => TARGET)
+        // Get pixel layout — cluster i occupies segs[i*2] (odd indices = gap bands)
+        const segs = this._getSegs()
+
+        const distinct: number[] = this.options._pwDistinct ?? clusters.map(() => 5)
 
         for (let ci = 0; ci < clusters.length; ci++) {
           const c = clusters[ci]
@@ -168,8 +180,11 @@ if (!(Chart as any).registry?.scales?.get(SCALE_ID)) {
             continue
           }
 
-          // Pick step size proportional to range — large range → large step → readable gaps
-          const rough = range / TARGET
+          // Dynamic tick count: 1 tick per ~20px of this cluster's allocated pixel height
+          const clusterSeg  = segs[ci * 2]
+          const clusterPx   = clusterSeg ? (clusterSeg.pBottom - clusterSeg.pTop) : 80
+          const targetTicks = Math.max(2, Math.floor(clusterPx / 20))
+          const rough = range / targetTicks
           const step  = STEPS.find(s => s >= rough) ?? rough
           if (step < minStep) minStep = step
 

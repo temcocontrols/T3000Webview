@@ -3427,39 +3427,13 @@
       groups[g].push(v)
     }
 
-    // --- 3b. Local sub-split within each group ---
-    // A group can itself contain a large internal gap (e.g. 0 and 4200 land in the
-    // same group because their gap of 4200 < global GAP_THRESH of 4880).
-    // Re-run gap detection using the group's *own* span × 15% as the threshold so
-    // these intra-group voids also get compressed.
-    const finalGroups: number[][] = []
-    for (const grp of groups.filter(g => g.length > 0)) {
-      const gSorted = Array.from(
-        new Set(grp.map(v => Math.round(v * 1e4) / 1e4))
-      ).sort((a, b) => a - b)
-      if (gSorted.length < 2) { finalGroups.push(grp); continue }
-      const gSpan = gSorted[gSorted.length - 1] - gSorted[0]
-      const localThresh = Math.max(gSpan * 0.15, 1)
-      const localSplits: number[] = []
-      for (let i = 1; i < gSorted.length; i++) {
-        if (gSorted[i] - gSorted[i - 1] >= localThresh) {
-          localSplits.push((gSorted[i - 1] + gSorted[i]) / 2)
-        }
-      }
-      if (localSplits.length === 0) { finalGroups.push(grp); continue }
-      const subGroups: number[][] = Array.from({ length: localSplits.length + 1 }, () => [])
-      for (const v of grp) {
-        let sg = 0
-        while (sg < localSplits.length && v > localSplits[sg]) sg++
-        subGroups[sg].push(v)
-      }
-      finalGroups.push(...subGroups.filter(sg => sg.length > 0))
-    }
+    // --- 3b. (removed) Direct pass-through — global gap detection is sufficient ---
+    const finalGroups: number[][] = groups.filter(g => g.length > 0)
 
-    // --- 4. Build cluster bounds with tight padding ---
-    // Padding is 1% of the cluster's own range, capped at 2% of total range per side.
-    // Keeping padding small maximises pixels-per-unit inside each cluster band so
-    // nearby lines (e.g. 4657 vs 4660) are visually separated.
+    // --- 4. Build cluster bounds with comfortable padding ---
+    // Padding is 5% of the cluster's own range, capped at 5% of total range per side.
+    // With equal pixel allocation per cluster, each band now has ample visual height;
+    // a modest padding ensures lines at the cluster edge are not clipped.
     const clusters = finalGroups
       .map(g => {
         const dMin = Math.min(...g)
@@ -3467,7 +3441,7 @@
         const dRange = dMax - dMin
         const pad = dRange < 0.001
           ? 1                                         // flatline: ±1 unit
-          : Math.min(dRange * 0.01, totalRange * 0.02) // spread: 1% own range, cap 2% total
+          : Math.min(dRange * 0.05, totalRange * 0.05) // spread: 5% own range, cap 5% total
         return {
           vMin: Math.max(dMin - pad, scaleMin),
           vMax: Math.min(dMax + pad, scaleMax)
@@ -3481,6 +3455,21 @@
         clusters[i - 1].vMax = mid
         clusters[i].vMin = mid
       }
+    }
+
+    // --- 6. Cap total cluster count to prevent over-fragmentation ---
+    // If too many clusters exist, merge the adjacent pair with the smallest
+    // gap so total bands stay readable and each gets enough pixel height.
+    const MAX_CLUSTERS = 5
+    while (clusters.length > MAX_CLUSTERS) {
+      let minGap = Infinity
+      let mergeIdx = 0
+      for (let i = 0; i < clusters.length - 1; i++) {
+        const gap = clusters[i + 1].vMin - clusters[i].vMax
+        if (gap < minGap) { minGap = gap; mergeIdx = i }
+      }
+      clusters[mergeIdx].vMax = clusters[mergeIdx + 1].vMax
+      clusters.splice(mergeIdx + 1, 1)
     }
 
     return clusters.length > 1 ? clusters : null
@@ -3674,7 +3663,8 @@
       },
       interaction: {
         intersect: false,
-        mode: 'index' as const
+        mode: 'nearest' as const,
+        axis: 'x' as const
       },
       plugins: {
         legend: {
@@ -3717,42 +3707,62 @@
               return
             }
 
-            if (!tooltip.dataPoints || tooltip.dataPoints.length === 0) {
-              return
-            }
-
             const position = chart.canvas.getBoundingClientRect()
             const scrollX = window.pageXOffset || document.documentElement.scrollLeft
             const scrollY = window.pageYOffset || document.documentElement.scrollTop
 
-            // ── Filter to only points whose X timestamp is inside the visible window ──
             const xScale = chart.scales.x
             const visibleMin = xScale?.min ?? -Infinity
             const visibleMax = xScale?.max ?? Infinity
-            const inRangePoints = tooltip.dataPoints.filter((p: any) => {
-              const ts = p.parsed?.x ?? p.raw?.x
-              return ts !== undefined && ts >= visibleMin && ts <= visibleMax
+
+            // ── Use caretX directly; derive cursor timestamp from scale ──
+            const caretCanvasX = tooltip.caretX ?? (chart.chartArea.left + chart.chartArea.right) / 2
+            const caretTimestamp: number = xScale?.getValueForPixel?.(caretCanvasX) ?? 0
+
+            // ── Manually scan every dataset for its closest point to cursor timestamp ──
+            // This fixes the 'index' mode scatter: datasets with different timestamps
+            // no longer pick divergent indices whose pixel X positions spread apart.
+            const chartWidth = chart.chartArea.right - chart.chartArea.left
+            const MAX_X_DIST_PX = Math.max(chartWidth * 0.04, 30)
+
+            const uniquePoints: any[] = []
+            chart.data.datasets.forEach((dataset: any, datasetIndex: number) => {
+              if (!dataset.data || dataset.data.length === 0) return
+              const meta = chart.getDatasetMeta(datasetIndex)
+              if (meta.hidden) return
+              let bestIdx = -1
+              let bestDt = Infinity
+              dataset.data.forEach((d: any, i: number) => {
+                if (!d || d.y === null || d.y === undefined || !isFinite(d.y)) return
+                const ts = typeof d.x === 'number' ? d.x : +new Date(d.x)
+                if (ts < visibleMin || ts > visibleMax) return
+                const dt = Math.abs(ts - caretTimestamp)
+                if (dt < bestDt) { bestDt = dt; bestIdx = i }
+              })
+              if (bestIdx === -1) return
+              const element = meta.data[bestIdx]
+              if (!element) return
+              // Suppress if this dataset's nearest point is too far in pixels
+              if (Math.abs(element.x - caretCanvasX) > MAX_X_DIST_PX) return
+              const d = dataset.data[bestIdx]
+              uniquePoints.push({
+                datasetIndex,
+                dataset,
+                element,
+                parsed: { x: typeof d.x === 'number' ? d.x : +new Date(d.x), y: d.y },
+                raw: d
+              })
             })
 
-            // If nothing is in range, suppress entirely
-            if (inRangePoints.length === 0) {
-              return
-            }
+            if (uniquePoints.length === 0) return
 
-            // ── Deduplicate: keep only the point closest to the cursor per dataset ──
-            // Chart.js can report multiple nearby points from the same dataset when
-            // using nearest/index mode, causing duplicate tooltip boxes per series.
-            const caretCanvasX = tooltip.caretX ?? inRangePoints[0].element.x
-            const closestPerDataset = new Map<number, any>()
-            inRangePoints.forEach((p: any) => {
-              const dx = Math.abs(p.element.x - caretCanvasX)
-              const existing = closestPerDataset.get(p.datasetIndex)
-              if (!existing || dx < Math.abs(existing.element.x - caretCanvasX)) {
-                closestPerDataset.set(p.datasetIndex, p)
-              }
-            })
-            const uniquePoints = Array.from(closestPerDataset.values())
-            const crosshairScreenX = position.left + scrollX + caretCanvasX
+            // Snap crosshair to the nearest data point's canvas X so the hover dot
+            // and the crosshair line always sit on the same vertical pixel.
+            const snapPoint = uniquePoints.reduce((best: any, p: any) =>
+              Math.abs(p.parsed.x - caretTimestamp) < Math.abs(best.parsed.x - caretTimestamp) ? p : best
+            )
+            const snapX = snapPoint.element.x
+            const crosshairScreenX = position.left + scrollX + snapX
 
             // Create crosshair line element
             const crosshairEl = document.createElement('div')
@@ -3786,7 +3796,7 @@
             const timeEl = document.createElement('div')
             timeEl.className = 'chartjs-timelabel'
             timeEl.style.position = 'fixed'
-            timeEl.style.left = (position.left + caretCanvasX - 30) + 'px'
+            timeEl.style.left = (position.left + snapX - 30) + 'px'
             timeEl.style.top = (timeLabelVY < visibleBottom - 20 ? timeLabelVY : visibleBottom - 20) + 'px'
             timeEl.style.pointerEvents = 'none'
             timeEl.style.zIndex = '10001'
@@ -3808,7 +3818,8 @@
             document.body.appendChild(timeEl)
 
             // Create individual tooltip for each data point
-            if (tooltip.body) {
+            // (uniquePoints is always populated here — we checked length above)
+            {
               // Sort deduplicated points by Y position to handle overlaps
               const sortedPoints = [...uniquePoints].sort((a, b) => a.element.y - b.element.y)
 
@@ -3856,12 +3867,17 @@
                   </div>
                 `
 
-                // Position to the right of the data point
-                const pointX = position.left + scrollX + point.element.x
+                // Position tooltip: right of crosshair normally, left when near right edge
+                const pointX = position.left + scrollX + snapX
                 const pointY = position.top + scrollY + point.element.y
 
-                // Calculate initial vertical position
-                let tooltipTop = pointY - 12
+                // Estimate canvas right boundary
+                const canvasRight = position.left + scrollX + chart.chartArea.right
+                const canvasBottom = position.top + scrollY + chart.chartArea.bottom
+                const flipLeft = pointX + 10 + 160 > canvasRight // 160px estimated max tooltip width
+
+                // Calculate initial vertical position, clamped to chart area
+                let tooltipTop = Math.min(pointY - 12, canvasBottom - tooltipHeight)
 
                 // Check for overlaps and adjust position
                 let adjusted = true
@@ -3878,13 +3894,21 @@
                   }
                 }
 
+                // clamp bottom overflow
+                tooltipTop = Math.min(tooltipTop, canvasBottom - tooltipHeight)
+
                 // Record this tooltip's position
                 tooltipPositions.push({
                   top: tooltipTop,
                   bottom: tooltipTop + tooltipHeight
                 })
 
-                tooltipEl.style.left = (pointX + 10) + 'px'
+                tooltipEl.style.left = flipLeft
+                  ? (pointX - 10) + 'px'   // will flip after measuring; use transform
+                  : (pointX + 10) + 'px'
+                if (flipLeft) {
+                  tooltipEl.style.transform = 'translateX(-100%)'
+                }
                 tooltipEl.style.top = tooltipTop + 'px'
 
                 document.body.appendChild(tooltipEl)
@@ -4623,12 +4647,17 @@
 
                 document.body.appendChild(crosshairEl)
 
-                // Create time display at top of crosshair
+                // Create time display at top of crosshair (viewport-fixed so scrolling never drifts it)
                 const timeEl = document.createElement('div')
                 timeEl.className = 'chartjs-crosshair'
-                timeEl.style.position = 'absolute'
-                timeEl.style.left = (pointX - 30) + 'px'
-                timeEl.style.top = (position.top + scrollY + chart.chartArea.top - 20) + 'px'
+                timeEl.style.position = 'fixed'
+                timeEl.style.left = (position.left + firstPoint.element.x - 30) + 'px'
+                const chartTopVP    = position.top + chart.chartArea.top
+                const chartBottomVP = position.top + chart.chartArea.bottom
+                const visibleTop    = Math.max(chartTopVP, 0)
+                const visibleBottom = Math.min(chartBottomVP, window.innerHeight)
+                const timeLabelVY   = visibleTop + 4
+                timeEl.style.top = (timeLabelVY < visibleBottom - 20 ? timeLabelVY : visibleBottom - 20) + 'px'
                 timeEl.style.pointerEvents = 'none'
                 timeEl.style.zIndex = '1000'
 
