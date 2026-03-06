@@ -4147,7 +4147,14 @@
           },
           afterFit: function(scale: any) {
             if (scale.display === false) { scale.width = 0; return }
-            scale.width = 42
+            // Measure widest tick label dynamically to avoid overflow on large values
+            const ctx = scale.ctx
+            ctx.save()
+            ctx.font = '10px Inter, Helvetica, Arial, sans-serif'
+            const maxVal = Math.max(Math.abs(scale.max || 0), Math.abs(scale.min || 0))
+            const textW = ctx.measureText(Math.round(maxVal).toString()).width
+            ctx.restore()
+            scale.width = Math.max(42, Math.ceil(20 + textW + 6))
           },
           // 🆕 ENHANCED: Smart Y-axis scaling (axis assignment done in updateAnalogChart)
           afterDataLimits: function (scale: any) {
@@ -4197,6 +4204,9 @@
               scale.min = min - padding
               scale.max = max + padding
             }
+
+            // Never show negative ticks when all actual data is non-negative
+            if (min >= 0 && scale.min < 0) scale.min = 0
 
             const newRange = scale.max - scale.min
             const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
@@ -4251,7 +4261,13 @@
           },
           afterFit: function(scale: any) {
             if (scale.display === false) { scale.width = 0; return }
-            scale.width = 42
+            const ctx = scale.ctx
+            ctx.save()
+            ctx.font = '10px Inter, Helvetica, Arial, sans-serif'
+            const maxVal = Math.max(Math.abs(scale.max || 0), Math.abs(scale.min || 0))
+            const textW = ctx.measureText(Math.round(maxVal).toString()).width
+            ctx.restore()
+            scale.width = Math.max(42, Math.ceil(20 + textW + 6))
           },
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
@@ -4302,6 +4318,9 @@
               scale.min = min - padding
               scale.max = max + padding
             }
+
+            // Never show negative ticks when all actual data is non-negative
+            if (min >= 0 && scale.min < 0) scale.min = 0
 
             const newRange = scale.max - scale.min
             const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
@@ -4356,7 +4375,13 @@
           },
           afterFit: function(scale: any) {
             if (scale.display === false) { scale.width = 0; return }
-            scale.width = 42
+            const ctx = scale.ctx
+            ctx.save()
+            ctx.font = '10px Inter, Helvetica, Arial, sans-serif'
+            const maxVal = Math.max(Math.abs(scale.max || 0), Math.abs(scale.min || 0))
+            const textW = ctx.measureText(Math.round(maxVal).toString()).width
+            ctx.restore()
+            scale.width = Math.max(42, Math.ceil(20 + textW + 6))
           },
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
@@ -4406,6 +4431,9 @@
               scale.min = min - padding
               scale.max = max + padding
             }
+
+            // Never show negative ticks when all actual data is non-negative
+            if (min >= 0 && scale.min < 0) scale.min = 0
 
             const newRange = scale.max - scale.min
             const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
@@ -4460,7 +4488,13 @@
           },
           afterFit: function(scale: any) {
             if (scale.display === false) { scale.width = 0; return }
-            scale.width = 42
+            const ctx = scale.ctx
+            ctx.save()
+            ctx.font = '10px Inter, Helvetica, Arial, sans-serif'
+            const maxVal = Math.max(Math.abs(scale.max || 0), Math.abs(scale.min || 0))
+            const textW = ctx.measureText(Math.round(maxVal).toString()).width
+            ctx.restore()
+            scale.width = Math.max(42, Math.ceil(20 + textW + 6))
           },
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
@@ -4510,6 +4544,9 @@
               scale.min = min - padding
               scale.max = max + padding
             }
+
+            // Never show negative ticks when all actual data is non-negative
+            if (min >= 0 && scale.min < 0) scale.min = 0
 
             const newRange2 = scale.max - scale.min
             const niceSteps2 = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
