@@ -2978,8 +2978,13 @@
   let _restoringViewState = false
 
   const _viewStateKey = () => {
-    const id = (props.itemData as any)?.t3Entry?.id ?? 'default'
-    return `trendlog_view_state_${id}`
+    // props.title is already "TRL{sn}_{panelId}_{trendlogId}" — unique per device+panel+trendlog.
+    // Fall back to combining pid + id (e.g. "144_MON1") if title is not set.
+    const t3Entry = (props.itemData as any)?.t3Entry
+    const key = props.title && props.title !== 'Trend Log Chart'
+      ? props.title
+      : `${t3Entry?.pid ?? 'x'}_${t3Entry?.id ?? 'default'}`
+    return `trendlog_view_state_${key}`
   }
 
   const saveViewState = () => {
