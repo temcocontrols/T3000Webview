@@ -4098,7 +4098,7 @@
           }
         })(),
         y: {
-          type: 'linear' as const,
+          type: 'piecewise' as any, // Falls back to linear when no clusters detected
           display: true,
           position: 'left' as const,
           title: {
@@ -4208,6 +4208,12 @@
             // Never show negative ticks when all actual data is non-negative
             if (min >= 0 && scale.min < 0) scale.min = 0
 
+            // Detect value clusters separated by large gaps (e.g. 0/100/4000/30000)
+            // and activate piecewise scale so each cluster gets fair visual height.
+            const pwClusters = computePwClusters(allValues, scale.max - scale.min, scale.min, scale.max)
+            scale.options._pwClusters = pwClusters ?? null
+            scale.options._pwDistinct = pwClusters ? computePwDistinct(pwClusters, allValues) : null
+
             const newRange = scale.max - scale.min
             const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
             const step = niceSteps.find(s => s >= newRange / 10) || 1
@@ -4217,7 +4223,7 @@
         },
         // Y1 axis (left side, 2nd value-range group)
         y1: {
-          type: 'linear' as const,
+          type: 'piecewise' as any,
           display: true,
           position: 'left' as const,
           grid: {
@@ -4322,6 +4328,10 @@
             // Never show negative ticks when all actual data is non-negative
             if (min >= 0 && scale.min < 0) scale.min = 0
 
+            const pwClusters = computePwClusters(allValues, scale.max - scale.min, scale.min, scale.max)
+            scale.options._pwClusters = pwClusters ?? null
+            scale.options._pwDistinct = pwClusters ? computePwDistinct(pwClusters, allValues) : null
+
             const newRange = scale.max - scale.min
             const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
             const step = niceSteps.find(s => s >= newRange / 10) || 1
@@ -4331,7 +4341,7 @@
         },
         // Y2 axis (left side, 3rd value-range group)
         y2: {
-          type: 'linear' as const,
+          type: 'piecewise' as any,
           display: true,
           position: 'left' as const,
           grid: {
@@ -4435,6 +4445,10 @@
             // Never show negative ticks when all actual data is non-negative
             if (min >= 0 && scale.min < 0) scale.min = 0
 
+            const pwClusters = computePwClusters(allValues, scale.max - scale.min, scale.min, scale.max)
+            scale.options._pwClusters = pwClusters ?? null
+            scale.options._pwDistinct = pwClusters ? computePwDistinct(pwClusters, allValues) : null
+
             const newRange = scale.max - scale.min
             const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
             const step = niceSteps.find(s => s >= newRange / 10) || 1
@@ -4444,7 +4458,7 @@
         },
         // Y3 axis (left side, 4th value-range group)
         y3: {
-          type: 'linear' as const,
+          type: 'piecewise' as any,
           display: true,
           position: 'left' as const,
           grid: {
@@ -4547,6 +4561,10 @@
 
             // Never show negative ticks when all actual data is non-negative
             if (min >= 0 && scale.min < 0) scale.min = 0
+
+            const pwClusters = computePwClusters(allValues, scale.max - scale.min, scale.min, scale.max)
+            scale.options._pwClusters = pwClusters ?? null
+            scale.options._pwDistinct = pwClusters ? computePwDistinct(pwClusters, allValues) : null
 
             const newRange2 = scale.max - scale.min
             const niceSteps2 = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
