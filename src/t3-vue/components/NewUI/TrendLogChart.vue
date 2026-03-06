@@ -4159,7 +4159,7 @@
           ticks: {
             color: '#595959',
             font: {
-              size: 10,
+              size: 9,
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
             padding: 2,
@@ -4284,7 +4284,7 @@
           ticks: {
             color: '#1890ff',
             font: {
-              size: 10,
+              size: 9,
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
             padding: 2,
@@ -4402,7 +4402,7 @@
           ticks: {
             color: '#52c41a',
             font: {
-              size: 10,
+              size: 9,
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
             padding: 2,
@@ -4519,7 +4519,7 @@
           ticks: {
             color: '#fa8c16',
             font: {
-              size: 10,
+              size: 9,
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
             padding: 2,
