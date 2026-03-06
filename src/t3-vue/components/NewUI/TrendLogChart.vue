@@ -3569,14 +3569,65 @@
             const axisX = scale.left + pillH / 2 + 2
             const sectionH = (scale.bottom - scale.top) / unitColorGroups.length
 
-            unitColorGroups.forEach((group: any, gi: number) => {
-              // Always center each pill in its equal section of the axis height
+            // ── Step 1: compute all pill positions ──────────────────────────
+            const pills = unitColorGroups.map((group: any, gi: number) => {
               const centerY = scale.top + sectionH * (gi + 0.5)
-
               const tw = ctx.measureText(group.unit).width
               const bw = group.colors.length * (barW + barGap) - barGap
               const pillW = padX + tw + barPadL + bw + padX
+              return { group, centerY, pillW, tw }
+            })
 
+            // ── Step 2: de-overlap (push apart if too close) ─────────────────
+            const PILL_GAP = 3
+            for (let pass = 0; pass < 10; pass++) {
+              let moved = false
+              for (let i = 1; i < pills.length; i++) {
+                const prev = pills[i - 1]
+                const cur  = pills[i]
+                const minDist = prev.pillW / 2 + cur.pillW / 2 + PILL_GAP
+                const delta = cur.centerY - prev.centerY
+                if (delta < minDist) {
+                  const shift = (minDist - delta) / 2
+                  prev.centerY -= shift
+                  cur.centerY  += shift
+                  moved = true
+                }
+              }
+              if (!moved) break
+            }
+            pills.forEach(p => {
+              p.centerY = Math.max(scale.top + p.pillW / 2, Math.min(scale.bottom - p.pillW / 2, p.centerY))
+            })
+
+            // ── Step 3: draw colored range dashes + pills ────────────────────
+            const DASH_W = 5   // width of the colored min/max dash
+            const DASH_H = 2   // height of the dash
+            // Draw dashes on the RIGHT edge of the axis column (just before chart area)
+            // so they look like special tick markers, not overlapping the pills
+            const dashX = scale.right - DASH_W
+
+            pills.forEach(({ group, centerY, pillW, tw }) => {
+              const primaryColor = group.colors?.[0] || '#444444'
+
+              // ── Min / Max range dashes ──────────────────────────────────────
+              if (typeof group.vMin === 'number' && typeof group.vMax === 'number') {
+                try {
+                  const pxMax = scale.getPixelForValue(group.vMax)
+                  const pxMin = scale.getPixelForValue(group.vMin)
+                  ctx.fillStyle = primaryColor
+                  // max dash
+                  if (pxMax >= scale.top && pxMax <= scale.bottom) {
+                    ctx.fillRect(dashX, pxMax - DASH_H / 2, DASH_W, DASH_H)
+                  }
+                  // min dash
+                  if (pxMin >= scale.top && pxMin <= scale.bottom && Math.abs(pxMin - pxMax) > 4) {
+                    ctx.fillRect(dashX, pxMin - DASH_H / 2, DASH_W, DASH_H)
+                  }
+                } catch { /* skip if scale not ready */ }
+              }
+
+              // ── Rotated pill label ──────────────────────────────────────────
               ctx.save()
               ctx.translate(axisX, centerY)
               ctx.rotate(-Math.PI / 2)
@@ -3584,7 +3635,6 @@
               const px = -pillW / 2
               const py = -pillH / 2
 
-              // Pill background
               ctx.fillStyle = '#f0f0f0'
               ctx.beginPath()
               ctx.roundRect(px, py, pillW, pillH, radius)
@@ -3600,7 +3650,7 @@
 
               ctx.textBaseline = 'middle'
               ctx.textAlign = 'left'
-              ctx.fillStyle = group.colors[0] || '#444444'
+              ctx.fillStyle = primaryColor
               ctx.fillText(group.unit, px + padX, 0)
 
               let cursorX = px + padX + tw + barPadL
@@ -8616,6 +8666,8 @@
         axisUnitColorGroups.get(axisId)!.push({
           unit: u,
           colors: cols,
+          vMin:    vRange?.min,
+          vMax:    vRange?.max,
           vCenter: vRange ? (vRange.min + vRange.max) / 2 : undefined
         })
       })
@@ -8682,9 +8734,9 @@
             scales[axisId].title.unitColorGroups = axisUnitColorGroups.get(axisId) || []
           }
 
-          // Update tick colors
+          // Tick numbers always black — colored range dashes in the plugin identify each unit
           if (scales[axisId].ticks) {
-            scales[axisId].ticks.color = axisColor
+            scales[axisId].ticks.color = '#333333'
           }
 
           // Show the axis
