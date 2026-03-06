@@ -3601,8 +3601,8 @@
             })
 
             // ── Step 3: draw colored range dashes + pills ────────────────────
-            const DASH_W = 5   // width of the colored min/max dash
-            const DASH_H = 2   // height of the dash
+            const DASH_W = 7  // width of the colored min/max dash
+            const DASH_H = 3   // height of the dash
             // Draw dashes on the RIGHT edge of the axis column (just before chart area)
             // so they look like special tick markers, not overlapping the pills
             const dashX = scale.right - DASH_W
