@@ -4958,7 +4958,41 @@
               maxTicksLimit: maxTicks,
               autoSkip: false,
               callback: formatXAxisTick,
-              includeBounds: true
+              includeBounds: false // Controlled manually via afterBuildTicks
+            },
+            afterBuildTicks: (scale: any) => {
+              // Mirror the analog chart's afterBuildTicks so the digital x-axis
+              // always starts its labels from the exact window start (scale.min).
+              // Without this, unit='hour' (12h+) snaps to whole-hour boundaries and
+              // the bounds-tick gets squeezed off when scale.min is just before a boundary.
+              let stepMs: number
+              if (timeBase.value === 'custom') {
+                stepMs = tickConfig.unit === 'hour'
+                  ? tickConfig.stepMinutes * 60 * 60 * 1000
+                  : tickConfig.stepMinutes * 60 * 1000
+              } else {
+                stepMs = tickConfig.stepMinutes * 60 * 1000
+              }
+
+              const startMs = scale.min
+              const endMs = scale.max
+
+              // First tick = exact window start so the first label is always visible
+              const customTicks: Array<{value: number}> = [{ value: startMs }]
+
+              // First clean step boundary after the window start
+              const firstCleanMs = Math.ceil(startMs / stepMs) * stepMs
+
+              // Skip clean boundary if it would crowd the start label (< 25% of step away)
+              const minGapMs = stepMs * 0.25
+
+              for (let t = firstCleanMs; t <= endMs; t += stepMs) {
+                if (Math.abs(t - startMs) > minGapMs) {
+                  customTicks.push({ value: t })
+                }
+              }
+
+              scale.ticks = customTicks
             }
           },
           y: {
