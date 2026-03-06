@@ -2166,6 +2166,10 @@
   }
   */
 
+  // 🛡️ Guard flag: set true once all `const` declarations in setup have been evaluated.
+  // Watchers that can fire before setup completes (deep/immediate) must check this first.
+  let _setupComplete = false
+
   // Watch currentItemData and regenerate series when it changes
   watch(currentItemData, (newData, oldData) => {
     if (newData) {
@@ -2221,6 +2225,8 @@
 
   // Watch T3000_Data for panels data changes
   watch(() => T3000_Data.value?.panelsData, async (newPanelsData, oldPanelsData) => {
+    // 🛡️ Guard: reactive data can arrive before setup finishes initialising all consts
+    if (!_setupComplete) return
     LogUtil.Debug('🔔 T3000_Data.panelsData watcher TRIGGERED', {
       hasNewData: !!newPanelsData,
       newDataLength: newPanelsData?.length || 0,
@@ -2599,7 +2605,7 @@
         totalDataPoints: dataSeries.value.reduce((sum, series) => sum + series.data.length, 0)
       })
     }, 300) // 300ms debounce delay
-  }, { immediate: true })
+  })
 
   // Watch for device/serial number changes to reload historical data
   watch(() => T3000_Data.value?.panelsList, async (newPanelsList, oldPanelsList) => {
@@ -2966,6 +2972,55 @@
     // This prevents duplicate API calls with different trendlog IDs
     // onTimeBaseChange()
   }
+
+  // ─── localStorage view-state persistence ─────────────────────────────────────
+  // Used to suppress saveViewState during programmatic restoration (avoids double writes)
+  let _restoringViewState = false
+
+  const _viewStateKey = () => {
+    const id = (props.itemData as any)?.t3Entry?.id ?? 'default'
+    return `trendlog_view_state_${id}`
+  }
+
+  const saveViewState = () => {
+    if (_restoringViewState) return
+    try {
+      const state: Record<string, any> = {
+        timeBase: timeBase.value,
+        timeOffset: timeOffset.value,
+      }
+      if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
+        state.customStartMS = customStartDate.value.valueOf()
+        state.customEndMS = customEndDate.value.valueOf()
+      }
+      localStorage.setItem(_viewStateKey(), JSON.stringify(state))
+    } catch (_e) { /* localStorage may be unavailable in some embedded environments */ }
+  }
+
+  const loadViewState = () => {
+    try {
+      const raw = localStorage.getItem(_viewStateKey())
+      if (!raw) return
+      const state = JSON.parse(raw)
+      _restoringViewState = true
+      if (state.timeBase && state.timeBase !== 'custom') {
+        timeBase.value = state.timeBase
+      } else if (state.timeBase === 'custom' && state.customStartMS && state.customEndMS) {
+        customStartDate.value = dayjs(state.customStartMS)
+        customEndDate.value = dayjs(state.customEndMS)
+        customStartTime.value = dayjs(state.customStartMS)
+        customEndTime.value = dayjs(state.customEndMS)
+        timeBase.value = 'custom'
+        isRealTime.value = false
+      }
+      if (typeof state.timeOffset === 'number') {
+        timeOffset.value = state.timeOffset
+      }
+      LogUtil.Info('📦 TrendLogChart: View state restored from localStorage', state)
+    } catch (_e) { /* Malformed state — ignore */ }
+    _restoringViewState = false
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
 
   // Series control computed properties
   const hasEnabledSeries = computed(() => {
@@ -10355,6 +10410,7 @@
       timeBase.value = 'custom'
       isRealTime.value = false // Disable Auto Scroll for custom date ranges (historical data)
       customDateModalVisible.value = false
+      saveViewState() // 🆕 Persist custom date range to localStorage
       onCustomDateChange()
     } else {
       LogUtil.Warn('Custom date range incomplete - missing start or end date/time')
@@ -12375,6 +12431,15 @@
 
   // Expose diagnostic function globally for console debugging
 
+  // Persist view state whenever timeBase or timeOffset changes.
+  // Registered here (after all const declarations) so timeOffset and saveViewState are
+  // both fully initialised — registering them earlier causes TDZ ReferenceErrors.
+  watch(timeBase, () => saveViewState())
+  watch(timeOffset, () => saveViewState())
+
+  // All const declarations above are now initialised — safe for watched callbacks to proceed
+  _setupComplete = true
+
   // Lifecycle
   onMounted(async () => {
     try {
@@ -12815,6 +12880,8 @@
       // NOTE: Only initialize if series don't already exist (from panelsData watcher)
       if (dataSeries.value.length === 0) {
         LogUtil.Info('🔍 STEP 3: Loading historical and real-time data')
+        // 🆕 Restore saved view state (timeBase, timeOffset) from localStorage before loading data
+        loadViewState()
         await initializeData()
         LogUtil.Info('🔍 STEP 4: Data initialization completed', {
           dataSeriesCount: dataSeries.value.length,
@@ -12825,6 +12892,8 @@
           dataSeriesCount: dataSeries.value.length,
           seriesWithData: dataSeries.value.filter(s => s.data && s.data.length > 0).length
         })
+        // 🆕 Still restore saved view state even when data was pre-loaded
+        loadViewState()
       }
 
       if (isRealTime.value) {
