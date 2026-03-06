@@ -3570,18 +3570,8 @@
             const sectionH = (scale.bottom - scale.top) / unitColorGroups.length
 
             unitColorGroups.forEach((group: any, gi: number) => {
-              // Position pill at the cluster center pixel, or evenly distributed as fallback
-              let centerY: number
-              if (typeof group.vCenter === 'number') {
-                try {
-                  const py0 = scale.getPixelForValue(group.vCenter)
-                  centerY = (py0 >= scale.top && py0 <= scale.bottom)
-                    ? py0
-                    : scale.top + sectionH * (gi + 0.5)
-                } catch { centerY = scale.top + sectionH * (gi + 0.5) }
-              } else {
-                centerY = scale.top + sectionH * (gi + 0.5)
-              }
+              // Always center each pill in its equal section of the axis height
+              const centerY = scale.top + sectionH * (gi + 0.5)
 
               const tw = ctx.measureText(group.unit).width
               const bw = group.colors.length * (barW + barGap) - barGap
@@ -8576,41 +8566,36 @@
       return b[1].length - a[1].length // same magnitude → more series first
     })
 
-    // Assign axes: exactly 2 left-side columns (y = col1, y1 = col2).
-    // Sort groups by series count desc, then split evenly across the 2 columns
-    // using a greedy balance: always assign the next group to the column with
-    // fewer total series so far.  Within each column, piecewise scale
-    // automatically clusters units whose value ranges are far apart (e.g. 0–25
-    // Deg.C sitting in the same column as 0–5000 Counts → two visible bands).
+    // Assign axes: each unique unit type gets its own axis slot (y, y1, y2, y3).
+    // Assign axes: 2 visible columns only (y = col1, y1 = col2).
+    // Each unique unit type is treated as its own group. Groups are distributed
+    // across the 2 columns with a greedy balance (fewest series so far wins).
+    // 2 series with the same unit (e.g. 2× Deg.C) end up in the same group →
+    // same column → shared scale.  The piecewise scale then allocates equal
+    // pixel height to each distinct value cluster, so every unit on a column
+    // gets its own visible band — height scales dynamically with how many units
+    // share that column (2 units → 50%/50%, 3 units → 33%/33%/33%, etc.)
     const axisAssignment = new Map<string, string>()
     const axisColors = new Map<string, string>()
     const axisColorsList = new Map<string, string[]>()
     const axisUnits = new Map<string, Set<string>>()
     const axisUnitColorGroups = new Map<string, Array<{unit: string, colors: string[]}>>()
 
-    // Greedy 2-column balance
+    // Greedy 2-column balance — only y and y1 are visible
     const colSeriesCount = { y: 0, y1: 0 }
 
-    sortedGroups.forEach(([groupName, items], index) => {
-      // Pick the column with fewer series so far (tie → col 1 first)
+    sortedGroups.forEach(([groupName, items]) => {
+      // Pick the column with fewer series so far (tie → col y first)
       const axisId: string = colSeriesCount.y <= colSeriesCount.y1 ? 'y' : 'y1'
       colSeriesCount[axisId as 'y' | 'y1'] += items.length
 
-      // Use the color of the FIRST series in this unit group
-      if (!axisColors.has(axisId)) {
-        axisColors.set(axisId, items[0].color)
-      }
+      // First series color is the axis representative color
+      if (!axisColors.has(axisId)) axisColors.set(axisId, items[0].color)
 
-      // Collect ALL colors for this axis
-      if (!axisColorsList.has(axisId)) {
-        axisColorsList.set(axisId, [])
-      }
+      if (!axisColorsList.has(axisId)) axisColorsList.set(axisId, [])
       items.forEach(item => axisColorsList.get(axisId)!.push(item.color))
 
-      // Collect per-unit color groups for this axis
-      if (!axisUnitColorGroups.has(axisId)) {
-        axisUnitColorGroups.set(axisId, [])
-      }
+      if (!axisUnitColorGroups.has(axisId)) axisUnitColorGroups.set(axisId, [])
       const unitColorMap = new Map<string, string[]>()
       const unitValueMap = new Map<string, { min: number, max: number }>()
       items.forEach(item => {
@@ -8635,21 +8620,14 @@
         })
       })
 
-      // Collect all unique units for this axis
-      if (!axisUnits.has(axisId)) {
-        axisUnits.set(axisId, new Set<string>())
-      }
+      if (!axisUnits.has(axisId)) axisUnits.set(axisId, new Set<string>())
       const unitSet = axisUnits.get(axisId)!
       items.forEach(item => {
         const unit = item.unit
-        if (unit && unit !== 'Unused' && unit !== 'Off') {
-          unitSet.add(unit)
-        }
+        if (unit && unit !== 'Unused' && unit !== 'Off') unitSet.add(unit)
       })
 
-      items.forEach(item => {
-        axisAssignment.set(item.series.id, axisId)
-      })
+      items.forEach(item => axisAssignment.set(item.series.id, axisId))
     })
 
     const useMultipleAxes = sortedGroups.length > 1
