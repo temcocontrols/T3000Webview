@@ -1915,9 +1915,13 @@
 
   // Chart data - T3000 mixed digital/analog series (filter out demo/placeholder data)
   const generateDataSeries = (): SeriesConfig[] => {
-    // Validate input data
-    const inputData = props.itemData?.t3Entry?.input
-    const rangeData = props.itemData?.t3Entry?.range
+    // Prefer freshMonitorData (from Action 0 response) over props.itemData (URL all_data).
+    // URL all_data can be stale if the monitor's input channels were reconfigured since the
+    // chart was last opened — freshMonitorData reflects the actual current device state.
+    const freshInput = freshMonitorData.value?.input
+    const freshRange = freshMonitorData.value?.range
+    const inputData = (freshInput?.length ? freshInput : null) ?? props.itemData?.t3Entry?.input
+    const rangeData = (freshRange?.length ? freshRange : null) ?? props.itemData?.t3Entry?.range
 
     if (!inputData?.length || !rangeData?.length) {
       return []
@@ -2028,6 +2032,11 @@
 
     return validSeries
   }
+
+  // Stores the freshest monitor config received from Action 0 response.
+  // Takes priority over props.itemData.t3Entry (URL all_data) which may be stale
+  // if the user reconfigured the monitor's input channels since opening the chart.
+  const freshMonitorData = ref<any>(null)
 
   const dataSeries = ref<SeriesConfig[]>([])
 
@@ -2158,8 +2167,24 @@
   */
 
   // Watch currentItemData and regenerate series when it changes
-  watch(currentItemData, (newData) => {
+  watch(currentItemData, (newData, oldData) => {
     if (newData) {
+      // Detect a trendlog switch: different monitor id or different panel id
+      // When the trendlog changes we must discard ALL stale series immediately so they
+      // don't bleed into the new trendlog via the intelligent-merge key matching.
+      const newMonitorId = (newData as any)?.t3Entry?.id
+      const oldMonitorId = (oldData as any)?.t3Entry?.id
+      const newPid = (newData as any)?.t3Entry?.pid
+      const oldPid = (oldData as any)?.t3Entry?.pid
+
+      if (oldData && (newMonitorId !== oldMonitorId || newPid !== oldPid)) {
+        LogUtil.Info('🔄 currentItemData watcher: Trendlog switched — clearing stale series', {
+          from: `${oldMonitorId} (pid ${oldPid})`,
+          to: `${newMonitorId} (pid ${newPid})`
+        })
+        dataSeries.value = []
+      }
+
       // debugDataSeriesFlow('Before currentItemData regeneration')
       regenerateDataSeries()
       // debugDataSeriesFlow('After currentItemData regeneration')
@@ -4073,11 +4098,9 @@
           }
         })(),
         y: {
-          type: 'piecewise' as const,
+          type: 'linear' as const,
           display: true,
           position: 'left' as const,
-          stack: 'y-axis' as const,
-          stackWeight: 1,
           title: {
             display: false, // Plugin renders with background
             text: '', // Will be set dynamically
@@ -4099,7 +4122,7 @@
               size: 10,
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
-            padding: 4,
+            padding: 2,
             autoSkip: true,
             maxTicksLimit: 20,
             align: 'end',
@@ -4123,7 +4146,8 @@
             })
           },
           afterFit: function(scale: any) {
-            scale.width = 55
+            if (scale.display === false) { scale.width = 0; return }
+            scale.width = 42
           },
           // 🆕 ENHANCED: Smart Y-axis scaling (axis assignment done in updateAnalogChart)
           afterDataLimits: function (scale: any) {
@@ -4168,35 +4192,24 @@
               scale.min = center - expandedRange / 2
               scale.max = center + expandedRange / 2
             } else {
-              // 2% padding — keeps scale boundary close to actual data.
-              // Piecewise clusters add their own tight per-cluster padding,
-              // so a large outer margin here only bloats totalRange and can
-              // cause the gap-detection threshold to miss real cluster gaps.
+              // Small padding so the axis min/max sit very close to actual data.
               const padding = range * 0.02
               scale.min = min - padding
               scale.max = max + padding
             }
 
             const newRange = scale.max - scale.min
-            scale.options._pwClusters = computePwClusters(allValues, newRange, scale.min, scale.max)
-            scale.options._pwDistinct = scale.options._pwClusters
-              ? computePwDistinct(scale.options._pwClusters, allValues)
-              : null
-            if (!scale.options._pwClusters) {
-              const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
-              const step = niceSteps.find(s => s >= newRange / 10) || 1
-              scale.options.ticks.stepSize = step
-              scale.options.ticks.maxTicksLimit = Math.ceil(newRange / step) + 2
-            }
+            const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
+            const step = niceSteps.find(s => s >= newRange / 10) || 1
+            scale.options.ticks.stepSize = step
+            scale.options.ticks.maxTicksLimit = Math.ceil(newRange / step) + 2
           }
         },
-        // 🆕 Y1 axis (left side, 2nd unit type)
+        // Y1 axis (left side, 2nd value-range group)
         y1: {
-          type: 'piecewise' as const,
+          type: 'linear' as const,
           display: true,
           position: 'left' as const,
-          stack: 'y-axis' as const,
-          stackWeight: 1,
           grid: {
             color: showGrid.value ? '#e0e0e0' : 'transparent',
             display: showGrid.value,
@@ -4218,7 +4231,7 @@
               size: 10,
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
-            padding: 4,
+            padding: 2,
             autoSkip: true,
             maxTicksLimit: 20,
             align: 'end',
@@ -4237,7 +4250,8 @@
             })
           },
           afterFit: function(scale: any) {
-            scale.width = 55
+            if (scale.display === false) { scale.width = 0; return }
+            scale.width = 42
           },
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
@@ -4245,7 +4259,6 @@
 
             if (y1Datasets.length === 0) {
               scale.display = false
-              scale.options.stackWeight = 0.001
               return
             }
 
@@ -4269,7 +4282,6 @@
 
             if (allValues.length === 0) {
               scale.display = false
-              scale.options.stackWeight = 0.001
               return
             }
 
@@ -4292,25 +4304,17 @@
             }
 
             const newRange = scale.max - scale.min
-            scale.options._pwClusters = computePwClusters(allValues, newRange, scale.min, scale.max)
-            scale.options._pwDistinct = scale.options._pwClusters
-              ? computePwDistinct(scale.options._pwClusters, allValues)
-              : null
-            if (!scale.options._pwClusters) {
-              const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
-              const step = niceSteps.find(s => s >= newRange / 10) || 1
-              scale.options.ticks.stepSize = step
-              scale.options.ticks.maxTicksLimit = Math.ceil(newRange / step) + 2
-            }
+            const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
+            const step = niceSteps.find(s => s >= newRange / 10) || 1
+            scale.options.ticks.stepSize = step
+            scale.options.ticks.maxTicksLimit = Math.ceil(newRange / step) + 2
           }
         },
-        // 🆕 Y2 axis (left side, 3rd unit type)
+        // Y2 axis (left side, 3rd value-range group)
         y2: {
-          type: 'piecewise' as const,
+          type: 'linear' as const,
           display: true,
           position: 'left' as const,
-          stack: 'y-axis' as const,
-          stackWeight: 1,
           grid: {
             color: showGrid.value ? '#e0e0e0' : 'transparent',
             display: showGrid.value,
@@ -4332,7 +4336,7 @@
               size: 10,
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
-            padding: 4,
+            padding: 2,
             autoSkip: true,
             maxTicksLimit: 20,
             align: 'end',
@@ -4351,7 +4355,8 @@
             })
           },
           afterFit: function(scale: any) {
-            scale.width = 55
+            if (scale.display === false) { scale.width = 0; return }
+            scale.width = 42
           },
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
@@ -4359,7 +4364,6 @@
 
             if (y2Datasets.length === 0) {
               scale.display = false
-              scale.options.stackWeight = 0.001
               return
             }
 
@@ -4382,7 +4386,6 @@
 
             if (allValues.length === 0) {
               scale.display = false
-              scale.options.stackWeight = 0.001
               return
             }
 
@@ -4405,25 +4408,17 @@
             }
 
             const newRange = scale.max - scale.min
-            scale.options._pwClusters = computePwClusters(allValues, newRange, scale.min, scale.max)
-            scale.options._pwDistinct = scale.options._pwClusters
-              ? computePwDistinct(scale.options._pwClusters, allValues)
-              : null
-            if (!scale.options._pwClusters) {
-              const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
-              const step = niceSteps.find(s => s >= newRange / 10) || 1
-              scale.options.ticks.stepSize = step
-              scale.options.ticks.maxTicksLimit = Math.ceil(newRange / step) + 2
-            }
+            const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
+            const step = niceSteps.find(s => s >= newRange / 10) || 1
+            scale.options.ticks.stepSize = step
+            scale.options.ticks.maxTicksLimit = Math.ceil(newRange / step) + 2
           }
         },
-        // 🆕 Y3 axis (left side, 4th unit type)
+        // Y3 axis (left side, 4th value-range group)
         y3: {
-          type: 'piecewise' as const,
+          type: 'linear' as const,
           display: true,
           position: 'left' as const,
-          stack: 'y-axis' as const,
-          stackWeight: 1,
           grid: {
             color: showGrid.value ? '#e0e0e0' : 'transparent',
             display: showGrid.value,
@@ -4445,7 +4440,7 @@
               size: 10,
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
-            padding: 4,
+            padding: 2,
             autoSkip: true,
             maxTicksLimit: 20,
             align: 'end',
@@ -4464,7 +4459,8 @@
             })
           },
           afterFit: function(scale: any) {
-            scale.width = 55
+            if (scale.display === false) { scale.width = 0; return }
+            scale.width = 42
           },
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
@@ -4472,7 +4468,6 @@
 
             if (y3Datasets.length === 0) {
               scale.display = false
-              scale.options.stackWeight = 0.001
               return
             }
 
@@ -4495,7 +4490,6 @@
 
             if (allValues.length === 0) {
               scale.display = false
-              scale.options.stackWeight = 0.001
               return
             }
 
@@ -4517,17 +4511,11 @@
               scale.max = max + padding
             }
 
-            const newRange = scale.max - scale.min
-            scale.options._pwClusters = computePwClusters(allValues, newRange, scale.min, scale.max)
-            scale.options._pwDistinct = scale.options._pwClusters
-              ? computePwDistinct(scale.options._pwClusters, allValues)
-              : null
-            if (!scale.options._pwClusters) {
-              const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
-              const step = niceSteps.find(s => s >= newRange / 10) || 1
-              scale.options.ticks.stepSize = step
-              scale.options.ticks.maxTicksLimit = Math.ceil(newRange / step) + 2
-            }
+            const newRange2 = scale.max - scale.min
+            const niceSteps2 = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
+            const step2 = niceSteps2.find(s => s >= newRange2 / 10) || 1
+            scale.options.ticks.stepSize = step2
+            scale.options.ticks.maxTicksLimit = Math.ceil(newRange2 / step2) + 2
           }
         }
       }
@@ -8574,20 +8562,17 @@
       unitGroups[item.unitGroup].push(item)
     })
 
-    // Sort groups by count (most series first) then by total range
+    // Sort unit groups: most series first, then by total value range.
+    // Up to 4 groups map to y, y1, y2, y3 — each a plain linear axis.
     const sortedGroups = Object.entries(unitGroups).sort((a, b) => {
-      // First by count
-      if (b[1].length !== a[1].length) {
-        return b[1].length - a[1].length
-      }
-      // Then by range
+      if (b[1].length !== a[1].length) return b[1].length - a[1].length
       const rangeA = Math.max(...a[1].map(i => i.max)) - Math.min(...a[1].map(i => i.min))
       const rangeB = Math.max(...b[1].map(i => i.max)) - Math.min(...b[1].map(i => i.min))
       return rangeB - rangeA
     })
 
     // Assign axes by unit group: up to 4 axes (y, y1, y2, y3) ALL ON LEFT SIDE.
-    // Value-cluster separation is handled inside each axis by PiecewiseLinearScale.
+    // Each axis is a plain linear scale — no piecewise, no cluster gaps.
     const axisAssignment = new Map<string, string>()
     const axisColors = new Map<string, string>()
     const axisColorsList = new Map<string, string[]>()
@@ -8595,14 +8580,11 @@
     const axisUnitColorGroups = new Map<string, Array<{unit: string, colors: string[]}>>()
 
     sortedGroups.forEach(([groupName, items], index) => {
-      const axisId = index === 0 ? 'y' :
-                     index === 1 ? 'y1' :
-                     index === 2 ? 'y2' : 'y3'
+      const axisId = index === 0 ? 'y' : 'y1' // max 2 visible Y-axis columns
 
-      // 🎨 KEY: Use the color of the FIRST series in this unit group
+      // Use the color of the FIRST series in this unit group
       if (!axisColors.has(axisId)) {
-        const firstSeriesColor = items[0].color
-        axisColors.set(axisId, firstSeriesColor)
+        axisColors.set(axisId, items[0].color)
       }
 
       // Collect ALL colors for this axis
@@ -8646,15 +8628,19 @@
 
     const useMultipleAxes = sortedGroups.length > 1
 
-    // 🐛 DEBUG: Log unit-based axis assignments with colors
-    LogUtil.Info('📊 Unit-based axis assignments with color matching:', {
+    // 🐛 DEBUG: Log unit-based axis assignments
+    LogUtil.Info('📊 Unit-based axis assignments:', {
       useMultipleAxes,
       unitGroupCount: sortedGroups.length,
-      unitGroups: sortedGroups.map(([groupName, items]) => ({
+      unitGroups: sortedGroups.map(([groupName, items], i) => ({
+        axisId: i === 0 ? 'y' : 'y1',
         groupName,
         seriesCount: items.length,
         unit: items[0].unit,
-        firstSeriesColor: items[0].color
+        valueRange: [
+          Math.min(...items.map(s => s.min)),
+          Math.max(...items.map(s => s.max))
+        ]
       })),
       assignments: Array.from(axisAssignment.entries()).map(([id, axis]) => {
         const series = visibleAnalog.find(s => s.id === id)
@@ -8670,7 +8656,7 @@
         axisId,
         unit,
         color: axisColors.get(axisId),
-        position: 'left' // All axes on left side
+        position: 'left'
       }))
     })
 
@@ -8697,18 +8683,16 @@
             scales[axisId].ticks.color = axisColor
           }
 
-          // Show the axis — stackWeight will be set dynamically below from data ranges
+          // Show the axis
           scales[axisId].display = true
         }
       })
 
-      // Hide axes that aren't being used; use a near-zero stackWeight so
-      // Chart.js doesn't allocate height for them while avoiding division-by-zero
+      // Hide axes that aren't being used
       const allAxes = ['y', 'y1', 'y2', 'y3']
       allAxes.forEach(axisId => {
         if (scales[axisId] && !axisUnits.has(axisId)) {
           scales[axisId].display = false
-          scales[axisId].stackWeight = 0.001
           if (scales[axisId].title) {
             scales[axisId].title.text = ''
           }
@@ -8997,46 +8981,6 @@
         display: showGrid.value,
         lineWidth: 1
       }
-    }
-
-    // 🆕 Dynamic stackWeight: set strip heights proportional to each axis's value range.
-    // Algorithm:
-    //   1. Compute the data range (max - min) for every visible axis from its datasets.
-    //   2. Find the largest range across all visible axes.
-    //   3. Assign weight = MIN_W + (MAX_W - MIN_W) * (axisRange / maxRange)
-    //      → every visible strip gets at least MIN_W height; the widest-range strip gets MAX_W.
-    // This prevents small-range axes being squashed when sharing space with large-range axes.
-    if (analogChartInstance?.options?.scales) {
-      const scales = analogChartInstance.options.scales as any
-      const axisIds = ['y', 'y1', 'y2', 'y3']
-      const MIN_W = 2   // minimum strip height weight (every visible axis)
-      const MAX_W = 5   // maximum strip height weight
-
-      // Pass 1: collect ranges
-      const axisRanges = new Map<string, number>()
-      axisIds.forEach(axisId => {
-        if (!scales[axisId] || scales[axisId].display === false) return
-        const axisDatasets = (analogChartInstance!.data.datasets as any[]).filter(
-          ds => (ds.yAxisID || 'y') === axisId
-        )
-        if (axisDatasets.length === 0) return
-        const allVals: number[] = []
-        axisDatasets.forEach(ds => {
-          ds.data.forEach((pt: any) => {
-            if (pt && typeof pt.y === 'number' && isFinite(pt.y)) allVals.push(pt.y)
-          })
-        })
-        if (allVals.length === 0) return
-        const dataRange = Math.max(...allVals) - Math.min(...allVals)
-        axisRanges.set(axisId, Math.max(dataRange, 1)) // floor at 1 to avoid /0
-      })
-
-      // Pass 2: assign proportional weights
-      const maxRange = Math.max(...Array.from(axisRanges.values()), 1)
-      axisRanges.forEach((range, axisId) => {
-        const weight = MIN_W + (MAX_W - MIN_W) * (range / maxRange)
-        scales[axisId].stackWeight = Math.round(weight * 10) / 10 // 1 decimal precision
-      })
     }
 
     // 🆕 FIX: Final safety check before update operations
@@ -12504,6 +12448,76 @@
                 `\n  Action0 MON    → hour=${matchingMonitor.hour_interval_time} min=${matchingMonitor.minute_interval_time} sec=${matchingMonitor.second_interval_time}` +
                 `\n  RESOLVED (props wins via ??) → hour=${resolvedHour} min=${resolvedMinute} sec=${resolvedSecond}`
               )
+
+              // 🔥 Store fresh monitor data — input/range from Action 0 take priority over
+              // stale URL all_data so generateDataSeries() builds the correct series list.
+              freshMonitorData.value = matchingMonitor
+              LogUtil.Info('🔄 freshMonitorData set from Action 0 response', {
+                monitorId: matchingMonitor.id,
+                pid: matchingMonitor.pid,
+                inputCount: matchingMonitor.input?.length || 0,
+                sampleInputPanels: matchingMonitor.input?.slice(0, 3).map((i: any) => i.panel)
+              })
+
+              // 🆕 Fetch data for any foreign panels referenced by this monitor's inputs.
+              // Example: MON1 lives on panel 144 but its inputs belong to panel 11 —
+              // IndexPage only called Action 0 for panel 144, so panel 11 is missing from
+              // T3000_Data.panelsData. Without it, getDeviceDescription() returns '' and every
+              // series gets filtered out.
+              const inputPanelIds: number[] = [...new Set(
+                (matchingMonitor.input || [])
+                  .map((i: any) => i.panel)
+                  .filter((pid: number) => pid && pid !== 0 && pid !== urlPanelId)
+              )]
+              if (inputPanelIds.length > 0) {
+                LogUtil.Info('📡 Fetching data for foreign panels referenced by monitor inputs', { inputPanelIds })
+                Promise.all(inputPanelIds.map(async (pid: number) => {
+                  const resp = await ffiApi.ffiGetPanelData(pid)
+                  if (resp?.error || !resp?.data?.length) {
+                    // Panel is offline or returned no data
+                    LogUtil.Warn('⚠️ Foreign panel offline or no data – cannot fetch items', { pid, error: resp?.error })
+                    return false
+                  }
+                  // Merge foreign panel items directly into T3000_Data.panelsData so
+                  // getDeviceDescription() can find them immediately on next regeneration.
+                  const existing: any[] = T3000_Data.value.panelsData || []
+                  const newItems = (resp.data as any[]).filter(
+                    item => !existing.find((e: any) => e.pid === item.pid && e.id === item.id)
+                  )
+                  if (newItems.length) {
+                    T3000_Data.value.panelsData = [...existing, ...newItems]
+                    LogUtil.Info('✅ Merged foreign panel data into panelsData', { pid, newItemsCount: newItems.length })
+                  }
+                  return true
+                }))
+                  .then((results: boolean[]) => {
+                    const offlinePanels = results.filter(r => r === false).length
+                    if (offlinePanels > 0) {
+                      // Some/all foreign panels are offline — freshMonitorData inputs can't be resolved.
+                      // Clear freshMonitorData so generateDataSeries falls back to URL props data (all_data).
+                      freshMonitorData.value = null
+                      if (dataSeries.value.length > 0) {
+                        // We already have working series from URL data — keep them, skip regeneration.
+                        LogUtil.Warn('⚠️ Foreign panels offline – keeping existing working series to avoid blank chart', {
+                          inputPanelIds, offlinePanels, existingSeriesCount: dataSeries.value.length
+                        })
+                      } else {
+                        // No existing series — regenerate using URL fallback (freshMonitorData now null).
+                        LogUtil.Warn('⚠️ Foreign panels offline – falling back to URL all_data for series generation', {
+                          inputPanelIds, offlinePanels
+                        })
+                        regenerateDataSeries()
+                      }
+                      return
+                    }
+                    LogUtil.Info('✅ All foreign panel data fetched, regenerating series', { inputPanelIds })
+                    regenerateDataSeries()
+                  })
+                  .catch(err => LogUtil.Warn('⚠️ Foreign panel data fetch failed', err))
+              } else {
+                // All inputs on same panel — regenerate now with panelsData already available
+                regenerateDataSeries()
+              }
 
               const tempMonitorConfig = {
                 hour_interval_time: resolvedHour,
