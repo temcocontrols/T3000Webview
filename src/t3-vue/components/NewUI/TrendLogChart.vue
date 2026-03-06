@@ -3557,73 +3557,73 @@
 
             // Layout constants
             const pillH = 15
-            const padX = 5
+            const padX = 4
             const barW = 5
             const barGap = 2
-            const barPadL = 3   // gap between unit text and its bars
-            const groupGap = 6  // gap between unit groups
+            const barPadL = 3
             const radius = 3
 
             ctx.save()
             ctx.font = 'bold 9px Inter, sans-serif'
 
-            // Calculate total pill width
-            let totalInnerW = 0
-            unitColorGroups.forEach((group, gi) => {
+            const axisX = scale.left + pillH / 2 + 2
+            const sectionH = (scale.bottom - scale.top) / unitColorGroups.length
+
+            unitColorGroups.forEach((group: any, gi: number) => {
+              // Position pill at the cluster center pixel, or evenly distributed as fallback
+              let centerY: number
+              if (typeof group.vCenter === 'number') {
+                try {
+                  const py0 = scale.getPixelForValue(group.vCenter)
+                  centerY = (py0 >= scale.top && py0 <= scale.bottom)
+                    ? py0
+                    : scale.top + sectionH * (gi + 0.5)
+                } catch { centerY = scale.top + sectionH * (gi + 0.5) }
+              } else {
+                centerY = scale.top + sectionH * (gi + 0.5)
+              }
+
               const tw = ctx.measureText(group.unit).width
               const bw = group.colors.length * (barW + barGap) - barGap
-              totalInnerW += tw + barPadL + bw
-              if (gi < unitColorGroups.length - 1) totalInnerW += groupGap
-            })
-            const pillW = padX + totalInnerW + padX
+              const pillW = padX + tw + barPadL + bw + padX
 
-            // Position: centered on the axis, rotated 90°
-            const centerY = (scale.top + scale.bottom) / 2
-            const x = scale.left + pillH / 2 + 2
+              ctx.save()
+              ctx.translate(axisX, centerY)
+              ctx.rotate(-Math.PI / 2)
 
-            ctx.translate(x, centerY)
-            ctx.rotate(-Math.PI / 2)
+              const px = -pillW / 2
+              const py = -pillH / 2
 
-            const px = -pillW / 2
-            const py = -pillH / 2
+              // Pill background
+              ctx.fillStyle = '#f0f0f0'
+              ctx.beginPath()
+              ctx.roundRect(px, py, pillW, pillH, radius)
+              ctx.fill()
+              ctx.strokeStyle = 'rgba(0,0,0,0.12)'
+              ctx.lineWidth = 0.5
+              ctx.stroke()
 
-            // Draw pill background
-            ctx.fillStyle = '#f0f0f0'
-            ctx.beginPath()
-            ctx.roundRect(px, py, pillW, pillH, radius)
-            ctx.fill()
-            ctx.strokeStyle = 'rgba(0,0,0,0.12)'
-            ctx.lineWidth = 0.5
-            ctx.stroke()
+              ctx.save()
+              ctx.beginPath()
+              ctx.roundRect(px, py, pillW, pillH, radius)
+              ctx.clip()
 
-            // Clip all drawing to pill shape
-            ctx.save()
-            ctx.beginPath()
-            ctx.roundRect(px, py, pillW, pillH, radius)
-            ctx.clip()
-
-            ctx.textBaseline = 'middle'
-            ctx.textAlign = 'left'
-
-            let cursorX = px + padX
-            unitColorGroups.forEach((group, gi) => {
-              // Draw unit label
+              ctx.textBaseline = 'middle'
+              ctx.textAlign = 'left'
               ctx.fillStyle = group.colors[0] || '#444444'
-              ctx.fillText(group.unit, cursorX, 0)
-              cursorX += ctx.measureText(group.unit).width + barPadL
+              ctx.fillText(group.unit, px + padX, 0)
 
-              // Draw color bars for this unit
+              let cursorX = px + padX + tw + barPadL
               group.colors.forEach((col: string, ci: number) => {
                 ctx.fillStyle = col
                 ctx.fillRect(cursorX + ci * (barW + barGap), py + 2, barW, pillH - 4)
               })
-              cursorX += group.colors.length * (barW + barGap) - barGap
 
-              if (gi < unitColorGroups.length - 1) cursorX += groupGap
+              ctx.restore() // clip
+              ctx.restore() // transform
             })
 
-            ctx.restore() // remove clip
-            ctx.restore() // remove transform
+            ctx.restore() // outer save
           })
         }
       },
@@ -8527,66 +8527,11 @@
       color: string
     }[] = []
 
-    // Helper: Normalize units into groups
+    // Helper: Exact unit key — each distinct unit gets its own axis slot.
+    // Only normalises whitespace and case so "Deg.C" and "deg.c" don't split.
     const normalizeUnitGroup = (unit: string): string => {
       if (!unit || unit === 'Unused' || unit === 'Off') return 'dimensionless'
-
-      const unitLower = unit.toLowerCase()
-
-      // Temperature group
-      if (unitLower.includes('deg') || unitLower.includes('°') ||
-          unitLower.includes('f') || unitLower.includes('c') ||
-          unitLower.includes('temp')) {
-        return 'temperature'
-      }
-
-      // Electrical - Voltage
-      if (unitLower.includes('volt') || unitLower.includes('v') || unitLower === 'mv') {
-        return 'voltage'
-      }
-
-      // Electrical - Current
-      if (unitLower.includes('amp') || unitLower.includes('ma') || unitLower.includes('a')) {
-        return 'current'
-      }
-
-      // Electrical - Power
-      if (unitLower.includes('watt') || unitLower.includes('w') ||
-          unitLower.includes('kw') || unitLower.includes('mw')) {
-        return 'power'
-      }
-
-      // Pressure
-      if (unitLower.includes('pa') || unitLower.includes('psi') ||
-          unitLower.includes('bar') || unitLower.includes('pressure')) {
-        return 'pressure'
-      }
-
-      // Air Quality / Flow
-      if (unitLower.includes('ppm') || unitLower.includes('ppb') ||
-          unitLower.includes('co2') || unitLower.includes('voc') ||
-          unitLower.includes('fps') || unitLower.includes('fpm') ||
-          unitLower.includes('cfm')) {
-        return 'airquality'
-      }
-
-      // Humidity
-      if (unitLower.includes('rh') || unitLower.includes('humid') || unitLower.includes('%rh')) {
-        return 'humidity'
-      }
-
-      // Percentage
-      if (unitLower === '%' || unitLower === 'percent') {
-        return 'percentage'
-      }
-
-      // Frequency
-      if (unitLower.includes('hz') || unitLower.includes('hertz')) {
-        return 'frequency'
-      }
-
-      // Default: use the unit itself as group
-      return unit.toLowerCase().replace(/[^a-z0-9]/g, '')
+      return unit.trim().toLowerCase()
     }
 
     // Analyze all series
@@ -8617,25 +8562,39 @@
       unitGroups[item.unitGroup].push(item)
     })
 
-    // Sort unit groups: most series first, then by total value range.
-    // Up to 4 groups map to y, y1, y2, y3 — each a plain linear axis.
+    // Sort unit groups by value-range CENTER (log scale), so units of similar
+    // magnitude end up adjacent and the greedy 2-column balance keeps them
+    // together.  e.g. Deg.C(~20) and %(~50) stay near each other;
+    // Counts(~2500) and Volts(~120) stay near each other.
+    // Tiebreak by series count desc so busier groups come first.
     const sortedGroups = Object.entries(unitGroups).sort((a, b) => {
-      if (b[1].length !== a[1].length) return b[1].length - a[1].length
-      const rangeA = Math.max(...a[1].map(i => i.max)) - Math.min(...a[1].map(i => i.min))
-      const rangeB = Math.max(...b[1].map(i => i.max)) - Math.min(...b[1].map(i => i.min))
-      return rangeB - rangeA
+      const centerA = (Math.max(...a[1].map(i => i.max)) + Math.min(...a[1].map(i => i.min))) / 2
+      const centerB = (Math.max(...b[1].map(i => i.max)) + Math.min(...b[1].map(i => i.min))) / 2
+      const logA = Math.log10(Math.max(Math.abs(centerA), 1))
+      const logB = Math.log10(Math.max(Math.abs(centerB), 1))
+      if (Math.abs(logA - logB) > 0.3) return logA - logB // different magnitude → sort ascending
+      return b[1].length - a[1].length // same magnitude → more series first
     })
 
-    // Assign axes by unit group: up to 4 axes (y, y1, y2, y3) ALL ON LEFT SIDE.
-    // Each axis is a plain linear scale — no piecewise, no cluster gaps.
+    // Assign axes: exactly 2 left-side columns (y = col1, y1 = col2).
+    // Sort groups by series count desc, then split evenly across the 2 columns
+    // using a greedy balance: always assign the next group to the column with
+    // fewer total series so far.  Within each column, piecewise scale
+    // automatically clusters units whose value ranges are far apart (e.g. 0–25
+    // Deg.C sitting in the same column as 0–5000 Counts → two visible bands).
     const axisAssignment = new Map<string, string>()
     const axisColors = new Map<string, string>()
     const axisColorsList = new Map<string, string[]>()
     const axisUnits = new Map<string, Set<string>>()
     const axisUnitColorGroups = new Map<string, Array<{unit: string, colors: string[]}>>()
 
+    // Greedy 2-column balance
+    const colSeriesCount = { y: 0, y1: 0 }
+
     sortedGroups.forEach(([groupName, items], index) => {
-      const axisId = index === 0 ? 'y' : 'y1' // max 2 visible Y-axis columns
+      // Pick the column with fewer series so far (tie → col 1 first)
+      const axisId: string = colSeriesCount.y <= colSeriesCount.y1 ? 'y' : 'y1'
+      colSeriesCount[axisId as 'y' | 'y1'] += items.length
 
       // Use the color of the FIRST series in this unit group
       if (!axisColors.has(axisId)) {
@@ -8653,15 +8612,27 @@
         axisUnitColorGroups.set(axisId, [])
       }
       const unitColorMap = new Map<string, string[]>()
+      const unitValueMap = new Map<string, { min: number, max: number }>()
       items.forEach(item => {
         const u = item.unit || ''
         if (u && u !== 'Unused' && u !== 'Off') {
           if (!unitColorMap.has(u)) unitColorMap.set(u, [])
           unitColorMap.get(u)!.push(item.color)
+          if (!unitValueMap.has(u)) unitValueMap.set(u, { min: item.min, max: item.max })
+          else {
+            const ev = unitValueMap.get(u)!
+            ev.min = Math.min(ev.min, item.min)
+            ev.max = Math.max(ev.max, item.max)
+          }
         }
       })
       unitColorMap.forEach((cols, u) => {
-        axisUnitColorGroups.get(axisId)!.push({ unit: u, colors: cols })
+        const vRange = unitValueMap.get(u)
+        axisUnitColorGroups.get(axisId)!.push({
+          unit: u,
+          colors: cols,
+          vCenter: vRange ? (vRange.min + vRange.max) / 2 : undefined
+        })
       })
 
       // Collect all unique units for this axis
@@ -8687,8 +8658,8 @@
     LogUtil.Info('📊 Unit-based axis assignments:', {
       useMultipleAxes,
       unitGroupCount: sortedGroups.length,
-      unitGroups: sortedGroups.map(([groupName, items], i) => ({
-        axisId: i === 0 ? 'y' : 'y1',
+      unitGroups: sortedGroups.map(([groupName, items]) => ({
+        axisId: axisAssignment.get(items[0].series.id) ?? '?',
         groupName,
         seriesCount: items.length,
         unit: items[0].unit,
