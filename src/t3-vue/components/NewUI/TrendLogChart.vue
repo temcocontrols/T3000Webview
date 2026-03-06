@@ -3904,7 +3904,8 @@
                 const label = point.dataset.label || ''
 
                 // Format display text - hide "Unused" unit
-                const displayText = unit === 'Unused' ? `${label}: ${value}` : `${label}: ${value} ${unit}`
+                const valueText = unit === 'Unused' ? `: ${value}` : `: ${value} ${unit}`
+                const lineColor = point.dataset.borderColor || series?.color || '#333333'
 
                 // Create individual tooltip element
                 const tooltipEl = document.createElement('div')
@@ -3915,20 +3916,19 @@
                 tooltipEl.style.transition = 'all 0.1s ease'
                 tooltipEl.style.zIndex = '1000'
 
-                // Tooltip content - compact, label with value and unit
+                // Tooltip content - label in line color, value in dark
                 tooltipEl.innerHTML = `
                   <div style="
                     background: #f5f5f5;
-                    color: #000;
-                    border: 1px solid #d9d9d9;
+                    border: 1px solid ${lineColor}44;
                     border-radius: 4px;
                     padding: 3px 6px;
-                    font-size: 10px;
+                    font-size: 9px;
                     font-weight: 500;
                     white-space: nowrap;
                     box-shadow: 0 2px 4px rgba(0,0,0,0.15);
                   ">
-                    ${displayText}
+                    <span style="color: ${lineColor}">${label}</span><span style="color: #333">${valueText}</span>
                   </div>
                 `
 
