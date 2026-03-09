@@ -62,6 +62,7 @@ import { WifiSettingsDialog } from '../components/WifiSettingsDialog';
 import { ChangeIpProgressDialog } from '../components/ChangeIpProgressDialog';
 import { NetworkHealthDialog } from '../components/NetworkHealthDialog';
 import { TimeSettingsTab } from '../components/TimeSettingsTab';
+import { DyndnsSettingsTab, type DyndnsSettings } from '../components/DyndnsSettingsTab';
 import cssStyles from './SettingsPage.module.css';
 
 // Full T3000 C++ Baudrate_Array - com_baudrate0/1/2 stores an index 0-11 into this array
@@ -437,15 +438,6 @@ interface TimeSettings {
   Start_Day?: number;
   End_Month?: number;
   End_Day?: number;
-}
-
-interface DyndnsSettings {
-  Enable_DynDNS?: number;
-  DynDNS_Provider?: number;
-  DynDNS_User?: string;
-  DynDNS_Pass?: string;
-  DynDNS_Domain?: string;
-  DynDNS_Update_Time?: number;
 }
 
 interface HardwareInfo {
@@ -1693,83 +1685,13 @@ export const SettingsPage: React.FC = () => {
 
       case 'dyndns':
         return (
-          <>
-            <div className={styles.section}>
-              <div className={styles.sectionTitle}>Dynamic DNS Configuration</div>
-              <Field label="Enable DynDNS">
-                <Switch
-                  checked={dyndnsSettings.Enable_DynDNS === 2}
-                  onChange={(_, data) => {
-                    const v = data.checked ? 2 : 1;
-                    setDyndnsSettings({ ...dyndnsSettings, Enable_DynDNS: v });
-                    updateSettings({ en_dyndns: v });
-                  }}
-                />
-              </Field>
-
-              {dyndnsSettings.Enable_DynDNS === 2 && (
-                <div className={styles.formGrid}>
-                  <Field label="Provider">
-                    <Dropdown
-                      value={String(dyndnsSettings.DynDNS_Provider ?? 0)}
-                      onOptionSelect={(_, data) => {
-                        const v = Number(data.optionValue);
-                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_Provider: v });
-                        updateSettings({ dyndns_provider: v });
-                      }}
-                    >
-                      <Option value="0">3322.org</Option>
-                      <Option value="1">DynDNS.com</Option>
-                      <Option value="2">No-IP.com</Option>
-                    </Dropdown>
-                  </Field>
-                  <Field label="Update Interval (minutes)">
-                    <Input
-                      type="number"
-                      value={String(dyndnsSettings.DynDNS_Update_Time ?? 60)}
-                      onChange={(_, data) => {
-                        const v = Number(data.value);
-                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_Update_Time: v });
-                        updateSettings({ dyndns_update_time: v });
-                      }}
-                    />
-                  </Field>
-                  <Field label="Username">
-                    <Input
-                      value={dyndnsSettings.DynDNS_User ?? ''}
-                      onChange={(_, data) => {
-                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_User: data.value });
-                        updateSettings({ dyndns_user: data.value });
-                      }}
-                    />
-                  </Field>
-                  <Field label="Password">
-                    <Input
-                      type="password"
-                      value={dyndnsSettings.DynDNS_Pass ?? ''}
-                      onChange={(_, data) => {
-                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_Pass: data.value });
-                        updateSettings({ dyndns_pass: data.value });
-                      }}
-                    />
-                  </Field>
-                  <Field label="Domain">
-                    <Input
-                      value={dyndnsSettings.DynDNS_Domain ?? ''}
-                      onChange={(_, data) => {
-                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_Domain: data.value });
-                        updateSettings({ dyndns_domain: data.value });
-                      }}
-                    />
-                  </Field>
-                </div>
-              )}
-            </div>
-
-            <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveDyndns} className={styles.saveButton}>
-              Save DynDNS Settings
-            </Button>
-          </>
+          <DyndnsSettingsTab
+            dyndnsSettings={dyndnsSettings}
+            setDyndnsSettings={setDyndnsSettings}
+            updateSettings={updateSettings}
+            onSave={handleSaveDyndns}
+            loading={loading}
+          />
         );
 
       case 'email':
