@@ -65,6 +65,7 @@ import { TimeSettingsTab } from '../components/TimeSettingsTab';
 import { DyndnsSettingsTab, type DyndnsSettings } from '../components/DyndnsSettingsTab';
 import { EmailSettingsTab, type EmailSettings } from '../components/EmailSettingsTab';
 import { UserLoginTab, type UserLoginSettings } from '../components/UserLoginTab';
+import { ExpansionIOTab, type ExpansionIOSettings } from '../components/ExpansionIOTab';
 import cssStyles from './SettingsPage.module.css';
 
 // Full T3000 C++ Baudrate_Array - com_baudrate0/1/2 stores an index 0-11 into this array
@@ -500,6 +501,7 @@ export const SettingsPage: React.FC = () => {
     users: [],
     enable_user_list: 1,
   });
+  const [expansionSettings, setExpansionSettings] = useState<ExpansionIOSettings>({ devices: [] });
   const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo>({});
   const [featureFlags, setFeatureFlags] = useState<FeatureFlags>({
     LCD_Display: 0, // Default to LCD Always Off
@@ -974,6 +976,22 @@ export const SettingsPage: React.FC = () => {
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
       throw new Error((err as any)?.error || 'Failed to delete user');
+    }
+  };
+
+  const handleDoneExpansion = async (settings: ExpansionIOSettings) => {
+    if (!selectedDevice) throw new Error('No device selected');
+    const response = await fetch(
+      `/api/v1/devices/${selectedDevice.serialNumber}/expansion-io`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings.devices),
+      }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error((err as any)?.error || 'Failed to save expansion I/O');
     }
   };
 
@@ -1789,10 +1807,12 @@ export const SettingsPage: React.FC = () => {
 
       case 'expansion':
         return (
-          <div className={styles.infoMessage}>
-            <InfoRegular style={{ fontSize: '14px', color: '#0078d4' }} />
-            <Text style={{ fontSize: '12px' }}>Expansion I/O devices are managed through the dedicated Expansion IO page.</Text>
-          </div>
+          <ExpansionIOTab
+            expansionSettings={expansionSettings}
+            setExpansionSettings={setExpansionSettings}
+            onDone={handleDoneExpansion}
+            loading={loading}
+          />
         );
 
       default:
