@@ -41,11 +41,11 @@
         <!-- Scroll Left/Right Controls -->
         <a-flex align="center" class="control-group">
           <a-button-group size="small">
-            <a-button @click="moveTimeLeft" :disabled="!canScroll" title="Scroll Left (�?"
+            <a-button @click="moveTimeLeft" :disabled="!canScroll" title="Scroll Left (←)"
                       style="display: flex; align-items: center; justify-content: center; padding: 4px 8px;">
               <ArrowLeftOutlined style="font-size: 12px;" />
             </a-button>
-            <a-button @click="moveTimeRight" :disabled="!canScroll" title="Scroll Right (�?"
+            <a-button @click="moveTimeRight" :disabled="!canScroll" title="Scroll Right (→)"
                       style="display: flex; align-items: center; justify-content: center; padding: 4px 8px;">
               <ArrowRightOutlined style="font-size: 12px;" />
             </a-button>
@@ -55,12 +55,12 @@
         <!-- Zoom In/Out Controls -->
         <a-flex align="center" class="control-group">
           <a-button-group size="small">
-            <a-button @click="zoomIn" :disabled="!canZoomIn" title="Zoom In (�?"
+            <a-button @click="zoomIn" :disabled="!canZoomIn" title="Zoom In (↑)"
                       style="display: flex; align-items: center; gap: 4px; font-size: 11px;">
               <ArrowUpOutlined style="font-size: 12px;" />
               <span>Zoom In</span>
             </a-button>
-            <a-button @click="zoomOut" :disabled="!canZoomOut" title="Zoom Out (�?"
+            <a-button @click="zoomOut" :disabled="!canZoomOut" title="Zoom Out (↓)"
                       style="display: flex; align-items: center; gap: 4px; font-size: 11px;">
               <ArrowDownOutlined style="font-size: 12px;" />
               <span>Zoom Out</span>
@@ -1343,7 +1343,7 @@
     pointNumber?: number                // NEW: Point number for reference
     panelId?: number                    // NEW: Panel ID for reference
     id?: string                          // NEW: Full ID (e.g., IN1, OUT2, VAR3)
-    key: string                          // NEW: Unique identity key "${panelId}:${id}" �?stable across panel/point combos
+    key: string                          // NEW: Unique identity key "${panelId}:${id}" stable across panel/point combos
   }
 
   /**
@@ -1738,7 +1738,7 @@
   // Dynamic interval calculation based on T3000 monitorConfig
   const calculateT3000Interval = (monitorConfig: any): number => {
     if (!monitorConfig) {
-      LogUtil.Info('⏱️ calculateT3000Interval: no monitorConfig �?fallback 15000 ms')
+      LogUtil.Info('⏱️ calculateT3000Interval: no monitorConfig → fallback 15000 ms')
       return 15000 // Default fallback: 15 seconds
     }
 
@@ -1760,7 +1760,7 @@
 
     LogUtil.Info(
       `⏱️ calculateT3000Interval: hour=${hour_interval_time} min=${minute_interval_time} sec=${second_interval_time}` +
-      ` �?totalSeconds=${totalSeconds} �?intervalMs=${intervalMs}` +
+      ` → totalSeconds=${totalSeconds} → intervalMs=${intervalMs}` +
       (totalSeconds > 0 && totalSeconds * 1000 < 15000 ? ' (clamped to 15000 minimum)' : '')
     )
     return intervalMs
@@ -1872,7 +1872,7 @@
       return ''
     }
 
-    // Priority order: label (if not empty) �?description �?fullLabel �?command �?id
+    // Priority order: label (if not empty) → description → fullLabel → command → id
     // Use label first if it exists and is not empty, otherwise fall back to description
     const description = (device.label && device.label.trim())
       || device.description
@@ -1917,7 +1917,7 @@
   const generateDataSeries = (): SeriesConfig[] => {
     // Prefer freshMonitorData (from Action 0 response) over props.itemData (URL all_data).
     // URL all_data can be stale if the monitor's input channels were reconfigured since the
-    // chart was last opened �?freshMonitorData reflects the actual current device state.
+    // chart was last opened freshMonitorData reflects the actual current device state.
     const freshInput = freshMonitorData.value?.input
     const freshRange = freshMonitorData.value?.range
     const inputData = (freshInput?.length ? freshInput : null) ?? props.itemData?.t3Entry?.input
@@ -2008,7 +2008,7 @@
 
       // Debug logging for series creation
       if (unitType === 'digital') {
-        LogUtil.Info(`�?Digital Series Created:`, {
+        LogUtil.Info(`Digital Series Created:`, {
           name: seriesName,
           id: itemId,
           panelId: panelId,
@@ -2166,7 +2166,7 @@
   }
   */
 
-  // 🛡�?Guard flag: set true once all `const` declarations in setup have been evaluated.
+  // 🛡️Guard flag: set true once all `const` declarations in setup have been evaluated.
   // Watchers that can fire before setup completes (deep/immediate) must check this first.
   let _setupComplete = false
 
@@ -2182,7 +2182,7 @@
       const oldPid = (oldData as any)?.t3Entry?.pid
 
       if (oldData && (newMonitorId !== oldMonitorId || newPid !== oldPid)) {
-        LogUtil.Info('🔄 currentItemData watcher: Trendlog switched �?clearing stale series', {
+        LogUtil.Info('🔄 currentItemData watcher: Trendlog switched → clearing stale series', {
           from: `${oldMonitorId} (pid ${oldPid})`,
           to: `${newMonitorId} (pid ${newPid})`
         })
@@ -2225,7 +2225,7 @@
 
   // Watch T3000_Data for panels data changes
   watch(() => T3000_Data.value?.panelsData, async (newPanelsData, oldPanelsData) => {
-    // 🛡�?Guard: reactive data can arrive before setup finishes initialising all consts
+    // 🛡️Guard: reactive data can arrive before setup finishes initialising all consts
     if (!_setupComplete) return
     LogUtil.Debug('🔔 T3000_Data.panelsData watcher TRIGGERED', {
       hasNewData: !!newPanelsData,
@@ -2320,10 +2320,10 @@
         */
 
         // Filter chartDataFormat to only include chart series items.
-        // Use chartSeriesItems.some() as the single source of truth for both id AND panelId �?        // this correctly handles multi-panel monitors (e.g. pid=144 monitor watching pid=11 inputs)
+        // Use chartSeriesItems.some() as the single source of truth for both id AND panelId         // this correctly handles multi-panel monitors (e.g. pid=144 monitor watching pid=11 inputs)
         // without the previous hard `item.pid === currentPanelId` check that dropped foreign panels.
         // Build set of all serial numbers for monitored panels.
-        // Foreign panels each have their own SN �?must not restrict to currentSN alone.
+        // Foreign panels each have their own SN must not restrict to currentSN alone.
         const monitoredSerialNumbers = new Set<number>()
         if (currentSN) monitoredSerialNumbers.add(currentSN)
         chartSeriesItems.forEach(s => {
@@ -2405,7 +2405,7 @@
 
   // Watch timeBase for changes and hybrid data loading with debouncing and cancellation
   watch(timeBase, async (newTimeBase, oldTimeBase) => {
-    // 🛡�?SKIP: Custom timebase is handled by onCustomDateChange() separately
+    // 🛡️SKIP: Custom timebase is handled by onCustomDateChange() separately
     // This prevents duplicate API calls when custom date range is applied
     if (newTimeBase === 'custom') {
       LogUtil.Debug('⏭️ Skipping timebase watcher for custom - handled by onCustomDateChange()', {
@@ -2437,7 +2437,7 @@
       destroyAllCharts()
       await nextTick()
 
-      LogUtil.Info('�?Cleared custom date settings and destroyed charts, will reload data for new timebase', {
+      LogUtil.Info('✅Cleared custom date settings and destroyed charts, will reload data for new timebase', {
         timeBase: newTimeBase,
         isRealTime: isRealTime.value
       })
@@ -2977,7 +2977,7 @@
   let _restoringViewState = false
 
   const _viewStateKey = () => {
-    // props.title is already "TRL{sn}_{panelId}_{trendlogId}" �?unique per device+panel+trendlog.
+    // props.title is already "TRL{sn}_{panelId}_{trendlogId}" unique per device+panel+trendlog.
     // Fall back to combining pid + id (e.g. "144_MON1") if title is not set.
     const t3Entry = (props.itemData as any)?.t3Entry
     const key = props.title && props.title !== 'Trend Log Chart'
@@ -3021,7 +3021,7 @@
         timeOffset.value = state.timeOffset
       }
       LogUtil.Info('📦 TrendLogChart: View state restored from localStorage', state)
-    } catch (_e) { /* Malformed state �?ignore */ }
+    } catch (_e) { /* Malformed state ignore */ }
     _restoringViewState = false
   }
   // ─────────────────────────────────────────────────────────────────────────────
@@ -3181,7 +3181,7 @@
     return digitalSeriesList.value.filter(series => series.visible).length
   })
 
-  // Total counts from ALL series (not filtered by displayedSeries) �?used in the header title
+  // Total counts from ALL series (not filtered by displayedSeries) used in the header title
   const totalVisibleSeriesCount = computed(() => dataSeries.value.filter(s => s.visible).length)
   const totalSeriesCount = computed(() => dataSeries.value.length)
 
@@ -3300,12 +3300,12 @@
 
     } catch (error) {
       LogUtil.Debug('🔄 === MANUAL REFRESH ERROR ===')
-      LogUtil.Error('�?Manual refresh failed:', error)
+      LogUtil.Error('❌Manual refresh failed:', error)
       clearLoadingTimeout()
       hasConnectionError.value = true
       dataSeries.value = [] // Ensure series is cleared on error
 
-      LogUtil.Debug('�?Error state set:', {
+      LogUtil.Debug('🔍Error state set:', {
         hasConnectionError: hasConnectionError.value,
         isLoading: isLoading.value,
         analogSeriesCount: analogSeriesList.value.length,
@@ -3410,7 +3410,7 @@
         allGroups: groups.map(g => ({ unit: g.unit, axis: g.axisId, count: g.count }))
       })
 
-      // �?Draw LEFT axis units on the LEFT side (no [L] indicator)
+      // Draw LEFT axis units on the LEFT side (no [L] indicator)
       if (leftGroups.length > 0) {
         let xOffset = yScale.left
         ctx.textAlign = 'left'
@@ -3430,7 +3430,7 @@
         })
       }
 
-      // �?Draw RIGHT axis units on the RIGHT side (no [R] indicator)
+      // Draw RIGHT axis units on the RIGHT side (no [R] indicator)
       if (rightGroups.length > 0 && y1Scale && y1Scale.display !== false) {
         let xOffset = y1Scale.right
         ctx.textAlign = 'right'
@@ -3463,10 +3463,10 @@
   // Returns null when only 1 cluster is found (fall back to linear scale).
   // Detects value clusters using histogram density rather than sorted-value gaps.
   // This correctly handles continuously-transitioning series (e.g. a line that
-  // ramps from 0 �?4600 �?25000): the ramp fills all intermediate sorted values
+  // ramps from 0 → 4600 → 25000): the ramp fills all intermediate sorted values
   // and defeats gap-based detection, but the histogram shows clearly that data
-  // SPENDS most of its time near 0, near 4600 and near 25000 �?the transition
-  // bins are sparsely populated and are identified as valleys �?split points.
+  // SPENDS most of its time near 0, near 4600 and near 25000 the transition
+  // bins are sparsely populated and are identified as valleys split points.
   //
   // KEY: after finding split points via histogram, we partition the actual values
   // and build TIGHT cluster bounds (padding = 50% of the cluster's own range).
@@ -3489,15 +3489,15 @@
 
     // --- 2. Gap-based split ---
     // Split wherever two consecutive distinct values are more than GAP_THRESH apart.
-    // IMPORTANT: use the actual data span (sorted max �?sorted min), NOT the padded
-    // scale range passed in totalRange.  Scale padding can be 10�?0% of the range,
-    // which inflates the threshold and causes real gaps (e.g. 0 �?4400) to be missed.
+    // IMPORTANT: use the actual data span (sorted max sorted min), NOT the padded
+    // scale range passed in totalRange.  Scale padding can be 100% of the range,
+    // which inflates the threshold and causes real gaps (e.g. 0 4400) to be missed.
     //
     // Threshold: 35% of data span, minimum 5 absolute units.
-    // A high minimum prevents temperature-scale data (e.g. 16.1�?7.3, span 1.2)
-    // from being split into "clusters" by a 1°C gap �?which causes the piecewise
+    // A high minimum prevents temperature-scale data (e.g. 16.17.3, span 1.2)
+    // from being split into "clusters" by a 1°C gap which causes the piecewise
     // scale to stretch 0.1°C worth of ticks over the whole chart height.
-    // Genuine multi-range scenarios (humidity 40�?0 + CO2 800�?200, gap ~740) are
+    // Genuine multi-range scenarios (humidity 400 + CO2 800200, gap ~740) are
     // not affected because their gaps far exceed the 5-unit minimum.
     const dataSpan = sorted[sorted.length - 1] - sorted[0]
     const GAP_THRESH = Math.max(dataSpan * 0.35, 5)
@@ -3518,7 +3518,7 @@
       groups[g].push(v)
     }
 
-    // --- 3b. (removed) Direct pass-through �?global gap detection is sufficient ---
+    // --- 3b. (removed) Direct pass-through global gap detection is sufficient ---
     const finalGroups: number[][] = groups.filter(g => g.length > 0)
 
     // --- 4. Build cluster bounds with comfortable padding ---
@@ -3962,7 +3962,7 @@
             document.body.appendChild(timeEl)
 
             // Create individual tooltip for each data point
-            // (uniquePoints is always populated here �?we checked length above)
+            // (uniquePoints is always populated here we checked length above)
             {
               // Sort deduplicated points by Y position to handle overlaps
               const sortedPoints = [...uniquePoints].sort((a, b) => a.element.y - b.element.y)
@@ -4182,7 +4182,7 @@
             },
             afterBuildTicks: (scale: any) => {
               // Calculate stepMs correctly:
-              // - Standard timebases (5m�?d): tickConfig.stepMinutes is always in minutes
+              // - Standard timebases (5md): tickConfig.stepMinutes is always in minutes
               // - Custom with unit='hour': getCustomTickConfig returns stepSize in HOURS, not minutes
               let stepMs: number
               if (timeBase.value === 'custom') {
@@ -4242,19 +4242,20 @@
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
             padding: 2,
-            autoSkip: true,
+            autoSkip: false, // We set stepSize + maxTicksLimit ourselves; don't let Chart.js skip
             maxTicksLimit: 20,
             align: 'end',
             // stepSize will be calculated dynamically in afterDataLimits
             callback: function (value: any) {
               const v = Number(value)
               const stepSize = (this as any).options?.ticks?.stepSize ?? 1
-              if (stepSize < 1) return v.toFixed(1).padStart(6, ' ')
-              return Math.round(v).toString().padStart(5, ' '); // Fixed width for alignment
+              const decimals = stepSize < 1 ? Math.max(1, Math.ceil(-Math.log10(stepSize))) : 0
+              if (decimals > 0) return v.toFixed(decimals).padStart(6, ' ')
+              return Math.round(v).toString().padStart(5, ' ') // Fixed width for alignment
             }
           },
           // Only prune ticks in dead-zone gaps between piecewise clusters.
-          // Boundary ticks at scale.min/max are preserved �?they anchor top/bottom gridlines.
+          // Boundary ticks at scale.min/max are preserved they anchor top/bottom gridlines.
           afterBuildTicks: function(scale: any) {
             const eps = (scale.max - scale.min) * 0.001
             const pwC: Array<{vMin: number; vMax: number}> | null = scale.options._pwClusters ?? null
@@ -4283,7 +4284,7 @@
             const yDatasets = data.filter((ds: any) => !ds.yAxisID || ds.yAxisID === 'y')
             if (yDatasets.length === 0) return
 
-            // Get all values for left Y-axis �?only from the currently visible x range
+            // Get all values for left Y-axis only from the currently visible x range
             // so the y-axis rescales dynamically on zoom / pan / time-base change.
             // Use analogXWindow (maintained by pan/zoom/update handlers) instead of
             // xScale.min/max, which may not be finalized yet when y-scale hooks fire.
@@ -4312,19 +4313,31 @@
             const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
             const step = niceSteps.find(s => s >= Math.max(dRange, 0.001) / 8) ?? niceSteps[niceSteps.length - 1]
 
-            // Snap scale boundaries to step grid so ticks land exactly at min/max
-            let sMin = Math.floor(dMin / step) * step
-            let sMax = Math.ceil(dMax / step) * step
+            // Use integer step counts to avoid FP accumulation (critical for flat-line data).
+            // e.g. value always 2.98, step 0.1: sMinSteps=29, sMaxSteps=30, nSteps=1 → padded to 4 → 2.8..3.2
+            let sMinSteps = Math.floor(dMin / step)
+            let sMaxSteps = Math.ceil(dMax / step)
+            let nSteps = sMaxSteps - sMinSteps
 
-            // Ensure at least 3 steps visible (prevents over-zoom on near-flat data)
-            if (sMax - sMin < step * 3) {
-              const center = (sMin + sMax) / 2
-              sMin = Math.round((center - step * 1.5) / step) * step
-              sMax = sMin + step * 3
+            // Minimum 4 steps (5 ticks), centered on data
+            if (nSteps < 4) {
+              const midSteps = Math.round((sMinSteps + sMaxSteps) / 2)
+              sMinSteps = midSteps - 2
+              sMaxSteps = midSteps + 2
+              nSteps = 4
             }
 
+            let sMin = sMinSteps * step
+            let sMax = sMaxSteps * step
+
             // Never show negative when all data is non-negative
-            if (dMin >= 0 && sMin < 0) sMin = 0
+            if (dMin >= 0 && sMin < 0) {
+              sMinSteps = 0
+              sMin = 0
+              sMaxSteps = Math.max(sMaxSteps, nSteps)
+              sMax = sMaxSteps * step
+              nSteps = sMaxSteps
+            }
 
             scale.min = sMin
             scale.max = sMax
@@ -4334,7 +4347,7 @@
             scale.options._pwDistinct = pwClusters ? computePwDistinct(pwClusters, allValues) : null
 
             scale.options.ticks.stepSize = step
-            scale.options.ticks.maxTicksLimit = Math.round((sMax - sMin) / step) + 1
+            scale.options.ticks.maxTicksLimit = nSteps + 1
           }
         },
         // Y1 axis (left side, 2nd value-range group)
@@ -4364,13 +4377,14 @@
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
             padding: 2,
-            autoSkip: true,
+            autoSkip: false, // We set stepSize + maxTicksLimit ourselves; don't let Chart.js skip
             maxTicksLimit: 20,
             align: 'end',
             callback: function (value: any) {
               const v = Number(value)
               const stepSize = (this as any).options?.ticks?.stepSize ?? 1
-              if (stepSize < 1) return v.toFixed(1).padStart(6, ' ')
+              const decimals = stepSize < 1 ? Math.max(1, Math.ceil(-Math.log10(stepSize))) : 0
+              if (decimals > 0) return v.toFixed(decimals).padStart(6, ' ')
               return Math.round(v).toString().padStart(5, ' ')
             }
           },
@@ -4403,7 +4417,7 @@
 
             scale.display = true
 
-            // Get all values for y1 axis �?only from the currently visible x range
+            // Get all values for y1 axis only from the currently visible x range
             const xMin = analogXWindow.min
             const xMax = analogXWindow.max
             const allValues: number[] = []
@@ -4431,16 +4445,27 @@
             const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
             const step = niceSteps.find(s => s >= Math.max(dRange, 0.001) / 8) ?? niceSteps[niceSteps.length - 1]
 
-            let sMin = Math.floor(dMin / step) * step
-            let sMax = Math.ceil(dMax / step) * step
+            let sMinSteps = Math.floor(dMin / step)
+            let sMaxSteps = Math.ceil(dMax / step)
+            let nSteps = sMaxSteps - sMinSteps
 
-            if (sMax - sMin < step * 3) {
-              const center = (sMin + sMax) / 2
-              sMin = Math.round((center - step * 1.5) / step) * step
-              sMax = sMin + step * 3
+            if (nSteps < 4) {
+              const midSteps = Math.round((sMinSteps + sMaxSteps) / 2)
+              sMinSteps = midSteps - 2
+              sMaxSteps = midSteps + 2
+              nSteps = 4
             }
 
-            if (dMin >= 0 && sMin < 0) sMin = 0
+            let sMin = sMinSteps * step
+            let sMax = sMaxSteps * step
+
+            if (dMin >= 0 && sMin < 0) {
+              sMinSteps = 0
+              sMin = 0
+              sMaxSteps = Math.max(sMaxSteps, nSteps)
+              sMax = sMaxSteps * step
+              nSteps = sMaxSteps
+            }
 
             scale.min = sMin
             scale.max = sMax
@@ -4450,7 +4475,7 @@
             scale.options._pwDistinct = pwClusters ? computePwDistinct(pwClusters, allValues) : null
 
             scale.options.ticks.stepSize = step
-            scale.options.ticks.maxTicksLimit = Math.round((sMax - sMin) / step) + 1
+            scale.options.ticks.maxTicksLimit = nSteps + 1
           }
         },
         // Y2 axis (left side, 3rd value-range group)
@@ -4480,13 +4505,14 @@
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
             padding: 2,
-            autoSkip: true,
+            autoSkip: false, // We set stepSize + maxTicksLimit ourselves; don't let Chart.js skip
             maxTicksLimit: 20,
             align: 'end',
             callback: function (value: any) {
               const v = Number(value)
               const stepSize = (this as any).options?.ticks?.stepSize ?? 1
-              if (stepSize < 1) return v.toFixed(1).padStart(6, ' ')
+              const decimals = stepSize < 1 ? Math.max(1, Math.ceil(-Math.log10(stepSize))) : 0
+              if (decimals > 0) return v.toFixed(decimals).padStart(6, ' ')
               return Math.round(v).toString().padStart(5, ' ')
             }
           },
@@ -4546,16 +4572,27 @@
             const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
             const step = niceSteps.find(s => s >= Math.max(dRange, 0.001) / 8) ?? niceSteps[niceSteps.length - 1]
 
-            let sMin = Math.floor(dMin / step) * step
-            let sMax = Math.ceil(dMax / step) * step
+            let sMinSteps = Math.floor(dMin / step)
+            let sMaxSteps = Math.ceil(dMax / step)
+            let nSteps = sMaxSteps - sMinSteps
 
-            if (sMax - sMin < step * 3) {
-              const center = (sMin + sMax) / 2
-              sMin = Math.round((center - step * 1.5) / step) * step
-              sMax = sMin + step * 3
+            if (nSteps < 4) {
+              const midSteps = Math.round((sMinSteps + sMaxSteps) / 2)
+              sMinSteps = midSteps - 2
+              sMaxSteps = midSteps + 2
+              nSteps = 4
             }
 
-            if (dMin >= 0 && sMin < 0) sMin = 0
+            let sMin = sMinSteps * step
+            let sMax = sMaxSteps * step
+
+            if (dMin >= 0 && sMin < 0) {
+              sMinSteps = 0
+              sMin = 0
+              sMaxSteps = Math.max(sMaxSteps, nSteps)
+              sMax = sMaxSteps * step
+              nSteps = sMaxSteps
+            }
 
             scale.min = sMin
             scale.max = sMax
@@ -4565,7 +4602,7 @@
             scale.options._pwDistinct = pwClusters ? computePwDistinct(pwClusters, allValues) : null
 
             scale.options.ticks.stepSize = step
-            scale.options.ticks.maxTicksLimit = Math.round((sMax - sMin) / step) + 1
+            scale.options.ticks.maxTicksLimit = nSteps + 1
           }
         },
         // Y3 axis (left side, 4th value-range group)
@@ -4595,13 +4632,14 @@
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
             padding: 2,
-            autoSkip: true,
+            autoSkip: false, // We set stepSize + maxTicksLimit ourselves; don't let Chart.js skip
             maxTicksLimit: 20,
             align: 'end',
             callback: function (value: any) {
               const v = Number(value)
               const stepSize = (this as any).options?.ticks?.stepSize ?? 1
-              if (stepSize < 1) return v.toFixed(1).padStart(6, ' ')
+              const decimals = stepSize < 1 ? Math.max(1, Math.ceil(-Math.log10(stepSize))) : 0
+              if (decimals > 0) return v.toFixed(decimals).padStart(6, ' ')
               return Math.round(v).toString().padStart(5, ' ')
             }
           },
@@ -4661,16 +4699,27 @@
             const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
             const step = niceSteps.find(s => s >= Math.max(dRange, 0.001) / 8) ?? niceSteps[niceSteps.length - 1]
 
-            let sMin = Math.floor(dMin / step) * step
-            let sMax = Math.ceil(dMax / step) * step
+            let sMinSteps = Math.floor(dMin / step)
+            let sMaxSteps = Math.ceil(dMax / step)
+            let nSteps = sMaxSteps - sMinSteps
 
-            if (sMax - sMin < step * 3) {
-              const center = (sMin + sMax) / 2
-              sMin = Math.round((center - step * 1.5) / step) * step
-              sMax = sMin + step * 3
+            if (nSteps < 4) {
+              const midSteps = Math.round((sMinSteps + sMaxSteps) / 2)
+              sMinSteps = midSteps - 2
+              sMaxSteps = midSteps + 2
+              nSteps = 4
             }
 
-            if (dMin >= 0 && sMin < 0) sMin = 0
+            let sMin = sMinSteps * step
+            let sMax = sMaxSteps * step
+
+            if (dMin >= 0 && sMin < 0) {
+              sMinSteps = 0
+              sMin = 0
+              sMaxSteps = Math.max(sMaxSteps, nSteps)
+              sMax = sMaxSteps * step
+              nSteps = sMaxSteps
+            }
 
             scale.min = sMin
             scale.max = sMax
@@ -4680,7 +4729,7 @@
             scale.options._pwDistinct = pwClusters ? computePwDistinct(pwClusters, allValues) : null
 
             scale.options.ticks.stepSize = step
-            scale.options.ticks.maxTicksLimit = Math.round((sMax - sMin) / step) + 1
+            scale.options.ticks.maxTicksLimit = nSteps + 1
           }
         }
       }
@@ -5191,9 +5240,9 @@
       const resolvedSecondFull = propEntryForInterval?.second_interval_time ?? monitorConfig.second_interval_time ?? 0
       LogUtil.Info(
         '📐 getMonitorConfigFromT3000Data interval resolution:' +
-        `\n  props.t3Entry  �?hour=${propEntryForInterval?.hour_interval_time} min=${propEntryForInterval?.minute_interval_time} sec=${propEntryForInterval?.second_interval_time}` +
-        `\n  T3000DataMgr   �?hour=${monitorConfig.hour_interval_time} min=${monitorConfig.minute_interval_time} sec=${monitorConfig.second_interval_time}` +
-        `\n  RESOLVED (props wins via ??) �?hour=${resolvedHourFull} min=${resolvedMinuteFull} sec=${resolvedSecondFull}`
+        `\n  props.t3Entry  hour=${propEntryForInterval?.hour_interval_time} min=${propEntryForInterval?.minute_interval_time} sec=${propEntryForInterval?.second_interval_time}` +
+        `\n  T3000DataMgr   hour=${monitorConfig.hour_interval_time} min=${monitorConfig.minute_interval_time} sec=${monitorConfig.second_interval_time}` +
+        `\n  RESOLVED (props wins via ??) hour=${resolvedHourFull} min=${resolvedMinuteFull} sec=${resolvedSecondFull}`
       )
       const intervalMs = calculateT3000Interval({ hour_interval_time: resolvedHourFull, minute_interval_time: resolvedMinuteFull, second_interval_time: resolvedSecondFull })
 
@@ -5375,7 +5424,7 @@
           value: processedValue.value
         }])
 
-        LogUtil.Info(`�?Matched point ${index}:`, {
+        LogUtil.Info(`Matched point ${index}:`, {
           inputItem,
           matchingPoint: { index: matchingPoint.index, value: matchingPoint.value, label: matchingPoint.label }
         })
@@ -5472,12 +5521,12 @@
       const panelDataResponse = await ffiApi.ffiGetPanelData(panelId)
 
       if (!panelDataResponse || !panelDataResponse.data) {
-        LogUtil.Error('�?FFI API: GET_PANEL_DATA returned no data', { panelId })
+        LogUtil.Error('❌FFI API: GET_PANEL_DATA returned no data', { panelId })
         if (!hasExistingData) stopLoading()
         return []
       }
 
-      LogUtil.Info('�?FFI API: GET_PANEL_DATA response received', {
+      LogUtil.Info('✅FFI API: GET_PANEL_DATA response received', {
         hasInputs: !!panelDataResponse.data.inputs,
         hasOutputs: !!panelDataResponse.data.outputs,
         hasVariables: !!panelDataResponse.data.variables,
@@ -5748,7 +5797,7 @@
         })
         dataClient.GetLoggingData(currentSN)
       } else {
-        LogUtil.Error('�?sendGetEntitiesForDataSeries: GetLoggingData method not available')
+        LogUtil.Error('❌sendGetEntitiesForDataSeries: GetLoggingData method not available')
       }
     } catch (error) {
       LogUtil.Error('sendGetEntitiesForDataSeries: Error in dataseries fallback mode:', error)
@@ -5775,13 +5824,13 @@
       const currentPanelId = urlPanelId || (panelsList.length > 0 ? panelsList[0].panel_number : 1)
 
       if (!currentSN) {
-        LogUtil.Error('�?No serial number available for LOGGING_DATA')
+        LogUtil.Error('❌No serial number available for LOGGING_DATA')
         return
       }
 
       // Build the exact set of panel IDs that have live chart series.
       // Derived from dataSeries (what's actually on screen) rather than always
-      // adding currentPanelId �?this avoids a wasted call when ALL inputs belong
+      // adding currentPanelId this avoids a wasted call when ALL inputs belong
       // to a foreign panel (e.g. MON1 pid=144 monitors only panel 11 points).
       // Falls back to currentPanelId when no series exist yet (initial state).
       const monitoredPanelIds = new Set<number>(
@@ -5792,7 +5841,7 @@
       if (monitoredPanelIds.size === 0) monitoredPanelIds.add(currentPanelId)
 
       // Build per-panel serial number lookup from panelsList.
-      // Each panel has its OWN serial_number �?we must NOT use the URL panel's SN for foreign panels.
+      // Each panel has its OWN serial_number we must NOT use the URL panel's SN for foreign panels.
       // Example: URL panel=144 SN=240488, but panel 53's SN is 249555.
       const getSerialForPanel = (pid: number): number => {
         const entry = panelsList.find((p: any) => p.panel_number === pid)
@@ -5807,7 +5856,7 @@
       })
 
       // Fetch Action 15 for every monitored panel (parallel).
-      // Each call uses that panel's own serial_number �?NOT the URL panel's SN.
+      // Each call uses that panel's own serial_number NOT the URL panel's SN.
       const panelResponses = await Promise.all(
         Array.from(monitoredPanelIds).map(pid => ffiApi.ffiGetLoggingData(pid, getSerialForPanel(pid)))
       )
@@ -5853,7 +5902,7 @@
         })
 
         if (validDataItems.length > 0) {
-          LogUtil.Debug('�?Calling updateChartWithNewData with', validDataItems.length, 'items')
+          LogUtil.Debug('🔍Calling updateChartWithNewData with', validDataItems.length, 'items')
           updateChartWithNewData(validDataItems)
           // Batch save is done inside updateChartWithNewData - no duplicate call needed
         } else {
@@ -5872,7 +5921,7 @@
       }
 
     } catch (error) {
-      LogUtil.Error('�?FFI API (action=15) failed:', error)
+      LogUtil.Error('❌FFI API (action=15) failed:', error)
       hasConnectionError.value = true
     }
   }
@@ -5997,7 +6046,7 @@
       // This happens AFTER series structure is created, so it won't block historical load
       LogUtil.Info('📡 Fetching real-time data in background (non-blocking) - THIS WILL CALL ACTION 0')
       fetchRealTimeMonitorData().then(realTimeData => {
-        LogUtil.Info('�?fetchRealTimeMonitorData completed', {
+        LogUtil.Info('✅fetchRealTimeMonitorData completed', {
           hasData: !!realTimeData,
           dataLength: realTimeData?.length || 0,
           dataItemsCount: realTimeData ? realTimeData.reduce((sum, arr) => sum + arr.length, 0) : 0
@@ -6016,7 +6065,7 @@
           LogUtil.Warn('⚠️ fetchRealTimeMonitorData returned no data')
         }
       }).catch(error => {
-        LogUtil.Error('�?fetchRealTimeMonitorData failed (will retry on next interval)', error)
+        LogUtil.Error('❌fetchRealTimeMonitorData failed (will retry on next interval)', error)
       })
 
     } catch (error) {
@@ -6071,7 +6120,7 @@
   /**
    * Scale raw value from T3000 integer format to decimal
    * Database and C++ always store/return values as integers (multiplied by 1000)
-   * Examples: 5000 �?5, 500 �?0.5, 2500 �?2.5
+   * Examples: 5000 → 5, 500 → 0.5, 2500 → 2.5
    */
   const scaleValueIfNeeded = (rawValue: number): number => {
     return rawValue / 1000
@@ -6269,7 +6318,7 @@
 
     if (isAnalog) {
       // Analog processing: always divide by 1000 (T3000 stores values as integers)
-      // Examples: 5000 �?5, 567 �?0.567, 2500 �?2.5
+      // Examples: 5000 → 5, 567 → 0.567, 2500 → 2.5
       const processedValue = scaleValueIfNeeded(rawValue)
 
       const unit = getAnalogUnit(panelData.range, panelData.type)
@@ -6554,7 +6603,7 @@
 
       // Only backfill if gap is significant (more than 10 seconds)
       if (gapSeconds < 10) {
-        LogUtil.Info('�?TrendLogChart: Gap too small, no backfill needed')
+        LogUtil.Info('✅TrendLogChart: Gap too small, no backfill needed')
         return
       }
 
@@ -6567,7 +6616,7 @@
       // Use existing loadHistoricalDataFromDatabase but with time range filter
       await backfillMissingData(lastTimestamp, now)
 
-      LogUtil.Info('�?TrendLogChart: Data backfill completed', {
+      LogUtil.Info('✅TrendLogChart: Data backfill completed', {
         newDataPoints: getExistingDataTimeRange()?.totalPoints || 0
       })
 
@@ -6575,7 +6624,7 @@
       updateCharts()
 
     } catch (error) {
-      LogUtil.Error('�?TrendLogChart: Error during data backfill', error)
+      LogUtil.Error('❌TrendLogChart: Error during data backfill', error)
     }
   }
 
@@ -6637,7 +6686,7 @@
           })
         }
       } catch (error) {
-        LogUtil.Error(`�?Error backfilling data for series ${series.name}`, error)
+        LogUtil.Error(`Error backfilling data for series ${series.name}`, error)
       }
     }
   }
@@ -6671,7 +6720,7 @@
 
       if (!currentSN) {
         const errorMsg = 'No serial number available - cannot load historical data'
-        LogUtil.Error('�?loadHistoricalDataFromDatabase: No serial number from reliable sources', {
+        LogUtil.Error('❌loadHistoricalDataFromDatabase: No serial number from reliable sources', {
           queryParams: route.query,
           panelsList: T3000_Data.value.panelsList?.length || 0
         })
@@ -6681,7 +6730,7 @@
 
       if (!currentPanelId) {
         const errorMsg = 'No panel ID available - cannot load historical data'
-        LogUtil.Error('�?loadHistoricalDataFromDatabase: No panel ID from reliable sources', {
+        LogUtil.Error('❌loadHistoricalDataFromDatabase: No panel ID from reliable sources', {
           queryParams: route.query,
           panelsList: T3000_Data.value.panelsList?.length || 0
         })
@@ -6764,7 +6813,7 @@
             gapMinutes: Math.round((actualEndTime.getTime() - actualStartTime.getTime()) / 60000)
           })
         } else {
-          LogUtil.Info('�?All series have data covering the full window - skipping database load', {
+          LogUtil.Info('✅All series have data covering the full window - skipping database load', {
             requestedStart: offsetStartTime.toISOString(),
             coverageStart: new Date(coverageStart).toISOString()
           })
@@ -6813,7 +6862,7 @@
             // FIX: Frontend uses 0-based pointNumber, but database expects 1-based PointIndex
             // So IN1 in frontend (pointNumber=0) maps to PointIndex=1 in database
             // FIX: Use series.panelId (actual panel of the point) not currentPanelId (URL panel)
-            // e.g. MON1 on panel 144 may monitor panel 11 inputs �?use 11 for those
+            // e.g. MON1 on panel 144 may monitor panel 11 inputs use 11 for those
             const actualPanelId = series.panelId || currentPanelId
             specificPoints.push({
               point_id: pointId,
@@ -6839,7 +6888,7 @@
           // FIX: Frontend uses 0-based point_number, but database expects 1-based PointIndex
           // So IN1 in frontend (point_number=0) maps to PointIndex=1 in database
           // FIX: Use inputItem.panel (actual panel of the point) not currentPanelId (URL panel)
-          // e.g. MON1 on panel 144 may monitor panel 11 inputs �?their DB records use panel 11
+          // e.g. MON1 on panel 144 may monitor panel 11 inputs their DB records use panel 11
           const actualPanelId = inputItem.panel || currentPanelId
           specificPoints.push({
             point_id: pointId,
@@ -7101,7 +7150,7 @@
       // Assign the new series
       dataSeries.value = newSeries
 
-      LogUtil.Info('�?Series created from historical data:', {
+      LogUtil.Info('✅Series created from historical data:', {
         seriesCount: newSeries.length,
         seriesNames: newSeries.map(s => s.name)
       })
@@ -7429,7 +7478,7 @@
       const queryPanelId = urlPanelId || currentPanelId
 
       // Build a lookup set of EXACTLY the (panelId:pointId) pairs that have active chart series.
-      // This is the critical filter �?only �?4 chart series points should ever be saved.
+      // This is the critical filter only 4 chart series points should ever be saved.
       // Checking panel alone is NOT sufficient (would pass all ~448 items for a monitored panel).
       const chartSeriesSet = new Set<string>(
         dataSeries.value
@@ -7444,7 +7493,7 @@
       )
       if (monitoredSeriesPanels.size === 0) monitoredSeriesPanels.add(queryPanelId)
 
-      // Per-panel SN lookup �?foreign panels have their own serial_number, must NOT use URL SN
+      // Per-panel SN lookup foreign panels have their own serial_number, must NOT use URL SN
       const getSerialForPanelInSave = (pid: number): number => {
         const entry = panelsList.find((p: any) => p.panel_number === pid)
         return entry?.serial_number || currentSN
@@ -7639,7 +7688,7 @@
       LogUtil.Debug('📈 TrendLogChart: No new data points, but updating charts for time window scroll')
       // Skip data processing but still update charts for x-axis scroll
       if (isRealTime.value && (analogChartInstance || digitalChartInstance)) {
-        updateCharts()  // �?CRITICAL: Keeps x-axis scrolling
+        updateCharts()  // CRITICAL: Keeps x-axis scrolling
       }
       return
     }
@@ -7694,7 +7743,7 @@
           series.id = extractedId
           series.panelId = extractedPanelId
         } else {
-          LogUtil.Error(`�?CRITICAL: Cannot parse itemType for series ${seriesIndex}:`, {
+          LogUtil.Error(`CRITICAL: Cannot parse itemType for series ${seriesIndex}:`, {
             seriesName: series.name,
             itemType: series.itemType,
             prefix: series.prefix,
@@ -7707,7 +7756,7 @@
 
       // Skip empty series that don't have matching criteria
       if (!series.id || !series.panelId) {
-        LogUtil.Error(`�?CRITICAL: Series ${seriesIndex} STILL missing id or panelId after fix attempt!`, {
+        LogUtil.Error(`CRITICAL: Series ${seriesIndex} STILL missing id or panelId after fix attempt!`, {
           seriesName: series.name,
           itemType: series.itemType,
           id: series.id,
@@ -7724,7 +7773,7 @@
       )
 
       if (!matchedItem) {
-        LogUtil.Debug(`�?No match for series ${series.name}:`, {
+        LogUtil.Debug(`No match for series ${series.name}:`, {
           searchingFor: { id: series.id, panelId: series.panelId },
           seriesIndex,
           sampleIncomingIds: validDataItems.slice(0, 3).map(item => ({ id: item.id, pid: item.pid }))
@@ -7737,7 +7786,7 @@
         return
       }
 
-      LogUtil.Debug(`�?MATCHED series ${series.name}:`, {
+      LogUtil.Debug(`MATCHED series ${series.name}:`, {
         series: { id: series.id, panelId: series.panelId },
         item: { id: matchedItem.id, pid: matchedItem.pid }
       })
@@ -7825,7 +7874,7 @@
         // Sort data points by timestamp to maintain chronological order
         series.data.sort((a, b) => a.timestamp - b.timestamp)
 
-        LogUtil.Debug(`�?Added NEW point to ${series.name}:`, {
+        LogUtil.Debug(`Added NEW point to ${series.name}:`, {
           timestamp: new Date(dataPoint.timestamp).toLocaleTimeString(),
           value: dataPoint.value,
           totalPoints: series.data.length,
@@ -8157,7 +8206,7 @@
           })
           series.data = Array.from(uniqueData.values()).sort((a, b) => a.timestamp - b.timestamp)
 
-          LogUtil.Debug(`�?Prepended gap data to ${series.name}`, {
+          LogUtil.Debug(`Prepended gap data to ${series.name}`, {
             gapPointsReceived: gapChartData.length,
             existingPointsBefore: beforePrepend,
             combinedBeforeDedup: gapChartData.length + beforePrepend,
@@ -8204,7 +8253,7 @@
         // Try to load historical data - this will create series structure if successful
         LogUtil.Info('🔧 Loading historical data from database')
         await loadHistoricalDataFromDatabase()
-        LogUtil.Info('�?Historical data loaded successfully')
+        LogUtil.Info('✅Historical data loaded successfully')
 
       } catch (error) {
         LogUtil.Error('= TLChart: Error in data initialization:', error)
@@ -8301,20 +8350,20 @@
   }
 
   const addRealtimeDataPoint = async () => {
-    // 🛡�?CRITICAL: Wrap entire function in try-catch to ensure interval NEVER stops
+    // 🛡️CRITICAL: Wrap entire function in try-catch to ensure interval NEVER stops
     // Even if any error occurs (network, parsing, backend errors), the interval must continue
     try {
-      LogUtil.Debug('�?addRealtimeDataPoint FIRED at', new Date().toLocaleTimeString() + '.' + new Date().getMilliseconds())
+      LogUtil.Debug('🔍addRealtimeDataPoint FIRED at', new Date().toLocaleTimeString() + '.' + new Date().getMilliseconds())
 
       // Only add data if we're in real-time mode
       if (!isRealTime.value) {
-        LogUtil.Debug('�?EXIT: Not in real-time mode')
+        LogUtil.Debug('🔍EXIT: Not in real-time mode')
         return
       }
 
       // Safety check: If no data series exist, skip processing
       if (dataSeries.value.length === 0) {
-        LogUtil.Debug('�?EXIT: No data series exist')
+        LogUtil.Debug('🔍EXIT: No data series exist')
         return
       }
 
@@ -8322,16 +8371,16 @@
       const monitorConfigData = monitorConfig.value
 
       if (!monitorConfigData) {
-        LogUtil.Debug('�?EXIT: No monitor config')
+        LogUtil.Debug('🔍EXIT: No monitor config')
         return
       }
 
       if (!monitorConfigData.inputItems || monitorConfigData.inputItems.length === 0) {
-        LogUtil.Debug('�?EXIT: No input items in monitor config')
+        LogUtil.Debug('🔍EXIT: No input items in monitor config')
         return
       }
 
-      LogUtil.Debug('�?All checks passed - calling sendPeriodicBatchRequest')
+      LogUtil.Debug('🔍All checks passed - calling sendPeriodicBatchRequest')
 
       try {
         // 🆕 CRITICAL FIX: Load historical data on FIRST batch request
@@ -8342,7 +8391,7 @@
 
           try {
             await loadHistoricalDataFromDatabase()
-            LogUtil.Info('�?addRealtimeDataPoint: Historical data loaded successfully, now starting real-time updates')
+            LogUtil.Info('✅addRealtimeDataPoint: Historical data loaded successfully, now starting real-time updates')
           } catch (error) {
             LogUtil.Warn('⚠️ addRealtimeDataPoint: Historical data load failed, continuing with real-time only', error)
           }
@@ -8374,9 +8423,9 @@
 
       updateCharts()
     } catch (error) {
-      // 🛡�?CRITICAL ERROR HANDLER: Catch ANY error to prevent interval from stopping
+      // 🛡️CRITICAL ERROR HANDLER: Catch ANY error to prevent interval from stopping
       // This ensures the polling continues even if there are unexpected errors
-      LogUtil.Error('�?CRITICAL: addRealtimeDataPoint encountered unexpected error (interval will continue):', error)
+      LogUtil.Error('❌CRITICAL: addRealtimeDataPoint encountered unexpected error (interval will continue):', error)
       hasConnectionError.value = true
     }
   }
@@ -8402,7 +8451,7 @@
         LogUtil.Debug(`⏸️ createAnalogChart - Canvas not ready, will retry in 100ms (attempt ${chartCreationRetries}/${MAX_CHART_CREATION_RETRIES})`)
         setTimeout(() => createAnalogChart(), 100)
       } else {
-        LogUtil.Error(`�?createAnalogChart - Canvas not available after ${MAX_CHART_CREATION_RETRIES} attempts, giving up`)
+        LogUtil.Error(`createAnalogChart - Canvas not available after ${MAX_CHART_CREATION_RETRIES} attempts, giving up`)
         hasConnectionError.value = true
         stopLoading()
       }
@@ -8417,7 +8466,7 @@
         LogUtil.Debug(`⏸️ createAnalogChart - Canvas has zero dimensions, will retry in 100ms (attempt ${chartCreationRetries}/${MAX_CHART_CREATION_RETRIES})`)
         setTimeout(() => createAnalogChart(), 100)
       } else {
-        LogUtil.Error(`�?createAnalogChart - Canvas has zero dimensions after ${MAX_CHART_CREATION_RETRIES} attempts, giving up`)
+        LogUtil.Error(`createAnalogChart - Canvas has zero dimensions after ${MAX_CHART_CREATION_RETRIES} attempts, giving up`)
         hasConnectionError.value = true
         stopLoading()
       }
@@ -8429,7 +8478,7 @@
 
     const ctx = analogChartCanvas.value.getContext('2d')
     if (!ctx) {
-      LogUtil.Error('�?createAnalogChart - Failed to get 2D context')
+      LogUtil.Error('❌createAnalogChart - Failed to get 2D context')
       hasConnectionError.value = true
       stopLoading()
       return
@@ -8444,7 +8493,7 @@
       const config = getAnalogChartConfig()
       analogChartInstance = new Chart(ctx, config)
 
-      LogUtil.Info('�?createAnalogChart - Chart created successfully, now loading data', {
+      LogUtil.Info('✅createAnalogChart - Chart created successfully, now loading data', {
         canvasWidth: analogChartCanvas.value.offsetWidth,
         canvasHeight: analogChartCanvas.value.offsetHeight
       })
@@ -8455,9 +8504,9 @@
         hasLoadedInitialHistory.value = true // Set immediately to prevent duplicate loads
         loadHistoricalDataFromDatabase().then(() => {
           updateCharts()
-          LogUtil.Info('�?Historical data loaded and displayed')
+          LogUtil.Info('✅Historical data loaded and displayed')
         }).catch(error => {
-          LogUtil.Error('�?Failed to load historical data', error)
+          LogUtil.Error('❌Failed to load historical data', error)
           hasLoadedInitialHistory.value = false // Reset on error so it can retry
         })
       } else if (dataSeries.value.some(s => s.data && s.data.length > 0)) {
@@ -8466,7 +8515,7 @@
         updateCharts()
       }
     } catch (error) {
-      LogUtil.Error('�?createAnalogChart - Error creating chart:', error)
+      LogUtil.Error('❌createAnalogChart - Error creating chart:', error)
     }
   }
 
@@ -8520,7 +8569,7 @@
   const waitForCanvasAndUpdate = () => {
     // Simple check - charts should already exist
     if (analogChartCanvas.value && analogChartInstance) {
-      LogUtil.Info('�?Canvas and chart ready, updating with data')
+      LogUtil.Info('✅Canvas and chart ready, updating with data')
       updateCharts()
     } else {
       LogUtil.Warn('⚠️ Chart not ready when trying to update', {
@@ -8543,7 +8592,7 @@
         const retryHasAnalog = !!analogChartCanvas.value
         const retryHasDigital = !!digitalChartCanvas.value
         if (retryHasAnalog || retryHasDigital) {
-          LogUtil.Info('�?updateCharts: Canvas now available, proceeding with update', {
+          LogUtil.Info('✅updateCharts: Canvas now available, proceeding with update', {
             hasAnalog: retryHasAnalog,
             hasDigital: retryHasDigital
           })
@@ -8671,7 +8720,7 @@
       color: string
     }[] = []
 
-    // Helper: Exact unit key �?each distinct unit gets its own axis slot.
+    // Helper: Exact unit key each distinct unit gets its own axis slot.
     // Only normalises whitespace and case so "Deg.C" and "deg.c" don't split.
     const normalizeUnitGroup = (unit: string): string => {
       if (!unit || unit === 'Unused' || unit === 'Off') return 'dimensionless'
@@ -8716,29 +8765,29 @@
       const centerB = (Math.max(...b[1].map(i => i.max)) + Math.min(...b[1].map(i => i.min))) / 2
       const logA = Math.log10(Math.max(Math.abs(centerA), 1))
       const logB = Math.log10(Math.max(Math.abs(centerB), 1))
-      if (Math.abs(logA - logB) > 0.3) return logA - logB // different magnitude �?sort ascending
-      return b[1].length - a[1].length // same magnitude �?more series first
+      if (Math.abs(logA - logB) > 0.3) return logA - logB // different magnitude sort ascending
+      return b[1].length - a[1].length // same magnitude more series first
     })
 
     // Assign axes: each unique unit type gets its own axis slot (y, y1, y2, y3).
     // Assign axes: 2 visible columns only (y = col1, y1 = col2).
     // Each unique unit type is treated as its own group. Groups are distributed
     // across the 2 columns with a greedy balance (fewest series so far wins).
-    // 2 series with the same unit (e.g. 2× Deg.C) end up in the same group �?    // same column �?shared scale.  The piecewise scale then allocates equal
+    // 2 series with the same unit (e.g. 2× Deg.C) end up in the same group     // same column shared scale.  The piecewise scale then allocates equal
     // pixel height to each distinct value cluster, so every unit on a column
-    // gets its own visible band �?height scales dynamically with how many units
-    // share that column (2 units �?50%/50%, 3 units �?33%/33%/33%, etc.)
+    // gets its own visible band height scales dynamically with how many units
+    // share that column (2 units 50%/50%, 3 units 33%/33%/33%, etc.)
     const axisAssignment = new Map<string, string>()
     const axisColors = new Map<string, string>()
     const axisColorsList = new Map<string, string[]>()
     const axisUnits = new Map<string, Set<string>>()
     const axisUnitColorGroups = new Map<string, Array<{unit: string, colors: string[]}>>()
 
-    // Greedy 2-column balance �?only y and y1 are visible
+    // Greedy 2-column balance only y and y1 are visible
     const colSeriesCount = { y: 0, y1: 0 }
 
     sortedGroups.forEach(([groupName, items]) => {
-      // Pick the column with fewer series so far (tie �?col y first)
+      // Pick the column with fewer series so far (tie col y first)
       const axisId: string = colSeriesCount.y <= colSeriesCount.y1 ? 'y' : 'y1'
       colSeriesCount[axisId as 'y' | 'y1'] += items.length
 
@@ -8837,7 +8886,7 @@
             scales[axisId].title.unitColorGroups = axisUnitColorGroups.get(axisId) || []
           }
 
-          // Tick numbers always black �?colored range dashes in the plugin identify each unit
+          // Tick numbers always black colored range dashes in the plugin identify each unit
           if (scales[axisId].ticks) {
             scales[axisId].ticks.color = '#333333'
           }
@@ -8868,16 +8917,16 @@
         await new Promise(resolve => setTimeout(resolve, 0))
       }
 
-      // Sort all data including nulls �?we need them to count consecutive runs.
+      // Sort all data including nulls we need them to count consecutive runs.
       const sortedAll = series.data
         .slice()
         .filter(point => point.timestamp != null)
         .sort((a, b) => a.timestamp - b.timestamp)
 
       // ── Gap detection strategy ─────────────────────────────────────────────
-      // 1. Null-run break: �?5 consecutive null/empty values �?break the line.
+      // 1. Null-run break: 5 consecutive null/empty values break the line.
       // 2. Time-gap break: consecutive real points that are far apart in time
-      //    (> 3× the typical recording interval, min 2 min) �?break the line.
+      //    (> 3× the typical recording interval, min 2 min) break the line.
       //    This handles the case where the device simply stopped recording for
       //    a period (no null entries, just a big timestamp jump).
       // ──────────────────────────────────────────────────────────────────────
@@ -8930,7 +8979,7 @@
             dataWithGaps.push({ x: (prevX + nextX) / 2, y: null })
             lastRealX = null // reset so next real point doesn't double-break
           }
-          // < 5 nulls: skip entirely �?surrounding real points stay connected
+          // < 5 nulls: skip entirely surrounding real points stay connected
         }
       }
 
@@ -8958,19 +9007,19 @@
       //   - A real point is "isolated" when both its prev and next neighbours are
       //     null/missing, meaning it has no drawable line on either side.
       const pointRadiusArr: number[] = dataWithGaps.map((pt, idx) => {
-        if (pt.y === null) return 0  // spacer �?never draw a marker
+        if (pt.y === null) return 0  // spacer never draw a marker
 
         const prevIsNull = idx === 0 || dataWithGaps[idx - 1].y === null
         const nextIsNull = idx === dataWithGaps.length - 1 || dataWithGaps[idx + 1].y === null
         const isIsolated = prevIsNull && nextIsNull
 
         if (isIsolated) return 4          // always show dot for isolated point
-        return showPoints.value ? 3 : 0   // connected segment �?honour toggle
+        return showPoints.value ? 3 : 0   // connected segment honour toggle
       })
 
       datasets.push({
         label: series.name,
-        data: dataWithGaps, // �?Use data with gap detection
+        data: dataWithGaps, // Use data with gap detection
         borderColor: series.color,
         backgroundColor: series.color + '20',
         borderWidth: 2,
@@ -8983,7 +9032,7 @@
         pointBorderWidth: 2,
         pointStyle: 'circle' as const,
         spanGaps: false, // Keep false - null values will break lines
-        yAxisID: yAxisID // �?Assign axis here!
+        yAxisID: yAxisID // Assign axis here!
       })
     }
 
@@ -9027,7 +9076,7 @@
         if (!isConstant) continue
         const key = `${ds.yAxisID ?? 'y'}_${firstVal.toFixed(4)}`
         if (seenConstant.has(key)) {
-          // Duplicate constant line �?make it invisible but preserve data
+          // Duplicate constant line make it invisible but preserve data
           ds.borderWidth = 0
           ds.pointRadius = 0
           if (Array.isArray(ds.pointRadius)) ds.pointRadius = (ds.pointRadius as any[]).map(() => 0)
@@ -9100,7 +9149,7 @@
       analogXWindow.min = timeWindow.min
       analogXWindow.max = timeWindow.max
 
-      LogUtil.Debug('�?Chart Time Window:', {
+      LogUtil.Debug('🔍Chart Time Window:', {
         timeBase: timeBase.value,
         windowMin: new Date(timeWindow.min).toLocaleTimeString(),
         windowMax: new Date(timeWindow.max).toLocaleTimeString(),
@@ -9110,7 +9159,7 @@
         totalPoints: datasets.reduce((sum, ds) => sum + ds.data.length, 0)
       })
 
-      LogUtil.Info('�?Chart Time Window Set:', {
+      LogUtil.Info('✅Chart Time Window Set:', {
         timeBase: timeBase.value,
         customStartDate: customStartDate.value?.format('YYYY-MM-DD HH:mm:ss') || null,
         customEndDate: customEndDate.value?.format('YYYY-MM-DD HH:mm:ss') || null,
@@ -9245,7 +9294,7 @@
 
       const baseY = (visibleDigitalSeries.value.length - 1 - index) * 1.2
 
-      // Same rule as analog: only �?5 consecutive nulls break the line.
+      // Same rule as analog: only 5 consecutive nulls break the line.
       const MAX_NULL_RUN_D = 5
       const dataWithGaps: Array<{ x: number; y: number | null; control?: number }> = []
       let jd = 0
@@ -9271,7 +9320,7 @@
             const nextX = jd < sortedAllD.length ? sortedAllD[jd].timestamp : prevX
             dataWithGaps.push({ x: (prevX + nextX) / 2, y: null })
           }
-          // < 5 nulls: skip entirely �?surrounding real points stay connected
+          // < 5 nulls: skip entirely surrounding real points stay connected
         }
       }
 
@@ -9366,7 +9415,7 @@
       xScale.min = timeWindow.min
       xScale.max = timeWindow.max
 
-      LogUtil.Info(`�?Digital Chart Time Window:`, {
+      LogUtil.Info(`Digital Chart Time Window:`, {
         timeBase: timeBase.value,
         isRealTime: isRealTime.value,
         timeWindow: {
@@ -9394,7 +9443,7 @@
     // Update chart
     try {
       digitalChartInstance.update()
-      LogUtil.Info(`�?Digital chart updated`, {
+      LogUtil.Info(`Digital chart updated`, {
         seriesCount: visibleDigitalSeries.value.length,
         totalDataPoints: visibleDigitalSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
       })
@@ -9623,8 +9672,8 @@
       })
     } else {
       // View 2 & 3: Show only user selected items.
-      // viewTrackedSeries is the single source of truth �?it is populated at init by
-      // loadViewTracking (which maps DB data �?series.key) and kept up to date by
+      // viewTrackedSeries is the single source of truth it is populated at init by
+      // loadViewTracking (which maps DB data series.key) and kept up to date by
       // toggleItemTracking / removeFromTracking before they call setView.
       // Never re-read viewSelections here: it can be stale and causes cross-panel interference.
       const trackedItems = viewTrackedSeries.value[viewNumber] || []
@@ -10402,7 +10451,7 @@
       }
 
       // CRITICAL: Directly call updateAnalogChart() instead of async updateCharts()
-      // The async flow (requestAnimationFrame �?setTimeout) doesn't complete properly for custom dates
+      // The async flow (requestAnimationFrame setTimeout) doesn't complete properly for custom dates
       // causing afterDataLimits callbacks to never fire, breaking Y-axis scaling
       if (analogChartInstance) {
         LogUtil.Debug('= TLChart DataFlow: Directly calling updateAnalogChart() for custom date')
@@ -10651,7 +10700,7 @@
       `\n  monitorConfig.dataIntervalMs=${monitorConfigData?.dataIntervalMs}`
     )
     realtimeInterval = setInterval(addRealtimeDataPoint, dataInterval)
-    LogUtil.Info('�?Interval created - ID:', realtimeInterval, '- fires every', dataInterval / 1000, 'seconds')
+    LogUtil.Info('✅Interval created - ID:', realtimeInterval, '- fires every', dataInterval / 1000, 'seconds')
   }
 
   const stopRealTimeUpdates = () => {
@@ -10969,7 +11018,7 @@
             panel_id: series.panelId || deviceParams.panel_id
           })
 
-          LogUtil.Debug('�?Extracted point (method 1 - direct):', {
+          LogUtil.Debug('🔍Extracted point (method 1 - direct):', {
             name: series.name,
             pointType: series.pointType,
             pointNumber: series.pointNumber,
@@ -11032,7 +11081,7 @@
             panel_id: panelId
           })
 
-          LogUtil.Debug('�?Extracted point (method 2 - itemType):', {
+          LogUtil.Debug('🔍Extracted point (method 2 - itemType):', {
             name: series.name,
             itemType: itemType,
             result: { point_id: pointId, point_type: pointType, point_index: pointIndex }
@@ -11509,13 +11558,13 @@
                 }
               })
 
-              // Priority 1: point_label now stores the key (e.g. "144:IN1") �?fast exact match
+              // Priority 1: point_label now stores the key (e.g. "144:IN1") fast exact match
               const keyMatch = dataSeries.value.find(series => series.key === selection.point_label)
               if (keyMatch) {
                 return keyMatch.key
               }
 
-              // Priority 2: legacy data �?match by prefix + pointNumber (0-based)
+              // Priority 2: legacy data match by prefix + pointNumber (0-based)
               const matchingSeries = dataSeries.value.find(series =>
                 series.prefix === selection.point_type &&
                 series.pointNumber === selection.point_index
@@ -12481,11 +12530,11 @@
 
   // Persist view state whenever timeBase or timeOffset changes.
   // Registered here (after all const declarations) so timeOffset and saveViewState are
-  // both fully initialised �?registering them earlier causes TDZ ReferenceErrors.
+  // both fully initialised registering them earlier causes TDZ ReferenceErrors.
   watch(timeBase, () => saveViewState())
   watch(timeOffset, () => saveViewState())
 
-  // All const declarations above are now initialised �?safe for watched callbacks to proceed
+  // All const declarations above are now initialised safe for watched callbacks to proceed
   _setupComplete = true
 
   // Lifecycle
@@ -12563,7 +12612,7 @@
           const action0Response = await ffiApi.ffiGetPanelData(urlPanelId)
 
           if (action0Response && action0Response.data) {
-            LogUtil.Debug('�?Action 0 Response Received')
+            LogUtil.Debug('🔍Action 0 Response Received')
             LogUtil.Debug('  - Total items:', action0Response.data?.length)
             LogUtil.Debug('  - Looking for trendlog_id:', urlTrendlogId, '(index:', urlTrendlogId, ')')
             LogUtil.Debug('─────────────────────────────────────────────────────────────')
@@ -12582,7 +12631,7 @@
             }
 
             if (matchingMonitor) {
-              LogUtil.Debug('�?MATCHED TRENDLOG INFO FROM ACTION 0:')
+              LogUtil.Debug('🔍MATCHED TRENDLOG INFO FROM ACTION 0:')
               LogUtil.Debug('  - FULL MONITOR DATA:', JSON.stringify(matchingMonitor, null, 2))
               LogUtil.Debug('─────────────────────────────────────────────────────────────')
               LogUtil.Debug('  - id:', matchingMonitor.id)
@@ -12600,7 +12649,7 @@
               LogUtil.Debug('─────────────────────────────────────────────────────────────')
 
               // 🆕 FIX: Create temporary monitor config from Action 0 response.
-              // IMPORTANT: props.itemData.t3Entry is the authoritative interval source �?it is
+              // IMPORTANT: props.itemData.t3Entry is the authoritative interval source it is
               // the MON data passed by T3000 when the chart was opened and reflects what the user
               // configured.  The Action 0 response can return stale/different cached values for
               // the same fields (e.g. second_interval_time=30 when the real value is minute=5).
@@ -12613,12 +12662,12 @@
 
               LogUtil.Info(
                 '📐 Interval source resolution:' +
-                `\n  props.t3Entry  �?hour=${propEntry?.hour_interval_time} min=${propEntry?.minute_interval_time} sec=${propEntry?.second_interval_time}` +
-                `\n  Action0 MON    �?hour=${matchingMonitor.hour_interval_time} min=${matchingMonitor.minute_interval_time} sec=${matchingMonitor.second_interval_time}` +
-                `\n  RESOLVED (props wins via ??) �?hour=${resolvedHour} min=${resolvedMinute} sec=${resolvedSecond}`
+                `\n  props.t3Entry  hour=${propEntry?.hour_interval_time} min=${propEntry?.minute_interval_time} sec=${propEntry?.second_interval_time}` +
+                `\n  Action0 MON    hour=${matchingMonitor.hour_interval_time} min=${matchingMonitor.minute_interval_time} sec=${matchingMonitor.second_interval_time}` +
+                `\n  RESOLVED (props wins via ??) hour=${resolvedHour} min=${resolvedMinute} sec=${resolvedSecond}`
               )
 
-              // 🔥 Store fresh monitor data �?input/range from Action 0 take priority over
+              // 🔥 Store fresh monitor data input/range from Action 0 take priority over
               // stale URL all_data so generateDataSeries() builds the correct series list.
               freshMonitorData.value = matchingMonitor
               LogUtil.Info('🔄 freshMonitorData set from Action 0 response', {
@@ -12629,7 +12678,7 @@
               })
 
               // 🆕 Fetch data for any foreign panels referenced by this monitor's inputs.
-              // Example: MON1 lives on panel 144 but its inputs belong to panel 11 �?              // IndexPage only called Action 0 for panel 144, so panel 11 is missing from
+              // Example: MON1 lives on panel 144 but its inputs belong to panel 11               // IndexPage only called Action 0 for panel 144, so panel 11 is missing from
               // T3000_Data.panelsData. Without it, getDeviceDescription() returns '' and every
               // series gets filtered out.
               const inputPanelIds: number[] = [...new Set(
@@ -12643,7 +12692,7 @@
                   const resp = await ffiApi.ffiGetPanelData(pid)
                   if (resp?.error || !resp?.data?.length) {
                     // Panel is offline or returned no data
-                    LogUtil.Warn('⚠️ Foreign panel offline or no data �?cannot fetch items', { pid, error: resp?.error })
+                    LogUtil.Warn('⚠️ Foreign panel offline or no data cannot fetch items', { pid, error: resp?.error })
                     return false
                   }
                   // Merge foreign panel items directly into T3000_Data.panelsData so
@@ -12654,36 +12703,36 @@
                   )
                   if (newItems.length) {
                     T3000_Data.value.panelsData = [...existing, ...newItems]
-                    LogUtil.Info('�?Merged foreign panel data into panelsData', { pid, newItemsCount: newItems.length })
+                    LogUtil.Info('✅Merged foreign panel data into panelsData', { pid, newItemsCount: newItems.length })
                   }
                   return true
                 }))
                   .then((results: boolean[]) => {
                     const offlinePanels = results.filter(r => r === false).length
                     if (offlinePanels > 0) {
-                      // Some/all foreign panels are offline �?freshMonitorData inputs can't be resolved.
+                      // Some/all foreign panels are offline freshMonitorData inputs can't be resolved.
                       // Clear freshMonitorData so generateDataSeries falls back to URL props data (all_data).
                       freshMonitorData.value = null
                       if (dataSeries.value.length > 0) {
-                        // We already have working series from URL data �?keep them, skip regeneration.
-                        LogUtil.Warn('⚠️ Foreign panels offline �?keeping existing working series to avoid blank chart', {
+                        // We already have working series from URL data keep them, skip regeneration.
+                        LogUtil.Warn('⚠️ Foreign panels offline keeping existing working series to avoid blank chart', {
                           inputPanelIds, offlinePanels, existingSeriesCount: dataSeries.value.length
                         })
                       } else {
-                        // No existing series �?regenerate using URL fallback (freshMonitorData now null).
-                        LogUtil.Warn('⚠️ Foreign panels offline �?falling back to URL all_data for series generation', {
+                        // No existing series regenerate using URL fallback (freshMonitorData now null).
+                        LogUtil.Warn('⚠️ Foreign panels offline falling back to URL all_data for series generation', {
                           inputPanelIds, offlinePanels
                         })
                         regenerateDataSeries()
                       }
                       return
                     }
-                    LogUtil.Info('�?All foreign panel data fetched, regenerating series', { inputPanelIds })
+                    LogUtil.Info('✅All foreign panel data fetched, regenerating series', { inputPanelIds })
                     regenerateDataSeries()
                   })
                   .catch(err => LogUtil.Warn('⚠️ Foreign panel data fetch failed', err))
               } else {
-                // All inputs on same panel �?regenerate now with panelsData already available
+                // All inputs on same panel regenerate now with panelsData already available
                 regenerateDataSeries()
               }
 
@@ -12703,7 +12752,7 @@
                 inputItems: matchingMonitor.input || []  // 🔥 FIX: Add inputItems from Action 0 response
               }
 
-              LogUtil.Debug('�?Created temporary monitor config from Action 0:', tempMonitorConfig)
+              LogUtil.Debug('🔍Created temporary monitor config from Action 0:', tempMonitorConfig)
 
               // Calculate interval using temporary config since monitorConfig.value is still null
               const calculatedIntervalMs = calculateT3000Interval(tempMonitorConfig)
@@ -12732,14 +12781,14 @@
               LogUtil.Debug('🔥 SETTING monitorConfig.value to tempMonitorConfig to enable polling...')
               if (!monitorConfig.value) {
                 monitorConfig.value = tempMonitorConfig
-                LogUtil.Info('�?monitorConfig.value set from tempMonitorConfig, dataIntervalMs=' + tempMonitorConfig.dataIntervalMs)
+                LogUtil.Info('✅monitorConfig.value set from tempMonitorConfig, dataIntervalMs=' + tempMonitorConfig.dataIntervalMs)
               } else {
                 // If it already exists, update the interval fields AND dataIntervalMs using resolved values
                 monitorConfig.value.hour_interval_time = resolvedHour
                 monitorConfig.value.minute_interval_time = resolvedMinute
                 monitorConfig.value.second_interval_time = resolvedSecond
                 monitorConfig.value.dataIntervalMs = tempMonitorConfig.dataIntervalMs
-                LogUtil.Info('�?Updated existing monitorConfig.value with resolved interval settings, dataIntervalMs=' + tempMonitorConfig.dataIntervalMs)
+                LogUtil.Info('✅Updated existing monitorConfig.value with resolved interval settings, dataIntervalMs=' + tempMonitorConfig.dataIntervalMs)
               }
 
               // 🆕 FORCE START: Always start realtime updates after setting monitorConfig
@@ -12752,10 +12801,10 @@
 
               try {
                 startRealTimeUpdates()
-                LogUtil.Debug('�?startRealTimeUpdates() returned successfully')
+                LogUtil.Debug('🔍startRealTimeUpdates() returned successfully')
                 LogUtil.Debug('  - realtimeInterval is now:', realtimeInterval)
               } catch (error) {
-                LogUtil.Error('�?ERROR calling startRealTimeUpdates():', error)
+                LogUtil.Error('❌ERROR calling startRealTimeUpdates():', error)
               }
             } else {
               LogUtil.Debug('⚠️ NO MATCHING MONITOR FOUND IN ACTION 0 RESPONSE')
@@ -12778,7 +12827,7 @@
             }
           }
         } catch (error) {
-          LogUtil.Error('�?ACTION 0 CALL FAILED')
+          LogUtil.Error('❌ACTION 0 CALL FAILED')
           LogUtil.Error('  - Error:', error)
           LogUtil.Debug('  - Using DEFAULT interval: 15 seconds (15000 ms)')
           LogUtil.Debug('══════════════════════════════════════════════════════════════')
@@ -12894,14 +12943,14 @@
       }
 
       if (!analogChartCanvas.value) {
-        LogUtil.Error('�?Canvas not available after waiting, cannot create charts')
+        LogUtil.Error('❌Canvas not available after waiting, cannot create charts')
         // Don't return - show error message instead of blank page
         hasConnectionError.value = true
         stopLoading()
         return
       }
 
-      LogUtil.Info('�?Canvas ref available after', {
+      LogUtil.Info('✅Canvas ref available after', {
         attempts: canvasWaitAttempts,
         waitTime: `${canvasWaitAttempts * 50}ms`
       })
@@ -12935,7 +12984,7 @@
           seriesWithData: dataSeries.value.filter(s => s.data && s.data.length > 0).length
         })
       } else {
-        LogUtil.Info('�?STEP 3: Data series already initialized (via panelsData watcher), skipping initializeData', {
+        LogUtil.Info('✅STEP 3: Data series already initialized (via panelsData watcher), skipping initializeData', {
           dataSeriesCount: dataSeries.value.length,
           seriesWithData: dataSeries.value.filter(s => s.data && s.data.length > 0).length
         })
