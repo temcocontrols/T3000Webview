@@ -64,6 +64,7 @@ import { NetworkHealthDialog } from '../components/NetworkHealthDialog';
 import { TimeSettingsTab } from '../components/TimeSettingsTab';
 import { DyndnsSettingsTab, type DyndnsSettings } from '../components/DyndnsSettingsTab';
 import { EmailSettingsTab, type EmailSettings } from '../components/EmailSettingsTab';
+import { UserLoginTab, type UserLoginSettings } from '../components/UserLoginTab';
 import cssStyles from './SettingsPage.module.css';
 
 // Full T3000 C++ Baudrate_Array - com_baudrate0/1/2 stores an index 0-11 into this array
@@ -495,6 +496,10 @@ export const SettingsPage: React.FC = () => {
   const [timeSettings, setTimeSettings] = useState<TimeSettings>({});
   const [dyndnsSettings, setDyndnsSettings] = useState<DyndnsSettings>({});
   const [emailSettings, setEmailSettings] = useState<EmailSettings>({});
+  const [userLoginSettings, setUserLoginSettings] = useState<UserLoginSettings>({
+    users: [],
+    enable_user_list: 1,
+  });
   const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo>({});
   const [featureFlags, setFeatureFlags] = useState<FeatureFlags>({
     LCD_Display: 0, // Default to LCD Always Off
@@ -595,6 +600,11 @@ export const SettingsPage: React.FC = () => {
         DynDNS_Domain: settings.dyndns_domain,
         DynDNS_Update_Time: settings.dyndns_update_time,
       });
+
+      setUserLoginSettings(prev => ({
+        ...prev,
+        enable_user_list: settings.user_name ?? 1,
+      }));
 
       setHardwareInfo({
         Mini_Type: settings.mini_type,
@@ -709,6 +719,11 @@ export const SettingsPage: React.FC = () => {
           DynDNS_Domain: settings.dyndns_domain,
           DynDNS_Update_Time: settings.dyndns_update_time,
         });
+
+        setUserLoginSettings(prev => ({
+          ...prev,
+          enable_user_list: settings.user_name ?? 1,
+        }));
 
         setHardwareInfo({
           Mini_Type: settings.mini_type,
@@ -931,6 +946,34 @@ export const SettingsPage: React.FC = () => {
       setError(err instanceof Error ? err.message : 'Failed to save email settings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveUser = async (index: number, user: import('../components/UserLoginTab').UserEntry) => {
+    if (!selectedDevice) throw new Error('No device selected');
+    const response = await fetch(
+      `/api/v1/devices/${selectedDevice.serialNumber}/users/${index}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(user),
+      }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error((err as any)?.error || 'Failed to save user');
+    }
+  };
+
+  const handleDeleteUser = async (index: number) => {
+    if (!selectedDevice) throw new Error('No device selected');
+    const response = await fetch(
+      `/api/v1/devices/${selectedDevice.serialNumber}/users/${index}`,
+      { method: 'DELETE' }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error((err as any)?.error || 'Failed to delete user');
     }
   };
 
@@ -1734,10 +1777,14 @@ export const SettingsPage: React.FC = () => {
 
       case 'users':
         return (
-          <div className={styles.infoMessage}>
-            <InfoRegular style={{ fontSize: '14px', color: '#0078d4' }} />
-            <Text style={{ fontSize: '12px' }}>User login configuration is managed through the Users page.</Text>
-          </div>
+          <UserLoginTab
+            userLoginSettings={userLoginSettings}
+            setUserLoginSettings={setUserLoginSettings}
+            updateSettings={updateSettings}
+            onSaveUser={handleSaveUser}
+            onDeleteUser={handleDeleteUser}
+            loading={loading}
+          />
         );
 
       case 'expansion':
