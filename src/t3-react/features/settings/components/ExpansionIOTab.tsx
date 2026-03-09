@@ -26,7 +26,7 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import { AddRegular, DeleteRegular, CheckmarkRegular, DismissRegular } from '@fluentui/react-icons';
+import { AddRegular, DeleteRegular, CheckmarkRegular, DismissRegular, InfoRegular } from '@fluentui/react-icons';
 
 // ─── Static data (from C++ global_define.h) ───────────────────────────────
 
@@ -274,6 +274,17 @@ const useStyles = makeStyles({
     padding: '20px',
     textAlign: 'center',
   },
+  dataNote: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+    backgroundColor: tokens.colorNeutralBackground2,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: '4px',
+    padding: '4px 8px',
+  },
 });
 
 // ─── Component ────────────────────────────────────────────────────────────
@@ -392,8 +403,14 @@ export const ExpansionIOTab: React.FC<ExpansionIOTabProps> = ({
   const isDisabled = loading || saveLoading;
 
   return (
-    <div className={styles.root}>
-      {/* ── Table ──────────────────────────────────────────────────── */}
+    <div className={styles.root}>      {/* ⚠️ Data source note: Str_Extio_point[] is NOT in the 400-byte Str_Setting_Info */}
+      <div className={styles.dataNote}>
+        <InfoRegular fontSize={12} />
+        <span>
+          <strong>Data source:</strong> Str_Extio_point[] — separate from the 400-byte settings block.
+          Loaded via <code>GET /api/v1/devices/:sn/expansion-io</code>.
+        </span>
+      </div>      {/* ── Table ──────────────────────────────────────────────────── */}
       <div className={styles.tableWrapper}>
         <table className={styles.table}>
           <thead className={styles.thead}>

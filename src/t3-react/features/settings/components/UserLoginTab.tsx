@@ -40,7 +40,7 @@ import {
   mergeClasses,
   tokens,
 } from '@fluentui/react-components';
-import { DeleteRegular, CheckmarkRegular } from '@fluentui/react-icons';
+import { DeleteRegular, CheckmarkRegular, InfoRegular } from '@fluentui/react-icons';
 import type { DeviceSettings } from '../services/settingsRefreshApi';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -167,6 +167,17 @@ const useStyles = makeStyles({
   },
   dimmed: {
     opacity: '0.4',
+  },
+  dataNote: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+    backgroundColor: tokens.colorNeutralBackground2,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: '4px',
+    padding: '4px 8px',
   },
 });
 
@@ -333,6 +344,17 @@ export const UserLoginTab: React.FC<UserLoginTabProps> = ({
 
   return (
     <div className={styles.root}>
+      {/* ⚠️ Data source note */}
+      {/* enable_user_list → byte[47] of Str_Setting_Info ✅ */}
+      {/* users[0..7] (name/password/access_level) → Str_User_point[8] — NOT in 400 bytes */}
+      <div className={styles.dataNote}>
+        <InfoRegular fontSize={12} />
+        <span>
+          <strong>enable_user_list</strong> — byte[47] of Str_Setting_Info ✅&nbsp;&nbsp;|
+          &nbsp;&nbsp;<strong>users[0–7]</strong> (name/password/access_level) — Str_User_point[8],
+          separate from 400 bytes. Loaded via <code>GET /api/v1/devices/:sn/users</code>.
+        </span>
+      </div>
       {/* Top: list + detail side-by-side */}
       <div className={styles.topRow}>
 

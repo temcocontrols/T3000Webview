@@ -37,7 +37,7 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import { SaveRegular } from '@fluentui/react-icons';
+import { SaveRegular, InfoRegular } from '@fluentui/react-icons';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -107,6 +107,17 @@ const useStyles = makeStyles({
   saveRow: {
     marginTop: '4px',
   },
+  dataNote: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+    backgroundColor: tokens.colorNeutralBackground2,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: '4px',
+    padding: '4px 8px',
+  },
 });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -149,6 +160,14 @@ export const EmailSettingsTab: React.FC<EmailSettingsTabProps> = ({
 
   return (
     <div className={styles.root}>
+      {/* ⚠️ Data source note: Str_Email_point is NOT in the 400-byte Str_Setting_Info */}
+      <div className={styles.dataNote}>
+        <InfoRegular fontSize={12} />
+        <span>
+          <strong>Data source:</strong> Str_Email_point — separate from the 400-byte settings block.
+          Loaded via <code>GET /api/v1/devices/:sn/email-settings</code>.
+        </span>
+      </div>
       <div className={styles.groupBox}>
         <div className={styles.groupTitle}>Email Configuration</div>
 

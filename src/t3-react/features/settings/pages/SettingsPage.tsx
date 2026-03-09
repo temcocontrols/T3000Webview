@@ -515,6 +515,76 @@ export const SettingsPage: React.FC = () => {
     }
   }, [selectedDevice, devices, selectDevice]);
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // EXTERNAL DATA FETCH — data NOT in Str_Setting_Info (400 bytes)
+  //
+  // These three structures are completely separate from the 400-byte settings block:
+  //   • Str_Email_point          → GET /api/v1/devices/:sn/email-settings
+  //   • Str_User_point[8]        → GET /api/v1/devices/:sn/users
+  //   • Str_Extio_point[]        → GET /api/v1/devices/:sn/expansion-io
+  // ─────────────────────────────────────────────────────────────────────────────
+  const fetchExternalSettings = useCallback(async (serialNumber: number) => {
+    // ── Email settings (Str_Email_point — NOT in 400-byte Str_Setting_Info) ───
+    try {
+      const res = await fetch(`/api/v1/devices/${serialNumber}/email-settings`);
+      if (res.ok) {
+        const data = await res.json();
+        setEmailSettings({
+          smtp_domain: data.smtp_domain ?? '',
+          smtp_port: data.smtp_port ?? 25,
+          email_address: data.email_address ?? '',
+          user_name: data.user_name ?? '',
+          password: data.password ?? '',
+          secure_connection_type: data.secure_connection_type ?? 0,
+          To1Addr: data.To1Addr ?? '',
+          To2Addr: data.To2Addr ?? '',
+          error_code: data.error_code ?? 0,
+        });
+      } else {
+        console.warn(
+          '[SettingsPage] ⚠️ Email — Str_Email_point is NOT in 400-byte Str_Setting_Info.'
+          + ` Endpoint /email-settings returned HTTP ${res.status}. Backend endpoint needed.`
+        );
+      }
+    } catch (e) {
+      console.warn('[SettingsPage] ⚠️ Email fetch failed (endpoint not yet implemented):', e);
+    }
+
+    // ── User login slots (Str_User_point[8] — NOT in 400-byte Str_Setting_Info) ─
+    // NOTE: enable_user_list (byte[47]) IS in the 400 bytes and is already set above.
+    // The 8 user entries (name / password / access_level) are a separate structure.
+    try {
+      const res = await fetch(`/api/v1/devices/${serialNumber}/users`);
+      if (res.ok) {
+        const data: { name: string; password: string; access_level: number }[] = await res.json();
+        setUserLoginSettings(prev => ({ ...prev, users: data }));
+      } else {
+        console.warn(
+          '[SettingsPage] ⚠️ User slots — Str_User_point[8] is NOT in 400-byte Str_Setting_Info.'
+          + ` Endpoint /users returned HTTP ${res.status}. Backend endpoint needed.`
+        );
+      }
+    } catch (e) {
+      console.warn('[SettingsPage] ⚠️ User slots fetch failed (endpoint not yet implemented):', e);
+    }
+
+    // ── Expansion IO devices (Str_Extio_point[] — NOT in 400-byte Str_Setting_Info) ─
+    try {
+      const res = await fetch(`/api/v1/devices/${serialNumber}/expansion-io`);
+      if (res.ok) {
+        const data = await res.json();
+        setExpansionSettings({ devices: Array.isArray(data) ? data : [] });
+      } else {
+        console.warn(
+          '[SettingsPage] ⚠️ Expansion IO — Str_Extio_point[] is NOT in 400-byte Str_Setting_Info.'
+          + ` Endpoint /expansion-io returned HTTP ${res.status}. Backend endpoint needed.`
+        );
+      }
+    } catch (e) {
+      console.warn('[SettingsPage] ⚠️ Expansion IO fetch failed (endpoint not yet implemented):', e);
+    }
+  }, []);
+
   // Fetch settings based on selected tab
   const fetchSettings = useCallback(async () => {
     if (!selectedDevice) return;
@@ -637,6 +707,10 @@ export const SettingsPage: React.FC = () => {
         Panel_Number: settings.panel_number,
       });
 
+      // ⚠️ Email / Users / Expansion IO are NOT in Str_Setting_Info (400 bytes).
+      // They live in separate C++ structures — fetch them via dedicated endpoints.
+      void fetchExternalSettings(serial);
+
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
@@ -644,7 +718,7 @@ export const SettingsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedDevice]);
+  }, [selectedDevice, fetchExternalSettings]);
 
   // Refresh from device (force fresh data)
   const handleRefresh = useCallback(async () => {
@@ -707,6 +781,7 @@ export const SettingsPage: React.FC = () => {
           Time_Zone_Summer_Daytime: settings.time_zone_summer_daytime,
           Enable_SNTP: settings.en_sntp,
           SNTP_Server: settings.sntp_server,
+          Time_Sync_Auto_Manual: settings.time_sync_auto_manual, // offset 240 ✅
           Start_Month: settings.start_month,
           Start_Day: settings.start_day,
           End_Month: settings.end_month,
@@ -752,6 +827,9 @@ export const SettingsPage: React.FC = () => {
           PanelId: settings.panel_name,
           PanelNumber: settings.panel_number,
         });
+
+        // ⚠️ Email / Users / Expansion IO are NOT in Str_Setting_Info (400 bytes).
+        void fetchExternalSettings(selectedDevice.serialNumber);
       }
 
       setSuccessMessage('Settings refreshed successfully from device');
@@ -768,7 +846,7 @@ export const SettingsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedDevice]); // Removed fetchSettings from dependencies
+  }, [selectedDevice, fetchExternalSettings]); // Removed fetchSettings from dependencies
 
   // Load settings when device changes
   useEffect(() => {
