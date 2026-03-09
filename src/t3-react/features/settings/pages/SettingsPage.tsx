@@ -63,6 +63,7 @@ import { ChangeIpProgressDialog } from '../components/ChangeIpProgressDialog';
 import { NetworkHealthDialog } from '../components/NetworkHealthDialog';
 import { TimeSettingsTab } from '../components/TimeSettingsTab';
 import { DyndnsSettingsTab, type DyndnsSettings } from '../components/DyndnsSettingsTab';
+import { EmailSettingsTab, type EmailSettings } from '../components/EmailSettingsTab';
 import cssStyles from './SettingsPage.module.css';
 
 // Full T3000 C++ Baudrate_Array - com_baudrate0/1/2 stores an index 0-11 into this array
@@ -493,6 +494,7 @@ export const SettingsPage: React.FC = () => {
   const [protocolSettings, setProtocolSettings] = useState<ProtocolSettings>({});
   const [timeSettings, setTimeSettings] = useState<TimeSettings>({});
   const [dyndnsSettings, setDyndnsSettings] = useState<DyndnsSettings>({});
+  const [emailSettings, setEmailSettings] = useState<EmailSettings>({});
   const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo>({});
   const [featureFlags, setFeatureFlags] = useState<FeatureFlags>({
     LCD_Display: 0, // Default to LCD Always Off
@@ -901,6 +903,32 @@ export const SettingsPage: React.FC = () => {
       await fetchSettings();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveEmail = async () => {
+    if (!selectedDevice) return;
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      const response = await fetch(
+        `/api/v1/devices/${selectedDevice.serialNumber}/email-settings`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(emailSettings),
+        }
+      );
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error((err as any)?.error || 'Failed to save email settings');
+      }
+      setSuccessMessage('Email settings saved to device successfully');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save email settings');
     } finally {
       setLoading(false);
     }
@@ -1696,10 +1724,12 @@ export const SettingsPage: React.FC = () => {
 
       case 'email':
         return (
-          <div className={styles.infoMessage}>
-            <InfoRegular style={{ fontSize: '14px', color: '#0078d4' }} />
-            <Text style={{ fontSize: '12px' }}>Email alarm configuration is managed through the Email Alarms page.</Text>
-          </div>
+          <EmailSettingsTab
+            emailSettings={emailSettings}
+            setEmailSettings={setEmailSettings}
+            onSave={handleSaveEmail}
+            loading={loading}
+          />
         );
 
       case 'users':
