@@ -234,12 +234,22 @@ if (!(Chart as any).registry?.scales?.get(SCALE_ID)) {
 
         const MIN_PX = 14   // ~10px font + 4px padding
 
+        // Cluster boundaries (vMin / vMax) must never be pruned — they correspond to
+        // the actual data min/max dashes.  The gap between two adjacent bands can be
+        // smaller than MIN_PX, which would otherwise drop the lower band's min tick.
+        const boundaries = new Set<number>()
+        clusters.forEach(c => {
+          boundaries.add(Math.round(c.vMin * 1e6))
+          boundaries.add(Math.round(c.vMax * 1e6))
+        })
+        const isBoundary = (v: number) => boundaries.has(Math.round(v * 1e6))
+
         const surviving: typeof this.ticks = []
         let lastPx = Infinity   // sentinel: start from "very bottom" of canvas
 
         for (const tick of this.ticks) {
           const px = this.getPixelForValue(tick.value)
-          if (Math.abs(px - lastPx) >= MIN_PX) {
+          if (isBoundary(tick.value) || Math.abs(px - lastPx) >= MIN_PX) {
             surviving.push(tick)
             lastPx = px
           }
