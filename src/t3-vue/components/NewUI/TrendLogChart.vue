@@ -4228,7 +4228,11 @@
               if (range === 0) return realV.toFixed(1)
               if (range < 1)   return realV.toFixed(2)
               if (range < 10)  return realV.toFixed(1)
-              return Math.round(realV).toString()
+              const rounded = Math.round(realV)
+              if (Math.abs(rounded) >= 1_000_000) return (rounded / 1_000_000).toFixed(1) + 'M'
+              if (Math.abs(rounded) >= 10_000)    return (rounded / 1_000).toFixed(0) + 'K'
+              if (Math.abs(rounded) >= 1_000)     return (rounded / 1_000).toFixed(1) + 'K'
+              return rounded.toString()
             }
           },
           // Keep exactly TICKS_PER_BAND evenly-spaced ticks inside each piecewise band.
@@ -4251,8 +4255,30 @@
             scale.ticks = kept
           },
           afterFit: function(scale: any) {
-            // Wide enough for tick numbers (reverse-transformed real values) + pill
-            scale.width = 50
+            // Auto-size width based on the longest tick label that will be rendered.
+            // Base 38px covers up to 4 chars (e.g. '999'); each extra char adds 6px.
+            // Floor at 38, ceiling at 68 (fits '-1.0M' comfortably).
+            const bands = yBandInfo.value
+            let maxChars = 4
+            if (bands.length) {
+              bands.forEach((band: any) => {
+                const range = band.realMax - band.realMin
+                const fmt = (v: number) => {
+                  if (range < 1)  return v.toFixed(2)
+                  if (range < 10) return v.toFixed(1)
+                  const r = Math.round(v)
+                  if (Math.abs(r) >= 1_000_000) return (r / 1_000_000).toFixed(1) + 'M'
+                  if (Math.abs(r) >= 10_000)    return (r / 1_000).toFixed(0) + 'K'
+                  if (Math.abs(r) >= 1_000)     return (r / 1_000).toFixed(1) + 'K'
+                  return r.toString()
+                }
+                ;[band.realMin, band.realMax].forEach((v: number) => {
+                  const len = fmt(v).length
+                  if (len > maxChars) maxChars = len
+                })
+              })
+            }
+            scale.width = Math.min(68, Math.max(38, 38 + (maxChars - 4) * 6))
           },
           // Band-driven Y limits: each unit group occupies a BAND_SIZE-wide virtual band
           afterDataLimits: function (scale: any) {
