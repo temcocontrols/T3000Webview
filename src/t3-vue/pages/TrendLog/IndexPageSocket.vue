@@ -412,6 +412,7 @@ const initializeT3000Data = async () => {
       T3000_Data.value.panelsList.push({
         panel_number: panel_id,
         serial_number: sn,
+        object_instance: 0,  // populated after Action 4 GET_PANELS_LIST
         panel_name: `Panel ${panel_id}`,
         online: true
       })
@@ -440,11 +441,13 @@ const initializeT3000Data = async () => {
           if (existing) {
             // Update serial_number in case it changed
             existing.serial_number = p.serial_number ?? existing.serial_number
+            existing.object_instance = p.object_instance ?? existing.object_instance
             existing.panel_name = p.panel_name ?? existing.panel_name
           } else {
             T3000_Data.value.panelsList.push({
               panel_number: p.panel_number,
               serial_number: p.serial_number,
+              object_instance: p.object_instance ?? 0,
               panel_name: p.panel_name || `Panel ${p.panel_number}`,
               online: true
             })

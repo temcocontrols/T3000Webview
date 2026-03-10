@@ -1395,49 +1395,52 @@
 
   // Helper function to get unit information from panel data
   const getUnitFromPanelData = (panelId: number, pointType: number, pointNumber: number): string => {
-    const panelsData = T3000_Data.value.panelsData
     const panelsRanges = T3000_Data.value.panelsRanges
 
-    if (!panelsData?.length) return ''
-
-    // Get point type info and device ID
     const pointTypeInfo = getPointTypeInfo(pointType)
     if (!pointTypeInfo?.category) return ''
 
     const idToFind = `${pointTypeInfo.category}${pointNumber + 1}`
+
+    // Helper: resolve range value → unit string (shared by both cache paths)
+    const resolveRange = (rangeVal: number | undefined): string => {
+      if (rangeVal === undefined) return ''
+      if (panelsRanges?.length) {
+        const rangeData = panelsRanges.find((r: any) =>
+          String(r.pid) === String(panelId) && r.index === rangeVal
+        )
+        if (rangeData?.type === 'digital' && (rangeData.on || rangeData.off)) {
+          return `${rangeData.off}/${rangeData.on}`
+        }
+      }
+      let ranges: any[] = []
+      if (pointTypeInfo.category === 'IN') ranges = rangeDefinitions.analog.input
+      else if (pointTypeInfo.category === 'OUT') ranges = rangeDefinitions.analog.output
+      else if (pointTypeInfo.category === 'VAR') ranges = rangeDefinitions.analog.variable
+      const rangeInfo = ranges.find(r => r.id === rangeVal)
+      if (rangeInfo) return rangeInfo.unit || rangeInfo.label
+      const digitalRange = rangeDefinitions.digital.find(d => d.id === rangeVal)
+      if (digitalRange) return `${digitalRange.off}/${digitalRange.on}`
+      return ''
+    }
+
+    // 1. Try fresh Action 17 cache first
+    const cachedDevice = freshWebviewCache.value.get(`${panelId}_${idToFind}`)
+    if (cachedDevice !== undefined) {
+      const result = resolveRange(cachedDevice?.range)
+      if (result) return result
+    }
+
+    // 2. Fall back to panelsData
+    const panelsData = T3000_Data.value.panelsData
+    if (!panelsData?.length) return ''
+
     const device = panelsData.find((d: any) =>
       String(d.pid) === String(panelId) && d.id === idToFind
     )
 
     if (!device || device.range === undefined) return ''
-
-    // Check for custom range data first
-    if (panelsRanges?.length) {
-      const rangeData = panelsRanges.find((r: any) =>
-        String(r.pid) === String(panelId) && r.index === device.range
-      )
-      if (rangeData?.type === 'digital' && (rangeData.on || rangeData.off)) {
-        return `${rangeData.off}/${rangeData.on}`
-      }
-    }
-
-    // Use rangeDefinitions lookup - use device.range instead of device.unit
-    let ranges: any[] = []
-    if (pointTypeInfo.category === 'IN') ranges = rangeDefinitions.analog.input
-    else if (pointTypeInfo.category === 'OUT') ranges = rangeDefinitions.analog.output
-    else if (pointTypeInfo.category === 'VAR') ranges = rangeDefinitions.analog.variable
-
-    const rangeInfo = ranges.find(r => r.id === device.range)
-    if (rangeInfo) {
-      // If unit is empty, return the label (e.g., "Unused")
-      return rangeInfo.unit || rangeInfo.label
-    }
-
-    // Check digital ranges - use device.range instead of device.unit
-    const digitalRange = rangeDefinitions.digital.find(d => d.id === device.range)
-    if (digitalRange) return `${digitalRange.off}/${digitalRange.on}`
-
-    return ''
+    return resolveRange(device.range)
   }
 
   // Helper function to extract digital states from unit string
@@ -1845,6 +1848,23 @@
 
   // Helper: Get device description from T3000_Data.value.panelsData
   const getDeviceDescription = (panelId: number, pointType: number, pointNumber: number): string => {
+    const pointTypeInfo = getPointTypeInfo(pointType)
+    if (!pointTypeInfo?.category) return ''
+
+    // Generate search ID (panel data is 1-based, param is 0-based)
+    const idToFind = `${pointTypeInfo.category}${pointNumber + 1}`
+
+    // 1. Try fresh Action 17 cache first (most reliable, reads directly from device)
+    const cachedDevice = freshWebviewCache.value.get(`${panelId}_${idToFind}`)
+    if (cachedDevice) {
+      const desc = (cachedDevice.label && cachedDevice.label.trim())
+        || cachedDevice.description
+        || cachedDevice.id
+        || ''
+      if (desc) return desc
+    }
+
+    // 2. Fall back to panelsData (Action 0 cached response)
     const panelsData = T3000_Data.value.panelsData
 
     if (!panelsData?.length) {
@@ -1852,17 +1872,12 @@
       return ''
     }
 
-    const pointTypeInfo = getPointTypeInfo(pointType)
-    if (!pointTypeInfo?.category) return ''
-
-    // Generate search ID (panel data is 1-based, param is 0-based)
-    const idToFind = `${pointTypeInfo.category}${pointNumber + 1}`
     const device = panelsData.find((d: any) =>
       String(d.pid) === String(panelId) && d.id === idToFind
     )
 
     if (!device) {
-      LogUtil.Debug('⚠️ TrendLogChart: Device not found in panelsData', {
+      LogUtil.Debug('⚠️ TrendLogChart: Device not found in panelsData or freshWebviewCache', {
         panelId,
         pointType,
         pointNumber,
@@ -1890,14 +1905,21 @@
 
   // Helper: Get digital_analog field from T3000_Data.value.panelsData
   const getDigitalAnalogFromPanelData = (panelId: number, pointType: number, pointNumber: number): number => {
-    const panelsData = T3000_Data.value.panelsData
-
-    if (!panelsData?.length) return BAC_UNITS_ANALOG
-
     const pointTypeInfo = getPointTypeInfo(pointType)
     if (!pointTypeInfo?.category) return BAC_UNITS_ANALOG
 
     const idToFind = `${pointTypeInfo.category}${pointNumber + 1}`
+
+    // 1. Try fresh Action 17 cache first
+    const cachedDevice = freshWebviewCache.value.get(`${panelId}_${idToFind}`)
+    if (cachedDevice !== undefined) {
+      return cachedDevice?.digital_analog ?? BAC_UNITS_ANALOG
+    }
+
+    // 2. Fall back to panelsData
+    const panelsData = T3000_Data.value.panelsData
+    if (!panelsData?.length) return BAC_UNITS_ANALOG
+
     const device = panelsData.find((d: any) =>
       String(d.pid) === String(panelId) && d.id === idToFind
     )
@@ -2037,6 +2059,99 @@
   // Takes priority over props.itemData.t3Entry (URL all_data) which may be stale
   // if the user reconfigured the monitor's input channels since opening the chart.
   const freshMonitorData = ref<any>(null)
+
+  // Cache of fresh point metadata fetched via Action 17 (GET_WEBVIEW_LIST).
+  // Key: `${panelId}_${id}` e.g. "134_VAR1"  Value: device_data entry from C++ response.
+  // This avoids stale GET_PANEL_DATA (Action 0) cache data and also lets us populate
+  // descriptions for panels that are currently offline in panelsData (e.g. foreign panels).
+  const freshWebviewCache = ref<Map<string, any>>(new Map())
+
+  /**
+   * Fetch fresh point metadata for every panel/type combination referenced by the
+   * current monitor config. Uses Action 17 (GET_WEBVIEW_LIST) which calls
+   * GetPrivateDataSaveSPBlocking() in C++ — reads directly from the device, not cache.
+   *
+   * Mapping from TrendLog point_type → Action 17 entryType:
+   *   point_type 1 (Output/OUT) → entryType 2 (BAC_OUT)
+   *   point_type 2 (Input/IN)   → entryType 1 (BAC_IN)
+   *   point_type 3 (Variable/VAR) → entryType 3 (BAC_VAR)
+   *
+   * C++ response structure: { data: { device_data: [ { pid, type, id, index, label,
+   *   description, digital_analog, range, value, ... } ] } }
+   */
+  const fetchFreshPointsForAllPanels = async (): Promise<void> => {
+    try {
+      const inputData = freshMonitorData.value?.input ?? props.itemData?.t3Entry?.input
+      if (!inputData?.length) return
+
+      const panelsList: any[] = T3000_Data.value.panelsList || []
+      if (!panelsList.length) {
+        LogUtil.Warn('⚠️ fetchFreshPointsForAllPanels: panelsList empty, cannot look up objectinstance')
+        return
+      }
+
+      // Map from point_type to Action 17 entryType
+      const pointTypeToEntryType = (pt: number): number => {
+        if (pt === 1) return 2  // OUT → BAC_OUT
+        if (pt === 2) return 1  // IN  → BAC_IN
+        if (pt === 3) return 3  // VAR → BAC_VAR
+        return -1
+      }
+
+      // Collect unique (panelId, entryType) pairs
+      const fetchSet = new Map<string, { panelId: number; entryType: number; panel: any }>()
+      for (const item of inputData) {
+        const { panel: panelId, point_type: pointType } = item
+        const entryType = pointTypeToEntryType(pointType)
+        if (entryType < 0) continue
+        const key = `${panelId}_${entryType}`
+        if (fetchSet.has(key)) continue
+        const panelEntry = panelsList.find(
+          (p: any) => p.panel_number === panelId || p.panel_id === panelId || p.id === panelId
+        )
+        if (!panelEntry) {
+          LogUtil.Warn(`⚠️ fetchFreshPointsForAllPanels: panelId ${panelId} not found in panelsList`)
+          continue
+        }
+        fetchSet.set(key, { panelId, entryType, panel: panelEntry })
+      }
+
+      if (!fetchSet.size) return
+
+      LogUtil.Info(`📡 fetchFreshPointsForAllPanels: fetching ${fetchSet.size} panel/type combo(s) via Action 17`, {
+        combos: Array.from(fetchSet.keys())
+      })
+
+      // Fetch each combo in parallel
+      const fetchPromises = Array.from(fetchSet.values()).map(async ({ panelId, entryType, panel }) => {
+        try {
+          const sn: number = panel.serial_number ?? panel.panel_serial_number ?? 0
+          const oi: number = panel.object_instance ?? 0
+          if (!sn || !oi) {
+            LogUtil.Warn(`⚠️ fetchFreshPointsForAllPanels: panelId ${panelId} missing serialNumber=${sn} or objectinstance=${oi}`)
+            return
+          }
+          const resp = await ffiApi.ffiGetWebviewList(panelId, sn, oi, entryType, 0, 63)
+          const deviceData: any[] = resp?.data?.device_data ?? []
+          const newCache = new Map(freshWebviewCache.value)
+          for (const pt of deviceData) {
+            const cacheKey = `${pt.pid}_${pt.id}`
+            newCache.set(cacheKey, pt)
+          }
+          freshWebviewCache.value = newCache
+          LogUtil.Info(`✅ fetchFreshPointsForAllPanels: cached ${deviceData.length} points for panelId=${panelId} entryType=${entryType}`)
+        } catch (err) {
+          LogUtil.Warn(`⚠️ fetchFreshPointsForAllPanels: failed for panelId=${panelId} entryType=${entryType}`, err)
+        }
+      })
+
+      await Promise.allSettled(fetchPromises)
+
+      LogUtil.Info(`✅ fetchFreshPointsForAllPanels: total cached entries = ${freshWebviewCache.value.size}`)
+    } catch (err) {
+      LogUtil.Warn('⚠️ fetchFreshPointsForAllPanels: unexpected error', err)
+    }
+  }
 
   const dataSeries = ref<SeriesConfig[]>([])
 
@@ -6912,46 +7027,67 @@
         willUseUrl: `/trendlogs/${trendlogId}/history`
       })
 
-      // Prepare historical data request (matching the working API structure)
-      const historyRequest = {
-        serial_number: currentSN,
-        panel_id: currentPanelId,
-        trendlog_id: trendlogId,
-        start_time: formattedStartTime,
-        end_time: formattedEndTime,
-        // No limit - return all data in the time range for timebase changes
-        point_types: ['INPUT', 'OUTPUT', 'VARIABLE', 'MONITOR'], // All point types (matching working API)
-        specific_points: specificPoints
+      // Build per-panel requests: each unique panel_id in specificPoints gets its own
+      // request with the correct serial_number from panelsList. This ensures foreign
+      // panels (e.g. STP on panel 134, MYTIME on panel 144) get their history fetched.
+      const panelGroups = new Map<number, typeof specificPoints>()
+      for (const sp of specificPoints) {
+        const pid = sp.panel_id || currentPanelId
+        if (!panelGroups.has(pid)) panelGroups.set(pid, [])
+        panelGroups.get(pid)!.push(sp)
+      }
+      if (panelGroups.size === 0) panelGroups.set(currentPanelId, [])
+
+      const getSnForHistoryPanel = (pid: number): number => {
+        const entry = (T3000_Data.value.panelsList || []).find((p: any) => p.panel_number === pid)
+        return entry?.serial_number || currentSN
       }
 
-      LogUtil.Debug('🔍 Historical data request:', {
+      LogUtil.Debug('🔍 Historical data request (multi-panel):', {
         timeRange: `${formattedStartTime} to ${formattedEndTime}`,
         timeRangeMinutes: timeRangeMinutes,
-        pointsCount: specificPoints.length,
-        noLimit: true,
+        panelCount: panelGroups.size,
+        panels: Array.from(panelGroups.entries()).map(([pid, pts]) => ({
+          panelId: pid, sn: getSnForHistoryPanel(pid), pointCount: pts.length
+        })),
         trendlogId: trendlogId
       })
 
-      // Fetch historical data
-      const historyResponse = await trendlogAPI.getTrendlogHistory(historyRequest)
+      // Fetch all panels in parallel; offline panels return [] (do not throw)
+      const perPanelData = await Promise.all(
+        Array.from(panelGroups.entries()).map(async ([pid, points]) => {
+          const panelSN = getSnForHistoryPanel(pid)
+          const req = {
+            serial_number: panelSN,
+            panel_id: pid,
+            trendlog_id: trendlogId,
+            start_time: formattedStartTime,
+            end_time: formattedEndTime,
+            point_types: ['INPUT', 'OUTPUT', 'VARIABLE', 'MONITOR'] as string[],
+            specific_points: points
+          }
+          try {
+            const resp = await trendlogAPI.getTrendlogHistory(req)
+            if (!resp || (resp as any)?.error) {
+              LogUtil.Warn(`⚠️ History fetch failed for panel ${pid}`, (resp as any)?.error || 'null response')
+              return [] as any[]
+            }
+            const items: any[] = (resp.data as any)?.data || resp.data || []
+            // Tag each item with its panel_id (TrendlogDataPoint lacks this field)
+            return items.map(item => ({ ...item, panel_id: pid }))
+          } catch (err) {
+            LogUtil.Warn(`⚠️ History fetch error for panel ${pid}`, err)
+            return [] as any[]
+          }
+        })
+      )
+      const historyData = perPanelData.flat()
 
-      // Check for errors in response
-      if (!historyResponse) {
-        const errorMsg = 'Failed to fetch historical data - API returned null'
-        LogUtil.Error('Historical data fetch failed:', errorMsg)
+      // Only treat as connection error if the primary panel itself returned nothing
+      if (historyData.length === 0 && panelGroups.size === 1 && panelGroups.has(currentPanelId)) {
         hasConnectionError.value = true
-        throw new Error(errorMsg)
+        throw new Error('Failed to fetch historical data - primary panel returned no data')
       }
-
-      if (historyResponse?.error) {
-        LogUtil.Error('Historical data fetch returned error:', historyResponse.error)
-        hasConnectionError.value = true
-        throw new Error(historyResponse.error)
-      }
-
-      // Extract the actual data array from the response
-      // Response structure: { count: N, data: [...], device_id: X, ... }
-      const historyData = historyResponse.data?.data || historyResponse.data
 
       // Check if response has no data
       if (!historyData || historyData.length === 0) {
@@ -6978,7 +7114,7 @@
       if (historyData.length > 0) {
         LogUtil.Info('📚 Historical data loaded:', {
           dataPointsCount: historyData.length,
-          totalCount: historyResponse.data?.count || historyData.length,
+          totalCount: historyData.length,
           timeRange: `${timeRangeMinutes} minutes`,
           actualTimeRange: `${formattedStartTime} to ${formattedEndTime}`
         })
@@ -7155,7 +7291,8 @@
       const dataByPoint = new Map<string, any[]>()
 
       historicalData.forEach(item => {
-        const key = `${item.point_id}_${item.point_type}`
+        // Include panel_id in key so VAR1 from panel 99 != VAR1 from panel 134
+        const key = `${item.panel_id ?? item.pid ?? 'unknown'}_${item.point_id}_${item.point_type}`
         if (!dataByPoint.has(key)) {
           dataByPoint.set(key, [])
         }
@@ -7169,8 +7306,9 @@
         dataGroupKeys: Array.from(dataByPoint.keys()),
         seriesDetails: dataSeries.value.map(s => ({
           id: s.id,
+          panelId: s.panelId,
           pointType: s.pointType,
-          expectedKey: `${s.id}_${mapPointTypeFromNumber(s.pointType || 1)}`
+          expectedKey: `${s.panelId ?? 'unknown'}_${s.id}_${mapPointTypeFromNumber(s.pointType || 1)}`
         }))
       })
 
@@ -7183,12 +7321,14 @@
           await new Promise(resolve => setTimeout(resolve, 0))
         }
 
-        const seriesKey = `${series.id}_${mapPointTypeFromNumber(series.pointType || 1)}`
+        // Include panelId so series CMFORTSP(99):VAR1 != STP(134):VAR1 != MYTIME(144):VAR1
+        const seriesKey = `${series.panelId ?? 'unknown'}_${series.id}_${mapPointTypeFromNumber(series.pointType || 1)}`
         const seriesHistoricalData = dataByPoint.get(seriesKey) || []
 
         LogUtil.Info(`📊 Processing series ${seriesIndex}: ${series.name}`, {
           seriesId: series.id,
           seriesKey: seriesKey,
+          panelId: series.panelId,
           pointType: series.pointType,
           mappedPointType: mapPointTypeFromNumber(series.pointType || 1),
           historicalDataCount: seriesHistoricalData.length,
@@ -8722,10 +8862,13 @@
     })
     yBandInfo.value = newBandInfo
 
-    // Series id → band index map (used inside the dataset-building loop below)
+    // Series (panelId:id) → band index map — must include panelId because multiple
+    // series from different panels can share the same point id (e.g. all VAR1).
+    // Using only series.id as key would cause later writes to overwrite earlier ones,
+    // so all series from different panels would get the LAST band index written.
     const seriesBandIdx = new Map<string, number>()
     sortedGroups.forEach(([, items], i) => {
-      items.forEach(item => seriesBandIdx.set(item.series.id, i))
+      items.forEach(item => seriesBandIdx.set(`${item.series.panelId ?? 'x'}:${item.series.id}`, i))
     })
 
     // Helper: transform a real Y value into virtual band space
@@ -8776,8 +8919,9 @@
 
       const MAX_NULL_RUN = 5
       const dataWithGaps: Array<{ x: number; y: number | null }> = []
-      // Band-transform: look up which band this series belongs to
-      const bandIdx = seriesBandIdx.get(series.id) ?? 0
+      // Band-transform: look up which band this series belongs to.
+      // Key must match how seriesBandIdx was populated: panelId:id
+      const bandIdx = seriesBandIdx.get(`${series.panelId ?? 'x'}:${series.id}`) ?? 0
       const yAxisID = 'y' // All series share the single band-transform y axis
 
       let lastRealX: number | null = null
@@ -12506,64 +12650,34 @@
                 sampleInputPanels: matchingMonitor.input?.slice(0, 3).map((i: any) => i.panel)
               })
 
-              // 🆕 Fetch data for any foreign panels referenced by this monitor's inputs.
-              // Example: MON1 lives on panel 144 but its inputs belong to panel 11               // IndexPage only called Action 0 for panel 144, so panel 11 is missing from
-              // T3000_Data.panelsData. Without it, getDeviceDescription() returns '' and every
-              // series gets filtered out.
-              const inputPanelIds: number[] = [...new Set(
-                (matchingMonitor.input || [])
-                  .map((i: any) => i.panel)
-                  .filter((pid: number) => pid && pid !== 0 && pid !== urlPanelId)
-              )]
-              if (inputPanelIds.length > 0) {
-                LogUtil.Info('📡 Fetching data for foreign panels referenced by monitor inputs', { inputPanelIds })
-                Promise.all(inputPanelIds.map(async (pid: number) => {
-                  const resp = await ffiApi.ffiGetPanelData(pid)
-                  if (resp?.error || !resp?.data?.length) {
-                    // Panel is offline or returned no data
-                    LogUtil.Warn('⚠️ Foreign panel offline or no data cannot fetch items', { pid, error: resp?.error })
-                    return false
-                  }
-                  // Merge foreign panel items directly into T3000_Data.panelsData so
-                  // getDeviceDescription() can find them immediately on next regeneration.
-                  const existing: any[] = T3000_Data.value.panelsData || []
-                  const newItems = (resp.data as any[]).filter(
-                    item => !existing.find((e: any) => e.pid === item.pid && e.id === item.id)
-                  )
-                  if (newItems.length) {
-                    T3000_Data.value.panelsData = [...existing, ...newItems]
-                    LogUtil.Info('✅Merged foreign panel data into panelsData', { pid, newItemsCount: newItems.length })
-                  }
-                  return true
-                }))
-                  .then((results: boolean[]) => {
-                    const offlinePanels = results.filter(r => r === false).length
-                    if (offlinePanels > 0) {
-                      // Some/all foreign panels are offline freshMonitorData inputs can't be resolved.
-                      // Clear freshMonitorData so generateDataSeries falls back to URL props data (all_data).
-                      freshMonitorData.value = null
-                      if (dataSeries.value.length > 0) {
-                        // We already have working series from URL data keep them, skip regeneration.
-                        LogUtil.Warn('⚠️ Foreign panels offline keeping existing working series to avoid blank chart', {
-                          inputPanelIds, offlinePanels, existingSeriesCount: dataSeries.value.length
-                        })
-                      } else {
-                        // No existing series regenerate using URL fallback (freshMonitorData now null).
-                        LogUtil.Warn('⚠️ Foreign panels offline falling back to URL all_data for series generation', {
-                          inputPanelIds, offlinePanels
-                        })
-                        regenerateDataSeries()
-                      }
-                      return
-                    }
-                    LogUtil.Info('✅All foreign panel data fetched, regenerating series', { inputPanelIds })
+              // Action 17 GET_WEBVIEW_LIST: fetch fresh point metadata (descriptions/labels/units)
+              // for every (panelId, entryType) referenced by this monitor's inputs.
+              // This is the only foreign-panel fetch needed — IndexPageSocket already populates
+              // T3000_Data.panelsData via its own Action 0 calls for realtime values.
+              // Action 17 reads live from device and also updates the global C++ cache,
+              // so getDeviceDescription() works even when foreign panels were previously offline.
+              fetchFreshPointsForAllPanels()
+                .catch(err => LogUtil.Warn('⚠️ fetchFreshPointsForAllPanels failed', err))
+                .then(() => {
+                  if (freshWebviewCache.value.size > 0) {
+                    LogUtil.Info('✅ Action 17 cache populated — regenerating series', {
+                      cacheSize: freshWebviewCache.value.size
+                    })
                     regenerateDataSeries()
-                  })
-                  .catch(err => LogUtil.Warn('⚠️ Foreign panel data fetch failed', err))
-              } else {
-                // All inputs on same panel regenerate now with panelsData already available
-                regenerateDataSeries()
-              }
+                  } else {
+                    // Action 17 returned nothing — device is truly unreachable.
+                    // Fall back to URL props data (all_data) for series generation.
+                    freshMonitorData.value = null
+                    if (dataSeries.value.length > 0) {
+                      LogUtil.Warn('⚠️ freshWebviewCache empty — keeping existing series to avoid blank chart', {
+                        existingSeriesCount: dataSeries.value.length
+                      })
+                    } else {
+                      LogUtil.Warn('⚠️ freshWebviewCache empty — regenerating with URL all_data fallback', {})
+                      regenerateDataSeries()
+                    }
+                  }
+                })
 
               const tempMonitorConfig = {
                 hour_interval_time: resolvedHour,
