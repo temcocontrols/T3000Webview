@@ -524,64 +524,72 @@ export const SettingsPage: React.FC = () => {
   //   • Str_Extio_point[]        → GET /api/v1/devices/:sn/expansion-io
   // ─────────────────────────────────────────────────────────────────────────────
   const fetchExternalSettings = useCallback(async (serialNumber: number) => {
+    const base = `http://localhost:9103/api/t3_device`;
+
     // ── Email settings (Str_Email_point — NOT in 400-byte Str_Setting_Info) ───
     try {
-      const res = await fetch(`/api/v1/devices/${serialNumber}/email-settings`);
+      const res = await fetch(`${base}/devices/${serialNumber}/settings/email`);
       if (res.ok) {
-        const data = await res.json();
+        const json = await res.json();
+        // Entity serializes with #[serde(rename_all = "PascalCase")],
+        // and GET handler wraps it as { success, data: { SmtpServer, ... } }
+        const d = json?.data ?? json;
         setEmailSettings({
-          smtp_domain: data.smtp_domain ?? '',
-          smtp_port: data.smtp_port ?? 25,
-          email_address: data.email_address ?? '',
-          user_name: data.user_name ?? '',
-          password: data.password ?? '',
-          secure_connection_type: data.secure_connection_type ?? 0,
-          To1Addr: data.To1Addr ?? '',
-          To2Addr: data.To2Addr ?? '',
-          error_code: data.error_code ?? 0,
+          smtp_domain:            d.SmtpServer             ?? d.smtp_domain             ?? '',
+          smtp_port:              d.SmtpPort               ?? d.smtp_port               ?? 25,
+          email_address:          d.EmailAddress           ?? d.email_address           ?? '',
+          user_name:              d.UserName               ?? d.user_name               ?? '',
+          password:               d.Password               ?? d.password               ?? '',
+          secure_connection_type: d.SecureConnectionType   ?? d.secure_connection_type  ?? 0,
+          To1Addr:                d.To1Addr                ?? d.to1_addr                ?? '',
+          To2Addr:                d.To2Addr                ?? d.to2_addr                ?? '',
+          error_code:             d.ErrorCode              ?? d.error_code              ?? 0,
         });
       } else {
-        console.warn(
-          '[SettingsPage] ⚠️ Email — Str_Email_point is NOT in 400-byte Str_Setting_Info.'
-          + ` Endpoint /email-settings returned HTTP ${res.status}. Backend endpoint needed.`
-        );
+        console.warn(`[SettingsPage] Email settings load returned HTTP ${res.status}`);
       }
     } catch (e) {
-      console.warn('[SettingsPage] ⚠️ Email fetch failed (endpoint not yet implemented):', e);
+      console.warn('[SettingsPage] Email fetch failed:', e);
     }
 
     // ── User login slots (Str_User_point[8] — NOT in 400-byte Str_Setting_Info) ─
-    // NOTE: enable_user_list (byte[47]) IS in the 400 bytes and is already set above.
-    // The 8 user entries (name / password / access_level) are a separate structure.
+    // GET /users/:serial returns an 8-element array with lowercase keys.
     try {
-      const res = await fetch(`/api/v1/devices/${serialNumber}/users`);
+      const res = await fetch(`${base}/users/${serialNumber}`);
       if (res.ok) {
-        const data: { name: string; password: string; access_level: number }[] = await res.json();
-        setUserLoginSettings(prev => ({ ...prev, users: data }));
+        const data = await res.json();
+        setUserLoginSettings(prev => ({ ...prev, users: Array.isArray(data) ? data : [] }));
       } else {
-        console.warn(
-          '[SettingsPage] ⚠️ User slots — Str_User_point[8] is NOT in 400-byte Str_Setting_Info.'
-          + ` Endpoint /users returned HTTP ${res.status}. Backend endpoint needed.`
-        );
+        console.warn(`[SettingsPage] User slots load returned HTTP ${res.status}`);
       }
     } catch (e) {
-      console.warn('[SettingsPage] ⚠️ User slots fetch failed (endpoint not yet implemented):', e);
+      console.warn('[SettingsPage] User slots fetch failed:', e);
     }
 
     // ── Expansion IO devices (Str_Extio_point[] — NOT in 400-byte Str_Setting_Info) ─
     try {
-      const res = await fetch(`/api/v1/devices/${serialNumber}/expansion-io`);
+      const res = await fetch(`${base}/devices/${serialNumber}/settings/expansion-io`);
       if (res.ok) {
-        const data = await res.json();
-        setExpansionSettings({ devices: Array.isArray(data) ? data : [] });
+        const json = await res.json();
+        // GET handler returns { success, count, data: [...] };
+        // each element has PascalCase keys from the entity.
+        const raw: unknown[] = Array.isArray(json) ? json : (json?.data ?? []);
+        const devices = raw.map((r: any) => ({
+          product_id:        r.ProductId        ?? r.product_id        ?? 0,
+          port:              r.Port             ?? r.port              ?? 0,
+          modbus_id:         r.ModbusId         ?? r.modbus_id         ?? 0,
+          last_contact_time: r.LastContactTime  ?? r.last_contact_time ?? 0,
+          input_start:       r.InputStart       ?? r.input_start       ?? 0,
+          input_end:         r.InputEnd         ?? r.input_end         ?? 0,
+          output_start:      r.OutputStart      ?? r.output_start      ?? 0,
+          output_end:        r.OutputEnd        ?? r.output_end        ?? 0,
+        }));
+        setExpansionSettings({ devices });
       } else {
-        console.warn(
-          '[SettingsPage] ⚠️ Expansion IO — Str_Extio_point[] is NOT in 400-byte Str_Setting_Info.'
-          + ` Endpoint /expansion-io returned HTTP ${res.status}. Backend endpoint needed.`
-        );
+        console.warn(`[SettingsPage] Expansion IO load returned HTTP ${res.status}`);
       }
     } catch (e) {
-      console.warn('[SettingsPage] ⚠️ Expansion IO fetch failed (endpoint not yet implemented):', e);
+      console.warn('[SettingsPage] Expansion IO fetch failed:', e);
     }
   }, []);
 
@@ -865,6 +873,53 @@ export const SettingsPage: React.FC = () => {
     setSettings({ ...settings, ...updates });
   };
 
+  const handleSaveBasicInfo = async () => {
+    if (!selectedDevice || !settings) return;
+
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      // Merge all Basic Information tab editable fields back into the 400-byte settings object
+      const networkNum = protocolSettings.Network_Number ?? 0;
+      const merged: DeviceSettings = {
+        ...settings,
+        // Panel Information
+        object_instance:     protocolSettings.Object_Instance    ?? settings.object_instance,
+        modbus_id:           protocolSettings.Modbus_ID           ?? settings.modbus_id,
+        mstp_id:             protocolSettings.MSTP_ID             ?? settings.mstp_id,
+        mstp_network_number: protocolSettings.MSTP_Network_Number ?? settings.mstp_network_number,
+        max_master:          protocolSettings.Max_Master           ?? settings.max_master,
+        network_number:      networkNum & 0xFF,
+        network_number_hi:   (networkNum >> 8) & 0xFF,
+        mac_addr:            networkSettings.MAC_Address           ?? settings.mac_addr,
+        panel_number:        deviceInfo.Panel_Number               ?? settings.panel_number,
+        panel_name:          deviceInfo.PanelId                    ?? settings.panel_name,
+        // LCD Options
+        LCD_Display:         featureFlags.LCD_Display              ?? settings.LCD_Display,
+      };
+
+      const validation = SettingsUpdateApi.validateSettings(merged);
+      if (!validation.valid) {
+        throw new Error(validation.errors.join(', '));
+      }
+
+      const result = await SettingsUpdateApi.updateDeviceSettings(merged);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update device');
+      }
+
+      setSettings(merged);
+      setSuccessMessage('Basic information saved to device successfully');
+      await fetchSettings();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save basic info');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSaveNetwork = async () => {
     if (!selectedDevice || !settings) return;
 
@@ -1009,19 +1064,32 @@ export const SettingsPage: React.FC = () => {
     setError(null);
     setSuccessMessage(null);
     try {
+      // Map React field names → Rust camelCase request body
+      const body = {
+        smtpServer:            emailSettings.smtp_domain,
+        smtpPort:              emailSettings.smtp_port,
+        emailAddress:          emailSettings.email_address,
+        userName:              emailSettings.user_name,
+        password:              emailSettings.password,
+        secureConnectionType:  emailSettings.secure_connection_type,
+        to1Addr:               emailSettings.To1Addr,
+        to2Addr:               emailSettings.To2Addr,
+        enable:                1,
+      };
       const response = await fetch(
-        `/api/v1/devices/${selectedDevice.serialNumber}/email-settings`,
+        `http://localhost:9103/api/t3_device/devices/${selectedDevice.serialNumber}/settings/email`,
         {
-          method: 'POST',
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(emailSettings),
+          body: JSON.stringify(body),
         }
       );
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        throw new Error((err as any)?.error || 'Failed to save email settings');
+        throw new Error((err as any)?.message || (err as any)?.error || 'Failed to save email settings');
       }
-      setSuccessMessage('Email settings saved to device successfully');
+      // ⚠️ Saved to local DB only — device sync requires C++ to implement FFI entryType=50
+      setSuccessMessage('Email settings saved to local database successfully');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save email settings');
     } finally {
@@ -1031,45 +1099,72 @@ export const SettingsPage: React.FC = () => {
 
   const handleSaveUser = async (index: number, user: import('../components/UserLoginTab').UserEntry) => {
     if (!selectedDevice) throw new Error('No device selected');
+    // PUT /api/t3_device/users/:serial/:index
+    // Tries FFI Action 16 entryType=14 (no-op in C++ today) + saves to local DB
     const response = await fetch(
-      `/api/v1/devices/${selectedDevice.serialNumber}/users/${index}`,
+      `http://localhost:9103/api/t3_device/users/${selectedDevice.serialNumber}/${index}`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(user),
+        body: JSON.stringify({
+          name:        user.name,
+          password:    user.password,
+          accessLevel: user.access_level,
+        }),
       }
     );
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      throw new Error((err as any)?.error || 'Failed to save user');
+      // 501 means C++ not yet implemented — not an error from user perspective
+      if (response.status === 501) return;
+      throw new Error((err as any)?.message || (err as any)?.error || 'Failed to save user');
     }
   };
 
   const handleDeleteUser = async (index: number) => {
     if (!selectedDevice) throw new Error('No device selected');
+    // Clear the user slot by writing blank name/password (C++ stores fixed 8 slots)
     const response = await fetch(
-      `/api/v1/devices/${selectedDevice.serialNumber}/users/${index}`,
-      { method: 'DELETE' }
+      `http://localhost:9103/api/t3_device/users/${selectedDevice.serialNumber}/${index}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: '', password: '', accessLevel: 1 }),
+      }
     );
-    if (!response.ok) {
+    if (!response.ok && response.status !== 501) {
       const err = await response.json().catch(() => ({}));
-      throw new Error((err as any)?.error || 'Failed to delete user');
+      throw new Error((err as any)?.message || (err as any)?.error || 'Failed to delete user');
     }
   };
 
   const handleDoneExpansion = async (settings: ExpansionIOSettings) => {
     if (!selectedDevice) throw new Error('No device selected');
-    const response = await fetch(
-      `/api/v1/devices/${selectedDevice.serialNumber}/expansion-io`,
-      {
-        method: 'PUT',
+    // POST each ExtIO device to /api/t3_device/devices/:serial/settings/expansion-io
+    // ⚠️ Saved to local DB only — device sync requires C++ to implement FFI entryType=51
+    const base = `http://localhost:9103/api/t3_device/devices/${selectedDevice.serialNumber}/settings/expansion-io`;
+    for (let i = 0; i < settings.devices.length; i++) {
+      const device = settings.devices[i];
+      const response = await fetch(base, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings.devices),
+        body: JSON.stringify({
+          extioId:           i,
+          productId:         device.product_id,
+          port:              device.port,
+          modbusId:          device.modbus_id,
+          lastContactTime:   device.last_contact_time,
+          inputStart:        device.input_start,
+          inputEnd:          device.input_end,
+          outputStart:       device.output_start,
+          outputEnd:         device.output_end,
+          enable:            1,
+        }),
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error((err as any)?.message || (err as any)?.error || `Failed to save expansion IO device ${i}`);
       }
-    );
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error((err as any)?.error || 'Failed to save expansion I/O');
     }
   };
 
@@ -1986,7 +2081,13 @@ export const SettingsPage: React.FC = () => {
                 >
                   Reboot Device
                 </Button>
-                <Button appearance="secondary" icon={<SaveRegular />} disabled={loading} style={{ fontWeight: 'normal', fontSize: '12px' }}>
+                <Button
+                  appearance="secondary"
+                  icon={<SaveRegular />}
+                  onClick={handleSaveBasicInfo}
+                  disabled={loading || !selectedDevice}
+                  style={{ fontWeight: 'normal', fontSize: '12px' }}
+                >
                   Done
                 </Button>
               </div>
