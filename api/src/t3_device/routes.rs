@@ -57,6 +57,8 @@ use crate::t3_device::graphics_refresh_routes::create_graphics_refresh_routes;
 use crate::t3_device::alarms_update_routes::create_alarms_update_routes;
 use crate::t3_device::settings_routes::create_settings_routes;
 use crate::t3_device::specialized_routes::create_specialized_routes;
+use crate::t3_device::email_settings_routes::create_email_settings_routes;
+use crate::t3_device::expansion_io_routes::create_expansion_io_routes;
 
 // Helper function to check if T3000 device database is available
 #[allow(dead_code)]
@@ -1236,6 +1238,12 @@ pub fn t3_device_routes() -> Router<T3AppState> {
 
         // 🆕 Settings Routes (device-level configuration)
         .merge(create_settings_routes())  // ✅ ENABLED
+
+        // 🆕 Email Settings Routes (Str_Email_point — DB-backed, FFI refresh stub)
+        .merge(create_email_settings_routes())  // ✅ ENABLED
+
+        // 🆕 Expansion IO Routes (Str_Extio_point — DB-backed, FFI refresh stub)
+        .merge(create_expansion_io_routes())  // ✅ ENABLED
 
         // 🆕 Specialized Features Routes (supplementary data tables)
         .merge(create_specialized_routes())  // ✅ ENABLED
