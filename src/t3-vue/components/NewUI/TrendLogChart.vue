@@ -2789,6 +2789,15 @@
   // Chart references - Single canvas for digital
   const chartContainer = ref<HTMLElement>()
   const analogChartCanvas = ref<HTMLCanvasElement>()
+
+  // ── Band-transform constants ────────────────────────────────────────────────
+  // Each unit group occupies a virtual Y band of BAND_SIZE units.
+  // Real Y values are transformed to virtual space so all series share one axis.
+  // The tick callback reverse-transforms to display real values per band.
+  const BAND_SIZE = 100   // virtual units per unit-group band
+  const BAND_MARGIN = 8   // padding within each band (top & bottom)
+  interface YBandInfo { unit: string; colors: string[]; realMin: number; realMax: number; virtualBase: number }
+  const yBandInfo = ref<YBandInfo[]>([])
   const digitalChartCanvas = ref<HTMLCanvasElement>()
   let analogChartInstance: Chart | null = null
   let digitalChartInstance: Chart | null = null
@@ -3597,153 +3606,97 @@
           const chartArea = chart.chartArea
           if (!chartArea) return
 
-          const yAxes = ['y', 'y1', 'y2', 'y3']
-          // Sort scales top-to-bottom by their actual pixel position
-          const visibleScales = yAxes
-            .map(id => chart.scales[id])
-            .filter(s => s && s.display !== false)
-            .sort((a, b) => a.top - b.top)
+          const yScale = chart.scales.y
+          if (!yScale) return
 
-          // ── Separator lines removed ──
+          const bands = yBandInfo.value
+          if (!bands.length) return
 
-          yAxes.forEach(axisId => {
-            const scale = chart.scales[axisId]
-            if (!scale) return
+          // ── Layout ───────────────────────────────────────────────────────────
+          const nBands = bands.length
+          const totalPxH = yScale.bottom - yScale.top
+          const bandH = totalPxH / nBands
 
-            const titleText = scale.options.title.text
-            if (!titleText) return
+          const PILL_H = 15
+          const PAD_X = 4
+          const BAR_W = 5
+          const BAR_GAP = 2
+          const BAR_PAD_L = 3
+          const RADIUS = 3
+          const DASH_W = 7
+          const DASH_H = 3
 
-            // Use per-unit groups if available, otherwise fall back to single group
-            const unitColorGroups: Array<{unit: string, colors: string[]}> =
-              scale.options.title.unitColorGroups?.length
-                ? scale.options.title.unitColorGroups
-                : [{ unit: titleText, colors: (scale.options.title.multiColors || [scale.options.title.color]).filter(Boolean) }]
+          ctx.save()
+          ctx.font = 'bold 9px Inter, sans-serif'
 
-            if (unitColorGroups.length === 0) return
+          // Pill column: rotated label sits in the leftmost strip of the y axis
+          const axisX = yScale.left + PILL_H / 2 + 2
+          // Min/Max dashes sit at the right edge of the y-axis column
+          const dashX = yScale.right - DASH_W - 2
 
-            // Layout constants
-            const pillH = 15
-            const padX = 4
-            const barW = 5
-            const barGap = 2
-            const barPadL = 3
-            const radius = 3
+          bands.forEach((band: YBandInfo, gi: number) => {
+            // Band gi occupies virtual range [gi*BAND_SIZE, (gi+1)*BAND_SIZE].
+            // Chart.js: higher virtual value → smaller pixel Y (higher on screen).
+            // So band 0 (lowest values) → bottom pixels; band N-1 → top pixels.
+            const bandTopPx = yScale.top + (nBands - 1 - gi) * bandH
+            const bandBotPx = bandTopPx + bandH
+            const centerY = (bandTopPx + bandBotPx) / 2
+
+            // ── Min/Max dashes at actual pixel positions ──────────────────────
+            const isUnused = !band.unit || band.unit === 'Unused' || band.unit === 'dimensionless'
+            try {
+              // In virtual space, realMax maps to virtualBase + BAND_SIZE - BAND_MARGIN (top of data)
+              // and realMin maps to virtualBase + BAND_MARGIN (bottom of data).
+              const pxMax = yScale.getPixelForValue(band.virtualBase + BAND_SIZE - BAND_MARGIN)
+              const pxMin = yScale.getPixelForValue(band.virtualBase + BAND_MARGIN)
+              ctx.fillStyle = band.colors[0] || '#444444'
+              ctx.fillRect(dashX, pxMax - DASH_H / 2, DASH_W, DASH_H)
+              if (Math.abs(pxMin - pxMax) > 4)
+                ctx.fillRect(dashX, pxMin - DASH_H / 2, DASH_W, DASH_H)
+            } catch { /* scale not ready */ }
+
+            // ── Rotated pill label — skip for Unused/dimensionless ────────────
+            if (isUnused) return
+            const primaryColor = band.colors[0] || '#444444'
+            const tw = ctx.measureText(band.unit).width
+            const bw = band.colors.length * (BAR_W + BAR_GAP) - BAR_GAP
+            const pillW = PAD_X + tw + BAR_PAD_L + bw + PAD_X
 
             ctx.save()
-            ctx.font = 'bold 9px Inter, sans-serif'
+            ctx.translate(axisX, centerY)
+            ctx.rotate(-Math.PI / 2)
 
-            const axisX = scale.left + pillH / 2 + 2
-            const sectionH = (scale.bottom - scale.top) / unitColorGroups.length
+            const px = -pillW / 2
+            const py = -PILL_H / 2
 
-            // ── Step 1: compute all pill positions ──────────────────────────
-            const pills = unitColorGroups.map((group: any, gi: number) => {
-              // Prefer the pixel midpoint of the actual data range so the label
-              // sits near real data rather than at the geometric section centre.
-              let centerY = scale.top + sectionH * (gi + 0.5)
-              if (typeof group.vMin === 'number' && typeof group.vMax === 'number') {
-                try {
-                  const pxHigh = scale.getPixelForValue(group.vMax)
-                  const pxLow  = scale.getPixelForValue(group.vMin)
-                  const mid    = (pxHigh + pxLow) / 2
-                  // Clamp within this section so pills never overlap into a neighbour's lane
-                  const secTop = scale.top + sectionH * gi
-                  const secBot = scale.top + sectionH * (gi + 1)
-                  centerY = Math.max(secTop + pillH, Math.min(secBot - pillH, mid))
-                } catch {/* scale not ready */}
-              }
-              const tw = ctx.measureText(group.unit).width
-              const bw = group.colors.length * (barW + barGap) - barGap
-              const pillW = padX + tw + barPadL + bw + padX
-              return { group, centerY, pillW, tw }
+            ctx.fillStyle = '#f0f0f0'
+            ctx.beginPath()
+            ctx.roundRect(px, py, pillW, PILL_H, RADIUS)
+            ctx.fill()
+            ctx.strokeStyle = 'rgba(0,0,0,0.12)'
+            ctx.lineWidth = 0.5
+            ctx.stroke()
+
+            ctx.save()
+            ctx.beginPath()
+            ctx.roundRect(px, py, pillW, PILL_H, RADIUS)
+            ctx.clip()
+
+            ctx.textBaseline = 'middle'
+            ctx.textAlign = 'left'
+            ctx.fillStyle = primaryColor
+            ctx.fillText(band.unit, px + PAD_X, 0)
+
+            band.colors.forEach((col: string, ci: number) => {
+              ctx.fillStyle = col
+              ctx.fillRect(px + PAD_X + tw + BAR_PAD_L + ci * (BAR_W + BAR_GAP), py + 2, BAR_W, PILL_H - 4)
             })
 
-            // ── Step 2: de-overlap (push apart if too close) ─────────────────
-            const PILL_GAP = 3
-            for (let pass = 0; pass < 10; pass++) {
-              let moved = false
-              for (let i = 1; i < pills.length; i++) {
-                const prev = pills[i - 1]
-                const cur  = pills[i]
-                const minDist = prev.pillW / 2 + cur.pillW / 2 + PILL_GAP
-                const delta = cur.centerY - prev.centerY
-                if (delta < minDist) {
-                  const shift = (minDist - delta) / 2
-                  prev.centerY -= shift
-                  cur.centerY  += shift
-                  moved = true
-                }
-              }
-              if (!moved) break
-            }
-            pills.forEach(p => {
-              p.centerY = Math.max(scale.top + p.pillW / 2, Math.min(scale.bottom - p.pillW / 2, p.centerY))
-            })
-
-            // ── Step 3: draw colored range dashes + pills ────────────────────
-            const DASH_W = 7  // width of the colored min/max dash
-            const DASH_H = 3   // height of the dash
-            // Draw dashes on the RIGHT edge of the axis column (just before chart area)
-            // so they look like special tick markers, not overlapping the pills
-            const dashX = scale.right - DASH_W
-
-            pills.forEach(({ group, centerY, pillW, tw }) => {
-              const primaryColor = group.colors?.[0] || '#444444'
-
-              // ── Min / Max range dashes ──────────────────────────────────────
-              if (typeof group.vMin === 'number' && typeof group.vMax === 'number') {
-                try {
-                  const pxMax = scale.getPixelForValue(group.vMax)
-                  const pxMin = scale.getPixelForValue(group.vMin)
-                  ctx.fillStyle = primaryColor
-                  // max dash
-                  if (pxMax >= scale.top && pxMax <= scale.bottom) {
-                    ctx.fillRect(dashX, pxMax - DASH_H / 2, DASH_W, DASH_H)
-                  }
-                  // min dash
-                  if (pxMin >= scale.top && pxMin <= scale.bottom && Math.abs(pxMin - pxMax) > 4) {
-                    ctx.fillRect(dashX, pxMin - DASH_H / 2, DASH_W, DASH_H)
-                  }
-                } catch { /* skip if scale not ready */ }
-              }
-
-              // ── Rotated pill label ──────────────────────────────────────────
-              ctx.save()
-              ctx.translate(axisX, centerY)
-              ctx.rotate(-Math.PI / 2)
-
-              const px = -pillW / 2
-              const py = -pillH / 2
-
-              ctx.fillStyle = '#f0f0f0'
-              ctx.beginPath()
-              ctx.roundRect(px, py, pillW, pillH, radius)
-              ctx.fill()
-              ctx.strokeStyle = 'rgba(0,0,0,0.12)'
-              ctx.lineWidth = 0.5
-              ctx.stroke()
-
-              ctx.save()
-              ctx.beginPath()
-              ctx.roundRect(px, py, pillW, pillH, radius)
-              ctx.clip()
-
-              ctx.textBaseline = 'middle'
-              ctx.textAlign = 'left'
-              ctx.fillStyle = primaryColor
-              ctx.fillText(group.unit, px + padX, 0)
-
-              let cursorX = px + padX + tw + barPadL
-              group.colors.forEach((col: string, ci: number) => {
-                ctx.fillStyle = col
-                ctx.fillRect(cursorX + ci * (barW + barGap), py + 2, barW, pillH - 4)
-              })
-
-              ctx.restore() // clip
-              ctx.restore() // transform
-            })
-
-            ctx.restore() // outer save
+            ctx.restore() // clip
+            ctx.restore() // transform
           })
+
+          ctx.restore()
         }
       },
       {
@@ -3978,7 +3931,18 @@
                 if (rawY == null || isNaN(rawY)) return
 
                 const series = visibleAnalogSeries.value.find(s => s.name === point.dataset.label)
-                const value = rawY.toFixed(2)
+                // Reverse-transform virtual Y back to real value
+                let displayVal = rawY
+                const bands = yBandInfo.value
+                if (bands.length > 0 && rawY != null) {
+                  const bi = Math.max(0, Math.min(bands.length - 1, Math.floor(rawY / BAND_SIZE)))
+                  const band = bands[bi]
+                  if (band) {
+                    const range = band.realMax - band.realMin
+                    displayVal = band.realMin + (rawY - band.virtualBase - BAND_MARGIN) / (BAND_SIZE - 2 * BAND_MARGIN) * range
+                  }
+                }
+                const value = displayVal.toFixed(2)
                 const unit = series?.unit || ''
                 const label = point.dataset.label || ''
 
@@ -4236,118 +4200,78 @@
             drawTicks: false
           },
           ticks: {
-            color: '#595959',
+            display: true, // Show tick numbers; each band reverse-transforms to real values
+            color: function(context: any) {
+              const v = (context.tick?.value ?? 0) as number
+              const bands = yBandInfo.value
+              if (!bands.length) return '#595959'
+              const bi = Math.max(0, Math.min(bands.length - 1, Math.floor(v / BAND_SIZE)))
+              return bands[bi]?.colors?.[0] || '#595959'
+            },
             font: {
               size: 9,
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
             padding: 2,
-            autoSkip: false, // We set stepSize + maxTicksLimit ourselves; don't let Chart.js skip
-            maxTicksLimit: 20,
+            autoSkip: false,
+            maxTicksLimit: 200,
             align: 'end',
-            // stepSize will be calculated dynamically in afterDataLimits
             callback: function (value: any) {
               const v = Number(value)
-              const stepSize = (this as any).options?.ticks?.stepSize ?? 1
-              const decimals = stepSize < 1 ? Math.max(1, Math.ceil(-Math.log10(stepSize))) : 0
-              if (decimals > 0) return v.toFixed(decimals).padStart(6, ' ')
-              return Math.round(v).toString().padStart(5, ' ') // Fixed width for alignment
+              const bands = yBandInfo.value
+              if (!bands.length) return ''
+              const bi = Math.max(0, Math.min(bands.length - 1, Math.floor(v / BAND_SIZE)))
+              const band = bands[bi]
+              if (!band) return ''
+              const range = band.realMax - band.realMin
+              const realV = band.realMin + (v - band.virtualBase - BAND_MARGIN) / (BAND_SIZE - 2 * BAND_MARGIN) * range
+              if (range === 0) return realV.toFixed(1)
+              if (range < 1)   return realV.toFixed(2)
+              if (range < 10)  return realV.toFixed(1)
+              return Math.round(realV).toString()
             }
           },
-          // Only prune ticks in dead-zone gaps between piecewise clusters.
-          // Boundary ticks at scale.min/max are preserved they anchor top/bottom gridlines.
+          // Keep exactly TICKS_PER_BAND evenly-spaced ticks inside each piecewise band.
+          // autoSkip is off — we own tick density here.
           afterBuildTicks: function(scale: any) {
-            const eps = (scale.max - scale.min) * 0.001
             const pwC: Array<{vMin: number; vMax: number}> | null = scale.options._pwClusters ?? null
-            if (!pwC || pwC.length <= 1) return
-            scale.ticks = scale.ticks.filter((t: any) =>
-              pwC.some((c: any) => t.value >= c.vMin - eps && t.value <= c.vMax + eps)
-            )
-          },
-          afterFit: function(scale: any) {
-            if (scale.display === false) { scale.width = 0; return }
-            // Measure widest tick label dynamically to avoid overflow on large values
-            const ctx = scale.ctx
-            ctx.save()
-            ctx.font = '10px Inter, Helvetica, Arial, sans-serif'
-            const maxVal = Math.max(Math.abs(scale.max || 0), Math.abs(scale.min || 0))
-            const textW = ctx.measureText(Math.round(maxVal).toString()).width
-            ctx.restore()
-            scale.width = Math.max(42, Math.ceil(20 + textW + 6))
-          },
-          // 🆕 ENHANCED: Smart Y-axis scaling (axis assignment done in updateAnalogChart)
-          afterDataLimits: function (scale: any) {
-            const data = scale.chart.data.datasets
-            if (data.length === 0) return
+            if (!pwC || pwC.length === 0) return
 
-            // Filter datasets assigned to this axis (y)
-            const yDatasets = data.filter((ds: any) => !ds.yAxisID || ds.yAxisID === 'y')
-            if (yDatasets.length === 0) return
+            // 4 intervals → 5 tick lines per band (min, 25%, 50%, 75%, max)
+            const INTERVALS = 4
+            const kept: Array<{value: number}> = []
 
-            // Get all values for left Y-axis only from the currently visible x range
-            // so the y-axis rescales dynamically on zoom / pan / time-base change.
-            // Use analogXWindow (maintained by pan/zoom/update handlers) instead of
-            // xScale.min/max, which may not be finalized yet when y-scale hooks fire.
-            const xMin = analogXWindow.min
-            const xMax = analogXWindow.max
-            const allValues: number[] = []
-            yDatasets.forEach((dataset: any) => {
-              if (dataset.data && dataset.data.length > 0) {
-                dataset.data.forEach((point: any) => {
-                  if (point && typeof point.y === 'number' && isFinite(point.y) && point.y > -99999 && point.y < 999999) {
-                    const px = typeof point.x === 'number' ? point.x : (point.x ? +new Date(point.x) : null)
-                    if (px !== null && (px < xMin || px > xMax)) return
-                    allValues.push(point.y)
-                  }
-                })
+            pwC.forEach((cluster: any) => {
+              const span = cluster.vMax - cluster.vMin
+              for (let k = 0; k <= INTERVALS; k++) {
+                kept.push({ value: cluster.vMin + (span * k) / INTERVALS })
               }
             })
 
-            if (allValues.length === 0) return
+            scale.ticks = kept
+          },
+          afterFit: function(scale: any) {
+            // Wide enough for tick numbers (reverse-transformed real values) + pill
+            scale.width = 50
+          },
+          // Band-driven Y limits: each unit group occupies a BAND_SIZE-wide virtual band
+          afterDataLimits: function (scale: any) {
+            const bands = yBandInfo.value
+            if (!bands.length) return
+            scale.min = 0
+            scale.max = bands.length * BAND_SIZE
 
-            const dMin = Math.min(...allValues)
-            const dMax = Math.max(...allValues)
-            const dRange = dMax - dMin
-
-            // Pick a nice step targeting ~8 visible ticks
-            const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
-            const step = niceSteps.find(s => s >= Math.max(dRange, 0.001) / 8) ?? niceSteps[niceSteps.length - 1]
-
-            // Use integer step counts to avoid FP accumulation (critical for flat-line data).
-            // e.g. value always 2.98, step 0.1: sMinSteps=29, sMaxSteps=30, nSteps=1 → padded to 4 → 2.8..3.2
-            let sMinSteps = Math.floor(dMin / step)
-            let sMaxSteps = Math.ceil(dMax / step)
-            let nSteps = sMaxSteps - sMinSteps
-
-            // Minimum 4 steps (5 ticks), centered on data
-            if (nSteps < 4) {
-              const midSteps = Math.round((sMinSteps + sMaxSteps) / 2)
-              sMinSteps = midSteps - 2
-              sMaxSteps = midSteps + 2
-              nSteps = 4
-            }
-
-            let sMin = sMinSteps * step
-            let sMax = sMaxSteps * step
-
-            // Never show negative when all data is non-negative
-            if (dMin >= 0 && sMin < 0) {
-              sMinSteps = 0
-              sMin = 0
-              sMaxSteps = Math.max(sMaxSteps, nSteps)
-              sMax = sMaxSteps * step
-              nSteps = sMaxSteps
-            }
-
-            scale.min = sMin
-            scale.max = sMax
-
-            const pwClusters = computePwClusters(allValues, sMax - sMin, sMin, sMax)
-            scale.options._pwClusters = pwClusters ?? null
-            scale.options._pwDistinct = pwClusters ? computePwDistinct(pwClusters, allValues) : null
-
-            scale.options.ticks.stepSize = step
-            scale.options.ticks.maxTicksLimit = nSteps + 1
+            // One piecewise cluster per band — equal height, small gaps between bands.
+            // Boundaries match the band-transform formula exactly so tick labels align
+            // with the actual data min/max dashes (realMin→vBase+BAND_MARGIN, realMax→vBase+BAND_SIZE-BAND_MARGIN).
+            scale.options._pwClusters = bands.map((_b: YBandInfo, i: number) => ({
+              vMin: i * BAND_SIZE + BAND_MARGIN,
+              vMax: (i + 1) * BAND_SIZE - BAND_MARGIN
+            }))
+            // Equal weight for every band
+            scale.options._pwDistinct = bands.map(() => 5)
+            scale.options.ticks.stepSize = BAND_SIZE / 10
+            scale.options.ticks.maxTicksLimit = bands.length * 10 + 1
           }
         },
         // Y1 axis (left side, 2nd value-range group)
@@ -4371,6 +4295,7 @@
             }
           },
           ticks: {
+            display: false, // hidden — all unit labels drawn in y column by plugin
             color: '#1890ff',
             font: {
               size: 9,
@@ -4397,14 +4322,7 @@
             )
           },
           afterFit: function(scale: any) {
-            if (scale.display === false) { scale.width = 0; return }
-            const ctx = scale.ctx
-            ctx.save()
-            ctx.font = '10px Inter, Helvetica, Arial, sans-serif'
-            const maxVal = Math.max(Math.abs(scale.max || 0), Math.abs(scale.min || 0))
-            const textW = ctx.measureText(Math.round(maxVal).toString()).width
-            ctx.restore()
-            scale.width = Math.max(42, Math.ceil(20 + textW + 6))
+            scale.width = 0 // y1 hidden — all labels drawn in y column
           },
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
@@ -4499,6 +4417,7 @@
             }
           },
           ticks: {
+            display: false, // hidden — all unit labels drawn in y column by plugin
             color: '#52c41a',
             font: {
               size: 9,
@@ -4525,14 +4444,7 @@
             )
           },
           afterFit: function(scale: any) {
-            if (scale.display === false) { scale.width = 0; return }
-            const ctx = scale.ctx
-            ctx.save()
-            ctx.font = '10px Inter, Helvetica, Arial, sans-serif'
-            const maxVal = Math.max(Math.abs(scale.max || 0), Math.abs(scale.min || 0))
-            const textW = ctx.measureText(Math.round(maxVal).toString()).width
-            ctx.restore()
-            scale.width = Math.max(42, Math.ceil(20 + textW + 6))
+            scale.width = 0 // y2 hidden — all labels drawn in y column
           },
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
@@ -4626,6 +4538,7 @@
             }
           },
           ticks: {
+            display: false, // hidden — all unit labels drawn in y column by plugin
             color: '#fa8c16',
             font: {
               size: 9,
@@ -4652,14 +4565,7 @@
             )
           },
           afterFit: function(scale: any) {
-            if (scale.display === false) { scale.width = 0; return }
-            const ctx = scale.ctx
-            ctx.save()
-            ctx.font = '10px Inter, Helvetica, Arial, sans-serif'
-            const maxVal = Math.max(Math.abs(scale.max || 0), Math.abs(scale.min || 0))
-            const textW = ctx.measureText(Math.round(maxVal).toString()).width
-            ctx.restore()
-            scale.width = Math.max(42, Math.ceil(20 + textW + 6))
+            scale.width = 0 // y3 hidden — all labels drawn in y column
           },
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
@@ -8769,143 +8675,39 @@
       return b[1].length - a[1].length // same magnitude more series first
     })
 
-    // Assign axes: each unique unit type gets its own axis slot (y, y1, y2, y3).
-    // Assign axes: 2 visible columns only (y = col1, y1 = col2).
-    // Each unique unit type is treated as its own group. Groups are distributed
-    // across the 2 columns with a greedy balance (fewest series so far wins).
-    // 2 series with the same unit (e.g. 2× Deg.C) end up in the same group     // same column shared scale.  The piecewise scale then allocates equal
-    // pixel height to each distinct value cluster, so every unit on a column
-    // gets its own visible band height scales dynamically with how many units
-    // share that column (2 units 50%/50%, 3 units 33%/33%/33%, etc.)
-    const axisAssignment = new Map<string, string>()
-    const axisColors = new Map<string, string>()
-    const axisColorsList = new Map<string, string[]>()
-    const axisUnits = new Map<string, Set<string>>()
-    const axisUnitColorGroups = new Map<string, Array<{unit: string, colors: string[]}>>()
-
-    // Greedy 2-column balance only y and y1 are visible
-    const colSeriesCount = { y: 0, y1: 0 }
-
-    sortedGroups.forEach(([groupName, items]) => {
-      // Pick the column with fewer series so far (tie col y first)
-      const axisId: string = colSeriesCount.y <= colSeriesCount.y1 ? 'y' : 'y1'
-      colSeriesCount[axisId as 'y' | 'y1'] += items.length
-
-      // First series color is the axis representative color
-      if (!axisColors.has(axisId)) axisColors.set(axisId, items[0].color)
-
-      if (!axisColorsList.has(axisId)) axisColorsList.set(axisId, [])
-      items.forEach(item => axisColorsList.get(axisId)!.push(item.color))
-
-      if (!axisUnitColorGroups.has(axisId)) axisUnitColorGroups.set(axisId, [])
-      const unitColorMap = new Map<string, string[]>()
-      const unitValueMap = new Map<string, { min: number, max: number }>()
+    // ── Band-transform: each unit group gets its own virtual Y band ─────────────
+    const newBandInfo: YBandInfo[] = sortedGroups.map(([groupKey, items], i) => {
+      const allVals: number[] = []
       items.forEach(item => {
-        const u = item.unit || ''
-        if (u && u !== 'Unused' && u !== 'Off') {
-          if (!unitColorMap.has(u)) unitColorMap.set(u, [])
-          unitColorMap.get(u)!.push(item.color)
-          if (!unitValueMap.has(u)) unitValueMap.set(u, { min: item.min, max: item.max })
-          else {
-            const ev = unitValueMap.get(u)!
-            ev.min = Math.min(ev.min, item.min)
-            ev.max = Math.max(ev.max, item.max)
-          }
-        }
-      })
-      unitColorMap.forEach((cols, u) => {
-        const vRange = unitValueMap.get(u)
-        axisUnitColorGroups.get(axisId)!.push({
-          unit: u,
-          colors: cols,
-          vMin:    vRange?.min,
-          vMax:    vRange?.max,
-          vCenter: vRange ? (vRange.min + vRange.max) / 2 : undefined
+        item.series.data.forEach((p: any) => {
+          const v = typeof p.value === 'number' ? p.value : (p.value != null ? Number(p.value) : NaN)
+          if (!isNaN(v) && isFinite(v) && v > -99999 && v < 999999) allVals.push(v)
         })
       })
+      let realMin = allVals.length ? Math.min(...allVals) : 0
+      let realMax = allVals.length ? Math.max(...allVals) : 100
+      if (realMin === realMax) { realMin -= 1; realMax += 1 }
+      return {
+        unit: items[0].unit || groupKey,
+        colors: items.map(it => it.color),
+        realMin, realMax,
+        virtualBase: i * BAND_SIZE
+      }
+    })
+    yBandInfo.value = newBandInfo
 
-      if (!axisUnits.has(axisId)) axisUnits.set(axisId, new Set<string>())
-      const unitSet = axisUnits.get(axisId)!
-      items.forEach(item => {
-        const unit = item.unit
-        if (unit && unit !== 'Unused' && unit !== 'Off') unitSet.add(unit)
-      })
-
-      items.forEach(item => axisAssignment.set(item.series.id, axisId))
+    // Series id → band index map (used inside the dataset-building loop below)
+    const seriesBandIdx = new Map<string, number>()
+    sortedGroups.forEach(([, items], i) => {
+      items.forEach(item => seriesBandIdx.set(item.series.id, i))
     })
 
-    const useMultipleAxes = sortedGroups.length > 1
-
-    // 🐛 DEBUG: Log unit-based axis assignments
-    LogUtil.Info('📊 Unit-based axis assignments:', {
-      useMultipleAxes,
-      unitGroupCount: sortedGroups.length,
-      unitGroups: sortedGroups.map(([groupName, items]) => ({
-        axisId: axisAssignment.get(items[0].series.id) ?? '?',
-        groupName,
-        seriesCount: items.length,
-        unit: items[0].unit,
-        valueRange: [
-          Math.min(...items.map(s => s.min)),
-          Math.max(...items.map(s => s.max))
-        ]
-      })),
-      assignments: Array.from(axisAssignment.entries()).map(([id, axis]) => {
-        const series = visibleAnalog.find(s => s.id === id)
-        return {
-          id,
-          name: series?.name,
-          unit: series?.unit,
-          axis,
-          axisColor: axisColors.get(axis)
-        }
-      }),
-      axisConfiguration: Array.from(axisUnits.entries()).map(([axisId, unit]) => ({
-        axisId,
-        unit,
-        color: axisColors.get(axisId),
-        position: 'left'
-      }))
-    })
-
-    // 🎨 Update axis colors and titles dynamically
-    if (analogChartInstance.options.scales) {
-      const scales = analogChartInstance.options.scales as any
-
-      axisUnits.forEach((unitSet, axisId) => {
-        const axisColor = axisColors.get(axisId) || '#666666'
-
-        if (scales[axisId]) {
-          // Update title - join all units with " | " separator
-          if (scales[axisId].title) {
-            const unitsArray = Array.from(unitSet)
-            const unitText = unitsArray.length > 0 ? unitsArray.join(' | ') : ''
-            scales[axisId].title.text = unitText
-            scales[axisId].title.color = axisColor
-            scales[axisId].title.multiColors = axisColorsList.get(axisId) || [axisColor]
-            scales[axisId].title.unitColorGroups = axisUnitColorGroups.get(axisId) || []
-          }
-
-          // Tick numbers always black colored range dashes in the plugin identify each unit
-          if (scales[axisId].ticks) {
-            scales[axisId].ticks.color = '#333333'
-          }
-
-          // Show the axis
-          scales[axisId].display = true
-        }
-      })
-
-      // Hide axes that aren't being used
-      const allAxes = ['y', 'y1', 'y2', 'y3']
-      allAxes.forEach(axisId => {
-        if (scales[axisId] && !axisUnits.has(axisId)) {
-          scales[axisId].display = false
-          if (scales[axisId].title) {
-            scales[axisId].title.text = ''
-          }
-        }
-      })
+    // Helper: transform a real Y value into virtual band space
+    const toVirtual = (realY: number, bi: number): number => {
+      const band = newBandInfo[bi]
+      if (!band) return realY
+      const range = band.realMax - band.realMin
+      return band.virtualBase + BAND_MARGIN + (realY - band.realMin) / range * (BAND_SIZE - 2 * BAND_MARGIN)
     }
 
     // 🆕 STEP 4: Create datasets with assigned yAxisID
@@ -8948,6 +8750,10 @@
 
       const MAX_NULL_RUN = 5
       const dataWithGaps: Array<{ x: number; y: number | null }> = []
+      // Band-transform: look up which band this series belongs to
+      const bandIdx = seriesBandIdx.get(series.id) ?? 0
+      const yAxisID = 'y' // All series share the single band-transform y axis
+
       let lastRealX: number | null = null
       let j = 0
       while (j < sortedAll.length) {
@@ -8958,7 +8764,7 @@
           if (lastRealX !== null && (pt.timestamp - lastRealX) > gapThresholdMs) {
             dataWithGaps.push({ x: (lastRealX + pt.timestamp) / 2, y: null })
           }
-          dataWithGaps.push({ x: pt.timestamp, y: pt.value })
+          dataWithGaps.push({ x: pt.timestamp, y: toVirtual(Number(pt.value), bandIdx) })
           lastRealX = pt.timestamp
           j++
         } else {
@@ -8995,9 +8801,6 @@
         samplePoints: realPoints.slice(-3)
       })
 
-      // Get axis assignment (default to 'y' if not found)
-      const yAxisID = axisAssignment.get(series.id) || 'y'
-
       // Build a per-point radius array so isolated points (surrounded by gaps/nulls)
       // always show a visible dot even when showPoints is off, while connected
       // segments respect the user's showPoints toggle.
@@ -9032,7 +8835,7 @@
         pointBorderWidth: 2,
         pointStyle: 'circle' as const,
         spanGaps: false, // Keep false - null values will break lines
-        yAxisID: yAxisID // Assign axis here!
+        yAxisID: 'y' // Band-transform: all series on main y axis
       })
     }
 
