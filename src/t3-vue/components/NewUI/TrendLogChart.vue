@@ -1937,7 +1937,7 @@
 
   // Chart data - T3000 mixed digital/analog series (filter out demo/placeholder data)
   const generateDataSeries = (): SeriesConfig[] => {
-    // Prefer freshMonitorData (from Action 0 response) over props.itemData (URL all_data).
+    // Prefer freshMonitorData (from Action 17 BAC_AMON response) over props.itemData (URL all_data).
     // URL all_data can be stale if the monitor's input channels were reconfigured since the
     // chart was last opened freshMonitorData reflects the actual current device state.
     const freshInput = freshMonitorData.value?.input
@@ -1956,9 +1956,16 @@
     // Generate and filter series configuration - only include items with valid T3000 device data
     const validSeries: SeriesConfig[] = []
 
+    // Resolve main panel ID for items where panel=0 (means "this panel" in MON config)
+    const mainPanelIdForSeries = route.query.panel_id
+      ? parseInt(route.query.panel_id as string)
+      : (T3000_Data.value.panelsList?.[0]?.panel_number ?? 0)
+
     for (let index = 0; index < actualItemCount; index++) {
       const inputItem = inputData[index]
-      const { panel: panelId, point_type: pointType, point_number: pointNumber } = inputItem
+      const rawPanelId: number = inputItem.panel
+      const panelId: number = rawPanelId === 0 ? mainPanelIdForSeries : rawPanelId
+      const { point_type: pointType, point_number: pointNumber } = inputItem
 
       // Get all required info in one pass
       const pointTypeInfo = getPointTypeInfo(pointType)
@@ -2055,7 +2062,8 @@
     return validSeries
   }
 
-  // Stores the freshest monitor config received from Action 0 response.
+  // Stores the freshest monitor config received from Action 17 (BAC_AMON, GET_WEBVIEW_LIST) response.
+  // Action 17 reads live from the device (GetPrivateDataSaveSPBlocking), so this is never stale.
   // Takes priority over props.itemData.t3Entry (URL all_data) which may be stale
   // if the user reconfigured the monitor's input channels since opening the chart.
   const freshMonitorData = ref<any>(null)
@@ -2098,10 +2106,17 @@
         return -1
       }
 
+      // Resolve main panel ID for items where panel=0 (means "this panel" in MON config)
+      const mainPanelIdForFetch = route.query.panel_id
+        ? parseInt(route.query.panel_id as string)
+        : (panelsList[0]?.panel_number ?? 0)
+
       // Collect unique (panelId, entryType) pairs
       const fetchSet = new Map<string, { panelId: number; entryType: number; panel: any }>()
       for (const item of inputData) {
-        const { panel: panelId, point_type: pointType } = item
+        const rawPanelId: number = item.panel
+        const panelId = rawPanelId === 0 ? mainPanelIdForFetch : rawPanelId
+        const pointType: number = item.point_type
         const entryType = pointTypeToEntryType(pointType)
         if (entryType < 0) continue
         const key = `${panelId}_${entryType}`
@@ -12559,228 +12574,50 @@
         LogUtil.Warn('⚠️ TrendLogChart: Partition check failed (continuing with normal initialization)', error)
       }
 
-      // 🆕 STEP 0: Call Action 0 FIRST to get fresh monitor configuration from device
-      // This provides the interval settings (hour_interval_time, minute_interval_time, second_interval_time)
-      // that determine how often we should poll with Action 15
+      // 🆕 STEP 0: Call Action 0 (GET_PANEL_DATA) to get MON config from device cache.
+      // NOTE: Action 17 (BAC_AMON=9) was previously used here but proved unstable on first load
+      // because sn/objectinstance data may not yet be available in panelsList at mount time.
+      // Action 0 is simpler and more reliable for initial config resolution.
+      // TODO: Revisit Action 17 once panelsList population timing is guaranteed before onMounted.
       LogUtil.Debug('══════════════════════════════════════════════════════════════')
-      LogUtil.Debug('🔄 STEP 0: Calling Action 0 to get fresh monitor configuration')
+      LogUtil.Debug('🔄 STEP 0: Calling Action 0 (GET_PANEL_DATA) to get monitor configuration')
       LogUtil.Debug('══════════════════════════════════════════════════════════════')
-
-      // Log full query string
-      const fullQueryString = window.location.href
-      const queryParams = Object.fromEntries(new URLSearchParams(window.location.hash.split('?')[1] || ''))
-      LogUtil.Debug('📋 Full URL Query String:', fullQueryString)
-      LogUtil.Debug('📋 Parsed Query Parameters:', queryParams)
-      LogUtil.Debug('  - sn (serial_number):', route.query.sn)
-      LogUtil.Debug('  - panel_id:', route.query.panel_id)
-      LogUtil.Debug('  - trendlog_id:', route.query.trendlog_id)
-      LogUtil.Debug('  - all_data:', route.query.all_data ? JSON.parse(decodeURIComponent(route.query.all_data as string)) : null)
-      LogUtil.Debug('─────────────────────────────────────────────────────────────')
 
       const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : null
       const urlTrendlogId = route.query.trendlog_id ? parseInt(route.query.trendlog_id as string) : null
 
-      if (urlPanelId) {
+      LogUtil.Debug('  - panel_id:', urlPanelId)
+      LogUtil.Debug('  - trendlog_id:', urlTrendlogId)
+
+      if (urlPanelId !== null && urlTrendlogId !== null) {
         try {
-          const action0Response = await ffiApi.ffiGetPanelData(urlPanelId)
-
-          if (action0Response && action0Response.data) {
-            LogUtil.Debug('🔍Action 0 Response Received')
-            LogUtil.Debug('  - Total items:', action0Response.data?.length)
-            LogUtil.Debug('  - Looking for trendlog_id:', urlTrendlogId, '(index:', urlTrendlogId, ')')
-            LogUtil.Debug('─────────────────────────────────────────────────────────────')
-
-            // Find the specific monitor configuration using trendlog_id from URL
-            let matchingMonitor = null
-            if (urlTrendlogId !== undefined && urlTrendlogId !== null && action0Response.data) {
-              // Search through the data array for matching monitor
-              // trendlog_id is 0-based and directly matches monitor.index
-              for (const item of action0Response.data) {
-                if (item.type === 'MON' && item.index === urlTrendlogId) {
-                  matchingMonitor = item
-                  break
-                }
-              }
-            }
-
-            if (matchingMonitor) {
-              LogUtil.Debug('🔍MATCHED TRENDLOG INFO FROM ACTION 0:')
-              LogUtil.Debug('  - FULL MONITOR DATA:', JSON.stringify(matchingMonitor, null, 2))
-              LogUtil.Debug('─────────────────────────────────────────────────────────────')
-              LogUtil.Debug('  - id:', matchingMonitor.id)
-              LogUtil.Debug('  - label:', matchingMonitor.label)
-              LogUtil.Debug('  - index:', matchingMonitor.index)
-              LogUtil.Debug('  - pid:', matchingMonitor.pid)
-              LogUtil.Debug('  - type:', matchingMonitor.type)
-              LogUtil.Debug('  - status:', matchingMonitor.status)
-              LogUtil.Debug('  - num_inputs:', matchingMonitor.num_inputs)
-              LogUtil.Debug('  - an_inputs:', matchingMonitor.an_inputs)
-              LogUtil.Debug('  - INTERVAL SETTINGS:')
-              LogUtil.Debug('    * hour_interval_time:', matchingMonitor.hour_interval_time)
-              LogUtil.Debug('    * minute_interval_time:', matchingMonitor.minute_interval_time)
-              LogUtil.Debug('    * second_interval_time:', matchingMonitor.second_interval_time)
-              LogUtil.Debug('─────────────────────────────────────────────────────────────')
-
-              // 🆕 FIX: Create temporary monitor config from Action 0 response.
-              // IMPORTANT: props.itemData.t3Entry is the authoritative interval source it is
-              // the MON data passed by T3000 when the chart was opened and reflects what the user
-              // configured.  The Action 0 response can return stale/different cached values for
-              // the same fields (e.g. second_interval_time=30 when the real value is minute=5).
-              // Use ?? (null-coalescing) so an explicit 0 in props still wins over a non-zero
-              // Action 0 value, while a missing/undefined props field falls back to Action 0.
-              const propEntry = (props.itemData as any)?.t3Entry
-              const resolvedHour   = propEntry?.hour_interval_time   ?? matchingMonitor.hour_interval_time   ?? 0
-              const resolvedMinute = propEntry?.minute_interval_time ?? matchingMonitor.minute_interval_time ?? 0
-              const resolvedSecond = propEntry?.second_interval_time ?? matchingMonitor.second_interval_time ?? 0
-
-              LogUtil.Info(
-                '📐 Interval source resolution:' +
-                `\n  props.t3Entry  hour=${propEntry?.hour_interval_time} min=${propEntry?.minute_interval_time} sec=${propEntry?.second_interval_time}` +
-                `\n  Action0 MON    hour=${matchingMonitor.hour_interval_time} min=${matchingMonitor.minute_interval_time} sec=${matchingMonitor.second_interval_time}` +
-                `\n  RESOLVED (props wins via ??) hour=${resolvedHour} min=${resolvedMinute} sec=${resolvedSecond}`
-              )
-
-              // 🔥 Store fresh monitor data input/range from Action 0 take priority over
-              // stale URL all_data so generateDataSeries() builds the correct series list.
-              freshMonitorData.value = matchingMonitor
-              LogUtil.Info('🔄 freshMonitorData set from Action 0 response', {
-                monitorId: matchingMonitor.id,
-                pid: matchingMonitor.pid,
-                inputCount: matchingMonitor.input?.length || 0,
-                sampleInputPanels: matchingMonitor.input?.slice(0, 3).map((i: any) => i.panel)
+          const action0Resp = await ffiApi.ffiGetPanelData(urlPanelId)
+          const action0Items: any[] = action0Resp?.data ?? []
+          const monFromAction0 = action0Items.find(
+            (d: any) => d.type === 'MON' && d.index === urlTrendlogId
+          )
+          if (monFromAction0) {
+            LogUtil.Info('✅ STEP 0 (Action 0): found MON config', {
+              id: monFromAction0.id,
+              index: monFromAction0.index,
+              inputCount: monFromAction0.input?.length ?? 0
+            })
+            freshMonitorData.value = monFromAction0
+            fetchFreshPointsForAllPanels()
+              .catch(err => LogUtil.Warn('⚠️ fetchFreshPointsForAllPanels (STEP 0) failed', err))
+              .then(() => {
+                if (freshWebviewCache.value.size > 0) regenerateDataSeries()
               })
-
-              // Action 17 GET_WEBVIEW_LIST: fetch fresh point metadata (descriptions/labels/units)
-              // for every (panelId, entryType) referenced by this monitor's inputs.
-              // This is the only foreign-panel fetch needed — IndexPageSocket already populates
-              // T3000_Data.panelsData via its own Action 0 calls for realtime values.
-              // Action 17 reads live from device and also updates the global C++ cache,
-              // so getDeviceDescription() works even when foreign panels were previously offline.
-              fetchFreshPointsForAllPanels()
-                .catch(err => LogUtil.Warn('⚠️ fetchFreshPointsForAllPanels failed', err))
-                .then(() => {
-                  if (freshWebviewCache.value.size > 0) {
-                    LogUtil.Info('✅ Action 17 cache populated — regenerating series', {
-                      cacheSize: freshWebviewCache.value.size
-                    })
-                    regenerateDataSeries()
-                  } else {
-                    // Action 17 returned nothing — device is truly unreachable.
-                    // Fall back to URL props data (all_data) for series generation.
-                    freshMonitorData.value = null
-                    if (dataSeries.value.length > 0) {
-                      LogUtil.Warn('⚠️ freshWebviewCache empty — keeping existing series to avoid blank chart', {
-                        existingSeriesCount: dataSeries.value.length
-                      })
-                    } else {
-                      LogUtil.Warn('⚠️ freshWebviewCache empty — regenerating with URL all_data fallback', {})
-                      regenerateDataSeries()
-                    }
-                  }
-                })
-
-              const tempMonitorConfig = {
-                hour_interval_time: resolvedHour,
-                minute_interval_time: resolvedMinute,
-                second_interval_time: resolvedSecond,
-                dataIntervalMs: calculateT3000Interval({
-                  hour_interval_time: resolvedHour,
-                  minute_interval_time: resolvedMinute,
-                  second_interval_time: resolvedSecond
-                }),
-                pid: matchingMonitor.pid,
-                id: matchingMonitor.id,
-                label: matchingMonitor.label,
-                status: matchingMonitor.status,
-                inputItems: matchingMonitor.input || []  // 🔥 FIX: Add inputItems from Action 0 response
-              }
-
-              LogUtil.Debug('🔍Created temporary monitor config from Action 0:', tempMonitorConfig)
-
-              // Calculate interval using temporary config since monitorConfig.value is still null
-              const calculatedIntervalMs = calculateT3000Interval(tempMonitorConfig)
-              const calculatedIntervalSec = calculatedIntervalMs / 1000
-              const rawTotalSeconds = (matchingMonitor.hour_interval_time * 3600 +
-                                      matchingMonitor.minute_interval_time * 60 +
-                                      matchingMonitor.second_interval_time)
-
-              LogUtil.Debug('📊 CALCULATED POLLING INTERVAL:')
-              LogUtil.Debug('  - Formula: (hour * 3600 + minute * 60 + second) * 1000')
-              LogUtil.Debug('  - Calculation: (' + matchingMonitor.hour_interval_time + ' * 3600 + ' +
-                         matchingMonitor.minute_interval_time + ' * 60 + ' +
-                         matchingMonitor.second_interval_time + ') * 1000')
-              LogUtil.Debug('  - Raw total seconds:', rawTotalSeconds)
-              LogUtil.Debug('  - Raw total milliseconds:', rawTotalSeconds * 1000)
-              LogUtil.Debug('  - Minimum enforced: 5 seconds (5000 ms) [TESTING]')
-              LogUtil.Debug('  - Final interval (ms):', calculatedIntervalMs)
-              LogUtil.Debug('  - Final interval (seconds):', calculatedIntervalSec)
-              if (rawTotalSeconds * 1000 < 5000) {
-                LogUtil.Debug('  ⚠️  NOTE: Configured interval (' + rawTotalSeconds + 's) is less than minimum (5s), using 5s [TESTING]')
-              }
-              LogUtil.Debug('  - Action 15 will be called every', calculatedIntervalSec, 'seconds')
-              LogUtil.Debug('══════════════════════════════════════════════════════════════')
-
-              // 🔥 CRITICAL FIX: Set monitorConfig.value to tempMonitorConfig so startRealTimeUpdates() can access it
-              LogUtil.Debug('🔥 SETTING monitorConfig.value to tempMonitorConfig to enable polling...')
-              if (!monitorConfig.value) {
-                monitorConfig.value = tempMonitorConfig
-                LogUtil.Info('✅monitorConfig.value set from tempMonitorConfig, dataIntervalMs=' + tempMonitorConfig.dataIntervalMs)
-              } else {
-                // If it already exists, update the interval fields AND dataIntervalMs using resolved values
-                monitorConfig.value.hour_interval_time = resolvedHour
-                monitorConfig.value.minute_interval_time = resolvedMinute
-                monitorConfig.value.second_interval_time = resolvedSecond
-                monitorConfig.value.dataIntervalMs = tempMonitorConfig.dataIntervalMs
-                LogUtil.Info('✅Updated existing monitorConfig.value with resolved interval settings, dataIntervalMs=' + tempMonitorConfig.dataIntervalMs)
-              }
-
-              // 🆕 FORCE START: Always start realtime updates after setting monitorConfig
-              LogUtil.Debug('🔄 FORCING startRealTimeUpdates after Action 0 response...')
-              LogUtil.Debug('  - isRealTime.value:', isRealTime.value)
-              LogUtil.Debug('  - monitorConfig.value:', monitorConfig.value)
-              LogUtil.Debug('  - typeof startRealTimeUpdates:', typeof startRealTimeUpdates)
-              LogUtil.Debug('  - startRealTimeUpdates function:', startRealTimeUpdates)
-              LogUtil.Debug('  - Calling startRealTimeUpdates() now...')
-
-              try {
-                startRealTimeUpdates()
-                LogUtil.Debug('🔍startRealTimeUpdates() returned successfully')
-                LogUtil.Debug('  - realtimeInterval is now:', realtimeInterval)
-              } catch (error) {
-                LogUtil.Error('❌ERROR calling startRealTimeUpdates():', error)
-              }
-            } else {
-              LogUtil.Debug('⚠️ NO MATCHING MONITOR FOUND IN ACTION 0 RESPONSE')
-              LogUtil.Debug('  - Searched for trendlog_id:', urlTrendlogId, '(index:', urlTrendlogId, ')')
-              LogUtil.Debug('  - Total monitors returned:', action0Response.data?.filter((d: any) => d.type === 'MON').length)
-              LogUtil.Debug('  - Available monitors (FULL DATA):')
-              action0Response.data?.filter((d: any) => d.type === 'MON').forEach((mon: any) => {
-                LogUtil.Debug('    Monitor:', JSON.stringify({
-                  id: mon.id,
-                  index: mon.index,
-                  label: mon.label,
-                  type: mon.type,
-                  hour_interval_time: mon.hour_interval_time,
-                  minute_interval_time: mon.minute_interval_time,
-                  second_interval_time: mon.second_interval_time
-                }, null, 2))
-              })
-              LogUtil.Debug('  - Using DEFAULT interval: 15 seconds (15000 ms)')
-              LogUtil.Debug('══════════════════════════════════════════════════════════════')
-            }
+          } else {
+            LogUtil.Warn('⚠️ STEP 0: MON not found in Action 0 response for trendlog_id', urlTrendlogId, 'panelId', urlPanelId)
           }
         } catch (error) {
-          LogUtil.Error('❌ACTION 0 CALL FAILED')
-          LogUtil.Error('  - Error:', error)
-          LogUtil.Debug('  - Using DEFAULT interval: 15 seconds (15000 ms)')
-          LogUtil.Debug('══════════════════════════════════════════════════════════════')
+          LogUtil.Error('❌ STEP 0: Action 0 (GET_PANEL_DATA) call failed', error)
         }
       } else {
-        LogUtil.Debug('⚠️ NO PANEL_ID IN URL')
-        LogUtil.Debug('  - Cannot call Action 0 without panel_id')
-        LogUtil.Debug('  - Using DEFAULT interval: 15 seconds (15000 ms)')
-        LogUtil.Debug('══════════════════════════════════════════════════════════════')
+        LogUtil.Warn('⚠️ STEP 0: missing panel_id or trendlog_id in URL — skipping')
       }
+      LogUtil.Debug('══════════════════════════════════════════════════════════════')
 
       // Initialize monitor configuration
       const monitorConfigData = await getMonitorConfigFromT3000Data()
@@ -12797,7 +12634,7 @@
         monitorConfig.value = monitorConfigData
 
         // 🔥 FIX: Restart real-time polling with the correct interval from the full config.
-        // tempMonitorConfig (set earlier from Action 0) may have had a different/missing dataIntervalMs.
+        // tempMonitorConfig (set earlier from Action 17) may have had a different/missing dataIntervalMs.
         // Now that monitorConfig.value has the authoritative dataIntervalMs, restart the interval.
         LogUtil.Info('🔄 Restarting real-time updates with full monitorConfig dataIntervalMs:', monitorConfigData.dataIntervalMs)
         startRealTimeUpdates()
