@@ -12,7 +12,7 @@ use serde_json::{json, Value};
 use tracing::{error, info};
 
 use crate::app_state::T3AppState;
-use crate::entity::t3_device::devices;
+use crate::entity::t3_device::{devices, users};
 use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
 use sea_orm::*;
 
@@ -46,7 +46,50 @@ pub struct ApiResponse {
 /// Creates and returns the user update API routes
 pub fn create_users_update_routes() -> Router<T3AppState> {
     Router::new()
+        .route("/users/:serial", axum::routing::get(get_users_by_serial))
         .route("/users/:serial/:index", axum::routing::put(update_user_full))
+}
+
+/// GET /api/t3_device/users/:serial
+/// Returns a stable 8-slot JSON array ordered by user_index.
+/// Missing slots are filled with blank {name:"", password:"", access_level:1}.
+pub async fn get_users_by_serial(
+    State(state): State<T3AppState>,
+    Path(serial): Path<i32>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let db = match &state.t3_device_conn {
+        Some(conn) => conn.lock().await.clone(),
+        None => return Err((StatusCode::SERVICE_UNAVAILABLE, "Database unavailable".to_string())),
+    };
+
+    let records = users::Entity::find()
+        .filter(users::Column::SerialNumber.eq(serial))
+        .order_by_asc(users::Column::UserIndex)
+        .all(&db)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {}", e)))?;
+
+    // Build a fixed 8-slot array; missing entries stay blank
+    let mut slots: Vec<Value> = (0..8)
+        .map(|_| json!({ "name": "", "password": "", "access_level": 1 }))
+        .collect();
+
+    for record in records {
+        let idx = record.user_index
+            .as_deref()
+            .and_then(|s| s.parse::<usize>().ok())
+            .unwrap_or(0);
+        if idx < 8 {
+            slots[idx] = json!({
+                "name":         record.name.unwrap_or_default(),
+                "password":     record.password.unwrap_or_default(),
+                "access_level": record.access_level.unwrap_or(1),
+            });
+        }
+    }
+
+    info!("✅ Returning {} user slots for serial {}", slots.len(), serial);
+    Ok(Json(json!(slots)))
 }
 
 /// Update full user record using UPDATE_WEBVIEW_LIST action (Action 16)
@@ -85,32 +128,15 @@ pub async fn update_user_full(
         }
     };
 
-    // Collect updated field names before moving payload
-    let mut updated_fields = Vec::new();
-    if payload.name.is_some() {
-        updated_fields.push("name");
-    }
-    if payload.password.is_some() {
-        updated_fields.push("password");
-    }
-    if payload.access_level.is_some() {
-        updated_fields.push("accessLevel");
-    }
-    if payload.rights_access.is_some() {
-        updated_fields.push("rightsAccess");
-    }
-    if payload.default_panel.is_some() {
-        updated_fields.push("defaultPanel");
-    }
-    if payload.default_group.is_some() {
-        updated_fields.push("defaultGroup");
-    }
-    if payload.screen_right.is_some() {
-        updated_fields.push("screenRight");
-    }
-    if payload.program_right.is_some() {
-        updated_fields.push("programRight");
-    }
+    // Snapshot fields so they can be used for both FFI JSON and DB save
+    let name          = payload.name.clone().unwrap_or_default();
+    let password      = payload.password.clone().unwrap_or_default();
+    let access_level  = payload.access_level.unwrap_or(0);
+    let rights_access = payload.rights_access.unwrap_or(0);
+    let default_panel = payload.default_panel.unwrap_or(0);
+    let default_group = payload.default_group.unwrap_or(0);
+    let screen_right  = payload.screen_right.clone().unwrap_or_default();
+    let program_right = payload.program_right.clone().unwrap_or_default();
 
     // Prepare input JSON for UPDATE_WEBVIEW_LIST action
     // Note: C++ expects field names matching Str_userlogin_point structure
@@ -120,47 +146,110 @@ pub async fn update_user_full(
         "serialNumber": serial,
         "entryType": BAC_USER,  // 14 = USER
         "entryIndex": index,
-        "name": payload.name.unwrap_or_default(),
-        "password": payload.password.unwrap_or_default(),
-        "access_level": payload.access_level.unwrap_or(0),
-        "rights_access": payload.rights_access.unwrap_or(0),
-        "default_panel": payload.default_panel.unwrap_or(0),
-        "default_group": payload.default_group.unwrap_or(0),
-        "screen_right": payload.screen_right.unwrap_or_default(),
-        "program_right": payload.program_right.unwrap_or_default(),
+        "name": name,
+        "password": password,
+        "access_level": access_level,
+        "rights_access": rights_access,
+        "default_panel": default_panel,
+        "default_group": default_group,
+        "screen_right": screen_right,
+        "program_right": program_right,
     });
 
-    // Call FFI function
-    match call_update_ffi(WebViewMessageType::UPDATE_WEBVIEW_LIST as i32, input_json).await {
-        Ok(_response) => {
-            info!("✅ Full user record updated successfully");
+    // Call FFI — best-effort: C++ UPDATE_WEBVIEW_LIST case 14 not yet implemented
+    let ffi_status = match call_update_ffi(WebViewMessageType::UPDATE_WEBVIEW_LIST as i32, input_json).await {
+        Ok(_) => {
+            info!("✅ FFI user update succeeded for serial {} index {}", serial, index);
+            "ffi_ok"
+        }
+        Err(e) => {
+            error!("⚠️ FFI user update not yet implemented in C++: {}", e);
+            "ffi_unimplemented"
+        }
+    };
+
+    // Always save to local DB regardless of FFI result
+    match save_user_to_db(&db_connection, serial, index,
+        name, password, access_level, rights_access,
+        default_panel, default_group, screen_right, program_right).await
+    {
+        Ok(()) => {
+            info!("✅ User saved to local DB - serial {} index {}", serial, index);
             Ok(Json(json!({
                 "success": true,
-                "message": "User updated successfully",
+                "message": if ffi_status == "ffi_ok" {
+                    "User updated on device and saved to local database"
+                } else {
+                    "User saved to local database (device sync requires C++ case 14 in UPDATE_WEBVIEW_LIST)"
+                },
                 "data": {
                     "serialNumber": serial,
                     "userIndex": index,
-                    "updatedFields": updated_fields,
+                    "ffiStatus": ffi_status,
                 }
             })))
         }
         Err(e) => {
-            error!("❌ Failed to update user: {}", e);
-
-            // Provide helpful message if C++ hasn't implemented this action yet
-            if e.contains("not implemented") || e.contains("empty response") {
-                return Err((
-                    StatusCode::NOT_IMPLEMENTED,
-                    "UPDATE_WEBVIEW_LIST (Action 16) for users is not yet implemented in C++. Please implement BacnetWebView_HandleWebViewMsg case 16 in T3000.exe".to_string(),
-                ));
-            }
-
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to update user: {}", e),
-            ))
+            error!("❌ Failed to save user to DB: {}", e);
+            Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to save user: {}", e)))
         }
     }
+}
+
+/// Upsert a user record in the local USERS table
+#[allow(clippy::too_many_arguments)]
+async fn save_user_to_db(
+    db: &DatabaseConnection,
+    serial: i32,
+    index: i32,
+    name: String,
+    password: String,
+    access_level: i32,
+    rights_access: i32,
+    default_panel: i32,
+    default_group: i32,
+    screen_right: String,
+    program_right: String,
+) -> Result<(), String> {
+    let index_str = index.to_string();
+
+    let existing = users::Entity::find()
+        .filter(users::Column::SerialNumber.eq(serial))
+        .filter(users::Column::UserIndex.eq(index_str.clone()))
+        .one(db)
+        .await
+        .map_err(|e| format!("DB query error: {}", e))?;
+
+    if let Some(record) = existing {
+        let mut m: users::ActiveModel = record.into();
+        m.name          = Set(Some(name));
+        m.password      = Set(Some(password));
+        m.access_level  = Set(Some(access_level));
+        m.rights_access = Set(Some(rights_access));
+        m.default_panel = Set(Some(default_panel));
+        m.default_group = Set(Some(default_group));
+        m.screen_right  = Set(Some(screen_right));
+        m.program_right = Set(Some(program_right));
+        m.update(db).await.map_err(|e| format!("DB update error: {}", e))?;
+    } else {
+        let new_record = users::ActiveModel {
+            serial_number: Set(serial),
+            user_id:       Set(None),
+            user_index:    Set(Some(index_str)),
+            panel:         Set(None),
+            name:          Set(Some(name)),
+            password:      Set(Some(password)),
+            access_level:  Set(Some(access_level)),
+            rights_access: Set(Some(rights_access)),
+            default_panel: Set(Some(default_panel)),
+            default_group: Set(Some(default_group)),
+            screen_right:  Set(Some(screen_right)),
+            program_right: Set(Some(program_right)),
+            status:        Set(None),
+        };
+        new_record.insert(db).await.map_err(|e| format!("DB insert error: {}", e))?;
+    }
+    Ok(())
 }
 
 /// Call FFI function for update operations
