@@ -39,6 +39,7 @@ const useStyles = makeStyles({
     maxWidth: '95vw',
     marginTop: '5vh',
     alignSelf: 'flex-start',
+    padding: '8px 12px',
   },
   body: {
     padding: '0',
