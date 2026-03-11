@@ -185,10 +185,10 @@ export class SettingsUpdateApi {
       errors.push('Invalid gateway address format');
     }
 
-    // Validate MAC address
-    const macRegex = /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/i;
+    // Validate MAC address (accept both colon and dash separators)
+    const macRegex = /^([0-9A-F]{2}[:\-]){5}[0-9A-F]{2}$/i;
     if (!macRegex.test(settings.mac_addr)) {
-      errors.push('Invalid MAC address format (expected XX:XX:XX:XX:XX:XX)');
+      errors.push('Invalid MAC address format (expected XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX)');
     }
 
     // Validate panel name length
@@ -222,8 +222,8 @@ export class SettingsUpdateApi {
     if (settings.mstp_id < 0 || settings.mstp_id > 127) {
       errors.push('MSTP ID must be between 0-127');
     }
-    if (settings.max_master < 0 || settings.max_master > 127) {
-      errors.push('Max master must be between 0-127');
+    if (settings.max_master < 0 || settings.max_master > 255) {
+      errors.push('Max master must be between 0-255');
     }
     if (settings.modbus_id < 1 || settings.modbus_id > 247) {
       errors.push('Modbus ID must be between 1-247');

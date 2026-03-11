@@ -62,7 +62,7 @@ class HvConstant {
     Debug: true,          // Console - undefined = auto-detect, false = force disable, true = force enable
     Info: true,           // Console - undefined = auto-detect, false = force disable, true = force enable
     Error: true,          // Console - undefined = auto-detect (always true), false = force disable
-    FileLogging: undefined,    // File logging - undefined = enabled, false = disabled locally
+    FileLogging: false,    // File logging - undefined = enabled, false = disabled locally
   }
 
   static T3Config = {

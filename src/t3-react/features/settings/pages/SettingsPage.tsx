@@ -904,12 +904,17 @@ export const SettingsPage: React.FC = () => {
         LCD_Display:         featureFlags.LCD_Display              ?? settings.LCD_Display,
       };
 
+      console.log('[Done] merged settings:', merged);
+
       const validation = SettingsUpdateApi.validateSettings(merged);
+      console.log('[Done] validation result:', validation);
       if (!validation.valid) {
         throw new Error(validation.errors.join(', '));
       }
 
+      console.log('[Done] calling updateDeviceSettings...');
       const result = await SettingsUpdateApi.updateDeviceSettings(merged);
+      console.log('[Done] updateDeviceSettings result:', result);
       if (!result.success) {
         throw new Error(result.error || 'Failed to update device');
       }
@@ -918,6 +923,7 @@ export const SettingsPage: React.FC = () => {
       setSuccessMessage('Basic information saved to device successfully');
       await fetchSettings();
     } catch (err) {
+      console.error('[Done] caught error:', err);
       setError(err instanceof Error ? err.message : 'Failed to save basic info');
     } finally {
       setLoading(false);
