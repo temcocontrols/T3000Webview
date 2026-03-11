@@ -921,7 +921,7 @@ export const SettingsPage: React.FC = () => {
 
       setSettings(merged);
       setSuccessMessage('Basic information saved to device successfully');
-      await fetchSettings();
+      // await fetchSettings();
     } catch (err) {
       console.error('[Done] caught error:', err);
       setError(err instanceof Error ? err.message : 'Failed to save basic info');
