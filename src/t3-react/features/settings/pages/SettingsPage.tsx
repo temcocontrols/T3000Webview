@@ -1338,15 +1338,6 @@ export const SettingsPage: React.FC = () => {
       );
     }
 
-    if (loading && Object.keys(networkSettings).length === 0) {
-      return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', marginBottom: '12px' }}>
-          <Spinner size="extra-tiny" style={{ fontSize: '12px' }} />
-          <Text style={{ color: '#0078d4', fontSize: '12px' }}>Loading settings...</Text>
-        </div>
-      );
-    }
-
     switch (selectedTab) {
       case 'basic':
         return (

@@ -79,6 +79,32 @@ export class SettingsUpdateApi {
       // Serialize settings to 400-byte array
       const serializedData = SettingsRefreshApi.serializeSettingsData(settings);
 
+      // ── ByteCompare: SEND vs RECV ─────────────────────────────────────────
+      console.log('[ByteCompare][SEND] Raw 400-byte array going to C++:', [...serializedData]);
+      console.log('[ByteCompare][SEND] Length:', serializedData.length);
+
+      const recvRaw = SettingsRefreshApi._lastReceivedRaw;
+      if (recvRaw.length === 0) {
+        console.warn('[ByteCompare][DIFF] No RECV array stored — load settings first before comparing');
+      } else {
+        const diffs: { offset: number; recv: number; send: number }[] = [];
+        const maxLen = Math.max(recvRaw.length, serializedData.length);
+        for (let i = 0; i < maxLen; i++) {
+          const r = recvRaw[i] ?? 0;
+          const s = serializedData[i] ?? 0;
+          if (r !== s) diffs.push({ offset: i, recv: r, send: s });
+        }
+        if (diffs.length === 0) {
+          console.log('[ByteCompare][DIFF] Arrays are IDENTICAL ✓');
+        } else {
+          console.warn(`[ByteCompare][DIFF] ${diffs.length} byte(s) differ:`);
+          diffs.forEach(({ offset, recv, send }) => {
+            console.warn(`  offset ${offset}: RECV=0x${recv.toString(16).padStart(2,'0').toUpperCase()} (${recv})  SEND=0x${send.toString(16).padStart(2,'0').toUpperCase()} (${send})`);
+          });
+        }
+      }
+      // ─────────────────────────────────────────────────────────────────────
+
       LogUtil.Debug('[SettingsUpdateApi] Serialized data length:', serializedData.length);
       LogUtil.Debug('[SettingsUpdateApi] First 50 bytes:', serializedData.slice(0, 50));
 

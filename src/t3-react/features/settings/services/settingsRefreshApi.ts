@@ -142,6 +142,9 @@ export interface RefreshResult {
  */
 export class SettingsRefreshApi {
 
+  /** Last raw 400-byte array received from C++ — used for SEND vs RECV comparison */
+  static _lastReceivedRaw: number[] = [];
+
   /**
    * Refresh device settings from device using GET_WEBVIEW_LIST (Action 17)
    *
@@ -241,6 +244,11 @@ export class SettingsRefreshApi {
     // Response structure: {data: {device_data: [{All: [...]}]}}
     const deviceData = rawData.data?.device_data?.[0] || rawData.device_data?.[0] || rawData;
     const all: number[] = deviceData.All || [];
+
+    // Store for later SEND vs RECV byte comparison
+    SettingsRefreshApi._lastReceivedRaw = [...all];
+    console.log('[ByteCompare][RECV] Raw 400-byte array from C++:', [...all]);
+    console.log('[ByteCompare][RECV] Length:', all.length);
 
     LogUtil.Debug(`[SettingsRefreshApi] Extracted array length: ${all.length}`);
     LogUtil.Debug(`[SettingsRefreshApi] First 20 bytes:`, all.slice(0, 20));
