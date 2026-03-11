@@ -874,7 +874,11 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleSaveBasicInfo = async () => {
-    if (!selectedDevice || !settings) return;
+    console.log('[Done] handleSaveBasicInfo called', { selectedDevice, settings });
+    if (!selectedDevice || !settings) {
+      console.warn('[Done] EARLY EXIT — selectedDevice:', selectedDevice, '| settings:', settings);
+      return;
+    }
 
     setLoading(true);
     setError(null);
