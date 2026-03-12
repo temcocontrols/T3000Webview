@@ -9441,7 +9441,7 @@
 
     // Scroll digital right-panel to bottom by default
     nextTick(() => {
-      const digitalRightPanel = document.querySelector('.digital-area .digital-right-panel') as HTMLElement
+      const digitalRightPanel = document.querySelector('.digital-area .digital-oscilloscope-container') as HTMLElement
       if (digitalRightPanel) {
         digitalRightPanel.scrollTop = digitalRightPanel.scrollHeight
       }
