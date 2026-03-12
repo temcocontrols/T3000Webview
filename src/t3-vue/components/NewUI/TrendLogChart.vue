@@ -598,7 +598,7 @@
         <div class="digital-right-panel">
           <div class="digital-oscilloscope-container" @wheel="handleMouseWheel">
             <!-- Single Digital Canvas for All Series -->
-            <div class="digital-combined-chart" :style="{ height: (visibleDigitalSeries.length * 50 + 60) + 'px', minHeight: '200px' }">
+            <div class="digital-combined-chart" :style="{ height: 'max(100%, ' + (visibleDigitalSeries.length * 50 + 60) + 'px)' }">
               <canvas ref="digitalChartCanvas" id="digital-combined-chart"></canvas>
             </div>
           </div>
@@ -1825,7 +1825,7 @@
   const route = useRoute()
 
   // NEW: Resizable divider state
-  const analogAreaHeight = ref(60) // Default 60% height (bottom 40%)
+  const digitalAreaHeightOverride = ref<number | null>(null) // null = auto-compact
   const isResizing = ref(false)
   const resizeStartY = ref(0)
   const resizeStartHeight = ref(0)
@@ -3335,6 +3335,13 @@
 
     return hasAnalogSeries || shouldShowError
   })
+  // Compact digital area height: based on item count unless user has manually dragged
+  const digitalAreaHeightPx = computed(() => {
+    if (digitalAreaHeightOverride.value !== null) return digitalAreaHeightOverride.value
+    const count = digitalSeriesList.value.length
+    return Math.min(500, Math.max(150, count * 55 + 65))
+  })
+
   const showDigitalArea = computed(() => digitalSeriesList.value.length > 0)
   const showResizableDivider = computed(() => analogSeriesList.value.length > 0 && digitalSeriesList.value.length > 0)
   const showAnalogXAxis = computed(() => {
@@ -10784,7 +10791,7 @@
   const startResize = (event: MouseEvent) => {
     isResizing.value = true
     resizeStartY.value = event.clientY
-    resizeStartHeight.value = analogAreaHeight.value
+    resizeStartHeight.value = digitalAreaHeightPx.value // save current digital height in px
 
     document.addEventListener('mousemove', handleResize)
     document.addEventListener('mouseup', stopResize)
@@ -10794,19 +10801,11 @@
   const handleResize = (event: MouseEvent) => {
     if (!isResizing.value) return
 
-    const container = document.querySelector('.timeseries-container')
-    if (!container) return
-
-    const containerHeight = container.clientHeight
     const deltaY = event.clientY - resizeStartY.value
-    const deltaPercent = (deltaY / containerHeight) * 100
-
-    let newHeight = resizeStartHeight.value + deltaPercent
-
-    // Constrain between 20% and 100%
-    newHeight = Math.max(20, Math.min(100, newHeight))
-
-    analogAreaHeight.value = newHeight
+    // Drag divider down → digital gets smaller; drag up → digital gets bigger
+    let newHeight = resizeStartHeight.value - deltaY
+    newHeight = Math.max(150, Math.min(700, newHeight))
+    digitalAreaHeightOverride.value = newHeight
   }
 
   const stopResize = () => {
@@ -12401,6 +12400,11 @@
     }
   })
 
+  // Reset digital height override when tracked series count changes (re-compact)
+  watch(() => digitalSeriesList.value.length, () => {
+    digitalAreaHeightOverride.value = null
+  })
+
   // Watch for changes in visible analog series to ensure proper chart updates
   watch(visibleAnalogSeries, async (newSeries, oldSeries) => {
     // LogUtil.Debug(`📊 visibleAnalogSeries watcher triggered`, {
@@ -13356,7 +13360,7 @@
   .analog-area {
     display: flex;
     flex-direction: row;
-    height: v-bind('showDigitalArea ? analogAreaHeight + "%" : "100%"');
+    flex: 1;
     min-height: 200px;
     gap: 6px;
     overflow: hidden;
@@ -13467,7 +13471,8 @@
 
   /* DIGITAL AREA (Bottom Section) */
   .digital-area {
-    flex: 1;
+    height: v-bind('showDigitalArea ? digitalAreaHeightPx + "px" : "0"');
+    flex-shrink: 0;
     min-height: 150px;
     background: #f5f5f5;
     border: 1px solid #d9d9d9;
