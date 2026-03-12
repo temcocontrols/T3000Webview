@@ -4052,25 +4052,39 @@
                 // Skip points with no valid data
                 if (rawY == null || isNaN(rawY)) return
 
-                const series = visibleAnalogSeries.value.find(s => s.name === point.dataset.label)
-                // Reverse-transform virtual Y back to real value
-                let displayVal = rawY
-                const bands = yBandInfo.value
-                if (bands.length > 0 && rawY != null) {
-                  const bi = Math.max(0, Math.min(bands.length - 1, Math.floor(rawY / BAND_SIZE)))
-                  const band = bands[bi]
-                  if (band) {
-                    const range = band.realMax - band.realMin
-                    displayVal = band.realMin + (rawY - band.virtualBase - BAND_MARGIN) / (BAND_SIZE - 2 * BAND_MARGIN) * range
-                  }
-                }
-                const value = displayVal.toFixed(2)
-                const unit = series?.unit || ''
+                const isDigital = !!point.dataset._isDigital
                 const label = point.dataset.label || ''
+                let valueText = ''
+                let lineColor = point.dataset.borderColor || '#333333'
 
-                // Format display text - hide "Unused" unit
-                const valueText = unit === 'Unused' ? `: ${value}` : `: ${value} ${unit}`
-                const lineColor = point.dataset.borderColor || series?.color || '#333333'
+                if (isDigital) {
+                  // Digital series: reverse-map Y back to state label
+                  const dSeries = visibleDigitalSeries.value.find(s => s.name === label)
+                  lineColor = point.dataset.borderColor || dSeries?.color || '#333333'
+                  const digitalStates = getDigitalStatesForYAxis(dSeries?.unitCode || 1)
+                  // DBS_HIGH = active state, DBS_LOW = inactive state (within each band)
+                  const withinBand = rawY - Math.floor(rawY / DIGITAL_BAND_SIZE) * DIGITAL_BAND_SIZE
+                  const stateLabel = withinBand < (DBS_HIGH + DBS_LOW) / 2 ? digitalStates[1] : digitalStates[0]
+                  valueText = `: ${stateLabel}`
+                } else {
+                  const series = visibleAnalogSeries.value.find(s => s.name === label)
+                  lineColor = point.dataset.borderColor || series?.color || '#333333'
+                  // Reverse-transform virtual Y back to real value
+                  let displayVal = rawY
+                  const bands = yBandInfo.value
+                  const analogOffset = unifiedAnalogOffset.value
+                  if (bands.length > 0 && rawY != null) {
+                    const bi = Math.max(0, Math.min(bands.length - 1, Math.floor((rawY - analogOffset) / BAND_SIZE)))
+                    const band = bands[bi]
+                    if (band) {
+                      const range = band.realMax - band.realMin
+                      displayVal = band.realMin + (rawY - band.virtualBase - BAND_MARGIN) / (BAND_SIZE - 2 * BAND_MARGIN) * range
+                    }
+                  }
+                  const value = displayVal.toFixed(2)
+                  const unit = series?.unit || ''
+                  valueText = unit === 'Unused' ? `: ${value}` : `: ${value} ${unit}`
+                }
 
                 // Create individual tooltip element
                 const tooltipEl = document.createElement('div')
