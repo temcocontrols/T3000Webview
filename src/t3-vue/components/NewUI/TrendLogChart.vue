@@ -3825,32 +3825,6 @@
         afterRender: () => { /* no-op: bridge canvas removed in favour of unified single chart */ }
       },
       {
-        // Draw a horizontal separator line between the digital zone (bottom) and analog zone (top).
-        id: 'zoneSeparator',
-        afterDraw: (chart: any) => {
-          const offset = unifiedAnalogOffset.value
-          if (offset <= 0) return // No digital zone present
-          const yAxis = chart.scales['y']
-          if (!yAxis) return
-          // Draw at the top of the last digital cluster (just above digital data)
-          const digitalCount = visibleDigitalSeries.value.length
-          if (digitalCount === 0) return
-          const digitalZoneTop = digitalCount * DIGITAL_BAND_SIZE + 0.05
-          const separatorPixelY = yAxis.getPixelForValue(digitalZoneTop)
-          const ctx = chart.ctx
-          ctx.save()
-          ctx.beginPath()
-          ctx.strokeStyle = '#bdbdbd'
-          ctx.lineWidth = 1.5
-          ctx.setLineDash([6, 3])
-          ctx.moveTo(chart.chartArea.left, separatorPixelY)
-          ctx.lineTo(chart.chartArea.right, separatorPixelY)
-          ctx.stroke()
-          ctx.setLineDash([])
-          ctx.restore()
-        }
-      },
-      {
         id: 'pwGapIndicator',
         beforeDatasetsDraw: (chart: any) => {
           const ctx = chart.ctx
