@@ -302,8 +302,12 @@ export class SettingsRefreshApi {
 
     // Helper functions for byte parsing with detailed logging
     const bytesToIP = (offset: number): string => {
-      const result = `${all[offset]}.${all[offset + 1]}.${all[offset + 2]}.${all[offset + 3]}`;
-      LogUtil.Debug(`[Parse] IP [${offset}-${offset+3}]: [${all[offset]}, ${all[offset+1]}, ${all[offset+2]}, ${all[offset+3]}] → "${result}"`);
+      const b0 = all[offset]     ?? 0;
+      const b1 = all[offset + 1] ?? 0;
+      const b2 = all[offset + 2] ?? 0;
+      const b3 = all[offset + 3] ?? 0;
+      const result = `${b0}.${b1}.${b2}.${b3}`;
+      LogUtil.Debug(`[Parse] IP [${offset}-${offset+3}]: [${b0}, ${b1}, ${b2}, ${b3}] → "${result}"`);
       return result;
     };
 

@@ -23,13 +23,13 @@ import { SettingsRefreshApi } from './settingsRefreshApi';
  * FFI request payload for settings update
  */
 interface FFIUpdateRequest {
-  serial_number: number;
-  entry_type: number;      // 98 for READ_SETTING_COMMAND
   action: number;           // 16 for UPDATE_WEBVIEW_LIST
-  entry_index: number;      // Always 0 for settings
-  data: {
-    All: number[];          // 400-byte array
-  };
+  panelId: number;          // panel_number — required by C++ to identify the panel
+  serialNumber: number;     // camelCase as expected by C++
+  objectinstance: number;   // object_instance — required by C++
+  entryType: number;        // 198 for WRITE_SETTING_COMMAND
+  entryIndex: number;       // Always 0 for settings
+  all: number[];            // C++ reads json["all"][index] directly at top-level (lowercase)
 }
 
 /**
@@ -43,7 +43,8 @@ interface SettingsUpdateResponse {
 
 export class SettingsUpdateApi {
   private static readonly FFI_ENDPOINT = 'http://localhost:9103/api/t3000/ffi/call';
-  private static readonly ENTRY_TYPE_SETTINGS = 98;   // READ_SETTING_COMMAND
+  private static readonly ENTRY_TYPE_SETTINGS_WRITE = 198; // WRITE_SETTING_COMMAND (C++ ud_str.h)
+  private static readonly ENTRY_TYPE_SETTINGS_READ  = 98;  // READ_SETTING_COMMAND
   private static readonly ACTION_UPDATE = 16;          // UPDATE_WEBVIEW_LIST
 
   /**
@@ -108,15 +109,16 @@ export class SettingsUpdateApi {
       LogUtil.Debug('[SettingsUpdateApi] Serialized data length:', serializedData.length);
       LogUtil.Debug('[SettingsUpdateApi] First 50 bytes:', serializedData.slice(0, 50));
 
-      // Construct FFI request
+      // Construct FFI request — field names must match C++ JSON parsing exactly
+      // C++ reads: json["panelId"], json["serialNumber"], json["entryType"], json["entryIndex"], json["all"][i]
       const ffiRequest: FFIUpdateRequest = {
-        serial_number: settings.serialNumber,
-        entry_type: this.ENTRY_TYPE_SETTINGS,
         action: this.ACTION_UPDATE,
-        entry_index: 0,  // Settings always at index 0
-        data: {
-          All: serializedData,
-        },
+        panelId: settings.panel_number,
+        serialNumber: settings.serialNumber,
+        objectinstance: settings.object_instance,
+        entryType: this.ENTRY_TYPE_SETTINGS_WRITE,  // 198 = WRITE_SETTING_COMMAND
+        entryIndex: 0,
+        all: serializedData,  // top-level lowercase 'all' — C++ reads json["all"][index]
       };
 
       // Send to device via FFI
@@ -136,6 +138,12 @@ export class SettingsUpdateApi {
       const result = await response.json();
 
       LogUtil.Info('[SettingsUpdateApi] Settings updated successfully', result);
+
+      // C++ returns {"error": "..."} on failure, or {"action":"UPDATE_WEBVIEW_LIST","data":{"status":true}} on success
+      const cppError = result?.error || result?.data?.error;
+      if (cppError) {
+        throw new Error(`Device error: ${cppError}`);
+      }
 
       return {
         success: true,
