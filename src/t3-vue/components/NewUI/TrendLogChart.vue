@@ -3730,6 +3730,34 @@
     })
   }
 
+  // Shared Y-axis width: ensures analog and digital left-axis areas are identical
+  // so both X-axes render gridlines at the same horizontal positions.
+  // Floor at 50 so digital labels like "Normal" (6 chars) always fit;
+  // ceiling at 68 for longer analog labels.
+  const computeSharedYAxisWidth = () => {
+    const bands = yBandInfo.value
+    let maxChars = 4
+    if (bands.length) {
+      bands.forEach((band: any) => {
+        const range = band.realMax - band.realMin
+        const fmt = (v: number) => {
+          if (range < 1)  return v.toFixed(2)
+          if (range < 10) return v.toFixed(1)
+          const r = Math.round(v)
+          if (Math.abs(r) >= 1_000_000) return (r / 1_000_000).toFixed(1) + 'M'
+          if (Math.abs(r) >= 10_000)    return (r / 1_000).toFixed(0) + 'K'
+          if (Math.abs(r) >= 1_000)     return (r / 1_000).toFixed(1) + 'K'
+          return r.toString()
+        }
+        ;[band.realMin, band.realMax].forEach((v: number) => {
+          const len = fmt(v).length
+          if (len > maxChars) maxChars = len
+        })
+      })
+    }
+    return Math.min(68, Math.max(50, 38 + (maxChars - 4) * 6))
+  }
+
   const getAnalogChartConfig = () => ({
     type: 'line' as const,
     data: {
@@ -3889,7 +3917,7 @@
       },
       layout: {
         padding: {
-          left: 5,
+          left: 0,
           right: 10,
           top: 25,
           bottom: 10
@@ -4392,30 +4420,7 @@
             scale.ticks = kept
           },
           afterFit: function(scale: any) {
-            // Auto-size width based on the longest tick label that will be rendered.
-            // Base 38px covers up to 4 chars (e.g. '999'); each extra char adds 6px.
-            // Floor at 38, ceiling at 68 (fits '-1.0M' comfortably).
-            const bands = yBandInfo.value
-            let maxChars = 4
-            if (bands.length) {
-              bands.forEach((band: any) => {
-                const range = band.realMax - band.realMin
-                const fmt = (v: number) => {
-                  if (range < 1)  return v.toFixed(2)
-                  if (range < 10) return v.toFixed(1)
-                  const r = Math.round(v)
-                  if (Math.abs(r) >= 1_000_000) return (r / 1_000_000).toFixed(1) + 'M'
-                  if (Math.abs(r) >= 10_000)    return (r / 1_000).toFixed(0) + 'K'
-                  if (Math.abs(r) >= 1_000)     return (r / 1_000).toFixed(1) + 'K'
-                  return r.toString()
-                }
-                ;[band.realMin, band.realMax].forEach((v: number) => {
-                  const len = fmt(v).length
-                  if (len > maxChars) maxChars = len
-                })
-              })
-            }
-            scale.width = Math.min(68, Math.max(38, 38 + (maxChars - 4) * 6))
+            scale.width = computeSharedYAxisWidth()
           },
           // Band-driven Y limits: each unit group occupies a BAND_SIZE-wide virtual band
           afterDataLimits: function (scale: any) {
@@ -5186,7 +5191,7 @@
               axis.ticks = ticks
             },
             afterFit: function (scale: any) {
-              scale.width = 50
+              scale.width = computeSharedYAxisWidth()
             }
           }
         }
