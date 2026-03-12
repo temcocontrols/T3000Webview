@@ -9028,15 +9028,21 @@
         }
       }
 
-      // ── Extend stepped line to fill up to current time (right edge only) ──
-      // Digital signals only record state changes, so the last known state should
-      // extend to window-max ("now" for live views) so the line doesn't stop short.
-      // We do NOT extend leftward — leaving the left side empty where there is no
-      // DB data, consistent with how analog series behave.
+      // ── Extend stepped line to current time (right edge) only when the
+      // tail gap is within one recording cycle (~2× median interval).
+      // This fills the sub-interval blank at the live edge so the "current
+      // state" stays visible, but does NOT bridge long gaps that should look
+      // empty — consistent with how analog series stop at their last data
+      // point rather than extending to the window edge.
       if (dataWithGapsD.length > 0) {
         const lastReal = [...dataWithGapsD].reverse().find(p => p.y !== null)
         if (lastReal && lastReal.x < digitalTimeWindow.max) {
-          dataWithGapsD.push({ x: digitalTimeWindow.max, y: lastReal.y, control: lastReal.control })
+          const tailGap = digitalTimeWindow.max - lastReal.x
+          if (tailGap <= medianIntervalMsD * 2) {
+            // Short tail: draw state to window edge (looks continuous in live mode)
+            dataWithGapsD.push({ x: digitalTimeWindow.max, y: lastReal.y, control: lastReal.control })
+          }
+          // Long tail: leave blank — matches analog behaviour for no-data right edge
         }
       }
 
