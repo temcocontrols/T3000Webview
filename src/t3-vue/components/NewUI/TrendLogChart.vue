@@ -8976,15 +8976,39 @@
         .filter((point: any) => point.timestamp != null)
         .sort((a: any, b: any) => a.timestamp - b.timestamp)
 
+      // ── Gap detection (mirrors analog logic) ─────────────────────────────
+      // 1. Null-run break: 5+ consecutive nulls break the step line.
+      // 2. Time-gap break: consecutive real points far apart (> 3× recording
+      //    interval, min 2 min) break the line — handles device-offline gaps
+      //    where no null entries exist, just a large timestamp jump.
+      const realOnlyD = sortedAllD.filter((p: any) => p.value !== null && p.value !== undefined && !isNaN(Number(p.value)))
+      let medianIntervalMsD = 5 * 60 * 1000 // default 5 min
+      if (realOnlyD.length >= 2) {
+        const deltasD: number[] = []
+        const pairCountD = Math.min(30, realOnlyD.length - 1)
+        for (let k = 0; k < pairCountD; k++) {
+          deltasD.push(realOnlyD[k + 1].timestamp - realOnlyD[k].timestamp)
+        }
+        deltasD.sort((a: number, b: number) => a - b)
+        medianIntervalMsD = deltasD[Math.floor(deltasD.length / 2)]
+      }
+      const gapThresholdMsD = Math.max(medianIntervalMsD * 3, 2 * 60 * 1000)
+
       const MAX_NULL_RUN_D = 5
       const dataWithGapsD: Array<{ x: number; y: number | null; control?: number }> = []
       let jd = 0
+      let lastRealXD: number | null = null
       while (jd < sortedAllD.length) {
         const pt = sortedAllD[jd]
         const isNullPtD = pt.value === null || pt.value === undefined || isNaN(Number(pt.value))
         if (!isNullPtD) {
+          // Time-gap break: insert null spacer if jump is too large
+          if (lastRealXD !== null && (pt.timestamp - lastRealXD) > gapThresholdMsD) {
+            dataWithGapsD.push({ x: (lastRealXD + pt.timestamp) / 2, y: null })
+          }
           const yD = pt.value > 0.5 ? baseY + DBS_HIGH : baseY + DBS_LOW
           dataWithGapsD.push({ x: pt.timestamp, y: yD, control: pt.value > 0.5 ? 1 : 0 })
+          lastRealXD = pt.timestamp
           jd++
         } else {
           let nullCountD = 0
@@ -8999,6 +9023,7 @@
             const prevX = runStartD > 0 ? sortedAllD[runStartD - 1].timestamp : sortedAllD[runStartD].timestamp
             const nextX = jd < sortedAllD.length ? sortedAllD[jd].timestamp : prevX
             dataWithGapsD.push({ x: (prevX + nextX) / 2, y: null })
+            lastRealXD = null // reset so next real point doesn't double-break
           }
         }
       }
