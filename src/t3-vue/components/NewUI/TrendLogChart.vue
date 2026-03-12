@@ -4454,7 +4454,7 @@
 
             if (!bands.length && !digitalCount) return
 
-            scale.min = digitalCount > 0 ? -DBS_HIGH : 0
+            scale.min = digitalCount > 0 ? DBS_HIGH - 0.05 : 0
             scale.max = analogOffset + (bands.length > 0 ? bands.length * BAND_SIZE : 0)
             if (bands.length === 0) scale.max = digitalZoneHeight + DBS_HIGH
 
@@ -4463,9 +4463,10 @@
             // cluster means the digital zone gets the same visual height as ONE analog band
             // rather than N bands — intentionally compact.
             const pwClusters: Array<{vMin: number; vMax: number}> = []
-            // Single digital cluster covering [−DBS_HIGH*0.5, digitalZoneHeight + DBS_HIGH]
+            // Single digital cluster: vMin just below the lowest data line (bottom series DBS_HIGH),
+            // vMax just above the top series DBS_LOW. No dead space outside the data range.
             if (digitalCount > 0) {
-              pwClusters.push({ vMin: -DBS_HIGH * 0.5, vMax: digitalZoneHeight + DBS_HIGH })
+              pwClusters.push({ vMin: DBS_HIGH - 0.05, vMax: digitalZoneHeight - DIGITAL_BAND_SIZE + DBS_LOW + 0.05 })
             }
             // Analog clusters (shifted to start at analogOffset)
             bands.forEach((_b: YBandInfo, i: number) => {
