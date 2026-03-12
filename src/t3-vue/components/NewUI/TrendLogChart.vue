@@ -7332,9 +7332,16 @@
 
         if (seriesHistoricalData.length > 0) {
           // Convert to data points and sort by timestamp
+          // 🎯 Digital series: the Rust API always divides stored values by 1000 (analog convention),
+          // but digital values are stored as raw 0/1 (no ×1000 multiplier), so 1 becomes 0.001 which
+          // fails the >0.5 threshold.  Use original_value (pre-scaling) for digital series.
+          const isDigitalSeries = series.unitType === 'digital' || series.digital_analog === 0
+          const parseTextValue = (raw: any) => { const n = parseFloat(raw); if (!isNaN(n)) return n; const s = String(raw ?? '').toLowerCase().trim(); return (s === 'on' || s === 'true' || s === 'high') ? 1 : 0; }
           const dataPoints = seriesHistoricalData.map(item => ({
             timestamp: new Date(item.time).getTime(),
-            value: (() => { const n = parseFloat(item.value); if (!isNaN(n)) return n; const s = String(item.value ?? '').toLowerCase().trim(); return (s === 'on' || s === 'true' || s === 'high') ? 1 : 0; })(),
+            value: isDigitalSeries
+              ? parseTextValue(item.original_value ?? item.value)
+              : parseTextValue(item.value),
             id: item.point_id,
             type: item.point_type,
             digital_analog: item.digital_analog || 1,
@@ -8230,12 +8237,16 @@
 
           // Extract value from history API response format
           // History API returns: {value, original_value, is_analog, digital_analog}
-          // parseTextValue handles both numeric strings ("0","1") and text ("On","Off")
+          // The Rust API always divides stored values by 1000 (analog convention), so digital
+          // values 0/1 become 0/0.001 — use original_value for digital series.
           const parseTextValue = (raw: any) => { const n = parseFloat(raw); if (!isNaN(n)) return n; const s = String(raw ?? '').toLowerCase().trim(); return (s === 'on' || s === 'true' || s === 'high') ? 1 : 0; }
-          const value = item.value !== undefined && item.value !== null ?
-            parseTextValue(item.value) :
-            (item.original_value !== undefined && item.original_value !== null ?
-              parseTextValue(item.original_value) : 0)
+          const isDigitalGapSeries = series.unitType === 'digital' || series.digital_analog === 0
+          const value = isDigitalGapSeries
+            ? parseTextValue(item.original_value ?? item.value)
+            : (item.value !== undefined && item.value !== null
+              ? parseTextValue(item.value)
+              : (item.original_value !== undefined && item.original_value !== null
+                ? parseTextValue(item.original_value) : 0))
 
           // Diagnostic logging for first item
           if (pointGapData.indexOf(item) === 0) {
