@@ -8695,22 +8695,11 @@
     }
 
     const visibleAnalog = visibleAnalogSeries.value.filter(series => series.data.length > 0)
+    const hasVisibleDigital = visibleDigitalSeries.value.some(s => s.data && s.data.length > 0)
 
-    // 🚨 CRITICAL DEBUG: Check if we're about to empty the chart
-    if (visibleAnalog.length === 0 && visibleAnalogSeries.value.length > 0) {
-      LogUtil.Error('🚨 CRITICAL: All visible analog series have NO DATA - chart will be empty!', {
-        totalVisibleSeries: visibleAnalogSeries.value.length,
-        allSeriesDetails: visibleAnalogSeries.value.map(s => ({
-          name: s.name,
-          id: s.id,
-          dataCount: s.data?.length || 0,
-          visible: s.visible,
-          hasDataArray: !!s.data,
-          dataType: typeof s.data
-        })),
-        timestamp: new Date().toISOString()
-      })
-      // Don't proceed with empty update - keep existing chart data
+    // Skip only when BOTH analog and digital have nothing to draw
+    if (visibleAnalog.length === 0 && visibleAnalogSeries.value.length > 0 && !hasVisibleDigital) {
+      LogUtil.Debug('⏸️ updateAnalogChart: No analog data yet and no digital data — skipping to preserve existing chart')
       return
     }
 
@@ -9014,21 +9003,15 @@
         }
       }
 
-      // ── Extend stepped line to fill the full visible time window ──────────
-      // Digital signals only record state changes, so the last known state must
-      // be extended to the right edge (now/window-max) and the first known state
-      // extended to the left edge (window-min) so the step line covers the full
-      // visible range instead of stopping at the last/first data timestamp.
+      // ── Extend stepped line to fill up to current time (right edge only) ──
+      // Digital signals only record state changes, so the last known state should
+      // extend to window-max ("now" for live views) so the line doesn't stop short.
+      // We do NOT extend leftward — leaving the left side empty where there is no
+      // DB data, consistent with how analog series behave.
       if (dataWithGapsD.length > 0) {
-        // Extend right: find last non-null point and repeat its Y at window-max
         const lastReal = [...dataWithGapsD].reverse().find(p => p.y !== null)
         if (lastReal && lastReal.x < digitalTimeWindow.max) {
           dataWithGapsD.push({ x: digitalTimeWindow.max, y: lastReal.y, control: lastReal.control })
-        }
-        // Extend left: find first non-null point and repeat its Y at window-min
-        const firstReal = dataWithGapsD.find(p => p.y !== null)
-        if (firstReal && firstReal.x > digitalTimeWindow.min) {
-          dataWithGapsD.unshift({ x: digitalTimeWindow.min, y: firstReal.y, control: firstReal.control })
         }
       }
 
