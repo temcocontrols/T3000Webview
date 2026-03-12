@@ -7334,7 +7334,7 @@
           // Convert to data points and sort by timestamp
           const dataPoints = seriesHistoricalData.map(item => ({
             timestamp: new Date(item.time).getTime(),
-            value: parseFloat(item.value) || 0,
+            value: (() => { const n = parseFloat(item.value); if (!isNaN(n)) return n; const s = String(item.value ?? '').toLowerCase().trim(); return (s === 'on' || s === 'true' || s === 'high') ? 1 : 0; })(),
             id: item.point_id,
             type: item.point_type,
             digital_analog: item.digital_analog || 1,
@@ -8230,10 +8230,12 @@
 
           // Extract value from history API response format
           // History API returns: {value, original_value, is_analog, digital_analog}
+          // parseTextValue handles both numeric strings ("0","1") and text ("On","Off")
+          const parseTextValue = (raw: any) => { const n = parseFloat(raw); if (!isNaN(n)) return n; const s = String(raw ?? '').toLowerCase().trim(); return (s === 'on' || s === 'true' || s === 'high') ? 1 : 0; }
           const value = item.value !== undefined && item.value !== null ?
-            parseFloat(item.value) :
+            parseTextValue(item.value) :
             (item.original_value !== undefined && item.original_value !== null ?
-              parseFloat(item.original_value) : 0)
+              parseTextValue(item.original_value) : 0)
 
           // Diagnostic logging for first item
           if (pointGapData.indexOf(item) === 0) {
@@ -9028,21 +9030,22 @@
         }
       }
 
-      // ── Extend stepped line to current time (right edge) only when the
-      // tail gap is within one recording cycle (~2× median interval).
-      // This fills the sub-interval blank at the live edge so the "current
-      // state" stays visible, but does NOT bridge long gaps that should look
-      // empty — consistent with how analog series stop at their last data
-      // point rather than extending to the window edge.
+      // ── Extend stepped line to current wall-clock time only when the
+      // last real point is recent (within 2× recording interval).
+      // Uses Date.now() — NOT window max — so the line never extends into
+      // the future (window max is currentMinute+60s, i.e. up to 60s ahead).
+      // This keeps the "current state" visible without making the digital
+      // look like it has data points beyond the actual polling time.
       if (dataWithGapsD.length > 0) {
         const lastReal = [...dataWithGapsD].reverse().find(p => p.y !== null)
-        if (lastReal && lastReal.x < digitalTimeWindow.max) {
-          const tailGap = digitalTimeWindow.max - lastReal.x
-          if (tailGap <= medianIntervalMsD * 2) {
-            // Short tail: draw state to window edge (looks continuous in live mode)
-            dataWithGapsD.push({ x: digitalTimeWindow.max, y: lastReal.y, control: lastReal.control })
+        if (lastReal) {
+          const now = Date.now()
+          const tailGap = now - lastReal.x
+          if (tailGap >= 0 && tailGap <= medianIntervalMsD * 2) {
+            // Extend stepped state line to now — stays at current time, never future
+            dataWithGapsD.push({ x: now, y: lastReal.y, control: lastReal.control })
           }
-          // Long tail: leave blank — matches analog behaviour for no-data right edge
+          // Large tail gap: leave blank — device offline or long outage
         }
       }
 
