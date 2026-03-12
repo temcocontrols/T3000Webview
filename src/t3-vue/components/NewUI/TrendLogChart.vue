@@ -2807,7 +2807,7 @@
     return { internalSec, roundedSec }
   })
 
-  // Chart references - Single canvas for digital
+  // Chart references - Single unified canvas (analog + digital combined)
   const chartContainer = ref<HTMLElement>()
   const analogChartCanvas = ref<HTMLCanvasElement>()
 
@@ -4775,7 +4775,8 @@
     }
   })
 
-  // Combined digital chart config - single canvas showing all digital series stacked
+  // getCombinedDigitalChartConfig — dead code, never called.
+  // Digital rendering is handled inside updateAnalogChart (unified single-canvas design).
   const getCombinedDigitalChartConfig = () => {
     // Get initial time window based on current timebase
     const timeWindow = getCurrentTimeWindow()
@@ -7751,7 +7752,7 @@
     if (!hasData) {
       LogUtil.Debug('📈 TrendLogChart: No new data points, but updating charts for time window scroll')
       // Skip data processing but still update charts for x-axis scroll
-      if (isRealTime.value && (analogChartInstance || digitalChartInstance)) {
+      if (isRealTime.value && analogChartInstance) {
         updateCharts()  // CRITICAL: Keeps x-axis scrolling
       }
       return
@@ -7994,11 +7995,11 @@
       })
     }
 
-    // Update charts if instances exist
-    if (analogChartInstance || digitalChartInstance) {
+    // Update chart if instance exists
+    if (analogChartInstance) {
       updateCharts()
     } else {
-      LogUtil.Debug('⚠️ Chart instances not available for update')
+      LogUtil.Debug('⚠️ Chart instance not available for update')
     }
   }
 
@@ -8645,7 +8646,6 @@
 
     LogUtil.Info('🎨 updateCharts: Starting chart updates', {
       hasAnalogChart: !!analogChartInstance,
-      hasDigitalChart: !!digitalChartInstance,
       totalDataSeries: dataSeries.value.length,
       seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
       visibleAnalogCount: visibleAnalogSeries.value.length,
@@ -9231,228 +9231,8 @@
   }
 
   const updateDigitalCharts = async () => {
-    // 🆕 FIX: Early return if no digital chart exists
-    if (!digitalChartInstance) {
-      LogUtil.Debug('📊 updateDigitalCharts: No digital chart instance available')
-      return
-    }
-
-    // 🚨 CRITICAL DEBUG: Check if all digital series have no data
-    const seriesWithData = visibleDigitalSeries.value.filter(s => s.data && s.data.length > 0)
-    if (seriesWithData.length === 0 && visibleDigitalSeries.value.length > 0) {
-      LogUtil.Error('🚨 CRITICAL: All visible digital series have NO DATA - chart will be empty!', {
-        totalVisibleSeries: visibleDigitalSeries.value.length,
-        allSeriesDetails: visibleDigitalSeries.value.map(s => ({
-          name: s.name,
-          id: s.id,
-          dataCount: s.data?.length || 0,
-          visible: s.visible,
-          hasDataArray: !!s.data,
-          dataType: typeof s.data
-        })),
-        timestamp: new Date().toISOString()
-      })
-    }
-
-    LogUtil.Info('📊 updateDigitalCharts: Processing digital series', {
-      totalVisibleSeries: visibleDigitalSeries.value.length,
-      seriesWithData: seriesWithData.length
-    })
-
-    // Build datasets for all visible digital series
-    const datasets: any[] = []
-
-    for (let index = 0; index < visibleDigitalSeries.value.length; index++) {
-      const series = visibleDigitalSeries.value[index]
-
-      // Yield to event loop every 2 series
-      if (index > 0 && index % 2 === 0) {
-        await new Promise(resolve => setTimeout(resolve, 0))
-      }
-
-      LogUtil.Info(`📊 Digital Series ${index} - ${series.name} Data Processing:`, {
-        seriesRawDataCount: series.data.length,
-        firstRawPoint: series.data[0] ? {
-          timestamp: new Date(series.data[0].timestamp).toISOString(),
-          value: series.data[0].value
-        } : null,
-        lastRawPoint: series.data[series.data.length - 1] ? {
-          timestamp: new Date(series.data[series.data.length - 1].timestamp).toISOString(),
-          value: series.data[series.data.length - 1].value
-        } : null
-      })
-
-      const sortedAllD = series.data
-        .slice()
-        .filter(point => point.timestamp != null)
-        .sort((a, b) => a.timestamp - b.timestamp)
-
-      const baseY = (visibleDigitalSeries.value.length - 1 - index) * 1.2
-
-      // Same rule as analog: only 5 consecutive nulls break the line.
-      const MAX_NULL_RUN_D = 5
-      const dataWithGaps: Array<{ x: number; y: number | null; control?: number }> = []
-      let jd = 0
-      while (jd < sortedAllD.length) {
-        const pt = sortedAllD[jd]
-        const isNullPt = pt.value === null || pt.value === undefined || isNaN(Number(pt.value))
-        if (!isNullPt) {
-          const y = pt.value > 0.5 ? baseY + 0.3 : baseY + 0.9
-          dataWithGaps.push({ x: pt.timestamp, y, control: pt.value > 0.5 ? 1 : 0 })
-          jd++
-        } else {
-          let nullCount = 0
-          const runStart = jd
-          while (jd < sortedAllD.length) {
-            const npt = sortedAllD[jd]
-            if (npt.value === null || npt.value === undefined || isNaN(Number(npt.value))) {
-              nullCount++
-              jd++
-            } else { break }
-          }
-          if (nullCount >= MAX_NULL_RUN_D) {
-            const prevX = runStart > 0 ? sortedAllD[runStart - 1].timestamp : sortedAllD[runStart].timestamp
-            const nextX = jd < sortedAllD.length ? sortedAllD[jd].timestamp : prevX
-            dataWithGaps.push({ x: (prevX + nextX) / 2, y: null })
-          }
-          // < 5 nulls: skip entirely surrounding real points stay connected
-        }
-      }
-
-      // Per-point radius: isolated points (both neighbours null/missing) always
-      // get a dot so they're visible; connected points respect showPoints toggle.
-      const pointRadiusArrD: number[] = dataWithGaps.map((pt, idx) => {
-        if (pt.y === null) return 0
-        const prevIsNull = idx === 0 || dataWithGaps[idx - 1].y === null
-        const nextIsNull = idx === dataWithGaps.length - 1 || dataWithGaps[idx + 1].y === null
-        if (prevIsNull && nextIsNull) return 4
-        return showPoints.value ? 3 : 0
-      })
-
-      datasets.push({
-        label: series.name,
-        data: dataWithGaps,
-        borderColor: series.color,
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        fill: false,
-        stepped: 'before' as const, // Step before for digital signals
-        pointRadius: pointRadiusArrD,
-        pointHoverRadius: 6,
-        pointHitRadius: 8,
-        pointBackgroundColor: series.color,
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointStyle: 'circle' as const,
-        spanGaps: false,
-        yAxisID: 'y' // All use same y-axis
-      })
-    }
-
-    // Update chart datasets
-    digitalChartInstance.data.datasets = datasets
-
-    // Update x-axis - use same configuration as analog chart
-    if (digitalChartInstance.options.scales?.x) {
-      const xScale = digitalChartInstance.options.scales.x as any
-
-      // For custom date range, use custom tick configuration
-      let tickConfig: any
-      let displayFormat: string
-      let maxTicks: number
-
-      if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
-        const customConfig = getCustomTickConfig(
-          customStartDate.value.toDate(),
-          customEndDate.value.toDate()
-        )
-        tickConfig = { unit: customConfig.unit, stepMinutes: customConfig.stepSize }
-        displayFormat = customConfig.displayFormat
-        maxTicks = customConfig.maxTicks
-      } else {
-        tickConfig = getXAxisTickConfig(timeBase.value)
-        displayFormat = getDisplayFormat(timeBase.value)
-        const maxTicksConfigs = {
-          '5m': 6, '10m': 6, '30m': 7, '1h': 7,
-          '4h': 9, '12h': 13, '1d': 13, '4d': 13
-        }
-        maxTicks = maxTicksConfigs[timeBase.value] || 7
-      }
-
-      xScale.time = {
-        unit: tickConfig.unit,
-        stepSize: tickConfig.stepMinutes,
-        displayFormats: {
-          minute: displayFormat,
-          hour: displayFormat,
-          day: 'yyyy-MM-dd HH:mm'
-        },
-        minUnit: 'second'
-      }
-
-      xScale.ticks = {
-        ...xScale.ticks,
-        maxTicksLimit: maxTicks,
-        maxRotation: 0,
-        minRotation: 0,
-        callback: formatXAxisTick,
-        includeBounds: true
-      }
-
-      xScale.grid = {
-        color: showGrid.value ? '#999999' : 'transparent',
-        display: showGrid.value,
-        lineWidth: 1.2,
-        drawTicks: true
-      }
-
-      const timeWindow = getCurrentTimeWindow()
-      xScale.min = timeWindow.min
-      xScale.max = timeWindow.max
-
-      LogUtil.Info(`Digital Chart Time Window:`, {
-        timeBase: timeBase.value,
-        isRealTime: isRealTime.value,
-        timeWindow: {
-          min: new Date(timeWindow.min).toISOString(),
-          max: new Date(timeWindow.max).toISOString(),
-          rangeMinutes: Math.round((timeWindow.max - timeWindow.min) / 60000)
-        }
-      })
-
-      // Force recalculation of bounds
-      delete xScale._range
-      delete xScale._reversePixels
-      delete xScale._startValue
-      delete xScale._valueRange
-    }
-
-    // Update y-axis range based on number of series
-    if (digitalChartInstance.options.scales?.y) {
-      const yScale = digitalChartInstance.options.scales.y as any
-      const seriesCount = visibleDigitalSeries.value.length
-      yScale.min = -0.3
-      yScale.max = seriesCount * 1.2 + 0.3
-    }
-
-    // Update chart
-    try {
-      digitalChartInstance.update()
-      LogUtil.Info(`Digital chart updated`, {
-        seriesCount: visibleDigitalSeries.value.length,
-        totalDataPoints: visibleDigitalSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
-      })
-    } catch (error) {
-      LogUtil.Warn(`⚠️ updateDigitalCharts: Failed to update chart`, error)
-    }
-
-    // Scroll digital right-panel to bottom by default
-    nextTick(() => {
-      const digitalRightPanel = document.querySelector('.digital-area .digital-oscilloscope-container') as HTMLElement
-      if (digitalRightPanel) {
-        digitalRightPanel.scrollTop = digitalRightPanel.scrollHeight
-      }
-    })
+    /* no-op — digital datasets are rendered inside updateAnalogChart (unified canvas).
+       digitalChartInstance is always null in the single-canvas design. */
   }
 
   // Series control methods
@@ -10434,8 +10214,7 @@
         seriesCount: dataSeries.value.length,
         seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
         totalDataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0),
-        hasAnalogChart: !!analogChartInstance,
-        hasDigitalChart: !!digitalChartInstance
+        hasAnalogChart: !!analogChartInstance
       })
 
       // If charts don't exist yet, create them
@@ -12309,7 +12088,7 @@
   const onChartOptionChange = () => {
     // 🆕 Defer auto-refresh to prevent UI blocking
     requestAnimationFrame(() => {
-      if (analogChartInstance || digitalChartInstance) {
+      if (analogChartInstance) {
         destroyAllCharts()
         // Wait for destruction before recreating
         setTimeout(() => {
@@ -12356,7 +12135,7 @@
   watch([showGrid, showLegend, smoothLines, showPoints], () => {
     // 🆕 Defer chart recreation to prevent UI blocking
     requestAnimationFrame(() => {
-      if (analogChartInstance || digitalChartInstance) {
+      if (analogChartInstance) {
         destroyAllCharts()
         // Wait for destruction to complete before recreating
         setTimeout(() => {
@@ -12436,9 +12215,8 @@
       totalSeries: dataSeries.value.length,
       visibleSeries: dataSeries.value.filter(s => s.visible).length,
       seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
-      hasChartInstances: !!(analogChartInstance || digitalChartInstance),
+      hasChartInstances: !!analogChartInstance,
       analogChartDatasets: analogChartInstance?.data?.datasets?.length || 0,
-      digitalChartDatasets: digitalChartInstance?.data?.datasets?.length || 0,
       seriesDetails: dataSeries.value.map((series, index) => ({
         index,
         name: series.name,
@@ -12692,8 +12470,7 @@
       await new Promise(resolve => setTimeout(resolve, 50))
 
       LogUtil.Info('🔍 STEP 2: Chart instances created, verifying', {
-        hasAnalogChart: !!analogChartInstance,
-        hasDigitalChart: !!digitalChartInstance
+        hasAnalogChart: !!analogChartInstance
       })
 
       // 🆕 FIX: Then load and display data
