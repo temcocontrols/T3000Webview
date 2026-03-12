@@ -181,8 +181,8 @@
         <span style="margin-left: 8px;">Loading trendlog data...</span>
       </div>
 
-      <!-- ANALOG AREA (Top Section) -->
-      <div v-if="showAnalogArea" class="analog-area">
+      <!-- UNIFIED CHART AREA (Analog + Digital in one Chart.js canvas) -->
+      <div v-if="showAnalogArea || showDigitalArea" class="analog-area">
         <div class="left-panel">
           <!-- Loading overlay - inside left panel, only shows after 300ms delay -->
           <div v-if="showLoadingOverlay" class="loading-overlay">
@@ -190,7 +190,7 @@
             <div class="loading-text">Loading trend log data...</div>
           </div>
 
-          <!-- Data Series - Analog Only -->
+          <!-- Data Series - Analog + Digital -->
           <div class="control-section">
             <div class="data-series-header">
               <!-- Single line: Title, count, and status -->
@@ -273,7 +273,7 @@
             </div>
             <div class="series-list">
               <!-- Empty state when no valid data series available -->
-              <div v-if="analogSeriesList.length === 0" class="series-empty-state">
+              <div v-if="analogSeriesList.length === 0 && digitalSeriesList.length === 0" class="series-empty-state">
                 <div class="empty-state-content">
                   <div v-if="shouldShowLoading" class="empty-state-icon">
                     <a-spin size="small" />
@@ -287,7 +287,7 @@
 
                   <div v-if="shouldShowLoading" class="empty-state-text">Loading T3000 device data...</div>
                   <div v-else-if="showLoadingTimeout" class="empty-state-text">Loading Timeout</div>
-                  <div v-else-if="!hasConnectionError" class="empty-state-text">No valid analog data available</div>
+                  <div v-else-if="!hasConnectionError" class="empty-state-text">No valid data available</div>
 
                   <div v-if="shouldShowLoading" class="empty-state-subtitle">
                     Connecting to your T3000 devices to retrieve trend data...
@@ -299,7 +299,7 @@
                     Unable to load real-time or historical data. Check system connections.
                   </div>
                   <div v-else class="empty-state-subtitle">
-                    Configure analog monitor points to see data series
+                    Configure monitor points to see data series
                   </div>
 
                   <!-- Refresh button for timeout and error states -->
@@ -312,7 +312,7 @@
                 </div>
               </div>
 
-              <!-- Regular series list when data is available - Analog Only -->
+              <!-- Analog series list -->
               <div v-for="(series, index) in analogSeriesList" :key="series.key" class="series-item" :class="{
                 'series-disabled': !series.visible,
                 'keyboard-selected': selectedItemIndex === index && keyboardEnabled
@@ -391,127 +391,12 @@
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
 
-        <!-- Right Panel: Analog Chart Only -->
-        <div class="right-panel">
-          <div class="oscilloscope-container" @wheel="handleMouseWheel">
-            <!-- Always render canvas for chart initialization, hide with CSS when no visible series -->
-            <div class="combined-analog-chart" :style="{ display: visibleAnalogSeries.length > 0 ? 'block' : 'none' }">
-              <canvas ref="analogChartCanvas" id="analog-chart"></canvas>
-            </div>
-            <!-- Show empty state when no series are visible (user disabled all) -->
-            <div v-if="visibleAnalogSeries.length === 0" class="empty-chart-message">
-
-              <div class="empty-state-text">
-                <span class="empty-state-icon">🔍</span>
-                No analog series enabled
+              <!-- Digital section separator (only when both analog and digital are present) -->
+              <div v-if="analogSeriesList.length > 0 && digitalSeriesList.length > 0" class="digital-section-divider">
+                <span>Digital</span>
               </div>
-              <div class="empty-state-subtitle">Enable analog series from the left panel to see charts</div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- RESIZABLE DIVIDER -->
-      <div
-        v-if="showResizableDivider"
-        class="resizable-divider"
-        @mousedown="startResize"
-        :style="{ cursor: isResizing ? 'row-resize' : 'row-resize' }"
-      >
-        <div class="divider-handle">
-          <div class="divider-grip"></div>
-        </div>
-      </div>
-
-      <!-- DIGITAL AREA (Bottom Section) -->
-      <div v-if="showDigitalArea" class="digital-area">
-        <!-- Digital Left Panel -->
-        <div class="digital-left-panel">
-          <div class="control-section">
-            <!-- Show full header when only digital series exist -->
-            <div v-if="showDigitalHeader" class="data-series-header">
-              <div class="header-line-1">
-                <div :title="devVersion" class="chart-title-with-version">
-                  {{ chartTitle }} ({{ totalVisibleSeriesCount }}/{{ totalSeriesCount }})
-                </div>
-                <!-- Data Source Indicator -->
-                <div class="data-source-indicator">
-                  <span v-if="shouldShowLoading" class="source-badge loading">
-                    Loading...
-                  </span>
-                  <span v-else-if="dataSource === 'realtime'" class="source-badge realtime">
-                    <ThunderboltFilled :style="{ fontSize: '12px', marginRight: '4px' }" /> Live ({{ timeBase }})
-                  </span>
-                  <span v-else-if="dataSource === 'api'" class="source-badge historical">
-                    📚 Historical (Custom Date)
-                  </span>
-                  <span v-else-if="hasConnectionError" class="source-badge error">
-                    ⚠️ Connection Error
-                  </span>
-                </div>
-              </div>
-              <div class="header-line-2">
-                <div class="left-controls">
-                  <a-dropdown>
-                    <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
-                      <span>All</span>
-                      <DownOutlined style="margin-left: 4px;" />
-                    </a-button>
-                    <template #overlay>
-                      <a-menu @click="handleAllMenu" class="all-dropdown-menu">
-                        <a-menu-item key="enable-all" :disabled="!hasDisabledSeries">
-                          <CheckOutlined />
-                          Enable All
-                        </a-menu-item>
-                        <a-menu-item key="disable-all" :disabled="!hasEnabledSeries">
-                          <DisconnectOutlined />
-                          Disable All
-                        </a-menu-item>
-                      </a-menu>
-                    </template>
-                  </a-dropdown>
-                  <a-dropdown>
-                    <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
-                      <span>By Type</span>
-                      <DownOutlined style="margin-left: 4px;" />
-                    </a-button>
-                    <template #overlay>
-                      <a-menu @click="handleByTypeMenu" class="bytype-dropdown-menu">
-                        <a-menu-item key="toggle-analog" :disabled="!hasAnalogSeries">
-                          <LineChartOutlined />
-                          {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
-                        </a-menu-item>
-                        <a-menu-item key="toggle-digital" :disabled="!hasDigitalSeries">
-                          <BarChartOutlined />
-                          {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
-                        </a-menu-item>
-                        <a-menu-item key="toggle-input" :disabled="!hasInputSeries">
-                          <ImportOutlined />
-                          {{ allInputEnabled ? 'Disable' : 'Enable' }} Input ({{ inputCount }})
-                        </a-menu-item>
-                        <a-menu-item key="toggle-output" :disabled="!hasOutputSeries">
-                          <ExportOutlined />
-                          {{ allOutputEnabled ? 'Disable' : 'Enable' }} Output ({{ outputCount }})
-                        </a-menu-item>
-                        <a-menu-item key="toggle-variable" :disabled="!hasVariableSeries">
-                          <FunctionOutlined />
-                          {{ allVariableEnabled ? 'Disable' : 'Enable' }} Variable ({{ variableCount }})
-                        </a-menu-item>
-                      </a-menu>
-                    </template>
-                  </a-dropdown>
-                </div>
-                <div class="auto-scroll-toggle">
-                  <a-typography-text class="toggle-label">Auto Scroll:</a-typography-text>
-                  <a-switch v-model:checked="isRealTime" size="small" @change="onRealTimeToggle" />
-                </div>
-              </div>
-            </div>
-            <div class="series-list">
               <!-- Digital series list -->
               <div v-for="(series, index) in digitalSeriesList" :key="series.key" class="series-item" :class="{
                 'series-disabled': !series.visible
@@ -539,13 +424,11 @@
                   </div>
                   <div class="series-info">
                     <div class="series-name-line">
-                      <!-- Series Name takes most space on left -->
                       <div class="series-name-col">
                         <a-tooltip :title="getSeriesNameText(series)" placement="topLeft">
                           <span class="series-name">{{ getSeriesNameText(series) }}</span>
                         </a-tooltip>
                       </div>
-                      <!-- Right side: Chip + Unit + Expand button grouped together -->
                       <div class="series-right-group">
                         <div class="series-chip-col">
                           <q-chip v-if="series.prefix" :label="getChipLabelText(series.prefix)" color="grey-4"
@@ -594,12 +477,20 @@
           </div>
         </div>
 
-        <!-- Digital Right Panel -->
-        <div class="digital-right-panel">
-          <div class="digital-oscilloscope-container" @wheel="handleMouseWheel">
-            <!-- Single Digital Canvas for All Series -->
-            <div class="digital-combined-chart" :style="{ height: 'max(100%, ' + (visibleDigitalSeries.length * 50 + 60) + 'px)' }">
-              <canvas ref="digitalChartCanvas" id="digital-combined-chart"></canvas>
+        <!-- Right Panel: Unified Chart (analog + digital in one canvas) -->
+        <div class="right-panel">
+          <div class="oscilloscope-container" @wheel="handleMouseWheel">
+            <!-- Always render canvas for chart initialization, hide with CSS when no visible series -->
+            <div class="combined-analog-chart" :style="{ display: (visibleAnalogSeries.length > 0 || visibleDigitalSeries.length > 0) ? 'block' : 'none' }">
+              <canvas ref="analogChartCanvas" id="analog-chart"></canvas>
+            </div>
+            <!-- Show empty state when no series are visible (user disabled all) -->
+            <div v-if="visibleAnalogSeries.length === 0 && visibleDigitalSeries.length === 0" class="empty-chart-message">
+              <div class="empty-state-text">
+                <span class="empty-state-icon">🔍</span>
+                No series enabled
+              </div>
+              <div class="empty-state-subtitle">Enable series from the left panel to see charts</div>
             </div>
           </div>
         </div>
@@ -2926,9 +2817,15 @@
   // The tick callback reverse-transforms to display real values per band.
   const BAND_SIZE = 100   // virtual units per unit-group band
   const BAND_MARGIN = 8   // padding within each band (top & bottom)
+  const DIGITAL_GAP = 50  // virtual units gap between digital zone and analog zone
+  const DIGITAL_BAND_SIZE = 1.05  // virtual units per digital series band (controls per-series height)
+  const DBS_HIGH = DIGITAL_BAND_SIZE * 0.25  // Y offset for "active" state tick within a digital band
+  const DBS_LOW  = DIGITAL_BAND_SIZE * 0.75  // Y offset for "inactive" state tick within a digital band
   interface YBandInfo { unit: string; colors: string[]; realMin: number; realMax: number; virtualBase: number }
   const yBandInfo = ref<YBandInfo[]>([])
-  const digitalChartCanvas = ref<HTMLCanvasElement>()
+  // Tracks the virtual Y offset where analog bands start (= digitalZoneHeight + DIGITAL_GAP when digital exists, else 0).
+  // Read by the Y-axis tick callback and color function to distinguish digital vs analog zone.
+  const unifiedAnalogOffset = ref(0)
   let analogChartInstance: Chart | null = null
   let digitalChartInstance: Chart | null = null
   // Tracks the currently visible x-axis range (ms timestamps).
@@ -3730,6 +3627,65 @@
     })
   }
 
+  // Draw vertical gridlines on the divider canvas so they visually bridge the gap
+  // between the analog and digital charts, making the X-axis gridlines look continuous.
+  const drawDividerLines = () => {
+    const canvas = dividerCanvas.value
+    const chart = analogChartInstance
+    if (!canvas || !chart) return
+    if (!showDigitalArea.value) return
+
+    const analogCanvasEl = analogChartCanvas.value
+    const digitalCanvasEl = digitalChartCanvas.value
+    if (!analogCanvasEl || !digitalCanvasEl) return
+
+    const analogRect = analogCanvasEl.getBoundingClientRect()
+    const digitalRect = digitalCanvasEl.getBoundingClientRect()
+
+    // canvas is a direct child of .timeseries-container (position:relative)
+    const containerEl = canvas.parentElement as HTMLElement
+    if (!containerEl) return
+    const containerRect = containerEl.getBoundingClientRect()
+
+    // Gap runs from analog canvas bottom to digital canvas top (in container coordinates)
+    const topPx  = Math.round(analogRect.bottom - containerRect.top)
+    const totalH = Math.round(digitalRect.top - analogRect.bottom)
+    const leftPx = Math.round(analogRect.left - containerRect.left)
+    const W      = Math.round(analogRect.width)
+
+    if (totalH <= 0 || W <= 0) return
+
+    canvas.style.left   = `${leftPx}px`
+    canvas.style.top    = `${topPx}px`
+    canvas.style.width  = `${W}px`
+    canvas.style.height = `${totalH}px`
+
+    if (canvas.width !== W || canvas.height !== totalH) {
+      canvas.width  = W
+      canvas.height = totalH
+    }
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.clearRect(0, 0, W, totalH)
+
+    if (!showGrid.value) return
+
+    const xScale = chart.scales?.x
+    if (!xScale || !xScale.ticks?.length) return
+
+    // xScale pixel X values share the same left origin as the analog canvas
+    ctx.strokeStyle = '#e0e0e0'
+    ctx.lineWidth = 1
+    xScale.ticks.forEach((tick: any) => {
+      const x = Math.round(xScale.getPixelForValue(tick.value)) + 0.5
+      ctx.beginPath()
+      ctx.moveTo(x, 0)
+      ctx.lineTo(x, totalH)
+      ctx.stroke()
+    })
+  }
+
   // Shared Y-axis width: ensures analog and digital left-axis areas are identical
   // so both X-axes render gridlines at the same horizontal positions.
   // Floor at 50 so digital labels like "Normal" (6 chars) always fit;
@@ -3865,6 +3821,36 @@
         }
       },
       {
+        id: 'dividerBridge',
+        afterRender: () => { /* no-op: bridge canvas removed in favour of unified single chart */ }
+      },
+      {
+        // Draw a horizontal separator line between the digital zone (bottom) and analog zone (top).
+        id: 'zoneSeparator',
+        afterDraw: (chart: any) => {
+          const offset = unifiedAnalogOffset.value
+          if (offset <= 0) return // No digital zone present
+          const yAxis = chart.scales['y']
+          if (!yAxis) return
+          // Draw at the top of the last digital cluster (just above digital data)
+          const digitalCount = visibleDigitalSeries.value.length
+          if (digitalCount === 0) return
+          const digitalZoneTop = digitalCount * DIGITAL_BAND_SIZE + 0.05
+          const separatorPixelY = yAxis.getPixelForValue(digitalZoneTop)
+          const ctx = chart.ctx
+          ctx.save()
+          ctx.beginPath()
+          ctx.strokeStyle = '#bdbdbd'
+          ctx.lineWidth = 1.5
+          ctx.setLineDash([6, 3])
+          ctx.moveTo(chart.chartArea.left, separatorPixelY)
+          ctx.lineTo(chart.chartArea.right, separatorPixelY)
+          ctx.stroke()
+          ctx.setLineDash([])
+          ctx.restore()
+        }
+      },
+      {
         id: 'pwGapIndicator',
         beforeDatasetsDraw: (chart: any) => {
           const ctx = chart.ctx
@@ -3919,8 +3905,8 @@
         padding: {
           left: 0,
           right: 10,
-          top: 25,
-          bottom: 10
+          top: 0,
+          bottom: 0
         }
       },
       interaction: {
@@ -4293,10 +4279,10 @@
               color: showGrid.value ? '#e0e0e0' : 'transparent',
               display: showGrid.value,
               lineWidth: 1,
-              drawTicks: showAnalogXAxis.value // Only show tick marks when analog-only
+              drawTicks: true // Always show tick marks in unified chart
             },
             ticks: {
-              display: showAnalogXAxis.value, // Show labels only when analog-only (no digital series)
+              display: true, // Always show X-axis labels in unified chart
               color: '#595959',
               font: {
                 size: 11,
@@ -4368,9 +4354,19 @@
             display: true, // Show tick numbers; each band reverse-transforms to real values
             color: function(context: any) {
               const v = (context.tick?.value ?? 0) as number
+              const analogOffset = unifiedAnalogOffset.value
+              // Digital zone: color by digital series color
+              if (analogOffset > 0 && v < analogOffset - DIGITAL_GAP / 2) {
+                const digitalCount = visibleDigitalSeries.value.length
+                const seriesDisplayIdx = Math.floor(v / DIGITAL_BAND_SIZE)
+                const seriesListIdx = digitalCount - 1 - seriesDisplayIdx
+                const dSeries = visibleDigitalSeries.value[seriesListIdx]
+                return dSeries?.color || '#595959'
+              }
+              // Analog zone: color by band
               const bands = yBandInfo.value
               if (!bands.length) return '#595959'
-              const bi = Math.max(0, Math.min(bands.length - 1, Math.floor(v / BAND_SIZE)))
+              const bi = Math.max(0, Math.min(bands.length - 1, Math.floor((v - analogOffset) / BAND_SIZE)))
               return bands[bi]?.colors?.[0] || '#595959'
             },
             font: {
@@ -4383,9 +4379,25 @@
             align: 'end',
             callback: function (value: any) {
               const v = Number(value)
+              const analogOffset = unifiedAnalogOffset.value
+              // Digital zone: show state labels
+              if (analogOffset > 0 && v < analogOffset - DIGITAL_GAP / 2) {
+                const digitalCount = visibleDigitalSeries.value.length
+                if (digitalCount === 0) return ''
+                const seriesDisplayIdx = Math.floor(v / DIGITAL_BAND_SIZE)
+                const seriesListIdx = digitalCount - 1 - seriesDisplayIdx
+                const dSeries = visibleDigitalSeries.value[seriesListIdx]
+                if (!dSeries) return ''
+                const digitalStates = getDigitalStatesForYAxis(dSeries.unitCode || 1)
+                const withinSeries = v - seriesDisplayIdx * DIGITAL_BAND_SIZE
+                if (Math.abs(withinSeries - DBS_HIGH) < 0.05) return digitalStates[1] || ''
+                if (Math.abs(withinSeries - DBS_LOW) < 0.05) return digitalStates[0] || ''
+                return ''
+              }
+              // Analog zone: reverse-transform to real value
               const bands = yBandInfo.value
               if (!bands.length) return ''
-              const bi = Math.max(0, Math.min(bands.length - 1, Math.floor(v / BAND_SIZE)))
+              const bi = Math.max(0, Math.min(bands.length - 1, Math.floor((v - analogOffset) / BAND_SIZE)))
               const band = bands[bi]
               if (!band) return ''
               const range = band.realMax - band.realMin
@@ -4400,20 +4412,31 @@
               return rounded.toString()
             }
           },
-          // Keep exactly TICKS_PER_BAND evenly-spaced ticks inside each piecewise band.
+          // Ticks: 2 per digital series (at DBS_HIGH and DBS_LOW) + 5 per analog band.
           // autoSkip is off — we own tick density here.
           afterBuildTicks: function(scale: any) {
             const pwC: Array<{vMin: number; vMax: number}> | null = scale.options._pwClusters ?? null
             if (!pwC || pwC.length === 0) return
 
-            // 4 intervals → 5 tick lines per band (min, 25%, 50%, 75%, max)
+            const digitalCount = visibleDigitalSeries.value.length
+            // 4 intervals → 5 tick lines per analog band (min, 25%, 50%, 75%, max)
             const INTERVALS = 4
             const kept: Array<{value: number}> = []
 
-            pwC.forEach((cluster: any) => {
-              const span = cluster.vMax - cluster.vMin
-              for (let k = 0; k <= INTERVALS; k++) {
-                kept.push({ value: cluster.vMin + (span * k) / INTERVALS })
+            pwC.forEach((cluster: any, clusterIdx: number) => {
+              if (clusterIdx === 0 && digitalCount > 0) {
+                // Single digital cluster: emit 2 ticks per series (high + low state)
+                for (let si = 0; si < digitalCount; si++) {
+                  const bY = (digitalCount - 1 - si) * DIGITAL_BAND_SIZE
+                  kept.push({ value: bY + DBS_HIGH })
+                  kept.push({ value: bY + DBS_LOW })
+                }
+              } else {
+                // Analog cluster: 5 evenly-spaced ticks
+                const span = cluster.vMax - cluster.vMin
+                for (let k = 0; k <= INTERVALS; k++) {
+                  kept.push({ value: cluster.vMin + (span * k) / INTERVALS })
+                }
               }
             })
 
@@ -4422,24 +4445,41 @@
           afterFit: function(scale: any) {
             scale.width = computeSharedYAxisWidth()
           },
-          // Band-driven Y limits: each unit group occupies a BAND_SIZE-wide virtual band
+          // Unified Y limits: digital zone at bottom, gap, analog bands above.
           afterDataLimits: function (scale: any) {
             const bands = yBandInfo.value
-            if (!bands.length) return
-            scale.min = 0
-            scale.max = bands.length * BAND_SIZE
+            const digitalCount = visibleDigitalSeries.value.length
+            const digitalZoneHeight = digitalCount * DIGITAL_BAND_SIZE
+            const analogOffset = digitalCount > 0 ? digitalZoneHeight + DIGITAL_GAP : 0
 
-            // One piecewise cluster per band — equal height, small gaps between bands.
-            // Boundaries match the band-transform formula exactly so tick labels align
-            // with the actual data min/max dashes (realMin→vBase+BAND_MARGIN, realMax→vBase+BAND_SIZE-BAND_MARGIN).
-            scale.options._pwClusters = bands.map((_b: YBandInfo, i: number) => ({
-              vMin: i * BAND_SIZE + BAND_MARGIN,
-              vMax: (i + 1) * BAND_SIZE - BAND_MARGIN
-            }))
-            // Equal weight for every band
-            scale.options._pwDistinct = bands.map(() => 5)
+            if (!bands.length && !digitalCount) return
+
+            scale.min = digitalCount > 0 ? -DBS_HIGH : 0
+            scale.max = analogOffset + (bands.length > 0 ? bands.length * BAND_SIZE : 0)
+            if (bands.length === 0) scale.max = digitalZoneHeight + DBS_HIGH
+
+            // Build piecewise clusters: ONE cluster for the entire digital zone (all series
+            // packed within it), then one cluster per analog band. Using a single digital
+            // cluster means the digital zone gets the same visual height as ONE analog band
+            // rather than N bands — intentionally compact.
+            const pwClusters: Array<{vMin: number; vMax: number}> = []
+            // Single digital cluster covering [−DBS_HIGH*0.5, digitalZoneHeight + DBS_HIGH]
+            if (digitalCount > 0) {
+              pwClusters.push({ vMin: -DBS_HIGH * 0.5, vMax: digitalZoneHeight + DBS_HIGH })
+            }
+            // Analog clusters (shifted to start at analogOffset)
+            bands.forEach((_b: YBandInfo, i: number) => {
+              pwClusters.push({
+                vMin: analogOffset + i * BAND_SIZE + BAND_MARGIN,
+                vMax: analogOffset + (i + 1) * BAND_SIZE - BAND_MARGIN
+              })
+            })
+
+            scale.options._pwClusters = pwClusters.length > 0 ? pwClusters : null
+            // Equal weight for every cluster
+            scale.options._pwDistinct = pwClusters.map(() => 5)
             scale.options.ticks.stepSize = BAND_SIZE / 10
-            scale.options.ticks.maxTicksLimit = bands.length * 10 + 1
+            scale.options.ticks.maxTicksLimit = bands.length * 10 + digitalCount * 2 + 1
           }
         },
         // Y1 axis (left side, 2nd value-range group)
@@ -4853,7 +4893,7 @@
             ctx.fillRect(0, 0, chart.width, chart.height)
             ctx.restore()
           }
-        }
+        },
       ],
       options: {
         responsive: true,
@@ -4873,8 +4913,8 @@
           padding: {
             left: 0,
             right: 10,
-            top: 25,
-            bottom: 10
+            top: 0,
+            bottom: 0
           }
         },
         interaction: {
@@ -8533,13 +8573,10 @@
 
   // Multi-canvas chart creation functions
   const createCharts = () => {
-    LogUtil.Debug('= TLChart DataFlow: Creating multi-canvas charts')
+    LogUtil.Debug('= TLChart DataFlow: Creating unified single-canvas chart')
 
-    // Create analog chart
+    // Single unified chart (analog + digital in one canvas)
     createAnalogChart()
-
-    // Create digital charts
-    createDigitalCharts()
   }
 
   const createAnalogChart = () => {
@@ -8648,17 +8685,13 @@
   }
 
   const destroyAllCharts = () => {
-    // Destroy analog chart
+    // Destroy the unified chart instance
     if (analogChartInstance) {
       analogChartInstance.destroy()
       analogChartInstance = null
     }
-
-    // Destroy digital chart
-    if (digitalChartInstance) {
-      digitalChartInstance.destroy()
-      digitalChartInstance = null
-    }
+    // digitalChartInstance is always null in the unified-canvas design
+    digitalChartInstance = null
   }
 
   /**
@@ -8730,8 +8763,8 @@
     })
 
     // Ensure analog chart exists if we have visible analog series
-    if (!analogChartInstance && visibleAnalogSeries.value.length > 0) {
-      LogUtil.Info('🔄 updateCharts: Analog chart missing but we have visible series, recreating...')
+    if (!analogChartInstance && (visibleAnalogSeries.value.length > 0 || visibleDigitalSeries.value.length > 0)) {
+      LogUtil.Info('🔄 updateCharts: Unified chart missing but we have visible series, recreating...')
       createAnalogChart()
     }
 
@@ -8741,17 +8774,8 @@
       // Second defer ensures browser message pump runs (critical for C++ embedding)
       setTimeout(async () => {
         try {
-          // Update analog chart (now async with yield points)
+          // Update unified chart (analog + digital datasets in one pass)
           await updateAnalogChart()
-
-          // Update digital charts after another yield (also async now)
-          await new Promise<void>(resolve => requestAnimationFrame(async () => {
-            try {
-              await updateDigitalCharts()
-            } finally {
-              resolve()
-            }
-          }))
         } catch (e) {
           LogUtil.Warn('⚠️ updateCharts: error during chart update', e)
         } finally {
@@ -8869,6 +8893,12 @@
     })
 
     // ── Band-transform: each unit group gets its own virtual Y band ─────────────
+    // When digital series are present the analog bands are shifted upward so the
+    // digital zone occupies the bottom of the unified Y axis.
+    const digitalCount = visibleDigitalSeries.value.length
+    const analogOffset = digitalCount > 0 ? digitalCount * DIGITAL_BAND_SIZE + DIGITAL_GAP : 0
+    unifiedAnalogOffset.value = analogOffset
+
     const newBandInfo: YBandInfo[] = sortedGroups.map(([groupKey, items], i) => {
       const allVals: number[] = []
       items.forEach(item => {
@@ -8884,7 +8914,7 @@
         unit: items[0].unit || groupKey,
         colors: items.map(it => it.color),
         realMin, realMax,
-        virtualBase: i * BAND_SIZE
+        virtualBase: analogOffset + i * BAND_SIZE  // shifted to make room for digital zone
       }
     })
     yBandInfo.value = newBandInfo
@@ -9041,6 +9071,78 @@
       return sum + ds.data.filter((p: any) => p !== null && p?.y !== null && p?.y !== undefined).length
     }, 0)
 
+    // ── Build digital datasets and append them to the same datasets array ─────
+    // Digital series occupy the bottom of the unified Y-axis [0, digitalCount * 1.2].
+    // Each series uses stepped 'before' line and Y values of (baseY + 0.3) for high
+    // and (baseY + 0.9) for low, matching the established convention.
+    const numDigitalSeries = visibleDigitalSeries.value.length
+    for (let dIdx = 0; dIdx < numDigitalSeries; dIdx++) {
+      const dSeries = visibleDigitalSeries.value[dIdx]
+      if (!dSeries.data || dSeries.data.length === 0) continue
+
+      const baseY = (numDigitalSeries - 1 - dIdx) * DIGITAL_BAND_SIZE
+
+      const sortedAllD = dSeries.data
+        .slice()
+        .filter((point: any) => point.timestamp != null)
+        .sort((a: any, b: any) => a.timestamp - b.timestamp)
+
+      const MAX_NULL_RUN_D = 5
+      const dataWithGapsD: Array<{ x: number; y: number | null; control?: number }> = []
+      let jd = 0
+      while (jd < sortedAllD.length) {
+        const pt = sortedAllD[jd]
+        const isNullPtD = pt.value === null || pt.value === undefined || isNaN(Number(pt.value))
+        if (!isNullPtD) {
+          const yD = pt.value > 0.5 ? baseY + DBS_HIGH : baseY + DBS_LOW
+          dataWithGapsD.push({ x: pt.timestamp, y: yD, control: pt.value > 0.5 ? 1 : 0 })
+          jd++
+        } else {
+          let nullCountD = 0
+          const runStartD = jd
+          while (jd < sortedAllD.length) {
+            const npt = sortedAllD[jd]
+            if (npt.value === null || npt.value === undefined || isNaN(Number(npt.value))) {
+              nullCountD++; jd++
+            } else { break }
+          }
+          if (nullCountD >= MAX_NULL_RUN_D) {
+            const prevX = runStartD > 0 ? sortedAllD[runStartD - 1].timestamp : sortedAllD[runStartD].timestamp
+            const nextX = jd < sortedAllD.length ? sortedAllD[jd].timestamp : prevX
+            dataWithGapsD.push({ x: (prevX + nextX) / 2, y: null })
+          }
+        }
+      }
+
+      const pointRadiusArrD: number[] = dataWithGapsD.map((pt, idx) => {
+        if (pt.y === null) return 0
+        const prevIsNull = idx === 0 || dataWithGapsD[idx - 1].y === null
+        const nextIsNull = idx === dataWithGapsD.length - 1 || dataWithGapsD[idx + 1].y === null
+        if (prevIsNull && nextIsNull) return 4
+        return showPoints.value ? 3 : 0
+      })
+
+      datasets.push({
+        label: dSeries.name,
+        data: dataWithGapsD,
+        borderColor: dSeries.color,
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        fill: false,
+        stepped: 'before' as const,
+        pointRadius: pointRadiusArrD,
+        pointHoverRadius: 6,
+        pointHitRadius: 8,
+        pointBackgroundColor: dSeries.color,
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointStyle: 'circle' as const,
+        spanGaps: false,
+        yAxisID: 'y',
+        _isDigital: true  // marker for tooltip display
+      })
+    }
+
     // 🆕 FIX: Check if chart still exists before updating (could be destroyed during async processing)
     if (!analogChartInstance) {
       LogUtil.Warn('⚠️ updateAnalogChart: Chart instance was destroyed during processing, skipping update')
@@ -9139,7 +9241,7 @@
         color: showGrid.value ? '#999999' : 'transparent',
         display: showGrid.value,
         lineWidth: 1.2,
-        drawTicks: showAnalogXAxis.value
+        drawTicks: true // Always show tick marks in unified chart
       }
 
       const timeWindow = getCurrentTimeWindow()
@@ -9225,14 +9327,6 @@
     // afterDataLimits where y-axes read analogXWindow to filter visible points.
     LogUtil.Debug('📊 Using update("none") to trigger afterDataLimits for y-axis rescale')
     analogChartInstance.update('none') // No animation but full scale recalculation
-
-    // Scroll right-panel to bottom by default
-    nextTick(() => {
-      const rightPanel = document.querySelector('.analog-area .right-panel') as HTMLElement
-      if (rightPanel) {
-        rightPanel.scrollTop = rightPanel.scrollHeight
-      }
-    })
   }
 
   const updateDigitalCharts = async () => {
@@ -10458,12 +10552,7 @@
         await updateAnalogChart()
       }
 
-      // Also update digital charts if present
-      if (digitalChartInstance) {
-        LogUtil.Debug('= TLChart DataFlow: Updating digital charts for custom date')
-        await updateDigitalCharts()
-      }
-
+      // Digital data is now part of the unified chart update
       LogUtil.Debug('= TLChart DataFlow: Charts updated with custom range data')
     }
   }
@@ -12003,26 +12092,15 @@
   // Multi-Canvas Export with Background Color Support
   const exportChartPNG = async () => {
     try {
-      // Get all visible chart instances
+      // Single unified chart instance
       const charts = []
 
-      // Add analog chart if it exists and has visible series
-      if (analogChartInstance && visibleAnalogSeries.value.length > 0) {
+      if (analogChartInstance && analogChartCanvas.value) {
         charts.push({
           instance: analogChartInstance,
           canvas: analogChartCanvas.value,
-          type: 'analog',
+          type: 'unified',
           height: analogChartCanvas.value?.offsetHeight || 400
-        })
-      }
-
-      // Add digital chart if it exists
-      if (digitalChartInstance && digitalChartCanvas.value) {
-        charts.push({
-          instance: digitalChartInstance,
-          canvas: digitalChartCanvas.value,
-          type: 'digital',
-          height: digitalChartCanvas.value.offsetHeight || 300
         })
       }
 
@@ -12135,24 +12213,15 @@
 
   const exportChartJPG = async () => {
     try {
-      // Use the same multi-canvas logic as PNG but save as JPG
+      // Use the same single-canvas logic as PNG but save as JPG
       const charts = []
 
-      if (analogChartInstance && visibleAnalogSeries.value.length > 0) {
+      if (analogChartInstance && analogChartCanvas.value) {
         charts.push({
           instance: analogChartInstance,
           canvas: analogChartCanvas.value,
-          type: 'analog',
+          type: 'unified',
           height: analogChartCanvas.value?.offsetHeight || 400
-        })
-      }
-
-      if (digitalChartInstance && digitalChartCanvas.value) {
-        charts.push({
-          instance: digitalChartInstance,
-          canvas: digitalChartCanvas.value,
-          type: 'digital',
-          height: digitalChartCanvas.value.offsetHeight || 300
         })
       }
 
@@ -13359,6 +13428,7 @@
     border-radius: 0px;
     overflow: hidden;
     padding: 0;
+    position: relative;
   }
 
   /* ANALOG AREA (Top Section) */
@@ -13369,7 +13439,7 @@
     min-height: 200px;
     gap: 6px;
     overflow: hidden;
-    padding: 4px;
+    padding: 4px 4px 0 4px;
     background: #f5f5f5;
     border: 1px solid #d9d9d9;
     border-radius: 4px;
@@ -13400,128 +13470,20 @@
     overflow-x: hidden;
   }
 
-  /* RESIZABLE DIVIDER */
-  .resizable-divider {
-    height: 12px;
-    background: linear-gradient(to bottom, #e8e8e8 0%, #d9d9d9 50%, #e8e8e8 100%);
-    cursor: row-resize;
+  /* Digital section divider inside the unified left panel */
+  .digital-section-divider {
     display: flex;
     align-items: center;
-    justify-content: center;
-    position: relative;
-    z-index: 10;
-    transition: background 0.2s ease;
-  }
-
-  .resizable-divider:hover {
-    background: linear-gradient(to bottom, #bfbfbf 0%, #999 50%, #bfbfbf 100%);
-  }
-
-  .divider-handle {
-    width: 60px;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .divider-grip {
-    width: 40px;
-    height: 3px;
-    background: #8c8c8c;
-    border-radius: 2px;
-    box-shadow: 0 -1px 0 #fff, 0 1px 0 #fff;
-  }
-
-  .resizable-divider:hover .divider-grip {
-    background: #595959;
-  }
-
-  /* RESIZABLE DIVIDER */
-  .resizable-divider {
-    height: 3px;
-    background: linear-gradient(to bottom, #e1e4e8 0%, #d1d5da 50%, #e1e4e8 100%);
-    cursor: row-resize;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    z-index: 10;
-    transition: background 0.2s ease;
-  }
-
-  .resizable-divider:hover {
-    background: linear-gradient(to bottom, #c6cbd1 0%, #959da5 50%, #c6cbd1 100%);
-  }
-
-  .divider-handle {
-    width: 60px;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .divider-grip {
-    width: 40px;
-    height: 1.5px;
-    background: #959da5;
-    border-radius: 2px;
-    box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.5), 0 1px 0 rgba(255, 255, 255, 0.5);
-  }
-
-  .resizable-divider:hover .divider-grip {
-    background: #6a737d;
-  }
-
-  /* DIGITAL AREA (Bottom Section) */
-  .digital-area {
-    height: v-bind('showDigitalArea ? digitalAreaHeightPx + "px" : "0"');
-    flex-shrink: 0;
-    min-height: 150px;
-    background: #f5f5f5;
-    border: 1px solid #d9d9d9;
-    border-radius: 4px;
-    padding: 4px;
-    display: flex;
-    flex-direction: row;
     gap: 6px;
-    overflow: hidden;
-  }
-
-  .digital-left-panel {
-    width: clamp(210px, 23vw, 330px);
-    background: #fafafa;
-    border: 1px solid #e8e8e8;
-    border-radius: 0px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-  }
-
-  .digital-right-panel {
-    flex: 1;
-    background: #fafafa;
-    border: none;
-    border-radius: 0px;
-    display: flex;
-    flex-direction: column;
-    min-width: 200px;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  .digital-oscilloscope-container {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 2px;
-    background: #f8f9fa;
-    border-radius: 3px;
-    border: 1px solid #e8e8e8;
+    padding: 4px 8px;
+    background: #f0f0f0;
+    border-top: 1px solid #d9d9d9;
+    border-bottom: 1px solid #d9d9d9;
+    font-size: 10px;
+    font-weight: 600;
+    color: #595959;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
   }
 
   /* Empty chart message */
