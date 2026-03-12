@@ -3627,64 +3627,8 @@
     })
   }
 
-  // Draw vertical gridlines on the divider canvas so they visually bridge the gap
-  // between the analog and digital charts, making the X-axis gridlines look continuous.
-  const drawDividerLines = () => {
-    const canvas = dividerCanvas.value
-    const chart = analogChartInstance
-    if (!canvas || !chart) return
-    if (!showDigitalArea.value) return
-
-    const analogCanvasEl = analogChartCanvas.value
-    const digitalCanvasEl = digitalChartCanvas.value
-    if (!analogCanvasEl || !digitalCanvasEl) return
-
-    const analogRect = analogCanvasEl.getBoundingClientRect()
-    const digitalRect = digitalCanvasEl.getBoundingClientRect()
-
-    // canvas is a direct child of .timeseries-container (position:relative)
-    const containerEl = canvas.parentElement as HTMLElement
-    if (!containerEl) return
-    const containerRect = containerEl.getBoundingClientRect()
-
-    // Gap runs from analog canvas bottom to digital canvas top (in container coordinates)
-    const topPx  = Math.round(analogRect.bottom - containerRect.top)
-    const totalH = Math.round(digitalRect.top - analogRect.bottom)
-    const leftPx = Math.round(analogRect.left - containerRect.left)
-    const W      = Math.round(analogRect.width)
-
-    if (totalH <= 0 || W <= 0) return
-
-    canvas.style.left   = `${leftPx}px`
-    canvas.style.top    = `${topPx}px`
-    canvas.style.width  = `${W}px`
-    canvas.style.height = `${totalH}px`
-
-    if (canvas.width !== W || canvas.height !== totalH) {
-      canvas.width  = W
-      canvas.height = totalH
-    }
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    ctx.clearRect(0, 0, W, totalH)
-
-    if (!showGrid.value) return
-
-    const xScale = chart.scales?.x
-    if (!xScale || !xScale.ticks?.length) return
-
-    // xScale pixel X values share the same left origin as the analog canvas
-    ctx.strokeStyle = '#e0e0e0'
-    ctx.lineWidth = 1
-    xScale.ticks.forEach((tick: any) => {
-      const x = Math.round(xScale.getPixelForValue(tick.value)) + 0.5
-      ctx.beginPath()
-      ctx.moveTo(x, 0)
-      ctx.lineTo(x, totalH)
-      ctx.stroke()
-    })
-  }
+  // Legacy: no-op in unified canvas design (digital is embedded in analog chart)
+  const drawDividerLines = () => { /* no-op */ }
 
   // Shared Y-axis width: ensures analog and digital left-axis areas are identical
   // so both X-axes render gridlines at the same horizontal positions.
@@ -3921,8 +3865,9 @@
               return
             }
 
-            // Suppress tooltip entirely when there are no data points in view
-            if (analogTotalPointsInView.value === 0) {
+            // Suppress tooltip when there are no data points in view at all
+            const hasDigitalVisible = visibleDigitalSeries.value.some(s => s.data && s.data.length > 0)
+            if (analogTotalPointsInView.value === 0 && !hasDigitalVisible) {
               return
             }
 
@@ -8642,26 +8587,7 @@
       digitalChartInstance = null
     }
 
-    // Create single chart for all digital series
-    const canvas = digitalChartCanvas.value
-    if (!canvas) {
-      LogUtil.Debug('= TLChart createDigitalCharts - Canvas ref not available')
-      return
-    }
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) {
-      LogUtil.Error('= TLChart createDigitalCharts - Failed to get 2D context')
-      return
-    }
-
-    try {
-      const config = getCombinedDigitalChartConfig()
-      digitalChartInstance = new Chart(ctx, config)
-      LogUtil.Info(`= TLChart DataFlow: Combined digital chart created for ${visibleDigitalSeries.value.length} series`)
-    } catch (error) {
-      LogUtil.error('= TLChart createDigitalCharts - Error creating chart:', error)
-    }
+    // no-op in unified canvas design — digital datasets are embedded in analogChartInstance
   }
 
   const destroyAllCharts = () => {
@@ -8692,22 +8618,14 @@
   }
 
   const updateCharts = () => {
-    // 🆕 FIX: Check if any canvas is available (analog OR digital)
-    const hasAnalogCanvas = !!analogChartCanvas.value
-    const hasDigitalCanvas = !!digitalChartCanvas.value
-    const hasAnyCanvas = hasAnalogCanvas || hasDigitalCanvas
+    // Unified canvas design: only analogChartCanvas is used
+    const hasCanvas = !!analogChartCanvas.value
 
-    if (!hasAnyCanvas) {
-      LogUtil.Debug('⏸️ updateCharts: No canvas available yet (neither analog nor digital), will retry in 100ms')
-      // Retry after DOM settles
+    if (!hasCanvas) {
+      LogUtil.Debug('⏸️ updateCharts: No canvas available yet, will retry in 100ms')
       setTimeout(() => {
-        const retryHasAnalog = !!analogChartCanvas.value
-        const retryHasDigital = !!digitalChartCanvas.value
-        if (retryHasAnalog || retryHasDigital) {
-          LogUtil.Info('✅updateCharts: Canvas now available, proceeding with update', {
-            hasAnalog: retryHasAnalog,
-            hasDigital: retryHasDigital
-          })
+        if (analogChartCanvas.value) {
+          LogUtil.Info('✅updateCharts: Canvas now available, proceeding with update')
           updateCharts()
         } else {
           LogUtil.Warn('⚠️ updateCharts: No canvas still available after retry, giving up')
@@ -9056,6 +8974,8 @@
     // Each series uses stepped 'before' line and Y values of (baseY + 0.3) for high
     // and (baseY + 0.9) for low, matching the established convention.
     const numDigitalSeries = visibleDigitalSeries.value.length
+    // Get current time window so we can extend digital stepped lines to both edges
+    const digitalTimeWindow = getCurrentTimeWindow()
     for (let dIdx = 0; dIdx < numDigitalSeries; dIdx++) {
       const dSeries = visibleDigitalSeries.value[dIdx]
       if (!dSeries.data || dSeries.data.length === 0) continue
@@ -9091,6 +9011,24 @@
             const nextX = jd < sortedAllD.length ? sortedAllD[jd].timestamp : prevX
             dataWithGapsD.push({ x: (prevX + nextX) / 2, y: null })
           }
+        }
+      }
+
+      // ── Extend stepped line to fill the full visible time window ──────────
+      // Digital signals only record state changes, so the last known state must
+      // be extended to the right edge (now/window-max) and the first known state
+      // extended to the left edge (window-min) so the step line covers the full
+      // visible range instead of stopping at the last/first data timestamp.
+      if (dataWithGapsD.length > 0) {
+        // Extend right: find last non-null point and repeat its Y at window-max
+        const lastReal = [...dataWithGapsD].reverse().find(p => p.y !== null)
+        if (lastReal && lastReal.x < digitalTimeWindow.max) {
+          dataWithGapsD.push({ x: digitalTimeWindow.max, y: lastReal.y, control: lastReal.control })
+        }
+        // Extend left: find first non-null point and repeat its Y at window-min
+        const firstReal = dataWithGapsD.find(p => p.y !== null)
+        if (firstReal && firstReal.x > digitalTimeWindow.min) {
+          dataWithGapsD.unshift({ x: digitalTimeWindow.min, y: firstReal.y, control: firstReal.control })
         }
       }
 
@@ -12491,50 +12429,15 @@
         // LogUtil.Debug(`📊 Destroyed existing analog chart instance`)
       }
 
-      if (hasVisibleSeries) {
-        // Create fresh analog chart for visible series
-        // LogUtil.Debug(`📊 Creating fresh analog chart for visible series`)
+      if (hasVisibleSeries || visibleDigitalSeries.value.length > 0) {
+        // Recreate the unified chart (covers analog-only, digital-only, and mixed)
         createAnalogChart()
         await nextTick()
         updateAnalogChart()
-
-        // LogUtil.Debug(`📊 Analog chart recreated and updated with data`, {
-        //   oldCount: oldSeries?.length || 0,
-        //   newCount: newSeries.length,
-        //   hasChartInstance: !!analogChartInstance,
-        //   seriesWithData: newSeries.filter(s => s.data.length > 0).length
-        // })
-      } else {
-        // LogUtil.Debug(`📊 No visible analog series - chart destroyed`)
       }
+      // else: no visible series at all — leave chart destroyed
     } else {
       // LogUtil.Debug(`📊 No significant change in analog series visibility - skipping update`)
-    }
-  }, { deep: true })
-
-  // Watch for changes in visible digital series to recreate charts when visibility toggles
-  watch(visibleDigitalSeries, async (newSeries, oldSeries) => {
-    // Only recreate digital charts if the number of visible series changed
-    // or if we had charts before but now have no visible series (or vice versa)
-    const hadCharts = !!digitalChartInstance
-    const shouldHaveCharts = newSeries.length > 0
-
-    if (newSeries.length !== oldSeries?.length || hadCharts !== shouldHaveCharts) {
-      // Wait for DOM updates (canvas elements to be added/removed)
-      await nextTick()
-
-      // Recreate digital charts to match the new visible series
-      createDigitalCharts()
-
-      // IMPORTANT: Populate the newly created charts with data
-      updateDigitalCharts()
-
-      // LogUtil.Debug(`= TLChart DataFlow: Digital charts recreated and updated with data`, {
-      //   oldCount: oldSeries?.length || 0,
-      //   newCount: newSeries.length,
-      //   chartInstancesCount: Object.keys(digitalChartInstances).length,
-      //   seriesWithData: newSeries.filter(s => s.data.length > 0).length
-      // })
     }
   }, { deep: true })// Remove modal visibility watcher since this is now always visible as a component
 
