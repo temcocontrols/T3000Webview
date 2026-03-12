@@ -3734,10 +3734,6 @@
           if (!bands.length) return
 
           // ── Layout ───────────────────────────────────────────────────────────
-          const nBands = bands.length
-          const totalPxH = yScale.bottom - yScale.top
-          const bandH = totalPxH / nBands
-
           const PILL_H = 15
           const PAD_X = 4
           const BAR_W = 5
@@ -3755,12 +3751,13 @@
           // Min/Max dashes sit at the right edge of the y-axis column
           const dashX = yScale.right - DASH_W - 2
 
+          const analogOffset = unifiedAnalogOffset.value
+
           bands.forEach((band: YBandInfo, gi: number) => {
-            // Band gi occupies virtual range [gi*BAND_SIZE, (gi+1)*BAND_SIZE].
-            // Chart.js: higher virtual value → smaller pixel Y (higher on screen).
-            // So band 0 (lowest values) → bottom pixels; band N-1 → top pixels.
-            const bandTopPx = yScale.top + (nBands - 1 - gi) * bandH
-            const bandBotPx = bandTopPx + bandH
+            // Use actual pixel positions via getPixelForValue so the digital zone
+            // offset is correctly accounted for in the piecewise scale.
+            const bandTopPx = yScale.getPixelForValue(analogOffset + (gi + 1) * BAND_SIZE)
+            const bandBotPx = yScale.getPixelForValue(analogOffset + gi * BAND_SIZE)
             const centerY = (bandTopPx + bandBotPx) / 2
 
             // ── Min/Max dashes at actual pixel positions ──────────────────────
