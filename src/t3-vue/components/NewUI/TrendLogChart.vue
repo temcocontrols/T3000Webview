@@ -4489,9 +4489,7 @@
           display: true,
           position: 'left' as const,
           grid: {
-            color: showGrid.value ? '#e0e0e0' : 'transparent',
-            display: showGrid.value,
-            lineWidth: 1,
+            drawOnChartArea: false, // grid lines drawn by primary y axis only
             drawTicks: false
           },
           title: {
@@ -4611,9 +4609,7 @@
           display: true,
           position: 'left' as const,
           grid: {
-            color: showGrid.value ? '#e0e0e0' : 'transparent',
-            display: showGrid.value,
-            lineWidth: 1,
+            drawOnChartArea: false, // grid lines drawn by primary y axis only
             drawTicks: false
           },
           title: {
@@ -4732,9 +4728,7 @@
           display: true,
           position: 'left' as const,
           grid: {
-            color: showGrid.value ? '#e0e0e0' : 'transparent',
-            display: showGrid.value,
-            lineWidth: 1,
+            drawOnChartArea: false, // grid lines drawn by primary y axis only
             drawTicks: false
           },
           title: {
