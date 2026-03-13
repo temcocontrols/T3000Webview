@@ -196,7 +196,7 @@
               <!-- Single line: Title, count, and status -->
               <div class="header-line-1">
                 <div :title="devVersion" class="chart-title-with-version">
-                  {{ chartTitle }} ({{ totalVisibleSeriesCount }}/{{ totalSeriesCount }})
+                  {{ chartTitle }}
                 </div>
                 <!-- Data Source Indicator -->
                 <div class="data-source-indicator">
@@ -3802,7 +3802,7 @@
             const bandH = pxBottom - pxTop
             if (bandH <= 0) continue
             // Alternate between two very subtle grey shades so rows are easy to tell apart
-            ctx.fillStyle = 'rgba(0,0,0,0.07)'
+            ctx.fillStyle = 'rgba(0,0,0,0.13)'
             ctx.fillRect(chartArea.left, pxTop, chartArea.right - chartArea.left, bandH)
           }
           ctx.restore()
