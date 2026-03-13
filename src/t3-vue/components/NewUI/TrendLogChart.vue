@@ -13443,7 +13443,7 @@
   .series-list {
     flex: 1;
     overflow-y: auto;
-    padding-right: 4px;
+    padding-right: 2px;
   }
 
   /* Empty state styling */
@@ -13506,7 +13506,7 @@
   .series-header {
     display: flex;
     align-items: center;
-    padding: 6px 4px 6px 10px;
+    padding: 6px 2px 6px 8px;
     cursor: pointer;
     gap: 2px;
     border-radius: 6px;
@@ -13576,7 +13576,7 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: 2px 4px;
+    padding: 2px 2px;
     border-radius: 4px;
   }
 
