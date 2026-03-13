@@ -13166,7 +13166,7 @@
   }
 
   .left-panel {
-    width: clamp(210px, 23vw, 330px);
+    width: clamp(200px, 20vw, 270px);
     background: #fafafa;
     border: 1px solid #e8e8e8;
     border-radius: 0px;
@@ -13581,12 +13581,12 @@
   }
 
   .series-name-line {
-    display: grid;
-    grid-template-columns: 1fr auto;
+    display: flex;
     align-items: center;
-    /* gap: 16px; */
+    justify-content: space-between;
     width: 100%;
     min-height: 24px;
+    gap: 4px;
   }
 
   .series-name-col {
@@ -13596,6 +13596,7 @@
     text-align: left;
     min-width: 0;
     overflow: hidden;
+    flex-shrink: 1;
   }
 
   /* Right group contains chip, unit, and expand button all together */
