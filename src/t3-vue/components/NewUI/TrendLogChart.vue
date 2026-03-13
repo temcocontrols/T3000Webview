@@ -3766,6 +3766,38 @@
         afterRender: () => { /* no-op: bridge canvas removed in favour of unified single chart */ }
       },
       {
+        // Draw a light grey background band behind each digital binary row so
+        // individual rows are easy to distinguish even when there are no transitions.
+        id: 'digitalRowBands',
+        beforeDatasetsDraw: (chart: any) => {
+          const ctx = chart.ctx
+          const chartArea = chart.chartArea
+          if (!chartArea) return
+          const yScale = chart.scales.y
+          if (!yScale) return
+          const numDigital = visibleDigitalSeries.value.length
+          if (numDigital === 0) return
+
+          ctx.save()
+          for (let i = 0; i < numDigital; i++) {
+            // Series 0 is at the top of the digital zone, series N-1 at the bottom.
+            // baseY is the virtual Y of the bottom edge of this row's band.
+            const baseY = (numDigital - 1 - i) * DIGITAL_BAND_SIZE
+            // Only fill between the two tick lines (DBS_LOW = "Off" tick, DBS_HIGH = "On" tick).
+            // DBS_LOW has the higher virtual Y value → smaller pixel Y → top edge of band.
+            // DBS_HIGH has the lower virtual Y value → larger pixel Y → bottom edge of band.
+            const pxTop    = yScale.getPixelForValue(baseY + DBS_LOW)
+            const pxBottom = yScale.getPixelForValue(baseY + DBS_HIGH)
+            const bandH = pxBottom - pxTop
+            if (bandH <= 0) continue
+            // Alternate between two very subtle grey shades so rows are easy to tell apart
+            ctx.fillStyle = 'rgba(0,0,0,0.07)'
+            ctx.fillRect(chartArea.left, pxTop, chartArea.right - chartArea.left, bandH)
+          }
+          ctx.restore()
+        }
+      },
+      {
         id: 'pwGapIndicator',
         beforeDatasetsDraw: (chart: any) => {
           const ctx = chart.ctx
