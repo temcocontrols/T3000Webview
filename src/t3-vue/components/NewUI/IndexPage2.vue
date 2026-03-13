@@ -371,6 +371,8 @@ import T3ContextMenu from "@t3-vue/components/NewUI/T3ContextMenu.vue";
 const metaData = { title: "HVAC Drawer" };
 useMeta(metaData);
 
+console.log('[PanelLoad] *** IndexPage2.vue (/new/new-ui) setup() running ***');
+
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
 const $q: QVueGlobals = useQuasar(); // Access Quasar framework instance
 

@@ -863,6 +863,7 @@ const objectsRef = ref(null); // Reference to objects
 
 // Lifecycle hook for component mount
 onMounted(() => {
+  console.log('[PanelLoad] *** IndexPage.vue (/) onMounted ***');
   Hvac.IdxPage.initQuasar($q);
   Hvac.IdxPage.initPage();
 });
@@ -2530,11 +2531,10 @@ function handleMenuAction(action, val) {
 function reloadPanelsData() {
   T3000_Data.value.loadingPanel = null;
 
-  /*
-  window.chrome?.webview?.postMessage({
-    action: 4, // GET_PANELS_LIST
-  });
-  */
+  console.log('[PanelLoad] IndexPage.vue reloadPanelsData | isBuiltInEdge:', isBuiltInEdge.value,
+    '| panelsList:', T3000_Data.value.panelsList.length,
+    '| panelsData:', T3000_Data.value.panelsData.length,
+    '| path:', isBuiltInEdge.value ? 'WebViewClient' : 'WebSocketClient');
 
   if (isBuiltInEdge.value) {
     Hvac.WebClient.GetPanelsList();

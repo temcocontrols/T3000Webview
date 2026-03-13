@@ -280,6 +280,7 @@ class WebViewClient {
   });
   */
   GetPanelsList(panelId?: number, viewitem?: number, data?: any) {
+    console.log('[PanelLoad] wv2: GetPanelsList / sending GET_PANELS_LIST request');
     this.FormatMessageData(MessageType.GET_PANELS_LIST, panelId, viewitem, data);
     this.sendMessage(this.messageData);
   }
@@ -291,6 +292,7 @@ class WebViewClient {
   });
   */
   GetPanelData(panelId?: number, viewitem?: number, data?: any) {
+    console.log('[PanelLoad] wv2: GetPanelData / sending GET_PANEL_DATA request for panel:', panelId);
     this.FormatMessageData(MessageType.GET_PANEL_DATA, panelId, viewitem, data);
     this.sendMessage(this.messageData);
   }
@@ -438,10 +440,21 @@ class WebViewClient {
     // Handle "No cached data" error specifically
     if (action === MessageType.GET_PANEL_DATA_RES || action === MessageType.GET_PANELS_LIST_RES) {
       if (msgData.error && msgData.error.includes('No cached data')) {
-        LogUtil.Info('📦 No cached data available for this panel, dismissing loading');
+        LogUtil.Info('📦 No cached data available for this panel, skipping to next panel');
 
-        // Clear loading state to dismiss the loading dialog
-        T3000_Data.value.loadingPanel = null;
+        // Advance to the next panel instead of stopping the whole load sequence
+        const canAdvance = T3000_Data.value.loadingPanel !== null &&
+                           T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1;
+        if (canAdvance) {
+          T3000_Data.value.loadingPanel++;
+          const nextIndex = T3000_Data.value.loadingPanel;
+          const nextPanelId = T3000_Data.value.panelsList[nextIndex].panel_number;
+          LogUtil.Info('📦 Skipping panel, loading next panel at index:', nextIndex, 'panel_number:', nextPanelId);
+          this.GetPanelData(nextPanelId);
+        } else {
+          // Was the last panel (or no loading in progress) — clear loading state
+          T3000_Data.value.loadingPanel = null;
+        }
 
         // Load demo data as fallback ONLY if we have no data at all
         if (T3000_Data.value.panelsData.length === 0) {
@@ -449,7 +462,7 @@ class WebViewClient {
           this.loadDemoDataFallback();
         }
 
-        return; // Don't retry - data genuinely doesn't exist for this panel
+        return;
       }
 
       // Handle other panel data errors
@@ -547,6 +560,17 @@ class WebViewClient {
     //   clearInterval(getPanelsInterval);
     // }
 
+    console.log('[PanelLoad] wv2: HandleGetPanelDataRes START | panel_id:', msgData?.panel_id,
+      '| data length:', msgData?.data?.length ?? 0,
+      '| loadingPanel:', T3000_Data.value.loadingPanel,
+      '| total panels:', T3000_Data.value.panelsList.length,
+      '| panelsData before:', T3000_Data.value.panelsData.length);
+
+    if (!msgData?.panel_id) {
+      console.warn('[PanelLoad] wv2: HandleGetPanelDataRes / no panel_id in response, skipping');
+      return;
+    }
+
     if (msgData?.panel_id) {
       this.idxPage.clearGetPanelsInterval();
     }
@@ -557,16 +581,14 @@ class WebViewClient {
       if (check1) {
         T3000_Data.value.loadingPanel++;
         const index = T3000_Data.value.loadingPanel;
-        // window.chrome?.webview?.postMessage({
-        //   action: 0, // GET_PANEL_DATA
-        //   panelId: T3000_Data.value.panelsList[index].panel_number,
-        // });
-
-        this.GetPanelData(T3000_Data.value.panelsList[index].panel_number);
+        const nextPanelId = T3000_Data.value.panelsList[index].panel_number;
+        console.log('[PanelLoad] wv2: HandleGetPanelDataRes / loading next panel at index:', index, 'panel_number:', nextPanelId);
+        this.GetPanelData(nextPanelId);
       }
 
       const check2 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === T3000_Data.value.panelsList.length - 1;
       if (check2) {
+        console.log('[PanelLoad] wv2: HandleGetPanelDataRes / reached last panel, all panels loaded');
         T3000_Data.value.loadingPanel = null;
       }
 
@@ -586,6 +608,15 @@ class WebViewClient {
       );
 
       T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(msgData.ranges);
+
+      // Summary log: unique panel IDs now in panelsData
+      const pidCounts: Record<number, number> = {};
+      T3000_Data.value.panelsData.forEach(item => {
+        pidCounts[item.pid] = (pidCounts[item.pid] || 0) + 1;
+      });
+      console.log('[PanelLoad] wv2: HandleGetPanelDataRes END | panelsData after:', T3000_Data.value.panelsData.length,
+        '| unique panels:', Object.keys(pidCounts).length,
+        '| breakdown:', pidCounts);
 
       this.idxUtils.refreshLinkedEntries(msgData.data);
       this.idxUtils.refreshLinkedEntries2(msgData.data);
@@ -704,11 +735,23 @@ class WebViewClient {
     }
     */
 
-    if (!msgData.data?.length) return;
+    console.log('[PanelLoad] wv2: HandleGetPanelsListRes / received panels list, count:', msgData.data?.length ?? 0);
+
+    if (!msgData.data?.length) {
+      console.warn('[PanelLoad] wv2: HandleGetPanelsListRes / empty or missing data, aborting');
+      return;
+    }
+
+    console.log('[PanelLoad] wv2: HandleGetPanelsListRes / panels:', msgData.data.map((p: any) => ({
+      panel_number: p.panel_number,
+      panel_name: p.panel_name,
+      serial_number: p.serial_number
+    })));
 
     // Update the global store
     T3000_Data.value.panelsList = msgData.data;
     T3000_Data.value.loadingPanel = 0;
+    console.log('[PanelLoad] wv2: HandleGetPanelsListRes / starting panel data load from panel[0]:', T3000_Data.value.panelsList[0].panel_number);
     this.GetPanelData(T3000_Data.value.panelsList[0].panel_number);
   }
 
