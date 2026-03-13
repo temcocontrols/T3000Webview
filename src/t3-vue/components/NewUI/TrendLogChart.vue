@@ -13181,7 +13181,7 @@
   }
 
   .left-panel {
-    width: clamp(200px, 20vw, 270px);
+    width: clamp(260px, 22vw, 310px);
     background: #fafafa;
     border: 1px solid #e8e8e8;
     border-radius: 0px;
