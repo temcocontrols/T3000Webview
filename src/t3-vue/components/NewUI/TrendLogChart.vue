@@ -909,7 +909,7 @@
             <template v-else-if="column.key === 'change'">
               <div style="font-size: 11px;">
                 <span style="color: #ff4d4f;">{{ record.old_value_display }}</span>
-                <span style="margin: 0 4px;">/span>
+                <span style="margin: 0 4px;">→</span>
                 <span style="color: #52c41a;">{{ record.new_value_display }}</span>
               </div>
             </template>
@@ -3641,8 +3641,6 @@
       bands.forEach((band: any) => {
         const range = band.realMax - band.realMin
         const fmt = (v: number) => {
-          if (range < 1)  return v.toFixed(2)
-          if (range < 10) return v.toFixed(1)
           const r = Math.round(v)
           if (Math.abs(r) >= 1_000_000) return (r / 1_000_000).toFixed(1) + 'M'
           if (Math.abs(r) >= 10_000)    return (r / 1_000).toFixed(0) + 'K'
@@ -4364,9 +4362,6 @@
               if (!band) return ''
               const range = band.realMax - band.realMin
               const realV = band.realMin + (v - band.virtualBase - BAND_MARGIN) / (BAND_SIZE - 2 * BAND_MARGIN) * range
-              if (range === 0) return realV.toFixed(1)
-              if (range < 1)   return realV.toFixed(2)
-              if (range < 10)  return realV.toFixed(1)
               const rounded = Math.round(realV)
               if (Math.abs(rounded) >= 1_000_000) return (rounded / 1_000_000).toFixed(1) + 'M'
               if (Math.abs(rounded) >= 10_000)    return (rounded / 1_000).toFixed(0) + 'K'
@@ -4374,16 +4369,18 @@
               return rounded.toString()
             }
           },
-          // Ticks: 2 per digital series (at DBS_HIGH and DBS_LOW) + 5 per analog band.
+          // Ticks: 2 per digital series (at DBS_HIGH and DBS_LOW) + up to 5 per analog band.
+          // For small-range bands, tick count is capped to the number of distinct integers
+          // in the range so integer labels are never duplicated.
           // autoSkip is off — we own tick density here.
           afterBuildTicks: function(scale: any) {
             const pwC: Array<{vMin: number; vMax: number}> | null = scale.options._pwClusters ?? null
             if (!pwC || pwC.length === 0) return
 
             const digitalCount = visibleDigitalSeries.value.length
-            // 4 intervals → 5 tick lines per analog band (min, 25%, 50%, 75%, max)
-            const INTERVALS = 4
+            const MAX_INTERVALS = 4  // default: 5 tick lines per analog band
             const kept: Array<{value: number}> = []
+            const bands = yBandInfo.value
 
             pwC.forEach((cluster: any, clusterIdx: number) => {
               if (clusterIdx === 0 && digitalCount > 0) {
@@ -4394,10 +4391,15 @@
                   kept.push({ value: bY + DBS_LOW })
                 }
               } else {
-                // Analog cluster: 5 evenly-spaced ticks
+                // Analog cluster: cap intervals so integers are never duplicated
+                const bandIdx = clusterIdx - (digitalCount > 0 ? 1 : 0)
+                const band = bands[bandIdx]
+                const realRange = band ? (band.realMax - band.realMin) : MAX_INTERVALS
+                // Allow at most as many intervals as there are distinct integer steps in range
+                const intervals = Math.min(MAX_INTERVALS, Math.max(1, Math.floor(realRange)))
                 const span = cluster.vMax - cluster.vMin
-                for (let k = 0; k <= INTERVALS; k++) {
-                  kept.push({ value: cluster.vMin + (span * k) / INTERVALS })
+                for (let k = 0; k <= intervals; k++) {
+                  kept.push({ value: cluster.vMin + (span * k) / intervals })
                 }
               }
             })
