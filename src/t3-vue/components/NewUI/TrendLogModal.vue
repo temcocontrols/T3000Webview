@@ -40,10 +40,15 @@ const trendLogModalVisible = computed({
 })
 
 const modalTitle = computed(() => {
-  return props.itemData?.t3Entry?.description ||
-    props.itemData?.t3Entry?.label ||
-    props.itemData?.title ||
-    'Trend Log Chart'
+  const label = props.itemData?.t3Entry?.label
+  const pid = props.itemData?.t3Entry?.pid
+  const entryId = props.itemData?.t3Entry?.id
+  if (label) return label
+  if (pid != null && entryId) {
+    const lastSegment = typeof entryId === 'string' ? entryId.split('_').pop() : null
+    if (lastSegment) return `${pid}_${lastSegment}`
+  }
+  return props.itemData?.title || 'Trend Log Chart'
 })
 
 // Event handlers

@@ -1430,7 +1430,7 @@
 
   const props = withDefaults(defineProps<Props>(), {
     itemData: null,
-    title: 'Trend Log Chart'
+    title: undefined
   })
 
   // Computed property to get the current item data - require itemData prop
@@ -2852,9 +2852,22 @@
       !description.includes('(P0)') &&
       !description.match(/^\d+\s*\([P]\d+\)$/)
 
+    // Build "{panelId}_{trendlogId}" fallback (e.g. "144_1") from pid and id fields
+    const pid = props.itemData?.t3Entry?.pid
+    const entryId = props.itemData?.t3Entry?.id
+    let panelTrendlogFallback: string | null = null
+    if (pid != null && entryId) {
+      // id is like "TRL240488_144_1" — trendlog number is the last underscore segment
+      const lastSegment = typeof entryId === 'string' ? entryId.split('_').pop() : null
+      panelTrendlogFallback = lastSegment ? `${pid}_${lastSegment}` : `${pid}`
+    } else if (pid != null) {
+      panelTrendlogFallback = `${pid}`
+    }
+
     return props.title ||
       label ||  // Prioritize label first for trend logs
       (isValidDescription ? description : null) ||  // Only use description if it's not a fallback pattern
+      panelTrendlogFallback ||
       props.itemData?.title ||
       'Trend Log Chart'
   })

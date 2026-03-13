@@ -267,7 +267,7 @@ const formatDataFromQueryParams = () => {
 
   // Ensure required fields are set
   t3EntryData.pid = panel_id
-  t3EntryData.label = t3EntryData.label || `TRL${sn}_${panel_id}_${trendlog_id}`
+  t3EntryData.label = t3EntryData.label || `${panel_id}_${trendlog_id}`
   t3EntryData.command = t3EntryData.command || `${panel_id}MON${trendlog_id}`
   t3EntryData.id = t3EntryData.id || `MON${trendlog_id}`
 
