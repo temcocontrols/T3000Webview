@@ -489,6 +489,11 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             devices: state.devices.map((d) =>
               d.serialNumber === serialNumber ? updatedDevice : d
             ),
+            // Also update selectedDevice so the UI header reflects the new name immediately
+            selectedDevice:
+              state.selectedDevice?.serialNumber === serialNumber
+                ? updatedDevice
+                : state.selectedDevice,
           }));
           get().buildTreeStructure();
         } catch (error) {
