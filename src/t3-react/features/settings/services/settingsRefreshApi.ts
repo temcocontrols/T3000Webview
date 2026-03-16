@@ -709,8 +709,8 @@ export class SettingsRefreshApi {
     LogUtil.Info(`  [12-17] MAC Address    : ${settings.mac_addr}`);
     LogUtil.Info(`  [52-71] Panel Name     : "${settings.panel_name}"`);
     LogUtil.Info(`  [73]    Panel Number   : ${settings.panel_number}`);
-    LogUtil.Info(`  [177-180] Object Instance: ${settings.object_instance}`);
-    LogUtil.Info(`  [198-201] Serial Number  : ${settings.n_serial_number}`);
+    LogUtil.Info(`  [177-180] Serial Number  : ${settings.n_serial_number}`);
+    LogUtil.Info(`  [198-201] Object Instance: ${settings.object_instance}`);
     LogUtil.Info(`  [238]   LCD Display    : ${settings.LCD_Display}`);
     LogUtil.Info(`  [242]   MSTP ID        : ${settings.mstp_id}`);
     LogUtil.Info(`  [245]   Max Master     : ${settings.max_master}`);
