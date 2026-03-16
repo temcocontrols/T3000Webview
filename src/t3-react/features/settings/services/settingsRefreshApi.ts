@@ -561,7 +561,14 @@ export class SettingsRefreshApi {
    * @returns 400-byte array ready for device update
    */
   static serializeSettingsData(settings: DeviceSettings): number[] {
-    const all = new Array(400).fill(0);
+    // Seed with the last received raw bytes so that bytes not explicitly serialised
+    // (e.g. Str_Pro_Info remainder bytes 28-37, update_dyndns bytes 181-190,
+    //  lcd_mod_reg padding bytes 255-259, and bytes 271-399) keep their original
+    // device values instead of being overwritten with 0.
+    const base = SettingsRefreshApi._lastReceivedRaw;
+    const all: number[] = base.length === 400
+      ? [...base]
+      : new Array(400).fill(0);
 
     // Helper functions for byte serialization
     const ipToBytes = (ip: string, offset: number) => {
