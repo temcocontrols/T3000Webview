@@ -129,7 +129,8 @@ export class DeviceApiService {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      return await response.json();
+      const data = await response.json();
+      return transformDeviceData(data);
     } catch (error) {
       console.error(`Failed to update device ${serialNumber}:`, error);
       throw error;

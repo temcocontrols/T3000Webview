@@ -474,7 +474,7 @@ interface DeviceInfo {
 
 export const SettingsPage: React.FC = () => {
   const styles = useStyles();
-  const { selectedDevice, devices, selectDevice } = useDeviceTreeStore();
+  const { selectedDevice, devices, selectDevice, updateDevice } = useDeviceTreeStore();
 
   const [selectedTab, setSelectedTab] = useState<TabValue>('basic');
   const [loading, setLoading] = useState(false);
@@ -921,7 +921,15 @@ export const SettingsPage: React.FC = () => {
 
       setSettings(merged);
       setSuccessMessage('Basic information saved to device successfully');
-      // await fetchSettings();
+
+      // Sync the new panel name to the device tree (DB + in-memory + tree rebuild)
+      if (merged.panel_name) {
+        try {
+          await updateDevice(selectedDevice.serialNumber, { showLabelName: merged.panel_name });
+        } catch (e) {
+          console.warn('[Done] Failed to sync device name to tree:', e);
+        }
+      }
     } catch (err) {
       console.error('[Done] caught error:', err);
       setError(err instanceof Error ? err.message : 'Failed to save basic info');
