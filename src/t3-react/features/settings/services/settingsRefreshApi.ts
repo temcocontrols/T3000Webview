@@ -379,7 +379,7 @@ export class SettingsRefreshApi {
 
     // Parse all fields according to C++ structure (see SETTINGS_FIELD_MAPPING.md)
     LogUtil.Info(`[Parse] ========== Starting 400-byte Settings Parsing ==========`);
-    LogUtil.Info(`[Parse] Raw array first 100 bytes: [${all.slice(0, 100).join(',')}]`);
+    LogUtil.Info(`[Parse] Raw array full 400 bytes: [${all.join(',')}], for easy copy and compare`);
     LogUtil.Info(`[Parse] BYTE POSITION MAP:`);
     LogUtil.Info(`  [0-3]   = IP Address (4 bytes)`);
     LogUtil.Info(`  [4-7]   = Subnet Mask (4 bytes)`);
@@ -700,7 +700,7 @@ export class SettingsRefreshApi {
     all[270] = settings.write_flash;
 
     LogUtil.Info(`[Parse] ========== Starting 400-byte Settings Serialization (SAVE to C++) ==========`);
-    LogUtil.Info(`[Parse] Raw array first 100 bytes: [${all.slice(0, 100).join(',')}], for easy copy and compare`);
+    LogUtil.Info(`[Parse] Raw array full 400 bytes: [${all.join(',')}], for easy copy and compare`);
     LogUtil.Info(`[Parse] Full 400-byte array: [${all.join(',')}]`);
     LogUtil.Info(`[Parse] Key fields being sent:`);
     LogUtil.Info(`  [0-3]   IP Address     : ${settings.ip_addr}`);
