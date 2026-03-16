@@ -586,8 +586,15 @@ export class SettingsRefreshApi {
     };
 
     const stringToBytes = (str: string, offset: number, maxLen: number) => {
-      for (let i = 0; i < maxLen; i++) {
-        all[offset + i] = i < str.length ? str.charCodeAt(i) : 0;
+      // Write the string content
+      const writeLen = Math.min(str.length, maxLen);
+      for (let i = 0; i < writeLen; i++) {
+        all[offset + i] = str.charCodeAt(i);
+      }
+      // Write null terminator if there is room — bytes beyond the null are left
+      // as the seeded value (device's original bytes) so padding like 0xFF is preserved.
+      if (writeLen < maxLen) {
+        all[offset + writeLen] = 0;
       }
     };
 
