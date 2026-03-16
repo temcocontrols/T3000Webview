@@ -130,7 +130,9 @@ export class DeviceApiService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      return transformDeviceData(data);
+      // Backend returns { device: {...}, message: "..." } — extract the nested device object
+      const deviceData = data.device ?? data;
+      return transformDeviceData(deviceData);
     } catch (error) {
       console.error(`Failed to update device ${serialNumber}:`, error);
       throw error;

@@ -485,14 +485,19 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         set({ error: null });
         try {
           const updatedDevice = await DeviceApiService.updateDevice(serialNumber, updates);
+          // Guard: if the API returned a malformed object (no serialNumber), fall back to
+          // merging the updates into the existing local device so selectedDevice is never broken.
+          const safeDevice: DeviceInfo = updatedDevice?.serialNumber
+            ? updatedDevice
+            : { ...(get().devices.find(d => d.serialNumber === serialNumber)!), ...updates };
           set((state) => ({
             devices: state.devices.map((d) =>
-              d.serialNumber === serialNumber ? updatedDevice : d
+              d.serialNumber === serialNumber ? safeDevice : d
             ),
             // Also update selectedDevice so the UI header reflects the new name immediately
             selectedDevice:
               state.selectedDevice?.serialNumber === serialNumber
-                ? updatedDevice
+                ? safeDevice
                 : state.selectedDevice,
           }));
           get().buildTreeStructure();
