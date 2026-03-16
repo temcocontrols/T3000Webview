@@ -12417,6 +12417,16 @@
               inputCount: monFromAction0.input?.length ?? 0
             })
             freshMonitorData.value = monFromAction0
+            console.log(
+              '%c[SETTINGS] ✅ RECEIVED FROM C++ (Action 0 - Monitor Config)',
+              'background:#0064c8;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px;'
+            )
+            console.log('[SETTINGS] Panel ID        :', urlPanelId)
+            console.log('[SETTINGS] Trendlog ID     :', urlTrendlogId)
+            console.log('[SETTINGS] Monitor ID      :', monFromAction0.id)
+            console.log('[SETTINGS] Monitor Index   :', monFromAction0.index)
+            console.log('[SETTINGS] Input channels  :', monFromAction0.input?.length ?? 0)
+            console.log('[SETTINGS] Full data       :', JSON.parse(JSON.stringify(monFromAction0)))
             fetchFreshPointsForAllPanels()
               .catch(err => LogUtil.Warn('⚠️ fetchFreshPointsForAllPanels (STEP 0) failed', err))
               .then(() => {
@@ -12673,11 +12683,22 @@
         return
       }
 
+      console.log(
+        '%c[SETTINGS] 💾 SAVING TO C++ — Database Config',
+        'background:#52c41a;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px;'
+      )
+      console.log('[SETTINGS] Strategy        :', databaseConfig.value.strategy)
+      console.log('[SETTINGS] Custom days     :', databaseConfig.value.custom_days)
+      console.log('[SETTINGS] Custom months   :', databaseConfig.value.custom_months)
+      console.log('[SETTINGS] Auto cleanup    :', databaseConfig.value.auto_cleanup_enabled)
+      console.log('[SETTINGS] Retention       :', databaseConfig.value.retention_value, databaseConfig.value.retention_unit)
+      console.log('[SETTINGS] Full payload    :', JSON.parse(JSON.stringify(databaseConfig.value)))
       LogUtil.Info('Saving Trendlog Configuration...', databaseConfig.value)
 
       // Save configuration via API
       const savedConfig = await databaseService.config.updateConfig(databaseConfig.value)
       databaseConfig.value = savedConfig
+      console.log('[SETTINGS] ✅ Database config saved — response:', JSON.parse(JSON.stringify(savedConfig)))
 
       // Apply partitioning strategy to create actual database files
       LogUtil.Info('Applying partitioning strategy to create database files...')
@@ -12897,11 +12918,20 @@
         return false
       }
 
-      await RediscoverConfigAPI.updateInterval(
+      console.log(
+        '%c[SETTINGS] 💾 SAVING TO C++ — Rediscover Interval',
+        'background:#722ed1;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px;'
+      )
+      console.log('[SETTINGS] Interval (secs) :', interval_secs)
+      console.log('[SETTINGS] Interval human  :', formatRediscoverInterval(interval_secs))
+      console.log('[SETTINGS] Preset          :', rediscoverConfig.value.interval_preset)
+
+      const result = await RediscoverConfigAPI.updateInterval(
         interval_secs,
         'user',
         'Updated via Trendlog Configuration UI'
       )
+      console.log('[SETTINGS] ✅ Rediscover interval saved — response:', result)
 
       if (showMessage) {
         message.success(`Rediscover interval updated to ${formatRediscoverInterval(interval_secs)}`)
@@ -13000,6 +13030,14 @@
         return false
       }
 
+      console.log(
+        '%c[SETTINGS] 💾 SAVING TO C++ — Sampling Interval',
+        'background:#fa8c16;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px;'
+      )
+      console.log('[SETTINGS] Interval (secs) :', interval_secs)
+      console.log('[SETTINGS] Interval human  :', formatInterval(interval_secs))
+      console.log('[SETTINGS] Preset          :', ffiSyncConfig.value.interval_preset)
+
       const data = await FfiSyncConfigAPI.updateFfiSyncInterval(
         interval_secs,
         'user',
@@ -13009,6 +13047,7 @@
       ffiSyncConfig.value.interval_secs = data.interval_secs
       ffiSyncConfig.value.next_sync_in = data.interval_secs
 
+      console.log('[SETTINGS] ✅ Sampling interval saved — response:', JSON.parse(JSON.stringify(data)))
       message.success(`Sampling Interval updated to ${formatInterval(interval_secs)}`)
       LogUtil.Info('Sampling Interval saved', data)
       return true

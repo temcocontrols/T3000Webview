@@ -699,6 +699,23 @@ export class SettingsRefreshApi {
     all[269] = settings.fix_com_config;
     all[270] = settings.write_flash;
 
+    LogUtil.Info(`[Parse] ========== Starting 400-byte Settings Serialization (SAVE to C++) ==========`);
+    LogUtil.Info(`[Parse] Raw array first 100 bytes: [${all.slice(0, 100).join(',')}], for easy copy and compare`);
+    LogUtil.Info(`[Parse] Full 400-byte array: [${all.join(',')}]`);
+    LogUtil.Info(`[Parse] Key fields being sent:`);
+    LogUtil.Info(`  [0-3]   IP Address     : ${settings.ip_addr}`);
+    LogUtil.Info(`  [4-7]   Subnet Mask    : ${settings.subnet}`);
+    LogUtil.Info(`  [8-11]  Gateway        : ${settings.gate_addr}`);
+    LogUtil.Info(`  [12-17] MAC Address    : ${settings.mac_addr}`);
+    LogUtil.Info(`  [52-71] Panel Name     : "${settings.panel_name}"`);
+    LogUtil.Info(`  [73]    Panel Number   : ${settings.panel_number}`);
+    LogUtil.Info(`  [177-180] Object Instance: ${settings.object_instance}`);
+    LogUtil.Info(`  [198-201] Serial Number  : ${settings.n_serial_number}`);
+    LogUtil.Info(`  [238]   LCD Display    : ${settings.LCD_Display}`);
+    LogUtil.Info(`  [242]   MSTP ID        : ${settings.mstp_id}`);
+    LogUtil.Info(`  [245]   Max Master     : ${settings.max_master}`);
+    LogUtil.Info(`[Parse] ========== End Serialization ==========`);
+
     return all;
   }
 
