@@ -177,7 +177,7 @@ export class SettingsRefreshApi {
 
       // Check if device returned an error
       if (!response || response.success === false) {
-        const errorMsg = response?.data?.error || 'Device returned error response';
+        const errorMsg = response?.error || response?.data?.error || 'Device returned error response';
         throw new Error(errorMsg);
       }
 
@@ -298,6 +298,11 @@ export class SettingsRefreshApi {
 
     if (!all || all.length < 400) {
       LogUtil.Warn(`[SettingsRefreshApi] Invalid data array length: ${all?.length || 0}, expected 400 bytes`);
+      // Dump the raw response so we can see the actual C++ response structure and fix the extraction path
+      console.warn('[ByteCompare][RECV] all[] is SHORT — full rawData structure:', JSON.stringify(rawData));
+      console.warn('[ByteCompare][RECV] rawData.data =', JSON.stringify(rawData?.data));
+      console.warn('[ByteCompare][RECV] rawData.data?.device_data =', JSON.stringify(rawData?.data?.device_data));
+      console.warn('[ByteCompare][RECV] rawData.All =', JSON.stringify(rawData?.All));
     }
 
     // Helper functions for byte parsing with detailed logging
@@ -312,7 +317,10 @@ export class SettingsRefreshApi {
     };
 
     const bytesToMAC = (offset: number): string => {
-      const bytes = all.slice(offset, offset + 6);
+      const rawBytes = all.slice(offset, offset + 6);
+      // Use per-element ?? 0 fallbacks (same pattern as bytesToIP) so an empty/short
+      // array always yields a valid "00-00-00-00-00-00" string rather than ""
+      const bytes = Array.from({ length: 6 }, (_, i) => rawBytes[i] ?? 0);
       const result = bytes.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join('-');
       LogUtil.Debug(`[Parse] MAC [${offset}-${offset+5}]: [${bytes.join(', ')}] → "${result}"`);
       return result;
@@ -715,6 +723,25 @@ export class SettingsRefreshApi {
     LogUtil.Info(`  [242]   MSTP ID        : ${settings.mstp_id}`);
     LogUtil.Info(`  [245]   Max Master     : ${settings.max_master}`);
     LogUtil.Info(`[Parse] ========== End Serialization ==========`);
+
+    // ── RECV vs SEND byte diff ─────────────────────────────────────────────
+    const recv = SettingsRefreshApi._lastReceivedRaw;
+    if (recv.length === 400) {
+      const diffs: string[] = [];
+      for (let i = 0; i < 400; i++) {
+        if (recv[i] !== all[i]) {
+          diffs.push(`  [${i}] RECV=${recv[i]} → SEND=${all[i]}`);
+        }
+      }
+      if (diffs.length === 0) {
+        console.log('%c[ByteCompare][DIFF] ✅ PERFECT MATCH — SEND is identical to RECV (400 bytes)', 'background:#52c41a;color:#fff;font-weight:bold;padding:2px 6px');
+      } else {
+        console.log(`%c[ByteCompare][DIFF] ⚠️ ${diffs.length} byte(s) differ between RECV and SEND:`, 'background:#fa8c16;color:#fff;font-weight:bold;padding:2px 6px');
+        diffs.forEach(d => console.log(d));
+      }
+    } else {
+      console.log('[ByteCompare][DIFF] ⚠️ Cannot compare — no RECV data stored (length:', recv.length, ')');
+    }
 
     return all;
   }

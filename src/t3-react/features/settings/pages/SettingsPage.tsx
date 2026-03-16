@@ -828,12 +828,14 @@ export const SettingsPage: React.FC = () => {
           Customer_Unite_Enable: settings.custmer_unite,
           Enable_Panel_Name: settings.en_panel_name,
           LCD_Display: settings.LCD_Display,
+          LCD_Point_Type: settings.lcd_point_type,
+          LCD_Point_Number: settings.lcd_point_number,
         });
 
         setDeviceInfo({
           SerialNumber: settings.n_serial_number,
           PanelId: settings.panel_name,
-          PanelNumber: settings.panel_number,
+          Panel_Number: settings.panel_number,
         });
 
         // ⚠️ Email / Users / Expansion IO are NOT in Str_Setting_Info (400 bytes).
@@ -887,10 +889,21 @@ export const SettingsPage: React.FC = () => {
     try {
       // Merge all Basic Information tab editable fields back into the 400-byte settings object
       const networkNum = protocolSettings.Network_Number ?? 0;
+      // C++ routing fields: panel_number and object_instance must be the real device-list values.
+      // If the settings were never properly fetched (all[] was empty → both are 0), fall back to
+      // selectedDevice which always carries the values from the live device list scan.
+      const safePanelNumber =
+        (deviceInfo.Panel_Number ?? 0) > 0
+          ? (deviceInfo.Panel_Number as number)
+          : (selectedDevice.panelNumber ?? settings.panel_number);
+      const safeObjectInstance =
+        (protocolSettings.Object_Instance ?? 0) > 0
+          ? (protocolSettings.Object_Instance as number)
+          : (selectedDevice.objectInstance ?? settings.object_instance);
       const merged: DeviceSettings = {
         ...settings,
         // Panel Information
-        object_instance:     protocolSettings.Object_Instance    ?? settings.object_instance,
+        object_instance:     safeObjectInstance,
         modbus_id:           protocolSettings.Modbus_ID           ?? settings.modbus_id,
         mstp_id:             protocolSettings.MSTP_ID             ?? settings.mstp_id,
         mstp_network_number: protocolSettings.MSTP_Network_Number ?? settings.mstp_network_number,
@@ -898,11 +911,12 @@ export const SettingsPage: React.FC = () => {
         network_number:      networkNum & 0xFF,
         network_number_hi:   (networkNum >> 8) & 0xFF,
         mac_addr:            networkSettings.MAC_Address           ?? settings.mac_addr,
-        panel_number:        deviceInfo.Panel_Number               ?? settings.panel_number,
+        panel_number:        safePanelNumber,
         panel_name:          deviceInfo.PanelId                    ?? settings.panel_name,
         // LCD Options
         LCD_Display:         featureFlags.LCD_Display              ?? settings.LCD_Display,
       };
+      console.log('[Done] routing fields — panel_number:', merged.panel_number, '| object_instance:', merged.object_instance, '| selectedDevice.panelNumber:', selectedDevice.panelNumber);
 
       console.log('[Done] merged settings:', merged);
 
