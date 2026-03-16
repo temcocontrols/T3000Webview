@@ -564,7 +564,7 @@ export class SettingsRefreshApi {
     };
 
     const macToBytes = (mac: string, offset: number) => {
-      const parts = mac.split(':').map(hex => parseInt(hex, 16));
+      const parts = mac.split(/[:\-]/).map(hex => parseInt(hex, 16));
       for (let i = 0; i < 6; i++) {
         all[offset + i] = parts[i] || 0;
       }
