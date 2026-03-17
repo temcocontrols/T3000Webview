@@ -279,7 +279,7 @@ export default defineComponent({
           return rangeValue?.name || "";
         }
         else if (props.item.t3Entry.digital_analog === 1) {
-          const value = props.item.t3Entry.value || "";
+          const value = props.item.t3Entry.value ?? "";
           return value + " " + (range?.unit || "");
         } else if (props.item.t3Entry.digital_analog === 0) {
           if (props.item.t3Entry.control) {

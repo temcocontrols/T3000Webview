@@ -149,7 +149,7 @@ const dispalyText = computed(() => {
 
   if (props.item.settings.t3EntryDisplayField === "description") {
     const description = props.item.t3Entry.description || "";
-    const value = props.item.t3Entry.value || "";
+    const value = props.item.t3Entry.value ?? "";
     let valueText = "";
 
     if (props.item.t3Entry.range > 100) {
@@ -159,7 +159,7 @@ const dispalyText = computed(() => {
       valueText = rangeValue?.name || "";
     }
     else if (props.item.t3Entry.digital_analog === 1) {
-      valueText = (value || "") + " " + (range?.unit || "");
+      valueText = value + " " + (range?.unit || "");
     } else if (props.item.t3Entry.digital_analog === 0) {
       if (props.item.t3Entry.control) {
         valueText = range?.on || "";
@@ -173,7 +173,7 @@ const dispalyText = computed(() => {
 
   if (props.item.settings.t3EntryDisplayField === "label") {
     const description = props.item.t3Entry.label || "";
-    const value = props.item.t3Entry.value || "";
+    const value = props.item.t3Entry.value ?? "";
     let valueText = "";
 
     if (props.item.t3Entry.range > 100) {
@@ -183,7 +183,7 @@ const dispalyText = computed(() => {
       valueText = rangeValue?.name || "";
     }
     else if (props.item.t3Entry.digital_analog === 1) {
-      valueText = (value || "") + " " + (range?.unit || "");
+      valueText = value + " " + (range?.unit || "");
     } else if (props.item.t3Entry.digital_analog === 0) {
       if (props.item.t3Entry.control) {
         valueText = range?.on || "";
