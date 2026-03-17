@@ -1143,18 +1143,12 @@ class WebSocketClient {
           // LogUtil.Debug(`�?HandleGetEntriesRes / Full replacement done for ${item.id}`);
         }
       } else {
-        // LogUtil.Debug(`= ws: HandleGetEntriesRes / item ${itemIdx}: NOT FOUND in panelsData:`, {
-        //   id: item.id,
-        //   pid: item.pid,
-        //   index: item.index,
-        //   type: item.type
-        // });
+        // Item not found in panelsData - add it so it's available in the link entry dropdown
+        T3000_Data.value.panelsData.push(item);
       }
     });
 
-    if (!linkT3EntryDialog.value.active) {
-      selectPanelOptions.value = T3000_Data.value.panelsData;
-    }
+    selectPanelOptions.value = T3000_Data.value.panelsData;
     IdxUtils.refreshLinkedEntries(msgData.data);
     IdxUtils.refreshLinkedEntries2(msgData.data);
 
@@ -1317,6 +1311,19 @@ class WebSocketClient {
     const action = messageData.action;
 
     if (action == MessageType.GET_PANEL_DATA_RES || action == MessageType.GET_PANELS_LIST_RES) {
+      // Check if this is a 'no cached data' error - skip to next panel instead of retrying whole list
+      if (messageData.error && messageData.error.includes('No cached data')) {
+        LogUtil.Info('📦 No cached data available for this panel, loading next panel in chain');
+        const currentLoadingPanel = T3000_Data.value.loadingPanel;
+        if (currentLoadingPanel !== null && currentLoadingPanel < T3000_Data.value.panelsList.length - 1) {
+          T3000_Data.value.loadingPanel = currentLoadingPanel + 1;
+          const nextPanelId = T3000_Data.value.panelsList[T3000_Data.value.loadingPanel].panel_number;
+          this.GetPanelData(nextPanelId);
+        } else {
+          T3000_Data.value.loadingPanel = null;
+        }
+        return;
+      }
       const errorMsg = `Load device data failed with error: "${messageData.error}". Please check whether the T3000 application is running or not.`;
       // Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
       T3UIUtil.ShowWebSocketError(errorMsg);
