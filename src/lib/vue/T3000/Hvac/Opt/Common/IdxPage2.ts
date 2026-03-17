@@ -1917,7 +1917,7 @@ class IdxPage2 {
   selectPanelFilterFn(val, update) {
     update(() => {
       const allData = T3000_Data.value.panelsData;
-      const defaultPid = Hvac.DeviceOpt.getCurrentDevice()?.deviceId ?? null;
+      const defaultPid = Hvac.DeviceOpt.getCurrentDevice()?.deviceId ?? grpNav.value[0]?.pid ?? null;
 
       if (!val) {
         // Empty input: show default panel's entries first, then others
@@ -1946,25 +1946,27 @@ class IdxPage2 {
       }
 
       const kw = keyword.toUpperCase().trim();
-      let pool = pidFilter !== null ? allData.filter(i => i.pid === pidFilter) : allData;
 
-      if (kw) {
-        pool = pool.filter(i =>
+      if (pidFilter !== null) {
+        // Panel prefix given → only that panel's entries, filtered by keyword
+        let pool = allData.filter(i => i.pid === pidFilter);
+        if (kw) {
+          pool = pool.filter(i =>
+            i.command.toUpperCase().includes(kw) ||
+            i.description?.toUpperCase().includes(kw) ||
+            i.label?.toUpperCase().includes(kw)
+          );
+        }
+        selectPanelOptions.value = pool;
+      } else {
+        // No panel prefix → only default panel's matching entries
+        const basePool = defaultPid !== null ? allData.filter(i => i.pid === defaultPid) : allData;
+        selectPanelOptions.value = kw ? basePool.filter(i =>
           i.command.toUpperCase().includes(kw) ||
           i.description?.toUpperCase().includes(kw) ||
           i.label?.toUpperCase().includes(kw)
-        );
+        ) : basePool;
       }
-
-      // No explicit panel filter → default panel's matches first
-      if (pidFilter === null && defaultPid !== null) {
-        pool = [
-          ...pool.filter(i => i.pid === defaultPid),
-          ...pool.filter(i => i.pid !== defaultPid),
-        ];
-      }
-
-      selectPanelOptions.value = pool;
     });
   }
 
