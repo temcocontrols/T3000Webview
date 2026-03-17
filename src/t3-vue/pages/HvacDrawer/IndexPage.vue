@@ -166,10 +166,7 @@
               </div>
               <!-- Viewport Area -->
               <div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick"
-                @mouseleave="resetCursor" @click.left="viewportLeftClick" @dragover="($event) => {
-                  $event.preventDefault();
-                }
-                ">
+                @mouseleave="resetCursor" @click.left="viewportLeftClick" @dragover="onViewportDragOver" @drop.prevent="onViewportDrop">
                 <!-- Cursor Icon -->
                 <q-icon class="cursor-icon" v-if="!locked && selectedTool.name !== 'Pointer'" :name="selectedTool.icon
                   ? selectedTool.icon
@@ -1419,7 +1416,16 @@ function drawObject(size, pos, tool) {
     addLibItem(tool.items, size, pos);
     return;
   }
-  const scalPercentage = 1 / appState.value.viewportTransform.scale;
+  // Read scale from CSS transform on the panzoom div as ground truth;
+  // appState.viewportTransform may lag in some WebView2 builds.
+  let currentScale = appState.value.viewportTransform.scale;
+  if (viewport.value) {
+    try {
+      const m = new DOMMatrix(window.getComputedStyle(viewport.value).transform);
+      if (m.a && m.a > 0) currentScale = m.a;
+    } catch (_) { /* ignore */ }
+  }
+  const scalPercentage = 1 / (currentScale || 1);
 
   const toolSettings =
     cloneDeep(tools.find((t) => t.name === tool.name)?.settings) || {};
@@ -1432,15 +1438,14 @@ function drawObject(size, pos, tool) {
     size.width = 100;
   }
 
+  const vpRect = viewport.value?.getBoundingClientRect?.() ?? { left: viewportMargins.left, top: viewportMargins.top };
   const tempItem = {
     title: null,
     active: false,
     type: tool.name,
     translate: [
-      (pos.left - viewportMargins.left - appState.value.viewportTransform.x) *
-      scalPercentage,
-      (pos.top - viewportMargins.top - appState.value.viewportTransform.y) *
-      scalPercentage,
+      (pos.left - vpRect.left) * scalPercentage,
+      (pos.top - vpRect.top) * scalPercentage,
     ],
     width: size.width * scalPercentage,
     height: size.height * scalPercentage,
@@ -3279,18 +3284,49 @@ function toggleRulersGrid(val) {
   save(false, false);
 }
 
+// Tracks position from dragover events (dragend clientX/Y can be 0 in some Edge/WebView2 versions)
+let lastDragX = 0;
+let lastDragY = 0;
+// Exact drop position captured from the drop event on the canvas (most reliable in WebView2)
+let lastDropX = 0;
+let lastDropY = 0;
+
+function onViewportDragOver(ev) {
+  ev.preventDefault();
+  if (ev.clientX !== 0 || ev.clientY !== 0) {
+    lastDragX = ev.clientX;
+    lastDragY = ev.clientY;
+  }
+}
+
+// Capture the exact drop coordinates from the drop event (fires on the target with correct coords)
+function onViewportDrop(ev) {
+  if (ev.clientX !== 0 || ev.clientY !== 0) {
+    lastDropX = ev.clientX;
+    lastDropY = ev.clientY;
+  }
+}
+
 // Handles a tool being dropped
 function toolDropped(ev, tool) {
   const size = tool.name === "Int_Ext_Wall" ? { width: 200, height: 10 } : { width: 60, height: 60 };
+  // Priority: drop event coords (most reliable) > dragend.clientX/Y > last dragover coords
+  let x, y;
+  if (lastDropX !== 0 || lastDropY !== 0) {
+    x = lastDropX;
+    y = lastDropY;
+    lastDropX = 0;
+    lastDropY = 0;
+  } else if (ev.clientX !== 0 || ev.clientY !== 0) {
+    x = ev.clientX;
+    y = ev.clientY;
+  } else {
+    x = lastDragX;
+    y = lastDragY;
+  }
   drawObject(
-    //{ width: 60, height: 60 },
     size,
-    {
-      clientX: ev.clientX,
-      clientY: ev.clientY,
-      top: ev.clientY,
-      left: ev.clientX,
-    },
+    { clientX: x, clientY: y, top: y, left: x },
     tool
   );
 }

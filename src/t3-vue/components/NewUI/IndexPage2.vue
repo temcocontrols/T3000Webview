@@ -35,7 +35,7 @@
               <div id="v-ruler" class="document-ruler-left">
               </div>
               <a-dropdown :trigger="['contextmenu']">
-                <div id="svg-area" class="svg-area">
+                <div id="svg-area" class="svg-area" @dragover="onSvgAreaDragOver" @drop.prevent="onSvgAreaDrop">
                 </div>
                 <template #overlay>
                   <T3ContextMenu v-if="ctxMenuConfig.isShow" :ctxMenuConfig="ctxMenuConfig"></T3ContextMenu>
@@ -1171,6 +1171,17 @@ function convertObjectType(item: any, type: string): void {
 
 function toggleRulersGrid(val: any): void {
   Hvac.IdxPage2.toggleRulersGrid(val);
+}
+
+// Handles dragover on the SVG canvas area — tracks reliable mouse position
+function onSvgAreaDragOver(ev: DragEvent): void {
+  ev.preventDefault();
+  Hvac.IdxPage2.onCanvasDragOver(ev);
+}
+
+// Capture exact drop position from the drop event (fires on target with reliable clientX/Y in WebView2)
+function onSvgAreaDrop(ev: DragEvent): void {
+  Hvac.IdxPage2.onCanvasDrop(ev);
 }
 
 // Handles a tool being dropped

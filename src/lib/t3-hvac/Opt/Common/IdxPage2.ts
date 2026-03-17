@@ -1345,15 +1345,14 @@ class IdxPage2 {
       size.width = 100;
     }
 
+    const vpRect = viewport.value?.getBoundingClientRect?.() ?? { left: viewportMargins.left, top: viewportMargins.top };
     const tempItem = {
       title: null,
       active: false,
       type: tool.name,
       translate: [
-        (pos.left - viewportMargins.left - appStateV2.value.viewportTransform.x) *
-        scalPercentage,
-        (pos.top - viewportMargins.top - appStateV2.value.viewportTransform.y) *
-        scalPercentage,
+        (pos.left - vpRect.left) * scalPercentage,
+        (pos.top - vpRect.top) * scalPercentage,
       ],
       width: size.width * scalPercentage,
       height: size.height * scalPercentage,
@@ -1399,21 +1398,48 @@ class IdxPage2 {
   }
 
 
-  toolDropped(ev, tool) {
-    // const size = tool.name === "Int_Ext_Wall" ? { width: 200, height: 10 } : { width: 60, height: 60 };
-    // drawObject(
-    //   //{ width: 60, height: 60 },
-    //   size,
-    //   {
-    //     clientX: ev.clientX,
-    //     clientY: ev.clientY,
-    //     top: ev.clientY,
-    //     left: ev.clientX,
-    //   },
-    //   tool
-    // );
+  // Last reliable drag-over coordinates from the canvas (dragend clientX/Y can be 0 in some Edge/WebView2 builds)
+  private lastDragClientX = 0;
+  private lastDragClientY = 0;
+  private lastDropClientX = 0;
+  private lastDropClientY = 0;
 
-    LogUtil.Debug("toolDropped->tool", ev, tool);
+  onCanvasDragOver(ev) {
+    if (ev.clientX !== 0 || ev.clientY !== 0) {
+      this.lastDragClientX = ev.clientX;
+      this.lastDragClientY = ev.clientY;
+    }
+  }
+
+  // Capture exact drop position from the drop event (fires on target with reliable coords in WebView2)
+  onCanvasDrop(ev) {
+    if (ev.clientX !== 0 || ev.clientY !== 0) {
+      this.lastDropClientX = ev.clientX;
+      this.lastDropClientY = ev.clientY;
+    }
+  }
+
+  toolDropped(ev, tool) {
+    const size = tool.name === "Int_Ext_Wall" ? { width: 200, height: 10 } : { width: 60, height: 60 };
+    // Priority: drop event coords (most reliable) > dragend coords > last dragover coords
+    let x: number, y: number;
+    if (this.lastDropClientX !== 0 || this.lastDropClientY !== 0) {
+      x = this.lastDropClientX;
+      y = this.lastDropClientY;
+      this.lastDropClientX = 0;
+      this.lastDropClientY = 0;
+    } else if (ev.clientX !== 0 || ev.clientY !== 0) {
+      x = ev.clientX;
+      y = ev.clientY;
+    } else {
+      x = this.lastDragClientX;
+      y = this.lastDragClientY;
+    }
+    this.drawObject(
+      size,
+      { clientX: x, clientY: y, top: y, left: x },
+      tool
+    );
   }
 
   // // Saves the library data to the webview
