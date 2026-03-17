@@ -166,9 +166,9 @@ class StateStore {
   public readonly globalMsg: Ref<GlobalMsgModel[]> = ref([]);
 
   // Settings and version
-  public readonly devVersion: Ref<string> = ref("V:26.0313.02");
+  public readonly devVersion: Ref<string> = ref("V:26.0317.01");
   public readonly localSettings: Ref<LocalSettings> = ref({
-    version: "V:26.0313.02",
+    version: "V:26.0317.01",
     transform: 0
   });
 
@@ -260,13 +260,26 @@ class StateStore {
 
   public addItem(item: any): void {
     this.appState.value.items.push(item);
-    this.appState.value.itemsCount = this.appState.value.items.length;
+    // itemsCount is the ID sequence counter — keep it as the high-water mark.
+    // Never lower it: if the incoming item has a higher id, bump the counter up.
+    const itemId = item.id ?? 0;
+    if (itemId > this.appState.value.itemsCount) {
+      this.appState.value.itemsCount = itemId;
+    }
   }
 
   public removeItem(index: number): void {
     if (index >= 0 && index < this.appState.value.items.length) {
       this.appState.value.items.splice(index, 1);
-      this.appState.value.itemsCount = this.appState.value.items.length;
+      // Keep itemsCount at the highest ID ever assigned — never decrease it.
+      // itemsCount is the ID sequence counter; resetting it to items.length
+      // causes new items to receive IDs that are already in use.
+      const maxExistingId = this.appState.value.items.length > 0
+        ? Math.max(...this.appState.value.items.map(i => i.id ?? 0))
+        : 0;
+      if (maxExistingId > this.appState.value.itemsCount) {
+        this.appState.value.itemsCount = maxExistingId;
+      }
     }
   }
 
