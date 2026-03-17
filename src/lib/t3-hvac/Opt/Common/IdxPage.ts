@@ -161,6 +161,7 @@ class IdxPage {
     // LogUtil.Debug("= IdxPage: restoreAppState / after loading loadParsedAppStateLS localState is", localState);
 
     if (localState) {
+      DataOpt.repairDuplicateIds(localState);
       appState.value = localState;
       rulersGridVisible.value = appState.value.rulersGridVisible;
     }
@@ -603,8 +604,11 @@ class IdxPage {
   prepareSaveData() {
     const data = cloneDeep(toRaw(appState.value));
 
-    // Recalculate the items count
-    data.itemsCount = data.items.filter(item => item.width !== 0).length;
+    // Save the highest ID assigned so far; using item count would cause
+    // duplicate IDs after state is reloaded (deletions lower the count).
+    data.itemsCount = data.items.length > 0
+      ? Math.max(...data.items.map(i => i.id ?? 0))
+      : 0;
 
     data.selectedTargets = [];
     data.elementGuidelines = [];

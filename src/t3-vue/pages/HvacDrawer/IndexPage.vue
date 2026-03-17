@@ -1302,6 +1302,14 @@ function addObject(item, group = undefined, addToHistory = true) {
   if (addToHistory) {
     addActionToHistory(`Add ${item?.type ?? ''}`);
   }
+  // Sync counter to the max existing ID so we never reuse an ID already
+  // present in a state restored from localStorage/T3000 saved data.
+  const maxExistingId = appState.value.items.length > 0
+    ? Math.max(...appState.value.items.map(i => i.id ?? 0))
+    : 0;
+  if (maxExistingId >= appState.value.itemsCount) {
+    appState.value.itemsCount = maxExistingId;
+  }
   appState.value.itemsCount++;
   item.id = appState.value.itemsCount;
   item.group = group;
@@ -2174,7 +2182,9 @@ function undoAction() {
     title: lastAction,
     state: cloneDeep(appState.value),
   });
-  appState.value = cloneDeep(undoHistory.value[0].state);
+  const undoState = cloneDeep(undoHistory.value[0].state);
+  DataOpt.repairDuplicateIds(undoState);
+  appState.value = undoState;
   undoHistory.value.shift();
   Hvac.IdxPage.refreshMoveable();
 
@@ -2189,7 +2199,9 @@ function redoAction() {
     title: lastAction,
     state: cloneDeep(appState.value),
   });
-  appState.value = cloneDeep(redoHistory.value[0].state);
+  const redoState = cloneDeep(redoHistory.value[0].state);
+  DataOpt.repairDuplicateIds(redoState);
+  appState.value = redoState;
   redoHistory.value.shift();
   Hvac.IdxPage.refreshMoveable();
 
@@ -2341,6 +2353,7 @@ function executeImportFromJson() {
         undoHistory.value = [];
         redoHistory.value = [];
         importJsonDialog.value.active = false;
+        DataOpt.repairDuplicateIds(importedState);
         appState.value = importedState;
         importJsonDialog.value.data = null;
         setTimeout(() => {
@@ -2359,6 +2372,7 @@ function executeImportFromJson() {
   undoHistory.value = [];
   redoHistory.value = [];
   importJsonDialog.value.active = false;
+  DataOpt.repairDuplicateIds(importedState);
   appState.value = importedState;
   importJsonDialog.value.data = null;
   setTimeout(() => {
