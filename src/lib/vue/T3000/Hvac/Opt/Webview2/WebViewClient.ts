@@ -650,6 +650,17 @@ class WebViewClient {
     */
 
     msgData.data = JSON.parse(msgData.data);
+    // Repair duplicate IDs before loading — device may have stored state
+    // with a corrupted itemsCount counter (set to item-count instead of max-id).
+    if (Array.isArray(msgData.data?.items)) {
+      const seenIds = new Set<number>();
+      let maxId: number = msgData.data.items.reduce((m: number, i: any) => Math.max(m, i.id ?? 0), 0);
+      for (const item of msgData.data.items) {
+        if (seenIds.has(item.id)) { item.id = ++maxId; }
+        else { seenIds.add(item.id); }
+      }
+      if (maxId > (msgData.data.itemsCount ?? 0)) msgData.data.itemsCount = maxId;
+    }
     appState.value = msgData.data;
 
     rulersGridVisible.value = appState.value.rulersGridVisible;
@@ -968,6 +979,17 @@ class WebViewClient {
     */
 
     msgData.data = JSON.parse(msgData.data);
+    // Repair duplicate IDs before loading — device may have stored state
+    // with a corrupted itemsCount counter (set to item-count instead of max-id).
+    if (Array.isArray(msgData.data?.items)) {
+      const seenIds = new Set<number>();
+      let maxId: number = msgData.data.items.reduce((m: number, i: any) => Math.max(m, i.id ?? 0), 0);
+      for (const item of msgData.data.items) {
+        if (seenIds.has(item.id)) { item.id = ++maxId; }
+        else { seenIds.add(item.id); }
+      }
+      if (maxId > (msgData.data.itemsCount ?? 0)) msgData.data.itemsCount = maxId;
+    }
     appState.value = msgData.data;
 
     if (grpNav.value.length > 1) {

@@ -515,7 +515,7 @@ class WebSocketClient {
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_INITIAL_DATA }));
   }
 
-  // action: 2,  // SAVE_GRAPHIC_DATA / SAVE_GRAPHIC_DATA_RES âœ?
+  // action: 2,  // SAVE_GRAPHIC_DATA / SAVE_GRAPHIC_DATA_RES ï¿½?
   public SaveGraphic(panelId, graphicId, data?: {}) {
     this.FormatMessageData(MessageType.SAVE_GRAPHIC_DATA, panelId, graphicId, data);
     this.sendMessage(this.messageData);
@@ -1103,13 +1103,13 @@ class WebSocketClient {
           let updatedCount = 0;
           fieldsToUpdate.forEach(field => {
             if (existingItem[field] !== item[field]) {
-              // LogUtil.Debug(`ðŸ”„ HandleGetEntriesRes / Updating field '${field}': '${existingItem[field]}' â†?'${item[field]}'`);
+              // LogUtil.Debug(`ðŸ”„ HandleGetEntriesRes / Updating field '${field}': '${existingItem[field]}' ï¿½?'${item[field]}'`);
               existingItem[field] = item[field];
               updatedCount++;
             }
           });
 
-          // LogUtil.Info(`âœ?HandleGetEntriesRes / Smart partial update applied for ${item.id}: ${updatedCount} fields updated, ${criticalFields.length} critical fields protected`);
+          // LogUtil.Info(`ï¿½?HandleGetEntriesRes / Smart partial update applied for ${item.id}: ${updatedCount} fields updated, ${criticalFields.length} critical fields protected`);
         } else if (potentialDataLoss) {
           // Handle other types of potential data loss (not just monitors)
           // LogUtil.Warn(`âš ï¸ POTENTIAL DATA LOSS DETECTED! Applying smart update for ${item.type} item:`, {
@@ -1130,17 +1130,17 @@ class WebSocketClient {
           let updatedCount = 0;
           fieldsToUpdate.forEach(field => {
             if (existingItem[field] !== item[field]) {
-              // LogUtil.Debug(`ðŸ”„ HandleGetEntriesRes / Updating ${item.type} field '${field}': '${existingItem[field]}' â†?'${item[field]}'`);
+              // LogUtil.Debug(`ðŸ”„ HandleGetEntriesRes / Updating ${item.type} field '${field}': '${existingItem[field]}' ï¿½?'${item[field]}'`);
               existingItem[field] = item[field];
               updatedCount++;
             }
           });
 
-          // LogUtil.Info(`âœ?HandleGetEntriesRes / Smart update for ${item.type} ${item.id}: ${updatedCount} fields updated, ${complexFields.length} complex fields protected`);
+          // LogUtil.Info(`ï¿½?HandleGetEntriesRes / Smart update for ${item.type} ${item.id}: ${updatedCount} fields updated, ${complexFields.length} complex fields protected`);
         } else {
           // Safe to do full replacement
           T3000_Data.value.panelsData[itemIndex] = item;
-          // LogUtil.Debug(`âœ?HandleGetEntriesRes / Full replacement done for ${item.id}`);
+          // LogUtil.Debug(`ï¿½?HandleGetEntriesRes / Full replacement done for ${item.id}`);
         }
       } else {
         // LogUtil.Debug(`= ws: HandleGetEntriesRes / item ${itemIdx}: NOT FOUND in panelsData:`, {
@@ -1167,6 +1167,17 @@ class WebSocketClient {
 
     // TODO refer to WebViewClient-> HandleLoadGraphicEntryRes, appState
     msgData.data = JSON.parse(msgData.data);
+    // Repair duplicate IDs before loading â€” device may have stored state
+    // with a corrupted itemsCount counter (set to item-count instead of max-id).
+    if (Array.isArray(msgData.data?.items)) {
+      const seenIds = new Set<number>();
+      let maxId: number = msgData.data.items.reduce((m: number, i: any) => Math.max(m, i.id ?? 0), 0);
+      for (const item of msgData.data.items) {
+        if (seenIds.has(item.id)) { item.id = ++maxId; }
+        else { seenIds.add(item.id); }
+      }
+      if (maxId > (msgData.data.itemsCount ?? 0)) msgData.data.itemsCount = maxId;
+    }
     appState.value = msgData.data;
 
     // Restore UI state from appState

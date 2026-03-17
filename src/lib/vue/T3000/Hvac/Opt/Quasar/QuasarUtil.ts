@@ -296,6 +296,14 @@ class QuasarUtil {
   }
 
   static addObject(item, uniqueId, group = undefined, addToHistory = true) {
+    // Sync counter to max existing ID so a loaded state with high IDs never
+    // produces a duplicate ID for a newly added item.
+    const maxExistingId = appStateV2.value.items.length > 0
+      ? Math.max(...appStateV2.value.items.map(i => i.id ?? 0))
+      : 0;
+    if (maxExistingId > appStateV2.value.itemsCount) {
+      appStateV2.value.itemsCount = maxExistingId;
+    }
     appStateV2.value.itemsCount++;
     item.id = appStateV2.value.itemsCount;
     item.uniqueId = uniqueId;

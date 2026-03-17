@@ -70,6 +70,7 @@ class IdxPage2 {
 
     const localState = Hvac.LsOpt.loadParsedAppStateLS();
     if (localState) {
+      DataOpt.repairDuplicateIds(localState);
       appStateV2.value = localState;
       // rulersGridVisible.value = appState.value.rulersGridVisible;
     }
@@ -345,9 +346,9 @@ class IdxPage2 {
   prepareSaveData() {
     const data = cloneDeep(toRaw(appStateV2.value));
 
-    // Recalculate the items count
-    data.itemsCount = data.items.filter(item => item.width !== 0).length;
-
+    // Do NOT overwrite itemsCount — it is the ID sequence counter (highest ID
+    // ever assigned), not a physical element count.  Clobbering it with the
+    // current item count would cause duplicate IDs the next time addObject runs.
     data.selectedTargets = [];
     data.elementGuidelines = [];
     data.rulersGridVisible = rulersGridVisible.value;
@@ -526,7 +527,9 @@ class IdxPage2 {
       title: lastAction,
       state: cloneDeep(appStateV2.value),
     });
-    appStateV2.value = cloneDeep(undoHistory.value[0].state);
+    const undoState = cloneDeep(undoHistory.value[0].state);
+    DataOpt.repairDuplicateIds(undoState);
+    appStateV2.value = undoState;
     undoHistory.value.shift();
     Hvac.IdxPage.refreshMoveable();
   }
@@ -537,7 +540,9 @@ class IdxPage2 {
       title: lastAction,
       state: cloneDeep(appStateV2.value),
     });
-    appStateV2.value = cloneDeep(redoHistory.value[0].state);
+    const redoState = cloneDeep(redoHistory.value[0].state);
+    DataOpt.repairDuplicateIds(redoState);
+    appStateV2.value = redoState;
     redoHistory.value.shift();
     Hvac.IdxPage.refreshMoveable();
   }
@@ -1233,6 +1238,7 @@ class IdxPage2 {
           undoHistory.value = [];
           redoHistory.value = [];
           importJsonDialog.value.active = false;
+          DataOpt.repairDuplicateIds(importedState);
           appStateV2.value = importedState;
           importJsonDialog.value.data = null;
           setTimeout(() => {
@@ -1248,6 +1254,7 @@ class IdxPage2 {
     undoHistory.value = [];
     redoHistory.value = [];
     importJsonDialog.value.active = false;
+    DataOpt.repairDuplicateIds(importedState);
     appStateV2.value = importedState;
     importJsonDialog.value.data = null;
     setTimeout(() => {
@@ -1701,6 +1708,15 @@ class IdxPage2 {
   addObject(item, group = undefined, addToHistory = true) {
     if (addToHistory) {
       this.addActionToHistory(`Add ${item?.type ?? ''}`);
+    }
+    // Sync counter to max existing ID first so a state loaded from localStorage
+    // (where itemsCount may have been reset to items.length after deletions) never
+    // produces a duplicate ID.
+    const maxExistingId = appStateV2.value.items.length > 0
+      ? Math.max(...appStateV2.value.items.map(i => i.id ?? 0))
+      : 0;
+    if (maxExistingId > appStateV2.value.itemsCount) {
+      appStateV2.value.itemsCount = maxExistingId;
     }
     appStateV2.value.itemsCount++;
     item.id = appStateV2.value.itemsCount;
