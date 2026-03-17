@@ -600,7 +600,7 @@ class DeviceOpt {
     LogUtil.Debug('= Dvopt: isCurrentDeviceMessage / msgData', msgData);
     LogUtil.Debug('= Dvopt: isCurrentDeviceMessage / panelId,viewitem,serialNumber', panelId, viewitem, serialNumber);
 
-    if (!panelId || !viewitem || !serialNumber) {
+    if (panelId === -1 || viewitem === -1 || serialNumber === -1) {
       LogUtil.Error('= Dvopt: isCurrentDeviceMessage / Invalid message data');
       return false;
     }
