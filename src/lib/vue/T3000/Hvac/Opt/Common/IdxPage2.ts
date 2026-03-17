@@ -1915,24 +1915,56 @@ class IdxPage2 {
   }
 
   selectPanelFilterFn(val, update) {
-    if (val === "") {
-      update(() => {
-        selectPanelOptions.value = T3000_Data.value.panelsData;
-
-        // here you have access to "ref" which
-        // is the Vue reference of the QSelect
-      });
-      return;
-    }
-
     update(() => {
-      const keyword = val.toUpperCase();
-      selectPanelOptions.value = T3000_Data.value.panelsData.filter(
-        (item) =>
-          item.command.toUpperCase().indexOf(keyword) > -1 ||
-          item.description?.toUpperCase().indexOf(keyword) > -1 ||
-          item.label?.toUpperCase().indexOf(keyword) > -1
-      );
+      const allData = T3000_Data.value.panelsData;
+      const defaultPid = Hvac.DeviceOpt.getCurrentDevice()?.deviceId ?? null;
+
+      if (!val) {
+        // Empty input: show default panel's entries first, then others
+        if (defaultPid !== null) {
+          selectPanelOptions.value = [
+            ...allData.filter(i => i.pid === defaultPid),
+            ...allData.filter(i => i.pid !== defaultPid),
+          ];
+        } else {
+          selectPanelOptions.value = allData;
+        }
+        return;
+      }
+
+      // Detect panel-number prefix: "88VAR", "88 VAR", "88-VAR", "88"
+      const panelPrefixMatch = val.match(/^(\d+)\s*[-\s]?\s*(.*)/);
+      let pidFilter = null;
+      let keyword = val;
+
+      if (panelPrefixMatch) {
+        const potentialPid = parseInt(panelPrefixMatch[1]);
+        if (allData.some(i => i.pid === potentialPid)) {
+          pidFilter = potentialPid;
+          keyword = panelPrefixMatch[2];
+        }
+      }
+
+      const kw = keyword.toUpperCase().trim();
+      let pool = pidFilter !== null ? allData.filter(i => i.pid === pidFilter) : allData;
+
+      if (kw) {
+        pool = pool.filter(i =>
+          i.command.toUpperCase().includes(kw) ||
+          i.description?.toUpperCase().includes(kw) ||
+          i.label?.toUpperCase().includes(kw)
+        );
+      }
+
+      // No explicit panel filter → default panel's matches first
+      if (pidFilter === null && defaultPid !== null) {
+        pool = [
+          ...pool.filter(i => i.pid === defaultPid),
+          ...pool.filter(i => i.pid !== defaultPid),
+        ];
+      }
+
+      selectPanelOptions.value = pool;
     });
   }
 
