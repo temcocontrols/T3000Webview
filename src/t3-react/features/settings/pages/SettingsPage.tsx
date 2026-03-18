@@ -1425,12 +1425,9 @@ export const SettingsPage: React.FC = () => {
                   />
                 </Field>
                 <Field label="Serial Number" size="small" className={styles.horizontalField}>
-                  <Input
-                    type="number"
-                    size="small"
-                    value={String(deviceInfo.SerialNumber ?? selectedDevice?.serialNumber ?? '')}
-                    disabled
-                  />
+                  <span className={styles.basicFieldValue}>
+                    {deviceInfo.SerialNumber ?? selectedDevice?.serialNumber ?? '—'}
+                  </span>
                 </Field>
                 <Field label="MAC Address" size="small" className={styles.horizontalField}>
                   <span className={styles.basicFieldValue}>
