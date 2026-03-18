@@ -1433,14 +1433,9 @@ export const SettingsPage: React.FC = () => {
                   />
                 </Field>
                 <Field label="MAC Address" size="small" className={styles.horizontalField}>
-                  <Input
-                    size="small"
-                    value={networkSettings.MAC_Address ?? ''}
-                    onChange={(_, data) =>
-                      setNetworkSettings({ ...networkSettings, MAC_Address: data.value })
-                    }
-                    placeholder="00:11:22:33:44:55"
-                  />
+                  <span className={styles.basicFieldValue}>
+                    {networkSettings.MAC_Address || '—'}
+                  </span>
                 </Field>
                 <Field label="MSTP Network" size="small" className={styles.horizontalField}>
                   <Input
