@@ -71,7 +71,7 @@ pub struct CreateDeviceRequest {
     pub modbus_port: Option<u16>,                  // T3000: Modbus_Port (u16 type)
     #[serde(rename = "BACnet_IP_Port", alias = "bacnetIpPort")]
     pub bacnet_ip_port: Option<u16>,               // T3000: BACnet_IP_Port (u16 type)
-    #[serde(rename = "Show_Label_Name", alias = "showLabelName")]
+    #[serde(rename = "Show_Label_Name", alias = "showLabelName", alias = "show_label_name")]
     pub show_label_name: Option<String>,           // T3000: Show_Label_Name (String type)
     #[serde(rename = "Connection_Type", alias = "connectionType", alias = "protocol")]
     pub connection_type: Option<String>,           // T3000: Connection_Type (String type)
