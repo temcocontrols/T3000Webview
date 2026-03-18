@@ -489,7 +489,13 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           // merging the updates into the existing local device so selectedDevice is never broken.
           const safeDevice: DeviceInfo = updatedDevice?.serialNumber
             ? updatedDevice
-            : { ...(get().devices.find(d => d.serialNumber === serialNumber)!), ...updates };
+            : (() => {
+                const merged = { ...(get().devices.find(d => d.serialNumber === serialNumber)!), ...updates };
+                return {
+                  ...merged,
+                  nameShowOnTree: (updates as any).showLabelName || merged.showLabelName || merged.productName || `Device ${serialNumber}`,
+                };
+              })();
           set((state) => ({
             devices: state.devices.map((d) =>
               d.serialNumber === serialNumber ? safeDevice : d
