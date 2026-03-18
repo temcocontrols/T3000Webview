@@ -1003,6 +1003,10 @@ class WebSocketClient {
 
     setTimeout(() => {
       IdxUtils.refreshMoveableGuides();
+      // Reposition the panzoom viewport to show the loaded graphic items.
+      // Items often have negative X coordinates and are only visible when panzoom
+      // applies the saved viewportTransform.  Without this call the canvas appears blank.
+      this.idxPage?.resetPanzoom();
     }, 100);
 
     this.clearInitialDataInterval();
