@@ -304,7 +304,13 @@ export const AdvancedSettingsDialog: React.FC<AdvancedSettingsDialogProps> = ({
                   onChange={(_, data) => setVariableCount(data.value)}
                   disabled={!supportsQuantityAdjust}
                 />
-                <div style={{ width: '24px' }} />
+                <Button
+                  size="small"
+                  appearance="secondary"
+                  disabled
+                >
+                  OK
+                </Button>
               </div>
             </div>
 

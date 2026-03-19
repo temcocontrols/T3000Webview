@@ -1333,10 +1333,7 @@ export const SettingsPage: React.FC = () => {
       };
 
       // Send to device
-      const result = await SettingsUpdateApi.updateDeviceSettings(
-        selectedDevice.serialNumber,
-        updatedSettings
-      );
+      const result = await SettingsUpdateApi.updateDeviceSettings(updatedSettings);
 
       if (!result.success) {
         throw new Error(result.message || 'Failed to update advanced settings');
