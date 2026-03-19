@@ -509,6 +509,9 @@ export const SettingsPage: React.FC = () => {
   const [featureFlags, setFeatureFlags] = useState<FeatureFlags>({
     LCD_Display: 0, // Default to LCD Always Off
   });
+  // Separate state for the delay seconds value — preserved even when switching modes
+  // (matches C++ behavior: delay field retains value when switching to Always On/Off)
+  const [lcdDelaySeconds, setLcdDelaySeconds] = useState<number>(0);
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo>({});
 
   // Auto-select first device if none is selected
@@ -711,6 +714,10 @@ export const SettingsPage: React.FC = () => {
         LCD_Point_Type: settings.lcd_point_type,
         LCD_Point_Number: settings.lcd_point_number,
       });
+      // Preserve delay seconds — restore from device if it was in delay mode
+      if (settings.LCD_Display > 0 && settings.LCD_Display < 255) {
+        setLcdDelaySeconds(settings.LCD_Display);
+      }
 
       setDeviceInfo({
         SerialNumber: settings.n_serial_number,
@@ -834,6 +841,9 @@ export const SettingsPage: React.FC = () => {
           LCD_Point_Type: settings.lcd_point_type,
           LCD_Point_Number: settings.lcd_point_number,
         });
+        if (settings.LCD_Display > 0 && settings.LCD_Display < 255) {
+          setLcdDelaySeconds(settings.LCD_Display);
+        }
 
         setDeviceInfo({
           SerialNumber: settings.n_serial_number,
@@ -1509,45 +1519,65 @@ export const SettingsPage: React.FC = () => {
             <div className={styles.lcdOptions}>
               <div className={styles.basicPanelTitle}>LCD Options</div>
               <div className={styles.lcdRadioGroup}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
-                  <input
-                    type="radio"
-                    name="lcdMode"
-                    checked={featureFlags.LCD_Display === 255}
-                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Display: 255 })}
-                  />
-                  LCD Always On
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
-                  <input
-                    type="radio"
-                    name="lcdMode"
-                    checked={featureFlags.LCD_Display === 0}
-                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Display: 0 })}
-                  />
-                  LCD Always Off
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
-                  <input
-                    type="radio"
-                    name="lcdMode"
-                    checked={featureFlags.LCD_Display !== undefined && featureFlags.LCD_Display > 0 && featureFlags.LCD_Display < 255}
-                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Display: 30 })}
-                  />
-                  LCD Delay off
-                  <Input
-                    type="number"
-                    size="small"
-                    value={featureFlags.LCD_Display !== undefined && featureFlags.LCD_Display > 0 && featureFlags.LCD_Display < 255 ? String(featureFlags.LCD_Display) : ''}
-                    onChange={(_, data) => {
-                      const v = Math.min(254, Math.max(1, Number(data.value) || 1));
-                      setFeatureFlags({ ...featureFlags, LCD_Display: v });
-                    }}
-                    disabled={featureFlags.LCD_Display === undefined || featureFlags.LCD_Display === 0 || featureFlags.LCD_Display === 255}
-                    style={{ width: '100px', marginLeft: '4px' }}
-                  />
-                  <span style={{ fontSize: '12px', color: '#605e5c' }}>(s)</span>
-                </label>
+                {(() => {
+                  // C++ uses LCD_Display=1 for "Always On" in firmware <5.19, 255 for newer firmware
+                  const fw = (hardwareInfo.Firmware0_Rev_Main ?? 0) * 10 + (hardwareInfo.Firmware0_Rev_Sub ?? 0);
+                  const isOldFw = fw > 0 && fw < 519;
+                  const lcdVal = featureFlags.LCD_Display ?? 0;
+                  const isAlwaysOn = lcdVal === 255 || (isOldFw && lcdVal === 1);
+                  const isAlwaysOff = lcdVal === 0;
+                  const isDelayOff = !isAlwaysOn && !isAlwaysOff;
+                  return (
+                    <>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                        <input
+                          type="radio"
+                          name="lcdMode"
+                          checked={isAlwaysOn}
+                          onChange={() => setFeatureFlags({ ...featureFlags, LCD_Display: isOldFw ? 1 : 255 })}
+                        />
+                        LCD Always On
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                        <input
+                          type="radio"
+                          name="lcdMode"
+                          checked={isAlwaysOff}
+                          onChange={() => setFeatureFlags({ ...featureFlags, LCD_Display: 0 })}
+                        />
+                        LCD Always Off
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                        <input
+                          type="radio"
+                          name="lcdMode"
+                          checked={isDelayOff}
+                          onChange={() => {
+                            const v = lcdDelaySeconds || 30;
+                            setLcdDelaySeconds(v);
+                            setFeatureFlags({ ...featureFlags, LCD_Display: v });
+                          }}
+                        />
+                        LCD Delay off
+                        <Input
+                          type="number"
+                          size="small"
+                          value={lcdDelaySeconds > 0 ? String(lcdDelaySeconds) : ''}
+                          onChange={(_, data) => {
+                            const v = Math.min(254, Math.max(1, Number(data.value) || 1));
+                            setLcdDelaySeconds(v);
+                            if (isDelayOff) {
+                              setFeatureFlags({ ...featureFlags, LCD_Display: v });
+                            }
+                          }}
+                          disabled={!isDelayOff}
+                          style={{ width: '100px', marginLeft: '4px' }}
+                        />
+                        <span style={{ fontSize: '12px', color: '#605e5c' }}>(s)</span>
+                      </label>
+                    </>
+                  );
+                })()}
                 <div className={styles.lcdButtons}>
                   <Button size="small" appearance="secondary" disabled>Parameter</Button>
                   <Button

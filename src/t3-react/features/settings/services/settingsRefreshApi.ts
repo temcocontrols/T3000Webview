@@ -402,10 +402,11 @@ export class SettingsRefreshApi {
     LogUtil.Info(`  [170]   = Modbus RTU ID (1 byte)`);
     LogUtil.Info(`  [177-180] = Object Instance (4 bytes little-endian)`);
     LogUtil.Info(`  [198-201] = Serial Number (4 bytes little-endian)`);
-    LogUtil.Info(`  [212]   = LCD Display Mode (1 byte)`);
-    LogUtil.Info(`  [223-224] = BIP Network Number (2 bytes little-endian)`);
+    LogUtil.Info(`  [207-236] = SNTP Server (30 bytes string)`);
+    LogUtil.Info(`  [237]   = Zigbee Exist (1 byte)`);
+    LogUtil.Info(`  [238]   = LCD Display Mode (1 byte: 0=Always Off, 1-254=Delay secs, 255=Always On)`);
+    LogUtil.Info(`  [242]   = MSTP ID (1 byte)`);
     LogUtil.Info(`  [245]   = Max Master (1 byte)`);
-    LogUtil.Info(`  [246]   = MSTP ID (1 byte)`);
     LogUtil.Info(`────────────────────────────────────────────────────`);
 
     const parsed = {
@@ -536,7 +537,7 @@ export class SettingsRefreshApi {
     LogUtil.Info(`Module: ${getMiniTypeName(parsed.mini_type)} (raw=${parsed.mini_type}, MCU=${((parsed.mini_type & 0xC0) >>> 0).toString(16).toUpperCase()})`);
     LogUtil.Info(`IDs: Object Instance=${parsed.object_instance}, Serial=${parsed.n_serial_number}`);
     LogUtil.Info(`Protocol: Modbus=${parsed.modbus_id}, MSTP=${parsed.mstp_id}, MSTP Net=${parsed.mstp_network_number}, BIP Net=${parsed.network_number}, Max Master=${parsed.max_master}`);
-    LogUtil.Info(`LCD: mode=${parsed.LCD_Display} (0=Off, 1=On, 2+=Delay)`);
+    LogUtil.Info(`LCD: mode=${parsed.LCD_Display} (0=Always Off, 1-254=Delay secs, 255=Always On; old fw<5.19: 1=Always On)`);
     LogUtil.Info('================================');
 
     LogUtil.Debug('[SettingsRefreshApi] Parsed settings:', {
