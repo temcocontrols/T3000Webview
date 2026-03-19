@@ -1552,7 +1552,7 @@ export const SettingsPage: React.FC = () => {
                   <span style={{ fontSize: '12px', color: '#605e5c' }}>(s)</span>
                 </label>
                 <div className={styles.lcdButtons}>
-                  <Button size="small" appearance="secondary">Parameter</Button>
+                  <Button size="small" appearance="secondary" disabled>Parameter</Button>
                   <Button
                     size="small"
                     appearance="secondary"
