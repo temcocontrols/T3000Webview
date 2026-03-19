@@ -19,6 +19,11 @@
       "@store/*": ["src/t3-react/store/*"],
       "@theme/*": ["src/t3-react/theme/*"],
 
+      // Multi-platform architecture
+      "@t3-shared/*": ["src/shared/*"],
+      "@t3-tablet/*": ["src/t3-tablet/*"],
+      "@t3-mobile/*": ["src/t3-mobile/*"],
+
       // Existing aliases for backward compatibility
       "src/*": ["src/*"],
       "app/*": ["*"],
