@@ -28,33 +28,43 @@ import { Info16Regular } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
   dialogSurface: {
-    maxWidth: '550px',
-    marginTop: '5vh',
+    maxWidth: '500px',
+    padding: '12px 16px 12px 16px',
+    marginTop: '40px',
     alignSelf: 'flex-start',
   },
   dialogBody: {
-    padding: '8px 12px 12px 12px',
+    padding: '0',
+    gap: '0',
+  },
+  dialogTitle: {
+    padding: '0 0 8px 0',
+    fontSize: '16px',
+  },
+  dialogContent: {
+    padding: '0',
+    overflowY: 'visible',
   },
   section: {
-    marginBottom: '8px',
+    marginBottom: '6px',
   },
   checkboxRow: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    marginBottom: '8px',
+    marginBottom: '6px',
   },
   autoSaveRow: {
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
-    marginBottom: '8px',
+    marginBottom: '6px',
   },
   groupBox: {
     border: `1px solid ${tokens.colorNeutralStroke1}`,
     borderRadius: '4px',
-    padding: '8px 12px',
-    marginTop: '8px',
+    padding: '6px 10px',
+    marginTop: '4px',
   },
   groupTitle: {
     fontSize: '13px',
@@ -109,7 +119,7 @@ interface AdvancedSettingsDialogProps {
     maxOutput: number;
     maxVariable: number;
   }) => void;
-  panelType: number; // panel_type
+  miniType: number; // mini_type byte[19]: 5-8=ARM MiniPanel, >=16=ESP32
   firmwareVersion: number; // firmware0_rev_main * 10 + firmware0_rev_sub
 }
 
@@ -122,46 +132,47 @@ export const AdvancedSettingsDialog: React.FC<AdvancedSettingsDialogProps> = ({
   maxOutput,
   maxVariable,
   onSave,
-  panelType,
+  miniType,
   firmwareVersion,
 }) => {
   const styles = useStyles();
 
   const [fixRS485, setFixRS485] = useState(fixComConfig);
   const [autoSaveMinutes, setAutoSaveMinutes] = useState(String(writeFlashMinutes));
-  const [inputCount, setInputCount] = useState(String(maxInput));
-  const [outputCount, setOutputCount] = useState(String(maxOutput));
-  const [variableCount, setVariableCount] = useState(String(maxVariable));
+  const [inputCount, setInputCount] = useState('');
+  const [outputCount, setOutputCount] = useState('');
+  const [variableCount, setVariableCount] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  // PM_ESP32_T3_SERIES = 212, PM_MINIPANEL_ARM = 177
-  const isESP32 = panelType === 212;
-  const isMiniPanelARM = panelType === 177;
+  // mini_type >= 16 → ESP32-based devices (T3_ESP_TRANSDUCER=16, T3_ESP_TSTAT9=17, T3_ESP_SAUTER=18,
+  // T3_ESP_RMC=19, T3_ESP_LW=21, T3_NG2_TYPE2=22, etc.)
+  // mini_type 5-8 → MINIPANELARM series (ARM-based MiniPanel)
+  const isESP32 = miniType >= 16;
 
-  // Feature availability based on firmware version
-  const supportsAutoSave = (isESP32 && firmwareVersion >= 655) || (isMiniPanelARM && firmwareVersion >= 670);
+  // Adjust quantity is ESP32-only, firmware >= 6.64
   const supportsQuantityAdjust = isESP32 && firmwareVersion >= 664;
 
   useEffect(() => {
     setFixRS485(fixComConfig);
     setAutoSaveMinutes(String(writeFlashMinutes));
-    setInputCount(String(maxInput));
-    setOutputCount(String(maxOutput));
-    setVariableCount(String(maxVariable));
+    // Only populate quantity fields for ESP32 devices; leave blank for others (matching C++ behavior)
+    setInputCount(supportsQuantityAdjust ? String(maxInput) : '');
+    setOutputCount(supportsQuantityAdjust ? String(maxOutput) : '');
+    setVariableCount(supportsQuantityAdjust ? String(maxVariable) : '');
     setValidationError(null);
-  }, [fixComConfig, writeFlashMinutes, maxInput, maxOutput, maxVariable, isOpen]);
+  }, [fixComConfig, writeFlashMinutes, maxInput, maxOutput, maxVariable, isOpen, supportsQuantityAdjust]);
 
   const validateAndSave = () => {
     setValidationError(null);
 
-    // Validate auto-save minutes
-    const minutes = parseInt(autoSaveMinutes, 10);
-    if (supportsAutoSave && minutes !== 0 && minutes < 5) {
+    // Validate auto-save minutes (0 = disabled, otherwise min 5 minutes)
+    const minutes = parseInt(autoSaveMinutes, 10) || 0;
+    if (minutes !== 0 && minutes < 5) {
       setValidationError('The value of save parameter must be greater than 5!');
       return;
     }
 
-    // Validate quantity adjustments
+    // Validate quantity adjustments (ESP32 only)
     if (supportsQuantityAdjust) {
       const inCount = parseInt(inputCount, 10);
       const outCount = parseInt(outputCount, 10);
@@ -208,15 +219,14 @@ export const AdvancedSettingsDialog: React.FC<AdvancedSettingsDialogProps> = ({
     <Dialog open={isOpen} onOpenChange={(_, data) => onOpenChange(data.open)}>
       <DialogSurface className={styles.dialogSurface}>
         <DialogBody className={styles.dialogBody}>
-          <DialogTitle>Advanced Settings</DialogTitle>
-          <DialogContent>
+          <DialogTitle className={styles.dialogTitle}>Advanced Settings</DialogTitle>
+          <DialogContent className={styles.dialogContent}>
             {/* Fix RS485 Settings */}
             <div className={styles.checkboxRow}>
               <Checkbox
                 checked={fixRS485}
                 onChange={(_, data) => setFixRS485(data.checked === true)}
                 label="Fix RS485 Main and Sub Settings"
-                disabled={!supportsAutoSave}
               />
               <Tooltip
                 content="After enabling this item, the Setting-Communication-Device Serial Port Config will be fixed."
@@ -241,7 +251,6 @@ export const AdvancedSettingsDialog: React.FC<AdvancedSettingsDialogProps> = ({
                 size="small"
                 value={autoSaveMinutes}
                 onChange={(_, data) => setAutoSaveMinutes(data.value)}
-                disabled={!supportsAutoSave}
                 style={{ width: '70px', flexShrink: 0 }}
               />
               <span className={styles.label} style={{ whiteSpace: 'nowrap' }}>minutes</span>
@@ -301,18 +310,12 @@ export const AdvancedSettingsDialog: React.FC<AdvancedSettingsDialogProps> = ({
 
             {/* Validation error */}
             {validationError && (
-              <div className={styles.warningText} style={{ marginTop: '16px' }}>
+              <div className={styles.warningText} style={{ marginTop: '8px' }}>
                 ⚠ {validationError}
               </div>
             )}
-
-            {!supportsAutoSave && !supportsQuantityAdjust && (
-              <div className={styles.warningText}>
-                ⚠ Advanced settings require ESP32 (firmware ≥ 6.55) or MiniPanel ARM (firmware ≥ 6.70)
-              </div>
-            )}
           </DialogContent>
-          <DialogActions className={styles.dialogActions}>
+          <DialogActions className={styles.dialogActions} style={{ paddingTop: '10px' }}>
             <Button appearance="secondary" size="small" onClick={handleApply}>
               Apply
             </Button>

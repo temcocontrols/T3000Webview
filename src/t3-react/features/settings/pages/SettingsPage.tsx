@@ -1570,11 +1570,11 @@ export const SettingsPage: React.FC = () => {
               onOpenChange={setShowAdvancedSettingsDialog}
               fixComConfig={settings?.fix_com_config === 1}
               writeFlashMinutes={settings?.write_flash ?? 0}
-              maxInput={settings?.max_in ?? 64}
-              maxOutput={settings?.max_out ?? 64}
-              maxVariable={settings?.max_var ?? 128}
+              maxInput={settings?.max_in || 64}
+              maxOutput={settings?.max_out || 64}
+              maxVariable={settings?.max_var || 128}
               onSave={handleAdvancedSettingsSave}
-              panelType={hardwareInfo.Panel_Type ?? 0}
+              miniType={hardwareInfo.Mini_Type ?? 0}
               firmwareVersion={
                 ((hardwareInfo.Firmware0_Rev_Main ?? 0) * 10) +
                 (hardwareInfo.Firmware0_Rev_Sub ?? 0)
