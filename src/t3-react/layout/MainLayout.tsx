@@ -19,6 +19,9 @@ import { StatusBar } from './StatusBar';
 import { GlobalMessageBar } from '../shared/components/GlobalMessageBar';
 import { useUIStore } from '../store/uiStore';
 import { useStatusBarStore } from '../store/statusBarStore';
+import { useResponsive } from '@t3-shared/core/hooks/useResponsive';
+import { TabletLayout } from '@t3-tablet/layout/TabletLayout';
+import { MobileShell } from '@t3-mobile/layout/MobileShell';
 
 const useStyles = makeStyles({
   container: {
@@ -108,7 +111,8 @@ const useStyles = makeStyles({
   },
 });
 
-export const MainLayout: React.FC = () => {
+/** Desktop-only layout — full shell with resizable left panel, menu bar, and status bar. */
+const DesktopLayout: React.FC = () => {
   const styles = useStyles();
 
   const isLeftPanelVisible = useUIStore((state) => state.isLeftPanelVisible);
@@ -254,4 +258,20 @@ export const MainLayout: React.FC = () => {
       </div>
     </div>
   );
+};
+
+/**
+ * MainLayout — platform dispatcher.
+ * Delegates to the appropriate shell based on screen size:
+ *   > 1024px  → DesktopLayout (full shell with resizable tree panel)
+ *   768–1024px → TabletLayout  (overlay drawer + compact header)
+ *   < 768px   → MobileShell   (bottom nav + full-screen drawer)
+ *
+ * Each shell independently manages its own hooks — no Rules-of-Hooks violation.
+ */
+export const MainLayout: React.FC = () => {
+  const { isMobile, isTablet } = useResponsive();
+  if (isTablet) return <TabletLayout />;
+  if (isMobile) return <MobileShell />;
+  return <DesktopLayout />;
 };

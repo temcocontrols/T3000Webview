@@ -194,12 +194,27 @@
 /* Responsive adjustments */
 @media (max-width: 1200px) {
   .monitoringGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .dataPlanningGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
+  .monitoringGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .dataPlanningGrid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 768px) {
   .monitoringGrid {
+    grid-template-columns: 1fr;
+  }
+  .dataPlanningGrid {
     grid-template-columns: 1fr;
   }
 

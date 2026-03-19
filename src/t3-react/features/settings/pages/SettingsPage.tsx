@@ -215,6 +215,9 @@ const useStyles = makeStyles({
     gridTemplateColumns: '1fr 1fr',
     gap: '16px',
     fontSize: '12px',
+    '@media (max-width: 1024px)': {
+      gridTemplateColumns: '1fr',
+    },
     '& label': {
       fontSize: '12px',
     },

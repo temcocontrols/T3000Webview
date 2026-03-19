@@ -38,6 +38,33 @@ const InputsPageResponsive = lazy(() =>
   }))
 );
 
+const OutputsPageResponsive = lazy(() =>
+  Promise.all([
+    import('../pages').then(m => m.OutputsPage),
+    import('../../../t3-mobile/features/outputs/pages/OutputsPageMobile').then(m => m.OutputsPageMobile),
+  ]).then(([OutputsPage, OutputsPageMobile]) => ({
+    default: createResponsiveRoute(OutputsPage, OutputsPageMobile)
+  }))
+);
+
+const VariablesPageResponsive = lazy(() =>
+  Promise.all([
+    import('../pages').then(m => m.VariablesPage),
+    import('../../../t3-mobile/features/variables/pages/VariablesPageMobile').then(m => m.VariablesPageMobile),
+  ]).then(([VariablesPage, VariablesPageMobile]) => ({
+    default: createResponsiveRoute(VariablesPage, VariablesPageMobile)
+  }))
+);
+
+const AlarmsPageResponsive = lazy(() =>
+  Promise.all([
+    import('../pages').then(m => m.AlarmsPage),
+    import('../../../t3-mobile/features/alarms/pages/AlarmsPageMobile').then(m => m.AlarmsPageMobile),
+  ]).then(([AlarmsPage, AlarmsPageMobile]) => ({
+    default: createResponsiveRoute(AlarmsPage, AlarmsPageMobile)
+  }))
+);
+
 // Develop section pages
 const FileBrowserPage = lazy(() => import('../../features/develop/pages/FileBrowserPage'));
 const DatabaseViewerPage = lazy(() => import('../../features/develop/pages/DatabaseViewerPage'));
@@ -81,7 +108,7 @@ export const t3000Routes: T3000Route[] = [
   },
   {
     path: '/t3000/outputs',
-    element: OutputsPage,
+    element: OutputsPageResponsive,
     title: 'Outputs',
     windowId: 2, // WINDOW_OUTPUT
     shortcut: 'Alt+O',
@@ -89,7 +116,7 @@ export const t3000Routes: T3000Route[] = [
   },
   {
     path: '/t3000/variables',
-    element: VariablesPage,
+    element: VariablesPageResponsive,
     title: 'Variables',
     windowId: 3, // WINDOW_VARIABLE
     shortcut: 'Alt+V',
@@ -151,7 +178,7 @@ export const t3000Routes: T3000Route[] = [
   },
   {
     path: '/t3000/alarms',
-    element: AlarmsPage,
+    element: AlarmsPageResponsive,
     title: 'Alarms',
     windowId: 10, // WINDOW_ALARMLOG
     shortcut: 'Alt+A',

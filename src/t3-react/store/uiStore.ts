@@ -37,6 +37,9 @@ export interface UiState {
   isFullscreen: boolean;
   theme: 'light' | 'dark';
 
+  // Mobile / tablet nav drawer
+  isDrawerOpen: boolean;
+
   // Global message
   globalMessage: GlobalMessage | null;
 
@@ -63,6 +66,11 @@ export interface UiState {
   // Layout
   toggleFullscreen: () => void;
   setTheme: (theme: 'light' | 'dark') => void;
+
+  // Mobile / tablet nav drawer
+  openDrawer: () => void;
+  closeDrawer: () => void;
+  toggleDrawer: () => void;
 
   // Global message
   setGlobalMessage: (message: GlobalMessage | null) => void;
@@ -107,6 +115,7 @@ const initialState: Omit<UiState, keyof {
   dialogStack: [],
   isFullscreen: false,
   theme: 'light',
+  isDrawerOpen: false,
   globalMessage: null,
 };
 
@@ -236,6 +245,11 @@ export const useUIStore = create<UiState>()(
         setTheme: (theme: 'light' | 'dark') => {
           set({ theme });
         },
+
+        // Mobile / tablet nav drawer
+        openDrawer: () => set({ isDrawerOpen: true }),
+        closeDrawer: () => set({ isDrawerOpen: false }),
+        toggleDrawer: () => set((state: UiState) => ({ isDrawerOpen: !state.isDrawerOpen })),
 
         // Global message
         setGlobalMessage: (message: GlobalMessage | null) => {
