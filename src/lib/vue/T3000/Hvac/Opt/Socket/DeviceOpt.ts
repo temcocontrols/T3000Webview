@@ -426,6 +426,17 @@ class DeviceOpt {
     LogUtil.Debug('= Dvopt: refreshDeviceAppState / existAppState', existAppState);
 
     if (existAppState) {
+      // Repair any duplicate item IDs that may have arrived from a device that
+      // stored state serialised with a corrupted itemsCount counter.
+      if (Array.isArray(existAppState.items)) {
+        const seenIds = new Set<number>();
+        let maxId: number = existAppState.items.reduce((m: number, i: any) => Math.max(m, i.id ?? 0), 0);
+        for (const item of existAppState.items) {
+          if (seenIds.has(item.id)) { item.id = ++maxId; }
+          else { seenIds.add(item.id); }
+        }
+        if (maxId > (existAppState.itemsCount ?? 0)) existAppState.itemsCount = maxId;
+      }
       // appState.value = cloneDeep(existAppState);
       appState.value = existAppState;
     }
@@ -589,7 +600,7 @@ class DeviceOpt {
     LogUtil.Debug('= Dvopt: isCurrentDeviceMessage / msgData', msgData);
     LogUtil.Debug('= Dvopt: isCurrentDeviceMessage / panelId,viewitem,serialNumber', panelId, viewitem, serialNumber);
 
-    if (!panelId || !viewitem || !serialNumber) {
+    if (panelId === -1 || viewitem === -1 || serialNumber === -1) {
       LogUtil.Error('= Dvopt: isCurrentDeviceMessage / Invalid message data');
       return false;
     }

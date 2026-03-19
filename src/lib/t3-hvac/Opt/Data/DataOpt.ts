@@ -398,9 +398,9 @@ class DataOpt {
   static PrepareSaveData() {
     const data = cloneDeep(toRaw(appStateV2.value));
 
-    // Recalculate the items count
-    data.itemsCount = data.items.filter(item => item.width !== 0).length;
-
+    // Do NOT overwrite itemsCount — it is the ID sequence counter (highest ID
+    // ever assigned), not a physical element count.  Clobbering it with the
+    // current item count would cause duplicate IDs the next time addObject runs.
     data.selectedTargets = [];
     data.elementGuidelines = [];
     data.rulersGridVisible = rulersGridVisible.value;
@@ -481,9 +481,47 @@ class DataOpt {
     this.SaveData(this.APP_STATE_V2, stateV2);
   }
 
+  /**
+   * Repair duplicate item IDs in a loaded app state.
+   *
+   * If a state was saved while the itemsCount counter was out of sync
+   * (e.g. because removeItem() reset it to items.length), some items
+   * may share the same id.  This function scans the items array once,
+   * keeps the first occurrence of each id, and re-assigns a fresh
+   * unique id (> current max) to every duplicate it finds.  The
+   * itemsCount is also corrected to the new maximum so future adds
+   * will never collide again.
+   */
+  static repairDuplicateIds(state: any): void {
+    if (!state || !Array.isArray(state.items) || state.items.length === 0) return;
+
+    const seenIds = new Set<number>();
+    let maxId: number = state.items.reduce((m: number, i: any) => Math.max(m, i.id ?? 0), 0);
+
+    let fixed = 0;
+    for (const item of state.items) {
+      if (seenIds.has(item.id)) {
+        maxId++;
+        item.id = maxId;
+        fixed++;
+      } else {
+        seenIds.add(item.id);
+      }
+    }
+
+    if (maxId > (state.itemsCount ?? 0)) {
+      state.itemsCount = maxId;
+    }
+
+    if (fixed > 0) {
+      console.warn(`[DataOpt] repairDuplicateIds: fixed ${fixed} duplicate item id(s). New itemsCount=${state.itemsCount}`);
+    }
+  }
+
   static LoadAppStateV2(): void {
     const stateV2 = this.LoadData(this.APP_STATE_V2);
     if (stateV2) {
+      this.repairDuplicateIds(stateV2);
       appStateV2.value = stateV2;
     }
   }

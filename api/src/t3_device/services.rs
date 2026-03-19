@@ -71,7 +71,7 @@ pub struct CreateDeviceRequest {
     pub modbus_port: Option<u16>,                  // T3000: Modbus_Port (u16 type)
     #[serde(rename = "BACnet_IP_Port", alias = "bacnetIpPort")]
     pub bacnet_ip_port: Option<u16>,               // T3000: BACnet_IP_Port (u16 type)
-    #[serde(rename = "Show_Label_Name", alias = "showLabelName")]
+    #[serde(rename = "Show_Label_Name", alias = "showLabelName", alias = "show_label_name")]
     pub show_label_name: Option<String>,           // T3000: Show_Label_Name (String type)
     #[serde(rename = "Connection_Type", alias = "connectionType", alias = "protocol")]
     pub connection_type: Option<String>,           // T3000: Connection_Type (String type)
@@ -121,7 +121,7 @@ pub struct UpdateDeviceRequest {
     pub modbus_port: Option<u16>,                  // T3000: Modbus_Port (u16 type)
     #[serde(rename = "BACnet_IP_Port")]
     pub bacnet_ip_port: Option<u16>,               // T3000: BACnet_IP_Port (u16 type)
-    #[serde(rename = "Show_Label_Name")]
+    #[serde(rename = "Show_Label_Name", alias = "showLabelName")]
     pub show_label_name: Option<String>,           // T3000: Show_Label_Name (String type)
     #[serde(rename = "Connection_Type")]
     pub connection_type: Option<String>,           // T3000: Connection_Type (String type)
@@ -228,6 +228,9 @@ impl T3DeviceService {
 
         if let Some(existing) = existing_device {
             // Device exists - update it
+            // Capture show_label_name before moving existing into ActiveModel
+            // so we can decide whether to overwrite it below.
+            let existing_show_label = existing.show_label_name.clone();
             let mut device: devices::ActiveModel = existing.into();
 
             if device_data.panel_id.is_some() {
@@ -293,7 +296,14 @@ impl T3DeviceService {
             if device_data.bacnet_ip_port.is_some() {
                 device.bacnet_ip_port = Set(device_data.bacnet_ip_port);
             }
-            if device_data.show_label_name.is_some() {
+            // Only set show_label_name if the device has no existing name saved.
+            // The user-set name (written by PUT /devices/:id) must never be
+            // overwritten by the C++ scan UPSERT which calls this create path.
+            let has_existing_label = existing_show_label
+                .as_deref()
+                .map(|s| !s.trim().is_empty())
+                .unwrap_or(false);
+            if device_data.show_label_name.is_some() && !has_existing_label {
                 device.show_label_name = Set(device_data.show_label_name);
             }
             if device_data.connection_type.is_some() {

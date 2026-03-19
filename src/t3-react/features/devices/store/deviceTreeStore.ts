@@ -203,8 +203,13 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           console.log(`[fetchDevices] Current selectedDevice:`, selectedDevice?.nameShowOnTree || 'none');
 
           if (!selectedDevice && devices.length > 0) {
-            // Sort devices alphabetically to match tree order
-            const sortedDevices = [...devices].sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
+            // Sort devices alphabetically, pushing (Unknown) devices to the bottom
+            const sortedDevices = [...devices].sort((a, b) => {
+              const aUnknown = a.nameShowOnTree === '(Unknown)' || a.nameShowOnTree === 'Unknown';
+              const bUnknown = b.nameShowOnTree === '(Unknown)' || b.nameShowOnTree === 'Unknown';
+              if (aUnknown !== bUnknown) return aUnknown ? 1 : -1;
+              return a.nameShowOnTree.localeCompare(b.nameShowOnTree);
+            });
             const firstDevice = sortedDevices[0];
             console.log(`[fetchDevices] Auto-selecting first device (alphabetically): ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
             selectDevice(firstDevice);
@@ -354,8 +359,13 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             console.log(`[loadDevicesWithSync] Devices after reload:`, updatedDevices.map((d, idx) => `[${idx}] ${d.nameShowOnTree} (SN: ${d.serialNumber})`));
 
             if (updatedDevices.length > 0) {
-              // Sort devices alphabetically to match tree order
-              const sortedDevices = [...updatedDevices].sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
+              // Sort devices alphabetically, pushing (Unknown) devices to the bottom
+              const sortedDevices = [...updatedDevices].sort((a, b) => {
+                const aUnknown = a.nameShowOnTree === '(Unknown)' || a.nameShowOnTree === 'Unknown';
+                const bUnknown = b.nameShowOnTree === '(Unknown)' || b.nameShowOnTree === 'Unknown';
+                if (aUnknown !== bUnknown) return aUnknown ? 1 : -1;
+                return a.nameShowOnTree.localeCompare(b.nameShowOnTree);
+              });
               const firstDevice = sortedDevices[0];
               console.log(`[loadDevicesWithSync] Selecting first device (alphabetically): ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
               selectDevice(firstDevice);
@@ -475,10 +485,26 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         set({ error: null });
         try {
           const updatedDevice = await DeviceApiService.updateDevice(serialNumber, updates);
+          // Guard: if the API returned a malformed object (no serialNumber), fall back to
+          // merging the updates into the existing local device so selectedDevice is never broken.
+          const safeDevice: DeviceInfo = updatedDevice?.serialNumber
+            ? updatedDevice
+            : (() => {
+                const merged = { ...(get().devices.find(d => d.serialNumber === serialNumber)!), ...updates };
+                return {
+                  ...merged,
+                  nameShowOnTree: (updates as any).showLabelName || merged.showLabelName || merged.productName || `Device ${serialNumber}`,
+                };
+              })();
           set((state) => ({
             devices: state.devices.map((d) =>
-              d.serialNumber === serialNumber ? updatedDevice : d
+              d.serialNumber === serialNumber ? safeDevice : d
             ),
+            // Also update selectedDevice so the UI header reflects the new name immediately
+            selectedDevice:
+              state.selectedDevice?.serialNumber === serialNumber
+                ? safeDevice
+                : state.selectedDevice,
           }));
           get().buildTreeStructure();
         } catch (error) {
@@ -579,8 +605,13 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           );
         }
 
-        // Sort devices by name (alphabetically) for consistent order in tree
-        filteredDevices.sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
+        // Sort devices by name (alphabetically), pushing (Unknown) devices to the bottom
+        filteredDevices.sort((a, b) => {
+          const aUnknown = a.nameShowOnTree === '(Unknown)' || a.nameShowOnTree === 'Unknown';
+          const bUnknown = b.nameShowOnTree === '(Unknown)' || b.nameShowOnTree === 'Unknown';
+          if (aUnknown !== bUnknown) return aUnknown ? 1 : -1;
+          return a.nameShowOnTree.localeCompare(b.nameShowOnTree);
+        });
 
         // Use treeBuilder utility to construct tree
         const treeNodes = buildTreeFromDevices(filteredDevices, expandedNodes, deviceStatuses);

@@ -166,10 +166,7 @@
               </div>
               <!-- Viewport Area -->
               <div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick"
-                @mouseleave="resetCursor" @click.left="viewportLeftClick" @dragover="($event) => {
-                  $event.preventDefault();
-                }
-                ">
+                @mouseleave="resetCursor" @click.left="viewportLeftClick" @dragover="onViewportDragOver" @drop.prevent="onViewportDrop">
                 <!-- Cursor Icon -->
                 <q-icon class="cursor-icon" v-if="!locked && selectedTool.name !== 'Pointer'" :name="selectedTool.icon
                   ? selectedTool.icon
@@ -863,6 +860,7 @@ const objectsRef = ref(null); // Reference to objects
 
 // Lifecycle hook for component mount
 onMounted(() => {
+  console.log('[PanelLoad] *** IndexPage.vue (/) onMounted ***');
   Hvac.IdxPage.initQuasar($q);
   Hvac.IdxPage.initPage();
 });
@@ -1304,6 +1302,14 @@ function addObject(item, group = undefined, addToHistory = true) {
   if (addToHistory) {
     addActionToHistory(`Add ${item?.type ?? ''}`);
   }
+  // Sync counter to the max existing ID so we never reuse an ID already
+  // present in a state restored from localStorage/T3000 saved data.
+  const maxExistingId = appState.value.items.length > 0
+    ? Math.max(...appState.value.items.map(i => i.id ?? 0))
+    : 0;
+  if (maxExistingId >= appState.value.itemsCount) {
+    appState.value.itemsCount = maxExistingId;
+  }
   appState.value.itemsCount++;
   item.id = appState.value.itemsCount;
   item.group = group;
@@ -1418,7 +1424,16 @@ function drawObject(size, pos, tool) {
     addLibItem(tool.items, size, pos);
     return;
   }
-  const scalPercentage = 1 / appState.value.viewportTransform.scale;
+  // Read scale from CSS transform on the panzoom div as ground truth;
+  // appState.viewportTransform may lag in some WebView2 builds.
+  let currentScale = appState.value.viewportTransform.scale;
+  if (viewport.value) {
+    try {
+      const m = new DOMMatrix(window.getComputedStyle(viewport.value).transform);
+      if (m.a && m.a > 0) currentScale = m.a;
+    } catch (_) { /* ignore */ }
+  }
+  const scalPercentage = 1 / (currentScale || 1);
 
   const toolSettings =
     cloneDeep(tools.find((t) => t.name === tool.name)?.settings) || {};
@@ -1431,15 +1446,14 @@ function drawObject(size, pos, tool) {
     size.width = 100;
   }
 
+  const vpRect = viewport.value?.getBoundingClientRect?.() ?? { left: viewportMargins.left, top: viewportMargins.top };
   const tempItem = {
     title: null,
     active: false,
     type: tool.name,
     translate: [
-      (pos.left - viewportMargins.left - appState.value.viewportTransform.x) *
-      scalPercentage,
-      (pos.top - viewportMargins.top - appState.value.viewportTransform.y) *
-      scalPercentage,
+      (pos.left - vpRect.left) * scalPercentage,
+      (pos.top - vpRect.top) * scalPercentage,
     ],
     width: size.width * scalPercentage,
     height: size.height * scalPercentage,
@@ -1643,24 +1657,58 @@ function linkT3EntrySave() {
 
 // Filter function for selecting panels in the UI
 function selectPanelFilterFn(val, update) {
-  if (val === "") {
-    update(() => {
-      selectPanelOptions.value = T3000_Data.value.panelsData;
-
-      // here you have access to "ref" which
-      // is the Vue reference of the QSelect
-    });
-    return;
-  }
-
   update(() => {
-    const keyword = val.toUpperCase();
-    selectPanelOptions.value = T3000_Data.value.panelsData.filter(
-      (item) =>
-        item.command.toUpperCase().indexOf(keyword) > -1 ||
-        item.description?.toUpperCase().indexOf(keyword) > -1 ||
-        item.label?.toUpperCase().indexOf(keyword) > -1
-    );
+    const allData = T3000_Data.value.panelsData;
+    const defaultPid = Hvac.DeviceOpt.getCurrentDevice()?.deviceId ?? grpNav.value[0]?.pid ?? null;
+
+    if (!val) {
+      // Empty input: show default panel's entries first, then others
+      if (defaultPid !== null) {
+        selectPanelOptions.value = [
+          ...allData.filter(i => i.pid === defaultPid),
+          ...allData.filter(i => i.pid !== defaultPid),
+        ];
+      } else {
+        selectPanelOptions.value = allData;
+      }
+      return;
+    }
+
+    // Detect panel-number prefix: "88VAR", "88 VAR", "88-VAR", "88"
+    const panelPrefixMatch = val.match(/^(\d+)\s*[-\s]?\s*(.*)/);
+    let pidFilter = null;
+    let keyword = val;
+
+    if (panelPrefixMatch) {
+      const potentialPid = parseInt(panelPrefixMatch[1]);
+      if (allData.some(i => i.pid === potentialPid)) {
+        pidFilter = potentialPid;
+        keyword = panelPrefixMatch[2];
+      }
+    }
+
+    const kw = keyword.toUpperCase().trim();
+
+    if (pidFilter !== null) {
+      // Panel prefix given → only that panel's entries, filtered by keyword
+      let pool = allData.filter(i => i.pid === pidFilter);
+      if (kw) {
+        pool = pool.filter(i =>
+          i.command.toUpperCase().includes(kw) ||
+          i.description?.toUpperCase().includes(kw) ||
+          i.label?.toUpperCase().includes(kw)
+        );
+      }
+      selectPanelOptions.value = pool;
+    } else {
+      // No panel prefix → only default panel's matching entries
+      const basePool = defaultPid !== null ? allData.filter(i => i.pid === defaultPid) : allData;
+      selectPanelOptions.value = kw ? basePool.filter(i =>
+        i.command.toUpperCase().includes(kw) ||
+        i.description?.toUpperCase().includes(kw) ||
+        i.label?.toUpperCase().includes(kw)
+      ) : basePool;
+    }
   });
 }
 
@@ -2168,7 +2216,9 @@ function undoAction() {
     title: lastAction,
     state: cloneDeep(appState.value),
   });
-  appState.value = cloneDeep(undoHistory.value[0].state);
+  const undoState = cloneDeep(undoHistory.value[0].state);
+  DataOpt.repairDuplicateIds(undoState);
+  appState.value = undoState;
   undoHistory.value.shift();
   Hvac.IdxPage.refreshMoveable();
 
@@ -2183,7 +2233,9 @@ function redoAction() {
     title: lastAction,
     state: cloneDeep(appState.value),
   });
-  appState.value = cloneDeep(redoHistory.value[0].state);
+  const redoState = cloneDeep(redoHistory.value[0].state);
+  DataOpt.repairDuplicateIds(redoState);
+  appState.value = redoState;
   redoHistory.value.shift();
   Hvac.IdxPage.refreshMoveable();
 
@@ -2335,6 +2387,7 @@ function executeImportFromJson() {
         undoHistory.value = [];
         redoHistory.value = [];
         importJsonDialog.value.active = false;
+        DataOpt.repairDuplicateIds(importedState);
         appState.value = importedState;
         importJsonDialog.value.data = null;
         setTimeout(() => {
@@ -2353,6 +2406,7 @@ function executeImportFromJson() {
   undoHistory.value = [];
   redoHistory.value = [];
   importJsonDialog.value.active = false;
+  DataOpt.repairDuplicateIds(importedState);
   appState.value = importedState;
   importJsonDialog.value.data = null;
   setTimeout(() => {
@@ -2530,11 +2584,10 @@ function handleMenuAction(action, val) {
 function reloadPanelsData() {
   T3000_Data.value.loadingPanel = null;
 
-  /*
-  window.chrome?.webview?.postMessage({
-    action: 4, // GET_PANELS_LIST
-  });
-  */
+  console.log('[PanelLoad] IndexPage.vue reloadPanelsData | isBuiltInEdge:', isBuiltInEdge.value,
+    '| panelsList:', T3000_Data.value.panelsList.length,
+    '| panelsData:', T3000_Data.value.panelsData.length,
+    '| path:', isBuiltInEdge.value ? 'WebViewClient' : 'WebSocketClient');
 
   if (isBuiltInEdge.value) {
     Hvac.WebClient.GetPanelsList();
@@ -3279,18 +3332,49 @@ function toggleRulersGrid(val) {
   save(false, false);
 }
 
+// Tracks position from dragover events (dragend clientX/Y can be 0 in some Edge/WebView2 versions)
+let lastDragX = 0;
+let lastDragY = 0;
+// Exact drop position captured from the drop event on the canvas (most reliable in WebView2)
+let lastDropX = 0;
+let lastDropY = 0;
+
+function onViewportDragOver(ev) {
+  ev.preventDefault();
+  if (ev.clientX !== 0 || ev.clientY !== 0) {
+    lastDragX = ev.clientX;
+    lastDragY = ev.clientY;
+  }
+}
+
+// Capture the exact drop coordinates from the drop event (fires on the target with correct coords)
+function onViewportDrop(ev) {
+  if (ev.clientX !== 0 || ev.clientY !== 0) {
+    lastDropX = ev.clientX;
+    lastDropY = ev.clientY;
+  }
+}
+
 // Handles a tool being dropped
 function toolDropped(ev, tool) {
   const size = tool.name === "Int_Ext_Wall" ? { width: 200, height: 10 } : { width: 60, height: 60 };
+  // Priority: drop event coords (most reliable) > dragend.clientX/Y > last dragover coords
+  let x, y;
+  if (lastDropX !== 0 || lastDropY !== 0) {
+    x = lastDropX;
+    y = lastDropY;
+    lastDropX = 0;
+    lastDropY = 0;
+  } else if (ev.clientX !== 0 || ev.clientY !== 0) {
+    x = ev.clientX;
+    y = ev.clientY;
+  } else {
+    x = lastDragX;
+    y = lastDragY;
+  }
   drawObject(
-    //{ width: 60, height: 60 },
     size,
-    {
-      clientX: ev.clientX,
-      clientY: ev.clientY,
-      top: ev.clientY,
-      left: ev.clientX,
-    },
+    { clientX: x, clientY: y, top: y, left: x },
     tool
   );
 }

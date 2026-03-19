@@ -77,6 +77,7 @@ class IdxPage2 {
 
     const localState = Hvac.LsOpt.loadParsedAppStateLS();
     if (localState) {
+      DataOpt.repairDuplicateIds(localState);
       appStateV2.value = localState;
       // rulersGridVisible.value = appState.value.rulersGridVisible;
     }
@@ -352,9 +353,9 @@ class IdxPage2 {
   prepareSaveData() {
     const data = cloneDeep(toRaw(appStateV2.value));
 
-    // Recalculate the items count
-    data.itemsCount = data.items.filter(item => item.width !== 0).length;
-
+    // Do NOT overwrite itemsCount — it is the ID sequence counter (highest ID
+    // ever assigned), not a physical element count.  Clobbering it with the
+    // current item count would cause duplicate IDs the next time addObject runs.
     data.selectedTargets = [];
     data.elementGuidelines = [];
     data.rulersGridVisible = rulersGridVisible.value;
@@ -533,7 +534,9 @@ class IdxPage2 {
       title: lastAction,
       state: cloneDeep(appStateV2.value),
     });
-    appStateV2.value = cloneDeep(undoHistory.value[0].state);
+    const undoState = cloneDeep(undoHistory.value[0].state);
+    DataOpt.repairDuplicateIds(undoState);
+    appStateV2.value = undoState;
     undoHistory.value.shift();
     Hvac.IdxPage.refreshMoveable();
   }
@@ -544,7 +547,9 @@ class IdxPage2 {
       title: lastAction,
       state: cloneDeep(appStateV2.value),
     });
-    appStateV2.value = cloneDeep(redoHistory.value[0].state);
+    const redoState = cloneDeep(redoHistory.value[0].state);
+    DataOpt.repairDuplicateIds(redoState);
+    appStateV2.value = redoState;
     redoHistory.value.shift();
     Hvac.IdxPage.refreshMoveable();
   }
@@ -1242,6 +1247,7 @@ class IdxPage2 {
           undoHistory.value = [];
           redoHistory.value = [];
           importJsonDialog.value.active = false;
+          DataOpt.repairDuplicateIds(importedState);
           appStateV2.value = importedState;
           importJsonDialog.value.data = null;
           setTimeout(() => {
@@ -1257,6 +1263,7 @@ class IdxPage2 {
     undoHistory.value = [];
     redoHistory.value = [];
     importJsonDialog.value.active = false;
+    DataOpt.repairDuplicateIds(importedState);
     appStateV2.value = importedState;
     importJsonDialog.value.data = null;
     setTimeout(() => {
@@ -1338,15 +1345,14 @@ class IdxPage2 {
       size.width = 100;
     }
 
+    const vpRect = viewport.value?.getBoundingClientRect?.() ?? { left: viewportMargins.left, top: viewportMargins.top };
     const tempItem = {
       title: null,
       active: false,
       type: tool.name,
       translate: [
-        (pos.left - viewportMargins.left - appStateV2.value.viewportTransform.x) *
-        scalPercentage,
-        (pos.top - viewportMargins.top - appStateV2.value.viewportTransform.y) *
-        scalPercentage,
+        (pos.left - vpRect.left) * scalPercentage,
+        (pos.top - vpRect.top) * scalPercentage,
       ],
       width: size.width * scalPercentage,
       height: size.height * scalPercentage,
@@ -1392,21 +1398,48 @@ class IdxPage2 {
   }
 
 
-  toolDropped(ev, tool) {
-    // const size = tool.name === "Int_Ext_Wall" ? { width: 200, height: 10 } : { width: 60, height: 60 };
-    // drawObject(
-    //   //{ width: 60, height: 60 },
-    //   size,
-    //   {
-    //     clientX: ev.clientX,
-    //     clientY: ev.clientY,
-    //     top: ev.clientY,
-    //     left: ev.clientX,
-    //   },
-    //   tool
-    // );
+  // Last reliable drag-over coordinates from the canvas (dragend clientX/Y can be 0 in some Edge/WebView2 builds)
+  private lastDragClientX = 0;
+  private lastDragClientY = 0;
+  private lastDropClientX = 0;
+  private lastDropClientY = 0;
 
-    LogUtil.Debug("toolDropped->tool", ev, tool);
+  onCanvasDragOver(ev) {
+    if (ev.clientX !== 0 || ev.clientY !== 0) {
+      this.lastDragClientX = ev.clientX;
+      this.lastDragClientY = ev.clientY;
+    }
+  }
+
+  // Capture exact drop position from the drop event (fires on target with reliable coords in WebView2)
+  onCanvasDrop(ev) {
+    if (ev.clientX !== 0 || ev.clientY !== 0) {
+      this.lastDropClientX = ev.clientX;
+      this.lastDropClientY = ev.clientY;
+    }
+  }
+
+  toolDropped(ev, tool) {
+    const size = tool.name === "Int_Ext_Wall" ? { width: 200, height: 10 } : { width: 60, height: 60 };
+    // Priority: drop event coords (most reliable) > dragend coords > last dragover coords
+    let x: number, y: number;
+    if (this.lastDropClientX !== 0 || this.lastDropClientY !== 0) {
+      x = this.lastDropClientX;
+      y = this.lastDropClientY;
+      this.lastDropClientX = 0;
+      this.lastDropClientY = 0;
+    } else if (ev.clientX !== 0 || ev.clientY !== 0) {
+      x = ev.clientX;
+      y = ev.clientY;
+    } else {
+      x = this.lastDragClientX;
+      y = this.lastDragClientY;
+    }
+    this.drawObject(
+      size,
+      { clientX: x, clientY: y, top: y, left: x },
+      tool
+    );
   }
 
   // // Saves the library data to the webview
@@ -1711,6 +1744,15 @@ class IdxPage2 {
     if (addToHistory) {
       this.addActionToHistory(`Add ${item?.type ?? ''}`);
     }
+    // Sync counter to max existing ID first so a state loaded from localStorage
+    // (where itemsCount may have been reset to items.length after deletions) never
+    // produces a duplicate ID.
+    const maxExistingId = appStateV2.value.items.length > 0
+      ? Math.max(...appStateV2.value.items.map(i => i.id ?? 0))
+      : 0;
+    if (maxExistingId > appStateV2.value.itemsCount) {
+      appStateV2.value.itemsCount = maxExistingId;
+    }
     appStateV2.value.itemsCount++;
     item.id = appStateV2.value.itemsCount;
     item.group = group;
@@ -1882,24 +1924,58 @@ class IdxPage2 {
   }
 
   selectPanelFilterFn(val, update) {
-    if (val === "") {
-      update(() => {
-        selectPanelOptions.value = T3000_Data.value.panelsData;
-
-        // here you have access to "ref" which
-        // is the Vue reference of the QSelect
-      });
-      return;
-    }
-
     update(() => {
-      const keyword = val.toUpperCase();
-      selectPanelOptions.value = T3000_Data.value.panelsData.filter(
-        (item) =>
-          item.command.toUpperCase().indexOf(keyword) > -1 ||
-          item.description?.toUpperCase().indexOf(keyword) > -1 ||
-          item.label?.toUpperCase().indexOf(keyword) > -1
-      );
+      const allData = T3000_Data.value.panelsData;
+      const defaultPid = Hvac.DeviceOpt.getCurrentDevice()?.deviceId ?? grpNav.value[0]?.pid ?? null;
+
+      if (!val) {
+        // Empty input: show default panel's entries first, then others
+        if (defaultPid !== null) {
+          selectPanelOptions.value = [
+            ...allData.filter(i => i.pid === defaultPid),
+            ...allData.filter(i => i.pid !== defaultPid),
+          ];
+        } else {
+          selectPanelOptions.value = allData;
+        }
+        return;
+      }
+
+      // Detect panel-number prefix: "88VAR", "88 VAR", "88-VAR", "88"
+      const panelPrefixMatch = val.match(/^(\d+)\s*[-\s]?\s*(.*)/);
+      let pidFilter = null;
+      let keyword = val;
+
+      if (panelPrefixMatch) {
+        const potentialPid = parseInt(panelPrefixMatch[1]);
+        if (allData.some(i => i.pid === potentialPid)) {
+          pidFilter = potentialPid;
+          keyword = panelPrefixMatch[2];
+        }
+      }
+
+      const kw = keyword.toUpperCase().trim();
+
+      if (pidFilter !== null) {
+        // Panel prefix given → only that panel's entries, filtered by keyword
+        let pool = allData.filter(i => i.pid === pidFilter);
+        if (kw) {
+          pool = pool.filter(i =>
+            i.command.toUpperCase().includes(kw) ||
+            i.description?.toUpperCase().includes(kw) ||
+            i.label?.toUpperCase().includes(kw)
+          );
+        }
+        selectPanelOptions.value = pool;
+      } else {
+        // No panel prefix → only default panel's matching entries
+        const basePool = defaultPid !== null ? allData.filter(i => i.pid === defaultPid) : allData;
+        selectPanelOptions.value = kw ? basePool.filter(i =>
+          i.command.toUpperCase().includes(kw) ||
+          i.description?.toUpperCase().includes(kw) ||
+          i.label?.toUpperCase().includes(kw)
+        ) : basePool;
+      }
     });
   }
 

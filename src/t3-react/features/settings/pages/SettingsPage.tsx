@@ -26,6 +26,7 @@ import {
   Switch,
   Dropdown,
   Option,
+  Checkbox,
   Text,
   Spinner,
   Dialog,
@@ -57,7 +58,59 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { SettingsRefreshApi, type DeviceSettings } from '../services/settingsRefreshApi';
 import { SettingsUpdateApi } from '../services/settingsUpdateApi';
 import { AdvancedSettingsDialog } from '../components/AdvancedSettingsDialog';
+import { WifiSettingsDialog } from '../components/WifiSettingsDialog';
+import { ChangeIpProgressDialog } from '../components/ChangeIpProgressDialog';
+import { NetworkHealthDialog } from '../components/NetworkHealthDialog';
+import { TimeSettingsTab } from '../components/TimeSettingsTab';
+import { DyndnsSettingsTab, type DyndnsSettings } from '../components/DyndnsSettingsTab';
+import { EmailSettingsTab, type EmailSettings } from '../components/EmailSettingsTab';
+import { UserLoginTab, type UserLoginSettings } from '../components/UserLoginTab';
+import { ExpansionIOTab, type ExpansionIOSettings } from '../components/ExpansionIOTab';
 import cssStyles from './SettingsPage.module.css';
+
+// Full T3000 C++ Baudrate_Array - com_baudrate0/1/2 stores an index 0-11 into this array
+// UART_9600=5, UART_19200=6, UART_38400=7, UART_115200=9, UART_57600=11
+const BAUDRATE_OPTIONS = [
+  1200,   // 0
+  2400,   // 1
+  3600,   // 2
+  4800,   // 3
+  7200,   // 4
+  9600,   // 5 UART_9600
+  19200,  // 6 UART_19200
+  38400,  // 7 UART_38400
+  76800,  // 8
+  115200, // 9 UART_115200
+  921600, // 10 UART_921600
+  57600,  // 11
+];
+
+// com_config index �?port mode label (from T3000 C++ Device_Serial_Port_Status[])
+const COM_PORT_MODES = [
+  'Unused',           // 0
+  'BACnet MSTP Slave',// 1
+  'Modbus Slave',     // 2
+  'BACnet PTP',       // 3
+  'GSM',              // 4
+  'Main Zigbee',      // 5
+  'Sub Zigbee',       // 6
+  'Modbus Master',    // 7
+  'RS232 Meter',      // 8
+  'BACnet MSTP Master',// 9
+];
+
+// uart_parity: 0=None, 1=Odd, 2=Even
+const PARITY_OPTIONS = ['None', 'Odd', 'Even'];
+
+// uart_stopbit: 0=1, 1=0.5, 2=2, 3=1.5
+const STOPBIT_OPTIONS = ['1', '0.5', '2', '1.5'];
+
+// RS485 SUB port mode options — restricted subset of COM_PORT_MODES (values match C++ indices)
+const RS485_SUB_MODES = [
+  { value: 0, label: 'Unused' },
+  { value: 1, label: 'Bacnet Mstp' },
+  { value: 2, label: 'Modbus' },
+];
 
 const useStyles = makeStyles({
   container: {
@@ -347,7 +400,7 @@ interface NetworkSettings {
   Subnet?: string;
   Gateway?: string;
   MAC_Address?: string;
-  TCP_Type?: number; // 0=DHCP, 1=Static
+  TCP_Type?: number; // 0=Static, 1=DHCP
 }
 
 interface CommunicationSettings {
@@ -364,6 +417,7 @@ interface CommunicationSettings {
   UART_Stopbit1?: number;
   UART_Stopbit2?: number;
   Fix_COM_Config?: number;
+  Zigbee_Pan_ID?: number;
 }
 
 interface ProtocolSettings {
@@ -387,15 +441,6 @@ interface TimeSettings {
   Start_Day?: number;
   End_Month?: number;
   End_Day?: number;
-}
-
-interface DyndnsSettings {
-  Enable_DynDNS?: number;
-  DynDNS_Provider?: number;
-  DynDNS_User?: string;
-  DynDNS_Pass?: string;
-  DynDNS_Domain?: string;
-  DynDNS_Update_Time?: number;
 }
 
 interface HardwareInfo {
@@ -429,7 +474,7 @@ interface DeviceInfo {
 
 export const SettingsPage: React.FC = () => {
   const styles = useStyles();
-  const { selectedDevice, devices, selectDevice } = useDeviceTreeStore();
+  const { selectedDevice, devices, selectDevice, updateDevice } = useDeviceTreeStore();
 
   const [selectedTab, setSelectedTab] = useState<TabValue>('basic');
   const [loading, setLoading] = useState(false);
@@ -438,6 +483,10 @@ export const SettingsPage: React.FC = () => {
   const [showRebootDialog, setShowRebootDialog] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showAdvancedSettingsDialog, setShowAdvancedSettingsDialog] = useState(false);
+  const [showWifiDialog, setShowWifiDialog] = useState(false);
+  const [showChangeIpDialog, setShowChangeIpDialog] = useState(false);
+  const [changeIpNewAddress, setChangeIpNewAddress] = useState('');
+  const [showNetworkHealthDialog, setShowNetworkHealthDialog] = useState(false);
   const [rebootCountdown, setRebootCountdown] = useState(0);
 
   // Settings state for each tab
@@ -447,6 +496,12 @@ export const SettingsPage: React.FC = () => {
   const [protocolSettings, setProtocolSettings] = useState<ProtocolSettings>({});
   const [timeSettings, setTimeSettings] = useState<TimeSettings>({});
   const [dyndnsSettings, setDyndnsSettings] = useState<DyndnsSettings>({});
+  const [emailSettings, setEmailSettings] = useState<EmailSettings>({});
+  const [userLoginSettings, setUserLoginSettings] = useState<UserLoginSettings>({
+    users: [],
+    enable_user_list: 1,
+  });
+  const [expansionSettings, setExpansionSettings] = useState<ExpansionIOSettings>({ devices: [] });
   const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo>({});
   const [featureFlags, setFeatureFlags] = useState<FeatureFlags>({
     LCD_Display: 0, // Default to LCD Always Off
@@ -459,6 +514,84 @@ export const SettingsPage: React.FC = () => {
       selectDevice(devices[0]);
     }
   }, [selectedDevice, devices, selectDevice]);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // EXTERNAL DATA FETCH — data NOT in Str_Setting_Info (400 bytes)
+  //
+  // These three structures are completely separate from the 400-byte settings block:
+  //   • Str_Email_point          → GET /api/v1/devices/:sn/email-settings
+  //   • Str_User_point[8]        → GET /api/v1/devices/:sn/users
+  //   • Str_Extio_point[]        → GET /api/v1/devices/:sn/expansion-io
+  // ─────────────────────────────────────────────────────────────────────────────
+  const fetchExternalSettings = useCallback(async (serialNumber: number) => {
+    const base = `http://localhost:9103/api/t3_device`;
+
+    // ── Email settings (Str_Email_point — NOT in 400-byte Str_Setting_Info) ───
+    try {
+      const res = await fetch(`${base}/devices/${serialNumber}/settings/email`);
+      if (res.ok) {
+        const json = await res.json();
+        // Entity serializes with #[serde(rename_all = "PascalCase")],
+        // and GET handler wraps it as { success, data: { SmtpServer, ... } }
+        const d = json?.data ?? json;
+        setEmailSettings({
+          smtp_domain:            d.SmtpServer             ?? d.smtp_domain             ?? '',
+          smtp_port:              d.SmtpPort               ?? d.smtp_port               ?? 25,
+          email_address:          d.EmailAddress           ?? d.email_address           ?? '',
+          user_name:              d.UserName               ?? d.user_name               ?? '',
+          password:               d.Password               ?? d.password               ?? '',
+          secure_connection_type: d.SecureConnectionType   ?? d.secure_connection_type  ?? 0,
+          To1Addr:                d.To1Addr                ?? d.to1_addr                ?? '',
+          To2Addr:                d.To2Addr                ?? d.to2_addr                ?? '',
+          error_code:             d.ErrorCode              ?? d.error_code              ?? 0,
+        });
+      } else {
+        console.warn(`[SettingsPage] Email settings load returned HTTP ${res.status}`);
+      }
+    } catch (e) {
+      console.warn('[SettingsPage] Email fetch failed:', e);
+    }
+
+    // ── User login slots (Str_User_point[8] — NOT in 400-byte Str_Setting_Info) ─
+    // GET /users/:serial returns an 8-element array with lowercase keys.
+    try {
+      const res = await fetch(`${base}/users/${serialNumber}`);
+      if (res.ok) {
+        const data = await res.json();
+        setUserLoginSettings(prev => ({ ...prev, users: Array.isArray(data) ? data : [] }));
+      } else {
+        console.warn(`[SettingsPage] User slots load returned HTTP ${res.status}`);
+      }
+    } catch (e) {
+      console.warn('[SettingsPage] User slots fetch failed:', e);
+    }
+
+    // ── Expansion IO devices (Str_Extio_point[] — NOT in 400-byte Str_Setting_Info) ─
+    try {
+      const res = await fetch(`${base}/devices/${serialNumber}/settings/expansion-io`);
+      if (res.ok) {
+        const json = await res.json();
+        // GET handler returns { success, count, data: [...] };
+        // each element has PascalCase keys from the entity.
+        const raw: unknown[] = Array.isArray(json) ? json : (json?.data ?? []);
+        const devices = raw.map((r: any) => ({
+          product_id:        r.ProductId        ?? r.product_id        ?? 0,
+          port:              r.Port             ?? r.port              ?? 0,
+          modbus_id:         r.ModbusId         ?? r.modbus_id         ?? 0,
+          last_contact_time: r.LastContactTime  ?? r.last_contact_time ?? 0,
+          input_start:       r.InputStart       ?? r.input_start       ?? 0,
+          input_end:         r.InputEnd         ?? r.input_end         ?? 0,
+          output_start:      r.OutputStart      ?? r.output_start      ?? 0,
+          output_end:        r.OutputEnd        ?? r.output_end        ?? 0,
+        }));
+        setExpansionSettings({ devices });
+      } else {
+        console.warn(`[SettingsPage] Expansion IO load returned HTTP ${res.status}`);
+      }
+    } catch (e) {
+      console.warn('[SettingsPage] Expansion IO fetch failed:', e);
+    }
+  }, []);
 
   // Fetch settings based on selected tab
   const fetchSettings = useCallback(async () => {
@@ -511,6 +644,7 @@ export const SettingsPage: React.FC = () => {
         UART_Stopbit1: settings.uart_stopbit?.[1],
         UART_Stopbit2: settings.uart_stopbit?.[2],
         Fix_COM_Config: settings.fix_com_config,
+        Zigbee_Pan_ID: settings.zigbee_panid,
       });
 
       setProtocolSettings({
@@ -521,7 +655,9 @@ export const SettingsPage: React.FC = () => {
         Max_Master: settings.max_master,
         Object_Instance: settings.object_instance,
         BBMD_Enable: settings.BBMD_EN,
-        Network_Number: settings.network_number,
+        // BIP Network is a 16-bit split across two uint8 fields:
+        // low byte = network_number (offset 50), high byte = network_number_hi (offset 264)
+        Network_Number: settings.network_number | (settings.network_number_hi << 8),
       });
 
       setTimeSettings({
@@ -544,6 +680,11 @@ export const SettingsPage: React.FC = () => {
         DynDNS_Domain: settings.dyndns_domain,
         DynDNS_Update_Time: settings.dyndns_update_time,
       });
+
+      setUserLoginSettings(prev => ({
+        ...prev,
+        enable_user_list: settings.user_name ?? 1,
+      }));
 
       setHardwareInfo({
         Mini_Type: settings.mini_type,
@@ -574,6 +715,10 @@ export const SettingsPage: React.FC = () => {
         Panel_Number: settings.panel_number,
       });
 
+      // ⚠️ Email / Users / Expansion IO are NOT in Str_Setting_Info (400 bytes).
+      // They live in separate C++ structures — fetch them via dedicated endpoints.
+      void fetchExternalSettings(serial);
+
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
@@ -581,7 +726,7 @@ export const SettingsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedDevice]);
+  }, [selectedDevice, fetchExternalSettings]);
 
   // Refresh from device (force fresh data)
   const handleRefresh = useCallback(async () => {
@@ -605,10 +750,27 @@ export const SettingsPage: React.FC = () => {
         // Update all state with the refreshed settings
         setNetworkSettings({
           IP_Address: settings.ip_addr,
-          Subnet_Mask: settings.subnet,
+          Subnet: settings.subnet,
           Gateway: settings.gate_addr,
           MAC_Address: settings.mac_addr,
           TCP_Type: settings.tcp_type,
+        });
+
+        setCommSettings({
+          COM0_Config: settings.com0_config,
+          COM1_Config: settings.com1_config,
+          COM2_Config: settings.com2_config,
+          COM_Baudrate0: settings.com_baudrate0,
+          COM_Baudrate1: settings.com_baudrate1,
+          COM_Baudrate2: settings.com_baudrate2,
+          UART_Parity0: settings.uart_parity?.[0],
+          UART_Parity1: settings.uart_parity?.[1],
+          UART_Parity2: settings.uart_parity?.[2],
+          UART_Stopbit0: settings.uart_stopbit?.[0],
+          UART_Stopbit1: settings.uart_stopbit?.[1],
+          UART_Stopbit2: settings.uart_stopbit?.[2],
+          Fix_COM_Config: settings.fix_com_config,
+          Zigbee_Pan_ID: settings.zigbee_panid,
         });
 
         setProtocolSettings({
@@ -619,7 +781,7 @@ export const SettingsPage: React.FC = () => {
           Max_Master: settings.max_master,
           Object_Instance: settings.object_instance,
           BBMD_Enable: settings.BBMD_EN,
-          Network_Number: settings.network_number,
+          Network_Number: settings.network_number | (settings.network_number_hi << 8),
         });
 
         setTimeSettings({
@@ -627,6 +789,7 @@ export const SettingsPage: React.FC = () => {
           Time_Zone_Summer_Daytime: settings.time_zone_summer_daytime,
           Enable_SNTP: settings.en_sntp,
           SNTP_Server: settings.sntp_server,
+          Time_Sync_Auto_Manual: settings.time_sync_auto_manual, // offset 240 ✅
           Start_Month: settings.start_month,
           Start_Day: settings.start_day,
           End_Month: settings.end_month,
@@ -636,11 +799,16 @@ export const SettingsPage: React.FC = () => {
         setDyndnsSettings({
           Enable_DynDNS: settings.en_dyndns,
           DynDNS_Provider: settings.dyndns_provider,
-          DynDNS_Username: settings.dyndns_user,
-          DynDNS_Password: settings.dyndns_pass,
+          DynDNS_User: settings.dyndns_user,
+          DynDNS_Pass: settings.dyndns_pass,
           DynDNS_Domain: settings.dyndns_domain,
           DynDNS_Update_Time: settings.dyndns_update_time,
         });
+
+        setUserLoginSettings(prev => ({
+          ...prev,
+          enable_user_list: settings.user_name ?? 1,
+        }));
 
         setHardwareInfo({
           Mini_Type: settings.mini_type,
@@ -660,13 +828,18 @@ export const SettingsPage: React.FC = () => {
           Customer_Unite_Enable: settings.custmer_unite,
           Enable_Panel_Name: settings.en_panel_name,
           LCD_Display: settings.LCD_Display,
+          LCD_Point_Type: settings.lcd_point_type,
+          LCD_Point_Number: settings.lcd_point_number,
         });
 
         setDeviceInfo({
           SerialNumber: settings.n_serial_number,
           PanelId: settings.panel_name,
-          PanelNumber: settings.panel_number,
+          Panel_Number: settings.panel_number,
         });
+
+        // ⚠️ Email / Users / Expansion IO are NOT in Str_Setting_Info (400 bytes).
+        void fetchExternalSettings(selectedDevice.serialNumber);
       }
 
       setSuccessMessage('Settings refreshed successfully from device');
@@ -683,7 +856,7 @@ export const SettingsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedDevice]); // Removed fetchSettings from dependencies
+  }, [selectedDevice, fetchExternalSettings]); // Removed fetchSettings from dependencies
 
   // Load settings when device changes
   useEffect(() => {
@@ -700,6 +873,83 @@ export const SettingsPage: React.FC = () => {
   const updateSettings = (updates: Partial<DeviceSettings>) => {
     if (!settings) return;
     setSettings({ ...settings, ...updates });
+  };
+
+  const handleSaveBasicInfo = async () => {
+    console.log('[Done] handleSaveBasicInfo called', { selectedDevice, settings });
+    if (!selectedDevice || !settings) {
+      console.warn('[Done] EARLY EXIT — selectedDevice:', selectedDevice, '| settings:', settings);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      // Merge all Basic Information tab editable fields back into the 400-byte settings object
+      const networkNum = protocolSettings.Network_Number ?? 0;
+      // C++ routing fields: panel_number and object_instance must be the real device-list values.
+      // If the settings were never properly fetched (all[] was empty → both are 0), fall back to
+      // selectedDevice which always carries the values from the live device list scan.
+      const safePanelNumber =
+        (deviceInfo.Panel_Number ?? 0) > 0
+          ? (deviceInfo.Panel_Number as number)
+          : (selectedDevice.panelNumber ?? settings.panel_number);
+      const safeObjectInstance =
+        (protocolSettings.Object_Instance ?? 0) > 0
+          ? (protocolSettings.Object_Instance as number)
+          : (selectedDevice.objectInstance ?? settings.object_instance);
+      const merged: DeviceSettings = {
+        ...settings,
+        // Panel Information
+        object_instance:     safeObjectInstance,
+        modbus_id:           protocolSettings.Modbus_ID           ?? settings.modbus_id,
+        mstp_id:             protocolSettings.MSTP_ID             ?? settings.mstp_id,
+        mstp_network_number: protocolSettings.MSTP_Network_Number ?? settings.mstp_network_number,
+        max_master:          protocolSettings.Max_Master           ?? settings.max_master,
+        network_number:      networkNum & 0xFF,
+        network_number_hi:   (networkNum >> 8) & 0xFF,
+        mac_addr:            networkSettings.MAC_Address           ?? settings.mac_addr,
+        panel_number:        safePanelNumber,
+        panel_name:          deviceInfo.PanelId                    ?? settings.panel_name,
+        // LCD Options
+        LCD_Display:         featureFlags.LCD_Display              ?? settings.LCD_Display,
+      };
+      console.log('[Done] routing fields — panel_number:', merged.panel_number, '| object_instance:', merged.object_instance, '| selectedDevice.panelNumber:', selectedDevice.panelNumber);
+
+      console.log('[Done] merged settings:', merged);
+
+      const validation = SettingsUpdateApi.validateSettings(merged);
+      console.log('[Done] validation result:', validation);
+      if (!validation.valid) {
+        throw new Error(validation.errors.join(', '));
+      }
+
+      console.log('[Done] calling updateDeviceSettings...');
+      const result = await SettingsUpdateApi.updateDeviceSettings(merged);
+      console.log('[Done] updateDeviceSettings result:', result);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update device');
+      }
+
+      setSettings(merged);
+      setSuccessMessage('Basic information saved to device successfully');
+
+      // Sync the new panel name to the device tree (DB + in-memory + tree rebuild)
+      if (merged.panel_name) {
+        try {
+          await updateDevice(selectedDevice.serialNumber, { showLabelName: merged.panel_name });
+        } catch (e) {
+          console.warn('[Done] Failed to sync device name to tree:', e);
+        }
+      }
+    } catch (err) {
+      console.error('[Done] caught error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save basic info');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSaveNetwork = async () => {
@@ -790,6 +1040,28 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
+  // Write current PC time to device (C++: OnBnClickedBtnBacSYNCTime)
+  const handleSyncLocalPC = async () => {
+    if (!selectedDevice || !settings) return;
+    const nowEpoch = Math.floor(Date.now() / 1000);
+    updateSettings({ time_update_since_1970: nowEpoch, time_sync_auto_manual: 1 });
+    await handleSaveTime();
+    setSuccessMessage('Clock synchronised with local PC successfully.');
+  };
+
+  // Trigger NTP sync on device (C++: OnBnClickedButtonSyncTime — sets reset_default=99)
+  const handleSyncTimeServer = async () => {
+    if (!selectedDevice || !settings) return;
+    updateSettings({ reset_default: 99, time_sync_auto_manual: 0 });
+    await handleSaveTime();
+    setSuccessMessage('Time server sync command sent to device.');
+  };
+
+  // Re-read device settings to refresh the displayed device time
+  const handleRefreshDeviceTime = async () => {
+    await fetchSettings();
+  };
+
   const handleSaveDyndns = async () => {
     if (!selectedDevice || !settings) return;
 
@@ -815,6 +1087,116 @@ export const SettingsPage: React.FC = () => {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveEmail = async () => {
+    if (!selectedDevice) return;
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      // Map React field names → Rust camelCase request body
+      const body = {
+        smtpServer:            emailSettings.smtp_domain,
+        smtpPort:              emailSettings.smtp_port,
+        emailAddress:          emailSettings.email_address,
+        userName:              emailSettings.user_name,
+        password:              emailSettings.password,
+        secureConnectionType:  emailSettings.secure_connection_type,
+        to1Addr:               emailSettings.To1Addr,
+        to2Addr:               emailSettings.To2Addr,
+        enable:                1,
+      };
+      const response = await fetch(
+        `http://localhost:9103/api/t3_device/devices/${selectedDevice.serialNumber}/settings/email`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        }
+      );
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error((err as any)?.message || (err as any)?.error || 'Failed to save email settings');
+      }
+      // ⚠️ Saved to local DB only — device sync requires C++ to implement FFI entryType=50
+      setSuccessMessage('Email settings saved to local database successfully');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save email settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveUser = async (index: number, user: import('../components/UserLoginTab').UserEntry) => {
+    if (!selectedDevice) throw new Error('No device selected');
+    // PUT /api/t3_device/users/:serial/:index
+    // Tries FFI Action 16 entryType=14 (no-op in C++ today) + saves to local DB
+    const response = await fetch(
+      `http://localhost:9103/api/t3_device/users/${selectedDevice.serialNumber}/${index}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:        user.name,
+          password:    user.password,
+          accessLevel: user.access_level,
+        }),
+      }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      // 501 means C++ not yet implemented — not an error from user perspective
+      if (response.status === 501) return;
+      throw new Error((err as any)?.message || (err as any)?.error || 'Failed to save user');
+    }
+  };
+
+  const handleDeleteUser = async (index: number) => {
+    if (!selectedDevice) throw new Error('No device selected');
+    // Clear the user slot by writing blank name/password (C++ stores fixed 8 slots)
+    const response = await fetch(
+      `http://localhost:9103/api/t3_device/users/${selectedDevice.serialNumber}/${index}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: '', password: '', accessLevel: 1 }),
+      }
+    );
+    if (!response.ok && response.status !== 501) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error((err as any)?.message || (err as any)?.error || 'Failed to delete user');
+    }
+  };
+
+  const handleDoneExpansion = async (settings: ExpansionIOSettings) => {
+    if (!selectedDevice) throw new Error('No device selected');
+    // POST each ExtIO device to /api/t3_device/devices/:serial/settings/expansion-io
+    // ⚠️ Saved to local DB only — device sync requires C++ to implement FFI entryType=51
+    const base = `http://localhost:9103/api/t3_device/devices/${selectedDevice.serialNumber}/settings/expansion-io`;
+    for (let i = 0; i < settings.devices.length; i++) {
+      const device = settings.devices[i];
+      const response = await fetch(base, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          extioId:           i,
+          productId:         device.product_id,
+          port:              device.port,
+          modbusId:          device.modbus_id,
+          lastContactTime:   device.last_contact_time,
+          inputStart:        device.input_start,
+          inputEnd:          device.input_end,
+          outputStart:       device.output_start,
+          outputEnd:         device.output_end,
+          enable:            1,
+        }),
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error((err as any)?.message || (err as any)?.error || `Failed to save expansion IO device ${i}`);
+      }
     }
   };
 
@@ -915,7 +1297,12 @@ export const SettingsPage: React.FC = () => {
       setError(validationError);
       return;
     }
+    // Capture new IP before saving so progress dialog can poll it
+    const newIp = networkSettings.IP_Address ?? '';
     await handleSaveNetwork();
+    // If we get here without throwing, the save succeeded → show reboot dialog
+    setChangeIpNewAddress(newIp);
+    setShowChangeIpDialog(true);
   };
 
   // Handle advanced settings save
@@ -969,15 +1356,6 @@ export const SettingsPage: React.FC = () => {
           <Text size={400} weight="semibold">No device selected</Text>
           <br />
           <Text size={200}>Please select a device from the tree to view settings</Text>
-        </div>
-      );
-    }
-
-    if (loading && Object.keys(networkSettings).length === 0) {
-      return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', marginBottom: '12px' }}>
-          <Spinner size="tiny" />
-          <Text size={200} weight="regular">Loading settings...</Text>
         </div>
       );
     }
@@ -1047,22 +1425,14 @@ export const SettingsPage: React.FC = () => {
                   />
                 </Field>
                 <Field label="Serial Number" size="small" className={styles.horizontalField}>
-                  <Input
-                    type="number"
-                    size="small"
-                    value={String(deviceInfo.SerialNumber ?? selectedDevice?.serialNumber ?? '')}
-                    disabled
-                  />
+                  <span className={styles.basicFieldValue}>
+                    {deviceInfo.SerialNumber ?? selectedDevice?.serialNumber ?? '—'}
+                  </span>
                 </Field>
                 <Field label="MAC Address" size="small" className={styles.horizontalField}>
-                  <Input
-                    size="small"
-                    value={networkSettings.MAC_Address ?? ''}
-                    onChange={(_, data) =>
-                      setNetworkSettings({ ...networkSettings, MAC_Address: data.value })
-                    }
-                    placeholder="00:11:22:33:44:55"
-                  />
+                  <span className={styles.basicFieldValue}>
+                    {networkSettings.MAC_Address || '—'}
+                  </span>
                 </Field>
                 <Field label="MSTP Network" size="small" className={styles.horizontalField}>
                   <Input
@@ -1095,9 +1465,12 @@ export const SettingsPage: React.FC = () => {
                     type="number"
                     size="small"
                     value={String(protocolSettings.Network_Number ?? '')}
-                    onChange={(_, data) =>
-                      setProtocolSettings({ ...protocolSettings, Network_Number: Number(data.value) })
-                    }
+                    onChange={(_, data) => {
+                      const v = Number(data.value) & 0xFFFF;
+                      setProtocolSettings({ ...protocolSettings, Network_Number: v });
+                      // Split 16-bit value back into two uint8 bytes for device
+                      updateSettings({ network_number: v & 0xFF, network_number_hi: (v >> 8) & 0xFF });
+                    }}
                   />
                 </Field>
                 <Field label="Max Master" size="small" className={styles.horizontalField}>
@@ -1209,339 +1582,425 @@ export const SettingsPage: React.FC = () => {
       case 'communication':
         return (
           <>
-            <div className={styles.section}>
-              <div className={styles.sectionTitle}>Network Settings</div>
-              <div className={styles.formGrid}>
-                <Field
-                  label="IP Address"
-                  validationMessage={
-                    networkSettings.IP_Address && !validateIPAddress(networkSettings.IP_Address)
-                      ? 'Invalid IP address format (e.g., 192.168.1.100)'
-                      : undefined
-                  }
-                  validationState={
-                    networkSettings.IP_Address && !validateIPAddress(networkSettings.IP_Address)
-                      ? 'error'
-                      : 'none'
-                  }
-                >
+            <div className={styles.basicTwoColumn} style={{ gridTemplateColumns: '0.7fr 1fr' }}>
+              {/* LEFT PANEL: IP Address */}
+              <div className={styles.basicPanel}>
+                <div className={styles.basicPanelTitle}>IP Address</div>
+
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="tcpType"
+                      checked={networkSettings.TCP_Type === 1}
+                      onChange={() => {
+                        setNetworkSettings({ ...networkSettings, TCP_Type: 1 });
+                        updateSettings({ tcp_type: 1 });
+                      }}
+                    />
+                    Obtain IP Address Automatically
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="tcpType"
+                      checked={(networkSettings.TCP_Type ?? 0) === 0}
+                      onChange={() => {
+                        setNetworkSettings({ ...networkSettings, TCP_Type: 0 });
+                        updateSettings({ tcp_type: 0 });
+                      }}
+                    />
+                    Use The Following IP Address
+                  </label>
+                </div>
+
+                <div className={styles.horizontalField}>
+                  <label>IP Address :</label>
                   <Input
+                    size="small"
                     value={networkSettings.IP_Address ?? ''}
+                    disabled={networkSettings.TCP_Type === 1}
                     onChange={(_, data) => {
                       setNetworkSettings({ ...networkSettings, IP_Address: data.value });
                       updateSettings({ ip_addr: data.value });
                     }}
                     placeholder="192.168.1.100"
                   />
-                </Field>
-                <Field
-                  label="Subnet Mask"
-                  validationMessage={
-                    networkSettings.Subnet && !validateIPAddress(networkSettings.Subnet)
-                      ? 'Invalid subnet mask format (e.g., 255.255.255.0)'
-                      : undefined
-                  }
-                  validationState={
-                    networkSettings.Subnet && !validateIPAddress(networkSettings.Subnet)
-                      ? 'error'
-                      : 'none'
-                  }
-                >
+                </div>
+                <div className={styles.horizontalField}>
+                  <label>Subnet Mask</label>
                   <Input
+                    size="small"
                     value={networkSettings.Subnet ?? ''}
+                    disabled={networkSettings.TCP_Type === 1}
                     onChange={(_, data) => {
                       setNetworkSettings({ ...networkSettings, Subnet: data.value });
                       updateSettings({ subnet: data.value });
                     }}
                     placeholder="255.255.255.0"
                   />
-                </Field>
-                <Field
-                  label="Gateway"
-                  validationMessage={
-                    networkSettings.Gateway && !validateIPAddress(networkSettings.Gateway)
-                      ? 'Invalid gateway format (e.g., 192.168.1.1)'
-                      : undefined
-                  }
-                  validationState={
-                    networkSettings.Gateway && !validateIPAddress(networkSettings.Gateway)
-                      ? 'error'
-                      : 'none'
-                  }
-                >
+                </div>
+                <div className={styles.horizontalField}>
+                  <label>Gateway Address :</label>
                   <Input
+                    size="small"
                     value={networkSettings.Gateway ?? ''}
+                    disabled={networkSettings.TCP_Type === 1}
                     onChange={(_, data) => {
                       setNetworkSettings({ ...networkSettings, Gateway: data.value });
                       updateSettings({ gate_addr: data.value });
                     }}
                     placeholder="192.168.1.1"
                   />
-                </Field>
-                <Field label="MAC Address">
-                  <Input value={networkSettings.MAC_Address ?? 'N/A'} disabled />
-                </Field>
-                <Field label="IP Configuration">
+                </div>
+                <div className={styles.horizontalField}>
+                  <label>Modbus TCP Port :</label>
+                  <Input
+                    size="small"
+                    type="number"
+                    value={String(protocolSettings.Modbus_Port ?? 502)}
+                    onChange={(_, data) => {
+                      const v = Number(data.value);
+                      setProtocolSettings({ ...protocolSettings, Modbus_Port: v });
+                      updateSettings({ modbus_port: v });
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                  <Button size="small" appearance="primary" className={styles.saveButton} onClick={() => setShowWifiDialog(true)}>
+                    Wifi Configuration
+                  </Button>
+                  <Button size="small" appearance="secondary" onClick={handleSaveNetworkValidated}>
+                    Change IP
+                  </Button>
+                </div>
+              </div>
+
+              {/* RIGHT PANEL: Device Serial Port Config */}
+              <div className={styles.basicPanel}>
+                <div className={styles.basicPanelTitle}>Device Serial Port Config</div>
+
+                {/* Column headers */}
+                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 70px 1fr 1fr', gap: '4px', alignItems: 'center', marginBottom: '4px', fontSize: '11px', color: '#605e5c', fontWeight: 600 }}>
+                  <div />
+                  <div />
+                  <div />
+                  <div style={{ textAlign: 'center' }}>Data Bits</div>
+                  <div style={{ textAlign: 'center' }}>Parity Bit</div>
+                  <div style={{ textAlign: 'center' }}>Stop Bit</div>
+                </div>
+
+                {/* RS485 SUB row */}
+                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 70px 1fr 1fr', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600 }}>RS485 SUB</span>
                   <Dropdown
-                    value={networkSettings.TCP_Type === 0 ? 'DHCP' : 'Static'}
+                    size="small"
+                    style={{ width: '100%', minWidth: 0 }}
+                    value={RS485_SUB_MODES.find(m => m.value === (commSettings.COM0_Config ?? 0))?.label ?? 'Unused'}
+                    selectedOptions={[String(commSettings.COM0_Config ?? 0)]}
                     onOptionSelect={(_, data) => {
-                      const tcpType = data.optionValue === 'DHCP' ? 0 : 1;
-                      setNetworkSettings({ ...networkSettings, TCP_Type: tcpType });
-                      updateSettings({ tcp_type: tcpType });
+                      const v = Number(data.optionValue);
+                      setCommSettings({ ...commSettings, COM0_Config: v });
+                      updateSettings({ com0_config: v });
                     }}
                   >
-                    <Option value="DHCP">DHCP (Auto)</Option>
-                    <Option value="Static">Static (Manual)</Option>
+                    {RS485_SUB_MODES.map((mode) => (
+                      <Option key={mode.value} value={String(mode.value)}>{mode.label}</Option>
+                    ))}
                   </Dropdown>
-                </Field>
+                  <Dropdown
+                    size="small"
+                    style={{ width: '100%', minWidth: 0 }}
+                    value={String(BAUDRATE_OPTIONS[commSettings.COM_Baudrate0 ?? 9])}
+                    selectedOptions={[String(commSettings.COM_Baudrate0 ?? 9)]}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      setCommSettings({ ...commSettings, COM_Baudrate0: v });
+                      updateSettings({ com_baudrate0: v });
+                    }}
+                  >
+                    {BAUDRATE_OPTIONS.map((baud, idx) => (
+                      <Option key={idx} value={String(idx)} text={String(baud)}>{baud}</Option>
+                    ))}
+                  </Dropdown>
+                  <Input size="small" value="8" disabled />
+                  <Dropdown
+                    size="small"
+                    style={{ width: '100%', minWidth: 0 }}
+                    value={PARITY_OPTIONS[commSettings.UART_Parity0 ?? 0]}
+                    selectedOptions={[String(commSettings.UART_Parity0 ?? 0)]}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      const parity = [v, commSettings.UART_Parity1 ?? 0, commSettings.UART_Parity2 ?? 0];
+                      setCommSettings({ ...commSettings, UART_Parity0: v });
+                      updateSettings({ uart_parity: parity });
+                    }}
+                  >
+                    {PARITY_OPTIONS.map((label, idx) => (
+                      <Option key={idx} value={String(idx)}>{label}</Option>
+                    ))}
+                  </Dropdown>
+                  <Dropdown
+                    size="small"
+                    style={{ width: '100%', minWidth: 0 }}
+                    value={STOPBIT_OPTIONS[commSettings.UART_Stopbit0 ?? 0]}
+                    selectedOptions={[String(commSettings.UART_Stopbit0 ?? 0)]}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      const stopbit = [v, commSettings.UART_Stopbit1 ?? 0, commSettings.UART_Stopbit2 ?? 0];
+                      setCommSettings({ ...commSettings, UART_Stopbit0: v });
+                      updateSettings({ uart_stopbit: stopbit });
+                    }}
+                  >
+                    {STOPBIT_OPTIONS.map((label, idx) => (
+                      <Option key={idx} value={String(idx)}>{label}</Option>
+                    ))}
+                  </Dropdown>
+                </div>
+
+                {/* Zigbee row */}
+                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 70px 1fr 1fr', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600 }}>Zigbee :</span>
+                  <Dropdown
+                    size="small"
+                    style={{ width: '100%', minWidth: 0 }}
+                    value={RS485_SUB_MODES.find(m => m.value === (commSettings.COM1_Config ?? 0))?.label ?? 'Unused'}
+                    selectedOptions={[String(commSettings.COM1_Config ?? 0)]}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      setCommSettings({ ...commSettings, COM1_Config: v });
+                      updateSettings({ com1_config: v });
+                    }}
+                  >
+                    {RS485_SUB_MODES.map((mode) => (
+                      <Option key={mode.value} value={String(mode.value)}>{mode.label}</Option>
+                    ))}
+                  </Dropdown>
+                  <Dropdown
+                    size="small"
+                    style={{ width: '100%', minWidth: 0 }}
+                    value={String(BAUDRATE_OPTIONS[commSettings.COM_Baudrate1 ?? 6])}
+                    selectedOptions={[String(commSettings.COM_Baudrate1 ?? 6)]}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      setCommSettings({ ...commSettings, COM_Baudrate1: v });
+                      updateSettings({ com_baudrate1: v });
+                    }}
+                  >
+                    {BAUDRATE_OPTIONS.map((baud, idx) => (
+                      <Option key={idx} value={String(idx)} text={String(baud)}>{baud}</Option>
+                    ))}
+                  </Dropdown>
+                  <Input size="small" value="8" disabled />
+                  <Dropdown
+                    size="small"
+                    style={{ width: '100%', minWidth: 0 }}
+                    value={PARITY_OPTIONS[commSettings.UART_Parity1 ?? 0]}
+                    selectedOptions={[String(commSettings.UART_Parity1 ?? 0)]}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      const parity = [commSettings.UART_Parity0 ?? 0, v, commSettings.UART_Parity2 ?? 0];
+                      setCommSettings({ ...commSettings, UART_Parity1: v });
+                      updateSettings({ uart_parity: parity });
+                    }}
+                  >
+                    {PARITY_OPTIONS.map((label, idx) => (
+                      <Option key={idx} value={String(idx)}>{label}</Option>
+                    ))}
+                  </Dropdown>
+                  <Dropdown
+                    size="small"
+                    style={{ width: '100%', minWidth: 0 }}
+                    value={STOPBIT_OPTIONS[commSettings.UART_Stopbit1 ?? 0]}
+                    selectedOptions={[String(commSettings.UART_Stopbit1 ?? 0)]}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      const stopbit = [commSettings.UART_Stopbit0 ?? 0, v, commSettings.UART_Stopbit2 ?? 0];
+                      setCommSettings({ ...commSettings, UART_Stopbit1: v });
+                      updateSettings({ uart_stopbit: stopbit });
+                    }}
+                  >
+                    {STOPBIT_OPTIONS.map((label, idx) => (
+                      <Option key={idx} value={String(idx)}>{label}</Option>
+                    ))}
+                  </Dropdown>
+                </div>
+                {/* RS485 Main row */}
+                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 70px 1fr 1fr', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600 }}>RS485 Main</span>
+                  <Dropdown
+                    size="small"
+                    style={{ width: '100%', minWidth: 0 }}
+                    value={RS485_SUB_MODES.find(m => m.value === (commSettings.COM2_Config ?? 0))?.label ?? 'Unused'}
+                    selectedOptions={[String(commSettings.COM2_Config ?? 0)]}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      setCommSettings({ ...commSettings, COM2_Config: v });
+                      updateSettings({ com2_config: v });
+                    }}
+                  >
+                    {RS485_SUB_MODES.map((mode) => (
+                      <Option key={mode.value} value={String(mode.value)}>{mode.label}</Option>
+                    ))}
+                  </Dropdown>
+                  <Dropdown
+                    size="small"
+                    style={{ width: '100%', minWidth: 0 }}
+                    value={String(BAUDRATE_OPTIONS[commSettings.COM_Baudrate2 ?? 9])}
+                    selectedOptions={[String(commSettings.COM_Baudrate2 ?? 9)]}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      setCommSettings({ ...commSettings, COM_Baudrate2: v });
+                      updateSettings({ com_baudrate2: v });
+                    }}
+                  >
+                    {BAUDRATE_OPTIONS.map((baud, idx) => (
+                      <Option key={idx} value={String(idx)} text={String(baud)}>{baud}</Option>
+                    ))}
+                  </Dropdown>
+                  <Input size="small" value="8" disabled />
+                  <Dropdown
+                    size="small"
+                    style={{ width: '100%', minWidth: 0 }}
+                    value={PARITY_OPTIONS[commSettings.UART_Parity2 ?? 0]}
+                    selectedOptions={[String(commSettings.UART_Parity2 ?? 0)]}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      const parity = [commSettings.UART_Parity0 ?? 0, commSettings.UART_Parity1 ?? 0, v];
+                      setCommSettings({ ...commSettings, UART_Parity2: v });
+                      updateSettings({ uart_parity: parity });
+                    }}
+                  >
+                    {PARITY_OPTIONS.map((label, idx) => (
+                      <Option key={idx} value={String(idx)}>{label}</Option>
+                    ))}
+                  </Dropdown>
+                  <Dropdown
+                    size="small"
+                    style={{ width: '100%', minWidth: 0 }}
+                    value={STOPBIT_OPTIONS[commSettings.UART_Stopbit2 ?? 0]}
+                    selectedOptions={[String(commSettings.UART_Stopbit2 ?? 0)]}
+                    onOptionSelect={(_, data) => {
+                      const v = Number(data.optionValue);
+                      const stopbit = [commSettings.UART_Stopbit0 ?? 0, commSettings.UART_Stopbit1 ?? 0, v];
+                      setCommSettings({ ...commSettings, UART_Stopbit2: v });
+                      updateSettings({ uart_stopbit: stopbit });
+                    }}
+                  >
+                    {STOPBIT_OPTIONS.map((label, idx) => (
+                      <Option key={idx} value={String(idx)}>{label}</Option>
+                    ))}
+                  </Dropdown>
+                </div>
+
+                <div style={{ marginTop: '8px', marginBottom: '8px' }}>
+                  <Checkbox
+                    label="Fixed Serial Port Configuration"
+                    size="medium"
+                    checked={(commSettings.Fix_COM_Config ?? 0) !== 0}
+                    onChange={(_, data) => {
+                      const v = data.checked ? 1 : 0;
+                      setCommSettings({ ...commSettings, Fix_COM_Config: v });
+                      updateSettings({ fix_com_config: v });
+                    }}
+                  />
+                </div>
+
+                <div className={styles.horizontalField}>
+                  <label>Zigbee Pan ID :</label>
+                  <Input
+                    size="small"
+                    type="number"
+                    value={String(commSettings.Zigbee_Pan_ID ?? 0)}
+                    onChange={(_, data) => {
+                      const v = Number(data.value);
+                      setCommSettings({ ...commSettings, Zigbee_Pan_ID: v });
+                      updateSettings({ zigbee_panid: v });
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                  <Button size="small" appearance="secondary" disabled>
+                    Zigbee Information
+                  </Button>
+                  <Button size="small" appearance="secondary" onClick={() => setShowNetworkHealthDialog(true)}>
+                    Network Health
+                  </Button>
+                </div>
               </div>
             </div>
 
-            <div className={styles.section}>
-              <div className={styles.sectionTitle}>Serial Port Configuration</div>
-              <div className={styles.formGrid}>
-                <Field label="COM0 Baudrate">
-                  <Dropdown
-                    value={String(commSettings.COM_Baudrate0 ?? 19200)}
-                    onOptionSelect={(_, data) =>
-                      setCommSettings({ ...commSettings, COM_Baudrate0: Number(data.optionValue) })
-                    }
-                  >
-                    <Option value="9600">9600</Option>
-                    <Option value="19200">19200</Option>
-                    <Option value="38400">38400</Option>
-                    <Option value="57600">57600</Option>
-                    <Option value="115200">115200</Option>
-                  </Dropdown>
-                </Field>
-                <Field label="COM1 Baudrate">
-                  <Dropdown
-                    value={String(commSettings.COM_Baudrate1 ?? 19200)}
-                    onOptionSelect={(_, data) =>
-                      setCommSettings({ ...commSettings, COM_Baudrate1: Number(data.optionValue) })
-                    }
-                  >
-                    <Option value="9600">9600</Option>
-                    <Option value="19200">19200</Option>
-                    <Option value="38400">38400</Option>
-                    <Option value="57600">57600</Option>
-                    <Option value="115200">115200</Option>
-                  </Dropdown>
-                </Field>
-                <Field label="COM2 Baudrate">
-                  <Dropdown
-                    value={String(commSettings.COM_Baudrate2 ?? 19200)}
-                    onOptionSelect={(_, data) =>
-                      setCommSettings({ ...commSettings, COM_Baudrate2: Number(data.optionValue) })
-                    }
-                  >
-                    <Option value="9600">9600</Option>
-                    <Option value="19200">19200</Option>
-                    <Option value="38400">38400</Option>
-                    <Option value="57600">57600</Option>
-                    <Option value="115200">115200</Option>
-                  </Dropdown>
-                </Field>
+            {/* <div className={styles.actionsSection}>
+              <div className={styles.actionButtons}>
+                <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveNetworkValidated} className={styles.saveButton}>
+                  Save Network Settings
+                </Button>
+                <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveCommunication} className={styles.saveButton}>
+                  Save Communication Settings
+                </Button>
               </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-              <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveNetworkValidated} className={styles.saveButton}>
-                Save Network Settings
-              </Button>
-              <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveCommunication} className={styles.saveButton}>
-                Save Communication Settings
-              </Button>
-            </div>
+            </div> */}
           </>
         );
 
       case 'time':
         return (
-          <>
-            <div className={styles.section}>
-              <div className={styles.sectionTitle}>Time Configuration</div>
-              <div className={styles.formGrid}>
-                <Field label="Time Zone">
-                  <Input
-                    type="number"
-                    value={String(timeSettings.Time_Zone ?? 0)}
-                    onChange={(_, data) =>
-                      setTimeSettings({ ...timeSettings, Time_Zone: Number(data.value) })
-                    }
-                  />
-                </Field>
-                <Field label="SNTP Server">
-                  <Input
-                    value={timeSettings.SNTP_Server ?? ''}
-                    onChange={(_, data) =>
-                      setTimeSettings({ ...timeSettings, SNTP_Server: data.value })
-                    }
-                  />
-                </Field>
-                <Field label="Enable SNTP">
-                  <Switch
-                    checked={timeSettings.Enable_SNTP === 2}
-                    onChange={(_, data) =>
-                      setTimeSettings({ ...timeSettings, Enable_SNTP: data.checked ? 2 : 1 })
-                    }
-                  />
-                </Field>
-                <Field label="Enable DST">
-                  <Switch
-                    checked={timeSettings.Time_Zone_Summer_Daytime === 1}
-                    onChange={(_, data) =>
-                      setTimeSettings({ ...timeSettings, Time_Zone_Summer_Daytime: data.checked ? 1 : 0 })
-                    }
-                  />
-                </Field>
-              </div>
-            </div>
-
-            {timeSettings.Time_Zone_Summer_Daytime === 1 && (
-              <div className={styles.section}>
-                <div className={styles.sectionTitle}>Daylight Saving Time</div>
-                <div className={styles.formGrid}>
-                  <Field label="DST Start Month">
-                    <Input
-                      type="number"
-                      value={String(timeSettings.Start_Month ?? 3)}
-                      onChange={(_, data) =>
-                        setTimeSettings({ ...timeSettings, Start_Month: Number(data.value) })
-                      }
-                    />
-                  </Field>
-                  <Field label="DST Start Day">
-                    <Input
-                      type="number"
-                      value={String(timeSettings.Start_Day ?? 1)}
-                      onChange={(_, data) =>
-                        setTimeSettings({ ...timeSettings, Start_Day: Number(data.value) })
-                      }
-                    />
-                  </Field>
-                  <Field label="DST End Month">
-                    <Input
-                      type="number"
-                      value={String(timeSettings.End_Month ?? 11)}
-                      onChange={(_, data) =>
-                        setTimeSettings({ ...timeSettings, End_Month: Number(data.value) })
-                      }
-                    />
-                  </Field>
-                  <Field label="DST End Day">
-                    <Input
-                      type="number"
-                      value={String(timeSettings.End_Day ?? 1)}
-                      onChange={(_, data) =>
-                        setTimeSettings({ ...timeSettings, End_Day: Number(data.value) })
-                      }
-                    />
-                  </Field>
-                </div>
-              </div>
-            )}
-
-            <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveTime} className={styles.saveButton}>
-              Save Time Settings
-            </Button>
-          </>
+          <TimeSettingsTab
+            timeSettings={timeSettings}
+            setTimeSettings={setTimeSettings}
+            updateSettings={updateSettings}
+            onSave={handleSaveTime}
+            onSyncPC={handleSyncLocalPC}
+            onSyncTimeServer={handleSyncTimeServer}
+            onRefreshTime={handleRefreshDeviceTime}
+            loading={loading}
+            deviceEpoch={settings?.time_update_since_1970}
+          />
         );
 
       case 'dyndns':
         return (
-          <>
-            <div className={styles.section}>
-              <div className={styles.sectionTitle}>Dynamic DNS Configuration</div>
-              <Field label="Enable DynDNS">
-                <Switch
-                  checked={dyndnsSettings.Enable_DynDNS === 2}
-                  onChange={(_, data) =>
-                    setDyndnsSettings({ ...dyndnsSettings, Enable_DynDNS: data.checked ? 2 : 1 })
-                  }
-                />
-              </Field>
-
-              {dyndnsSettings.Enable_DynDNS === 2 && (
-                <div className={styles.formGrid}>
-                  <Field label="Provider">
-                    <Dropdown
-                      value={String(dyndnsSettings.DynDNS_Provider ?? 0)}
-                      onOptionSelect={(_, data) =>
-                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_Provider: Number(data.optionValue) })
-                      }
-                    >
-                      <Option value="0">3322.org</Option>
-                      <Option value="1">DynDNS.com</Option>
-                      <Option value="2">No-IP.com</Option>
-                    </Dropdown>
-                  </Field>
-                  <Field label="Update Interval (minutes)">
-                    <Input
-                      type="number"
-                      value={String(dyndnsSettings.DynDNS_Update_Time ?? 60)}
-                      onChange={(_, data) =>
-                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_Update_Time: Number(data.value) })
-                      }
-                    />
-                  </Field>
-                  <Field label="Username">
-                    <Input
-                      value={dyndnsSettings.DynDNS_User ?? ''}
-                      onChange={(_, data) =>
-                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_User: data.value })
-                      }
-                    />
-                  </Field>
-                  <Field label="Password">
-                    <Input
-                      type="password"
-                      value={dyndnsSettings.DynDNS_Pass ?? ''}
-                      onChange={(_, data) =>
-                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_Pass: data.value })
-                      }
-                    />
-                  </Field>
-                  <Field label="Domain">
-                    <Input
-                      value={dyndnsSettings.DynDNS_Domain ?? ''}
-                      onChange={(_, data) =>
-                        setDyndnsSettings({ ...dyndnsSettings, DynDNS_Domain: data.value })
-                      }
-                    />
-                  </Field>
-                </div>
-              )}
-            </div>
-
-            <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveDyndns} className={styles.saveButton}>
-              Save DynDNS Settings
-            </Button>
-          </>
+          <DyndnsSettingsTab
+            dyndnsSettings={dyndnsSettings}
+            setDyndnsSettings={setDyndnsSettings}
+            updateSettings={updateSettings}
+            onSave={handleSaveDyndns}
+            loading={loading}
+          />
         );
 
       case 'email':
         return (
-          <div className={styles.infoMessage}>
-            <InfoRegular style={{ fontSize: '14px', color: '#0078d4' }} />
-            <Text style={{ fontSize: '12px' }}>Email alarm configuration is managed through the Email Alarms page.</Text>
-          </div>
+          <EmailSettingsTab
+            emailSettings={emailSettings}
+            setEmailSettings={setEmailSettings}
+            onSave={handleSaveEmail}
+            loading={loading}
+          />
         );
 
       case 'users':
         return (
-          <div className={styles.infoMessage}>
-            <InfoRegular style={{ fontSize: '14px', color: '#0078d4' }} />
-            <Text style={{ fontSize: '12px' }}>User login configuration is managed through the Users page.</Text>
-          </div>
+          <UserLoginTab
+            userLoginSettings={userLoginSettings}
+            setUserLoginSettings={setUserLoginSettings}
+            updateSettings={updateSettings}
+            onSaveUser={handleSaveUser}
+            onDeleteUser={handleDeleteUser}
+            loading={loading}
+          />
         );
 
       case 'expansion':
         return (
-          <div className={styles.infoMessage}>
-            <InfoRegular style={{ fontSize: '14px', color: '#0078d4' }} />
-            <Text style={{ fontSize: '12px' }}>Expansion I/O devices are managed through the dedicated Expansion IO page.</Text>
-          </div>
+          <ExpansionIOTab
+            expansionSettings={expansionSettings}
+            setExpansionSettings={setExpansionSettings}
+            onDone={handleDoneExpansion}
+            loading={loading}
+          />
         );
 
       default:
@@ -1603,7 +2062,7 @@ export const SettingsPage: React.FC = () => {
 
             {/* Loading Message */}
             {loading && (
-              <div className={styles.successMessage}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', marginBottom: '12px' }}>
                 <Spinner size="extra-tiny" style={{ fontSize: '12px' }} />
                 <Text style={{ color: '#0078d4', fontSize: '12px' }}>Refreshing settings from device...</Text>
               </div>
@@ -1637,7 +2096,13 @@ export const SettingsPage: React.FC = () => {
                 >
                   Reboot Device
                 </Button>
-                <Button appearance="secondary" icon={<SaveRegular />} disabled={loading} style={{ fontWeight: 'normal', fontSize: '12px' }}>
+                <Button
+                  appearance="secondary"
+                  icon={<SaveRegular />}
+                  onClick={handleSaveBasicInfo}
+                  disabled={loading || !selectedDevice}
+                  style={{ fontWeight: 'normal', fontSize: '12px' }}
+                >
                   Done
                 </Button>
               </div>
@@ -1645,6 +2110,28 @@ export const SettingsPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Wifi Settings Dialog */}
+      <WifiSettingsDialog
+        isOpen={showWifiDialog}
+        onOpenChange={setShowWifiDialog}
+        serialNumber={selectedDevice?.serialNumber ?? 0}
+      />
+      <ChangeIpProgressDialog
+        isOpen={showChangeIpDialog}
+        onClose={(success) => {
+          setShowChangeIpDialog(false);
+          if (success) fetchSettings();
+        }}
+        serialNumber={selectedDevice?.serialNumber ?? 0}
+        newIpAddress={changeIpNewAddress}
+      />
+
+      <NetworkHealthDialog
+        isOpen={showNetworkHealthDialog}
+        onClose={() => setShowNetworkHealthDialog(false)}
+        serialNumber={selectedDevice?.serialNumber ?? 0}
+      />
 
       {/* Reboot Device Confirmation Dialog */}
       <Dialog open={showRebootDialog} onOpenChange={(_, data) => setShowRebootDialog(data.open)}>

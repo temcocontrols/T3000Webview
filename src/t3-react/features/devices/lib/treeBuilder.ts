@@ -24,6 +24,11 @@ function sortDevices(a: DeviceInfo, b: DeviceInfo): number {
     return buildingA.localeCompare(buildingB);
   }
 
+  // Push (Unknown) devices to the bottom
+  const aUnknown = a.nameShowOnTree === '(Unknown)' || a.nameShowOnTree === 'Unknown';
+  const bUnknown = b.nameShowOnTree === '(Unknown)' || b.nameShowOnTree === 'Unknown';
+  if (aUnknown !== bUnknown) return aUnknown ? 1 : -1;
+
   // Then by name (alphabetically)
   return a.nameShowOnTree.localeCompare(b.nameShowOnTree);
 }

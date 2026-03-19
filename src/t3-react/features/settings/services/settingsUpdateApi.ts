@@ -23,13 +23,13 @@ import { SettingsRefreshApi } from './settingsRefreshApi';
  * FFI request payload for settings update
  */
 interface FFIUpdateRequest {
-  serial_number: number;
-  entry_type: number;      // 98 for READ_SETTING_COMMAND
   action: number;           // 16 for UPDATE_WEBVIEW_LIST
-  entry_index: number;      // Always 0 for settings
-  data: {
-    All: number[];          // 400-byte array
-  };
+  panelId: number;          // panel_number — required by C++ to identify the panel
+  serialNumber: number;     // camelCase as expected by C++
+  objectinstance: number;   // object_instance — required by C++
+  entryType: number;        // 198 for WRITE_SETTING_COMMAND
+  entryIndex: number;       // Always 0 for settings
+  all: number[];            // C++ reads json["all"][index] directly at top-level (lowercase)
 }
 
 /**
@@ -43,7 +43,8 @@ interface SettingsUpdateResponse {
 
 export class SettingsUpdateApi {
   private static readonly FFI_ENDPOINT = 'http://localhost:9103/api/t3000/ffi/call';
-  private static readonly ENTRY_TYPE_SETTINGS = 98;   // READ_SETTING_COMMAND
+  private static readonly ENTRY_TYPE_SETTINGS_WRITE = 198; // WRITE_SETTING_COMMAND (C++ ud_str.h)
+  private static readonly ENTRY_TYPE_SETTINGS_READ  = 98;  // READ_SETTING_COMMAND
   private static readonly ACTION_UPDATE = 16;          // UPDATE_WEBVIEW_LIST
 
   /**
@@ -79,18 +80,45 @@ export class SettingsUpdateApi {
       // Serialize settings to 400-byte array
       const serializedData = SettingsRefreshApi.serializeSettingsData(settings);
 
+      // ── ByteCompare: SEND vs RECV ─────────────────────────────────────────
+      console.log('[ByteCompare][SEND] Raw 400-byte array going to C++:', [...serializedData]);
+      console.log('[ByteCompare][SEND] Length:', serializedData.length);
+
+      const recvRaw = SettingsRefreshApi._lastReceivedRaw;
+      if (recvRaw.length === 0) {
+        console.warn('[ByteCompare][DIFF] No RECV array stored — load settings first before comparing');
+      } else {
+        const diffs: { offset: number; recv: number; send: number }[] = [];
+        const maxLen = Math.max(recvRaw.length, serializedData.length);
+        for (let i = 0; i < maxLen; i++) {
+          const r = recvRaw[i] ?? 0;
+          const s = serializedData[i] ?? 0;
+          if (r !== s) diffs.push({ offset: i, recv: r, send: s });
+        }
+        if (diffs.length === 0) {
+          console.log('[ByteCompare][DIFF] Arrays are IDENTICAL ✓');
+        } else {
+          console.warn(`[ByteCompare][DIFF] ${diffs.length} byte(s) differ:`);
+          diffs.forEach(({ offset, recv, send }) => {
+            console.warn(`  offset ${offset}: RECV=0x${recv.toString(16).padStart(2,'0').toUpperCase()} (${recv})  SEND=0x${send.toString(16).padStart(2,'0').toUpperCase()} (${send})`);
+          });
+        }
+      }
+      // ─────────────────────────────────────────────────────────────────────
+
       LogUtil.Debug('[SettingsUpdateApi] Serialized data length:', serializedData.length);
       LogUtil.Debug('[SettingsUpdateApi] First 50 bytes:', serializedData.slice(0, 50));
 
-      // Construct FFI request
+      // Construct FFI request — field names must match C++ JSON parsing exactly
+      // C++ reads: json["panelId"], json["serialNumber"], json["entryType"], json["entryIndex"], json["all"][i]
       const ffiRequest: FFIUpdateRequest = {
-        serial_number: settings.serialNumber,
-        entry_type: this.ENTRY_TYPE_SETTINGS,
         action: this.ACTION_UPDATE,
-        entry_index: 0,  // Settings always at index 0
-        data: {
-          All: serializedData,
-        },
+        panelId: settings.panel_number,
+        serialNumber: settings.serialNumber,
+        objectinstance: settings.object_instance,
+        entryType: this.ENTRY_TYPE_SETTINGS_WRITE,  // 198 = WRITE_SETTING_COMMAND
+        entryIndex: 0,
+        all: serializedData,  // top-level lowercase 'all' — C++ reads json["all"][index]
       };
 
       // Send to device via FFI
@@ -110,6 +138,12 @@ export class SettingsUpdateApi {
       const result = await response.json();
 
       LogUtil.Info('[SettingsUpdateApi] Settings updated successfully', result);
+
+      // C++ returns {"error": "..."} on failure, or {"action":"UPDATE_WEBVIEW_LIST","data":{"status":true}} on success
+      const cppError = result?.error || result?.data?.error;
+      if (cppError) {
+        throw new Error(`Device error: ${cppError}`);
+      }
 
       return {
         success: true,
@@ -185,10 +219,10 @@ export class SettingsUpdateApi {
       errors.push('Invalid gateway address format');
     }
 
-    // Validate MAC address
-    const macRegex = /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/i;
+    // Validate MAC address (accept both colon and dash separators)
+    const macRegex = /^([0-9A-F]{2}[:\-]){5}[0-9A-F]{2}$/i;
     if (!macRegex.test(settings.mac_addr)) {
-      errors.push('Invalid MAC address format (expected XX:XX:XX:XX:XX:XX)');
+      errors.push('Invalid MAC address format (expected XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX)');
     }
 
     // Validate panel name length
@@ -222,8 +256,8 @@ export class SettingsUpdateApi {
     if (settings.mstp_id < 0 || settings.mstp_id > 127) {
       errors.push('MSTP ID must be between 0-127');
     }
-    if (settings.max_master < 0 || settings.max_master > 127) {
-      errors.push('Max master must be between 0-127');
+    if (settings.max_master < 0 || settings.max_master > 255) {
+      errors.push('Max master must be between 0-255');
     }
     if (settings.modbus_id < 1 || settings.modbus_id > 247) {
       errors.push('Modbus ID must be between 1-247');

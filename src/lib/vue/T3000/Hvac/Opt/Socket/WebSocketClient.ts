@@ -1003,6 +1003,10 @@ class WebSocketClient {
 
     setTimeout(() => {
       IdxUtils.refreshMoveableGuides();
+      // Reposition the panzoom viewport to show the loaded graphic items.
+      // Items often have negative X coordinates and are only visible when panzoom
+      // applies the saved viewportTransform.  Without this call the canvas appears blank.
+      this.idxPage?.resetPanzoom();
     }, 100);
 
     this.clearInitialDataInterval();
@@ -1198,18 +1202,12 @@ class WebSocketClient {
           // LogUtil.Debug(`HandleGetEntriesRes / Full replacement done for ${item.id}`);
         }
       } else {
-        // LogUtil.Debug(`= ws: HandleGetEntriesRes / item ${itemIdx}: NOT FOUND in panelsData:`, {
-        //   id: item.id,
-        //   pid: item.pid,
-        //   index: item.index,
-        //   type: item.type
-        // });
+        // Item not found in panelsData - add it so it's available in the link entry dropdown
+        T3000_Data.value.panelsData.push(item);
       }
     });
 
-    if (!linkT3EntryDialog.value.active) {
-      selectPanelOptions.value = T3000_Data.value.panelsData;
-    }
+    selectPanelOptions.value = T3000_Data.value.panelsData;
     IdxUtils.refreshLinkedEntries(msgData.data);
     IdxUtils.refreshLinkedEntries2(msgData.data);
 
@@ -1345,6 +1343,17 @@ class WebSocketClient {
 
     // TODO refer to WebViewClient-> HandleLoadGraphicEntryRes, appState
     msgData.data = JSON.parse(msgData.data);
+    // Repair duplicate IDs before loading — device may have stored state
+    // with a corrupted itemsCount counter (set to item-count instead of max-id).
+    if (Array.isArray(msgData.data?.items)) {
+      const seenIds = new Set<number>();
+      let maxId: number = msgData.data.items.reduce((m: number, i: any) => Math.max(m, i.id ?? 0), 0);
+      for (const item of msgData.data.items) {
+        if (seenIds.has(item.id)) { item.id = ++maxId; }
+        else { seenIds.add(item.id); }
+      }
+      if (maxId > (msgData.data.itemsCount ?? 0)) msgData.data.itemsCount = maxId;
+    }
     appState.value = msgData.data;
 
     // Restore UI state from appState
@@ -1522,17 +1531,25 @@ class WebSocketClient {
       if (messageData.error && messageData.error.includes('No cached data')) {
         LogUtil.Info('📦 No cached data available for this panel, dismissing loading and stopping retry');
 
-        // Clear loading state to dismiss the loading dialog
-        T3000_Data.value.loadingPanel = null;
-
-        // Load demo data as fallback ONLY if we have no data at all
-        if (T3000_Data.value.panelsData.length === 0) {
-          LogUtil.Info('📦 No panel data exists, loading demo data as fallback');
-          this.loadDemoDataFallback();
-        }
-
         // Reset error count since this is expected behavior, not a real error
         this.dataRequestErrorCount = 0;
+
+        // Continue loading the next panel in the list instead of stopping
+        const currentLoadingPanel = T3000_Data.value.loadingPanel;
+        if (currentLoadingPanel !== null && currentLoadingPanel < T3000_Data.value.panelsList.length - 1) {
+          T3000_Data.value.loadingPanel = currentLoadingPanel + 1;
+          const nextPanelId = T3000_Data.value.panelsList[T3000_Data.value.loadingPanel].panel_number;
+          LogUtil.Info(`📦 Skipping panel with no cached data, loading next panel: ${nextPanelId}`);
+          this.GetPanelData(nextPanelId);
+        } else {
+          // No more panels to load
+          T3000_Data.value.loadingPanel = null;
+          // Load demo data as fallback ONLY if we have no data at all
+          if (T3000_Data.value.panelsData.length === 0) {
+            LogUtil.Info('📦 No panel data exists, loading demo data as fallback');
+            this.loadDemoDataFallback();
+          }
+        }
 
         // Don't retry - data genuinely doesn't exist for this panel
         return;

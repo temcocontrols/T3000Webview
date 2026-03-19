@@ -39,6 +39,7 @@ class MessageType {
   static BIND_DEVICE = 13
   static SAVE_NEW_LIBRARY_DATA = 14
   static LOGGING_DATA = 15
+  static GET_WEBVIEW_LIST = 17
 
   static GET_PANEL_DATA_RES = 'GET_PANEL_DATA_RES'
   static GET_INITIAL_DATA_RES = 'GET_INITIAL_DATA_RES'
@@ -61,6 +62,7 @@ class MessageType {
 
   static SAVE_NEW_LIBRARY_DATA_RES = 'SAVE_NEW_LIBRARY_DATA_RES'
   static LOGGING_DATA_RES = 'LOGGING_DATA_RES'
+  static GET_WEBVIEW_LIST_RES = 'GET_WEBVIEW_LIST_RES'
 }
 
 export default MessageType

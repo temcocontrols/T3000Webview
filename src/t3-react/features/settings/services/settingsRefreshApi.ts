@@ -30,7 +30,7 @@ export interface DeviceSettings {
   mac_addr: string;                   // uint8_t[6]  - offset 12-17
 
   // Bytes 18-20: Device Type
-  tcp_type: number;                   // uint8_t     - offset 18 (0=DHCP, 1=STATIC)
+  tcp_type: number;                   // uint8_t     - offset 18 (0=STATIC, 1=DHCP)
   mini_type: number;                  // uint8_t     - offset 19
   debug: number;                      // uint8_t     - offset 20
 
@@ -142,6 +142,9 @@ export interface RefreshResult {
  */
 export class SettingsRefreshApi {
 
+  /** Last raw 400-byte array received from C++ — used for SEND vs RECV comparison */
+  static _lastReceivedRaw: number[] = [];
+
   /**
    * Refresh device settings from device using GET_WEBVIEW_LIST (Action 17)
    *
@@ -174,7 +177,7 @@ export class SettingsRefreshApi {
 
       // Check if device returned an error
       if (!response || response.success === false) {
-        const errorMsg = response?.data?.error || 'Device returned error response';
+        const errorMsg = response?.error || response?.data?.error || 'Device returned error response';
         throw new Error(errorMsg);
       }
 
@@ -242,6 +245,11 @@ export class SettingsRefreshApi {
     const deviceData = rawData.data?.device_data?.[0] || rawData.device_data?.[0] || rawData;
     const all: number[] = deviceData.All || [];
 
+    // Store for later SEND vs RECV byte comparison
+    SettingsRefreshApi._lastReceivedRaw = [...all];
+    console.log('[ByteCompare][RECV] Raw 400-byte array from C++:', [...all]);
+    console.log('[ByteCompare][RECV] Length:', all.length);
+
     LogUtil.Debug(`[SettingsRefreshApi] Extracted array length: ${all.length}`);
     LogUtil.Debug(`[SettingsRefreshApi] First 20 bytes:`, all.slice(0, 20));
     LogUtil.Debug(`[SettingsRefreshApi] Bytes 150-180:`, all.slice(150, 180));
@@ -290,17 +298,29 @@ export class SettingsRefreshApi {
 
     if (!all || all.length < 400) {
       LogUtil.Warn(`[SettingsRefreshApi] Invalid data array length: ${all?.length || 0}, expected 400 bytes`);
+      // Dump the raw response so we can see the actual C++ response structure and fix the extraction path
+      console.warn('[ByteCompare][RECV] all[] is SHORT — full rawData structure:', JSON.stringify(rawData));
+      console.warn('[ByteCompare][RECV] rawData.data =', JSON.stringify(rawData?.data));
+      console.warn('[ByteCompare][RECV] rawData.data?.device_data =', JSON.stringify(rawData?.data?.device_data));
+      console.warn('[ByteCompare][RECV] rawData.All =', JSON.stringify(rawData?.All));
     }
 
     // Helper functions for byte parsing with detailed logging
     const bytesToIP = (offset: number): string => {
-      const result = `${all[offset]}.${all[offset + 1]}.${all[offset + 2]}.${all[offset + 3]}`;
-      LogUtil.Debug(`[Parse] IP [${offset}-${offset+3}]: [${all[offset]}, ${all[offset+1]}, ${all[offset+2]}, ${all[offset+3]}] → "${result}"`);
+      const b0 = all[offset]     ?? 0;
+      const b1 = all[offset + 1] ?? 0;
+      const b2 = all[offset + 2] ?? 0;
+      const b3 = all[offset + 3] ?? 0;
+      const result = `${b0}.${b1}.${b2}.${b3}`;
+      LogUtil.Debug(`[Parse] IP [${offset}-${offset+3}]: [${b0}, ${b1}, ${b2}, ${b3}] → "${result}"`);
       return result;
     };
 
     const bytesToMAC = (offset: number): string => {
-      const bytes = all.slice(offset, offset + 6);
+      const rawBytes = all.slice(offset, offset + 6);
+      // Use per-element ?? 0 fallbacks (same pattern as bytesToIP) so an empty/short
+      // array always yields a valid "00-00-00-00-00-00" string rather than ""
+      const bytes = Array.from({ length: 6 }, (_, i) => rawBytes[i] ?? 0);
       const result = bytes.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join('-');
       LogUtil.Debug(`[Parse] MAC [${offset}-${offset+5}]: [${bytes.join(', ')}] → "${result}"`);
       return result;
@@ -367,13 +387,13 @@ export class SettingsRefreshApi {
 
     // Parse all fields according to C++ structure (see SETTINGS_FIELD_MAPPING.md)
     LogUtil.Info(`[Parse] ========== Starting 400-byte Settings Parsing ==========`);
-    LogUtil.Info(`[Parse] Raw array first 100 bytes: [${all.slice(0, 100).join(',')}]`);
+    LogUtil.Info(`[Parse] Raw array full 400 bytes: [${all.join(',')}], for easy copy and compare`);
     LogUtil.Info(`[Parse] BYTE POSITION MAP:`);
     LogUtil.Info(`  [0-3]   = IP Address (4 bytes)`);
     LogUtil.Info(`  [4-7]   = Subnet Mask (4 bytes)`);
     LogUtil.Info(`  [8-11]  = Gateway (4 bytes)`);
     LogUtil.Info(`  [12-17] = MAC Address (6 bytes)`);
-    LogUtil.Info(`  [18]    = TCP Type (1 byte: 0=DHCP, 1=STATIC)`);
+    LogUtil.Info(`  [18]    = TCP Type (1 byte: 0=STATIC, 1=DHCP)`);
     LogUtil.Info(`  [19]    = Mini Type / Device Type (1 byte: 0=T3-8O, 5=T3-BB, 6=T3-TB, etc.)`);
     LogUtil.Info(`  [20]    = Panel Type (1 byte)`);
     LogUtil.Info(`  [21-37] = Str_Pro_Info (17 bytes: HW version, firmware versions)`);
@@ -396,7 +416,7 @@ export class SettingsRefreshApi {
       mac_addr: bytesToMAC(12),                        // offset 12-17
       tcp_type: (() => {
         const value = all[18] ?? 0;
-        LogUtil.Debug(`[Parse] TCP Type [18]: ${value} → ${value === 0 ? 'DHCP' : 'STATIC'}`);
+        LogUtil.Debug(`[Parse] TCP Type [18]: ${value} → ${value === 0 ? 'STATIC' : 'DHCP'}`);
         return value;
       })(),
 
@@ -541,7 +561,14 @@ export class SettingsRefreshApi {
    * @returns 400-byte array ready for device update
    */
   static serializeSettingsData(settings: DeviceSettings): number[] {
-    const all = new Array(400).fill(0);
+    // Seed with the last received raw bytes so that bytes not explicitly serialised
+    // (e.g. Str_Pro_Info remainder bytes 28-37, update_dyndns bytes 181-190,
+    //  lcd_mod_reg padding bytes 255-259, and bytes 271-399) keep their original
+    // device values instead of being overwritten with 0.
+    const base = SettingsRefreshApi._lastReceivedRaw;
+    const all: number[] = base.length === 400
+      ? [...base]
+      : new Array(400).fill(0);
 
     // Helper functions for byte serialization
     const ipToBytes = (ip: string, offset: number) => {
@@ -552,15 +579,22 @@ export class SettingsRefreshApi {
     };
 
     const macToBytes = (mac: string, offset: number) => {
-      const parts = mac.split(':').map(hex => parseInt(hex, 16));
+      const parts = mac.split(/[:\-]/).map(hex => parseInt(hex, 16));
       for (let i = 0; i < 6; i++) {
         all[offset + i] = parts[i] || 0;
       }
     };
 
     const stringToBytes = (str: string, offset: number, maxLen: number) => {
-      for (let i = 0; i < maxLen; i++) {
-        all[offset + i] = i < str.length ? str.charCodeAt(i) : 0;
+      // Write the string content
+      const writeLen = Math.min(str.length, maxLen);
+      for (let i = 0; i < writeLen; i++) {
+        all[offset + i] = str.charCodeAt(i);
+      }
+      // Write null terminator if there is room — bytes beyond the null are left
+      // as the seeded value (device's original bytes) so padding like 0xFF is preserved.
+      if (writeLen < maxLen) {
+        all[offset + writeLen] = 0;
       }
     };
 
@@ -686,6 +720,42 @@ export class SettingsRefreshApi {
     all[268] = settings.max_out;
     all[269] = settings.fix_com_config;
     all[270] = settings.write_flash;
+
+    LogUtil.Info(`[Parse] ========== Starting 400-byte Settings Serialization (SAVE to C++) ==========`);
+    LogUtil.Info(`[Parse] Raw array full 400 bytes: [${all.join(',')}], for easy copy and compare`);
+    LogUtil.Info(`[Parse] Full 400-byte array: [${all.join(',')}]`);
+    LogUtil.Info(`[Parse] Key fields being sent:`);
+    LogUtil.Info(`  [0-3]   IP Address     : ${settings.ip_addr}`);
+    LogUtil.Info(`  [4-7]   Subnet Mask    : ${settings.subnet}`);
+    LogUtil.Info(`  [8-11]  Gateway        : ${settings.gate_addr}`);
+    LogUtil.Info(`  [12-17] MAC Address    : ${settings.mac_addr}`);
+    LogUtil.Info(`  [52-71] Panel Name     : "${settings.panel_name}"`);
+    LogUtil.Info(`  [73]    Panel Number   : ${settings.panel_number}`);
+    LogUtil.Info(`  [177-180] Serial Number  : ${settings.n_serial_number}`);
+    LogUtil.Info(`  [198-201] Object Instance: ${settings.object_instance}`);
+    LogUtil.Info(`  [238]   LCD Display    : ${settings.LCD_Display}`);
+    LogUtil.Info(`  [242]   MSTP ID        : ${settings.mstp_id}`);
+    LogUtil.Info(`  [245]   Max Master     : ${settings.max_master}`);
+    LogUtil.Info(`[Parse] ========== End Serialization ==========`);
+
+    // ── RECV vs SEND byte diff ─────────────────────────────────────────────
+    const recv = SettingsRefreshApi._lastReceivedRaw;
+    if (recv.length === 400) {
+      const diffs: string[] = [];
+      for (let i = 0; i < 400; i++) {
+        if (recv[i] !== all[i]) {
+          diffs.push(`  [${i}] RECV=${recv[i]} → SEND=${all[i]}`);
+        }
+      }
+      if (diffs.length === 0) {
+        console.log('%c[ByteCompare][DIFF] ✅ PERFECT MATCH — SEND is identical to RECV (400 bytes)', 'background:#52c41a;color:#fff;font-weight:bold;padding:2px 6px');
+      } else {
+        console.log(`%c[ByteCompare][DIFF] ⚠️ ${diffs.length} byte(s) differ between RECV and SEND:`, 'background:#fa8c16;color:#fff;font-weight:bold;padding:2px 6px');
+        diffs.forEach(d => console.log(d));
+      }
+    } else {
+      console.log('[ByteCompare][DIFF] ⚠️ Cannot compare — no RECV data stored (length:', recv.length, ')');
+    }
 
     return all;
   }

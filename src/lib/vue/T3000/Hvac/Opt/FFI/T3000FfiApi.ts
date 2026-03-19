@@ -374,6 +374,64 @@ export function useT3000FfiApi() {
     }
   }
 
+  /// GetWebviewList - Action 17 (GET_WEBVIEW_LIST) - reads fresh from device (not from cache)
+  /// C++ validation: panelId 1-254, serialNumber must match device, objectinstance must match device
+  /// entryType: 1=INPUT (BAC_IN), 2=OUTPUT (BAC_OUT), 3=VARIABLE (BAC_VAR)
+  /// Response: { data: { device_data: [ { pid, type, index, id, label, description, digital_analog, range, value, ... } ] } }
+  const ffiGetWebviewList = async (
+    panelId: number,
+    serialNumber: number,
+    objectinstance: number,
+    entryType: number,
+    indexStart: number = 0,
+    indexEnd: number = 63
+  ): Promise<any> => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      // Action 17 requires explicit serialNumber and objectinstance — do NOT let
+      // createMessagePayload auto-derive serialNumber because it may pick the wrong panel
+      const payload: any = {
+        action: MessageType.GET_WEBVIEW_LIST,
+        msgId: Utils1.GenerateUUID(),
+        from: 'ffi_api',
+        panelId,
+        serialNumber,
+        objectinstance,
+        entryType,
+        entryIndexStart: indexStart,
+        entryIndexEnd: indexEnd
+      }
+      LogUtil.Debug('📡 FFI API Call - Action 17 (GET_WEBVIEW_LIST)', {
+        action: 17,
+        panelId,
+        serialNumber,
+        objectinstance,
+        entryType,
+        indexStart,
+        indexEnd,
+        msgId: payload.msgId,
+        timestamp: new Date().toISOString(),
+        payload
+      })
+      const response = await callWithRetry(payload)
+      LogUtil.Debug('✅ FFI API Response - Action 17 (GET_WEBVIEW_LIST)', {
+        panelId,
+        entryType,
+        deviceDataCount: response?.data?.device_data?.length ?? 0
+      })
+      lastResponse.value = response
+      return response
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      error.value = errorMessage
+      throw new Error(`GetWebviewList failed: ${errorMessage}`)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   /// GetSystemStatus - Health check for FFI service
   const getSystemStatus = async (): Promise<any> => {
     try {
@@ -454,6 +512,7 @@ export function useT3000FfiApi() {
     ffiGetEntries,
     ffiGetSelectedDeviceInfo,
     ffiGetLoggingData,
+    ffiGetWebviewList,
     getSystemStatus,
     getDeviceRealtimeData,
     getDeviceById,

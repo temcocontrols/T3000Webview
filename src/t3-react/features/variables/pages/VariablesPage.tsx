@@ -349,6 +349,102 @@ export const VariablesPage: React.FC = () => {
     setEditValue(currentValue || '');
   };
 
+  // Step 1: Update device using FFI (Action 16)
+  const updateDeviceUsingFFI = async (
+    panelId: number,
+    serialNumber: number,
+    variableIndex: string,
+    field: string,
+    newValue: string,
+    currentVariable: any
+  ) => {
+    try {
+      console.log(`[FFI Action 16] Updating ${field} on device - Variable ${variableIndex} (SN: ${serialNumber})`);
+
+      // Build FFI message for UPDATE_WEBVIEW_LIST (Action 16)
+      const ffiMessage = {
+        action: 16, // UPDATE_WEBVIEW_LIST
+        panelId: panelId,
+        serialNumber: serialNumber,
+        entryType: 2, // BAC_VAR (VARIABLE)
+        entryIndex: parseInt(variableIndex, 10),
+        control: 0,
+        value: field === 'fValue' ? parseFloat(newValue || '0') : parseFloat(currentVariable.fValue || '0') / 1000,
+        description: field === 'fullLabel' ? newValue : (currentVariable.fullLabel || ''),
+        label: currentVariable.label || '',
+        range: parseInt(currentVariable.rangeField || '0', 10),
+        auto_manual: parseInt(currentVariable.autoManual || '0', 10),
+        filter: parseInt(currentVariable.filterField || '0', 10),
+        digital_analog: currentVariable.digitalAnalog === '1' ? 1 : 0,
+        decom: 0,
+      };
+
+      console.log('[FFI Action 16] Sending to device:', ffiMessage);
+
+      const response = await fetch(`${API_BASE_URL}/api/t3000/ffi/call`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ffiMessage)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Device update failed: ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('[FFI Action 16] Device updated successfully:', result);
+      return result;
+    } catch (error) {
+      console.error('[FFI Action 16] Device update failed:', error);
+      throw error;
+    }
+  };
+
+  // Step 2: Update database only
+  const updateDatabaseOnly = async (
+    serialNumber: number,
+    variableIndex: string,
+    field: string,
+    newValue: string,
+    currentVariable: any
+  ) => {
+    try {
+      console.log(`[Database] Updating ${field} in database - Variable ${variableIndex} (SN: ${serialNumber})`);
+
+      const payload = {
+        fullLabel: field === 'fullLabel' ? newValue : (currentVariable.fullLabel || ''),
+        label: currentVariable.label || '',
+        value: field === 'fValue' ? parseFloat(newValue || '0') : parseFloat(currentVariable.fValue || '0') / 1000,
+        range: parseInt(currentVariable.rangeField || '0', 10),
+        autoManual: parseInt(currentVariable.autoManual || '0', 10),
+        filter: parseInt(currentVariable.filterField || '0', 10),
+        digitalAnalog: currentVariable.digitalAnalog === '1' ? 1 : 0,
+      };
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/t3_device/variables/${serialNumber}/${variableIndex}/db`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Database update failed: ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('[Database] Database updated successfully:', result);
+      return result;
+    } catch (error) {
+      console.error('[Database] Database update failed:', error);
+      throw error;
+    }
+  };
+
   const handleEditSave = async () => {
     if (!editingCell) {
       setEditingCell(null);
@@ -363,13 +459,12 @@ export const VariablesPage: React.FC = () => {
 
     setIsSaving(true);
     try {
-      // Use Action 16 for editable fields (fullLabel, fValue)
+      // Process for all editable fields (fullLabel, fValue)
       if (selectedDevice && ['fullLabel', 'fValue'].includes(editingCell.field)) {
-        console.log(`=== Updating ${editingCell.field} ===`);
+        console.log(`=== Updating ${editingCell.field} (Two-Step Process) ===`);
         console.log(`Device: ${selectedDevice.serialNumber}, Variable: ${editingCell.variableIndex}, New Value: "${editValue}"`);
-        console.log('Using Action 16 (UPDATE_WEBVIEW_LIST)');
 
-        // Use CURRENT UI STATE as baseline (has most recent changes)
+        // Find the current variable data
         const currentVariable = variables.find(
           variable => variable.serialNumber === editingCell.serialNumber && variable.variableIndex === editingCell.variableIndex
         );
@@ -378,39 +473,33 @@ export const VariablesPage: React.FC = () => {
           throw new Error('Current variable data not found');
         }
 
-        console.log('[Action 16] Using current UI state as baseline:', currentVariable);
+        // Get panel_id for FFI call (assuming it's available in selectedDevice)
+        const panelId = selectedDevice.panelId || 1;
 
-        // Build payload with current UI values + the one changed field
-        const payload = {
-          fullLabel: editingCell.field === 'fullLabel' ? editValue : (currentVariable.fullLabel || ''),
-          label: currentVariable.label || '',
-          value: editingCell.field === 'fValue' ? parseFloat(editValue || '0') * 1000 : parseFloat(currentVariable.fValue || '0'),
-          range: parseInt(currentVariable.rangeField || '0'),
-          autoManual: parseInt(currentVariable.autoManual || '0'),
-          control: 0,
-          filter: parseInt(currentVariable.filterField || '0'),
-          digitalAnalog: currentVariable.digitalAnalog === '1' ? 1 : 0,
-          decom: 0,
-        };
-
-        console.log('[Action 16] Full payload:', payload);
-
-        const response = await fetch(
-          `${API_BASE_URL}/api/t3_device/variables/${selectedDevice.serialNumber}/${editingCell.variableIndex}`,
-          {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          }
+        // Step 1: Update device FIRST using FFI (Action 16)
+        console.log('Step 1/2: Updating device via FFI...');
+        await updateDeviceUsingFFI(
+          panelId,
+          selectedDevice.serialNumber,
+          editingCell.variableIndex,
+          editingCell.field,
+          editValue,
+          currentVariable
         );
+        console.log('✅ Device updated successfully');
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
+        // Step 2: Update database SECOND
+        console.log('Step 2/2: Updating database...');
+        await updateDatabaseOnly(
+          selectedDevice.serialNumber,
+          editingCell.variableIndex,
+          editingCell.field,
+          editValue,
+          currentVariable
+        );
+        console.log('✅ Database updated successfully');
 
-        const result = await response.json();
-        console.log(`✅ ${editingCell.field} updated successfully!`, result);
+        console.log(`✅ ${editingCell.field} updated successfully (device + database)!`);
       }
 
       // Update local state optimistically

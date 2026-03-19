@@ -83,8 +83,8 @@ import TrendLogChart from '@t3-vue/components/NewUI/TrendLogChart.vue'
 import { scheduleItemData } from '@/lib/vue/T3000/Hvac/Data/Constant/RefConstant'
 import { T3000_Data, logT3000DataFlowState } from '@/lib/vue/T3000/Hvac/Data/T3Data'
 import Hvac from '@/lib/vue/T3000/Hvac/Hvac'
-import { t3000DataManager } from '@/lib/vue/T3000/Hvac/Data/Manager/T3000DataManager'
 import { useTrendlogDataAPI } from '@/lib/vue/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
+import { useT3000FfiApi } from '@/lib/vue/T3000/Hvac/Opt/FFI/T3000FfiApi'
 import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil'
 
 // Define component name
@@ -246,7 +246,7 @@ const formatDataFromQueryParams = () => {
   }
   LogUtil.Debug('📊 IndexPageSocket - Readable Query Object:', readableQuery)  // Validate required parameters (allow trendlog_id=0)
   if (sn === null || panel_id === null || trendlog_id === null) {
-    LogUtil.Debug('�?IndexPageSocket: Missing required parameters for trend log data')
+    LogUtil.Debug('�?IndexPageSocket: Missing required parameters for trend log data')
     return null
   }
 
@@ -267,7 +267,7 @@ const formatDataFromQueryParams = () => {
 
   // Ensure required fields are set
   t3EntryData.pid = panel_id
-  t3EntryData.label = t3EntryData.label || `TRL${sn}_${panel_id}_${trendlog_id}`
+  t3EntryData.label = t3EntryData.label || `${panel_id}_${trendlog_id}`
   t3EntryData.command = t3EntryData.command || `${panel_id}MON${trendlog_id}`
   t3EntryData.id = t3EntryData.id || `MON${trendlog_id}`
 
@@ -374,9 +374,26 @@ watch(
   { immediate: true, deep: true }
 )
 
-// Initialize T3000_Data for the TrendLogChart component
+// Initialize T3000_Data for the TrendLogChart component using FFI HTTP API
+const ffiApi = useT3000FfiApi()
+
+// Helper: load one panel's device data into T3000_Data.panelsData
+const loadPanelData = async (targetPanelId: number): Promise<void> => {
+  const response = await ffiApi.ffiGetPanelData(targetPanelId)
+  if (response && response.data) {
+    T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
+      (item: any) => item.pid !== targetPanelId
+    )
+    T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(response.data)
+    T3000_Data.value.panelsData.sort((a: any, b: any) => a.pid - b.pid)
+    LogUtil.Info('✅ [IndexPage] Panel data loaded', { panelId: targetPanelId, itemCount: response.data.length })
+  } else {
+    LogUtil.Warn('⚠️ [IndexPage] GET_PANEL_DATA returned no data', { panelId: targetPanelId })
+  }
+}
+
 const initializeT3000Data = async () => {
-  const { sn, panel_id, trendlog_id } = urlParams.value
+  const { sn, panel_id, trendlog_id, all_data } = urlParams.value
 
   // Check if we have the required parameters
   if (!sn || panel_id === null || trendlog_id === null) {
@@ -395,67 +412,92 @@ const initializeT3000Data = async () => {
       T3000_Data.value.panelsList.push({
         panel_number: panel_id,
         serial_number: sn,
+        object_instance: 0,  // populated after Action 4 GET_PANELS_LIST
         panel_name: `Panel ${panel_id}`,
         online: true
       })
     }
 
-    let dataLoaded = false
+    T3000_Data.value.loadingPanel = panel_id
 
-    // Try WebView2 client first (desktop T3000 app)
-    if (Hvac.WebClient && (window as any).chrome?.webview) {
-      try {
-        Hvac.WebClient.initMessageHandler()
-        Hvac.WebClient.initQuasar($q)
-        T3000_Data.value.loadingPanel = panel_id
+    // Step 1: Action 4 - GET_PANELS_LIST (via FFI HTTP, replaces WebSocket GetPanelsList)
+    LogUtil.Info('📡 [IndexPage] Action 4 GET_PANELS_LIST via FFI API', { panel_id, sn })
+    const panelsListResponse = await ffiApi.ffiGetPanelsList()
 
-        Hvac.WebClient.GetPanelsList()
-        setTimeout(() => Hvac.WebClient.GetPanelData(panel_id), 500)
-
-        await t3000DataManager.waitForDataReady({
-          timeout: 15000,
-          specificEntries: [`MON${trendlog_id}`, `TRL${trendlog_id}`]
+    if (panelsListResponse) {
+      LogUtil.Info('✅ [IndexPage] GET_PANELS_LIST response received via FFI', panelsListResponse)
+      // Populate T3000_Data.panelsList from response so every panel's own serial_number
+      // is available for per-panel FFI polling (action=15) in TrendLogChart.
+      // Without this, getSerialForPanel() falls back to the URL panel's SN for foreign panels.
+      const rawList = Array.isArray(panelsListResponse)
+        ? panelsListResponse
+        : (panelsListResponse.data ?? panelsListResponse.panels ?? [])
+      if (Array.isArray(rawList) && rawList.length > 0) {
+        rawList.forEach((p: any) => {
+          if (!p || !p.panel_number) return
+          const existing = T3000_Data.value.panelsList.find(
+            (x: any) => x.panel_number === p.panel_number
+          )
+          if (existing) {
+            // Update serial_number in case it changed
+            existing.serial_number = p.serial_number ?? existing.serial_number
+            existing.object_instance = p.object_instance ?? existing.object_instance
+            existing.panel_name = p.panel_name ?? existing.panel_name
+          } else {
+            T3000_Data.value.panelsList.push({
+              panel_number: p.panel_number,
+              serial_number: p.serial_number,
+              object_instance: p.object_instance ?? 0,
+              panel_name: p.panel_name || `Panel ${p.panel_number}`,
+              online: true
+            })
+          }
         })
-
-        dataLoaded = true
-      } catch (error) {
-        T3000_Data.value.loadingPanel = null
-      }
-    }
-
-  // Try WebSocket client (web browser)
-    if (!dataLoaded && Hvac.WsClient) {
-      try {
-        Hvac.WsClient.initQuasar($q)
-        T3000_Data.value.loadingPanel = panel_id
-        Hvac.WsClient.connect()
-
-        setTimeout(() => {
-          Hvac.WsClient.GetPanelsList()
-          setTimeout(() => Hvac.WsClient.GetPanelData(panel_id), 1000)
-        }, 1000)
-
-        await t3000DataManager.waitForDataReady({
-          timeout: 20000,
-          specificEntries: [`MON${trendlog_id}`, `TRL${trendlog_id}`]
+        LogUtil.Info('✅ [IndexPage] panelsList populated from GET_PANELS_LIST', {
+          count: T3000_Data.value.panelsList.length,
+          panels: T3000_Data.value.panelsList.map((p: any) => ({ pn: p.panel_number, sn: p.serial_number }))
         })
-
-        dataLoaded = true
-      } catch (error) {
-        T3000_Data.value.loadingPanel = null
       }
+    } else {
+      LogUtil.Warn('⚠️ [IndexPage] GET_PANELS_LIST returned no data', { panel_id })
     }
 
-    // Clear loading state if no data loaded
-    if (!dataLoaded) {
-      T3000_Data.value.loadingPanel = null
+    // Step 2: Action 0 - GET_PANEL_DATA for the primary panel (pid in monitor config)
+    LogUtil.Info('📡 [IndexPage] Action 0 GET_PANEL_DATA via FFI API', { panel_id })
+    await loadPanelData(panel_id)
+
+    // Step 3: Detect foreign panels referenced in monitor config inputs and load them too.
+    // Example: pid=144 but inputs all point to panel:11 — we must also load panel 11's data
+    // so TrendLogChart can resolve device descriptions (pid/id lookup in panelsData).
+    const foreignPanelIds = new Set<number>()
+    try {
+      const monitorConfig = all_data ? JSON.parse(all_data) : null
+      if (monitorConfig?.input && Array.isArray(monitorConfig.input)) {
+        for (const inputItem of monitorConfig.input) {
+          const inputPanel = Number(inputItem.panel)
+          if (inputPanel && inputPanel !== panel_id) {
+            foreignPanelIds.add(inputPanel)
+          }
+        }
+      }
+    } catch {
+      // all_data parse error is non-fatal
     }
 
-    // Real-time data storage is handled automatically by TrendLogChart component
+    if (foreignPanelIds.size > 0) {
+      LogUtil.Info('📡 [IndexPage] Loading foreign panel(s) referenced in monitor inputs', {
+        primaryPanel: panel_id,
+        foreignPanels: Array.from(foreignPanelIds)
+      })
+      // Load all foreign panels in parallel
+      await Promise.all(Array.from(foreignPanelIds).map(pid => loadPanelData(pid)))
+    }
+
+    T3000_Data.value.loadingPanel = null
 
   } catch (error) {
     T3000_Data.value.loadingPanel = null
-    console.error('T3000 initialization error:', error)
+    LogUtil.Error('❌ [IndexPage] FFI init error:', error)
   }
 }
 
