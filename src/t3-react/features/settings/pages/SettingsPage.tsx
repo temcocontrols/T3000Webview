@@ -1516,8 +1516,8 @@ export const SettingsPage: React.FC = () => {
                   <input
                     type="radio"
                     name="lcdMode"
-                    checked={featureFlags.LCD_Display === 1}
-                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Display: 1 })}
+                    checked={featureFlags.LCD_Display === 255}
+                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Display: 255 })}
                   />
                   LCD Always On
                 </label>
@@ -1534,18 +1534,19 @@ export const SettingsPage: React.FC = () => {
                   <input
                     type="radio"
                     name="lcdMode"
-                    checked={featureFlags.LCD_Display !== undefined && featureFlags.LCD_Display > 1}
+                    checked={featureFlags.LCD_Display !== undefined && featureFlags.LCD_Display > 0 && featureFlags.LCD_Display < 255}
                     onChange={() => setFeatureFlags({ ...featureFlags, LCD_Display: 30 })}
                   />
                   LCD Delay off
                   <Input
                     type="number"
                     size="small"
-                    value={featureFlags.LCD_Display !== undefined && featureFlags.LCD_Display > 1 ? String(featureFlags.LCD_Display) : ''}
-                    onChange={(_, data) =>
-                      setFeatureFlags({ ...featureFlags, LCD_Display: Number(data.value) || 2 })
-                    }
-                    disabled={featureFlags.LCD_Display === undefined || featureFlags.LCD_Display <= 1}
+                    value={featureFlags.LCD_Display !== undefined && featureFlags.LCD_Display > 0 && featureFlags.LCD_Display < 255 ? String(featureFlags.LCD_Display) : ''}
+                    onChange={(_, data) => {
+                      const v = Math.min(254, Math.max(1, Number(data.value) || 1));
+                      setFeatureFlags({ ...featureFlags, LCD_Display: v });
+                    }}
+                    disabled={featureFlags.LCD_Display === undefined || featureFlags.LCD_Display === 0 || featureFlags.LCD_Display === 255}
                     style={{ width: '100px', marginLeft: '4px' }}
                   />
                   <span style={{ fontSize: '12px', color: '#605e5c' }}>(s)</span>
