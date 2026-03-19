@@ -105,11 +105,18 @@ const PARITY_OPTIONS = ['None', 'Odd', 'Even'];
 // uart_stopbit: 0=1, 1=0.5, 2=2, 3=1.5
 const STOPBIT_OPTIONS = ['1', '0.5', '2', '1.5'];
 
-// RS485 SUB port mode options — restricted subset of COM_PORT_MODES (values match C++ indices)
-const RS485_SUB_MODES = [
+// RS485 SUB/Main port mode options when fix_com_config=0 (unchecked)
+const RS485_MODES_UNFIXED = [
   { value: 0, label: 'Unused' },
   { value: 1, label: 'Bacnet Mstp' },
   { value: 2, label: 'Modbus' },
+];
+// RS485 SUB/Main port mode options when fix_com_config=1 (checked)
+const RS485_MODES_FIXED = [
+  { value: 0, label: 'Unused' },
+  { value: 1, label: 'Bacnet Mstp' },
+  { value: 7, label: 'Modbus Master' },
+  { value: 2, label: 'Modbus Slave' },
 ];
 
 const useStyles = makeStyles({
@@ -421,6 +428,7 @@ interface CommunicationSettings {
   UART_Stopbit2?: number;
   Fix_COM_Config?: number;
   Zigbee_Pan_ID?: number;
+  Zigbee_Exist?: number;
 }
 
 interface ProtocolSettings {
@@ -651,6 +659,7 @@ export const SettingsPage: React.FC = () => {
         UART_Stopbit2: settings.uart_stopbit?.[2],
         Fix_COM_Config: settings.fix_com_config,
         Zigbee_Pan_ID: settings.zigbee_panid,
+        Zigbee_Exist: settings.zegbee_exsit,
       });
 
       setProtocolSettings({
@@ -781,6 +790,7 @@ export const SettingsPage: React.FC = () => {
           UART_Stopbit2: settings.uart_stopbit?.[2],
           Fix_COM_Config: settings.fix_com_config,
           Zigbee_Pan_ID: settings.zigbee_panid,
+          Zigbee_Exist: settings.zegbee_exsit,
         });
 
         setProtocolSettings({
@@ -1725,21 +1735,29 @@ export const SettingsPage: React.FC = () => {
                 {/* RS485 SUB row */}
                 <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 70px 1fr 1fr', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
                   <span style={{ fontSize: '12px', fontWeight: 600 }}>RS485 SUB</span>
-                  <Dropdown
-                    size="small"
-                    style={{ width: '100%', minWidth: 0 }}
-                    value={RS485_SUB_MODES.find(m => m.value === (commSettings.COM0_Config ?? 0))?.label ?? 'Unused'}
-                    selectedOptions={[String(commSettings.COM0_Config ?? 0)]}
-                    onOptionSelect={(_, data) => {
-                      const v = Number(data.optionValue);
-                      setCommSettings({ ...commSettings, COM0_Config: v });
-                      updateSettings({ com0_config: v });
-                    }}
-                  >
-                    {RS485_SUB_MODES.map((mode) => (
-                      <Option key={mode.value} value={String(mode.value)}>{mode.label}</Option>
-                    ))}
-                  </Dropdown>
+                  {(() => {
+                    const fixed = !!commSettings.Fix_COM_Config;
+                    const modes = fixed ? RS485_MODES_FIXED : RS485_MODES_UNFIXED;
+                    // In unfixed mode both Modbus Master (7) and Modbus Slave (2) display as 'Modbus' (value 2)
+                    const displayVal = (!fixed && (commSettings.COM0_Config === 7 || commSettings.COM0_Config === 2)) ? 2 : (commSettings.COM0_Config ?? 0);
+                    return (
+                      <Dropdown
+                        size="small"
+                        style={{ width: '100%', minWidth: 0 }}
+                        value={modes.find(m => m.value === displayVal)?.label ?? 'Unused'}
+                        selectedOptions={[String(displayVal)]}
+                        onOptionSelect={(_, data) => {
+                          const v = Number(data.optionValue);
+                          setCommSettings({ ...commSettings, COM0_Config: v });
+                          updateSettings({ com0_config: v });
+                        }}
+                      >
+                        {modes.map((mode) => (
+                          <Option key={mode.value} value={String(mode.value)}>{mode.label}</Option>
+                        ))}
+                      </Dropdown>
+                    );
+                  })()}
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
@@ -1796,7 +1814,8 @@ export const SettingsPage: React.FC = () => {
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
-                    value={RS485_SUB_MODES.find(m => m.value === (commSettings.COM1_Config ?? 0))?.label ?? 'Unused'}
+                    disabled={!commSettings.Zigbee_Exist}
+                    value={COM_PORT_MODES[commSettings.COM1_Config ?? 0] ?? 'Unused'}
                     selectedOptions={[String(commSettings.COM1_Config ?? 0)]}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
@@ -1804,13 +1823,14 @@ export const SettingsPage: React.FC = () => {
                       updateSettings({ com1_config: v });
                     }}
                   >
-                    {RS485_SUB_MODES.map((mode) => (
-                      <Option key={mode.value} value={String(mode.value)}>{mode.label}</Option>
+                    {COM_PORT_MODES.map((label, idx) => (
+                      <Option key={idx} value={String(idx)}>{label}</Option>
                     ))}
                   </Dropdown>
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
+                    disabled={!commSettings.Zigbee_Exist}
                     value={String(BAUDRATE_OPTIONS[commSettings.COM_Baudrate1 ?? 6])}
                     selectedOptions={[String(commSettings.COM_Baudrate1 ?? 6)]}
                     onOptionSelect={(_, data) => {
@@ -1827,6 +1847,7 @@ export const SettingsPage: React.FC = () => {
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
+                    disabled={!commSettings.Zigbee_Exist}
                     value={PARITY_OPTIONS[commSettings.UART_Parity1 ?? 0]}
                     selectedOptions={[String(commSettings.UART_Parity1 ?? 0)]}
                     onOptionSelect={(_, data) => {
@@ -1843,6 +1864,7 @@ export const SettingsPage: React.FC = () => {
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
+                    disabled={!commSettings.Zigbee_Exist}
                     value={STOPBIT_OPTIONS[commSettings.UART_Stopbit1 ?? 0]}
                     selectedOptions={[String(commSettings.UART_Stopbit1 ?? 0)]}
                     onOptionSelect={(_, data) => {
@@ -1860,21 +1882,29 @@ export const SettingsPage: React.FC = () => {
                 {/* RS485 Main row */}
                 <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 70px 1fr 1fr', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
                   <span style={{ fontSize: '12px', fontWeight: 600 }}>RS485 Main</span>
-                  <Dropdown
-                    size="small"
-                    style={{ width: '100%', minWidth: 0 }}
-                    value={RS485_SUB_MODES.find(m => m.value === (commSettings.COM2_Config ?? 0))?.label ?? 'Unused'}
-                    selectedOptions={[String(commSettings.COM2_Config ?? 0)]}
-                    onOptionSelect={(_, data) => {
-                      const v = Number(data.optionValue);
-                      setCommSettings({ ...commSettings, COM2_Config: v });
-                      updateSettings({ com2_config: v });
-                    }}
-                  >
-                    {RS485_SUB_MODES.map((mode) => (
-                      <Option key={mode.value} value={String(mode.value)}>{mode.label}</Option>
-                    ))}
-                  </Dropdown>
+                  {(() => {
+                    const fixed = !!commSettings.Fix_COM_Config;
+                    const modes = fixed ? RS485_MODES_FIXED : RS485_MODES_UNFIXED;
+                    // In unfixed mode both Modbus Master (7) and Modbus Slave (2) display as 'Modbus' (value 2)
+                    const displayVal = (!fixed && (commSettings.COM2_Config === 7 || commSettings.COM2_Config === 2)) ? 2 : (commSettings.COM2_Config ?? 0);
+                    return (
+                      <Dropdown
+                        size="small"
+                        style={{ width: '100%', minWidth: 0 }}
+                        value={modes.find(m => m.value === displayVal)?.label ?? 'Unused'}
+                        selectedOptions={[String(displayVal)]}
+                        onOptionSelect={(_, data) => {
+                          const v = Number(data.optionValue);
+                          setCommSettings({ ...commSettings, COM2_Config: v });
+                          updateSettings({ com2_config: v });
+                        }}
+                      >
+                        {modes.map((mode) => (
+                          <Option key={mode.value} value={String(mode.value)}>{mode.label}</Option>
+                        ))}
+                      </Dropdown>
+                    );
+                  })()}
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
@@ -1927,7 +1957,7 @@ export const SettingsPage: React.FC = () => {
 
                 <div style={{ marginTop: '8px', marginBottom: '8px' }}>
                   <Checkbox
-                    label="Fixed Serial Port Configuration"
+                    label={<span style={{ fontSize: '12px' }}>Fixed Serial Port Configuration</span>}
                     size="medium"
                     checked={(commSettings.Fix_COM_Config ?? 0) !== 0}
                     onChange={(_, data) => {
@@ -2106,7 +2136,7 @@ export const SettingsPage: React.FC = () => {
           </div>
 
           {/* Actions Section - Sticky Bottom */}
-          {selectedDevice && selectedTab === 'basic' && (
+          {selectedDevice && (
             <div className={styles.actionsSection}>
               <div className={styles.actionButtons}>
                 <Button appearance="secondary" icon={<InfoRegular />} disabled={loading} style={{ fontWeight: 'normal', fontSize: '12px' }}>
