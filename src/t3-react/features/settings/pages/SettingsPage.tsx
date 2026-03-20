@@ -2248,11 +2248,11 @@ export const SettingsPage: React.FC = () => {
 
       {/* Sync Confirm Dialog — mirrors C++ CShowMessageDlg for Refresh Time button */}
       <Dialog open={showSyncConfirmDialog} onOpenChange={(_, d) => { if (!d.open) setShowSyncConfirmDialog(false); }}>
-        <DialogSurface style={{ maxWidth: 520 }}>
+        <DialogSurface style={{ maxWidth: 420, marginTop: '48px', alignSelf: 'flex-start' }}>
           <DialogBody>
-            <DialogTitle>Sync Time</DialogTitle>
+            <DialogTitle style={{ fontSize: '14px', fontWeight: 600 }}>Sync Time</DialogTitle>
             <DialogContent>
-              <div style={{ color: '#0000ff', fontSize: '13px', lineHeight: 1.7, marginBottom: 16 }}>
+              <div style={{ color: '#0000ff', fontSize: '12px', lineHeight: 1.7, marginBottom: 12 }}>
                 <div>This device is set to automatically synchronize with a locally connected computer.</div>
                 <div>Are you sure you want to sync to your PC?</div>
                 <div>{syncConfirmDeviceTime} (Last Sync Time)</div>
@@ -2266,7 +2266,9 @@ export const SettingsPage: React.FC = () => {
             </DialogContent>
             <DialogActions>
               <Button
+                size="small"
                 appearance="primary"
+                style={{ fontSize: '12px' }}
                 onClick={() => {
                   localStorage.setItem('t3000_sync_time_ignore_pop', '0');
                   setShowSyncConfirmDialog(false);
@@ -2276,7 +2278,9 @@ export const SettingsPage: React.FC = () => {
                 OK
               </Button>
               <Button
+                size="small"
                 appearance="secondary"
+                style={{ fontSize: '12px' }}
                 onClick={() => {
                   if (syncConfirmDontRemind) {
                     localStorage.setItem('t3000_sync_time_ignore_pop', '1');
