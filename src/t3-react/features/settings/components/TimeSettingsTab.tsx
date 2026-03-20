@@ -88,11 +88,22 @@ function daysInMonth(month: number): number {
   return 30;
 }
 
-function formatEpochAsLocal(epoch: number): string {
-  if (!epoch) return '—';
-  const d = new Date(epoch * 1000);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}  ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+/** Mirrors C++ Check_Time() — returns a relative description of when the device last synced */
+function formatLastUpdate(deviceEpoch: number): string {
+  if (!deviceEpoch) return '—';
+  const now = Math.floor(Date.now() / 1000);
+  const diff = now - deviceEpoch;
+  if (diff < 0) return 'No Reply';
+  if (diff < 60)     return '10 seconds ago';
+  if (diff < 300)    return '1 minute ago';
+  if (diff < 600)    return '5 minutes ago';
+  if (diff < 1800)   return '10 minutes ago';
+  if (diff < 3600)   return '30 minutes ago';
+  if (diff < 43200)  return '1 hour ago';
+  if (diff < 86400)  return '12 hours ago';
+  if (diff < 604800) return '1 day ago';
+  if (diff < 2592000) return '7 days ago';
+  return '1 month ago';
 }
 
 function formatRuntime(seconds: number): string {
@@ -409,87 +420,86 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
           </RadioGroup>
         </div>
 
-        {/* PC Sync block */}
-        {!isNTP && (
-          <div className={styles.pcModeBlock}>
-            <div className={styles.row}>
-              <span className={styles.label}>Date</span>
-              <span className={styles.dateTimeBox}>{pcDateStr}</span>
-              <Button
-                size="small"
-                appearance="primary"
-                icon={<ArrowSyncRegular style={{ fontSize: 12 }} />}
-                style={{ fontSize: 11, minWidth: 110 }}
-                onClick={handleSyncPC}
-                disabled={loading || syncLoading}
-              >
-                {syncLoading ? 'Syncing…' : 'Sync Local PC'}
-              </Button>
-            </div>
-            <div className={styles.row}>
-              <span className={styles.label}>Time</span>
-              <span className={styles.dateTimeBox}>{pcTimeStr}</span>
-              <Button
-                size="small"
-                appearance="primary"
-                icon={<ArrowClockwiseRegular style={{ fontSize: 12 }} />}
-                style={{ fontSize: 11, minWidth: 110 }}
-                onClick={handleRefreshTime}
-                disabled={loading || refreshLoading}
-              >
-                {refreshLoading ? 'Reading…' : 'Refresh Time'}
-              </Button>
-            </div>
+        {/* PC Sync block — always visible (matches C++ layout) */}
+        <div className={styles.pcModeBlock} style={{ opacity: isNTP ? 0.45 : 1, pointerEvents: isNTP ? 'none' : undefined }}>
+          <div className={styles.row}>
+            <span className={styles.label}>Date</span>
+            <span className={styles.dateTimeBox}>{pcDateStr}</span>
+            <Button
+              size="small"
+              appearance="primary"
+              icon={<ArrowSyncRegular style={{ fontSize: 12 }} />}
+              style={{ fontSize: 11, minWidth: 110 }}
+              onClick={handleSyncPC}
+              disabled={loading || syncLoading || isNTP}
+            >
+              {syncLoading ? 'Syncing…' : 'Sync Local PC'}
+            </Button>
           </div>
-        )}
+          <div className={styles.row}>
+            <span className={styles.label}>Time</span>
+            <span className={styles.dateTimeBox}>{pcTimeStr}</span>
+            <Button
+              size="small"
+              appearance="primary"
+              icon={<ArrowClockwiseRegular style={{ fontSize: 12 }} />}
+              style={{ fontSize: 11, minWidth: 110 }}
+              onClick={handleRefreshTime}
+              disabled={loading || refreshLoading || isNTP}
+            >
+              {refreshLoading ? 'Reading…' : 'Refresh Time'}
+            </Button>
+          </div>
+        </div>
 
-        {/* NTP Sync block */}
-        {isNTP && (
-          <div className={styles.ntpModeBlock}>
-            <div className={styles.row}>
-              <span className={styles.label}>Time Server</span>
-              <Dropdown
-                style={{ minWidth: 200, fontSize: 11 }}
-                button={{ style: { fontSize: 11 } }}
-                value={isCustomServer ? 'Custom' : (presetIdx >= 0 ? NTP_PRESETS[presetIdx].label : '—')}
-                onOptionSelect={handleNtpServerSelect}
-              >
-                {NTP_PRESETS.map((p, i) => (
-                  <Option key={i} value={String(i)} style={{ fontSize: 11 }}>
-                    {p.label}
-                  </Option>
-                ))}
-                <Option value="custom" style={{ fontSize: 11 }}>Custom…</Option>
-              </Dropdown>
-              <Button
-                size="small"
-                appearance="primary"
-                onClick={handleNtpSync}
-                disabled={loading || ntpLoading}
-                style={{ fontSize: 11 }}
-              >
-                {ntpLoading ? 'Syncing…' : 'Update'}
-              </Button>
-            </div>
-            {isCustomServer && (
-              <div className={styles.row}>
-                <span className={styles.label}>Custom Server</span>
-                <Input
-                  style={{ fontSize: 12, minWidth: 200 }}
-                  value={customServer}
-                  placeholder="e.g. time.google.com"
-                  onChange={(_, d) => handleCustomServerChange(d.value)}
-                />
-              </div>
-            )}
-            <div className={styles.row}>
-              <span className={styles.label}>Last Update</span>
-              <Text style={{ fontSize: 12, color: tokens.colorNeutralForeground3 }}>
-                {deviceEpoch ? formatEpochAsLocal(deviceEpoch) : '—'}
-              </Text>
-            </div>
+        {/* NTP Sync block — always visible (matches C++ layout) */}
+        <div className={styles.ntpModeBlock} style={{ opacity: !isNTP ? 0.45 : 1, pointerEvents: !isNTP ? 'none' : undefined }}>
+          <div className={styles.row}>
+            <span className={styles.label}>Time Server</span>
+            <Dropdown
+              style={{ minWidth: 200, fontSize: 11 }}
+              button={{ style: { fontSize: 11 } }}
+              value={isCustomServer ? 'Custom' : (presetIdx >= 0 ? NTP_PRESETS[presetIdx].label : '—')}
+              onOptionSelect={handleNtpServerSelect}
+              disabled={!isNTP}
+            >
+              {NTP_PRESETS.map((p, i) => (
+                <Option key={i} value={String(i)} style={{ fontSize: 11 }}>
+                  {p.label}
+                </Option>
+              ))}
+              <Option value="custom" style={{ fontSize: 11 }}>Custom…</Option>
+            </Dropdown>
           </div>
-        )}
+          {isCustomServer && (
+            <div className={styles.row}>
+              <span className={styles.label}>Custom Server</span>
+              <Input
+                style={{ fontSize: 12, minWidth: 200 }}
+                value={customServer}
+                placeholder="e.g. time.google.com"
+                onChange={(_, d) => handleCustomServerChange(d.value)}
+                disabled={!isNTP}
+              />
+            </div>
+          )}
+          {/* Last Update + Update button side-by-side — matching C++ layout */}
+          <div className={styles.row}>
+            <span className={styles.label}>Last Update</span>
+            <Text style={{ fontSize: 12, color: tokens.colorNeutralForeground3, minWidth: 130 }}>
+              {deviceEpoch ? formatLastUpdate(deviceEpoch) : '—'}
+            </Text>
+            <Button
+              size="small"
+              appearance="primary"
+              onClick={handleNtpSync}
+              disabled={loading || ntpLoading || !isNTP}
+              style={{ fontSize: 11 }}
+            >
+              {ntpLoading ? 'Syncing…' : 'Update'}
+            </Button>
+          </div>
+        </div>
 
         {/* Time Zone */}
         <div className={styles.tzRow}>
