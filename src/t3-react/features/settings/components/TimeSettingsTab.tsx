@@ -25,7 +25,6 @@ import {
 import {
   ArrowClockwiseRegular,
   ArrowSyncRegular,
-  SaveRegular,
 } from '@fluentui/react-icons';
 import type { DeviceSettings } from '../services/settingsRefreshApi';
 
@@ -228,9 +227,7 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
     marginBottom: '4px',
   },
-  saveRow: {
-    marginTop: '16px',
-  },
+
 });
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -408,98 +405,107 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
       <div className={styles.card}>
         <div className={styles.cardTitle}>Time Configuration</div>
 
-        {/* Sync Mode Radio */}
-        <div className={styles.syncModeGroup}>
-          <RadioGroup
-            layout="horizontal"
-            value={isNTP ? 'ntp' : 'pc'}
-            onChange={(_, data) => handleSyncModeChange(data.value)}
-          >
-            <Radio value="pc"  label={{ style: { fontSize: '12px', fontWeight: 'normal' }, children: 'Synchronize with Local PC' }} />
-            <Radio value="ntp" label={{ style: { fontSize: '12px', fontWeight: 'normal' }, children: 'Synchronize with the time server' }} />
-          </RadioGroup>
-        </div>
+        {/* Sync Mode — PC and NTP panels side by side */}
+        <RadioGroup
+          value={isNTP ? 'ntp' : 'pc'}
+          onChange={(_, data) => handleSyncModeChange(data.value)}
+        >
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '10px' }}>
 
-        {/* PC Sync block — always visible (matches C++ layout) */}
-        <div className={styles.pcModeBlock} style={{ opacity: isNTP ? 0.45 : 1, pointerEvents: isNTP ? 'none' : undefined }}>
-          <div className={styles.row}>
-            <span className={styles.label}>Date</span>
-            <span className={styles.dateTimeBox}>{pcDateStr}</span>
-            <Button
-              size="small"
-              appearance="primary"
-              icon={<ArrowSyncRegular style={{ fontSize: 12 }} />}
-              style={{ fontSize: 11, minWidth: 110 }}
-              onClick={handleSyncPC}
-              disabled={loading || syncLoading || isNTP}
-            >
-              {syncLoading ? 'Syncing…' : 'Sync Local PC'}
-            </Button>
-          </div>
-          <div className={styles.row}>
-            <span className={styles.label}>Time</span>
-            <span className={styles.dateTimeBox}>{pcTimeStr}</span>
-            <Button
-              size="small"
-              appearance="primary"
-              icon={<ArrowClockwiseRegular style={{ fontSize: 12 }} />}
-              style={{ fontSize: 11, minWidth: 110 }}
-              onClick={handleRefreshTime}
-              disabled={loading || refreshLoading || isNTP}
-            >
-              {refreshLoading ? 'Reading…' : 'Refresh Time'}
-            </Button>
-          </div>
-        </div>
-
-        {/* NTP Sync block — always visible (matches C++ layout) */}
-        <div className={styles.ntpModeBlock} style={{ opacity: !isNTP ? 0.45 : 1, pointerEvents: !isNTP ? 'none' : undefined }}>
-          <div className={styles.row}>
-            <span className={styles.label}>Time Server</span>
-            <Dropdown
-              style={{ minWidth: 200, fontSize: 11 }}
-              button={{ style: { fontSize: 11 } }}
-              value={isCustomServer ? 'Custom' : (presetIdx >= 0 ? NTP_PRESETS[presetIdx].label : '—')}
-              onOptionSelect={handleNtpServerSelect}
-              disabled={!isNTP}
-            >
-              {NTP_PRESETS.map((p, i) => (
-                <Option key={i} value={String(i)} style={{ fontSize: 11 }}>
-                  {p.label}
-                </Option>
-              ))}
-              <Option value="custom" style={{ fontSize: 11 }}>Custom…</Option>
-            </Dropdown>
-          </div>
-          {isCustomServer && (
-            <div className={styles.row}>
-              <span className={styles.label}>Custom Server</span>
-              <Input
-                style={{ fontSize: 12, minWidth: 200 }}
-                value={customServer}
-                placeholder="e.g. time.google.com"
-                onChange={(_, d) => handleCustomServerChange(d.value)}
-                disabled={!isNTP}
+            {/* PC Sync panel */}
+            <div className={styles.pcModeBlock} style={{ flex: 1, marginBottom: 0 }}>
+              <Radio
+                value="pc"
+                label={{ style: { fontSize: '12px', fontWeight: 'normal' }, children: 'Synchronize with Local PC' }}
               />
+              <div style={{ opacity: isNTP ? 0.45 : 1, pointerEvents: isNTP ? 'none' : undefined, marginTop: 8 }}>
+                <div className={styles.row}>
+                  <span className={styles.label}>Date</span>
+                  <span className={styles.dateTimeBox}>{pcDateStr}</span>
+                  <Button
+                    size="small"
+                    appearance="primary"
+                    icon={<ArrowSyncRegular style={{ fontSize: 12 }} />}
+                    style={{ fontSize: 11, minWidth: 110 }}
+                    onClick={handleSyncPC}
+                    disabled={loading || syncLoading || isNTP}
+                  >
+                    {syncLoading ? 'Syncing…' : 'Sync Local PC'}
+                  </Button>
+                </div>
+                <div className={styles.row} style={{ marginBottom: 0 }}>
+                  <span className={styles.label}>Time</span>
+                  <span className={styles.dateTimeBox}>{pcTimeStr}</span>
+                  <Button
+                    size="small"
+                    appearance="primary"
+                    icon={<ArrowClockwiseRegular style={{ fontSize: 12 }} />}
+                    style={{ fontSize: 11, minWidth: 110 }}
+                    onClick={handleRefreshTime}
+                    disabled={loading || refreshLoading || isNTP}
+                  >
+                    {refreshLoading ? 'Reading…' : 'Refresh Time'}
+                  </Button>
+                </div>
+              </div>
             </div>
-          )}
-          {/* Last Update + Update button side-by-side — matching C++ layout */}
-          <div className={styles.row}>
-            <span className={styles.label}>Last Update</span>
-            <Text style={{ fontSize: 12, color: tokens.colorNeutralForeground3, minWidth: 130 }}>
-              {deviceEpoch ? formatLastUpdate(deviceEpoch) : '—'}
-            </Text>
-            <Button
-              size="small"
-              appearance="primary"
-              onClick={handleNtpSync}
-              disabled={loading || ntpLoading || !isNTP}
-              style={{ fontSize: 11 }}
-            >
-              {ntpLoading ? 'Syncing…' : 'Update'}
-            </Button>
+
+            {/* NTP Sync panel */}
+            <div className={styles.ntpModeBlock} style={{ flex: 1, marginBottom: 0 }}>
+              <Radio
+                value="ntp"
+                label={{ style: { fontSize: '12px', fontWeight: 'normal' }, children: 'Synchronize with the time server' }}
+              />
+              <div style={{ opacity: !isNTP ? 0.45 : 1, pointerEvents: !isNTP ? 'none' : undefined, marginTop: 8 }}>
+                <div className={styles.row}>
+                  <span className={styles.label}>Time Server</span>
+                  <Dropdown
+                    style={{ minWidth: 160, fontSize: 11 }}
+                    button={{ style: { fontSize: 11 } }}
+                    value={isCustomServer ? 'Custom' : (presetIdx >= 0 ? NTP_PRESETS[presetIdx].label : '—')}
+                    onOptionSelect={handleNtpServerSelect}
+                    disabled={!isNTP}
+                  >
+                    {NTP_PRESETS.map((p, i) => (
+                      <Option key={i} value={String(i)} style={{ fontSize: 11 }}>
+                        {p.label}
+                      </Option>
+                    ))}
+                    <Option value="custom" style={{ fontSize: 11 }}>Custom…</Option>
+                  </Dropdown>
+                </div>
+                {isCustomServer && (
+                  <div className={styles.row}>
+                    <span className={styles.label}>Custom Server</span>
+                    <Input
+                      style={{ fontSize: 12, minWidth: 160 }}
+                      value={customServer}
+                      placeholder="e.g. time.google.com"
+                      onChange={(_, d) => handleCustomServerChange(d.value)}
+                      disabled={!isNTP}
+                    />
+                  </div>
+                )}
+                <div className={styles.row} style={{ marginBottom: 0 }}>
+                  <span className={styles.label}>Last Update</span>
+                  <Text style={{ fontSize: 12, color: tokens.colorNeutralForeground3, minWidth: 110 }}>
+                    {deviceEpoch ? formatLastUpdate(deviceEpoch) : '—'}
+                  </Text>
+                  <Button
+                    size="small"
+                    appearance="primary"
+                    onClick={handleNtpSync}
+                    disabled={loading || ntpLoading || !isNTP}
+                    style={{ fontSize: 11 }}
+                  >
+                    {ntpLoading ? 'Syncing…' : 'Update'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
           </div>
-        </div>
+        </RadioGroup>
 
         {/* Time Zone */}
         <div className={styles.tzRow}>
@@ -588,18 +594,6 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
             </div>
         </div>
 
-        {/* Save */}
-        <div className={styles.saveRow}>
-          <Button
-            size="small"
-            appearance="primary"
-            icon={<SaveRegular />}
-            onClick={onSave}
-            disabled={loading}
-          >
-            {loading ? 'Saving…' : 'Save Time Settings'}
-          </Button>
-        </div>
       </div>
 
       {/* ── RIGHT: Device Status ──────────────────────────────────────────────── */}
