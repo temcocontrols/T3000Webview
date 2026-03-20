@@ -2567,6 +2567,39 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 				
 				break;
 			}
+
+			// Network Health
+			case READ_MISC:
+			{
+				if ((entry_index_end == 0) && (entry_index_start == 0))
+				{
+					if (GetPrivateDataSaveSPBlocking(entry_objectinstance, READ_MISC,
+						entry_index_start, entry_index_end, sizeof(Str_MISC), 4) > 0)
+					{
+						tempjson["data"]["device_data"][point_idx]["pid"] = temp_panel_id;
+						tempjson["data"]["device_data"][point_idx]["type"] = "MISC";
+						tempjson["data"]["device_data"][point_idx]["index"] = 0;
+						tempjson["data"]["device_data"][point_idx]["id"] = "MISC0";
+						for (int m = 0; m < 400; m++)
+						{
+							tempjson["data"]["device_data"][point_idx]["All"][m] = Device_Misc_Data.all[m];
+						}
+						point_idx++;
+					}
+					else
+					{
+						CString errorLog;
+						errorLog.Format(_T("ERROR: Read MISC data failed start=%d, end=%d"),
+							entry_index_start, entry_index_end);
+						WriteHandleWebViewMsgLog(_T("GET_WEBVIEW_LIST"), errorLog, 0);
+						if (msg_source == 0)
+							SetPaneString(BAC_SHOW_MISSION_RESULTS, errorLog);
+						WrapErrorMessage(builder, tempjson, outmsg, errorLog);
+					}
+				}
+				break;
+			}
+
 			default:
 				break;
 		}
@@ -2816,12 +2849,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 			if (ret_results > 0)
 			{
 				memcpy(g_Device_Basic_Setting[temp_panel_id].all, &temp_Setting, sizeof(Str_Setting_Info));
-
-				if (temp_serial_number == g_selected_serialnumber)
-				{
-					memcpy(&Device_Basic_Setting, &g_Device_Basic_Setting[temp_panel_id], sizeof(Str_Setting_Info));
 				}
-			}
 			else
 			{
 				WrapErrorMessage(builder, tempjson, outmsg, _T("Write data timeout."));
@@ -3188,13 +3216,6 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 		int send_index = 0;
 		for (int i = 0; i < g_bacnet_panel_info.size(); i++)
 		{            
-			// Save panel_name from RAM BEFORE LoadOnlinePanelData overwrites it from stale .prog cache
-			int temp_panel = g_bacnet_panel_info.at(i).panel_number;
-			const char* ramNamePtr = reinterpret_cast<const char*>(g_Device_Basic_Setting[temp_panel].reg.panel_name);
-			char saved_panel_name[32] = { 0 };
-			if (!IsNullOrEmptyOrWhitespace(ramNamePtr))
-				strncpy(saved_panel_name, ramNamePtr, 31);
-
 			int nret = LoadOnlinePanelData(g_bacnet_panel_info.at(i).panel_number);
 			if (nret > 0)
 			{
@@ -3203,16 +3224,12 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 				tempjson["data"][send_index]["serial_number"] = g_bacnet_panel_info.at(i).nseiral_number;
 				tempjson["data"][send_index]["online_time"] = g_bacnet_panel_info.at(i).online_time; //Last response time .4bytes.   0  means 1970 1 1 0 
 				tempjson["data"][send_index]["pid"] = g_bacnet_panel_info.at(i).npid;
-				//tempjson["data"][send_index]["panel_name"] = (char*)g_Device_Basic_Setting[g_bacnet_panel_info.at(i).panel_number].reg.panel_name;
-				if (saved_panel_name[0] != 0)
-					tempjson["data"][send_index]["panel_name"] = saved_panel_name;
-				else
 					tempjson["data"][send_index]["panel_name"] = (char*)g_Device_Basic_Setting[g_bacnet_panel_info.at(i).panel_number].reg.panel_name;
 				send_index++;
 			}
 			else
 			{
-				//int temp_panel = g_bacnet_panel_info.at(i).panel_number;
+				int temp_panel = g_bacnet_panel_info.at(i).panel_number;
 				if ((temp_panel == 0) || (temp_panel >= 255))
 					continue;
 				//if (temp_panel != g_Device_Basic_Setting[temp_panel].reg.panel_number)
@@ -3226,10 +3243,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 				tempjson["data"][send_index]["online_time"] = g_bacnet_panel_info.at(i).online_time; //Last response time .4bytes.   0  means 1970 1 1 0 
 				tempjson["data"][send_index]["pid"] = g_bacnet_panel_info.at(i).npid;// g_Device_Basic_Setting[temp_panel].reg.panel_type;
 				//判断g_Device_Basic_Setting[g_bacnet_panel_info.at(i).panel_number].reg.panel_name 是否是空字符
-				//const char* panelNamePtr = reinterpret_cast<const char*>(g_Device_Basic_Setting[g_bacnet_panel_info.at(i).panel_number].reg.panel_name);
-				const char* panelNamePtr = (saved_panel_name[0] != 0)
-					? saved_panel_name
-					: reinterpret_cast<const char*>(g_Device_Basic_Setting[temp_panel].reg.panel_name);
+				const char* panelNamePtr = reinterpret_cast<const char*>(g_Device_Basic_Setting[g_bacnet_panel_info.at(i).panel_number].reg.panel_name);
 
 				if (IsNullOrEmptyOrWhitespace(panelNamePtr)) {
 					tempjson["data"][send_index]["panel_name"] = std::string("(Unknown)");
