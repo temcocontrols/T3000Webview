@@ -498,6 +498,29 @@ export const SettingsPage: React.FC = () => {
     const t = setTimeout(() => setSuccessMessage(null), 3000);
     return () => clearTimeout(t);
   }, [successMessage]);
+
+  // Sync-confirm dialog state (matches C++ CShowMessageDlg for Refresh Time)
+  const [showSyncConfirmDialog, setShowSyncConfirmDialog] = useState(false);
+  const [syncConfirmDeviceTime, setSyncConfirmDeviceTime] = useState('');
+  const [syncConfirmPcTime, setSyncConfirmPcTime] = useState('');
+  const [syncConfirmDontRemind, setSyncConfirmDontRemind] = useState(false);
+  const [syncConfirmCountdown, setSyncConfirmCountdown] = useState(55);
+  useEffect(() => {
+    if (!showSyncConfirmDialog) return;
+    setSyncConfirmCountdown(55);
+    const id = setInterval(() => {
+      setSyncConfirmCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(id);
+          setShowSyncConfirmDialog(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [showSyncConfirmDialog]);
+
   const [showRebootDialog, setShowRebootDialog] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showAdvancedSettingsDialog, setShowAdvancedSettingsDialog] = useState(false);
@@ -615,8 +638,8 @@ export const SettingsPage: React.FC = () => {
   }, []);
 
   // Fetch settings based on selected tab
-  const fetchSettings = useCallback(async () => {
-    if (!selectedDevice) return;
+  const fetchSettings = useCallback(async (): Promise<DeviceSettings | undefined> => {
+    if (!selectedDevice) return undefined;
 
     setLoading(true);
     setError(null);
@@ -745,10 +768,12 @@ export const SettingsPage: React.FC = () => {
       // They live in separate C++ structures — fetch them via dedicated endpoints.
       void fetchExternalSettings(serial);
 
+      return settings;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
       console.error('[SettingsPage] Failed to fetch settings:', err);
+      return undefined;
     } finally {
       setLoading(false);
     }
@@ -1093,9 +1118,37 @@ export const SettingsPage: React.FC = () => {
     setSuccessMessage('Time server sync complete.');
   };
 
-  // Re-read device settings to refresh the displayed device time
+  // Re-read device settings to refresh the displayed device time.
+  // Mirrors C++ case TIME_COMMAND: — if in PC sync mode and clock is off by >3 min,
+  // shows CShowMessageDlg confirmation before syncing (with 3-day ignore option).
   const handleRefreshDeviceTime = async () => {
-    await fetchSettings();
+    const freshSettings = await fetchSettings();
+    if (!freshSettings) return;
+
+    // Only prompt if device is in "Sync with Local PC" mode (time_sync_auto_manual == 1)
+    if ((freshSettings.time_sync_auto_manual ?? 0) !== 1) return;
+
+    const deviceEpoch = freshSettings.time_update_since_1970 ?? 0;
+    const pcEpoch = Math.floor(Date.now() / 1000);
+    const diff = Math.abs(pcEpoch - deviceEpoch);
+
+    if (diff <= 180) return; // within 3 minutes — no sync needed
+
+    // Check localStorage 3-day ignore flag (mirrors C++ INI SYNC_Time/ignore_pop)
+    const ignorePop = localStorage.getItem('t3000_sync_time_ignore_pop');
+    const ignorePopTime = parseInt(localStorage.getItem('t3000_sync_time_ignore_pop_time') ?? '0', 10);
+    if (ignorePop === '1' && (pcEpoch - ignorePopTime) < 3600 * 24 * 3 && (pcEpoch - ignorePopTime) >= 0) return;
+
+    const formatEpoch = (epoch: number) => {
+      const d = new Date(epoch * 1000);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+
+    setSyncConfirmDeviceTime(formatEpoch(deviceEpoch));
+    setSyncConfirmPcTime(formatEpoch(pcEpoch));
+    setSyncConfirmDontRemind(false);
+    setShowSyncConfirmDialog(true);
   };
 
   const handleSaveDyndns = async () => {
@@ -2192,6 +2245,54 @@ export const SettingsPage: React.FC = () => {
         onOpenChange={setShowWifiDialog}
         serialNumber={selectedDevice?.serialNumber ?? 0}
       />
+
+      {/* Sync Confirm Dialog — mirrors C++ CShowMessageDlg for Refresh Time button */}
+      <Dialog open={showSyncConfirmDialog} onOpenChange={(_, d) => { if (!d.open) setShowSyncConfirmDialog(false); }}>
+        <DialogSurface style={{ maxWidth: 520 }}>
+          <DialogBody>
+            <DialogTitle>Sync Time</DialogTitle>
+            <DialogContent>
+              <div style={{ color: '#0000ff', fontSize: '13px', lineHeight: 1.7, marginBottom: 16 }}>
+                <div>This device is set to automatically synchronize with a locally connected computer.</div>
+                <div>Are you sure you want to sync to your PC?</div>
+                <div>{syncConfirmDeviceTime} (Last Sync Time)</div>
+                <div>{syncConfirmPcTime} (New Time)</div>
+              </div>
+              <Checkbox
+                label={{ style: { fontSize: '12px' }, children: 'The whole building do not popup reminder for 3 days' }}
+                checked={syncConfirmDontRemind}
+                onChange={(_, d) => setSyncConfirmDontRemind(!!d.checked)}
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button
+                appearance="primary"
+                onClick={() => {
+                  localStorage.setItem('t3000_sync_time_ignore_pop', '0');
+                  setShowSyncConfirmDialog(false);
+                  handleSyncLocalPC();
+                }}
+              >
+                OK
+              </Button>
+              <Button
+                appearance="secondary"
+                onClick={() => {
+                  if (syncConfirmDontRemind) {
+                    localStorage.setItem('t3000_sync_time_ignore_pop', '1');
+                    localStorage.setItem('t3000_sync_time_ignore_pop_time', String(Math.floor(Date.now() / 1000)));
+                  } else {
+                    localStorage.setItem('t3000_sync_time_ignore_pop', '0');
+                  }
+                  setShowSyncConfirmDialog(false);
+                }}
+              >
+                Cancel ({syncConfirmCountdown})
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
       <ChangeIpProgressDialog
         isOpen={showChangeIpDialog}
         onClose={(success) => {
