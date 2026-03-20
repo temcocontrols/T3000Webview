@@ -24,13 +24,12 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { Dismiss24Regular } from '@fluentui/react-icons';
-import { T3Database } from '../../../../lib/t3-database';
+import { T3Transport } from '../../../../lib/t3-transport/core/T3Transport';
 import { API_BASE_URL } from '../../../config/constants';
-import type { MiscSettings } from '../../../../lib/t3-database/types/device.types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const REFRESH_INTERVAL_MS = 4000; // C++: SetTimer(1, 4000, NULL)
+const REFRESH_INTERVAL_MS = 5000; // 5s — gives C++ FFI blocking call enough time to complete
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
@@ -152,31 +151,45 @@ interface HealthRow {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function mapMiscToRows(data: MiscSettings): HealthRow[] {
+// Parse health counters from raw 400-byte Str_MISC All[] array.
+// Offsets from CM5/ud_str.h Str_MISC.reg:
+//   flag1        = byte 146 (0x55 = valid)
+//   com_rx[3]    = bytes 147-158  (uint32 LE each)
+//   com_tx[3]    = bytes 159-170  (uint32 LE each)
+//   collision[3] = bytes 171-176  (uint16 LE each)
+//   packet_error[3] = bytes 177-182 (uint16 LE each)
+//   timeout[3]   = bytes 183-188  (uint16 LE each)
+function parseMiscBytes(all: number[]): HealthRow[] {
+  const u32 = (offset: number) =>
+    ((all[offset + 3] ?? 0) << 24 | (all[offset + 2] ?? 0) << 16 |
+     (all[offset + 1] ?? 0) << 8  | (all[offset]     ?? 0)) >>> 0;
+  const u16 = (offset: number) =>
+    ((all[offset + 1] ?? 0) << 8 | (all[offset] ?? 0)) >>> 0;
+
   return [
     {
       label: 'RS485 SUB',
-      rx: data.COM_RX_0 ?? 0,
-      tx: data.COM_TX_0 ?? 0,
-      collision: data.Collision_0 ?? 0,
-      packetError: data.Packet_Error_0 ?? 0,
-      timeout: data.Timeout_0 ?? 0,
+      rx:          u32(147),
+      tx:          u32(159),
+      collision:   u16(171),
+      packetError: u16(177),
+      timeout:     u16(183),
     },
     {
       label: 'ZIGB / GSM :',
-      rx: data.COM_RX_1 ?? 0,
-      tx: data.COM_TX_1 ?? 0,
-      collision: data.Collision_1 ?? 0,
-      packetError: data.Packet_Error_1 ?? 0,
-      timeout: data.Timeout_1 ?? 0,
+      rx:          u32(151),
+      tx:          u32(163),
+      collision:   u16(173),
+      packetError: u16(179),
+      timeout:     u16(185),
     },
     {
       label: 'RS485 Main',
-      rx: data.COM_RX_2 ?? 0,
-      tx: data.COM_TX_2 ?? 0,
-      collision: data.Collision_2 ?? 0,
-      packetError: data.Packet_Error_2 ?? 0,
-      timeout: data.Timeout_2 ?? 0,
+      rx:          u32(155),
+      tx:          u32(167),
+      collision:   u16(175),
+      packetError: u16(181),
+      timeout:     u16(187),
     },
   ];
 }
@@ -195,7 +208,6 @@ export const NetworkHealthDialog: React.FC<NetworkHealthDialogProps> = ({
   serialNumber,
 }) => {
   const styles = useStyles();
-  const db = new T3Database(`${API_BASE_URL}/api`);
 
   const [rows, setRows] = useState<HealthRow[]>(EMPTY_ROWS);
   const [loading, setLoading] = useState(false);
@@ -204,14 +216,25 @@ export const NetworkHealthDialog: React.FC<NetworkHealthDialogProps> = ({
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ── Fetch misc data ─────────────────────────────────────────────────────────
+  // ── Fetch misc data from device via FFI (GET_WEBVIEW_LIST, entryType=96) ────
   const fetchData = useCallback(async () => {
     if (!serialNumber) return;
     try {
-      const data = await db.deviceMisc.get(serialNumber);
-      if (data) setRows(mapMiscToRows(data));
+      const transport = new T3Transport({ apiBaseUrl: `${API_BASE_URL}/api` });
+      await transport.connect('ffi');
+      const response = await transport.getDeviceMisc(serialNumber);
+      await transport.disconnect();
+
+      if (!response || response.success === false) {
+        throw new Error(response?.error || 'Device returned error');
+      }
+
+      const all: number[] = response.data?.data?.device_data?.[0]?.All ?? [];
+      if (all.length >= 189) {
+        setRows(parseMiscBytes(all));
+      }
       setError(null);
-    } catch {
+    } catch (e) {
       setError('Failed to read health data');
     }
   }, [serialNumber]); // eslint-disable-line
@@ -232,23 +255,14 @@ export const NetworkHealthDialog: React.FC<NetworkHealthDialogProps> = ({
   }, [isOpen, fetchData]);
 
   // ── Clear handler ───────────────────────────────────────────────────────────
-  // C++: Device_Special_Data.reg.clear_health_rx_tx = 0x11 + WRITE_SPECIAL_COMMAND
-  // We zero all health counter fields via upsert.
+  // Mirrors C++: Device_Special_Data.reg.clear_health_rx_tx = 0x11
+  // TODO: send WRITE_SPECIAL_COMMAND via FFI once that action is implemented.
+  // For now, just zero the display immediately.
   const handleClear = async () => {
     setClearing(true);
     setError(null);
     try {
-      await db.deviceMisc.upsert(serialNumber, {
-        Network_Health_Flag: 0x11, // signals clear to firmware
-        COM_RX_0: 0, COM_RX_1: 0, COM_RX_2: 0,
-        COM_TX_0: 0, COM_TX_1: 0, COM_TX_2: 0,
-        Collision_0: 0, Collision_1: 0, Collision_2: 0,
-        Packet_Error_0: 0, Packet_Error_1: 0, Packet_Error_2: 0,
-        Timeout_0: 0, Timeout_1: 0, Timeout_2: 0,
-      });
       setRows(EMPTY_ROWS);
-    } catch {
-      setError('Clear failed – device did not respond');
     } finally {
       setClearing(false);
     }
