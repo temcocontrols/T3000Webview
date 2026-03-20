@@ -366,6 +366,39 @@ export class T3Transport {
     });
   }
 
+  /**
+   * Get device MISC data using Action 17 with READ_MISC (96)
+   * Reads entire Str_MISC structure (400 bytes) from device.
+   * Health counters are at bytes 147-188 of the returned All[] array.
+   */
+  async getDeviceMisc(serialNumber: number): Promise<WebViewResponse> {
+    const deviceListResponse = await this.getDeviceList();
+
+    const deviceList = Array.isArray(deviceListResponse.data)
+      ? deviceListResponse.data
+      : (deviceListResponse.data?.data && Array.isArray(deviceListResponse.data.data))
+        ? deviceListResponse.data.data
+        : [];
+
+    if (!Array.isArray(deviceList) || deviceList.length === 0) {
+      throw new Error(`No devices found.`);
+    }
+
+    const device = deviceList.find((d: any) => d.serial_number === serialNumber);
+    if (!device) {
+      throw new Error(`Device with serial number ${serialNumber} not found in device list`);
+    }
+
+    return this.send(WebViewMessageType.GET_WEBVIEW_LIST, {
+      panelId: device.panel_number,
+      serialNumber,
+      entryType: 96,  // READ_MISC
+      entryIndexStart: 0,
+      entryIndexEnd: 0,
+      objectinstance: device.object_instance
+    });
+  }
+
   // =============================================================================
   // Transport Management Methods
   // =============================================================================
