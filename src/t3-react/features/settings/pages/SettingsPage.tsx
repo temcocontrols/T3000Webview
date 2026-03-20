@@ -487,7 +487,9 @@ export const SettingsPage: React.FC = () => {
   const styles = useStyles();
   const { selectedDevice, devices, selectDevice, updateDevice } = useDeviceTreeStore();
 
-  const [selectedTab, setSelectedTab] = useState<TabValue>('basic');
+  const [selectedTab, setSelectedTab] = useState<TabValue>(
+    () => (localStorage.getItem('t3-settings-tab') as TabValue) ?? 'basic'
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -887,7 +889,9 @@ export const SettingsPage: React.FC = () => {
   }, [fetchSettings]);
 
   const handleTabSelect = (_event: SelectTabEvent, data: SelectTabData) => {
-    setSelectedTab(data.value as TabValue);
+    const tab = data.value as TabValue;
+    setSelectedTab(tab);
+    localStorage.setItem('t3-settings-tab', tab);
     setError(null);
     setSuccessMessage(null);
   };
@@ -1974,6 +1978,7 @@ export const SettingsPage: React.FC = () => {
                     size="small"
                     type="number"
                     value={String(commSettings.Zigbee_Pan_ID ?? 0)}
+                    disabled={!commSettings.Zigbee_Exist}
                     onChange={(_, data) => {
                       const v = Number(data.value);
                       setCommSettings({ ...commSettings, Zigbee_Pan_ID: v });
