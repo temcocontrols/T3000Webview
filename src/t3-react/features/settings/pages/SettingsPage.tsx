@@ -493,6 +493,11 @@ export const SettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  useEffect(() => {
+    if (!successMessage) return;
+    const t = setTimeout(() => setSuccessMessage(null), 3000);
+    return () => clearTimeout(t);
+  }, [successMessage]);
   const [showRebootDialog, setShowRebootDialog] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showAdvancedSettingsDialog, setShowAdvancedSettingsDialog] = useState(false);
@@ -1077,11 +1082,15 @@ export const SettingsPage: React.FC = () => {
   };
 
   // Trigger NTP sync on device (C++: OnBnClickedButtonSyncTime — sets reset_default=99)
+  // C++ waits 4 seconds (SetTimer 4000ms) before re-reading to let device finish NTP sync
   const handleSyncTimeServer = async () => {
     if (!selectedDevice || !settings) return;
     updateSettings({ reset_default: 99, time_sync_auto_manual: 0 });
     await handleSaveTime();
-    setSuccessMessage('Time server sync command sent to device.');
+    setSuccessMessage('Time server sync command sent to device. Refreshing in 4s…');
+    await new Promise(resolve => setTimeout(resolve, 4000));
+    await fetchSettings();
+    setSuccessMessage('Time server sync complete.');
   };
 
   // Re-read device settings to refresh the displayed device time
