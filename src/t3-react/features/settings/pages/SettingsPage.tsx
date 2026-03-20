@@ -521,6 +521,29 @@ export const SettingsPage: React.FC = () => {
     return () => clearInterval(id);
   }, [showSyncConfirmDialog]);
 
+  // RS485 SUB/Main first-dropdown warning dialog (matches C++ "Changing Subnet Baud Rate and Protocol")
+  const [showRS485WarnDialog, setShowRS485WarnDialog] = useState(false);
+  const [rs485WarnCountdown, setRs485WarnCountdown] = useState(3);
+  const pendingRS485Action = React.useRef<(() => void) | null>(null);
+  useEffect(() => {
+    if (!showRS485WarnDialog) return;
+    setRs485WarnCountdown(3);
+    const id = setInterval(() => {
+      setRs485WarnCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(id);
+          // Auto-apply the pending action (same as OK)
+          setShowRS485WarnDialog(false);
+          pendingRS485Action.current?.();
+          pendingRS485Action.current = null;
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [showRS485WarnDialog]);
+
   const [showRebootDialog, setShowRebootDialog] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showAdvancedSettingsDialog, setShowAdvancedSettingsDialog] = useState(false);
@@ -1814,8 +1837,11 @@ export const SettingsPage: React.FC = () => {
                         selectedOptions={[String(displayVal)]}
                         onOptionSelect={(_, data) => {
                           const v = Number(data.optionValue);
-                          setCommSettings({ ...commSettings, COM0_Config: v });
-                          updateSettings({ com0_config: v });
+                          pendingRS485Action.current = () => {
+                            setCommSettings(prev => ({ ...prev, COM0_Config: v }));
+                            updateSettings({ com0_config: v });
+                          };
+                          setShowRS485WarnDialog(true);
                         }}
                       >
                         {modes.map((mode) => (
@@ -1831,8 +1857,11 @@ export const SettingsPage: React.FC = () => {
                     selectedOptions={[String(commSettings.COM_Baudrate0 ?? 9)]}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
-                      setCommSettings({ ...commSettings, COM_Baudrate0: v });
-                      updateSettings({ com_baudrate0: v });
+                      pendingRS485Action.current = () => {
+                        setCommSettings(prev => ({ ...prev, COM_Baudrate0: v }));
+                        updateSettings({ com_baudrate0: v });
+                      };
+                      setShowRS485WarnDialog(true);
                     }}
                   >
                     {BAUDRATE_OPTIONS.map((baud, idx) => (
@@ -1961,8 +1990,11 @@ export const SettingsPage: React.FC = () => {
                         selectedOptions={[String(displayVal)]}
                         onOptionSelect={(_, data) => {
                           const v = Number(data.optionValue);
-                          setCommSettings({ ...commSettings, COM2_Config: v });
-                          updateSettings({ com2_config: v });
+                          pendingRS485Action.current = () => {
+                            setCommSettings(prev => ({ ...prev, COM2_Config: v }));
+                            updateSettings({ com2_config: v });
+                          };
+                          setShowRS485WarnDialog(true);
                         }}
                       >
                         {modes.map((mode) => (
@@ -1978,8 +2010,11 @@ export const SettingsPage: React.FC = () => {
                     selectedOptions={[String(commSettings.COM_Baudrate2 ?? 9)]}
                     onOptionSelect={(_, data) => {
                       const v = Number(data.optionValue);
-                      setCommSettings({ ...commSettings, COM_Baudrate2: v });
-                      updateSettings({ com_baudrate2: v });
+                      pendingRS485Action.current = () => {
+                        setCommSettings(prev => ({ ...prev, COM_Baudrate2: v }));
+                        updateSettings({ com_baudrate2: v });
+                      };
+                      setShowRS485WarnDialog(true);
                     }}
                   >
                     {BAUDRATE_OPTIONS.map((baud, idx) => (
@@ -2245,6 +2280,48 @@ export const SettingsPage: React.FC = () => {
         onOpenChange={setShowWifiDialog}
         serialNumber={selectedDevice?.serialNumber ?? 0}
       />
+
+      {/* RS485 Warning Dialog — mirrors C++ "Changing Subnet Baud Rate and Protocol" popup */}
+      {/* Auto-applies after 3 seconds; Cancel discards the pending change */}
+      <Dialog open={showRS485WarnDialog} onOpenChange={(_, d) => { if (!d.open) { setShowRS485WarnDialog(false); pendingRS485Action.current = null; } }}>
+        <DialogSurface style={{ maxWidth: 440, marginTop: '48px', alignSelf: 'flex-start' }}>
+          <DialogBody>
+            <DialogTitle style={{ fontSize: '14px', fontWeight: 600, color: '#0000dd' }}>
+              Changing Subnet Baud Rate and Protocol
+            </DialogTitle>
+            <DialogContent>
+              <div style={{ fontSize: '13px', color: '#0000dd', marginTop: 4 }}>
+                Make sure all subnet devices share these same settings
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                size="small"
+                appearance="primary"
+                style={{ fontSize: '12px' }}
+                onClick={() => {
+                  setShowRS485WarnDialog(false);
+                  pendingRS485Action.current?.();
+                  pendingRS485Action.current = null;
+                }}
+              >
+                OK ({rs485WarnCountdown})
+              </Button>
+              <Button
+                size="small"
+                appearance="secondary"
+                style={{ fontSize: '12px' }}
+                onClick={() => {
+                  setShowRS485WarnDialog(false);
+                  pendingRS485Action.current = null;
+                }}
+              >
+                Cancel
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
 
       {/* Sync Confirm Dialog — mirrors C++ CShowMessageDlg for Refresh Time button */}
       <Dialog open={showSyncConfirmDialog} onOpenChange={(_, d) => { if (!d.open) setShowSyncConfirmDialog(false); }}>
