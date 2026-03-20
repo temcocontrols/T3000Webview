@@ -28,7 +28,7 @@ import {
   BuildingRegular,
   DatabaseRegular,
   ArrowSyncRegular,
-  DismissCircleRegular,
+  DeleteRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../store/deviceTreeStore';
 import { useStatusBarStore } from '../../../../store/statusBarStore';
@@ -107,14 +107,14 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
       </div>
       <Toolbar aria-label="Device tree toolbar" size="small">
         <Tooltip
-          content="Clear all devices"
+          content="Remove all devices from list"
           relationship="label"
           positioning="below-start"
           size="small"
         >
           <ToolbarButton
-            aria-label="Clear all devices"
-            icon={<DismissCircleRegular fontSize={18} />}
+            aria-label="Remove all devices from list"
+            icon={<DeleteRegular fontSize={18} />}
             onClick={handleCleanDatabase}
             appearance="subtle"
           />
@@ -179,16 +179,16 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
       <Dialog open={showDeleteConfirm} onOpenChange={(e, data) => setShowDeleteConfirm(data.open)}>
         <DialogSurface>
           <DialogBody>
-            <DialogTitle style={{ fontSize: '16px', fontWeight: 'normal' }}>Clear device cache?</DialogTitle>
+            <DialogTitle style={{ fontSize: '16px', fontWeight: 'normal' }}>Remove all devices?</DialogTitle>
             <DialogContent>
-              This will clear all cached device data from the local database. You can reload devices from the connected panels anytime.
+              This will remove all devices from the device list. Your physical devices will not be affected. Click Refresh afterwards to reload devices from the network.
             </DialogContent>
             <DialogActions>
               <Button appearance="secondary" onClick={() => setShowDeleteConfirm(false)} style={{ fontSize: '14px', fontWeight: 'normal' }}>
                 Cancel
               </Button>
               <Button appearance="primary" onClick={handleConfirmDelete} style={{ fontSize: '14px', fontWeight: 'normal' }}>
-                Clear cache
+                Remove all
               </Button>
             </DialogActions>
           </DialogBody>

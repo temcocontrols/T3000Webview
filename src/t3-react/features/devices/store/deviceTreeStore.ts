@@ -166,11 +166,17 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           const response = await DeviceApiService.getAllDevices();
 
           // Clean device names from database (remove null bytes and garbage from C++ buffers)
-          const cleanedDevices = response.devices.map(device => ({
-            ...device,
-            nameShowOnTree: cleanDeviceName(device.nameShowOnTree, `Device ${device.serialNumber}`),
-            productName: cleanDeviceName(device.productName, ''),
-          }));
+          // Also filter out (Unknown) devices — they are not real/discoverable devices
+          const cleanedDevices = response.devices
+            .filter(device => {
+              const name = (device.nameShowOnTree || '').trim();
+              return name !== '(Unknown)' && name !== 'Unknown' && name !== '';
+            })
+            .map(device => ({
+              ...device,
+              nameShowOnTree: cleanDeviceName(device.nameShowOnTree, `Device ${device.serialNumber}`),
+              productName: cleanDeviceName(device.productName, ''),
+            }));
 
           set({
             devices: cleanedDevices,
@@ -295,13 +301,20 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
               });
             });
 
+            // Filter out unknown devices before processing
+            const knownPanels = panels.filter((panel: any) => {
+              const name = (panel.panel_name || panel.panelName || '').trim();
+              return name !== '(Unknown)' && name !== '';
+            });
+            console.log(`[loadDevicesWithSync] Known panels after filter: ${knownPanels.length} (filtered ${panels.length - knownPanels.length})`);
+
             // Save to database (best effort)
             let savedCount = 0;
             let failedCount = 0;
             try {
               const db = new T3Database(`${API_BASE_URL}/api`);
 
-              for (const panel of panels) {
+              for (const panel of knownPanels) {
                 let serialNumber: number | undefined;
                 let deviceData: any = undefined;
                 try {
@@ -405,7 +418,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         const { setMessage } = useStatusBarStore.getState();
 
         try {
-          setMessage('Clearing all devices from database...', 'info');
+          setMessage('Removing all devices from list...', 'info');
 
           // Call API to delete all devices
           const response = await fetch(`${API_BASE_URL}/api/t3_device/devices`, {
@@ -420,9 +433,9 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           const deletedCount = result.rows_affected || 0;
 
           if (deletedCount > 0) {
-            setMessage(`Cleared ${deletedCount} device(s) from database`, 'success');
+            setMessage(`Removed ${deletedCount} device(s) from list`, 'success');
           } else {
-            setMessage('No devices to clear', 'info');
+            setMessage('No devices to remove', 'info');
           }
 
           // Clear the state and reload
@@ -431,7 +444,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
         } catch (error) {
           console.error('[syncDatabaseWithCpp] Error:', error);
-          setMessage('Failed to clear database', 'error');
+          setMessage('Failed to remove devices', 'error');
         }
       },
 
