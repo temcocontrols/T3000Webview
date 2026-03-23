@@ -10,7 +10,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
+import { makeStyles, mergeClasses, tokens, Spinner } from '@fluentui/react-components';
 import {
   HomeRegular,
   HomeFilled,
@@ -28,6 +28,7 @@ import {
   ChevronDownRegular,
   ChevronUpRegular,
   CheckmarkRegular,
+  ArrowSyncRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '@t3-react/features/devices/store/deviceTreeStore';
 
@@ -164,11 +165,36 @@ const useStyles = makeStyles({
     alignItems: 'center',
   },
   pickerEmpty: {
-    padding: '12px 10px',
+    padding: '10px',
     fontSize: '12px',
     color: tokens.colorNeutralForeground4,
-    fontStyle: 'italic',
     textAlign: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  pickerLoadingRow: {
+    padding: '14px 10px',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pickerScanButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    padding: '5px 10px',
+    borderRadius: '4px',
+    border: '1px solid #0078d4',
+    backgroundColor: 'transparent',
+    color: '#0078d4',
+    fontSize: '12px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    ':hover': { backgroundColor: '#f0f8ff' },
+    ':active': { backgroundColor: '#daeeff' },
   },
 
   /* ── Nav list ────────────────────────────────────────── */
@@ -259,8 +285,22 @@ export const SideNavContent: React.FC<SideNavContentProps> = ({ onNavigate }) =>
   const selectedDevice = useDeviceTreeStore((s) => s.selectedDevice);
   const devices = useDeviceTreeStore((s) => s.devices);
   const selectDevice = useDeviceTreeStore((s) => s.selectDevice);
+  const fetchDevices = useDeviceTreeStore((s) => s.fetchDevices);
+  const loadDevicesWithSync = useDeviceTreeStore((s) => s.loadDevicesWithSync);
+  const isLoading = useDeviceTreeStore((s) => s.isLoading);
 
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  // On mount: load from DB; if empty, sync from C++ T3000 app
+  useEffect(() => {
+    const init = async () => {
+      await fetchDevices();
+      if (useDeviceTreeStore.getState().devices.length === 0) {
+        await loadDevicesWithSync();
+      }
+    };
+    init();
+  }, []);
 
   // Close picker on route change
   useEffect(() => { setPickerOpen(false); }, [pathname]);
@@ -307,7 +347,21 @@ export const SideNavContent: React.FC<SideNavContentProps> = ({ onNavigate }) =>
         {pickerOpen && (
           <div className={styles.pickerList}>
             {devices.length === 0 ? (
-              <div className={styles.pickerEmpty}>No devices found</div>
+              isLoading ? (
+                <div className={styles.pickerLoadingRow}>
+                  <Spinner size="tiny" label="Loading devices..." />
+                </div>
+              ) : (
+                <div className={styles.pickerEmpty}>
+                  <span>No devices found</span>
+                  <button
+                    className={styles.pickerScanButton}
+                    onClick={() => loadDevicesWithSync()}
+                  >
+                    <ArrowSyncRegular fontSize={13} /> Scan for devices
+                  </button>
+                </div>
+              )
             ) : (
               devices.map((device) => {
                 const isSelected = selectedDevice?.serialNumber === device.serialNumber;
