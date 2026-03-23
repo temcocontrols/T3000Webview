@@ -16,9 +16,11 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { makeStyles } from '@fluentui/react-components';
 import { MobileAppBar } from './MobileAppBar';
 import { MobileNavDrawer } from './MobileNavDrawer';
+import { DeviceDrawer } from '../components/DeviceDrawer/DeviceDrawer';
 import { MobilePageProvider, useMobilePageMeta } from './MobilePageContext';
 import { GlobalMessageBar } from '@t3-react/shared/components/GlobalMessageBar';
 import { useUIStore } from '@t3-shared/store/uiStore';
+import { useDeviceTreeStore } from '@t3-react/features/devices/store/deviceTreeStore';
 
 const useStyles = makeStyles({
   container: {
@@ -43,10 +45,25 @@ const MobileShellInner: React.FC = () => {
   const styles = useStyles();
   const { pathname } = useLocation();
   const [isNavOpen, setIsNavOpen] = useState(false);
+  const [isDeviceOpen, setIsDeviceOpen] = useState(false);
   const { title, onRefresh } = useMobilePageMeta();
 
   const globalMessage = useUIStore((s) => s.globalMessage);
   const dismissGlobalMessage = useUIStore((s) => s.dismissGlobalMessage);
+
+  const fetchDevices = useDeviceTreeStore((s) => s.fetchDevices);
+  const loadDevicesWithSync = useDeviceTreeStore((s) => s.loadDevicesWithSync);
+
+  // Load devices on shell mount (once per session)
+  useEffect(() => {
+    const init = async () => {
+      await fetchDevices();
+      if (useDeviceTreeStore.getState().devices.length === 0) {
+        await loadDevicesWithSync();
+      }
+    };
+    init();
+  }, []);
 
   useEffect(() => {
     document.title = 'T3000';
@@ -60,13 +77,17 @@ const MobileShellInner: React.FC = () => {
         title={title}
         showMenu
         onMenu={() => setIsNavOpen(true)}
+        onDevice={() => setIsDeviceOpen(true)}
         showBack={pathname !== '/t3000'}
         onBack={() => window.history.back()}
         onRefresh={onRefresh ?? (() => window.location.reload())}
         showRefresh
       />
 
-      {/* Left-side overlay navigation drawer */}
+      {/* Left-side overlay: device list */}
+      <DeviceDrawer isOpen={isDeviceOpen} onClose={() => setIsDeviceOpen(false)} />
+
+      {/* Left-side overlay: navigation links */}
       <MobileNavDrawer isOpen={isNavOpen} onClose={() => setIsNavOpen(false)} />
 
       <div className={styles.content}>

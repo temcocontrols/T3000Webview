@@ -1,25 +1,29 @@
 /**
  * Mobile App Bar Component
- * Top navigation bar for mobile views
+ * Top navigation bar for mobile views.
+ *
+ * Layout (Option A):
+ *   LEFT:  back button (when not home) + page title + device name subtitle
+ *   RIGHT: [device icon] [refresh] [nav/menu icon]
+ *
+ * [device icon] → opens DevicePickerSheet (bottom sheet)
+ * [nav icon]    → calls onMenu → opens MobileNavDrawer (pure nav list)
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Button,
   Text,
   makeStyles,
-  mergeClasses,
   tokens,
 } from '@fluentui/react-components';
 import {
   ArrowLeftRegular,
   ArrowSyncRegular,
-  MoreHorizontalRegular,
   NavigationRegular,
-  ChevronDownRegular,
+  PlugConnectedRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '@t3-react/features/devices/store/deviceTreeStore';
-import { DevicePickerSheet } from '../components/DevicePickerSheet/DevicePickerSheet';
 
 const useStyles = makeStyles({
   appBar: {
@@ -27,7 +31,7 @@ const useStyles = makeStyles({
     alignItems: 'center',
     justifyContent: 'space-between',
     height: '56px',
-    padding: '0 8px 0 4px',
+    padding: '0 4px',
     backgroundColor: tokens.colorBrandBackground,
     color: tokens.colorNeutralForegroundOnBrand,
     boxShadow: tokens.shadow4,
@@ -37,14 +41,16 @@ const useStyles = makeStyles({
   leftSection: {
     display: 'flex',
     alignItems: 'center',
-    gap: '4px',
+    gap: '2px',
     flex: 1,
     overflow: 'hidden',
+    minWidth: 0,
   },
   titleArea: {
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
+    minWidth: 0,
   },
   title: {
     fontSize: tokens.fontSizeBase400,
@@ -54,41 +60,13 @@ const useStyles = makeStyles({
     overflow: 'hidden',
     textOverflow: 'ellipsis',
   },
-  deviceChip: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-    marginTop: '1px',
-    padding: '1px 5px 1px 0',
-    border: 'none',
-    background: 'none',
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    borderRadius: '4px',
-    maxWidth: '180px',
-    ':active': { opacity: 0.7 },
-  },
-  deviceChipNoDevice: {
-    opacity: 0.6,
-  },
-  deviceName: {
+  deviceSubtitle: {
     fontSize: '11px',
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(255,255,255,0.72)',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    fontWeight: 500,
-  },
-  deviceNameDim: {
-    color: 'rgba(255,255,255,0.5)',
-    fontStyle: 'italic',
-  },
-  deviceChevron: {
-    color: 'rgba(255,255,255,0.7)',
-    flexShrink: 0,
-    display: 'flex',
-    alignItems: 'center',
-    marginTop: '1px',
+    fontWeight: 400,
   },
   iconBtn: {
     color: tokens.colorNeutralForegroundOnBrand,
@@ -97,7 +75,7 @@ const useStyles = makeStyles({
   rightSection: {
     display: 'flex',
     alignItems: 'center',
-    gap: '4px',
+    gap: '0px',
     flexShrink: 0,
   },
 });
@@ -106,11 +84,10 @@ export interface MobileAppBarProps {
   title: string;
   onBack?: () => void;
   onRefresh?: () => void;
-  onMore?: () => void;
   onMenu?: () => void;
+  onDevice?: () => void;
   showBack?: boolean;
   showRefresh?: boolean;
-  showMore?: boolean;
   showMenu?: boolean;
 }
 
@@ -118,80 +95,68 @@ export const MobileAppBar: React.FC<MobileAppBarProps> = ({
   title,
   onBack,
   onRefresh,
-  onMore,
   onMenu,
+  onDevice,
   showBack = false,
   showRefresh = true,
-  showMore = false,
   showMenu = false,
 }) => {
   const styles = useStyles();
   const selectedDevice = useDeviceTreeStore((s) => s.selectedDevice);
-  const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
     <>
-    <div className={styles.appBar}>
-      <div className={styles.leftSection}>
-        {/* Hamburger — opens side nav drawer */}
-        {showMenu && onMenu && (
+      <div className={styles.appBar}>
+        {/* LEFT — back + title */}
+        <div className={styles.leftSection}>
+          {showBack && onBack && (
+            <Button
+              appearance="transparent"
+              icon={<ArrowLeftRegular />}
+              onClick={onBack}
+              className={styles.iconBtn}
+              aria-label="Go back"
+            />
+          )}
+          <div className={styles.titleArea}>
+            <Text className={styles.title}>{title}</Text>
+            <span className={styles.deviceSubtitle}>
+              {selectedDevice ? selectedDevice.nameShowOnTree : 'No device selected'}
+            </span>
+          </div>
+        </div>
+
+        {/* RIGHT — device picker, refresh, nav menu */}
+        <div className={styles.rightSection}>
           <Button
             appearance="transparent"
-            icon={<NavigationRegular />}
-            onClick={onMenu}
+            icon={<PlugConnectedRegular />}
+            onClick={onDevice}
             className={styles.iconBtn}
-            aria-label="Open navigation"
-          />
-        )}
-        {showBack && onBack && (
-          <Button
-            appearance="transparent"
-            icon={<ArrowLeftRegular />}
-            onClick={onBack}
-            className={styles.iconBtn}
-          />
-        )}
-        <div className={styles.titleArea}>
-          <Text className={styles.title}>{title}</Text>
-          {/* Tappable device name chip — opens device picker sheet */}
-          <button
-            className={mergeClasses(
-              styles.deviceChip,
-              !selectedDevice && styles.deviceChipNoDevice,
-            )}
-            onClick={() => setSheetOpen(true)}
             aria-label="Select device"
-          >
-            <span className={mergeClasses(styles.deviceName, !selectedDevice && styles.deviceNameDim)}>
-              {selectedDevice ? selectedDevice.nameShowOnTree : 'No device'}
-            </span>
-            <span className={styles.deviceChevron}>
-              <ChevronDownRegular fontSize={10} />
-            </span>
-          </button>
+          />
+          {showRefresh && onRefresh && (
+            <Button
+              appearance="transparent"
+              icon={<ArrowSyncRegular />}
+              onClick={onRefresh}
+              className={styles.iconBtn}
+              aria-label="Refresh"
+            />
+          )}
+          {showMenu && onMenu && (
+            <Button
+              appearance="transparent"
+              icon={<NavigationRegular />}
+              onClick={onMenu}
+              className={styles.iconBtn}
+              aria-label="Open navigation"
+            />
+          )}
         </div>
       </div>
 
-      <div className={styles.rightSection}>
-        {showRefresh && onRefresh && (
-          <Button
-            appearance="transparent"
-            icon={<ArrowSyncRegular />}
-            onClick={onRefresh}
-            className={styles.iconBtn}
-          />
-        )}
-        {showMore && onMore && (
-          <Button
-            appearance="transparent"
-            icon={<MoreHorizontalRegular />}
-            onClick={onMore}
-            className={styles.iconBtn}
-          />
-        )}
-      </div>
-    </div>
-    <DevicePickerSheet isOpen={sheetOpen} onClose={() => setSheetOpen(false)} />
     </>
   );
 };
+
