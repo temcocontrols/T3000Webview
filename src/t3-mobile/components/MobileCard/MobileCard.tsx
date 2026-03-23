@@ -3,166 +3,226 @@
  * Generic card component for mobile views
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  Card,
   Text,
-  Badge,
   Button,
   makeStyles,
+  mergeClasses,
   tokens,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
-  ChevronRightRegular,
+  ChevronDownRegular,
+  ChevronUpRegular,
 } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
-  card: {
-    marginBottom: '12px',
-    cursor: 'pointer',
-    '&:active': {
-      transform: 'scale(0.98)',
-      transition: 'transform 0.1s ease',
-    },
-  },
-  cardContent: {
-    padding: '12px 16px',
-  },
   row: {
     display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '8px',
+    alignItems: 'stretch',
+    minHeight: '44px',
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    cursor: 'pointer',
+    userSelect: 'none',
+    '&:active': {
+      backgroundColor: tokens.colorNeutralBackground2,
+    },
   },
-  titleContainer: {
-    flex: 1,
+  statusBar: {
+    width: '3px',
+    flexShrink: 0,
   },
-  label: {
-    fontSize: tokens.fontSizeBase300,
-    color: tokens.colorNeutralForeground2,
-    fontWeight: tokens.fontWeightSemibold,
-  },
-  value: {
-    fontSize: tokens.fontSizeBase400,
-    color: tokens.colorNeutralForeground1,
-    fontWeight: tokens.fontWeightRegular,
-  },
-  valueWithUnit: {
+  statusAuto: { backgroundColor: '#107c10' },
+  statusManual: { backgroundColor: '#ca5010' },
+  statusError: { backgroundColor: '#c42b1c' },
+  statusNone: { backgroundColor: '#8a8a8a' },
+  rowContent: {
     display: 'flex',
-    alignItems: 'baseline',
-    gap: '4px',
+    alignItems: 'center',
+    flex: 1,
+    padding: '10px',
+    gap: '6px',
+    overflow: 'hidden',
   },
-  unit: {
+  index: {
     fontSize: tokens.fontSizeBase200,
     color: tokens.colorNeutralForeground3,
+    flexShrink: 0,
+    minWidth: '28px',
   },
-  badge: {
-    marginLeft: '8px',
+  titleText: {
+    flex: 1,
+    fontSize: tokens.fontSizeBase300,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
-  subtitle: {
-    display: 'block',
+  valueArea: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '2px',
+    flexShrink: 0,
+  },
+  valueText: {
+    fontSize: tokens.fontSizeBase300,
+    color: tokens.colorNeutralForeground1,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  unitText: {
+    fontSize: tokens.fontSizeBase100,
     color: tokens.colorNeutralForeground3,
   },
-  actions: {
+  chevron: {
+    color: tokens.colorNeutralForeground3,
+    flexShrink: 0,
     display: 'flex',
-    gap: '8px',
+    alignItems: 'center',
+  },
+  expandedSection: {
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    padding: '12px 16px',
+  },
+  detailGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    marginBottom: '12px',
+  },
+  detailCell: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '3px',
+    paddingTop: '6px',
+    paddingBottom: '6px',
+  },
+  detailCellLeft: {
+    paddingRight: '12px',
+  },
+  detailCellRight: {
+    paddingLeft: '12px',
+    borderLeft: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  detailLabel: {
+    fontSize: '10px',
+    color: tokens.colorNeutralForeground3,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  detailValue: {
+    fontSize: tokens.fontSizeBase300,
+    color: tokens.colorNeutralForeground1,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  refreshRow: {
+    display: 'flex',
     justifyContent: 'flex-end',
-    marginTop: '12px',
-    paddingTop: '12px',
+    paddingTop: '8px',
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
   },
 });
 
+export interface DetailField {
+  label: string;
+  value: React.ReactNode;
+}
+
 export interface MobileCardProps {
+  index?: string;
   title: string;
-  subtitle?: string;
-  value?: string | number;
-  unit?: string;
-  status?: string;
-  badge?: string;
-  onTap?: () => void;
+  displayValue?: string;
+  displayUnit?: string;
+  statusColor?: 'auto' | 'manual' | 'error' | 'none';
+  expandedDetails?: DetailField[];
   onRefresh?: () => void;
   refreshing?: boolean;
-  children?: React.ReactNode;
 }
 
 export const MobileCard: React.FC<MobileCardProps> = ({
+  index,
   title,
-  subtitle,
-  value,
-  unit,
-  status,
-  badge,
-  onTap,
+  displayValue,
+  displayUnit,
+  statusColor = 'none',
+  expandedDetails = [],
   onRefresh,
   refreshing = false,
-  children,
 }) => {
   const styles = useStyles();
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <Card
-      className={styles.card}
-      onClick={onTap}
-      appearance="filled-alternative"
-    >
-      <div className={styles.cardContent}>
-        <div className={styles.row}>
-          <div className={styles.titleContainer}>
-            <Text weight="semibold" size={400}>
-              {title}
-            </Text>
-            {subtitle && (
-              <Text size={200} className={styles.subtitle}>
-                {subtitle}
-              </Text>
-            )}
-          </div>
-          {badge && (
-            <Badge appearance="filled" color="informative" className={styles.badge}>
-              {badge}
-            </Badge>
+    <>
+      <div
+        className={styles.row}
+        onClick={() => setIsExpanded((v) => !v)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === 'Enter' && setIsExpanded((v) => !v)}
+      >
+        <div
+          className={mergeClasses(
+            styles.statusBar,
+            statusColor === 'auto' && styles.statusAuto,
+            statusColor === 'manual' && styles.statusManual,
+            statusColor === 'error' && styles.statusError,
+            statusColor === 'none' && styles.statusNone,
           )}
-          {onTap && <ChevronRightRegular fontSize={20} />}
+        />
+        <div className={styles.rowContent}>
+          {index && <Text className={styles.index}>{index}</Text>}
+          <Text className={styles.titleText}>{title}</Text>
+          {displayValue !== undefined && (
+            <div className={styles.valueArea}>
+              <Text className={styles.valueText}>{displayValue}</Text>
+              {displayUnit && <Text className={styles.unitText}>{displayUnit}</Text>}
+            </div>
+          )}
+          <span className={styles.chevron}>
+            {isExpanded ? <ChevronUpRegular fontSize={14} /> : <ChevronDownRegular fontSize={14} />}
+          </span>
         </div>
-
-        {(value !== undefined || children) && (
-          <div className={styles.row}>
-            {value !== undefined ? (
-              <div className={styles.valueWithUnit}>
-                <Text className={styles.value}>{value}</Text>
-                {unit && <Text className={styles.unit}>{unit}</Text>}
-              </div>
-            ) : (
-              children
-            )}
-          </div>
-        )}
-
-        {status && (
-          <div className={styles.row}>
-            <Text className={styles.label}>Status</Text>
-            <Text className={styles.value}>{status}</Text>
-          </div>
-        )}
-
-        {onRefresh && (
-          <div className={styles.actions}>
-            <Button
-              appearance="subtle"
-              icon={<ArrowSyncRegular />}
-              onClick={(e) => {
-                e.stopPropagation();
-                onRefresh();
-              }}
-              disabled={refreshing}
-            >
-              {refreshing ? 'Refreshing...' : 'Refresh'}
-            </Button>
-          </div>
-        )}
       </div>
-    </Card>
+
+      {isExpanded && (
+        <div className={styles.expandedSection}>
+          {expandedDetails.length > 0 && (
+            <div className={styles.detailGrid}>
+              {expandedDetails.map((field, i) => (
+                <div
+                  key={i}
+                  className={mergeClasses(
+                    styles.detailCell,
+                    i % 2 === 0 ? styles.detailCellLeft : styles.detailCellRight,
+                  )}
+                >
+                  <span className={styles.detailLabel}>{field.label}</span>
+                  <span className={styles.detailValue}>{field.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {onRefresh && (
+            <div className={styles.refreshRow}>
+              <Button
+                appearance="subtle"
+                icon={<ArrowSyncRegular />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRefresh();
+                }}
+                disabled={refreshing}
+                size="small"
+              >
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </>
   );
 };
