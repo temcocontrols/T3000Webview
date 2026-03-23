@@ -175,10 +175,13 @@ const useStyles = makeStyles({
     gap: '8px',
   },
   pickerLoadingRow: {
-    padding: '14px 10px',
+    padding: '10px 12px',
     display: 'flex',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
+    gap: '8px',
+    fontSize: '12px',
+    color: '#424242',
   },
   pickerScanButton: {
     display: 'flex',
@@ -244,14 +247,6 @@ const useStyles = makeStyles({
     lineHeight: 1,
   },
 
-  /* ── Footer ──────────────────────────────────────────── */
-  footer: {
-    padding: '12px 16px',
-    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
-    fontSize: '11px',
-    color: tokens.colorNeutralForeground4,
-    flexShrink: 0,
-  },
 });
 
 interface NavItemDef {
@@ -349,7 +344,8 @@ export const SideNavContent: React.FC<SideNavContentProps> = ({ onNavigate }) =>
             {devices.length === 0 ? (
               isLoading ? (
                 <div className={styles.pickerLoadingRow}>
-                  <Spinner size="tiny" label="Loading devices..." />
+                  <Spinner size="tiny" />
+                  Loading devices...
                 </div>
               ) : (
                 <div className={styles.pickerEmpty}>
@@ -404,9 +400,6 @@ export const SideNavContent: React.FC<SideNavContentProps> = ({ onNavigate }) =>
           );
         })}
       </nav>
-
-      {/* Footer */}
-      <div className={styles.footer}>T3000 Webview v9</div>
     </div>
   );
 };
