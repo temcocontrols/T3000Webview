@@ -16,7 +16,7 @@ import {
   ErrorCircleRegular,
   ArrowSyncRegular,
 } from '@fluentui/react-icons';
-import { MobileLayout } from '../../../layout/MobileLayout';
+import { useMobilePage } from '../../../layout/MobilePageContext';
 import { MobileCard } from '../../../components/MobileCard/MobileCard';
 import { useInputsPage } from '../../../../shared/features/inputs/hooks/useInputsPage';
 import { getRangeLabel } from '../../../../t3-react/features/inputs/data/rangeData';
@@ -49,15 +49,7 @@ const useStyles = makeStyles({
     padding: '48px',
   },
   cardList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0',
-  },
-  deviceInfo: {
-    padding: '12px 16px',
-    backgroundColor: tokens.colorNeutralBackground2,
-    borderRadius: tokens.borderRadiusMedium,
-    marginBottom: '16px',
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
   },
 });
 
@@ -75,144 +67,106 @@ export const InputsPageMobile: React.FC = () => {
     handleRefreshSingleInput,
   } = useInputsPage();
 
+  const title = inputs.length > 0 ? `Inputs (${inputs.length})` : 'Inputs';
+  useMobilePage({ title, onRefresh: error && inputs.length === 0 ? handleRefresh : handleRefreshFromDevice });
+
   // Loading state
   if (loading && inputs.length === 0) {
     return (
-      <MobileLayout
-        appBarProps={{
-          title: 'Inputs',
-          showRefresh: false,
-        }}
-      >
-        <div className={styles.loadingContainer}>
-          <Spinner label="Loading inputs..." size="large" />
-        </div>
-      </MobileLayout>
+      <div className={styles.loadingContainer}>
+        <Spinner label="Loading inputs..." size="large" />
+      </div>
     );
   }
 
   // Error state
   if (error && inputs.length === 0) {
     return (
-      <MobileLayout
-        appBarProps={{
-          title: 'Inputs',
-          onRefresh: handleRefresh,
-        }}
-      >
-        <div className={styles.errorState}>
-          <ErrorCircleRegular fontSize={48} color={tokens.colorPaletteRedForeground1} />
-          <Text size={400} weight="semibold">
-            Failed to load inputs
-          </Text>
-          <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
-            {error}
-          </Text>
-          <Button
-            appearance="primary"
-            icon={<ArrowSyncRegular />}
-            onClick={handleRefresh}
-          >
-            Try Again
-          </Button>
-        </div>
-      </MobileLayout>
+      <div className={styles.errorState}>
+        <ErrorCircleRegular fontSize={48} color={tokens.colorPaletteRedForeground1} />
+        <Text size={400} weight="semibold">
+          Failed to load inputs
+        </Text>
+        <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+          {error}
+        </Text>
+        <Button
+          appearance="primary"
+          icon={<ArrowSyncRegular />}
+          onClick={handleRefresh}
+        >
+          Try Again
+        </Button>
+      </div>
     );
   }
 
   // Empty state
   if (!selectedDevice) {
     return (
-      <MobileLayout
-        appBarProps={{
-          title: 'Inputs',
-        }}
-      >
-        <div className={styles.emptyState}>
-          <Text size={500} weight="semibold">
-            No Device Selected
-          </Text>
-          <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
-            Please select a device from the tree to view inputs
-          </Text>
-        </div>
-      </MobileLayout>
+      <div className={styles.emptyState}>
+        <Text size={500} weight="semibold">
+          No Device Selected
+        </Text>
+        <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+          Please select a device from the tree to view inputs
+        </Text>
+      </div>
     );
   }
 
   if (inputs.length === 0) {
     return (
-      <MobileLayout
-        appBarProps={{
-          title: 'Inputs',
-          onRefresh: handleRefreshFromDevice,
-        }}
-      >
-        <div className={styles.emptyState}>
-          <Text size={500} weight="semibold">
-            No Inputs Found
-          </Text>
-          <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
-            Tap refresh to load inputs from device
-          </Text>
-          <Button
-            appearance="primary"
-            icon={<ArrowSyncRegular />}
-            onClick={handleRefreshFromDevice}
-            disabled={refreshing}
-          >
-            {refreshing ? 'Refreshing...' : 'Refresh from Device'}
-          </Button>
-        </div>
-      </MobileLayout>
+      <div className={styles.emptyState}>
+        <Text size={500} weight="semibold">
+          No Inputs Found
+        </Text>
+        <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+          Tap refresh to load inputs from device
+        </Text>
+        <Button
+          appearance="primary"
+          icon={<ArrowSyncRegular />}
+          onClick={handleRefreshFromDevice}
+          disabled={refreshing}
+        >
+          {refreshing ? 'Refreshing...' : 'Refresh from Device'}
+        </Button>
+      </div>
     );
   }
 
   // Main content with data
   return (
-    <MobileLayout
-      appBarProps={{
-        title: `Inputs (${inputs.length})`,
-        onRefresh: handleRefreshFromDevice,
-      }}
-    >
-      <div className={styles.container}>
-        {/* Device Info */}
-        <div className={styles.deviceInfo}>
-          <Text size={300} weight="semibold" style={{ display: 'block', marginBottom: '4px' }}>
-            Device
-          </Text>
-          <Text size={400}>
-            {selectedDevice.nameShowOnTree}
-          </Text>
-          <Text size={200} style={{ color: tokens.colorNeutralForeground3, display: 'block' }}>
-            SN: {selectedDevice.serialNumber}
-          </Text>
-        </div>
+    <div className={styles.container}>
+      <div className={styles.cardList}>
+        {inputs.map((input) => {
+          const isRefreshing = refreshingItems.has(input.inputIndex || '');
+          const rangeValue = parseInt(input.rangeField || input.range || '0', 10);
+          const digitalAnalog = parseInt(input.digitalAnalog || '0', 10);
+          const rangeLabel = getRangeLabel(rangeValue, digitalAnalog);
+          const displayValue = input.fValue ? (parseFloat(input.fValue) / 1000).toFixed(2) : 'N/A';
 
-        {/* Input Cards */}
-        <div className={styles.cardList}>
-          {inputs.map((input) => {
-            const isRefreshing = refreshingItems.has(input.inputIndex || '');
-            const rangeValue = parseInt(input.rangeField || input.range || '0', 10);
-            const digitalAnalog = parseInt(input.digitalAnalog || '0', 10);
-            const rangeLabel = getRangeLabel(rangeValue, digitalAnalog);
-
-            return (
-              <MobileCard
-                key={`${input.serialNumber}-${input.inputIndex}`}
-                title={input.fullLabel || input.label || `Input ${input.inputIndex}`}
-                subtitle={`#${input.inputIndex} • ${rangeLabel}`}
-                value={input.fValue ? (parseFloat(input.fValue) / 1000).toFixed(2) : 'N/A'}
-                unit={input.units}
-                status={input.autoManual === '1' ? 'Manual' : 'Auto'}
-                onRefresh={() => handleRefreshSingleInput(input.inputIndex || '')}
-                refreshing={isRefreshing}
-              />
-            );
-          })}
-        </div>
+          return (
+            <MobileCard
+              key={`${input.serialNumber}-${input.inputIndex}`}
+              index={`#${input.inputIndex}`}
+              title={input.fullLabel || input.label || `Input ${input.inputIndex}`}
+              displayValue={displayValue}
+              displayUnit={input.units}
+              statusColor={input.autoManual === '1' ? 'manual' : 'auto'}
+              expandedDetails={[
+                { label: 'Value', value: `${displayValue}${input.units ? ' ' + input.units : ''}` },
+                { label: 'Mode', value: input.autoManual === '1' ? 'Manual' : 'Auto' },
+                { label: 'Range', value: rangeLabel },
+                { label: 'Index', value: `#${input.inputIndex}` },
+              ]}
+              onRefresh={() => handleRefreshSingleInput(input.inputIndex || '')}
+              refreshing={isRefreshing}
+            />
+          );
+        })}
       </div>
-    </MobileLayout>
+    </div>
   );
 };
