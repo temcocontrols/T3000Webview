@@ -7,7 +7,7 @@ import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { useUIStore } from '@t3-shared/store/uiStore';
-import { TreePanel } from '@t3-react/features/devices/components/TreePanel';
+import { SideNavContent } from '@t3-mobile/layout/SideNavContent';
 
 const useStyles = makeStyles({
   overlay: {
@@ -61,7 +61,7 @@ export const NavDrawer: React.FC = () => {
       />
       {/* Panel */}
       <div className={`${styles.drawer} ${isOpen ? '' : styles.drawerHidden}`}>
-        <TreePanel />
+        <SideNavContent onNavigate={closeDrawer} />
       </div>
     </>
   );
