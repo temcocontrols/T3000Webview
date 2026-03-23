@@ -9,6 +9,7 @@ import { Outlet } from 'react-router-dom';
 import { makeStyles } from '@fluentui/react-components';
 import { TabletHeader } from './TabletHeader';
 import { NavDrawer } from './NavDrawer';
+import { TabletSidebar } from './TabletSidebar';
 import { PageHeader } from '@t3-react/layout/PageHeader';
 import { StatusBar } from '@t3-react/layout/StatusBar';
 import { GlobalMessageBar } from '@t3-react/shared/components/GlobalMessageBar';
@@ -30,6 +31,12 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     overflow: 'hidden',
     backgroundColor: '#ffffff',
+  },
+  mainRow: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'row',
+    overflow: 'hidden',
   },
   contentBody: {
     flex: 1,
@@ -71,11 +78,14 @@ export const TabletLayout: React.FC = () => {
       {/* Overlay nav drawer — slides in from left */}
       <NavDrawer />
 
-      {/* Full-width content area */}
-      <div className={styles.content}>
-        <PageHeader />
-        <div className={styles.contentBody}>
-          <Outlet />
+      {/* Sidebar (persistent) + content row */}
+      <div className={styles.mainRow}>
+        <TabletSidebar />
+        <div className={styles.content}>
+          <PageHeader />
+          <div className={styles.contentBody}>
+            <Outlet />
+          </div>
         </div>
       </div>
 

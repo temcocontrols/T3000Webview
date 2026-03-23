@@ -1,22 +1,24 @@
 /**
  * MobileShell — React Router layout shell for phones (< 768px).
- * Mirrors TabletLayout and MainLayout in pattern (uses <Outlet />).
  *
  * Structure:
- *   MobileAppBar (top)
- *   NavDrawer (overlay from t3-tablet, shared component)
- *   Content (full width, scrollable)
- *   MobileBottomNav (fixed bottom tabs)
+ *   MobileAppBar (top, 56px) with hamburger
+ *   MobileNavDrawer (left overlay, opens on hamburger tap)
+ *   Content (full width, scrollable — no bottom nav padding)
+ *
+ * Bottom nav bar removed in favour of left side drawer.
+ * PC layout is NOT affected.
+ * Pages register their title + refresh via useMobilePage() hook.
  */
 
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { makeStyles } from '@fluentui/react-components';
 import { MobileAppBar } from './MobileAppBar';
-import { MobileBottomNav } from './MobileBottomNav';
+import { MobileNavDrawer } from './MobileNavDrawer';
+import { MobilePageProvider, useMobilePageMeta } from './MobilePageContext';
 import { GlobalMessageBar } from '@t3-react/shared/components/GlobalMessageBar';
 import { useUIStore } from '@t3-shared/store/uiStore';
-import { NavDrawer } from '@t3-tablet/layout/NavDrawer';
 
 const useStyles = makeStyles({
   container: {
@@ -36,14 +38,12 @@ const useStyles = makeStyles({
   },
 });
 
-const pathToTitle = (pathname: string): string => {
-  const segment = pathname.split('/').filter(Boolean).pop() ?? 'Home';
-  return segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
-};
-
-export const MobileShell: React.FC = () => {
+/** Inner shell — reads page meta from context */
+const MobileShellInner: React.FC = () => {
   const styles = useStyles();
   const { pathname } = useLocation();
+  const [isNavOpen, setIsNavOpen] = useState(false);
+  const { title, onRefresh } = useMobilePageMeta();
 
   const globalMessage = useUIStore((s) => s.globalMessage);
   const dismissGlobalMessage = useUIStore((s) => s.dismissGlobalMessage);
@@ -57,21 +57,28 @@ export const MobileShell: React.FC = () => {
       <GlobalMessageBar message={globalMessage} onDismiss={dismissGlobalMessage} />
 
       <MobileAppBar
-        title={pathToTitle(pathname)}
+        title={title}
+        showMenu
+        onMenu={() => setIsNavOpen(true)}
         showBack={pathname !== '/t3000'}
         onBack={() => window.history.back()}
-        onRefresh={() => window.location.reload()}
+        onRefresh={onRefresh ?? (() => window.location.reload())}
         showRefresh
       />
 
-      {/* NavDrawer reused from t3-tablet */}
-      <NavDrawer />
+      {/* Left-side overlay navigation drawer */}
+      <MobileNavDrawer isOpen={isNavOpen} onClose={() => setIsNavOpen(false)} />
 
       <div className={styles.content}>
         <Outlet />
       </div>
-
-      <MobileBottomNav />
     </div>
   );
 };
+
+/** Outer shell — provides context */
+export const MobileShell: React.FC = () => (
+  <MobilePageProvider>
+    <MobileShellInner />
+  </MobilePageProvider>
+);
