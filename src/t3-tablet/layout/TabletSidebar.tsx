@@ -9,18 +9,17 @@
 
 import React from 'react';
 import { makeStyles, tokens } from '@fluentui/react-components';
-import { DevicePanel } from '@t3-mobile/components/DevicePanel/DevicePanel';
+import { TreePanel } from '@t3-react/features/devices/components/TreePanel';
 
 const useStyles = makeStyles({
   sidebar: {
     width: '220px',
     flexShrink: 0,
-    backgroundColor: '#ffffff',
     borderRight: `1px solid ${tokens.colorNeutralStroke1}`,
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    overflowY: 'auto',
+    overflow: 'hidden',
   },
 });
 
@@ -28,7 +27,7 @@ export const TabletSidebar: React.FC = () => {
   const styles = useStyles();
   return (
     <aside className={styles.sidebar} aria-label="Device list">
-      <DevicePanel />
+      <TreePanel />
     </aside>
   );
 };

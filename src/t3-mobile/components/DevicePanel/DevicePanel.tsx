@@ -44,24 +44,33 @@ const useStyles = makeStyles({
   scanBtn: {
     display: 'flex',
     alignItems: 'center',
-    gap: '4px',
-    padding: '4px 10px',
-    borderRadius: '5px',
+    justifyContent: 'center',
+    width: '28px',
+    height: '28px',
+    borderRadius: '4px',
     border: 'none',
-    backgroundColor: '#0078d4',
-    color: '#ffffff',
-    fontSize: '12px',
-    fontWeight: 400,
+    backgroundColor: 'transparent',
+    color: '#424242',
+    fontSize: '16px',
     cursor: 'pointer',
     fontFamily: 'inherit',
     flexShrink: 0,
-    ':hover': { backgroundColor: '#106ebe' },
-    ':active': { backgroundColor: '#005a9e' },
+    padding: 0,
+    ':hover': { backgroundColor: 'rgba(0,0,0,0.06)' },
+    ':active': { backgroundColor: 'rgba(0,0,0,0.1)' },
   },
   scanBtnDisabled: {
-    opacity: 0.65,
+    opacity: 0.45,
     cursor: 'wait',
-    fontSize: '10px',
+  },
+  scanBtnSpinning: {
+    animationName: {
+      from: { transform: 'rotate(0deg)' },
+      to: { transform: 'rotate(360deg)' },
+    },
+    animationDuration: '1s',
+    animationTimingFunction: 'linear',
+    animationIterationCount: 'infinite',
   },
 
   /* ── List ──────────────────────────────────────────────── */
@@ -213,9 +222,11 @@ export const DevicePanel: React.FC<DevicePanelProps> = ({ onClose }) => {
           onClick={() => loadDevicesWithSync()}
           disabled={isLoading}
           aria-label="Scan for devices"
+          title="Scan for devices"
         >
-          {!isLoading && <ArrowSyncRegular fontSize={12} />}
-          {isLoading ? 'Scanning…' : 'Scan'}
+          <span className={isLoading ? styles.scanBtnSpinning : undefined}>
+            <ArrowSyncRegular fontSize={16} />
+          </span>
         </button>
       </div>
 

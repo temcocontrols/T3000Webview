@@ -10,7 +10,7 @@
 
 import React, { useEffect } from 'react';
 import { makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
-import { DevicePanel } from '../DevicePanel/DevicePanel';
+import { TreePanel } from '@t3-react/features/devices/components/TreePanel';
 
 const useStyles = makeStyles({
   backdrop: {
@@ -73,7 +73,7 @@ export const DeviceDrawer: React.FC<DeviceDrawerProps> = ({ isOpen, onClose }) =
         aria-modal="true"
         aria-label="Select device"
       >
-        <DevicePanel onClose={onClose} />
+        <TreePanel />
       </div>
     </>
   );
