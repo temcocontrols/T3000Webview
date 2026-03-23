@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SideNavContent 鈥?pure navigation link list used by:
  *   - MobileNavDrawer (bottom sheet / overlay on phones)
  *   - TabletSidebar   (persistent panel on tablets)
@@ -34,7 +34,7 @@ const useStyles = makeStyles({
     overflowY: 'auto',
   },
 
-  /* 鈹€鈹€ Nav list 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+  /* Nav list*/
   navSection: {
     flex: 1,
     padding: '8px 0',
