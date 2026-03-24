@@ -329,6 +329,7 @@ impl Default for T3000MainConfig {
 
 /// PanelInfo structure for lightweight device list from GET_PANELS_LIST
 /// Used to get list of available devices before loading full LOGGING_DATA
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct PanelInfo {
     panel_number: i32,
