@@ -74,8 +74,9 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
   },
   headerId: {
-    width: '36px',
+    width: '56px',
     flexShrink: 0,
+    whiteSpace: 'nowrap',
   },
   headerLabel: {
     flex: 1,
@@ -185,7 +186,7 @@ const useStyles = makeStyles({
 
   /* ID column */
   idCell: {
-    width: '36px',
+    width: '56px',
     flexShrink: 0,
     fontSize: '11px',
     color: tokens.colorNeutralForeground3,

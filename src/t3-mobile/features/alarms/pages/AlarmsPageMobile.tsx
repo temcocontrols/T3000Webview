@@ -160,11 +160,11 @@ export const AlarmsPageMobile: React.FC = () => {
     return (
       <div className={styles.emptyState}>
         <AlertRegular fontSize={48} style={{ color: tokens.colorNeutralForeground3 }} />
-        <Text size={500} weight="semibold">No Alarms Found</Text>
-        <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+        <Text size={300} weight="semibold">No Alarms Found</Text>
+        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
           Tap refresh to load alarms from device
         </Text>
-        <Button appearance="primary" icon={<ArrowSyncRegular />} onClick={handleRefreshFromDevice} disabled={refreshing}>
+        <Button size="small" appearance="primary" icon={<ArrowSyncRegular />} onClick={handleRefreshFromDevice} disabled={refreshing}>
           {refreshing ? 'Refreshing...' : 'Refresh from Device'}
         </Button>
       </div>

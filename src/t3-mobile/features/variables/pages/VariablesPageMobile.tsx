@@ -161,11 +161,11 @@ export const VariablesPageMobile: React.FC = () => {
   if (variables.length === 0) {
     return (
       <div className={styles.emptyState}>
-        <Text size={500} weight="semibold">No Variables Found</Text>
-        <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+        <Text size={300} weight="semibold">No Variables Found</Text>
+        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
           Tap refresh to load variables from device
         </Text>
-        <Button appearance="primary" icon={<ArrowSyncRegular />} onClick={handleRefreshFromDevice} disabled={refreshing}>
+        <Button size="small" appearance="primary" icon={<ArrowSyncRegular />} onClick={handleRefreshFromDevice} disabled={refreshing}>
           {refreshing ? 'Refreshing...' : 'Refresh from Device'}
         </Button>
       </div>

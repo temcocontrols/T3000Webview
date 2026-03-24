@@ -161,11 +161,11 @@ export const OutputsPageMobile: React.FC = () => {
   if (outputs.length === 0) {
     return (
       <div className={styles.emptyState}>
-        <Text size={500} weight="semibold">No Outputs Found</Text>
-        <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+        <Text size={300} weight="semibold">No Outputs Found</Text>
+        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
           Tap refresh to load outputs from device
         </Text>
-        <Button appearance="primary" icon={<ArrowSyncRegular />} onClick={handleRefreshFromDevice} disabled={refreshing}>
+        <Button size="small" appearance="primary" icon={<ArrowSyncRegular />} onClick={handleRefreshFromDevice} disabled={refreshing}>
           {refreshing ? 'Refreshing...' : 'Refresh from Device'}
         </Button>
       </div>
@@ -202,7 +202,7 @@ export const OutputsPageMobile: React.FC = () => {
         </button>
       </div>
 
-      <PointListHeader idLabel="Output" labelLabel="Full Label" valueLabel="Value" unitLabel="Units" />
+      <PointListHeader idLabel="Output" labelLabel="Full Label" valueLabel="Value" unitLabel="Units" statusLabel="Status" typeLabel="Type" />
 
       <div className={styles.list}>
         {filtered.map((output) => {
@@ -219,6 +219,10 @@ export const OutputsPageMobile: React.FC = () => {
               pointId={`OUT${parseInt(output.outputIndex || '0') + 1}`}
               label={output.fullLabel || output.label || `Output ${parseInt(output.outputIndex || '0') + 1}`}
               subLabel={output.label}
+              mode={isManual ? 'Manual' : 'Auto'}
+              statusText={output.status || '—'}
+              typeText={parseInt(output.digitalAnalog || '0') === 1 ? 'Analog' : 'Digital'}
+              signalType={output.signalType || '—'}
               value={displayValue}
               unit={output.units}
               range={rangeLabel}
