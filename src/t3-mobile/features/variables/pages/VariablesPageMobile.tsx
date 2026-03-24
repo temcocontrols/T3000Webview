@@ -102,9 +102,10 @@ const useStyles = makeStyles({
   },
   loadingContainer: {
     display: 'flex',
-    justifyContent: 'center',
+    flexDirection: 'column',
     alignItems: 'center',
-    padding: '48px',
+    justifyContent: 'flex-start',
+    paddingTop: '24px',
   },
 });
 
@@ -130,7 +131,7 @@ export const VariablesPageMobile: React.FC = () => {
   if (loading && variables.length === 0) {
     return (
       <div className={styles.loadingContainer}>
-        <Spinner label="Loading variables..." size="large" />
+        <Spinner label="Loading variables..." size="tiny" labelPosition="after" style={{ fontSize: '12px', color: '#605e5c' }} />
       </div>
     );
   }
@@ -201,7 +202,7 @@ export const VariablesPageMobile: React.FC = () => {
         </button>
       </div>
 
-      <PointListHeader idLabel="VAR" labelLabel="Full Label" valueLabel="Value" unitLabel="Units" rangeLabel="Range" />
+      <PointListHeader idLabel="VAR" labelLabel="Full Label" subLabelLabel="Label" valueLabel="Value" unitLabel="Units" rangeLabel="Range" />
 
       <div className={styles.list}>
         {filtered.map((variable) => {
@@ -217,6 +218,7 @@ export const VariablesPageMobile: React.FC = () => {
               key={`${variable.serialNumber}-${variable.variableIndex}`}
               pointId={`VAR${parseInt(variable.variableIndex || '0') + 1}`}
               label={variable.fullLabel || variable.label || `Variable ${parseInt(variable.variableIndex || '0') + 1}`}
+              subLabel={variable.label}
               value={displayValue}
               unit={variable.units}
               range={rangeLabel}

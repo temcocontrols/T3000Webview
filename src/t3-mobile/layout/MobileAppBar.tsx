@@ -14,6 +14,7 @@ import React from 'react';
 import {
   Button,
   Text,
+  Spinner,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
@@ -72,6 +73,13 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
     flexShrink: 0,
   },
+  deviceBtnWrap: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
   rightSection: {
     display: 'flex',
     alignItems: 'center',
@@ -103,6 +111,7 @@ export const MobileAppBar: React.FC<MobileAppBarProps> = ({
 }) => {
   const styles = useStyles();
   const selectedDevice = useDeviceTreeStore((s) => s.selectedDevice);
+  const isDeviceLoading = useDeviceTreeStore((s) => s.isLoading);
 
   return (
     <>
@@ -128,13 +137,19 @@ export const MobileAppBar: React.FC<MobileAppBarProps> = ({
 
         {/* RIGHT — device picker, refresh, nav menu */}
         <div className={styles.rightSection}>
-          <Button
-            appearance="transparent"
-            icon={<PlugConnectedRegular />}
-            onClick={onDevice}
-            className={styles.iconBtn}
-            aria-label="Select device"
-          />
+          <div className={styles.deviceBtnWrap}>
+            {isDeviceLoading ? (
+              <Spinner size="tiny" style={{ padding: '0 8px' }} />
+            ) : (
+              <Button
+                appearance="transparent"
+                icon={<PlugConnectedRegular />}
+                onClick={onDevice}
+                className={styles.iconBtn}
+                aria-label="Select device"
+              />
+            )}
+          </div>
           {showRefresh && onRefresh && (
             <Button
               appearance="transparent"

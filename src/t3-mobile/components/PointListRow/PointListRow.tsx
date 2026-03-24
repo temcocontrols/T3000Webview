@@ -69,6 +69,11 @@ const useStyles = makeStyles({
     width: '60px',
     flexShrink: 0,
   },
+  headerSubLabel: {
+    width: '72px',
+    flexShrink: 0,
+    paddingLeft: '6px',
+  },
   headerChevron: {
     width: '20px',
     flexShrink: 0,
@@ -197,6 +202,18 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
   },
 
+  /* Short label column */
+  subLabelCell: {
+    width: '72px',
+    flexShrink: 0,
+    paddingLeft: '6px',
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground3,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+
   /* Chevron */
   chevronCell: {
     width: '20px',
@@ -211,35 +228,33 @@ const useStyles = makeStyles({
   expanded: {
     backgroundColor: '#f6f7f9',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-    padding: '4px 12px 6px',
+    padding: '6px 10px 8px',
   },
-  detailGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '0px',
+  chipWrap: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '5px',
   },
-  detailCell: {
+  chip: {
+    flex: '1 1 110px',
+    minWidth: '110px',
+    backgroundColor: '#ffffff',
+    border: `1px solid #edebe9`,
+    borderRadius: '4px',
+    padding: '4px 8px 5px',
     display: 'flex',
     flexDirection: 'column',
     gap: '1px',
-    paddingTop: '4px',
-    paddingBottom: '4px',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    overflow: 'hidden',
   },
-  detailCellLeft: {
-    paddingRight: '10px',
-  },
-  detailCellRight: {
-    paddingLeft: '10px',
-    borderLeft: `1px solid ${tokens.colorNeutralStroke2}`,
-  },
-  detailLabel: {
+  chipLabel: {
     fontSize: '9px',
     color: tokens.colorNeutralForeground3,
     textTransform: 'uppercase',
     letterSpacing: '0.04em',
+    fontWeight: 600,
   },
-  detailValue: {
+  chipValue: {
     fontSize: '12px',
     color: tokens.colorNeutralForeground1,
     fontWeight: 500,
@@ -269,6 +284,8 @@ export interface PointListRowProps {
   unit?: string;
   /** Range label shown in Range column, e.g. "Unused" or "0-10V" */
   range?: string;
+  /** Short label shown between full label and value columns */
+  subLabel?: string;
   /** Status color — used only for inline badge color, no left bar */
   statusColor?: PointStatusColor;
   /** Text shown as inline badge pill next to label — omit to hide */
@@ -289,6 +306,7 @@ export interface PointListRowProps {
 export interface PointListHeaderProps {
   idLabel?: string;
   labelLabel?: string;
+  subLabelLabel?: string;
   valueLabel?: string;
   unitLabel?: string;
   rangeLabel?: string;
@@ -297,6 +315,7 @@ export interface PointListHeaderProps {
 export const PointListHeader: React.FC<PointListHeaderProps> = ({
   idLabel = 'ID',
   labelLabel = 'Label',
+  subLabelLabel,
   valueLabel = 'Value',
   unitLabel = 'Units',
   rangeLabel = 'Range',
@@ -306,6 +325,7 @@ export const PointListHeader: React.FC<PointListHeaderProps> = ({
     <div className={styles.headerRow}>
       <span className={mergeClasses(styles.headerCell, styles.headerId)}>{idLabel}</span>
       <span className={mergeClasses(styles.headerCell, styles.headerLabel)}>{labelLabel}</span>
+      {subLabelLabel && <span className={mergeClasses(styles.headerCell, styles.headerSubLabel)}>{subLabelLabel}</span>}
       <span className={mergeClasses(styles.headerCell, styles.headerValue)}>{valueLabel}</span>
       <span className={mergeClasses(styles.headerCell, styles.headerUnit)}>{unitLabel}</span>
       <span className={mergeClasses(styles.headerCell, styles.headerRange)}>{rangeLabel}</span>
@@ -319,6 +339,7 @@ export const PointListHeader: React.FC<PointListHeaderProps> = ({
 export const PointListRow: React.FC<PointListRowProps> = React.memo(({
   pointId,
   label,
+  subLabel,
   value,
   unit,
   range,
@@ -355,6 +376,9 @@ export const PointListRow: React.FC<PointListRowProps> = React.memo(({
             )}
           </div>
 
+          {/* Short label */}
+          {subLabel !== undefined && <span className={styles.subLabelCell}>{subLabel}</span>}
+
           {/* Value */}
           <div className={styles.valueCell}>
             <span className={mergeClasses(styles.valueText, isNA && styles.valueNA)}>
@@ -379,17 +403,11 @@ export const PointListRow: React.FC<PointListRowProps> = React.memo(({
       {expanded && (
         <div className={styles.expanded}>
           {details.length > 0 && (
-            <div className={styles.detailGrid}>
+            <div className={styles.chipWrap}>
               {details.map((d, i) => (
-                <div
-                  key={i}
-                  className={mergeClasses(
-                    styles.detailCell,
-                    i % 2 === 0 ? styles.detailCellLeft : styles.detailCellRight,
-                  )}
-                >
-                  <span className={styles.detailLabel}>{d.label}</span>
-                  <span className={styles.detailValue}>{d.value}</span>
+                <div key={i} className={styles.chip}>
+                  <span className={styles.chipLabel}>{d.label}</span>
+                  <span className={styles.chipValue}>{d.value}</span>
                 </div>
               ))}
             </div>
@@ -405,6 +423,7 @@ export const PointListRow: React.FC<PointListRowProps> = React.memo(({
   return prev.expanded   === next.expanded   &&
          prev.pointId    === next.pointId    &&
          prev.label      === next.label      &&
+         prev.subLabel   === next.subLabel   &&
          prev.value      === next.value      &&
          prev.unit       === next.unit       &&
          prev.range      === next.range      &&

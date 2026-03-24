@@ -105,9 +105,10 @@ const useStyles = makeStyles({
   },
   loadingContainer: {
     display: 'flex',
-    justifyContent: 'center',
+    flexDirection: 'column',
     alignItems: 'center',
-    padding: '48px',
+    justifyContent: 'flex-start',
+    paddingTop: '24px',
   },
 });
 
@@ -133,7 +134,7 @@ export const InputsPageMobile: React.FC = () => {
   if (loading && inputs.length === 0) {
     return (
       <div className={styles.loadingContainer}>
-        <Spinner label="Loading inputs..." size="large" />
+        <Spinner label="Loading inputs..." size="tiny" labelPosition="after" style={{ fontSize: '12px', color: '#605e5c' }} />
       </div>
     );
   }
@@ -206,7 +207,7 @@ export const InputsPageMobile: React.FC = () => {
       </div>
 
       {/* Column header */}
-      <PointListHeader idLabel="INPUT" labelLabel="Full Label" valueLabel="Value" unitLabel="Units" rangeLabel="Range" />
+      <PointListHeader idLabel="INPUT" labelLabel="Full Label" subLabelLabel="Label" valueLabel="Value" unitLabel="Units" rangeLabel="Range" />
 
       {/* List */}
       <div className={styles.list}>
@@ -223,6 +224,7 @@ export const InputsPageMobile: React.FC = () => {
               key={`${input.serialNumber}-${input.inputIndex}`}
               pointId={`IN${parseInt(input.inputIndex || '0') + 1}`}
               label={input.fullLabel || input.label || `Input ${parseInt(input.inputIndex || '0') + 1}`}
+              subLabel={input.label}
               value={displayValue}
               unit={input.units}
               range={rangeLabel}
