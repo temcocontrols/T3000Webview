@@ -202,7 +202,7 @@ export const OutputsPageMobile: React.FC = () => {
         </button>
       </div>
 
-      <PointListHeader idLabel="Output" labelLabel="Full Label" subLabelLabel="Label" valueLabel="Value" unitLabel="Units" rangeLabel="Range" />
+      <PointListHeader idLabel="Output" labelLabel="Full Label" valueLabel="Value" unitLabel="Units" />
 
       <div className={styles.list}>
         {filtered.map((output) => {

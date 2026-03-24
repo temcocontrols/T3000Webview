@@ -202,7 +202,7 @@ export const VariablesPageMobile: React.FC = () => {
         </button>
       </div>
 
-      <PointListHeader idLabel="Var" labelLabel="Full Label" subLabelLabel="Label" valueLabel="Value" unitLabel="Units" rangeLabel="Range" />
+      <PointListHeader idLabel="Var" labelLabel="Full Label" valueLabel="Value" unitLabel="Units" />
 
       <div className={styles.list}>
         {filtered.map((variable) => {

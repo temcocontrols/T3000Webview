@@ -46,7 +46,7 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
   },
   headerId: {
-    width: '44px',
+    width: '36px',
     flexShrink: 0,
   },
   headerLabel: {
@@ -54,27 +54,18 @@ const useStyles = makeStyles({
     paddingLeft: '6px',
   },
   headerValue: {
-    width: '52px',
+    width: '50px',
     flexShrink: 0,
     textAlign: 'right',
     paddingRight: '4px',
   },
   headerUnit: {
-    width: '40px',
+    width: '32px',
     flexShrink: 0,
     textAlign: 'center',
   },
-  headerRange: {
-    width: '60px',
-    flexShrink: 0,
-  },
-  headerSubLabel: {
-    width: '72px',
-    flexShrink: 0,
-    paddingLeft: '6px',
-  },
   headerChevron: {
-    width: '20px',
+    width: '16px',
     flexShrink: 0,
   },
 
@@ -120,7 +111,7 @@ const useStyles = makeStyles({
 
   /* ID column */
   idCell: {
-    width: '44px',
+    width: '36px',
     flexShrink: 0,
     fontSize: '11px',
     color: tokens.colorNeutralForeground3,
@@ -164,7 +155,7 @@ const useStyles = makeStyles({
 
   /* Value column */
   valueCell: {
-    width: '52px',
+    width: '50px',
     flexShrink: 0,
     textAlign: 'right',
     paddingRight: '4px',
@@ -180,7 +171,7 @@ const useStyles = makeStyles({
 
   /* Units column */
   unitCell: {
-    width: '40px',
+    width: '32px',
     flexShrink: 0,
     textAlign: 'center',
     fontSize: '12px',
@@ -190,32 +181,9 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
   },
 
-  /* Range column */
-  rangeCell: {
-    width: '60px',
-    flexShrink: 0,
-    fontSize: '12px',
-    color: tokens.colorNeutralForeground2,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-
-  /* Short label column */
-  subLabelCell: {
-    width: '72px',
-    flexShrink: 0,
-    paddingLeft: '6px',
-    fontSize: '12px',
-    color: tokens.colorNeutralForeground3,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-
   /* Chevron */
   chevronCell: {
-    width: '20px',
+    width: '16px',
     flexShrink: 0,
     display: 'flex',
     alignItems: 'center',
@@ -225,41 +193,41 @@ const useStyles = makeStyles({
 
   /* ── Expanded section ── */
   expanded: {
-    backgroundColor: '#f6f7f9',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-    padding: '6px 10px 8px',
+    backgroundColor: '#f5f5f5',
+    borderBottom: `1px solid #edebe9`,
+    padding: '0',
   },
-  chipWrap: {
+  propGrid: {
     display: 'flex',
     flexWrap: 'wrap',
-    gap: '5px',
+    borderTop: '1px solid #e0e0e0',
+    borderLeft: '1px solid #e0e0e0',
   },
-  chip: {
-    flex: '1 1 110px',
-    minWidth: '110px',
-    backgroundColor: '#ffffff',
-    border: `1px solid #edebe9`,
-    borderRadius: '4px',
-    padding: '4px 8px 5px',
+  propRow: {
+    flex: '1 1 140px',
+    minWidth: '140px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '1px',
-    overflow: 'hidden',
+    padding: '6px 10px',
+    borderRight: '1px solid #e0e0e0',
+    borderBottom: '1px solid #e0e0e0',
   },
-  chipLabel: {
-    fontSize: '9px',
-    color: tokens.colorNeutralForeground3,
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
+  propRowLast: {
+    // kept for API compat
+  },
+  propKey: {
+    fontSize: '10px',
+    color: '#8a8886',
     fontWeight: 600,
+    textTransform: 'uppercase' as 'uppercase',
+    letterSpacing: '0.04em',
+    marginBottom: '2px',
   },
-  chipValue: {
+  propVal: {
     fontSize: '12px',
-    color: tokens.colorNeutralForeground1,
-    fontWeight: 500,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    color: '#323130',
+    fontWeight: 400,
+    wordBreak: 'break-word' as 'break-word',
   },
 });
 
@@ -324,10 +292,8 @@ export const PointListHeader: React.FC<PointListHeaderProps> = ({
     <div className={styles.headerRow}>
       <span className={mergeClasses(styles.headerCell, styles.headerId)}>{idLabel}</span>
       <span className={mergeClasses(styles.headerCell, styles.headerLabel)}>{labelLabel}</span>
-      {subLabelLabel && <span className={mergeClasses(styles.headerCell, styles.headerSubLabel)}>{subLabelLabel}</span>}
       <span className={mergeClasses(styles.headerCell, styles.headerValue)}>{valueLabel}</span>
       <span className={mergeClasses(styles.headerCell, styles.headerUnit)}>{unitLabel}</span>
-      <span className={mergeClasses(styles.headerCell, styles.headerRange)}>{rangeLabel}</span>
       <span className={styles.headerChevron} />
     </div>
   );
@@ -375,9 +341,6 @@ export const PointListRow: React.FC<PointListRowProps> = React.memo(({
             )}
           </div>
 
-          {/* Short label */}
-          {subLabel !== undefined && <span className={styles.subLabelCell}>{subLabel}</span>}
-
           {/* Value */}
           <div className={styles.valueCell}>
             <span className={mergeClasses(styles.valueText, isNA && styles.valueNA)}>
@@ -387,9 +350,6 @@ export const PointListRow: React.FC<PointListRowProps> = React.memo(({
 
           {/* Units */}
           <span className={styles.unitCell}>{unit ?? ''}</span>
-
-          {/* Range */}
-          <span className={styles.rangeCell}>{range ?? ''}</span>
 
           {/* Chevron */}
           <span className={styles.chevronCell}>
@@ -401,16 +361,17 @@ export const PointListRow: React.FC<PointListRowProps> = React.memo(({
       {/* Expanded accordion */}
       {expanded && (
         <div className={styles.expanded}>
-          {details.length > 0 && (
-            <div className={styles.chipWrap}>
-              {details.map((d, i) => (
-                <div key={i} className={styles.chip}>
-                  <span className={styles.chipLabel}>{d.label}</span>
-                  <span className={styles.chipValue}>{d.value}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className={styles.propGrid}>
+            {details.map((d, i) => (
+              <div
+                key={i}
+                className={mergeClasses(styles.propRow, i === details.length - 1 && styles.propRowLast)}
+              >
+                <span className={styles.propKey}>{d.label}</span>
+                <span className={styles.propVal}>{d.value}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </>

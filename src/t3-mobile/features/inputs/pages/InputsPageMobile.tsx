@@ -207,7 +207,7 @@ export const InputsPageMobile: React.FC = () => {
       </div>
 
       {/* Column header */}
-      <PointListHeader idLabel="Input" labelLabel="Full Label" subLabelLabel="Label" valueLabel="Value" unitLabel="Units" rangeLabel="Range" />
+      <PointListHeader idLabel="Input" labelLabel="Full Label" valueLabel="Value" unitLabel="Units" />
 
       {/* List */}
       <div className={styles.list}>
