@@ -9,7 +9,7 @@
  * - Right panel (properties) - optional, collapsible
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Outlet } from 'react-router-dom';
 import { makeStyles } from '@fluentui/react-components';
 import { Header } from './Header';
@@ -124,6 +124,9 @@ const DesktopLayout: React.FC = () => {
   const globalMessage = useUIStore((state) => state.globalMessage);
   const dismissGlobalMessage = useUIStore((state) => state.dismissGlobalMessage);
 
+  const leftPanelRef = useRef<HTMLDivElement>(null);
+  const rightPanelRef = useRef<HTMLDivElement>(null);
+
   // Status bar state
   const rxCount = useStatusBarStore((state) => state.rxCount);
   const txCount = useStatusBarStore((state) => state.txCount);
@@ -138,6 +141,14 @@ const DesktopLayout: React.FC = () => {
   useEffect(() => {
     document.title = 'T3000 Building Automation System';
   }, []);
+
+  useEffect(() => {
+    if (leftPanelRef.current) leftPanelRef.current.style.width = `${leftPanelWidth}px`;
+  }, [leftPanelWidth]);
+
+  useEffect(() => {
+    if (rightPanelRef.current) rightPanelRef.current.style.width = `${rightPanelWidth}px`;
+  }, [rightPanelWidth]);
 
   // Handle left panel resize
   const handleLeftPanelResize = (e: React.MouseEvent) => {
@@ -202,8 +213,8 @@ const DesktopLayout: React.FC = () => {
         {isLeftPanelVisible && (
           <>
             <div
+              ref={leftPanelRef}
               className={styles.leftPanel}
-              style={{ width: `${leftPanelWidth}px` }}
             >
               <TreePanel />
             </div>
@@ -230,8 +241,8 @@ const DesktopLayout: React.FC = () => {
               onMouseDown={handleRightPanelResize}
             />
             <div
+              ref={rightPanelRef}
               className={styles.rightPanel}
-              style={{ width: `${rightPanelWidth}px` }}
             >
               {/* Right panel content will be rendered here */}
               <div className={styles.rightPanelContent}>

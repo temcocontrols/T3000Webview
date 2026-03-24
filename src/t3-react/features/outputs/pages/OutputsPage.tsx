@@ -19,6 +19,8 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useResponsive } from '@t3-shared/core/hooks/useResponsive';
+import { OutputsPageMobile } from '@t3-mobile/features/outputs/pages/OutputsPageMobile';
 import {
   DataGrid,
   DataGridHeader,
@@ -80,7 +82,7 @@ interface OutputPoint {
   typeField?: string;
 }
 
-export const OutputsPage: React.FC = () => {
+const OutputsPageDesktop: React.FC = () => {
   const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
   const setMessage = useStatusBarStore((state) => state.setMessage);
 
@@ -1623,6 +1625,12 @@ export const OutputsPage: React.FC = () => {
       )}
     </div>
   );
+};
+
+export const OutputsPage: React.FC = () => {
+  const { isMobile } = useResponsive();
+  if (isMobile) return <OutputsPageMobile />;
+  return <OutputsPageDesktop />;
 };
 
 export default OutputsPage;

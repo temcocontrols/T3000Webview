@@ -167,7 +167,7 @@ const useStyles = makeStyles({
     padding: '8px 10px',
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: '4px',
-    marginBottom: '10px',
+    flex: 1,
     backgroundColor: tokens.colorNeutralBackground2,
   },
   ntpModeBlock: {
@@ -177,11 +177,31 @@ const useStyles = makeStyles({
     padding: '8px 10px',
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: '4px',
-    marginBottom: '10px',
+    flex: 1,
     backgroundColor: tokens.colorNeutralBackground2,
   },
   tzRow: {
     marginBottom: '10px',
+  },
+  syncModeRow: {
+    display: 'flex',
+    gap: '12px',
+    marginBottom: '10px',
+  },
+  rowFlush: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: 0,
+  },
+  panelEnabled: {
+    opacity: 1,
+    marginTop: '8px',
+  },
+  panelDisabled: {
+    opacity: 0.45,
+    pointerEvents: 'none',
+    marginTop: '8px',
   },
   dstBlock: {
     border: `1px solid ${tokens.colorNeutralStroke2}`,
@@ -195,6 +215,17 @@ const useStyles = makeStyles({
     gap: '24px',
     marginTop: '8px',
     alignItems: 'center',
+  },
+  dstDatesRowDisabled: {
+    display: 'flex',
+    gap: '24px',
+    marginTop: '8px',
+    alignItems: 'center',
+    opacity: 0.45,
+    pointerEvents: 'none',
+  },
+  fieldLabel13: {
+    fontSize: '13px',
   },
   dstGroup: {
     display: 'flex',
@@ -213,6 +244,19 @@ const useStyles = makeStyles({
   statusValue: {
     fontFamily: 'monospace',
     fontSize: '13px',
+    fontWeight: tokens.fontWeightRegular,
+    padding: '8px 12px',
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: '4px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    color: tokens.colorNeutralForeground1,
+    width: '100%',
+    marginBottom: '12px',
+  },
+  statusValueRuntime: {
+    fontFamily: 'monospace',
+    fontSize: '12px',
+    letterSpacing: '0.2px',
     fontWeight: tokens.fontWeightRegular,
     padding: '8px 12px',
     border: `1px solid ${tokens.colorNeutralStroke1}`,
@@ -410,15 +454,15 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
           value={isNTP ? 'ntp' : 'pc'}
           onChange={(_, data) => handleSyncModeChange(data.value)}
         >
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '10px' }}>
+          <div className={styles.syncModeRow}>
 
             {/* PC Sync panel */}
-            <div className={styles.pcModeBlock} style={{ flex: 1, marginBottom: 0 }}>
+            <div className={styles.pcModeBlock}>
               <Radio
                 value="pc"
                 label={{ style: { fontSize: '12px', fontWeight: 'normal' }, children: 'Synchronize with Local PC' }}
               />
-              <div style={{ opacity: isNTP ? 0.45 : 1, pointerEvents: isNTP ? 'none' : undefined, marginTop: 8 }}>
+              <div className={isNTP ? styles.panelDisabled : styles.panelEnabled}>
                 <div className={styles.row}>
                   <span className={styles.label}>Date</span>
                   <span className={styles.dateTimeBox}>{pcDateStr}</span>
@@ -433,7 +477,7 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
                     {syncLoading ? 'Syncing…' : 'Sync Local PC'}
                   </Button>
                 </div>
-                <div className={styles.row} style={{ marginBottom: 0 }}>
+                <div className={styles.rowFlush}>
                   <span className={styles.label}>Time</span>
                   <span className={styles.dateTimeBox}>{pcTimeStr}</span>
                   <Button
@@ -451,12 +495,12 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
             </div>
 
             {/* NTP Sync panel */}
-            <div className={styles.ntpModeBlock} style={{ flex: 1, marginBottom: 0 }}>
+            <div className={styles.ntpModeBlock}>
               <Radio
                 value="ntp"
                 label={{ style: { fontSize: '12px', fontWeight: 'normal' }, children: 'Synchronize with the time server' }}
               />
-              <div style={{ opacity: !isNTP ? 0.45 : 1, pointerEvents: !isNTP ? 'none' : undefined, marginTop: 8 }}>
+              <div className={!isNTP ? styles.panelDisabled : styles.panelEnabled}>
                 <div className={styles.row}>
                   <span className={styles.label}>Time Server</span>
                   <Dropdown
@@ -486,7 +530,7 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
                     />
                   </div>
                 )}
-                <div className={styles.row} style={{ marginBottom: 0 }}>
+                <div className={styles.rowFlush}>
                   <span className={styles.label}>Last Update</span>
                   <Text style={{ fontSize: 12, color: tokens.colorNeutralForeground3, minWidth: 110 }}>
                     {deviceEpoch ? formatLastUpdate(deviceEpoch) : '—'}
@@ -509,7 +553,7 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
 
         {/* Time Zone */}
         <div className={styles.tzRow}>
-          <Field label={<span style={{ fontSize: 13 }}>Time Zone</span>}>
+          <Field label={<span className={styles.fieldLabel13}>Time Zone</span>}>
             <Dropdown
               style={{ width: '100%', fontSize: 11 }}
               button={{ style: { fontSize: 11 } }}
@@ -533,7 +577,7 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
             onChange={(_, d) => handleDstToggle(!!d.checked)}
           />
 
-          <div className={styles.dstDatesRow} style={{ opacity: dstEnabled ? 1 : 0.45, pointerEvents: dstEnabled ? undefined : 'none' }}>
+          <div className={dstEnabled ? styles.dstDatesRow : styles.dstDatesRowDisabled}>
               {/* Start */}
               <div className={styles.dstGroup}>
                 <span className={styles.dstGroupLabel}>Start Date</span>
@@ -601,7 +645,7 @@ export const TimeSettingsTab: React.FC<TimeSettingsTabProps> = ({
         <div className={styles.cardTitle}>Device Status</div>
 
         <div className={styles.statusLabel}>Device Running Time</div>
-        <div className={styles.statusValue} style={{ fontFamily: 'monospace', fontSize: 12, letterSpacing: '0.2px' }}>
+        <div className={styles.statusValueRuntime}>
           {deviceRuntimeSeconds ? formatRuntime(deviceRuntimeSeconds) : '—'}
         </div>
       </div>

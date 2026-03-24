@@ -120,6 +120,81 @@
   white-space: pre-wrap;
 }
 
+/* JSON tree viewer */
+.jsonNode {
+  font-size: 12px;
+  font-family: monospace;
+}
+
+.jsonKey {
+  color: #881391;
+}
+
+.jsonNull {
+  color: #0000ff;
+}
+
+.jsonBoolean {
+  color: #0000ff;
+}
+
+.jsonNumber {
+  color: #098658;
+}
+
+.jsonString {
+  color: #a31515;
+}
+
+.jsonToggle {
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.jsonTreeRoot {
+  padding: 8px;
+  overflow: auto;
+}
+
+.optionSmall {
+  font-size: 12px;
+}
+
+.paramList {
+  margin: 4px 0 0 0;
+  padding: 0 0 0 20px;
+  font-size: 12px;
+  color: #605e5c;
+}
+
+.formGroupFullWidth {
+  grid-column: 1 / -1;
+}
+
+.flexGap4 {
+  display: flex;
+  gap: 4px;
+}
+
+/* JSON depth indentation levels (20px per depth) */
+.jsonDepth0 { margin-left: 0; }
+.jsonDepth1 { margin-left: 20px; }
+.jsonDepth2 { margin-left: 40px; }
+.jsonDepth3 { margin-left: 60px; }
+.jsonDepth4 { margin-left: 80px; }
+.jsonDepth5 { margin-left: 100px; }
+.jsonDepth6 { margin-left: 120px; }
+.jsonDepth7 { margin-left: 140px; }
+.jsonDepth8 { margin-left: 160px; }
+.jsonDepth9 { margin-left: 180px; }
+.jsonDepth10 { margin-left: 200px; }
+.jsonDepth11 { margin-left: 220px; }
+.jsonDepth12 { margin-left: 240px; }
+.jsonDepth13 { margin-left: 260px; }
+.jsonDepth14 { margin-left: 280px; }
+.jsonDepth15 { margin-left: 300px; }
+
 .responsePlaceholder {
   flex: 1;
   display: flex;

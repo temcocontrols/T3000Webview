@@ -11,7 +11,6 @@ import {
   Dropdown,
   Option,
   Input,
-  Textarea,
   Spinner
 } from '@fluentui/react-components';
 import { SendRegular, DismissRegular, ChevronDownRegular, ChevronRightRegular, CodeTextEditRegular, CopyRegular } from '@fluentui/react-icons';
@@ -65,51 +64,51 @@ const JsonTreeViewer: React.FC<{ json: string }> = ({ json }) => {
   };
 
   const renderValue = (value: any, path: string, key?: string, depth: number = 0): React.ReactNode => {
-    const indent = depth * 20;
     const isExpanded = expandedPaths.has(path);
+    const depthClass = (styles as Record<string, string>)[`jsonDepth${Math.min(depth, 15)}`] ?? '';
 
     if (value === null) {
       return (
-        <div style={{ marginLeft: `${indent}px`, fontSize: '12px', fontFamily: 'monospace' }}>
-          {key !== undefined && <span style={{ color: '#881391' }}>"{key}": </span>}
-          <span style={{ color: '#0000ff' }}>null</span>
+        <div className={`${styles.jsonNode} ${depthClass}`}>
+          {key !== undefined && <span className={styles.jsonKey}>"{key}": </span>}
+          <span className={styles.jsonNull}>null</span>
         </div>
       );
     }
 
     if (typeof value === 'boolean') {
       return (
-        <div style={{ marginLeft: `${indent}px`, fontSize: '12px', fontFamily: 'monospace' }}>
-          {key !== undefined && <span style={{ color: '#881391' }}>"{key}": </span>}
-          <span style={{ color: '#0000ff' }}>{value.toString()}</span>
+        <div className={`${styles.jsonNode} ${depthClass}`}>
+          {key !== undefined && <span className={styles.jsonKey}>"{key}": </span>}
+          <span className={styles.jsonBoolean}>{value.toString()}</span>
         </div>
       );
     }
 
     if (typeof value === 'number') {
       return (
-        <div style={{ marginLeft: `${indent}px`, fontSize: '12px', fontFamily: 'monospace' }}>
-          {key !== undefined && <span style={{ color: '#881391' }}>"{key}": </span>}
-          <span style={{ color: '#098658' }}>{value}</span>
+        <div className={`${styles.jsonNode} ${depthClass}`}>
+          {key !== undefined && <span className={styles.jsonKey}>"{key}": </span>}
+          <span className={styles.jsonNumber}>{value}</span>
         </div>
       );
     }
 
     if (typeof value === 'string') {
       return (
-        <div style={{ marginLeft: `${indent}px`, fontSize: '12px', fontFamily: 'monospace' }}>
-          {key !== undefined && <span style={{ color: '#881391' }}>"{key}": </span>}
-          <span style={{ color: '#a31515' }}>"{value}"</span>
+        <div className={`${styles.jsonNode} ${depthClass}`}>
+          {key !== undefined && <span className={styles.jsonKey}>"{key}": </span>}
+          <span className={styles.jsonString}>"{value}"</span>
         </div>
       );
     }
 
     if (Array.isArray(value)) {
       return (
-        <div style={{ marginLeft: `${indent}px`, fontSize: '12px', fontFamily: 'monospace' }}>
-          <div style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => togglePath(path)}>
+        <div className={`${styles.jsonNode} ${depthClass}`}>
+          <div className={styles.jsonToggle} onClick={() => togglePath(path)}>
             {isExpanded ? <ChevronDownRegular fontSize={12} /> : <ChevronRightRegular fontSize={12} />}
-            {key !== undefined && <span style={{ color: '#881391' }}>"{key}": </span>}
+            {key !== undefined && <span className={styles.jsonKey}>"{key}": </span>}
             <span>[{value.length}]</span>
           </div>
           {isExpanded && (
@@ -124,10 +123,10 @@ const JsonTreeViewer: React.FC<{ json: string }> = ({ json }) => {
     if (typeof value === 'object') {
       const keys = Object.keys(value);
       return (
-        <div style={{ marginLeft: `${indent}px`, fontSize: '12px', fontFamily: 'monospace' }}>
-          <div style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => togglePath(path)}>
+        <div className={`${styles.jsonNode} ${depthClass}`}>
+          <div className={styles.jsonToggle} onClick={() => togglePath(path)}>
             {isExpanded ? <ChevronDownRegular fontSize={12} /> : <ChevronRightRegular fontSize={12} />}
-            {key !== undefined && <span style={{ color: '#881391' }}>"{key}": </span>}
+            {key !== undefined && <span className={styles.jsonKey}>"{key}": </span>}
             <span>{`{${keys.length}}`}</span>
           </div>
           {isExpanded && (
@@ -143,7 +142,7 @@ const JsonTreeViewer: React.FC<{ json: string }> = ({ json }) => {
   };
 
   return (
-    <div className={styles.responseText} style={{ padding: '8px', overflow: 'auto' }}>
+    <div className={`${styles.responseText} ${styles.jsonTreeRoot}`}>
       {renderValue(parsedJson, 'root')}
     </div>
   );
@@ -174,33 +173,13 @@ interface MessageHistoryItem {
   status: 'success' | 'error';
 }
 
-interface MessageFieldConfig {
-  name: string;
-  label: string;
-  type: 'text' | 'number' | 'select' | 'multiselect' | 'textarea' | 'checkbox';
-  required?: boolean;
-  placeholder?: string;
-  options?: { value: string; label: string }[];
-  defaultValue?: any;
-  helpText?: string;
-}
-
-interface MessageTypeConfig {
-  id: string;
-  label: string;
-  description: string;
-  requiresPanels: boolean;
-  fields: MessageFieldConfig[];
-  helpText: string;
-}
-
 export const TransportTesterPage: React.FC = () => {
   const [transport, setTransport] = useState<TransportType>('ffi');
   const [action, setAction] = useState<string>('GET_PANELS_LIST');
   const [availablePanels, setAvailablePanels] = useState<Panel[]>([]);
   const [panelId, setPanelId] = useState<string>('');
   const [serialNumber, setSerialNumber] = useState<string>('');
-  const [customData, setCustomData] = useState<string>('{}');
+  const [customData] = useState<string>('{}');
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<string>('');
   const [currentRequest, setCurrentRequest] = useState<string>('');
@@ -248,27 +227,6 @@ export const TransportTesterPage: React.FC = () => {
       }
     };
   }, []);
-
-  const messageConfigs: Record<string, MessageTypeConfig> = {
-    GET_PANELS_LIST: {
-      id: 'GET_PANELS_LIST',
-      label: '4 - GET_PANELS_LIST',
-      description: 'Retrieves the list of all available panels/devices in the network',
-      requiresPanels: false,
-      fields: [],
-      helpText: 'This message requires no parameters. It will return all discovered panels with their panel numbers, serial numbers, panel names, object instances, and last online time. This is typically the first message you should send.'
-    },
-    GET_PANEL_DATA: {
-      id: 'GET_PANEL_DATA',
-      label: '0 - GET_PANEL_DATA',
-      description: 'Get complete data for a specific panel',
-      requiresPanels: true,
-      fields: [
-        { name: 'panelId', label: 'Panel ID', type: 'select', required: true, placeholder: 'Select a panel' }
-      ],
-      helpText: 'Retrieves all data (inputs, outputs, variables, programs, etc.) for the selected panel.'
-    },
-  };
 
   const actions = [
     { value: 'GET_PANEL_DATA', label: '0 - GET_PANEL_DATA' },
@@ -427,7 +385,6 @@ export const TransportTesterPage: React.FC = () => {
 
       setHistory(prev => [historyItem, ...prev].slice(0, 50));
     } catch (err) {
-      const duration = Date.now() - Date.now();
       const errorResponse = {
         success: false,
         error: err instanceof Error ? err.message : 'Request failed',
@@ -470,9 +427,9 @@ export const TransportTesterPage: React.FC = () => {
               style={{ minWidth: '150px', fontSize: '12px' }}
               size="small"
             >
-              <Option value="websocket" text="WebSocket"><span style={{ fontSize: '12px' }}>WebSocket</span></Option>
-              <Option value="ffi" text="FFI"><span style={{ fontSize: '12px' }}>FFI</span></Option>
-              <Option value="webview2" text="WebView2"><span style={{ fontSize: '12px' }}>WebView2</span></Option>
+              <Option value="websocket" text="WebSocket"><span className={styles.optionSmall}>WebSocket</span></Option>
+              <Option value="ffi" text="FFI"><span className={styles.optionSmall}>FFI</span></Option>
+              <Option value="webview2" text="WebView2"><span className={styles.optionSmall}>WebView2</span></Option>
             </Dropdown>
             {connectionStatus && (
               <Text size={200} style={{ marginLeft: '8px', color: connectionStatus.includes('Error') ? '#d13438' : '#107c10' }}>
@@ -491,7 +448,7 @@ export const TransportTesterPage: React.FC = () => {
             >
               {actions.map((act) => (
                 <Option key={act.value} value={act.value} text={act.label}>
-                  <span style={{ fontSize: '12px' }}>{act.label}</span>
+                  <span className={styles.optionSmall}>{act.label}</span>
                 </Option>
               ))}
             </Dropdown>
@@ -535,7 +492,7 @@ export const TransportTesterPage: React.FC = () => {
                   <Text size={200} style={{ color: '#605e5c', lineHeight: '1.5' }}>
                     Array of panels with:
                   </Text>
-                  <ul style={{ margin: '4px 0 0 0', padding: '0 0 0 20px', fontSize: '12px', color: '#605e5c' }}>
+                  <ul className={styles.paramList}>
                     <li>Panel Number</li>
                     <li>Serial Number</li>
                     <li>Panel Name</li>
@@ -553,7 +510,7 @@ export const TransportTesterPage: React.FC = () => {
               </div>
             ) : (
               <>
-                <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
+                <div className={`${styles.formGroup} ${styles.formGroupFullWidth}`}>
                   <Text size={200} weight="semibold">Panel ID</Text>
                   {availablePanels.length > 0 ? (
                     <Dropdown
@@ -567,8 +524,8 @@ export const TransportTesterPage: React.FC = () => {
                       style={{ width: '100%' }}
                     >
                       {availablePanels.filter(panel => panel && panel.panel_number !== undefined).map((panel) => (
-                        <Option key={panel.panel_number} value={panel.panel_number.toString()}>
-                          <span style={{ fontSize: '12px' }}>{panel.panel_name || 'Unknown'}, Panel Number: {panel.panel_number}</span>
+                        <Option key={panel.panel_number} value={panel.panel_number.toString()} text={`${panel.panel_name || 'Unknown'}, Panel Number: ${panel.panel_number}`}>
+                          <span className={styles.optionSmall}>{panel.panel_name || 'Unknown'}, Panel Number: {panel.panel_number}</span>
                         </Option>
                       ))}
                     </Dropdown>
@@ -584,7 +541,7 @@ export const TransportTesterPage: React.FC = () => {
                   )}
                 </div>
 
-                <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
+                <div className={`${styles.formGroup} ${styles.formGroupFullWidth}`}>
                   <Text size={200} weight="semibold">Serial Number (optional)</Text>
                   <Input
                     value={serialNumber}
@@ -603,7 +560,7 @@ export const TransportTesterPage: React.FC = () => {
             <div className={styles.panelHeader}>
               <Text size={200} weight="semibold">Response</Text>
               {response && (
-                <div style={{ display: 'flex', gap: '4px' }}>
+                <div className={styles.flexGap4}>
                   <Button
                     appearance="subtle"
                     size="small"

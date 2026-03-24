@@ -158,12 +158,12 @@ export const DiscoverPage: React.FC = () => {
       columnId: 'model',
       compare: (a, b) => a.model.localeCompare(b.model),
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('model')}>
+        <div className={styles.sortHeader} onClick={() => handleSort('model')}>
           <span>Model</span>
           {sortColumn === 'model' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconMuted} />
           )}
         </div>
       ),
@@ -177,12 +177,12 @@ export const DiscoverPage: React.FC = () => {
       columnId: 'building',
       compare: (a, b) => a.building.localeCompare(b.building),
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('building')}>
+        <div className={styles.sortHeader} onClick={() => handleSort('building')}>
           <span>Building</span>
           {sortColumn === 'building' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconMuted} />
           )}
         </div>
       ),
@@ -196,12 +196,12 @@ export const DiscoverPage: React.FC = () => {
       columnId: 'floor',
       compare: (a, b) => a.floor.localeCompare(b.floor),
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('floor')}>
+        <div className={styles.sortHeader} onClick={() => handleSort('floor')}>
           <span>Floor</span>
           {sortColumn === 'floor' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconMuted} />
           )}
         </div>
       ),
@@ -215,12 +215,12 @@ export const DiscoverPage: React.FC = () => {
       columnId: 'room',
       compare: (a, b) => a.room.localeCompare(b.room),
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('room')}>
+        <div className={styles.sortHeader} onClick={() => handleSort('room')}>
           <span>Room</span>
           {sortColumn === 'room' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconMuted} />
           )}
         </div>
       ),
@@ -234,12 +234,12 @@ export const DiscoverPage: React.FC = () => {
       columnId: 'subnet',
       compare: (a, b) => a.subnet.localeCompare(b.subnet),
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('subnet')}>
+        <div className={styles.sortHeader} onClick={() => handleSort('subnet')}>
           <span>Sub_net</span>
           {sortColumn === 'subnet' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconMuted} />
           )}
         </div>
       ),
@@ -253,12 +253,12 @@ export const DiscoverPage: React.FC = () => {
       columnId: 'serialNumber',
       compare: (a, b) => a.serialNumber.localeCompare(b.serialNumber),
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('serialNumber')}>
+        <div className={styles.sortHeader} onClick={() => handleSort('serialNumber')}>
           <span>Serial#</span>
           {sortColumn === 'serialNumber' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconMuted} />
           )}
         </div>
       ),
@@ -272,12 +272,12 @@ export const DiscoverPage: React.FC = () => {
       columnId: 'ipAddress',
       compare: (a, b) => a.ipAddress.localeCompare(b.ipAddress),
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('ipAddress')}>
+        <div className={styles.sortHeader} onClick={() => handleSort('ipAddress')}>
           <span>IP Address</span>
           {sortColumn === 'ipAddress' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconMuted} />
           )}
         </div>
       ),
@@ -291,12 +291,12 @@ export const DiscoverPage: React.FC = () => {
       columnId: 'port',
       compare: (a, b) => a.port.localeCompare(b.port),
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('port')}>
+        <div className={styles.sortHeader} onClick={() => handleSort('port')}>
           <span>Port</span>
           {sortColumn === 'port' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconMuted} />
           )}
         </div>
       ),
@@ -310,12 +310,12 @@ export const DiscoverPage: React.FC = () => {
       columnId: 'protocol',
       compare: (a, b) => a.protocol.localeCompare(b.protocol),
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('protocol')}>
+        <div className={styles.sortHeader} onClick={() => handleSort('protocol')}>
           <span>Protocol</span>
           {sortColumn === 'protocol' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconMuted} />
           )}
         </div>
       ),
@@ -329,12 +329,12 @@ export const DiscoverPage: React.FC = () => {
       columnId: 'modbusId',
       compare: (a, b) => a.modbusId.localeCompare(b.modbusId),
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('modbusId')}>
+        <div className={styles.sortHeader} onClick={() => handleSort('modbusId')}>
           <span>ID</span>
           {sortColumn === 'modbusId' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconMuted} />
           )}
         </div>
       ),
@@ -356,9 +356,9 @@ export const DiscoverPage: React.FC = () => {
                   ERROR MESSAGE (if any)
                   ======================================== */}
               {error && (
-                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
-                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                <div className={styles.errorBanner}>
+                  <ErrorCircleRegular className={styles.errorBannerIcon} />
+                  <Text className={styles.errorBannerText}>
                     {error}
                   </Text>
                 </div>
@@ -418,7 +418,7 @@ export const DiscoverPage: React.FC = () => {
                 </div>
               </div>
 
-              <div style={{ padding: '0' }}>
+              <div className={styles.noPaddingWrapper}>
                 <hr className={styles.overviewHr} />
               </div>
               </>
@@ -427,7 +427,7 @@ export const DiscoverPage: React.FC = () => {
               <div className={styles.dockingBody}>
                 {/* Loading State */}
                 {loading && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px' }}>
+                  <div className={styles.loadingRow}>
                     <Spinner size="tiny" />
                     <Text size={200} weight="regular">Loading devices...</Text>
                   </div>

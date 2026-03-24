@@ -81,6 +81,26 @@ const useStyles = makeStyles({
     gap: '4px',
     marginBottom: '4px',
   },
+  ipRowFirst: {
+    display: 'grid',
+    gridTemplateColumns: '110px 1fr',
+    alignItems: 'center',
+    gap: '4px',
+    marginTop: '8px',
+    marginBottom: '4px',
+  },
+  ipRowLast: {
+    display: 'grid',
+    gridTemplateColumns: '110px 1fr',
+    alignItems: 'center',
+    gap: '4px',
+    marginBottom: 0,
+  },
+  loadingCenter: {
+    display: 'flex',
+    justifyContent: 'center',
+    padding: '24px',
+  },
   ipInputs: {
     display: 'grid',
     gridTemplateColumns: '1fr 8px 1fr 8px 1fr 8px 1fr',
@@ -306,7 +326,7 @@ export const WifiSettingsDialog: React.FC<WifiSettingsDialogProps> = ({
 
           <DialogContent className={styles.content}>
             {loading && (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '24px' }}>
+              <div className={styles.loadingCenter}>
                 <Spinner size="medium" label="Loading..." />
               </div>
             )}
@@ -338,7 +358,7 @@ export const WifiSettingsDialog: React.FC<WifiSettingsDialogProps> = ({
                     </RadioGroup>
 
                     {/* IP */}
-                    <div className={styles.ipRow} style={{ marginTop: '8px' }}>
+                    <div className={styles.ipRowFirst}>
                       <span className={styles.label}>IP:</span>
                       <IpField octets={ipOctets} onChange={setIpOctets} disabled={!isStatic} />
                     </div>
@@ -350,7 +370,7 @@ export const WifiSettingsDialog: React.FC<WifiSettingsDialogProps> = ({
                     </div>
 
                     {/* Gateway */}
-                    <div className={styles.ipRow} style={{ marginBottom: 0 }}>
+                    <div className={styles.ipRowLast}>
                       <span className={styles.label}>Gateway:</span>
                       <IpField octets={gwOctets} onChange={setGwOctets} disabled={!isStatic} />
                     </div>

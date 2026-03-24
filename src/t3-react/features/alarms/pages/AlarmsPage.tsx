@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useResponsive } from '@t3-shared/core/hooks/useResponsive';
+import { AlarmsPageMobile } from '@t3-mobile/features/alarms/pages/AlarmsPageMobile';
 import {
   DataGrid,
   DataGridProps,
@@ -60,7 +62,7 @@ interface Alarm {
 }
 
 
-const AlarmsPage: React.FC = () => {
+const AlarmsPageDesktop: React.FC = () => {
   const { selectedDevice, treeData, selectDevice } = useDeviceTreeStore();
   const [alarms, setAlarms] = useState<Alarm[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -682,6 +684,12 @@ const AlarmsPage: React.FC = () => {
       </div>
     </div>
   );
+};
+
+export const AlarmsPage: React.FC = () => {
+  const { isMobile } = useResponsive();
+  if (isMobile) return <AlarmsPageMobile />;
+  return <AlarmsPageDesktop />;
 };
 
 export default AlarmsPage;

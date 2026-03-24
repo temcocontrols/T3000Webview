@@ -24,8 +24,7 @@
   overflow-x: hidden;
   padding: 8px;
   background-color: #ffffff;
-  scrollbar-width: thin;
-  scrollbar-color: #c1c1c1 #f5f5f5;
+  /* webkit fallbacks below */
 }
 
 .treeContainer::-webkit-scrollbar {

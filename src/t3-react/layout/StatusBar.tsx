@@ -97,6 +97,9 @@ const useStyles = makeStyles({
     fontWeight: 600,
     marginRight: '4px',
   },
+  txLabel: {
+    marginLeft: '12px',
+  },
 });
 
 export interface StatusBarProps {
@@ -187,7 +190,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
       <div className={`${styles.pane} ${styles.rxTxPane}`}>
         <span className={styles.label}>RX:</span>
         <span>{rxCount}</span>
-        <span style={{ marginLeft: '12px' }} className={styles.label}>TX:</span>
+        <span className={mergeClasses(styles.label, styles.txLabel)}>TX:</span>
         <span>{txCount}</span>
       </div>
 

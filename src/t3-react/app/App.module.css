@@ -4,3 +4,27 @@
   min-height: 100vh;
   background: #ffffff;
 }
+
+/* Suspense loading fallbacks */
+.suspenseLoader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 20px;
+}
+
+.suspenseLoaderDocs {
+  display: flex;
+  align-items: center;
+  padding: 16px 24px;
+  gap: 8px;
+}
+
+.suspenseLoaderText {
+  font-size: 13px;
+}
+
+.suspenseLoaderTextDocs {
+  font-size: 13px;
+  color: #323130;
+}

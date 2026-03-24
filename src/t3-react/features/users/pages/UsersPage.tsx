@@ -193,7 +193,7 @@ const UsersPage: React.FC = () => {
         return (
           <TableCellLayout media={<PersonRegular />}>
             {isEditing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+              <div className={styles.editCellWrapper}>
                 <input
                   type="text"
                   className={styles.editInput}
@@ -206,6 +206,8 @@ const UsersPage: React.FC = () => {
                   }}
                   autoFocus
                   maxLength={16}
+                  placeholder="Enter username"
+                  title="Username"
                 />
               </div>
             ) : (
@@ -224,7 +226,7 @@ const UsersPage: React.FC = () => {
         return (
           <TableCellLayout>
             {isEditing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+              <div className={styles.editCellWrapper}>
                 <input
                   type="password"
                   className={styles.editInput}
@@ -237,6 +239,8 @@ const UsersPage: React.FC = () => {
                   }}
                   autoFocus
                   maxLength={9}
+                  placeholder="Enter password"
+                  title="Password"
                 />
               </div>
             ) : (
@@ -257,7 +261,7 @@ const UsersPage: React.FC = () => {
         return (
           <TableCellLayout>
             {isEditing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+              <div className={styles.editCellWrapper}>
                 <input
                   type="number"
                   className={styles.editInput}
@@ -271,6 +275,8 @@ const UsersPage: React.FC = () => {
                   autoFocus
                   min={0}
                   max={255}
+                  placeholder="0–255"
+                  title="Access level (0-255)"
                 />
               </div>
             ) : (
@@ -315,17 +321,17 @@ const UsersPage: React.FC = () => {
 
               {/* Error Message */}
               {error && (
-                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
-                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>{error}</Text>
+                <div className={styles.errorBanner}>
+                  <ErrorCircleRegular className={styles.errorBannerIcon} />
+                  <Text className={styles.errorBannerText}>{error}</Text>
                 </div>
               )}
 
               {/* Success Message */}
               {successMessage && (
-                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#f0f6ff', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <CheckmarkCircleRegular style={{ color: '#107c10', fontSize: '16px', flexShrink: 0 }} />
-                  <Text style={{ color: '#323130', fontWeight: 500, fontSize: '13px' }}>{successMessage}</Text>
+                <div className={styles.successBanner}>
+                  <CheckmarkCircleRegular className={styles.successBannerIcon} />
+                  <Text className={styles.successBannerText}>{successMessage}</Text>
                 </div>
               )}
 
@@ -349,8 +355,7 @@ const UsersPage: React.FC = () => {
                       relationship="description"
                     >
                       <button
-                        className={styles.toolbarButton}
-                        style={{ marginLeft: '8px' }}
+                        className={`${styles.toolbarButton} ${styles.infoButton}`}
                         title="Information"
                         aria-label="Information about this page"
                       >

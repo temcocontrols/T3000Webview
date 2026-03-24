@@ -5,8 +5,7 @@
   overflow-y: auto;
   padding: 16px 24px 16px 24px;
   background: #ffffff;
-  scrollbar-width: thin;
-  scrollbar-color: #c8c6c4 #f3f2f1;
+  /* webkit fallbacks below */
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -18,8 +17,7 @@
   overflow-y: auto;
   padding: 16px 24px 16px 24px;
   background: #ffffff;
-  scrollbar-width: thin;
-  scrollbar-color: #c8c6c4 #f3f2f1;
+  /* webkit fallbacks below */
 }
 
 .content::-webkit-scrollbar {

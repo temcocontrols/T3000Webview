@@ -84,6 +84,21 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
     minWidth: '60px',
   },
+  labelCompact: {
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground2,
+    minWidth: 'auto',
+    whiteSpace: 'nowrap',
+  },
+  labelNoWrap: {
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground2,
+    minWidth: '60px',
+    whiteSpace: 'nowrap',
+  },
+  gridSpacer: {
+    width: '24px',
+  },
   warningText: {
     fontSize: '11px',
     color: tokens.colorPaletteYellowForeground1,
@@ -243,7 +258,7 @@ export const AdvancedSettingsDialog: React.FC<AdvancedSettingsDialogProps> = ({
 
             {/* Auto-save parameters */}
             <div className={styles.autoSaveRow}>
-              <span className={styles.label} style={{ minWidth: 'auto', whiteSpace: 'nowrap' }}>
+              <span className={styles.labelCompact}>
                 Automatically save the parameters of the program within
               </span>
               <Input
@@ -253,7 +268,7 @@ export const AdvancedSettingsDialog: React.FC<AdvancedSettingsDialogProps> = ({
                 onChange={(_, data) => setAutoSaveMinutes(data.value)}
                 style={{ width: '70px', flexShrink: 0 }}
               />
-              <span className={styles.label} style={{ whiteSpace: 'nowrap' }}>minutes</span>
+              <span className={styles.labelNoWrap}>minutes</span>
               <Tooltip
                 content="All parameters, input, output, variable, and the values run in the program are saved at regular intervals within the set time. Prevent data loss after an unexpected power outage. You can also modify this value through register 92 of modbus. When this value is set to 0, it means that this function is disabled."
                 relationship="description"
@@ -284,7 +299,7 @@ export const AdvancedSettingsDialog: React.FC<AdvancedSettingsDialogProps> = ({
                   onChange={(_, data) => setInputCount(data.value)}
                   disabled={!supportsQuantityAdjust}
                 />
-                <div style={{ width: '24px' }} /> {/* Spacer for OK button alignment */}
+                <div className={styles.gridSpacer} /> {/* Spacer for OK button alignment */}
 
                 <span className={styles.label}>Output:</span>
                 <Input
@@ -294,7 +309,7 @@ export const AdvancedSettingsDialog: React.FC<AdvancedSettingsDialogProps> = ({
                   onChange={(_, data) => setOutputCount(data.value)}
                   disabled={!supportsQuantityAdjust}
                 />
-                <div style={{ width: '24px' }} />
+                <div className={styles.gridSpacer} />
 
                 <span className={styles.label}>Variable:</span>
                 <Input
@@ -316,7 +331,7 @@ export const AdvancedSettingsDialog: React.FC<AdvancedSettingsDialogProps> = ({
 
             {/* Validation error */}
             {validationError && (
-              <div className={styles.warningText} style={{ marginTop: '8px' }}>
+              <div className={styles.warningText}>
                 ⚠ {validationError}
               </div>
             )}

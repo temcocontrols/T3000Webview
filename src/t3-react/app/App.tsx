@@ -321,9 +321,9 @@ export const App: React.FC = () => {
                   path="hvac-designer/:graphicId?"
                   element={
                     <React.Suspense fallback={
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '20px' }}>
+                      <div className={styles.suspenseLoader}>
                         <Spinner size="extra-tiny" />
-                        <span style={{ fontSize: '13px' }}>Loading...</span>
+                        <span className={styles.suspenseLoaderText}>Loading...</span>
                       </div>
                     }>
                       <HvacDesignerPage />
@@ -334,9 +334,9 @@ export const App: React.FC = () => {
                   path="documentation/*"
                   element={
                     <React.Suspense fallback={
-                      <div style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', gap: '8px' }}>
+                      <div className={styles.suspenseLoaderDocs}>
                         <Spinner size="tiny" />
-                        <span style={{ fontSize: '13px', color: '#323130' }}>Loading...</span>
+                        <span className={styles.suspenseLoaderTextDocs}>Loading...</span>
                       </div>
                     }>
                       <DocumentationPage />

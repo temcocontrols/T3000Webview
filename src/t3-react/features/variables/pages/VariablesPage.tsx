@@ -16,6 +16,8 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useResponsive } from '@t3-shared/core/hooks/useResponsive';
+import { VariablesPageMobile } from '@t3-mobile/features/variables/pages/VariablesPageMobile';
 import {
   DataGrid,
   DataGridHeader,
@@ -73,7 +75,7 @@ interface VariablePoint {
   typeField?: string;
 }
 
-export const VariablesPage: React.FC = () => {
+const VariablesPageDesktop: React.FC = () => {
   const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
   const setMessage = useStatusBarStore((state) => state.setMessage);
 
@@ -1298,6 +1300,12 @@ export const VariablesPage: React.FC = () => {
       )}
     </div>
   );
+};
+
+export const VariablesPage: React.FC = () => {
+  const { isMobile } = useResponsive();
+  if (isMobile) return <VariablesPageMobile />;
+  return <VariablesPageDesktop />;
 };
 
 export default VariablesPage;

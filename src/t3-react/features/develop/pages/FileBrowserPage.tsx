@@ -219,15 +219,15 @@ export const FileBrowserPage: React.FC = () => {
       columnId: 'name',
       compare: (a, b) => a.name.localeCompare(b.name),
       renderHeaderCell: () => (
-        <div onClick={() => handleSort('name')} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '4px', width: '100%', height: '100%' }}>
+        <div onClick={() => handleSort('name')} className={styles.sortHeaderCell}>
           <span>Name</span>
           {getSortIcon('name')}
         </div>
       ),
       renderCell: (item) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+        <div className={styles.fileNameCell}>
           {item.isDirectory ? <FolderRegular style={{ flexShrink: 0 }} /> : <DocumentRegular style={{ flexShrink: 0 }} />}
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+          <span className={styles.truncatedText}>{item.name}</span>
         </div>
       ),
     }),
@@ -235,34 +235,34 @@ export const FileBrowserPage: React.FC = () => {
       columnId: 'modified',
       compare: (a, b) => (a.modified || '').localeCompare(b.modified || ''),
       renderHeaderCell: () => (
-        <div onClick={() => handleSort('modified')} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '4px', width: '100%', height: '100%' }}>
+        <div onClick={() => handleSort('modified')} className={styles.sortHeaderCell}>
           <span>Date Modified</span>
           {getSortIcon('modified')}
         </div>
       ),
-      renderCell: (item) => <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDate(item.modified)}</span>,
+      renderCell: (item) => <span className={styles.truncatedText}>{formatDate(item.modified)}</span>,
     }),
     createTableColumn<FileNode>({
       columnId: 'type',
       compare: (a, b) => a.fileType.localeCompare(b.fileType),
       renderHeaderCell: () => (
-        <div onClick={() => handleSort('type')} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '4px', width: '100%', height: '100%' }}>
+        <div onClick={() => handleSort('type')} className={styles.sortHeaderCell}>
           <span>Type</span>
           {getSortIcon('type')}
         </div>
       ),
-      renderCell: (item) => <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.fileType}</span>,
+      renderCell: (item) => <span className={styles.truncatedText}>{item.fileType}</span>,
     }),
     createTableColumn<FileNode>({
       columnId: 'size',
       compare: (a, b) => (a.size || 0) - (b.size || 0),
       renderHeaderCell: () => (
-        <div onClick={() => handleSort('size')} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '4px', width: '100%', height: '100%' }}>
+        <div onClick={() => handleSort('size')} className={styles.sortHeaderCell}>
           <span>Size</span>
           {getSortIcon('size')}
         </div>
       ),
-      renderCell: (item) => <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatFileSize(item.size)}</span>,
+      renderCell: (item) => <span className={styles.truncatedText}>{formatFileSize(item.size)}</span>,
     }),
     createTableColumn<FileNode>({
       columnId: 'actions',
@@ -360,7 +360,7 @@ export const FileBrowserPage: React.FC = () => {
             )}
 
             {error && (
-              <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className={styles.fileBrowserError}>
                 <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
                 <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
                   {error}

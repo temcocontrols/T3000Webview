@@ -428,6 +428,70 @@
   color: #106ebe;
 }
 
+/* ── Utility classes (moved from inline styles) ── */
+.editCellWrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.tableDataCell {
+  font-size: 10px;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.errorBanner {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background-color: #fef6f6;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.errorBannerIcon {
+  color: #d13438;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.errorBannerText {
+  color: #d13438;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.successBanner {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background-color: #f0f6ff;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.successBannerIcon {
+  color: #107c10;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.successBannerText {
+  color: #323130;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.infoButton {
+  margin-left: 8px;
+}
+
 .saveButton:active {
   background-color: #edebe9;
 }

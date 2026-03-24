@@ -55,6 +55,8 @@ import { API_BASE_URL } from '../../../config/constants';
 import { T3Database } from '../../../../lib/t3-database';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import { useStatusBarStore } from '../../../store/statusBarStore';
+import { useResponsive } from '@t3-shared/core/hooks/useResponsive';
+import { InputsPageMobile } from '@t3-mobile/features/inputs/pages/InputsPageMobile';
 import styles from './InputsPage.module.css';
 
 // Types based on Rust entity (input_points.rs)
@@ -79,7 +81,7 @@ interface InputPoint {
   typeField?: string;
 }
 
-export const InputsPage: React.FC = () => {
+const InputsPageDesktop: React.FC = () => {
   const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
   const setMessage = useStatusBarStore((state) => state.setMessage);
 
@@ -1517,6 +1519,12 @@ export const InputsPage: React.FC = () => {
       )}
     </div>
   );
+};
+
+export const InputsPage: React.FC = () => {
+  const { isMobile } = useResponsive();
+  if (isMobile) return <InputsPageMobile />;
+  return <InputsPageDesktop />;
 };
 
 export default InputsPage;

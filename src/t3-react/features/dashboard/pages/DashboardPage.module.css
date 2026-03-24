@@ -114,8 +114,7 @@
   overflow-y: auto;
   padding: 0;
   background: #ffffff;
-  scrollbar-width: thin;
-  scrollbar-color: #c8c6c4 #f3f2f1;
+  /* webkit fallbacks below */
 }
 
 /* Quick Access Section - No padding, full width */

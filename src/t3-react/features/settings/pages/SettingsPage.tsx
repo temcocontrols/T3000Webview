@@ -378,6 +378,119 @@ const useStyles = makeStyles({
     gap: '16px',
     alignItems: 'center',
   },
+  lcdRadioLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontSize: '12px',
+  },
+  modbusLabel: {
+    fontSize: '12px',
+    lineHeight: '1.3',
+  },
+  delayOffUnit: {
+    fontSize: '12px',
+    color: '#605e5c',
+  },
+  basicTwoColumnNarrow: {
+    display: 'grid',
+    gridTemplateColumns: '0.7fr 1fr',
+    gap: '16px',
+    marginBottom: '16px',
+  },
+  radioGroupWrapper: {
+    marginBottom: '12px',
+  },
+  radioLabelWithMargin: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    marginBottom: '6px',
+    fontSize: '12px',
+    cursor: 'pointer',
+  },
+  radioLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontSize: '12px',
+    cursor: 'pointer',
+  },
+  buttonGroupMt16: {
+    display: 'flex',
+    gap: '8px',
+    marginTop: '16px',
+  },
+  serialPortHeader: {
+    display: 'grid',
+    gridTemplateColumns: '72px 2fr 1fr 70px 1fr 1fr',
+    gap: '4px',
+    alignItems: 'center',
+    marginBottom: '4px',
+    fontSize: '11px',
+    color: '#605e5c',
+    fontWeight: 600,
+  },
+  centerText: {
+    textAlign: 'center',
+  },
+  serialPortRow: {
+    display: 'grid',
+    gridTemplateColumns: '72px 2fr 1fr 70px 1fr 1fr',
+    gap: '4px',
+    alignItems: 'center',
+    marginBottom: '6px',
+  },
+  serialPortLabel: {
+    fontSize: '12px',
+    fontWeight: 600,
+  },
+  checkboxWrapper: {
+    marginTop: '8px',
+    marginBottom: '8px',
+  },
+  smallText: {
+    fontSize: '12px',
+  },
+  buttonGroupMt8: {
+    display: 'flex',
+    gap: '8px',
+    marginTop: '8px',
+  },
+  loadingMessage: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '4px 8px',
+    marginBottom: '12px',
+  },
+  cleanFieldset: {
+    border: 'none',
+    margin: 0,
+    padding: 0,
+  },
+  rs485WarningText: {
+    fontSize: '13px',
+    color: '#0000dd',
+    marginTop: '4px',
+  },
+  dialogInfoText: {
+    color: '#0000ff',
+    fontSize: '12px',
+    lineHeight: '1.7',
+    marginBottom: '12px',
+  },
+  dialogContentRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '12px',
+  },
+  warningList: {
+    margin: '8px 0',
+    paddingLeft: '20px',
+    fontSize: '13px',
+    color: '#605e5c',
+  },
   lcdButtons: {
     display: 'flex',
     gap: '8px',
@@ -1554,7 +1667,7 @@ export const SettingsPage: React.FC = () => {
                   />
                 </Field>
                 <Field size="small" className={styles.horizontalField}>
-                  <label style={{ fontSize: '12px', lineHeight: '1.3' }}>Modbus RTU ID /<br/>BACnet MSTP MAC</label>
+                  <label className={styles.modbusLabel}>Modbus RTU ID /<br/>BACnet MSTP MAC</label>
                   <Input
                     type="number"
                     size="small"
@@ -1628,7 +1741,7 @@ export const SettingsPage: React.FC = () => {
                   const isDelayOff = !isAlwaysOn && !isAlwaysOff;
                   return (
                     <>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                      <label className={styles.lcdRadioLabel}>
                         <input
                           type="radio"
                           name="lcdMode"
@@ -1637,7 +1750,7 @@ export const SettingsPage: React.FC = () => {
                         />
                         LCD Always On
                       </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                      <label className={styles.lcdRadioLabel}>
                         <input
                           type="radio"
                           name="lcdMode"
@@ -1646,7 +1759,7 @@ export const SettingsPage: React.FC = () => {
                         />
                         LCD Always Off
                       </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                      <label className={styles.lcdRadioLabel}>
                         <input
                           type="radio"
                           name="lcdMode"
@@ -1672,7 +1785,7 @@ export const SettingsPage: React.FC = () => {
                           disabled={!isDelayOff}
                           style={{ width: '100px', marginLeft: '4px' }}
                         />
-                        <span style={{ fontSize: '12px', color: '#605e5c' }}>(s)</span>
+                        <span className={styles.delayOffUnit}>(s)</span>
                       </label>
                     </>
                   );
@@ -1712,13 +1825,13 @@ export const SettingsPage: React.FC = () => {
       case 'communication':
         return (
           <>
-            <div className={styles.basicTwoColumn} style={{ gridTemplateColumns: '0.7fr 1fr' }}>
+            <div className={styles.basicTwoColumnNarrow}>
               {/* LEFT PANEL: IP Address */}
               <div className={styles.basicPanel}>
                 <div className={styles.basicPanelTitle}>IP Address</div>
 
-                <div style={{ marginBottom: '12px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                <div className={styles.radioGroupWrapper}>
+                  <label className={styles.radioLabelWithMargin}>
                     <input
                       type="radio"
                       name="tcpType"
@@ -1730,7 +1843,7 @@ export const SettingsPage: React.FC = () => {
                     />
                     Obtain IP Address Automatically
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                  <label className={styles.radioLabel}>
                     <input
                       type="radio"
                       name="tcpType"
@@ -1797,7 +1910,7 @@ export const SettingsPage: React.FC = () => {
                   />
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                <div className={styles.buttonGroupMt16}>
                   <Button size="small" appearance="primary" className={styles.saveButton} onClick={() => setShowWifiDialog(true)}>
                     Wifi Configuration
                   </Button>
@@ -1812,18 +1925,18 @@ export const SettingsPage: React.FC = () => {
                 <div className={styles.basicPanelTitle}>Device Serial Port Config</div>
 
                 {/* Column headers */}
-                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 70px 1fr 1fr', gap: '4px', alignItems: 'center', marginBottom: '4px', fontSize: '11px', color: '#605e5c', fontWeight: 600 }}>
+                <div className={styles.serialPortHeader}>
                   <div />
                   <div />
                   <div />
-                  <div style={{ textAlign: 'center' }}>Data Bits</div>
-                  <div style={{ textAlign: 'center' }}>Parity Bit</div>
-                  <div style={{ textAlign: 'center' }}>Stop Bit</div>
+                  <div className={styles.centerText}>Data Bits</div>
+                  <div className={styles.centerText}>Parity Bit</div>
+                  <div className={styles.centerText}>Stop Bit</div>
                 </div>
 
                 {/* RS485 SUB row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 70px 1fr 1fr', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600 }}>RS485 SUB</span>
+                <div className={styles.serialPortRow}>
+                  <span className={styles.serialPortLabel}>RS485 SUB</span>
                   {(() => {
                     const fixed = !!commSettings.Fix_COM_Config;
                     const modes = fixed ? RS485_MODES_FIXED : RS485_MODES_UNFIXED;
@@ -1904,8 +2017,8 @@ export const SettingsPage: React.FC = () => {
                 </div>
 
                 {/* Zigbee row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 70px 1fr 1fr', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600 }}>Zigbee :</span>
+                <div className={styles.serialPortRow}>
+                  <span className={styles.serialPortLabel}>Zigbee :</span>
                   <Dropdown
                     size="small"
                     style={{ width: '100%', minWidth: 0 }}
@@ -1975,8 +2088,8 @@ export const SettingsPage: React.FC = () => {
                   </Dropdown>
                 </div>
                 {/* RS485 Main row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '72px 2fr 1fr 70px 1fr 1fr', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600 }}>RS485 Main</span>
+                <div className={styles.serialPortRow}>
+                  <span className={styles.serialPortLabel}>RS485 Main</span>
                   {(() => {
                     const fixed = !!commSettings.Fix_COM_Config;
                     const modes = fixed ? RS485_MODES_FIXED : RS485_MODES_UNFIXED;
@@ -2056,9 +2169,9 @@ export const SettingsPage: React.FC = () => {
                   </Dropdown>
                 </div>
 
-                <div style={{ marginTop: '8px', marginBottom: '8px' }}>
+                <div className={styles.checkboxWrapper}>
                   <Checkbox
-                    label={<span style={{ fontSize: '12px' }}>Fixed Serial Port Configuration</span>}
+                    label={<span className={styles.smallText}>Fixed Serial Port Configuration</span>}
                     size="medium"
                     checked={(commSettings.Fix_COM_Config ?? 0) !== 0}
                     onChange={(_, data) => {
@@ -2084,7 +2197,7 @@ export const SettingsPage: React.FC = () => {
                   />
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                <div className={styles.buttonGroupMt8}>
                   <Button size="small" appearance="secondary" disabled>
                     Zigbee Information
                   </Button>
@@ -2225,14 +2338,14 @@ export const SettingsPage: React.FC = () => {
 
             {/* Loading Message */}
             {loading && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', marginBottom: '12px' }}>
+              <div className={styles.loadingMessage}>
                 <Spinner size="extra-tiny" style={{ fontSize: '12px' }} />
                 <Text style={{ color: '#0078d4', fontSize: '12px' }}>Refreshing settings from device...</Text>
               </div>
             )}
 
             {/* Disable all fields when loading */}
-            <fieldset disabled={loading} style={{ border: 'none', margin: 0, padding: 0 }}>
+            <fieldset disabled={loading} className={styles.cleanFieldset}>
               {renderTabContent()}
             </fieldset>
           </div>
@@ -2290,7 +2403,7 @@ export const SettingsPage: React.FC = () => {
               Changing Subnet Baud Rate and Protocol
             </DialogTitle>
             <DialogContent>
-              <div style={{ fontSize: '13px', color: '#0000dd', marginTop: 4 }}>
+              <div className={styles.rs485WarningText}>
                 Make sure all subnet devices share these same settings
               </div>
             </DialogContent>
@@ -2329,7 +2442,7 @@ export const SettingsPage: React.FC = () => {
           <DialogBody>
             <DialogTitle style={{ fontSize: '14px', fontWeight: 600 }}>Sync Time</DialogTitle>
             <DialogContent>
-              <div style={{ color: '#0000ff', fontSize: '12px', lineHeight: 1.7, marginBottom: 12 }}>
+              <div className={styles.dialogInfoText}>
                 <div>This device is set to automatically synchronize with a locally connected computer.</div>
                 <div>Are you sure you want to sync to your PC?</div>
                 <div>{syncConfirmDeviceTime} (Last Sync Time)</div>
@@ -2396,7 +2509,7 @@ export const SettingsPage: React.FC = () => {
           <DialogBody>
             <DialogTitle>Reboot Device</DialogTitle>
             <DialogContent>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+              <div className={styles.dialogContentRow}>
                 <WarningRegular style={{ fontSize: '24px', color: '#f7630c', marginTop: '2px' }} />
                 <div>
                   <Text style={{ display: 'block', marginBottom: '8px', color: '#d13438' }}>
@@ -2434,7 +2547,7 @@ export const SettingsPage: React.FC = () => {
           <DialogBody>
             <DialogTitle>Reset to Factory Defaults</DialogTitle>
             <DialogContent>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+              <div className={styles.dialogContentRow}>
                 <WarningRegular style={{ fontSize: '24px', color: '#d13438', marginTop: '2px' }} />
                 <div>
                   <Text weight="semibold" style={{ display: 'block', marginBottom: '8px', color: '#d13438' }}>
@@ -2446,7 +2559,7 @@ export const SettingsPage: React.FC = () => {
                   <Text size={300} style={{ display: 'block', color: '#605e5c' }}>
                     This will reset all device settings to factory defaults, including:
                   </Text>
-                  <ul style={{ margin: '8px 0', paddingLeft: '20px', fontSize: '13px', color: '#605e5c' }}>
+                  <ul className={styles.warningList}>
                     <li>Network configuration (IP, subnet, gateway)</li>
                     <li>Communication settings (COM ports, baudrates)</li>
                     <li>Time and timezone settings</li>

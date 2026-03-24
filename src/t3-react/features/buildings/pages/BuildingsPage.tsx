@@ -214,9 +214,9 @@ export const BuildingsPage: React.FC = () => {
                   ERROR MESSAGE (if any)
                   ======================================== */}
               {error && (
-                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
-                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                <div className={styles.errorBanner}>
+                  <ErrorCircleRegular className={styles.errorBannerIcon} />
+                  <Text className={styles.errorBannerText}>
                     {error}
                   </Text>
                 </div>
@@ -282,7 +282,7 @@ export const BuildingsPage: React.FC = () => {
                   HORIZONTAL DIVIDER
                   Matches: ext-overview-hr
                   ======================================== */}
-              <div style={{ padding: '0' }}>
+              <div className={styles.noPaddingWrapper}>
                 <hr className={styles.overviewHr} />
               </div>
               </>
@@ -296,7 +296,7 @@ export const BuildingsPage: React.FC = () => {
 
                 {/* Loading State */}
                 {(loading || refreshing) && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px' }}>
+                  <div className={styles.loadingRow}>
                     <Spinner size="tiny" />
                     <Text size={200} weight="regular">Loading buildings...</Text>
                   </div>
