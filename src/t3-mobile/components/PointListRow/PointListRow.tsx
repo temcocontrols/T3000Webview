@@ -38,10 +38,9 @@ const useStyles = makeStyles({
   },
   headerCell: {
     fontSize: '12px',
-    fontWeight: 700,
-    color: tokens.colorNeutralForeground1,
-    textTransform: 'uppercase',
-    letterSpacing: '0.03em',
+    fontWeight: 600,
+    color: '#323130',
+    letterSpacing: '0.01em',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',

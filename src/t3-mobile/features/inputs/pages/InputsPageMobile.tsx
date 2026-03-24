@@ -153,7 +153,7 @@ export const InputsPageMobile: React.FC = () => {
   if (!selectedDevice) {
     return (
       <div className={styles.emptyState}>
-        <Text size={500} weight="semibold">No Device Selected</Text>
+        <Text size={400} weight="semibold">No Device Selected</Text>
         <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
           Please select a device from the tree to view inputs
         </Text>
@@ -207,7 +207,7 @@ export const InputsPageMobile: React.FC = () => {
       </div>
 
       {/* Column header */}
-      <PointListHeader idLabel="INPUT" labelLabel="Full Label" subLabelLabel="Label" valueLabel="Value" unitLabel="Units" rangeLabel="Range" />
+      <PointListHeader idLabel="Input" labelLabel="Full Label" subLabelLabel="Label" valueLabel="Value" unitLabel="Units" rangeLabel="Range" />
 
       {/* List */}
       <div className={styles.list}>

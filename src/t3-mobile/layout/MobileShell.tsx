@@ -80,8 +80,7 @@ const MobileShellInner: React.FC = () => {
         onDevice={() => setIsDeviceOpen(true)}
         showBack={pathname !== '/t3000'}
         onBack={() => window.history.back()}
-        onRefresh={onRefresh ?? (() => window.location.reload())}
-        showRefresh
+        showRefresh={false}
       />
 
       {/* Left-side overlay: device list */}

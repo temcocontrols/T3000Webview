@@ -150,7 +150,7 @@ export const OutputsPageMobile: React.FC = () => {
   if (!selectedDevice) {
     return (
       <div className={styles.emptyState}>
-        <Text size={500} weight="semibold">No Device Selected</Text>
+        <Text size={400} weight="semibold">No Device Selected</Text>
         <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
           Please select a device from the tree to view outputs
         </Text>
@@ -202,7 +202,7 @@ export const OutputsPageMobile: React.FC = () => {
         </button>
       </div>
 
-      <PointListHeader idLabel="OUTPUT" labelLabel="Full Label" subLabelLabel="Label" valueLabel="Value" unitLabel="Units" rangeLabel="Range" />
+      <PointListHeader idLabel="Output" labelLabel="Full Label" subLabelLabel="Label" valueLabel="Value" unitLabel="Units" rangeLabel="Range" />
 
       <div className={styles.list}>
         {filtered.map((output) => {

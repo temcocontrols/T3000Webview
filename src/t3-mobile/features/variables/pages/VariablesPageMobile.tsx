@@ -150,7 +150,7 @@ export const VariablesPageMobile: React.FC = () => {
   if (!selectedDevice) {
     return (
       <div className={styles.emptyState}>
-        <Text size={500} weight="semibold">No Device Selected</Text>
+        <Text size={400} weight="semibold">No Device Selected</Text>
         <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
           Please select a device from the tree to view variables
         </Text>
@@ -202,7 +202,7 @@ export const VariablesPageMobile: React.FC = () => {
         </button>
       </div>
 
-      <PointListHeader idLabel="VAR" labelLabel="Full Label" subLabelLabel="Label" valueLabel="Value" unitLabel="Units" rangeLabel="Range" />
+      <PointListHeader idLabel="Var" labelLabel="Full Label" subLabelLabel="Label" valueLabel="Value" unitLabel="Units" rangeLabel="Range" />
 
       <div className={styles.list}>
         {filtered.map((variable) => {

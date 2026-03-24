@@ -148,7 +148,7 @@ export const AlarmsPageMobile: React.FC = () => {
   if (!selectedDevice) {
     return (
       <div className={styles.emptyState}>
-        <Text size={500} weight="semibold">No Device Selected</Text>
+        <Text size={400} weight="semibold">No Device Selected</Text>
         <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
           Please select a device from the tree to view alarms
         </Text>
@@ -201,7 +201,7 @@ export const AlarmsPageMobile: React.FC = () => {
         </button>
       </div>
 
-      <PointListHeader idLabel="ALARM" labelLabel="Message" valueLabel="Status" />
+      <PointListHeader idLabel="Alarm" labelLabel="Message" valueLabel="Status" />
 
       <div className={styles.list}>
         {filtered.map((alarm) => {
