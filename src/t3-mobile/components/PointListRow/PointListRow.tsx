@@ -20,6 +20,7 @@
 import React from 'react';
 import { makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
 import { ChevronDownRegular, ChevronUpRegular } from '@fluentui/react-icons';
+import { useLayoutMode } from '@t3-shared/core/hooks/useDeviceType';
 
 /* ─────────────────────────────────────────────────────── Styles ── */
 
@@ -67,6 +68,18 @@ const useStyles = makeStyles({
   headerChevron: {
     width: '16px',
     flexShrink: 0,
+  },
+  /* Landscape-only header columns */
+  headerSubLabel: {
+    width: '100px',
+    flexShrink: 0,
+    paddingLeft: '4px',
+  },
+  headerRange: {
+    width: '90px',
+    flexShrink: 0,
+    textAlign: 'right' as const,
+    paddingRight: '4px',
   },
 
   /* ── Data row ── */
@@ -180,6 +193,29 @@ const useStyles = makeStyles({
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
+  /* Landscape-only data columns */
+  subLabelCell: {
+    width: '100px',
+    flexShrink: 0,
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground3,
+    fontWeight: 400,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    paddingLeft: '4px',
+  },
+  rangeCell: {
+    width: '90px',
+    flexShrink: 0,
+    textAlign: 'right' as const,
+    paddingRight: '4px',
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground3,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
 
   /* Chevron */
   chevronCell: {
@@ -282,18 +318,27 @@ export interface PointListHeaderProps {
 export const PointListHeader: React.FC<PointListHeaderProps> = ({
   idLabel = 'ID',
   labelLabel = 'Label',
-  subLabelLabel,
+  subLabelLabel = 'Label',
   valueLabel = 'Value',
   unitLabel = 'Units',
   rangeLabel = 'Range',
 }) => {
   const styles = useStyles();
+  const layout = useLayoutMode();
+  // Show extra columns on phone-landscape, tablet-portrait, tablet-landscape
+  const isWide = layout !== 'mobile-portrait' && layout !== 'desktop';
   return (
     <div className={styles.headerRow}>
       <span className={mergeClasses(styles.headerCell, styles.headerId)}>{idLabel}</span>
       <span className={mergeClasses(styles.headerCell, styles.headerLabel)}>{labelLabel}</span>
+      {isWide && (
+        <span className={mergeClasses(styles.headerCell, styles.headerSubLabel)}>{subLabelLabel}</span>
+      )}
       <span className={mergeClasses(styles.headerCell, styles.headerValue)}>{valueLabel}</span>
       <span className={mergeClasses(styles.headerCell, styles.headerUnit)}>{unitLabel}</span>
+      {isWide && (
+        <span className={mergeClasses(styles.headerCell, styles.headerRange)}>{rangeLabel}</span>
+      )}
       <span className={styles.headerChevron} />
     </div>
   );
@@ -317,6 +362,8 @@ export const PointListRow: React.FC<PointListRowProps> = React.memo(({
   refreshing: _refreshing,
 }) => {
   const styles = useStyles();
+  const layout = useLayoutMode();
+  const isWide = layout !== 'mobile-portrait' && layout !== 'desktop';
 
   const isNA = !value || value === 'N/A';
 
@@ -341,6 +388,11 @@ export const PointListRow: React.FC<PointListRowProps> = React.memo(({
             )}
           </div>
 
+          {/* Sub-label — wide viewport only */}
+          {isWide && (
+            <span className={styles.subLabelCell}>{subLabel ?? '—'}</span>
+          )}
+
           {/* Value */}
           <div className={styles.valueCell}>
             <span className={mergeClasses(styles.valueText, isNA && styles.valueNA)}>
@@ -350,6 +402,11 @@ export const PointListRow: React.FC<PointListRowProps> = React.memo(({
 
           {/* Units */}
           <span className={styles.unitCell}>{unit ?? ''}</span>
+
+          {/* Range — wide viewport only */}
+          {isWide && (
+            <span className={styles.rangeCell}>{range ?? '—'}</span>
+          )}
 
           {/* Chevron */}
           <span className={styles.chevronCell}>
