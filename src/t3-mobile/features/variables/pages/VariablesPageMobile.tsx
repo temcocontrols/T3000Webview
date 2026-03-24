@@ -1,29 +1,87 @@
 /**
  * Mobile Variables Page
- * Card-based mobile view for Variables
- * Uses shared useVariablesPage hook for business logic
+ * Compact list view for Variables — new design with action bar + column header.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Spinner,
   Text,
+  Button,
   makeStyles,
   tokens,
-  Button,
 } from '@fluentui/react-components';
 import {
   ErrorCircleRegular,
   ArrowSyncRegular,
+  ArrowDownloadRegular,
+  SettingsRegular,
+  SearchRegular,
 } from '@fluentui/react-icons';
 import { useMobilePage } from '../../../layout/MobilePageContext';
-import { MobileCard } from '../../../components/MobileCard/MobileCard';
+import { PointListRow, PointListHeader } from '../../../components/PointListRow/PointListRow';
 import { useVariablesPage } from '../../../../shared/features/variables/hooks/useVariablesPage';
 import { getRangeLabel } from '../../../../t3-react/features/variables/data/rangeData';
 
 const useStyles = makeStyles({
-  container: {
-    paddingBottom: '24px',
+  wrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+  },
+  actionBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '6px 8px',
+    backgroundColor: '#fafafa',
+    borderBottom: `1px solid #edebe9`,
+    flexShrink: 0,
+  },
+  searchBox: {
+    flex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    height: '32px',
+    padding: '0 10px',
+    backgroundColor: '#ffffff',
+    borderRadius: '4px',
+    border: `1px solid #edebe9`,
+    fontSize: '13px',
+    color: tokens.colorNeutralForeground3,
+    cursor: 'text',
+    overflow: 'hidden',
+  },
+  searchInput: {
+    flex: 1,
+    border: 'none',
+    background: 'none',
+    outline: 'none',
+    fontSize: '13px',
+    color: tokens.colorNeutralForeground1,
+    fontFamily: 'inherit',
+  },
+  actionBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '32px',
+    height: '32px',
+    borderRadius: '4px',
+    border: 'none',
+    background: 'none',
+    color: '#424242',
+    cursor: 'pointer',
+    flexShrink: 0,
+    fontSize: '16px',
+    ':hover': { backgroundColor: 'rgba(0,0,0,0.06)' },
+    ':active': { backgroundColor: 'rgba(0,0,0,0.1)' },
+  },
+  list: {
+    flex: 1,
+    overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch',
   },
   emptyState: {
     display: 'flex',
@@ -48,13 +106,12 @@ const useStyles = makeStyles({
     alignItems: 'center',
     padding: '48px',
   },
-  cardList: {
-    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
-  },
 });
 
 export const VariablesPageMobile: React.FC = () => {
   const styles = useStyles();
+  const [search, setSearch] = useState('');
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const {
     variables,
     loading,
@@ -84,9 +141,7 @@ export const VariablesPageMobile: React.FC = () => {
         <ErrorCircleRegular fontSize={48} color={tokens.colorPaletteRedForeground1} />
         <Text size={400} weight="semibold">Failed to load variables</Text>
         <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>{error}</Text>
-        <Button appearance="primary" icon={<ArrowSyncRegular />} onClick={handleRefresh}>
-          Try Again
-        </Button>
+        <Button appearance="primary" icon={<ArrowSyncRegular />} onClick={handleRefresh}>Try Again</Button>
       </div>
     );
   }
@@ -109,41 +164,78 @@ export const VariablesPageMobile: React.FC = () => {
         <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
           Tap refresh to load variables from device
         </Text>
-        <Button
-          appearance="primary"
-          icon={<ArrowSyncRegular />}
-          onClick={handleRefreshFromDevice}
-          disabled={refreshing}
-        >
+        <Button appearance="primary" icon={<ArrowSyncRegular />} onClick={handleRefreshFromDevice} disabled={refreshing}>
           {refreshing ? 'Refreshing...' : 'Refresh from Device'}
         </Button>
       </div>
     );
   }
 
+  const filtered = search.trim()
+    ? variables.filter((v) =>
+        (v.fullLabel || v.label || '').toLowerCase().includes(search.toLowerCase()) ||
+        String(v.variableIndex).includes(search)
+      )
+    : variables;
+
   return (
-    <div className={styles.container}>
-      <div className={styles.cardList}>
-        {variables.map((variable) => {
+    <div className={styles.wrapper}>
+      <div className={styles.actionBar}>
+        <div className={styles.searchBox}>
+          <SearchRegular fontSize={14} />
+          <input
+            className={styles.searchInput}
+            placeholder="Search variables..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <button className={styles.actionBtn} onClick={handleRefreshFromDevice} disabled={refreshing} title="Refresh from device" aria-label="Refresh from device">
+          <ArrowSyncRegular fontSize={16} />
+        </button>
+        <button className={styles.actionBtn} title="Export to CSV" aria-label="Export to CSV">
+          <ArrowDownloadRegular fontSize={16} />
+        </button>
+        <button className={styles.actionBtn} title="Settings" aria-label="Settings">
+          <SettingsRegular fontSize={16} />
+        </button>
+      </div>
+
+      <PointListHeader idLabel="VAR" labelLabel="Full Label" valueLabel="Value" unitLabel="Units" rangeLabel="Range" />
+
+      <div className={styles.list}>
+        {filtered.map((variable) => {
           const isRefreshing = refreshingItems.has(variable.variableIndex || '');
           const rangeValue = parseInt(variable.rangeField || '0', 10);
           const digitalAnalog = parseInt(variable.digitalAnalog || '0', 10);
           const rangeLabel = getRangeLabel(rangeValue, digitalAnalog);
           const displayValue = variable.fValue ? (parseFloat(variable.fValue) / 1000).toFixed(2) : 'N/A';
+          const isManual = variable.autoManual === '1';
 
           return (
-            <MobileCard
+            <PointListRow
               key={`${variable.serialNumber}-${variable.variableIndex}`}
-              index={`#${variable.variableIndex}`}
-              title={variable.fullLabel || variable.label || `Variable ${variable.variableIndex}`}
-              displayValue={displayValue}
-              displayUnit={variable.units}
-              statusColor={variable.autoManual === '1' ? 'manual' : 'auto'}
-              expandedDetails={[
-                { label: 'Value', value: `${displayValue}${variable.units ? ' ' + variable.units : ''}` },
-                { label: 'Mode', value: variable.autoManual === '1' ? 'Manual' : 'Auto' },
+              pointId={`VAR${parseInt(variable.variableIndex || '0') + 1}`}
+              label={variable.fullLabel || variable.label || `Variable ${parseInt(variable.variableIndex || '0') + 1}`}
+              value={displayValue}
+              unit={variable.units}
+              range={rangeLabel}
+              expanded={expandedKey === `${variable.serialNumber}-${variable.variableIndex}`}
+              onToggle={() => setExpandedKey(prev => prev === `${variable.serialNumber}-${variable.variableIndex}` ? null : `${variable.serialNumber}-${variable.variableIndex}`)}
+              details={[
+                { label: 'Panel', value: variable.panel || '-' },
+                { label: 'Variable', value: `VAR${parseInt(variable.variableIndex || '0') + 1}` },
+                { label: 'Full Label', value: variable.fullLabel || '-' },
+                { label: 'Label', value: variable.label || '-' },
+                { label: 'Mode', value: isManual ? 'Manual' : 'Auto' },
+                { label: 'Value', value: displayValue },
+                { label: 'Units', value: variable.units || '-' },
                 { label: 'Range', value: rangeLabel },
-                { label: 'Index', value: `#${variable.variableIndex}` },
+                { label: 'Calibration', value: variable.calibration || '0' },
+                { label: 'Sign', value: variable.sign || '0' },
+                { label: 'Filter', value: variable.filterField || '0' },
+                { label: 'Status', value: variable.status || '-' },
+                { label: 'Type', value: parseInt(variable.digitalAnalog || '0') === 1 ? 'Analog' : 'Digital' },
               ]}
               onRefresh={() => handleRefreshSingleVariable(variable.variableIndex || '')}
               refreshing={isRefreshing}

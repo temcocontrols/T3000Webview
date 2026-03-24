@@ -43,10 +43,20 @@ export const useMobilePageMeta = () => useContext(MobilePageContext).meta;
 /** Pages call this to register their title + refresh handler */
 export const useMobilePage = (meta: MobilePageMeta) => {
   const { setMeta } = useContext(MobilePageContext);
+
+  // Keep latest onRefresh in a ref so we never need it as an effect dep
+  const onRefreshRef = React.useRef(meta.onRefresh);
+  React.useLayoutEffect(() => {
+    onRefreshRef.current = meta.onRefresh;
+  });
+
   React.useEffect(() => {
-    setMeta(meta);
-    // Reset on unmount
+    // Wrap in a stable callback that always delegates to the latest ref value
+    const stableRefresh = meta.onRefresh
+      ? () => onRefreshRef.current?.()
+      : undefined;
+    setMeta({ title: meta.title, onRefresh: stableRefresh });
     return () => setMeta({ title: 'T3000' });
-    // deps: only re-run when title or refresh fn identity changes
-  }, [meta.title, meta.onRefresh]);
+  // Only re-run when the title changes (or setMeta, which is stable)
+  }, [meta.title, setMeta]);
 };
