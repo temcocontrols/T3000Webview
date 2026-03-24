@@ -5,7 +5,7 @@
  * Uses Vue's reactivity system with proper encapsulation and type safety
  */
 
-import { ref, computed, reactive, type Ref } from "vue";
+import { ref, computed, type Ref } from "vue";
 import { cloneDeep } from "lodash";
 import type GlobalMsgModel from "../../Model/GlobalMsgModel";
 

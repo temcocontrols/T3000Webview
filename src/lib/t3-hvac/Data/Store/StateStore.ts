@@ -12,7 +12,7 @@ const computed = (fnOrOptions: any) => {
   if (typeof fnOrOptions === 'function') return { value: fnOrOptions() };
   return { get value() { return fnOrOptions.get?.() || null; }, set value(v) { fnOrOptions.set?.(v); } };
 };
-const reactive = (val: any) => val;
+// const reactive = (val: any) => val; // unused placeholder
 type Ref<T> = { value: T };
 import { cloneDeep } from "lodash";
 import type GlobalMsgModel from "../../Model/GlobalMsgModel";
