@@ -17,10 +17,37 @@
  *   • via <PointListHeader> static sub-component
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
 import { ChevronDownRegular, ChevronUpRegular } from '@fluentui/react-icons';
-import { useLayoutMode } from '@t3-shared/core/hooks/useDeviceType';
+
+/* ──────────────────────────────────────── Viewport width hook ── */
+// Uses window.innerWidth (rendered CSS pixels) so breakpoints react to the
+// actual available space, not the physical screen size.
+function useViewportWidth(): number {
+  const [vw, setVw] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 0
+  );
+  useEffect(() => {
+    let tid: ReturnType<typeof setTimeout>;
+    const update = () => {
+      clearTimeout(tid);
+      tid = setTimeout(() => setVw(window.innerWidth), 50);
+    };
+    window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('orientationchange', update);
+      clearTimeout(tid);
+    };
+  }, []);
+  return vw;
+}
+// Tier thresholds
+const T1 = 600;   // show Label, Mode, Range
+const T2 = 800;   // also show Status, Type
+const T3 = 1000;  // also show Calibration, Signal Type
 
 /* ─────────────────────────────────────────────────────── Styles ── */
 
@@ -54,6 +81,12 @@ const useStyles = makeStyles({
     flex: 1,
     paddingLeft: '6px',
   },
+  /* Cap Full Label header in landscape to match data row cap */
+  headerLabelWide: {
+    flex: '0 1 220px',
+    maxWidth: '220px',
+    minWidth: '0',
+  },
   headerValue: {
     width: '50px',
     flexShrink: 0,
@@ -69,17 +102,45 @@ const useStyles = makeStyles({
     width: '16px',
     flexShrink: 0,
   },
-  /* Landscape-only header columns */
+  /* Landscape-only header columns — tier 1 (≥600px) */
   headerSubLabel: {
     width: '100px',
     flexShrink: 0,
     paddingLeft: '4px',
+  },
+  headerMode: {
+    width: '70px',
+    flexShrink: 0,
+    textAlign: 'center' as const,
   },
   headerRange: {
     width: '90px',
     flexShrink: 0,
     textAlign: 'right' as const,
     paddingRight: '4px',
+  },
+  /* Tier 2 (≥800px) header columns */
+  headerStatus: {
+    width: '80px',
+    flexShrink: 0,
+    textAlign: 'center' as const,
+  },
+  headerType: {
+    width: '70px',
+    flexShrink: 0,
+    textAlign: 'center' as const,
+  },
+  /* Tier 3 (≥1000px) header columns */
+  headerCalibration: {
+    width: '80px',
+    flexShrink: 0,
+    textAlign: 'right' as const,
+    paddingRight: '4px',
+  },
+  headerSignalType: {
+    width: '90px',
+    flexShrink: 0,
+    textAlign: 'center' as const,
   },
 
   /* ── Data row ── */
@@ -143,6 +204,11 @@ const useStyles = makeStyles({
     paddingLeft: '6px',
     overflow: 'hidden',
   },
+  /* Cap Full Label in landscape so it doesn't swallow all available space */
+  labelCellWide: {
+    flex: '0 1 220px',
+    maxWidth: '220px',
+  },
   labelText: {
     flex: 1,
     fontSize: '13px',
@@ -205,6 +271,22 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
     paddingLeft: '4px',
   },
+  modeCell: {
+    width: '70px',
+    flexShrink: 0,
+    textAlign: 'center' as const,
+    fontSize: '11px',
+    fontWeight: 600,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  modeCellAuto: {
+    color: '#107c10',
+  },
+  modeCellManual: {
+    color: '#ca5010',
+  },
   rangeCell: {
     width: '90px',
     flexShrink: 0,
@@ -212,6 +294,51 @@ const useStyles = makeStyles({
     paddingRight: '4px',
     fontSize: '12px',
     color: tokens.colorNeutralForeground3,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  /* Tier 2 (≥800px) data columns */
+  statusCell: {
+    width: '80px',
+    flexShrink: 0,
+    textAlign: 'center' as const,
+    fontSize: '11px',
+    fontWeight: 600,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    color: tokens.colorNeutralForeground3,
+  },
+  typeCell: {
+    width: '70px',
+    flexShrink: 0,
+    textAlign: 'center' as const,
+    fontSize: '11px',
+    fontWeight: 500,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    color: tokens.colorNeutralForeground2,
+  },
+  /* Tier 3 (≥1000px) data columns */
+  calibrationCell: {
+    width: '80px',
+    flexShrink: 0,
+    textAlign: 'right' as const,
+    paddingRight: '4px',
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground3,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  signalTypeCell: {
+    width: '90px',
+    flexShrink: 0,
+    textAlign: 'center' as const,
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground2,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
@@ -289,6 +416,16 @@ export interface PointListRowProps {
   range?: string;
   /** Short label shown between full label and value columns */
   subLabel?: string;
+  /** Mode string shown in landscape, e.g. "Auto" or "Manual" */
+  mode?: string;
+  /** Status text shown at tier 2 (≥800px) */
+  statusText?: string;
+  /** Type text shown at tier 2 (≥800px), e.g. "Digital" or "Analog" */
+  typeText?: string;
+  /** Calibration value shown at tier 3 (≥1000px) */
+  calibration?: string;
+  /** Signal type shown at tier 3 (≥1000px) */
+  signalType?: string;
   /** Status color — used only for inline badge color, no left bar */
   statusColor?: PointStatusColor;
   /** Text shown as inline badge pill next to label — omit to hide */
@@ -310,35 +447,47 @@ export interface PointListHeaderProps {
   idLabel?: string;
   labelLabel?: string;
   subLabelLabel?: string;
+  modeLabel?: string;
   valueLabel?: string;
   unitLabel?: string;
   rangeLabel?: string;
+  statusLabel?: string;
+  typeLabel?: string;
+  calibrationLabel?: string;
+  signalTypeLabel?: string;
 }
 
 export const PointListHeader: React.FC<PointListHeaderProps> = ({
   idLabel = 'ID',
   labelLabel = 'Label',
   subLabelLabel = 'Label',
+  modeLabel = 'Mode',
   valueLabel = 'Value',
   unitLabel = 'Units',
   rangeLabel = 'Range',
+  statusLabel = 'Status',
+  typeLabel = 'Type',
+  calibrationLabel = 'Calibration',
+  signalTypeLabel = 'Signal Type',
 }) => {
   const styles = useStyles();
-  const layout = useLayoutMode();
-  // Show extra columns on phone-landscape, tablet-portrait, tablet-landscape
-  const isWide = layout !== 'mobile-portrait' && layout !== 'desktop';
+  const vw = useViewportWidth();
+  const isWide = vw >= T1;
+  const isVeryWide = vw >= T2;
+  const isExtraWide = vw >= T3;
   return (
     <div className={styles.headerRow}>
       <span className={mergeClasses(styles.headerCell, styles.headerId)}>{idLabel}</span>
-      <span className={mergeClasses(styles.headerCell, styles.headerLabel)}>{labelLabel}</span>
-      {isWide && (
-        <span className={mergeClasses(styles.headerCell, styles.headerSubLabel)}>{subLabelLabel}</span>
-      )}
+      <span className={mergeClasses(styles.headerCell, styles.headerLabel, isWide && styles.headerLabelWide)}>{labelLabel}</span>
+      {isWide && <span className={mergeClasses(styles.headerCell, styles.headerSubLabel)}>{subLabelLabel}</span>}
+      {isWide && <span className={mergeClasses(styles.headerCell, styles.headerMode)}>{modeLabel}</span>}
       <span className={mergeClasses(styles.headerCell, styles.headerValue)}>{valueLabel}</span>
       <span className={mergeClasses(styles.headerCell, styles.headerUnit)}>{unitLabel}</span>
-      {isWide && (
-        <span className={mergeClasses(styles.headerCell, styles.headerRange)}>{rangeLabel}</span>
-      )}
+      {isWide && <span className={mergeClasses(styles.headerCell, styles.headerRange)}>{rangeLabel}</span>}
+      {isVeryWide && <span className={mergeClasses(styles.headerCell, styles.headerStatus)}>{statusLabel}</span>}
+      {isVeryWide && <span className={mergeClasses(styles.headerCell, styles.headerType)}>{typeLabel}</span>}
+      {isExtraWide && <span className={mergeClasses(styles.headerCell, styles.headerCalibration)}>{calibrationLabel}</span>}
+      {isExtraWide && <span className={mergeClasses(styles.headerCell, styles.headerSignalType)}>{signalTypeLabel}</span>}
       <span className={styles.headerChevron} />
     </div>
   );
@@ -350,6 +499,11 @@ export const PointListRow: React.FC<PointListRowProps> = React.memo(({
   pointId,
   label,
   subLabel,
+  mode,
+  statusText,
+  typeText,
+  calibration,
+  signalType,
   value,
   unit,
   range,
@@ -362,8 +516,10 @@ export const PointListRow: React.FC<PointListRowProps> = React.memo(({
   refreshing: _refreshing,
 }) => {
   const styles = useStyles();
-  const layout = useLayoutMode();
-  const isWide = layout !== 'mobile-portrait' && layout !== 'desktop';
+  const vw = useViewportWidth();
+  const isWide = vw >= T1;
+  const isVeryWide = vw >= T2;
+  const isExtraWide = vw >= T3;
 
   const isNA = !value || value === 'N/A';
 
@@ -379,7 +535,7 @@ export const PointListRow: React.FC<PointListRowProps> = React.memo(({
           <span className={styles.idCell}>{pointId}</span>
 
           {/* Label + optional inline badge */}
-          <div className={styles.labelCell}>
+          <div className={mergeClasses(styles.labelCell, isWide && styles.labelCellWide)}>
             <span className={styles.labelText}>{label}</span>
             {badgeText && (
               <span className={mergeClasses(styles.badge, statusColor === 'error' && styles.badgeError)}>
@@ -393,6 +549,14 @@ export const PointListRow: React.FC<PointListRowProps> = React.memo(({
             <span className={styles.subLabelCell}>{subLabel ?? '—'}</span>
           )}
 
+          {/* Mode — wide viewport only */}
+          {isWide && (
+            <span className={mergeClasses(
+              styles.modeCell,
+              mode === 'Auto' ? styles.modeCellAuto : mode === 'Manual' ? styles.modeCellManual : undefined
+            )}>{mode ?? '—'}</span>
+          )}
+
           {/* Value */}
           <div className={styles.valueCell}>
             <span className={mergeClasses(styles.valueText, isNA && styles.valueNA)}>
@@ -403,9 +567,29 @@ export const PointListRow: React.FC<PointListRowProps> = React.memo(({
           {/* Units */}
           <span className={styles.unitCell}>{unit ?? ''}</span>
 
-          {/* Range — wide viewport only */}
+          {/* Range — tier 1 only */}
           {isWide && (
             <span className={styles.rangeCell}>{range ?? '—'}</span>
+          )}
+
+          {/* Status — tier 2 */}
+          {isVeryWide && (
+            <span className={styles.statusCell}>{statusText ?? '—'}</span>
+          )}
+
+          {/* Type — tier 2 */}
+          {isVeryWide && (
+            <span className={styles.typeCell}>{typeText ?? '—'}</span>
+          )}
+
+          {/* Calibration — tier 3 */}
+          {isExtraWide && (
+            <span className={styles.calibrationCell}>{calibration ?? '—'}</span>
+          )}
+
+          {/* Signal Type — tier 3 */}
+          {isExtraWide && (
+            <span className={styles.signalTypeCell}>{signalType ?? '—'}</span>
           )}
 
           {/* Chevron */}
@@ -441,6 +625,11 @@ export const PointListRow: React.FC<PointListRowProps> = React.memo(({
          prev.pointId    === next.pointId    &&
          prev.label      === next.label      &&
          prev.subLabel   === next.subLabel   &&
+         prev.mode       === next.mode       &&
+         prev.statusText === next.statusText &&
+         prev.typeText   === next.typeText   &&
+         prev.calibration === next.calibration &&
+         prev.signalType  === next.signalType  &&
          prev.value      === next.value      &&
          prev.unit       === next.unit       &&
          prev.range      === next.range      &&

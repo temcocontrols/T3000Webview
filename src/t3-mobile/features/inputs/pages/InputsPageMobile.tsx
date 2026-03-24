@@ -207,7 +207,7 @@ export const InputsPageMobile: React.FC = () => {
       </div>
 
       {/* Column header */}
-      <PointListHeader idLabel="Input" labelLabel="Full Label" valueLabel="Value" unitLabel="Units" />
+      <PointListHeader idLabel="Input" labelLabel="Full Label" valueLabel="Value" unitLabel="Units" statusLabel="Status" typeLabel="Type" />
 
       {/* List */}
       <div className={styles.list}>
@@ -225,6 +225,11 @@ export const InputsPageMobile: React.FC = () => {
               pointId={`IN${parseInt(input.inputIndex || '0') + 1}`}
               label={input.fullLabel || input.label || `Input ${parseInt(input.inputIndex || '0') + 1}`}
               subLabel={input.label}
+              mode={isManual ? 'Manual' : 'Auto'}
+              statusText={input.status || '—'}
+              typeText={parseInt(input.digitalAnalog || '0') === 1 ? 'Analog' : 'Digital'}
+              calibration={input.calibration || '0'}
+              signalType={input.signalType || '—'}
               value={displayValue}
               unit={input.units}
               range={rangeLabel}
