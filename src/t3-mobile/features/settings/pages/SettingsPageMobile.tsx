@@ -43,6 +43,7 @@ import { DyndnsSettingsTab, type DyndnsSettings } from '@t3-react/features/setti
 import { EmailSettingsTab, type EmailSettings } from '@t3-react/features/settings/components/EmailSettingsTab';
 import { UserLoginTab, type UserLoginSettings } from '@t3-react/features/settings/components/UserLoginTab';
 import { ExpansionIOTab, type ExpansionIOSettings } from '@t3-react/features/settings/components/ExpansionIOTab';
+import { AdvancedSettingsDialog } from '@t3-react/features/settings/components/AdvancedSettingsDialog';
 
 // ─── Constants (same as PC) ───────────────────────────────────────────────────
 
@@ -259,6 +260,28 @@ const useStyles = makeStyles({
     borderBottom: `1px solid #edebe9`,
   },
 
+  // ── LCD Options ───────────────────────────────────────────────────────────
+  lcdRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    flexWrap: 'wrap' as const,
+    padding: '10px 16px',
+    borderBottom: `1px solid #f3f2f1`,
+  },
+  lcdLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontSize: '13px',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  lcdUnit: {
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground3,
+  },
+
   // ── Status / message banners ──────────────────────────────────────────────
   banner: {
     margin: '8px 16px',
@@ -395,6 +418,8 @@ export const SettingsPageMobile: React.FC = () => {
   const [expansionSettings, setExpansionSettings] = useState<ExpansionIOSettings>({ devices: [] });
   const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo>({});
   const [featureFlags, setFeatureFlags] = useState<FeatureFlags>({ LCD_Display: 0 });
+  const [lcdDelaySeconds, setLcdDelaySeconds] = useState<number>(30);
+  const [showAdvancedSettingsDialog, setShowAdvancedSettingsDialog] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo>({});
 
   // Auto-select first device if none selected
@@ -460,6 +485,7 @@ export const SettingsPageMobile: React.FC = () => {
     setUserLoginSettings(prev => ({ ...prev, enable_user_list: s.user_name ?? 1 }));
     setHardwareInfo({ Mini_Type: s.mini_type, MiniTypeName: s.MiniTypeName, Panel_Type: s.panel_type, USB_Mode: s.usb_mode, SD_Exist: s.sd_exist, Hardware_Rev: String(s.harware_rev), Firmware0_Rev_Main: s.firmware0_rev_main, Firmware0_Rev_Sub: s.firmware0_rev_sub, Firmware1_Rev: s.frimware1_rev, Firmware2_Rev: s.frimware2_rev, Bootloader_Rev: s.bootloader_rev });
     setFeatureFlags({ User_Name_Enable: s.user_name, Customer_Unite_Enable: s.custmer_unite, Enable_Panel_Name: s.en_panel_name, LCD_Display: s.LCD_Display });
+    if (s.LCD_Display > 0 && s.LCD_Display < 255) setLcdDelaySeconds(s.LCD_Display);
     setDeviceInfo({ SerialNumber: s.n_serial_number, PanelId: s.panel_name, Panel_Number: s.panel_number });
   };
 
@@ -552,6 +578,17 @@ export const SettingsPageMobile: React.FC = () => {
       if (!result.success) throw new Error(result.error || 'Failed');
       setSuccessMessage('Communication settings saved');
       await fetchSettings();
+    });
+  };
+
+  const handleAdvancedSettingsSave = async (data: { fixComConfig: boolean; writeFlashMinutes: number; maxInput: number; maxOutput: number; maxVariable: number }) => {
+    if (!selectedDevice || !settings) return;
+    await runSave(async () => {
+      const updated: DeviceSettings = { ...settings, fix_com_config: data.fixComConfig ? 1 : 0, write_flash: data.writeFlashMinutes, max_in: data.maxInput, max_out: data.maxOutput, max_var: data.maxVariable };
+      const result = await SettingsUpdateApi.updateDeviceSettings(updated);
+      if (!result.success) throw new Error(result.error || 'Failed to update advanced settings');
+      setSettings(updated);
+      setSuccessMessage('Advanced settings updated');
     });
   };
 
@@ -702,9 +739,53 @@ export const SettingsPageMobile: React.FC = () => {
         <Input size="small" value={deviceInfo.PanelId ?? ''} style={{ fontSize: '13px' }} onChange={(_, d) => { setDeviceInfo(p => ({ ...p, PanelId: d.value })); updateSettings({ panel_name: d.value }); }} />
       </div>
 
-      <div className={styles.inlineSave}>
-        <Button appearance="primary" icon={<SaveRegular />} size="small" onClick={handleSaveBasic} disabled={loading}>Save Basic Info</Button>
-      </div>
+      {/* LCD Options */}
+      <div className={styles.sectionHead}>LCD Options</div>
+      {(() => {
+        const fw = (hardwareInfo.Firmware0_Rev_Main ?? 0) * 10 + (hardwareInfo.Firmware0_Rev_Sub ?? 0);
+        const isOldFw = fw > 0 && fw < 519;
+        const lcdVal = featureFlags.LCD_Display ?? 0;
+        const isAlwaysOn  = lcdVal === 255 || (isOldFw && lcdVal === 1);
+        const isAlwaysOff = lcdVal === 0;
+        const isDelayOff  = !isAlwaysOn && !isAlwaysOff;
+        return (
+          <>
+            <div className={styles.lcdRow}>
+              <label className={styles.lcdLabel}>
+                <input type="radio" name="lcdMode" checked={isAlwaysOn} onChange={() => setFeatureFlags(f => ({ ...f, LCD_Display: isOldFw ? 1 : 255 }))} />
+                LCD Always On
+              </label>
+              <label className={styles.lcdLabel}>
+                <input type="radio" name="lcdMode" checked={isAlwaysOff} onChange={() => setFeatureFlags(f => ({ ...f, LCD_Display: 0 }))} />
+                LCD Always Off
+              </label>
+            </div>
+            <div className={styles.lcdRow}>
+              <label className={styles.lcdLabel}>
+                <input type="radio" name="lcdMode" checked={isDelayOff} onChange={() => { const v = lcdDelaySeconds || 30; setLcdDelaySeconds(v); setFeatureFlags(f => ({ ...f, LCD_Display: v })); }} />
+                LCD Delay off
+              </label>
+              <Input
+                type="number"
+                size="small"
+                value={lcdDelaySeconds > 0 ? String(lcdDelaySeconds) : ''}
+                disabled={!isDelayOff}
+                style={{ width: '80px', fontSize: '13px' }}
+                onChange={(_, d) => {
+                  const v = Math.min(254, Math.max(1, Number(d.value) || 1));
+                  setLcdDelaySeconds(v);
+                  if (isDelayOff) setFeatureFlags(f => ({ ...f, LCD_Display: v }));
+                }}
+              />
+              <span className={styles.lcdUnit}>(s)</span>
+            </div>
+            <div className={styles.lcdRow}>
+              <Button size="small" appearance="secondary" disabled>Parameter</Button>
+              <Button size="small" appearance="secondary" onClick={() => setShowAdvancedSettingsDialog(true)}>Advanced Settings</Button>
+            </div>
+          </>
+        );
+      })()}
     </>
   );
 
@@ -858,7 +939,7 @@ export const SettingsPageMobile: React.FC = () => {
             className={`${styles.tabItem}${activeTab === t.value ? ` ${styles.tabItemActive}` : ''}`}
             onClick={() => selectTab(t.value)}
           >
-            {t.short}
+            {t.label}
           </button>
         ))}
 
@@ -968,6 +1049,20 @@ export const SettingsPageMobile: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ── Advanced Settings Dialog ─────────────────────────────────── */}
+      <AdvancedSettingsDialog
+        isOpen={showAdvancedSettingsDialog}
+        onOpenChange={setShowAdvancedSettingsDialog}
+        fixComConfig={settings?.fix_com_config === 1}
+        writeFlashMinutes={settings?.write_flash ?? 0}
+        maxInput={settings?.max_in || 64}
+        maxOutput={settings?.max_out || 64}
+        maxVariable={settings?.max_var || 128}
+        onSave={handleAdvancedSettingsSave}
+        miniType={hardwareInfo.Mini_Type ?? 0}
+        firmwareVersion={((hardwareInfo.Firmware0_Rev_Main ?? 0) * 10) + (hardwareInfo.Firmware0_Rev_Sub ?? 0)}
+      />
     </div>
   );
 };
