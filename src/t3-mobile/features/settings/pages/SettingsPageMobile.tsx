@@ -66,7 +66,7 @@ const TABS: { value: TabValue; label: string; short: string }[] = [
 ];
 
 // How many tabs to show inline before the overflow ▼ button
-const INLINE_TAB_COUNT = 4;
+const INLINE_TAB_COUNT = 3;
 
 // ─── Interfaces (same as PC) ──────────────────────────────────────────────────
 
@@ -95,10 +95,12 @@ const useStyles = makeStyles({
     borderBottom: `1px solid #edebe9`,
     backgroundColor: '#fafafa',
     flexShrink: 0,
+    overflowX: 'hidden',
   },
   tabItem: {
     flex: 1,
-    padding: '10px 6px',
+    minWidth: 0,
+    padding: '10px 4px',
     border: 'none',
     background: 'none',
     fontSize: '12px',
@@ -108,6 +110,8 @@ const useStyles = makeStyles({
     borderBottom: '2px solid transparent',
     transition: 'color 0.15s, border-color 0.15s',
     whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
     ':hover': { color: tokens.colorNeutralForeground1 },
   },
   tabItemActive: {

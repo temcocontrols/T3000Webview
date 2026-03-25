@@ -24,7 +24,6 @@ const TrendChartPage = lazy(() => import('../pages').then(m => ({ default: m.Tre
 const AlarmsPage = lazy(() => import('../pages').then(m => ({ default: m.AlarmsPage })));
 const NetworkPage = lazy(() => import('../pages').then(m => ({ default: m.NetworkPage })));
 const ArrayPage = lazy(() => import('../pages').then(m => ({ default: m.ArrayPage })));
-const SettingsPage = lazy(() => import('../pages').then(m => ({ default: m.SettingsPage })));
 const DiscoverPage = lazy(() => import('../pages').then(m => ({ default: m.DiscoverPage })));
 const BuildingsPage = lazy(() => import('../pages').then(m => ({ default: m.BuildingsPage })));
 

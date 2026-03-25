@@ -66,6 +66,24 @@ const CustomUnitsPage = React.lazy(() =>
 const SettingsPage = React.lazy(() =>
   import('../features/settings/pages/SettingsPage')
 );
+const SettingsPageResponsive = React.lazy(() =>
+  Promise.all([
+    import('../features/settings/pages/SettingsPage'),
+    import('../../t3-mobile/features/settings/pages/SettingsPageMobile').then(m => m.SettingsPageMobile),
+  ]).then(([DesktopModule, MobileComp]) => {
+    const DesktopComp = DesktopModule.default as React.ComponentType;
+    const ResponsiveWrapper: React.FC = () => {
+      const [isMobile, setIsMobile] = React.useState(() => window.innerWidth < 1200);
+      React.useEffect(() => {
+        const handler = () => setIsMobile(window.innerWidth < 1200);
+        window.addEventListener('resize', handler);
+        return () => window.removeEventListener('resize', handler);
+      }, []);
+      return isMobile ? React.createElement(MobileComp) : React.createElement(DesktopComp);
+    };
+    return { default: ResponsiveWrapper };
+  })
+);
 const DiscoverPage = React.lazy(() =>
   import('../features/discover/pages/DiscoverPage').then((m) => ({ default: m.DiscoverPage }))
 );
@@ -283,7 +301,7 @@ export const App: React.FC = () => {
                   path="settings"
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
-                      <SettingsPage />
+                      <SettingsPageResponsive />
                     </React.Suspense>
                   }
                 />
