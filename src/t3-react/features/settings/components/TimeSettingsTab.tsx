@@ -30,12 +30,12 @@ import type { DeviceSettings } from '../services/settingsRefreshApi';
 
 // ─── Constants from C++ global_define.h ──────────────────────────────────────
 
-const TIME_ZONE_VALUES = [
+export const TIME_ZONE_VALUES = [
   -1200, -1100, -1000, -900, -800, -700, -600, -500, -400, -350, -300, -200, -100,
   0, 100, 200, 300, 350, 400, 450, 500, 550, 600, 650, 700, 800, 900, 950, 1000, 1100, 1200, 1300,
 ];
 
-const TIME_ZONE_NAMES = [
+export const TIME_ZONE_NAMES = [
   '(UTC - 12:00) , Yankee Time Zone',
   '(UTC - 11:00) , X-ray Time Zone',
   '(UTC - 10:00) , Cook Island , Hawaii-Aleutian Standard Time',
@@ -71,16 +71,16 @@ const TIME_ZONE_NAMES = [
 ];
 
 /** Preset NTP servers (C++ Time_Server_Name[]). en_sntp: 2/3/4/5+ = preset/custom */
-const NTP_PRESETS = [
+export const NTP_PRESETS = [
   { label: 'ntp.sjtu.edu.cn',  enSntp: 2 },
   { label: 'time.nist.gov',    enSntp: 3 },
   { label: 'time.windows.com', enSntp: 4 },
 ];
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sept','Oct','Nov','Dec'];
+export const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sept','Oct','Nov','Dec'];
 
 /** Days in month (no leap year check needed — just max days for selector) */
-function daysInMonth(month: number): number {
+export function daysInMonth(month: number): number {
   const thirtyOne = [1, 3, 5, 7, 8, 10, 12];
   if (thirtyOne.includes(month)) return 31;
   if (month === 2) return 28;
@@ -88,7 +88,7 @@ function daysInMonth(month: number): number {
 }
 
 /** Mirrors C++ Check_Time() — returns a relative description of when the device last synced */
-function formatLastUpdate(deviceEpoch: number): string {
+export function formatLastUpdate(deviceEpoch: number): string {
   if (!deviceEpoch) return '—';
   const now = Math.floor(Date.now() / 1000);
   const diff = now - deviceEpoch;
@@ -105,7 +105,7 @@ function formatLastUpdate(deviceEpoch: number): string {
   return '1 month ago';
 }
 
-function formatRuntime(seconds: number): string {
+export function formatRuntime(seconds: number): string {
   if (!seconds || seconds <= 0) return '—';
   const days  = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);

@@ -20,6 +20,8 @@ import {
   Dropdown,
   Input,
   Option,
+  Radio,
+  RadioGroup,
   Spinner,
   Text,
   tokens,
@@ -33,12 +35,13 @@ import {
   InfoRegular,
   ChevronDownRegular,
   DismissRegular,
+  ArrowClockwise16Regular,
 } from '@fluentui/react-icons';
 import { useMobilePage } from '../../../layout/MobilePageContext';
 import { useDeviceTreeStore } from '@t3-react/features/devices/store/deviceTreeStore';
 import { SettingsRefreshApi, type DeviceSettings } from '@t3-react/features/settings/services/settingsRefreshApi';
 import { SettingsUpdateApi } from '@t3-react/features/settings/services/settingsUpdateApi';
-import { TimeSettingsTab, type TimeSettings } from '@t3-react/features/settings/components/TimeSettingsTab';
+import { type TimeSettings, TIME_ZONE_NAMES, TIME_ZONE_VALUES, NTP_PRESETS, MONTHS, daysInMonth, formatLastUpdate, formatRuntime } from '@t3-react/features/settings/components/TimeSettingsTab';
 import { DyndnsSettingsTab, type DyndnsSettings } from '@t3-react/features/settings/components/DyndnsSettingsTab';
 import { EmailSettingsTab, type EmailSettings } from '@t3-react/features/settings/components/EmailSettingsTab';
 import { UserLoginTab, type UserLoginSettings } from '@t3-react/features/settings/components/UserLoginTab';
@@ -382,6 +385,89 @@ const useStyles = makeStyles({
     '& > *': { fontSize: '13px' },
   },
 
+  // ── Time tab styles ────────────────────────────────────────────────────────
+  timeSyncPanel: {
+    padding: '12px 16px',
+    borderBottom: `1px solid #f3f2f1`,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+  },
+  timeSyncRadioRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  timeValueRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  timeValueLabel: {
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground2,
+    minWidth: '36px',
+  },
+  timeValueBox: {
+    fontFamily: 'monospace',
+    fontSize: '13px',
+    padding: '3px 8px',
+    border: `1px solid #edebe9`,
+    borderRadius: '4px',
+    backgroundColor: '#f5f5f5',
+    flex: '1',
+  },
+  timeActionRow: {
+    display: 'flex',
+    gap: '8px',
+  },
+  timeNtpRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  timeNtpLabel: {
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground2,
+    minWidth: '80px',
+    flexShrink: 0,
+  },
+  timeLastUpdate: {
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground3,
+    flex: '1',
+  },
+  timeDstGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '0 12px',
+    marginTop: '8px',
+  },
+  timeDstGroupLabel: {
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+    marginBottom: '4px',
+  },
+  timeDstSelectors: {
+    display: 'flex',
+    gap: '6px',
+  },
+  timeStatusBox: {
+    fontFamily: 'monospace',
+    fontSize: '12px',
+    padding: '8px 12px',
+    border: `1px solid #edebe9`,
+    borderRadius: '4px',
+    backgroundColor: '#f5f5f5',
+    color: tokens.colorNeutralForeground1,
+    marginTop: '4px',
+  },
+  timeStatusLabel: {
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground2,
+    marginBottom: '4px',
+  },
+
   // ── Inner port tab bar (Serial Port Config) ───────────────────────────────
   portTabBar: {
     display: 'flex',
@@ -534,6 +620,16 @@ export const SettingsPageMobile: React.FC = () => {
   const [commSettings, setCommSettings] = useState<CommunicationSettings>({});
   const [protocolSettings, setProtocolSettings] = useState<ProtocolSettings>({});
   const [timeSettings, setTimeSettings] = useState<TimeSettings>({});
+  // ── Time tab local state ────────────────────────────────────────────────
+  const [pcClock, setPcClock] = useState(() => new Date());
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [ntpLoading, setNtpLoading] = useState(false);
+  const [refreshLoading, setRefreshLoading] = useState(false);
+  const [customServer, setCustomServer] = useState('');
+  useEffect(() => {
+    const id = setInterval(() => setPcClock(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
   const [dyndnsSettings, setDyndnsSettings] = useState<DyndnsSettings>({});
   const [emailSettings, setEmailSettings] = useState<EmailSettings>({});
   const [userLoginSettings, setUserLoginSettings] = useState<UserLoginSettings>({ users: [], enable_user_list: 1 });
@@ -1123,21 +1219,176 @@ export const SettingsPageMobile: React.FC = () => {
     );
   };
 
-  const renderTime = () => (
-    <div className={styles.subTabWrap}>
-      <TimeSettingsTab
-        timeSettings={timeSettings}
-        setTimeSettings={setTimeSettings}
-        updateSettings={updateSettings}
-        onSave={handleSaveTime}
-        onSyncPC={handleSyncPC}
-        onSyncTimeServer={handleSyncNTP}
-        onRefreshTime={handleRefreshTime}
-        loading={loading}
-        deviceEpoch={settings?.time_update_since_1970}
-      />
-    </div>
-  );
+  const renderTime = () => {
+    const isNTP = (timeSettings.Time_Sync_Auto_Manual ?? 0) === 0;
+    const dstEnabled = (timeSettings.Time_Zone_Summer_Daytime ?? 0) === 1;
+    const tzIndex = TIME_ZONE_VALUES.indexOf(timeSettings.Time_Zone ?? 800);
+    const tzDisplayName = tzIndex >= 0 ? TIME_ZONE_NAMES[tzIndex] : String(timeSettings.Time_Zone ?? '');
+    const enSntp = timeSettings.Enable_SNTP ?? 2;
+    const presetIdx = NTP_PRESETS.findIndex(p => p.enSntp === enSntp);
+    const isCustomServer = enSntp >= 5;
+    const startMonth = timeSettings.Start_Month ?? 3;
+    const startDay   = timeSettings.Start_Day   ?? 14;
+    const endMonth   = timeSettings.End_Month   ?? 11;
+    const endDay     = timeSettings.End_Day     ?? 7;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const pcDateStr = `${pcClock.getFullYear()}-${pad(pcClock.getMonth()+1)}-${pad(pcClock.getDate())}`;
+    const pcTimeStr = `${pad(pcClock.getHours())}:${pad(pcClock.getMinutes())}:${pad(pcClock.getSeconds())}`;
+
+    const handleSyncModeChange = (val: string) => {
+      const v = val === 'ntp' ? 0 : 1;
+      setTimeSettings({ ...timeSettings, Time_Sync_Auto_Manual: v });
+      updateSettings({ time_sync_auto_manual: v });
+    };
+    const handleTzSelect = (_: any, d: { optionValue?: string }) => {
+      const idx = Number(d.optionValue);
+      const val = TIME_ZONE_VALUES[idx] ?? 0;
+      setTimeSettings({ ...timeSettings, Time_Zone: val });
+      updateSettings({ time_zone: val });
+    };
+    const handleNtpServerSelect = (_: any, d: { optionValue?: string }) => {
+      const val = d.optionValue ?? '';
+      if (val === 'custom') {
+        setTimeSettings({ ...timeSettings, Enable_SNTP: 5, SNTP_Server: customServer });
+        updateSettings({ en_sntp: 5, sntp_server: customServer });
+      } else {
+        const idx = Number(val);
+        const preset = NTP_PRESETS[idx];
+        if (preset) { setTimeSettings({ ...timeSettings, Enable_SNTP: preset.enSntp, SNTP_Server: preset.label }); updateSettings({ en_sntp: preset.enSntp, sntp_server: preset.label }); }
+      }
+    };
+    const doSyncPC = async () => { setSyncLoading(true); try { await handleSyncPC(); } finally { setSyncLoading(false); } };
+    const doNtpSync = async () => { setNtpLoading(true); try { await handleSyncNTP(); } finally { setNtpLoading(false); } };
+    const doRefresh = async () => { setRefreshLoading(true); try { await handleRefreshTime(); } finally { setRefreshLoading(false); } };
+
+    return (
+      <>
+        {/* ── Section 1: Sync Mode ───────────────────────────── */}
+        <div className={styles.sectionHead}>Sync Mode</div>
+        <div className={styles.timeSyncPanel}>
+          <RadioGroup value={isNTP ? 'ntp' : 'pc'} onChange={(_, d) => handleSyncModeChange(d.value)} layout="vertical">
+            <Radio value="pc" label="Synchronize with Local PC" />
+            <Radio value="ntp" label="Synchronize with time server" />
+          </RadioGroup>
+        </div>
+
+        {/* ── Section 2: Active sync panel (conditional) ─────────────── */}
+        {!isNTP ? (
+          <>
+            <div className={styles.sectionHead}>Local PC</div>
+            <div className={styles.timeSyncPanel}>
+              <div className={styles.timeValueRow}>
+                <span className={styles.timeValueLabel}>Date</span>
+                <span className={styles.timeValueBox}>{pcDateStr}</span>
+              </div>
+              <div className={styles.timeValueRow}>
+                <span className={styles.timeValueLabel}>Time</span>
+                <span className={styles.timeValueBox}>{pcTimeStr}</span>
+              </div>
+              <div className={styles.timeActionRow}>
+                <Button size="small" appearance="primary" icon={<ArrowClockwise16Regular />} style={{ flex: 1 }}
+                  onClick={doSyncPC} disabled={loading || syncLoading}>
+                  {syncLoading ? 'Syncing…' : 'Sync Local PC'}
+                </Button>
+                <Button size="small" appearance="secondary" icon={<ArrowClockwise16Regular />} style={{ flex: 1 }}
+                  onClick={doRefresh} disabled={loading || refreshLoading}>
+                  {refreshLoading ? 'Reading…' : 'Refresh Time'}
+                </Button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className={styles.sectionHead}>Time Server</div>
+            <div className={styles.timeSyncPanel}>
+              <div className={styles.timeNtpRow}>
+                <span className={styles.timeNtpLabel}>Server</span>
+                <Dropdown size="small" style={{ flex: 1, minWidth: 0 }}
+                  value={isCustomServer ? 'Custom' : (presetIdx >= 0 ? NTP_PRESETS[presetIdx].label : '—')}
+                  onOptionSelect={handleNtpServerSelect}>
+                  {NTP_PRESETS.map((p, i) => <Option key={i} value={String(i)}>{p.label}</Option>)}
+                  <Option value="custom">Custom…</Option>
+                </Dropdown>
+              </div>
+              {isCustomServer && (
+                <div className={styles.timeNtpRow}>
+                  <span className={styles.timeNtpLabel}>Address</span>
+                  <Input size="small" style={{ flex: 1, minWidth: 0 }} value={customServer}
+                    placeholder="e.g. time.google.com"
+                    onChange={(_, d) => { setCustomServer(d.value); setTimeSettings({ ...timeSettings, Enable_SNTP: 5, SNTP_Server: d.value }); updateSettings({ en_sntp: 5, sntp_server: d.value }); }} />
+                </div>
+              )}
+              <div className={styles.timeNtpRow}>
+                <span className={styles.timeNtpLabel}>Last Update</span>
+                <span className={styles.timeLastUpdate}>{settings?.time_update_since_1970 ? formatLastUpdate(settings.time_update_since_1970) : '—'}</span>
+                <Button size="small" appearance="primary" onClick={doNtpSync} disabled={loading || ntpLoading}>
+                  {ntpLoading ? 'Syncing…' : 'Update'}
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ── Section 3: Time Zone ─────────────────────────────── */}
+        <div className={styles.sectionHead}>Time Zone</div>
+        <div className={styles.timeSyncPanel}>
+          <Dropdown size="small" style={{ width: '100%', minWidth: 0 }}
+            value={tzDisplayName} onOptionSelect={handleTzSelect}>
+            {TIME_ZONE_NAMES.map((name, i) => <Option key={i} value={String(i)}>{name}</Option>)}
+          </Dropdown>
+        </div>
+
+        {/* ── Section 4: Daylight Saving Time ────────────────────── */}
+        <div className={styles.sectionHead}>Daylight Saving Time</div>
+        <div className={styles.timeSyncPanel}>
+          <Checkbox
+            label="Enable Daylight Saving Time"
+            checked={dstEnabled}
+            onChange={(_, d) => {
+              const v = !!d.checked ? 1 : 0;
+              setTimeSettings({ ...timeSettings, Time_Zone_Summer_Daytime: v });
+              updateSettings({ time_zone_summer_daytime: v });
+            }}
+          />
+          <div className={styles.timeDstGrid} style={{ opacity: dstEnabled ? 1 : 0.45, pointerEvents: dstEnabled ? 'auto' : 'none' }}>
+            <div>
+              <div className={styles.timeDstGroupLabel}>Start Date</div>
+              <div className={styles.timeDstSelectors}>
+                <Dropdown size="small" style={{ flex: 1, minWidth: 0 }} value={MONTHS[startMonth - 1] ?? '—'}
+                  onOptionSelect={(_, d) => { const m = Number(d.optionValue); const day = Math.min(startDay, daysInMonth(m)); setTimeSettings({ ...timeSettings, Start_Month: m, Start_Day: day }); updateSettings({ start_month: m, start_day: day }); }} disabled={!dstEnabled}>
+                  {MONTHS.map((m, i) => <Option key={i} value={String(i + 1)}>{m}</Option>)}
+                </Dropdown>
+                <Dropdown size="small" style={{ width: '56px', minWidth: 0 }} value={String(startDay)}
+                  onOptionSelect={(_, d) => { const day = Number(d.optionValue); setTimeSettings({ ...timeSettings, Start_Day: day }); updateSettings({ start_day: day }); }} disabled={!dstEnabled}>
+                  {Array.from({ length: daysInMonth(startMonth) }, (_, i) => <Option key={i+1} value={String(i+1)}>{String(i+1)}</Option>)}
+                </Dropdown>
+              </div>
+            </div>
+            <div>
+              <div className={styles.timeDstGroupLabel}>End Date</div>
+              <div className={styles.timeDstSelectors}>
+                <Dropdown size="small" style={{ flex: 1, minWidth: 0 }} value={MONTHS[endMonth - 1] ?? '—'}
+                  onOptionSelect={(_, d) => { const m = Number(d.optionValue); const day = Math.min(endDay, daysInMonth(m)); setTimeSettings({ ...timeSettings, End_Month: m, End_Day: day }); updateSettings({ end_month: m, end_day: day }); }} disabled={!dstEnabled}>
+                  {MONTHS.map((m, i) => <Option key={i} value={String(i + 1)}>{m}</Option>)}
+                </Dropdown>
+                <Dropdown size="small" style={{ width: '56px', minWidth: 0 }} value={String(endDay)}
+                  onOptionSelect={(_, d) => { const day = Number(d.optionValue); setTimeSettings({ ...timeSettings, End_Day: day }); updateSettings({ end_day: day }); }} disabled={!dstEnabled}>
+                  {Array.from({ length: daysInMonth(endMonth) }, (_, i) => <Option key={i+1} value={String(i+1)}>{String(i+1)}</Option>)}
+                </Dropdown>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Section 5: Device Status ────────────────────────────── */}
+        <div className={styles.sectionHead}>Device Status</div>
+        <div className={styles.timeSyncPanel}>
+          <div className={styles.timeStatusLabel}>Device Running Time</div>
+          <div className={styles.timeStatusBox}>{settings?.time_update_since_1970 ? formatRuntime(settings.time_update_since_1970) : '—'}</div>
+        </div>
+      </>
+    );
+  };
 
   const renderDyndns = () => (
     <div className={styles.subTabWrap}>
