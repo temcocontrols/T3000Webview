@@ -42,7 +42,7 @@ import { useDeviceTreeStore } from '@t3-react/features/devices/store/deviceTreeS
 import { SettingsRefreshApi, type DeviceSettings } from '@t3-react/features/settings/services/settingsRefreshApi';
 import { SettingsUpdateApi } from '@t3-react/features/settings/services/settingsUpdateApi';
 import { type TimeSettings, TIME_ZONE_NAMES, TIME_ZONE_VALUES, NTP_PRESETS, MONTHS, daysInMonth, formatLastUpdate, formatRuntime } from '@t3-react/features/settings/components/TimeSettingsTab';
-import { DyndnsSettingsTab, type DyndnsSettings } from '@t3-react/features/settings/components/DyndnsSettingsTab';
+import { type DyndnsSettings, DDNS_SERVERS } from '@t3-react/features/settings/components/DyndnsSettingsTab';
 import { EmailSettingsTab, type EmailSettings } from '@t3-react/features/settings/components/EmailSettingsTab';
 import { UserLoginTab, type UserLoginSettings } from '@t3-react/features/settings/components/UserLoginTab';
 import { ExpansionIOTab, type ExpansionIOSettings } from '@t3-react/features/settings/components/ExpansionIOTab';
@@ -282,12 +282,14 @@ const useStyles = makeStyles({
     gridTemplateColumns: '1fr 1fr',
   },
   panelEditCell: {
-    padding: '10px 12px',
+    padding: '10px 12px 10px 16px',
     borderBottom: `1px solid #f3f2f1`,
     borderRight: `1px solid #f3f2f1`,
     display: 'flex',
     flexDirection: 'column',
     gap: '4px',
+    minWidth: 0,
+    overflow: 'hidden',
     ':nth-child(even)': { borderRight: 'none' },
   },
   panelEditCellLabel: {
@@ -466,6 +468,23 @@ const useStyles = makeStyles({
     fontSize: '12px',
     color: tokens.colorNeutralForeground2,
     marginBottom: '4px',
+  },
+  dyndnsDisabled: {
+    opacity: 0.45,
+    pointerEvents: 'none' as const,
+  },
+  dyndnsFields: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  dyndnsIntervalLabel: {
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground2,
+    flex: '1',
+  },
+  dyndnsUnit: {
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground2,
   },
 
   // ── Inner port tab bar (Serial Port Config) ───────────────────────────────
@@ -1390,17 +1409,86 @@ export const SettingsPageMobile: React.FC = () => {
     );
   };
 
-  const renderDyndns = () => (
-    <div className={styles.subTabWrap}>
-      <DyndnsSettingsTab
-        dyndnsSettings={dyndnsSettings}
-        setDyndnsSettings={setDyndnsSettings}
-        updateSettings={updateSettings}
-        onSave={handleSaveDyndns}
-        loading={loading}
-      />
-    </div>
-  );
+  const renderDyndns = () => {
+    const enabled = dyndnsSettings.Enable_DynDNS === 2;
+    const providerIdx = dyndnsSettings.DynDNS_Provider ?? 0;
+    const providerLabel = DDNS_SERVERS[providerIdx]?.label ?? DDNS_SERVERS[0].label;
+    const fieldsCls = `${styles.dyndnsFields}${enabled ? '' : ` ${styles.dyndnsDisabled}`}`;
+
+    return (
+      <>
+        <div className={styles.sectionHead}>Dyndns Config</div>
+
+        {/* Enable checkbox */}
+        <div className={styles.checkRow}>
+          <Checkbox
+            label="Enable Dyndns Service"
+            checked={enabled}
+            onChange={(_, d) => {
+              const v = d.checked ? 2 : 1;
+              setDyndnsSettings({ ...dyndnsSettings, Enable_DynDNS: v });
+              updateSettings({ en_dyndns: v });
+            }}
+          />
+        </div>
+
+        {/* All fields — greyed when disabled */}
+        <div className={fieldsCls}>
+          <div className={styles.editRow}>
+            <span className={styles.editLabel}>Select DDNS Server</span>
+            <Dropdown size="small" style={{ width: '100%', minWidth: 0 }}
+              value={providerLabel} disabled={!enabled}
+              onOptionSelect={(_, d) => {
+                const v = Number(d.optionValue ?? '0');
+                setDyndnsSettings({ ...dyndnsSettings, DynDNS_Provider: v });
+                updateSettings({ dyndns_provider: v });
+              }}>
+              {DDNS_SERVERS.map((s, i) => <Option key={i} value={String(i)}>{s.label}</Option>)}
+            </Dropdown>
+          </div>
+
+          <div className={styles.panelEditGrid}>
+            <div className={styles.panelEditCell}>
+              <span className={styles.panelEditCellLabel}>User Name</span>
+              <Input size="small" style={{ width: '100%', minWidth: 0 }}
+                value={dyndnsSettings.DynDNS_User ?? ''} maxLength={32} disabled={!enabled}
+                onChange={(_, d) => { setDyndnsSettings({ ...dyndnsSettings, DynDNS_User: d.value }); updateSettings({ dyndns_user: d.value }); }} />
+            </div>
+            <div className={styles.panelEditCell}>
+              <span className={styles.panelEditCellLabel}>Password</span>
+              <Input size="small" type="password" style={{ width: '100%', minWidth: 0 }}
+                value={dyndnsSettings.DynDNS_Pass ?? ''} maxLength={32} disabled={!enabled}
+                onChange={(_, d) => { setDyndnsSettings({ ...dyndnsSettings, DynDNS_Pass: d.value }); updateSettings({ dyndns_pass: d.value }); }} />
+            </div>
+          </div>
+
+          <div className={styles.editRow}>
+            <span className={styles.editLabel}>Domain</span>
+            <Input size="small" style={{ width: '100%', minWidth: 0 }}
+              value={dyndnsSettings.DynDNS_Domain ?? ''} maxLength={64} disabled={!enabled}
+              onChange={(_, d) => { setDyndnsSettings({ ...dyndnsSettings, DynDNS_Domain: d.value }); updateSettings({ dyndns_domain: d.value }); }} />
+          </div>
+
+          <div className={styles.timeSyncPanel}>
+            <div className={styles.timeNtpRow}>
+              <span className={styles.dyndnsIntervalLabel}>Check external IP automatically</span>
+              <Input size="small" type="number" style={{ width: '64px' }}
+                min={0} max={65535}
+                value={String(dyndnsSettings.DynDNS_Update_Time ?? 0)} disabled={!enabled}
+                onChange={(_, d) => {
+                  const v = Number(d.value);
+                  if (!isNaN(v) && v >= 0 && v <= 65535) {
+                    setDyndnsSettings({ ...dyndnsSettings, DynDNS_Update_Time: v });
+                    updateSettings({ dyndns_update_time: v });
+                  }
+                }} />
+              <span className={styles.dyndnsUnit}>min</span>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  };
 
   const renderEmail = () => (
     <div className={styles.subTabWrap}>

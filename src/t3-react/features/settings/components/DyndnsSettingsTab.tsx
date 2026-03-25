@@ -36,7 +36,7 @@ import type { DeviceSettings } from '../services/settingsRefreshApi';
 
 // ─── Constants from C++ global_define.h DDNS_Server_Name[] ───────────────────
 
-const DDNS_SERVERS = [
+export const DDNS_SERVERS = [
   { value: '0', label: 'www.3322.org' },
   { value: '1', label: 'www.dyndns.com' },
   { value: '2', label: 'www.no-ip.com' },
@@ -126,6 +126,7 @@ interface DyndnsSettingsTabProps {
   updateSettings: (u: Partial<DeviceSettings>) => void;
   onSave: () => Promise<void>;
   loading: boolean;
+  hideSave?: boolean;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -136,6 +137,7 @@ export const DyndnsSettingsTab: React.FC<DyndnsSettingsTabProps> = ({
   updateSettings,
   onSave,
   loading,
+  hideSave = false,
 }) => {
   const styles = useStyles();
 
@@ -274,6 +276,7 @@ export const DyndnsSettingsTab: React.FC<DyndnsSettingsTabProps> = ({
       </div>
 
       {/* Save button */}
+      {!hideSave && (
       <div className={styles.saveRow}>
         <Button
           size="small"
@@ -285,6 +288,7 @@ export const DyndnsSettingsTab: React.FC<DyndnsSettingsTabProps> = ({
           {loading ? 'Saving…' : 'Save DynDNS Settings'}
         </Button>
       </div>
+      )}
     </div>
   );
 };
