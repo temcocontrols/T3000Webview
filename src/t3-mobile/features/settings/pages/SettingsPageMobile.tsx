@@ -87,6 +87,7 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
+    overflow: 'hidden',
     backgroundColor: '#ffffff',
     position: 'relative',
   },
@@ -197,7 +198,8 @@ const useStyles = makeStyles({
     flex: 1,
     overflowY: 'auto',
     WebkitOverflowScrolling: 'touch',
-    padding: '0 0 8px 0',
+    // Extra bottom padding so content clears the fixed footer + browser bottom UI
+    padding: '0 0 160px 0',
   },
 
   // ── Section ───────────────────────────────────────────────────────────────
@@ -297,12 +299,16 @@ const useStyles = makeStyles({
   bannerError:   { backgroundColor: '#fef6f6', color: '#d13438' },
   bannerSuccess: { backgroundColor: '#f0f9ff', color: '#0078d4' },
 
-  // ── Sticky footer ─────────────────────────────────────────────────────────
+  // ── Sticky footer — fixed to viewport bottom ────────────────────────────
   footer: {
-    flexShrink: 0,
+    position: 'fixed',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
     borderTop: `1px solid #edebe9`,
     backgroundColor: '#fafafa',
-    padding: '10px 16px',
+    padding: '10px 16px env(safe-area-inset-bottom, 10px)',
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
@@ -1058,9 +1064,9 @@ export const SettingsPageMobile: React.FC = () => {
           <Button size="small" appearance="secondary" onClick={() => setShowNetworkHealthDialog(true)}>Network Health</Button>
         </div>
 
-        <div className={styles.inlineSave}>
+        {/* <div className={styles.inlineSave}>
           <Button appearance="primary" icon={<SaveRegular />} size="small" onClick={handleSaveComm} disabled={loading}>Save Communication</Button>
-        </div>
+        </div> */}
       </>
     );
   };
