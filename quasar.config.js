@@ -89,7 +89,6 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['@common'] = require('path').resolve(__dirname, 'src/lib');
         // Multi-platform architecture aliases
         viteConf.resolve.alias['@t3-shared'] = require('path').resolve(__dirname, 'src/shared');
-        viteConf.resolve.alias['@t3-tablet'] = require('path').resolve(__dirname, 'src/t3-tablet');
         viteConf.resolve.alias['@t3-mobile'] = require('path').resolve(__dirname, 'src/t3-mobile');
 
         // Enable React JSX support for Grafana components
