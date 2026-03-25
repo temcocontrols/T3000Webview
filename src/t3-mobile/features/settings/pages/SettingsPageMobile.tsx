@@ -273,6 +273,25 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
   },
 
+  // ── Panel Info 2-column editable grid ─────────────────────────────────────
+  panelEditGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+  },
+  panelEditCell: {
+    padding: '10px 12px',
+    borderBottom: `1px solid #f3f2f1`,
+    borderRight: `1px solid #f3f2f1`,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    ':nth-child(even)': { borderRight: 'none' },
+  },
+  panelEditCellLabel: {
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground2,
+  },
+
   // ── Checkbox row ──────────────────────────────────────────────────────────
   checkRow: {
     padding: '12px 16px',
@@ -828,39 +847,44 @@ export const SettingsPageMobile: React.FC = () => {
 
       {/* Panel Information — editable */}
       <div className={styles.sectionHead}>Panel Information</div>
-      {/* Read-only fields */}
-      <div className={styles.fieldRow}>
-        <span className={styles.fieldLabel}>Serial Number</span>
-        <span className={styles.fieldValue}>{deviceInfo.SerialNumber ?? '—'}</span>
-      </div>
-      <div className={styles.fieldRow}>
-        <span className={styles.fieldLabel}>MAC Address</span>
-        <span className={styles.fieldValue}>{networkSettings.MAC_Address ?? '—'}</span>
-      </div>
-      {/* Editable spinners */}
-      {[
-        { label: 'Bacnet Instance',  val: protocolSettings.Object_Instance ?? 0,       key: 'Object_Instance'     as keyof ProtocolSettings },
-        { label: 'MSTP Network',     val: protocolSettings.MSTP_Network_Number ?? 0,   key: 'MSTP_Network_Number' as keyof ProtocolSettings },
-        { label: 'Modbus RTU ID',    val: protocolSettings.Modbus_ID ?? 0,             key: 'Modbus_ID'           as keyof ProtocolSettings },
-        { label: 'BIP Network',      val: protocolSettings.Network_Number ?? 0,        key: 'Network_Number'      as keyof ProtocolSettings },
-        { label: 'Max Master',       val: protocolSettings.Max_Master ?? 127,          key: 'Max_Master'          as keyof ProtocolSettings },
-        { label: 'Panel Number',     val: deviceInfo.Panel_Number ?? 0,               key: '_panelNum'           as any },
-      ].map(({ label, val, key }) => (
-        <div key={label} className={styles.editRow}>
-          <span className={styles.editLabel}>{label}</span>
-          <Input
-            type="number"
-            size="small"
-            value={String(val)}
-            style={{ fontSize: '13px' }}
-            onChange={(_, d) => {
-              const n = Number(d.value);
-              if (key === '_panelNum') { setDeviceInfo(p => ({ ...p, Panel_Number: n })); updateSettings({ panel_number: n }); }
-              else { setProtocolSettings(p => ({ ...p, [key]: n })); }
-            }}
-          />
+      {/* Read-only: Serial Number + MAC in 2-col grid */}
+      <div className={styles.deviceInfoGrid}>
+        <div className={styles.deviceInfoCell}>
+          <div className={styles.deviceInfoCellLabel}>Serial Number</div>
+          <div className={styles.deviceInfoCellValue}>{deviceInfo.SerialNumber ?? '—'}</div>
         </div>
-      ))}
+        <div className={styles.deviceInfoCell}>
+          <div className={styles.deviceInfoCellLabel}>MAC Address</div>
+          <div className={styles.deviceInfoCellValue} style={{ fontSize: '11px' }}>{networkSettings.MAC_Address ?? '—'}</div>
+        </div>
+      </div>
+      {/* Editable numerics in 2-col grid */}
+      <div className={styles.panelEditGrid}>
+        {[
+          { label: 'Bacnet Instance',  val: protocolSettings.Object_Instance ?? 0,       key: 'Object_Instance'     as keyof ProtocolSettings },
+          { label: 'MSTP Network',     val: protocolSettings.MSTP_Network_Number ?? 0,   key: 'MSTP_Network_Number' as keyof ProtocolSettings },
+          { label: 'Modbus RTU ID',    val: protocolSettings.Modbus_ID ?? 0,             key: 'Modbus_ID'           as keyof ProtocolSettings },
+          { label: 'BIP Network',      val: protocolSettings.Network_Number ?? 0,        key: 'Network_Number'      as keyof ProtocolSettings },
+          { label: 'Max Master',       val: protocolSettings.Max_Master ?? 127,          key: 'Max_Master'          as keyof ProtocolSettings },
+          { label: 'Panel Number',     val: deviceInfo.Panel_Number ?? 0,               key: '_panelNum'           as any },
+        ].map(({ label, val, key }) => (
+          <div key={label} className={styles.panelEditCell}>
+            <span className={styles.panelEditCellLabel}>{label}</span>
+            <Input
+              type="number"
+              size="small"
+              value={String(val)}
+              style={{ fontSize: '13px', width: '100%', minWidth: 0 }}
+              onChange={(_, d) => {
+                const n = Number(d.value);
+                if (key === '_panelNum') { setDeviceInfo(p => ({ ...p, Panel_Number: n })); updateSettings({ panel_number: n }); }
+                else { setProtocolSettings(p => ({ ...p, [key]: n })); }
+              }}
+            />
+          </div>
+        ))}
+      </div>
+      {/* Panel Name — full width */}
       <div className={styles.editRow}>
         <span className={styles.editLabel}>Panel Name</span>
         <Input size="small" value={deviceInfo.PanelId ?? ''} style={{ fontSize: '13px' }} onChange={(_, d) => { setDeviceInfo(p => ({ ...p, PanelId: d.value })); updateSettings({ panel_name: d.value }); }} />
