@@ -628,7 +628,7 @@ export const SettingsPageMobile: React.FC = () => {
 
   // ── Loading / no-device states ────────────────────────────────────────────
   if (loading && !settings) {
-    return <div className={styles.centered}><Spinner size="small" label="Loading settings…" /></div>;
+    return <div className={styles.centered}><Spinner size="extra-tiny" label="Loading settings…" /></div>;
   }
 
   if (!selectedDevice) {
