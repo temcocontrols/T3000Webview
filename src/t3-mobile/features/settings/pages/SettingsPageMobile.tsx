@@ -1011,28 +1011,30 @@ export const SettingsPageMobile: React.FC = () => {
             Use The Following IP Address
           </label>
         </div>
-        <div className={styles.editRow}>
-          <span className={styles.editLabel}>IP Address</span>
-          <Input size="small" value={networkSettings.IP_Address ?? ''} disabled={networkSettings.TCP_Type === 1}
-            onChange={(_, d) => { setNetworkSettings(n => ({ ...n, IP_Address: d.value })); updateSettings({ ip_addr: d.value }); }}
-            placeholder="192.168.1.100" />
-        </div>
-        <div className={styles.editRow}>
-          <span className={styles.editLabel}>Subnet Mask</span>
-          <Input size="small" value={networkSettings.Subnet ?? ''} disabled={networkSettings.TCP_Type === 1}
-            onChange={(_, d) => { setNetworkSettings(n => ({ ...n, Subnet: d.value })); updateSettings({ subnet: d.value }); }}
-            placeholder="255.255.255.0" />
-        </div>
-        <div className={styles.editRow}>
-          <span className={styles.editLabel}>Gateway Address</span>
-          <Input size="small" value={networkSettings.Gateway ?? ''} disabled={networkSettings.TCP_Type === 1}
-            onChange={(_, d) => { setNetworkSettings(n => ({ ...n, Gateway: d.value })); updateSettings({ gate_addr: d.value }); }}
-            placeholder="192.168.1.1" />
-        </div>
-        <div className={styles.editRow}>
-          <span className={styles.editLabel}>Modbus TCP Port</span>
-          <Input size="small" type="number" value={String(protocolSettings.Modbus_Port ?? 502)}
-            onChange={(_, d) => { const v = Number(d.value); setProtocolSettings(p => ({ ...p, Modbus_Port: v })); updateSettings({ modbus_port: v }); }} />
+        <div className={styles.panelEditGrid}>
+          <div className={styles.panelEditCell}>
+            <span className={styles.panelEditCellLabel}>IP Address</span>
+            <Input size="small" style={{ width: '100%', minWidth: 0 }} value={networkSettings.IP_Address ?? ''} disabled={networkSettings.TCP_Type === 1}
+              onChange={(_, d) => { setNetworkSettings(n => ({ ...n, IP_Address: d.value })); updateSettings({ ip_addr: d.value }); }}
+              placeholder="192.168.1.100" />
+          </div>
+          <div className={styles.panelEditCell}>
+            <span className={styles.panelEditCellLabel}>Subnet Mask</span>
+            <Input size="small" style={{ width: '100%', minWidth: 0 }} value={networkSettings.Subnet ?? ''} disabled={networkSettings.TCP_Type === 1}
+              onChange={(_, d) => { setNetworkSettings(n => ({ ...n, Subnet: d.value })); updateSettings({ subnet: d.value }); }}
+              placeholder="255.255.255.0" />
+          </div>
+          <div className={styles.panelEditCell}>
+            <span className={styles.panelEditCellLabel}>Gateway Address</span>
+            <Input size="small" style={{ width: '100%', minWidth: 0 }} value={networkSettings.Gateway ?? ''} disabled={networkSettings.TCP_Type === 1}
+              onChange={(_, d) => { setNetworkSettings(n => ({ ...n, Gateway: d.value })); updateSettings({ gate_addr: d.value }); }}
+              placeholder="192.168.1.1" />
+          </div>
+          <div className={styles.panelEditCell}>
+            <span className={styles.panelEditCellLabel}>Modbus TCP Port</span>
+            <Input size="small" type="number" style={{ width: '100%', minWidth: 0 }} value={String(protocolSettings.Modbus_Port ?? 502)}
+              onChange={(_, d) => { const v = Number(d.value); setProtocolSettings(p => ({ ...p, Modbus_Port: v })); updateSettings({ modbus_port: v }); }} />
+          </div>
         </div>
         <div className={styles.lcdRow}>
           <Button size="small" appearance="primary" onClick={() => setShowWifiDialog(true)}>Wifi Configuration</Button>
