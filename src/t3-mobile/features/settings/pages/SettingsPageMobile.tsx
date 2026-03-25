@@ -44,6 +44,8 @@ import { EmailSettingsTab, type EmailSettings } from '@t3-react/features/setting
 import { UserLoginTab, type UserLoginSettings } from '@t3-react/features/settings/components/UserLoginTab';
 import { ExpansionIOTab, type ExpansionIOSettings } from '@t3-react/features/settings/components/ExpansionIOTab';
 import { AdvancedSettingsDialog } from '@t3-react/features/settings/components/AdvancedSettingsDialog';
+import { WifiSettingsDialog } from '@t3-react/features/settings/components/WifiSettingsDialog';
+import { NetworkHealthDialog } from '@t3-react/features/settings/components/NetworkHealthDialog';
 
 // ─── Constants (same as PC) ───────────────────────────────────────────────────
 
@@ -331,6 +333,53 @@ const useStyles = makeStyles({
     '& > *': { fontSize: '13px' },
   },
 
+  // ── Inner port tab bar (Serial Port Config) ───────────────────────────────
+  portTabBar: {
+    display: 'flex',
+    borderBottom: `2px solid #edebe9`,
+    margin: '0 16px',
+    marginTop: '4px',
+  },
+  portTabItem: {
+    flex: 1,
+    padding: '8px 4px',
+    border: 'none',
+    borderBottom: '2px solid transparent',
+    borderRadius: 0,
+    boxShadow: 'none',
+    outline: 'none',
+    background: 'none',
+    fontSize: '12px',
+    fontFamily: 'inherit',
+    cursor: 'pointer',
+    color: tokens.colorNeutralForeground3,
+    textAlign: 'center',
+    marginBottom: '-2px',
+    ':hover': { color: tokens.colorNeutralForeground1 },
+  },
+  portTabItemActive: {
+    color: tokens.colorBrandForeground1,
+    fontWeight: 600,
+    borderBottomColor: tokens.colorBrandForeground1,
+  },
+  portGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '10px 10px',
+    padding: '12px 16px',
+    borderBottom: `1px solid #f3f2f1`,
+    overflow: 'hidden',
+  },
+  portGridCell: {
+    minWidth: 0,
+    overflow: 'hidden',
+  },
+  portGridLabel: {
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground2,
+    marginBottom: '3px',
+  },
+
   // ── Misc structural divs ──────────────────────────────────────────────────
   overflowAnchor: {
     position: 'relative',
@@ -399,12 +448,36 @@ export const SettingsPageMobile: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showRebootDialog, setShowRebootDialog] = useState(false);
   const [rebootCountdown, setRebootCountdown] = useState(0);
+  const [showWifiDialog, setShowWifiDialog] = useState(false);
+  const [portTab, setPortTab] = useState<'sub' | 'zigbee' | 'main'>('sub');
+  const [showNetworkHealthDialog, setShowNetworkHealthDialog] = useState(false);
+  const [showRS485WarnDialog, setShowRS485WarnDialog] = useState(false);
+  const [rs485WarnCountdown, setRs485WarnCountdown] = useState(3);
+  const pendingRS485Action = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!successMessage) return;
     const t = setTimeout(() => setSuccessMessage(null), 4000);
     return () => clearTimeout(t);
   }, [successMessage]);
+
+  useEffect(() => {
+    if (!showRS485WarnDialog) return;
+    setRs485WarnCountdown(3);
+    const interval = setInterval(() => {
+      setRs485WarnCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setShowRS485WarnDialog(false);
+          pendingRS485Action.current?.();
+          pendingRS485Action.current = null;
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [showRS485WarnDialog]);
 
   // ── Settings state (mirrors PC SettingsPage) ───────────────────────────────
   const [settings, setSettings] = useState<DeviceSettings | null>(null);
@@ -577,6 +650,28 @@ export const SettingsPageMobile: React.FC = () => {
       const result = await SettingsUpdateApi.updateDeviceSettings(settings);
       if (!result.success) throw new Error(result.error || 'Failed');
       setSuccessMessage('Communication settings saved');
+      await fetchSettings();
+    });
+  };
+
+  const validateNetworkSettings = (): string | null => {
+    const ipRegex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    if (networkSettings.IP_Address && !ipRegex.test(networkSettings.IP_Address)) return 'Invalid IP Address format';
+    if (networkSettings.Subnet && !ipRegex.test(networkSettings.Subnet)) return 'Invalid Subnet Mask format';
+    if (networkSettings.Gateway && !ipRegex.test(networkSettings.Gateway)) return 'Invalid Gateway format';
+    return null;
+  };
+
+  const handleSaveNetworkValidated = async () => {
+    const err = validateNetworkSettings();
+    if (err) { setError(err); return; }
+    await runSave(async () => {
+      if (!settings) return;
+      const v = SettingsUpdateApi.validateSettings(settings);
+      if (!v.valid) throw new Error(v.errors.join(', '));
+      const result = await SettingsUpdateApi.updateDeviceSettings(settings);
+      if (!result.success) throw new Error(result.error || 'Failed to update network settings');
+      setSuccessMessage('Network settings saved');
       await fetchSettings();
     });
   };
@@ -791,59 +886,178 @@ export const SettingsPageMobile: React.FC = () => {
 
   const renderComm = () => {
     const fixed = (commSettings.Fix_COM_Config ?? 0) === 1;
-    const rs485Modes = fixed ? RS485_MODES_FIXED : RS485_MODES_UNFIXED;
 
-    const PortSection = ({ portLabel, configKey, baudrateKey, parityKey, stopbitKey }: { portLabel: string; configKey: keyof CommunicationSettings; baudrateKey: keyof CommunicationSettings; parityKey: keyof CommunicationSettings; stopbitKey: keyof CommunicationSettings }) => {
-      const modeVal = (commSettings[configKey] ?? 0) as number;
-      const baudIdx = (commSettings[baudrateKey] ?? 5) as number;
-      const parIdx  = (commSettings[parityKey] ?? 0) as number;
-      const stopIdx = (commSettings[stopbitKey] ?? 0) as number;
-      const isRS485 = portLabel !== 'COM3 Port';
-      const modes = isRS485 ? rs485Modes : COM_PORT_MODES.map((l, i) => ({ value: i, label: l }));
-      const modeLabel = modes.find(m => m.value === modeVal)?.label ?? modes[0]?.label ?? '—';
-      return (
-        <>
-          <div className={styles.sectionHead}>{portLabel}</div>
-          <div className={styles.editRow}>
-            <span className={styles.editLabel}>Mode</span>
-            <Dropdown size="small" value={modeLabel} onOptionSelect={(_, d) => { const v = Number(d.optionValue); setCommSettings(p => ({ ...p, [configKey]: v })); updateSettings({ [configKey.toLowerCase()]: v } as any); }}>
-              {modes.map(m => <Option key={String(m.value)} value={String(m.value)}>{m.label}</Option>)}
-            </Dropdown>
-          </div>
-          <div className={styles.editRow}>
-            <span className={styles.editLabel}>Baudrate</span>
-            <Dropdown size="small" value={String(BAUDRATE_OPTIONS[baudIdx] ?? 9600)} onOptionSelect={(_, d) => { const v = Number(d.optionValue); setCommSettings(p => ({ ...p, [baudrateKey]: v })); }}>
-              {BAUDRATE_OPTIONS.map((b, i) => <Option key={i} value={String(i)}>{String(b)}</Option>)}
-            </Dropdown>
-          </div>
-          <div className={styles.editRow}>
-            <span className={styles.editLabel}>Parity</span>
-            <Dropdown size="small" value={PARITY_OPTIONS[parIdx] ?? 'None'} onOptionSelect={(_, d) => { const v = Number(d.optionValue); setCommSettings(p => ({ ...p, [parityKey]: v })); }}>
-              {PARITY_OPTIONS.map((p, i) => <Option key={i} value={String(i)}>{p}</Option>)}
-            </Dropdown>
-          </div>
-          <div className={styles.editRow}>
-            <span className={styles.editLabel}>Stop Bits</span>
-            <Dropdown size="small" value={STOPBIT_OPTIONS[stopIdx] ?? '1'} onOptionSelect={(_, d) => { const v = Number(d.optionValue); setCommSettings(p => ({ ...p, [stopbitKey]: v })); }}>
-              {STOPBIT_OPTIONS.map((s, i) => <Option key={i} value={String(i)}>{s}</Option>)}
-            </Dropdown>
-          </div>
-        </>
-      );
+    const PORT_TABS = [
+      { value: 'sub'    as const, label: 'RS485 SUB'  },
+      { value: 'zigbee' as const, label: 'Zigbee'     },
+      { value: 'main'   as const, label: 'RS485 Main' },
+    ];
+
+    const portConfig = {
+      sub:    { configKey: 'COM0_Config' as const, baudrateKey: 'COM_Baudrate0' as const, parityKey: 'UART_Parity0' as const, stopbitKey: 'UART_Stopbit0' as const, isZigbee: false },
+      zigbee: { configKey: 'COM1_Config' as const, baudrateKey: 'COM_Baudrate1' as const, parityKey: 'UART_Parity1' as const, stopbitKey: 'UART_Stopbit1' as const, isZigbee: true  },
+      main:   { configKey: 'COM2_Config' as const, baudrateKey: 'COM_Baudrate2' as const, parityKey: 'UART_Parity2' as const, stopbitKey: 'UART_Stopbit2' as const, isZigbee: false },
+    };
+
+    const { configKey, baudrateKey, parityKey, stopbitKey, isZigbee } = portConfig[portTab];
+    const zigbeeDisabled = isZigbee && !commSettings.Zigbee_Exist;
+    const rs485Modes = fixed ? RS485_MODES_FIXED : RS485_MODES_UNFIXED;
+    const zigbeeModes = COM_PORT_MODES.map((l, i) => ({ value: i, label: l }));
+    const modes = isZigbee ? zigbeeModes : rs485Modes;
+    const rawVal   = (commSettings[configKey]   ?? 0) as number;
+    const modeVal  = (!isZigbee && !fixed && (rawVal === 7 || rawVal === 2)) ? 2 : rawVal;
+    const baudIdx  = (commSettings[baudrateKey] ?? 9) as number;
+    const parIdx   = (commSettings[parityKey]   ?? 0) as number;
+    const stopIdx  = (commSettings[stopbitKey]  ?? 0) as number;
+    const modeLabel = modes.find(m => m.value === modeVal)?.label ?? 'Unused';
+
+    const onModeChange = (v: number) => {
+      if (isZigbee) {
+        setCommSettings(p => ({ ...p, [configKey]: v }));
+        updateSettings({ [configKey.toLowerCase()]: v } as any);
+      } else {
+        pendingRS485Action.current = () => { setCommSettings(p => ({ ...p, [configKey]: v })); updateSettings({ [configKey.toLowerCase()]: v } as any); };
+        setShowRS485WarnDialog(true);
+      }
+    };
+    const onBaudChange = (v: number) => {
+      if (isZigbee) {
+        setCommSettings(p => ({ ...p, [baudrateKey]: v }));
+      } else {
+        pendingRS485Action.current = () => { setCommSettings(p => ({ ...p, [baudrateKey]: v })); updateSettings({ [baudrateKey.toLowerCase()]: v } as any); };
+        setShowRS485WarnDialog(true);
+      }
     };
 
     return (
       <>
+        {/* ── IP Address ─────────────────────────────────────────── */}
+        <div className={styles.sectionHead}>IP Address</div>
+        <div className={styles.checkRow}>
+          <label className={styles.lcdLabel}>
+            <input
+              type="radio"
+              name="tcpType"
+              checked={(networkSettings.TCP_Type ?? 0) === 1}
+              onChange={() => { setNetworkSettings(n => ({ ...n, TCP_Type: 1 })); updateSettings({ tcp_type: 1 }); }}
+            />
+            Obtain IP Address Automatically
+          </label>
+        </div>
+        <div className={styles.checkRow}>
+          <label className={styles.lcdLabel}>
+            <input
+              type="radio"
+              name="tcpType"
+              checked={(networkSettings.TCP_Type ?? 0) === 0}
+              onChange={() => { setNetworkSettings(n => ({ ...n, TCP_Type: 0 })); updateSettings({ tcp_type: 0 }); }}
+            />
+            Use The Following IP Address
+          </label>
+        </div>
+        <div className={styles.editRow}>
+          <span className={styles.editLabel}>IP Address</span>
+          <Input size="small" value={networkSettings.IP_Address ?? ''} disabled={networkSettings.TCP_Type === 1}
+            onChange={(_, d) => { setNetworkSettings(n => ({ ...n, IP_Address: d.value })); updateSettings({ ip_addr: d.value }); }}
+            placeholder="192.168.1.100" />
+        </div>
+        <div className={styles.editRow}>
+          <span className={styles.editLabel}>Subnet Mask</span>
+          <Input size="small" value={networkSettings.Subnet ?? ''} disabled={networkSettings.TCP_Type === 1}
+            onChange={(_, d) => { setNetworkSettings(n => ({ ...n, Subnet: d.value })); updateSettings({ subnet: d.value }); }}
+            placeholder="255.255.255.0" />
+        </div>
+        <div className={styles.editRow}>
+          <span className={styles.editLabel}>Gateway Address</span>
+          <Input size="small" value={networkSettings.Gateway ?? ''} disabled={networkSettings.TCP_Type === 1}
+            onChange={(_, d) => { setNetworkSettings(n => ({ ...n, Gateway: d.value })); updateSettings({ gate_addr: d.value }); }}
+            placeholder="192.168.1.1" />
+        </div>
+        <div className={styles.editRow}>
+          <span className={styles.editLabel}>Modbus TCP Port</span>
+          <Input size="small" type="number" value={String(protocolSettings.Modbus_Port ?? 502)}
+            onChange={(_, d) => { const v = Number(d.value); setProtocolSettings(p => ({ ...p, Modbus_Port: v })); updateSettings({ modbus_port: v }); }} />
+        </div>
+        <div className={styles.lcdRow}>
+          <Button size="small" appearance="primary" onClick={() => setShowWifiDialog(true)}>Wifi Configuration</Button>
+          <Button size="small" appearance="secondary" onClick={handleSaveNetworkValidated} disabled={loading}>Change IP</Button>
+        </div>
+
+        {/* ── Device Serial Port Config ──────────────────────────── */}
+        <div className={styles.sectionHead}>Device Serial Port Config</div>
+
+        {/* Inner port tab bar */}
+        <div className={styles.portTabBar}>
+          {PORT_TABS.map(t => (
+            <button
+              key={t.value}
+              className={`${styles.portTabItem}${portTab === t.value ? ` ${styles.portTabItemActive}` : ''}`}
+              onClick={() => setPortTab(t.value)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* 3-row × 2-col grid: Mode/Baudrate | DataBits/Parity | StopBits */}
+        <div className={styles.portGrid}>
+          {/* Row 1 */}
+          <div className={styles.portGridCell}>
+            <div className={styles.portGridLabel}>Mode</div>
+            <Dropdown size="small" style={{ width: '100%', minWidth: 0 }} value={modeLabel} selectedOptions={[String(modeVal)]} disabled={zigbeeDisabled}
+              onOptionSelect={(_, d) => onModeChange(Number(d.optionValue))}>
+              {modes.map(m => <Option key={String(m.value)} value={String(m.value)}>{m.label}</Option>)}
+            </Dropdown>
+          </div>
+          <div className={styles.portGridCell}>
+            <div className={styles.portGridLabel}>Baudrate</div>
+            <Dropdown size="small" style={{ width: '100%', minWidth: 0 }} value={String(BAUDRATE_OPTIONS[baudIdx] ?? 9600)} selectedOptions={[String(baudIdx)]} disabled={zigbeeDisabled}
+              onOptionSelect={(_, d) => onBaudChange(Number(d.optionValue))}>
+              {BAUDRATE_OPTIONS.map((b, i) => <Option key={i} value={String(i)}>{String(b)}</Option>)}
+            </Dropdown>
+          </div>
+          {/* Row 2 */}
+          <div className={styles.portGridCell}>
+            <div className={styles.portGridLabel}>Data Bits</div>
+            <Input size="small" style={{ width: '100%' }} value="8" disabled />
+          </div>
+          <div className={styles.portGridCell}>
+            <div className={styles.portGridLabel}>Parity</div>
+            <Dropdown size="small" style={{ width: '100%', minWidth: 0 }} value={PARITY_OPTIONS[parIdx] ?? 'None'} selectedOptions={[String(parIdx)]} disabled={zigbeeDisabled}
+              onOptionSelect={(_, d) => { const v = Number(d.optionValue); setCommSettings(p => ({ ...p, [parityKey]: v })); }}>
+              {PARITY_OPTIONS.map((label, i) => <Option key={i} value={String(i)}>{label}</Option>)}
+            </Dropdown>
+          </div>
+          {/* Row 3 */}
+          <div className={styles.portGridCell}>
+            <div className={styles.portGridLabel}>Stop Bits</div>
+            <Dropdown size="small" style={{ width: '100%', minWidth: 0 }} value={STOPBIT_OPTIONS[stopIdx] ?? '1'} selectedOptions={[String(stopIdx)]} disabled={zigbeeDisabled}
+              onOptionSelect={(_, d) => { const v = Number(d.optionValue); setCommSettings(p => ({ ...p, [stopbitKey]: v })); }}>
+              {STOPBIT_OPTIONS.map((label, i) => <Option key={i} value={String(i)}>{label}</Option>)}
+            </Dropdown>
+          </div>
+        </div>
+
+        {/* Fixed Serial Port Config — below dropdowns, global setting */}
         <div className={styles.checkRow}>
           <Checkbox
-            label={{ style: { fontSize: '13px', fontWeight: 'normal' }, children: 'Fix COM Config' }}
+            label={{ style: { fontSize: '13px', fontWeight: 'normal' }, children: 'Fixed Serial Port Configuration' }}
             checked={fixed}
             onChange={(_, d) => { const v = d.checked ? 1 : 0; setCommSettings(p => ({ ...p, Fix_COM_Config: v })); updateSettings({ fix_com_config: v }); }}
           />
         </div>
-        <PortSection portLabel="Sub Port (RS485)" configKey="COM0_Config" baudrateKey="COM_Baudrate0" parityKey="UART_Parity0" stopbitKey="UART_Stopbit0" />
-        <PortSection portLabel="Main Port (RS485)" configKey="COM1_Config" baudrateKey="COM_Baudrate1" parityKey="UART_Parity1" stopbitKey="UART_Stopbit1" />
-        <PortSection portLabel="COM3 Port" configKey="COM2_Config" baudrateKey="COM_Baudrate2" parityKey="UART_Parity2" stopbitKey="UART_Stopbit2" />
+
+        <div className={styles.editRow}>
+          <span className={styles.editLabel}>Zigbee Pan ID</span>
+          <Input size="small" type="number" value={String(commSettings.Zigbee_Pan_ID ?? 0)}
+            disabled={!commSettings.Zigbee_Exist}
+            onChange={(_, d) => { const v = Number(d.value); setCommSettings(p => ({ ...p, Zigbee_Pan_ID: v })); updateSettings({ zigbee_panid: v }); }} />
+        </div>
+        <div className={styles.lcdRow}>
+          <Button size="small" appearance="secondary" disabled>Zigbee Information</Button>
+          <Button size="small" appearance="secondary" onClick={() => setShowNetworkHealthDialog(true)}>Network Health</Button>
+        </div>
+
         <div className={styles.inlineSave}>
           <Button appearance="primary" icon={<SaveRegular />} size="small" onClick={handleSaveComm} disabled={loading}>Save Communication</Button>
         </div>
@@ -1063,6 +1277,50 @@ export const SettingsPageMobile: React.FC = () => {
         miniType={hardwareInfo.Mini_Type ?? 0}
         firmwareVersion={((hardwareInfo.Firmware0_Rev_Main ?? 0) * 10) + (hardwareInfo.Firmware0_Rev_Sub ?? 0)}
       />
+
+      {/* ── Wifi Settings Dialog ─────────────────────────────────────── */}
+      <WifiSettingsDialog
+        isOpen={showWifiDialog}
+        onOpenChange={setShowWifiDialog}
+        serialNumber={selectedDevice?.serialNumber ?? 0}
+      />
+
+      {/* ── Network Health Dialog ────────────────────────────────────── */}
+      <NetworkHealthDialog
+        isOpen={showNetworkHealthDialog}
+        onClose={() => setShowNetworkHealthDialog(false)}
+        serialNumber={selectedDevice?.serialNumber ?? 0}
+      />
+
+      {/* ── RS485 Warning Dialog ─────────────────────────────────────── */}
+      {showRS485WarnDialog && (
+        <div className={styles.dialogBackdrop} onClick={() => { setShowRS485WarnDialog(false); pendingRS485Action.current = null; }}>
+          <div className={styles.dialogSheet} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: '#0000dd', marginBottom: '12px' }}>
+              Changing Subnet Baud Rate and Protocol
+            </div>
+            <div style={{ fontSize: '13px', marginBottom: '20px' }}>
+              Make sure all subnet devices share these same settings
+            </div>
+            <div className={styles.dialogButtons}>
+              <Button
+                className={styles.dialogBtn}
+                appearance="primary"
+                onClick={() => { setShowRS485WarnDialog(false); pendingRS485Action.current?.(); pendingRS485Action.current = null; }}
+              >
+                OK ({rs485WarnCountdown})
+              </Button>
+              <Button
+                className={styles.dialogBtn}
+                appearance="secondary"
+                onClick={() => { setShowRS485WarnDialog(false); pendingRS485Action.current = null; }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
