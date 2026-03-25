@@ -22,7 +22,7 @@ import {
   ArrowLeftRegular,
   ArrowSyncRegular,
   NavigationRegular,
-  DeveloperBoardRegular,
+  Desktop20Regular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '@t3-react/features/devices/store/deviceTreeStore';
 
@@ -143,7 +143,7 @@ export const MobileAppBar: React.FC<MobileAppBarProps> = ({
             ) : (
               <Button
                 appearance="transparent"
-                icon={<DeveloperBoardRegular />}
+                icon={<Desktop20Regular />}
                 onClick={onDevice}
                 className={styles.iconBtn}
                 aria-label="Select device"
