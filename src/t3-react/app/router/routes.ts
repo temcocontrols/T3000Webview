@@ -65,6 +65,15 @@ const AlarmsPageResponsive = lazy(() =>
   }))
 );
 
+const SettingsPageResponsive = lazy(() =>
+  Promise.all([
+    import('../pages').then(m => m.SettingsPage),
+    import('../../../t3-mobile/features/settings/pages/SettingsPageMobile').then(m => m.SettingsPageMobile),
+  ]).then(([SettingsPage, SettingsPageMobile]) => ({
+    default: createResponsiveRoute(SettingsPage, SettingsPageMobile)
+  }))
+);
+
 // Develop section pages
 const FileBrowserPage = lazy(() => import('../../features/develop/pages/FileBrowserPage'));
 const DatabaseViewerPage = lazy(() => import('../../features/develop/pages/DatabaseViewerPage'));
@@ -186,7 +195,7 @@ export const t3000Routes: T3000Route[] = [
   },
   {
     path: '/t3000/settings',
-    element: SettingsPage,
+    element: SettingsPageResponsive,
     title: 'Settings',
     windowId: 11, // WINDOW_SETTING
     shortcut: 'Alt+E',

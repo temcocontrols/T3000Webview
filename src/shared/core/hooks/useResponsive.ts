@@ -3,19 +3,17 @@
  * Provides boolean flags and current breakpoint name.
  *
  * Usage:
- *   const { isMobile, isTablet, isDesktop } = useResponsive();
+ *   const { isMobile, isDesktop } = useResponsive();
  */
 
 import { useDeviceType, type DeviceType } from './useDeviceType';
 
 export interface ResponsiveState {
-  /** Width < 768px */
+  /** Phone (short side < 768px) — always mobile regardless of orientation */
   isMobile: boolean;
-  /** Width 768–1024px */
-  isTablet: boolean;
-  /** Width > 1024px */
+  /** Tablet or larger (short side ≥ 768px) */
   isDesktop: boolean;
-  /** Raw breakpoint name */
+  /** Raw device type */
   breakpoint: DeviceType;
 }
 
@@ -23,7 +21,6 @@ export const useResponsive = (): ResponsiveState => {
   const breakpoint = useDeviceType();
   return {
     isMobile:  breakpoint === 'mobile',
-    isTablet:  breakpoint === 'tablet',
     isDesktop: breakpoint === 'desktop',
     breakpoint,
   };

@@ -20,7 +20,6 @@ import { GlobalMessageBar } from '../shared/components/GlobalMessageBar';
 import { useUIStore } from '../store/uiStore';
 import { useStatusBarStore } from '../store/statusBarStore';
 import { useResponsive } from '@t3-shared/core/hooks/useResponsive';
-import { TabletLayout } from '@t3-tablet/layout/TabletLayout';
 import { MobileShell } from '@t3-mobile/layout/MobileShell';
 
 const useStyles = makeStyles({
@@ -281,8 +280,7 @@ const DesktopLayout: React.FC = () => {
  * Each shell independently manages its own hooks — no Rules-of-Hooks violation.
  */
 export const MainLayout: React.FC = () => {
-  const { isMobile, isTablet } = useResponsive();
-  if (isTablet) return <TabletLayout />;
+  const { isMobile } = useResponsive();
   if (isMobile) return <MobileShell />;
   return <DesktopLayout />;
 };
