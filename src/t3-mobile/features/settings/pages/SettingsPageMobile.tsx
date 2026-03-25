@@ -236,6 +236,30 @@ const useStyles = makeStyles({
     fontVariantNumeric: 'tabular-nums',
   },
 
+  // ── Device Info 2-column read-only grid ───────────────────────────────────
+  deviceInfoGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    borderBottom: `1px solid #f3f2f1`,
+  },
+  deviceInfoCell: {
+    padding: '10px 12px',
+    borderBottom: `1px solid #f3f2f1`,
+    borderRight: `1px solid #f3f2f1`,
+    ':nth-child(even)': { borderRight: 'none' },
+  },
+  deviceInfoCellLabel: {
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+    marginBottom: '2px',
+  },
+  deviceInfoCellValue: {
+    fontSize: '13px',
+    color: tokens.colorNeutralForeground1,
+    fontVariantNumeric: 'tabular-nums',
+    fontWeight: 500,
+  },
+
   // ── Editable field row ────────────────────────────────────────────────────
   editRow: {
     padding: '10px 16px',
@@ -782,23 +806,25 @@ export const SettingsPageMobile: React.FC = () => {
 
   const renderBasic = () => (
     <>
-      {/* Device Information — read-only */}
+      {/* Device Information — read-only 2-col grid */}
       <div className={styles.sectionHead}>Device Information</div>
-      {[
-        ['Module Number',       hardwareInfo.MiniTypeName ?? (hardwareInfo.Mini_Type != null ? String(hardwareInfo.Mini_Type) : '—')],
-        ['Hardware Version',    hardwareInfo.Hardware_Rev ?? '—'],
-        ['MCU Version',         hardwareInfo.Firmware0_Rev_Main != null ? `${hardwareInfo.Firmware0_Rev_Main}.${hardwareInfo.Firmware0_Rev_Sub ?? 0}` : '—'],
-        ['PIC Version',         hardwareInfo.Firmware1_Rev != null ? String(hardwareInfo.Firmware1_Rev) : '—'],
-        ['Top Version',         hardwareInfo.Firmware2_Rev != null ? String(hardwareInfo.Firmware2_Rev) : '—'],
-        ['Bootloader Version',  hardwareInfo.Bootloader_Rev != null ? String(hardwareInfo.Bootloader_Rev) : '—'],
-        ['MCU Type',            hardwareInfo.Panel_Type != null ? `0x${hardwareInfo.Panel_Type.toString(16).padStart(2,'0')}` : '—'],
-        ['SD Card',             hardwareInfo.SD_Exist ? 'SD Card' : 'No SD Card'],
-      ].map(([label, value]) => (
-        <div key={label} className={styles.fieldRow}>
-          <span className={styles.fieldLabel}>{label}</span>
-          <span className={styles.fieldValue}>{value}</span>
-        </div>
-      ))}
+      <div className={styles.deviceInfoGrid}>
+        {[
+          ['Module Number',       hardwareInfo.MiniTypeName ?? (hardwareInfo.Mini_Type != null ? String(hardwareInfo.Mini_Type) : '—')],
+          ['Hardware Version',    hardwareInfo.Hardware_Rev ?? '—'],
+          ['MCU Version',         hardwareInfo.Firmware0_Rev_Main != null ? `${hardwareInfo.Firmware0_Rev_Main}.${hardwareInfo.Firmware0_Rev_Sub ?? 0}` : '—'],
+          ['PIC Version',         hardwareInfo.Firmware1_Rev != null ? String(hardwareInfo.Firmware1_Rev) : '—'],
+          ['Top Version',         hardwareInfo.Firmware2_Rev != null ? String(hardwareInfo.Firmware2_Rev) : '—'],
+          ['Bootloader Version',  hardwareInfo.Bootloader_Rev != null ? String(hardwareInfo.Bootloader_Rev) : '—'],
+          ['MCU Type',            hardwareInfo.Panel_Type != null ? `0x${hardwareInfo.Panel_Type.toString(16).padStart(2,'0')}` : '—'],
+          ['SD Card',             hardwareInfo.SD_Exist ? 'SD Card' : 'No SD Card'],
+        ].map(([label, value]) => (
+          <div key={label} className={styles.deviceInfoCell}>
+            <div className={styles.deviceInfoCellLabel}>{label}</div>
+            <div className={styles.deviceInfoCellValue}>{value}</div>
+          </div>
+        ))}
+      </div>
 
       {/* Panel Information — editable */}
       <div className={styles.sectionHead}>Panel Information</div>
