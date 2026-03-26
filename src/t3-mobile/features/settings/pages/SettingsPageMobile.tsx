@@ -1528,6 +1528,7 @@ export const SettingsPageMobile: React.FC = () => {
   const renderEmail = () => (
     <div className={styles.subTabWrap}>
       <EmailSettingsTab
+        mobile
         emailSettings={emailSettings}
         setEmailSettings={setEmailSettings}
         onSave={handleSaveEmail}
@@ -1539,6 +1540,7 @@ export const SettingsPageMobile: React.FC = () => {
   const renderUsers = () => (
     <div className={styles.subTabWrap}>
       <UserLoginTab
+        mobile
         userLoginSettings={userLoginSettings}
         setUserLoginSettings={setUserLoginSettings}
         updateSettings={updateSettings}

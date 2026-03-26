@@ -156,6 +156,100 @@ const useStyles = makeStyles({
     fontSize: '12px',
     color: tokens.colorStatusDangerForeground1,
   },
+
+  pcStatusSuccess: {
+    fontSize: '11px',
+    marginBottom: '8px',
+    color: tokens.colorStatusSuccessForeground1,
+  },
+  pcStatusError: {
+    fontSize: '11px',
+    marginBottom: '8px',
+    color: tokens.colorStatusDangerForeground1,
+  },
+
+  // ── PC layout classes ────────────────────────────────────────────────────
+  topRow: {
+    display: 'flex',
+    gap: '12px',
+    alignItems: 'stretch',
+  },
+  pcListBox: {
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: '4px',
+    width: '185px',
+    flexShrink: 0,
+    overflow: 'hidden',
+    backgroundColor: tokens.colorNeutralBackground1,
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  listHeader: {
+    fontSize: '12px',
+    fontWeight: tokens.fontWeightSemibold,
+    padding: '6px 10px',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    backgroundColor: tokens.colorNeutralBackground2,
+    color: tokens.colorNeutralForeground2,
+  },
+  detailBox: {
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: '4px',
+    padding: '12px 16px 14px',
+    backgroundColor: tokens.colorNeutralBackground1,
+    flex: 1,
+    minWidth: '260px',
+  },
+  row: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '10px',
+  },
+  label: {
+    fontSize: '12px',
+    minWidth: '140px',
+    flexShrink: 0,
+    color: tokens.colorNeutralForeground1,
+  },
+  control: {
+    flex: 1,
+    minWidth: '160px',
+  },
+  hint: {
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+    marginLeft: '148px',
+    marginBottom: '10px',
+    fontStyle: 'italic',
+  },
+  pcActionRow: {
+    display: 'flex',
+    gap: '10px',
+    marginTop: '6px',
+  },
+  pcRoot: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    padding: '12px',
+  },
+  pcEnableRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  pcEnableNote: {
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+    fontStyle: 'italic',
+  },
+  pcEmptyDetail: {
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground3,
+    padding: '16px 0',
+    textAlign: 'center',
+  },
 });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -178,6 +272,7 @@ interface UserLoginTabProps {
   onSaveUser: (index: number, user: UserEntry) => Promise<void>;
   onDeleteUser: (index: number) => Promise<void>;
   loading: boolean;
+  mobile?: boolean;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -189,6 +284,7 @@ export const UserLoginTab: React.FC<UserLoginTabProps> = ({
   onSaveUser,
   onDeleteUser,
   loading,
+  mobile,
 }) => {
   const styles = useStyles();
 
@@ -319,6 +415,121 @@ export const UserLoginTab: React.FC<UserLoginTabProps> = ({
 
   const accessLevelLabel = ACCESS_LEVELS.find(a => a.value === editAccessLevel)?.label ?? 'Full access';
 
+  // ── PC layout ──────────────────────────────────────────────────────────────
+  if (!mobile) {
+    const listRows = Array.from({ length: MAX_USERS }, (_, i) => {
+      const u = users[i];
+      const isSelected = selectedIndex === i;
+      const isAlt = i % 2 === 1;
+      return (
+        <div key={i}
+          className={mergeClasses(styles.listItem, isSelected && styles.listItemSelected, !isSelected && isAlt && styles.listItemAlt)}
+          onClick={() => handleSelectRow(i)}>
+          {u?.name || ''}
+        </div>
+      );
+    });
+
+    return (
+      <div className={styles.pcRoot}>
+        <div className={styles.topRow}>
+          {/* Left: user list */}
+          <div className={styles.pcListBox}>
+            <div className={styles.listHeader}>User Name</div>
+            {listRows}
+          </div>
+
+          {/* Right: detail */}
+          <div className={styles.detailBox}>
+            {selectedIndex === null ? (
+              <div className={styles.pcEmptyDetail}>Select a user from the list to edit</div>
+            ) : (
+              <>
+                <div className={styles.row}>
+                  <span className={styles.label}>Name :</span>
+                  <Input className={styles.control} size="small" style={{ fontSize: '12px' }}
+                    value={editName} maxLength={STR_USER_NAME_LENGTH - 1}
+                    onChange={(_, d) => setEditName(d.value)} />
+                </div>
+
+                <div className={styles.row}>
+                  <span className={styles.label}>Access Level</span>
+                  <Dropdown className={styles.control} size="small" style={{ fontSize: '12px' }}
+                    value={accessLevelLabel}
+                    onOptionSelect={(_, data) => setEditAccessLevel(Number(data.optionValue))}>
+                    {ACCESS_LEVELS.map(a => (
+                      <Option key={a.value} value={String(a.value)} style={{ fontSize: '12px' }}>{a.label}</Option>
+                    ))}
+                  </Dropdown>
+                </div>
+
+                <div className={mergeClasses(styles.row, !currentPasswordEnabled && styles.dimmed)}>
+                  <span className={styles.label}>Password</span>
+                  <Input className={styles.control} size="small" style={{ fontSize: '12px' }}
+                    type="password" value={editPassword} maxLength={STR_USER_PASSWORD_LENGTH - 1}
+                    disabled={!currentPasswordEnabled}
+                    onChange={(_, d) => setEditPassword(d.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleOk(); }} />
+                </div>
+                <div className={mergeClasses(styles.hint, !currentPasswordEnabled && styles.dimmed)}>
+                  ( Type Enter to change )
+                </div>
+
+                <div className={mergeClasses(styles.row, !newPasswordEnabled && styles.dimmed)}>
+                  <span className={styles.label}>Type new password :</span>
+                  <Input className={styles.control} size="small" style={{ fontSize: '12px' }}
+                    type="password" value={editNewPassword} maxLength={STR_USER_PASSWORD_LENGTH - 1}
+                    disabled={!newPasswordEnabled}
+                    onChange={(_, d) => setEditNewPassword(d.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleOk(); }} />
+                </div>
+
+                <div className={mergeClasses(styles.row, !retypePasswordEnabled && styles.dimmed)}>
+                  <span className={styles.label}>Retype new password :</span>
+                  <Input className={styles.control} size="small" style={{ fontSize: '12px' }}
+                    type="password" value={editRetypePassword} maxLength={STR_USER_PASSWORD_LENGTH - 1}
+                    disabled={!retypePasswordEnabled}
+                    onChange={(_, d) => setEditRetypePassword(d.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleOk(); }} />
+                </div>
+
+                {statusMsg && (
+                  <div className={statusMsg === 'Operation success!' ? styles.pcStatusSuccess : styles.pcStatusError}>
+                    {statusMsg}
+                  </div>
+                )}
+
+                <div className={styles.pcActionRow}>
+                  <Button size="small" appearance="secondary" icon={<DeleteRegular />}
+                    onClick={handleDelete} disabled={!isExistingUser || deleteLoading || loading}>
+                    {deleteLoading ? 'Deleting…' : 'Delete User'}
+                  </Button>
+                  <Button size="small" appearance="primary" icon={<CheckmarkRegular />}
+                    onClick={handleOk} disabled={saveLoading || loading}>
+                    {saveLoading ? 'Saving…' : 'OK'}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className={styles.pcEnableRow}>
+          <Checkbox
+            label={{ style: { fontSize: '12px', fontWeight: 'normal' }, children: 'Enable user list.' }}
+            checked={userLoginSettings.enable_user_list === 2}
+            onChange={handleEnableToggle}
+            disabled={loading}
+          />
+          <span className={styles.pcEnableNote}>
+            (If want to access this device, please use the user list to sign in)
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Mobile layout ──────────────────────────────────────────────────────────
   return (
     <div className={styles.root}>
       <div className={styles.sectionHead}>User Login</div>
