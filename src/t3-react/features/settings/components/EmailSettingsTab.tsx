@@ -1,7 +1,7 @@
 /**
  * EmailSettingsTab
  *
- * Email tab for SettingsPage — matches C++ BacnetEmailAlarm dialog layout:
+ * Email tab for SettingsPage �?matches C++ BacnetEmailAlarm dialog layout:
  *   SMTP Server      [input]
  *   Port Number      [input]
  *   Email            [input]
@@ -30,14 +30,12 @@
 
 import React from 'react';
 import {
-  Button,
   Dropdown,
   Input,
   Option,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import { SaveRegular } from '@fluentui/react-icons';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -61,52 +59,38 @@ const useStyles = makeStyles({
   root: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '16px',
   },
-  groupBox: {
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    borderRadius: '4px',
-    padding: '12px 16px 16px',
-    backgroundColor: tokens.colorNeutralBackground1,
+  sectionHead: {
+    fontSize: '11px',
+    fontWeight: 600,
+    letterSpacing: '0.06em',
+    color: tokens.colorNeutralForeground3,
+    backgroundColor: '#f5f5f5',
+    padding: '8px 16px',
+    borderTop: '1px solid #edebe9',
+    borderBottom: '1px solid #edebe9',
+    textTransform: 'uppercase',
   },
-  groupTitle: {
-    fontSize: '12px',
-    fontWeight: tokens.fontWeightSemibold,
-    color: tokens.colorNeutralForeground2,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-    paddingBottom: '6px',
-    marginBottom: '12px',
-  },
-  row: {
+  editRow: {
     display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    marginBottom: '10px',
+    flexDirection: 'column',
+    gap: '4px',
+    padding: '10px 12px 10px 16px',
+    borderBottom: '1px solid #f3f2f1',
   },
-  label: {
-    fontSize: '12px',
-    minWidth: '150px',
+  editLabel: {
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+  },
+  statusValue: {
+    fontSize: '13px',
     color: tokens.colorNeutralForeground1,
+    fontVariantNumeric: 'tabular-nums',
   },
-  control: {
-    flex: 1,
-    minWidth: 0,
+  inputWrapper: {
+    display: 'grid',
+    gridTemplateColumns: '1fr',
   },
-  statusBox: {
-    flex: 1,
-    minWidth: '200px',
-    fontSize: '12px',
-    padding: '4px 8px',
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    borderRadius: '4px',
-    backgroundColor: tokens.colorNeutralBackground3,
-    color: tokens.colorNeutralForeground1,
-    fontFamily: 'inherit',
-  },
-  saveRow: {
-    marginTop: '4px',
-  },
-
 });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -149,140 +133,100 @@ export const EmailSettingsTab: React.FC<EmailSettingsTabProps> = ({
 
   return (
     <div className={styles.root}>
-      <div className={styles.groupBox}>
-        <div className={styles.groupTitle}>Email Configuration</div>
+      <div className={styles.sectionHead}>Email Configuration</div>
 
-        {/* SMTP Server */}
-        <div className={styles.row}>
-          <span className={styles.label}>SMTP Server :</span>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', flex: 1, minWidth: 0 }}>
-            <Input
-              style={{ fontSize: '12px' }}
-              value={emailSettings.smtp_domain ?? ''}
-              maxLength={40}
-              placeholder="e.g. smtp.gmail.com"
-              onChange={(_, d) => set({ smtp_domain: d.value })}
-            />
-          </div>
-        </div>
-
-        {/* Port Number */}
-        <div className={styles.row}>
-          <span className={styles.label}>Port Number:</span>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', flex: 1, minWidth: 0 }}>
-            <Input
-              style={{ fontSize: '12px' }}
-              type="number"
-              min={0}
-              max={65535}
-              value={String(emailSettings.smtp_port ?? 0)}
-              onChange={(_, d) => {
-                const v = Number(d.value);
-                if (!isNaN(v) && v >= 0 && v <= 65535) set({ smtp_port: v });
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Email */}
-        <div className={styles.row}>
-          <span className={styles.label}>Email:</span>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', flex: 1, minWidth: 0 }}>
-            <Input
-              style={{ fontSize: '12px' }}
-              type="email"
-              value={emailSettings.email_address ?? ''}
-              maxLength={60}
-              placeholder="sender@example.com"
-              onChange={(_, d) => set({ email_address: d.value })}
-            />
-          </div>
-        </div>
-
-        {/* User Name */}
-        <div className={styles.row}>
-          <span className={styles.label}>User Name :</span>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', flex: 1, minWidth: 0 }}>
-            <Input
-              style={{ fontSize: '12px' }}
-              value={emailSettings.user_name ?? ''}
-              maxLength={60}
-              onChange={(_, d) => set({ user_name: d.value })}
-            />
-          </div>
-        </div>
-
-        {/* Password */}
-        <div className={styles.row}>
-          <span className={styles.label}>Password:</span>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', flex: 1, minWidth: 0 }}>
-            <Input
-              style={{ fontSize: '12px' }}
-              type="password"
-              value={emailSettings.password ?? ''}
-              maxLength={20}
-              onChange={(_, d) => set({ password: d.value })}
-            />
-          </div>
-        </div>
-
-        {/* Secure Connection */}
-        <div className={styles.row}>
-          <span className={styles.label}>Secure Connection :</span>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', flex: 1, minWidth: 0 }}>
-            <Dropdown
-              style={{ fontSize: '12px' }}
-              value={secureTypeLabel}
-              onOptionSelect={(_, data) => {
-                set({ secure_connection_type: Number(data.optionValue ?? '0') });
-              }}
-            >
-              {SECURE_TYPES.map((t) => (
-                <Option key={t.value} value={t.value} style={{ fontSize: '12px' }}>
-                  {t.label}
-                </Option>
-              ))}
-            </Dropdown>
-          </div>
-        </div>
-
-        {/* Recipient 1 */}
-        <div className={styles.row}>
-          <span className={styles.label}>Recipient  1</span>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', flex: 1, minWidth: 0 }}>
-            <Input
-              style={{ fontSize: '12px' }}
-              type="email"
-              value={emailSettings.To1Addr ?? ''}
-              maxLength={60}
-              placeholder="recipient1@example.com"
-              onChange={(_, d) => set({ To1Addr: d.value })}
-            />
-          </div>
-        </div>
-
-        {/* Recipient 2 */}
-        <div className={styles.row}>
-          <span className={styles.label}>Recipient  2</span>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', flex: 1, minWidth: 0 }}>
-            <Input
-              style={{ fontSize: '12px' }}
-              type="email"
-              value={emailSettings.To2Addr ?? ''}
-              maxLength={60}
-              placeholder="recipient2@example.com"
-              onChange={(_, d) => set({ To2Addr: d.value })}
-            />
-          </div>
-        </div>
-
-        {/* Status (read-only) */}
-        <div className={styles.row}>
-          <span className={styles.label}>Status :</span>
-          <span className={styles.statusBox}>{statusText}</span>
+      {/* SMTP Server */}
+      <div className={styles.editRow}>
+        <span className={styles.editLabel}>SMTP Server</span>
+        <div className={styles.inputWrapper}>
+          <Input size="small" style={{ fontSize: '13px' }}
+            value={emailSettings.smtp_domain ?? ''} maxLength={40}
+            placeholder="e.g. smtp.gmail.com"
+            onChange={(_, d) => set({ smtp_domain: d.value })} />
         </div>
       </div>
 
+      {/* Port Number */}
+      <div className={styles.editRow}>
+        <span className={styles.editLabel}>Port Number</span>
+        <div className={styles.inputWrapper}>
+          <Input size="small" style={{ fontSize: '13px' }} type="number" min={0} max={65535}
+            value={String(emailSettings.smtp_port ?? 0)}
+            onChange={(_, d) => { const v = Number(d.value); if (!isNaN(v) && v >= 0 && v <= 65535) set({ smtp_port: v }); }} />
+        </div>
+      </div>
+
+      {/* Email */}
+      <div className={styles.editRow}>
+        <span className={styles.editLabel}>Email</span>
+        <div className={styles.inputWrapper}>
+          <Input size="small" style={{ fontSize: '13px' }} type="email"
+            value={emailSettings.email_address ?? ''} maxLength={60}
+            placeholder="sender@example.com"
+            onChange={(_, d) => set({ email_address: d.value })} />
+        </div>
+      </div>
+
+      {/* User Name */}
+      <div className={styles.editRow}>
+        <span className={styles.editLabel}>User Name</span>
+        <div className={styles.inputWrapper}>
+          <Input size="small" style={{ fontSize: '13px' }}
+            value={emailSettings.user_name ?? ''} maxLength={60}
+            onChange={(_, d) => set({ user_name: d.value })} />
+        </div>
+      </div>
+
+      {/* Password */}
+      <div className={styles.editRow}>
+        <span className={styles.editLabel}>Password</span>
+        <div className={styles.inputWrapper}>
+          <Input size="small" style={{ fontSize: '13px' }} type="password"
+            value={emailSettings.password ?? ''} maxLength={20}
+            onChange={(_, d) => set({ password: d.value })} />
+        </div>
+      </div>
+
+      {/* Secure Connection */}
+      <div className={styles.editRow}>
+        <span className={styles.editLabel}>Secure Connection</span>
+        <div className={styles.inputWrapper}>
+          <Dropdown size="small" style={{ fontSize: '13px' }} value={secureTypeLabel}
+            onOptionSelect={(_, data) => set({ secure_connection_type: Number(data.optionValue ?? '0') })}>
+            {SECURE_TYPES.map((t) => (
+              <Option key={t.value} value={t.value} style={{ fontSize: '13px' }}>{t.label}</Option>
+            ))}
+          </Dropdown>
+        </div>
+      </div>
+
+      {/* Recipient 1 */}
+      <div className={styles.editRow}>
+        <span className={styles.editLabel}>Recipient 1</span>
+        <div className={styles.inputWrapper}>
+          <Input size="small" style={{ fontSize: '13px' }} type="email"
+            value={emailSettings.To1Addr ?? ''} maxLength={60}
+            placeholder="recipient1@example.com"
+            onChange={(_, d) => set({ To1Addr: d.value })} />
+        </div>
+      </div>
+
+      {/* Recipient 2 */}
+      <div className={styles.editRow}>
+        <span className={styles.editLabel}>Recipient 2</span>
+        <div className={styles.inputWrapper}>
+          <Input size="small" style={{ fontSize: '13px' }} type="email"
+            value={emailSettings.To2Addr ?? ''} maxLength={60}
+            placeholder="recipient2@example.com"
+            onChange={(_, d) => set({ To2Addr: d.value })} />
+        </div>
+      </div>
+
+      {/* Status (read-only) */}
+      <div className={styles.editRow}>
+        <span className={styles.editLabel}>Status</span>
+        <span className={styles.statusValue}>{statusText}</span>
+      </div>
     </div>
   );
 };
