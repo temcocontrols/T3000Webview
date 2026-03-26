@@ -24,9 +24,27 @@ import {
   Option,
   Text,
   makeStyles,
+  mergeClasses,
   tokens,
 } from '@fluentui/react-components';
-import { AddRegular, DeleteRegular, CheckmarkRegular, DismissRegular, InfoRegular } from '@fluentui/react-icons';
+import { AddRegular, ChevronDownRegular, ChevronUpRegular, DeleteRegular, CheckmarkRegular, DismissRegular, InfoRegular } from '@fluentui/react-icons';
+
+// ─── Viewport width hook (same tiers as PointListRow) ─────────────────────
+function useViewportWidth(): number {
+  const [vw, setVw] = React.useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 0
+  );
+  React.useEffect(() => {
+    let tid: ReturnType<typeof setTimeout>;
+    const update = () => { clearTimeout(tid); tid = setTimeout(() => setVw(window.innerWidth), 50); };
+    window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', update);
+    return () => { window.removeEventListener('resize', update); window.removeEventListener('orientationchange', update); clearTimeout(tid); };
+  }, []);
+  return vw;
+}
+const T1 = 600;  // show Port + ID
+const T2 = 800;  // also show Inputs + Outputs
 
 // ─── Static data (from C++ global_define.h) ───────────────────────────────
 
@@ -70,6 +88,7 @@ interface ExpansionIOTabProps {
   setExpansionSettings: (s: ExpansionIOSettings) => void;
   onDone: (settings: ExpansionIOSettings) => Promise<void>;
   loading?: boolean;
+  mobile?: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -285,6 +304,213 @@ const useStyles = makeStyles({
     borderRadius: '4px',
     padding: '4px 8px',
   },
+
+  // ── Mobile layout classes ──────────────────────────────────────────────────
+  mobileRoot: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  mobileActionBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '8px 10px',
+    backgroundColor: '#fafafa',
+    borderBottom: `1px solid #edebe9`,
+    flexShrink: 0,
+    flexWrap: 'wrap',
+  },
+  mobileList: {
+    flex: 1,
+    overflowY: 'auto',
+  },
+  mobileListHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    height: '32px',
+    backgroundColor: '#fafafa',
+    borderBottom: `1px solid #edebe9`,
+    paddingLeft: '8px',
+    paddingRight: '6px',
+    flexShrink: 0,
+    userSelect: 'none',
+  },
+  mobileHeaderCell: {
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#323130',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  mobileHeaderNum: {
+    width: '32px',
+    flexShrink: 0,
+  },
+  mobileHeaderHardware: {
+    flex: 1,
+    paddingLeft: '6px',
+  },
+  mobileHeaderPort: {
+    width: '86px',
+    flexShrink: 0,
+  },
+  mobileHeaderRange: {
+    width: '64px',
+    flexShrink: 0,
+    textAlign: 'right' as const,
+    paddingRight: '4px',
+  },
+  mobileHeaderChevron: {
+    width: '20px',
+    flexShrink: 0,
+  },
+  mobileRow: {
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  mobileRowSelected: {
+    backgroundColor: '#edf2fa',
+  },
+  mobileRowInner: {
+    display: 'flex',
+    alignItems: 'center',
+    width: '100%',
+    minHeight: '44px',
+    paddingLeft: '8px',
+    paddingRight: '6px',
+    cursor: 'pointer',
+    userSelect: 'none',
+    background: 'none',
+    border: 'none',
+    textAlign: 'left' as const,
+    appearance: 'none',
+    fontFamily: 'inherit',
+    ':hover': { backgroundColor: '#fafafa' },
+    ':active': { backgroundColor: tokens.colorNeutralBackground2 },
+  },
+  mobileNumCell: {
+    width: '32px',
+    flexShrink: 0,
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+    fontWeight: 500,
+  },
+  mobileHardwareCell: {
+    flex: 1,
+    paddingLeft: '6px',
+    fontSize: '13px',
+    color: tokens.colorNeutralForeground1,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  mobilePortCell: {
+    width: '86px',
+    flexShrink: 0,
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground2,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  mobileRangeCell: {
+    width: '64px',
+    flexShrink: 0,
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground2,
+    textAlign: 'right' as const,
+    paddingRight: '4px',
+  },
+  mobileChevronCell: {
+    width: '20px',
+    flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: tokens.colorNeutralForeground3,
+  },
+  // extra column cells for wider viewports
+  mobileHeaderId: {
+    width: '50px',
+    flexShrink: 0,
+  },
+  mobileHeaderInputs: {
+    width: '70px',
+    flexShrink: 0,
+    textAlign: 'right' as const,
+    paddingRight: '4px',
+  },
+  mobileHeaderOutputs: {
+    width: '70px',
+    flexShrink: 0,
+    textAlign: 'right' as const,
+    paddingRight: '4px',
+  },
+  mobileIdCell: {
+    width: '50px',
+    flexShrink: 0,
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground2,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  mobileInputsCell: {
+    width: '70px',
+    flexShrink: 0,
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground2,
+    textAlign: 'right' as const,
+    paddingRight: '4px',
+  },
+  mobileOutputsCell: {
+    width: '70px',
+    flexShrink: 0,
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground2,
+    textAlign: 'right' as const,
+    paddingRight: '4px',
+  },
+  // propGrid — flex-wrap tile grid (same as PointListRow expanded section)
+  mobilePropGrid: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    borderTop: '1px solid #e0e0e0',
+    borderLeft: '1px solid #e0e0e0',
+    backgroundColor: '#f5f8fc',
+  },
+  mobilePropRow: {
+    flex: '1 1 140px',
+    minWidth: '140px',
+    display: 'flex',
+    flexDirection: 'column',
+    padding: '6px 10px',
+    borderRight: '1px solid #e0e0e0',
+    borderBottom: '1px solid #e0e0e0',
+  },
+  mobilePropKey: {
+    fontSize: '10px',
+    color: '#8a8886',
+    fontWeight: 600,
+    textTransform: 'uppercase' as 'uppercase',
+    letterSpacing: '0.04em',
+    marginBottom: '2px',
+  },
+  mobilePropVal: {
+    fontSize: '12px',
+    color: '#323130',
+    fontWeight: 400,
+    wordBreak: 'break-word' as 'break-word',
+  },
+  mobileStatusMsg: {
+    fontSize: '12px',
+    color: tokens.colorPaletteRedForeground1,
+  },
+  mobileStatusOk: {
+    fontSize: '12px',
+    color: tokens.colorPaletteGreenForeground1,
+  },
 });
 
 // ─── Component ────────────────────────────────────────────────────────────
@@ -294,6 +520,7 @@ export const ExpansionIOTab: React.FC<ExpansionIOTabProps> = ({
   setExpansionSettings,
   onDone,
   loading = false,
+  mobile = false,
 }) => {
   const styles = useStyles();
 
@@ -401,6 +628,149 @@ export const ExpansionIOTab: React.FC<ExpansionIOTabProps> = ({
   };
 
   const isDisabled = loading || saveLoading;
+  const vw = useViewportWidth();
+  const isWide = vw >= T1;    // ≥600px: show Port + ID columns
+  const isVeryWide = vw >= T2; // ≥800px: also show Inputs + Outputs columns
+
+  // ── Mobile layout ──────────────────────────────────────────────────────────
+  if (mobile) {
+    return (
+      <div className={styles.mobileRoot}>
+
+        {/* Action bar */}
+        <div className={styles.mobileActionBar}>
+          <Button size="small" appearance="secondary" icon={<AddRegular />}
+            onClick={handleAdd} disabled={isDisabled || devices.length >= MAX_EXTIO_COUNT}>
+            Add
+          </Button>
+          <Button size="small" appearance="secondary" icon={<DeleteRegular />}
+            onClick={handleDeleteSelected} disabled={isDisabled || selectedIndex === null || selectedIndex === 0}>
+            Delete
+          </Button>
+          <Button size="small" appearance="primary" icon={<CheckmarkRegular />}
+            onClick={handleDone} disabled={isDisabled}>
+            {saveLoading ? 'Saving…' : 'Done'}
+          </Button>
+          <Button size="small" appearance="secondary" icon={<DismissRegular />}
+            onClick={handleCancel} disabled={isDisabled}>
+            Cancel
+          </Button>
+          <Button size="small" appearance="secondary" disabled={true}>Redefine IO</Button>
+          {statusMsg && (
+            <span className={statusMsg.isError ? styles.mobileStatusMsg : styles.mobileStatusOk}>
+              {statusMsg.text}
+            </span>
+          )}
+        </div>
+
+        {/* Column header — tier-based */}
+        <div className={styles.mobileListHeader}>
+          <span className={mergeClasses(styles.mobileHeaderCell, styles.mobileHeaderNum)}>#</span>
+          <span className={mergeClasses(styles.mobileHeaderCell, styles.mobileHeaderHardware)}>Hardware</span>
+          {isWide && <span className={mergeClasses(styles.mobileHeaderCell, styles.mobileHeaderPort)}>Port</span>}
+          {isWide && <span className={mergeClasses(styles.mobileHeaderCell, styles.mobileHeaderId)}>ID</span>}
+          {isVeryWide && <span className={mergeClasses(styles.mobileHeaderCell, styles.mobileHeaderInputs)}>Inputs</span>}
+          {isVeryWide && <span className={mergeClasses(styles.mobileHeaderCell, styles.mobileHeaderOutputs)}>Outputs</span>}
+          <span className={styles.mobileHeaderChevron} />
+        </div>
+
+        {/* List */}
+        <div className={styles.mobileList}>
+          {devices.length === 0 ? (
+            <div className={styles.emptyHint}>No expansion I/O modules configured. Tap "Add" to add one.</div>
+          ) : (
+            devices.map((entry, i) => {
+              const isExpanded = selectedIndex === i;
+              const isRow0 = i === 0;
+              const prod = EXTIO_PRODUCTS[getProductIndexById(entry.product_id)];
+              const portName = EXTIO_PORTS[Math.min(entry.port, EXTIO_PORTS.length - 1)];
+              const inputDisplay = isRow0 ? 'N/A' : `${entry.input_start}–${entry.input_end}`;
+              const outputDisplay = isRow0 ? 'N/A' : (prod.outputCount === 0 ? 'N/A' : `${entry.output_start}–${entry.output_end}`);
+              const lastContact = isRow0 ? 'N/A' : formatLastContact(entry.last_contact_time);
+
+              return (
+                <div key={i} className={mergeClasses(styles.mobileRow, isExpanded && styles.mobileRowSelected)}>
+
+                  {/* Compact row — columns shown based on viewport tier */}
+                  <button
+                    className={styles.mobileRowInner}
+                    onClick={() => { setSelectedIndex(prev => prev === i ? null : i); setStatusMsg(null); }}
+                  >
+                    <span className={styles.mobileNumCell}>{i + 1}</span>
+                    <span className={styles.mobileHardwareCell}>{prod.name}</span>
+                    {isWide && <span className={styles.mobilePortCell}>{isRow0 ? 'N/A' : portName}</span>}
+                    {isWide && <span className={styles.mobileIdCell}>{isRow0 ? 'N/A' : entry.modbus_id}</span>}
+                    {isVeryWide && <span className={styles.mobileInputsCell}>{inputDisplay}</span>}
+                    {isVeryWide && <span className={styles.mobileOutputsCell}>{outputDisplay}</span>}
+                    <span className={styles.mobileChevronCell}>
+                      {isExpanded ? <ChevronUpRegular fontSize={14} /> : <ChevronDownRegular fontSize={14} />}
+                    </span>
+                  </button>
+
+                  {/* Expanded area — propGrid tiles (flex-wrap, dynamic columns by width) */}
+                  {isExpanded && (
+                    <div className={styles.mobilePropGrid}>
+                      {isRow0 ? (
+                        /* Row 0 = main panel, all read-only */
+                        [['Hardware', prod.name], ['Port', 'N/A'], ['ID', 'N/A'],
+                         ['Last Contact', 'N/A'], ['Inputs', inputDisplay], ['Outputs', outputDisplay]]
+                          .map(([k, v]) => (
+                            <div key={k} className={styles.mobilePropRow}>
+                              <span className={styles.mobilePropKey}>{k}</span>
+                              <span className={styles.mobilePropVal}>{v}</span>
+                            </div>
+                          ))
+                      ) : (
+                        /* Rows 1+ = editable fields inline inside each tile */
+                        <>
+                          <div className={styles.mobilePropRow}>
+                            <span className={styles.mobilePropKey}>Hardware</span>
+                            <Dropdown appearance="underline" size="small" value={prod.name} selectedOptions={[prod.name]}
+                              onOptionSelect={(_, d) => handleHardwareChange(i, d.optionValue ?? '')} disabled={isDisabled}>
+                              {EXTIO_PRODUCTS.map(p => (<Option key={p.name} value={p.name}>{p.name}</Option>))}
+                            </Dropdown>
+                          </div>
+                          <div className={styles.mobilePropRow}>
+                            <span className={styles.mobilePropKey}>Port</span>
+                            <Dropdown appearance="underline" size="small" value={portName} selectedOptions={[portName]}
+                              onOptionSelect={(_, d) => handlePortChange(i, d.optionValue ?? '')} disabled={isDisabled}>
+                              {EXTIO_PORTS.map(p => (<Option key={p} value={p}>{p}</Option>))}
+                            </Dropdown>
+                          </div>
+                          <div className={styles.mobilePropRow}>
+                            <span className={styles.mobilePropKey}>ID</span>
+                            <Input appearance="underline" size="small"
+                              key={`mid-${i}-${entry.modbus_id}`}
+                              defaultValue={String(entry.modbus_id || '')}
+                              disabled={isDisabled}
+                              onBlur={e => handleIdChange(i, e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') handleIdChange(i, (e.target as HTMLInputElement).value); }}
+                            />
+                          </div>
+                          <div className={styles.mobilePropRow}>
+                            <span className={styles.mobilePropKey}>Last Contact</span>
+                            <span className={styles.mobilePropVal}>{lastContact || '—'}</span>
+                          </div>
+                          <div className={styles.mobilePropRow}>
+                            <span className={styles.mobilePropKey}>Inputs</span>
+                            <span className={styles.mobilePropVal}>{inputDisplay}</span>
+                          </div>
+                          <div className={styles.mobilePropRow}>
+                            <span className={styles.mobilePropKey}>Outputs</span>
+                            <span className={styles.mobilePropVal}>{outputDisplay}</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.root}>      {/* ⚠️ Data source note: Str_Extio_point[] is NOT in the 400-byte Str_Setting_Info */}

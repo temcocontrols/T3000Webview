@@ -1554,6 +1554,7 @@ export const SettingsPageMobile: React.FC = () => {
   const renderExpansion = () => (
     <div className={styles.subTabWrap}>
       <ExpansionIOTab
+        mobile
         expansionSettings={expansionSettings}
         setExpansionSettings={setExpansionSettings}
         onDone={handleSaveExpansion}
