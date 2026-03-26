@@ -111,11 +111,15 @@ const useStyles = makeStyles({
   groupBox: {
     border: `1px solid ${tokens.colorNeutralStroke1}`,
     borderRadius: '4px',
-    padding: '12px 16px 16px',
+    padding: '12px',
     backgroundColor: tokens.colorNeutralBackground1,
-    margin: '12px',
     width: '50%',
     minWidth: '360px',
+  },
+  pcActionRow: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    marginTop: '8px',
   },
   groupTitle: {
     fontSize: '13px',
@@ -255,9 +259,16 @@ export const EmailSettingsTab: React.FC<EmailSettingsTabProps> = ({
               onChange={(_, d) => set({ To2Addr: d.value })} />
           </div>
 
-          <div className={mergeClasses(styles.row, styles.rowLast)}>
+          <div className={styles.row}>
             <span className={styles.label}>Status</span>
             <span className={styles.statusBox}>{statusText}</span>
+          </div>
+
+          <div className={styles.pcActionRow}>
+            <Button size="small" appearance="primary" icon={<CheckmarkRegular />}
+              onClick={onSave} disabled={loading}>
+              OK
+            </Button>
           </div>
         </div>
       </div>
