@@ -130,14 +130,15 @@ const useStyles = makeStyles({
   },
   enableRow: {
     display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
+    flexDirection: 'column',
+    gap: '4px',
     padding: '10px 12px 10px 16px',
   },
   enableNote: {
     fontSize: '11px',
     color: tokens.colorNeutralForeground3,
     fontStyle: 'italic',
+    paddingLeft: '4px',
   },
   emptyDetail: {
     fontSize: '12px',
@@ -537,24 +538,28 @@ export const UserLoginTab: React.FC<UserLoginTabProps> = ({
       {/* User list */}
       <div className={styles.sectionHead}>Users</div>
       <div className={styles.listBox}>
-        {Array.from({ length: MAX_USERS }, (_, i) => {
-            const u = users[i];
-            const isSelected = selectedIndex === i;
-            const isAlt = i % 2 === 1;
-            return (
-              <div
-                key={i}
-                className={mergeClasses(
-                  styles.listItem,
-                  isSelected && styles.listItemSelected,
-                  !isSelected && isAlt && styles.listItemAlt,
-                )}
-                onClick={() => handleSelectRow(i)}
-              >
-                {u?.name || ''}
-              </div>
-            );
-        })}
+        {(() => {
+            const filledCount = users.filter(u => u.name).length;
+            const visibleCount = Math.min(filledCount + 2, MAX_USERS);
+            return Array.from({ length: visibleCount }, (_, i) => {
+              const u = users[i];
+              const isSelected = selectedIndex === i;
+              const isAlt = i % 2 === 1;
+              return (
+                <div
+                  key={i}
+                  className={mergeClasses(
+                    styles.listItem,
+                    isSelected && styles.listItemSelected,
+                    !isSelected && isAlt && styles.listItemAlt,
+                  )}
+                  onClick={() => handleSelectRow(i)}
+                >
+                  {u?.name || ''}
+                </div>
+              );
+            });
+        })()}
       </div>
 
       {/* User detail */}
