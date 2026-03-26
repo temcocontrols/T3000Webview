@@ -26,6 +26,7 @@ import {
   Text,
   tokens,
   makeStyles,
+  mergeClasses,
 } from '@fluentui/react-components';
 import {
   SaveRegular,
@@ -1626,13 +1627,13 @@ export const SettingsPageMobile: React.FC = () => {
 
       {/* ── Status banners ──────────────────────────────────────────────── */}
       {error && (
-        <div className={`${styles.banner} ${styles.bannerError}`}>
+        <div className={mergeClasses(styles.banner, styles.bannerError)}>
           <DismissRegular fontSize={14} />
           {error}
         </div>
       )}
       {successMessage && (
-        <div className={`${styles.banner} ${styles.bannerSuccess}`}>
+        <div className={mergeClasses(styles.banner, styles.bannerSuccess)}>
           {successMessage}
         </div>
       )}
@@ -1660,7 +1661,7 @@ export const SettingsPageMobile: React.FC = () => {
           </div>
           <div className={styles.footerRow}>
             <Button
-              className={`${styles.footerBtn} ${styles.rebootBtnDanger}`}
+              className={mergeClasses(styles.footerBtn, styles.rebootBtnDanger)}
               appearance="secondary"
               icon={<PowerRegular />}
               size="small"
