@@ -35,12 +35,11 @@ import {
   Dropdown,
   Input,
   Option,
-  Text,
   makeStyles,
   mergeClasses,
   tokens,
 } from '@fluentui/react-components';
-import { DeleteRegular, CheckmarkRegular, InfoRegular } from '@fluentui/react-icons';
+import { DeleteRegular, CheckmarkRegular } from '@fluentui/react-icons';
 import type { DeviceSettings } from '../services/settingsRefreshApi';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -67,37 +66,28 @@ const useStyles = makeStyles({
   root: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px',
   },
-  topRow: {
-    display: 'flex',
-    gap: '12px',
-    alignItems: 'flex-start',
+  sectionHead: {
+    fontSize: '11px',
+    fontWeight: 600,
+    letterSpacing: '0.06em',
+    color: tokens.colorNeutralForeground3,
+    backgroundColor: '#f5f5f5',
+    padding: '8px 16px',
+    borderTop: '1px solid #edebe9',
+    borderBottom: '1px solid #edebe9',
+    textTransform: 'uppercase',
   },
   listBox: {
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    borderRadius: '4px',
-    minWidth: '160px',
-    width: '180px',
-    backgroundColor: tokens.colorNeutralBackground1,
     overflow: 'hidden',
-    flexShrink: 0,
-  },
-  listHeader: {
-    fontSize: '12px',
-    fontWeight: tokens.fontWeightSemibold,
-    padding: '6px 10px',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground2,
-    color: tokens.colorNeutralForeground2,
   },
   listItem: {
-    fontSize: '12px',
-    padding: '5px 10px',
+    fontSize: '13px',
+    padding: '8px 16px',
     cursor: 'pointer',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderBottom: '1px solid #f3f2f1',
     color: tokens.colorNeutralForeground1,
-    minHeight: '26px',
+    minHeight: '34px',
     backgroundColor: tokens.colorNeutralBackground1,
     ':hover': {
       backgroundColor: tokens.colorNeutralBackground3,
@@ -113,46 +103,36 @@ const useStyles = makeStyles({
   listItemAlt: {
     backgroundColor: tokens.colorNeutralBackground2,
   },
-  detailBox: {
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    borderRadius: '4px',
-    padding: '12px 16px 14px',
-    backgroundColor: tokens.colorNeutralBackground1,
-    flex: 1,
-    minWidth: '260px',
-  },
-  row: {
+  detailPanel: {
     display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    marginBottom: '10px',
+    flexDirection: 'column',
   },
-  label: {
-    fontSize: '12px',
-    minWidth: '140px',
-    color: tokens.colorNeutralForeground1,
+  editRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    padding: '10px 12px 10px 16px',
+    borderBottom: '1px solid #f3f2f1',
   },
-  control: {
-    flex: 1,
-    minWidth: '160px',
-  },
-  hint: {
+  editLabel: {
     fontSize: '11px',
     color: tokens.colorNeutralForeground3,
-    marginLeft: '148px',
-    marginBottom: '10px',
-    fontStyle: 'italic',
+  },
+  inputWrapper: {
+    display: 'grid',
+    gridTemplateColumns: '1fr',
   },
   actionRow: {
     display: 'flex',
     gap: '10px',
-    marginTop: '6px',
-    justifyContent: 'flex-start',
+    padding: '12px 16px',
+    borderBottom: '1px solid #f3f2f1',
   },
   enableRow: {
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
+    padding: '10px 12px 10px 16px',
   },
   enableNote: {
     fontSize: '11px',
@@ -162,22 +142,19 @@ const useStyles = makeStyles({
   emptyDetail: {
     fontSize: '12px',
     color: tokens.colorNeutralForeground3,
-    padding: '16px 0',
+    padding: '20px 16px',
     textAlign: 'center',
   },
   dimmed: {
     opacity: '0.4',
   },
-  dataNote: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    fontSize: '11px',
-    color: tokens.colorNeutralForeground3,
-    backgroundColor: tokens.colorNeutralBackground2,
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: '4px',
-    padding: '4px 8px',
+  statusSuccess: {
+    fontSize: '12px',
+    color: tokens.colorStatusSuccessForeground1,
+  },
+  statusError: {
+    fontSize: '12px',
+    color: tokens.colorStatusDangerForeground1,
   },
 });
 
@@ -344,180 +321,142 @@ export const UserLoginTab: React.FC<UserLoginTabProps> = ({
 
   return (
     <div className={styles.root}>
-      {/* ⚠️ Data source note */}
-      {/* enable_user_list → byte[47] of Str_Setting_Info ✅ */}
-      {/* users[0..7] (name/password/access_level) → Str_User_point[8] — NOT in 400 bytes */}
-      <div className={styles.dataNote}>
-        <InfoRegular fontSize={12} />
-        <span>
-          <strong>enable_user_list</strong> — byte[47] of Str_Setting_Info ✅&nbsp;&nbsp;|
-          &nbsp;&nbsp;<strong>users[0–7]</strong> (name/password/access_level) — Str_User_point[8],
-          separate from 400 bytes. Loaded via <code>GET /api/v1/devices/:sn/users</code>.
-        </span>
-      </div>
-      {/* Top: list + detail side-by-side */}
-      <div className={styles.topRow}>
+      <div className={styles.sectionHead}>User Login</div>
 
-        {/* ── Left: user list ──────────────────────────────────────── */}
-        <div className={styles.listBox}>
-          <div className={styles.listHeader}>User  Name</div>
-          {Array.from({ length: MAX_USERS }, (_, i) => {
+      {/* User list */}
+      <div className={styles.sectionHead}>Users</div>
+      <div className={styles.listBox}>
+        {Array.from({ length: MAX_USERS }, (_, i) => {
             const u = users[i];
             const isSelected = selectedIndex === i;
             const isAlt = i % 2 === 1;
             return (
               <div
                 key={i}
-                className={[
+                className={mergeClasses(
                   styles.listItem,
-                  isSelected ? styles.listItemSelected : '',
-                  !isSelected && isAlt ? styles.listItemAlt : '',
-                ].join(' ')}
+                  isSelected && styles.listItemSelected,
+                  !isSelected && isAlt && styles.listItemAlt,
+                )}
                 onClick={() => handleSelectRow(i)}
               >
                 {u?.name || ''}
               </div>
             );
-          })}
-        </div>
+        })}
+      </div>
 
-        {/* ── Right: user detail ───────────────────────────────────── */}
-        <div className={styles.detailBox}>
-          {selectedIndex === null ? (
-            <div className={styles.emptyDetail}>Select a user from the list to edit</div>
-          ) : (
-            <>
-              {/* Name */}
-              <div className={styles.row}>
-                <span className={styles.label}>Name  :</span>
-                <Input
-                  className={styles.control}
-                  style={{ fontSize: '12px' }}
+      {/* User detail */}
+      <div className={styles.sectionHead}>User Detail</div>
+      <div className={styles.detailPanel}>
+        {selectedIndex === null ? (
+          <div className={styles.emptyDetail}>Select a user from the list to edit</div>
+        ) : (
+          <>
+            {/* Name */}
+            <div className={styles.editRow}>
+              <span className={styles.editLabel}>Name</span>
+              <div className={styles.inputWrapper}>
+                <Input size="small" style={{ fontSize: '13px' }}
                   value={editName}
                   maxLength={STR_USER_NAME_LENGTH - 1}
-                  onChange={(_, d) => setEditName(d.value)}
-                />
+                  onChange={(_, d) => setEditName(d.value)} />
               </div>
+            </div>
 
-              {/* Access Level */}
-              <div className={styles.row}>
-                <span className={styles.label}>Access Level</span>
-                <Dropdown
-                  className={styles.control}
-                  style={{ fontSize: '12px' }}
-                  button={{ style: { fontSize: '12px' } }}
+            {/* Access Level */}
+            <div className={styles.editRow}>
+              <span className={styles.editLabel}>Access Level</span>
+              <div className={styles.inputWrapper}>
+                <Dropdown size="small" style={{ fontSize: '13px' }}
                   value={accessLevelLabel}
-                  onOptionSelect={(_, data) => setEditAccessLevel(Number(data.optionValue))}
-                >
+                  onOptionSelect={(_, data) => setEditAccessLevel(Number(data.optionValue))}>
                   {ACCESS_LEVELS.map(a => (
-                    <Option key={a.value} value={String(a.value)} style={{ fontSize: '12px' }}>
-                      {a.label}
-                    </Option>
+                    <Option key={a.value} value={String(a.value)} style={{ fontSize: '13px' }}>{a.label}</Option>
                   ))}
                 </Dropdown>
               </div>
+            </div>
 
-              {/* Current Password — always shown, enabled only when verifying existing user */}
-              <div className={mergeClasses(styles.row, !currentPasswordEnabled && styles.dimmed)}>
-                <span className={styles.label}>Password</span>
-                <Input
-                  className={styles.control}
-                  style={{ fontSize: '12px' }}
+            {/* Current Password */}
+            <div className={mergeClasses(styles.editRow, !currentPasswordEnabled && styles.dimmed)}>
+              <span className={styles.editLabel}>Password (type Enter to change)</span>
+              <div className={styles.inputWrapper}>
+                <Input size="small" style={{ fontSize: '13px' }}
                   type="password"
                   value={editPassword}
                   maxLength={STR_USER_PASSWORD_LENGTH - 1}
                   disabled={!currentPasswordEnabled}
                   onChange={(_, d) => setEditPassword(d.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleOk(); }}
-                />
+                  onKeyDown={e => { if (e.key === 'Enter') handleOk(); }} />
               </div>
-              <div className={mergeClasses(styles.hint, !currentPasswordEnabled && styles.dimmed)}>
-                ( Type Enter to change )
-              </div>
+            </div>
 
-              {/* Type new password — always shown, enabled after verifying original */}
-              <div className={mergeClasses(styles.row, !newPasswordEnabled && styles.dimmed)}>
-                <span className={styles.label}>Type new password :</span>
-                <Input
-                  className={styles.control}
-                  style={{ fontSize: '12px' }}
+            {/* Type new password */}
+            <div className={mergeClasses(styles.editRow, !newPasswordEnabled && styles.dimmed)}>
+              <span className={styles.editLabel}>Type new password</span>
+              <div className={styles.inputWrapper}>
+                <Input size="small" style={{ fontSize: '13px' }}
                   type="password"
                   value={editNewPassword}
                   maxLength={STR_USER_PASSWORD_LENGTH - 1}
                   disabled={!newPasswordEnabled}
                   onChange={(_, d) => setEditNewPassword(d.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleOk(); }}
-                />
+                  onKeyDown={e => { if (e.key === 'Enter') handleOk(); }} />
               </div>
+            </div>
 
-              {/* Retype new password — always shown, enabled only on final stage */}
-              <div className={mergeClasses(styles.row, !retypePasswordEnabled && styles.dimmed)}>
-                <span className={styles.label}>Retype new password :</span>
-                <Input
-                  className={styles.control}
-                  style={{ fontSize: '12px' }}
+            {/* Retype new password */}
+            <div className={mergeClasses(styles.editRow, !retypePasswordEnabled && styles.dimmed)}>
+              <span className={styles.editLabel}>Retype new password</span>
+              <div className={styles.inputWrapper}>
+                <Input size="small" style={{ fontSize: '13px' }}
                   type="password"
                   value={editRetypePassword}
                   maxLength={STR_USER_PASSWORD_LENGTH - 1}
                   disabled={!retypePasswordEnabled}
                   onChange={(_, d) => setEditRetypePassword(d.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleOk(); }}
-                />
+                  onKeyDown={e => { if (e.key === 'Enter') handleOk(); }} />
               </div>
+            </div>
 
-              {/* Status message */}
-              {statusMsg && (
-                <Text
-                  style={{
-                    fontSize: '11px',
-                    color: statusMsg === 'Operation success!' ? tokens.colorStatusSuccessForeground1 : tokens.colorStatusDangerForeground1,
-                    marginBottom: '8px',
-                    display: 'block',
-                  }}
-                >
+            {/* Status message */}
+            {statusMsg && (
+              <div className={styles.editRow}>
+                <span className={statusMsg === 'Operation success!' ? styles.statusSuccess : styles.statusError}>
                   {statusMsg}
-                </Text>
-              )}
-
-              {/* Action buttons */}
-              <div className={styles.actionRow}>
-                <Button
-                  size="small"
-                  appearance="secondary"
-                  icon={<DeleteRegular />}
-                  onClick={handleDelete}
-                  disabled={!isExistingUser || deleteLoading || loading}
-                >
-                  {deleteLoading ? 'Deleting…' : 'Delete User'}
-                </Button>
-                <Button
-                  size="small"
-                  appearance="primary"
-                  icon={<CheckmarkRegular />}
-                  onClick={handleOk}
-                  disabled={saveLoading || loading}
-                >
-                  {saveLoading ? 'Saving…' : 'OK'}
-                </Button>
+                </span>
               </div>
-            </>
-          )}
-        </div>
+            )}
+
+            {/* Action buttons */}
+            <div className={styles.actionRow}>
+              <Button size="small" appearance="secondary" icon={<DeleteRegular />}
+                onClick={handleDelete}
+                disabled={!isExistingUser || deleteLoading || loading}>
+                {deleteLoading ? 'Deleting…' : 'Delete User'}
+              </Button>
+              <Button size="small" appearance="primary" icon={<CheckmarkRegular />}
+                onClick={handleOk}
+                disabled={saveLoading || loading}>
+                {saveLoading ? 'Saving…' : 'OK'}
+              </Button>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Bottom: Enable user list checkbox */}
+      {/* Bottom: Enable user list */}
+      <div className={styles.sectionHead}>Settings</div>
       <div className={styles.enableRow}>
         <Checkbox
-          label={{
-            style: { fontSize: '12px', fontWeight: 'normal' },
-            children: 'Enable user list.',
-          }}
+          label={{ style: { fontSize: '12px', fontWeight: 'normal' }, children: 'Enable user list' }}
           checked={userLoginSettings.enable_user_list === 2}
           onChange={handleEnableToggle}
           disabled={loading}
         />
         <span className={styles.enableNote}>
-          (If want to access this device , please use the user list to sign in)
+          (If want to access this device, please use the user list to sign in)
         </span>
       </div>
     </div>
