@@ -199,60 +199,63 @@ export const DyndnsSettingsTab: React.FC<DyndnsSettingsTabProps> = ({
           {/* Select DDNS Server */}
           <div className={styles.row}>
             <span className={styles.label}>Select DDNS Server</span>
-            <Dropdown
-              className={styles.control}
-              style={{ fontSize: '12px' }}
-              button={{ style: { fontSize: '12px' } }}
-              value={providerLabel}
-              onOptionSelect={handleProviderSelect}
-              disabled={!enabled}
-            >
-              {DDNS_SERVERS.map((s) => (
-                <Option key={s.value} value={s.value} style={{ fontSize: '12px' }}>
-                  {s.label}
-                </Option>
-              ))}
-            </Dropdown>
+            <div style={{ flex: 1, minWidth: '180px', display: 'grid', gridTemplateColumns: '1fr' }}>
+              <Dropdown
+                style={{ fontSize: '12px' }}
+                value={providerLabel}
+                onOptionSelect={handleProviderSelect}
+                disabled={!enabled}
+              >
+                {DDNS_SERVERS.map((s) => (
+                  <Option key={s.value} value={s.value} style={{ fontSize: '12px' }}>
+                    {s.label}
+                  </Option>
+                ))}
+              </Dropdown>
+            </div>
           </div>
 
           {/* User Name */}
           <div className={styles.row}>
             <span className={styles.label}>User Name</span>
-            <Input
-              className={styles.control}
-              style={{ fontSize: '12px' }}
-              value={dyndnsSettings.DynDNS_User ?? ''}
-              maxLength={32}
-              onChange={handleUser}
-              disabled={!enabled}
-            />
+            <div style={{ flex: 1, minWidth: '180px', display: 'grid', gridTemplateColumns: '1fr' }}>
+              <Input
+                style={{ fontSize: '12px' }}
+                value={dyndnsSettings.DynDNS_User ?? ''}
+                maxLength={32}
+                onChange={handleUser}
+                disabled={!enabled}
+              />
+            </div>
           </div>
 
           {/* Password */}
           <div className={styles.row}>
             <span className={styles.label}>Password</span>
-            <Input
-              className={styles.control}
-              style={{ fontSize: '12px' }}
-              type="password"
-              value={dyndnsSettings.DynDNS_Pass ?? ''}
-              maxLength={32}
-              onChange={handlePass}
-              disabled={!enabled}
-            />
+            <div style={{ flex: 1, minWidth: '180px', display: 'grid', gridTemplateColumns: '1fr' }}>
+              <Input
+                style={{ fontSize: '12px' }}
+                type="password"
+                value={dyndnsSettings.DynDNS_Pass ?? ''}
+                maxLength={32}
+                onChange={handlePass}
+                disabled={!enabled}
+              />
+            </div>
           </div>
 
           {/* Domain */}
           <div className={styles.row}>
             <span className={styles.label}>Domain</span>
-            <Input
-              className={styles.control}
-              style={{ fontSize: '12px' }}
-              value={dyndnsSettings.DynDNS_Domain ?? ''}
-              maxLength={64}
-              onChange={handleDomain}
-              disabled={!enabled}
-            />
+            <div style={{ flex: 1, minWidth: '180px', display: 'grid', gridTemplateColumns: '1fr' }}>
+              <Input
+                style={{ fontSize: '12px' }}
+                value={dyndnsSettings.DynDNS_Domain ?? ''}
+                maxLength={64}
+                onChange={handleDomain}
+                disabled={!enabled}
+              />
+            </div>
           </div>
 
           {/* Check interval */}

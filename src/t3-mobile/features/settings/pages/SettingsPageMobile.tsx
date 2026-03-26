@@ -474,8 +474,8 @@ const useStyles = makeStyles({
     pointerEvents: 'none' as const,
   },
   dyndnsFields: {
-    display: 'flex',
-    flexDirection: 'column',
+    display: 'block',
+    width: '100%',
   },
   dyndnsIntervalLabel: {
     fontSize: '12px',
@@ -1436,27 +1436,29 @@ export const SettingsPageMobile: React.FC = () => {
         <div className={fieldsCls}>
           <div className={styles.editRow}>
             <span className={styles.editLabel}>Select DDNS Server</span>
-            <Dropdown size="small" style={{ width: '100%', minWidth: 0 }}
-              value={providerLabel} disabled={!enabled}
-              onOptionSelect={(_, d) => {
-                const v = Number(d.optionValue ?? '0');
-                setDyndnsSettings({ ...dyndnsSettings, DynDNS_Provider: v });
-                updateSettings({ dyndns_provider: v });
-              }}>
-              {DDNS_SERVERS.map((s, i) => <Option key={i} value={String(i)}>{s.label}</Option>)}
-            </Dropdown>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr' }}>
+              <Dropdown size="small"
+                value={providerLabel} disabled={!enabled}
+                onOptionSelect={(_, d) => {
+                  const v = Number(d.optionValue ?? '0');
+                  setDyndnsSettings({ ...dyndnsSettings, DynDNS_Provider: v });
+                  updateSettings({ dyndns_provider: v });
+                }}>
+                {DDNS_SERVERS.map((s, i) => <Option key={i} value={String(i)}>{s.label}</Option>)}
+              </Dropdown>
+            </div>
           </div>
 
-          <div className={styles.panelEditGrid}>
-            <div className={styles.panelEditCell}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid #f3f2f1' }}>
+            <div style={{ padding: '10px 12px 10px 16px', minWidth: 0, overflow: 'hidden', borderRight: '1px solid #f3f2f1', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <span className={styles.panelEditCellLabel}>User Name</span>
-              <Input size="small" style={{ width: '100%', minWidth: 0 }}
+              <Input size="small" style={{ width: '100%', minWidth: 0, maxWidth: '100%' }}
                 value={dyndnsSettings.DynDNS_User ?? ''} maxLength={32} disabled={!enabled}
                 onChange={(_, d) => { setDyndnsSettings({ ...dyndnsSettings, DynDNS_User: d.value }); updateSettings({ dyndns_user: d.value }); }} />
             </div>
-            <div className={styles.panelEditCell}>
+            <div style={{ padding: '10px 12px 10px 16px', minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <span className={styles.panelEditCellLabel}>Password</span>
-              <Input size="small" type="password" style={{ width: '100%', minWidth: 0 }}
+              <Input size="small" type="password" style={{ width: '100%', minWidth: 0, maxWidth: '100%' }}
                 value={dyndnsSettings.DynDNS_Pass ?? ''} maxLength={32} disabled={!enabled}
                 onChange={(_, d) => { setDyndnsSettings({ ...dyndnsSettings, DynDNS_Pass: d.value }); updateSettings({ dyndns_pass: d.value }); }} />
             </div>
@@ -1464,9 +1466,11 @@ export const SettingsPageMobile: React.FC = () => {
 
           <div className={styles.editRow}>
             <span className={styles.editLabel}>Domain</span>
-            <Input size="small" style={{ width: '100%', minWidth: 0 }}
-              value={dyndnsSettings.DynDNS_Domain ?? ''} maxLength={64} disabled={!enabled}
-              onChange={(_, d) => { setDyndnsSettings({ ...dyndnsSettings, DynDNS_Domain: d.value }); updateSettings({ dyndns_domain: d.value }); }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr' }}>
+              <Input size="small"
+                value={dyndnsSettings.DynDNS_Domain ?? ''} maxLength={64} disabled={!enabled}
+                onChange={(_, d) => { setDyndnsSettings({ ...dyndnsSettings, DynDNS_Domain: d.value }); updateSettings({ dyndns_domain: d.value }); }} />
+            </div>
           </div>
 
           <div className={styles.timeSyncPanel}>
