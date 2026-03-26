@@ -56,6 +56,8 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { SettingsRefreshApi, type DeviceSettings } from '../services/settingsRefreshApi';
+import { T3Transport } from '../../../../lib/t3-transport/core/T3Transport';
+import { WebViewMessageType } from '../../../../lib/t3-transport/types/message-enums';
 import { SettingsUpdateApi } from '../services/settingsUpdateApi';
 import { AdvancedSettingsDialog } from '../components/AdvancedSettingsDialog';
 import { WifiSettingsDialog } from '../components/WifiSettingsDialog';
@@ -698,78 +700,94 @@ export const SettingsPage: React.FC = () => {
   // ─────────────────────────────────────────────────────────────────────────────
   // EXTERNAL DATA FETCH — data NOT in Str_Setting_Info (400 bytes)
   //
-  // These three structures are completely separate from the 400-byte settings block:
-  //   • Str_Email_point          → GET /api/v1/devices/:sn/email-settings
-  //   • Str_User_point[8]        → GET /api/v1/devices/:sn/users
-  //   • Str_Extio_point[]        → GET /api/v1/devices/:sn/expansion-io
+  // Email, Users, Expansion IO are separate C++ structures fetched via live FFI,
+  // the same path as basic settings (GET_WEBVIEW_LIST / Action 17).
+  //
+  // ⚠️  Entry types 43 (email) and 37 (expansion IO) require C++ to add the
+  //     corresponding cases in the GET_WEBVIEW_LIST switch — currently unimplemented.
+  //     Users (entryType 14 = ENUM_USER_NAME) may already work.
+  //
+  // Old REST API calls (DB-backed, commented out):
+  // const base = `http://localhost:9103/api/t3_device`;
+  // fetch(`${base}/devices/${serialNumber}/settings/email`)  → GET EMAIL_ALARMS table
+  // fetch(`${base}/users/${serialNumber}`)                    → GET USERS table
+  // fetch(`${base}/devices/${serialNumber}/settings/expansion-io`) → GET EXTIO_DEVICES table
   // ─────────────────────────────────────────────────────────────────────────────
   const fetchExternalSettings = useCallback(async (serialNumber: number) => {
-    const base = `http://localhost:9103/api/t3_device`;
-
-    // ── Email settings (Str_Email_point — NOT in 400-byte Str_Setting_Info) ───
+    const transport = new T3Transport({ apiBaseUrl: 'http://localhost:9103/api' });
     try {
-      const res = await fetch(`${base}/devices/${serialNumber}/settings/email`);
-      if (res.ok) {
-        const json = await res.json();
-        // Entity serializes with #[serde(rename_all = "PascalCase")],
-        // and GET handler wraps it as { success, data: { SmtpServer, ... } }
-        const d = json?.data ?? json;
-        setEmailSettings({
-          smtp_domain:            d.SmtpServer             ?? d.smtp_domain             ?? '',
-          smtp_port:              d.SmtpPort               ?? d.smtp_port               ?? 25,
-          email_address:          d.EmailAddress           ?? d.email_address           ?? '',
-          user_name:              d.UserName               ?? d.user_name               ?? '',
-          password:               d.Password               ?? d.password               ?? '',
-          secure_connection_type: d.SecureConnectionType   ?? d.secure_connection_type  ?? 0,
-          To1Addr:                d.To1Addr                ?? d.to1_addr                ?? '',
-          To2Addr:                d.To2Addr                ?? d.to2_addr                ?? '',
-          error_code:             d.ErrorCode              ?? d.error_code              ?? 0,
+      await transport.connect('ffi');
+
+      // Get device info (panelId, objectinstance) from device list
+      const deviceListResp = await transport.getDeviceList();
+      const deviceList: any[] = Array.isArray(deviceListResp.data)
+        ? deviceListResp.data
+        : (deviceListResp.data?.data ?? []);
+      const device = deviceList.find((d: any) => d.serial_number === serialNumber);
+      if (!device) {
+        console.warn('[fetchExternalSettings] Device not found in list for serial:', serialNumber);
+        return;
+      }
+
+      // ── Email (Str_Email_point — entryType 43 = READ_EMAIL_ALARM) ────────────
+      // ⚠️  Waiting for C++ to add case 43 in GET_WEBVIEW_LIST handler
+      try {
+        const resp = await transport.send(WebViewMessageType.GET_WEBVIEW_LIST, {
+          panelId: device.panel_number,
+          serialNumber,
+          entryType: 43,  // READ_EMAIL_ALARM
+          entryIndexStart: 0,
+          entryIndexEnd: 0,
+          objectinstance: device.object_instance,
         });
-      } else {
-        console.warn(`[SettingsPage] Email settings load returned HTTP ${res.status}`);
+        // TODO: parse resp.data when C++ implements this — mirrors Str_Email_point fields
+        console.log('[fetchExternalSettings] Email FFI response:', resp);
+      } catch (e) {
+        console.warn('[fetchExternalSettings] Email FFI call failed:', e);
       }
-    } catch (e) {
-      console.warn('[SettingsPage] Email fetch failed:', e);
-    }
 
-    // ── User login slots (Str_User_point[8] — NOT in 400-byte Str_Setting_Info) ─
-    // GET /users/:serial returns an 8-element array with lowercase keys.
-    try {
-      const res = await fetch(`${base}/users/${serialNumber}`);
-      if (res.ok) {
-        const data = await res.json();
-        setUserLoginSettings(prev => ({ ...prev, users: Array.isArray(data) ? data : [] }));
-      } else {
-        console.warn(`[SettingsPage] User slots load returned HTTP ${res.status}`);
+      // ── Users (Str_userlogin_point[8] — entryType 14 = ENUM_USER_NAME) ───────
+      try {
+        const resp = await transport.send(WebViewMessageType.GET_WEBVIEW_LIST, {
+          panelId: device.panel_number,
+          serialNumber,
+          entryType: 14,  // ENUM_USER_NAME / BAC_USER
+          entryIndexStart: 0,
+          entryIndexEnd: 7,  // 8 user slots
+          objectinstance: device.object_instance,
+        });
+        const items: any[] = resp?.data?.device_data ?? [];
+        if (items.length > 0) {
+          const users = items.map((item: any) => ({
+            name:         item.Name         ?? item.name         ?? '',
+            password:     item.Password     ?? item.password     ?? '',
+            access_level: item.AccessLevel  ?? item.access_level ?? 1,
+          }));
+          setUserLoginSettings(prev => ({ ...prev, users }));
+        }
+        console.log('[fetchExternalSettings] Users FFI response:', resp);
+      } catch (e) {
+        console.warn('[fetchExternalSettings] Users FFI call failed:', e);
       }
-    } catch (e) {
-      console.warn('[SettingsPage] User slots fetch failed:', e);
-    }
 
-    // ── Expansion IO devices (Str_Extio_point[] — NOT in 400-byte Str_Setting_Info) ─
-    try {
-      const res = await fetch(`${base}/devices/${serialNumber}/settings/expansion-io`);
-      if (res.ok) {
-        const json = await res.json();
-        // GET handler returns { success, count, data: [...] };
-        // each element has PascalCase keys from the entity.
-        const raw: unknown[] = Array.isArray(json) ? json : (json?.data ?? []);
-        const devices = raw.map((r: any) => ({
-          product_id:        r.ProductId        ?? r.product_id        ?? 0,
-          port:              r.Port             ?? r.port              ?? 0,
-          modbus_id:         r.ModbusId         ?? r.modbus_id         ?? 0,
-          last_contact_time: r.LastContactTime  ?? r.last_contact_time ?? 0,
-          input_start:       r.InputStart       ?? r.input_start       ?? 0,
-          input_end:         r.InputEnd         ?? r.input_end         ?? 0,
-          output_start:      r.OutputStart      ?? r.output_start      ?? 0,
-          output_end:        r.OutputEnd        ?? r.output_end        ?? 0,
-        }));
-        setExpansionSettings({ devices });
-      } else {
-        console.warn(`[SettingsPage] Expansion IO load returned HTTP ${res.status}`);
+      // ── Expansion IO (Str_Extio_point[] — entryType 37 = READEXT_IO_T3000) ───
+      // ⚠️  Waiting for C++ to add case 37 in GET_WEBVIEW_LIST handler
+      try {
+        const resp = await transport.send(WebViewMessageType.GET_WEBVIEW_LIST, {
+          panelId: device.panel_number,
+          serialNumber,
+          entryType: 37,  // READEXT_IO_T3000
+          entryIndexStart: 0,
+          entryIndexEnd: 11,  // up to 12 expansion IO devices
+          objectinstance: device.object_instance,
+        });
+        // TODO: parse resp.data when C++ implements this — mirrors Str_Extio_point fields
+        console.log('[fetchExternalSettings] Expansion IO FFI response:', resp);
+      } catch (e) {
+        console.warn('[fetchExternalSettings] Expansion IO FFI call failed:', e);
       }
-    } catch (e) {
-      console.warn('[SettingsPage] Expansion IO fetch failed:', e);
+    } finally {
+      await transport.disconnect();
     }
   }, []);
 
