@@ -481,8 +481,8 @@ const useStyles = makeStyles({
     backgroundColor: '#f5f8fc',
   },
   mobilePropRow: {
-    flex: '1 1 140px',
-    minWidth: '140px',
+    flex: '1 1 calc(50% - 1px)',
+    minWidth: '0',
     display: 'flex',
     flexDirection: 'column',
     padding: '6px 10px',
@@ -667,7 +667,7 @@ export const ExpansionIOTab: React.FC<ExpansionIOTabProps> = ({
         <div className={styles.mobileListHeader}>
           <span className={mergeClasses(styles.mobileHeaderCell, styles.mobileHeaderNum)}>#</span>
           <span className={mergeClasses(styles.mobileHeaderCell, styles.mobileHeaderHardware)}>Hardware</span>
-          {isWide && <span className={mergeClasses(styles.mobileHeaderCell, styles.mobileHeaderPort)}>Port</span>}
+          <span className={mergeClasses(styles.mobileHeaderCell, styles.mobileHeaderPort)}>Port</span>
           {isWide && <span className={mergeClasses(styles.mobileHeaderCell, styles.mobileHeaderId)}>ID</span>}
           {isVeryWide && <span className={mergeClasses(styles.mobileHeaderCell, styles.mobileHeaderInputs)}>Inputs</span>}
           {isVeryWide && <span className={mergeClasses(styles.mobileHeaderCell, styles.mobileHeaderOutputs)}>Outputs</span>}
@@ -698,7 +698,7 @@ export const ExpansionIOTab: React.FC<ExpansionIOTabProps> = ({
                   >
                     <span className={styles.mobileNumCell}>{i + 1}</span>
                     <span className={styles.mobileHardwareCell}>{prod.name}</span>
-                    {isWide && <span className={styles.mobilePortCell}>{isRow0 ? 'N/A' : portName}</span>}
+                    <span className={styles.mobilePortCell}>{isRow0 ? 'N/A' : portName}</span>
                     {isWide && <span className={styles.mobileIdCell}>{isRow0 ? 'N/A' : entry.modbus_id}</span>}
                     {isVeryWide && <span className={styles.mobileInputsCell}>{inputDisplay}</span>}
                     {isVeryWide && <span className={styles.mobileOutputsCell}>{outputDisplay}</span>}
@@ -773,14 +773,8 @@ export const ExpansionIOTab: React.FC<ExpansionIOTabProps> = ({
   }
 
   return (
-    <div className={styles.root}>      {/* ⚠️ Data source note: Str_Extio_point[] is NOT in the 400-byte Str_Setting_Info */}
-      <div className={styles.dataNote}>
-        <InfoRegular fontSize={12} />
-        <span>
-          <strong>Data source:</strong> Str_Extio_point[] — separate from the 400-byte settings block.
-          Loaded via <code>GET /api/v1/devices/:sn/expansion-io</code>.
-        </span>
-      </div>      {/* ── Table ──────────────────────────────────────────────────── */}
+    <div className={styles.root}>
+      {/* ── Table ──────────────────────────────────────────────────── */}
       <div className={styles.tableWrapper}>
         <table className={styles.table}>
           <thead className={styles.thead}>
