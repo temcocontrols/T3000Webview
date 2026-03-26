@@ -37,7 +37,7 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import { SaveRegular, InfoRegular } from '@fluentui/react-icons';
+import { SaveRegular } from '@fluentui/react-icons';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -62,7 +62,6 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     gap: '16px',
-    maxWidth: '500px',
   },
   groupBox: {
     border: `1px solid ${tokens.colorNeutralStroke1}`,
@@ -91,7 +90,7 @@ const useStyles = makeStyles({
   },
   control: {
     flex: 1,
-    minWidth: '200px',
+    minWidth: 0,
   },
   statusBox: {
     flex: 1,
@@ -107,17 +106,7 @@ const useStyles = makeStyles({
   saveRow: {
     marginTop: '4px',
   },
-  dataNote: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    fontSize: '11px',
-    color: tokens.colorNeutralForeground3,
-    backgroundColor: tokens.colorNeutralBackground2,
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: '4px',
-    padding: '4px 8px',
-  },
+
 });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -160,132 +149,131 @@ export const EmailSettingsTab: React.FC<EmailSettingsTabProps> = ({
 
   return (
     <div className={styles.root}>
-      {/* ⚠️ Data source note: Str_Email_point is NOT in the 400-byte Str_Setting_Info */}
-      <div className={styles.dataNote}>
-        <InfoRegular fontSize={12} />
-        <span>
-          <strong>Data source:</strong> Str_Email_point — separate from the 400-byte settings block.
-          Loaded via <code>GET /api/v1/devices/:sn/email-settings</code>.
-        </span>
-      </div>
       <div className={styles.groupBox}>
         <div className={styles.groupTitle}>Email Configuration</div>
 
         {/* SMTP Server */}
         <div className={styles.row}>
           <span className={styles.label}>SMTP Server :</span>
-          <Input
-            className={styles.control}
-            style={{ fontSize: '12px' }}
-            value={emailSettings.smtp_domain ?? ''}
-            maxLength={40}
-            placeholder="e.g. smtp.gmail.com"
-            onChange={(_, d) => set({ smtp_domain: d.value })}
-          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', flex: 1, minWidth: 0 }}>
+            <Input
+              style={{ fontSize: '12px' }}
+              value={emailSettings.smtp_domain ?? ''}
+              maxLength={40}
+              placeholder="e.g. smtp.gmail.com"
+              onChange={(_, d) => set({ smtp_domain: d.value })}
+            />
+          </div>
         </div>
 
         {/* Port Number */}
         <div className={styles.row}>
           <span className={styles.label}>Port Number:</span>
-          <Input
-            className={styles.control}
-            style={{ fontSize: '12px' }}
-            type="number"
-            min={0}
-            max={65535}
-            value={String(emailSettings.smtp_port ?? 0)}
-            onChange={(_, d) => {
-              const v = Number(d.value);
-              if (!isNaN(v) && v >= 0 && v <= 65535) set({ smtp_port: v });
-            }}
-          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', flex: 1, minWidth: 0 }}>
+            <Input
+              style={{ fontSize: '12px' }}
+              type="number"
+              min={0}
+              max={65535}
+              value={String(emailSettings.smtp_port ?? 0)}
+              onChange={(_, d) => {
+                const v = Number(d.value);
+                if (!isNaN(v) && v >= 0 && v <= 65535) set({ smtp_port: v });
+              }}
+            />
+          </div>
         </div>
 
         {/* Email */}
         <div className={styles.row}>
           <span className={styles.label}>Email:</span>
-          <Input
-            className={styles.control}
-            style={{ fontSize: '12px' }}
-            type="email"
-            value={emailSettings.email_address ?? ''}
-            maxLength={60}
-            placeholder="sender@example.com"
-            onChange={(_, d) => set({ email_address: d.value })}
-          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', flex: 1, minWidth: 0 }}>
+            <Input
+              style={{ fontSize: '12px' }}
+              type="email"
+              value={emailSettings.email_address ?? ''}
+              maxLength={60}
+              placeholder="sender@example.com"
+              onChange={(_, d) => set({ email_address: d.value })}
+            />
+          </div>
         </div>
 
         {/* User Name */}
         <div className={styles.row}>
           <span className={styles.label}>User Name :</span>
-          <Input
-            className={styles.control}
-            style={{ fontSize: '12px' }}
-            value={emailSettings.user_name ?? ''}
-            maxLength={60}
-            onChange={(_, d) => set({ user_name: d.value })}
-          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', flex: 1, minWidth: 0 }}>
+            <Input
+              style={{ fontSize: '12px' }}
+              value={emailSettings.user_name ?? ''}
+              maxLength={60}
+              onChange={(_, d) => set({ user_name: d.value })}
+            />
+          </div>
         </div>
 
         {/* Password */}
         <div className={styles.row}>
           <span className={styles.label}>Password:</span>
-          <Input
-            className={styles.control}
-            style={{ fontSize: '12px' }}
-            type="password"
-            value={emailSettings.password ?? ''}
-            maxLength={20}
-            onChange={(_, d) => set({ password: d.value })}
-          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', flex: 1, minWidth: 0 }}>
+            <Input
+              style={{ fontSize: '12px' }}
+              type="password"
+              value={emailSettings.password ?? ''}
+              maxLength={20}
+              onChange={(_, d) => set({ password: d.value })}
+            />
+          </div>
         </div>
 
         {/* Secure Connection */}
         <div className={styles.row}>
           <span className={styles.label}>Secure Connection :</span>
-          <Dropdown
-            className={styles.control}
-            style={{ fontSize: '12px' }}
-            button={{ style: { fontSize: '12px' } }}
-            value={secureTypeLabel}
-            onOptionSelect={(_, data) => {
-              set({ secure_connection_type: Number(data.optionValue ?? '0') });
-            }}
-          >
-            {SECURE_TYPES.map((t) => (
-              <Option key={t.value} value={t.value} style={{ fontSize: '12px' }}>
-                {t.label}
-              </Option>
-            ))}
-          </Dropdown>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', flex: 1, minWidth: 0 }}>
+            <Dropdown
+              style={{ fontSize: '12px' }}
+              value={secureTypeLabel}
+              onOptionSelect={(_, data) => {
+                set({ secure_connection_type: Number(data.optionValue ?? '0') });
+              }}
+            >
+              {SECURE_TYPES.map((t) => (
+                <Option key={t.value} value={t.value} style={{ fontSize: '12px' }}>
+                  {t.label}
+                </Option>
+              ))}
+            </Dropdown>
+          </div>
         </div>
 
         {/* Recipient 1 */}
         <div className={styles.row}>
           <span className={styles.label}>Recipient  1</span>
-          <Input
-            className={styles.control}
-            style={{ fontSize: '12px' }}
-            type="email"
-            value={emailSettings.To1Addr ?? ''}
-            maxLength={60}
-            placeholder="recipient1@example.com"
-            onChange={(_, d) => set({ To1Addr: d.value })}
-          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', flex: 1, minWidth: 0 }}>
+            <Input
+              style={{ fontSize: '12px' }}
+              type="email"
+              value={emailSettings.To1Addr ?? ''}
+              maxLength={60}
+              placeholder="recipient1@example.com"
+              onChange={(_, d) => set({ To1Addr: d.value })}
+            />
+          </div>
         </div>
 
         {/* Recipient 2 */}
         <div className={styles.row}>
           <span className={styles.label}>Recipient  2</span>
-          <Input
-            className={styles.control}
-            style={{ fontSize: '12px' }}
-            type="email"
-            value={emailSettings.To2Addr ?? ''}
-            maxLength={60}
-            placeholder="recipient2@example.com"
-            onChange={(_, d) => set({ To2Addr: d.value })}
-          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', flex: 1, minWidth: 0 }}>
+            <Input
+              style={{ fontSize: '12px' }}
+              type="email"
+              value={emailSettings.To2Addr ?? ''}
+              maxLength={60}
+              placeholder="recipient2@example.com"
+              onChange={(_, d) => set({ To2Addr: d.value })}
+            />
+          </div>
         </div>
 
         {/* Status (read-only) */}
@@ -295,18 +283,6 @@ export const EmailSettingsTab: React.FC<EmailSettingsTabProps> = ({
         </div>
       </div>
 
-      {/* Save / OK button */}
-      <div className={styles.saveRow}>
-        <Button
-          size="small"
-          appearance="primary"
-          icon={<SaveRegular />}
-          onClick={onSave}
-          disabled={loading}
-        >
-          {loading ? 'Saving…' : 'OK'}
-        </Button>
-      </div>
     </div>
   );
 };
