@@ -10,6 +10,13 @@ node_modules
 /target
 target/
 
+# .NET build artifacts
+**/bin/
+**/obj/
+*.db
+*.db-shm
+*.db-wal
+
 # CMake build artifacts and native module builds
 /build
 build/
