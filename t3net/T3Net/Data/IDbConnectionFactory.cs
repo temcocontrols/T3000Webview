@@ -1,6 +1,6 @@
 using System.Data;
 
-namespace T3000WebService.Data;
+namespace T3Net.Data;
 
 public interface IDbConnectionFactory
 {

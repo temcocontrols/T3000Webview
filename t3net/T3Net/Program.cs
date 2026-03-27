@@ -1,12 +1,12 @@
-using T3000WebService.Data;
-using T3000WebService.Hubs;
+using T3Net.Data;
+using T3Net.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Host: runs as Windows Service, Linux systemd, or console (debug) ──────────
 builder.Host.UseWindowsService(options =>
 {
-    options.ServiceName = "T3000WebService";
+    options.ServiceName = "T3Net";
 });
 builder.Host.UseSystemd(); // no-op on Windows, activates on Linux
 

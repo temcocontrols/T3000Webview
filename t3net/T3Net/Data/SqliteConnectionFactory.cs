@@ -1,7 +1,7 @@
 using System.Data;
 using Microsoft.Data.Sqlite;
 
-namespace T3000WebService.Data;
+namespace T3Net.Data;
 
 /// <summary>
 /// Creates open SQLite connections using the connection string from appsettings.json.

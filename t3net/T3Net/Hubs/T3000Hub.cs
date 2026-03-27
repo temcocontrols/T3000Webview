@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 
-namespace T3000WebService.Hubs;
+namespace T3Net.Hubs;
 
 /// <summary>
 /// Main SignalR hub — replaces the tungstenite WebSocket server on :9104.

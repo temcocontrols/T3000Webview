@@ -4,6 +4,8 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>T3Net</AssemblyName>
+    <RootNamespace>T3Net</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

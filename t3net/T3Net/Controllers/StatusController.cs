@@ -1,8 +1,8 @@
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
-using T3000WebService.Data;
+using T3Net.Data;
 
-namespace T3000WebService.Controllers;
+namespace T3Net.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -32,7 +32,7 @@ public class StatusController : ControllerBase
             return Ok(new
             {
                 status = "ok",
-                service = "T3000WebService",
+                service = "T3Net",
                 version = "1.0.0",
                 port = 9200,
                 dbTime,
