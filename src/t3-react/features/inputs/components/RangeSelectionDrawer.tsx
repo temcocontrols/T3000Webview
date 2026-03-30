@@ -39,7 +39,16 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
 }) => {
   const [selectedRange, setSelectedRange] = useState<number>(currentRange);
   const [manualInput, setManualInput] = useState<string>(currentRange.toString());
-  const [tempUnit, setTempUnit] = useState<string>('55'); // Default to °C
+  // Track which section (digital vs analog) the selection belongs to, since range numbers 1-8
+  // are shared between digital (Off/On etc.) and analog (3K YSI etc.) namespaces
+  const [selectedSection, setSelectedSection] = useState<'digital' | 'analog'>(() =>
+    digitalAnalog === 1 ? 'digital' : 'analog'
+  );
+  // Temp sensors: C++ native indices — odd = °C, even = °F
+  // 31/32 = 3K YSI 44005, 33/34 = 10K Type2, 35/36 = 3K Allerton/ASI, 37/38 = 10K Type3, 39/40 = PT 1K
+  const [useFahrenheit, setUseFahrenheit] = useState<boolean>(() =>
+    currentRange >= 31 && currentRange <= 40 ? currentRange % 2 === 0 : false
+  );
 
   const handleSave = () => {
     onSave(selectedRange);
@@ -47,8 +56,10 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
   };
 
   const handleCancel = () => {
-    setSelectedRange(currentRange); // Reset to original
+    setSelectedRange(currentRange);
     setManualInput(currentRange.toString());
+    setSelectedSection(digitalAnalog === 1 ? 'digital' : 'analog');
+    setUseFahrenheit(currentRange >= 31 && currentRange <= 40 ? currentRange % 2 === 0 : false);
     onClose();
   };
 
@@ -65,8 +76,10 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
     if (isOpen) {
       setSelectedRange(currentRange);
       setManualInput(currentRange.toString());
+      setSelectedSection(digitalAnalog === 1 ? 'digital' : 'analog');
+      setUseFahrenheit(currentRange >= 31 && currentRange <= 40 ? currentRange % 2 === 0 : false);
     }
-  }, [isOpen, currentRange]);
+  }, [isOpen, currentRange, digitalAnalog]);
 
   // Determine the type based on selected value
   const getDigitalAnalogForValue = (value: number): number => {
@@ -80,6 +93,36 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
 
   // Get current range label with correct type
   const currentRangeLabel = getRangeLabel(selectedRange, getDigitalAnalogForValue(selectedRange));
+
+  // Temp sensor helpers — C++ native: odd = °C, even = °F, range 31–40
+  const isTempSensorRange = (range: number) => range >= 31 && range <= 40;
+  const getTempBase = (range: number) => range % 2 === 0 ? range - 1 : range;
+
+  // Unified RadioGroup value: temp sensors use 'a' prefix to avoid collision with
+  // digital values 1–30 within the shared RadioGroup (e.g. 'a31' = 3K YSI, 'a33' = 10K Type2)
+  const radioGroupValue = selectedSection === 'analog' && isTempSensorRange(selectedRange)
+    ? 'a' + getTempBase(selectedRange)
+    : selectedRange.toString();
+
+  // Single onChange handler for the unified RadioGroup
+  const handleRadioChange = (_: React.ChangeEvent<HTMLInputElement>, data: { value: string }) => {
+    const v = data.value;
+    if (v.startsWith('a')) {
+      // Analog temp sensor — 'a31'=3K YSI, 'a33'=10K Type2, 'a35'=3K Allerton, 'a37'=10K Type3, 'a39'=PT 1K
+      // base is always the °C index (odd); +1 gives the °F index
+      const base = parseInt(v.slice(1));
+      const actual = useFahrenheit ? base + 1 : base;
+      setSelectedSection('analog');
+      setSelectedRange(actual);
+      setManualInput(actual.toString());
+    } else {
+      const num = parseInt(v);
+      // C++ native: 31–40 = analog temp sensors, 41–65 = analog other; 1–30 and 100+ = digital
+      setSelectedSection((num >= 31 && num <= 65) ? 'analog' : 'digital');
+      setSelectedRange(num);
+      setManualInput(num.toString());
+    }
+  };
 
   return (
     <Drawer
@@ -123,8 +166,8 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
             </div>
             <div className={styles.defaultSection}>
               <RadioGroup
-                value={selectedRange.toString()}
-                onChange={(_, data) => setSelectedRange(Number(data.value))}
+                value={radioGroupValue}
+                onChange={handleRadioChange}
               >
                 <Radio value="0" label="0. Unused" />
               </RadioGroup>
@@ -169,10 +212,11 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
         </div>
 
         <RadioGroup
-          value={selectedRange.toString()}
-          onChange={(_, data) => setSelectedRange(Number(data.value))}
+          value={radioGroupValue}
+          onChange={handleRadioChange}
         >
-        {/* Main content: 3-column layout */}
+        {/* Main content: 3-column layout — digital AND analog are in one group so
+            selecting a digital range deselects any analog range and vice versa */}
         <div className={styles.mainContent}>
             <div className={styles.digitalSection}>
               {/* Left column: Digital Units */}
@@ -261,17 +305,10 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
             </div>
 
         </div>
-        </RadioGroup>
-
         {/* Input Analog Units section divider */}
         <div className={styles.sectionDivider}>
           <span className={styles.dividerText}>Input Analog Units</span>
         </div>
-
-        <RadioGroup
-          value={selectedRange.toString()}
-          onChange={(_, data) => setSelectedRange(Number(data.value))}
-        >
         {/* Input Analog Units section - 3 columns like Digital */}
         <div className={styles.analogSection}>
           <div className={styles.analogColumns}>
@@ -285,22 +322,41 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
               <div className={styles.tempSensorsColumn}>
                 <div className={styles.tempTypeRow}>
                   <Checkbox
-                    checked={tempUnit === '55'}
-                    onChange={() => setTempUnit('55')}
+                    checked={!useFahrenheit}
+                    onChange={() => {
+                      if (useFahrenheit && selectedSection === 'analog' && isTempSensorRange(selectedRange)) {
+                        const base = getTempBase(selectedRange);
+                        setSelectedRange(base);
+                        setManualInput(base.toString());
+                      }
+                      setUseFahrenheit(false);
+                    }}
                     label="°C"
                     className={styles.tempCheckbox}
                   />
                   <Checkbox
-                    checked={tempUnit === '56'}
-                    onChange={() => setTempUnit('56')}
+                    checked={useFahrenheit}
+                    onChange={() => {
+                      if (!useFahrenheit && selectedSection === 'analog' && isTempSensorRange(selectedRange)) {
+                        const base = getTempBase(selectedRange);
+                        const f = base + 1;
+                        setSelectedRange(f);
+                        setManualInput(f.toString());
+                      }
+                      setUseFahrenheit(true);
+                    }}
                     label="°F"
                     className={styles.tempCheckbox}
                   />
                 </div>
-                <Radio value="1" label="3K YSI 44005" />
-                <Radio value="3" label="10K Type2" />
-                <Radio value="7" label="10K Type3" />
-                <Radio value="5" label="3K Allerton/ASI" />
+                {/* 'a' prefix distinguishes these from digital values within the shared RadioGroup.
+                    C++ native: 31=3K YSI °C, 32=°F | 33=10K Type2 °C, 34=°F | 35=3K Allerton °C, 36=°F
+                              | 37=10K Type3 °C, 38=°F | 39=PT 1K °C, 40=°F */}
+                <Radio value="a31" label="3K YSI 44005" />
+                <Radio value="a33" label="10K Type2" />
+                <Radio value="a35" label="3K Allerton/ASI" />
+                <Radio value="a37" label="10K Type3" />
+                <Radio value="a39" label="PT 1K" />
               </div>
             </div>
 

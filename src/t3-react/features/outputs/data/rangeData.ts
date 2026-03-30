@@ -11,19 +11,19 @@ export interface RangeOption {
 }
 
 /**
- * Output Analog Units (9 options: 0-8)
- * Used when output digital_analog === BAC_UNITS_ANALOG
+ * Output Analog Units — C++ native indices 31–38
+ * Used when output digital_analog === BAC_UNITS_ANALOG (0)
  */
 export const OUTPUT_ANALOG_RANGES: RangeOption[] = [
-  { value: 0, label: 'Unused', unit: '', category: 'General' },
-  { value: 1, label: '0.0 -> 10', unit: 'Volts', category: 'Voltage' },
-  { value: 2, label: '0.0 -> 100', unit: '%Open', category: 'Percentage' },
-  { value: 3, label: '4 -> 20', unit: 'psi', category: 'Pressure' },
-  { value: 4, label: '0.0 -> 100', unit: '%', category: 'Percentage' },
-  { value: 5, label: '0.0 -> 100', unit: '%Cls', category: 'Percentage' },
-  { value: 6, label: '4 -> 20', unit: 'ma', category: 'Current' },
-  { value: 7, label: '0.0 -> 100', unit: 'PWM', category: 'PWM' },
-  { value: 8, label: '2 -> 10', unit: 'Volts', category: 'Voltage' },
+  { value: 0, label: 'Unused', category: 'General' },
+  { value: 31, label: '0.0 -> 10 Volts', category: 'Voltage' },
+  { value: 32, label: '0.0 -> 100 %Open', category: 'Percentage' },
+  { value: 33, label: '0.0 -> 20 psi', category: 'Pressure' },
+  { value: 34, label: '0.0 -> 100 % (0-10V)', category: 'Percentage' },
+  { value: 35, label: '0.0 -> 100 %Cls', category: 'Percentage' },
+  { value: 36, label: '0.0 -> 20 ma', category: 'Current' },
+  { value: 37, label: '0.0 -> 100 PWM', category: 'PWM' },
+  { value: 38, label: '0.0 -> 100 % (2-10V)', category: 'Percentage' },
 ];
 
 /**
@@ -86,21 +86,20 @@ export function getRangeOptions(digitalAnalog: number): RangeOption[] {
  * Get range label by value and type
  */
 export function getRangeLabel(value: number, digitalAnalog: number): string {
-  // Hardcoded mappings for custom digital units (23-30)
   const customMappings: { [key: number]: string } = {
-    23: '9/9',
-    24: '/',
-    25: '/',
-    26: '/',
-    27: '/',
-    28: '/',
-    29: '/',
-    30: '/',
+    // Digital Custom (23-30)
+    23: '9/9', 24: '/', 25: '/', 26: '/', 27: '/', 28: '/', 29: '/', 30: '/',
+    // Output Analog (C++ native indices 31-38)
+    31: '0.0 -> 10 Volts',
+    32: '0.0 -> 100 %Open',
+    33: '0.0 -> 20 psi',
+    34: '0.0 -> 100 % (0-10V)',
+    35: '0.0 -> 100 %Cls',
+    36: '0.0 -> 20 ma',
+    37: '0.0 -> 100 PWM',
+    38: '0.0 -> 100 % (2-10V)',
     // Multi State (101-104)
-    101: 'MSV 1',
-    102: 'MSV 2',
-    103: 'MSV 3',
-    104: 'MSV 4',
+    101: 'MSV 1', 102: 'MSV 2', 103: 'MSV 3', 104: 'MSV 4',
   };
 
   // Check custom mappings first

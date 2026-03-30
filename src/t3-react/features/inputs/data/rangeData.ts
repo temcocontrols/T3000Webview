@@ -119,6 +119,17 @@ export function getRangeOptions(digitalAnalog: number): RangeOption[] {
 export function getRangeLabel(value: number, digitalAnalog: number): string {
   // Hardcoded mappings for custom and remapped values
   const customMappings: { [key: number]: string } = {
+    // Analog temp sensors (C++ native indices: odd=°C, even=°F)
+    31: '3K YSI 44005 °C',
+    32: '3K YSI 44005 °F',
+    33: '10K Type2 °C',
+    34: '10K Type2 °F',
+    35: '3K Allerton/ASI °C',
+    36: '3K Allerton/ASI °F',
+    37: '10K Type3 °C',
+    38: '10K Type3 °F',
+    39: 'PT 1K °C',
+    40: 'PT 1K °F',
     // Digital Custom (23-30)
     23: '9/9',
     24: '/',

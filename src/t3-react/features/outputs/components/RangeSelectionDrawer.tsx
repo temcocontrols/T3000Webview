@@ -53,7 +53,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
   const handleManualInputChange = (value: string) => {
     setManualInput(value);
     const numValue = parseInt(value, 10);
-    if (!isNaN(numValue) && numValue >= 0 && numValue <= 30) {
+    if (!isNaN(numValue) && numValue >= 0 && numValue <= 104) {
       setSelectedRange(numValue);
     }
   };
@@ -68,11 +68,11 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
 
   // Determine the type based on selected value
   const getDigitalAnalogForValue = (value: number): number => {
-    // Digital ranges: 1-30
-    if (value >= 1 && value <= 30) {
+    // Digital: 1-30 standard/custom, 101-104 MSV
+    if ((value >= 1 && value <= 30) || (value >= 101 && value <= 104)) {
       return 1; // BAC_UNITS_DIGITAL
     }
-    // Everything else is analog (0)
+    // Analog: 31-38 (C++ native output analog indices)
     return 0; // BAC_UNITS_ANALOG
   };
 
@@ -136,7 +136,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
             </div>
             <div className={styles.topSection}>
               <Label className={styles.inputLabel}>
-                Enter Range Number (0-30):
+                Enter Range Number (0-104):
               </Label>
               <Input
                 type="number"
@@ -144,7 +144,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 onChange={(_, data) => handleManualInputChange(data.value)}
                 className={styles.numberInput}
                 min={0}
-                max={30}
+                max={104}
               />
               <div className={styles.currentLabel}>
                 {currentRangeLabel}
@@ -281,11 +281,11 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 </Text>
               </div>
               <div className={styles.rangeGroup}>
-                {OUTPUT_ANALOG_RANGES.filter(r => r.value >= 1 && r.value <= 8).map((range) => (
+                {OUTPUT_ANALOG_RANGES.filter(r => r.value >= 31 && r.value <= 38).map((range) => (
                   <div key={range.value} className={styles.rangeOption}>
                     <Radio
                       value={range.value.toString()}
-                      label={`${range.value}. ${range.label} ${range.unit}`}
+                      label={`${range.value}. ${range.label}`}
                     />
                   </div>
                 ))}
