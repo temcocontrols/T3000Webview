@@ -76,7 +76,8 @@ export const TrendLogsPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
-  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
+  const [dbChecked, setDbChecked] = useState(false);
+  const deviceRefreshedRef = useRef<number | null>(null);
   const [selectedMonitor, setSelectedMonitor] = useState<TrendLogData | null>(null);
   const [monitorInputs, setMonitorInputs] = useState<TrendLogInput[]>([]);
   const [loadingInputs, setLoadingInputs] = useState(false);
@@ -319,6 +320,7 @@ export const TrendLogsPage: React.FC = () => {
       console.error('Error fetching trendlogs:', err);
     } finally {
       setLoading(false);
+      setDbChecked(true);
     }
   }, [selectedDevice]);
 
@@ -414,12 +416,19 @@ export const TrendLogsPage: React.FC = () => {
     fetchTrendLogs();
   }, [fetchTrendLogs]);
 
-  // Auto-refresh once after page load (Trigger #1)
+  // Reset auto-refresh state when device changes (don't clear data to avoid visual flash)
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
+    setAutoRefreshed(false);
+    setDbChecked(false);
+  }, [selectedDevice?.serialNumber]);
+
+  // Auto-refresh once per device - ONLY after initial DB fetch completes
+  useEffect(() => {
+    if (!dbChecked || loading || !selectedDevice || autoRefreshed) return;
+    if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
 
     const checkAndRefresh = async () => {
-      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+      deviceRefreshedRef.current = selectedDevice.serialNumber;
 
       try {
         console.log('[TrendLogsPage] Auto-refreshing from device...');
@@ -434,7 +443,7 @@ export const TrendLogsPage: React.FC = () => {
     };
 
     checkAndRefresh();
-  }, [loading, selectedDevice, autoRefreshed, fetchTrendLogs]);
+  }, [dbChecked, loading, selectedDevice, autoRefreshed, fetchTrendLogs]);
 
   // Refresh all trendlogs from device (Trigger #2: Manual "Refresh All" button)
   const handleRefreshFromDevice = async () => {
