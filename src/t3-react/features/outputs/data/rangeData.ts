@@ -63,6 +63,10 @@ export const OUTPUT_DIGITAL_RANGES: RangeOption[] = [
   { value: 28, label: 'Custom Digital 6', category: 'Custom' },
   { value: 29, label: 'Custom Digital 7', category: 'Custom' },
   { value: 30, label: 'Custom Digital 8', category: 'Custom' },
+  { value: 101, label: 'MSV 1', category: 'Multi-State' },
+  { value: 102, label: 'MSV 2', category: 'Multi-State' },
+  { value: 103, label: 'MSV 3', category: 'Multi-State' },
+  { value: 104, label: 'MSV 4', category: 'Multi-State' },
 ];
 
 /**
@@ -92,6 +96,11 @@ export function getRangeLabel(value: number, digitalAnalog: number): string {
     28: '/',
     29: '/',
     30: '/',
+    // Multi State (101-104)
+    101: 'MSV 1',
+    102: 'MSV 2',
+    103: 'MSV 3',
+    104: 'MSV 4',
   };
 
   // Check custom mappings first
