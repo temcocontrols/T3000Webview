@@ -1416,66 +1416,7 @@ const InputsPageDesktop: React.FC = () => {
                       items={displayInputs}
                       columns={columns}
                       sortable
-                      resizableColumns
-                      columnSizingOptions={{
-                        input: {
-                          minWidth: 60,
-                          defaultWidth: 80,
-                        },
-                        panel: {
-                          minWidth: 60,
-                          defaultWidth: 75,
-                        },
-                        fullLabel: {
-                          minWidth: 180,
-                          defaultWidth: 250,
-                        },
-                        autoManual: {
-                          minWidth: 90,
-                        defaultWidth: 120,
-                      },
-                      value: {
-                        minWidth: 100,
-                        defaultWidth: 130,
-                      },
-                      units: {
-                        minWidth: 50,
-                        defaultWidth: 65,
-                      },
-                      range: {
-                        minWidth: 130,
-                        defaultWidth: 170,
-                      },
-                      calibration: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      sign: {
-                        minWidth: 50,
-                        defaultWidth: 60,
-                      },
-                      filter: {
-                        minWidth: 60,
-                        defaultWidth: 80,
-                      },
-                      status: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      signalType: {
-                        minWidth: 90,
-                        defaultWidth: 110,
-                      },
-                      label: {
-                        minWidth: 130,
-                        defaultWidth: 170,
-                      },
-                      type: {
-                        minWidth: 40,
-                        defaultWidth: 45,
-                      },
-                    }}
-                  >
+                    >
                     <DataGridHeader>
                       <DataGridRow>
                         {({ renderHeaderCell }) => (

@@ -24,7 +24,7 @@ interface RangeSelectionDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   currentRange: number;
-  digitalAnalog: number; // BAC_UNITS_ANALOG (0) or BAC_UNITS_DIGITAL (1)
+  digitalAnalog: number; // BAC_UNITS_DIGITAL (0) or BAC_UNITS_ANALOG (1)
   onSave: (newRange: number) => void;
   inputLabel?: string;
 }
@@ -42,7 +42,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
   // Track which section (digital vs analog) the selection belongs to, since range numbers 1-8
   // are shared between digital (Off/On etc.) and analog (3K YSI etc.) namespaces
   const [selectedSection, setSelectedSection] = useState<'digital' | 'analog'>(() =>
-    digitalAnalog === 1 ? 'digital' : 'analog'
+    digitalAnalog === 0 ? 'digital' : 'analog'
   );
   // Temp sensors: C++ native indices — odd = °C, even = °F
   // 31/32 = 3K YSI 44005, 33/34 = 10K Type2, 35/36 = 3K Allerton/ASI, 37/38 = 10K Type3, 39/40 = PT 1K
@@ -58,7 +58,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
   const handleCancel = () => {
     setSelectedRange(currentRange);
     setManualInput(currentRange.toString());
-    setSelectedSection(digitalAnalog === 1 ? 'digital' : 'analog');
+    setSelectedSection(digitalAnalog === 0 ? 'digital' : 'analog');
     setUseFahrenheit(currentRange >= 31 && currentRange <= 40 ? currentRange % 2 === 0 : false);
     onClose();
   };
@@ -76,7 +76,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
     if (isOpen) {
       setSelectedRange(currentRange);
       setManualInput(currentRange.toString());
-      setSelectedSection(digitalAnalog === 1 ? 'digital' : 'analog');
+      setSelectedSection(digitalAnalog === 0 ? 'digital' : 'analog');
       setUseFahrenheit(currentRange >= 31 && currentRange <= 40 ? currentRange % 2 === 0 : false);
     }
   }, [isOpen, currentRange, digitalAnalog]);
@@ -85,10 +85,10 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
   const getDigitalAnalogForValue = (value: number): number => {
     // Digital ranges: 1-30, 100-103
     if ((value >= 1 && value <= 30) || (value >= 100 && value <= 103)) {
-      return 1; // BAC_UNITS_DIGITAL
+      return 0; // BAC_UNITS_DIGITAL
     }
     // Everything else is analog
-    return 0; // BAC_UNITS_ANALOG
+    return 1; // BAC_UNITS_ANALOG
   };
 
   // Get current range label with correct type

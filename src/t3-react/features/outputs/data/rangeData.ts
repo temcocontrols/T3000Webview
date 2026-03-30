@@ -12,7 +12,7 @@ export interface RangeOption {
 
 /**
  * Output Analog Units — C++ native indices 31–38
- * Used when output digital_analog === BAC_UNITS_ANALOG (0)
+ * Used when output digital_analog === BAC_UNITS_ANALOG (1)
  */
 export const OUTPUT_ANALOG_RANGES: RangeOption[] = [
   { value: 0, label: 'Unused', category: 'General' },
@@ -28,7 +28,7 @@ export const OUTPUT_ANALOG_RANGES: RangeOption[] = [
 
 /**
  * Digital Units (23 options: 0-22)
- * Used when output digital_analog === BAC_UNITS_DIGITAL
+ * Used when output digital_analog === BAC_UNITS_DIGITAL (0)
  * Same as input digital ranges
  */
 export const OUTPUT_DIGITAL_RANGES: RangeOption[] = [
@@ -71,9 +71,10 @@ export const OUTPUT_DIGITAL_RANGES: RangeOption[] = [
 
 /**
  * Constants for output type
+ * NOTE: C++ convention: 0 = Digital, 1 = Analog
  */
-export const BAC_UNITS_ANALOG = 0;
-export const BAC_UNITS_DIGITAL = 1;
+export const BAC_UNITS_DIGITAL = 0;
+export const BAC_UNITS_ANALOG = 1;
 
 /**
  * Get range options based on output type

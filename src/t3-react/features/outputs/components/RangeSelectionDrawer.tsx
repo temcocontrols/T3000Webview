@@ -23,7 +23,7 @@ interface RangeSelectionDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   currentRange: number;
-  digitalAnalog: number; // BAC_UNITS_ANALOG (0) or BAC_UNITS_DIGITAL (1)
+  digitalAnalog: number; // BAC_UNITS_DIGITAL (0) or BAC_UNITS_ANALOG (1)
   onSave: (newRange: number) => void;
   inputLabel?: string;
 }
@@ -70,10 +70,10 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
   const getDigitalAnalogForValue = (value: number): number => {
     // Digital: 1-30 standard/custom, 101-104 MSV
     if ((value >= 1 && value <= 30) || (value >= 101 && value <= 104)) {
-      return 1; // BAC_UNITS_DIGITAL
+      return 0; // BAC_UNITS_DIGITAL
     }
     // Analog: 31-38 (C++ native output analog indices)
-    return 0; // BAC_UNITS_ANALOG
+    return 1; // BAC_UNITS_ANALOG
   };
 
   // Get current range label with correct type

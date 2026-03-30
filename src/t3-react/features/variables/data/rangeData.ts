@@ -11,7 +11,7 @@ export interface RangeOption {
 
 /**
  * Variable Analog Units — C++ native indices 31–68
- * Used when variable digital_analog === BAC_UNITS_ANALOG (0)
+ * Used when variable digital_analog === BAC_UNITS_ANALOG (1)
  */
 export const VARIABLE_ANALOG_RANGES: RangeOption[] = [
   { value: 0,  label: 'Unused',         category: 'General' },
@@ -96,8 +96,9 @@ export const DIGITAL_RANGES: RangeOption[] = [
   { value: 104, label: 'MSV 4',             category: 'Multi-State' },
 ];
 
-export const BAC_UNITS_ANALOG = 0;
-export const BAC_UNITS_DIGITAL = 1;
+/* NOTE: C++ convention: 0 = Digital, 1 = Analog */
+export const BAC_UNITS_DIGITAL = 0;
+export const BAC_UNITS_ANALOG = 1;
 
 export function getRangeOptions(digitalAnalog: number): RangeOption[] {
   return digitalAnalog === BAC_UNITS_DIGITAL ? DIGITAL_RANGES : VARIABLE_ANALOG_RANGES;
