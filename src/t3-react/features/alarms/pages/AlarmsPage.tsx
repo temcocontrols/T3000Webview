@@ -76,7 +76,8 @@ const AlarmsPageDesktop: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
-  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
+  const [dbChecked, setDbChecked] = useState(false);
+  const deviceRefreshedRef = useRef<number | null>(null);
 
   const handleExport = () => {
     console.log('Export alarms to CSV');
@@ -133,22 +134,27 @@ const AlarmsPageDesktop: React.FC = () => {
       setAlarms([]);
     } finally {
       setIsLoading(false);
+      setDbChecked(true);
     }
   }, [selectedDevice]);
 
   useEffect(() => {
     fetchAlarms();
-    // Reset auto-refresh flag when device changes
-    setAutoRefreshed(false);
-    hasAutoRefreshedRef.current = false;
   }, [fetchAlarms]);
 
-  // Auto-refresh on page load (Trigger #1)
+  // Reset auto-refresh state when device changes (don't clear data to avoid visual flash)
   useEffect(() => {
-    if (isLoading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
+    setAutoRefreshed(false);
+    setDbChecked(false);
+  }, [selectedDevice?.serialNumber]);
+
+  // Auto-refresh once per device - ONLY after initial DB fetch completes
+  useEffect(() => {
+    if (!dbChecked || isLoading || !selectedDevice || autoRefreshed) return;
+    if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
 
     const checkAndRefresh = async () => {
-      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+      deviceRefreshedRef.current = selectedDevice.serialNumber;
 
       console.log('🔄 Auto-refreshing alarms from device on page load...');
       try {
@@ -163,7 +169,7 @@ const AlarmsPageDesktop: React.FC = () => {
     };
 
     checkAndRefresh();
-  }, [isLoading, selectedDevice, autoRefreshed, fetchAlarms]);
+  }, [dbChecked, isLoading, selectedDevice, autoRefreshed, fetchAlarms]);
 
   // Refresh from device (Trigger #2 - Manual button)
   const handleRefreshFromDevice = async () => {

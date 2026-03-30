@@ -78,7 +78,8 @@ const PIDLoopsPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
-  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
+  const [dbChecked, setDbChecked] = useState(false);
+  const deviceRefreshedRef = useRef<number | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
   const isAtBottomRef = useRef(false);
@@ -160,6 +161,7 @@ const PIDLoopsPage: React.FC = () => {
       setError(error instanceof Error ? error.message : 'Failed to load PID loops');
     } finally {
       setIsLoading(false);
+      setDbChecked(true);
     }
   }, [selectedDevice]);
 
@@ -167,20 +169,19 @@ const PIDLoopsPage: React.FC = () => {
     fetchPidLoops();
   }, [fetchPidLoops]);
 
-  // Reset autoRefreshed flag when device changes
+  // Reset auto-refresh state when device changes (don't clear data to avoid visual flash)
   useEffect(() => {
-    setPidLoops([]);
     setAutoRefreshed(false);
-    hasAutoRefreshedRef.current = false;
+    setDbChecked(false);
   }, [selectedDevice?.serialNumber]);
 
-  // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
+  // Auto-refresh once per device - ONLY if database is empty after initial DB fetch
   useEffect(() => {
-    if (isLoading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
+    if (!dbChecked || isLoading || !selectedDevice || autoRefreshed) return;
+    if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
 
-    // Check immediately if database has PID loop data
     const checkAndRefresh = async () => {
-      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+      deviceRefreshedRef.current = selectedDevice.serialNumber;
 
       try {
         // Check if database has PID loop data
@@ -204,7 +205,7 @@ const PIDLoopsPage: React.FC = () => {
     };
 
     checkAndRefresh();
-  }, [isLoading, selectedDevice, autoRefreshed, fetchPidLoops, pidLoops.length]);
+  }, [dbChecked, isLoading, selectedDevice, autoRefreshed, fetchPidLoops, pidLoops.length]);
 
   // Handle field edit
   const handleFieldEdit = (controllerId: string, field: keyof PIDController, value: string) => {
