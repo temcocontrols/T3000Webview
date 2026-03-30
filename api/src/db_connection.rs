@@ -20,13 +20,15 @@ pub async fn establish_connection() -> Result<DatabaseConnection, Box<dyn std::e
 /// Establish connection to the webview T3000 database
 pub async fn establish_t3_device_connection() -> Result<DatabaseConnection, Box<dyn std::error::Error>> {
     let mut opt = ConnectOptions::new(T3_DEVICE_DATABASE_URL.as_str());
-    opt.max_connections(200)  // 🆕 PERFORMANCE: Increased from 100 to 200 for better concurrent request handling
-        .min_connections(10)  // 🆕 PERFORMANCE: Increased from 5 to 10 to maintain ready connections
+    // SQLite only supports 1 writer at a time. Large pools cause WAL lock contention.
+    // Keep this small: multiple readers are fine in WAL mode, but 200 connections all
+    // reading a large WAL file simultaneously is counterproductive.
+    opt.max_connections(5)
+        .min_connections(2)
         .connect_timeout(Duration::from_secs(8))
         .acquire_timeout(Duration::from_secs(8))
-        .idle_timeout(Duration::from_secs(30))  // 🆕 PERFORMANCE: Increased from 8s to 30s to reuse connections
-        .max_lifetime(Duration::from_secs(300))  // 🆕 PERFORMANCE: Increased from 8s to 5min for connection reuse during bursts
-        // SQLite-specific optimizations for better concurrency
+        .idle_timeout(Duration::from_secs(60))
+        .max_lifetime(Duration::from_secs(300))
         .sqlx_logging(false);
 
     let db = Database::connect(opt).await?;
@@ -94,6 +96,19 @@ pub async fn establish_t3_device_connection() -> Result<DatabaseConnection, Box<
         sea_orm::DatabaseBackend::Sqlite,
         "PRAGMA wal_checkpoint(TRUNCATE);".to_owned()
     )).await.ok(); // Ignore errors - checkpoint might fail if database is busy
+
+    // Ensure critical indexes exist on the live database.
+    // The runtime DB may have been created by T3000.exe before Rust migrations ran.
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS IDX_INPUTS_SERIAL ON INPUTS(SerialNumber);",
+        "CREATE INDEX IF NOT EXISTS IDX_OUTPUTS_SERIAL ON OUTPUTS(SerialNumber);",
+        "CREATE INDEX IF NOT EXISTS IDX_VARIABLES_SERIAL ON VARIABLES(SerialNumber);",
+    ] {
+        db.execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            sql.to_owned()
+        )).await.ok();
+    }
 
     Ok(db)
 }
