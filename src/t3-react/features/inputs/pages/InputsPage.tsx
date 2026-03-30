@@ -1124,6 +1124,7 @@ const InputsPageDesktop: React.FC = () => {
                 onClick={() => handleRangeClick(item)}
                 className={styles.rangeLink}
                 title="Click to change range"
+                style={{ whiteSpace: 'nowrap' }}
               >
                 <Text size={200} weight="regular">{rangeLabel}</Text>
               </div>
@@ -1434,16 +1435,16 @@ const InputsPageDesktop: React.FC = () => {
                         defaultWidth: 120,
                       },
                       value: {
-                        minWidth: 120,
-                        defaultWidth: 180,
+                        minWidth: 100,
+                        defaultWidth: 130,
                       },
                       units: {
-                        minWidth: 100,
-                        defaultWidth: 150,
+                        minWidth: 50,
+                        defaultWidth: 65,
                       },
                       range: {
-                        minWidth: 80,
-                        defaultWidth: 100,
+                        minWidth: 130,
+                        defaultWidth: 170,
                       },
                       calibration: {
                         minWidth: 80,
@@ -1470,8 +1471,8 @@ const InputsPageDesktop: React.FC = () => {
                         defaultWidth: 170,
                       },
                       type: {
-                        minWidth: 60,
-                        defaultWidth: 75,
+                        minWidth: 40,
+                        defaultWidth: 45,
                       },
                     }}
                   >
