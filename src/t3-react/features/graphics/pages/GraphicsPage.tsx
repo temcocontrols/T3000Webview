@@ -49,7 +49,8 @@ export const GraphicsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [autoRefreshed, setAutoRefreshed] = useState(false);
-  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
+  const [dbChecked, setDbChecked] = useState(false);
+  const deviceRefreshedRef = useRef<number | null>(null);
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -93,22 +94,27 @@ export const GraphicsPage: React.FC = () => {
       console.error('Error fetching graphics:', err);
     } finally {
       setLoading(false);
+      setDbChecked(true);
     }
   }, [selectedDevice]);
 
   useEffect(() => {
     fetchGraphics();
-    // Reset auto-refresh flag when device changes
-    setAutoRefreshed(false);
-    hasAutoRefreshedRef.current = false;
   }, [fetchGraphics]);
 
-  // Auto-refresh once after page load - ONLY if database is empty
+  // Reset auto-refresh state when device changes (don't clear data to avoid visual flash)
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
+    setAutoRefreshed(false);
+    setDbChecked(false);
+  }, [selectedDevice?.serialNumber]);
+
+  // Auto-refresh once per device - ONLY if database is empty after initial DB fetch
+  useEffect(() => {
+    if (!dbChecked || loading || !selectedDevice || autoRefreshed) return;
+    if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
 
     const checkAndRefresh = async () => {
-      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+      deviceRefreshedRef.current = selectedDevice.serialNumber;
 
       if (graphics.length > 0) {
         console.log('[GraphicsPage] Database has data, skipping auto-refresh');
@@ -144,7 +150,7 @@ export const GraphicsPage: React.FC = () => {
     };
 
     checkAndRefresh();
-  }, [loading, selectedDevice, autoRefreshed, fetchGraphics, graphics.length, setMessage]);
+  }, [dbChecked, loading, selectedDevice, autoRefreshed, fetchGraphics, graphics.length, setMessage]);
 
   // Load next device in tree (auto-scroll feature)
   const loadNextDevice = useCallback(() => {
