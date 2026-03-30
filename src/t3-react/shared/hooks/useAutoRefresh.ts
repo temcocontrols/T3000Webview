@@ -61,6 +61,11 @@ export const useAutoRefresh = ({
 
       const data = await response.json();
 
+      if (!data) {
+        setConfig(DEFAULT_CONFIG);
+        return;
+      }
+
       // Parse config_value if it's a JSON string
       let configValue: AutoRefreshConfig;
       if (typeof data.configValue === 'string') {

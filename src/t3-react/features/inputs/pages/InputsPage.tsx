@@ -1113,8 +1113,8 @@ const InputsPageDesktop: React.FC = () => {
       ),
       renderCell: (item) => {
         // Parse range value and digital_analog type
-        const rangeValue = item.range ? parseInt(item.range) : 0;
-        const digitalAnalog = item.signalType === 'Digital' ? 1 : 0; // Assume analog if not digital
+        const rangeValue = parseInt(item.rangeField || item.range || '0', 10);
+        const digitalAnalog = parseInt(item.digitalAnalog || '0', 10);
         const rangeLabel = getRangeLabel(rangeValue, digitalAnalog);
 
         return (
@@ -1514,8 +1514,8 @@ const InputsPageDesktop: React.FC = () => {
         <RangeSelectionDrawer
           isOpen={rangeDrawerOpen}
           onClose={() => setRangeDrawerOpen(false)}
-          currentRange={selectedInputForRange.range ? parseInt(selectedInputForRange.range) : 0}
-          digitalAnalog={selectedInputForRange.signalType === 'Digital' ? 1 : 0}
+          currentRange={parseInt(selectedInputForRange.rangeField || selectedInputForRange.range || '0', 10)}
+          digitalAnalog={parseInt(selectedInputForRange.digitalAnalog || '0', 10)}
           onSave={handleRangeSave}
           inputLabel={`Input ${selectedInputForRange.inputIndex || selectedInputForRange.inputId} - ${selectedInputForRange.fullLabel || 'Unnamed'}`}
         />
