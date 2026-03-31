@@ -125,9 +125,12 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
 
   // Unified RadioGroup value: analog values use 'a' prefix to avoid collision with
   // digital values 1–30 within the shared RadioGroup (e.g. 'a1' = 3K YSI, 'a3' = 10K Type2)
-  const radioGroupValue = selectedSection === 'analog'
-    ? (isTempSensorRange(selectedRange) ? 'a' + getTempBase(selectedRange) : 'a' + selectedRange)
-    : selectedRange.toString();
+  // Range 0 (Unused) is always "0" regardless of digital/analog section
+  const radioGroupValue = selectedRange === 0
+    ? '0'
+    : selectedSection === 'analog'
+      ? (isTempSensorRange(selectedRange) ? 'a' + getTempBase(selectedRange) : 'a' + selectedRange)
+      : selectedRange.toString();
 
   // Single onChange handler for the unified RadioGroup
   const handleRadioChange = (_: React.ChangeEvent<HTMLInputElement>, data: { value: string }) => {
