@@ -84,31 +84,11 @@ export function getRangeOptions(digitalAnalog: number): RangeOption[] {
 }
 
 /**
- * Get range label by value and type
+ * Get range label by value and type.
+ * Uses digitalAnalog to pick the correct table (digital vs analog),
+ * then looks up the value in that table.
  */
 export function getRangeLabel(value: number, digitalAnalog: number): string {
-  const customMappings: { [key: number]: string } = {
-    // Digital Custom (23-30)
-    23: '9/9', 24: '/', 25: '/', 26: '/', 27: '/', 28: '/', 29: '/', 30: '/',
-    // Output Analog (C++ native indices 31-38)
-    31: '0.0 -> 10 Volts',
-    32: '0.0 -> 100 %Open',
-    33: '0.0 -> 20 psi',
-    34: '0.0 -> 100 % (0-10V)',
-    35: '0.0 -> 100 %Cls',
-    36: '0.0 -> 20 ma',
-    37: '0.0 -> 100 PWM',
-    38: '0.0 -> 100 % (2-10V)',
-    // Multi State (101-104)
-    101: 'MSV 1', 102: 'MSV 2', 103: 'MSV 3', 104: 'MSV 4',
-  };
-
-  // Check custom mappings first
-  if (customMappings.hasOwnProperty(value)) {
-    return customMappings[value];
-  }
-
-  // Fall back to standard ranges
   const ranges = getRangeOptions(digitalAnalog);
   const range = ranges.find(r => r.value === value);
   return range ? range.label : 'Unknown';

@@ -24,7 +24,7 @@ interface RangeSelectionDrawerProps {
   onClose: () => void;
   currentRange: number;
   digitalAnalog: number; // BAC_UNITS_DIGITAL (0) or BAC_UNITS_ANALOG (1)
-  onSave: (newRange: number) => void;
+  onSave: (newRange: number, newDigitalAnalog: number) => void;
   inputLabel?: string;
 }
 
@@ -40,7 +40,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
   const [manualInput, setManualInput] = useState<string>(currentRange.toString());
 
   const handleSave = () => {
-    onSave(selectedRange);
+    onSave(selectedRange, getDigitalAnalogForValue(selectedRange));
     onClose();
   };
 

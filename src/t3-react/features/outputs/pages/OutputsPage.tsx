@@ -571,11 +571,11 @@ const OutputsPageDesktop: React.FC = () => {
     setRangeDrawerOpen(true);
   };
 
-  const handleRangeSave = async (newRange: number) => {
+  const handleRangeSave = async (newRange: number, newDigitalAnalog: number) => {
     if (!selectedOutput) return;
 
     try {
-      console.log(`[Action 16] Updating Range for Output ${selectedOutput.outputIndex} (SN: ${selectedOutput.serialNumber})`);
+      console.log(`[Action 16] Updating Range for Output ${selectedOutput.outputIndex} (SN: ${selectedOutput.serialNumber}), New DigitalAnalog: ${newDigitalAnalog}`);
 
       // Action 16 requires ALL fields
       const payload = {
@@ -588,6 +588,7 @@ const OutputsPageDesktop: React.FC = () => {
         lowVoltage: parseFloat(selectedOutput.lowVoltage || '0'),
         highVoltage: parseFloat(selectedOutput.highVoltage || '0'),
         pwmPeriod: parseInt(selectedOutput.pwmPeriod || '0'),
+        digitalAnalog: newDigitalAnalog,
       };
 
       console.log('[Action 16] Full payload:', payload);
@@ -614,7 +615,7 @@ const OutputsPageDesktop: React.FC = () => {
         prevOutputs.map(output =>
           output.serialNumber === selectedOutput.serialNumber &&
           output.outputIndex === selectedOutput.outputIndex
-            ? { ...output, range: newRange.toString() }
+            ? { ...output, range: newRange.toString(), rangeField: newRange.toString(), digitalAnalog: newDigitalAnalog.toString() }
             : output
         )
       );
