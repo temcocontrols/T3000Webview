@@ -105,13 +105,6 @@ export function getRangeOptions(digitalAnalog: number): RangeOption[] {
 }
 
 export function getRangeLabel(value: number, digitalAnalog: number): string {
-  const customMappings: { [key: number]: string } = {
-    // Digital Custom (23-30)
-    23: '9/9', 24: '/', 25: '/', 26: '/', 27: '/', 28: '/', 29: '/', 30: '/',
-    // Multi State (101-104)
-    101: 'MSV 1', 102: 'MSV 2', 103: 'MSV 3', 104: 'MSV 4',
-  };
-  if (Object.prototype.hasOwnProperty.call(customMappings, value)) return customMappings[value];
   const ranges = getRangeOptions(digitalAnalog);
   const range = ranges.find(r => r.value === value);
   return range ? range.label : 'Unknown';

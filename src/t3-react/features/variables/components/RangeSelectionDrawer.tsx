@@ -20,7 +20,7 @@ interface RangeSelectionDrawerProps {
   onClose: () => void;
   currentRange: number;
   digitalAnalog: number;
-  onSave: (newRange: number) => void;
+  onSave: (newRange: number, newDigitalAnalog: number) => void;
   inputLabel?: string;
 }
 
@@ -35,7 +35,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
   const [selectedRange, setSelectedRange] = useState<number>(currentRange);
   const [manualInput, setManualInput] = useState<string>(currentRange.toString());
 
-  const handleSave = () => { onSave(selectedRange); onClose(); };
+  const handleSave = () => { onSave(selectedRange, getDigitalAnalogForValue(selectedRange)); onClose(); };
 
   const handleCancel = () => {
     setSelectedRange(currentRange);
@@ -60,7 +60,8 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
 
   // Variable analog: 31-68; digital: 1-30, 101-104
   const isAnalogValue = (v: number) => v >= 31 && v <= 68;
-  const currentRangeLabel = getRangeLabel(selectedRange, isAnalogValue(selectedRange) ? 0 : 1);
+  const getDigitalAnalogForValue = (v: number): number => isAnalogValue(v) ? 1 : 0;
+  const currentRangeLabel = getRangeLabel(selectedRange, getDigitalAnalogForValue(selectedRange));
 
   const handleRadioChange = (_: React.ChangeEvent<HTMLInputElement>, data: { value: string }) => {
     const num = parseInt(data.value);

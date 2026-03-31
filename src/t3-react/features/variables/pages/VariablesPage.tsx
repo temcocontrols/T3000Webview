@@ -562,11 +562,11 @@ const VariablesPageDesktop: React.FC = () => {
     setRangeDrawerOpen(true);
   };
 
-  const handleRangeSave = async (newRange: number) => {
+  const handleRangeSave = async (newRange: number, newDigitalAnalog: number) => {
     if (!selectedVariableForRange) return;
 
     try {
-      console.log(`[Action 16] Updating Range/Units for Variable ${selectedVariableForRange.variableIndex} (SN: ${selectedVariableForRange.serialNumber})`);
+      console.log(`[Action 16] Updating Range/Units for Variable ${selectedVariableForRange.variableIndex} (SN: ${selectedVariableForRange.serialNumber}), New DigitalAnalog: ${newDigitalAnalog}`);
 
       // Action 16 requires ALL fields
       const payload = {
@@ -577,7 +577,7 @@ const VariablesPageDesktop: React.FC = () => {
         autoManual: parseInt(selectedVariableForRange.autoManual || '0'),
         control: 0,
         filter: parseInt(selectedVariableForRange.filterField || '0'),
-        digitalAnalog: selectedVariableForRange.digitalAnalog === '1' ? 1 : 0,
+        digitalAnalog: newDigitalAnalog,
         calibrationSign: parseInt(selectedVariableForRange.sign || '0'),
         calibrationH: 0,
         calibrationL: 0,
@@ -607,7 +607,7 @@ const VariablesPageDesktop: React.FC = () => {
         prevVariables.map(variable =>
           variable.serialNumber === selectedVariableForRange.serialNumber &&
           variable.variableIndex === selectedVariableForRange.variableIndex
-            ? { ...variable, rangeField: newRange.toString() }
+            ? { ...variable, rangeField: newRange.toString(), digitalAnalog: newDigitalAnalog.toString() }
             : variable
         )
       );
