@@ -26,6 +26,7 @@ pub struct BatchSaveInputsRequest {
 #[serde(rename_all = "camelCase")]
 pub struct InputUpdate {
     pub input_index: String,
+    pub input_id: Option<String>,
     pub panel: Option<String>,
     pub full_label: Option<String>,
     pub label: Option<String>,
@@ -152,6 +153,7 @@ async fn execute_batch_save(
                 let update_result = input_points::Entity::update_many()
                     .filter(input_points::Column::SerialNumber.eq(serial))
                     .filter(input_points::Column::InputIndex.eq(index))
+                    .col_expr(input_points::Column::InputId, Expr::value(input_update.input_id.clone()))
                     .col_expr(input_points::Column::Panel, Expr::value(input_update.panel.clone()))
                     .col_expr(input_points::Column::FullLabel, Expr::value(input_update.full_label.clone()))
                     .col_expr(input_points::Column::Label, Expr::value(input_update.label.clone()))
@@ -195,6 +197,7 @@ async fn execute_batch_save(
                 let new_input = input_points::ActiveModel {
                     serial_number: Set(serial),
                     input_index: Set(Some(index.clone())),
+                    input_id: Set(input_update.input_id.clone()),
                     panel: Set(input_update.panel.clone()),
                     full_label: Set(input_update.full_label.clone()),
                     label: Set(input_update.label.clone()),
@@ -243,7 +246,7 @@ async fn execute_batch_save(
 
     // Commit transaction
     txn.commit().await
-        .map_err(|e| format!("database is locked: {}", e))?;
+        .map_err(|e| format!("{}", e))?;
 
     info!("✅ Batch save complete: {} updated, {} failed", updated_count, failed_count);
 

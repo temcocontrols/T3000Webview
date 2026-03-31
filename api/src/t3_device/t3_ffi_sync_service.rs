@@ -17,6 +17,7 @@ use crate::logger::ServiceLogger;
 use crate::t3_device::trendlog_parent_cache::{ParentKey, TrendlogParentCache};
 use once_cell::sync::OnceCell;
 use sea_orm::*;
+use sea_orm::sea_query::Expr;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use std::env;
@@ -3080,36 +3081,32 @@ impl T3000MainService {
         // Derive units from range field
         let derived_units = Self::derive_units_from_range(point.range);
 
-        let input_model = input_points::ActiveModel {
-            serial_number: Set(serial_number),
-            input_id: Set(point.id.clone()), // New InputId field from JSON "id" field
-            input_index: Set(Some(point.index.to_string())), // Updated column name to Input_Index
-            panel: Set(Some(point.panel.to_string())),
-            full_label: Set(Some(point.full_label.clone())),
-            auto_manual: Set(Some(point.auto_manual.to_string())),
-            f_value: Set(Some(point.value.to_string())),
-            units: Set(Some(derived_units.clone())), // Use derived units from range
-            range_field: Set(Some(point.range.to_string())),
-            calibration: Set(Some(point.calibration.to_string())),
-            sign: Set(Some(point.sign.to_string())),
-            status: Set(Some(point.status.to_string())),
-            filter_field: Set(point.control.map(|c| c.to_string())),
-            digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
-            label: Set(point.label.clone()),
-            type_field: Set(point.command.clone()),
-        };
-
         match existing {
             Some(_) => {
-                // UPDATE existing input point
+                // UPDATE existing input point using update_many + col_expr
+                // (Safe pattern: PK doesn't include Input_Index, so Entity::update() could target wrong rows)
                 info!(
                     "🔄 Updating existing INPUT point {}:{} - ID: {:?}, Label: '{}'",
                     serial_number, point.index, point.id, point.full_label
                 );
 
-                let _update_result = input_points::Entity::update(input_model)
+                let _update_result = input_points::Entity::update_many()
                     .filter(input_points::Column::SerialNumber.eq(serial_number))
                     .filter(input_points::Column::InputIndex.eq(Some(point.index.to_string())))
+                    .col_expr(input_points::Column::InputId, Expr::value(point.id.clone()))
+                    .col_expr(input_points::Column::Panel, Expr::value(Some(point.panel.to_string())))
+                    .col_expr(input_points::Column::FullLabel, Expr::value(Some(point.full_label.clone())))
+                    .col_expr(input_points::Column::AutoManual, Expr::value(Some(point.auto_manual.to_string())))
+                    .col_expr(input_points::Column::FValue, Expr::value(Some(point.value.to_string())))
+                    .col_expr(input_points::Column::Units, Expr::value(Some(derived_units.clone())))
+                    .col_expr(input_points::Column::RangeField, Expr::value(Some(point.range.to_string())))
+                    .col_expr(input_points::Column::Calibration, Expr::value(Some(point.calibration.to_string())))
+                    .col_expr(input_points::Column::Sign, Expr::value(Some(point.sign.to_string())))
+                    .col_expr(input_points::Column::Status, Expr::value(Some(point.status.to_string())))
+                    .col_expr(input_points::Column::FilterField, Expr::value(point.control.map(|c| c.to_string())))
+                    .col_expr(input_points::Column::DigitalAnalog, Expr::value(point.digital_analog.map(|da| da.to_string())))
+                    .col_expr(input_points::Column::Label, Expr::value(point.label.clone()))
+                    .col_expr(input_points::Column::TypeField, Expr::value(point.command.clone()))
                     .exec(txn).await
                     .map_err(|e| {
                         sync_logger.error(&format!(
@@ -3132,6 +3129,25 @@ impl T3000MainService {
                     "➕ Inserting new INPUT point {}:{} - ID: {:?}, Label: '{}'",
                     serial_number, point.index, point.id, point.full_label
                 );
+
+                let input_model = input_points::ActiveModel {
+                    serial_number: Set(serial_number),
+                    input_id: Set(point.id.clone()),
+                    input_index: Set(Some(point.index.to_string())),
+                    panel: Set(Some(point.panel.to_string())),
+                    full_label: Set(Some(point.full_label.clone())),
+                    auto_manual: Set(Some(point.auto_manual.to_string())),
+                    f_value: Set(Some(point.value.to_string())),
+                    units: Set(Some(derived_units.clone())),
+                    range_field: Set(Some(point.range.to_string())),
+                    calibration: Set(Some(point.calibration.to_string())),
+                    sign: Set(Some(point.sign.to_string())),
+                    status: Set(Some(point.status.to_string())),
+                    filter_field: Set(point.control.map(|c| c.to_string())),
+                    digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
+                    label: Set(point.label.clone()),
+                    type_field: Set(point.command.clone()),
+                };
 
                 let insert_result = input_points::Entity::insert(input_model)
                     .exec(txn).await
@@ -3173,36 +3189,32 @@ impl T3000MainService {
         // Derive units from range field
         let derived_units = Self::derive_units_from_range(point.range);
 
-        let output_model = output_points::ActiveModel {
-            serial_number: Set(serial_number),
-            output_id: Set(point.id.clone()), // New OutputId field from JSON "id" field
-            output_index: Set(Some(point.index.to_string())), // Updated column name to Output_Index
-            panel: Set(Some(point.panel.to_string())),
-            full_label: Set(Some(point.full_label.clone())),
-            auto_manual: Set(Some(point.auto_manual.to_string())),
-            f_value: Set(Some(point.value.to_string())),
-            units: Set(Some(derived_units.clone())), // Use derived units from range
-            range_field: Set(Some(point.range.to_string())),
-            calibration: Set(Some(point.calibration.to_string())),
-            sign: Set(Some(point.sign.to_string())),
-            status: Set(Some(point.status.to_string())),
-            filter_field: Set(point.control.map(|c| c.to_string())),
-            digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
-            label: Set(point.label.clone()),
-            type_field: Set(point.command.clone()),
-        };
-
         match existing {
             Some(_) => {
-                // UPDATE existing output point
+                // UPDATE existing output point using update_many + col_expr
+                // (Safe pattern: PK doesn't include Output_Index, so Entity::update() could target wrong rows)
                 info!(
                     "🔄 Updating existing OUTPUT point {}:{} - ID: {:?}, Label: '{}'",
                     serial_number, point.index, point.id, point.full_label
                 );
 
-                let _update_result = output_points::Entity::update(output_model)
+                let _update_result = output_points::Entity::update_many()
                     .filter(output_points::Column::SerialNumber.eq(serial_number))
                     .filter(output_points::Column::OutputIndex.eq(Some(point.index.to_string())))
+                    .col_expr(output_points::Column::OutputId, Expr::value(point.id.clone()))
+                    .col_expr(output_points::Column::Panel, Expr::value(Some(point.panel.to_string())))
+                    .col_expr(output_points::Column::FullLabel, Expr::value(Some(point.full_label.clone())))
+                    .col_expr(output_points::Column::AutoManual, Expr::value(Some(point.auto_manual.to_string())))
+                    .col_expr(output_points::Column::FValue, Expr::value(Some(point.value.to_string())))
+                    .col_expr(output_points::Column::Units, Expr::value(Some(derived_units.clone())))
+                    .col_expr(output_points::Column::RangeField, Expr::value(Some(point.range.to_string())))
+                    .col_expr(output_points::Column::Calibration, Expr::value(Some(point.calibration.to_string())))
+                    .col_expr(output_points::Column::Sign, Expr::value(Some(point.sign.to_string())))
+                    .col_expr(output_points::Column::Status, Expr::value(Some(point.status.to_string())))
+                    .col_expr(output_points::Column::FilterField, Expr::value(point.control.map(|c| c.to_string())))
+                    .col_expr(output_points::Column::DigitalAnalog, Expr::value(point.digital_analog.map(|da| da.to_string())))
+                    .col_expr(output_points::Column::Label, Expr::value(point.label.clone()))
+                    .col_expr(output_points::Column::TypeField, Expr::value(point.command.clone()))
                     .exec(txn).await
                     .map_err(|e| {
                         sync_logger.error(&format!(
@@ -3225,6 +3237,25 @@ impl T3000MainService {
                     "➕ Inserting new OUTPUT point {}:{} - ID: {:?}, Label: '{}'",
                     serial_number, point.index, point.id, point.full_label
                 );
+
+                let output_model = output_points::ActiveModel {
+                    serial_number: Set(serial_number),
+                    output_id: Set(point.id.clone()),
+                    output_index: Set(Some(point.index.to_string())),
+                    panel: Set(Some(point.panel.to_string())),
+                    full_label: Set(Some(point.full_label.clone())),
+                    auto_manual: Set(Some(point.auto_manual.to_string())),
+                    f_value: Set(Some(point.value.to_string())),
+                    units: Set(Some(derived_units.clone())),
+                    range_field: Set(Some(point.range.to_string())),
+                    calibration: Set(Some(point.calibration.to_string())),
+                    sign: Set(Some(point.sign.to_string())),
+                    status: Set(Some(point.status.to_string())),
+                    filter_field: Set(point.control.map(|c| c.to_string())),
+                    digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
+                    label: Set(point.label.clone()),
+                    type_field: Set(point.command.clone()),
+                };
 
                 let insert_result = output_points::Entity::insert(output_model)
                     .exec(txn).await
@@ -3268,36 +3299,32 @@ impl T3000MainService {
         // Derive units from range field
         let derived_units = Self::derive_units_from_range(point.range);
 
-        let variable_model = variable_points::ActiveModel {
-            serial_number: Set(serial_number),
-            variable_id: Set(point.id.clone()), // New VariableId field from JSON "id" field
-            variable_index: Set(Some(point.index.to_string())), // Updated column name to Variable_Index
-            panel: Set(Some(point.pid.to_string())),
-            full_label: Set(Some(point.full_label.clone())),
-            auto_manual: Set(Some(point.auto_manual.to_string())),
-            f_value: Set(Some(point.value.to_string())),
-            units: Set(Some(derived_units.clone())), // Use derived units from range
-            range_field: Set(Some(point.range.to_string())),
-            calibration: Set(Some(point.calibration.to_string())),
-            sign: Set(Some(point.sign.to_string())),
-            filter_field: Set(point.control.map(|c| c.to_string())),
-            status: Set(Some(point.status.to_string())),
-            digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
-            label: Set(point.label.clone()),
-            type_field: Set(point.command.clone()),
-        };
-
         match existing {
             Some(_) => {
-                // UPDATE existing variable point
+                // UPDATE existing variable point using update_many + col_expr
+                // (Safe pattern: PK doesn't include Variable_Index, so Entity::update() could target wrong rows)
                 info!(
                     "🔄 Updating existing VARIABLE point {}:{} - ID: {:?}, Label: '{}'",
                     serial_number, point.index, point.id, point.full_label
                 );
 
-                let _update_result = variable_points::Entity::update(variable_model)
+                let _update_result = variable_points::Entity::update_many()
                     .filter(variable_points::Column::SerialNumber.eq(serial_number))
                     .filter(variable_points::Column::VariableIndex.eq(Some(point.index.to_string())))
+                    .col_expr(variable_points::Column::VariableId, Expr::value(point.id.clone()))
+                    .col_expr(variable_points::Column::Panel, Expr::value(Some(point.pid.to_string())))
+                    .col_expr(variable_points::Column::FullLabel, Expr::value(Some(point.full_label.clone())))
+                    .col_expr(variable_points::Column::AutoManual, Expr::value(Some(point.auto_manual.to_string())))
+                    .col_expr(variable_points::Column::FValue, Expr::value(Some(point.value.to_string())))
+                    .col_expr(variable_points::Column::Units, Expr::value(Some(derived_units.clone())))
+                    .col_expr(variable_points::Column::RangeField, Expr::value(Some(point.range.to_string())))
+                    .col_expr(variable_points::Column::Calibration, Expr::value(Some(point.calibration.to_string())))
+                    .col_expr(variable_points::Column::Sign, Expr::value(Some(point.sign.to_string())))
+                    .col_expr(variable_points::Column::FilterField, Expr::value(point.control.map(|c| c.to_string())))
+                    .col_expr(variable_points::Column::Status, Expr::value(Some(point.status.to_string())))
+                    .col_expr(variable_points::Column::DigitalAnalog, Expr::value(point.digital_analog.map(|da| da.to_string())))
+                    .col_expr(variable_points::Column::Label, Expr::value(point.label.clone()))
+                    .col_expr(variable_points::Column::TypeField, Expr::value(point.command.clone()))
                     .exec(txn).await
                     .map_err(|e| {
                         sync_logger.error(&format!(
@@ -3323,6 +3350,25 @@ impl T3000MainService {
                     "➕ Inserting new VARIABLE point {}:{} - ID: {:?}, Label: '{}'",
                     serial_number, point.index, point.id, point.full_label
                 );
+
+                let variable_model = variable_points::ActiveModel {
+                    serial_number: Set(serial_number),
+                    variable_id: Set(point.id.clone()),
+                    variable_index: Set(Some(point.index.to_string())),
+                    panel: Set(Some(point.pid.to_string())),
+                    full_label: Set(Some(point.full_label.clone())),
+                    auto_manual: Set(Some(point.auto_manual.to_string())),
+                    f_value: Set(Some(point.value.to_string())),
+                    units: Set(Some(derived_units.clone())),
+                    range_field: Set(Some(point.range.to_string())),
+                    calibration: Set(Some(point.calibration.to_string())),
+                    sign: Set(Some(point.sign.to_string())),
+                    filter_field: Set(point.control.map(|c| c.to_string())),
+                    status: Set(Some(point.status.to_string())),
+                    digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
+                    label: Set(point.label.clone()),
+                    type_field: Set(point.command.clone()),
+                };
 
                 let insert_result = variable_points::Entity::insert(variable_model)
                     .exec(txn).await

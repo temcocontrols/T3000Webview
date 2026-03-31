@@ -26,6 +26,7 @@ pub struct BatchSaveVariablesRequest {
 #[serde(rename_all = "camelCase")]
 pub struct VariableUpdate {
     pub variable_index: String,
+    pub variable_id: Option<String>,
     pub panel: Option<String>,
     pub full_label: Option<String>,
     pub label: Option<String>,
@@ -144,6 +145,7 @@ async fn execute_variable_batch_save(
                 let update_result = variable_points::Entity::update_many()
                     .filter(variable_points::Column::SerialNumber.eq(serial))
                     .filter(variable_points::Column::VariableIndex.eq(index))
+                    .col_expr(variable_points::Column::VariableId, Expr::value(variable_update.variable_id.clone()))
                     .col_expr(variable_points::Column::Panel, Expr::value(variable_update.panel.clone()))
                     .col_expr(variable_points::Column::FullLabel, Expr::value(variable_update.full_label.clone()))
                     .col_expr(variable_points::Column::Label, Expr::value(variable_update.label.clone()))
@@ -184,6 +186,7 @@ async fn execute_variable_batch_save(
                 let new_variable = variable_points::ActiveModel {
                     serial_number: Set(serial),
                     variable_index: Set(Some(index.clone())),
+                    variable_id: Set(variable_update.variable_id.clone()),
                     panel: Set(variable_update.panel.clone()),
                     full_label: Set(variable_update.full_label.clone()),
                     label: Set(variable_update.label.clone()),
@@ -230,7 +233,7 @@ async fn execute_variable_batch_save(
 
     // Commit transaction
     txn.commit().await
-        .map_err(|e| format!("database is locked: {}", e))?;
+        .map_err(|e| format!("{}", e))?;
 
     info!("✅ Batch save complete: {} updated, {} failed", updated_count, failed_count);
 

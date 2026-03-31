@@ -26,6 +26,7 @@ pub struct BatchSaveOutputsRequest {
 #[serde(rename_all = "camelCase")]
 pub struct OutputUpdate {
     pub output_index: String,
+    pub output_id: Option<String>,
     pub panel: Option<String>,
     pub full_label: Option<String>,
     pub label: Option<String>,
@@ -146,6 +147,7 @@ async fn execute_output_batch_save(
                 let update_result = output_points::Entity::update_many()
                     .filter(output_points::Column::SerialNumber.eq(serial))
                     .filter(output_points::Column::OutputIndex.eq(index))
+                    .col_expr(output_points::Column::OutputId, Expr::value(output_update.output_id.clone()))
                     .col_expr(output_points::Column::Panel, Expr::value(output_update.panel.clone()))
                     .col_expr(output_points::Column::FullLabel, Expr::value(output_update.full_label.clone()))
                     .col_expr(output_points::Column::Label, Expr::value(output_update.label.clone()))
@@ -188,6 +190,7 @@ async fn execute_output_batch_save(
                 let new_output = output_points::ActiveModel {
                     serial_number: Set(serial),
                     output_index: Set(Some(index.clone())),
+                    output_id: Set(output_update.output_id.clone()),
                     panel: Set(output_update.panel.clone()),
                     full_label: Set(output_update.full_label.clone()),
                     label: Set(output_update.label.clone()),
@@ -236,7 +239,7 @@ async fn execute_output_batch_save(
 
     // Commit transaction
     txn.commit().await
-        .map_err(|e| format!("database is locked: {}", e))?;
+        .map_err(|e| format!("{}", e))?;
 
     info!("✅ Batch save complete: {} updated, {} failed", updated_count, failed_count);
 
