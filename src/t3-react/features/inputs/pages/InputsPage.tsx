@@ -635,12 +635,12 @@ const InputsPageDesktop: React.FC = () => {
     setRangeDrawerOpen(true);
   };
 
-  const handleRangeSave = async (newRange: number) => {
+  const handleRangeSave = async (newRange: number, newDigitalAnalog: number) => {
     if (!selectedInputForRange || !selectedDevice) return;
 
     try {
       console.log(`=== Updating range (Two-Step Process) ===`);
-      console.log(`Device: ${selectedDevice.serialNumber}, Input: ${selectedInputForRange.inputIndex}, New Range: ${newRange}`);
+      console.log(`Device: ${selectedDevice.serialNumber}, Input: ${selectedInputForRange.inputIndex}, New Range: ${newRange}, New DigitalAnalog: ${newDigitalAnalog}`);
 
       // Find the current input data
       const currentInput = inputs.find(
@@ -651,6 +651,8 @@ const InputsPageDesktop: React.FC = () => {
         throw new Error('Current input data not found');
       }
 
+      // Override digitalAnalog so FFI/DB calls pick up the new value
+      const updatedInput = { ...currentInput, digitalAnalog: newDigitalAnalog.toString() };
       const panelId = selectedDevice.panelId || 1;
 
       // Step 1: Update device FIRST using FFI
@@ -661,7 +663,7 @@ const InputsPageDesktop: React.FC = () => {
         selectedInputForRange.inputIndex,
         'range',
         newRange.toString(),
-        currentInput
+        updatedInput
       );
       console.log('✅ Device updated successfully');
 
@@ -672,7 +674,7 @@ const InputsPageDesktop: React.FC = () => {
         selectedInputForRange.inputIndex,
         'range',
         newRange.toString(),
-        currentInput
+        updatedInput
       );
       console.log('✅ Database updated successfully');
 
@@ -681,7 +683,7 @@ const InputsPageDesktop: React.FC = () => {
         prevInputs.map(input =>
           input.serialNumber === selectedInputForRange.serialNumber &&
           input.inputIndex === selectedInputForRange.inputIndex
-            ? { ...input, range: newRange.toString(), rangeField: newRange.toString() }
+            ? { ...input, range: newRange.toString(), rangeField: newRange.toString(), digitalAnalog: newDigitalAnalog.toString() }
             : input
         )
       );

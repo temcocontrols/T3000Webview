@@ -115,70 +115,11 @@ export function getRangeOptions(digitalAnalog: number): RangeOption[] {
 }
 
 /**
- * Get range label by value and type
+ * Get range label by value and type.
+ * Uses digitalAnalog to pick the correct table (digital vs analog),
+ * then looks up the value in that table.
  */
 export function getRangeLabel(value: number, digitalAnalog: number): string {
-  // Hardcoded mappings for custom and remapped values
-  const customMappings: { [key: number]: string } = {
-    // Analog temp sensors (C++ native indices: odd=°C, even=°F)
-    31: '3K YSI 44005 °C',
-    32: '3K YSI 44005 °F',
-    33: '10K Type2 °C',
-    34: '10K Type2 °F',
-    35: '3K Allerton/ASI °C',
-    36: '3K Allerton/ASI °F',
-    37: '10K Type3 °C',
-    38: '10K Type3 °F',
-    39: 'PT 1K °C',
-    40: 'PT 1K °F',
-    // Digital Custom (23-30)
-    23: '9/9',
-    24: '/',
-    25: '/',
-    26: '/',
-    27: '/',
-    28: '/',
-    29: '/',
-    30: '/',
-    // Analog - Other Options (41-49, 55-65)
-    41: '0.0 to 5.0 Volts',
-    42: '0.0 to 100 Amps',
-    43: '4.0 to 20 ma',
-    44: '0.0 to 20 psi',
-    45: 'Pulse Count (Slow 1Hz)',
-    46: '0 to 100 % (0-10V)',
-    47: '0 to 100 % (0-5V)',
-    48: '0 to 100 % (4-20ma)',
-    49: '0.0 to 10.0 Volts',
-    50: 'Table 1',
-    51: 'Table 2',
-    52: 'Table 3',
-    53: 'Table 4',
-    54: 'Table 5',
-    55: 'Pulse Count (Fast 100Hz)',
-    56: 'Hz',
-    57: 'Humidity %',
-    58: 'CO2 PPM',
-    59: 'Revolutions Per Minute',
-    60: 'TVOC PPB',
-    61: 'ug/m3',
-    62: '#/cm3',
-    63: 'dB',
-    64: 'Lux',
-    65: 'Reserved',
-    // Multi State (101-104)
-    101: 'MSV 1',
-    102: 'MSV 2',
-    103: 'MSV 3',
-    104: 'MSV 4',
-  };
-
-  // Check custom mappings first
-  if (customMappings.hasOwnProperty(value)) {
-    return customMappings[value];
-  }
-
-  // Fall back to standard ranges
   const ranges = getRangeOptions(digitalAnalog);
   const range = ranges.find(r => r.value === value);
   return range ? range.label : 'Unknown';
