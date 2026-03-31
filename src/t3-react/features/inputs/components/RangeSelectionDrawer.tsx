@@ -383,12 +383,12 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 {/* 'a' prefix distinguishes analog from digital values within the shared RadioGroup.
                     C++ stores: 1=3K YSI °C, 2=°F | 3=10K Type2 °C, 4=°F | 5=3K Allerton °C, 6=°F
                               | 7=10K Type3 °C, 8=°F | 9=PT 1K °C, 10=°F
-                    Display: C++ value + 30 (so 31=3K YSI, 33=10K Type2, etc.) */}
-                <Radio value="a1" label="31. 3K YSI 44005" />
-                <Radio value="a3" label="33. 10K Type2" />
-                <Radio value="a5" label="35. 3K Allerton/ASI" />
-                <Radio value="a7" label="37. 10K Type3" />
-                <Radio value="a9" label="39. PT 1K" />
+                    Display: C++ value + 30 (°C: 31,33,35,37,39  °F: 32,34,36,38,40) */}
+                <Radio value="a1" label={`${useFahrenheit ? 32 : 31}. 3K YSI 44005`} />
+                <Radio value="a3" label={`${useFahrenheit ? 34 : 33}. 10K Type2`} />
+                <Radio value="a5" label={`${useFahrenheit ? 36 : 35}. 3K Allerton/ASI`} />
+                <Radio value="a7" label={`${useFahrenheit ? 38 : 37}. 10K Type3`} />
+                <Radio value="a9" label={`${useFahrenheit ? 40 : 39}. PT 1K`} />
               </div>
             </div>
 
