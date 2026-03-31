@@ -129,7 +129,15 @@ async fn execute_batch_save(
     let txn = db_connection.begin().await
         .map_err(|e| format!("Transaction start error: {}", e))?;
 
-    // Process each input update
+    // Delete all existing rows for this serial to clean up corrupted data
+    // (Refresh from Device always sends ALL points, so replacing all rows is safe)
+    input_points::Entity::delete_many()
+        .filter(input_points::Column::SerialNumber.eq(serial))
+        .exec(&txn)
+        .await
+        .map_err(|e| format!("Failed to clean existing input data: {}", e))?;
+
+    // Insert all input points fresh
     for input_update in &payload.inputs {
         let index = &input_update.input_index;
 

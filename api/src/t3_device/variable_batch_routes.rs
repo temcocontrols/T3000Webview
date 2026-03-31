@@ -127,7 +127,15 @@ async fn execute_variable_batch_save(
     let txn = db_connection.begin().await
         .map_err(|e| format!("Transaction start error: {}", e))?;
 
-    // Process each variable update
+    // Delete all existing rows for this serial to clean up corrupted data
+    // (Refresh from Device always sends ALL points, so replacing all rows is safe)
+    variable_points::Entity::delete_many()
+        .filter(variable_points::Column::SerialNumber.eq(serial))
+        .exec(&txn)
+        .await
+        .map_err(|e| format!("Failed to clean existing variable data: {}", e))?;
+
+    // Insert all variable points fresh
     for variable_update in &payload.variables {
         let index = &variable_update.variable_index;
 

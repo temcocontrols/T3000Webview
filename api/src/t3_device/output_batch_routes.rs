@@ -129,7 +129,15 @@ async fn execute_output_batch_save(
     let txn = db_connection.begin().await
         .map_err(|e| format!("Transaction start error: {}", e))?;
 
-    // Process each output update
+    // Delete all existing rows for this serial to clean up corrupted data
+    // (Refresh from Device always sends ALL points, so replacing all rows is safe)
+    output_points::Entity::delete_many()
+        .filter(output_points::Column::SerialNumber.eq(serial))
+        .exec(&txn)
+        .await
+        .map_err(|e| format!("Failed to clean existing output data: {}", e))?;
+
+    // Insert all output points fresh
     for output_update in &payload.outputs {
         let index = &output_update.output_index;
 
