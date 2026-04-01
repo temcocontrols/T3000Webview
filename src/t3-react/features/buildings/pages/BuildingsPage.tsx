@@ -320,41 +320,6 @@ export const BuildingsPage: React.FC = () => {
                       items={displayBuildings}
                       columns={columns}
                       sortable
-                      resizableColumns
-                      columnSizingOptions={{
-                        id: {
-                          minWidth: 60,
-                          defaultWidth: 80,
-                        },
-                        buildingName: {
-                          minWidth: 120,
-                          defaultWidth: 150,
-                        },
-                        protocol: {
-                          minWidth: 100,
-                          defaultWidth: 120,
-                        },
-                        ipAddress: {
-                          minWidth: 150,
-                          defaultWidth: 200,
-                        },
-                        ipPort: {
-                          minWidth: 100,
-                          defaultWidth: 120,
-                        },
-                        comPort: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        baudRate: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        buildingPath: {
-                          minWidth: 200,
-                          defaultWidth: 400,
-                        },
-                      }}
                     >
                       <DataGridHeader>
                         <DataGridRow>
