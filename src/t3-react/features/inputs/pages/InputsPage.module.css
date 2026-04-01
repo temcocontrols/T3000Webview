@@ -860,6 +860,34 @@
   white-space: nowrap;
 }
 
+.analogType {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #0078d4;
+  background-color: #e8f4fd;
+  border: 1px solid #a0cfee;
+  border-radius: 0;
+  white-space: nowrap;
+}
+
+.digitalType {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #616161;
+  background-color: #f5f5f5;
+  border: 1px solid #d0d0d0;
+  border-radius: 0;
+  white-space: nowrap;
+}
+
 .cellFlexContainer {
   display: flex;
   align-items: center;

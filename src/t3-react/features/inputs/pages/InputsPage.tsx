@@ -1247,12 +1247,9 @@ const InputsPageDesktop: React.FC = () => {
         return (
           <TableCellLayout>
             {!isEmptyRow(item) && (
-              <Badge
-                appearance="outline"
-                color={isDigital ? 'informative' : 'brand'}
-              >
+              <span className={isDigital ? styles.digitalType : styles.analogType}>
                 {isDigital ? 'Digital' : 'Analog'}
-              </Badge>
+              </span>
             )}
           </TableCellLayout>
         );
