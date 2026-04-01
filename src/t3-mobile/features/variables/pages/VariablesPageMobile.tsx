@@ -22,6 +22,7 @@ import { useMobilePage } from '../../../layout/MobilePageContext';
 import { PointListRow, PointListHeader } from '../../../components/PointListRow/PointListRow';
 import { useVariablesPage } from '../../../../shared/features/variables/hooks/useVariablesPage';
 import { getRangeLabel } from '../../../../t3-react/features/variables/data/rangeData';
+import { MobileRangeDrawer } from '../components/MobileRangeDrawer';
 
 const useStyles = makeStyles({
   wrapper: {
@@ -113,6 +114,8 @@ export const VariablesPageMobile: React.FC = () => {
   const styles = useStyles();
   const [search, setSearch] = useState('');
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [rangeDrawerOpen, setRangeDrawerOpen] = useState(false);
+  const [selectedVariableForRange, setSelectedVariableForRange] = useState<any>(null);
   const {
     variables,
     loading,
@@ -123,10 +126,30 @@ export const VariablesPageMobile: React.FC = () => {
     handleRefresh,
     handleRefreshFromDevice,
     handleRefreshSingleVariable,
+    updateVariableField,
   } = useVariablesPage();
 
   const title = variables.length > 0 ? `Variables (${variables.length})` : 'Variables';
   useMobilePage({ title, onRefresh: error && variables.length === 0 ? handleRefresh : handleRefreshFromDevice });
+
+  const handleRangeClick = (variable: any) => {
+    setSelectedVariableForRange(variable);
+    setRangeDrawerOpen(true);
+  };
+
+  const handleRangeSave = async (newRange: number, newDigitalAnalog: number) => {
+    if (!selectedVariableForRange || !selectedDevice) return;
+    try {
+      const currentVariable = variables.find(
+        v => v.serialNumber === selectedVariableForRange.serialNumber && v.variableIndex === selectedVariableForRange.variableIndex
+      );
+      if (!currentVariable) return;
+      const updatedVariable = { ...currentVariable, digitalAnalog: newDigitalAnalog.toString() };
+      await updateVariableField(selectedVariableForRange.variableIndex, 'range', newRange.toString(), updatedVariable);
+    } catch (error) {
+      console.error('Failed to update range:', error);
+    }
+  };
 
   if (loading && variables.length === 0) {
     return (
@@ -224,6 +247,7 @@ export const VariablesPageMobile: React.FC = () => {
               range={rangeLabel}
               expanded={expandedKey === `${variable.serialNumber}-${variable.variableIndex}`}
               onToggle={() => setExpandedKey(prev => prev === `${variable.serialNumber}-${variable.variableIndex}` ? null : `${variable.serialNumber}-${variable.variableIndex}`)}
+              onRangeClick={() => handleRangeClick(variable)}
               details={[
                 { label: 'Panel', value: variable.panel || '-' },
                 { label: 'Variable', value: `VAR${parseInt(variable.variableIndex || '0') + 1}` },
@@ -245,6 +269,18 @@ export const VariablesPageMobile: React.FC = () => {
           );
         })}
       </div>
+
+      {/* Range selection drawer */}
+      {selectedVariableForRange && (
+        <MobileRangeDrawer
+          isOpen={rangeDrawerOpen}
+          onClose={() => setRangeDrawerOpen(false)}
+          currentRange={parseInt(selectedVariableForRange.rangeField || '0', 10)}
+          digitalAnalog={parseInt(selectedVariableForRange.digitalAnalog || '0', 10)}
+          onSave={handleRangeSave}
+          inputLabel={`Variable ${parseInt(selectedVariableForRange.variableIndex || '0') + 1} - ${selectedVariableForRange.fullLabel || 'Unnamed'}`}
+        />
+      )}
     </div>
   );
 };
