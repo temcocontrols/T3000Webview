@@ -346,14 +346,12 @@
   justify-content: center;
   text-align: center;
 }
-/* 2. Input - 5% (center) */
+/* 2. Input - 5% (left) */
 .container :global(.fui-DataGridHeaderCell):nth-child(2),
 .container :global(.fui-DataGridCell):nth-child(2) {
   width: 5%;
   min-width: 50px;
   flex: 0 0 5%;
-  justify-content: center;
-  text-align: center;
 }
 /* 3. Full Label - 14% (left) */
 .container :global(.fui-DataGridHeaderCell):nth-child(3),
@@ -393,9 +391,9 @@
 /* 8. Range - 13% (left) */
 .container :global(.fui-DataGridHeaderCell):nth-child(8),
 .container :global(.fui-DataGridCell):nth-child(8) {
-  width: 13%;
-  min-width: 100px;
-  flex: 0 0 13%;
+  width: 10%;
+  min-width: 80px;
+  flex: 0 0 10%;
 }
 /* 9. Calibration - 7% (center) */
 .container :global(.fui-DataGridHeaderCell):nth-child(9),
@@ -433,12 +431,12 @@
   justify-content: center;
   text-align: center;
 }
-/* 13. Signal Type - 8% (center) */
+/* 13. Signal Type - 11% (center) */
 .container :global(.fui-DataGridHeaderCell):nth-child(13),
 .container :global(.fui-DataGridCell):nth-child(13) {
-  width: 8%;
-  min-width: 60px;
-  flex: 0 0 8%;
+  width: 11%;
+  min-width: 120px;
+  flex: 0 0 11%;
   justify-content: center;
   text-align: center;
 }
@@ -517,7 +515,6 @@
 
 /* TableCellLayout inside centered columns - inherit center alignment */
 .container :global(.fui-DataGridCell):nth-child(1) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridCell):nth-child(2) :global(.fui-TableCellLayout),
 .container :global(.fui-DataGridCell):nth-child(9) :global(.fui-TableCellLayout),
 .container :global(.fui-DataGridCell):nth-child(10) :global(.fui-TableCellLayout),
 .container :global(.fui-DataGridCell):nth-child(11) :global(.fui-TableCellLayout),
@@ -530,7 +527,6 @@
 
 /* TableCellLayout inside centered header columns */
 .container :global(.fui-DataGridHeaderCell):nth-child(1) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridHeaderCell):nth-child(2) :global(.fui-TableCellLayout),
 .container :global(.fui-DataGridHeaderCell):nth-child(9) :global(.fui-TableCellLayout),
 .container :global(.fui-DataGridHeaderCell):nth-child(10) :global(.fui-TableCellLayout),
 .container :global(.fui-DataGridHeaderCell):nth-child(11) :global(.fui-TableCellLayout),
@@ -543,7 +539,6 @@
 
 /* All nested elements in centered header columns - force center */
 .container :global(.fui-DataGridHeaderCell):nth-child(1) *,
-.container :global(.fui-DataGridHeaderCell):nth-child(2) *,
 .container :global(.fui-DataGridHeaderCell):nth-child(9) *,
 .container :global(.fui-DataGridHeaderCell):nth-child(10) *,
 .container :global(.fui-DataGridHeaderCell):nth-child(11) *,
@@ -556,7 +551,6 @@
 
 /* All nested elements in centered columns */
 .container :global(.fui-DataGridCell):nth-child(1) *,
-.container :global(.fui-DataGridCell):nth-child(2) *,
 .container :global(.fui-DataGridCell):nth-child(9) *,
 .container :global(.fui-DataGridCell):nth-child(10) *,
 .container :global(.fui-DataGridCell):nth-child(11) *,
@@ -857,6 +851,12 @@
 .rangeBadge:hover {
   background-color: #fce7f3;
   border-color: #c4317c;
+}
+
+.signalTypeText {
+  font-size: 11px;
+  color: #616161;
+  white-space: nowrap;
 }
 
 .cellFlexContainer {

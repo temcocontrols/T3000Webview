@@ -1223,7 +1223,7 @@ const InputsPageDesktop: React.FC = () => {
         );
       },
     }),
-    // 12. Signal Type (keep empty for now)
+    // 12. Signal Type (hardware property - always Thermistor Dry Contact)
     createTableColumn<InputPoint>({
       columnId: 'signalType',
       renderHeaderCell: () => (
@@ -1231,7 +1231,13 @@ const InputsPageDesktop: React.FC = () => {
           <span>Signal Type</span>
         </div>
       ),
-      renderCell: () => <TableCellLayout></TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (
+            <span className={styles.signalTypeText}>Thermistor Dry Contact</span>
+          )}
+        </TableCellLayout>
+      ),
     }),
     // 13. Type (Digital/Analog)
     createTableColumn<InputPoint>({

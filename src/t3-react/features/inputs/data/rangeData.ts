@@ -138,3 +138,33 @@ export function getUnitSymbol(value: number, digitalAnalog: number): string {
   return range?.unit || '---';
 }
 
+/**
+ * Get signal type (hardware type) based on range and digital/analog.
+ * Maps range categories to hardware signal types.
+ * Default: "Thermistor Dry Contact"
+ */
+export function getSignalType(rangeValue: number, digitalAnalog: number): string {
+  if (digitalAnalog === BAC_UNITS_DIGITAL) {
+    return 'Dry Contact';
+  }
+  const range = INPUT_ANALOG_RANGES.find(r => r.value === rangeValue);
+  if (!range) return 'Thermistor Dry Contact';
+
+  switch (range.category) {
+    case 'Temperature': return 'Thermistor';
+    case 'Voltage': return 'Voltage';
+    case 'Current': return 'Current';
+    case 'Pressure': return 'Pressure';
+    case 'Pulse': return 'Pulse';
+    case 'Percentage': return 'Percentage';
+    case 'Frequency': return 'Frequency';
+    case 'Environmental': return 'Environmental';
+    case 'Speed': return 'Speed';
+    case 'Sound': return 'Sound';
+    case 'Light': return 'Light';
+    case 'Custom Tables': return 'Custom';
+    case 'General': return 'Thermistor Dry Contact';
+    default: return 'Thermistor Dry Contact';
+  }
+}
+
