@@ -844,19 +844,19 @@
   display: inline-block;
   padding: 1px 8px;
   border-radius: 2px;
-  background-color: #e8f0fe;
-  color: #0078d4;
+  background-color: #fdf2f8;
+  color: #c4317c;
   font-size: 11px;
   font-weight: 600;
   line-height: 20px;
   white-space: nowrap;
-  border: 1px solid #c8ddf5;
+  border: 1px solid #e48bb5;
   cursor: pointer;
 }
 
 .rangeBadge:hover {
-  background-color: #d0e2f7;
-  border-color: #0078d4;
+  background-color: #fce7f3;
+  border-color: #c4317c;
 }
 
 .cellFlexContainer {
