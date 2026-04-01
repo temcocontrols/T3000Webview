@@ -1,18 +1,11 @@
 /**
  * MobileRangeDrawer — full-screen bottom-sheet range selector for mobile.
  *
- * Layout:
+ * Matches PC version layout:
  *   • Sticky header: title, manual input, current label, OK / Cancel
- *   • Scrollable body with collapsible accordion sections:
- *     – Default (Unused)
- *     – Digital Units (1-22)
- *     – Custom Digital (23-30)
- *     – Multi State (101-104)
- *     – Temp Sensors (1-10 analog, with °C/°F toggle)
- *     – Other Analog (11-39)
- *     – Custom Range / Tables (20-24 analog)
- *
- * Reuses rangeData.ts from the desktop inputs feature.
+ *   • Default (Unused) always visible
+ *   • Digital section: Digital Units, Custom Digital Units, Multi State
+ *   • Input Analog Units section: Temp Sensors (°C/°F), Other Options, Custom Range
  */
 
 import React, { useState, useCallback } from 'react';
@@ -111,9 +104,10 @@ const useStyles = makeStyles({
     WebkitOverflowScrolling: 'touch',
   },
 
-  /* Accordion section */
+  /* Main section (Digital / Analog) — collapsible */
   section: {
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    width: '100%',
   },
   sectionHeader: {
     display: 'flex',
@@ -122,11 +116,13 @@ const useStyles = makeStyles({
     padding: '10px 12px',
     cursor: 'pointer',
     userSelect: 'none',
-    backgroundColor: '#fafafa',
-    ':active': { backgroundColor: '#f0f0f0' },
+    backgroundColor: '#f0f0f0',
+    width: '100%',
+    boxSizing: 'border-box' as const,
+    ':active': { backgroundColor: '#e4e4e4' },
   },
   sectionTitle: {
-    fontSize: '13px',
+    fontSize: '14px',
     fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     flex: 1,
@@ -136,20 +132,43 @@ const useStyles = makeStyles({
     flexShrink: 0,
   },
   sectionBody: {
-    padding: '4px 8px 8px',
+    padding: '0',
   },
 
-  /* Radio grid — 2 columns */
+  /* Sub-section header (e.g. "Digital Units", "Temp Sensors") */
+  subSectionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '6px 16px',
+    backgroundColor: '#fafafa',
+    borderBottom: `1px solid #edebe9`,
+    width: '100%',
+    boxSizing: 'border-box' as const,
+  },
+  subSectionTitle: {
+    fontSize: '12px',
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground2,
+    flex: 1,
+  },
+  editButton: {
+    fontSize: '11px',
+    minWidth: 'auto',
+    padding: '2px 8px',
+    height: '22px',
+  },
+
+  /* Radio grid — 2 columns, full width */
   radioGrid: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: '0',
+    padding: '4px 12px 8px',
+    width: '100%',
   },
   radioItem: {
     padding: '2px 0',
-  },
-  radioLabel: {
-    fontSize: '12px',
   },
 
   /* Temp toggle */
@@ -157,13 +176,15 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
-    padding: '4px 8px 8px',
+    padding: '4px 16px 4px',
   },
 
   /* Default (Unused) row */
   defaultRow: {
     padding: '8px 12px',
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    width: '100%',
+    boxSizing: 'border-box' as const,
   },
 });
 
@@ -178,9 +199,9 @@ interface MobileRangeDrawerProps {
   inputLabel?: string;
 }
 
-/* ────────────────────────────────────── Accordion helper ── */
+/* ────────────────────────────────────── Collapsible section ── */
 
-const AccordionSection: React.FC<{
+const CollapsibleSection: React.FC<{
   title: string;
   defaultOpen?: boolean;
   children: React.ReactNode;
@@ -313,19 +334,16 @@ export const MobileRangeDrawer: React.FC<MobileRangeDrawerProps> = ({
     onClose();
   };
 
-  // Which section should default-open based on current value
-  const isDigitalCurrent = digitalAnalog === 0 && currentRange >= 1 && currentRange <= 22;
-  const isCustomDigitalCurrent = digitalAnalog === 0 && currentRange >= 23 && currentRange <= 30;
-  const isMultiStateCurrent = digitalAnalog === 0 && currentRange >= 101 && currentRange <= 104;
-  const isTempCurrent = digitalAnalog === 1 && currentRange >= 1 && currentRange <= 10;
-  const isOtherAnalogCurrent = digitalAnalog === 1 && currentRange >= 11 && currentRange <= 39;
+  // Which main section should default-open based on current value
+  const isDigitalCurrent = digitalAnalog === 0 && currentRange >= 1;
+  const isAnalogCurrent = digitalAnalog === 1 && currentRange >= 1;
 
-  // Filter ranges for each section
+  // Filter ranges for sub-sections
   const digitalStandard = DIGITAL_RANGES.filter(r => r.value >= 1 && r.value <= 22);
   const digitalCustom = DIGITAL_RANGES.filter(r => r.value >= 23 && r.value <= 30);
   const multiState = DIGITAL_RANGES.filter(r => r.value >= 101 && r.value <= 104);
-  const tempSensors = INPUT_ANALOG_RANGES.filter(r => r.value >= 1 && r.value <= 10 && r.value % 2 === 1); // odd = °C base
-  const otherAnalog = INPUT_ANALOG_RANGES.filter(r => r.value >= 11 && r.value <= 39);
+  const tempSensors = INPUT_ANALOG_RANGES.filter(r => r.value >= 1 && r.value <= 10 && r.value % 2 === 1);
+  const customRange = INPUT_ANALOG_RANGES.filter(r => r.value >= 20 && r.value <= 24);
 
   return (
     <Drawer
@@ -376,63 +394,65 @@ export const MobileRangeDrawer: React.FC<MobileRangeDrawerProps> = ({
           </div>
         </div>
 
-        {/* Single RadioGroup wraps everything so only one radio can be selected */}
-        <RadioGroup value={radioGroupValue} onChange={handleRadioChange}>
+        {/* Single RadioGroup wraps everything */}
+        <RadioGroup value={radioGroupValue} onChange={handleRadioChange} style={{ width: '100%' }}>
           {/* Default: Unused */}
           <div className={styles.defaultRow}>
             <Radio value="0" label={<Text size={200}>0. Unused</Text>} />
           </div>
 
-          {/* Digital Units (1-22) */}
-          <AccordionSection title="Digital Units (1-22)" defaultOpen={isDigitalCurrent}>
+          {/* ═══════ Digital ═══════ */}
+          <CollapsibleSection title="Digital" defaultOpen={isDigitalCurrent}>
+            {/* Digital Units */}
+            <div className={styles.subSectionHeader}>
+              <span className={styles.subSectionTitle}>Digital Units</span>
+            </div>
             <div className={styles.radioGrid}>
               {digitalStandard.map(r => (
                 <div key={r.value} className={styles.radioItem}>
-                  <Radio
-                    value={r.value.toString()}
-                    label={<Text size={200}>{r.value}. {r.label}</Text>}
-                  />
+                  <Radio value={r.value.toString()} label={<Text size={200}>{r.value}. {r.label}</Text>} />
                 </div>
               ))}
             </div>
-          </AccordionSection>
 
-          {/* Custom Digital (23-30) */}
-          <AccordionSection title="Custom Digital (23-30)" defaultOpen={isCustomDigitalCurrent}>
+            {/* Custom Digital Units */}
+            <div className={styles.subSectionHeader}>
+              <span className={styles.subSectionTitle}>Custom Digital Units</span>
+              <Button appearance="primary" size="small" className={styles.editButton}>Edit</Button>
+            </div>
             <div className={styles.radioGrid}>
               {digitalCustom.map(r => (
                 <div key={r.value} className={styles.radioItem}>
-                  <Radio
-                    value={r.value.toString()}
-                    label={<Text size={200}>{r.value}. {r.label}</Text>}
-                  />
+                  <Radio value={r.value.toString()} label={<Text size={200}>{r.value}. {r.label}</Text>} />
                 </div>
               ))}
             </div>
-          </AccordionSection>
 
-          {/* Multi State (101-104) */}
-          <AccordionSection title="Multi State (101-104)" defaultOpen={isMultiStateCurrent}>
+            {/* Multi State */}
+            <div className={styles.subSectionHeader}>
+              <span className={styles.subSectionTitle}>Multi State</span>
+              <Button appearance="primary" size="small" className={styles.editButton}>Edit</Button>
+            </div>
             <div className={styles.radioGrid}>
               {multiState.map(r => (
                 <div key={r.value} className={styles.radioItem}>
-                  <Radio
-                    value={r.value.toString()}
-                    label={<Text size={200}>{r.value}. {r.label}</Text>}
-                  />
+                  <Radio value={r.value.toString()} label={<Text size={200}>{r.value}. {r.label}</Text>} />
                 </div>
               ))}
             </div>
-          </AccordionSection>
+          </CollapsibleSection>
 
-          {/* Temp Sensors */}
-          <AccordionSection title="Temp Sensors" defaultOpen={isTempCurrent}>
+          {/* ═══════ Input Analog Units ═══════ */}
+          <CollapsibleSection title="Input Analog Units" defaultOpen={isAnalogCurrent}>
+            {/* Temp Sensors */}
+            <div className={styles.subSectionHeader}>
+              <span className={styles.subSectionTitle}>Temp Sensors</span>
+            </div>
             <div className={styles.tempToggle}>
               <Checkbox
                 checked={!useFahrenheit}
                 onChange={(_, data) => {
                   setUseFahrenheit(!data.checked);
-                  // Update selected range if currently on a temp sensor
                   if (isTempSensor(selectedRange) && selectedSection === 'analog') {
                     const base = getTempBase(selectedRange);
                     const actual = !data.checked ? base + 1 : base;
@@ -461,32 +481,53 @@ export const MobileRangeDrawer: React.FC<MobileRangeDrawerProps> = ({
                 const displayNum = r.value + ANALOG_DISPLAY_OFFSET;
                 return (
                   <div key={r.value} className={styles.radioItem}>
-                    <Radio
-                      value={'a' + r.value}
-                      label={<Text size={200}>{displayNum}. {r.label}</Text>}
-                    />
+                    <Radio value={'a' + r.value} label={<Text size={200}>{displayNum}. {r.label}</Text>} />
                   </div>
                 );
               })}
             </div>
-          </AccordionSection>
 
-          {/* Other Analog Options (11-39) */}
-          <AccordionSection title="Other Analog Options" defaultOpen={isOtherAnalogCurrent}>
+            {/* Other Options */}
+            <div className={styles.subSectionHeader}>
+              <span className={styles.subSectionTitle}>Other Options</span>
+            </div>
             <div className={styles.radioGrid}>
-              {otherAnalog.map(r => {
+              <div className={styles.radioItem}><Radio value="a11" label={<Text size={200}>41. 0.0 to 5.0 Volts</Text>} /></div>
+              <div className={styles.radioItem}><Radio value="a12" label={<Text size={200}>42. 0.0 to 100 Amps</Text>} /></div>
+              <div className={styles.radioItem}><Radio value="a13" label={<Text size={200}>43. 4.0 to 20 ma</Text>} /></div>
+              <div className={styles.radioItem}><Radio value="a14" label={<Text size={200}>44. 0.0 to 20 psi</Text>} /></div>
+              <div className={styles.radioItem}><Radio value="a15" label={<Text size={200}>45. Pulse Count (Slow 1Hz)</Text>} /></div>
+              <div className={styles.radioItem}><Radio value="a16" label={<Text size={200}>46. 0 to 100 % (0-10V)</Text>} /></div>
+              <div className={styles.radioItem}><Radio value="a17" label={<Text size={200}>47. 0 to 100 % (0-5V)</Text>} /></div>
+              <div className={styles.radioItem}><Radio value="a18" label={<Text size={200}>48. 0 to 100 % (4-20ma)</Text>} /></div>
+              <div className={styles.radioItem}><Radio value="a19" label={<Text size={200}>49. 0.0 to 10.0 Volts</Text>} /></div>
+              <div className={styles.radioItem}><Radio value="a25" label={<Text size={200}>55. Pulse Count (Fast 100Hz)</Text>} /></div>
+              <div className={styles.radioItem}><Radio value="a26" label={<Text size={200}>56. Frequency</Text>} /></div>
+              <div className={styles.radioItem}><Radio value="a27" label={<Text size={200}>57. Humidity %</Text>} /></div>
+              <div className={styles.radioItem}><Radio value="a28" label={<Text size={200}>58. CO2 PPM</Text>} /></div>
+              <div className={styles.radioItem}><Radio value="a29" label={<Text size={200}>59. RPM</Text>} /></div>
+              <div className={styles.radioItem}><Radio value="a30" label={<Text size={200}>60. TVOC PPB</Text>} /></div>
+              <div className={styles.radioItem}><Radio value="a31" label={<Text size={200}>61. ug/m3</Text>} /></div>
+              <div className={styles.radioItem}><Radio value="a32" label={<Text size={200}>62. #/cm3</Text>} /></div>
+              <div className={styles.radioItem}><Radio value="a33" label={<Text size={200}>63. dB</Text>} /></div>
+              <div className={styles.radioItem}><Radio value="a34" label={<Text size={200}>64. Lux</Text>} /></div>
+            </div>
+
+            {/* Custom Range */}
+            <div className={styles.subSectionHeader}>
+              <span className={styles.subSectionTitle}>Custom Range</span>
+            </div>
+            <div className={styles.radioGrid}>
+              {customRange.map(r => {
                 const displayNum = r.value + ANALOG_DISPLAY_OFFSET;
                 return (
                   <div key={r.value} className={styles.radioItem}>
-                    <Radio
-                      value={'a' + r.value}
-                      label={<Text size={200}>{displayNum}. {r.label}</Text>}
-                    />
+                    <Radio value={'a' + r.value} label={<Text size={200}>{displayNum}. {r.label}</Text>} />
                   </div>
                 );
               })}
             </div>
-          </AccordionSection>
+          </CollapsibleSection>
         </RadioGroup>
       </DrawerBody>
     </Drawer>
