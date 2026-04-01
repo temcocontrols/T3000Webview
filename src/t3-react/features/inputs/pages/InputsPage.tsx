@@ -749,14 +749,7 @@ const InputsPageDesktop: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'panel',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('panel')}>
-          <span>Panel</span>
-          {sortColumn === 'panel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Panel</span>
       ),
       renderCell: (item) => (
         <TableCellLayout>
