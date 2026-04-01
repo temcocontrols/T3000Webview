@@ -151,6 +151,66 @@ export const useVariablesPage = () => {
     }
   };
 
+  // Update variable field using Action 16
+  const updateVariableField = async (
+    variableIndex: string,
+    field: string,
+    newValue: string,
+    currentVariable: VariablePoint
+  ) => {
+    if (!selectedDevice) return;
+
+    try {
+      console.log(`[useVariablesPage] Updating ${field} for Variable ${variableIndex}`);
+
+      const payload = {
+        fullLabel: field === 'fullLabel' ? newValue : (currentVariable.fullLabel || ''),
+        label: field === 'label' ? newValue : (currentVariable.label || ''),
+        value: field === 'fValue' ? parseFloat(newValue || '0') : parseFloat(currentVariable.fValue || '0') / 1000,
+        range: field === 'range' ? parseInt(newValue || '0', 10) : parseInt(currentVariable.rangeField || '0', 10),
+        autoManual: field === 'autoManual' ? parseInt(newValue || '0', 10) : parseInt(currentVariable.autoManual || '0', 10),
+        control: 0,
+        digitalAnalog: parseInt(currentVariable.digitalAnalog || '0', 10),
+        decom: 0,
+      };
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/t3_device/variables/${selectedDevice.serialNumber}/${variableIndex}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('[useVariablesPage] Update success:', result);
+
+      setVariables(prevVariables =>
+        prevVariables.map(variable =>
+          variable.variableIndex === variableIndex
+            ? {
+                ...variable,
+                [field]: field === 'fValue'
+                  ? (parseFloat(newValue || '0') * 1000).toString()
+                  : newValue
+              }
+            : variable
+        )
+      );
+
+      return result;
+    } catch (error) {
+      console.error('[useVariablesPage] Failed to update:', error);
+      throw error;
+    }
+  };
+
   return {
     variables,
     loading,
@@ -161,5 +221,6 @@ export const useVariablesPage = () => {
     handleRefresh,
     handleRefreshFromDevice,
     handleRefreshSingleVariable,
+    updateVariableField,
   };
 };
