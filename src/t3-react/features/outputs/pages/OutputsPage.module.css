@@ -286,7 +286,7 @@
   display: flex;
   flex-direction: column;
   min-height: fit-content;
-  min-width: max-content;
+  width: 100%;
 }
 
 /* Header row styling - modern clean design */
@@ -316,6 +316,111 @@
   min-height: 0;
 }
 
+/*
+ * Percentage-based column widths (total = 100%)
+ * Column order: panel, output, fullLabel, label, autoManual, hoaSwitch, value, units, range,
+ *              lowVoltage, highVoltage, pwmPeriod, status, signalType
+ */
+
+/* 1. Panel - 4% */
+.container :global(.fui-DataGridHeaderCell):nth-child(1),
+.container :global(.fui-DataGridCell):nth-child(1) {
+  width: 4%;
+  min-width: 40px;
+  flex: 0 0 4%;
+}
+/* 2. Output - 5% */
+.container :global(.fui-DataGridHeaderCell):nth-child(2),
+.container :global(.fui-DataGridCell):nth-child(2) {
+  width: 5%;
+  min-width: 50px;
+  flex: 0 0 5%;
+}
+/* 3. Full Label - 14% */
+.container :global(.fui-DataGridHeaderCell):nth-child(3),
+.container :global(.fui-DataGridCell):nth-child(3) {
+  width: 14%;
+  min-width: 100px;
+  flex: 0 0 14%;
+}
+/* 4. Label - 8% */
+.container :global(.fui-DataGridHeaderCell):nth-child(4),
+.container :global(.fui-DataGridCell):nth-child(4) {
+  width: 8%;
+  min-width: 60px;
+  flex: 0 0 8%;
+}
+/* 5. Auto/Man - 7% */
+.container :global(.fui-DataGridHeaderCell):nth-child(5),
+.container :global(.fui-DataGridCell):nth-child(5) {
+  width: 7%;
+  min-width: 60px;
+  flex: 0 0 7%;
+}
+/* 6. HOA Switch - 7% */
+.container :global(.fui-DataGridHeaderCell):nth-child(6),
+.container :global(.fui-DataGridCell):nth-child(6) {
+  width: 7%;
+  min-width: 60px;
+  flex: 0 0 7%;
+}
+/* 7. Value - 8% */
+.container :global(.fui-DataGridHeaderCell):nth-child(7),
+.container :global(.fui-DataGridCell):nth-child(7) {
+  width: 8%;
+  min-width: 70px;
+  flex: 0 0 8%;
+}
+/* 8. Units - 4% */
+.container :global(.fui-DataGridHeaderCell):nth-child(8),
+.container :global(.fui-DataGridCell):nth-child(8) {
+  width: 4%;
+  min-width: 40px;
+  flex: 0 0 4%;
+}
+/* 9. Range - 13% */
+.container :global(.fui-DataGridHeaderCell):nth-child(9),
+.container :global(.fui-DataGridCell):nth-child(9) {
+  width: 13%;
+  min-width: 100px;
+  flex: 0 0 13%;
+}
+/* 10. Low V - 5% */
+.container :global(.fui-DataGridHeaderCell):nth-child(10),
+.container :global(.fui-DataGridCell):nth-child(10) {
+  width: 5%;
+  min-width: 45px;
+  flex: 0 0 5%;
+}
+/* 11. High V - 5% */
+.container :global(.fui-DataGridHeaderCell):nth-child(11),
+.container :global(.fui-DataGridCell):nth-child(11) {
+  width: 5%;
+  min-width: 45px;
+  flex: 0 0 5%;
+}
+/* 12. PWM Period - 6% */
+.container :global(.fui-DataGridHeaderCell):nth-child(12),
+.container :global(.fui-DataGridCell):nth-child(12) {
+  width: 6%;
+  min-width: 55px;
+  flex: 0 0 6%;
+}
+/* 13. Status - 6% */
+.container :global(.fui-DataGridHeaderCell):nth-child(13),
+.container :global(.fui-DataGridCell):nth-child(13) {
+  width: 6%;
+  min-width: 55px;
+  flex: 0 0 6%;
+}
+/* 14. Signal Type - fills remaining space */
+.container :global(.fui-DataGridHeaderCell):nth-child(14),
+.container :global(.fui-DataGridCell):nth-child(14) {
+  width: 8%;
+  min-width: 60px;
+  flex: 1 0 8%;
+}
+
 /* Header cell styling - modern clean design */
 .container :global(.fui-DataGridHeaderCell) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
@@ -330,7 +435,9 @@
   border-bottom: none;
   cursor: pointer;
   transition: color 0.15s ease, background-color 0.15s ease;
-  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
 }
 
 /* Header cell hover */
@@ -353,6 +460,8 @@
   min-height: 32px;
   background-color: #ffffff;
   transition: background-color 0.1s ease;
+  display: flex;
+  width: 100%;
 }
 
 /* Row hover - matches fxs-portal-hover */
@@ -371,6 +480,9 @@
   border-right: none;
   display: flex;
   align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
 }
 
 /* Badge styling - compact badges */

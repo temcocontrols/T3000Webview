@@ -1499,65 +1499,6 @@ const OutputsPageDesktop: React.FC = () => {
                       items={displayOutputs}
                       columns={columns}
                       sortable
-                      resizableColumns
-                      columnSizingOptions={{
-                        output: {
-                          minWidth: 60,
-                          defaultWidth: 80,
-                        },
-                        panel: {
-                          minWidth: 60,
-                          defaultWidth: 75,
-                        },
-                        fullLabel: {
-                          minWidth: 150,
-                          defaultWidth: 200,
-                        },
-                        autoManual: {
-                          minWidth: 90,
-                          defaultWidth: 120,
-                        },
-                        hoaSwitch: {
-                          minWidth: 80,
-                          defaultWidth: 120,
-                        },
-                        value: {
-                          minWidth: 100,
-                          defaultWidth: 140,
-                        },
-                        units: {
-                          minWidth: 100,
-                          defaultWidth: 150,
-                        },
-                        range: {
-                          minWidth: 80,
-                          defaultWidth: 120,
-                        },
-                        lowVoltage: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        highVoltage: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        pwmPeriod: {
-                          minWidth: 90,
-                          defaultWidth: 120,
-                        },
-                        status: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        signalType: {
-                          minWidth: 60,
-                          defaultWidth: 80,
-                        },
-                        label: {
-                          minWidth: 130,
-                          defaultWidth: 170,
-                        },
-                      }}
                     >
                       <DataGridHeader>
                         <DataGridRow>

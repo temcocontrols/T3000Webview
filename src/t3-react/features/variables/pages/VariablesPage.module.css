@@ -286,7 +286,7 @@
   display: flex;
   flex-direction: column;
   min-height: fit-content;
-  min-width: max-content;
+  width: 100%;
 }
 
 /* Header row styling - modern clean design */
@@ -316,6 +316,61 @@
   min-height: 0;
 }
 
+/*
+ * Percentage-based column widths (total = 100%)
+ * Column order: panel, variable, fullLabel, label, autoManual, value, units
+ */
+
+/* 1. Panel - 5% */
+.container :global(.fui-DataGridHeaderCell):nth-child(1),
+.container :global(.fui-DataGridCell):nth-child(1) {
+  width: 5%;
+  min-width: 40px;
+  flex: 0 0 5%;
+}
+/* 2. Variable - 8% */
+.container :global(.fui-DataGridHeaderCell):nth-child(2),
+.container :global(.fui-DataGridCell):nth-child(2) {
+  width: 8%;
+  min-width: 60px;
+  flex: 0 0 8%;
+}
+/* 3. Full Label - 20% */
+.container :global(.fui-DataGridHeaderCell):nth-child(3),
+.container :global(.fui-DataGridCell):nth-child(3) {
+  width: 20%;
+  min-width: 120px;
+  flex: 0 0 20%;
+}
+/* 4. Label - 12% */
+.container :global(.fui-DataGridHeaderCell):nth-child(4),
+.container :global(.fui-DataGridCell):nth-child(4) {
+  width: 12%;
+  min-width: 80px;
+  flex: 0 0 12%;
+}
+/* 5. Auto/Manual - 10% */
+.container :global(.fui-DataGridHeaderCell):nth-child(5),
+.container :global(.fui-DataGridCell):nth-child(5) {
+  width: 10%;
+  min-width: 80px;
+  flex: 0 0 10%;
+}
+/* 6. Value - 15% */
+.container :global(.fui-DataGridHeaderCell):nth-child(6),
+.container :global(.fui-DataGridCell):nth-child(6) {
+  width: 15%;
+  min-width: 80px;
+  flex: 0 0 15%;
+}
+/* 7. Units - fills remaining space */
+.container :global(.fui-DataGridHeaderCell):nth-child(7),
+.container :global(.fui-DataGridCell):nth-child(7) {
+  width: 30%;
+  min-width: 100px;
+  flex: 1 0 30%;
+}
+
 /* Header cell styling - modern clean design */
 .container :global(.fui-DataGridHeaderCell) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
@@ -330,6 +385,9 @@
   border-bottom: none;
   cursor: pointer;
   transition: color 0.15s ease, background-color 0.15s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
 }
 
 /* Header cell hover */
@@ -352,6 +410,8 @@
   min-height: 32px;
   background-color: #ffffff;
   transition: background-color 0.1s ease;
+  display: flex;
+  width: 100%;
 }
 
 /* Row hover - matches fxs-portal-hover */
@@ -370,6 +430,9 @@
   border-right: none;
   display: flex;
   align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
 }
 
 /* Badge styling - compact badges */
