@@ -610,37 +610,6 @@ const AlarmsPageDesktop: React.FC = () => {
                       items={displayAlarms}
                       columns={columns}
                       sortable
-                      resizableColumns
-                      columnSizingOptions={{
-                        alarm_id: {
-                          minWidth: 60,
-                          defaultWidth: 80,
-                        },
-                        panel: {
-                          minWidth: 100,
-                          defaultWidth: 120,
-                        },
-                        message: {
-                          minWidth: 200,
-                          defaultWidth: 300,
-                        },
-                        time_stamp: {
-                          minWidth: 140,
-                          defaultWidth: 180,
-                        },
-                        acknowledged: {
-                          minWidth: 100,
-                          defaultWidth: 120,
-                        },
-                        status: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        actions: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                      }}
                     >
                       <DataGridHeader>
                         <DataGridRow>
