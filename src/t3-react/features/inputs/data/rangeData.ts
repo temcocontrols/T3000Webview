@@ -125,3 +125,16 @@ export function getRangeLabel(value: number, digitalAnalog: number): string {
   return range ? range.label : 'Unknown';
 }
 
+/**
+ * Get unit symbol by range value and type.
+ * For analog: returns the unit (Deg.C, Volts, %, etc.)
+ * For digital: returns "0/1"
+ */
+export function getUnitSymbol(value: number, digitalAnalog: number): string {
+  if (digitalAnalog === BAC_UNITS_DIGITAL) {
+    return '0/1';
+  }
+  const range = INPUT_ANALOG_RANGES.find(r => r.value === value);
+  return range?.unit || '---';
+}
+

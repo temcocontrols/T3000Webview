@@ -50,7 +50,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
-import { getRangeLabel } from '../data/rangeData';
+import { getRangeLabel, getUnitSymbol } from '../data/rangeData';
 import { API_BASE_URL } from '../../../config/constants';
 import { T3Database } from '../../../../lib/t3-database';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
@@ -1089,11 +1089,18 @@ const InputsPageDesktop: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => (
-        <TableCellLayout>
-          {!isEmptyRow(item) && (item.units || '---')}
-        </TableCellLayout>
-      ),
+      renderCell: (item) => {
+        const rangeValue = parseInt(item.rangeField || item.range || '0', 10);
+        const digitalAnalog = parseInt(item.digitalAnalog || '0', 10);
+        const unitSymbol = getUnitSymbol(rangeValue, digitalAnalog);
+        return (
+          <TableCellLayout>
+            {!isEmptyRow(item) && (
+              <span className={styles.unitBadge}>{unitSymbol}</span>
+            )}
+          </TableCellLayout>
+        );
+      },
     }),
     // 7. Range
     createTableColumn<InputPoint>({
@@ -1117,14 +1124,13 @@ const InputsPageDesktop: React.FC = () => {
         return (
           <TableCellLayout>
             {!isEmptyRow(item) && (
-              <div
+              <span
                 onClick={() => handleRangeClick(item)}
-                className={styles.rangeLink}
+                className={styles.rangeBadge}
                 title="Click to change range"
-                style={{ whiteSpace: 'nowrap' }}
               >
-                <Text size={200} weight="regular">{rangeLabel}</Text>
-              </div>
+                {rangeLabel}
+              </span>
             )}
           </TableCellLayout>
         );
