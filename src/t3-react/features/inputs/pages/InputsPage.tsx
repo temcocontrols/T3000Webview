@@ -1066,7 +1066,9 @@ const InputsPageDesktop: React.FC = () => {
                   onDoubleClick={() => handleCellDoubleClick(item, 'fValue', item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '0')}
                   title="Double-click to edit"
                 >
-                  <Text size={200} weight="regular">{item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}</Text>
+                  <span className={styles.valueBadge}>
+                    {item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}
+                  </span>
                 </div>
               )
             )}

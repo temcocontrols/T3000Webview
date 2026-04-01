@@ -833,6 +833,18 @@
   opacity: 0.5;
 }
 
+.valueBadge {
+  display: inline-block;
+  padding: 1px 10px;
+  border-radius: 2px;
+  background-color: #dff6dd;
+  color: #107c10;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
 .cellFlexContainer {
   display: flex;
   align-items: center;
