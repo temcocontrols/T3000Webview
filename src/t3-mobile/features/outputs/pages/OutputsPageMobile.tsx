@@ -22,6 +22,7 @@ import { useMobilePage } from '../../../layout/MobilePageContext';
 import { PointListRow, PointListHeader } from '../../../components/PointListRow/PointListRow';
 import { useOutputsPage } from '../../../../shared/features/outputs/hooks/useOutputsPage';
 import { getRangeLabel } from '../../../../t3-react/features/outputs/data/rangeData';
+import { MobileRangeDrawer } from '../components/MobileRangeDrawer';
 
 const useStyles = makeStyles({
   wrapper: {
@@ -113,6 +114,8 @@ export const OutputsPageMobile: React.FC = () => {
   const styles = useStyles();
   const [search, setSearch] = useState('');
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [rangeDrawerOpen, setRangeDrawerOpen] = useState(false);
+  const [selectedOutputForRange, setSelectedOutputForRange] = useState<any>(null);
   const {
     outputs,
     loading,
@@ -123,10 +126,30 @@ export const OutputsPageMobile: React.FC = () => {
     handleRefresh,
     handleRefreshFromDevice,
     handleRefreshSingleOutput,
+    updateOutputField,
   } = useOutputsPage();
 
   const title = outputs.length > 0 ? `Outputs (${outputs.length})` : 'Outputs';
   useMobilePage({ title, onRefresh: error && outputs.length === 0 ? handleRefresh : handleRefreshFromDevice });
+
+  const handleRangeClick = (output: any) => {
+    setSelectedOutputForRange(output);
+    setRangeDrawerOpen(true);
+  };
+
+  const handleRangeSave = async (newRange: number, newDigitalAnalog: number) => {
+    if (!selectedOutputForRange || !selectedDevice) return;
+    try {
+      const currentOutput = outputs.find(
+        o => o.serialNumber === selectedOutputForRange.serialNumber && o.outputIndex === selectedOutputForRange.outputIndex
+      );
+      if (!currentOutput) return;
+      const updatedOutput = { ...currentOutput, digitalAnalog: newDigitalAnalog.toString() };
+      await updateOutputField(selectedOutputForRange.outputIndex, 'range', newRange.toString(), updatedOutput);
+    } catch (error) {
+      console.error('Failed to update range:', error);
+    }
+  };
 
   if (loading && outputs.length === 0) {
     return (
@@ -228,6 +251,7 @@ export const OutputsPageMobile: React.FC = () => {
               range={rangeLabel}
               expanded={expandedKey === `${output.serialNumber}-${output.outputIndex}`}
               onToggle={() => setExpandedKey(prev => prev === `${output.serialNumber}-${output.outputIndex}` ? null : `${output.serialNumber}-${output.outputIndex}`)}
+              onRangeClick={() => handleRangeClick(output)}
               details={[
                 { label: 'Panel', value: output.panel || '-' },
                 { label: 'Output', value: `OUT${parseInt(output.outputIndex || '0') + 1}` },
@@ -251,6 +275,18 @@ export const OutputsPageMobile: React.FC = () => {
           );
         })}
       </div>
+
+      {/* Range selection drawer */}
+      {selectedOutputForRange && (
+        <MobileRangeDrawer
+          isOpen={rangeDrawerOpen}
+          onClose={() => setRangeDrawerOpen(false)}
+          currentRange={parseInt(selectedOutputForRange.rangeField || selectedOutputForRange.range || '0', 10)}
+          digitalAnalog={parseInt(selectedOutputForRange.digitalAnalog || '0', 10)}
+          onSave={handleRangeSave}
+          inputLabel={`Output ${parseInt(selectedOutputForRange.outputIndex || '0') + 1} - ${selectedOutputForRange.fullLabel || 'Unnamed'}`}
+        />
+      )}
     </div>
   );
 };
