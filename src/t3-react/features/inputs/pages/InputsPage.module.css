@@ -362,19 +362,19 @@
   min-width: 120px;
   flex: 0 0 18%;
 }
-/* 4. Label - 9% (left) */
+/* 4. Label - 11% (left) */
 .container :global(.fui-DataGridHeaderCell):nth-child(4),
 .container :global(.fui-DataGridCell):nth-child(4) {
-  width: 9%;
-  min-width: 65px;
-  flex: 0 0 9%;
+  width: 11%;
+  min-width: 75px;
+  flex: 0 0 11%;
 }
-/* 5. Auto/Man - 8% (left) */
+/* 5. Auto/Man - 7% (left) */
 .container :global(.fui-DataGridHeaderCell):nth-child(5),
 .container :global(.fui-DataGridCell):nth-child(5) {
-  width: 8%;
-  min-width: 70px;
-  flex: 0 0 8%;
+  width: 7%;
+  min-width: 65px;
+  flex: 0 0 7%;
 }
 /* 6. Value - 9% (center header) */
 .container :global(.fui-DataGridHeaderCell):nth-child(6) {
