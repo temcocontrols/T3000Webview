@@ -369,6 +369,21 @@ export const DiscoverPage: React.FC = () => {
               <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
+                  {/* Search Input Box */}
+                  <div className={styles.searchInputWrapper}>
+                    <SearchRegular className={styles.searchIcon} />
+                    <input
+                      className={styles.searchInput}
+                      type="text"
+                      placeholder="Search devices..."
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      spellCheck="false"
+                      role="searchbox"
+                      aria-label="Search devices"
+                    />
+                  </div>
+
                   <button
                     className={styles.toolbarButton}
                     onClick={handleRefresh}
@@ -379,6 +394,8 @@ export const DiscoverPage: React.FC = () => {
                     <ArrowSyncRegular />
                     <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
 
                   <button
                     className={styles.toolbarButton}
@@ -401,20 +418,6 @@ export const DiscoverPage: React.FC = () => {
                     <DeleteRegular />
                     <span>Delete Device</span>
                   </button>
-
-                  <div className={styles.searchInputWrapper}>
-                    <SearchRegular className={styles.searchIcon} />
-                    <input
-                      className={styles.searchInput}
-                      type="text"
-                      placeholder="Search devices..."
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                      spellCheck="false"
-                      role="searchbox"
-                      aria-label="Search devices"
-                    />
-                  </div>
                 </div>
               </div>
 

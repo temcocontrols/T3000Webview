@@ -230,37 +230,6 @@ export const BuildingsPage: React.FC = () => {
               <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
-                  {/* Refresh Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleRefresh}
-                    disabled={refreshing}
-                    aria-label="Refresh"
-                  >
-                    <ArrowSyncRegular />
-                    <span>Refresh</span>
-                  </button>
-
-                  {/* Add Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleAdd}
-                    aria-label="Add Building"
-                  >
-                    <AddRegular />
-                    <span>Add Building</span>
-                  </button>
-
-                  {/* Delete Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleDelete}
-                    aria-label="Delete Building"
-                  >
-                    <DeleteRegular />
-                    <span>Delete Building</span>
-                  </button>
-
                   {/* Search Input Box */}
                   <div className={styles.searchInputWrapper}>
                     <SearchRegular className={styles.searchIcon} />
@@ -275,6 +244,41 @@ export const BuildingsPage: React.FC = () => {
                       aria-label="Search buildings"
                     />
                   </div>
+
+                  {/* Refresh Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    aria-label="Refresh"
+                  >
+                    <ArrowSyncRegular />
+                    <span>Refresh</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
+
+                  {/* Add Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleAdd}
+                    aria-label="Add Building"
+                  >
+                    <AddRegular />
+                    <span>Add Building</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
+
+                  {/* Delete Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleDelete}
+                    aria-label="Delete Building"
+                  >
+                    <DeleteRegular />
+                    <span>Delete Building</span>
+                  </button>
                 </div>
               </div>
 

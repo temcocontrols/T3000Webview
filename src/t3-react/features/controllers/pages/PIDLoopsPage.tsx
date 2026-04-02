@@ -716,40 +716,7 @@ const PIDLoopsPage: React.FC = () => {
         <>
         <div className={styles.toolbar}>
           <div className={styles.toolbarContainer}>
-            {/* Refresh Button - Refresh from Device */}
-            <button
-              className={styles.toolbarButton}
-              onClick={handleRefreshFromDevice}
-              disabled={refreshing}
-              title="Refresh all PID loops from device"
-              aria-label="Refresh from Device"
-            >
-              <ArrowClockwise24Regular />
-              <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-            </button>
-
-            <button
-              className={styles.toolbarButton}
-              onClick={handleExport}
-              title="Export to CSV"
-              aria-label="Export to CSV"
-            >
-              <ArrowDownloadRegular />
-              <span>Export to CSV</span>
-            </button>
-
-            <div className={styles.toolbarSeparator} role="separator" />
-
-            <button
-              className={styles.toolbarButton}
-              onClick={handleSettings}
-              title="Settings"
-              aria-label="Settings"
-            >
-              <SettingsRegular />
-              <span>Settings</span>
-            </button>
-
+            {/* Search Input Box */}
             <div className={styles.searchInputWrapper}>
               <SearchRegular className={styles.searchIcon} />
               <input
@@ -764,6 +731,32 @@ const PIDLoopsPage: React.FC = () => {
               />
             </div>
 
+            {/* Refresh Button - Refresh from Device */}
+            <button
+              className={styles.toolbarButton}
+              onClick={handleRefreshFromDevice}
+              disabled={refreshing}
+              title="Refresh all PID loops from device"
+              aria-label="Refresh from Device"
+            >
+              <ArrowClockwise24Regular />
+              <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+            </button>
+
+            <div className={styles.toolbarSeparator} role="separator" />
+
+            <button
+              className={styles.toolbarButton}
+              onClick={handleExport}
+              title="Export to CSV"
+              aria-label="Export to CSV"
+            >
+              <ArrowDownloadRegular />
+              <span>Export to CSV</span>
+            </button>
+
+            <div className={styles.toolbarSeparator} role="separator" />
+
             {/* Info Button with Tooltip */}
             {selectedDevice && (
               <Tooltip
@@ -771,8 +764,7 @@ const PIDLoopsPage: React.FC = () => {
                 relationship="description"
               >
                 <button
-                  className={styles.toolbarButton}
-                  style={{ marginLeft: '8px' }}
+                  className={`${styles.toolbarButton} ${styles.marginLeft8}`}
                   title="Information"
                   aria-label="Information about this page"
                 >

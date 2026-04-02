@@ -214,43 +214,6 @@ const ArrayPage: React.FC = () => {
               <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
-                  {/* Refresh Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleRefresh}
-                    disabled={loading}
-                    title="Refresh"
-                    aria-label="Refresh"
-                  >
-                    <ArrowSyncRegular />
-                    <span>Refresh</span>
-                  </button>
-
-                  {/* Export to CSV Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    title="Export to CSV"
-                    aria-label="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export to CSV</span>
-                  </button>
-
-                  {/* Toolbar Separator */}
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  {/* Settings Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleSettings}
-                    title="Settings"
-                    aria-label="Settings"
-                  >
-                    <SettingsRegular />
-                    <span>Settings</span>
-                  </button>
-
                   {/* Search Input Box */}
                   <div className={styles.searchInputWrapper}>
                     <SearchRegular className={styles.searchIcon} />
@@ -266,6 +229,33 @@ const ArrayPage: React.FC = () => {
                     />
                   </div>
 
+                  {/* Refresh Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefresh}
+                    disabled={loading}
+                    title="Refresh"
+                    aria-label="Refresh"
+                  >
+                    <ArrowSyncRegular />
+                    <span>Refresh</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
+
+                  {/* Export to CSV Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleExport}
+                    title="Export to CSV"
+                    aria-label="Export to CSV"
+                  >
+                    <ArrowDownloadRegular />
+                    <span>Export to CSV</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
+
                   {/* Info Button with Tooltip */}
                   {selectedDevice && (
                     <Tooltip
@@ -273,8 +263,7 @@ const ArrayPage: React.FC = () => {
                       relationship="description"
                     >
                       <button
-                        className={styles.toolbarButton}
-                        style={{ marginLeft: '8px' }}
+                        className={`${styles.toolbarButton} ${styles.marginLeft8}`}
                         title="Information"
                         aria-label="Information about this page"
                       >
