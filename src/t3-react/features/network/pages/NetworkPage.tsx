@@ -379,37 +379,6 @@ export const NetworkPage: React.FC = () => {
                       items={displayNetworks}
                       columns={columns}
                       sortable
-                      resizableColumns
-                      columnSizingOptions={{
-                        networkId: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        networkNumber: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        buildingName: {
-                          minWidth: 150,
-                          defaultWidth: 200,
-                        },
-                        deviceCount: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        status: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        protocol: {
-                          minWidth: 100,
-                          defaultWidth: 120,
-                        },
-                        description: {
-                          minWidth: 150,
-                          defaultWidth: 250,
-                        },
-                      }}
                     >
                       <DataGridHeader>
                         <DataGridRow>

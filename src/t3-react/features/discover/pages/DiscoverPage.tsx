@@ -451,49 +451,6 @@ export const DiscoverPage: React.FC = () => {
                     items={displayDevices}
                     columns={columns}
                     sortable
-                    resizableColumns
-                    columnSizingOptions={{
-                      model: {
-                        minWidth: 150,
-                        defaultWidth: 200,
-                      },
-                      building: {
-                        minWidth: 100,
-                        defaultWidth: 130,
-                      },
-                      floor: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      room: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      subnet: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      serialNumber: {
-                        minWidth: 100,
-                        defaultWidth: 120,
-                      },
-                      ipAddress: {
-                        minWidth: 120,
-                        defaultWidth: 150,
-                      },
-                      port: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      protocol: {
-                        minWidth: 100,
-                        defaultWidth: 120,
-                      },
-                      modbusId: {
-                        minWidth: 60,
-                        defaultWidth: 80,
-                      },
-                    }}
                     focusMode="composite"
                   >
                     <DataGridHeader>
