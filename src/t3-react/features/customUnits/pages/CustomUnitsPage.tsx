@@ -404,7 +404,6 @@ const CustomUnitsPage: React.FC = () => {
                     items={customUnits}
                     columns={columns}
                     sortable
-                    resizableColumns
                     focusMode="composite"
                   >
                     <DataGridHeader>

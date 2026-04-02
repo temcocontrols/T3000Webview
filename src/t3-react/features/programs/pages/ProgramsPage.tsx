@@ -39,7 +39,6 @@ import {
 import {
   ArrowSyncRegular,
   ArrowDownloadRegular,
-  SettingsRegular,
   SearchRegular,
   ArrowSortUpRegular,
   ArrowSortDownRegular,
@@ -232,10 +231,6 @@ export const ProgramsPage: React.FC = () => {
 
   const handleExport = () => {
     console.log('Export programs to CSV');
-  };
-
-  const handleSettings = () => {
-    console.log('Settings clicked');
   };
 
   // Auto-scroll handlers
@@ -711,40 +706,6 @@ export const ProgramsPage: React.FC = () => {
               <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
-                  {/* Refresh Button - Refresh from Device */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleRefreshFromDevice}
-                    disabled={refreshing}
-                    title="Refresh all programs from device"
-                    aria-label="Refresh from Device"
-                  >
-                    <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                  </button>
-
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    title="Export to CSV"
-                    aria-label="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export to CSV</span>
-                  </button>
-
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleSettings}
-                    title="Settings"
-                    aria-label="Settings"
-                  >
-                    <SettingsRegular />
-                    <span>Settings</span>
-                  </button>
-
                   <div className={styles.searchInputWrapper}>
                     <SearchRegular className={styles.searchIcon} />
                     <input
@@ -758,6 +719,32 @@ export const ProgramsPage: React.FC = () => {
                       aria-label="Search programs"
                     />
                   </div>
+
+                  {/* Refresh Button - Refresh from Device */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefreshFromDevice}
+                    disabled={refreshing}
+                    title="Refresh all programs from device"
+                    aria-label="Refresh from Device"
+                  >
+                    <ArrowSyncRegular />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
+
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleExport}
+                    title="Export to CSV"
+                    aria-label="Export to CSV"
+                  >
+                    <ArrowDownloadRegular />
+                    <span>Export to CSV</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
 
                   {/* Info Button with Tooltip */}
                   <Tooltip
@@ -814,41 +801,6 @@ export const ProgramsPage: React.FC = () => {
                     items={displayPrograms}
                     columns={columns}
                     sortable
-                    resizableColumns
-                    columnSizingOptions={{
-                      program: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      fullLabel: {
-                        minWidth: 150,
-                        defaultWidth: 200,
-                      },
-                      status: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      autoManual: {
-                        minWidth: 100,
-                        defaultWidth: 120,
-                      },
-                      size: {
-                        minWidth: 60,
-                        defaultWidth: 80,
-                      },
-                      executionTime: {
-                        minWidth: 120,
-                        defaultWidth: 180,
-                      },
-                      label: {
-                        minWidth: 130,
-                        defaultWidth: 200,
-                      },
-                      programming: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                    }}
                   >
                     <DataGridHeader>
                       <DataGridRow>

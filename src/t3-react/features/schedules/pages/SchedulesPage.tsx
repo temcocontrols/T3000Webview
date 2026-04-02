@@ -31,7 +31,6 @@ import {
 import {
   ArrowSyncRegular,
   ArrowDownloadRegular,
-  SettingsRegular,
   SearchRegular,
   ArrowSortUpRegular,
   ArrowSortDownRegular,
@@ -227,11 +226,6 @@ export const SchedulesPage: React.FC = () => {
   // Export handler
   const handleExport = () => {
     console.log('Export schedules clicked');
-  };
-
-  // Settings handler
-  const handleSettings = () => {
-    console.log('Settings clicked');
   };
 
   // Search handler
@@ -565,43 +559,6 @@ export const SchedulesPage: React.FC = () => {
               <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
-                  {/* Refresh Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleRefreshFromDevice}
-                    disabled={refreshing}
-                    title="Refresh from Device"
-                    aria-label="Refresh from Device"
-                  >
-                    <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                  </button>
-
-                  {/* Export to CSV Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    title="Export to CSV"
-                    aria-label="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export to CSV</span>
-                  </button>
-
-                  {/* Toolbar Separator */}
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  {/* Settings Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleSettings}
-                    title="Settings"
-                    aria-label="Settings"
-                  >
-                    <SettingsRegular />
-                    <span>Settings</span>
-                  </button>
-
                   {/* Search Input Box */}
                   <div className={styles.searchInputWrapper}>
                     <SearchRegular className={styles.searchIcon} />
@@ -616,6 +573,33 @@ export const SchedulesPage: React.FC = () => {
                       aria-label="Search schedules"
                     />
                   </div>
+
+                  {/* Refresh Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefreshFromDevice}
+                    disabled={refreshing}
+                    title="Refresh from Device"
+                    aria-label="Refresh from Device"
+                  >
+                    <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
+
+                  {/* Export to CSV Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleExport}
+                    title="Export to CSV"
+                    aria-label="Export to CSV"
+                  >
+                    <ArrowDownloadRegular />
+                    <span>Export to CSV</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
 
                   {/* Info Button with Tooltip */}
                   <Tooltip
@@ -680,41 +664,6 @@ export const SchedulesPage: React.FC = () => {
                     items={sortedSchedules}
                     columns={columns}
                     sortable
-                    resizableColumns
-                    columnSizingOptions={{
-                      scheduleId: {
-                        minWidth: 70,
-                        idealWidth: '10%',
-                      },
-                      autoManual: {
-                        minWidth: 100,
-                        idealWidth: '15%',
-                      },
-                      outputField: {
-                        minWidth: 80,
-                        idealWidth: '12%',
-                      },
-                      variableField: {
-                        minWidth: 80,
-                        idealWidth: '12%',
-                      },
-                      holiday1: {
-                        minWidth: 80,
-                        idealWidth: '15%',
-                      },
-                      status1: {
-                        minWidth: 80,
-                        idealWidth: '12%',
-                      },
-                      holiday2: {
-                        minWidth: 80,
-                        idealWidth: '12%',
-                      },
-                      status2: {
-                        minWidth: 80,
-                        idealWidth: '12%',
-                      },
-                    }}
                   >
                     <DataGridHeader>
                       <DataGridRow>
