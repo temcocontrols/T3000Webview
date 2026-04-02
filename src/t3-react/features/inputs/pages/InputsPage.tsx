@@ -1136,7 +1136,7 @@ const InputsPageDesktop: React.FC = () => {
       columnId: 'calibration_sign',
       renderHeaderCell: () => (
         <div className={styles.headerCell}>
-          <span>Cal/Sign</span>
+          <span>Calibration/Sign</span>
         </div>
       ),
       renderCell: (item) => (
@@ -1163,13 +1163,8 @@ const InputsPageDesktop: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'status',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('status')}>
+        <div className={styles.headerCell}>
           <span>Status</span>
-          {sortColumn === 'status' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
         </div>
       ),
       renderCell: (item) => {

@@ -393,16 +393,16 @@
   width: 100% !important;
   flex: 1 1 100% !important;
 }
-/* 7. Units - 5% (center header) */
+/* 7. Units - 7% (center header) */
 .container :global(.fui-DataGridHeaderCell):nth-child(7) {
   justify-content: center;
   text-align: center;
 }
 .container :global(.fui-DataGridHeaderCell):nth-child(7),
 .container :global(.fui-DataGridCell):nth-child(7) {
-  width: 5%;
-  min-width: 45px;
-  flex: 0 0 5%;
+  width: 7%;
+  min-width: 55px;
+  flex: 0 0 7%;
 }
 .container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout),
 .container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout) > *,
@@ -445,21 +445,21 @@
   justify-content: center;
   text-align: center;
 }
-/* 11. Status - 7% (center) */
+/* 11. Status - 6% (center) */
 .container :global(.fui-DataGridHeaderCell):nth-child(11),
 .container :global(.fui-DataGridCell):nth-child(11) {
-  width: 7%;
-  min-width: 60px;
-  flex: 0 0 7%;
+  width: 6%;
+  min-width: 55px;
+  flex: 0 0 6%;
   justify-content: center;
   text-align: center;
 }
 /* 12. Type - fills remaining space (left) */
 .container :global(.fui-DataGridHeaderCell):nth-child(12),
 .container :global(.fui-DataGridCell):nth-child(12) {
-  width: 6%;
-  min-width: 55px;
-  flex: 1 0 6%;
+  width: 5%;
+  min-width: 50px;
+  flex: 1 0 5%;
 }
 
 /* Header cell styling - modern clean design */
