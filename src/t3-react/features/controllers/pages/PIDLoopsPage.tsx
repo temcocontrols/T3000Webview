@@ -848,61 +848,6 @@ const PIDLoopsPage: React.FC = () => {
               items={displayPidLoops}
               columns={columns}
               sortable
-              resizableColumns
-              columnSizingOptions={{
-                loop_field: {
-                  minWidth: 60,
-                  defaultWidth: 80,
-                },
-                input_field: {
-                  minWidth: 100,
-                  defaultWidth: 150,
-                },
-                input_value: {
-                  minWidth: 80,
-                  defaultWidth: 100,
-                },
-                units: {
-                  minWidth: 80,
-                  defaultWidth: 100,
-                },
-                auto_manual: {
-                  minWidth: 100,
-                  defaultWidth: 120,
-                },
-                output_field: {
-                  minWidth: 100,
-                  defaultWidth: 150,
-                },
-                output_value: {
-                  minWidth: 80,
-                  defaultWidth: 100,
-                },
-                setpoint_field: {
-                  minWidth: 100,
-                  defaultWidth: 150,
-                },
-                setpoint_value: {
-                  minWidth: 80,
-                  defaultWidth: 100,
-                },
-                prop_band: {
-                  minWidth: 80,
-                  defaultWidth: 100,
-                },
-                integral: {
-                  minWidth: 80,
-                  defaultWidth: 100,
-                },
-                derivative: {
-                  minWidth: 80,
-                  defaultWidth: 100,
-                },
-                sample_time: {
-                  minWidth: 90,
-                  defaultWidth: 110,
-                },
-              }}
             >
               <DataGridHeader>
                 <DataGridRow>

@@ -327,25 +327,6 @@ const ArrayPage: React.FC = () => {
                       items={displayArrays}
                       columns={columns}
                       sortable
-                      resizableColumns
-                      columnSizingOptions={{
-                        item: {
-                          minWidth: 60,
-                          defaultWidth: 80,
-                        },
-                        array_name: {
-                          minWidth: 180,
-                          defaultWidth: 250,
-                        },
-                        length: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        value: {
-                          minWidth: 120,
-                          defaultWidth: 180,
-                        },
-                      }}
                     >
                       <DataGridHeader>
                         <DataGridRow>

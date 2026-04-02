@@ -479,39 +479,6 @@ const AlarmsPageDesktop: React.FC = () => {
               <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleRefreshFromDevice}
-                    disabled={refreshing}
-                    title="Refresh from Device"
-                    aria-label="Refresh from Device"
-                  >
-                    <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                  </button>
-
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    title="Export to CSV"
-                    aria-label="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export to CSV</span>
-                  </button>
-
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleSettings}
-                    title="Settings"
-                    aria-label="Settings"
-                  >
-                    <SettingsRegular />
-                    <span>Settings</span>
-                  </button>
-
                   <div className={styles.searchInputWrapper}>
                     <SearchRegular className={styles.searchIcon} />
                     <input
@@ -525,6 +492,31 @@ const AlarmsPageDesktop: React.FC = () => {
                       aria-label="Search alarms"
                     />
                   </div>
+
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefreshFromDevice}
+                    disabled={refreshing}
+                    title="Refresh from Device"
+                    aria-label="Refresh from Device"
+                  >
+                    <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
+
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleExport}
+                    title="Export to CSV"
+                    aria-label="Export to CSV"
+                  >
+                    <ArrowDownloadRegular />
+                    <span>Export to CSV</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
 
                   {/* Info Button with Tooltip */}
                   {selectedDevice && (
