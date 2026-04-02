@@ -1090,7 +1090,7 @@ const InputsPageDesktop: React.FC = () => {
         const unitSymbol = getUnitSymbol(rangeValue, digitalAnalog);
         return (
           <TableCellLayout>
-            {!isEmptyRow(item) && (
+            {!isEmptyRow(item) && unitSymbol && unitSymbol !== '---' && (
               <span className={styles.unitBadge}>{unitSymbol}</span>
             )}
           </TableCellLayout>
@@ -1217,22 +1217,6 @@ const InputsPageDesktop: React.FC = () => {
           </TableCellLayout>
         );
       },
-    }),
-    // 12. Signal Type (hardware property - always Thermistor Dry Contact)
-    createTableColumn<InputPoint>({
-      columnId: 'signalType',
-      renderHeaderCell: () => (
-        <div className={styles.headerCell}>
-          <span>Signal Type</span>
-        </div>
-      ),
-      renderCell: (item) => (
-        <TableCellLayout>
-          {!isEmptyRow(item) && (
-            <span className={styles.signalTypeText}>Thermistor Dry Contact</span>
-          )}
-        </TableCellLayout>
-      ),
     }),
     // 13. Type (Digital/Analog)
     createTableColumn<InputPoint>({
