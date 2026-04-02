@@ -53,6 +53,7 @@
   background-color: transparent;
   border-bottom: none;
   padding: 0;
+  margin-bottom: 8px;
   min-height: 44px;
   display: flex;
   align-items: center;
@@ -117,7 +118,7 @@
   position: relative;
   display: flex;
   align-items: center;
-  margin-left: 12px;
+  margin-left: 0;
 }
 
 .searchIcon {
