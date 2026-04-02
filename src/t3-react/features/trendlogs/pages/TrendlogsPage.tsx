@@ -24,7 +24,6 @@ import {
 import {
   ArrowSyncRegular,
   ArrowDownloadRegular,
-  SettingsRegular,
   SearchRegular,
   ErrorCircleRegular,
   ArrowSortUpRegular,
@@ -494,10 +493,6 @@ export const TrendLogsPage: React.FC = () => {
     console.log('Export trendlogs to CSV');
   };
 
-  const handleSettings = () => {
-    console.log('Settings clicked');
-  };
-
   const handleMonitorSelect = useCallback(async (monitor: TrendLogData) => {
     console.log('🔵 [TrendLogsPage] handleMonitorSelect called with:', monitor);
     console.log('🔵 [TrendLogsPage] VERSION: 2025-12-12-v2 - Using NEW input loading code');
@@ -736,45 +731,6 @@ export const TrendLogsPage: React.FC = () => {
               {selectedDevice && (
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
-                  {/* Refresh Button - Refresh from Device */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleRefreshFromDevice}
-                    disabled={refreshing}
-                    title="Refresh all trendlogs from device"
-                    aria-label="Refresh from Device"
-                  >
-                    <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                  </button>
-
-                  {/* Vertical Separator */}
-                  <div className={styles.toolbarSeparator}></div>
-
-                  {/* Export to CSV Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    disabled={!selectedDevice}
-                    title="Export trendlogs to CSV"
-                    aria-label="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export</span>
-                  </button>
-
-                  {/* Settings Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleSettings}
-                    disabled={!selectedDevice}
-                    title="Configure trendlog settings"
-                    aria-label="Settings"
-                  >
-                    <SettingsRegular />
-                    <span>Settings</span>
-                  </button>
-
                   {/* Search Input Box */}
                   <div className={styles.searchInputWrapper}>
                     <SearchRegular className={styles.searchIcon} />
@@ -789,6 +745,34 @@ export const TrendLogsPage: React.FC = () => {
                       aria-label="Search trendlogs"
                     />
                   </div>
+
+                  {/* Refresh Button - Refresh from Device */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefreshFromDevice}
+                    disabled={refreshing}
+                    title="Refresh all trendlogs from device"
+                    aria-label="Refresh from Device"
+                  >
+                    <ArrowSyncRegular />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
+
+                  {/* Export to CSV Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleExport}
+                    disabled={!selectedDevice}
+                    title="Export trendlogs to CSV"
+                    aria-label="Export to CSV"
+                  >
+                    <ArrowDownloadRegular />
+                    <span>Export to CSV</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
 
                   {/* Info Button with Tooltip */}
                   <Tooltip
@@ -842,47 +826,12 @@ export const TrendLogsPage: React.FC = () => {
                         items={displayTrendLogs}
                         columns={columns}
                         sortable
-                        resizableColumns
                         selectionMode="single"
                         selectedItems={selectedItems}
                         onSelectionChange={(_e, data) => {
                           setSelectedItems(data.selectedItems as Set<string>);
                         }}
                         className={styles.fullWidth}
-                        columnSizingOptions={{
-                          __selection__: {
-                            idealWidth: '5%',
-                            minWidth: 44,
-                          },
-                          trendlogId: {
-                            idealWidth: '12%',
-                            minWidth: 95,
-                          },
-                          trendlogLabel: {
-                            idealWidth: '26%',
-                            minWidth: 150,
-                          },
-                          intervalSeconds: {
-                            idealWidth: '12%',
-                            minWidth: 80,
-                          },
-                          bufferSize: {
-                            idealWidth: '10%',
-                            minWidth: 90,
-                          },
-                          autoManual: {
-                            idealWidth: '12%',
-                            minWidth: 90,
-                          },
-                          status: {
-                            idealWidth: '8%',
-                            minWidth: 70,
-                          },
-                          actions: {
-                            idealWidth: '15%',
-                            minWidth: 120,
-                          },
-                        }}
                         getRowId={(item) => `${item.serialNumber}-${item.trendlogId || item.trendlogIndex}-${item._uniqueIndex}`}
                       >
                         <DataGridHeader>

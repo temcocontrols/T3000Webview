@@ -240,19 +240,31 @@
   font-size: 12px;
   font-weight: 400;
   color: #292827;
-  border: 1px solid #edebe9;
-  border-radius: 2px;
+  border: none;
   background-color: #ffffff;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: fit-content;
 }
 
 /* Header row styling */
 .container :global(.fui-DataGridHeader) {
-  background-color: #fafafa;
-  border-bottom: 1px solid #edebe9;
+  background-color: #d6e4f7;
+  border-bottom: none;
   position: sticky;
   top: 0;
   z-index: 10;
+}
+
+/* Header row inside DataGridHeader */
+.container :global(.fui-DataGridHeader) :global(.fui-DataGridRow) {
+  background-color: #d6e4f7;
+  width: 100%;
+}
+
+.container :global(.fui-DataGridHeader) :global(.fui-DataGridRow):hover {
+  background-color: #d6e4f7;
 }
 
 /* Header cell styling */
@@ -260,20 +272,29 @@
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 12px;
   font-weight: 600;
-  color: #323130;
+  color: #2c4c7c;
   padding: 0 12px;
-  height: 32px;
-  line-height: 32px;
-  background-color: transparent;
+  height: 36px;
+  line-height: 36px;
+  background-color: #d6e4f7;
   border-right: none;
   border-bottom: none;
   cursor: pointer;
-  transition: background-color 0.1s ease;
+  transition: color 0.15s ease, background-color 0.15s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
 }
 
 /* Header cell hover */
 .container :global(.fui-DataGridHeaderCell):hover {
-  background-color: #edebe9;
+  background-color: #c8d9f0;
+  color: #1b3a5c;
+}
+
+/* Sort icon styling */
+.container :global(.fui-DataGridHeaderCell) svg {
+  color: #5b7da5;
 }
 
 /* Data row styling */
@@ -282,6 +303,8 @@
   min-height: 32px;
   background-color: #ffffff;
   transition: background-color 0.1s ease;
+  display: flex;
+  width: 100%;
 }
 
 /* Row hover */
@@ -300,6 +323,9 @@
   border-right: none;
   display: flex;
   align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
 }
 
 /* Badge styling */

@@ -321,7 +321,6 @@ const TablesPage: React.FC = () => {
                     items={tables}
                     columns={columns}
                     sortable
-                    resizableColumns
                     focusMode="composite"
                   >
                     <DataGridHeader>
