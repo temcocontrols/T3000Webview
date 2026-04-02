@@ -336,7 +336,7 @@
 /*
  * Percentage-based column widths (total = 100%)
  * Column order: panel, input, fullLabel, label, autoManual, value, units, range,
- *              calibration, sign, filter, status, signalType, type
+ *              calibration_sign, filter, status, type
  */
 
 /* 1. Panel - 4% (center) */
@@ -348,44 +348,44 @@
   justify-content: center;
   text-align: center;
 }
-/* 2. Input - 5% (left) */
+/* 2. Input - 6% (left) */
 .container :global(.fui-DataGridHeaderCell):nth-child(2),
 .container :global(.fui-DataGridCell):nth-child(2) {
-  width: 5%;
-  min-width: 50px;
-  flex: 0 0 5%;
+  width: 6%;
+  min-width: 55px;
+  flex: 0 0 6%;
 }
-/* 3. Full Label - 14% (left) */
+/* 3. Full Label - 18% (left) */
 .container :global(.fui-DataGridHeaderCell):nth-child(3),
 .container :global(.fui-DataGridCell):nth-child(3) {
-  width: 14%;
-  min-width: 100px;
-  flex: 0 0 14%;
+  width: 18%;
+  min-width: 120px;
+  flex: 0 0 18%;
 }
-/* 4. Label - 8% (left) */
+/* 4. Label - 9% (left) */
 .container :global(.fui-DataGridHeaderCell):nth-child(4),
 .container :global(.fui-DataGridCell):nth-child(4) {
-  width: 8%;
-  min-width: 60px;
-  flex: 0 0 8%;
+  width: 9%;
+  min-width: 65px;
+  flex: 0 0 9%;
 }
-/* 5. Auto/Man - 7% (left) */
+/* 5. Auto/Man - 8% (left) */
 .container :global(.fui-DataGridHeaderCell):nth-child(5),
 .container :global(.fui-DataGridCell):nth-child(5) {
-  width: 7%;
-  min-width: 60px;
-  flex: 0 0 7%;
+  width: 8%;
+  min-width: 70px;
+  flex: 0 0 8%;
 }
-/* 6. Value - 8% (center header) */
+/* 6. Value - 9% (center header) */
 .container :global(.fui-DataGridHeaderCell):nth-child(6) {
   justify-content: center;
   text-align: center;
 }
 .container :global(.fui-DataGridHeaderCell):nth-child(6),
 .container :global(.fui-DataGridCell):nth-child(6) {
-  width: 8%;
-  min-width: 70px;
-  flex: 0 0 8%;
+  width: 9%;
+  min-width: 75px;
+  flex: 0 0 9%;
 }
 .container :global(.fui-DataGridCell):nth-child(6) :global(.fui-TableCellLayout),
 .container :global(.fui-DataGridCell):nth-child(6) :global(.fui-TableCellLayout) > *,
@@ -393,16 +393,16 @@
   width: 100% !important;
   flex: 1 1 100% !important;
 }
-/* 7. Units - 6% (center header) */
+/* 7. Units - 5% (center header) */
 .container :global(.fui-DataGridHeaderCell):nth-child(7) {
   justify-content: center;
   text-align: center;
 }
 .container :global(.fui-DataGridHeaderCell):nth-child(7),
 .container :global(.fui-DataGridCell):nth-child(7) {
-  width: 6%;
-  min-width: 50px;
-  flex: 0 0 6%;
+  width: 5%;
+  min-width: 45px;
+  flex: 0 0 5%;
 }
 .container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout),
 .container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout) > *,
@@ -410,16 +410,16 @@
   width: 100% !important;
   flex: 1 1 100% !important;
 }
-/* 8. Range - 10% (center header) */
+/* 8. Range - 13% (center header) */
 .container :global(.fui-DataGridHeaderCell):nth-child(8) {
   justify-content: center;
   text-align: center;
 }
 .container :global(.fui-DataGridHeaderCell):nth-child(8),
 .container :global(.fui-DataGridCell):nth-child(8) {
-  width: 12%;
+  width: 13%;
   min-width: 120px;
-  flex: 0 0 12%;
+  flex: 0 0 13%;
 }
 .container :global(.fui-DataGridCell):nth-child(8) :global(.fui-TableCellLayout),
 .container :global(.fui-DataGridCell):nth-child(8) :global(.fui-TableCellLayout) > *,
@@ -427,57 +427,39 @@
   width: 100% !important;
   flex: 1 1 100% !important;
 }
-/* 9. Calibration - 7% (center) */
+/* 9. Cal/Sign - 8% (center) */
 .container :global(.fui-DataGridHeaderCell):nth-child(9),
 .container :global(.fui-DataGridCell):nth-child(9) {
+  width: 8%;
+  min-width: 65px;
+  flex: 0 0 8%;
+  justify-content: center;
+  text-align: center;
+}
+/* 10. Filter - 5% (center) */
+.container :global(.fui-DataGridHeaderCell):nth-child(10),
+.container :global(.fui-DataGridCell):nth-child(10) {
+  width: 5%;
+  min-width: 40px;
+  flex: 0 0 5%;
+  justify-content: center;
+  text-align: center;
+}
+/* 11. Status - 7% (center) */
+.container :global(.fui-DataGridHeaderCell):nth-child(11),
+.container :global(.fui-DataGridCell):nth-child(11) {
   width: 7%;
-  min-width: 50px;
+  min-width: 60px;
   flex: 0 0 7%;
   justify-content: center;
   text-align: center;
 }
-/* 10. Sign - 4% (center) */
-.container :global(.fui-DataGridHeaderCell):nth-child(10),
-.container :global(.fui-DataGridCell):nth-child(10) {
-  width: 4%;
-  min-width: 35px;
-  flex: 0 0 4%;
-  justify-content: center;
-  text-align: center;
-}
-/* 11. Filter - 4% (center) */
-.container :global(.fui-DataGridHeaderCell):nth-child(11),
-.container :global(.fui-DataGridCell):nth-child(11) {
-  width: 4%;
-  min-width: 40px;
-  flex: 0 0 4%;
-  justify-content: center;
-  text-align: center;
-}
-/* 12. Status - 6% (center) */
+/* 12. Type - fills remaining space (left) */
 .container :global(.fui-DataGridHeaderCell):nth-child(12),
 .container :global(.fui-DataGridCell):nth-child(12) {
   width: 6%;
   min-width: 55px;
-  flex: 0 0 6%;
-  justify-content: center;
-  text-align: center;
-}
-/* 13. Signal Type - 11% (center) */
-.container :global(.fui-DataGridHeaderCell):nth-child(13),
-.container :global(.fui-DataGridCell):nth-child(13) {
-  width: 11%;
-  min-width: 120px;
-  flex: 0 0 11%;
-  justify-content: center;
-  text-align: center;
-}
-/* 14. Type - fills remaining space (left) */
-.container :global(.fui-DataGridHeaderCell):nth-child(14),
-.container :global(.fui-DataGridCell):nth-child(14) {
-  width: 3%;
-  min-width: 45px;
-  flex: 1 0 3%;
+  flex: 1 0 6%;
 }
 
 /* Header cell styling - modern clean design */

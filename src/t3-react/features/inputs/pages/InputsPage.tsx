@@ -738,7 +738,7 @@ const InputsPageDesktop: React.FC = () => {
   // Helper to identify empty rows
   const isEmptyRow = (item: InputPoint) => !item.inputIndex && !item.inputId && inputs.length === 0;
 
-  // Column definitions matching the sequence: Panel, Input, Full Label, Label, Auto/Man, Value, Units, Range, Calibration, Sign, Filter, Status, Signal Type, Type
+  // Column definitions matching the sequence: Panel, Input, Full Label, Label, Auto/Man, Value, Units, Range, Cal/Sign, Filter, Status, Type
   const columns: TableColumnDefinition<InputPoint>[] = [
     // 1. Panel ID
     createTableColumn<InputPoint>({
@@ -1131,35 +1131,21 @@ const InputsPageDesktop: React.FC = () => {
         );
       },
     }),
-    // 8. Calibration
+    // 8. Calibration / Sign (combined)
     createTableColumn<InputPoint>({
-      columnId: 'calibration',
+      columnId: 'calibration_sign',
       renderHeaderCell: () => (
         <div className={styles.headerCell}>
-          <span>Calibration</span>
+          <span>Cal/Sign</span>
         </div>
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && (item.calibration || '0')}
+          {!isEmptyRow(item) && `${item.calibration || '0'} / ${item.sign || '+'}`}
         </TableCellLayout>
       ),
     }),
-    // 9. Sign
-    createTableColumn<InputPoint>({
-      columnId: 'sign',
-      renderHeaderCell: () => (
-        <div className={styles.headerCell}>
-          <span>Sign</span>
-        </div>
-      ),
-      renderCell: (item) => (
-        <TableCellLayout>
-          {!isEmptyRow(item) && (item.sign || '+')}
-        </TableCellLayout>
-      ),
-    }),
-    // 10. Filter
+    // 9. Filter
     createTableColumn<InputPoint>({
       columnId: 'filter',
       renderHeaderCell: () => (
@@ -1173,7 +1159,7 @@ const InputsPageDesktop: React.FC = () => {
         </TableCellLayout>
       ),
     }),
-    // 11. Status
+    // 10. Status
     createTableColumn<InputPoint>({
       columnId: 'status',
       renderHeaderCell: () => (
@@ -1218,7 +1204,7 @@ const InputsPageDesktop: React.FC = () => {
         );
       },
     }),
-    // 13. Type (Digital/Analog)
+    // 11. Type (Digital/Analog)
     createTableColumn<InputPoint>({
       columnId: 'type',
       renderHeaderCell: () => (
