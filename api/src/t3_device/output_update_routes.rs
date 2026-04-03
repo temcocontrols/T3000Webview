@@ -40,6 +40,9 @@ pub struct UpdateOutputFullRequest {
     pub decom: Option<i32>,
     pub low_voltage: Option<f32>,
     pub high_voltage: Option<f32>,
+    pub calibration_sign: Option<i32>,
+    pub calibration_h: Option<i32>,
+    pub calibration_l: Option<i32>,
 }
 
 /// Standard API response structure
@@ -54,7 +57,50 @@ pub struct ApiResponse {
 /// Creates and returns the output update API routes
 pub fn create_output_update_routes() -> Router<T3AppState> {
     Router::new()
+        .route("/outputs/:serial/:index/db", axum::routing::put(update_output_database_only))
         .route("/outputs/:serial/:index", axum::routing::put(update_output_full))
+}
+
+/// Update output in database only (NO FFI call to device)
+/// PUT /api/t3_device/outputs/:serial/:index/db
+/// Used for direct database updates without modifying the physical device
+pub async fn update_output_database_only(
+    State(state): State<T3AppState>,
+    Path((serial, index_str)): Path<(i32, String)>,
+    Json(payload): Json<UpdateOutputFullRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let index = index_str.parse::<i32>().unwrap_or(0);
+    info!("DATABASE_ONLY: Updating output in database - Serial: {}, Index: {}", serial, index);
+
+    // Get database connection from state
+    let db_connection = match &state.t3_device_conn {
+        Some(conn) => conn.lock().await.clone(),
+        None => {
+            error!("❌ T3000 device database unavailable");
+            return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+        }
+    };
+
+    // Save directly to database without FFI call
+    match save_output_to_db(&db_connection, serial, index, &payload).await {
+        Ok(_) => {
+            info!("✅ Database-only update completed - serial: {}, index: {}", serial, index);
+
+            Ok(Json(json!({
+                "success": true,
+                "message": "Output updated in database only (device not modified)",
+                "data": {
+                    "serialNumber": serial,
+                    "outputIndex": index,
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                }
+            })))
+        }
+        Err(e) => {
+            error!("❌ Database-only update failed: {}", e);
+            Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update database: {}", e)))
+        }
+    }
 }
 
 /// Update full output record using UPDATE_WEBVIEW_LIST action (Action 16)
@@ -227,9 +273,30 @@ async fn save_output_to_db(
         if let Some(val) = payload.auto_manual {
             active_model.auto_manual = Set(Some(val.to_string()));
         }
-        // Note: control, decom, low_voltage, high_voltage are sent to C++ but not in DB table
+        // Note: control, decom are sent to C++ but not stored in DB
         if let Some(val) = payload.digital_analog {
             active_model.digital_analog = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.calibration_sign {
+            active_model.calibration_sign = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.calibration_h {
+            active_model.calibration_h = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.calibration_l {
+            active_model.calibration_l = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.control {
+            active_model.control = Set(Some(val.to_string()));
+        }
+        // Note: low_voltage, high_voltage not stored in DB - sent to C++ only
+        // Update legacy Calibration column with combined display value
+        if payload.calibration_h.is_some() || payload.calibration_l.is_some() {
+            let cal_h = payload.calibration_h.unwrap_or(0);
+            let cal_l = payload.calibration_l.unwrap_or(0);
+            let cal_combined = (cal_h << 8) | cal_l;
+            let cal_display = cal_combined as f64 / 10.0;
+            active_model.calibration = Set(Some(format!("{:.1}", cal_display)));
         }
 
         // Save to database using update_many with explicit filters

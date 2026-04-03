@@ -477,8 +477,8 @@ const OutputsPageDesktop: React.FC = () => {
 
     setIsSaving(true);
     try {
-      // Process for all editable fields (fullLabel, fValue)
-      if (selectedDevice && ['fullLabel', 'fValue'].includes(editingCell.field)) {
+      // Process for all editable fields
+      if (selectedDevice && ['fullLabel', 'label', 'fValue', 'range', 'autoManual', 'lowVoltage', 'highVoltage'].includes(editingCell.field)) {
         console.log(`=== Updating ${editingCell.field} (Two-Step Process) ===`);
         console.log(`Device: ${selectedDevice.serialNumber}, Output: ${editingCell.outputIndex}, New Value: "${editValue}"`);
 

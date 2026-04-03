@@ -468,8 +468,8 @@ const VariablesPageDesktop: React.FC = () => {
 
     setIsSaving(true);
     try {
-      // Process for all editable fields (fullLabel, fValue)
-      if (selectedDevice && ['fullLabel', 'fValue'].includes(editingCell.field)) {
+      // Process for all editable fields
+      if (selectedDevice && ['fullLabel', 'label', 'fValue', 'range', 'autoManual'].includes(editingCell.field)) {
         console.log(`=== Updating ${editingCell.field} (Two-Step Process) ===`);
         console.log(`Device: ${selectedDevice.serialNumber}, Variable: ${editingCell.variableIndex}, New Value: "${editValue}"`);
 
