@@ -47,7 +47,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
-import { getRangeLabel } from '../data/rangeData';
+import { getRangeLabel, getUnitSymbol } from '../data/rangeData';
 import { API_BASE_URL } from '../../../config/constants';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import { useStatusBarStore } from '../../../store/statusBarStore';
@@ -673,7 +673,7 @@ const VariablesPageDesktop: React.FC = () => {
   // Helper to identify empty rows
   const isEmptyRow = (item: VariablePoint) => !item.variableIndex && !item.variableId && variables.length === 0;
 
-  // Column definitions matching the sequence: Panel, Variable, Full Label, Label, Auto/Manual, Value, Units
+  // Column definitions matching the sequence: Panel, Variable, Full Label, Label, Value, Auto/Manual, Units
   const columns: TableColumnDefinition<VariablePoint>[] = [
     // 1. Panel ID
     createTableColumn<VariablePoint>({
@@ -864,7 +864,71 @@ const VariablesPageDesktop: React.FC = () => {
         );
       },
     }),
-    // 4. Auto/Manual
+    // 5. Value
+    createTableColumn<VariablePoint>({
+      columnId: 'value',
+      renderHeaderCell: () => (
+        <div className={styles.headerCellSort} onClick={() => handleSort('value')}>
+          <span>Value</span>
+          {sortColumn === 'value' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular className={styles.sortIconFaded} />
+          )}
+        </div>
+      ),
+      renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
+        const isEditing = editingCell?.serialNumber === item.serialNumber &&
+                          editingCell?.variableIndex === item.variableIndex &&
+                          editingCell?.field === 'fValue';
+
+        return (
+          <TableCellLayout>
+            {isEditing ? (
+              <div className={styles.editInputContainer}>
+                <input
+                  type="number"
+                  step="0.01"
+                  className={`${styles.editInput} ${styles.flex1}`}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  placeholder="Enter value"
+                  aria-label="Edit value"
+                />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditSave();
+                  }}
+                  disabled={isSaving}
+                  className={styles.saveButton}
+                  title="Save"
+                >
+                  <SaveRegular className={styles.iconMedium} />
+                </button>
+              </div>
+            ) : (
+              <div
+                className={styles.editableCell}
+                onDoubleClick={() => handleCellDoubleClick(item, 'fValue', item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '0')}
+                title="Double-click to edit"
+              >
+                <span className={styles.valueBadge}>{item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}</span>
+              </div>
+            )}
+          </TableCellLayout>
+        );
+      },
+    }),
+    // 6. Auto/Manual
     createTableColumn<VariablePoint>({
       columnId: 'autoManual',
       renderHeaderCell: () => (
@@ -958,70 +1022,6 @@ const VariablesPageDesktop: React.FC = () => {
         );
       },
     }),
-    // 5. Value
-    createTableColumn<VariablePoint>({
-      columnId: 'value',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('value')}>
-          <span>Value</span>
-          {sortColumn === 'value' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
-      renderCell: (item) => {
-        if (isEmptyRow(item)) {
-          return <TableCellLayout></TableCellLayout>;
-        }
-
-        const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.variableIndex === item.variableIndex &&
-                          editingCell?.field === 'fValue';
-
-        return (
-          <TableCellLayout>
-            {isEditing ? (
-              <div className={styles.editInputContainer}>
-                <input
-                  type="number"
-                  step="0.01"
-                  className={`${styles.editInput} ${styles.flex1}`}
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onBlur={handleEditSave}
-                  onKeyDown={handleEditKeyDown}
-                  autoFocus
-                  disabled={isSaving}
-                  placeholder="Enter value"
-                  aria-label="Edit value"
-                />
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditSave();
-                  }}
-                  disabled={isSaving}
-                  className={styles.saveButton}
-                  title="Save"
-                >
-                  <SaveRegular className={styles.iconMedium} />
-                </button>
-              </div>
-            ) : (
-              <div
-                className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'fValue', item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '0')}
-                title="Double-click to edit"
-              >
-                <Text size={200} weight="regular">{item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}</Text>
-              </div>
-            )}
-          </TableCellLayout>
-        );
-      },
-    }),
     // 7. Units
     createTableColumn<VariablePoint>({
       columnId: 'units',
@@ -1044,6 +1044,7 @@ const VariablesPageDesktop: React.FC = () => {
         const rangeValue = item.rangeField ? parseInt(item.rangeField) : 0;
         const digitalAnalog = item.digitalAnalog === '1' ? 1 : 0;
         const rangeLabel = getRangeLabel(rangeValue, digitalAnalog);
+        const unitSymbol = getUnitSymbol(rangeValue, digitalAnalog);
 
         return (
           <TableCellLayout>
@@ -1052,7 +1053,7 @@ const VariablesPageDesktop: React.FC = () => {
               className={styles.rangeLink}
               title="Click to change range/units"
             >
-              <Text size={200} weight="regular">{rangeLabel}</Text>
+              <span className={styles.unitBadge}>{unitSymbol !== '---' ? unitSymbol : rangeLabel}</span>
             </div>
           </TableCellLayout>
         );

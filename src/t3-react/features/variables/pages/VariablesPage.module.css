@@ -293,7 +293,7 @@
 /* Header row styling - modern clean design */
 .container :global(.fui-DataGridHeader) {
   background-color: #d6e4f7;
-  border-bottom: none;
+  border-bottom: 2px solid #b8cce4;
   flex-shrink: 0;
   position: sticky;
   top: 0;
@@ -322,54 +322,74 @@
  * Column order: panel, variable, fullLabel, label, autoManual, value, units
  */
 
-/* 1. Panel - 5% */
+/* 1. Panel - 4% */
 .container :global(.fui-DataGridHeaderCell):nth-child(1),
 .container :global(.fui-DataGridCell):nth-child(1) {
-  width: 5%;
+  width: 4%;
   min-width: 40px;
-  flex: 0 0 5%;
+  flex: 0 0 4%;
 }
-/* 2. Variable - 8% */
+/* 2. Variable - 6% */
 .container :global(.fui-DataGridHeaderCell):nth-child(2),
 .container :global(.fui-DataGridCell):nth-child(2) {
-  width: 8%;
-  min-width: 60px;
-  flex: 0 0 8%;
+  width: 6%;
+  min-width: 55px;
+  flex: 0 0 6%;
 }
-/* 3. Full Label - 20% */
+/* 3. Full Label - 14% */
 .container :global(.fui-DataGridHeaderCell):nth-child(3),
 .container :global(.fui-DataGridCell):nth-child(3) {
-  width: 20%;
-  min-width: 120px;
-  flex: 0 0 20%;
+  width: 14%;
+  min-width: 100px;
+  flex: 1 0 14%;
 }
-/* 4. Label - 12% */
+/* 4. Label - 22% */
 .container :global(.fui-DataGridHeaderCell):nth-child(4),
 .container :global(.fui-DataGridCell):nth-child(4) {
-  width: 12%;
-  min-width: 80px;
-  flex: 0 0 12%;
+  width: 22%;
+  min-width: 120px;
+  flex: 0 0 22%;
 }
-/* 5. Auto/Manual - 10% */
+/* 5. Value - 13% (center header) */
+.container :global(.fui-DataGridHeaderCell):nth-child(5) {
+  justify-content: center;
+  text-align: center;
+}
 .container :global(.fui-DataGridHeaderCell):nth-child(5),
 .container :global(.fui-DataGridCell):nth-child(5) {
-  width: 10%;
+  width: 13%;
   min-width: 80px;
-  flex: 0 0 10%;
+  flex: 0 0 13%;
 }
-/* 6. Value - 15% */
+.container :global(.fui-DataGridCell):nth-child(5) :global(.fui-TableCellLayout),
+.container :global(.fui-DataGridCell):nth-child(5) :global(.fui-TableCellLayout) > *,
+.container :global(.fui-DataGridCell):nth-child(5) :global(.fui-TableCellLayout__content) {
+  width: 100% !important;
+  flex: 1 1 100% !important;
+}
+/* 6. Auto/Manual - 8% */
 .container :global(.fui-DataGridHeaderCell):nth-child(6),
 .container :global(.fui-DataGridCell):nth-child(6) {
-  width: 15%;
-  min-width: 80px;
-  flex: 0 0 15%;
+  width: 8%;
+  min-width: 65px;
+  flex: 0 0 8%;
 }
-/* 7. Units - fills remaining space */
+/* 7. Units - 9% (center header) */
+.container :global(.fui-DataGridHeaderCell):nth-child(7) {
+  justify-content: center;
+  text-align: center;
+}
 .container :global(.fui-DataGridHeaderCell):nth-child(7),
 .container :global(.fui-DataGridCell):nth-child(7) {
-  width: 30%;
-  min-width: 100px;
-  flex: 1 0 30%;
+  width: 9%;
+  min-width: 60px;
+  flex: 0 0 9%;
+}
+.container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout),
+.container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout) > *,
+.container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout__content) {
+  width: 100% !important;
+  flex: 1 1 100% !important;
 }
 
 /* Header cell styling - modern clean design */
@@ -382,7 +402,7 @@
   height: 36px;
   line-height: 36px;
   background-color: #d6e4f7;
-  border-right: none;
+  border-right: 1px solid #b8cce4;
   border-bottom: none;
   cursor: pointer;
   transition: color 0.15s ease, background-color 0.15s ease;
@@ -407,7 +427,7 @@
 
 /* Data row styling - matches fxc-gc-row */
 .container :global(.fui-DataGridRow) {
-  border-bottom: 1px solid #f3f2f1;
+  border-bottom: 1px solid #e5e5e5;
   min-height: 32px;
   background-color: #ffffff;
   transition: background-color 0.1s ease;
@@ -428,12 +448,20 @@
   color: #292827;
   padding: 0 12px;
   min-height: 32px;
-  border-right: none;
+  border-right: 1px solid #ebebeb;
   display: flex;
   align-items: center;
   overflow: hidden;
   text-overflow: ellipsis;
   box-sizing: border-box;
+}
+
+/* Remove right border from last header cell and last data cell */
+.container :global(.fui-DataGridHeaderCell):last-child {
+  border-right: none;
+}
+.container :global(.fui-DataGridCell):last-child {
+  border-right: none;
 }
 
 /* Badge styling - compact badges */
@@ -733,4 +761,37 @@
 
 .marginLeft8 {
   margin-left: 8px;
+}
+
+/* Value badge - green background like InputsPage */
+.valueBadge {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 1px 10px;
+  border-radius: 2px;
+  background-color: #dff6dd;
+  color: #107c10;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+/* Unit badge - gray background like InputsPage */
+.unitBadge {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 1px 8px;
+  border-radius: 2px;
+  background-color: #f0f0f0;
+  color: #424242;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+  border: 1px solid #e0e0e0;
+  box-sizing: border-box;
 }

@@ -109,3 +109,12 @@ export function getRangeLabel(value: number, digitalAnalog: number): string {
   const range = ranges.find(r => r.value === value);
   return range ? range.label : 'Unknown';
 }
+
+export function getUnitSymbol(value: number, digitalAnalog: number): string {
+  if (digitalAnalog === BAC_UNITS_DIGITAL) {
+    const range = DIGITAL_RANGES.find(r => r.value === value);
+    return range ? range.label : '0/1';
+  }
+  const range = VARIABLE_ANALOG_RANGES.find(r => r.value === value);
+  return range?.label || '---';
+}
