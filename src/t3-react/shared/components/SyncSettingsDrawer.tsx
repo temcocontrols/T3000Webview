@@ -90,19 +90,6 @@ const useStyles = makeStyles({
     maxHeight: '400px',
     scrollbarWidth: 'thin',
     scrollbarColor: `${tokens.colorNeutralStroke2} transparent`,
-    '&::-webkit-scrollbar': {
-      width: '2px',
-    },
-    '&::-webkit-scrollbar-track': {
-      backgroundColor: 'transparent',
-    },
-    '&::-webkit-scrollbar-thumb': {
-      backgroundColor: tokens.colorNeutralStroke2,
-      borderRadius: '1px',
-      '&:hover': {
-        backgroundColor: tokens.colorNeutralStroke1,
-      },
-    },
   },
   bottomSection: {
     display: 'flex',

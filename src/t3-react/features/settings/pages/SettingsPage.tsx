@@ -186,20 +186,6 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground1,
     scrollbarWidth: 'thin',
     scrollbarColor: '#c1c1c1 #f5f5f5',
-    '&::-webkit-scrollbar': {
-      width: '6px',
-      height: '6px',
-    },
-    '&::-webkit-scrollbar-track': {
-      backgroundColor: '#f5f5f5',
-    },
-    '&::-webkit-scrollbar-thumb': {
-      backgroundColor: '#c1c1c1',
-      borderRadius: '3px',
-      '&:hover': {
-        backgroundColor: '#a1a1a1',
-      },
-    },
   },
   section: {
     marginBottom: '24px',

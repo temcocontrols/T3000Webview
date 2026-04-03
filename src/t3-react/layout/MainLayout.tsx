@@ -53,20 +53,6 @@ const useStyles = makeStyles({
     backgroundColor: '#fafafa',
     scrollbarWidth: 'thin',
     scrollbarColor: '#c1c1c1 #f5f5f5',
-    '::-webkit-scrollbar': {
-      width: '8px',
-      height: '6px',
-    },
-    '::-webkit-scrollbar-track': {
-      backgroundColor: '#f5f5f5',
-    },
-    '::-webkit-scrollbar-thumb': {
-      backgroundColor: '#c1c1c1',
-      borderRadius: '3px',
-    },
-    '::-webkit-scrollbar-thumb:hover': {
-      backgroundColor: '#a1a1a1',
-    },
   },
   resizer: {
     width: '4px',
