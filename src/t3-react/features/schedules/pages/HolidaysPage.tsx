@@ -35,7 +35,6 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
-  ArrowDownloadRegular,
   SearchRegular,
   ArrowSortUpRegular,
   ArrowSortDownRegular,
@@ -47,6 +46,7 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import styles from './HolidaysPage.module.css';
+import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 
 // Types based on C++ BacnetAnnualRoutine structure
 interface HolidayPoint {
@@ -219,6 +219,9 @@ export const HolidaysPage: React.FC = () => {
   const handleExport = () => {
     console.log('Export holidays to CSV');
   };
+
+  // Register CSV export handler with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport);
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
@@ -590,18 +593,6 @@ export const HolidaysPage: React.FC = () => {
                 >
                   <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
                   <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                </button>
-
-                <div className={styles.toolbarSeparator} role="separator" />
-
-                <button
-                  className={styles.toolbarButton}
-                  onClick={handleExport}
-                  title="Export to CSV"
-                  aria-label="Export to CSV"
-                >
-                  <ArrowDownloadRegular />
-                  <span>Export to CSV</span>
                 </button>
 
                 <div className={styles.toolbarSeparator} role="separator" />

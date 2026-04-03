@@ -10,6 +10,7 @@ import { FluentProvider, webLightTheme, webDarkTheme, Spinner } from '@fluentui/
 import { ErrorBoundary } from '../shared/components/ErrorBoundary';
 import { ThemeProvider } from '../theme/ThemeProvider';
 import { NotificationProvider } from '../shared/components/NotificationCenter';
+import { CsvOperationsProvider } from '../shared/context/CsvOperationsContext';
 import { MainLayout } from '../layout/MainLayout';
 import { MinimalLayout } from '../layout/MinimalLayout';
 import styles from './App.module.css';
@@ -148,6 +149,7 @@ export const App: React.FC = () => {
       <ThemeProvider>
         <FluentProvider theme={theme === 'light' ? webLightTheme : webDarkTheme}>
           <NotificationProvider>
+            <CsvOperationsProvider>
             <ErrorBoundary>
               <HashRouter>
               <Routes>
@@ -424,6 +426,7 @@ export const App: React.FC = () => {
               </Routes>
             </HashRouter>
           </ErrorBoundary>
+            </CsvOperationsProvider>
         </NotificationProvider>
       </FluentProvider>
       </ThemeProvider>

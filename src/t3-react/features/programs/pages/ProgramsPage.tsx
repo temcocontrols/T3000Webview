@@ -38,7 +38,6 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
-  ArrowDownloadRegular,
   SearchRegular,
   ArrowSortUpRegular,
   ArrowSortDownRegular,
@@ -53,6 +52,7 @@ import { PanelDataRefreshService } from '../../../shared/services/panelDataRefre
 import { SyncStatusBar } from '../../../shared/components/SyncStatusBar';
 import { ProgrammingDrawer } from '../components/ProgrammingDrawer';
 import styles from './ProgramsPage.module.css';
+import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 
 // Types based on Rust entity (programs.rs) and C++ BacnetProgram structure
 interface ProgramPoint {
@@ -232,6 +232,9 @@ export const ProgramsPage: React.FC = () => {
   const handleExport = () => {
     console.log('Export programs to CSV');
   };
+
+  // Register CSV export handler with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport);
 
   // Auto-scroll handlers
   const loadNextDevice = useCallback(async () => {
@@ -730,18 +733,6 @@ export const ProgramsPage: React.FC = () => {
                   >
                     <ArrowSyncRegular />
                     <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                  </button>
-
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    title="Export to CSV"
-                    aria-label="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export to CSV</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />

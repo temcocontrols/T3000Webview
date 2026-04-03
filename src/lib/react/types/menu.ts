@@ -91,6 +91,8 @@ export enum MenuAction {
   Discover = 'discover',
   Buildings = 'buildings',
   Refresh = 'refresh',
+  ExportToCsv = 'export-to-csv',
+  ImportFromCsv = 'import-from-csv',
   Settings = 'settings',
 
   // View menu

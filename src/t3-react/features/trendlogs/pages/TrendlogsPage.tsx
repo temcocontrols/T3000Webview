@@ -23,7 +23,6 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
-  ArrowDownloadRegular,
   SearchRegular,
   ErrorCircleRegular,
   ArrowSortUpRegular,
@@ -37,6 +36,7 @@ import { TrendlogRefreshApi } from '../services/trendlogRefreshApi';
 import { API_BASE_URL } from '../../../config/constants';
 import { TrendChartDrawer } from '../components/TrendChartDrawer';
 import styles from './TrendLogsPage.module.css';
+import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 
 interface TrendLogData {
   serialNumber: number;
@@ -493,6 +493,9 @@ export const TrendLogsPage: React.FC = () => {
     console.log('Export trendlogs to CSV');
   };
 
+  // Register CSV export handler with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport);
+
   const handleMonitorSelect = useCallback(async (monitor: TrendLogData) => {
     console.log('🔵 [TrendLogsPage] handleMonitorSelect called with:', monitor);
     console.log('🔵 [TrendLogsPage] VERSION: 2025-12-12-v2 - Using NEW input loading code');
@@ -762,20 +765,6 @@ export const TrendLogsPage: React.FC = () => {
                   >
                     <ArrowSyncRegular />
                     <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                  </button>
-
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  {/* Export to CSV Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    disabled={!selectedDevice}
-                    title="Export trendlogs to CSV"
-                    aria-label="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export to CSV</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />

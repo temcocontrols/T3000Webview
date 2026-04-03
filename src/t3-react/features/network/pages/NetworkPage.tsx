@@ -35,7 +35,6 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
-  ArrowDownloadRegular,
   SettingsRegular,
   SearchRegular,
   ErrorCircleRegular,
@@ -43,6 +42,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import styles from './NetworkPage.module.css';
+import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 
 // Network interface based on C++ Subnetwork structure and device network fields
 interface NetworkItem {
@@ -119,6 +119,9 @@ export const NetworkPage: React.FC = () => {
   const handleExport = () => {
     console.log('Export networks to CSV');
   };
+
+  // Register CSV export handler with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport);
 
   const handleSettings = () => {
     console.log('Settings clicked');
@@ -291,19 +294,6 @@ export const NetworkPage: React.FC = () => {
                   >
                     <ArrowSyncRegular />
                     <span>Refresh</span>
-                  </button>
-
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  {/* Export to CSV Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    title="Export to CSV"
-                    aria-label="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export to CSV</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />

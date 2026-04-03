@@ -22,7 +22,6 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
-  ArrowDownloadRegular,
   SettingsRegular,
   SearchRegular,
   ArrowClockwise24Regular,
@@ -39,6 +38,7 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
 import { AlarmRefreshApi } from '../services/alarmRefreshApi';
 import styles from './AlarmsPage.module.css';
+import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 
 // Alarm interface matching ALARMS entity and C++ BacnetAlarmLog (7 columns)
 interface Alarm {
@@ -82,6 +82,9 @@ const AlarmsPageDesktop: React.FC = () => {
   const handleExport = () => {
     console.log('Export alarms to CSV');
   };
+
+  // Register CSV export handler with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport);
 
   const handleSettings = () => {
     console.log('Settings clicked');
@@ -502,18 +505,6 @@ const AlarmsPageDesktop: React.FC = () => {
                   >
                     <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
                     <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                  </button>
-
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    title="Export to CSV"
-                    aria-label="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export to CSV</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />

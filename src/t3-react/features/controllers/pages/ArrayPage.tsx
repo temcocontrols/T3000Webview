@@ -15,7 +15,6 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
-  ArrowDownloadRegular,
   SettingsRegular,
   SearchRegular,
   ErrorCircleRegular,
@@ -24,6 +23,7 @@ import {
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './ArrayPage.module.css';
+import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 
 // Array interface matching C++ CBacnetArray structure (4 columns)
 interface ArrayItem {
@@ -103,6 +103,9 @@ const ArrayPage: React.FC = () => {
   const handleExport = () => {
     console.log('Export arrays to CSV');
   };
+
+  // Register CSV export handler with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport);
 
   const handleSettings = () => {
     console.log('Settings clicked');
@@ -239,19 +242,6 @@ const ArrayPage: React.FC = () => {
                   >
                     <ArrowSyncRegular />
                     <span>Refresh</span>
-                  </button>
-
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  {/* Export to CSV Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    title="Export to CSV"
-                    aria-label="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export to CSV</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />

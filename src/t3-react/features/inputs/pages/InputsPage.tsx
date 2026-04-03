@@ -38,7 +38,6 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
-  ArrowDownloadRegular,
   SearchRegular,
   ArrowSortUpRegular,
   ArrowSortDownRegular,
@@ -57,6 +56,7 @@ import { useStatusBarStore } from '../../../store/statusBarStore';
 import { useResponsive } from '@t3-shared/core/hooks/useResponsive';
 import { InputsPageMobile } from '@t3-mobile/features/inputs/pages/InputsPageMobile';
 import styles from './InputsPage.module.css';
+import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 
 // Types based on Rust entity (input_points.rs)
 interface InputPoint {
@@ -295,6 +295,9 @@ const InputsPageDesktop: React.FC = () => {
   const handleExport = () => {
     console.log('Export inputs to CSV');
   };
+
+  // Register CSV export handler with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport);
 
   // Auto-scroll to next device when reaching bottom
   const loadNextDevice = useCallback(async () => {
@@ -1298,19 +1301,6 @@ const InputsPageDesktop: React.FC = () => {
                   >
                     <ArrowSyncRegular />
                     <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                  </button>
-
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  {/* Export to CSV Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    title="Export to CSV"
-                    aria-label="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export to CSV</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />

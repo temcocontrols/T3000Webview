@@ -181,6 +181,26 @@ const toolsMenu: MenuItem = {
       type: 'divider',
     },
     {
+      id: 'tools-export-csv',
+      label: 'Export to CSV',
+      type: 'item',
+      action: MenuAction.ExportToCsv,
+      shortcut: 'Ctrl+Shift+E',
+      icon: 'ArrowDownload',
+    },
+    {
+      id: 'tools-import-csv',
+      label: 'Import from CSV',
+      type: 'item',
+      action: MenuAction.ImportFromCsv,
+      shortcut: 'Ctrl+Shift+I',
+      icon: 'ArrowUpload',
+    },
+    {
+      id: 'tools-divider-1b',
+      type: 'divider',
+    },
+    {
       id: 'tools-change-modbus-id',
       label: 'Change Modbus ID',
       type: 'item',

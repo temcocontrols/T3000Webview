@@ -21,7 +21,6 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
-  ArrowDownloadRegular,
   SettingsRegular,
   SearchRegular,
   ArrowSortUpRegular,
@@ -37,6 +36,7 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import styles from './PIDLoopsPage.module.css';
+import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 
 // PID Controller interface matching PID_TABLE entity
 interface PIDController {
@@ -306,6 +306,9 @@ const PIDLoopsPage: React.FC = () => {
     console.log('Export PID loops to CSV');
     // TODO: Implement CSV export
   };
+
+  // Register CSV export handler with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport);
 
   // Handle settings
   const handleSettings = () => {
@@ -741,18 +744,6 @@ const PIDLoopsPage: React.FC = () => {
             >
               <ArrowClockwise24Regular />
               <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-            </button>
-
-            <div className={styles.toolbarSeparator} role="separator" />
-
-            <button
-              className={styles.toolbarButton}
-              onClick={handleExport}
-              title="Export to CSV"
-              aria-label="Export to CSV"
-            >
-              <ArrowDownloadRegular />
-              <span>Export to CSV</span>
             </button>
 
             <div className={styles.toolbarSeparator} role="separator" />

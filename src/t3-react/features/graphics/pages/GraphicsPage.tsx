@@ -22,7 +22,6 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
-  ArrowDownloadRegular,
   SettingsRegular,
   SearchRegular,
   ArrowSortUpRegular,
@@ -39,6 +38,7 @@ import type { Graphic } from '../../../../lib/t3-database/types/graphics.types';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import { useStatusBarStore } from '../../../store/statusBarStore';
 import styles from './GraphicsPage.module.css';
+import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 
 export const GraphicsPage: React.FC = () => {
   const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
@@ -254,6 +254,9 @@ export const GraphicsPage: React.FC = () => {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  // Register CSV export handler with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport);
 
   const handleViewWebview = useCallback((graphic: Graphic) => {
     if (!selectedDevice || !graphic.Graphic_ID) return;
@@ -498,18 +501,6 @@ export const GraphicsPage: React.FC = () => {
                   >
                     <ArrowSyncRegular />
                     <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                  </button>
-
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    disabled={graphics.length === 0}
-                    title="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />
