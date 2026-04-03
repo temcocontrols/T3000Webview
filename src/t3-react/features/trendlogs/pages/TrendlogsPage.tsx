@@ -517,27 +517,33 @@ export const TrendLogsPage: React.FC = () => {
     }
   };
 
-  // Display data with 10 empty rows when no trendlogs
+  // Display data padded to 18 rows for full grid appearance
   const displayTrendLogs = React.useMemo(() => {
+    const minRows = 18;
+    const emptyRow = (index: number): TrendLogData => ({
+      serialNumber: selectedDevice?.serialNumber || 0,
+      trendlogId: '',
+      trendlogIndex: '',
+      trendlogLabel: '',
+      intervalSeconds: undefined,
+      bufferSize: undefined,
+      autoManual: '',
+      status: '',
+      _uniqueIndex: 10000 + index,
+      panelId: selectedDevice?.panelId,
+    });
     if (trendLogs.length === 0) {
-      return Array(18).fill(null).map((_, index) => ({
-        serialNumber: selectedDevice?.serialNumber || 0,
-        trendlogId: '',
-        trendlogIndex: '',
-        trendlogLabel: '',
-        intervalSeconds: undefined,
-        bufferSize: undefined,
-        autoManual: '',
-        status: '',
-        _uniqueIndex: index,
-        panelId: selectedDevice?.panelId,
-      }));
+      return Array(minRows).fill(null).map((_, i) => emptyRow(i));
+    }
+    if (trendLogs.length < minRows) {
+      const padding = Array(minRows - trendLogs.length).fill(null).map((_, i) => emptyRow(i));
+      return [...trendLogs, ...padding];
     }
     return trendLogs;
   }, [trendLogs, selectedDevice]);
 
-  // Helper to identify empty rows
-  const isEmptyRow = (item: TrendLogData) => !item.trendlogId && !item.trendlogIndex && trendLogs.length === 0;
+  // Helper to identify empty/padding rows
+  const isEmptyRow = (item: TrendLogData) => !item.trendlogId && !item.trendlogIndex;
 
   // Column definitions
   const columns: TableColumnDefinition<TrendLogData>[] = [
@@ -820,7 +826,7 @@ export const TrendLogsPage: React.FC = () => {
                 {selectedDevice && !loading && !error && (
                   <div className={styles.gridContainer}>
                     {/* Main Monitor List - Left Side (80%) */}
-                    <div className={`${styles.mainGrid} ${styles.scrollContainerAuto}`}>
+                    <div className={styles.mainGrid}>
                       <DataGrid
                         key="trendlogs-grid-v5"
                         items={displayTrendLogs}
