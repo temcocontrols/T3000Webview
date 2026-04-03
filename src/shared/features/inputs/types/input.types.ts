@@ -15,6 +15,8 @@ export interface InputPoint {
   range?: string;
   rangeField?: string;
   calibration?: string;
+  calibrationH?: number;
+  calibrationL?: number;
   sign?: string;
   filterField?: string;
   status?: string;

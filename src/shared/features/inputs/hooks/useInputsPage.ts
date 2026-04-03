@@ -194,8 +194,8 @@ export const useInputsPage = () => {
         filter: parseInt(currentInput.filterField || '0', 10),
         digitalAnalog: parseInt(currentInput.digitalAnalog || '0', 10),
         calibrationSign: parseInt(currentInput.sign || '0', 10),
-        calibrationH: parseInt(currentInput.calibration?.split('.')[0] || '0', 10),
-        calibrationL: parseInt(currentInput.calibration?.split('.')[1] || '0', 10),
+        calibrationH: currentInput.calibrationH ?? 0,
+        calibrationL: currentInput.calibrationL ?? 0,
         decom: 0,
       };
 
