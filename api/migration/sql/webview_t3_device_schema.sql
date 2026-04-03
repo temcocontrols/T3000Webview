@@ -58,13 +58,17 @@ CREATE TABLE IF NOT EXISTS INPUTS (
     fValue TEXT,                               -- C++ fValue (stored as string in T3000.db)
     Units TEXT,                                -- C++ Units (derived from Range_Field: °C, °F, %, ppm, etc.)
     Range_Field TEXT,                          -- C++ Range
-    Calibration TEXT,                          -- C++ Calibration
-    Sign TEXT,                                 -- C++ Sign (calibration_sign)
-    Filter_Field TEXT,                         -- C++ Filter (from "control" JSON field)
+    Calibration TEXT,                          -- Legacy combined calibration display value
+    Sign TEXT,                                 -- Legacy sign (same as Calibration_Sign)
+    Filter_Field TEXT,                         -- C++ filter (raw int from JSON)
     Status TEXT,                               -- C++ Status (from "decom" JSON field)
-    Digital_Analog TEXT,                       -- From JSON field "digital_analog" (0=digital, 1=analog)
+    Digital_Analog TEXT,                       -- C++ digital_analog (0=digital, 1=analog)
     Label TEXT,                                -- C++ Label (from "label" JSON field directly)
-    Type_Field TEXT                            -- C++ Type_Field (from "command" JSON field)
+    Type_Field TEXT,                           -- C++ Type_Field (from "command" JSON field)
+    Calibration_H TEXT,                        -- C++ calibration_h (raw high byte, uint8)
+    Calibration_L TEXT,                        -- C++ calibration_l (raw low byte, uint8)
+    Calibration_Sign TEXT,                     -- C++ calibration_sign (0=positive, 1=negative)
+    Control TEXT                               -- C++ control (0=OFF, 1=ON)
 );
 
 -- OUTPUTS table (Original T3000 output points table)
@@ -79,13 +83,17 @@ CREATE TABLE IF NOT EXISTS OUTPUTS (
     fValue TEXT,                               -- C++ fValue (stored as string)
     Units TEXT,                                -- C++ Units (derived from Range_Field: °C, °F, %, ppm, etc.)
     Range_Field TEXT,                          -- C++ Range
-    Calibration TEXT,                          -- C++ Calibration
-    Sign TEXT,                                 -- C++ Sign
-    Filter_Field TEXT,                         -- C++ Filter (from "control" JSON field)
+    Calibration TEXT,                          -- Legacy combined calibration display value
+    Sign TEXT,                                 -- Legacy sign (same as Calibration_Sign)
+    Filter_Field TEXT,                         -- C++ filter (raw int from JSON)
     Status TEXT,                               -- C++ Status (from "decom" JSON field)
-    Digital_Analog TEXT,                       -- From JSON field "digital_analog" (0=digital, 1=analog)
+    Digital_Analog TEXT,                       -- C++ digital_analog (0=digital, 1=analog)
     Label TEXT,                                -- C++ Label (from "label" JSON field directly)
-    Type_Field TEXT                            -- C++ Type_Field (from "command" JSON field)
+    Type_Field TEXT,                           -- C++ Type_Field (from "command" JSON field)
+    Calibration_H TEXT,                        -- C++ calibration_h (raw high byte, uint8)
+    Calibration_L TEXT,                        -- C++ calibration_l (raw low byte, uint8)
+    Calibration_Sign TEXT,                     -- C++ calibration_sign (0=positive, 1=negative)
+    Control TEXT                               -- C++ control (0=OFF, 1=ON)
 );
 
 -- VARIABLES table (Original T3000 variable points table)
@@ -100,13 +108,17 @@ CREATE TABLE IF NOT EXISTS VARIABLES (
     fValue TEXT,                               -- C++ fValue (stored as string)
     Units TEXT,                                -- C++ Units (derived from Range_Field: °C, °F, %, ppm, etc.)
     Range_Field TEXT,                          -- C++ Range_Field (from "range" JSON field)
-    Calibration TEXT,                          -- C++ Calibration
-    Sign TEXT,                                 -- C++ Sign
-    Filter_Field TEXT,                         -- C++ Filter_Field (from "control" JSON field)
+    Calibration TEXT,                          -- Legacy combined calibration display value
+    Sign TEXT,                                 -- Legacy sign (same as Calibration_Sign)
+    Filter_Field TEXT,                         -- C++ filter (raw int from JSON)
     Status TEXT,                               -- C++ Status
-    Digital_Analog TEXT,                       -- From JSON field "digital_analog" (0=digital, 1=analog)
+    Digital_Analog TEXT,                       -- C++ digital_analog (0=digital, 1=analog)
     Label TEXT,                                -- C++ Label (from "label" JSON field directly)
-    Type_Field TEXT                            -- C++ Type_Field (from "command" JSON field)
+    Type_Field TEXT,                           -- C++ Type_Field (from "command" JSON field)
+    Calibration_H TEXT,                        -- C++ calibration_h (raw high byte, uint8)
+    Calibration_L TEXT,                        -- C++ calibration_l (raw low byte, uint8)
+    Calibration_Sign TEXT,                     -- C++ calibration_sign (0=positive, 1=negative)
+    Control TEXT                               -- C++ control (0=OFF, 1=ON)
 );
 
 -- PROGRAMS table (Original T3000 programs table)
