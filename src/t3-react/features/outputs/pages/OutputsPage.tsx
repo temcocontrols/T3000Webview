@@ -74,6 +74,10 @@ interface OutputPoint {
   lowVoltage?: string;
   highVoltage?: string;
   pwmPeriod?: string;
+  calibrationH?: number | string;
+  calibrationL?: number | string;
+  calibrationSign?: string;
+  control?: string;
   status?: string;
   signalType?: string;
   digitalAnalog?: string;
@@ -373,13 +377,16 @@ const OutputsPageDesktop: React.FC = () => {
         serialNumber: serialNumber,
         entryType: 0, // BAC_OUT (OUTPUT)
         entryIndex: parseInt(outputIndex, 10),
-        control: 0,
+        control: parseInt(String(currentOutput.control || '0'), 10),
         value: field === 'fValue' ? parseFloat(newValue || '0') : parseFloat(currentOutput.fValue || '0') / 1000,
         description: field === 'fullLabel' ? newValue : (currentOutput.fullLabel || ''),
         label: currentOutput.label || '',
         range: parseInt(currentOutput.rangeField || currentOutput.range || '0', 10),
         auto_manual: parseInt(currentOutput.autoManual || '0', 10),
         digital_analog: parseInt(currentOutput.digitalAnalog || '0', 10),
+        calibration_sign: parseInt(String(currentOutput.calibrationSign || '0'), 10),
+        calibration_h: parseInt(String(currentOutput.calibrationH || '0'), 10),
+        calibration_l: parseInt(String(currentOutput.calibrationL || '0'), 10),
         decom: 0,
         low_voltage: parseInt(currentOutput.lowVoltage || '0', 10),
         high_voltage: parseInt(currentOutput.highVoltage || '0', 10),
@@ -427,6 +434,10 @@ const OutputsPageDesktop: React.FC = () => {
         digitalAnalog: parseInt(currentOutput.digitalAnalog || '0', 10),
         lowVoltage: parseInt(currentOutput.lowVoltage || '0', 10),
         highVoltage: parseInt(currentOutput.highVoltage || '0', 10),
+        calibrationSign: parseInt(String(currentOutput.calibrationSign || '0'), 10),
+        calibrationH: parseInt(String(currentOutput.calibrationH || '0'), 10),
+        calibrationL: parseInt(String(currentOutput.calibrationL || '0'), 10),
+        control: parseInt(String(currentOutput.control || '0'), 10),
       };
 
       const response = await fetch(
@@ -579,11 +590,14 @@ const OutputsPageDesktop: React.FC = () => {
         value: parseFloat(selectedOutput.fValue || '0'),
         range: newRange,
         autoManual: parseInt(selectedOutput.autoManual || '0'),
-        control: 0,
+        control: parseInt(String(selectedOutput.control || '0')),
         lowVoltage: parseFloat(selectedOutput.lowVoltage || '0'),
         highVoltage: parseFloat(selectedOutput.highVoltage || '0'),
         pwmPeriod: parseInt(selectedOutput.pwmPeriod || '0'),
         digitalAnalog: newDigitalAnalog,
+        calibrationSign: parseInt(String(selectedOutput.calibrationSign || '0')),
+        calibrationH: parseInt(String(selectedOutput.calibrationH || '0')),
+        calibrationL: parseInt(String(selectedOutput.calibrationL || '0')),
       };
 
       console.log('[Action 16] Full payload:', payload);
@@ -656,6 +670,10 @@ const OutputsPageDesktop: React.FC = () => {
         lowVoltage: '',
         highVoltage: '',
         pwmPeriod: '',
+        calibrationH: '',
+        calibrationL: '',
+        calibrationSign: '',
+        control: '',
         status: '',
         signalType: '',
         digitalAnalog: '',
@@ -888,10 +906,13 @@ const OutputsPageDesktop: React.FC = () => {
               value: parseFloat(currentOutput.fValue || '0'),
               range: parseInt(currentOutput.rangeField || currentOutput.range || '0'),
               autoManual: parseInt(newValue),
-              control: 0,
+              control: parseInt(String(currentOutput.control || '0')),
               lowVoltage: parseFloat(currentOutput.lowVoltage || '0'),
               highVoltage: parseFloat(currentOutput.highVoltage || '0'),
               pwmPeriod: parseInt(currentOutput.pwmPeriod || '0'),
+              calibrationSign: parseInt(String(currentOutput.calibrationSign || '0')),
+              calibrationH: parseInt(String(currentOutput.calibrationH || '0')),
+              calibrationL: parseInt(String(currentOutput.calibrationL || '0')),
             };
 
             console.log('[Action 16] Updating Auto/Man:', payload);

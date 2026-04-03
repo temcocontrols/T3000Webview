@@ -67,6 +67,10 @@ interface VariablePoint {
   rangeField?: string;
   calibration?: string;
   sign?: string;
+  calibrationH?: number | string;
+  calibrationL?: number | string;
+  calibrationSign?: string;
+  control?: string;
   filterField?: string;
   status?: string;
   digitalAnalog?: string;
@@ -366,7 +370,7 @@ const VariablesPageDesktop: React.FC = () => {
         serialNumber: serialNumber,
         entryType: 2, // BAC_VAR (VARIABLE)
         entryIndex: parseInt(variableIndex, 10),
-        control: 0,
+        control: parseInt(String(currentVariable.control || '0'), 10),
         value: field === 'fValue' ? parseFloat(newValue || '0') : parseFloat(currentVariable.fValue || '0') / 1000,
         description: field === 'fullLabel' ? newValue : (currentVariable.fullLabel || ''),
         label: currentVariable.label || '',
@@ -374,6 +378,9 @@ const VariablesPageDesktop: React.FC = () => {
         auto_manual: parseInt(currentVariable.autoManual || '0', 10),
         filter: parseInt(currentVariable.filterField || '0', 10),
         digital_analog: currentVariable.digitalAnalog === '1' ? 1 : 0,
+        calibration_sign: parseInt(String(currentVariable.calibrationSign || currentVariable.sign || '0'), 10),
+        calibration_h: parseInt(String(currentVariable.calibrationH || '0'), 10),
+        calibration_l: parseInt(String(currentVariable.calibrationL || '0'), 10),
         decom: 0,
       };
 
@@ -418,6 +425,10 @@ const VariablesPageDesktop: React.FC = () => {
         autoManual: parseInt(currentVariable.autoManual || '0', 10),
         filter: parseInt(currentVariable.filterField || '0', 10),
         digitalAnalog: currentVariable.digitalAnalog === '1' ? 1 : 0,
+        calibrationSign: parseInt(String(currentVariable.calibrationSign || currentVariable.sign || '0'), 10),
+        calibrationH: parseInt(String(currentVariable.calibrationH || '0'), 10),
+        calibrationL: parseInt(String(currentVariable.calibrationL || '0'), 10),
+        control: parseInt(String(currentVariable.control || '0'), 10),
       };
 
       const response = await fetch(
@@ -570,12 +581,12 @@ const VariablesPageDesktop: React.FC = () => {
         value: parseFloat(selectedVariableForRange.fValue || '0'),
         range: newRange,
         autoManual: parseInt(selectedVariableForRange.autoManual || '0'),
-        control: 0,
+        control: parseInt(String(selectedVariableForRange.control || '0')),
         filter: parseInt(selectedVariableForRange.filterField || '0'),
         digitalAnalog: newDigitalAnalog,
-        calibrationSign: parseInt(selectedVariableForRange.sign || '0'),
-        calibrationH: 0,
-        calibrationL: 0,
+        calibrationSign: parseInt(String(selectedVariableForRange.calibrationSign || selectedVariableForRange.sign || '0')),
+        calibrationH: parseInt(String(selectedVariableForRange.calibrationH || '0')),
+        calibrationL: parseInt(String(selectedVariableForRange.calibrationL || '0')),
       };
 
       console.log('[Action 16] Full payload:', payload);
@@ -645,6 +656,10 @@ const VariablesPageDesktop: React.FC = () => {
         rangeField: '',
         calibration: '',
         sign: '',
+        calibrationH: '',
+        calibrationL: '',
+        calibrationSign: '',
+        control: '',
         filterField: '',
         status: '',
         digitalAnalog: '',
@@ -887,12 +902,12 @@ const VariablesPageDesktop: React.FC = () => {
               value: parseFloat(currentVariable.fValue || '0'),
               range: parseInt(currentVariable.rangeField || '0'),
               autoManual: parseInt(newValue),
-              control: 0,
+              control: parseInt(String(currentVariable.control || '0')),
               filter: parseInt(currentVariable.filterField || '0'),
               digitalAnalog: currentVariable.digitalAnalog === '1' ? 1 : 0,
-              calibrationSign: parseInt(currentVariable.sign || '0'),
-              calibrationH: 0,
-              calibrationL: 0,
+              calibrationSign: parseInt(String(currentVariable.calibrationSign || currentVariable.sign || '0')),
+              calibrationH: parseInt(String(currentVariable.calibrationH || '0')),
+              calibrationL: parseInt(String(currentVariable.calibrationL || '0')),
             };
 
             console.log('[Action 16] Updating Auto/Man:', payload);

@@ -346,6 +346,7 @@ export class PanelDataRefreshService {
       transformed.calibrationL = calL;
       transformed.sign = item.calibration_sign?.toString() || item.sign;  // C++ sends 'calibration_sign'
       transformed.filterField = item.filter?.toString() || item.filterField;
+      transformed.control = item.control?.toString() || item.control;
       transformed.status = item.decom?.toString() || item.status;  // C++ sends 'decom'
       transformed.label = item.label;
       transformed.digitalAnalog = item.digital_analog?.toString() || item.digitalAnalog;
@@ -372,6 +373,7 @@ export class PanelDataRefreshService {
       transformed.calibrationL = outCalL;
       transformed.sign = item.calibration_sign?.toString() || item.sign;  // C++ sends 'calibration_sign'
       transformed.filterField = item.filter?.toString() || item.filterField;
+      transformed.control = item.control?.toString() || item.control;
       transformed.status = item.decom?.toString() || item.status;  // C++ sends 'decom'
       transformed.label = item.label;
       transformed.digitalAnalog = item.digital_analog?.toString() || item.digitalAnalog;
@@ -398,6 +400,7 @@ export class PanelDataRefreshService {
       transformed.calibrationL = varCalL;
       transformed.sign = item.calibration_sign?.toString() || item.sign;  // C++ sends 'calibration_sign'
       transformed.filterField = item.filter?.toString() || item.filterField;
+      transformed.control = item.control?.toString() || item.control;
       transformed.status = item.decom?.toString() || item.status;  // C++ sends 'decom'
       transformed.label = item.label;
       transformed.digitalAnalog = item.digital_analog?.toString() || item.digitalAnalog;
