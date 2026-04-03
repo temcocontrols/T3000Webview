@@ -417,7 +417,8 @@ pub struct PointData {
     pub control: Option<i32>,
     pub command: Option<String>,
     pub id: Option<String>,
-    pub calibration_l: Option<f64>,
+    pub calibration_l: Option<i32>,
+    pub calibration_h: Option<i32>,
 
     // OUTPUT specific fields
     pub low_voltage: Option<f64>,
@@ -2959,8 +2960,40 @@ impl T3000MainService {
         })
     }
 
+    /// Helper: parse a JSON value as i64, handling both integer and string representations
+    fn json_value_as_i64(val: &JsonValue) -> Option<i64> {
+        val.as_i64()
+            .or_else(|| val.as_u64().map(|v| v as i64))
+            .or_else(|| val.as_f64().map(|v| v as i64))
+            .or_else(|| val.as_str().and_then(|s| s.parse::<i64>().ok()))
+    }
+
     /// Parse individual point data from C++ JSON structure
     fn parse_point_data(point_json: &JsonValue) -> Result<PointData, AppError> {
+        // Parse calibration fields with robust type handling
+        let cal_h_raw = point_json.get("calibration_h");
+        let cal_l_raw = point_json.get("calibration_l");
+        let cal_sign_raw = point_json.get("calibration_sign");
+        let filter_raw = point_json.get("filter");
+        let control_raw = point_json.get("control");
+
+        let cal_h = cal_h_raw.and_then(Self::json_value_as_i64).unwrap_or(0);
+        let cal_l = cal_l_raw.and_then(Self::json_value_as_i64).unwrap_or(0);
+        let cal_sign = cal_sign_raw.and_then(Self::json_value_as_i64).unwrap_or(0);
+        let filter_val = filter_raw.and_then(Self::json_value_as_i64);
+        let control_val = control_raw.and_then(Self::json_value_as_i64);
+
+        // Debug: log raw calibration JSON values for first point to help diagnose sync issues
+        let point_type = point_json.get("type").and_then(|v| v.as_str()).unwrap_or("?");
+        let point_idx = point_json.get("index").and_then(|v| v.as_u64()).unwrap_or(0);
+        if point_idx == 0 {
+            info!(
+                "🔬 [{}] idx=0 raw JSON: cal_h={:?}, cal_l={:?}, cal_sign={:?}, filter={:?}, control={:?} → parsed: cal_h={}, cal_l={}, sign={}, filter={:?}, control={:?}",
+                point_type, cal_h_raw, cal_l_raw, cal_sign_raw, filter_raw, control_raw,
+                cal_h, cal_l, cal_sign, filter_val, control_val
+            );
+        }
+
         let point_data = PointData {
             index: point_json
                 .get("index")
@@ -2990,14 +3023,11 @@ impl T3000MainService {
                 .get("range")
                 .and_then(|v| v.as_i64())
                 .unwrap_or(0) as i32,
-            calibration: point_json
-                .get("calibration_h")
-                .and_then(|v| v.as_f64())
-                .unwrap_or(0.0),
-            sign: point_json
-                .get("calibration_sign")
-                .and_then(|v| v.as_i64())
-                .unwrap_or(0) as i32,
+            calibration: {
+                // Legacy: compute combined display value from h+l bytes
+                ((cal_h << 8) | cal_l) as f64 / 10.0
+            },
+            sign: cal_sign as i32,
             status: point_json
                 .get("decom")
                 .and_then(|v| v.as_i64())
@@ -3023,16 +3053,10 @@ impl T3000MainService {
                 .map(|s| s.to_string()),
             digital_analog: point_json
                 .get("digital_analog")
-                .and_then(|v| v.as_i64())
+                .and_then(Self::json_value_as_i64)
                 .map(|v| v as i32),
-            filter: point_json
-                .get("filter")
-                .and_then(|v| v.as_i64())
-                .map(|v| v as i32),
-            control: point_json
-                .get("control")
-                .and_then(|v| v.as_i64())
-                .map(|v| v as i32),
+            filter: filter_val.map(|v| v as i32),
+            control: control_val.map(|v| v as i32),
             command: point_json
                 .get("command")
                 .and_then(|v| v.as_str())
@@ -3041,20 +3065,21 @@ impl T3000MainService {
                 .get("id")
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string()),
-            calibration_l: point_json.get("calibration_l").and_then(|v| v.as_f64()),
+            calibration_l: cal_l_raw.and_then(Self::json_value_as_i64).map(|v| v as i32),
+            calibration_h: cal_h_raw.and_then(Self::json_value_as_i64).map(|v| v as i32),
 
             // OUTPUT specific fields
             low_voltage: point_json.get("low_voltage").and_then(|v| v.as_f64()),
             high_voltage: point_json.get("high_voltage").and_then(|v| v.as_f64()),
             hw_switch_status: point_json
                 .get("hw_switch_status")
-                .and_then(|v| v.as_i64())
+                .and_then(Self::json_value_as_i64)
                 .map(|v| v as i32),
 
             // VARIABLE specific fields
             unused: point_json
                 .get("unused")
-                .and_then(|v| v.as_i64())
+                .and_then(Self::json_value_as_i64)
                 .map(|v| v as i32),
         };
 
@@ -3085,6 +3110,12 @@ impl T3000MainService {
             Some(_) => {
                 // UPDATE existing input point using update_many + col_expr
                 // (Safe pattern: PK doesn't include Input_Index, so Entity::update() could target wrong rows)
+                if point.index == 0 {
+                    sync_logger.info(&format!(
+                        "🔬 INPUT UPDATE idx=0 calibration fields: cal_h={:?}, cal_l={:?}, sign={}, filter={:?}, control={:?}",
+                        point.calibration_h, point.calibration_l, point.sign, point.filter, point.control
+                    ));
+                }
                 info!(
                     "🔄 Updating existing INPUT point {}:{} - ID: {:?}, Label: '{}'",
                     serial_number, point.index, point.id, point.full_label
@@ -3103,10 +3134,14 @@ impl T3000MainService {
                     .col_expr(input_points::Column::Calibration, Expr::value(Some(point.calibration.to_string())))
                     .col_expr(input_points::Column::Sign, Expr::value(Some(point.sign.to_string())))
                     .col_expr(input_points::Column::Status, Expr::value(Some(point.status.to_string())))
-                    .col_expr(input_points::Column::FilterField, Expr::value(point.control.map(|c| c.to_string())))
+                    .col_expr(input_points::Column::FilterField, Expr::value(point.filter.map(|f| f.to_string())))
                     .col_expr(input_points::Column::DigitalAnalog, Expr::value(point.digital_analog.map(|da| da.to_string())))
                     .col_expr(input_points::Column::Label, Expr::value(point.label.clone()))
                     .col_expr(input_points::Column::TypeField, Expr::value(point.command.clone()))
+                    .col_expr(input_points::Column::CalibrationH, Expr::value(point.calibration_h.map(|v| v.to_string())))
+                    .col_expr(input_points::Column::CalibrationL, Expr::value(point.calibration_l.map(|v| v.to_string())))
+                    .col_expr(input_points::Column::CalibrationSign, Expr::value(Some(point.sign.to_string())))
+                    .col_expr(input_points::Column::Control, Expr::value(point.control.map(|c| c.to_string())))
                     .exec(txn).await
                     .map_err(|e| {
                         sync_logger.error(&format!(
@@ -3143,10 +3178,14 @@ impl T3000MainService {
                     calibration: Set(Some(point.calibration.to_string())),
                     sign: Set(Some(point.sign.to_string())),
                     status: Set(Some(point.status.to_string())),
-                    filter_field: Set(point.control.map(|c| c.to_string())),
+                    filter_field: Set(point.filter.map(|f| f.to_string())),
                     digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
                     label: Set(point.label.clone()),
                     type_field: Set(point.command.clone()),
+                    calibration_h: Set(point.calibration_h.map(|v| v.to_string())),
+                    calibration_l: Set(point.calibration_l.map(|v| v.to_string())),
+                    calibration_sign: Set(Some(point.sign.to_string())),
+                    control: Set(point.control.map(|c| c.to_string())),
                 };
 
                 let insert_result = input_points::Entity::insert(input_model)
@@ -3211,10 +3250,14 @@ impl T3000MainService {
                     .col_expr(output_points::Column::Calibration, Expr::value(Some(point.calibration.to_string())))
                     .col_expr(output_points::Column::Sign, Expr::value(Some(point.sign.to_string())))
                     .col_expr(output_points::Column::Status, Expr::value(Some(point.status.to_string())))
-                    .col_expr(output_points::Column::FilterField, Expr::value(point.control.map(|c| c.to_string())))
+                    .col_expr(output_points::Column::FilterField, Expr::value(point.filter.map(|f| f.to_string())))
                     .col_expr(output_points::Column::DigitalAnalog, Expr::value(point.digital_analog.map(|da| da.to_string())))
                     .col_expr(output_points::Column::Label, Expr::value(point.label.clone()))
                     .col_expr(output_points::Column::TypeField, Expr::value(point.command.clone()))
+                    .col_expr(output_points::Column::CalibrationH, Expr::value(point.calibration_h.map(|v| v.to_string())))
+                    .col_expr(output_points::Column::CalibrationL, Expr::value(point.calibration_l.map(|v| v.to_string())))
+                    .col_expr(output_points::Column::CalibrationSign, Expr::value(Some(point.sign.to_string())))
+                    .col_expr(output_points::Column::Control, Expr::value(point.control.map(|c| c.to_string())))
                     .exec(txn).await
                     .map_err(|e| {
                         sync_logger.error(&format!(
@@ -3251,10 +3294,14 @@ impl T3000MainService {
                     calibration: Set(Some(point.calibration.to_string())),
                     sign: Set(Some(point.sign.to_string())),
                     status: Set(Some(point.status.to_string())),
-                    filter_field: Set(point.control.map(|c| c.to_string())),
+                    filter_field: Set(point.filter.map(|f| f.to_string())),
                     digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
                     label: Set(point.label.clone()),
                     type_field: Set(point.command.clone()),
+                    calibration_h: Set(point.calibration_h.map(|v| v.to_string())),
+                    calibration_l: Set(point.calibration_l.map(|v| v.to_string())),
+                    calibration_sign: Set(Some(point.sign.to_string())),
+                    control: Set(point.control.map(|c| c.to_string())),
                 };
 
                 let insert_result = output_points::Entity::insert(output_model)
@@ -3320,11 +3367,15 @@ impl T3000MainService {
                     .col_expr(variable_points::Column::RangeField, Expr::value(Some(point.range.to_string())))
                     .col_expr(variable_points::Column::Calibration, Expr::value(Some(point.calibration.to_string())))
                     .col_expr(variable_points::Column::Sign, Expr::value(Some(point.sign.to_string())))
-                    .col_expr(variable_points::Column::FilterField, Expr::value(point.control.map(|c| c.to_string())))
+                    .col_expr(variable_points::Column::FilterField, Expr::value(point.filter.map(|f| f.to_string())))
                     .col_expr(variable_points::Column::Status, Expr::value(Some(point.status.to_string())))
                     .col_expr(variable_points::Column::DigitalAnalog, Expr::value(point.digital_analog.map(|da| da.to_string())))
                     .col_expr(variable_points::Column::Label, Expr::value(point.label.clone()))
                     .col_expr(variable_points::Column::TypeField, Expr::value(point.command.clone()))
+                    .col_expr(variable_points::Column::CalibrationH, Expr::value(point.calibration_h.map(|v| v.to_string())))
+                    .col_expr(variable_points::Column::CalibrationL, Expr::value(point.calibration_l.map(|v| v.to_string())))
+                    .col_expr(variable_points::Column::CalibrationSign, Expr::value(Some(point.sign.to_string())))
+                    .col_expr(variable_points::Column::Control, Expr::value(point.control.map(|c| c.to_string())))
                     .exec(txn).await
                     .map_err(|e| {
                         sync_logger.error(&format!(
@@ -3363,11 +3414,15 @@ impl T3000MainService {
                     range_field: Set(Some(point.range.to_string())),
                     calibration: Set(Some(point.calibration.to_string())),
                     sign: Set(Some(point.sign.to_string())),
-                    filter_field: Set(point.control.map(|c| c.to_string())),
+                    filter_field: Set(point.filter.map(|f| f.to_string())),
                     status: Set(Some(point.status.to_string())),
                     digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
                     label: Set(point.label.clone()),
                     type_field: Set(point.command.clone()),
+                    calibration_h: Set(point.calibration_h.map(|v| v.to_string())),
+                    calibration_l: Set(point.calibration_l.map(|v| v.to_string())),
+                    calibration_sign: Set(Some(point.sign.to_string())),
+                    control: Set(point.control.map(|c| c.to_string())),
                 };
 
                 let insert_result = variable_points::Entity::insert(variable_model)

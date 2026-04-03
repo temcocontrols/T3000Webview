@@ -37,6 +37,11 @@ pub struct VariableUpdate {
     pub digital_analog: Option<String>,
     pub status: Option<String>,
     pub units: Option<String>,
+    pub calibration: Option<String>,
+    pub sign: Option<String>,
+    pub calibration_h: Option<i32>,
+    pub calibration_l: Option<i32>,
+    pub control: Option<String>,
 }
 
 /// Response for batch save operation
@@ -164,6 +169,12 @@ async fn execute_variable_batch_save(
                     .col_expr(variable_points::Column::DigitalAnalog, Expr::value(variable_update.digital_analog.clone()))
                     .col_expr(variable_points::Column::Status, Expr::value(variable_update.status.clone()))
                     .col_expr(variable_points::Column::Units, Expr::value(variable_update.units.clone()))
+                    .col_expr(variable_points::Column::Calibration, Expr::value(variable_update.calibration.clone()))
+                    .col_expr(variable_points::Column::Sign, Expr::value(variable_update.sign.clone()))
+                    .col_expr(variable_points::Column::CalibrationH, Expr::value(variable_update.calibration_h.map(|v| v.to_string())))
+                    .col_expr(variable_points::Column::CalibrationL, Expr::value(variable_update.calibration_l.map(|v| v.to_string())))
+                    .col_expr(variable_points::Column::CalibrationSign, Expr::value(variable_update.sign.clone()))
+                    .col_expr(variable_points::Column::Control, Expr::value(variable_update.control.clone()))
                     .exec(&txn)
                     .await;
 
@@ -205,6 +216,12 @@ async fn execute_variable_batch_save(
                     digital_analog: Set(variable_update.digital_analog.clone()),
                     status: Set(variable_update.status.clone()),
                     units: Set(variable_update.units.clone()),
+                    calibration: Set(variable_update.calibration.clone()),
+                    sign: Set(variable_update.sign.clone()),
+                    calibration_h: Set(variable_update.calibration_h.map(|v| v.to_string())),
+                    calibration_l: Set(variable_update.calibration_l.map(|v| v.to_string())),
+                    calibration_sign: Set(variable_update.sign.clone()),
+                    control: Set(variable_update.control.clone()),
                     ..Default::default()
                 };
 

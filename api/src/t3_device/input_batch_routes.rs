@@ -39,6 +39,9 @@ pub struct InputUpdate {
     pub calibration: Option<String>,
     pub status: Option<String>,
     pub units: Option<String>,
+    pub calibration_h: Option<i32>,
+    pub calibration_l: Option<i32>,
+    pub control: Option<String>,
 }
 
 /// Response for batch save operation
@@ -174,6 +177,10 @@ async fn execute_batch_save(
                     .col_expr(input_points::Column::Calibration, Expr::value(input_update.calibration.clone()))
                     .col_expr(input_points::Column::Status, Expr::value(input_update.status.clone()))
                     .col_expr(input_points::Column::Units, Expr::value(input_update.units.clone()))
+                    .col_expr(input_points::Column::CalibrationH, Expr::value(input_update.calibration_h.map(|v| v.to_string())))
+                    .col_expr(input_points::Column::CalibrationL, Expr::value(input_update.calibration_l.map(|v| v.to_string())))
+                    .col_expr(input_points::Column::CalibrationSign, Expr::value(input_update.sign.clone()))
+                    .col_expr(input_points::Column::Control, Expr::value(input_update.control.clone()))
                     .exec(&txn)
                     .await;
 
@@ -218,6 +225,10 @@ async fn execute_batch_save(
                     calibration: Set(input_update.calibration.clone()),
                     status: Set(input_update.status.clone()),
                     units: Set(input_update.units.clone()),
+                    calibration_h: Set(input_update.calibration_h.map(|v| v.to_string())),
+                    calibration_l: Set(input_update.calibration_l.map(|v| v.to_string())),
+                    calibration_sign: Set(input_update.sign.clone()),
+                    control: Set(input_update.control.clone()),
                     ..Default::default()
                 };
 

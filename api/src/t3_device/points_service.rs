@@ -147,6 +147,10 @@ impl T3PointsService {
             digital_analog: Set(point_data.digital_analog),
             label: Set(point_data.label),
             type_field: Set(point_data.type_field),
+            calibration_h: NotSet,
+            calibration_l: NotSet,
+            calibration_sign: NotSet,
+            control: NotSet,
         };
 
         let point = new_point.insert(db).await?;
@@ -184,6 +188,10 @@ impl T3PointsService {
             digital_analog: Set(point_data.digital_analog),
             label: Set(point_data.label),
             type_field: Set(point_data.type_field),
+            calibration_h: NotSet,
+            calibration_l: NotSet,
+            calibration_sign: NotSet,
+            control: NotSet,
         };
 
         let point = new_point.insert(db).await?;
@@ -221,6 +229,10 @@ impl T3PointsService {
             digital_analog: Set(point_data.digital_analog),
             label: Set(point_data.label),
             type_field: Set(point_data.type_field),
+            calibration_h: NotSet,
+            calibration_l: NotSet,
+            calibration_sign: NotSet,
+            control: NotSet,
         };
 
         let point = new_point.insert(db).await?;
