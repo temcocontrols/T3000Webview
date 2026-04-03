@@ -1207,50 +1207,6 @@ const OutputsPageDesktop: React.FC = () => {
         );
       },
     }),
-    // 12. PWM Period
-    createTableColumn<OutputPoint>({
-      columnId: 'pwmPeriod',
-      renderHeaderCell: () => (
-        <div className={styles.headerCell}>
-          <span>PWM Period</span>
-        </div>
-      ),
-      renderCell: (item) => {
-        const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.outputIndex === item.outputIndex &&
-                          editingCell?.field === 'pwmPeriod';
-
-        return (
-          <TableCellLayout>
-            {!isEmptyRow(item) && (
-              isEditing ? (
-                <input
-                  type="number"
-                  step="1"
-                  className={styles.editInput}
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onBlur={handleEditSave}
-                  onKeyDown={handleEditKeyDown}
-                  autoFocus
-                  disabled={isSaving}
-                  placeholder="Enter period"
-                  aria-label="Edit PWM period"
-                />
-              ) : (
-                <div
-                  className={styles.editableCell}
-                  onDoubleClick={() => handleCellDoubleClick(item, 'pwmPeriod', item.pwmPeriod?.toString() || '0')}
-                  title="Double-click to edit"
-                >
-                  <Text size={200} weight="regular">{item.pwmPeriod || ''}</Text>
-                </div>
-              )
-            )}
-          </TableCellLayout>
-        );
-      },
-    }),
     // 13. Status
     createTableColumn<OutputPoint>({
       columnId: 'status',

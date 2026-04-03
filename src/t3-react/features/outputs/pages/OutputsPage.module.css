@@ -343,9 +343,9 @@
 /* 3. Full Label - fills remaining space */
 .container :global(.fui-DataGridHeaderCell):nth-child(3),
 .container :global(.fui-DataGridCell):nth-child(3) {
-  width: 13%;
+  width: 11%;
   min-width: 100px;
-  flex: 1 0 13%;
+  flex: 1 0 11%;
 }
 /* 4. Label - 9% */
 .container :global(.fui-DataGridHeaderCell):nth-child(4),
@@ -361,23 +361,23 @@
   min-width: 60px;
   flex: 0 0 7%;
 }
-/* 6. HOA Switch - 5% */
+/* 6. HOA Switch - 8% */
 .container :global(.fui-DataGridHeaderCell):nth-child(6),
 .container :global(.fui-DataGridCell):nth-child(6) {
-  width: 5%;
-  min-width: 65px;
-  flex: 0 0 5%;
+  width: 8%;
+  min-width: 90px;
+  flex: 0 0 8%;
 }
-/* 7. Value - 8% (center header) */
+/* 7. Value - 9% (center header) */
 .container :global(.fui-DataGridHeaderCell):nth-child(7) {
   justify-content: center;
   text-align: center;
 }
 .container :global(.fui-DataGridHeaderCell):nth-child(7),
 .container :global(.fui-DataGridCell):nth-child(7) {
-  width: 8%;
-  min-width: 70px;
-  flex: 0 0 8%;
+  width: 10%;
+  min-width: 80px;
+  flex: 0 0 10%;
 }
 /* 8. Units - 9% (center header) */
 .container :global(.fui-DataGridHeaderCell):nth-child(8) {
@@ -415,23 +415,16 @@
   min-width: 50px;
   flex: 0 0 5%;
 }
-/* 12. PWM Period - 5% */
+/* 12. Status - 6% */
 .container :global(.fui-DataGridHeaderCell):nth-child(12),
 .container :global(.fui-DataGridCell):nth-child(12) {
-  width: 5%;
-  min-width: 55px;
-  flex: 0 0 5%;
-}
-/* 13. Status - 6% */
-.container :global(.fui-DataGridHeaderCell):nth-child(13),
-.container :global(.fui-DataGridCell):nth-child(13) {
   width: 6%;
   min-width: 55px;
   flex: 0 0 6%;
 }
-/* 14. Type - fixed 6% */
-.container :global(.fui-DataGridHeaderCell):nth-child(14),
-.container :global(.fui-DataGridCell):nth-child(14) {
+/* 13. Type - fixed 6% */
+.container :global(.fui-DataGridHeaderCell):nth-child(13),
+.container :global(.fui-DataGridCell):nth-child(13) {
   width: 6%;
   min-width: 80px;
   flex: 0 0 6%;
@@ -527,7 +520,7 @@
   white-space: nowrap;
 }
 
-/* Force TableCellLayout to full width for badge columns: Value(7), Units(8), Range(9), Type(14) */
+/* Force TableCellLayout to full width for badge columns: Value(7), Units(8), Range(9), Type(13) */
 .container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout),
 .container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout) > *,
 .container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout__content) {
@@ -546,9 +539,9 @@
   width: 100% !important;
   flex: 1 1 100% !important;
 }
-.container :global(.fui-DataGridCell):nth-child(14) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridCell):nth-child(14) :global(.fui-TableCellLayout) > *,
-.container :global(.fui-DataGridCell):nth-child(14) :global(.fui-TableCellLayout__content) {
+.container :global(.fui-DataGridCell):nth-child(13) :global(.fui-TableCellLayout),
+.container :global(.fui-DataGridCell):nth-child(13) :global(.fui-TableCellLayout) > *,
+.container :global(.fui-DataGridCell):nth-child(13) :global(.fui-TableCellLayout__content) {
   width: 100% !important;
   flex: 1 1 100% !important;
 }
