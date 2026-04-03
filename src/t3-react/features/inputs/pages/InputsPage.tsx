@@ -1156,7 +1156,7 @@ const InputsPageDesktop: React.FC = () => {
         const signChar = (signVal === '1' || signVal === '-') ? '-' : '+';
         return (
           <TableCellLayout>
-            {`${signChar}${calValue.toFixed(1)}`}
+            {`${signChar} ${calValue.toFixed(1)}`}
           </TableCellLayout>
         );
       },
