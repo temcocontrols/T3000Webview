@@ -442,8 +442,8 @@ const InputsPageDesktop: React.FC = () => {
         filter: parseInt(currentInput.filterField || '0', 10),
         digital_analog: parseInt(currentInput.digitalAnalog || '0', 10),
         calibration_sign: parseInt(currentInput.sign || '0', 10),
-        calibration_h: parseInt(currentInput.calibration?.split('.')[0] || '0', 10),
-        calibration_l: parseInt(currentInput.calibration?.split('.')[1] || '0', 10),
+        calibration_h: currentInput.calibrationH ?? 0,
+        calibration_l: currentInput.calibrationL ?? 0,
         decom: 0,
       };
 
@@ -489,8 +489,8 @@ const InputsPageDesktop: React.FC = () => {
         filter: parseInt(currentInput.filterField || '0', 10),
         digitalAnalog: parseInt(currentInput.digitalAnalog || '0', 10),
         calibrationSign: parseInt(currentInput.sign || '0', 10),
-        calibrationH: parseInt(currentInput.calibration?.split('.')[0] || '0', 10),
-        calibrationL: parseInt(currentInput.calibration?.split('.')[1] || '0', 10),
+        calibrationH: currentInput.calibrationH ?? 0,
+        calibrationL: currentInput.calibrationL ?? 0,
       };
 
       const response = await fetch(
@@ -1141,7 +1141,7 @@ const InputsPageDesktop: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && `${item.calibration || '0'} / ${item.sign || '+'}`}
+          {!isEmptyRow(item) && `${(item.sign === '1' || item.sign === '-') ? '-' : '+'}${item.calibration || '0.0'}`}
         </TableCellLayout>
       ),
     }),

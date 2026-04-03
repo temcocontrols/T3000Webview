@@ -333,7 +333,17 @@ export class PanelDataRefreshService {
       transformed.fValue = item.value?.toString() || item.fValue;
       transformed.units = item.unit?.toString() || item.units;  // C++ sends 'unit' not 'units'
       transformed.rangeField = item.range?.toString() || item.rangeField;  // FIXED: Backend expects rangeField
-      transformed.calibration = item.calibration_h?.toString() || item.calibration;  // C++ sends 'calibration_h'
+      // C++ calibration: temp_cal_value = calibration_h * 256 + calibration_l, display = temp_cal_value / 10
+      const calH = parseInt(item.calibration_h?.toString() || '0', 10);
+      const calL = parseInt(item.calibration_l?.toString() || '0', 10);
+      if (item.calibration_h !== undefined && item.calibration_l !== undefined) {
+        const tempCalValue = calH * 256 + calL;
+        transformed.calibration = (tempCalValue / 10).toFixed(1);
+      } else {
+        transformed.calibration = item.calibration || '0.0';
+      }
+      transformed.calibrationH = calH;
+      transformed.calibrationL = calL;
       transformed.sign = item.calibration_sign?.toString() || item.sign;  // C++ sends 'calibration_sign'
       transformed.filterField = item.filter?.toString() || item.filterField;
       transformed.status = item.decom?.toString() || item.status;  // C++ sends 'decom'
@@ -349,7 +359,17 @@ export class PanelDataRefreshService {
       transformed.fValue = item.value?.toString() || item.fValue;
       transformed.units = item.unit?.toString() || item.units;  // C++ sends 'unit' not 'units'
       transformed.rangeField = item.range?.toString() || item.rangeField;  // FIXED: Backend expects rangeField
-      transformed.calibration = item.calibration_h?.toString() || item.calibration;  // C++ sends 'calibration_h'
+      // C++ calibration: temp_cal_value = calibration_h * 256 + calibration_l, display = temp_cal_value / 10
+      const outCalH = parseInt(item.calibration_h?.toString() || '0', 10);
+      const outCalL = parseInt(item.calibration_l?.toString() || '0', 10);
+      if (item.calibration_h !== undefined && item.calibration_l !== undefined) {
+        const tempCalValue = outCalH * 256 + outCalL;
+        transformed.calibration = (tempCalValue / 10).toFixed(1);
+      } else {
+        transformed.calibration = item.calibration || '0.0';
+      }
+      transformed.calibrationH = outCalH;
+      transformed.calibrationL = outCalL;
       transformed.sign = item.calibration_sign?.toString() || item.sign;  // C++ sends 'calibration_sign'
       transformed.filterField = item.filter?.toString() || item.filterField;
       transformed.status = item.decom?.toString() || item.status;  // C++ sends 'decom'
@@ -365,7 +385,17 @@ export class PanelDataRefreshService {
       transformed.fValue = item.value?.toString() || item.fValue;
       transformed.units = item.unit?.toString() || item.units;  // C++ sends 'unit' not 'units'
       transformed.rangeField = item.range?.toString() || item.rangeField;  // FIXED: Backend expects rangeField
-      transformed.calibration = item.calibration_h?.toString() || item.calibration;  // C++ sends 'calibration_h'
+      // C++ calibration: temp_cal_value = calibration_h * 256 + calibration_l, display = temp_cal_value / 10
+      const varCalH = parseInt(item.calibration_h?.toString() || '0', 10);
+      const varCalL = parseInt(item.calibration_l?.toString() || '0', 10);
+      if (item.calibration_h !== undefined && item.calibration_l !== undefined) {
+        const tempCalValue = varCalH * 256 + varCalL;
+        transformed.calibration = (tempCalValue / 10).toFixed(1);
+      } else {
+        transformed.calibration = item.calibration || '0.0';
+      }
+      transformed.calibrationH = varCalH;
+      transformed.calibrationL = varCalL;
       transformed.sign = item.calibration_sign?.toString() || item.sign;  // C++ sends 'calibration_sign'
       transformed.filterField = item.filter?.toString() || item.filterField;
       transformed.status = item.decom?.toString() || item.status;  // C++ sends 'decom'
