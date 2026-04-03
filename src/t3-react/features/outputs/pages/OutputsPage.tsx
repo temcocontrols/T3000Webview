@@ -693,14 +693,7 @@ const OutputsPageDesktop: React.FC = () => {
     createTableColumn<OutputPoint>({
       columnId: 'panel',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('panel')}>
-          <span>Panel</span>
-          {sortColumn === 'panel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Panel</span>
       ),
       renderCell: (item) => (
         <TableCellLayout>
@@ -1055,7 +1048,9 @@ const OutputsPageDesktop: React.FC = () => {
                   onDoubleClick={() => handleCellDoubleClick(item, 'fValue', item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '0')}
                   title="Double-click to edit"
                 >
-                  <Text size={200} weight="regular">{item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}</Text>
+                  <span className={styles.valueBadge}>
+                    {item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}
+                  </span>
                 </div>
               )
             )}
@@ -1076,13 +1071,20 @@ const OutputsPageDesktop: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => (
-        <TableCellLayout>
-          {!isEmptyRow(item) && (item.units || '---')}
-        </TableCellLayout>
-      ),
+      renderCell: (item) => {
+        const rangeValue = parseInt(item.rangeField || item.range || '0', 10);
+        const digitalAnalog = parseInt(item.digitalAnalog || '0', 10);
+        const rangeLabel = getRangeLabel(rangeValue, digitalAnalog);
+        return (
+          <TableCellLayout>
+            {!isEmptyRow(item) && rangeLabel && rangeLabel !== 'Unknown' && (
+              <span className={styles.unitBadge}>{rangeLabel}</span>
+            )}
+          </TableCellLayout>
+        );
+      },
     }),
-    // 7. Range
+    // 9. Range
     createTableColumn<OutputPoint>({
       columnId: 'range',
       compare: (a, b) => {
@@ -1109,13 +1111,13 @@ const OutputsPageDesktop: React.FC = () => {
         return (
           <TableCellLayout>
             {!isEmptyRow(item) && (
-              <div
+              <span
                 onClick={() => handleRangeClick(item)}
-                className={styles.rangeLink}
+                className={styles.rangeBadge}
                 title="Click to change range"
               >
-                <Text size={200} weight="regular">{rangeLabel}</Text>
-              </div>
+                {rangeLabel}
+              </span>
             )}
           </TableCellLayout>
         );
@@ -1125,14 +1127,7 @@ const OutputsPageDesktop: React.FC = () => {
     createTableColumn<OutputPoint>({
       columnId: 'lowVoltage',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('lowVoltage')}>
-          <span>Low V</span>
-          {sortColumn === 'lowVoltage' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Low V</span>
       ),
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
@@ -1162,7 +1157,7 @@ const OutputsPageDesktop: React.FC = () => {
                   onDoubleClick={() => handleCellDoubleClick(item, 'lowVoltage', item.lowVoltage?.toString() || '0')}
                   title="Double-click to edit"
                 >
-                  <Text size={200} weight="regular">{item.lowVoltage || '---'}</Text>
+                  <Text size={200} weight="regular">{item.lowVoltage || ''}</Text>
                 </div>
               )
             )}
@@ -1174,14 +1169,7 @@ const OutputsPageDesktop: React.FC = () => {
     createTableColumn<OutputPoint>({
       columnId: 'highVoltage',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('highVoltage')}>
-          <span>High V</span>
-          {sortColumn === 'highVoltage' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>High V</span>
       ),
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
@@ -1211,7 +1199,7 @@ const OutputsPageDesktop: React.FC = () => {
                   onDoubleClick={() => handleCellDoubleClick(item, 'highVoltage', item.highVoltage?.toString() || '0')}
                   title="Double-click to edit"
                 >
-                  <Text size={200} weight="regular">{item.highVoltage || '---'}</Text>
+                  <Text size={200} weight="regular">{item.highVoltage || ''}</Text>
                 </div>
               )
             )}
@@ -1255,7 +1243,7 @@ const OutputsPageDesktop: React.FC = () => {
                   onDoubleClick={() => handleCellDoubleClick(item, 'pwmPeriod', item.pwmPeriod?.toString() || '0')}
                   title="Double-click to edit"
                 >
-                  <Text size={200} weight="regular">{item.pwmPeriod || '---'}</Text>
+                  <Text size={200} weight="regular">{item.pwmPeriod || ''}</Text>
                 </div>
               )
             )}
@@ -1317,47 +1305,13 @@ const OutputsPageDesktop: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
-        // Type values: 0=Virtual, 1=Digital, 2=Analog, 3=Extend Digital, 4=Extend Analog, 5=Internal
-        const typeValue = item.typeField || '0';
-        let typeText = 'Virtual';
-        let badgeColor: 'success' | 'informative' | 'brand' | 'warning' = 'success';
-
-        switch (typeValue) {
-          case '0':
-            typeText = 'Virtual';
-            badgeColor = 'success';
-            break;
-          case '1':
-            typeText = 'Digital';
-            badgeColor = 'informative';
-            break;
-          case '2':
-            typeText = 'Analog';
-            badgeColor = 'brand';
-            break;
-          case '3':
-            typeText = 'Extend Digital';
-            badgeColor = 'informative';
-            break;
-          case '4':
-            typeText = 'Extend Analog';
-            badgeColor = 'brand';
-            break;
-          case '5':
-            typeText = 'Internal';
-            badgeColor = 'warning';
-            break;
-          default:
-            typeText = 'Virtual';
-            badgeColor = 'success';
-        }
-
+        const isDigital = item.digitalAnalog === '0';
         return (
           <TableCellLayout>
             {!isEmptyRow(item) && (
-              <Badge appearance="outline" color={badgeColor}>
-                {typeText}
-              </Badge>
+              <span className={isDigital ? styles.digitalType : styles.analogType}>
+                {isDigital ? 'Digital' : 'Analog'}
+              </span>
             )}
           </TableCellLayout>
         );
