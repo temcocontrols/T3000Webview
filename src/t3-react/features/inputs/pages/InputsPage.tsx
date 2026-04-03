@@ -72,6 +72,10 @@ interface InputPoint {
   rangeField?: string;
   calibration?: string;
   sign?: string;
+  calibrationH?: number | string;
+  calibrationL?: number | string;
+  calibrationSign?: string;
+  control?: string;
   filterField?: string;
   status?: string;
   signalType?: string;
@@ -441,9 +445,9 @@ const InputsPageDesktop: React.FC = () => {
         auto_manual: field === 'autoManual' ? parseInt(newValue || '0', 10) : parseInt(currentInput.autoManual || '0', 10),
         filter: parseInt(currentInput.filterField || '0', 10),
         digital_analog: parseInt(currentInput.digitalAnalog || '0', 10),
-        calibration_sign: parseInt(currentInput.sign || '0', 10),
-        calibration_h: currentInput.calibrationH ?? 0,
-        calibration_l: currentInput.calibrationL ?? 0,
+        calibration_sign: parseInt(String(currentInput.calibrationSign || currentInput.sign || '0'), 10),
+        calibration_h: parseInt(String(currentInput.calibrationH || '0'), 10),
+        calibration_l: parseInt(String(currentInput.calibrationL || '0'), 10),
         decom: 0,
       };
 
@@ -488,9 +492,9 @@ const InputsPageDesktop: React.FC = () => {
         autoManual: field === 'autoManual' ? parseInt(newValue || '0', 10) : parseInt(currentInput.autoManual || '0', 10),
         filter: parseInt(currentInput.filterField || '0', 10),
         digitalAnalog: parseInt(currentInput.digitalAnalog || '0', 10),
-        calibrationSign: parseInt(currentInput.sign || '0', 10),
-        calibrationH: currentInput.calibrationH ?? 0,
-        calibrationL: currentInput.calibrationL ?? 0,
+        calibrationSign: parseInt(String(currentInput.calibrationSign || currentInput.sign || '0'), 10),
+        calibrationH: parseInt(String(currentInput.calibrationH || '0'), 10),
+        calibrationL: parseInt(String(currentInput.calibrationL || '0'), 10),
       };
 
       const response = await fetch(
@@ -724,6 +728,10 @@ const InputsPageDesktop: React.FC = () => {
         rangeField: '',
         calibration: '',
         sign: '',
+        calibrationH: '',
+        calibrationL: '',
+        calibrationSign: '',
+        control: '',
         filterField: '',
         status: '',
         signalType: '',
@@ -1139,11 +1147,19 @@ const InputsPageDesktop: React.FC = () => {
           <span>Calibration/Sign</span>
         </div>
       ),
-      renderCell: (item) => (
-        <TableCellLayout>
-          {!isEmptyRow(item) && `${(item.sign === '1' || item.sign === '-') ? '-' : '+'}${item.calibration || '0.0'}`}
-        </TableCellLayout>
-      ),
+      renderCell: (item) => {
+        if (isEmptyRow(item)) return <TableCellLayout />;
+        const calH = parseInt(String(item.calibrationH || '0'), 10);
+        const calL = parseInt(String(item.calibrationL || '0'), 10);
+        const calValue = ((calH << 8) | calL) / 10;
+        const signVal = item.calibrationSign || item.sign;
+        const signChar = (signVal === '1' || signVal === '-') ? '-' : '+';
+        return (
+          <TableCellLayout>
+            {`${signChar}${calValue.toFixed(1)}`}
+          </TableCellLayout>
+        );
+      },
     }),
     // 9. Filter
     createTableColumn<InputPoint>({
