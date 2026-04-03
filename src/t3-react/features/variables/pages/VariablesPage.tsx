@@ -644,7 +644,7 @@ const VariablesPageDesktop: React.FC = () => {
   // Display data with 10 empty rows when no variables
   const displayVariables = React.useMemo(() => {
     if (variables.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         serialNumber: selectedDevice?.serialNumber || 0,
         variableId: '',
         variableIndex: '',
@@ -679,13 +679,8 @@ const VariablesPageDesktop: React.FC = () => {
     createTableColumn<VariablePoint>({
       columnId: 'panel',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('panel')}>
+        <div className={styles.headerCell}>
           <span>Panel</span>
-          {sortColumn === 'panel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
         </div>
       ),
       renderCell: (item) => (

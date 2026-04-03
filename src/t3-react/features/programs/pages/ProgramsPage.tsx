@@ -353,7 +353,7 @@ export const ProgramsPage: React.FC = () => {
   // Display data with 10 empty rows when no programs
   const displayPrograms = React.useMemo(() => {
     if (programs.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         serialNumber: selectedDevice?.serialNumber || 0,
         programId: '',
         switchNode: '',

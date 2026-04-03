@@ -291,7 +291,7 @@ export const SchedulesPage: React.FC = () => {
   // Display schedules with empty rows when no data (show 10 empty rows)
   const displaySchedules = React.useMemo(() => {
     if (schedules.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         serialNumber: 0,
         scheduleId: '',
         autoManual: '',

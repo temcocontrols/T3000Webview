@@ -282,7 +282,7 @@ const AlarmsPageDesktop: React.FC = () => {
   // Display alarms with empty rows when no data (show 10 empty rows)
   const displayAlarms = React.useMemo(() => {
     if (alarms.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         alarm_id: '',
         panel: '',
         message: '',

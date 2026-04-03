@@ -278,7 +278,7 @@
   height: 36px;
   line-height: 36px;
   background-color: #d6e4f7;
-  border-right: none;
+  border-right: 1px solid #b8cce4;
   border-bottom: none;
   cursor: pointer;
   transition: color 0.15s ease, background-color 0.15s ease;
@@ -300,7 +300,7 @@
 
 /* Data row styling */
 .container :global(.fui-DataGridRow) {
-  border-bottom: 1px solid #f3f2f1;
+  border-bottom: 1px solid #e5e5e5;
   min-height: 32px;
   background-color: #ffffff;
   transition: background-color 0.1s ease;
@@ -321,12 +321,20 @@
   color: #292827;
   padding: 0 12px;
   min-height: 32px;
-  border-right: none;
+  border-right: 1px solid #ebebeb;
   display: flex;
   align-items: center;
   overflow: hidden;
   text-overflow: ellipsis;
   box-sizing: border-box;
+}
+
+/* Remove right border from last header cell and last data cell */
+.container :global(.fui-DataGridHeaderCell):last-child {
+  border-right: none;
+}
+.container :global(.fui-DataGridCell):last-child {
+  border-right: none;
 }
 
 /* Badge styling */

@@ -98,7 +98,7 @@ export const BuildingsPage: React.FC = () => {
   // Display data with 10 empty rows when no buildings
   const displayBuildings = React.useMemo(() => {
     if (buildings.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         id: undefined,
         buildingName: '',
         protocol: '',

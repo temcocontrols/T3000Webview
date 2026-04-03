@@ -87,8 +87,8 @@ const PIDLoopsPage: React.FC = () => {
   // Create empty rows when no data exists
   const displayPidLoops = useMemo(() => {
     if (pidLoops.length === 0) {
-      // Return 10 completely empty rows
-      return Array(10).fill(null).map((_, index) => ({
+      // Return 18 completely empty rows
+      return Array(18).fill(null).map((_, index) => ({
         loop_field: '',
         input_field: '',
         input_value: '',

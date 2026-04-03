@@ -132,7 +132,7 @@ export const DiscoverPage: React.FC = () => {
   // Display data with 10 empty rows when no devices
   const displayDevices = React.useMemo(() => {
     if (devices.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         id: '',
         model: '',
         building: '',

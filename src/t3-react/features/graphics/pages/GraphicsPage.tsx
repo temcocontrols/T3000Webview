@@ -314,7 +314,7 @@ export const GraphicsPage: React.FC = () => {
   // Display data with 10 empty rows when no graphics
   const displayGraphics = React.useMemo(() => {
     if (sortedGraphics.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         GraphicId: -(index + 1), // Negative IDs for empty rows
         serialNumber: selectedDevice?.serialNumber || 0,
         graphicId: '',

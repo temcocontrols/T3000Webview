@@ -117,7 +117,7 @@ const ArrayPage: React.FC = () => {
   // Display arrays with empty rows when no data (show 10 empty rows)
   const displayArrays = React.useMemo(() => {
     if (arrays.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         item: '',
         array_name: '',
         length: '',

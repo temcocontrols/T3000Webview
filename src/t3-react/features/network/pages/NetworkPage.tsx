@@ -133,7 +133,7 @@ export const NetworkPage: React.FC = () => {
   // Display networks with empty rows when no data (show 10 empty rows)
   const displayNetworks = React.useMemo(() => {
     if (networks.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         networkId: '',
         networkNumber: undefined,
         buildingName: '',

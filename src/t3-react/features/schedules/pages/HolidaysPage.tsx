@@ -281,7 +281,7 @@ export const HolidaysPage: React.FC = () => {
   // Display holidays with empty rows when no data (show 10 empty rows)
   const displayHolidays = React.useMemo(() => {
     if (holidays.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         serialNumber: 0,
         holidayId: '',
         fullLabel: '',

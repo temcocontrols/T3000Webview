@@ -715,7 +715,7 @@ const InputsPageDesktop: React.FC = () => {
   // Display data with 10 empty rows when no inputs
   const displayInputs = React.useMemo(() => {
     if (inputs.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         serialNumber: selectedDevice?.serialNumber || 0,
         inputId: '',
         inputIndex: '',
