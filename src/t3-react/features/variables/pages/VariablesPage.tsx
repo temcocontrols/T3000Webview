@@ -53,6 +53,7 @@ import { useStatusBarStore } from '../../../store/statusBarStore';
 import { SyncStatusBar } from '../../../shared/components/SyncStatusBar';
 import styles from './VariablesPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 // Types based on Rust entity (variable_points.rs)
 interface VariablePoint {
@@ -276,11 +277,47 @@ const VariablesPageDesktop: React.FC = () => {
   };
 
   const handleExport = () => {
-    console.log('Export variables to CSV');
+    if (variables.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<VariablePoint>[] = [
+      { header: 'Panel', accessor: v => v.panel },
+      { header: 'Variable', accessor: v => v.variableId },
+      { header: 'Full Label', accessor: v => v.fullLabel },
+      { header: 'Label', accessor: v => v.label },
+      { header: 'Auto/Manual', accessor: v => v.autoManual },
+      { header: 'Value', accessor: v => v.fValue },
+      { header: 'Units', accessor: v => v.units },
+      { header: 'Range', accessor: v => v.rangeField },
+      { header: 'Calibration', accessor: v => v.calibration },
+      { header: 'Sign', accessor: v => v.sign },
+      { header: 'Filter', accessor: v => v.filterField },
+      { header: 'Status', accessor: v => v.status },
+    ];
+    exportToCsv(variables, csvColumns, `variables_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
 
-  // Register CSV export handler with global context (Tools menu)
-  useRegisterCsvHandlers(handleExport);
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<VariablePoint>[] = [
+      { header: 'Panel', accessor: v => v.panel, setter: (v, val) => { v.panel = val; } },
+      { header: 'Variable', accessor: v => v.variableId, setter: (v, val) => { v.variableId = val; } },
+      { header: 'Full Label', accessor: v => v.fullLabel, setter: (v, val) => { v.fullLabel = val; } },
+      { header: 'Label', accessor: v => v.label, setter: (v, val) => { v.label = val; } },
+      { header: 'Auto/Manual', accessor: v => v.autoManual, setter: (v, val) => { v.autoManual = val; } },
+      { header: 'Value', accessor: v => v.fValue, setter: (v, val) => { v.fValue = val; } },
+      { header: 'Units', accessor: v => v.units, setter: (v, val) => { v.units = val; } },
+      { header: 'Range', accessor: v => v.rangeField, setter: (v, val) => { v.rangeField = val; } },
+      { header: 'Calibration', accessor: v => v.calibration, setter: (v, val) => { v.calibration = val; } },
+      { header: 'Sign', accessor: v => v.sign, setter: (v, val) => { v.sign = val; } },
+      { header: 'Filter', accessor: v => v.filterField, setter: (v, val) => { v.filterField = val; } },
+      { header: 'Status', accessor: v => v.status, setter: (v, val) => { v.status = val; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ serialNumber: selectedDevice?.serialNumber || 0 } as VariablePoint));
+    setVariables(imported);
+  };
+
+  // Register CSV export/import handlers with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   // Auto-scroll to next device when reaching bottom
   const loadNextDevice = useCallback(async () => {

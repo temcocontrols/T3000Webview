@@ -24,6 +24,7 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './ArrayPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 // Array interface matching C++ CBacnetArray structure (4 columns)
 interface ArrayItem {
@@ -101,11 +102,31 @@ const ArrayPage: React.FC = () => {
   };
 
   const handleExport = () => {
-    console.log('Export arrays to CSV');
+    if (arrays.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<ArrayItem>[] = [
+      { header: 'Item', accessor: a => a.item },
+      { header: 'Array Name', accessor: a => a.array_name },
+      { header: 'Length', accessor: a => a.length },
+      { header: 'Value', accessor: a => a.value },
+    ];
+    exportToCsv(arrays, csvColumns, `arrays_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
 
-  // Register CSV export handler with global context (Tools menu)
-  useRegisterCsvHandlers(handleExport);
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<ArrayItem>[] = [
+      { header: 'Item', accessor: a => a.item, setter: (a, v) => { a.item = v; } },
+      { header: 'Array Name', accessor: a => a.array_name, setter: (a, v) => { a.array_name = v; } },
+      { header: 'Length', accessor: a => a.length, setter: (a, v) => { a.length = v; } },
+      { header: 'Value', accessor: a => a.value, setter: (a, v) => { a.value = v; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ item: '', array_name: '', length: '', value: '' }));
+    setArrays(imported);
+  };
+
+  // Register CSV export/import handlers with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   const handleSettings = () => {
     console.log('Settings clicked');

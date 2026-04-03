@@ -39,6 +39,7 @@ import { API_BASE_URL } from '../../../config/constants';
 import { AlarmRefreshApi } from '../services/alarmRefreshApi';
 import styles from './AlarmsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 // Alarm interface matching ALARMS entity and C++ BacnetAlarmLog (7 columns)
 interface Alarm {
@@ -80,11 +81,37 @@ const AlarmsPageDesktop: React.FC = () => {
   const deviceRefreshedRef = useRef<number | null>(null);
 
   const handleExport = () => {
-    console.log('Export alarms to CSV');
+    if (alarms.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<Alarm>[] = [
+      { header: 'Alarm ID', accessor: a => a.alarm_id },
+      { header: 'Panel', accessor: a => a.panel },
+      { header: 'Message', accessor: a => a.message },
+      { header: 'Timestamp', accessor: a => a.time_stamp },
+      { header: 'Acknowledged', accessor: a => a.acknowledged },
+      { header: 'Status', accessor: a => a.status },
+      { header: 'Priority', accessor: a => a.priority },
+    ];
+    exportToCsv(alarms, csvColumns, `alarms_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
 
-  // Register CSV export handler with global context (Tools menu)
-  useRegisterCsvHandlers(handleExport);
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<Alarm>[] = [
+      { header: 'Alarm ID', accessor: a => a.alarm_id, setter: (a, v) => { a.alarm_id = v; } },
+      { header: 'Panel', accessor: a => a.panel, setter: (a, v) => { a.panel = v; } },
+      { header: 'Message', accessor: a => a.message, setter: (a, v) => { a.message = v; } },
+      { header: 'Timestamp', accessor: a => a.time_stamp, setter: (a, v) => { a.time_stamp = v; } },
+      { header: 'Acknowledged', accessor: a => a.acknowledged, setter: (a, v) => { a.acknowledged = v; } },
+      { header: 'Status', accessor: a => a.status, setter: (a, v) => { a.status = v; } },
+      { header: 'Priority', accessor: a => a.priority, setter: (a, v) => { a.priority = v; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ alarm_id: '', panel: '', message: '', time_stamp: '', acknowledged: '', status: '' } as Alarm));
+    setAlarms(imported);
+  };
+
+  // Register CSV export/import handlers with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   const handleSettings = () => {
     console.log('Settings clicked');

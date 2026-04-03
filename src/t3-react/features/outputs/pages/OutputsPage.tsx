@@ -57,6 +57,7 @@ import { useStatusBarStore } from '../../../store/statusBarStore';
 import { SyncStatusBar } from '../../../shared/components/SyncStatusBar';
 import styles from './OutputsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 // Types based on Rust entity (output_points.rs)
 interface OutputPoint {
@@ -283,11 +284,49 @@ const OutputsPageDesktop: React.FC = () => {
   };
 
   const handleExport = () => {
-    console.log('Export outputs to CSV');
+    if (outputs.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<OutputPoint>[] = [
+      { header: 'Panel', accessor: o => o.panel },
+      { header: 'Output', accessor: o => o.outputId },
+      { header: 'Full Label', accessor: o => o.fullLabel },
+      { header: 'Label', accessor: o => o.label },
+      { header: 'Auto/Manual', accessor: o => o.autoManual },
+      { header: 'HOA Switch', accessor: o => o.hwSwitchStatus },
+      { header: 'Value', accessor: o => o.fValue },
+      { header: 'Units', accessor: o => o.units },
+      { header: 'Range', accessor: o => o.range },
+      { header: 'Low Voltage', accessor: o => o.lowVoltage },
+      { header: 'High Voltage', accessor: o => o.highVoltage },
+      { header: 'Status', accessor: o => o.status },
+      { header: 'Signal Type', accessor: o => o.signalType },
+    ];
+    exportToCsv(outputs, csvColumns, `outputs_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
 
-  // Register CSV export handler with global context (Tools menu)
-  useRegisterCsvHandlers(handleExport);
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<OutputPoint>[] = [
+      { header: 'Panel', accessor: o => o.panel, setter: (o, v) => { o.panel = v; } },
+      { header: 'Output', accessor: o => o.outputId, setter: (o, v) => { o.outputId = v; } },
+      { header: 'Full Label', accessor: o => o.fullLabel, setter: (o, v) => { o.fullLabel = v; } },
+      { header: 'Label', accessor: o => o.label, setter: (o, v) => { o.label = v; } },
+      { header: 'Auto/Manual', accessor: o => o.autoManual, setter: (o, v) => { o.autoManual = v; } },
+      { header: 'HOA Switch', accessor: o => o.hwSwitchStatus, setter: (o, v) => { o.hwSwitchStatus = v; } },
+      { header: 'Value', accessor: o => o.fValue, setter: (o, v) => { o.fValue = v; } },
+      { header: 'Units', accessor: o => o.units, setter: (o, v) => { o.units = v; } },
+      { header: 'Range', accessor: o => o.range, setter: (o, v) => { o.range = v; } },
+      { header: 'Low Voltage', accessor: o => o.lowVoltage, setter: (o, v) => { o.lowVoltage = v; } },
+      { header: 'High Voltage', accessor: o => o.highVoltage, setter: (o, v) => { o.highVoltage = v; } },
+      { header: 'Status', accessor: o => o.status, setter: (o, v) => { o.status = v; } },
+      { header: 'Signal Type', accessor: o => o.signalType, setter: (o, v) => { o.signalType = v; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ serialNumber: selectedDevice?.serialNumber || 0 } as OutputPoint));
+    setOutputs(imported);
+  };
+
+  // Register CSV export/import handlers with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   // Auto-scroll to next device when reaching bottom
   const loadNextDevice = useCallback(async () => {

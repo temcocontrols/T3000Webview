@@ -42,6 +42,7 @@ import { API_BASE_URL } from '../../../config/constants';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import styles from './SchedulesPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 // Types based on Rust entity (schedules.rs) and C++ BacnetWeeklyRoutine structure
 interface SchedulePoint {
@@ -225,11 +226,39 @@ export const SchedulesPage: React.FC = () => {
 
   // Export handler
   const handleExport = () => {
-    console.log('Export schedules clicked');
+    if (schedules.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<SchedulePoint>[] = [
+      { header: 'Schedule', accessor: s => s.scheduleId },
+      { header: 'Auto/Manual', accessor: s => s.autoManual },
+      { header: 'Output', accessor: s => s.outputField },
+      { header: 'Variable', accessor: s => s.variableField },
+      { header: 'Holiday1', accessor: s => s.holiday1 },
+      { header: 'Status1', accessor: s => s.status1 },
+      { header: 'Holiday2', accessor: s => s.holiday2 },
+      { header: 'Status2', accessor: s => s.status2 },
+    ];
+    exportToCsv(schedules, csvColumns, `schedules_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
 
-  // Register CSV export handler with global context (Tools menu)
-  useRegisterCsvHandlers(handleExport);
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<SchedulePoint>[] = [
+      { header: 'Schedule', accessor: s => s.scheduleId, setter: (s, v) => { s.scheduleId = v; } },
+      { header: 'Auto/Manual', accessor: s => s.autoManual, setter: (s, v) => { s.autoManual = v; } },
+      { header: 'Output', accessor: s => s.outputField, setter: (s, v) => { s.outputField = v; } },
+      { header: 'Variable', accessor: s => s.variableField, setter: (s, v) => { s.variableField = v; } },
+      { header: 'Holiday1', accessor: s => s.holiday1, setter: (s, v) => { s.holiday1 = v; } },
+      { header: 'Status1', accessor: s => s.status1, setter: (s, v) => { s.status1 = v; } },
+      { header: 'Holiday2', accessor: s => s.holiday2, setter: (s, v) => { s.holiday2 = v; } },
+      { header: 'Status2', accessor: s => s.status2, setter: (s, v) => { s.status2 = v; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ serialNumber: selectedDevice?.serialNumber || 0 } as SchedulePoint));
+    setSchedules(imported);
+  };
+
+  // Register CSV export/import handlers with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   // Search handler
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {

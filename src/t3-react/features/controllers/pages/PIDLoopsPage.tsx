@@ -37,6 +37,7 @@ import { API_BASE_URL } from '../../../config/constants';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import styles from './PIDLoopsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 // PID Controller interface matching PID_TABLE entity
 interface PIDController {
@@ -303,12 +304,49 @@ const PIDLoopsPage: React.FC = () => {
 
   // Handle export
   const handleExport = () => {
-    console.log('Export PID loops to CSV');
-    // TODO: Implement CSV export
+    if (pidLoops.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<PIDController>[] = [
+      { header: 'Controller #', accessor: p => p.loop_field },
+      { header: 'Input', accessor: p => p.input_field },
+      { header: 'Input Value', accessor: p => p.input_value },
+      { header: 'Units', accessor: p => p.units },
+      { header: 'Auto/Manual', accessor: p => p.auto_manual },
+      { header: 'Output', accessor: p => p.output_field },
+      { header: 'Setpoint', accessor: p => p.set_value },
+      { header: 'Setpoint Units', accessor: p => p.units_state },
+      { header: 'Action', accessor: p => p.action_field },
+      { header: 'Proportional', accessor: p => p.proportional },
+      { header: 'Integral', accessor: p => p.reset_field },
+      { header: 'Derivative', accessor: p => p.rate },
+      { header: 'Bias', accessor: p => p.bias },
+    ];
+    exportToCsv(pidLoops, csvColumns, `pid_loops_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
 
-  // Register CSV export handler with global context (Tools menu)
-  useRegisterCsvHandlers(handleExport);
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<PIDController>[] = [
+      { header: 'Controller #', accessor: p => p.loop_field, setter: (p, v) => { p.loop_field = v; } },
+      { header: 'Input', accessor: p => p.input_field, setter: (p, v) => { p.input_field = v; } },
+      { header: 'Input Value', accessor: p => p.input_value, setter: (p, v) => { p.input_value = v; } },
+      { header: 'Units', accessor: p => p.units, setter: (p, v) => { p.units = v; } },
+      { header: 'Auto/Manual', accessor: p => p.auto_manual, setter: (p, v) => { p.auto_manual = v; } },
+      { header: 'Output', accessor: p => p.output_field, setter: (p, v) => { p.output_field = v; } },
+      { header: 'Setpoint', accessor: p => p.set_value, setter: (p, v) => { p.set_value = v; } },
+      { header: 'Setpoint Units', accessor: p => p.units_state, setter: (p, v) => { p.units_state = v; } },
+      { header: 'Action', accessor: p => p.action_field, setter: (p, v) => { p.action_field = v; } },
+      { header: 'Proportional', accessor: p => p.proportional, setter: (p, v) => { p.proportional = v; } },
+      { header: 'Integral', accessor: p => p.reset_field, setter: (p, v) => { p.reset_field = v; } },
+      { header: 'Derivative', accessor: p => p.rate, setter: (p, v) => { p.rate = v; } },
+      { header: 'Bias', accessor: p => p.bias, setter: (p, v) => { p.bias = v; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ loop_field: '', input_field: '', input_value: '', units: '', auto_manual: '', output_field: '', set_value: '', units_state: '', action_field: '', proportional: '', reset_field: '', rate: '', bias: '' }));
+    setPidLoops(imported);
+  };
+
+  // Register CSV export/import handlers with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   // Handle settings
   const handleSettings = () => {

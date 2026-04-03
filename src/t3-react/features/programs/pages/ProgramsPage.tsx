@@ -53,6 +53,7 @@ import { SyncStatusBar } from '../../../shared/components/SyncStatusBar';
 import { ProgrammingDrawer } from '../components/ProgrammingDrawer';
 import styles from './ProgramsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 // Types based on Rust entity (programs.rs) and C++ BacnetProgram structure
 interface ProgramPoint {
@@ -230,11 +231,35 @@ export const ProgramsPage: React.FC = () => {
   };
 
   const handleExport = () => {
-    console.log('Export programs to CSV');
+    if (programs.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<ProgramPoint>[] = [
+      { header: 'Program', accessor: p => p.programId },
+      { header: 'Full Label', accessor: p => p.programList },
+      { header: 'Status', accessor: p => p.programStatus },
+      { header: 'Auto/Manual', accessor: p => p.autoManual },
+      { header: 'Size', accessor: p => p.programSize },
+      { header: 'Label', accessor: p => p.programLabel },
+    ];
+    exportToCsv(programs, csvColumns, `programs_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
 
-  // Register CSV export handler with global context (Tools menu)
-  useRegisterCsvHandlers(handleExport);
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<ProgramPoint>[] = [
+      { header: 'Program', accessor: p => p.programId, setter: (p, v) => { p.programId = v; } },
+      { header: 'Full Label', accessor: p => p.programList, setter: (p, v) => { p.programList = v; } },
+      { header: 'Status', accessor: p => p.programStatus, setter: (p, v) => { p.programStatus = v; } },
+      { header: 'Auto/Manual', accessor: p => p.autoManual, setter: (p, v) => { p.autoManual = v; } },
+      { header: 'Size', accessor: p => p.programSize, setter: (p, v) => { p.programSize = v; } },
+      { header: 'Label', accessor: p => p.programLabel, setter: (p, v) => { p.programLabel = v; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ serialNumber: selectedDevice?.serialNumber || 0 } as ProgramPoint));
+    setPrograms(imported);
+  };
+
+  // Register CSV export/import handlers with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   // Auto-scroll handlers
   const loadNextDevice = useCallback(async () => {

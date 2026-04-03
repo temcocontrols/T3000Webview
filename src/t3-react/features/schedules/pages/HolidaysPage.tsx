@@ -47,6 +47,7 @@ import { API_BASE_URL } from '../../../config/constants';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import styles from './HolidaysPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 // Types based on C++ BacnetAnnualRoutine structure
 interface HolidayPoint {
@@ -217,11 +218,33 @@ export const HolidaysPage: React.FC = () => {
   };
 
   const handleExport = () => {
-    console.log('Export holidays to CSV');
+    if (holidays.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<HolidayPoint>[] = [
+      { header: 'Holiday', accessor: h => h.holidayId },
+      { header: 'Full Label', accessor: h => h.fullLabel },
+      { header: 'Auto/Manual', accessor: h => h.autoManual },
+      { header: 'Value', accessor: h => h.value },
+      { header: 'Label', accessor: h => h.label },
+    ];
+    exportToCsv(holidays, csvColumns, `holidays_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
 
-  // Register CSV export handler with global context (Tools menu)
-  useRegisterCsvHandlers(handleExport);
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<HolidayPoint>[] = [
+      { header: 'Holiday', accessor: h => h.holidayId, setter: (h, v) => { h.holidayId = v; } },
+      { header: 'Full Label', accessor: h => h.fullLabel, setter: (h, v) => { h.fullLabel = v; } },
+      { header: 'Auto/Manual', accessor: h => h.autoManual, setter: (h, v) => { h.autoManual = v; } },
+      { header: 'Value', accessor: h => h.value, setter: (h, v) => { h.value = v; } },
+      { header: 'Label', accessor: h => h.label, setter: (h, v) => { h.label = v; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ serialNumber: selectedDevice?.serialNumber || 0 } as HolidayPoint));
+    setHolidays(imported);
+  };
+
+  // Register CSV export/import handlers with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);

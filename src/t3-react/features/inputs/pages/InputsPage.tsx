@@ -57,6 +57,7 @@ import { useResponsive } from '@t3-shared/core/hooks/useResponsive';
 import { InputsPageMobile } from '@t3-mobile/features/inputs/pages/InputsPageMobile';
 import styles from './InputsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 // Types based on Rust entity (input_points.rs)
 interface InputPoint {
@@ -293,11 +294,49 @@ const InputsPageDesktop: React.FC = () => {
   };
 
   const handleExport = () => {
-    console.log('Export inputs to CSV');
+    if (inputs.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<InputPoint>[] = [
+      { header: 'Panel', accessor: i => i.panel },
+      { header: 'Input', accessor: i => i.inputId },
+      { header: 'Full Label', accessor: i => i.fullLabel },
+      { header: 'Label', accessor: i => i.label },
+      { header: 'Auto/Manual', accessor: i => i.autoManual },
+      { header: 'Value', accessor: i => i.fValue },
+      { header: 'Units', accessor: i => i.units },
+      { header: 'Range', accessor: i => i.range },
+      { header: 'Calibration', accessor: i => i.calibration },
+      { header: 'Sign', accessor: i => i.sign },
+      { header: 'Filter', accessor: i => i.filterField },
+      { header: 'Status', accessor: i => i.status },
+      { header: 'Signal Type', accessor: i => i.signalType },
+    ];
+    exportToCsv(inputs, csvColumns, `inputs_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
 
-  // Register CSV export handler with global context (Tools menu)
-  useRegisterCsvHandlers(handleExport);
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<InputPoint>[] = [
+      { header: 'Panel', accessor: i => i.panel, setter: (i, v) => { i.panel = v; } },
+      { header: 'Input', accessor: i => i.inputId, setter: (i, v) => { i.inputId = v; } },
+      { header: 'Full Label', accessor: i => i.fullLabel, setter: (i, v) => { i.fullLabel = v; } },
+      { header: 'Label', accessor: i => i.label, setter: (i, v) => { i.label = v; } },
+      { header: 'Auto/Manual', accessor: i => i.autoManual, setter: (i, v) => { i.autoManual = v; } },
+      { header: 'Value', accessor: i => i.fValue, setter: (i, v) => { i.fValue = v; } },
+      { header: 'Units', accessor: i => i.units, setter: (i, v) => { i.units = v; } },
+      { header: 'Range', accessor: i => i.range, setter: (i, v) => { i.range = v; } },
+      { header: 'Calibration', accessor: i => i.calibration, setter: (i, v) => { i.calibration = v; } },
+      { header: 'Sign', accessor: i => i.sign, setter: (i, v) => { i.sign = v; } },
+      { header: 'Filter', accessor: i => i.filterField, setter: (i, v) => { i.filterField = v; } },
+      { header: 'Status', accessor: i => i.status, setter: (i, v) => { i.status = v; } },
+      { header: 'Signal Type', accessor: i => i.signalType, setter: (i, v) => { i.signalType = v; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ serialNumber: selectedDevice?.serialNumber || 0 } as InputPoint));
+    setInputs(imported);
+  };
+
+  // Register CSV export/import handlers with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   // Auto-scroll to next device when reaching bottom
   const loadNextDevice = useCallback(async () => {

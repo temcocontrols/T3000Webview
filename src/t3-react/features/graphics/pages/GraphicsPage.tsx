@@ -39,6 +39,7 @@ import { PanelDataRefreshService } from '../../../shared/services/panelDataRefre
 import { useStatusBarStore } from '../../../store/statusBarStore';
 import styles from './GraphicsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 export const GraphicsPage: React.FC = () => {
   const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
@@ -256,7 +257,22 @@ export const GraphicsPage: React.FC = () => {
   };
 
   // Register CSV export handler with global context (Tools menu)
-  useRegisterCsvHandlers(handleExport);
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<Graphic>[] = [
+      { header: 'Graphic ID', accessor: g => g.graphicId, setter: (g, v) => { g.graphicId = v; } },
+      { header: 'Label', accessor: g => g.graphicLabel, setter: (g, v) => { g.graphicLabel = v; } },
+      { header: 'Full Label', accessor: g => g.graphicFullLabel, setter: (g, v) => { g.graphicFullLabel = v; } },
+      { header: 'Picture File', accessor: g => g.graphicPictureFile, setter: (g, v) => { g.graphicPictureFile = v; } },
+      { header: 'Switch Node', accessor: g => g.switchNode, setter: (g, v) => { g.switchNode = v; } },
+      { header: 'Element Count', accessor: g => g.graphicTotalPoint, setter: (g, v) => { g.graphicTotalPoint = v; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({} as Graphic));
+    setGraphics(imported);
+  };
+
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   const handleViewWebview = useCallback((graphic: Graphic) => {
     if (!selectedDevice || !graphic.Graphic_ID) return;

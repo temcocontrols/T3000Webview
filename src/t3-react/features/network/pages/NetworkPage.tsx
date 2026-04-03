@@ -43,6 +43,7 @@ import {
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import styles from './NetworkPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 // Network interface based on C++ Subnetwork structure and device network fields
 interface NetworkItem {
@@ -117,11 +118,37 @@ export const NetworkPage: React.FC = () => {
   };
 
   const handleExport = () => {
-    console.log('Export networks to CSV');
+    if (networks.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<NetworkItem>[] = [
+      { header: 'Network ID', accessor: n => n.networkId },
+      { header: 'Number', accessor: n => n.networkNumber },
+      { header: 'Building Name', accessor: n => n.buildingName },
+      { header: 'Devices', accessor: n => n.deviceCount },
+      { header: 'Status', accessor: n => n.status },
+      { header: 'Protocol', accessor: n => n.protocol },
+      { header: 'Description', accessor: n => n.description },
+    ];
+    exportToCsv(networks, csvColumns, `networks_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
 
-  // Register CSV export handler with global context (Tools menu)
-  useRegisterCsvHandlers(handleExport);
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<NetworkItem>[] = [
+      { header: 'Network ID', accessor: n => n.networkId, setter: (n, v) => { n.networkId = v; } },
+      { header: 'Number', accessor: n => n.networkNumber, setter: (n, v) => { n.networkNumber = parseInt(v) || 0; } },
+      { header: 'Building Name', accessor: n => n.buildingName, setter: (n, v) => { n.buildingName = v; } },
+      { header: 'Devices', accessor: n => n.deviceCount, setter: (n, v) => { n.deviceCount = parseInt(v) || 0; } },
+      { header: 'Status', accessor: n => n.status, setter: (n, v) => { n.status = v; } },
+      { header: 'Protocol', accessor: n => n.protocol, setter: (n, v) => { n.protocol = v; } },
+      { header: 'Description', accessor: n => n.description, setter: (n, v) => { n.description = v; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ networkId: '' } as NetworkItem));
+    setNetworks(imported);
+  };
+
+  // Register CSV export/import handlers with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   const handleSettings = () => {
     console.log('Settings clicked');

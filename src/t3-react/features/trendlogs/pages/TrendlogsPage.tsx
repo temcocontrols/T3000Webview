@@ -37,6 +37,7 @@ import { API_BASE_URL } from '../../../config/constants';
 import { TrendChartDrawer } from '../components/TrendChartDrawer';
 import styles from './TrendLogsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 interface TrendLogData {
   serialNumber: number;
@@ -490,11 +491,35 @@ export const TrendLogsPage: React.FC = () => {
   };
 
   const handleExport = () => {
-    console.log('Export trendlogs to CSV');
+    if (trendLogs.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<TrendLogData>[] = [
+      { header: 'Trendlog ID', accessor: t => t.trendlogId },
+      { header: 'Label', accessor: t => t.trendlogLabel },
+      { header: 'Interval (sec)', accessor: t => t.intervalSeconds },
+      { header: 'Buffer Size', accessor: t => t.bufferSize },
+      { header: 'Auto/Manual', accessor: t => t.autoManual },
+      { header: 'Status', accessor: t => t.status },
+    ];
+    exportToCsv(trendLogs, csvColumns, `trendlogs_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
 
-  // Register CSV export handler with global context (Tools menu)
-  useRegisterCsvHandlers(handleExport);
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<TrendLogData>[] = [
+      { header: 'Trendlog ID', accessor: t => t.trendlogId, setter: (t, v) => { t.trendlogId = v; } },
+      { header: 'Label', accessor: t => t.trendlogLabel, setter: (t, v) => { t.trendlogLabel = v; } },
+      { header: 'Interval (sec)', accessor: t => t.intervalSeconds, setter: (t, v) => { t.intervalSeconds = parseInt(v) || 0; } },
+      { header: 'Buffer Size', accessor: t => t.bufferSize, setter: (t, v) => { t.bufferSize = parseInt(v) || 0; } },
+      { header: 'Auto/Manual', accessor: t => t.autoManual, setter: (t, v) => { t.autoManual = v; } },
+      { header: 'Status', accessor: t => t.status, setter: (t, v) => { t.status = v; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ serialNumber: selectedDevice?.serialNumber || 0 } as TrendLogData));
+    setTrendLogs(imported);
+  };
+
+  // Register CSV export/import handlers with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   const handleMonitorSelect = useCallback(async (monitor: TrendLogData) => {
     console.log('🔵 [TrendLogsPage] handleMonitorSelect called with:', monitor);
