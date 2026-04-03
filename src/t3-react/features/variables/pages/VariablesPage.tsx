@@ -673,7 +673,7 @@ const VariablesPageDesktop: React.FC = () => {
   // Helper to identify empty rows
   const isEmptyRow = (item: VariablePoint) => !item.variableIndex && !item.variableId && variables.length === 0;
 
-  // Column definitions matching the sequence: Panel, Variable, Full Label, Label, Value, Auto/Manual, Units
+  // Column definitions matching the sequence: Panel, Variable, Full Label, Label, Value, Units, Auto/Manual
   const columns: TableColumnDefinition<VariablePoint>[] = [
     // 1. Panel ID
     createTableColumn<VariablePoint>({
@@ -928,7 +928,44 @@ const VariablesPageDesktop: React.FC = () => {
         );
       },
     }),
-    // 6. Auto/Manual
+    // 6. Units
+    createTableColumn<VariablePoint>({
+      columnId: 'units',
+      renderHeaderCell: () => (
+        <div className={styles.headerCellSort} onClick={() => handleSort('units')}>
+          <span>Units</span>
+          {sortColumn === 'units' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular className={styles.sortIconFaded} />
+          )}
+        </div>
+      ),
+      renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
+        // Parse range value and digital_analog type
+        const rangeValue = item.rangeField ? parseInt(item.rangeField) : 0;
+        const digitalAnalog = item.digitalAnalog === '1' ? 1 : 0;
+        const rangeLabel = getRangeLabel(rangeValue, digitalAnalog);
+        const unitSymbol = getUnitSymbol(rangeValue, digitalAnalog);
+
+        return (
+          <TableCellLayout>
+            <div
+              onClick={() => handleUnitsClick(item)}
+              className={styles.rangeLink}
+              title="Click to change range/units"
+            >
+              <span className={styles.unitBadge}>{unitSymbol !== '---' ? unitSymbol : rangeLabel}</span>
+            </div>
+          </TableCellLayout>
+        );
+      },
+    }),
+    // 7. Auto/Manual
     createTableColumn<VariablePoint>({
       columnId: 'autoManual',
       renderHeaderCell: () => (
@@ -1017,43 +1054,6 @@ const VariablesPageDesktop: React.FC = () => {
                 checked={isAuto}
                 className={styles.switchScale}
               />
-            </div>
-          </TableCellLayout>
-        );
-      },
-    }),
-    // 7. Units
-    createTableColumn<VariablePoint>({
-      columnId: 'units',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('units')}>
-          <span>Units</span>
-          {sortColumn === 'units' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
-      renderCell: (item) => {
-        if (isEmptyRow(item)) {
-          return <TableCellLayout></TableCellLayout>;
-        }
-
-        // Parse range value and digital_analog type
-        const rangeValue = item.rangeField ? parseInt(item.rangeField) : 0;
-        const digitalAnalog = item.digitalAnalog === '1' ? 1 : 0;
-        const rangeLabel = getRangeLabel(rangeValue, digitalAnalog);
-        const unitSymbol = getUnitSymbol(rangeValue, digitalAnalog);
-
-        return (
-          <TableCellLayout>
-            <div
-              onClick={() => handleUnitsClick(item)}
-              className={styles.rangeLink}
-              title="Click to change range/units"
-            >
-              <span className={styles.unitBadge}>{unitSymbol !== '---' ? unitSymbol : rangeLabel}</span>
             </div>
           </TableCellLayout>
         );

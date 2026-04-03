@@ -367,29 +367,29 @@
   width: 100% !important;
   flex: 1 1 100% !important;
 }
-/* 6. Auto/Manual - 8% */
-.container :global(.fui-DataGridHeaderCell):nth-child(6),
-.container :global(.fui-DataGridCell):nth-child(6) {
-  width: 8%;
-  min-width: 65px;
-  flex: 0 0 8%;
-}
-/* 7. Units - 9% (center header) */
-.container :global(.fui-DataGridHeaderCell):nth-child(7) {
+/* 6. Units - 9% (center header) */
+.container :global(.fui-DataGridHeaderCell):nth-child(6) {
   justify-content: center;
   text-align: center;
 }
-.container :global(.fui-DataGridHeaderCell):nth-child(7),
-.container :global(.fui-DataGridCell):nth-child(7) {
+.container :global(.fui-DataGridHeaderCell):nth-child(6),
+.container :global(.fui-DataGridCell):nth-child(6) {
   width: 9%;
   min-width: 60px;
   flex: 0 0 9%;
 }
-.container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout) > *,
-.container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout__content) {
+.container :global(.fui-DataGridCell):nth-child(6) :global(.fui-TableCellLayout),
+.container :global(.fui-DataGridCell):nth-child(6) :global(.fui-TableCellLayout) > *,
+.container :global(.fui-DataGridCell):nth-child(6) :global(.fui-TableCellLayout__content) {
   width: 100% !important;
   flex: 1 1 100% !important;
+}
+/* 7. Auto/Manual - 8% */
+.container :global(.fui-DataGridHeaderCell):nth-child(7),
+.container :global(.fui-DataGridCell):nth-child(7) {
+  width: 8%;
+  min-width: 65px;
+  flex: 0 0 8%;
 }
 
 /* Header cell styling - modern clean design */
