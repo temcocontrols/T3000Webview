@@ -44,14 +44,14 @@
   content: "";
   position: absolute;
   left: 50%;
-  top: calc(-1 * var(--lcd-padding-top, 26px) + (-33px));
+  top: -20px;
   transform: translateX(-50%);
-  width: 367px;
-  height: 514px;
-  border: 4px solid rgba(200,200,200,0.35);
+  width: 340px;
+  height: 480px;
+  border: 4px solid rgba(255,255,255,0.4);
   border-radius: var(--lcd-radius);
   pointer-events: none;
-  z-index: 13;
+  z-index: 9;
   box-shadow: 0 2px 16px 0 rgba(255,255,255,0.12) inset;
 }
 

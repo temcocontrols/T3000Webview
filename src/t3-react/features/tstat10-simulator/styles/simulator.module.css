@@ -50,7 +50,7 @@
   --button-font-size: 25px;
   --thermostat-bg: #E0E0E0;
   --thermostat-radius: 16px;
-  --thermostat-padding-top: 40px;
+  --thermostat-padding-top: 20px;
   --thermostat-padding-bottom: 27px;
 
   width: var(--thermostat-width);

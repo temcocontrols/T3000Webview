@@ -26,7 +26,7 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '12px 8px',
+    padding: '4px 8px',
     flexShrink: 0,
     height: '100%',
     overflow: 'hidden',
