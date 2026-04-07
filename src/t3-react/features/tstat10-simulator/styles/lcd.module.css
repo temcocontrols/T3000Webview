@@ -25,20 +25,6 @@
 }
 
 /* Bezel border */
-.lcdContainer::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: calc(100% + 2 * var(--lcd-bezel-thickness));
-  height: calc(100% + 2 * var(--lcd-bezel-thickness));
-  border: var(--lcd-bezel-thickness) solid var(--lcd-bezel-color);
-  border-radius: var(--lcd-radius);
-  pointer-events: none;
-  z-index: 12;
-}
-
 /* Lens effect (glass overlay) */
 .lcdContainer::before {
   content: "";
