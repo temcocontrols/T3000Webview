@@ -58,6 +58,36 @@ const useStyles = makeStyles({
     color: '#333',
     fontWeight: 600,
   },
+  redboxRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '4px',
+  },
+  redboxLabel: {
+    fontWeight: 700,
+    fontSize: '13px',
+    color: '#b00',
+    fontFamily: "'Fira Mono', 'Consolas', monospace",
+  },
+  redboxBtn: {
+    width: '38px',
+    minWidth: '38px',
+    maxWidth: '38px',
+    height: '28px',
+    fontFamily: "'Fira Mono', 'Consolas', monospace",
+    fontSize: '13px',
+    fontWeight: 700,
+    color: '#fff',
+    backgroundColor: '#1976d2',
+    border: 'none',
+    borderRadius: '6px',
+    textAlign: 'center',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'default',
+  },
   // Mobile: horizontal collapsed accordion
   mobileRoot: {
     display: 'flex',
@@ -181,9 +211,12 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
       />
 
       {redboxCoords && (
-        <span className={styles.coordsText}>
-          x:{redboxCoords.x}, y:{redboxCoords.y}
-        </span>
+        <div className={styles.redboxRow}>
+          <span className={styles.redboxLabel}>Redbox:</span>
+          <span style={{ width: '2ch' }} />
+          <span className={styles.redboxBtn}>X:{redboxCoords.x}</span>
+          <span className={styles.redboxBtn}>Y:{redboxCoords.y}</span>
+        </div>
       )}
 
       <Checkbox

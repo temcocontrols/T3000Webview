@@ -14,8 +14,8 @@ import { useSimulatorState } from '../hooks/useSimulatorState';
 import { useKeyboardNavigation } from '../hooks/useKeyboardNavigation';
 import simStyles from '../styles/simulator.module.css';
 
-const BEZEL_WIDTH = 400;
-const BEZEL_HEIGHT = 620;
+const BEZEL_WIDTH = 440;
+const BEZEL_HEIGHT = 586;
 
 const useStyles = makeStyles({
   root: {
@@ -100,7 +100,23 @@ export const Tstat10SimulatorPage: React.FC = () => {
   const [lastEvent, setLastEvent] = useState('');
   const [simulatedKeypad, setSimulatedKeypad] = useState(false);
   const [showRedbox, setShowRedbox] = useState(false);
-  const [showKeypadDebug, setShowKeypadDebug] = useState(true);
+  const [showKeypadDebug, setShowKeypadDebug] = useState(false);
+  const [redboxCoords, setRedboxCoords] = useState({ x: 1, y: 3 });
+
+  const NUM_COLS = 17;
+  const NUM_ROWS = 10;
+
+  const handleMoveRedbox = useCallback((direction: 'w' | 'a' | 's' | 'd') => {
+    setRedboxCoords((prev) => {
+      switch (direction) {
+        case 'w': return { ...prev, y: Math.max(0, prev.y - 1) };
+        case 's': return { ...prev, y: Math.min(NUM_ROWS - 1, prev.y + 1) };
+        case 'a': return { ...prev, x: Math.max(0, prev.x - 1) };
+        case 'd': return { ...prev, x: Math.min(NUM_COLS - 1, prev.x + 1) };
+        default: return prev;
+      }
+    });
+  }, []);
 
   // Simulated Keypad auto-tester: ArrowRight every 3s, then ArrowUp every 3s
   const simKeypadRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -139,6 +155,7 @@ export const Tstat10SimulatorPage: React.FC = () => {
   const { handleButtonPress } = useKeyboardNavigation({
     onNavigate: handleNavigate,
     onToggleDrift: sim.toggleDrift,
+    onMoveRedbox: showRedbox ? handleMoveRedbox : undefined,
     enabled: true,
   });
 
@@ -175,6 +192,8 @@ export const Tstat10SimulatorPage: React.FC = () => {
                     menuStyles={sim.menuStyles}
                     showGrid={showGrid}
                     showCoords={showCoords}
+                    showRedbox={showRedbox}
+                    redboxCoords={redboxCoords}
                   />
                 )}
               </LcdContainer>
@@ -199,7 +218,7 @@ export const Tstat10SimulatorPage: React.FC = () => {
           onToggleSimulatedKeypad={setSimulatedKeypad}
           showRedbox={showRedbox}
           onToggleRedbox={setShowRedbox}
-          redboxCoords={{ x: 1, y: 3 }}
+          redboxCoords={redboxCoords}
           showKeypadDebug={showKeypadDebug}
           onToggleKeypadDebug={setShowKeypadDebug}
         />

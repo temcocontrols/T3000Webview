@@ -37,21 +37,21 @@
 
 /* --- CSS Variables --- */
 .deviceBezel {
-  --thermostat-width: 400px;
-  --thermostat-height: 620px;
-  --lcd-width: 360px;
-  --lcd-height: 480px;
-  --lcd-padding-top: 8px;
-  --button-gap: 10px;
-  --button-bottom-space: 16px;
-  --button-width: 68px;
-  --button-height: 48px;
+  --thermostat-width: 440px;
+  --thermostat-height: 586px;
+  --lcd-width: 214px;
+  --lcd-height: 320px;
+  --lcd-padding-top: 26px;
+  --button-gap: 11px;
+  --button-bottom-space: 52px;
+  --button-width: 65px;
+  --button-height: 47px;
   --button-radius: 10px;
-  --button-font-size: 32px;
-  --thermostat-bg: #d6d6d6;
-  --thermostat-radius: 12px;
-  --thermostat-padding-top: 16px;
-  --thermostat-padding-bottom: 12px;
+  --button-font-size: 37px;
+  --thermostat-bg: #E0E0E0;
+  --thermostat-radius: 16px;
+  --thermostat-padding-top: 40px;
+  --thermostat-padding-bottom: 26px;
 
   width: var(--thermostat-width);
   height: var(--thermostat-height);
@@ -59,7 +59,7 @@
   border-radius: var(--thermostat-radius);
   padding-top: var(--thermostat-padding-top);
   padding-bottom: var(--thermostat-padding-bottom);
-  box-shadow: 4px 8px 20px 0 rgba(0,0,0,0.22), 2px 4px 8px 0 rgba(0,0,0,0.12);
+  box-shadow: 8px 16px 32px 0 rgba(0,0,0,0.28), 4px 8px 16px 0 rgba(0,0,0,0.14);
   display: flex;
   flex-direction: column;
   align-items: center;

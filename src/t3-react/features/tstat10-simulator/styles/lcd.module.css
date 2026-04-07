@@ -1,9 +1,9 @@
 /* Tstat10 Simulator - LCD Display Styles */
 
 .lcdContainer {
-  --lcd-width: 360px;
-  --lcd-height: 480px;
-  --lcd-radius: 4px;
+  --lcd-width: 214px;
+  --lcd-height: 320px;
+  --lcd-radius: 18px;
   --lcd-bezel-thickness: 3px;
   --lcd-bezel-color: #888;
   --lcd-background-color: #3498db;
@@ -15,7 +15,7 @@
   overflow: hidden;
   position: relative;
   z-index: 10;
-  margin-top: 0;
+  margin-top: var(--lcd-padding-top, 26px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -39,6 +39,22 @@
   z-index: 12;
 }
 
+/* Lens effect (glass overlay) */
+.lcdContainer::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: calc(-1 * var(--lcd-padding-top, 26px) + (-33px));
+  transform: translateX(-50%);
+  width: 367px;
+  height: 514px;
+  border: 4px solid rgba(200,200,200,0.35);
+  border-radius: var(--lcd-radius);
+  pointer-events: none;
+  z-index: 13;
+  box-shadow: 0 2px 16px 0 rgba(255,255,255,0.12) inset;
+}
+
 /* Mobile: scale LCD to fit viewport width */
 .lcdContainerMobile {
   --lcd-width: min(320px, calc(100vw - 56px));
@@ -60,7 +76,7 @@
 }
 
 .tempValue {
-  font-size: 4em;
+  font-size: 2.8em;
   font-weight: bold;
   color: #fff;
   text-shadow: 0 2px 8px rgba(0,0,0,0.2);
@@ -75,8 +91,8 @@
 .infoRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 1.2em;
+  gap: 6px;
+  font-size: 0.9em;
   opacity: 0.9;
 }
 
@@ -109,9 +125,9 @@
 .settingsHeader {
   text-align: center;
   font-weight: 700;
-  font-size: 24px;
-  margin-top: 36px;
-  margin-bottom: 32px;
+  font-size: 16px;
+  margin-top: 24px;
+  margin-bottom: 21px;
   line-height: 1.4;
 }
 
@@ -156,10 +172,10 @@
 .arrowRow {
   position: absolute;
   left: 0;
-  bottom: 1em;
+  bottom: 0;
   height: 1em;
   width: 100%;
-  font-size: 28px;
+  font-size: 18px;
   line-height: 1em;
   font-family: 'Fira Mono', monospace;
   pointer-events: none;
@@ -171,7 +187,7 @@
   bottom: 2.2em;
   width: 100%;
   text-align: center;
-  font-size: 18px;
+  font-size: 12px;
   font-family: 'Fira Mono', monospace;
   color: rgba(255,255,255,0.6);
   pointer-events: none;
@@ -183,7 +199,7 @@
   bottom: 0;
   width: 100%;
   text-align: center;
-  font-size: 18px;
+  font-size: 12px;
   font-family: 'Fira Mono', monospace;
   color: rgba(255,255,255,0.6);
   pointer-events: none;
@@ -251,7 +267,7 @@
 
 .gridRedCell {
   fill: none;
-  stroke: red;
+  stroke: #ccc;
   stroke-width: 2;
 }
 

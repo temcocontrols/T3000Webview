@@ -8,10 +8,11 @@ import { useEffect, useCallback } from 'react';
 interface UseKeyboardNavigationOptions {
   onNavigate: (direction: 'left' | 'right' | 'up' | 'down') => void;
   onToggleDrift?: () => void;
+  onMoveRedbox?: (direction: 'w' | 'a' | 's' | 'd') => void;
   enabled?: boolean;
 }
 
-export function useKeyboardNavigation({ onNavigate, onToggleDrift, enabled = true }: UseKeyboardNavigationOptions) {
+export function useKeyboardNavigation({ onNavigate, onToggleDrift, onMoveRedbox, enabled = true }: UseKeyboardNavigationOptions) {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (!enabled) return;
@@ -33,13 +34,30 @@ export function useKeyboardNavigation({ onNavigate, onToggleDrift, enabled = tru
           e.preventDefault();
           onNavigate('down');
           break;
+        case 'w':
+        case 'W':
+          onMoveRedbox?.('w');
+          break;
+        case 'a':
+        case 'A':
+          onMoveRedbox?.('a');
+          break;
+        case 's':
+        case 'S':
+          onMoveRedbox?.('s');
+          break;
         case 'd':
         case 'D':
-          onToggleDrift?.();
+          // D moves redbox right when redbox handler exists, otherwise toggles drift
+          if (onMoveRedbox) {
+            onMoveRedbox('d');
+          } else {
+            onToggleDrift?.();
+          }
           break;
       }
     },
-    [onNavigate, onToggleDrift, enabled],
+    [onNavigate, onToggleDrift, onMoveRedbox, enabled],
   );
 
   useEffect(() => {

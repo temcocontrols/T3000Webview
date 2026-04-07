@@ -25,6 +25,8 @@ interface NetworkSettingsMenuProps {
   };
   showGrid?: boolean;
   showCoords?: boolean;
+  showRedbox?: boolean;
+  redboxCoords?: { x: number; y: number };
 }
 
 const NUM_ROWS = 10;
@@ -36,11 +38,13 @@ export const NetworkSettingsMenu: React.FC<NetworkSettingsMenuProps> = ({
   menuStyles,
   showGrid = false,
   showCoords = false,
+  showRedbox = false,
+  redboxCoords,
 }) => {
   const bg = menuStyles.bg || '#003366';
   const highlight = menuStyles.highlight || '#008080';
   const fontFamily = menuStyles.fontFamily || 'monospace';
-  const baseFontSize = parseInt((menuStyles.fontSize || '24px').replace('px', ''), 10) + 3;
+  const baseFontSize = Math.round((parseInt((menuStyles.fontSize || '24px').replace('px', ''), 10) + 3) * 0.67);
   const fontWeight = menuStyles.fontWeight || '700';
   const textWidthChars = menuStyles.textWidthChars || 6;
   const valueBoxWidthChars = menuStyles.valueBoxWidthChars || 8;
@@ -98,9 +102,6 @@ export const NetworkSettingsMenu: React.FC<NetworkSettingsMenuProps> = ({
         );
       })}
 
-      {/* Footer hint & nav */}
-      <div className={styles.footerHint}>{'  +  Edit  -  '}</div>
-
       {/* Bottom arrow indicators */}
       <div className={styles.arrowRow}>
         <span className={`${styles.arrowChar} ${styles.arrowPos1}`}>
@@ -116,8 +117,6 @@ export const NetworkSettingsMenu: React.FC<NetworkSettingsMenuProps> = ({
           ▶
         </span>
       </div>
-
-      <div className={styles.footerNav}>{'< Back   Next >'}</div>
 
       {/* Debug Grid Overlay */}
       {showGrid && (
@@ -145,7 +144,7 @@ export const NetworkSettingsMenu: React.FC<NetworkSettingsMenuProps> = ({
                 strokeWidth="1"
               />
             ))}
-            {/* Red highlighted cell at column 3, bottom row */}
+            {/* Lens outline indicator cell (light gray) */}
             <rect
               className={styles.gridRedCell}
               x={`${(2 / NUM_COLS) * 100}%`}
@@ -176,6 +175,21 @@ export const NetworkSettingsMenu: React.FC<NetworkSettingsMenuProps> = ({
               </div>
             )),
           )}
+        </div>
+      )}
+
+      {/* Redbox Overlay */}
+      {showRedbox && redboxCoords && (
+        <div className={styles.gridOverlay}>
+          <svg width="100%" height="100%" className={styles.gridSvg}>
+            <rect
+              className={styles.gridRedCell}
+              x={`${(redboxCoords.x / NUM_COLS) * 100}%`}
+              y={`${(redboxCoords.y / NUM_ROWS) * 100}%`}
+              width={`${(1 / NUM_COLS) * 100}%`}
+              height={`${(1 / NUM_ROWS) * 100}%`}
+            />
+          </svg>
         </div>
       )}
     </div>
