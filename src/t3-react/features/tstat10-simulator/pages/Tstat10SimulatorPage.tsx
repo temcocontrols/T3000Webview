@@ -33,11 +33,11 @@ const useStyles = makeStyles({
   middlePanel: {
     display: 'flex',
     flexDirection: 'column',
-    padding: '12px',
-    width: '280px',
+    padding: '10px',
+    width: '300px',
     flexShrink: 0,
     height: '100%',
-    overflowY: 'auto',
+    overflowY: 'hidden',
     borderLeft: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRight: `1px solid ${tokens.colorNeutralStroke2}`,
   },
@@ -69,6 +69,42 @@ const useStyles = makeStyles({
     borderRadius: '8px',
     padding: '24px',
   },
+  opsSection: {
+    marginTop: '10px',
+    padding: '10px 12px',
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: '8px',
+    backgroundColor: tokens.colorNeutralBackground2,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  opsTitle: {
+    fontWeight: 600,
+    fontSize: '14px',
+    fontFamily: 'monospace',
+    color: tokens.colorNeutralForeground1,
+    marginBottom: '2px',
+  },
+  opsBtnGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '6px',
+  },
+  opsBtn: {
+    padding: '5px 8px',
+    fontSize: '13px',
+    fontFamily: 'monospace',
+    color: tokens.colorBrandForeground1,
+    backgroundColor: 'transparent',
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: '6px',
+    cursor: 'pointer',
+    textAlign: 'center',
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground1Hover,
+    },
+  },
 });
 
 export const Tstat10SimulatorPage: React.FC = () => {
@@ -99,6 +135,7 @@ export const Tstat10SimulatorPage: React.FC = () => {
   const [showRedbox, setShowRedbox] = useState(false);
   const [showKeypadDebug, setShowKeypadDebug] = useState(false);
   const [redboxCoords, setRedboxCoords] = useState({ x: 1, y: 3 });
+  const [editMode, setEditMode] = useState(false);
 
   const NUM_COLS = 17;
   const NUM_ROWS = 10;
@@ -204,6 +241,25 @@ export const Tstat10SimulatorPage: React.FC = () => {
           showKeypadDebug={showKeypadDebug}
           onToggleKeypadDebug={setShowKeypadDebug}
         />
+
+        {/* Operations */}
+        <div className={styles.opsSection}>
+          <div className={styles.opsTitle}>Operations</div>
+          <div className={styles.opsBtnGrid}>
+            <button className={styles.opsBtn} onClick={() => {
+              const data = { menuRows: sim.menuRows, screen: sim.screen, data: sim.data };
+              const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url; a.download = 'tstat10-config.json'; a.click();
+              URL.revokeObjectURL(url);
+            }}>Export JSON</button>
+            <button className={styles.opsBtn}>Sync Device</button>
+            <button className={styles.opsBtn} onClick={() => setEditMode(m => !m)}>
+              {editMode ? 'View Mode' : 'Edit Mode'}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Right Panel — Register Browser (placeholder) */}
