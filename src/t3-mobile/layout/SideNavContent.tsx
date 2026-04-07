@@ -31,6 +31,7 @@ import {
   SearchRegular,
   SettingsRegular,
   SettingsFilled,
+  BoardRegular,
 } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
@@ -149,6 +150,9 @@ const NAV_ENTRIES: NavEntry[] = [
   { type: 'item', label: 'Buildings',  path: '/t3000/buildings',              icon: <BuildingMultipleRegular />,          activeIcon: <BuildingMultipleRegular /> },
   { type: 'item', label: 'Discover',   path: '/t3000/discover',               icon: <SearchRegular />,                    activeIcon: <SearchRegular /> },
   { type: 'item', label: 'Settings',   path: '/t3000/settings',               icon: <SettingsRegular />,                  activeIcon: <SettingsFilled /> },
+
+  { type: 'section', label: 'Simulator' },
+  { type: 'item', label: 'Tstat10',    path: '/t3000/tstat10-simulator',      icon: <BoardRegular />,                     activeIcon: <BoardRegular /> },
 ];
 
 export interface SideNavContentProps {
