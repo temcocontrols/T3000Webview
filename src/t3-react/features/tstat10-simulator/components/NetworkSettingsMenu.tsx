@@ -1,4 +1,4 @@
-/**
+﻿/**
  * NetworkSettingsMenu — Renders the communication settings menu screen on the LCD.
  * Migrated from network-settings-renderer.js.
  *
@@ -102,21 +102,12 @@ export const NetworkSettingsMenu: React.FC<NetworkSettingsMenuProps> = ({
         );
       })}
 
-      {/* Bottom arrow indicators */}
-      <div className={styles.arrowRow}>
-        <span className={`${styles.arrowChar} ${styles.arrowPos1}`}>
-          ◀
-        </span>
-        <span className={`${styles.arrowChar} ${styles.arrowCharLarge} ${styles.arrowPos2}`}>
-          ▼
-        </span>
-        <span className={`${styles.arrowChar} ${styles.arrowCharLarge} ${styles.arrowPos3}`}>
-          ▲
-        </span>
-        <span className={`${styles.arrowChar} ${styles.arrowPos4}`}>
-          ▶
-        </span>
-      </div>
+      {/* Footer hint text */}
+      <div className={styles.footerHint}>  +  Edit  -  </div>
+
+      {/* Footer nav text */}
+      <div className={styles.footerNav}>&lt; Back    Next &gt;</div>
+
 
       {/* Debug Grid Overlay */}
       {showGrid && (

@@ -12,7 +12,7 @@
   height: var(--lcd-height);
   background: var(--lcd-background-color);
   border-radius: var(--lcd-radius);
-  overflow: hidden;
+  overflow: visible; /* Allow bezel and lens outlines to show outside LCD */
   position: relative;
   z-index: 10;
   margin-top: var(--lcd-padding-top, 26px);
@@ -184,25 +184,27 @@
 .footerHint {
   position: absolute;
   left: 0;
-  bottom: 2.2em;
+  bottom: 2.8em;
   width: 100%;
   text-align: center;
-  font-size: 12px;
+  font-size: 11px;
   font-family: 'Fira Mono', monospace;
   color: rgba(255,255,255,0.6);
   pointer-events: none;
+  letter-spacing: 0.05em;
 }
 
 .footerNav {
   position: absolute;
   left: 0;
-  bottom: 0;
+  bottom: 1.4em;
   width: 100%;
   text-align: center;
-  font-size: 12px;
+  font-size: 11px;
   font-family: 'Fira Mono', monospace;
   color: rgba(255,255,255,0.6);
   pointer-events: none;
+  letter-spacing: 0.05em;
 }
 
 .arrowChar {

@@ -14,9 +14,6 @@ import { useSimulatorState } from '../hooks/useSimulatorState';
 import { useKeyboardNavigation } from '../hooks/useKeyboardNavigation';
 import simStyles from '../styles/simulator.module.css';
 
-const BEZEL_WIDTH = 440;
-const BEZEL_HEIGHT = 586;
-
 const useStyles = makeStyles({
   root: {
     display: 'flex',
@@ -29,8 +26,7 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '8px',
-    width: '440px',
+    padding: '12px 8px',
     flexShrink: 0,
     height: '100%',
     overflow: 'hidden',
@@ -85,17 +81,19 @@ export const Tstat10SimulatorPage: React.FC = () => {
   useEffect(() => {
     const el = leftRef.current;
     if (!el) return;
+    const BEZEL_W = 440;
+    const BEZEL_H = 587;
     const observer = new ResizeObserver(([entry]) => {
-      const h = entry.contentRect.height - 16;
+      const h = entry.contentRect.height - 24;
       const w = entry.contentRect.width - 16;
-      const s = Math.min(1, h / BEZEL_HEIGHT, w / BEZEL_WIDTH);
+      const s = Math.min(h / BEZEL_H, w / BEZEL_W, 1);
       setScale(Math.max(0.3, s));
     });
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
 
-  const [showGrid, setShowGrid] = useState(true);
+  const [showGrid, setShowGrid] = useState(false);
   const [showCoords, setShowCoords] = useState(false);
   const [lastEvent, setLastEvent] = useState('');
   const [simulatedKeypad, setSimulatedKeypad] = useState(false);
@@ -163,21 +161,7 @@ export const Tstat10SimulatorPage: React.FC = () => {
     <div className={styles.root}>
       {/* Left Panel — Simulator */}
       <div className={styles.leftPanel} ref={leftRef}>
-        <div
-          style={{
-            width: BEZEL_WIDTH * scale,
-            height: BEZEL_HEIGHT * scale,
-            flexShrink: 0,
-          }}
-        >
-          <div
-            style={{
-              transform: `scale(${scale})`,
-              transformOrigin: 'top left',
-              width: BEZEL_WIDTH,
-              height: BEZEL_HEIGHT,
-            }}
-          >
+        <div style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}>
             <ThermostatBezel onButtonPress={handleButtonPress}>
               <LcdContainer>
                 {sim.screen === 'main' ? (
@@ -198,7 +182,6 @@ export const Tstat10SimulatorPage: React.FC = () => {
                 )}
               </LcdContainer>
             </ThermostatBezel>
-          </div>
         </div>
       </div>
 
