@@ -44,10 +44,7 @@ export const NetworkSettingsMenu: React.FC<NetworkSettingsMenuProps> = ({
   const bg = menuStyles.bg || '#003366';
   const highlight = menuStyles.highlight || '#008080';
   const fontFamily = menuStyles.fontFamily || 'monospace';
-  const baseFontSize = Math.round((parseInt((menuStyles.fontSize || '24px').replace('px', ''), 10) + 3) * 0.67);
   const fontWeight = menuStyles.fontWeight || '700';
-  const textWidthChars = menuStyles.textWidthChars || 6;
-  const valueBoxWidthChars = menuStyles.valueBoxWidthChars || 8;
 
   return (
     <div className={styles.settingsScreen} style={{ background: bg, fontFamily }}>
@@ -67,36 +64,21 @@ export const NetworkSettingsMenu: React.FC<NetworkSettingsMenuProps> = ({
             className={`${styles.menuRow} ${isFocused ? styles.menuRowFocused : ''}`}
             style={{
               background: isFocused ? highlight : 'rgba(0,0,0,0.08)',
-              fontSize: `${baseFontSize}px`,
               fontFamily,
               fontWeight,
             }}
           >
             <span
               className={styles.menuLabel}
-              style={{
-                width: `${textWidthChars}ch`,
-                minWidth: `${textWidthChars}ch`,
-                maxWidth: `${textWidthChars}ch`,
-                fontSize: `${baseFontSize}px`,
-                fontFamily,
-                fontWeight,
-              }}
+              style={{ fontFamily, fontWeight }}
             >
-              {(row.label + ' '.repeat(textWidthChars)).slice(0, textWidthChars)}
+              {row.label}
             </span>
             <span
               className={`${styles.menuValue} ${isFocused ? styles.menuValueFocused : ''}`}
-              style={{
-                width: `${valueBoxWidthChars}ch`,
-                minWidth: `${valueBoxWidthChars}ch`,
-                maxWidth: `${valueBoxWidthChars}ch`,
-                fontSize: `${baseFontSize}px`,
-                fontFamily,
-                fontWeight,
-              }}
+              style={{ fontFamily, fontWeight }}
             >
-              {String(row.value ?? '').padEnd(valueBoxWidthChars, ' ')}
+              {String(row.value ?? '')}
             </span>
           </div>
         );

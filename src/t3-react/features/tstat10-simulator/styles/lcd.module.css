@@ -103,32 +103,35 @@
   width: 100%;
   height: 100%;
   position: relative;
-  padding: 0;
+  padding: 0 16px;
   font-family: 'Fira Mono', 'Consolas', 'Menlo', 'Monaco', monospace;
   color: #fff;
+  display: flex;
+  flex-direction: column;
 }
 
 .settingsHeader {
   text-align: center;
   font-weight: 700;
-  font-size: 16px;
-  margin-top: 24px;
-  margin-bottom: 21px;
-  line-height: 1.4;
+  font-style: italic;
+  font-size: 18px;
+  margin-top: 28px;
+  margin-bottom: 24px;
+  line-height: 1.3;
 }
 
 .menuRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 0;
+  padding: 5px 4px;
   font-weight: 700;
-  gap: 0;
+  gap: 8px;
 }
 
 .menuRowFocused {
   background: #008080;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .menuLabel {
@@ -138,6 +141,7 @@
   color: #fff;
   padding: 0;
   margin: 0;
+  font-size: 16px;
 }
 
 .menuValue {
@@ -145,10 +149,12 @@
   background: #fff;
   color: #003366;
   font-weight: 700;
-  border-radius: 8px;
+  border-radius: 6px;
   text-align: center;
-  padding: 0;
+  padding: 2px 8px;
   margin: 0;
+  font-size: 16px;
+  border: 1.5px solid rgba(255,255,255,0.5);
 }
 
 .menuValueFocused {
@@ -170,27 +176,29 @@
 .footerHint {
   position: absolute;
   left: 0;
-  bottom: 2.8em;
+  bottom: 2.4em;
   width: 100%;
   text-align: center;
-  font-size: 11px;
+  font-size: 16px;
+  font-weight: 700;
   font-family: 'Fira Mono', monospace;
-  color: rgba(255,255,255,0.6);
+  color: rgba(255,255,255,0.8);
   pointer-events: none;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
 }
 
 .footerNav {
   position: absolute;
   left: 0;
-  bottom: 1.4em;
+  bottom: 0.8em;
   width: 100%;
   text-align: center;
-  font-size: 11px;
+  font-size: 16px;
+  font-weight: 700;
   font-family: 'Fira Mono', monospace;
-  color: rgba(255,255,255,0.6);
+  color: rgba(255,255,255,0.8);
   pointer-events: none;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
 }
 
 .arrowChar {
