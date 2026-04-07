@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NetworkSettingsMenu — Renders the communication settings menu screen on the LCD.
  * Migrated from network-settings-renderer.js.
  *
