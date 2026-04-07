@@ -152,4 +152,10 @@ export enum MenuAction {
   ShowAbout = 'show-about',
   About = 'about',
   CheckUpdates = 'check-updates',
+
+  // Simulator menu
+  Tstat10Simulator = 'tstat10-simulator',
+  ToggleDrift = 'toggle-drift',
+  ToggleDebugPanel = 'toggle-debug-panel',
+  ResetSimulator = 'reset-simulator',
 }
