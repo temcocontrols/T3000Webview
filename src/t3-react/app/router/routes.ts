@@ -26,6 +26,17 @@ const NetworkPage = lazy(() => import('../pages').then(m => ({ default: m.Networ
 const ArrayPage = lazy(() => import('../pages').then(m => ({ default: m.ArrayPage })));
 const DiscoverPage = lazy(() => import('../pages').then(m => ({ default: m.DiscoverPage })));
 const BuildingsPage = lazy(() => import('../pages').then(m => ({ default: m.BuildingsPage })));
+const Tstat10SimulatorPage = lazy(() => import('../pages').then(m => ({ default: m.Tstat10SimulatorPage })));
+
+// Create responsive route for Tstat10 Simulator (desktop + mobile)
+const Tstat10SimulatorPageResponsive = lazy(() =>
+  Promise.all([
+    import('../pages').then(m => m.Tstat10SimulatorPage),
+    import('../../../t3-mobile/features/tstat10-simulator/pages/Tstat10SimulatorPageMobile').then(m => m.Tstat10SimulatorPageMobile),
+  ]).then(([DesktopPage, MobilePage]) => ({
+    default: createResponsiveRoute(DesktopPage, MobilePage)
+  }))
+);
 
 // Create responsive route components that switch between desktop and mobile
 const InputsPageResponsive = lazy(() =>
@@ -226,6 +237,14 @@ export const t3000Routes: T3000Route[] = [
     element: BuildingsPage,
     title: 'Buildings',
     windowId: 16, // WINDOW_BUILDINGS
+  },
+  {
+    path: '/t3000/tstat10-simulator',
+    element: Tstat10SimulatorPageResponsive,
+    title: 'Tstat10 Simulator',
+    windowId: 17, // WINDOW_TSTAT10_SIMULATOR
+    shortcut: 'Alt+M',
+    requiresDevice: false,
   },
   // Develop section routes
   {

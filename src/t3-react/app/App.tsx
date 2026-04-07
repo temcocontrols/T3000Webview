@@ -91,6 +91,23 @@ const DiscoverPage = React.lazy(() =>
 const BuildingsPage = React.lazy(() =>
   import('../features/buildings/pages/BuildingsPage').then((m) => ({ default: m.BuildingsPage }))
 );
+const Tstat10SimulatorPage = React.lazy(() =>
+  Promise.all([
+    import('../features/tstat10-simulator/pages/Tstat10SimulatorPage').then(m => m.Tstat10SimulatorPage),
+    import('../../t3-mobile/features/tstat10-simulator/pages/Tstat10SimulatorPageMobile').then(m => m.Tstat10SimulatorPageMobile),
+  ]).then(([DesktopComp, MobileComp]) => {
+    const ResponsiveWrapper: React.FC = () => {
+      const [isMobile, setIsMobile] = React.useState(() => window.innerWidth < 1200);
+      React.useEffect(() => {
+        const handler = () => setIsMobile(window.innerWidth < 1200);
+        window.addEventListener('resize', handler);
+        return () => window.removeEventListener('resize', handler);
+      }, []);
+      return isMobile ? React.createElement(MobileComp) : React.createElement(DesktopComp);
+    };
+    return { default: ResponsiveWrapper };
+  })
+);
 const HvacDesignerPage = React.lazy(() =>
   import('../features/hvac-designer/pages/HvacDesignerPage').then((m) => ({ default: m.HvacDesignerPage }))
 );
@@ -328,6 +345,14 @@ export const App: React.FC = () => {
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <SyncConfigurationPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="tstat10-simulator"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <Tstat10SimulatorPage />
                     </React.Suspense>
                   }
                 />

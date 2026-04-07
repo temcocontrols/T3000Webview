@@ -653,6 +653,50 @@ const systemMenu: MenuItem = {
 };
 
 /**
+ * Simulator Menu
+ */
+const simulatorMenu: MenuItem = {
+  id: 'simulator',
+  label: 'Simulator',
+  type: 'submenu',
+  children: [
+    {
+      id: 'simulator-tstat10',
+      label: 'Tstat10 Simulator',
+      type: 'item',
+      action: () => window.location.hash = '#/t3000/tstat10-simulator',
+      shortcut: 'Alt+M',
+      icon: 'Board',
+    },
+    {
+      id: 'simulator-divider-1',
+      type: 'divider',
+    },
+    {
+      id: 'simulator-toggle-drift',
+      label: 'Toggle Temperature Drift',
+      type: 'item',
+      action: MenuAction.ToggleDrift,
+      icon: 'Temperature',
+    },
+    {
+      id: 'simulator-toggle-debug',
+      label: 'Toggle Debug Panel',
+      type: 'item',
+      action: MenuAction.ToggleDebugPanel,
+      icon: 'Bug',
+    },
+    {
+      id: 'simulator-reset',
+      label: 'Reset Simulator',
+      type: 'item',
+      action: MenuAction.ResetSimulator,
+      icon: 'ArrowReset',
+    },
+  ],
+};
+
+/**
  * Top Menu Configuration
  * Export array of all top-level menus
  */
@@ -665,6 +709,7 @@ export const topMenuConfig: MenuItem[] = [
   miscMenu,
   helpMenu,
   systemMenu,
+  simulatorMenu,
 ];
 
 /**

@@ -36,3 +36,6 @@ export { GraphicsPage } from '../../features/graphics/pages/GraphicsPage';
 // Discovery
 export { DiscoverPage } from '../../features/discover/pages/DiscoverPage';
 export { BuildingsPage } from '../../features/buildings/pages/BuildingsPage';
+
+// Simulator
+export { Tstat10SimulatorPage } from '../../features/tstat10-simulator/pages/Tstat10SimulatorPage';
