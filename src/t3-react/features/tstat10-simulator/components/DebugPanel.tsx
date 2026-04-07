@@ -1,29 +1,31 @@
 /**
  * DebugPanel — Toggles for grid overlay, coords, temperature drift,
- * and live event/focus/value readout.
+ * simulated keypad, and live event/focus/value readout with blue badges.
  */
 
 import React from 'react';
-import { makeStyles, tokens, Switch, Button, Text, Divider } from '@fluentui/react-components';
+import { makeStyles, tokens, Switch, Button, Text, Divider, Checkbox } from '@fluentui/react-components';
 import type { MenuRowWidget } from '../hooks/useSimulatorState';
 
 const useStyles = makeStyles({
   root: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px',
-    padding: '16px',
-    backgroundColor: '#fafafa',
-    borderRadius: '8px',
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    gap: '10px',
+    padding: '14px',
+    backgroundColor: '#f7f7f7',
+    borderRadius: '10px',
+    border: '2px solid #888',
     minWidth: '220px',
     maxWidth: '280px',
+    fontFamily: "'Fira Mono', 'Consolas', 'Menlo', monospace",
   },
   title: {
     fontWeight: 600,
     fontSize: '14px',
     color: tokens.colorNeutralForeground1,
-    marginBottom: '4px',
+    marginBottom: '2px',
+    fontFamily: "'Fira Mono', 'Consolas', monospace",
   },
   row: {
     display: 'flex',
@@ -32,20 +34,29 @@ const useStyles = makeStyles({
     gap: '8px',
   },
   readoutLabel: {
-    fontWeight: 600,
-    fontSize: '12px',
-    color: tokens.colorNeutralForeground3,
-    minWidth: '48px',
+    fontWeight: 700,
+    fontSize: '13px',
+    color: '#333',
+    minWidth: '60px',
+    fontFamily: "'Fira Mono', 'Consolas', monospace",
   },
-  readoutValue: {
-    fontSize: '12px',
-    fontFamily: 'monospace',
-    color: tokens.colorNeutralForeground1,
-    backgroundColor: tokens.colorNeutralBackground3,
-    padding: '2px 8px',
+  readoutBadge: {
+    fontSize: '13px',
+    fontFamily: "'Fira Mono', 'Consolas', monospace",
+    fontWeight: 700,
+    color: '#fff',
+    backgroundColor: '#1976d2',
+    padding: '4px 12px',
     borderRadius: '4px',
-    minWidth: '80px',
-    textAlign: 'right',
+    minWidth: '100px',
+    textAlign: 'center',
+    display: 'inline-block',
+  },
+  coordsText: {
+    fontSize: '13px',
+    fontFamily: "'Fira Mono', 'Consolas', monospace",
+    color: '#333',
+    fontWeight: 600,
   },
   // Mobile: horizontal collapsed accordion
   mobileRoot: {
@@ -53,9 +64,9 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     gap: '8px',
     padding: '12px',
-    backgroundColor: '#fafafa',
-    borderRadius: '12px',
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    backgroundColor: '#f7f7f7',
+    borderRadius: '10px',
+    border: '2px solid #888',
     width: '100%',
     maxWidth: '360px',
   },
@@ -78,6 +89,13 @@ interface DebugPanelProps {
   focusedRow?: MenuRowWidget;
   lastEvent?: string;
   mobile?: boolean;
+  simulatedKeypad?: boolean;
+  onToggleSimulatedKeypad?: (val: boolean) => void;
+  showRedbox?: boolean;
+  onToggleRedbox?: (val: boolean) => void;
+  redboxCoords?: { x: number; y: number };
+  showKeypadDebug?: boolean;
+  onToggleKeypadDebug?: (val: boolean) => void;
 }
 
 export const DebugPanel: React.FC<DebugPanelProps> = ({
@@ -91,6 +109,13 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
   focusedRow,
   lastEvent,
   mobile = false,
+  simulatedKeypad = false,
+  onToggleSimulatedKeypad,
+  showRedbox = false,
+  onToggleRedbox,
+  redboxCoords,
+  showKeypadDebug = true,
+  onToggleKeypadDebug,
 }) => {
   const styles = useStyles();
 
@@ -121,9 +146,9 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
         {focusedRow && (
           <div className={styles.mobileToggleRow}>
             <span className={styles.readoutLabel}>Focus:</span>
-            <span className={styles.readoutValue}>{focusedRow.label}</span>
+            <span className={styles.readoutBadge}>{focusedRow.label}</span>
             <span className={styles.readoutLabel}>Value:</span>
-            <span className={styles.readoutValue}>{String(focusedRow.value)}</span>
+            <span className={styles.readoutBadge}>{String(focusedRow.value)}</span>
           </div>
         )}
       </div>
@@ -134,40 +159,59 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
     <div className={styles.root}>
       <Text className={styles.title}>Tstat10 Debug</Text>
 
-      <Switch
+      <Checkbox
+        label="Simulated Keypad"
+        checked={simulatedKeypad}
+        onChange={(_, d) => onToggleSimulatedKeypad?.(!!d.checked)}
+      />
+      <Checkbox
         label="Grid Layer"
         checked={showGrid}
-        onChange={(_, d) => onToggleGrid(d.checked)}
+        onChange={(_, d) => onToggleGrid(!!d.checked)}
       />
-      <Switch
-        label="Coordinates"
+      <Checkbox
+        label="Coords"
         checked={showCoords}
-        onChange={(_, d) => onToggleCoords(d.checked)}
+        onChange={(_, d) => onToggleCoords(!!d.checked)}
       />
-      <Switch
-        label="Temperature Drift"
-        checked={driftEnabled}
-        onChange={onToggleDrift}
+      <Checkbox
+        label="Redbox"
+        checked={showRedbox}
+        onChange={(_, d) => onToggleRedbox?.(!!d.checked)}
       />
 
-      <Button size="small" appearance="outline" onClick={onReset}>
-        Reset Simulator
-      </Button>
+      {redboxCoords && (
+        <span className={styles.coordsText}>
+          x:{redboxCoords.x}, y:{redboxCoords.y}
+        </span>
+      )}
 
-      <Divider />
+      <Checkbox
+        label="Keypad"
+        checked={showKeypadDebug}
+        onChange={(_, d) => onToggleKeypadDebug?.(!!d.checked)}
+      />
 
-      <div className={styles.row}>
-        <span className={styles.readoutLabel}>Event</span>
-        <span className={styles.readoutValue}>{lastEvent || '—'}</span>
-      </div>
-      <div className={styles.row}>
-        <span className={styles.readoutLabel}>Focus</span>
-        <span className={styles.readoutValue}>{focusedRow?.label || '—'}</span>
-      </div>
-      <div className={styles.row}>
-        <span className={styles.readoutLabel}>Value</span>
-        <span className={styles.readoutValue}>{focusedRow ? String(focusedRow.value) : '—'}</span>
-      </div>
+      {showKeypadDebug ? (
+        <>
+          <Divider />
+
+          <div className={styles.row}>
+            <span className={styles.readoutLabel}>Event:</span>
+            <span className={styles.readoutBadge}>{lastEvent || '—'}</span>
+          </div>
+          <div className={styles.row}>
+            <span className={styles.readoutLabel}>Focus:</span>
+            <span className={styles.readoutBadge}>{focusedRow?.label || '—'}</span>
+          </div>
+          <div className={styles.row}>
+            <span className={styles.readoutLabel}>Value:</span>
+            <span className={styles.readoutBadge}>{focusedRow ? String(focusedRow.value) : '—'}</span>
+          </div>
+        </>
+      ) : (
+        <span className={styles.coordsText}>Keypad debug info hidden</span>
+      )}
     </div>
   );
 };

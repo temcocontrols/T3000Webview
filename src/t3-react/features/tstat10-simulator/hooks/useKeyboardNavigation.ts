@@ -7,10 +7,11 @@ import { useEffect, useCallback } from 'react';
 
 interface UseKeyboardNavigationOptions {
   onNavigate: (direction: 'left' | 'right' | 'up' | 'down') => void;
+  onToggleDrift?: () => void;
   enabled?: boolean;
 }
 
-export function useKeyboardNavigation({ onNavigate, enabled = true }: UseKeyboardNavigationOptions) {
+export function useKeyboardNavigation({ onNavigate, onToggleDrift, enabled = true }: UseKeyboardNavigationOptions) {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (!enabled) return;
@@ -32,9 +33,13 @@ export function useKeyboardNavigation({ onNavigate, enabled = true }: UseKeyboar
           e.preventDefault();
           onNavigate('down');
           break;
+        case 'd':
+        case 'D':
+          onToggleDrift?.();
+          break;
       }
     },
-    [onNavigate, enabled],
+    [onNavigate, onToggleDrift, enabled],
   );
 
   useEffect(() => {

@@ -5,8 +5,8 @@
   --lcd-height: 480px;
   --lcd-radius: 4px;
   --lcd-bezel-thickness: 3px;
-  --lcd-bezel-color: #444;
-  --lcd-background-color: #0a3d6b;
+  --lcd-bezel-color: #888;
+  --lcd-background-color: #3498db;
 
   width: var(--lcd-width);
   height: var(--lcd-height);
@@ -156,12 +156,36 @@
 .arrowRow {
   position: absolute;
   left: 0;
-  bottom: 0;
+  bottom: 1em;
   height: 1em;
   width: 100%;
   font-size: 28px;
   line-height: 1em;
   font-family: 'Fira Mono', monospace;
+  pointer-events: none;
+}
+
+.footerHint {
+  position: absolute;
+  left: 0;
+  bottom: 2.2em;
+  width: 100%;
+  text-align: center;
+  font-size: 18px;
+  font-family: 'Fira Mono', monospace;
+  color: rgba(255,255,255,0.6);
+  pointer-events: none;
+}
+
+.footerNav {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 18px;
+  font-family: 'Fira Mono', monospace;
+  color: rgba(255,255,255,0.6);
   pointer-events: none;
 }
 
@@ -223,6 +247,12 @@
   position: absolute;
   top: 0;
   left: 0;
+}
+
+.gridRedCell {
+  fill: none;
+  stroke: red;
+  stroke-width: 2;
 }
 
 .clickableInfoRow {

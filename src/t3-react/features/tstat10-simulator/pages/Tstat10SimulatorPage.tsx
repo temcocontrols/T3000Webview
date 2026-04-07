@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { makeStyles, tokens, Text } from '@fluentui/react-components';
+import { makeStyles, tokens } from '@fluentui/react-components';
 import { ThermostatBezel } from '../components/ThermostatBezel';
 import { LcdContainer } from '../components/LcdContainer';
 import { ThermostatDisplay } from '../components/ThermostatDisplay';
@@ -95,9 +95,36 @@ export const Tstat10SimulatorPage: React.FC = () => {
     return () => observer.disconnect();
   }, []);
 
-  const [showGrid, setShowGrid] = useState(false);
+  const [showGrid, setShowGrid] = useState(true);
   const [showCoords, setShowCoords] = useState(false);
   const [lastEvent, setLastEvent] = useState('');
+  const [simulatedKeypad, setSimulatedKeypad] = useState(false);
+  const [showRedbox, setShowRedbox] = useState(false);
+  const [showKeypadDebug, setShowKeypadDebug] = useState(true);
+
+  // Simulated Keypad auto-tester: ArrowRight every 3s, then ArrowUp every 3s
+  const simKeypadRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const simKeypadPhase = useRef<'right' | 'up'>('right');
+
+  useEffect(() => {
+    if (simulatedKeypad) {
+      simKeypadPhase.current = 'right';
+      simKeypadRef.current = setInterval(() => {
+        const dir = simKeypadPhase.current;
+        setLastEvent(`Arrow${dir === 'right' ? 'Right' : 'Up'}`);
+        if (sim.screen === 'settings') {
+          sim.navigateMenu(dir);
+        }
+        simKeypadPhase.current = dir === 'right' ? 'up' : 'right';
+      }, 3000);
+    } else if (simKeypadRef.current) {
+      clearInterval(simKeypadRef.current);
+      simKeypadRef.current = null;
+    }
+    return () => {
+      if (simKeypadRef.current) clearInterval(simKeypadRef.current);
+    };
+  }, [simulatedKeypad, sim]);
 
   const handleNavigate = useCallback(
     (direction: 'left' | 'right' | 'up' | 'down') => {
@@ -111,6 +138,7 @@ export const Tstat10SimulatorPage: React.FC = () => {
 
   const { handleButtonPress } = useKeyboardNavigation({
     onNavigate: handleNavigate,
+    onToggleDrift: sim.toggleDrift,
     enabled: true,
   });
 
@@ -167,17 +195,18 @@ export const Tstat10SimulatorPage: React.FC = () => {
           onReset={sim.reset}
           focusedRow={sim.menuRows[sim.focusedIndex]}
           lastEvent={lastEvent}
+          simulatedKeypad={simulatedKeypad}
+          onToggleSimulatedKeypad={setSimulatedKeypad}
+          showRedbox={showRedbox}
+          onToggleRedbox={setShowRedbox}
+          redboxCoords={{ x: 1, y: 3 }}
+          showKeypadDebug={showKeypadDebug}
+          onToggleKeypadDebug={setShowKeypadDebug}
         />
       </div>
 
       {/* Right Panel — Register Browser (placeholder) */}
-      <div className={`${styles.rightPanel} ${simStyles.thinScroll}`}>
-        <Text className={styles.rightTitle}>Register Browser</Text>
-        <div className={styles.rightPlaceholder}>
-          <span>Inputs / Outputs / Variables</span>
-          <span>Select registers to display on the LCD screen</span>
-        </div>
-      </div>
+      <div className={`${styles.rightPanel} ${simStyles.thinScroll}`} />
     </div>
   );
 };

@@ -98,6 +98,9 @@ export const NetworkSettingsMenu: React.FC<NetworkSettingsMenuProps> = ({
         );
       })}
 
+      {/* Footer hint & nav */}
+      <div className={styles.footerHint}>{'  +  Edit  -  '}</div>
+
       {/* Bottom arrow indicators */}
       <div className={styles.arrowRow}>
         <span className={`${styles.arrowChar} ${styles.arrowPos1}`}>
@@ -113,6 +116,8 @@ export const NetworkSettingsMenu: React.FC<NetworkSettingsMenuProps> = ({
           ▶
         </span>
       </div>
+
+      <div className={styles.footerNav}>{'< Back   Next >'}</div>
 
       {/* Debug Grid Overlay */}
       {showGrid && (
@@ -140,6 +145,14 @@ export const NetworkSettingsMenu: React.FC<NetworkSettingsMenuProps> = ({
                 strokeWidth="1"
               />
             ))}
+            {/* Red highlighted cell at column 3, bottom row */}
+            <rect
+              className={styles.gridRedCell}
+              x={`${(2 / NUM_COLS) * 100}%`}
+              y={`${((NUM_ROWS - 1) / NUM_ROWS) * 100}%`}
+              width={`${(1 / NUM_COLS) * 100}%`}
+              height={`${(1 / NUM_ROWS) * 100}%`}
+            />
           </svg>
         </div>
       )}
