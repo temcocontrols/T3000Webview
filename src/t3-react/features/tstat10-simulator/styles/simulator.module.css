@@ -37,7 +37,7 @@
 
 /* --- CSS Variables (original 660×880 scaled ×0.667) --- */
 .deviceBezel {
-  --thermostat-width: 440px;
+  --thermostat-width: 400px;
   --thermostat-height: 587px;
   --lcd-width: 214px;
   --lcd-height: 320px;
@@ -69,6 +69,27 @@
 }
 
 /* --- Physical Buttons --- */
+/* --- Compass Logo --- */
+.compassLogo {
+  position: absolute;
+  right: 65px;
+  bottom: 110px;
+  width: 65px;
+  height: 65px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border-radius: 50%;
+  z-index: 10;
+}
+
+.compassLogo svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .physicalButtons {
   display: flex;
   justify-content: center;

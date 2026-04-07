@@ -1,8 +1,8 @@
 /* Tstat10 Simulator - LCD Display Styles */
 
 .lcdContainer {
-  --lcd-width: 214px;
-  --lcd-height: 320px;
+  --lcd-width: 240px;
+  --lcd-height: 350px;
   --lcd-radius: 18px;
   --lcd-bezel-thickness: 3px;
   --lcd-bezel-color: #888;

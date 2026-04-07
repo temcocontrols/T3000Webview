@@ -39,6 +39,10 @@ export const ThermostatBezel: React.FC<ThermostatBezelProps> = ({ onButtonPress,
   <div className={styles.deviceBezel}>
     {children}
 
+    <div className={styles.compassLogo}>
+      <CompassSvg />
+    </div>
+
     <div className={styles.physicalButtons}>
       <button className={styles.hwBtn} onClick={() => onButtonPress('left')} aria-label="Left">
         ◀
