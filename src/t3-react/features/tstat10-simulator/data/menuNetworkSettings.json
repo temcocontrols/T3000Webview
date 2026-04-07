@@ -1,0 +1,53 @@
+{
+  "page": "NETWORK_SETTINGS",
+  "styles": {
+    "bg": "#003366",
+    "highlight": "#008080",
+    "fontFamily": "'Fira Mono', 'Consolas', 'Menlo', 'Monaco', 'Liberation Mono', 'Courier New', monospace",
+    "fontSize": "24px",
+    "fontWeight": "700",
+    "textWidthChars": 6,
+    "valueBoxWidthChars": 8
+  },
+  "widgets": [
+    {
+      "type": "header",
+      "text": "Communication\nSettings",
+      "marginTop": "-12px",
+      "fontSize": "24px"
+    },
+    {
+      "type": "menu_row",
+      "id": "ui_item_prot",
+      "label": "Mode",
+      "register": 8,
+      "value": "MODBUS",
+      "options": ["MODBUS", "BACNET"]
+    },
+    {
+      "type": "menu_row",
+      "id": "ui_item_baud",
+      "label": "Baud",
+      "register": 7,
+      "value": 115200,
+      "options": [1200, 2400, 3600, 4800, 7200, 9600, 19200, 38400, 57600, 76800, 115200, 921600]
+    },
+    {
+      "type": "menu_row",
+      "id": "ui_item_addr",
+      "label": "Modbus",
+      "register": 6,
+      "value": 1,
+      "is_focused": true,
+      "maxValue": 247
+    },
+    {
+      "type": "footer_hint",
+      "text": "  +  Edit  -  "
+    },
+    {
+      "type": "footer_nav",
+      "text": "< Back   Next >"
+    }
+  ]
+}
