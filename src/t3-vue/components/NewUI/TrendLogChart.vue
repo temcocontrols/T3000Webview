@@ -4367,7 +4367,7 @@
                 if (Math.abs(withinSeries - DBS_LOW) < 0.05) return digitalStates[0] || ''
                 return ''
               }
-              // Analog zone: reverse-transform to real value
+              // Analog zone: reverse-transform to real value, snap to nice step
               const bands = yBandInfo.value
               if (!bands.length) return ''
               const bi = Math.max(0, Math.min(bands.length - 1, Math.floor((v - analogOffset) / BAND_SIZE)))
@@ -4375,25 +4375,36 @@
               if (!band) return ''
               const range = band.realMax - band.realMin
               const realV = band.realMin + (v - band.virtualBase - BAND_MARGIN) / (BAND_SIZE - 2 * BAND_MARGIN) * range
-              const rounded = Math.round(realV)
-              if (Math.abs(rounded) >= 1_000_000) return (rounded / 1_000_000).toFixed(1) + 'M'
-              if (Math.abs(rounded) >= 10_000)    return (rounded / 1_000).toFixed(0) + 'K'
-              if (Math.abs(rounded) >= 1_000)     return (rounded / 1_000).toFixed(1) + 'K'
-              return rounded.toString()
+              // Determine nice step for this band to snap and format correctly
+              const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+              const rangeStep = niceSteps.find(s => s >= Math.max(range, 0.001) / 5) ?? 1
+              // Enforce magnitude-aware minimum step for nice-looking labels
+              const maxAbsC = Math.max(Math.abs(band.realMin), Math.abs(band.realMax), 1)
+              const magC = Math.pow(10, Math.floor(Math.log10(maxAbsC)))
+              const magStepC = niceSteps.find(s => s >= magC / 20) ?? 0.1
+              const step = Math.max(rangeStep, magStepC)
+              // Snap to nearest step multiple to eliminate float drift from reverse-transform
+              const snapped = Math.round(realV / step) * step
+              const decimals = step < 1 ? Math.max(1, Math.ceil(-Math.log10(step))) : 0
+              if (Math.abs(snapped) >= 1_000_000) return (snapped / 1_000_000).toFixed(1) + 'M'
+              if (Math.abs(snapped) >= 10_000)    return (snapped / 1_000).toFixed(0) + 'K'
+              if (Math.abs(snapped) >= 1_000)     return (snapped / 1_000).toFixed(1) + 'K'
+              return decimals > 0 ? snapped.toFixed(decimals) : Math.round(snapped).toString()
             }
           },
-          // Ticks: 2 per digital series (at DBS_HIGH and DBS_LOW) + up to 5 per analog band.
-          // For small-range bands, tick count is capped to the number of distinct integers
-          // in the range so integer labels are never duplicated.
+          // Ticks: 2 per digital series (at DBS_HIGH and DBS_LOW) + nice-step rounded
+          // ticks per analog band.  Nice-step produces clean round labels (e.g. 220, 230,
+          // 240, 250) instead of arbitrary reverse-transform artefacts (231, 239, 246).
           // autoSkip is off — we own tick density here.
           afterBuildTicks: function(scale: any) {
             const pwC: Array<{vMin: number; vMax: number}> | null = scale.options._pwClusters ?? null
             if (!pwC || pwC.length === 0) return
 
             const digitalCount = visibleDigitalSeries.value.length
-            const MAX_INTERVALS = 4  // default: 5 tick lines per analog band
+            const TARGET_TICKS = 5  // aim for ~5 tick lines per analog band
             const kept: Array<{value: number}> = []
             const bands = yBandInfo.value
+            const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
 
             pwC.forEach((cluster: any, clusterIdx: number) => {
               if (clusterIdx === 0 && digitalCount > 0) {
@@ -4404,15 +4415,45 @@
                   kept.push({ value: bY + DBS_LOW })
                 }
               } else {
-                // Analog cluster: cap intervals so integers are never duplicated
+                // Analog band: generate nice-step ticks in REAL value space,
+                // then map each back to virtual position for the scale.
                 const bandIdx = clusterIdx - (digitalCount > 0 ? 1 : 0)
                 const band = bands[bandIdx]
-                const realRange = band ? (band.realMax - band.realMin) : MAX_INTERVALS
-                // Allow at most as many intervals as there are distinct integer steps in range
-                const intervals = Math.min(MAX_INTERVALS, Math.max(1, Math.floor(realRange)))
-                const span = cluster.vMax - cluster.vMin
-                for (let k = 0; k <= intervals; k++) {
-                  kept.push({ value: cluster.vMin + (span * k) / intervals })
+                if (!band) return
+
+                const realMin = band.realMin
+                const realMax = band.realMax
+                const realRange = realMax - realMin
+                const usableVirtual = BAND_SIZE - 2 * BAND_MARGIN // 84 virtual units
+
+                // Pick a nice step so ~TARGET_TICKS fit in the real range
+                const rangeStep = niceSteps.find(s => s >= Math.max(realRange, 0.001) / TARGET_TICKS)
+                  ?? niceSteps[niceSteps.length - 1]
+                // Enforce magnitude-aware minimum step for nice-looking labels
+                const maxAbs = Math.max(Math.abs(realMin), Math.abs(realMax), 1)
+                const mag = Math.pow(10, Math.floor(Math.log10(maxAbs)))
+                const magStep = niceSteps.find(s => s >= mag / 20) ?? 0.1
+                const step = Math.max(rangeStep, magStep)
+
+                // Generate clean multiples of step within [realMin, realMax]
+                const firstTick = Math.ceil(realMin / step) * step
+                const lastTick  = Math.floor(realMax / step) * step
+
+                for (let rv = firstTick; rv <= lastTick + step * 0.001; rv += step) {
+                  const niceVal = Math.round(rv / step) * step  // eliminate float drift
+                  // Map real value → virtual position
+                  const t = (realRange > 0.001) ? (niceVal - realMin) / realRange : 0.5
+                  const virtualPos = band.virtualBase + BAND_MARGIN + t * usableVirtual
+                  kept.push({ value: virtualPos })
+                }
+
+                // If no ticks were emitted (range too small for step), emit midpoint
+                if (firstTick > lastTick + step * 0.001) {
+                  const mid = (realMin + realMax) / 2
+                  const roundedMid = Math.round(mid / step) * step
+                  const t = (realRange > 0.001) ? (roundedMid - realMin) / realRange : 0.5
+                  const virtualPos = band.virtualBase + BAND_MARGIN + t * usableVirtual
+                  kept.push({ value: virtualPos })
                 }
               }
             })
@@ -8797,11 +8838,23 @@
       return unit.trim().toLowerCase()
     }
 
-    // Analyze all series
+    // Analyze all series — only consider data within the visible x-range
+    // Compute the visible time window FIRST so yBandInfo uses the correct range
+    // (analogXWindow may still hold the previous render's range at this point).
+    const currentTimeWindow = getCurrentTimeWindow()
+    analogXWindow.min = currentTimeWindow.min
+    analogXWindow.max = currentTimeWindow.max
+    const xMin = analogXWindow.min
+    const xMax = analogXWindow.max
     for (const series of visibleAnalog) {
       if (!series.data || series.data.length === 0) continue
 
       const values = series.data
+        .filter((point: any) => {
+          if (!point) return false
+          const ts = typeof point.timestamp === 'number' ? point.timestamp : +new Date(point.timestamp)
+          return ts >= xMin && ts <= xMax
+        })
         .map((point: any) => point?.value)
         .filter((y: any) => typeof y === 'number' && isFinite(y) && y > -99999 && y < 999999)
 
@@ -8850,6 +8903,9 @@
       const allVals: number[] = []
       items.forEach(item => {
         item.series.data.forEach((p: any) => {
+          // Only include data within the visible x-range
+          const ts = typeof p.timestamp === 'number' ? p.timestamp : +new Date(p.timestamp)
+          if (ts < xMin || ts > xMax) return
           const v = typeof p.value === 'number' ? p.value : (p.value != null ? Number(p.value) : NaN)
           if (!isNaN(v) && isFinite(v) && v > -99999 && v < 999999) allVals.push(v)
         })
@@ -8857,6 +8913,25 @@
       let realMin = allVals.length ? Math.min(...allVals) : 0
       let realMax = allVals.length ? Math.max(...allVals) : 100
       if (realMin === realMax) { realMin -= 1; realMax += 1 }
+
+      // Snap realMin/realMax to nice step boundaries so tick labels always
+      // include the min and max of the visible range (e.g. 0→500 instead of 0→450).
+      const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+      const rawRange = realMax - realMin
+      const rangeStep = niceSteps.find(s => s >= Math.max(rawRange, 0.001) / 5) ?? niceSteps[niceSteps.length - 1]
+      // Enforce a magnitude-aware minimum step so ticks look "nice round"
+      // e.g. for values ~600, min step = 5 → ticks 620,625,630 instead of 623,624,625
+      const maxAbs = Math.max(Math.abs(realMin), Math.abs(realMax), 1)
+      const mag = Math.pow(10, Math.floor(Math.log10(maxAbs)))
+      const magStep = niceSteps.find(s => s >= mag / 20) ?? 0.1
+      const step = Math.max(rangeStep, magStep)
+      realMin = Math.floor(realMin / step) * step
+      realMax = Math.ceil(realMax / step) * step
+      // Ensure at least 2 steps so the band isn't degenerate
+      if ((realMax - realMin) / step < 2) {
+        realMax = realMin + step * 2
+      }
+
       return {
         unit: items[0].unit || groupKey,
         colors: items.map(it => it.color),
