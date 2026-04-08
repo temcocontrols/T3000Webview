@@ -4381,7 +4381,7 @@
               // Enforce magnitude-aware minimum step for nice-looking labels
               const maxAbsC = Math.max(Math.abs(band.realMin), Math.abs(band.realMax), 1)
               const magC = Math.pow(10, Math.floor(Math.log10(maxAbsC)))
-              const magStepC = niceSteps.find(s => s >= magC / 20) ?? 0.1
+              const magStepC = niceSteps.find(s => s >= magC / 10) ?? 0.1
               const step = Math.max(rangeStep, magStepC)
               // Snap to nearest step multiple to eliminate float drift from reverse-transform
               const snapped = Math.round(realV / step) * step
@@ -4432,7 +4432,7 @@
                 // Enforce magnitude-aware minimum step for nice-looking labels
                 const maxAbs = Math.max(Math.abs(realMin), Math.abs(realMax), 1)
                 const mag = Math.pow(10, Math.floor(Math.log10(maxAbs)))
-                const magStep = niceSteps.find(s => s >= mag / 20) ?? 0.1
+                const magStep = niceSteps.find(s => s >= mag / 10) ?? 0.1
                 const step = Math.max(rangeStep, magStep)
 
                 // Generate clean multiples of step within [realMin, realMax]
@@ -8910,8 +8910,26 @@
           if (!isNaN(v) && isFinite(v) && v > -99999 && v < 999999) allVals.push(v)
         })
       })
-      let realMin = allVals.length ? Math.min(...allVals) : 0
-      let realMax = allVals.length ? Math.max(...allVals) : 100
+      // IQR-based outlier removal: only trim when genuine statistical outliers
+      // inflate the range (e.g. rare spike to 0 or 100 among 20–40% data).
+      // For genuinely wide-ranging data (p/min 300–900), IQR fences are wide
+      // enough that nothing gets trimmed and the full range is preserved.
+      let realMin: number, realMax: number
+      if (allVals.length >= 10) {
+        const sorted = allVals.slice().sort((a, b) => a - b)
+        const q1 = sorted[Math.floor(sorted.length * 0.25)]
+        const q3 = sorted[Math.ceil(sorted.length * 0.75) - 1]
+        const iqr = q3 - q1
+        const fenceMin = q1 - 1.5 * iqr
+        const fenceMax = q3 + 1.5 * iqr
+        // Keep only inliers for range computation
+        const inliers = sorted.filter(v => v >= fenceMin && v <= fenceMax)
+        realMin = inliers.length ? inliers[0] : sorted[0]
+        realMax = inliers.length ? inliers[inliers.length - 1] : sorted[sorted.length - 1]
+      } else {
+        realMin = allVals.length ? Math.min(...allVals) : 0
+        realMax = allVals.length ? Math.max(...allVals) : 100
+      }
       if (realMin === realMax) { realMin -= 1; realMax += 1 }
 
       // Snap realMin/realMax to nice step boundaries so tick labels always
@@ -8920,10 +8938,10 @@
       const rawRange = realMax - realMin
       const rangeStep = niceSteps.find(s => s >= Math.max(rawRange, 0.001) / 5) ?? niceSteps[niceSteps.length - 1]
       // Enforce a magnitude-aware minimum step so ticks look "nice round"
-      // e.g. for values ~600, min step = 5 → ticks 620,625,630 instead of 623,624,625
+      // e.g. for values ~38, min step = 1 → ticks 38,39,40 instead of 37.5,38.0,38.5
       const maxAbs = Math.max(Math.abs(realMin), Math.abs(realMax), 1)
       const mag = Math.pow(10, Math.floor(Math.log10(maxAbs)))
-      const magStep = niceSteps.find(s => s >= mag / 20) ?? 0.1
+      const magStep = niceSteps.find(s => s >= mag / 10) ?? 0.1
       const step = Math.max(rangeStep, magStep)
       realMin = Math.floor(realMin / step) * step
       realMax = Math.ceil(realMax / step) * step
