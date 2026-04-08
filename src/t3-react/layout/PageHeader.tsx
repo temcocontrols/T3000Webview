@@ -194,6 +194,8 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => 
           </div>
         )}
       </div>
+      {/* Slot for page-specific actions (filled via React portal) */}
+      <div id="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }} />
       {shouldShowSync && (
         <div className={styles.syncSection}>
           <SyncStatusBar
