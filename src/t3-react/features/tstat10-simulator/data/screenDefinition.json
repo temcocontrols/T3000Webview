@@ -1,0 +1,164 @@
+{
+  "pages": [
+    {
+      "id": "main",
+      "label": "Main Display",
+      "styles": {
+        "bg": "#003366",
+        "highlight": "#008080",
+        "fontFamily": "'Fira Mono', 'Consolas', monospace",
+        "fontSize": "24px",
+        "fontWeight": "700"
+      },
+      "widgets": [
+        {
+          "type": "large_text",
+          "id": "w_temp",
+          "field": "temp",
+          "row": 1,
+          "col": 0,
+          "colSpan": 17,
+          "rowSpan": 3,
+          "fontSize": "72px",
+          "suffix": "°C",
+          "align": "center"
+        },
+        {
+          "type": "label_value",
+          "id": "w_stp",
+          "label": "STP",
+          "field": "stp",
+          "register": 345,
+          "row": 4,
+          "col": 0,
+          "colSpan": 17,
+          "editable": true,
+          "suffix": "°C",
+          "navigateTo": "setpoint"
+        },
+        {
+          "type": "label_value",
+          "id": "w_hum",
+          "label": "HUM",
+          "field": "hum",
+          "register": 346,
+          "row": 5,
+          "col": 0,
+          "colSpan": 17,
+          "suffix": "%"
+        },
+        {
+          "type": "divider",
+          "id": "w_div1",
+          "row": 6,
+          "col": 0,
+          "colSpan": 17,
+          "color": "#ffffff",
+          "opacity": 0.3
+        },
+        {
+          "type": "label_value",
+          "id": "w_id_baud",
+          "label": "ID",
+          "field": "modbus",
+          "register": 6,
+          "row": 7,
+          "col": 0,
+          "colSpan": 17,
+          "navigateTo": "comm_settings"
+        },
+        {
+          "type": "icon_bar",
+          "id": "w_nav_icons",
+          "row": 9,
+          "col": 0,
+          "colSpan": 17,
+          "icons": [
+            { "icon": "moon", "pageId": "schedule" },
+            { "icon": "house", "pageId": "main" },
+            { "icon": "snowflake", "pageId": "inside" },
+            { "icon": "fan", "pageId": "fan_control" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "comm_settings",
+      "label": "Comm Settings",
+      "styles": {
+        "bg": "#003366",
+        "highlight": "#008080",
+        "fontFamily": "'Fira Mono', 'Consolas', monospace",
+        "fontSize": "24px",
+        "fontWeight": "700"
+      },
+      "widgets": [
+        {
+          "type": "header",
+          "id": "w_cs_header",
+          "text": "Communication\nSettings",
+          "row": 1,
+          "col": 0,
+          "colSpan": 17,
+          "fontSize": "24px"
+        },
+        {
+          "type": "label_value",
+          "id": "w_cs_modbus",
+          "label": "Modbus",
+          "field": "modbus",
+          "register": 6,
+          "row": 4,
+          "col": 0,
+          "colSpan": 17,
+          "editable": true,
+          "maxValue": 247,
+          "minValue": 1
+        },
+        {
+          "type": "label_value",
+          "id": "w_cs_baud",
+          "label": "Baud",
+          "field": "baud",
+          "register": 7,
+          "row": 5,
+          "col": 0,
+          "colSpan": 17,
+          "editable": true,
+          "options": [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 921600]
+        },
+        {
+          "type": "label_value",
+          "id": "w_cs_mode",
+          "label": "Mode",
+          "field": "protocol",
+          "register": 8,
+          "row": 6,
+          "col": 0,
+          "colSpan": 17,
+          "editable": true,
+          "options": ["MODBUS", "BACNET"]
+        },
+        {
+          "type": "footer_hint",
+          "id": "w_cs_hint",
+          "text": "  +  Edit  -  ",
+          "row": 8,
+          "col": 0,
+          "colSpan": 17
+        },
+        {
+          "type": "footer_nav",
+          "id": "w_cs_nav",
+          "text": "< Back   Next >",
+          "row": 9,
+          "col": 0,
+          "colSpan": 17
+        }
+      ]
+    }
+  ],
+  "navigation": {
+    "defaultPage": "main"
+  }
+}
