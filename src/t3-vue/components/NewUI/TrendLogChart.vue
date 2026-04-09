@@ -8898,9 +8898,33 @@
           if (!isNaN(v) && isFinite(v) && v > -99999 && v < 999999) allVals.push(v)
         })
       })
-      // Use actual min/max of visible data for the Y range
+      // Determine Y range: use full min/max by default, but apply IQR outlier
+      // filtering when the full range is dramatically wider than the core data
+      // cluster (ratio > 5). This trims distant baselines (e.g. a cooling series
+      // stuck at 0 among 500-580 p/min data) while preserving real data spikes
+      // (e.g. temperature 23→31 where ratio ≈ 4).
       let realMin: number, realMax: number
-      if (allVals.length) {
+      if (allVals.length >= 10) {
+        const sorted = allVals.slice().sort((a, b) => a - b)
+        const fullMin = sorted[0], fullMax = sorted[sorted.length - 1]
+        const fullRange = fullMax - fullMin
+        const q1 = sorted[Math.floor(sorted.length * 0.25)]
+        const q3 = sorted[Math.ceil(sorted.length * 0.75) - 1]
+        const iqr = q3 - q1
+        const fenceMin = q1 - 1.5 * iqr
+        const fenceMax = q3 + 1.5 * iqr
+        const inliers = sorted.filter(v => v >= fenceMin && v <= fenceMax)
+        const iqrMin = inliers.length ? inliers[0] : fullMin
+        const iqrMax = inliers.length ? inliers[inliers.length - 1] : fullMax
+        const iqrRange = iqrMax - iqrMin || 1
+        if (fullRange / iqrRange > 5) {
+          // Distant outliers detected — use IQR-trimmed range
+          realMin = iqrMin; realMax = iqrMax
+        } else {
+          // Range is reasonable — use full min/max to keep spikes visible
+          realMin = fullMin; realMax = fullMax
+        }
+      } else if (allVals.length) {
         realMin = Math.min(...allVals)
         realMax = Math.max(...allVals)
       } else {
