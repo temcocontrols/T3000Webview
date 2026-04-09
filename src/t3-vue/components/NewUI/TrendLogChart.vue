@@ -2821,7 +2821,7 @@
   const DIGITAL_BAND_SIZE = 1.05  // virtual units per digital series band (controls per-series height)
   const DBS_HIGH = DIGITAL_BAND_SIZE * 0.25  // Y offset for "active" state tick within a digital band
   const DBS_LOW  = DIGITAL_BAND_SIZE * 0.75  // Y offset for "inactive" state tick within a digital band
-  interface YBandInfo { unit: string; colors: string[]; realMin: number; realMax: number; virtualBase: number }
+  interface YBandInfo { unit: string; colors: string[]; realMin: number; realMax: number; virtualBase: number; step: number }
   const yBandInfo = ref<YBandInfo[]>([])
   // Tracks the virtual Y offset where analog bands start (= digitalZoneHeight + DIGITAL_GAP when digital exists, else 0).
   // Read by the Y-axis tick callback and color function to distinguish digital vs analog zone.
@@ -4375,14 +4375,8 @@
               if (!band) return ''
               const range = band.realMax - band.realMin
               const realV = band.realMin + (v - band.virtualBase - BAND_MARGIN) / (BAND_SIZE - 2 * BAND_MARGIN) * range
-              // Determine nice step for this band to snap and format correctly
-              const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
-              const rangeStep = niceSteps.find(s => s >= Math.max(range, 0.001) / 5) ?? 1
-              // Enforce magnitude-aware minimum step for nice-looking labels
-              const maxAbsC = Math.max(Math.abs(band.realMin), Math.abs(band.realMax), 1)
-              const magC = Math.pow(10, Math.floor(Math.log10(maxAbsC)))
-              const magStepC = niceSteps.find(s => s >= magC / 10) ?? 0.1
-              const step = Math.max(rangeStep, magStepC)
+              // Use the pre-computed step from the band for consistent formatting
+              const step = band.step
               // Snap to nearest step multiple to eliminate float drift from reverse-transform
               const snapped = Math.round(realV / step) * step
               const decimals = step < 1 ? Math.max(1, Math.ceil(-Math.log10(step))) : 0
@@ -4426,14 +4420,8 @@
                 const realRange = realMax - realMin
                 const usableVirtual = BAND_SIZE - 2 * BAND_MARGIN // 84 virtual units
 
-                // Pick a nice step so ~TARGET_TICKS fit in the real range
-                const rangeStep = niceSteps.find(s => s >= Math.max(realRange, 0.001) / TARGET_TICKS)
-                  ?? niceSteps[niceSteps.length - 1]
-                // Enforce magnitude-aware minimum step for nice-looking labels
-                const maxAbs = Math.max(Math.abs(realMin), Math.abs(realMax), 1)
-                const mag = Math.pow(10, Math.floor(Math.log10(maxAbs)))
-                const magStep = niceSteps.find(s => s >= mag / 10) ?? 0.1
-                const step = Math.max(rangeStep, magStep)
+                // Use the pre-computed step from the band (same step used for boundary snapping)
+                const step = band.step
 
                 // Generate clean multiples of step within [realMin, realMax]
                 const firstTick = Math.ceil(realMin / step) * step
@@ -8937,12 +8925,25 @@
       const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
       const rawRange = realMax - realMin
       const rangeStep = niceSteps.find(s => s >= Math.max(rawRange, 0.001) / 5) ?? niceSteps[niceSteps.length - 1]
-      // Enforce a magnitude-aware minimum step so ticks look "nice round"
-      // e.g. for values ~38, min step = 1 → ticks 38,39,40 instead of 37.5,38.0,38.5
+      // Minimum "visually round" step for the value magnitude — labels should land
+      // on .0 or .5 boundaries (e.g. 23.0, 23.5 for values ~23; 230, 235 for ~230).
+      // Uses mag/20 so the floor is the 5-family step one decade below the values.
       const maxAbs = Math.max(Math.abs(realMin), Math.abs(realMax), 1)
       const mag = Math.pow(10, Math.floor(Math.log10(maxAbs)))
-      const magStep = niceSteps.find(s => s >= mag / 10) ?? 0.1
-      const step = Math.max(rangeStep, magStep)
+      const magStep = niceSteps.find(s => s >= mag / 20) ?? 0.1
+      let step = Math.max(rangeStep, magStep)
+      // Upgrade to the largest nice step that still yields >= 3 intervals after snapping
+      // AND the snapped range doesn't blow up beyond 2.5× the raw data range.
+      // This maximises label "roundness" (e.g. 20,25,30,35 instead of 24,26,28,30,32)
+      // while preventing excessive dead space for narrow-range data.
+      let idx = niceSteps.indexOf(step)
+      while (idx >= 0 && idx < niceSteps.length - 1) {
+        const bigStep = niceSteps[idx + 1]
+        const tMin = Math.floor(realMin / bigStep) * bigStep
+        const tMax = Math.ceil(realMax / bigStep) * bigStep
+        if ((tMax - tMin) / bigStep >= 3 && (tMax - tMin) <= rawRange * 2.5) { step = bigStep; idx++ }
+        else break
+      }
       realMin = Math.floor(realMin / step) * step
       realMax = Math.ceil(realMax / step) * step
       // Ensure at least 2 steps so the band isn't degenerate
@@ -8954,7 +8955,8 @@
         unit: items[0].unit || groupKey,
         colors: items.map(it => it.color),
         realMin, realMax,
-        virtualBase: analogOffset + i * BAND_SIZE  // shifted to make room for digital zone
+        virtualBase: analogOffset + i * BAND_SIZE,  // shifted to make room for digital zone
+        step
       }
     })
     yBandInfo.value = newBandInfo
