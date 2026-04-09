@@ -8944,19 +8944,21 @@
       const mag = Math.pow(10, Math.floor(Math.log10(maxAbs)))
       const magStep = niceSteps.find(s => s >= mag / 10) ?? 0.1
       let step = Math.max(rangeStep, magStep)
-      // Upgrade to the largest nice step that still yields >= 3 intervals
-      // AND each boundary doesn't extend more than 80% of one step beyond the data.
-      // This gives rounder labels (e.g. 20,25,30,35 instead of 24,26,28,30,32)
-      // while preventing excessive dead space (e.g. blocking 0-80 for data 19.5-65).
+      // Upgrade to the largest nice step where:
+      // 1. At least 2 intervals (3 tick labels)
+      // 2. Each boundary extends at most 80% of one step beyond the data
+      // 3. Total snapped range is at most 1.5× the raw data range
+      // This gives rounder labels while preventing excessive dead space.
       let idx = niceSteps.indexOf(step)
       while (idx >= 0 && idx < niceSteps.length - 1) {
         const bigStep = niceSteps[idx + 1]
         const tMin = Math.floor(realMin / bigStep) * bigStep
         const tMax = Math.ceil(realMax / bigStep) * bigStep
-        const intervals = (tMax - tMin) / bigStep
+        const snappedRange = tMax - tMin
+        const intervals = snappedRange / bigStep
         const lowPad = realMin - tMin
         const highPad = tMax - realMax
-        if (intervals >= 2 && lowPad <= bigStep * 0.8 && highPad <= bigStep * 0.8) { step = bigStep; idx++ }
+        if (intervals >= 2 && lowPad <= bigStep * 0.8 && highPad <= bigStep * 0.8 && snappedRange <= rawRange * 1.5) { step = bigStep; idx++ }
         else break
       }
       // Snap boundaries to step multiples
@@ -8991,7 +8993,10 @@
       const band = newBandInfo[bi]
       if (!band) return realY
       const range = band.realMax - band.realMin
-      return band.virtualBase + BAND_MARGIN + (realY - band.realMin) / range * (BAND_SIZE - 2 * BAND_MARGIN)
+      const t = (realY - band.realMin) / range
+      // Clamp to band boundaries so outlier values don't overflow into other bands
+      const tClamped = Math.max(0, Math.min(1, t))
+      return band.virtualBase + BAND_MARGIN + tClamped * (BAND_SIZE - 2 * BAND_MARGIN)
     }
 
     // 🆕 STEP 4: Create datasets with assigned yAxisID
