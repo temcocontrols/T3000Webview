@@ -1,0 +1,20 @@
+{
+  "page": "TBD_SETTINGS",
+  "title": "To Be Done",
+  "styles": {
+    "bg": "#2c7cc4",
+    "highlight": "#008080",
+    "fontFamily": "'Fira Mono', 'Consolas', monospace",
+    "fontWeight": "900",
+    "fontSize": "26px"
+  },
+  "widgets": [
+    {
+      "type": "menu_row",
+      "id": "ui_item_tbd_1",
+      "label": "Feature",
+      "value": "Coming Soon",
+      "lcdRow": 3
+    }
+  ]
+}
