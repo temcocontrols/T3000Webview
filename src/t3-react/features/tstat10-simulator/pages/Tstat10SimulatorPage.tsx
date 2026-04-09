@@ -234,9 +234,7 @@ export const Tstat10SimulatorPage: React.FC = () => {
       simKeypadRef.current = setInterval(() => {
         const dir = simKeypadPhase.current;
         setLastEvent(`Arrow${dir === 'right' ? 'Right' : 'Up'}`);
-        if (sim.screen === 'settings') {
-          sim.navigateMenu(dir);
-        }
+        sim.navigate(dir);
         simKeypadPhase.current = dir === 'right' ? 'up' : 'right';
       }, 3000);
     } else if (simKeypadRef.current) {
@@ -251,15 +249,14 @@ export const Tstat10SimulatorPage: React.FC = () => {
   const handleNavigate = useCallback(
     (direction: 'left' | 'right' | 'up' | 'down') => {
       setLastEvent(`Arrow${direction.charAt(0).toUpperCase() + direction.slice(1)}`);
-      if (sim.screen === 'settings') {
-        sim.navigateMenu(direction);
-      }
+      sim.navigate(direction);
     },
     [sim],
   );
 
   const { handleButtonPress } = useKeyboardNavigation({
     onNavigate: handleNavigate,
+    onEnterSetup: sim.enterSetup,
     onToggleDrift: sim.toggleDrift,
     onMoveRedbox: showRedbox ? handleMoveRedbox : undefined,
     enabled: designer.mode === 'view',
@@ -292,6 +289,8 @@ export const Tstat10SimulatorPage: React.FC = () => {
     hum: sim.data.hum,
     modbus: sim.data.modbus,
     baud: sim.data.baud,
+    fan: sim.data.fan,
+    sys: sim.data.sys,
     protocol: 'MODBUS',
   };
 
@@ -418,13 +417,15 @@ export const Tstat10SimulatorPage: React.FC = () => {
                 {sim.screen === 'main' ? (
                   <ThermostatDisplay
                     data={sim.data}
-                    onNavigateToSettings={() => sim.setScreen('settings')}
+                    focusedIndex={sim.mainFocusedIndex}
                   />
                 ) : (
                   <NetworkSettingsMenu
+                    title={sim.menuTitle}
                     menuRows={sim.menuRows}
-                    focusedIndex={sim.focusedIndex}
+                    focusedIndex={sim.menuFocusedIndex}
                     menuStyles={sim.menuStyles}
+                    isSetupMenu={sim.screen === 'setup'}
                     showGrid={showGrid}
                     showCoords={showCoords}
                     showRedbox={showRedbox}
@@ -446,7 +447,7 @@ export const Tstat10SimulatorPage: React.FC = () => {
             driftEnabled={sim.driftEnabled}
             onToggleDrift={sim.toggleDrift}
             onReset={sim.reset}
-            focusedRow={sim.menuRows[sim.focusedIndex]}
+            focusedRow={sim.menuRows[sim.menuFocusedIndex]}
             lastEvent={lastEvent}
             simulatedKeypad={simulatedKeypad}
             onToggleSimulatedKeypad={setSimulatedKeypad}
@@ -495,6 +496,14 @@ export const Tstat10SimulatorPage: React.FC = () => {
               <span className={styles.rpLabel}>Baud Rate</span>
               <span className={styles.rpValue}>{sim.data.baud}</span>
             </div>
+            <div className={styles.rpRow}>
+              <span className={styles.rpLabel}>Fan</span>
+              <span className={styles.rpValue}>{sim.data.fan}</span>
+            </div>
+            <div className={styles.rpRow}>
+              <span className={styles.rpLabel}>System</span>
+              <span className={styles.rpValue}>{sim.data.sys}</span>
+            </div>
           </div>
 
           {/* Device Status */}
@@ -502,7 +511,7 @@ export const Tstat10SimulatorPage: React.FC = () => {
             <div className={styles.rpTitle}>Device Status</div>
             <div className={styles.rpStatus}>
               <span className={styles.rpDot} style={{ backgroundColor: '#008080' }} />
-              <span>Screen: {sim.screen === 'main' ? 'Main Display' : 'Comm Settings'}</span>
+              <span>Screen: {sim.screenLabel}</span>
             </div>
             <div className={styles.rpStatus}>
               <span className={styles.rpDot} style={{ backgroundColor: sim.driftEnabled ? '#e8912d' : '#a0a0a0' }} />
