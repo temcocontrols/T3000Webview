@@ -159,7 +159,7 @@ function renderLabelValue(
       <span>{w.label}</span>
       <span style={{
         background: '#fff',
-        color: ps.bg || '#003366',
+        color: ps.bg || '#2c7cc4',
         borderRadius: 6,
         padding: '2px 8px',
         fontWeight: 700,
@@ -183,7 +183,7 @@ function renderEditValue(w: LcdWidget, ps: PageStyles, data?: Record<string, any
     }}>
       <span style={{
         background: '#fff',
-        color: ps.bg || '#003366',
+        color: ps.bg || '#2c7cc4',
         borderRadius: 8,
         padding: '4px 16px',
         fontWeight: 700,
@@ -423,7 +423,7 @@ export const LcdPageRenderer: React.FC<LcdPageRendererProps> = ({
         position: 'relative',
         width: CANVAS_W,
         height: CANVAS_H,
-        background: ps.bg || '#003366',
+        background: ps.bg || '#2c7cc4',
         overflow: 'hidden',
         fontFamily: ps.fontFamily || 'monospace',
         flexShrink: 0,

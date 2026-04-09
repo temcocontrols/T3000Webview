@@ -1,10 +1,7 @@
 /**
- * NetworkSettingsMenu — Renders the communication settings menu screen on the LCD.
- * Migrated from network-settings-renderer.js.
- *
- * Note: Menu rows use dynamic inline styles driven by JSON config values
- * (fontSize, fontFamily, fontWeight, column widths). This is intentional
- * as these values come from the Tstat10 menu configuration and vary per widget.
+ * NetworkSettingsMenu — Generic menu screen renderer for the LCD simulator.
+ * Renders any menu-style screen (RS485, WiFi, Clock, OAT, TBD, Setup Menu)
+ * from JSON config. Supports both value rows and navigation rows.
  */
 
 import React from 'react';
@@ -12,6 +9,7 @@ import type { MenuRowWidget } from '../hooks/useSimulatorState';
 import styles from '../styles/lcd.module.css';
 
 interface NetworkSettingsMenuProps {
+  title: string;
   menuRows: MenuRowWidget[];
   focusedIndex: number;
   menuStyles: {
@@ -20,9 +18,8 @@ interface NetworkSettingsMenuProps {
     fontFamily?: string;
     fontSize?: string;
     fontWeight?: string;
-    textWidthChars?: number;
-    valueBoxWidthChars?: number;
   };
+  isSetupMenu?: boolean;
   showGrid?: boolean;
   showCoords?: boolean;
   showRedbox?: boolean;
@@ -33,15 +30,17 @@ const NUM_ROWS = 10;
 const NUM_COLS = 17;
 
 export const NetworkSettingsMenu: React.FC<NetworkSettingsMenuProps> = ({
+  title,
   menuRows,
   focusedIndex,
   menuStyles,
+  isSetupMenu = false,
   showGrid = false,
   showCoords = false,
   showRedbox = false,
   redboxCoords,
 }) => {
-  const bg = menuStyles.bg || '#003366';
+  const bg = menuStyles.bg || '#2c7cc4';
   const highlight = menuStyles.highlight || '#008080';
   const fontFamily = menuStyles.fontFamily || 'monospace';
   const fontWeight = menuStyles.fontWeight || '700';
@@ -49,15 +48,12 @@ export const NetworkSettingsMenu: React.FC<NetworkSettingsMenuProps> = ({
   return (
     <div className={styles.settingsScreen} style={{ background: bg, fontFamily }}>
       {/* Header */}
-      <div className={styles.settingsHeader}>
-        Communication
-        <br />
-        Settings
-      </div>
+      <div className={styles.settingsHeader}>{title}</div>
 
       {/* Menu Rows */}
       {menuRows.map((row, idx) => {
         const isFocused = idx === focusedIndex;
+        const isNavItem = !!row.navigateTo;
         return (
           <div
             key={row.id}
@@ -74,21 +70,27 @@ export const NetworkSettingsMenu: React.FC<NetworkSettingsMenuProps> = ({
             >
               {row.label}
             </span>
-            <span
-              className={`${styles.menuValue} ${isFocused ? styles.menuValueFocused : ''}`}
-              style={{ fontFamily, fontWeight }}
-            >
-              {String(row.value ?? '')}
-            </span>
+            {isNavItem ? (
+              <span className={styles.menuNavArrow} style={{ fontFamily, fontWeight }}>›</span>
+            ) : (
+              <span
+                className={`${styles.menuValue} ${isFocused ? styles.menuValueFocused : ''}`}
+                style={{ fontFamily, fontWeight }}
+              >
+                {String(row.value ?? '')}
+              </span>
+            )}
           </div>
         );
       })}
 
-      {/* Footer hint text */}
-      <div className={styles.footerHint}>  +  Edit  -  </div>
-
-      {/* Footer nav text */}
-      <div className={styles.footerNav}>&lt; Back    Next &gt;</div>
+      {/* Footer — on-screen button labels */}
+      <div className={styles.footerButtons}>
+        <span className={styles.footerBtn}>BACK</span>
+        <span className={styles.footerBtn}>▼</span>
+        <span className={styles.footerBtn}>▲</span>
+        <span className={styles.footerBtn}>NEXT</span>
+      </div>
 
 
       {/* Debug Grid Overlay */}
