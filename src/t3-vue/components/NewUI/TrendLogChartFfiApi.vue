@@ -849,6 +849,47 @@ const generateDataSeries = (): SeriesConfig[] => {
 
 const dataSeries = ref<SeriesConfig[]>(generateDataSeries())
 
+// --- Series visibility persistence (localStorage, per window + per view) ---
+const getVisibilityStorageKey = (): string => {
+  const sn = route.query.sn ?? 'unknown'
+  const panelId = route.query.panel_id ?? 'unknown'
+  const trendlogId = route.query.trendlog_id ?? 'unknown'
+  return `trendlog_series_vis_${sn}_${panelId}_${trendlogId}_view${currentView.value}`
+}
+
+const saveSeriesVisibility = (): void => {
+  try {
+    // Skip saving if no series exist (e.g. during initial mount before real data loads)
+    if (dataSeries.value.length === 0) return
+    const key = getVisibilityStorageKey()
+    const arr = dataSeries.value.map(s => s.visible ? 1 : 0)
+    localStorage.setItem(key, JSON.stringify(arr))
+    console.log('[SeriesVis] SAVE', key, arr)
+  } catch (e) {
+    LogUtil.Warn('Failed to save series visibility', e)
+  }
+}
+
+const loadSeriesVisibility = (): void => {
+  try {
+    const key = getVisibilityStorageKey()
+    const raw = localStorage.getItem(key)
+    console.log('[SeriesVis] LOAD', key, 'raw=', raw, 'seriesCount=', dataSeries.value.length)
+    if (!raw) return
+    const arr: number[] = JSON.parse(raw)
+    if (!Array.isArray(arr)) return
+    dataSeries.value.forEach((s, i) => {
+      if (i < arr.length) s.visible = !!arr[i]
+    })
+    console.log('[SeriesVis] APPLIED', arr)
+  } catch (e) {
+    LogUtil.Warn('Failed to load series visibility', e)
+  }
+}
+
+// Restore saved visibility for the initial view
+loadSeriesVisibility()
+
 // Get internal interval value from props - combine minute and second intervals
 const getInternalIntervalSeconds = (): number => {
   const minuteInterval = props.itemData?.t3Entry?.minute_interval_time || 0
@@ -2195,6 +2236,9 @@ const initializeRealDataSeries = async () => {
     // Update the reactive data series
     dataSeries.value = newDataSeries
 
+    // Restore saved series visibility after data regeneration
+    loadSeriesVisibility()
+
     LogUtil.Info('🎉 TrendLogModal: Real data series initialization complete:', {
       totalSeries: newDataSeries.length,
       visibleSeries: newDataSeries.filter(s => s.visible && !s.isEmpty).length,
@@ -3297,6 +3341,7 @@ const enableAllSeries = () => {
   dataSeries.value.forEach(series => {
     series.visible = true
   })
+  saveSeriesVisibility()
   updateChart()
 }
 
@@ -3304,6 +3349,7 @@ const disableAllSeries = () => {
   dataSeries.value.forEach(series => {
     series.visible = false
   })
+  saveSeriesVisibility()
   updateChart()
 }
 
@@ -3314,6 +3360,7 @@ const toggleAnalogSeries = () => {
       series.visible = enableAnalog
     }
   })
+  saveSeriesVisibility()
   updateChart()
 }
 
@@ -3324,6 +3371,7 @@ const toggleDigitalSeries = () => {
       series.visible = enableDigital
     }
   })
+  saveSeriesVisibility()
   updateChart()
 }
 
@@ -3387,7 +3435,11 @@ const resetToDefaultTimebase = () => {
 }
 
 const setView = (viewNumber: number) => {
+  // Save current view's visibility before switching
+  saveSeriesVisibility()
   currentView.value = viewNumber
+  // Load the target view's visibility
+  loadSeriesVisibility()
 
   // Different view configurations
   const viewConfigs = {
@@ -3592,6 +3644,7 @@ const toggleSeriesVisibility = (index: number, event?: Event) => {
 
   if (dataSeries.value[index].isEmpty) return
   dataSeries.value[index].visible = !dataSeries.value[index].visible
+  saveSeriesVisibility()
   updateChart()
   LogUtil.Debug(`Toggled visibility for series ${dataSeries.value[index].name} to ${dataSeries.value[index].visible}`)
 }

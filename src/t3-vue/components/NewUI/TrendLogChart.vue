@@ -3075,6 +3075,46 @@
   }
   // ─────────────────────────────────────────────────────────────────────────────
 
+  // ─── Series visibility persistence (all views) ────────────────────────────
+  const _seriesVisKey = () => `${_viewStateKey()}_v${currentView.value}_seriesVis`
+
+  const saveSeriesVisibility = () => {
+    if (dataSeries.value.length === 0) return
+    try {
+      const arr = dataSeries.value.map(s => s.visible ? 1 : 0)
+      localStorage.setItem(_seriesVisKey(), JSON.stringify(arr))
+    } catch (_e) { /* ignore */ }
+  }
+
+  const loadSeriesVisibility = () => {
+    try {
+      const raw = localStorage.getItem(_seriesVisKey())
+      if (!raw) return
+      const arr: number[] = JSON.parse(raw)
+      if (!Array.isArray(arr)) return
+      dataSeries.value.forEach((s, i) => {
+        if (i < arr.length) s.visible = !!arr[i]
+      })
+    } catch (_e) { /* ignore */ }
+  }
+
+  /** Re-apply visibility for the current view after dataSeries is replaced */
+  const restoreCurrentViewVisibility = () => {
+    if (currentView.value === 1) {
+      loadSeriesVisibility()
+    } else {
+      // First apply tracked items, then restore saved overrides
+      const trackedItems = viewTrackedSeries.value[currentView.value] || []
+      if (trackedItems.length > 0) {
+        dataSeries.value.forEach(series => {
+          series.visible = trackedItems.includes(series.key)
+        })
+      }
+      loadSeriesVisibility()
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
+
   // Series control computed properties
   const hasEnabledSeries = computed(() => {
     return dataSeries.value.some(series => series.visible)
@@ -6155,6 +6195,9 @@
 
       dataSeries.value = newDataSeries
 
+      // Restore visibility for the current view after data regeneration
+      restoreCurrentViewVisibility()
+
       // Update sync time since we successfully created series structure
       lastSyncTime.value = new Date().toLocaleTimeString()
 
@@ -7286,6 +7329,9 @@
 
       // Assign the new series
       dataSeries.value = newSeries
+
+      // Restore visibility for the current view
+      restoreCurrentViewVisibility()
 
       LogUtil.Info('✅Series created from historical data:', {
         seriesCount: newSeries.length,
@@ -9448,6 +9494,7 @@
     dataSeries.value.forEach(series => {
       series.visible = true
     })
+    saveSeriesVisibility()
     updateCharts()
   }
 
@@ -9455,6 +9502,7 @@
     dataSeries.value.forEach(series => {
       series.visible = false
     })
+    saveSeriesVisibility()
     updateCharts()
   }
 
@@ -9469,6 +9517,7 @@
     })
 
     // debugDataSeriesFlow(`After toggle analog (enabled: ${enableAnalog})`)
+    saveSeriesVisibility()
     updateCharts()
   }
 
@@ -9479,6 +9528,7 @@
         series.visible = enableDigital
       }
     })
+    saveSeriesVisibility()
     updateCharts()
   }
 
@@ -9648,10 +9698,13 @@
         series.visible = true
       })
 
-      LogUtil.Info(`Set View: View 1 activated - showing all items`, {
+      // Restore saved visibility for View 1 (overrides the show-all default)
+      loadSeriesVisibility()
+
+      LogUtil.Info(`Set View: View 1 activated`, {
         totalSeries: dataSeries.value.length,
-        visibleSeries: dataSeries.value.length,
-        behavior: 'AUTO_SHOW_ALL'
+        visibleSeries: dataSeries.value.filter(s => s.visible).length,
+        behavior: 'RESTORED_FROM_STORAGE'
       })
     } else {
       // View 2 & 3: Show only user selected items.
@@ -9680,6 +9733,9 @@
           })
         }
       })
+
+      // Restore saved visibility overrides for this view
+      loadSeriesVisibility()
 
       const finalVisibleSeries = dataSeries.value.filter(s => s.visible)
 
@@ -10636,6 +10692,7 @@
     }
 
     dataSeries.value[index].visible = !dataSeries.value[index].visible
+    saveSeriesVisibility()
     updateCharts()
     LogUtil.Debug(`Toggled visibility for series ${dataSeries.value[index].name} to ${dataSeries.value[index].visible}`)
   }
@@ -11199,6 +11256,9 @@
 
         // Update the data series with historical data
         dataSeries.value = historicalSeries
+
+        // Restore visibility for the current view
+        restoreCurrentViewVisibility()
 
         // Update charts to display new data
         updateCharts()
