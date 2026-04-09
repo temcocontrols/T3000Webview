@@ -8898,25 +8898,14 @@
           if (!isNaN(v) && isFinite(v) && v > -99999 && v < 999999) allVals.push(v)
         })
       })
-      // IQR-based outlier removal: only trim when genuine statistical outliers
-      // inflate the range (e.g. rare spike to 0 or 100 among 20–40% data).
-      // For genuinely wide-ranging data (p/min 300–900), IQR fences are wide
-      // enough that nothing gets trimmed and the full range is preserved.
+      // Use actual min/max of visible data for the Y range
       let realMin: number, realMax: number
-      if (allVals.length >= 10) {
-        const sorted = allVals.slice().sort((a, b) => a - b)
-        const q1 = sorted[Math.floor(sorted.length * 0.25)]
-        const q3 = sorted[Math.ceil(sorted.length * 0.75) - 1]
-        const iqr = q3 - q1
-        const fenceMin = q1 - 1.5 * iqr
-        const fenceMax = q3 + 1.5 * iqr
-        // Keep only inliers for range computation
-        const inliers = sorted.filter(v => v >= fenceMin && v <= fenceMax)
-        realMin = inliers.length ? inliers[0] : sorted[0]
-        realMax = inliers.length ? inliers[inliers.length - 1] : sorted[sorted.length - 1]
+      if (allVals.length) {
+        realMin = Math.min(...allVals)
+        realMax = Math.max(...allVals)
       } else {
-        realMin = allVals.length ? Math.min(...allVals) : 0
-        realMax = allVals.length ? Math.max(...allVals) : 100
+        realMin = 0
+        realMax = 100
       }
       if (realMin === realMax) { realMin -= 1; realMax += 1 }
 
@@ -8926,27 +8915,30 @@
       const rawRange = realMax - realMin
       const rangeStep = niceSteps.find(s => s >= Math.max(rawRange, 0.001) / 5) ?? niceSteps[niceSteps.length - 1]
       // Minimum "visually round" step for the value magnitude — labels should land
-      // on .0 or .5 boundaries (e.g. 23.0, 23.5 for values ~23; 230, 235 for ~230).
-      // Uses mag/20 so the floor is the 5-family step one decade below the values.
+      // on integers for values ≥10 (e.g. 60,61,62 not 60.5,61.0,61.5).
       const maxAbs = Math.max(Math.abs(realMin), Math.abs(realMax), 1)
       const mag = Math.pow(10, Math.floor(Math.log10(maxAbs)))
-      const magStep = niceSteps.find(s => s >= mag / 20) ?? 0.1
+      const magStep = niceSteps.find(s => s >= mag / 10) ?? 0.1
       let step = Math.max(rangeStep, magStep)
-      // Upgrade to the largest nice step that still yields >= 3 intervals after snapping
-      // AND the snapped range doesn't blow up beyond 2.5× the raw data range.
-      // This maximises label "roundness" (e.g. 20,25,30,35 instead of 24,26,28,30,32)
-      // while preventing excessive dead space for narrow-range data.
+      // Upgrade to the largest nice step that still yields >= 3 intervals
+      // AND each boundary doesn't extend more than 80% of one step beyond the data.
+      // This gives rounder labels (e.g. 20,25,30,35 instead of 24,26,28,30,32)
+      // while preventing excessive dead space (e.g. blocking 0-80 for data 19.5-65).
       let idx = niceSteps.indexOf(step)
       while (idx >= 0 && idx < niceSteps.length - 1) {
         const bigStep = niceSteps[idx + 1]
         const tMin = Math.floor(realMin / bigStep) * bigStep
         const tMax = Math.ceil(realMax / bigStep) * bigStep
-        if ((tMax - tMin) / bigStep >= 3 && (tMax - tMin) <= rawRange * 2.5) { step = bigStep; idx++ }
+        const intervals = (tMax - tMin) / bigStep
+        const lowPad = realMin - tMin
+        const highPad = tMax - realMax
+        if (intervals >= 2 && lowPad <= bigStep * 0.8 && highPad <= bigStep * 0.8) { step = bigStep; idx++ }
         else break
       }
+      // Snap boundaries to step multiples
       realMin = Math.floor(realMin / step) * step
       realMax = Math.ceil(realMax / step) * step
-      // Ensure at least 2 steps so the band isn't degenerate
+      // Ensure at least 2 step intervals so the band isn't degenerate
       if ((realMax - realMin) / step < 2) {
         realMax = realMin + step * 2
       }
