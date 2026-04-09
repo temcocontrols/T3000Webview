@@ -31,7 +31,7 @@ interface HistoryEntry {
 /* ------------------------------------------------------------------ */
 
 const DEFAULT_PAGE_STYLES = {
-  bg: '#003366',
+  bg: '#2c7cc4',
   highlight: '#008080',
   fontFamily: "'Fira Mono', 'Consolas', monospace",
   fontSize: '24px',
