@@ -93,7 +93,7 @@ const useStyles = makeStyles({
   },
   opsTitle: {
     fontWeight: 600,
-    fontSize: '14px',
+    fontSize: '12px',
     fontFamily: 'monospace',
     color: tokens.colorNeutralForeground1,
     marginBottom: '2px',
@@ -104,8 +104,8 @@ const useStyles = makeStyles({
     gap: '6px',
   },
   opsBtn: {
-    padding: '5px 8px',
-    fontSize: '13px',
+    padding: '4px 6px',
+    fontSize: '11px',
     fontFamily: 'monospace',
     color: tokens.colorBrandForeground1,
     backgroundColor: 'transparent',

@@ -114,6 +114,10 @@ const useStyles = makeStyles({
     letterSpacing: '0.05em',
     marginBottom: '2px',
   },
+  canvasCheckbox: {
+    fontSize: '11px',
+    '& label': { fontSize: '11px' },
+  },
   widgetCount: {
     fontSize: '11px',
     fontFamily: 'monospace',
@@ -219,11 +223,13 @@ export const PageTabs: React.FC<PageTabsProps> = ({
         <div className={styles.canvasFooter}>
           <div className={styles.canvasTitle}>Canvas</div>
           <Checkbox
+            className={styles.canvasCheckbox}
             checked={showGrid ?? false}
             onChange={(_, d) => onShowGridChange(!!d.checked)}
             label="Grid"
           />
           <Checkbox
+            className={styles.canvasCheckbox}
             checked={showCoords ?? false}
             onChange={(_, d) => onShowCoordsChange?.(!!d.checked)}
             label="Coords"

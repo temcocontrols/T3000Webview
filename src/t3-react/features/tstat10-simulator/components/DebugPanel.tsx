@@ -11,19 +11,19 @@ const useStyles = makeStyles({
   root: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
-    padding: '12px 14px',
+    gap: '6px',
+    padding: '10px 12px',
     backgroundColor: '#f7f7f7',
     borderRadius: '10px',
     border: '1px solid #ccc',
     minWidth: '220px',
     maxWidth: '300px',
     fontFamily: "'Fira Mono', 'Consolas', 'Menlo', monospace",
-    fontSize: '13px',
+    fontSize: '11px',
   },
   title: {
     fontWeight: 600,
-    fontSize: '14px',
+    fontSize: '12px',
     color: tokens.colorNeutralForeground1,
     marginBottom: '2px',
     fontFamily: "'Fira Mono', 'Consolas', monospace",
@@ -36,25 +36,25 @@ const useStyles = makeStyles({
   },
   readoutLabel: {
     fontWeight: 700,
-    fontSize: '13px',
+    fontSize: '11px',
     color: '#333',
-    minWidth: '54px',
+    minWidth: '46px',
     fontFamily: "'Fira Mono', 'Consolas', monospace",
   },
   readoutBadge: {
-    fontSize: '13px',
+    fontSize: '11px',
     fontFamily: "'Fira Mono', 'Consolas', monospace",
     fontWeight: 700,
     color: '#fff',
     backgroundColor: '#1976d2',
-    padding: '3px 10px',
+    padding: '2px 8px',
     borderRadius: '4px',
-    minWidth: '80px',
+    minWidth: '70px',
     textAlign: 'center',
     display: 'inline-block',
   },
   coordsText: {
-    fontSize: '13px',
+    fontSize: '11px',
     fontFamily: "'Fira Mono', 'Consolas', monospace",
     color: '#333',
     fontWeight: 600,
@@ -67,17 +67,17 @@ const useStyles = makeStyles({
   },
   redboxLabel: {
     fontWeight: 700,
-    fontSize: '13px',
+    fontSize: '11px',
     color: '#b00',
     fontFamily: "'Fira Mono', 'Consolas', monospace",
   },
   redboxBtn: {
-    width: '38px',
-    minWidth: '38px',
-    maxWidth: '38px',
-    height: '24px',
+    width: '36px',
+    minWidth: '36px',
+    maxWidth: '36px',
+    height: '22px',
     fontFamily: "'Fira Mono', 'Consolas', monospace",
-    fontSize: '13px',
+    fontSize: '11px',
     fontWeight: 700,
     color: '#fff',
     backgroundColor: '#1976d2',
@@ -88,6 +88,10 @@ const useStyles = makeStyles({
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'default',
+  },
+  debugCheckbox: {
+    fontSize: '11px',
+    '& label': { fontSize: '11px' },
   },
   // Mobile: horizontal collapsed accordion
   mobileRoot: {
@@ -191,21 +195,25 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
       <Text className={styles.title}>Tstat10 Debug</Text>
 
       <Checkbox
+        className={styles.debugCheckbox}
         label="Simulated Keypad"
         checked={simulatedKeypad}
         onChange={(_, d) => onToggleSimulatedKeypad?.(!!d.checked)}
       />
       <Checkbox
+        className={styles.debugCheckbox}
         label="Grid Layer"
         checked={showGrid}
         onChange={(_, d) => onToggleGrid(!!d.checked)}
       />
       <Checkbox
+        className={styles.debugCheckbox}
         label="Coords"
         checked={showCoords}
         onChange={(_, d) => onToggleCoords(!!d.checked)}
       />
       <Checkbox
+        className={styles.debugCheckbox}
         label="Redbox"
         checked={showRedbox}
         onChange={(_, d) => onToggleRedbox?.(!!d.checked)}
@@ -221,6 +229,7 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
       )}
 
       <Checkbox
+        className={styles.debugCheckbox}
         label="Keypad"
         checked={showKeypadDebug}
         onChange={(_, d) => onToggleKeypadDebug?.(!!d.checked)}
