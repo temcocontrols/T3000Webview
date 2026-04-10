@@ -404,7 +404,12 @@ export const Tstat10SimulatorPage: React.FC = () => {
         <div className={styles.leftPanel} ref={leftRef}>
           <div style={{ transform: `scale(${scale})`, transformOrigin: 'top center' }}>
             <ThermostatBezel onButtonPress={handleButtonPress}>
-              <LcdContainer>
+              <LcdContainer
+                showGrid={showGrid}
+                showCoords={showCoords}
+                showRedbox={showRedbox}
+                redboxCoords={redboxCoords}
+              >
                 {sim.screen === 'main' ? (
                   <ThermostatDisplay
                     data={sim.data}
@@ -417,10 +422,6 @@ export const Tstat10SimulatorPage: React.FC = () => {
                     focusedIndex={sim.menuFocusedIndex}
                     menuStyles={sim.menuStyles}
                     isSetupMenu={sim.screen === 'setup'}
-                    showGrid={showGrid}
-                    showCoords={showCoords}
-                    showRedbox={showRedbox}
-                    redboxCoords={redboxCoords}
                   />
                 )}
               </LcdContainer>

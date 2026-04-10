@@ -39,7 +39,7 @@ export const Tstat10SimulatorPageMobile: React.FC = () => {
   return (
     <div className={simStyles.simulatorWrapperMobile}>
       <div className={simStyles.mobileBezel}>
-        <LcdContainer mobile>
+        <LcdContainer mobile showGrid={showGrid} showCoords={showCoords}>
           {sim.screen === 'main' ? (
             <ThermostatDisplay
               data={sim.data}
@@ -50,8 +50,6 @@ export const Tstat10SimulatorPageMobile: React.FC = () => {
               menuRows={sim.menuRows}
               focusedIndex={sim.focusedIndex}
               menuStyles={sim.menuStyles}
-              showGrid={showGrid}
-              showCoords={showCoords}
             />
           )}
         </LcdContainer>
