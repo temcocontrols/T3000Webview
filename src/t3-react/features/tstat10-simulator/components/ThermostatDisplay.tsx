@@ -111,9 +111,6 @@ export const ThermostatDisplay: React.FC<ThermostatDisplayProps> = ({ data, focu
       </div>
     ))}
 
-    {/* "e" indicator */}
-    <div className={styles.eText}>e</div>
-
     {/* Bottom icon bar — 4 SVG icon boxes */}
     <div className={styles.iconBar}>
       <div className={styles.iconBox}><DayNightIcon /></div>
