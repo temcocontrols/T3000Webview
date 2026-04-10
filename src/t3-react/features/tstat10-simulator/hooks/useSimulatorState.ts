@@ -177,11 +177,11 @@ export function useSimulatorState() {
 
   navImpl.current = (direction) => {
     if (screen === 'main') {
-      // Main display: left/right = cycle SET/FAN/SYS, up/down = change value
+      // Main display: right = cycle SET/FAN/SYS, left = go to setup menu, up/down = change value
       if (direction === 'right') {
         setMainFocusedIndex((prev) => (prev + 1) % MAIN_ROWS.length);
       } else if (direction === 'left') {
-        setMainFocusedIndex((prev) => (prev - 1 + MAIN_ROWS.length) % MAIN_ROWS.length);
+        setScreen('setup');
       } else {
         const rowCfg = MAIN_ROWS[mainFocusedIndex];
         setData((prev) => {
