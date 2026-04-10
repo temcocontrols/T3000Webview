@@ -301,16 +301,6 @@ export const Tstat10SimulatorPage: React.FC = () => {
   const headerControls = portalTarget
     ? createPortal(
         <>
-          {designer.mode === 'design' && (
-            <PageTabs
-              pages={designer.pages}
-              selectedPageId={designer.selectedPageId}
-              onSelectPage={designer.setSelectedPageId}
-              onAddPage={designer.addPage}
-              onRemovePage={designer.removePage}
-              onRenamePage={designer.renamePage}
-            />
-          )}
           <div className={styles.modeToggle}>
             <Tooltip content="Design Mode" relationship="label">
               <ToggleButton
@@ -348,14 +338,30 @@ export const Tstat10SimulatorPage: React.FC = () => {
       <div className={styles.root}>
         {headerControls}
 
-        {/* Body: Toolbox | Canvas + tabs | Properties */}
+        {/* Body: Toolbox | PageTabs | Canvas | Properties */}
         <div className={styles.body}>
           {/* Left: Widget Toolbox */}
           <WidgetToolbox
             onDragStart={(type) => designer.setDragItem({ source: 'toolbox', widgetType: type })}
           />
 
-          {/* Center: Canvas + page tabs + debug bar */}
+          {/* Page list (vertical) */}
+          <PageTabs
+            pages={designer.pages}
+            selectedPageId={designer.selectedPageId}
+            onSelectPage={designer.setSelectedPageId}
+            onAddPage={designer.addPage}
+            onRemovePage={designer.removePage}
+            onRenamePage={designer.renamePage}
+            vertical
+            showGrid={showGrid}
+            onShowGridChange={setShowGrid}
+            showCoords={showCoords}
+            onShowCoordsChange={setShowCoords}
+            widgetCount={designer.currentPage.widgets.length}
+          />
+
+          {/* Center: Canvas + debug bar */}
           <div className={`${styles.designCenter} ${simStyles.thinScroll}`}>
             {/* Canvas with LcdPageRenderer underneath */}
             <DesignCanvas
@@ -369,21 +375,6 @@ export const Tstat10SimulatorPage: React.FC = () => {
               showGrid={showGrid}
               showCoords={showCoords}
             />
-
-            {/* Compact debug bar */}
-            <div className={styles.debugBar}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                <input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} />
-                Grid
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                <input type="checkbox" checked={showCoords} onChange={e => setShowCoords(e.target.checked)} />
-                Coords
-              </label>
-              <span style={{ marginLeft: 'auto', opacity: 0.6 }}>
-                {designer.currentPage.widgets.length} widgets
-              </span>
-            </div>
           </div>
 
           {/* Right: Properties Panel */}

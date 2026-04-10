@@ -4,8 +4,9 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { makeStyles, tokens, Button } from '@fluentui/react-components';
+import { makeStyles, tokens, Button, Checkbox, Text } from '@fluentui/react-components';
 import { AddRegular } from '@fluentui/react-icons';
+import simStyles from '../styles/simulator.module.css';
 import type { PageDefinition } from './LcdPageRenderer';
 
 const useStyles = makeStyles({
@@ -15,6 +16,25 @@ const useStyles = makeStyles({
     gap: '2px',
     padding: '4px 0',
     flexWrap: 'wrap',
+  },
+  rootVertical: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1px',
+    padding: '8px 0',
+    width: '140px',
+    flexShrink: 0,
+    overflowY: 'auto',
+    height: '100%',
+    borderRight: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  verticalTitle: {
+    fontWeight: 600,
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.05em',
+    padding: '0 10px 4px',
   },
   tab: {
     display: 'flex',
@@ -33,10 +53,33 @@ const useStyles = makeStyles({
       backgroundColor: tokens.colorNeutralBackground1Hover,
     },
   },
+  tabVertical: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    padding: '5px 10px',
+    borderRadius: '0',
+    fontSize: '11px',
+    fontFamily: 'monospace',
+    cursor: 'pointer',
+    border: 'none',
+    borderLeft: '3px solid transparent',
+    backgroundColor: 'transparent',
+    color: tokens.colorNeutralForeground2,
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground1Hover,
+    },
+  },
   activeTab: {
     backgroundColor: tokens.colorNeutralBackground1,
     color: tokens.colorBrandForeground1,
     fontWeight: 600,
+  },
+  activeTabVertical: {
+    backgroundColor: tokens.colorNeutralBackground1Hover,
+    color: tokens.colorBrandForeground1,
+    fontWeight: 600,
+    borderLeftColor: tokens.colorBrandForeground1,
   },
   closeBtn: {
     padding: 0,
@@ -54,6 +97,30 @@ const useStyles = makeStyles({
   addBtn: {
     marginLeft: '4px',
   },
+  canvasFooter: {
+    marginTop: 'auto',
+    paddingTop: '8px',
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    padding: '8px 10px 4px',
+  },
+  canvasTitle: {
+    fontWeight: 600,
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.05em',
+    marginBottom: '2px',
+  },
+  widgetCount: {
+    fontSize: '11px',
+    fontFamily: 'monospace',
+    color: tokens.colorNeutralForeground3,
+    opacity: 0.7,
+    padding: '2px 0',
+  },
 });
 
 interface PageTabsProps {
@@ -63,6 +130,12 @@ interface PageTabsProps {
   onAddPage: () => void;
   onRemovePage: (id: string) => void;
   onRenamePage: (id: string, label: string) => void;
+  vertical?: boolean;
+  showGrid?: boolean;
+  onShowGridChange?: (v: boolean) => void;
+  showCoords?: boolean;
+  onShowCoordsChange?: (v: boolean) => void;
+  widgetCount?: number;
 }
 
 export const PageTabs: React.FC<PageTabsProps> = ({
@@ -72,6 +145,12 @@ export const PageTabs: React.FC<PageTabsProps> = ({
   onAddPage,
   onRemovePage,
   onRenamePage,
+  vertical = false,
+  showGrid,
+  onShowGridChange,
+  showCoords,
+  onShowCoordsChange,
+  widgetCount,
 }) => {
   const styles = useStyles();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -90,11 +169,16 @@ export const PageTabs: React.FC<PageTabsProps> = ({
   }, [editingId, editLabel, onRenamePage]);
 
   return (
-    <div className={styles.root}>
+    <div className={vertical ? `${styles.rootVertical} ${simStyles.thinScroll}` : styles.root}>
+      {vertical && <div className={styles.verticalTitle}>Pages</div>}
       {pages.map(p => (
         <div
           key={p.id}
-          className={`${styles.tab} ${p.id === selectedPageId ? styles.activeTab : ''}`}
+          className={`${vertical ? styles.tabVertical : styles.tab} ${
+            p.id === selectedPageId
+              ? (vertical ? styles.activeTabVertical : styles.activeTab)
+              : ''
+          }`}
           onClick={() => onSelectPage(p.id)}
           onDoubleClick={() => startRename(p.id, p.label)}
         >
@@ -131,6 +215,24 @@ export const PageTabs: React.FC<PageTabsProps> = ({
         onClick={onAddPage}
         title="Add new page"
       />
+      {vertical && onShowGridChange && (
+        <div className={styles.canvasFooter}>
+          <div className={styles.canvasTitle}>Canvas</div>
+          <Checkbox
+            checked={showGrid ?? false}
+            onChange={(_, d) => onShowGridChange(!!d.checked)}
+            label="Grid"
+          />
+          <Checkbox
+            checked={showCoords ?? false}
+            onChange={(_, d) => onShowCoordsChange?.(!!d.checked)}
+            label="Coords"
+          />
+          {widgetCount !== undefined && (
+            <span className={styles.widgetCount}>{widgetCount} widgets</span>
+          )}
+        </div>
+      )}
     </div>
   );
 };
