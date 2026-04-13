@@ -4649,7 +4649,7 @@
             const dRange = dMax - dMin
 
             const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
-            const step = niceSteps.find(s => s >= Math.max(dRange, 0.001) / 8) ?? niceSteps[niceSteps.length - 1]
+            let step = niceSteps.find(s => s >= Math.max(dRange, 0.001) / 8) ?? niceSteps[niceSteps.length - 1]
 
             let sMinSteps = Math.floor(dMin / step)
             let sMaxSteps = Math.ceil(dMax / step)
@@ -4671,6 +4671,21 @@
               sMaxSteps = Math.max(sMaxSteps, nSteps)
               sMax = sMaxSteps * step
               nSteps = sMaxSteps
+            }
+
+            // Round boundaries to visually clean multiples (5, 10, 50, etc.)
+            const maxAbs1 = Math.max(Math.abs(dMin), Math.abs(dMax), 1)
+            const mag1 = Math.pow(10, Math.floor(Math.log10(maxAbs1)))
+            const boundaryRound1 = niceSteps.find(s => s >= mag1 / 2) ?? step
+            if (boundaryRound1 > step) {
+              const rMin = Math.floor(sMin / boundaryRound1) * boundaryRound1
+              const rMax = Math.ceil(sMax / boundaryRound1) * boundaryRound1
+              if ((rMax - rMin) <= Math.max(dRange, 1) * 3) {
+                sMin = rMin
+                sMax = rMax
+                step = niceSteps.find(s => s >= (sMax - sMin) / 8) ?? step
+                nSteps = Math.round((sMax - sMin) / step)
+              }
             }
 
             scale.min = sMin
@@ -4768,7 +4783,7 @@
             const dRange = dMax - dMin
 
             const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
-            const step = niceSteps.find(s => s >= Math.max(dRange, 0.001) / 8) ?? niceSteps[niceSteps.length - 1]
+            let step = niceSteps.find(s => s >= Math.max(dRange, 0.001) / 8) ?? niceSteps[niceSteps.length - 1]
 
             let sMinSteps = Math.floor(dMin / step)
             let sMaxSteps = Math.ceil(dMax / step)
@@ -4790,6 +4805,21 @@
               sMaxSteps = Math.max(sMaxSteps, nSteps)
               sMax = sMaxSteps * step
               nSteps = sMaxSteps
+            }
+
+            // Round boundaries to visually clean multiples (5, 10, 50, etc.)
+            const maxAbs2 = Math.max(Math.abs(dMin), Math.abs(dMax), 1)
+            const mag2 = Math.pow(10, Math.floor(Math.log10(maxAbs2)))
+            const boundaryRound2 = niceSteps.find(s => s >= mag2 / 2) ?? step
+            if (boundaryRound2 > step) {
+              const rMin = Math.floor(sMin / boundaryRound2) * boundaryRound2
+              const rMax = Math.ceil(sMax / boundaryRound2) * boundaryRound2
+              if ((rMax - rMin) <= Math.max(dRange, 1) * 3) {
+                sMin = rMin
+                sMax = rMax
+                step = niceSteps.find(s => s >= (sMax - sMin) / 8) ?? step
+                nSteps = Math.round((sMax - sMin) / step)
+              }
             }
 
             scale.min = sMin
@@ -4887,7 +4917,7 @@
             const dRange = dMax - dMin
 
             const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
-            const step = niceSteps.find(s => s >= Math.max(dRange, 0.001) / 8) ?? niceSteps[niceSteps.length - 1]
+            let step = niceSteps.find(s => s >= Math.max(dRange, 0.001) / 8) ?? niceSteps[niceSteps.length - 1]
 
             let sMinSteps = Math.floor(dMin / step)
             let sMaxSteps = Math.ceil(dMax / step)
@@ -4909,6 +4939,21 @@
               sMaxSteps = Math.max(sMaxSteps, nSteps)
               sMax = sMaxSteps * step
               nSteps = sMaxSteps
+            }
+
+            // Round boundaries to visually clean multiples (5, 10, 50, etc.)
+            const maxAbs3 = Math.max(Math.abs(dMin), Math.abs(dMax), 1)
+            const mag3 = Math.pow(10, Math.floor(Math.log10(maxAbs3)))
+            const boundaryRound3 = niceSteps.find(s => s >= mag3 / 2) ?? step
+            if (boundaryRound3 > step) {
+              const rMin = Math.floor(sMin / boundaryRound3) * boundaryRound3
+              const rMax = Math.ceil(sMax / boundaryRound3) * boundaryRound3
+              if ((rMax - rMin) <= Math.max(dRange, 1) * 3) {
+                sMin = rMin
+                sMax = rMax
+                step = niceSteps.find(s => s >= (sMax - sMin) / 8) ?? step
+                nSteps = Math.round((sMax - sMin) / step)
+              }
             }
 
             scale.min = sMin
@@ -9050,6 +9095,23 @@
         realMax = realMin + step * 2
       }
 
+      // Round boundaries to visually clean multiples (5, 10, 50, etc.)
+      // so axis labels start at values like 20, 55, 500 instead of 22, 57, 520
+      const snappedRange = realMax - realMin // range AFTER step-snapping (≥ rawRange)
+      const boundaryRound = niceSteps.find(s => s >= mag / 2) ?? step
+      if (boundaryRound > step) {
+        const rMin = Math.floor(realMin / boundaryRound) * boundaryRound
+        const rMax = Math.ceil(realMax / boundaryRound) * boundaryRound
+        // Only apply if the expanded range stays reasonable (≤ 3× snapped span)
+        if ((rMax - rMin) <= Math.max(snappedRange * 3, boundaryRound * 4)) {
+          realMin = rMin
+          realMax = rMax
+          // Recompute step for the expanded range to maintain ~5-6 ticks
+          step = niceSteps.find(s => s >= (realMax - realMin) / 6) ?? step
+          step = Math.max(step, magStep)
+        }
+      }
+
       return {
         unit: items[0].unit || groupKey,
         colors: items.map(it => it.color),
@@ -10768,6 +10830,10 @@
       `\n  monitorConfig raw intervals: hour=${monitorConfigData?.hour_interval_time} min=${monitorConfigData?.minute_interval_time} sec=${monitorConfigData?.second_interval_time}` +
       `\n  monitorConfig.dataIntervalMs=${monitorConfigData?.dataIntervalMs}`
     )
+    // Fire one immediate poll so the Live indicator shows a timestamp right away
+    // instead of staying "N/A" until the first interval tick.
+    addRealtimeDataPoint()
+
     realtimeInterval = setInterval(addRealtimeDataPoint, dataInterval)
     LogUtil.Info('✅Interval created - ID:', realtimeInterval, '- fires every', dataInterval / 1000, 'seconds')
   }
