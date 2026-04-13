@@ -3850,7 +3850,28 @@
       },
       {
         id: 'dividerBridge',
-        afterRender: () => { /* no-op: bridge canvas removed in favour of unified single chart */ }
+        afterDatasetsDraw: (chart: any) => {
+          const ctx = chart.ctx
+          const chartArea = chart.chartArea
+          if (!chartArea) return
+          const yScale = chart.scales.y
+          if (!yScale) return
+          const bands = yBandInfo.value
+          if (bands.length === 0) return
+          const aOffset = unifiedAnalogOffset.value
+          ctx.save()
+          ctx.strokeStyle = '#666'
+          ctx.lineWidth = 1
+          // Draw a line at the min (bottom) and max (top) of every band
+          for (let i = 0; i <= bands.length; i++) {
+            const py = yScale.getPixelForValue(aOffset + i * BAND_SIZE)
+            ctx.beginPath()
+            ctx.moveTo(chartArea.left, py)
+            ctx.lineTo(chartArea.right, py)
+            ctx.stroke()
+          }
+          ctx.restore()
+        }
       },
       {
         // Draw a light grey background band behind each digital binary row so
