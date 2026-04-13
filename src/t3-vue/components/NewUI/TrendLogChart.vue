@@ -1751,12 +1751,12 @@
     const device = panelsData.find((d: any) =>
       String(d.pid) === String(panelId) && d.id === idToFind
     )
-    if (!device) return ''
+    if (!device) return `${panelId}-${idToFind}`
 
-    // Priority: description (Full Label, 20-char) → label (8-char) → panelId + id fallback
+    // Priority: description (Full Label, 20-char) → label (8-char) → panelId-id fallback
     return (device.description && device.description.trim())
       || (device.label && device.label.trim())
-      || `${panelId}_${idToFind}`
+      || `${panelId}-${idToFind}`
   }
 
   // Helper: Get digital_analog field from T3000_Data.value.panelsData
