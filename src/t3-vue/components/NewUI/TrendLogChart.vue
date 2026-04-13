@@ -193,13 +193,7 @@
           <!-- Data Series - Analog + Digital -->
           <div class="control-section">
             <div class="data-series-header">
-              <!-- Single line: Title, count, and status -->
-              <div class="header-line-1">
-                <div :title="devVersion" class="chart-title-with-version">
-                  {{ chartTitle }}
-                </div>
-
-              </div> <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
+              <!-- Line 2: All dropdown, By Type dropdown -->
               <div class="header-line-2">
                 <div class="left-controls">
                   <a-dropdown>
