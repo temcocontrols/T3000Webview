@@ -1446,6 +1446,11 @@
   let chartCreationRetries = 0
   const MAX_CHART_CREATION_RETRIES = 10 // Maximum retries before giving up
 
+  // Cache last-known Y-axis ranges so axes stay visible when scrolling to empty data regions
+  const lastKnownY1Range = ref<{ min: number; max: number; step: number; nSteps: number } | null>(null)
+  const lastKnownY2Range = ref<{ min: number; max: number; step: number; nSteps: number } | null>(null)
+  const lastKnownY3Range = ref<{ min: number; max: number; step: number; nSteps: number } | null>(null)
+
   // 🆕 Gap detection threshold (minutes) - configurable threshold for breaking lines when data gaps occur
   // Default: 1 minute (reasonable since Action 15 runs every 15s minimum - detects ~4 missed data points)
   const gapDetectionThreshold = ref(1) // Default: 1 minute
@@ -4591,6 +4596,7 @@
 
             if (y1Datasets.length === 0) {
               scale.display = false
+              lastKnownY1Range.value = null
               return
             }
 
@@ -4613,7 +4619,17 @@
             })
 
             if (allValues.length === 0) {
-              scale.display = false
+              // Use cached range so Y-axis stays visible when scrolling to empty region
+              if (lastKnownY1Range.value) {
+                scale.min = lastKnownY1Range.value.min
+                scale.max = lastKnownY1Range.value.max
+                scale.options.ticks.stepSize = lastKnownY1Range.value.step
+                scale.options.ticks.maxTicksLimit = lastKnownY1Range.value.nSteps + 1
+                scale.options._pwClusters = null
+                scale.options._pwDistinct = null
+              } else {
+                scale.display = false
+              }
               return
             }
 
@@ -4670,6 +4686,9 @@
 
             scale.options.ticks.stepSize = step
             scale.options.ticks.maxTicksLimit = nSteps + 1
+
+            // Cache last-known-good range for y1
+            lastKnownY1Range.value = { min: sMin, max: sMax, step, nSteps }
           }
         },
         // Y2 axis (left side, 3rd value-range group)
@@ -4726,6 +4745,7 @@
 
             if (y2Datasets.length === 0) {
               scale.display = false
+              lastKnownY2Range.value = null
               return
             }
 
@@ -4747,7 +4767,16 @@
             })
 
             if (allValues.length === 0) {
-              scale.display = false
+              if (lastKnownY2Range.value) {
+                scale.min = lastKnownY2Range.value.min
+                scale.max = lastKnownY2Range.value.max
+                scale.options.ticks.stepSize = lastKnownY2Range.value.step
+                scale.options.ticks.maxTicksLimit = lastKnownY2Range.value.nSteps + 1
+                scale.options._pwClusters = null
+                scale.options._pwDistinct = null
+              } else {
+                scale.display = false
+              }
               return
             }
 
@@ -4804,6 +4833,8 @@
 
             scale.options.ticks.stepSize = step
             scale.options.ticks.maxTicksLimit = nSteps + 1
+
+            lastKnownY2Range.value = { min: sMin, max: sMax, step, nSteps }
           }
         },
         // Y3 axis (left side, 4th value-range group)
@@ -4860,6 +4891,7 @@
 
             if (y3Datasets.length === 0) {
               scale.display = false
+              lastKnownY3Range.value = null
               return
             }
 
@@ -4881,7 +4913,16 @@
             })
 
             if (allValues.length === 0) {
-              scale.display = false
+              if (lastKnownY3Range.value) {
+                scale.min = lastKnownY3Range.value.min
+                scale.max = lastKnownY3Range.value.max
+                scale.options.ticks.stepSize = lastKnownY3Range.value.step
+                scale.options.ticks.maxTicksLimit = lastKnownY3Range.value.nSteps + 1
+                scale.options._pwClusters = null
+                scale.options._pwDistinct = null
+              } else {
+                scale.display = false
+              }
               return
             }
 
@@ -4938,6 +4979,8 @@
 
             scale.options.ticks.stepSize = step
             scale.options.ticks.maxTicksLimit = nSteps + 1
+
+            lastKnownY3Range.value = { min: sMin, max: sMax, step, nSteps }
           }
         }
       }
@@ -9093,7 +9136,13 @@
         step
       }
     })
-    yBandInfo.value = newBandInfo
+    // Preserve last-known-good Y-axis bands when scrolling to empty data region
+    if (newBandInfo.length > 0) {
+      yBandInfo.value = newBandInfo
+    } else if (yBandInfo.value.length === 0) {
+      yBandInfo.value = newBandInfo // first load, nothing to cache
+    }
+    // else: keep previous yBandInfo.value so Y-axis labels stay visible
 
     // Series (panelId:id) → band index map — must include panelId because multiple
     // series from different panels can share the same point id (e.g. all VAR1).
