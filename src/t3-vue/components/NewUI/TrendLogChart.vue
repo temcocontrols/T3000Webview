@@ -1858,6 +1858,11 @@
       const panelId: number = rawPanelId === 0 ? mainPanelIdForSeries : rawPanelId
       const { point_type: pointType, point_number: pointNumber } = inputItem
 
+      // Skip empty/unused MON input slots (point_type=0 or undefined means unconfigured)
+      if (!pointType || pointType <= 0) {
+        continue
+      }
+
       // Get all required info in one pass
       const pointTypeInfo = getPointTypeInfo(pointType)
       const digitalAnalog = getDigitalAnalogFromPanelData(panelId, pointType, pointNumber)
@@ -1878,6 +1883,16 @@
       }
 
       if (!description) {
+        // Diagnostic: log first few failures so we can see the raw input data
+        if (index < 5) {
+          LogUtil.Debug('⚠️ generateDataSeries: filtered (no description)', {
+            index, rawPanelId, panelId, pointType, pointNumber,
+            category: pointTypeInfo.category,
+            idToFind: `${pointTypeInfo.category}${pointNumber + 1}`,
+            panelsDataLength: T3000_Data.value.panelsData?.length || 0,
+            rawInputItem: JSON.parse(JSON.stringify(inputItem))
+          })
+        }
         // Filtering out undescribed data (prevents demo names)
         continue; // Skip this item
       }
@@ -2064,6 +2079,15 @@
   // Regenerate data series when data source changes
   const regenerateDataSeries = () => {
     const newSeries = generateDataSeries()
+
+    // Guard: Don't wipe existing good series if new generation produces nothing.
+    // This prevents data loss when freshMonitorData has unresolvable inputs
+    // (e.g. foreign-panel items whose panelsData hasn't been loaded yet).
+    if (newSeries.length === 0 && dataSeries.value.length > 0) {
+      LogUtil.Warn('🔄 regenerateDataSeries: New generation produced 0 series but existing has', dataSeries.value.length, '— keeping existing')
+      return
+    }
+
     const existingSeriesMap = new Map()
 
     // Create a map of existing series for efficient lookup
@@ -3067,9 +3091,20 @@
         isRealTime.value = false
       }
       if (typeof state.timeOffset === 'number') {
-        timeOffset.value = state.timeOffset
+        // FIX: Only restore negative offsets (user scrolled into the past).
+        // A positive timeOffset shifts the chart window into the future, which
+        // causes the chart to appear blank on page load because all existing
+        // data points fall outside the visible time range. This happens when a
+        // stale offset (e.g. +90 min) is persisted from a previous navigation
+        // session and then restored before fresh data arrives.
+        if (state.timeOffset <= 0) {
+          timeOffset.value = state.timeOffset
+        } else {
+          LogUtil.Info('📦 TrendLogChart: Ignoring stale positive timeOffset from localStorage', { storedOffset: state.timeOffset })
+          timeOffset.value = 0
+        }
       }
-      LogUtil.Info('📦 TrendLogChart: View state restored from localStorage', state)
+      LogUtil.Info('📦 TrendLogChart: View state restored from localStorage', { ...state, appliedTimeOffset: timeOffset.value })
     } catch (_e) { /* Malformed state ignore */ }
     _restoringViewState = false
   }
@@ -12603,6 +12638,92 @@
             console.log('[SETTINGS] Monitor Index   :', monFromAction0.index)
             console.log('[SETTINGS] Input channels  :', monFromAction0.input?.length ?? 0)
             console.log('[SETTINGS] Full data       :', JSON.parse(JSON.stringify(monFromAction0)))
+
+            // 🆕 FIX: Build monitorConfig.value directly from Action 0 data
+            // getMonitorConfigFromT3000Data() relies on t3000DataManager which often isn't ready yet,
+            // causing monitorConfig to stay null and addRealtimeDataPoint to exit every cycle.
+            const urlInputItems = props.itemData?.t3Entry?.input || []
+            const urlRangeItems = props.itemData?.t3Entry?.range || []
+            const monInputs = monFromAction0.input || []
+
+            // Match URL inputs against MON inputs (same logic as getMonitorConfigFromT3000Data)
+            let builtInputItems: any[] = []
+            let builtRanges: any[] = []
+
+            if (urlInputItems.length > 0) {
+              for (let ui = 0; ui < urlInputItems.length; ui++) {
+                const urlItem = urlInputItems[ui]
+                const match = monInputs.find((ci: any) =>
+                  ci.panel === urlItem.panel &&
+                  ci.point_number === urlItem.point_number &&
+                  ci.point_type === urlItem.point_type
+                )
+                if (match) {
+                  builtInputItems.push({
+                    panel: match.panel,
+                    point_number: match.point_number,
+                    index: ui,
+                    point_type: match.point_type,
+                    network: match.network,
+                    sub_panel: match.sub_panel
+                  })
+                  builtRanges.push(urlRangeItems[ui] || 0)
+                }
+              }
+            }
+
+            // Fallback: if URL matching found nothing, use all MON inputs directly
+            if (builtInputItems.length === 0 && monInputs.length > 0) {
+              LogUtil.Warn('⚠️ STEP 0: URL input matching failed, using all MON inputs as fallback')
+              for (let mi = 0; mi < monInputs.length; mi++) {
+                const inp = monInputs[mi]
+                if (inp && inp.panel !== undefined && inp.point_number !== undefined) {
+                  builtInputItems.push({
+                    panel: inp.panel,
+                    point_number: inp.point_number,
+                    index: mi,
+                    point_type: inp.point_type,
+                    network: inp.network,
+                    sub_panel: inp.sub_panel
+                  })
+                  builtRanges.push((monFromAction0.range && monFromAction0.range[mi]) || 0)
+                }
+              }
+            }
+
+            if (builtInputItems.length > 0) {
+              const propEntry = (props.itemData as any)?.t3Entry
+              const intervalMs = calculateT3000Interval({
+                hour_interval_time: propEntry?.hour_interval_time ?? monFromAction0.hour_interval_time ?? 0,
+                minute_interval_time: propEntry?.minute_interval_time ?? monFromAction0.minute_interval_time ?? 0,
+                second_interval_time: propEntry?.second_interval_time ?? monFromAction0.second_interval_time ?? 0
+              })
+
+              monitorConfig.value = {
+                id: monFromAction0.id,
+                label: monFromAction0.label || monFromAction0.description || `Monitor ${monFromAction0.id}`,
+                pid: monFromAction0.pid ?? urlPanelId,
+                type: monFromAction0.type,
+                status: monFromAction0.status,
+                numInputs: builtInputItems.length,
+                inputItems: builtInputItems,
+                ranges: builtRanges,
+                dataIntervalMs: intervalMs,
+                originalConfig: monFromAction0
+              }
+
+              LogUtil.Info('✅ STEP 0: Built monitorConfig from Action 0 data', {
+                inputItemsCount: builtInputItems.length,
+                dataIntervalMs: intervalMs,
+                pid: monitorConfig.value.pid
+              })
+
+              // Start real-time polling immediately since we have a valid config
+              startRealTimeUpdates()
+            } else {
+              LogUtil.Warn('⚠️ STEP 0: Could not build monitorConfig — no valid input items found')
+            }
+
             fetchFreshPointsForAllPanels()
               .catch(err => LogUtil.Warn('⚠️ fetchFreshPointsForAllPanels (STEP 0) failed', err))
               .then(() => {
@@ -12617,10 +12738,64 @@
       } else {
         LogUtil.Warn('⚠️ STEP 0: missing panel_id or trendlog_id in URL — skipping')
       }
+
+      // 🆕 FALLBACK: If STEP 0 didn't build monitorConfig (e.g. panel has no cached data,
+      // which happens for foreign-panel MONs), build it from URL all_data (props.itemData.t3Entry).
+      if (!monitorConfig.value) {
+        const propEntry = (props.itemData as any)?.t3Entry
+        const propInputs = propEntry?.input
+        const propRanges = propEntry?.range
+        if (propInputs?.length > 0) {
+          LogUtil.Info('🔧 STEP 0 FALLBACK: Building monitorConfig from URL all_data (props.itemData.t3Entry)')
+          const fallbackInputItems: any[] = []
+          const fallbackRanges: any[] = []
+          for (let fi = 0; fi < propInputs.length; fi++) {
+            const inp = propInputs[fi]
+            if (inp && inp.point_type > 0) {
+              fallbackInputItems.push({
+                panel: inp.panel,
+                point_number: inp.point_number,
+                index: fi,
+                point_type: inp.point_type,
+                network: inp.network || 0,
+                sub_panel: inp.sub_panel || 0
+              })
+              fallbackRanges.push(propRanges?.[fi] || 0)
+            }
+          }
+          if (fallbackInputItems.length > 0) {
+            const intervalMs = calculateT3000Interval({
+              hour_interval_time: propEntry?.hour_interval_time ?? 0,
+              minute_interval_time: propEntry?.minute_interval_time ?? 0,
+              second_interval_time: propEntry?.second_interval_time ?? 0
+            })
+            monitorConfig.value = {
+              id: propEntry?.id || `MON${(urlTrendlogId ?? 0) + 1}`,
+              label: propEntry?.label || propEntry?.description || `Monitor ${propEntry?.id || ''}`,
+              pid: propEntry?.pid ?? urlPanelId,
+              type: 'MON',
+              status: propEntry?.status ?? 1,
+              numInputs: fallbackInputItems.length,
+              inputItems: fallbackInputItems,
+              ranges: fallbackRanges,
+              dataIntervalMs: intervalMs,
+              originalConfig: propEntry
+            }
+            LogUtil.Info('✅ STEP 0 FALLBACK: Built monitorConfig from props', {
+              inputItemsCount: fallbackInputItems.length,
+              dataIntervalMs: intervalMs,
+              pid: monitorConfig.value.pid
+            })
+            startRealTimeUpdates()
+          }
+        }
+      }
+
       LogUtil.Debug('══════════════════════════════════════════════════════════════')
 
       // Initialize monitor configuration
-      const monitorConfigData = await getMonitorConfigFromT3000Data()
+      // Skip if STEP 0 already built monitorConfig from Action 0 data
+      const monitorConfigData = monitorConfig.value || await getMonitorConfigFromT3000Data()
 
       LogUtil.Info('📊 TrendLogChart: Monitor config result', {
         hasMonitorConfig: !!monitorConfigData,
