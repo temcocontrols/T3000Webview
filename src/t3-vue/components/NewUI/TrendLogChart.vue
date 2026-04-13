@@ -265,10 +265,6 @@
                     </template>
                   </a-dropdown>
                 </div>
-                <div class="auto-scroll-toggle">
-                  <a-typography-text class="toggle-label">Auto Scroll:</a-typography-text>
-                  <a-switch v-model:checked="isRealTime" size="small" @change="onRealTimeToggle" />
-                </div>
               </div>
             </div>
             <div class="series-list">
@@ -13884,19 +13880,6 @@
   .control-group-label {
     color: #8c8c8c !important;
     font-size: 10px;
-    font-weight: 500;
-    white-space: nowrap;
-  }
-
-  .auto-scroll-toggle {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .toggle-label {
-    color: #595959 !important;
-    font-size: 11px;
     font-weight: 500;
     white-space: nowrap;
   }
