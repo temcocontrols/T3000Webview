@@ -1745,22 +1745,24 @@
     // Generate search ID (panel data is 1-based, param is 0-based)
     const idToFind = `${pointTypeInfo.category}${pointNumber + 1}`
 
+    // Priority: description (20-char Full_Label) → label (8-char) → "{panelId}-{id}" fallback
+    // This ensures the longest user-defined name is shown first.
+
     // 1. Try fresh Action 17 cache first (most reliable, reads directly from device)
     const cachedDevice = freshWebviewCache.value.get(`${panelId}_${idToFind}`)
     if (cachedDevice) {
-      const desc = (cachedDevice.label && cachedDevice.label.trim())
-        || cachedDevice.description
-        || cachedDevice.id
+      const desc = (cachedDevice.description && cachedDevice.description.trim())
+        || (cachedDevice.label && cachedDevice.label.trim())
         || ''
       if (desc) return desc
+      // Has device but no label fields → fall through to panelsData
     }
 
     // 2. Fall back to panelsData (Action 0 cached response)
     const panelsData = T3000_Data.value.panelsData
 
     if (!panelsData?.length) {
-      // No panelsData available for device description
-      return ''
+      return cachedDevice ? `${panelId}-${idToFind}` : ''
     }
 
     const device = panelsData.find((d: any) =>
@@ -1773,23 +1775,15 @@
         pointType,
         pointNumber,
         idToFind,
-        availableDevices: panelsData.map(d => ({ pid: d.pid, id: d.id })).slice(0, 5) // Show first 5 for debugging
+        availableDevices: panelsData.map(d => ({ pid: d.pid, id: d.id })).slice(0, 5)
       })
       return ''
     }
 
-    // Priority order: label (if not empty) → description → fullLabel → command → id
-    // Use label first if it exists and is not empty, otherwise fall back to description
-    const description = (device.label && device.label.trim())
-      || device.description
-      || device.fullLabel
-      || device.command
-      || device.id
-      || ''
-
-    if (!description) {
-      LogUtil.Debug('⚠️ TrendLogChart: Device found but no description fields available', { device })
-    }
+    // Priority: description (20-char) → label (8-char) → "{panelId}-{id}" fallback
+    const description = (device.description && device.description.trim())
+      || (device.label && device.label.trim())
+      || `${panelId}-${idToFind}`
 
     return description
   }
@@ -1870,22 +1864,21 @@
       const description = getDeviceDescription(panelId, pointType, pointNumber)
 
       // FILTER OUT DEMO/PLACEHOLDER DATA
-      // Enhanced filtering to remove all types of demo/test data:
-      // 1. No description AND panel ID is 0 (original filter)
-      // 2. No description at all (prevents generic names like "1 (P0)")
-      // 3. Names that contain "(P0)" pattern (explicit demo data check)
-      // 4. Only allow items with valid device descriptions
-      const potentialSeriesName = description // No fallback - description is required
+      // 1. Panel 0 with no description → demo/placeholder
+      // 2. Demo/test/sample patterns → skip
+      // 3. "(P0)" patterns → skip
+      // Note: getDeviceDescription now always returns a name for real devices
+      // (falls back to "{panelId}-{id}"), so "no description" only happens
+      // when the device isn't found at all (timing / panel not loaded yet).
 
       if (!description && panelId === 0) {
-        // Filtering out placeholder data (no description + panel 0)
-        continue; // Skip this item
+        continue; // Placeholder data (no description + panel 0)
       }
 
       if (!description) {
-        // Diagnostic: log first few failures so we can see the raw input data
+        // Device not found yet — log and skip (will be picked up on regenerate)
         if (index < 5) {
-          LogUtil.Debug('⚠️ generateDataSeries: filtered (no description)', {
+          LogUtil.Debug('⚠️ generateDataSeries: filtered (device not found)', {
             index, rawPanelId, panelId, pointType, pointNumber,
             category: pointTypeInfo.category,
             idToFind: `${pointTypeInfo.category}${pointNumber + 1}`,
@@ -1893,19 +1886,16 @@
             rawInputItem: JSON.parse(JSON.stringify(inputItem))
           })
         }
-        // Filtering out undescribed data (prevents demo names)
-        continue; // Skip this item
+        continue;
       }
 
       // Check for demo/test patterns in the description
       if (/demo|test|sample/i.test(description)) {
-        // Filtering out explicit demo data (demo pattern)
-        continue; // Skip this item
+        continue; // Explicit demo data
       }
 
-      if (potentialSeriesName && (potentialSeriesName.includes('(P0)') || potentialSeriesName.match(/^\d+\s*\([P]\d+\)$/))) {
-        // Filtering out explicit demo data (demo pattern)
-        continue; // Skip this item
+      if (description.includes('(P0)') || description.match(/^\d+\s*\([P]\d+\)$/)) {
+        continue; // Demo/placeholder pattern
       }
 
       // Only include items with valid data
@@ -10041,24 +10031,24 @@
   const selectAllItems = async () => {
     if (isSavingSelections.value) return
 
-    const allSeriesNames = dataSeries.value.map(series => series.name)
+    const allSeriesKeys = dataSeries.value.map(series => series.key)
     const beforeCount = (viewTrackedSeries.value[currentView.value] || []).length
 
     LogUtil.Info(`📋 Select All Items: Selecting all available items for View ${currentView.value}`, {
       currentView: currentView.value,
       beforeCount,
-      afterCount: allSeriesNames.length,
+      afterCount: allSeriesKeys.length,
       action: 'SELECT_ALL',
-      allSeriesNames,
+      allSeriesKeys,
       timestamp: new Date().toISOString()
     })
 
     isSavingSelections.value = true
 
     try {
-      viewTrackedSeries.value[currentView.value] = [...allSeriesNames]
+      viewTrackedSeries.value[currentView.value] = [...allSeriesKeys]
 
-      await saveViewTracking(currentView.value, allSeriesNames)
+      await saveViewTracking(currentView.value, allSeriesKeys)
       LogUtil.Info(`Select All Items: Database save successful`, {
         currentView: currentView.value,
         dbSaveSuccessful: true
@@ -10068,8 +10058,8 @@
 
       LogUtil.Info(`Select All Items: All items selected`, {
         currentView: currentView.value,
-        selectedCount: allSeriesNames.length,
-        finalState: allSeriesNames
+        selectedCount: allSeriesKeys.length,
+        finalState: allSeriesKeys
       })
     } catch (error) {
       LogUtil.Error(`Select All Items: Database save failed`, {
@@ -10281,7 +10271,7 @@
       case 'Enter': // Toggle selected item
         if (selectedItemIndex.value >= 0 && selectedItemIndex.value < displayedSeries.value.length) {
           const selectedSeries = displayedSeries.value[selectedItemIndex.value]
-          const masterSeriesIndex = dataSeries.value.findIndex(s => s.name === selectedSeries.name)
+          const masterSeriesIndex = dataSeries.value.findIndex(s => s.key === selectedSeries.key)
 
           if (masterSeriesIndex >= 0) {
             toggleSeriesVisibility(masterSeriesIndex, null)
