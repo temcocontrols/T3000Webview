@@ -461,7 +461,7 @@
 
         <!-- Right Panel: Unified Chart (analog + digital in one canvas) -->
         <div class="right-panel">
-          <div class="oscilloscope-container" @wheel="handleMouseWheel">
+          <div class="oscilloscope-container">
             <!-- Always render canvas for chart initialization, hide with CSS when no visible series -->
             <div class="combined-analog-chart" :style="{ display: (visibleAnalogSeries.length > 0 || visibleDigitalSeries.length > 0) ? 'block' : 'none' }">
               <canvas ref="analogChartCanvas" id="analog-chart"></canvas>
@@ -9769,23 +9769,6 @@
         timeOffset: timeOffset.value,
         note: 'Timebase watcher will handle data loading'
       })
-    }
-  }
-
-  // Mouse wheel zoom handler
-  const handleMouseWheel = (event: WheelEvent) => {
-    event.preventDefault() // Prevent page scroll
-
-    if (event.deltaY < 0) {
-      // Scroll up = Zoom In
-      if (canZoomIn.value) {
-        zoomIn()
-      }
-    } else if (event.deltaY > 0) {
-      // Scroll down = Zoom Out
-      if (canZoomOut.value) {
-        zoomOut()
-      }
     }
   }
 
