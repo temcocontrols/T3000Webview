@@ -1745,18 +1745,53 @@
     // Generate search ID (panel data is 1-based, param is 0-based)
     const idToFind = `${pointTypeInfo.category}${pointNumber + 1}`
 
+    // 1. Try fresh Action 17 cache first (most reliable, reads directly from device)
+    const cachedDevice = freshWebviewCache.value.get(`${panelId}_${idToFind}`)
+    if (cachedDevice) {
+      const desc = (cachedDevice.label && cachedDevice.label.trim())
+        || cachedDevice.description
+        || cachedDevice.id
+        || ''
+      if (desc) return desc
+    }
+
+    // 2. Fall back to panelsData (Action 0 cached response)
     const panelsData = T3000_Data.value.panelsData
-    if (!panelsData?.length) return ''
+
+    if (!panelsData?.length) {
+      // No panelsData available for device description
+      return ''
+    }
 
     const device = panelsData.find((d: any) =>
       String(d.pid) === String(panelId) && d.id === idToFind
     )
-    if (!device) return `${panelId}-${idToFind}`
 
-    // Priority: description (Full Label, 20-char) → label (8-char) → panelId-id fallback
-    return (device.description && device.description.trim())
-      || (device.label && device.label.trim())
-      || `${panelId}-${idToFind}`
+    if (!device) {
+      LogUtil.Debug('⚠️ TrendLogChart: Device not found in panelsData or freshWebviewCache', {
+        panelId,
+        pointType,
+        pointNumber,
+        idToFind,
+        availableDevices: panelsData.map(d => ({ pid: d.pid, id: d.id })).slice(0, 5) // Show first 5 for debugging
+      })
+      return ''
+    }
+
+    // Priority order: label (if not empty) → description → fullLabel → command → id
+    // Use label first if it exists and is not empty, otherwise fall back to description
+    const description = (device.label && device.label.trim())
+      || device.description
+      || device.fullLabel
+      || device.command
+      || device.id
+      || ''
+
+    if (!description) {
+      LogUtil.Debug('⚠️ TrendLogChart: Device found but no description fields available', { device })
+    }
+
+    return description
   }
 
   // Helper: Get digital_analog field from T3000_Data.value.panelsData
@@ -1829,11 +1864,33 @@
       const unit = getUnitFromPanelData(panelId, pointType, pointNumber)
       const description = getDeviceDescription(panelId, pointType, pointNumber)
 
-      // Filter out unconfigured/empty entries:
-      // - panel=0 with no description = unconfigured slot
-      // - no description at all = unused point (e.g. VAR13-VAR128 with empty label+description)
+      // FILTER OUT DEMO/PLACEHOLDER DATA
+      // Enhanced filtering to remove all types of demo/test data:
+      // 1. No description AND panel ID is 0 (original filter)
+      // 2. No description at all (prevents generic names like "1 (P0)")
+      // 3. Names that contain "(P0)" pattern (explicit demo data check)
+      // 4. Only allow items with valid device descriptions
+      const potentialSeriesName = description // No fallback - description is required
+
+      if (!description && panelId === 0) {
+        // Filtering out placeholder data (no description + panel 0)
+        continue; // Skip this item
+      }
+
       if (!description) {
-        continue
+        // Filtering out undescribed data (prevents demo names)
+        continue; // Skip this item
+      }
+
+      // Check for demo/test patterns in the description
+      if (/demo|test|sample/i.test(description)) {
+        // Filtering out explicit demo data (demo pattern)
+        continue; // Skip this item
+      }
+
+      if (potentialSeriesName && (potentialSeriesName.includes('(P0)') || potentialSeriesName.match(/^\d+\s*\([P]\d+\)$/))) {
+        // Filtering out explicit demo data (demo pattern)
+        continue; // Skip this item
       }
 
       // Only include items with valid data
