@@ -9765,13 +9765,18 @@
     // Move time window right by exactly the timebase period
     const shiftMinutes = getTimeRangeMinutes(timeBase.value)
 
-    // Update the time offset to track navigation
-    timeOffset.value += shiftMinutes
+    // Update the time offset, but clamp to 0 (never scroll past current time)
+    timeOffset.value = Math.min(0, timeOffset.value + shiftMinutes)
+
+    // If we've returned to offset 0, restore live mode
+    if (timeOffset.value === 0) {
+      isRealTime.value = true
+      startRealTimeUpdates()
+      return
+    }
 
     // Regenerate data for the new time window
     await initializeData()
-
-    // message.info(`Moved ${shiftMinutes} minutes forward`)
   }
 
   const zoomIn = () => {
