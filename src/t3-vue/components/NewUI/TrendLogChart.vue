@@ -244,6 +244,19 @@
                       </a-menu>
                     </template>
                   </a-dropdown>
+                  <a-dropdown>
+                    <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
+                      <span>By Unit</span>
+                      <DownOutlined style="margin-left: 4px;" />
+                    </a-button>
+                    <template #overlay>
+                      <a-menu @click="handleByUnitMenu" class="byunit-dropdown-menu">
+                        <a-menu-item v-for="[unit, info] of distinctUnits" :key="unit">
+                          {{ info.allEnabled ? 'Disable' : 'Enable' }} {{ unit }} ({{ info.count }})
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
                 </div>
               </div>
             </div>
@@ -3237,6 +3250,22 @@
 
   const allVariableEnabled = computed(() => {
     return variableSeries.value.length > 0 && variableSeries.value.every(series => series.visible)
+  })
+
+  // "By Unit" dropdown: distinct units with counts and enabled states
+  const distinctUnits = computed(() => {
+    const unitMap = new Map<string, { count: number; allEnabled: boolean }>()
+    for (const series of dataSeries.value) {
+      const unit = series.unit || 'Unknown'
+      const entry = unitMap.get(unit)
+      if (entry) {
+        entry.count++
+        if (!series.visible) entry.allEnabled = false
+      } else {
+        unitMap.set(unit, { count: 1, allEnabled: series.visible })
+      }
+    }
+    return unitMap
   })
 
   // Computed properties for visible series (for multi-canvas)
@@ -10991,6 +11020,19 @@
         toggleVariableSeries()
         break
     }
+  }
+
+  const handleByUnitMenu = ({ key }: { key: string }) => {
+    const unitInfo = distinctUnits.value.get(key)
+    if (!unitInfo) return
+    const enable = !unitInfo.allEnabled
+    dataSeries.value.forEach(series => {
+      if ((series.unit || 'Unknown') === key) {
+        series.visible = enable
+      }
+    })
+    saveSeriesVisibility()
+    updateCharts()
   }
 
   // Dropdown menu handlers
