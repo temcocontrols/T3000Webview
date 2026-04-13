@@ -107,11 +107,11 @@
             </template>
             Live-{{ lastSyncTime }}
           </a-tag>
-          <a-tag color="blue" v-else size="small">
+          <a-tag v-else size="small" @click="restoreLiveMode" class="live-restore-tag">
             <template #icon>
-              <ClockCircleOutlined />
+              <SyncOutlined />
             </template>
-            Historical
+            Live
           </a-tag>
 
           <!-- Range Info -->
@@ -198,21 +198,7 @@
                 <div :title="devVersion" class="chart-title-with-version">
                   {{ chartTitle }}
                 </div>
-                <!-- Data Source Indicator -->
-                <div class="data-source-indicator">
-                  <span v-if="shouldShowLoading" class="source-badge loading">
-                    Loading...
-                  </span>
-                  <span v-else-if="dataSource === 'realtime'" class="source-badge realtime">
-                    <ThunderboltFilled :style="{ fontSize: '12px', marginRight: '4px' }" /> Live ({{ timeBase }})
-                  </span>
-                  <span v-else-if="dataSource === 'api'" class="source-badge historical">
-                    📚 Historical (Custom Date)
-                  </span>
-                  <span v-else-if="hasConnectionError" class="source-badge error">
-                    ⚠️ Connection Error
-                  </span>
-                </div>
+
               </div> <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
               <div class="header-line-2">
                 <div class="left-controls">
@@ -2952,9 +2938,10 @@
 
   // Computed properties for navigation button states
   const canScroll = computed(() => {
-    // Scroll buttons only work for regular timebases in non-real-time mode
-    // Disabled for: real-time mode (always current) and custom dates (fixed range)
-    return !isRealTime.value && timeBase.value !== 'custom'
+    // Scroll buttons work for all regular timebases (including live mode)
+    // Left arrow in live mode will exit live first, then scroll
+    // Disabled only for custom date ranges (fixed range)
+    return timeBase.value !== 'custom'
   })
 
   const canZoomIn = computed(() => {
@@ -9647,9 +9634,24 @@
 
 
   // New control functions - Updated to use timeOffset and regenerate data
+  const restoreLiveMode = () => {
+    LogUtil.Info('🔴→🟢 Restoring live mode via Live tag click')
+    timeOffset.value = 0
+    isRealTime.value = true
+    dataSource.value = 'realtime'
+    initializeData()
+    startRealTimeUpdates()
+  }
+
   const moveTimeLeft = async () => {
-    // Guard: Don't allow scroll for real-time mode or custom date ranges
-    if (isRealTime.value || timeBase.value === 'custom') return
+    // Guard: Don't allow scroll for custom date ranges
+    if (timeBase.value === 'custom') return
+
+    // If in live mode, exit live mode first, then scroll
+    if (isRealTime.value) {
+      isRealTime.value = false
+      stopRealTimeUpdates()
+    }
 
     // Move time window left by exactly the timebase period
     const shiftMinutes = getTimeRangeMinutes(timeBase.value)
@@ -13797,60 +13799,15 @@
       /* Add ellipsis for very long titles */
     }
 
-  /* Data Source Indicator */
-  .data-source-indicator {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    /* Prevent badge from shrinking */
+  /* Live restore tag (grey, clickable) */
+  .live-restore-tag {
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s;
   }
-
-  .source-badge {
-    display: inline-block;
-    padding: 2px 6px;
-    /* Slightly more compact padding */
-    border-radius: 10px;
-    font-size: 9px;
-    /* Slightly smaller font */
-    font-weight: 500;
-    color: white;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    white-space: nowrap;
-    /* Prevent badge text from wrapping */
+  .live-restore-tag:hover {
+    opacity: 1;
   }
-
-    .source-badge.realtime {
-      background: linear-gradient(45deg, #52c41a, #389e0d);
-      animation: pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.85; }
-    }
-
-    .source-badge.historical {
-      background: linear-gradient(45deg, #2196F3, #1976D2);
-    }
-
-    .source-badge.error {
-      background: linear-gradient(45deg, #f56565, #e53e3e);
-    }
-
-    .source-badge.loading {
-      background: linear-gradient(45deg, #4CAF50, #45a049);
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-      .source-badge.loading .ant-spin {
-        font-size: 10px !important;
-      }
-
-      .source-badge.loading .ant-spin-dot {
-        font-size: 10px !important;
-      }
 
   .header-line-2 {
     display: flex;
