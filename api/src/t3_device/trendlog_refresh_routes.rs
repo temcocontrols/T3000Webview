@@ -288,8 +288,31 @@ async fn save_trendlogs_to_db(db: &DatabaseConnection, serial: i32, items: &[Val
 
         // Save monitor input points to TRENDLOG_INPUTS
         let item_panel_id = item.get("panelId").and_then(|v| v.as_i64()).unwrap_or(panel_id as i64) as i32;
-        if let Some(inputs) = item.get("inputs").and_then(|v| v.as_array()) {
-            let num_inputs = item.get("numInputs").and_then(|v| v.as_i64()).unwrap_or(0) as usize;
+        let raw_inputs = item.get("inputs");
+        info!("🔍 Trendlog {} inputs field type: is_array={}, is_object={}, numInputs={}, raw={:?}",
+            trendlog_index,
+            raw_inputs.map_or(false, |v| v.is_array()),
+            raw_inputs.map_or(false, |v| v.is_object()),
+            item.get("numInputs").and_then(|v| v.as_i64()).unwrap_or(0),
+            raw_inputs.map(|v| v.to_string().chars().take(500).collect::<String>())
+        );
+
+        // Handle inputs as either JSON array or JSON object with numeric keys (C++ can send either format)
+        let inputs_vec: Vec<Value> = if let Some(arr) = raw_inputs.and_then(|v| v.as_array()) {
+            arr.clone()
+        } else if let Some(obj) = raw_inputs.and_then(|v| v.as_object()) {
+            // Convert object {"0": {...}, "1": {...}} to array
+            let mut pairs: Vec<(usize, Value)> = obj.iter()
+                .filter_map(|(k, v)| k.parse::<usize>().ok().map(|i| (i, v.clone())))
+                .collect();
+            pairs.sort_by_key(|(i, _)| *i);
+            pairs.into_iter().map(|(_, v)| v).collect()
+        } else {
+            Vec::new()
+        };
+
+        if !inputs_vec.is_empty() {
+            let num_inputs = item.get("numInputs").and_then(|v| v.as_i64()).unwrap_or(inputs_vec.len() as i64) as usize;
             let now = chrono::Utc::now().to_rfc3339();
 
             // Clear ALL existing inputs for this trendlog (MAIN and VIEW) before re-inserting fresh data
@@ -300,44 +323,48 @@ async fn save_trendlogs_to_db(db: &DatabaseConnection, serial: i32, items: &[Val
                 .await;
 
             let mut input_count = 0;
-            for (idx, input_val) in inputs.iter().enumerate() {
+            for (idx, input_val) in inputs_vec.iter().enumerate() {
                 if idx >= num_inputs { break; }
 
                 let pt = input_val.get("point_type").and_then(|v| v.as_i64()).unwrap_or(0);
                 let pn = input_val.get("point_number").and_then(|v| v.as_i64()).unwrap_or(0);
                 let panel = input_val.get("panel").and_then(|v| v.as_i64()).unwrap_or(0);
 
+                info!("🔍 Trendlog input[{}]: raw point_type={}, point_number={}, panel={}, full_json={}", idx, pt, pn, panel, input_val);
+
                 // Only save valid points (point_type > 0)
                 if pt > 0 {
+                    // PointNet point_type is 1-based offset from BAC_* constants:
+                    // BAC_OUT=0 → pt=1 (OUTPUT), BAC_IN=1 → pt=2 (INPUT), BAC_VAR=2 → pt=3 (VARIABLE)
                     let point_type_str = match pt {
-                        1 => "INPUT",
-                        2 => "OUTPUT",
+                        1 => "OUTPUT",
+                        2 => "INPUT",
                         3 => "VARIABLE",
                         _ => "UNKNOWN",
                     }.to_string();
 
                     let fallback_label = format!("{}_{}",
-                        match pt { 1 => "IN", 2 => "OUT", 3 => "VAR", _ => "UNK" },
+                        match pt { 1 => "OUT", 2 => "IN", 3 => "VAR", _ => "UNK" },
                         pn
                     );
 
                     // Resolve actual label from DB (INPUTS/OUTPUTS/VARIABLES tables)
                     let point_label = match pt {
                         1 => {
-                            // Look up from INPUTS by serial + index
-                            input_points::Entity::find()
-                                .filter(input_points::Column::SerialNumber.eq(serial))
-                                .filter(input_points::Column::InputIndex.eq(pn.to_string()))
+                            // pt=1 is OUTPUT (BAC_OUT+1) — Look up from OUTPUTS by serial + index
+                            output_points::Entity::find()
+                                .filter(output_points::Column::SerialNumber.eq(serial))
+                                .filter(output_points::Column::OutputIndex.eq(pn.to_string()))
                                 .one(db).await.ok().flatten()
                                 .and_then(|p| p.label.filter(|l| !l.is_empty()).or(p.full_label))
                                 .filter(|l| !l.is_empty())
                                 .unwrap_or_else(|| fallback_label.clone())
                         }
                         2 => {
-                            // Look up from OUTPUTS by serial + index
-                            output_points::Entity::find()
-                                .filter(output_points::Column::SerialNumber.eq(serial))
-                                .filter(output_points::Column::OutputIndex.eq(pn.to_string()))
+                            // pt=2 is INPUT (BAC_IN+1) — Look up from INPUTS by serial + index
+                            input_points::Entity::find()
+                                .filter(input_points::Column::SerialNumber.eq(serial))
+                                .filter(input_points::Column::InputIndex.eq(pn.to_string()))
                                 .one(db).await.ok().flatten()
                                 .and_then(|p| p.label.filter(|l| !l.is_empty()).or(p.full_label))
                                 .filter(|l| !l.is_empty())
@@ -355,6 +382,8 @@ async fn save_trendlogs_to_db(db: &DatabaseConnection, serial: i32, items: &[Val
                         }
                         _ => fallback_label.clone(),
                     };
+
+                    info!("📝 Trendlog input[{}]: pt={} → type_str={}, pn={}, resolved_label={}, fallback={}", idx, pt, point_type_str, pn, point_label, fallback_label);
 
                     let input_record = trendlog_inputs::ActiveModel {
                         id: NotSet,

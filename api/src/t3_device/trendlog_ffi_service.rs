@@ -396,14 +396,16 @@ impl TrendLogFFIService {
                                 input_entry.get("point_number").and_then(|n| n.as_u64())
                             ) {
                                 if panel > 0 && point_type > 0 {
+                                    // PointNet point_type is 1-based offset from BAC_* constants:
+                                    // BAC_OUT=0 → 1 (OUTPUT), BAC_IN=1 → 2 (INPUT), BAC_VAR=2 → 3 (VARIABLE)
                                     let point_type_str = match point_type {
-                                        1 => "INPUT",
-                                        2 => "OUTPUT",
+                                        1 => "OUTPUT",
+                                        2 => "INPUT",
                                         3 => "VARIABLE",
                                         _ => "UNKNOWN",
                                     };
                                     let point_label = format!("{}_{}",
-                                        match point_type { 1 => "IN", 2 => "OUT", 3 => "VAR", _ => "UNK" },
+                                        match point_type { 1 => "OUT", 2 => "IN", 3 => "VAR", _ => "UNK" },
                                         point_number
                                     );
 
@@ -1018,15 +1020,17 @@ impl TrendLogFFIService {
         for i in 0..num_inputs {
             let point = &monitor_data.inputs[i];
             if point.panel > 0 && point.point_type > 0 {  // Valid point
+                // PointNet point_type is 1-based offset from BAC_* constants:
+                // BAC_OUT=0 → point_type=1 (OUTPUT), BAC_IN=1 → point_type=2 (INPUT), BAC_VAR=2 → point_type=3 (VARIABLE)
                 let point_type = match point.point_type {
-                    1 => "INPUT",
-                    2 => "OUTPUT",
+                    1 => "OUTPUT",
+                    2 => "INPUT",
                     3 => "VARIABLE",
                     _ => "UNKNOWN",
                 }.to_string();
 
                 let point_label = format!("{}_{}",
-                    match point.point_type { 1 => "IN", 2 => "OUT", 3 => "VAR", _ => "UNK" },
+                    match point.point_type { 1 => "OUT", 2 => "IN", 3 => "VAR", _ => "UNK" },
                     point.number
                 );
 

@@ -515,15 +515,17 @@ impl TrendlogMonitorService {
         for input in inputs {
             // Only save valid points (panel > 0 and point_type > 0)
             if input.panel > 0 && input.point_type > 0 {
+                // PointNet point_type is 1-based offset from BAC_* constants:
+                // BAC_OUT=0 → 1 (OUTPUT), BAC_IN=1 → 2 (INPUT), BAC_VAR=2 → 3 (VARIABLE)
                 let point_type_str = match input.point_type {
-                    1 => "INPUT",
-                    2 => "OUTPUT",
+                    1 => "OUTPUT",
+                    2 => "INPUT",
                     3 => "VARIABLE",
                     _ => "UNKNOWN",
                 }.to_string();
 
                 let point_label = format!("{}_{}",
-                    match input.point_type { 1 => "IN", 2 => "OUT", 3 => "VAR", _ => "UNK" },
+                    match input.point_type { 1 => "OUT", 2 => "IN", 3 => "VAR", _ => "UNK" },
                     input.point_number
                 );
 
