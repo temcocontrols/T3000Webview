@@ -616,6 +616,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const timebaseChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const historyAbortControllerRef = useRef<AbortController | null>(null);
   const hasLoadedInitialDataRef = useRef<boolean>(false);
+  const chartInstanceRef = useRef<any>(null);
 
   /**
    * Computed: Visible analog series (Vue pattern)
@@ -1388,10 +1389,17 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
    * Export chart as PNG
    */
   const exportToPNG = useCallback(() => {
-    // TODO: Implement chart to PNG export
-    // This would require accessing the ECharts instance and using its built-in export
-    console.log('Export to PNG - Not yet implemented');
-  }, []);
+    const chart = chartInstanceRef.current;
+    if (!chart) {
+      console.warn('Chart instance not available for PNG export');
+      return;
+    }
+    const dataUrl = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' });
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = `trend-chart-${trendlogId}-${new Date().toISOString().slice(0, 10)}.png`;
+    link.click();
+  }, [trendlogId]);
 
   /**
    * Export data to JSON
@@ -1882,6 +1890,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
               timeBase={timeBase}
               showGrid={showGrid}
               chartType="analog"
+              onChartReady={(instance) => { chartInstanceRef.current = instance; }}
             />
           </div>
         </div>

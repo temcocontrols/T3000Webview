@@ -50,6 +50,7 @@ interface TrendLogData {
   status?: string;
   _uniqueIndex?: number;
   panelId?: number;
+  dataSizeKb?: string;
 }
 
 interface TrendLogInput {
@@ -159,12 +160,37 @@ export const TrendLogsPage: React.FC = () => {
                 sub_panel: 0,
               }));
 
-              // TODO: Fetch range data from another table or FFI
-              // For now, create default range items
-              rangeItems = inputItems.map(() => ({
-                digital_analog: 0, // Assume analog
-                units: '',
+              // Fetch actual digital_analog and units from point endpoints
+              const pointTypeMap: Record<number, string> = { 0: 'input-points', 1: 'output-points', 2: 'variable-points' };
+              const pointKeyMap: Record<number, string> = { 0: 'input_points', 1: 'output_points', 2: 'variable_points' };
+              const pointsCache: Record<number, any[]> = {};
+
+              // Fetch each unique point type once
+              const neededTypes = [...new Set(inputItems.map((item: any) => item.point_type as number))];
+              await Promise.all(neededTypes.map(async (pt) => {
+                try {
+                  const endpoint = pointTypeMap[pt];
+                  const resp = await fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/${endpoint}`);
+                  if (resp.ok) {
+                    const data = await resp.json();
+                    pointsCache[pt] = data[pointKeyMap[pt]] || [];
+                  }
+                } catch { /* ignore fetch errors */ }
               }));
+
+              rangeItems = inputItems.map((item: any) => {
+                const points = pointsCache[item.point_type] || [];
+                const pointNumber = item.point_number; // 0-based
+                const point = points.find((p: any) => {
+                  const idx = parseInt(p.inputIndex || p.outputIndex || p.variableIndex || '0', 10);
+                  return idx === pointNumber + 1; // point data uses 1-based
+                });
+                const rawDA = point?.digitalAnalog ?? point?.digital_analog;
+                return {
+                  digital_analog: (rawDA === '1' || rawDA === 1) ? 1 : 0,
+                  units: point?.units || point?.unit || '',
+                };
+              });
             }
           }
         } else {
@@ -268,7 +294,10 @@ export const TrendLogsPage: React.FC = () => {
     setError(null);
 
     try {
-      const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/trendlogs`;
+      let url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/trendlogs`;
+      if (selectedDevice.panelId) {
+        url += `?panel_id=${selectedDevice.panelId}`;
+      }
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -278,20 +307,23 @@ export const TrendLogsPage: React.FC = () => {
       const data = await response.json();
       const fetchedTrendLogs = data.trendlogs || [];
 
-      // Debug: Check for duplicate trendlogIds
-      const idCounts = fetchedTrendLogs.reduce((acc: any, log: any) => {
+      // Deduplicate by trendlogId: a device has only one set of trendlogs.
+      // Multiple DB rows can exist for the same trendlogId with different panelIds
+      // (from old sync code). Keep the entry with the highest panelId (real device panel).
+      const deduped = new Map<string, any>();
+      for (const log of fetchedTrendLogs) {
         const id = log.trendlogId || log.trendlogIndex;
-        acc[id] = (acc[id] || 0) + 1;
-        return acc;
-      }, {});
-      const duplicates = Object.entries(idCounts).filter(([_, count]) => (count as number) > 1);
-      if (duplicates.length > 0) {
-        console.warn('⚠️ [TrendLogsPage] Duplicate trendlogIds found:', duplicates);
-        console.log('📊 [TrendLogsPage] Full trendlog data:', fetchedTrendLogs);
+        if (!id) continue;
+        const existing = deduped.get(id);
+        if (!existing || (log.panelId || 0) > (existing.panelId || 0)) {
+          deduped.set(id, log);
+        }
       }
+      const filtered = Array.from(deduped.values());
+      console.log(`[TrendLogsPage] Dedup: ${fetchedTrendLogs.length} API rows → ${filtered.length} unique trendlogs`);
 
       // Add unique index to each trendlog to ensure unique keys
-      const trendlogsWithIndex = fetchedTrendLogs.map((log: any, idx: number) => ({
+      const trendlogsWithIndex = filtered.map((log: any, idx: number) => ({
         ...log,
         _uniqueIndex: idx
       }));
@@ -497,6 +529,7 @@ export const TrendLogsPage: React.FC = () => {
       { header: 'Label', accessor: t => t.trendlogLabel },
       { header: 'Interval (sec)', accessor: t => t.intervalSeconds },
       { header: 'Buffer Size', accessor: t => t.bufferSize },
+      { header: 'Data Size', accessor: t => t.dataSizeKb },
       { header: 'Auto/Manual', accessor: t => t.autoManual },
       { header: 'Status', accessor: t => t.status },
     ];
@@ -641,12 +674,22 @@ export const TrendLogsPage: React.FC = () => {
     }),
     createTableColumn<TrendLogData>({
       columnId: 'intervalSeconds',
-      renderHeaderCell: () => <span>Interval (sec)</span>,
-      renderCell: (item) => (
-        <TableCellLayout>
-          {!isEmptyRow(item) && <Text size={200}>{item.intervalSeconds ?? '---'}</Text>}
-        </TableCellLayout>
-      ),
+      renderHeaderCell: () => <span>Interval</span>,
+      renderCell: (item) => {
+        const sec = item.intervalSeconds;
+        let display = '---';
+        if (sec != null) {
+          const h = Math.floor(sec / 3600);
+          const m = Math.floor((sec % 3600) / 60);
+          const s = sec % 60;
+          display = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+        return (
+          <TableCellLayout>
+            {!isEmptyRow(item) && <Text size={200}>{display}</Text>}
+          </TableCellLayout>
+        );
+      },
     }),
     createTableColumn<TrendLogData>({
       columnId: 'bufferSize',
@@ -657,6 +700,15 @@ export const TrendLogsPage: React.FC = () => {
         </TableCellLayout>
       ),
       compare: (a, b) => (a.bufferSize || 0) - (b.bufferSize || 0),
+    }),
+    createTableColumn<TrendLogData>({
+      columnId: 'dataSizeKb',
+      renderHeaderCell: () => <span>Data Size</span>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && <Text size={200}>{item.dataSizeKb || '0KB'}</Text>}
+        </TableCellLayout>
+      ),
     }),
     createTableColumn<TrendLogData>({
       columnId: 'autoManual',
@@ -675,15 +727,18 @@ export const TrendLogsPage: React.FC = () => {
     createTableColumn<TrendLogData>({
       columnId: 'status',
       renderHeaderCell: () => <span>Status</span>,
-      renderCell: (item) => (
-        <TableCellLayout>
-          {!isEmptyRow(item) && (
-            <Badge appearance="tint" color={item.status === 'ON' ? 'success' : 'subtle'}>
-              {item.status || 'OFF'}
-            </Badge>
-          )}
-        </TableCellLayout>
-      ),
+      renderCell: (item) => {
+        const isOn = item.status === 'ON';
+        return (
+          <TableCellLayout>
+            {!isEmptyRow(item) && (
+              <Badge appearance="tint" color={isOn ? 'success' : 'subtle'}>
+                {isOn ? 'ON' : 'OFF'}
+              </Badge>
+            )}
+          </TableCellLayout>
+        );
+      },
       compare: (a, b) => (a.status || '').localeCompare(b.status || ''),
     }),
     // Actions column - View Chart (moved to last)
