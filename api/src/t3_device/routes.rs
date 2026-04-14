@@ -12,7 +12,7 @@ use serde_json::{json, Value};
 use crate::app_state::T3AppState;
 use crate::t3_device::services::{T3DeviceService, CreateDeviceRequest, UpdateDeviceRequest};
 use crate::t3_device::points_service::{T3PointsService, CreateInputPointRequest, CreateOutputPointRequest, CreateVariablePointRequest};
-use crate::entity::t3_device::{input_points, output_points, variable_points};
+use crate::entity::t3_device::{input_points, output_points, variable_points, trendlogs};
 use crate::t3_device::schedules_service::{T3ScheduleService, CreateScheduleRequest, UpdateScheduleRequest};
 use crate::t3_device::programs_service::{T3ProgramService, CreateProgramRequest, UpdateProgramRequest};
 use crate::t3_device::trendlogs_service::{T3TrendlogService, CreateTrendlogRequest, UpdateTrendlogRequest};
@@ -999,16 +999,56 @@ async fn delete_program(
 async fn get_trendlogs_by_device(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<Value>, StatusCode> {
     let db = get_t3_device_conn!(state);
 
     match T3TrendlogService::get_trendlogs_by_device(&*db, device_id).await {
-        Ok(trendlogs) => Ok(Json(json!({
-            "trendlogs": trendlogs,
-            "count": trendlogs.len(),
-            "device_id": device_id,
-            "message": "Trendlogs retrieved successfully"
-        }))),
+        Ok(mut trendlogs) => {
+            // Optional: filter by panel_id query parameter
+            if let Some(panel_id_str) = params.get("panel_id") {
+                if let Ok(panel_id) = panel_id_str.parse::<i32>() {
+                    trendlogs.retain(|t| t.panel_id == panel_id);
+                }
+            }
+
+            // Deduplicate by trendlog_id: keep the row with the highest panel_id
+            // (real device panel) and delete duplicates from the database.
+            let mut best: std::collections::HashMap<String, trendlogs::Model> = std::collections::HashMap::new();
+            let mut duplicate_ids: Vec<i32> = Vec::new();
+
+            for t in trendlogs.iter() {
+                let key = t.trendlog_id.clone();
+                if let Some(existing) = best.get(&key) {
+                    // Keep whichever has higher panel_id; mark the other for deletion
+                    if t.panel_id > existing.panel_id {
+                        duplicate_ids.push(existing.id);
+                        best.insert(key, t.clone());
+                    } else {
+                        duplicate_ids.push(t.id);
+                    }
+                } else {
+                    best.insert(key, t.clone());
+                }
+            }
+
+            // Clean up duplicates from the database
+            if !duplicate_ids.is_empty() {
+                let _ = trendlogs::Entity::delete_many()
+                    .filter(trendlogs::Column::Id.is_in(duplicate_ids.clone()))
+                    .exec(&*db)
+                    .await;
+                // Return only the deduplicated entries
+                trendlogs.retain(|t| !duplicate_ids.contains(&t.id));
+            }
+
+            Ok(Json(json!({
+                "trendlogs": trendlogs,
+                "count": trendlogs.len(),
+                "device_id": device_id,
+                "message": "Trendlogs retrieved successfully"
+            })))
+        },
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
     }
 }

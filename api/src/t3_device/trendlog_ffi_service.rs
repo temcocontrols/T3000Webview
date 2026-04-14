@@ -535,23 +535,36 @@ impl TrendLogFFIService {
             ..Default::default()
         };
 
-        // Check if record already exists
-        let existing = trendlogs::Entity::find()
+        // Check by (SerialNumber, TrendlogId) only — panelId is NOT part of unique identity
+        let existing_records = trendlogs::Entity::find()
             .filter(trendlogs::Column::SerialNumber.eq(info.serial_number))
-            .filter(trendlogs::Column::PanelId.eq(info.panel_id))
             .filter(trendlogs::Column::TrendlogId.eq(&info.trendlog_id))
-            .one(db)
+            .all(db)
             .await?;
 
-        if existing.is_none() {
+        if existing_records.is_empty() {
             // Insert new trendlog record only if it doesn't exist
             trendlogs::Entity::insert(trendlog_record)
                 .exec(db)
                 .await?;
         } else {
+            // Clean up duplicates: keep first, delete rest
+            let (first, duplicates) = existing_records.split_first().unwrap();
+            if !duplicates.is_empty() {
+                let dup_ids: Vec<i32> = duplicates.iter().map(|d| d.id).collect();
+                trendlogs::Entity::delete_many()
+                    .filter(trendlogs::Column::Id.is_in(dup_ids))
+                    .exec(db)
+                    .await?;
+            }
+            // Update the kept record's panel_id
+            let mut update_model: trendlogs::ActiveModel = first.clone().into();
+            update_model.panel_id = Set(info.panel_id);
+            update_model.updated_at = Set(Some(Utc::now().to_rfc3339()));
+            update_model.update(db).await?;
             let _ = write_structured_log_with_level("T3_Webview_TRL_FFI",
-                &format!("📝 TrendLog already exists: SerialNumber={}, PanelId={}, TrendlogId={}",
-                    info.serial_number, info.panel_id, info.trendlog_id), LogLevel::Info);
+                &format!("📝 TrendLog already exists: SerialNumber={}, TrendlogId={}",
+                    info.serial_number, info.trendlog_id), LogLevel::Info);
         }
 
         let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "✅ Basic TrendLog info saved to database", LogLevel::Info);
@@ -1068,49 +1081,72 @@ impl TrendLogFFIService {
         let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("💾 Saving TrendLog to database: {} (device {})",
             info.trendlog_id, info.serial_number), LogLevel::Info);
 
-        // Save main TrendLog record
-        let trendlog_record = trendlogs::ActiveModel {
-            id: NotSet, // Auto-increment
-            serial_number: Set(info.serial_number),
-            panel_id: Set(1), // Default panel ID
-            trendlog_id: Set(info.trendlog_id.clone()),
-            switch_node: Set(None),
-            trendlog_label: Set(Some(info.trendlog_label.clone())),
-            interval_seconds: Set(Some(info.interval_seconds)),
-            buffer_size: Set(info.buffer_size),
-            data_size_kb: Set(Some(info.data_size_kb.clone())),
-            auto_manual: Set(Some("AUTO".to_string())),
-            status: Set(Some(info.status.clone())),
-            ffi_synced: Set(Some(1)),
-            last_ffi_sync: Set(Some(Utc::now().to_rfc3339())),
-            created_at: Set(Some(Utc::now().to_rfc3339())),
-            updated_at: Set(Some(Utc::now().to_rfc3339())),
-        };
-
-        // Check if record already exists to prevent duplicates
-        let existing = trendlogs::Entity::find()
+        // Check by (SerialNumber, TrendlogId) only — panelId is NOT part of unique identity
+        // Find ALL matching records and clean up duplicates
+        let existing_records = trendlogs::Entity::find()
             .filter(trendlogs::Column::SerialNumber.eq(info.serial_number))
-            .filter(trendlogs::Column::PanelId.eq(1))
             .filter(trendlogs::Column::TrendlogId.eq(&info.trendlog_id))
-            .one(db)
+            .all(db)
             .await?;
 
-        if existing.is_none() {
-            // Insert new trendlog record only if it doesn't exist
+        if !existing_records.is_empty() {
+            // Keep first, delete any duplicates
+            let (first, duplicates) = existing_records.split_first().unwrap();
+            if !duplicates.is_empty() {
+                let dup_ids: Vec<i32> = duplicates.iter().map(|d| d.id).collect();
+                let _ = write_structured_log_with_level("T3_Webview_TRL_FFI",
+                    &format!("🧹 Removing {} duplicate trendlog records for {}: ids={:?}",
+                        duplicates.len(), info.trendlog_id, dup_ids), LogLevel::Warn);
+                trendlogs::Entity::delete_many()
+                    .filter(trendlogs::Column::Id.is_in(dup_ids))
+                    .exec(db)
+                    .await?;
+            }
+
+            // Update the kept record
+            let mut update_model: trendlogs::ActiveModel = first.clone().into();
+            update_model.panel_id = Set(info.panel_id);
+            update_model.trendlog_label = Set(Some(info.trendlog_label.clone()));
+            update_model.interval_seconds = Set(Some(info.interval_seconds));
+            update_model.buffer_size = Set(info.buffer_size);
+            update_model.data_size_kb = Set(Some(info.data_size_kb.clone()));
+            update_model.status = Set(Some(info.status.clone()));
+            update_model.ffi_synced = Set(Some(1));
+            update_model.last_ffi_sync = Set(Some(Utc::now().to_rfc3339()));
+            update_model.updated_at = Set(Some(Utc::now().to_rfc3339()));
+            update_model.update(db).await?;
+
+            let _ = write_structured_log_with_level("T3_Webview_TRL_FFI",
+                &format!("📝 Updated existing TrendLog: SerialNumber={}, TrendlogId={}",
+                    info.serial_number, info.trendlog_id), LogLevel::Info);
+        } else {
+            // INSERT new trendlog record
+            let trendlog_record = trendlogs::ActiveModel {
+                id: NotSet,
+                serial_number: Set(info.serial_number),
+                panel_id: Set(info.panel_id),
+                trendlog_id: Set(info.trendlog_id.clone()),
+                switch_node: Set(None),
+                trendlog_label: Set(Some(info.trendlog_label.clone())),
+                interval_seconds: Set(Some(info.interval_seconds)),
+                buffer_size: Set(info.buffer_size),
+                data_size_kb: Set(Some(info.data_size_kb.clone())),
+                auto_manual: Set(Some("AUTO".to_string())),
+                status: Set(Some(info.status.clone())),
+                ffi_synced: Set(Some(1)),
+                last_ffi_sync: Set(Some(Utc::now().to_rfc3339())),
+                created_at: Set(Some(Utc::now().to_rfc3339())),
+                updated_at: Set(Some(Utc::now().to_rfc3339())),
+            };
             trendlogs::Entity::insert(trendlog_record)
                 .exec(db)
                 .await?;
             let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "✅ New TrendLog record created", LogLevel::Info);
-        } else {
-            let _ = write_structured_log_with_level("T3_Webview_TRL_FFI",
-                &format!("📝 TrendLog already exists, skipping insert: SerialNumber={}, TrendlogId={}",
-                    info.serial_number, info.trendlog_id), LogLevel::Info);
         }
 
-        // Clear existing MAIN inputs for this TrendLog
+        // Clear existing MAIN inputs for this TrendLog (any panelId)
         trendlog_inputs::Entity::delete_many()
             .filter(trendlog_inputs::Column::SerialNumber.eq(info.serial_number))
-            .filter(trendlog_inputs::Column::PanelId.eq(1))
             .filter(trendlog_inputs::Column::TrendlogId.eq(&info.trendlog_id))
             .filter(trendlog_inputs::Column::ViewType.eq("MAIN"))
             .exec(db)
@@ -1121,7 +1157,7 @@ impl TrendLogFFIService {
             let input_record = trendlog_inputs::ActiveModel {
                 id: NotSet,
                 serial_number: Set(info.serial_number),
-                panel_id: Set(1), // Default panel ID
+                panel_id: Set(info.panel_id), // Use actual panel ID from device
                 trendlog_id: Set(info.trendlog_id.clone()),
                 point_type: Set(point.point_type.clone()),
                 point_index: Set(point.point_index.clone()),

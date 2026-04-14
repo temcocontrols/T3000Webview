@@ -404,28 +404,44 @@ impl TrendlogMonitorService {
         // SOLUTION: Generate consistent Trendlog_ID from monitor index (trendlog.num)
         let trendlog_id = format!("MON{}", trendlog.num + 1);  // MON1-MON12 (0-based to 1-based)
 
-        let existing = trendlogs::Entity::find()
+        // Find ALL existing records for this (SerialNumber, TrendlogId) combo
+        // There may be duplicates from old code that used different panelIds
+        let existing_records = trendlogs::Entity::find()
             .filter(trendlogs::Column::SerialNumber.eq(device_id))
             .filter(trendlogs::Column::TrendlogId.eq(&trendlog_id))
-            .one(db)
+            .all(db)
             .await?;
 
         let now = Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
 
-        if let Some(existing_trendlog) = existing {
-            // UPDATE existing trendlog with fresh data from C++
-            let mut update_model: trendlogs::ActiveModel = existing_trendlog.into();
+        if !existing_records.is_empty() {
+            // Keep the first record, delete any duplicates
+            let (first, duplicates) = existing_records.split_first().unwrap();
+            if !duplicates.is_empty() {
+                let duplicate_ids: Vec<i32> = duplicates.iter().map(|d| d.id).collect();
+                let _ = write_structured_log_with_level(
+                    "T3_Webview_Trendlog_Monitor",
+                    &format!("🧹 Cleaning up {} duplicate trendlog records for {}: ids={:?}",
+                        duplicates.len(), trendlog_id, duplicate_ids),
+                    LogLevel::Warn,
+                );
+                trendlogs::Entity::delete_many()
+                    .filter(trendlogs::Column::Id.is_in(duplicate_ids))
+                    .exec(db)
+                    .await?;
+            }
 
-            // Update fields with fresh data from C++ (DO NOT update Trendlog_ID - it's the unique key!)
-            // NOTE: Trendlog_ID remains unchanged - it's part of the UNIQUE key (SerialNumber, Trendlog_ID)
+            // UPDATE the kept record with fresh data from C++
+            let mut update_model: trendlogs::ActiveModel = first.clone().into();
+
+            update_model.panel_id = Set(panel_id);  // Always update to current panel ID
             update_model.trendlog_label = Set(Some(trendlog.label.clone()));
-            // FIXED: Store interval_seconds directly (not divided by 60) to preserve sub-minute intervals
             update_model.interval_seconds = Set(Some(trendlog.interval_seconds));
             update_model.status = Set(Some(trendlog.status.clone()));
             update_model.data_size_kb = Set(Some(trendlog.data_size_text.clone()));
-            update_model.buffer_size = Set(Some((trendlog.data_size_kb * 1000.0) as i32)); // Update buffer size
+            update_model.buffer_size = Set(Some((trendlog.data_size_kb * 1000.0) as i32));
             update_model.updated_at = Set(Some(now.clone()));
-            update_model.ffi_synced = Set(Some(1)); // Mark as FFI synced
+            update_model.ffi_synced = Set(Some(1));
             update_model.last_ffi_sync = Set(Some(now));
 
             let _ = write_structured_log_with_level(

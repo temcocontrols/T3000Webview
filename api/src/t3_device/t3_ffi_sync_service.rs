@@ -814,12 +814,13 @@ impl T3000MainService {
 
         // Sync trendlog config for each device
         for device in all_devices {
-            let panel_id = device.panel_id.unwrap_or(0);
+            // Use panel_number (Panel_Number column) as primary source, fall back to panel_id (PanelId column)
+            let panel_id = device.panel_number.or(device.panel_id).unwrap_or(0);
             let serial_number = device.serial_number;
 
             if panel_id == 0 {
                 sync_logger.warn(&format!(
-                    "⚠️ Skipping device {} - invalid panel_id",
+                    "⚠️ Skipping device {} - invalid panel_id (both Panel_Number and PanelId are empty)",
                     serial_number
                 ));
                 continue;
