@@ -50,3 +50,20 @@ for (int idx = temp_start; idx < temp_end; idx++)
 
 To
 for (int idx = temp_start; idx <= temp_end; idx++)
+
+
+## 2026-04-10
+
+Panzoom lib enhancements
+
+## 2026-04-12
+
+Tstat10-11 simulator
+
+## 2026-04-13
+
+Trendlog new pages (react version)
+
+## 2026-04-14
+
+Setting pages
