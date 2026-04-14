@@ -73,7 +73,7 @@ export class PanelDataRefreshService {
         'schedule': EntryType.SCHEDULE,      // BAC_SCH = 4
         'holiday': EntryType.ANNUAL,         // BAC_HOL = 5
         'program': EntryType.PROGRAM,        // BAC_PRG = 6
-        'trendlog': EntryType.TABLE,         // BAC_TBL = 7
+        'trendlog': EntryType.AMON,          // BAC_AMON = 9 (Analog Monitors / Trendlogs)
         'graphic': EntryType.GROUP,          // BAC_GRP = 10
         'alarm': EntryType.ALARMS,           // BAC_ALARMS = 15
       };
@@ -291,6 +291,29 @@ export class PanelDataRefreshService {
       'graphic': db.graphics,
     };
 
+    // Trendlogs: single batch POST to save-refreshed endpoint
+    if (type === 'trendlog') {
+      try {
+        const url = `${API_BASE_URL}/api/t3_device/trendlogs/${serialNumber}/save-refreshed`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: transformedItems }),
+        });
+        if (response.ok) {
+          const result = await response.json();
+          const savedCount = result.savedCount || 0;
+          LogUtil.Info(`[PanelDataRefreshService] Saved ${savedCount}/${items.length} trendlog(s) to database`);
+          return savedCount;
+        }
+        LogUtil.Error(`[PanelDataRefreshService] save-refreshed failed: ${response.statusText}`);
+        return 0;
+      } catch (err) {
+        LogUtil.Error(`[PanelDataRefreshService] Failed to save trendlogs:`, err);
+        return 0;
+      }
+    }
+
     const entity = entityMap[type];
 
     if (!entity) {
@@ -462,6 +485,22 @@ export class PanelDataRefreshService {
       transformed.full_label = item.description ?? item.full_label ?? item.fullLabel ?? '';
       transformed.picture_file = item.picture_file ?? item.pictureFile ?? '';
       transformed.total_point = item.count?.toString() ?? item.total_point ?? item.totalPoint ?? '';
+    } else if (type === 'trendlog') {
+      // Trendlog transformation - map C++ BAC_AMON fields to database format
+      // C++ returns: id ("MON1"), label, hour_interval_time, minute_interval_time, second_interval_time, status, index, pid
+      // Field names must match what Rust save_trendlogs_to_db expects (camelCase)
+      const indexValue = item.index ?? 0;
+      transformed.trendlogId = item.id || `MON${indexValue + 1}`;
+      transformed.trendlogLabel = item.label ?? '';
+      // Convert h/m/s interval to total seconds
+      const hours = parseInt(item.hour_interval_time?.toString() || '0', 10);
+      const minutes = parseInt(item.minute_interval_time?.toString() || '0', 10);
+      const seconds = parseInt(item.second_interval_time?.toString() || '0', 10);
+      transformed.intervalSeconds = hours * 3600 + minutes * 60 + seconds;
+      // C++ sends status as integer (0=OFF, 1=ON)
+      const statusVal = item.status;
+      transformed.status = typeof statusVal === 'number' ? (statusVal === 0 ? 'OFF' : 'ON') : (statusVal?.toString() ?? '');
+      transformed.panelId = item.pid ?? 0;
     }
 
     return transformed;

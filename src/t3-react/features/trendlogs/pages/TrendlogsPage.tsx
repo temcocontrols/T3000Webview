@@ -499,8 +499,10 @@ export const TrendLogsPage: React.FC = () => {
   const handleRefreshSingleTrendlog = async (trendlogIndex: string) => {
     if (!selectedDevice) return;
 
-    const index = parseInt(trendlogIndex, 10);
-    if (isNaN(index)) {
+    // Extract numeric index from MON string (e.g., "MON3" → 2, zero-based for C++)
+    const match = trendlogIndex.match(/^MON(\d+)$/i);
+    const index = match ? parseInt(match[1], 10) - 1 : parseInt(trendlogIndex, 10);
+    if (isNaN(index) || index < 0) {
       console.error('[TrendLogsPage] Invalid trendlog index:', trendlogIndex);
       return;
     }

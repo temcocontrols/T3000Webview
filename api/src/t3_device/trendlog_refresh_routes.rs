@@ -17,7 +17,7 @@ use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
 use sea_orm::*;
 
 // Entry type constants matching C++ defines
-const BAC_TREND: i32 = 10;
+const BAC_AMON: i32 = 9;  // BAC_AMON = Analog Monitors (trendlogs)
 
 /// Request payload for refreshing a single trendlog (index is optional)
 #[derive(Debug, Deserialize)]
@@ -105,7 +105,7 @@ pub async fn refresh_trendlogs(
         "action": WebViewMessageType::GET_WEBVIEW_LIST as i32,
         "panelId": panel_id,
         "serialNumber": serial,
-        "entryType": BAC_TREND,
+        "entryType": BAC_AMON,
     });
 
     if let Some(idx) = payload.index {
@@ -191,8 +191,30 @@ pub async fn save_refreshed_trendlogs(
     }))
 }
 
+/// Extract a string value from JSON, handling both string and integer values
+fn get_string_value(item: &Value, key1: &str, key2: &str) -> Option<String> {
+    item.get(key1).or_else(|| item.get(key2)).and_then(|v| {
+        if let Some(s) = v.as_str() {
+            Some(s.to_string())
+        } else if let Some(n) = v.as_i64() {
+            Some(n.to_string())
+        } else {
+            None
+        }
+    })
+}
+
 async fn save_trendlogs_to_db(db: &DatabaseConnection, serial: i32, items: &[Value]) -> Result<i32, String> {
     let mut saved_count = 0;
+
+    // Look up panel_id from device
+    let panel_id = devices::Entity::find()
+        .filter(devices::Column::SerialNumber.eq(serial))
+        .one(db)
+        .await
+        .map_err(|e| format!("Database query error: {}", e))?
+        .map(|d| d.panel_number.or(d.panel_id).unwrap_or(0))
+        .unwrap_or(0);
 
     for item in items {
         let trendlog_index = item.get("trendlogId")
@@ -214,10 +236,11 @@ async fn save_trendlogs_to_db(db: &DatabaseConnection, serial: i32, items: &[Val
             .map_err(|e| format!("Database query error: {}", e))?;
 
         if let Some(trendlog_model) = existing_trendlog {
+            // UPDATE existing record
             let mut active_model: trendlogs::ActiveModel = trendlog_model.into();
 
-            if let Some(val) = item.get("trendlogLabel").or_else(|| item.get("trendlog_label")).and_then(|v| v.as_str()) {
-                active_model.trendlog_label = Set(Some(val.to_string()));
+            if let Some(val) = get_string_value(item, "trendlogLabel", "trendlog_label") {
+                active_model.trendlog_label = Set(Some(val));
             }
             if let Some(val) = item.get("intervalSeconds").or_else(|| item.get("interval_seconds")).and_then(|v| v.as_i64()) {
                 active_model.interval_seconds = Set(Some(val as i32));
@@ -225,17 +248,42 @@ async fn save_trendlogs_to_db(db: &DatabaseConnection, serial: i32, items: &[Val
             if let Some(val) = item.get("bufferSize").or_else(|| item.get("buffer_size")).and_then(|v| v.as_i64()) {
                 active_model.buffer_size = Set(Some(val as i32));
             }
-            if let Some(val) = item.get("autoManual").or_else(|| item.get("auto_manual")).and_then(|v| v.as_str()) {
-                active_model.auto_manual = Set(Some(val.to_string()));
+            if let Some(val) = get_string_value(item, "autoManual", "auto_manual") {
+                active_model.auto_manual = Set(Some(val));
             }
-            if let Some(val) = item.get("status").and_then(|v| v.as_str()) {
-                active_model.status = Set(Some(val.to_string()));
+            if let Some(val) = get_string_value(item, "status", "status") {
+                active_model.status = Set(Some(val));
             }
+            let now = chrono::Utc::now().to_rfc3339();
+            active_model.updated_at = Set(Some(now.clone()));
+            active_model.ffi_synced = Set(Some(1));
+            active_model.last_ffi_sync = Set(Some(now));
 
             active_model.update(db).await.map_err(|e| format!("Failed to update trendlog: {}", e))?;
             saved_count += 1;
         } else {
-            error!("⚠️ Trendlog record not found: serial={}, trendlog_id={}", serial, trendlog_index);
+            // INSERT new record
+            let now = chrono::Utc::now().to_rfc3339();
+            let new_trendlog = trendlogs::ActiveModel {
+                id: NotSet,
+                serial_number: Set(serial),
+                panel_id: Set(item.get("panelId").and_then(|v| v.as_i64()).unwrap_or(panel_id as i64) as i32),
+                trendlog_id: Set(trendlog_index.clone()),
+                switch_node: Set(Some(trendlog_index.clone())),
+                trendlog_label: Set(get_string_value(item, "trendlogLabel", "trendlog_label")),
+                interval_seconds: Set(item.get("intervalSeconds").or_else(|| item.get("interval_seconds")).and_then(|v| v.as_i64()).map(|v| v as i32)),
+                buffer_size: Set(item.get("bufferSize").or_else(|| item.get("buffer_size")).and_then(|v| v.as_i64()).map(|v| v as i32)),
+                data_size_kb: Set(None),
+                auto_manual: Set(get_string_value(item, "autoManual", "auto_manual")),
+                status: Set(get_string_value(item, "status", "status")),
+                ffi_synced: Set(Some(1)),
+                last_ffi_sync: Set(Some(now.clone())),
+                created_at: Set(Some(now.clone())),
+                updated_at: Set(Some(now)),
+            };
+            new_trendlog.insert(db).await.map_err(|e| format!("Failed to insert trendlog: {}", e))?;
+            info!("✅ Created new trendlog record: serial={}, trendlog_id={}", serial, trendlog_index);
+            saved_count += 1;
         }
     }
 

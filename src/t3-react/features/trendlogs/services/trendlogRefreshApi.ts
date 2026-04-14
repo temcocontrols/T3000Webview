@@ -33,8 +33,6 @@ export class TrendlogRefreshApi {
    * Uses Action 17 (GET_WEBVIEW_LIST) via PanelDataRefreshService
    * Reads indexes 0-15 from device and saves to database
    *
-   * NOTE: C++ BacnetWebView.cpp needs update to handle BAC_TBL (7) case
-   *
    * @param serialNumber - Device serial number
    * @returns Refresh result with counts and status
    */
@@ -47,8 +45,6 @@ export class TrendlogRefreshApi {
    *
    * Uses Action 17 (GET_WEBVIEW_LIST) via PanelDataRefreshService
    * Reads specific index from device and saves to database
-   *
-   * NOTE: C++ BacnetWebView.cpp needs update to handle BAC_TBL (7) case
    *
    * @param serialNumber - Device serial number
    * @param index - Trendlog index (0-15)
