@@ -90,7 +90,7 @@ pub async fn refresh_trendlogs(
         .one(&db_connection)
         .await
     {
-        Ok(Some(device)) => device.panel_id.unwrap_or(0),
+        Ok(Some(device)) => device.panel_number.or(device.panel_id).unwrap_or(0),
         Ok(None) => {
             error!("Device not found for serial: {}", serial);
             return Err((StatusCode::NOT_FOUND, format!("Device with serial {} not found", serial)));

@@ -439,7 +439,7 @@ impl TrendlogMonitorService {
             update_model.interval_seconds = Set(Some(trendlog.interval_seconds));
             update_model.status = Set(Some(trendlog.status.clone()));
             update_model.data_size_kb = Set(Some(trendlog.data_size_text.clone()));
-            update_model.buffer_size = Set(Some((trendlog.data_size_kb * 1000.0) as i32));
+            // Don't overwrite buffer_size here - it comes from FFI service (max_time_length)
             update_model.updated_at = Set(Some(now.clone()));
             update_model.ffi_synced = Set(Some(1));
             update_model.last_ffi_sync = Set(Some(now));
@@ -465,7 +465,7 @@ impl TrendlogMonitorService {
                 data_size_kb: Set(Some(trendlog.data_size_text.clone())),
                 status: Set(Some(trendlog.status.clone())),
                 auto_manual: Set(Some("Auto".to_string())), // Default to Auto
-                buffer_size: Set(Some((trendlog.data_size_kb * 1000.0) as i32)), // Convert KB to bytes
+                // buffer_size not available from monitor list - leave as None
                 created_at: Set(Some(now.clone())),
                 updated_at: Set(Some(now.clone())),
                 ffi_synced: Set(Some(1)), // Mark as FFI synced

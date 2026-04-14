@@ -578,29 +578,45 @@ export const TrendLogsPage: React.FC = () => {
     }
   };
 
-  // Display data padded to 18 rows for full grid appearance
+  // Display all 12 trendlog slots (matching T3000 desktop), merge actual data
   const displayTrendLogs = React.useMemo(() => {
-    const minRows = 18;
-    const emptyRow = (index: number): TrendLogData => ({
-      serialNumber: selectedDevice?.serialNumber || 0,
-      trendlogId: '',
-      trendlogIndex: '',
-      trendlogLabel: '',
-      intervalSeconds: undefined,
-      bufferSize: undefined,
-      autoManual: '',
-      status: '',
-      _uniqueIndex: 10000 + index,
-      panelId: selectedDevice?.panelId,
-    });
-    if (trendLogs.length === 0) {
-      return Array(minRows).fill(null).map((_, i) => emptyRow(i));
+    const totalSlots = 12;
+    const serial = selectedDevice?.serialNumber || 0;
+    const panel = selectedDevice?.panelId;
+
+    // Build a map of actual trendlog data keyed by MON index (1-12)
+    const dataMap = new Map<number, TrendLogData>();
+    for (const log of trendLogs) {
+      const id = log.trendlogId || log.trendlogIndex || '';
+      const match = id.match(/^MON(\d+)$/i);
+      if (match) {
+        dataMap.set(parseInt(match[1], 10), log);
+      }
     }
-    if (trendLogs.length < minRows) {
-      const padding = Array(minRows - trendLogs.length).fill(null).map((_, i) => emptyRow(i));
-      return [...trendLogs, ...padding];
+
+    // Generate all 12 slots, merging actual data where available
+    const slots: TrendLogData[] = [];
+    for (let i = 1; i <= totalSlots; i++) {
+      const existing = dataMap.get(i);
+      if (existing) {
+        slots.push(existing);
+      } else {
+        slots.push({
+          serialNumber: serial,
+          trendlogId: `MON${i}`,
+          trendlogIndex: `MON${i}`,
+          trendlogLabel: '',
+          intervalSeconds: 900, // Default 00:15:00 like T3000
+          bufferSize: undefined,
+          autoManual: '',
+          status: 'OFF',
+          _uniqueIndex: 10000 + i,
+          panelId: panel,
+        });
+      }
     }
-    return trendLogs;
+
+    return slots;
   }, [trendLogs, selectedDevice]);
 
   // Helper to identify empty/padding rows
@@ -695,22 +711,27 @@ export const TrendLogsPage: React.FC = () => {
     createTableColumn<TrendLogData>({
       columnId: 'autoManual',
       renderHeaderCell: () => <span>Auto/Manual</span>,
-      renderCell: (item) => (
-        <TableCellLayout>
-          {!isEmptyRow(item) && (
-            <Badge appearance={item.autoManual === '1' ? 'filled' : 'outline'} color="informative">
-              {item.autoManual === '1' ? 'Auto' : item.autoManual === '0' ? 'Manual' : '---'}
-            </Badge>
-          )}
-        </TableCellLayout>
-      ),
+      renderCell: (item) => {
+        const val = (item.autoManual || '').toUpperCase();
+        const isAuto = val === 'AUTO' || val === '1';
+        const isManual = val === 'MANUAL' || val === '0';
+        return (
+          <TableCellLayout>
+            {!isEmptyRow(item) && (
+              <Badge appearance={isAuto ? 'filled' : 'outline'} color="informative">
+                {isAuto ? 'Auto' : isManual ? 'Manual' : '---'}
+              </Badge>
+            )}
+          </TableCellLayout>
+        );
+      },
       compare: (a, b) => (a.autoManual || '').localeCompare(b.autoManual || ''),
     }),
     createTableColumn<TrendLogData>({
       columnId: 'status',
       renderHeaderCell: () => <span>Status</span>,
       renderCell: (item) => {
-        const isOn = item.status === 'ON';
+        const isOn = (item.status || '').toUpperCase() === 'ON';
         return (
           <TableCellLayout>
             {!isEmptyRow(item) && (
