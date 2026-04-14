@@ -556,7 +556,7 @@ export const TrendLogsPage: React.FC = () => {
 
   const handleMonitorSelect = useCallback(async (monitor: TrendLogData) => {
     console.log('🔵 [TrendLogsPage] handleMonitorSelect called with:', monitor);
-    console.log('🔵 [TrendLogsPage] VERSION: 2025-12-12-v2 - Using NEW input loading code');
+    console.log('🔵 [TrendLogsPage] VERSION: 2026-04-14-v3 - FIXED loading spinner');
 
     // Update radio button selection
     const rowId = getRowIdForItem(monitor);
@@ -763,37 +763,6 @@ export const TrendLogsPage: React.FC = () => {
   ];
 
   // Render content
-  if (!selectedDevice) {
-    console.log('⚠️ [TrendLogsPage] No device selected - showing empty state');
-    return (
-      <div className={styles.container}>
-        <div className={styles.noData}>
-          <div style={{ textAlign: 'center' }}>
-            <Text size={400} weight="semibold">No device selected</Text>
-            <br />
-            <Text size={200}>Please select a device from the tree to view trendlogs</Text>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    console.log('⏳ [TrendLogsPage] Loading state active');
-    return (
-      <div className={styles.container}>
-        <div className={styles.loading}>
-          <Spinner size="medium" label="Loading trend logs..." />
-        </div>
-      </div>
-    );
-  }
-
-  console.log('✅ [TrendLogsPage] Rendering full page with toolbar', {
-    trendLogsCount: trendLogs.length,
-    refreshing,
-    selectedDevice: selectedDevice.serialNumber
-  });
 
   return (
     <div className={styles.container}>
