@@ -615,16 +615,7 @@ export const TrendLogsPage: React.FC = () => {
         const bVal = Number(b.trendlogId || b.trendlogIndex || 0);
         return aVal - bVal;
       },
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('trendlogId')}>
-          <span>Trendlog ID</span>
-          {sortColumn === 'trendlogId' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      renderHeaderCell: () => <span>Trendlog ID</span>,
       renderCell: (item) => {
         const trendlogIndex = item.trendlogId || item.trendlogIndex || '';
         const isRefreshingThis = refreshingItems.has(trendlogIndex);
@@ -656,16 +647,7 @@ export const TrendLogsPage: React.FC = () => {
     createTableColumn<TrendLogData>({
       columnId: 'trendlogLabel',
       compare: (a, b) => (a.trendlogLabel || '').localeCompare(b.trendlogLabel || ''),
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('trendlogLabel')}>
-          <span>Label</span>
-          {sortColumn === 'trendlogLabel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      renderHeaderCell: () => <span>Label</span>,
       renderCell: (item) => (
         <TableCellLayout>
           {!isEmptyRow(item) && <Text size={200}>{item.trendlogLabel || '---'}</Text>}
