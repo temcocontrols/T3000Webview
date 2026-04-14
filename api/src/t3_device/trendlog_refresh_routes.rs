@@ -329,7 +329,7 @@ async fn save_trendlogs_to_db(db: &DatabaseConnection, serial: i32, items: &[Val
                                 .filter(input_points::Column::SerialNumber.eq(serial))
                                 .filter(input_points::Column::InputIndex.eq(pn.to_string()))
                                 .one(db).await.ok().flatten()
-                                .and_then(|p| p.full_label.or(p.label))
+                                .and_then(|p| p.label.filter(|l| !l.is_empty()).or(p.full_label))
                                 .filter(|l| !l.is_empty())
                                 .unwrap_or_else(|| fallback_label.clone())
                         }
@@ -339,7 +339,7 @@ async fn save_trendlogs_to_db(db: &DatabaseConnection, serial: i32, items: &[Val
                                 .filter(output_points::Column::SerialNumber.eq(serial))
                                 .filter(output_points::Column::OutputIndex.eq(pn.to_string()))
                                 .one(db).await.ok().flatten()
-                                .and_then(|p| p.full_label.or(p.label))
+                                .and_then(|p| p.label.filter(|l| !l.is_empty()).or(p.full_label))
                                 .filter(|l| !l.is_empty())
                                 .unwrap_or_else(|| fallback_label.clone())
                         }
@@ -349,7 +349,7 @@ async fn save_trendlogs_to_db(db: &DatabaseConnection, serial: i32, items: &[Val
                                 .filter(variable_points::Column::SerialNumber.eq(serial))
                                 .filter(variable_points::Column::VariableIndex.eq(pn.to_string()))
                                 .one(db).await.ok().flatten()
-                                .and_then(|p| p.full_label.or(p.label))
+                                .and_then(|p| p.label.filter(|l| !l.is_empty()).or(p.full_label))
                                 .filter(|l| !l.is_empty())
                                 .unwrap_or_else(|| fallback_label.clone())
                         }

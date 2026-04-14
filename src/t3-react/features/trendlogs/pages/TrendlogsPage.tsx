@@ -33,6 +33,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { TrendlogRefreshApi } from '../services/trendlogRefreshApi';
+import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import { API_BASE_URL } from '../../../config/constants';
 import { TrendChartDrawer } from '../components/TrendChartDrawer';
 import styles from './TrendLogsPage.module.css';
@@ -463,8 +464,16 @@ export const TrendLogsPage: React.FC = () => {
       deviceRefreshedRef.current = selectedDevice.serialNumber;
 
       try {
+        const serial = selectedDevice.serialNumber;
+        // Pre-refresh inputs/outputs/variables so label resolution uses current names
+        console.log('[TrendLogsPage] Pre-refreshing inputs/outputs/variables for label resolution...');
+        await Promise.all([
+          PanelDataRefreshService.refreshAllInputs(serial),
+          PanelDataRefreshService.refreshAllOutputs(serial),
+          PanelDataRefreshService.refreshAllVariables(serial),
+        ]);
         console.log('[TrendLogsPage] Auto-refreshing from device...');
-        const refreshResponse = await TrendlogRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);
+        const refreshResponse = await TrendlogRefreshApi.refreshAllFromDevice(serial);
         console.log('[TrendLogsPage] Refresh response:', refreshResponse);
         await fetchTrendLogs();
         setAutoRefreshed(true);
@@ -483,8 +492,16 @@ export const TrendLogsPage: React.FC = () => {
 
     setRefreshing(true);
     try {
+      const serial = selectedDevice.serialNumber;
+      // Pre-refresh inputs/outputs/variables so label resolution uses current names
+      console.log('[TrendLogsPage] Pre-refreshing inputs/outputs/variables for label resolution...');
+      await Promise.all([
+        PanelDataRefreshService.refreshAllInputs(serial),
+        PanelDataRefreshService.refreshAllOutputs(serial),
+        PanelDataRefreshService.refreshAllVariables(serial),
+      ]);
       console.log('[TrendLogsPage] Refreshing all trendlogs from device...');
-      const refreshResponse = await TrendlogRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);
+      const refreshResponse = await TrendlogRefreshApi.refreshAllFromDevice(serial);
       console.log('[TrendLogsPage] Refresh response:', refreshResponse);
       await fetchTrendLogs();
     } catch (error) {
