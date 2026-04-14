@@ -926,6 +926,9 @@ export const TrendLogsPage: React.FC = () => {
                         ) : monitorInputs.length > 0 ? (
                           monitorInputs.map((input, index) => {
                             const pointTypeShort =
+                              input.pointType === 'INPUT' ? 'IN' :
+                              input.pointType === 'OUTPUT' ? 'OUT' :
+                              input.pointType === 'VARIABLE' ? 'VAR' :
                               input.pointType === 'IN' ? 'IN' :
                               input.pointType === 'OUT' ? 'OUT' :
                               input.pointType === 'VAR' ? 'VAR' :

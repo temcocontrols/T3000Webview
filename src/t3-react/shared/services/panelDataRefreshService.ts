@@ -488,7 +488,7 @@ export class PanelDataRefreshService {
     } else if (type === 'trendlog') {
       // Trendlog transformation - map C++ BAC_AMON fields to database format
       // C++ returns: id ("MON1"), label, hour_interval_time, minute_interval_time, second_interval_time, status, index, pid
-      // Field names must match what Rust save_trendlogs_to_db expects (camelCase)
+      // Plus input[] array with {panel, sub_panel, point_type, point_number, network} and num_inputs, range[]
       const indexValue = item.index ?? 0;
       transformed.trendlogId = item.id || `MON${indexValue + 1}`;
       transformed.trendlogLabel = item.label ?? '';
@@ -501,6 +501,10 @@ export class PanelDataRefreshService {
       const statusVal = item.status;
       transformed.status = typeof statusVal === 'number' ? (statusVal === 0 ? 'OFF' : 'ON') : (statusVal?.toString() ?? '');
       transformed.panelId = item.pid ?? 0;
+      // Pass through input points for saving to TRENDLOG_INPUTS
+      transformed.numInputs = item.num_inputs ?? 0;
+      transformed.inputs = item.input ?? [];
+      transformed.ranges = item.range ?? [];
     }
 
     return transformed;

@@ -12,7 +12,7 @@ use serde_json::{json, Value};
 use tracing::{error, info};
 
 use crate::app_state::T3AppState;
-use crate::entity::t3_device::{devices, trendlogs};
+use crate::entity::t3_device::{devices, trendlogs, trendlog_inputs, input_points, output_points, variable_points};
 use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
 use sea_orm::*;
 
@@ -284,6 +284,105 @@ async fn save_trendlogs_to_db(db: &DatabaseConnection, serial: i32, items: &[Val
             new_trendlog.insert(db).await.map_err(|e| format!("Failed to insert trendlog: {}", e))?;
             info!("✅ Created new trendlog record: serial={}, trendlog_id={}", serial, trendlog_index);
             saved_count += 1;
+        }
+
+        // Save monitor input points to TRENDLOG_INPUTS
+        let item_panel_id = item.get("panelId").and_then(|v| v.as_i64()).unwrap_or(panel_id as i64) as i32;
+        if let Some(inputs) = item.get("inputs").and_then(|v| v.as_array()) {
+            let num_inputs = item.get("numInputs").and_then(|v| v.as_i64()).unwrap_or(0) as usize;
+            let now = chrono::Utc::now().to_rfc3339();
+
+            // Clear ALL existing inputs for this trendlog (MAIN and VIEW) before re-inserting fresh data
+            let _ = trendlog_inputs::Entity::delete_many()
+                .filter(trendlog_inputs::Column::SerialNumber.eq(serial))
+                .filter(trendlog_inputs::Column::TrendlogId.eq(&trendlog_index))
+                .exec(db)
+                .await;
+
+            let mut input_count = 0;
+            for (idx, input_val) in inputs.iter().enumerate() {
+                if idx >= num_inputs { break; }
+
+                let pt = input_val.get("point_type").and_then(|v| v.as_i64()).unwrap_or(0);
+                let pn = input_val.get("point_number").and_then(|v| v.as_i64()).unwrap_or(0);
+                let panel = input_val.get("panel").and_then(|v| v.as_i64()).unwrap_or(0);
+
+                // Only save valid points (point_type > 0)
+                if pt > 0 {
+                    let point_type_str = match pt {
+                        1 => "INPUT",
+                        2 => "OUTPUT",
+                        3 => "VARIABLE",
+                        _ => "UNKNOWN",
+                    }.to_string();
+
+                    let fallback_label = format!("{}_{}",
+                        match pt { 1 => "IN", 2 => "OUT", 3 => "VAR", _ => "UNK" },
+                        pn
+                    );
+
+                    // Resolve actual label from DB (INPUTS/OUTPUTS/VARIABLES tables)
+                    let point_label = match pt {
+                        1 => {
+                            // Look up from INPUTS by serial + index
+                            input_points::Entity::find()
+                                .filter(input_points::Column::SerialNumber.eq(serial))
+                                .filter(input_points::Column::InputIndex.eq(pn.to_string()))
+                                .one(db).await.ok().flatten()
+                                .and_then(|p| p.full_label.or(p.label))
+                                .filter(|l| !l.is_empty())
+                                .unwrap_or_else(|| fallback_label.clone())
+                        }
+                        2 => {
+                            // Look up from OUTPUTS by serial + index
+                            output_points::Entity::find()
+                                .filter(output_points::Column::SerialNumber.eq(serial))
+                                .filter(output_points::Column::OutputIndex.eq(pn.to_string()))
+                                .one(db).await.ok().flatten()
+                                .and_then(|p| p.full_label.or(p.label))
+                                .filter(|l| !l.is_empty())
+                                .unwrap_or_else(|| fallback_label.clone())
+                        }
+                        3 => {
+                            // Look up from VARIABLES by serial + index
+                            variable_points::Entity::find()
+                                .filter(variable_points::Column::SerialNumber.eq(serial))
+                                .filter(variable_points::Column::VariableIndex.eq(pn.to_string()))
+                                .one(db).await.ok().flatten()
+                                .and_then(|p| p.full_label.or(p.label))
+                                .filter(|l| !l.is_empty())
+                                .unwrap_or_else(|| fallback_label.clone())
+                        }
+                        _ => fallback_label.clone(),
+                    };
+
+                    let input_record = trendlog_inputs::ActiveModel {
+                        id: NotSet,
+                        serial_number: Set(serial),
+                        panel_id: Set(item_panel_id),
+                        trendlog_id: Set(trendlog_index.clone()),
+                        point_type: Set(point_type_str),
+                        point_index: Set(pn.to_string()),
+                        point_panel: Set(Some(panel.to_string())),
+                        point_label: Set(Some(point_label)),
+                        status: Set(Some("ACTIVE".to_string())),
+                        view_type: Set(Some("MAIN".to_string())),
+                        view_number: Set(None),
+                        is_selected: Set(Some(1)),
+                        created_at: Set(Some(now.clone())),
+                        updated_at: Set(Some(now.clone())),
+                    };
+
+                    if let Err(e) = input_record.insert(db).await {
+                        error!("Failed to insert trendlog input: {}", e);
+                    } else {
+                        input_count += 1;
+                    }
+                }
+            }
+            if input_count > 0 {
+                info!("✅ Saved {} input point(s) for {}", input_count, trendlog_index);
+            }
         }
     }
 
