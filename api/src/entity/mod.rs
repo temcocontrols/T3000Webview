@@ -21,6 +21,12 @@ pub mod database_files;
 pub mod data_sync_metadata;
 
 // ============================================================================
+// CENTRALIZED DATABASE - Backend configuration entity
+// ============================================================================
+
+pub mod db_backend_config;
+
+// ============================================================================
 // ABSTRACTED ENTITIES - T3000 device database entities (used by T3000 modules)
 // ============================================================================
 

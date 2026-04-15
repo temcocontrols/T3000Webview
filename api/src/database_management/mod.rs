@@ -23,6 +23,7 @@ pub mod partition_monitor_service;
 pub mod partition_query_service;
 pub mod data_sync_service;
 pub mod data_sync_endpoints;
+pub mod db_backend_config;
 
 /// Partition metadata cache for faster queries
 static PARTITION_CACHE: std::sync::OnceLock<Arc<RwLock<HashMap<String, PartitionMetadata>>>> = std::sync::OnceLock::new();
