@@ -385,6 +385,135 @@ pub fn build_mssql_config(
 // Validation
 // ============================================================================
 
+// ============================================================================
+// Schema Initialisation for Remote Backends
+// ============================================================================
+
+/// Embedded SQL schemas for each remote backend dialect.
+const SCHEMA_POSTGRES: &str = include_str!("../../migration/sql/webview_t3_device_postgres.sql");
+const SCHEMA_MYSQL: &str    = include_str!("../../migration/sql/webview_t3_device_mysql.sql");
+const SCHEMA_MSSQL: &str    = include_str!("../../migration/sql/webview_t3_device_mssql.sql");
+
+/// Split a SQL script into individual statements on semicolons.
+/// Ignores empty statements and comment-only lines.
+fn split_sql_statements(script: &str) -> Vec<String> {
+    script
+        .split(';')
+        .map(|s| s.trim().to_string())
+        .filter(|s| {
+            if s.is_empty() {
+                return false;
+            }
+            // Skip pure comment blocks
+            let non_comment: String = s
+                .lines()
+                .filter(|l| {
+                    let trimmed = l.trim();
+                    !trimmed.is_empty() && !trimmed.starts_with("--")
+                })
+                .collect::<Vec<_>>()
+                .join(" ");
+            !non_comment.trim().is_empty()
+        })
+        .collect()
+}
+
+/// Split a T-SQL script into individual batches.
+/// MSSQL uses `GO` as a batch separator rather than semicolons inside
+/// `IF … BEGIN … END` blocks, but our generated schema uses semicolons
+/// at the statement level.  For MSSQL we also need to handle the
+/// `IF NOT EXISTS … CREATE TABLE` pattern which spans multiple lines
+/// without an inner semicolon.  We split on blank-line boundaries
+/// that start a new `IF NOT EXISTS` block.
+fn split_mssql_statements(script: &str) -> Vec<String> {
+    // For our MSSQL schema the safest split is on semicolons that are
+    // *outside* parentheses (table bodies use commas, not semis).
+    // Our schema separates each DDL statement with a trailing semicolon
+    // already, so a simple semicolon split works — except that CREATE TABLE
+    // bodies may span many lines.  Because our schema never puts a
+    // semicolon inside a CREATE TABLE (...) block, a simple split is safe.
+    split_sql_statements(script)
+}
+
+/// Initialise the remote database schema for the given backend type.
+///
+/// Reads the embedded SQL dialect file, splits it into statements,
+/// and executes each one against the provided SeaORM connection.
+///
+/// For MSSQL (Phase 5) this will need a tiberius connection instead.
+///
+/// Returns (statements_executed, errors) so the caller can report partial success.
+pub async fn initialize_remote_schema(
+    conn: &DatabaseConnection,
+    backend: BackendType,
+) -> Result<InitSchemaResult, String> {
+    let (script, db_backend) = match backend {
+        BackendType::Postgres => (SCHEMA_POSTGRES, sea_orm::DatabaseBackend::Postgres),
+        BackendType::Mysql    => (SCHEMA_MYSQL,    sea_orm::DatabaseBackend::MySql),
+        BackendType::Mssql    => {
+            // Phase 5: will execute via tiberius pool instead
+            return Err("MSSQL schema init requires tiberius (Phase 5)".to_string());
+        }
+        BackendType::Sqlite   => {
+            return Err("SQLite uses static schema, not remote init".to_string());
+        }
+    };
+
+    let statements = split_sql_statements(script);
+    let total = statements.len();
+    let mut executed = 0usize;
+    let mut errors: Vec<String> = Vec::new();
+
+    for stmt in &statements {
+        let result = conn
+            .execute(sea_orm::Statement::from_string(db_backend, stmt.clone()))
+            .await;
+        match result {
+            Ok(_) => executed += 1,
+            Err(e) => {
+                let msg = format!("Statement failed: {} — {}", truncate_stmt(stmt, 120), e);
+                eprintln!("[db_backend_config] WARN: {}", msg);
+                errors.push(msg);
+            }
+        }
+    }
+
+    Ok(InitSchemaResult {
+        total_statements: total,
+        executed,
+        errors,
+    })
+}
+
+/// Result of a remote schema initialisation attempt.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InitSchemaResult {
+    pub total_statements: usize,
+    pub executed: usize,
+    pub errors: Vec<String>,
+}
+
+impl InitSchemaResult {
+    pub fn is_success(&self) -> bool {
+        self.errors.is_empty()
+    }
+}
+
+/// Truncate a SQL statement for logging.
+fn truncate_stmt(s: &str, max: usize) -> String {
+    let one_line: String = s.chars().take(max).collect();
+    let one_line = one_line.replace('\n', " ").replace('\r', "");
+    if s.len() > max {
+        format!("{}…", one_line)
+    } else {
+        one_line
+    }
+}
+
+// ============================================================================
+// Validation
+// ============================================================================
+
 /// Validate that a backend config has all required fields.
 pub fn validate_config(config: &BackendConfig) -> Result<(), String> {
     match config.backend_type {
