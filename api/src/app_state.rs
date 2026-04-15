@@ -30,7 +30,7 @@ pub async fn app_state() -> Result<AppState, Box<dyn Error>> {
 // ABSTRACTED FUNCTIONS - All new functionality separated from original code
 // ============================================================================
 
-use crate::db_connection::establish_t3_device_connection;
+use crate::db_connection::{establish_t3_device_connection, establish_device_conn_from_config};
 use crate::logger::write_structured_log;
 
 /// Abstracted enhanced application state with T3000 device support
@@ -38,6 +38,10 @@ use crate::logger::write_structured_log;
 pub struct T3AppState {
     pub conn: Arc<Mutex<DatabaseConnection>>,
     pub t3_device_conn: Option<Arc<Mutex<DatabaseConnection>>>,
+    /// Always points to local webview_t3_device.db SQLite for DB_BACKEND_CONFIG access.
+    /// This connection is used by backend config REST endpoints and at startup.
+    /// It remains valid even when t3_device_conn points to a remote DB.
+    pub local_config_conn: Option<Arc<Mutex<DatabaseConnection>>>,
 }
 
 /// Creates a webview T3000 application state with dual database connections
@@ -83,23 +87,86 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
         }
     };
 
-    // Establish webview T3000 database connection (OPTIONAL - don't fail if unavailable)
-    let t3_device_conn = match establish_t3_device_connection().await {
+    // ---- Step 1: Open local config connection (always local SQLite) ----
+    // This is used for DB_BACKEND_CONFIG reads/writes and must exist before
+    // we can determine which backend to connect to for device data.
+    let local_config_conn = match establish_t3_device_connection().await {
         Ok(conn) => {
-            let success_message = "WebView T3000 database connected successfully";
-            let _ = write_structured_log_with_level("T3_Webview_Initialize", success_message, LogLevel::Info);
-            Some(conn)
-        },
-        Err(e) => {
-            // Log to structured log for headless service but DON'T fail the entire service
-            use crate::utils::T3_DEVICE_DATABASE_URL;
-            let error_message = format!(
-                "WebView T3000 database unavailable (core services will continue)\nDatabase URL: {}\nError details: {:?}",
-                T3_DEVICE_DATABASE_URL.as_str(), e
+            let _ = write_structured_log_with_level(
+                "T3_Webview_Initialize",
+                "Local config connection (webview_t3_device.db) ready",
+                LogLevel::Info,
             );
-            let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_message, LogLevel::Warn);
-            crate::logger::write_structured_log_with_level("T3_Webview_API", "WebView T3000 database unavailable - Core HTTP/WebSocket services starting anyway", crate::logger::LogLevel::Warn).ok();
+            Some(Arc::new(Mutex::new(conn)))
+        }
+        Err(e) => {
+            let _ = write_structured_log_with_level(
+                "T3_Webview_Initialize",
+                &format!(
+                    "local_config_conn unavailable — backend config REST endpoints disabled: {:?}",
+                    e
+                ),
+                LogLevel::Warn,
+            );
             None
+        }
+    };
+
+    // ---- Step 2: Read DB_BACKEND_CONFIG and connect to the active backend ----
+    // If local_config_conn is available, read the active backend config and
+    // establish a connection to the chosen backend (SQLite / PG / MySQL).
+    // Falls back to direct local SQLite connection if config read fails.
+    let t3_device_conn: Option<DatabaseConnection> = if let Some(ref lcfg) = local_config_conn {
+        let cfg_guard = lcfg.lock().await;
+        match establish_device_conn_from_config(&*cfg_guard).await {
+            Ok((device_conn, config)) => {
+                let _ = write_structured_log_with_level(
+                    "T3_Webview_Initialize",
+                    &format!(
+                        "Device DB connected via active backend: {}",
+                        config.backend_type
+                    ),
+                    LogLevel::Info,
+                );
+                // DeviceDbConn wraps a SeaORM connection — extract it for
+                // t3_device_conn (keeping the same type the 80+ route files expect).
+                Some(device_conn.sea_orm().clone())
+            }
+            Err(e) => {
+                let _ = write_structured_log_with_level(
+                    "T3_Webview_Initialize",
+                    &format!(
+                        "Backend-aware connect failed, falling back to local SQLite: {:?}",
+                        e
+                    ),
+                    LogLevel::Warn,
+                );
+                // Fallback: connect to local SQLite directly
+                establish_t3_device_connection().await.ok()
+            }
+        }
+    } else {
+        // No local config conn — try direct local SQLite as last resort
+        match establish_t3_device_connection().await {
+            Ok(conn) => {
+                let _ = write_structured_log_with_level(
+                    "T3_Webview_Initialize",
+                    "WebView T3000 database connected (direct SQLite fallback)",
+                    LogLevel::Info,
+                );
+                Some(conn)
+            }
+            Err(e) => {
+                let _ = write_structured_log_with_level(
+                    "T3_Webview_Initialize",
+                    &format!(
+                        "WebView T3000 database unavailable — core services will continue: {:?}",
+                        e
+                    ),
+                    LogLevel::Warn,
+                );
+                None
+            }
         }
     };
 
@@ -128,6 +195,7 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
     Ok(T3AppState {
         conn: shared_conn,
         t3_device_conn: shared_t3_device_conn,
+        local_config_conn,
         // data_collector, // Temporarily disabled
         // data_sender, // Temporarily disabled
         // trend_collector, // Temporarily disabled

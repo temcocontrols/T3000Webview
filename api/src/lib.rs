@@ -8,6 +8,7 @@ pub mod auth;
 pub mod constants;
 pub mod db_connection;
 pub mod db_schema;  // NEW: Embedded SQL schema for dynamic database creation
+pub mod device_db_conn; // NEW: Multi-backend device DB connection adapter
 pub mod entity;
 pub mod error;
 pub mod file;

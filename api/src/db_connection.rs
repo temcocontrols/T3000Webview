@@ -1,5 +1,9 @@
 use std::time::Duration;
 
+use crate::database_management::db_backend_config::{
+    self, BackendConfig, BackendType,
+};
+use crate::device_db_conn::DeviceDbConn;
 use crate::utils::{DATABASE_URL, T3_DEVICE_DATABASE_URL};
 
 use sea_orm::{ConnectOptions, Database, DatabaseConnection};
@@ -111,4 +115,56 @@ pub async fn establish_t3_device_connection() -> Result<DatabaseConnection, Box<
     }
 
     Ok(db)
+}
+
+// ============================================================================
+// Backend-Aware Connection (Phase 2)
+// ============================================================================
+
+/// Establish a device database connection based on the active backend config.
+///
+/// 1. Opens local SQLite (`webview_t3_device.db`) to read `DB_BACKEND_CONFIG`.
+/// 2. Determines which backend is active.
+/// 3. If SQLite → reuses the same local connection (default, same as today).
+/// 4. If Postgres/MySQL → builds a SeaORM URL and connects.
+/// 5. If MSSQL → returns an error (Phase 5 - tiberius integration).
+///
+/// Returns `(DeviceDbConn, BackendConfig)` so callers know which backend was chosen.
+pub async fn establish_device_conn_from_config(
+    local_conn: &DatabaseConnection,
+) -> Result<(DeviceDbConn, BackendConfig), Box<dyn std::error::Error>> {
+    let config = db_backend_config::load_active_config(local_conn).await?;
+
+    match config.backend_type {
+        BackendType::Sqlite => {
+            // Use the standard local SQLite connection
+            let conn = establish_t3_device_connection().await?;
+            Ok((
+                DeviceDbConn::new_sea_orm(conn, BackendType::Sqlite),
+                config,
+            ))
+        }
+        BackendType::Postgres | BackendType::Mysql => {
+            db_backend_config::validate_config(&config)?;
+            let url = db_backend_config::build_seaorm_url(&config)?;
+
+            let mut opt = ConnectOptions::new(&url);
+            opt.max_connections(10)
+                .min_connections(2)
+                .connect_timeout(Duration::from_secs(10))
+                .acquire_timeout(Duration::from_secs(10))
+                .idle_timeout(Duration::from_secs(60))
+                .max_lifetime(Duration::from_secs(300))
+                .sqlx_logging(false);
+
+            let conn = Database::connect(opt).await?;
+            Ok((
+                DeviceDbConn::new_sea_orm(conn, config.backend_type),
+                config,
+            ))
+        }
+        BackendType::Mssql => {
+            Err("MSSQL backend not yet implemented (Phase 5)".into())
+        }
+    }
 }
