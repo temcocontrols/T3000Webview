@@ -109,43 +109,60 @@ read config from it.
 
 ### DB_BACKEND_CONFIG Table Schema
 
+**Normalized design:** Each database type is a **row**, not a set of columns.
+Adding a new DB type in the future = just INSERT a new row. No schema changes.
+
 ```sql
 -- In webview_t3_device.db (local SQLite, always exists on disk)
 CREATE TABLE IF NOT EXISTS DB_BACKEND_CONFIG (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    active_backend TEXT NOT NULL DEFAULT 'sqlite',  -- 'sqlite'|'mssql'|'postgres'|'mysql'
-    -- SQLite settings (defaults, rarely changed)
-    sqlite_url    TEXT DEFAULT 'sqlite://Database/webview_t3_device.db',
-    -- SQL Server settings
-    mssql_host     TEXT,
-    mssql_port     INTEGER DEFAULT 1433,
-    mssql_instance TEXT,           -- e.g. 'SQLEXPRESS'
-    mssql_database TEXT,
-    mssql_username TEXT,
-    mssql_password TEXT,           -- encrypted (AES-256-GCM)
-    mssql_trust_cert INTEGER DEFAULT 1,
-    -- PostgreSQL settings
-    pg_host       TEXT,
-    pg_port       INTEGER DEFAULT 5432,
-    pg_database   TEXT,
-    pg_username   TEXT,
-    pg_password   TEXT,            -- encrypted
-    pg_sslmode    TEXT DEFAULT 'prefer',
-    -- MySQL settings
-    mysql_host    TEXT,
-    mysql_port    INTEGER DEFAULT 3306,
-    mysql_database TEXT,
-    mysql_username TEXT,
-    mysql_password TEXT,            -- encrypted
-    -- Metadata
+    backend_type  TEXT NOT NULL UNIQUE,  -- 'sqlite'|'mssql'|'postgres'|'mysql'|future...
+    is_active     INTEGER NOT NULL DEFAULT 0,  -- only ONE row has is_active=1
+    host          TEXT,            -- server hostname or IP (NULL for sqlite)
+    port          INTEGER,         -- server port (NULL for sqlite)
+    instance      TEXT,            -- named instance, e.g. 'SQLEXPRESS' (MSSQL only)
+    database_name TEXT,            -- database/catalog name on server
+    username      TEXT,
+    password      TEXT,            -- encrypted (AES-256-GCM), NULL for sqlite
+    connection_url TEXT,           -- for sqlite: 'sqlite://Database/webview_t3_device.db'
+    extra_options TEXT,            -- JSON for backend-specific options, e.g.:
+                                  --   MSSQL:    {"trust_cert": true}
+                                  --   Postgres: {"sslmode": "prefer"}
+                                  --   MySQL:    {"charset": "utf8mb4"}
     updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Insert default row if empty
-INSERT OR IGNORE INTO DB_BACKEND_CONFIG (id, active_backend) VALUES (1, 'sqlite');
+-- Seed default rows (one per supported backend)
+INSERT OR IGNORE INTO DB_BACKEND_CONFIG (backend_type, is_active, connection_url)
+    VALUES ('sqlite', 1, 'sqlite://Database/webview_t3_device.db');
+INSERT OR IGNORE INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
+    VALUES ('mssql', 0, 1433);
+INSERT OR IGNORE INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
+    VALUES ('postgres', 0, 5432);
+INSERT OR IGNORE INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
+    VALUES ('mysql', 0, 3306);
 ```
 
-**Always exactly 1 row** (id=1). Simple SELECT/UPDATE. No complex queries needed.
+**Example data:**
+
+| id | backend_type | is_active | host | port | instance | database_name | username | password | connection_url | extra_options |
+|----|-------------|-----------|------|------|----------|--------------|----------|----------|----------------|--------------|
+| 1 | sqlite | **1** | | | | | | | sqlite://Database/webview_t3_device.db | |
+| 2 | mssql | 0 | 192.168.1.100 | 1433 | SQLEXPRESS | T3000_Devices | sa | (encrypted) | | {"trust_cert":true} |
+| 3 | postgres | 0 | | 5432 | | | | | | {"sslmode":"prefer"} |
+| 4 | mysql | 0 | | 3306 | | | | | | {"charset":"utf8mb4"} |
+
+**Queries:**
+- Read active: `SELECT * FROM DB_BACKEND_CONFIG WHERE is_active = 1`
+- Switch backend: `UPDATE DB_BACKEND_CONFIG SET is_active = 0; UPDATE DB_BACKEND_CONFIG SET is_active = 1 WHERE backend_type = 'mssql';`
+- Save settings: `UPDATE DB_BACKEND_CONFIG SET host=?, port=?, ... WHERE backend_type = 'mssql'`
+- Add new DB type later: `INSERT INTO DB_BACKEND_CONFIG (backend_type, is_active, port) VALUES ('oracle', 0, 1521)`
+
+**Why this is better:**
+- Adding Oracle, CockroachDB, or any future DB = just a new row, no ALTER TABLE
+- All backends share the same columns (host, port, username, password, etc.)
+- Backend-specific options go in `extra_options` JSON column
+- `UNIQUE(backend_type)` prevents duplicates
 
 ### Password Storage
 
@@ -311,8 +328,9 @@ The single `DatabaseConfigPage.tsx` has sections stacked vertically:
                   │
   ┌───────────────▼──────────────────────┐
   │ 2. Open local webview_t3_device.db   │  Quick SQLite open
-  │    SELECT * FROM DB_BACKEND_CONFIG   │
-  │    WHERE id=1 → active_backend = ?   │
+  │    SELECT * FROM DB_BACKEND_CONFIG  │
+  │    WHERE is_active = 1              │
+  │    → backend_type = ?               │
   └───────────────┬──────────────────────┘
                   │
         ┌─────────┴─────────┐
