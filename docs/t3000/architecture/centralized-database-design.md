@@ -36,7 +36,7 @@ architecture:
   │                      │                                   │
   │      ┌───────────────┼───────────────┐                   │
   │      │               │               │                   │
-  │  SeaORM conn    SeaORM conn    bb8 Pool<Tiberius>        │
+  │  SeaORM conn    SeaORM conn    deadpool Pool<Tiberius>    │
   │  (SQLite)       (PG / MySQL)   (SQL Server)              │
   │      │               │               │                   │
   │  Existing        Existing        Raw SQL with            │
@@ -51,7 +51,7 @@ architecture:
 | SQLite         | `sea-orm` (sqlx-sqlite)  | Already working (default)     |
 | PostgreSQL     | `sea-orm` (sqlx-postgres)| Just enable feature flag      |
 | MySQL/MariaDB  | `sea-orm` (sqlx-mysql)   | Just enable feature flag      |
-| **SQL Server** | **`tiberius`** + `bb8`   | Direct TDS driver, raw SQL    |
+| **SQL Server** | **`tiberius`** + `deadpool` | Direct TDS driver, raw SQL    |
 
 **Why tiberius:** Free, open-source, 4M+ downloads, pure Rust, native async
 tokio support, SQL Server 2005-2022, built-in SQL Browser (UDP 1434), no
@@ -66,16 +66,18 @@ device tables are simple CRUD — no complex joins or exotic queries.
 
 | Component | Changes? | Details |
 |-----------|----------|---------|
-| `webview_database.db` (users, app config) | **NO** | Stays local SQLite, untouched |
-| `webview_t3_device.db` (46 device tables + config) | **YES** | Add `DB_BACKEND_CONFIG` table (always read from local SQLite file). Device data can switch to SQL Server / PostgreSQL / MySQL |
+| `webview_database.db` (users, auth) | **NO** | Stays local SQLite, untouched |
+| `webview_t3_device.db` (46 device tables + config) | **YES** | Add `DB_BACKEND_CONFIG` table (always read from local SQLite file). Device data + `APPLICATION_CONFIG` can switch to remote |
 | `AppState.conn` (primary DB connection) | **NO** | Untouched |
 | `T3AppState.t3_device_conn` type | **YES** | Changes from `Option<Arc<Mutex<DatabaseConnection>>>` to `Option<Arc<Mutex<DeviceDbConn>>>` |
-| `Cargo.toml` | **YES** | Add tiberius, bb8, sqlx-postgres, sqlx-mysql |
+| `T3AppState` struct | **+1 field** | Add `local_config_conn: Arc<Mutex<DatabaseConnection>>` — always points to local SQLite for `DB_BACKEND_CONFIG` reads/writes |
+| `Cargo.toml` | **YES** | Add tiberius, deadpool-tiberius, sqlx-postgres, sqlx-mysql |
 | `db_connection.rs` | **YES** | Backend-aware connection logic |
-| `lib.rs` startup | **YES** | Load config before connecting |
+| `lib.rs` startup | **YES** | Always init local SQLite first, read config, then connect to chosen backend |
 | SeaORM entity code (60+ files) | **NO** | Works unchanged for SQLite/PG/MySQL |
 | React frontend | **YES** | 1 new page + 1 API client file |
 | FFI sync service | **SMALL** | Must use `DeviceDbConn` adapter instead of raw `DatabaseConnection` |
+| `APPLICATION_CONFIG` data | **SHARED** | When remote backend is active, APPLICATION_CONFIG lives on the remote DB (shared across all PCs). `DB_BACKEND_CONFIG` stays local always. |
 
 ---
 
@@ -169,6 +171,42 @@ INSERT OR IGNORE INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
 Passwords are AES-256-GCM encrypted before writing to this table.
 Key derived from machine identity (hostname + Windows machine SID).
 Never stored in plaintext.
+
+### Important: Two SQLite Connections When Remote Backend Is Active
+
+When the user switches to a remote backend (e.g. MSSQL), the system maintains
+**two connections**:
+
+```
+  T3AppState {
+      conn               → webview_database.db      (always local, users/auth)
+      local_config_conn   → webview_t3_device.db     (always local SQLite, for
+                            DB_BACKEND_CONFIG reads)   ← NEW field
+      t3_device_conn      → DeviceDbConn::Mssql(...)  (remote SQL Server, for
+                            46 device tables + APPLICATION_CONFIG)
+  }
+```
+
+**Why `local_config_conn` is needed:**
+- The backend config REST endpoints (`/api/database/backend/*`) must always
+  read/write `DB_BACKEND_CONFIG` from local SQLite — even when device data
+  is on a remote server.
+- At startup, config is read before the remote connection exists.
+- The local `.db` file is never deleted, so this connection always works.
+
+### APPLICATION_CONFIG: Shared on Remote DB
+
+When a remote backend is active, `APPLICATION_CONFIG` (FFI sync interval,
+app settings, etc.) lives on the **remote** DB — shared across all PCs.
+This means all PCs use the same settings, which is the desired behavior
+for a multi-PC deployment.
+
+`DB_BACKEND_CONFIG` always stays local (per-PC), since each PC may
+need different backend settings or may want to independently switch back.
+
+**Startup resilience:** `load_ffi_sync_interval_from_db()` already defaults
+to 300 seconds if the query fails, so if the remote DB is unreachable at
+startup, the service still starts with a safe default.
 
 ---
 
@@ -300,7 +338,7 @@ The single `DatabaseConfigPage.tsx` has sections stacked vertically:
 
   8. User clicks [Switch to SQL Server]
      → API: POST /api/database/backend/switch
-     → Updates active_backend = 'mssql' in DB_BACKEND_CONFIG
+     → Sets is_active=1 WHERE backend_type='mssql' in local DB_BACKEND_CONFIG
      → Shows "Restart T3000 to apply"
 
   9. User restarts T3000.exe
@@ -334,13 +372,13 @@ The single `DatabaseConfigPage.tsx` has sections stacked vertically:
   └───────────────┬──────────────────────┘
                   │
         ┌─────────┴─────────┐
-        │ active_backend?   │
+        │ backend_type?     │
         └──┬──┬──┬──┬───────┘
            │  │  │  │
   "sqlite" │  │  │  │ "mssql"
            │  │  │  │
            │  │  │  └──► Decrypt mssql_password
-           │  │  │       Connect via tiberius + bb8 pool
+           │  │  │       Connect via tiberius + deadpool pool
            │  │  │       Verify schema (46 tables)
            │  │  │
            │  │  └─"mysql"──► SeaORM(sqlx-mysql) connect
@@ -379,13 +417,18 @@ All new endpoints under `/api/database/backend/`:
 
 | # | Method | Path | Request Body | Response | Purpose |
 |---|--------|------|-------------|----------|---------|
-| 1 | `GET` | `/config` | — | `{active_backend, mssql:{host,port,...}, pg:{...}, mysql:{...}}` (passwords masked `****`) | Read current config |
-| 2 | `POST` | `/config` | `{backend:"mssql", host, port, ...password}` | `{success: true}` | Save config (encrypts password, writes to DB_BACKEND_CONFIG) |
-| 3 | `POST` | `/test` | `{backend:"mssql", host, port, ...password}` | `{success, server_version, error?}` | Test connection without saving or switching |
-| 4 | `GET` | `/scan` | — | `[{host, instance, port, version}, ...]` | Scan LAN for SQL Server (UDP 1434) |
-| 5 | `GET` | `/status` | — | `{active_backend, connected, table_count}` | Current runtime status |
-| 6 | `POST` | `/switch` | `{backend:"mssql"}` | `{success, restart_required: true}` | Set active_backend, return restart needed |
-| 7 | `POST` | `/init-schema` | `{backend:"mssql"}` | `{success, tables_created: 46}` | Create tables on remote DB |
+| 1 | `GET` | `/config` | — | `{backends: [{backend_type, is_active, host, port, ...}]}` (passwords masked `****`) | Read all backend configs (normalized rows) |
+| 2 | `POST` | `/config` | `{backend_type:"mssql", host, port, ...password}` | `{success: true}` | Save config for one backend (encrypts password, writes to local DB_BACKEND_CONFIG via `local_config_conn`) |
+| 3 | `POST` | `/test` | `{backend_type:"mssql", host, port, ...password}` | `{success, server_version, error?}` | Test connection without saving or switching |
+| 4 | `GET` | `/scan` | — | `[{host, instance, port, version}, ...]` | Scan LAN for SQL Server (UDP 1434). Optional convenience — manual input always works for all backends |
+| 5 | `GET` | `/status` | — | `{active_backend_type, connected, table_count}` | Current runtime status |
+| 6 | `POST` | `/switch` | `{backend_type:"mssql"}` | `{success, restart_required: true}` | Set `is_active=1` for given backend_type, return restart needed |
+| 7 | `POST` | `/init-schema` | `{backend_type:"mssql"}` | `{success, tables_created: 46}` | Create 46 device tables on remote DB (NOT `DB_BACKEND_CONFIG` — that's local only) |
+
+**Note on endpoint #4 (scan):** Network scan only discovers SQL Server instances
+(via UDP 1434 SQL Browser). For PostgreSQL, MySQL, and any future backends, the
+user enters host/port manually. Scan is always optional — manual input is the
+primary method for all backends.
 
 ---
 
@@ -399,8 +442,8 @@ to raw parameterized SQL.
 ```rust
 // New enum in db_connection.rs or new file
 pub enum DeviceDbConn {
-    SeaOrm(DatabaseConnection),              // SQLite, PostgreSQL, MySQL
-    Mssql(bb8::Pool<TiberiusConnectionManager>), // SQL Server via tiberius
+    SeaOrm(DatabaseConnection),                    // SQLite, PostgreSQL, MySQL
+    Mssql(deadpool_tiberius::Pool),                // SQL Server via tiberius + deadpool
 }
 
 impl DeviceDbConn {
@@ -408,7 +451,7 @@ impl DeviceDbConn {
     pub fn as_sea_orm(&self) -> Option<&DatabaseConnection> { ... }
 
     // For MSSQL, get a pooled connection
-    pub async fn get_mssql(&self) -> Option<bb8::PooledConnection<...>> { ... }
+    pub async fn get_mssql(&self) -> Option<deadpool_tiberius::Client> { ... }
 
     // Which backend is active?
     pub fn backend_type(&self) -> BackendType { ... }
@@ -430,8 +473,8 @@ impl DeviceDbConn {
 
 | Step | File | Action |
 |------|------|--------|
-| 1.1 | `api/Cargo.toml` | Add: `tiberius`, `bb8`, `bb8-tiberius`, `tokio-util`, `aes-gcm`, `base64`. Enable: `sqlx-postgres`, `sqlx-mysql` in sea-orm features. |
-| 1.2 | `api/migration/sql/webview_t3_device_schema.sql` | Add `DB_BACKEND_CONFIG` table to the existing device schema (creates alongside the 46 device tables) |
+| 1.1 | `api/Cargo.toml` | Add: `tiberius`, `deadpool-tiberius`, `tokio-util`, `aes-gcm`, `base64`. Enable: `sqlx-postgres`, `sqlx-mysql` in sea-orm features. |
+| 1.2 | `api/migration/sql/webview_t3_device_schema.sql` + `api/src/db_schema.rs` | Add `DB_BACKEND_CONFIG` CREATE TABLE + seed INSERTs to **both**: (a) the `.sql` schema file, and (b) the `EMBEDDED_SCHEMA` string in `db_schema.rs`. Also update the pre-built `ResourceFile/webview_t3_device.db` to include the new table. This ensures all 3 init paths create the config table. |
 | 1.3 | `api/src/entity/` | Add `db_backend_config.rs` — SeaORM entity for `DB_BACKEND_CONFIG` table |
 | 1.4 | `api/src/database_management/db_backend_config.rs` | Create: `BackendType` enum, `load_config()`, `save_config()`, `encrypt_password()`, `decrypt_password()`, `build_mssql_config()`, `build_seaorm_url()`, `validate_config()` |
 | 1.5 | `api/src/database_management/mod.rs` | Register `pub mod db_backend_config;` |
@@ -442,8 +485,8 @@ impl DeviceDbConn {
 
 | Step | File | Action |
 |------|------|--------|
-| 2.1 | `api/src/db_connection.rs` | Create `DeviceDbConn` enum. Modify `establish_t3_device_connection()` to: (a) read `DB_BACKEND_CONFIG`, (b) if sqlite → existing code, (c) if mssql → tiberius + bb8 pool, (d) if pg/mysql → SeaORM with new URL |
-| 2.2 | `api/src/app_state.rs` | Change `t3_device_conn` type from `Option<Arc<Mutex<DatabaseConnection>>>` to `Option<Arc<Mutex<DeviceDbConn>>>` |
+| 2.1 | `api/src/db_connection.rs` | Create `DeviceDbConn` enum. Modify `establish_t3_device_connection()` to: (a) read `DB_BACKEND_CONFIG`, (b) if sqlite → existing code, (c) if mssql → tiberius + deadpool pool, (d) if pg/mysql → SeaORM with new URL |
+| 2.2 | `api/src/app_state.rs` | Change `t3_device_conn` type to `Option<Arc<Mutex<DeviceDbConn>>>`. Add new field `local_config_conn: Arc<Mutex<DatabaseConnection>>` that always points to local `webview_t3_device.db` SQLite for `DB_BACKEND_CONFIG` access. |
 | 2.3 | `api/src/lib.rs` | In `start_all_services()`: always run `initialize_t3_device_database()` first (ensures local SQLite + config table exist), then read config, then connect to chosen backend. Log active backend. |
 | 2.4 | All service files using `t3_device_conn` | Update to call `conn.as_sea_orm()` or `conn.get_mssql()` depending on backend. Most files just need `.as_sea_orm().unwrap()` wrapper for now. |
 | 2.5 | Compile + test | Connect to actual SQL Server instance, verify startup log says "MSSQL connected" |
@@ -453,7 +496,7 @@ impl DeviceDbConn {
 
 | Step | File | Action |
 |------|------|--------|
-| 3.1 | `api/migration/sql/webview_t3_device_mssql.sql` | Translate 46 tables to T-SQL dialect (IDENTITY, NVARCHAR, IF NOT EXISTS wrapper) |
+| 3.1 | `api/migration/sql/webview_t3_device_mssql.sql` | Translate 46 device tables to T-SQL dialect (IDENTITY, NVARCHAR, IF NOT EXISTS wrapper). Does NOT include `DB_BACKEND_CONFIG` — that's local SQLite only. |
 | 3.2 | `api/migration/sql/webview_t3_device_postgres.sql` | Translate 46 tables to PostgreSQL dialect (SERIAL, TEXT, BYTEA) |
 | 3.3 | `api/migration/sql/webview_t3_device_mysql.sql` | Translate 46 tables to MySQL dialect (AUTO_INCREMENT, InnoDB) |
 | 3.4 | `api/src/database_management/db_backend_config.rs` | Add `initialize_remote_schema(conn, backend)` — read embedded SQL, execute statements |
@@ -524,10 +567,10 @@ impl DeviceDbConn {
 
 | # | File | Change |
 |---|------|--------|
-| 1 | `api/Cargo.toml` | Add tiberius, bb8, aes-gcm, base64; enable sqlx-postgres, sqlx-mysql |
+| 1 | `api/Cargo.toml` | Add tiberius, deadpool-tiberius, aes-gcm, base64, tokio-util; enable sqlx-postgres, sqlx-mysql |
 | 2 | `api/src/db_connection.rs` | `DeviceDbConn` enum, backend-aware `establish_t3_device_connection()` |
 | 3 | `api/src/app_state.rs` | Change `t3_device_conn` type to `DeviceDbConn` |
-| 4 | `api/src/lib.rs` | Load config before DB init, skip SQLite init if remote |
+| 4 | `api/src/lib.rs` | Always init local SQLite first, read config, then connect to chosen backend |
 | 5 | `api/src/database_management/mod.rs` | Register 4 new submodules |
 | 6 | `api/src/server.rs` | Register backend routes in `create_t3_app()` |
 | 7 | `src/t3-react/app/App.tsx` | Add route `/t3000/system/database` |
@@ -553,7 +596,7 @@ impl DeviceDbConn {
 | 5 | Raw SQLite SQL breaks on PG/MySQL | HIGH | Phase 7 audit. Gate all PRAGMA and SQLite-specific functions. |
 | 6 | DLL size increase | LOW | tiberius adds ~2MB. Acceptable. |
 | 7 | Schema drift between 4 SQL files | MEDIUM | Hand-maintained. Version tracking. Diff tool for updates. |
-| 8 | tiberius connection pool exhaustion | MEDIUM | bb8 pool with max=10, min=2. Monitor pool health in status endpoint. |
+| 8 | tiberius connection pool exhaustion | MEDIUM | deadpool pool with max=10. Monitor pool health in status endpoint. |
 | 9 | SQL injection via tiberius raw queries | HIGH | All queries use parameterized `@P1, @P2` syntax. Never string interpolation. |
 | 10 | Empty string vs NULL differences (MSSQL) | MEDIUM | Test INSERT/UPDATE with empty strings on all backends. |
 | 11 | Partition monitor uses SQLite PRAGMAs | MEDIUM | Gate behind backend type check in Phase 7. |
@@ -585,6 +628,7 @@ impl DeviceDbConn {
 - Automatic failover to SQLite if remote DB goes down
 - Per-table backend selection (all 46 go together)
 - SeaORM-X integration for native MSSQL support (if it becomes available)
+- Network scan for PostgreSQL / MySQL (only SQL Server has UDP 1434 browser)
 
 ---
 
