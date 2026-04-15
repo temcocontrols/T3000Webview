@@ -1331,3 +1331,34 @@ VALUES (
 );
 
 -- Database ready for T3000 WebView development with Database Management System (no foreign key constraints)
+
+-- ============================================================================
+-- DB_BACKEND_CONFIG - Centralized Database Backend Configuration
+-- Stores connection settings for each supported database backend.
+-- Each backend type is a row. Only one row has is_active=1 at a time.
+-- This table ALWAYS lives in local SQLite (never on remote DB).
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS DB_BACKEND_CONFIG (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    backend_type  TEXT NOT NULL UNIQUE,
+    is_active     INTEGER NOT NULL DEFAULT 0,
+    host          TEXT,
+    port          INTEGER,
+    instance      TEXT,
+    database_name TEXT,
+    username      TEXT,
+    password      TEXT,
+    connection_url TEXT,
+    extra_options TEXT,
+    updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Seed default rows (one per supported backend)
+INSERT OR IGNORE INTO DB_BACKEND_CONFIG (backend_type, is_active, connection_url)
+    VALUES ('sqlite', 1, 'sqlite://Database/webview_t3_device.db');
+INSERT OR IGNORE INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
+    VALUES ('mssql', 0, 1433);
+INSERT OR IGNORE INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
+    VALUES ('postgres', 0, 5432);
+INSERT OR IGNORE INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
+    VALUES ('mysql', 0, 3306);
