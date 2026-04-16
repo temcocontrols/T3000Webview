@@ -27,6 +27,8 @@ import {
   Radio,
   Field,
   Tooltip,
+  Switch,
+  Checkbox,
 } from '@fluentui/react-components';
 import {
   DatabaseRegular,
@@ -44,6 +46,8 @@ import type {
   SaveBackendConfigRequest,
   BackendStatus,
   DiscoveredInstance,
+  IniConfig,
+  CentralDbStatus,
 } from '../services/databaseConfigApi';
 import {
   getConfigs,
@@ -53,6 +57,9 @@ import {
   getStatus,
   switchBackend,
   initSchema,
+  getIniConfig,
+  saveIniConfig,
+  getCentralDbStatus,
 } from '../services/databaseConfigApi';
 
 // ---------------------------------------------------------------------------
@@ -211,6 +218,12 @@ export const DatabaseConfigPage: React.FC = () => {
   const [status, setStatus] = useState<BackendStatus | null>(null);
   const [scanResults, setScanResults] = useState<DiscoveredInstance[]>([]);
 
+  // Multi-PC INI config state
+  const [iniConfig, setIniConfig] = useState<IniConfig | null>(null);
+  const [centralStatus, setCentralStatus] = useState<CentralDbStatus | null>(null);
+  const [iniForm, setIniForm] = useState({ enabled: false, role: 'reader', store_logs: false });
+  const [savingIni, setSavingIni] = useState(false);
+
   // Form state
   const [selectedType, setSelectedType] = useState<BackendType>('sqlite');
   const [form, setForm] = useState<SaveBackendConfigRequest>({ backend_type: 'sqlite' });
@@ -231,9 +244,19 @@ export const DatabaseConfigPage: React.FC = () => {
   const refresh = useCallback(async () => {
     try {
       setLoading(true);
-      const [cfgs, sts] = await Promise.all([getConfigs(), getStatus()]);
+      const [cfgs, sts, ini, cStatus] = await Promise.all([
+        getConfigs(),
+        getStatus(),
+        getIniConfig().catch(() => null),
+        getCentralDbStatus().catch(() => null),
+      ]);
       setConfigs(cfgs);
       setStatus(sts);
+      if (ini) {
+        setIniConfig(ini);
+        setIniForm({ enabled: ini.enabled, role: ini.role, store_logs: ini.store_logs });
+      }
+      if (cStatus) setCentralStatus(cStatus);
       // Select the active backend by default
       const active = cfgs.find(c => c.is_active) ?? cfgs[0];
       if (active) {
@@ -362,12 +385,27 @@ export const DatabaseConfigPage: React.FC = () => {
     setMessage(null);
   };
 
+  /** Save INI [CentralDatabase] config */
+  const handleSaveIni = async () => {
+    try {
+      setSavingIni(true);
+      setMessage(null);
+      const res = await saveIniConfig(iniForm);
+      setMessage({ text: res.message, type: 'success' });
+      await refresh();
+    } catch (err: any) {
+      setMessage({ text: `INI save failed: ${err.message}`, type: 'error' });
+    } finally {
+      setSavingIni(false);
+    }
+  };
+
   // -------------------------------------------------------------------
   // Render helpers
   // -------------------------------------------------------------------
 
   const isRemote = selectedType !== 'sqlite';
-  const isBusy = saving || testing || scanning || initializingSchema || switching;
+  const isBusy = saving || testing || scanning || initializingSchema || switching || savingIni;
   const isActiveBackend = status?.active_backend === selectedType;
 
   if (loading) {
@@ -393,6 +431,7 @@ export const DatabaseConfigPage: React.FC = () => {
           <Text size={200} className={styles.statusSubtext}>
             {status?.connected ? 'Connected' : 'Disconnected'}
             {status?.table_count != null && ` · ${status.table_count} tables`}
+            {centralStatus?.enabled && ` · Multi-PC: ${centralStatus.role} (${centralStatus.hostname})`}
           </Text>
         </div>
         <Badge
@@ -403,6 +442,75 @@ export const DatabaseConfigPage: React.FC = () => {
           {status?.connected ? 'Online' : 'Offline'}
         </Badge>
       </Card>
+
+      {/* ── Multi-PC Configuration ── */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h3 className={styles.sectionTitle}>Multi-PC Configuration</h3>
+          {centralStatus?.enabled && (
+            <Badge
+              appearance="filled"
+              color={centralStatus.central_connected ? 'success' : 'warning'}
+              size="small"
+            >
+              {centralStatus.role === 'main' ? 'Main PC' : 'Reader PC'}
+            </Badge>
+          )}
+        </div>
+        <div className={styles.formGrid}>
+          <div className={styles.formRow}>
+            <Label className={styles.label}>Centralized Database</Label>
+            <Switch
+              checked={iniForm.enabled}
+              onChange={(_, data) => setIniForm(prev => ({ ...prev, enabled: data.checked }))}
+              label={iniForm.enabled ? 'Enabled' : 'Disabled'}
+            />
+          </div>
+
+          {iniForm.enabled && (
+            <>
+              <div className={styles.formRow}>
+                <Label className={styles.label}>PC Role</Label>
+                <RadioGroup
+                  value={iniForm.role}
+                  onChange={(_, data) => setIniForm(prev => ({ ...prev, role: data.value }))}
+                  layout="horizontal"
+                >
+                  <Radio value="main" label="Main (writes to central)" />
+                  <Radio value="reader" label="Reader (reads from central)" />
+                </RadioGroup>
+              </div>
+
+              <div className={styles.formRow}>
+                <Label className={styles.label}>Options</Label>
+                <Checkbox
+                  checked={iniForm.store_logs}
+                  onChange={(_, data) => setIniForm(prev => ({ ...prev, store_logs: !!data.checked }))}
+                  label="Store system logs to central database"
+                />
+              </div>
+            </>
+          )}
+
+          <div className={styles.formRow}>
+            <Button
+              appearance="primary"
+              onClick={handleSaveIni}
+              disabled={isBusy}
+              size="small"
+            >
+              {savingIni ? 'Saving…' : 'Save Multi-PC Config'}
+            </Button>
+            {iniConfig?.ini_path && (
+              <Text size={200} className={styles.statusSubtext}>
+                INI: {iniConfig.ini_path}
+              </Text>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <Divider />
 
       {/* ── Message Bar ── */}
       {message && (
