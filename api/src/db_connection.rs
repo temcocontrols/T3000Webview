@@ -127,7 +127,7 @@ pub async fn establish_t3_device_connection() -> Result<DatabaseConnection, Box<
 /// 2. Determines which backend is active.
 /// 3. If SQLite → reuses the same local connection (default, same as today).
 /// 4. If Postgres/MySQL → builds a SeaORM URL and connects.
-/// 5. If MSSQL → returns an error (Phase 5 - tiberius integration).
+/// 5. If MSSQL → builds a tiberius Config and creates a bb8 connection pool.
 ///
 /// Returns `(DeviceDbConn, BackendConfig)` so callers know which backend was chosen.
 pub async fn establish_device_conn_from_config(
@@ -164,7 +164,12 @@ pub async fn establish_device_conn_from_config(
             ))
         }
         BackendType::Mssql => {
-            Err("MSSQL backend not yet implemented (Phase 5)".into())
+            db_backend_config::validate_config(&config)?;
+            let tib_config = db_backend_config::build_mssql_config(&config)?;
+            let pool = crate::database_management::mssql_queries::create_mssql_pool(tib_config, 10)
+                .await
+                .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
+            Ok((DeviceDbConn::new_mssql(pool), config))
         }
     }
 }

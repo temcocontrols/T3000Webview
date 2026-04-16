@@ -25,6 +25,7 @@ pub mod data_sync_service;
 pub mod data_sync_endpoints;
 pub mod db_backend_config;
 pub mod db_backend_routes;
+pub mod mssql_queries;
 pub mod network_scan;
 
 /// Partition metadata cache for faster queries

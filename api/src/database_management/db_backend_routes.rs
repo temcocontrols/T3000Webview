@@ -286,10 +286,14 @@ async fn get_status(
         .unwrap_or("unknown");
 
     // Check if t3_device_conn is available (i.e. the device DB is connected)
-    let connected = state.t3_device_conn.is_some();
+    // For MSSQL, check the mssql_pool instead
+    let connected = state.t3_device_conn.is_some() || state.mssql_pool.is_some();
 
     // Count tables if connected
-    let table_count = if let Some(ref t3_conn) = state.t3_device_conn {
+    let table_count = if let Some(ref pool) = state.mssql_pool {
+        // MSSQL path: count via tiberius
+        super::mssql_queries::count_tables(pool).await.unwrap_or(0) as i64
+    } else if let Some(ref t3_conn) = state.t3_device_conn {
         let db = t3_conn.lock().await;
         count_tables(&*db, backend_type).await.unwrap_or(0)
     } else {
@@ -484,10 +488,44 @@ async fn init_schema(
             })))
         }
         BackendType::Mssql => {
-            Err((
-                axum::http::StatusCode::NOT_IMPLEMENTED,
-                "MSSQL schema init requires tiberius (Phase 5)".to_string(),
-            ))
+            let tib_config = db_backend_config::build_mssql_config(&full_config).map_err(|e| {
+                (axum::http::StatusCode::BAD_REQUEST, e)
+            })?;
+
+            let pool =
+                super::mssql_queries::create_mssql_pool(tib_config, 5)
+                    .await
+                    .map_err(|e| {
+                        (
+                            axum::http::StatusCode::BAD_GATEWAY,
+                            format!("Cannot connect to MSSQL for schema init: {}", e),
+                        )
+                    })?;
+
+            let (executed, errors) =
+                super::mssql_queries::initialize_mssql_schema(&pool)
+                    .await
+                    .map_err(|e| {
+                        (
+                            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                            format!("MSSQL schema init failed: {}", e),
+                        )
+                    })?;
+
+            let success = errors.is_empty();
+            let total = executed + errors.len();
+            Ok(Json(serde_json::json!({
+                "success": success,
+                "total_statements": total,
+                "executed": executed,
+                "errors": errors,
+                "message": if success {
+                    format!("Schema initialized on MSSQL ({} statements)", executed)
+                } else {
+                    format!("{} of {} statements succeeded, {} errors",
+                        executed, total, errors.len())
+                },
+            })))
         }
         BackendType::Sqlite => unreachable!(),
     }

@@ -8,6 +8,8 @@
 
 use sea_orm::DatabaseConnection;
 
+use crate::database_management::mssql_queries::MssqlPool;
+
 /// Supported database backend types (re-exported from db_backend_config)
 pub use crate::database_management::db_backend_config::BackendType;
 
@@ -25,8 +27,10 @@ pub enum DeviceDbConn {
         conn: DatabaseConnection,
         backend_type: BackendType,
     },
-    // Future: MSSQL variant will be added in Phase 5
-    // Mssql(bb8::Pool<TiberiusConnectionManager>),
+    /// SQL Server connection via tiberius + bb8 pool
+    Mssql {
+        pool: MssqlPool,
+    },
 }
 
 impl DeviceDbConn {
@@ -35,11 +39,26 @@ impl DeviceDbConn {
         DeviceDbConn::SeaOrm { conn, backend_type }
     }
 
+    /// Create a new MSSQL-backed connection
+    pub fn new_mssql(pool: MssqlPool) -> Self {
+        DeviceDbConn::Mssql { pool }
+    }
+
     /// Get the inner SeaORM DatabaseConnection (for SQLite/PG/MySQL).
     /// Returns None for MSSQL.
     pub fn as_sea_orm(&self) -> Option<&DatabaseConnection> {
         match self {
             DeviceDbConn::SeaOrm { conn, .. } => Some(conn),
+            DeviceDbConn::Mssql { .. } => None,
+        }
+    }
+
+    /// Get the MSSQL connection pool.
+    /// Returns None for SeaORM backends.
+    pub fn as_mssql_pool(&self) -> Option<&MssqlPool> {
+        match self {
+            DeviceDbConn::SeaOrm { .. } => None,
+            DeviceDbConn::Mssql { pool } => Some(pool),
         }
     }
 
@@ -47,6 +66,7 @@ impl DeviceDbConn {
     pub fn backend_type(&self) -> BackendType {
         match self {
             DeviceDbConn::SeaOrm { backend_type, .. } => *backend_type,
+            DeviceDbConn::Mssql { .. } => BackendType::Mssql,
         }
     }
 

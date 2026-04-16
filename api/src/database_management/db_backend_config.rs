@@ -392,7 +392,7 @@ pub fn build_mssql_config(
 /// Embedded SQL schemas for each remote backend dialect.
 const SCHEMA_POSTGRES: &str = include_str!("../../migration/sql/webview_t3_device_postgres.sql");
 const SCHEMA_MYSQL: &str    = include_str!("../../migration/sql/webview_t3_device_mysql.sql");
-const SCHEMA_MSSQL: &str    = include_str!("../../migration/sql/webview_t3_device_mssql.sql");
+// MSSQL schema is loaded directly in mssql_queries::initialize_mssql_schema()
 
 /// Split a SQL script into individual statements on semicolons.
 /// Ignores empty statements and comment-only lines.
@@ -418,22 +418,7 @@ fn split_sql_statements(script: &str) -> Vec<String> {
         .collect()
 }
 
-/// Split a T-SQL script into individual batches.
-/// MSSQL uses `GO` as a batch separator rather than semicolons inside
-/// `IF … BEGIN … END` blocks, but our generated schema uses semicolons
-/// at the statement level.  For MSSQL we also need to handle the
-/// `IF NOT EXISTS … CREATE TABLE` pattern which spans multiple lines
-/// without an inner semicolon.  We split on blank-line boundaries
-/// that start a new `IF NOT EXISTS` block.
-fn split_mssql_statements(script: &str) -> Vec<String> {
-    // For our MSSQL schema the safest split is on semicolons that are
-    // *outside* parentheses (table bodies use commas, not semis).
-    // Our schema separates each DDL statement with a trailing semicolon
-    // already, so a simple semicolon split works — except that CREATE TABLE
-    // bodies may span many lines.  Because our schema never puts a
-    // semicolon inside a CREATE TABLE (...) block, a simple split is safe.
-    split_sql_statements(script)
-}
+
 
 /// Initialise the remote database schema for the given backend type.
 ///

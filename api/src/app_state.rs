@@ -42,6 +42,10 @@ pub struct T3AppState {
     /// This connection is used by backend config REST endpoints and at startup.
     /// It remains valid even when t3_device_conn points to a remote DB.
     pub local_config_conn: Option<Arc<Mutex<DatabaseConnection>>>,
+    /// MSSQL connection pool (only set when active backend is MSSQL).
+    /// The 80+ route files use SeaORM via t3_device_conn. For MSSQL,
+    /// MSSQL-specific service code uses this pool via `mssql_queries` functions.
+    pub mssql_pool: Option<crate::database_management::mssql_queries::MssqlPool>,
 }
 
 /// Creates a webview T3000 application state with dual database connections
@@ -114,8 +118,9 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
 
     // ---- Step 2: Read DB_BACKEND_CONFIG and connect to the active backend ----
     // If local_config_conn is available, read the active backend config and
-    // establish a connection to the chosen backend (SQLite / PG / MySQL).
+    // establish a connection to the chosen backend (SQLite / PG / MySQL / MSSQL).
     // Falls back to direct local SQLite connection if config read fails.
+    let mut mssql_pool: Option<crate::database_management::mssql_queries::MssqlPool> = None;
     let t3_device_conn: Option<DatabaseConnection> = if let Some(ref lcfg) = local_config_conn {
         let cfg_guard = lcfg.lock().await;
         match establish_device_conn_from_config(&*cfg_guard).await {
@@ -128,9 +133,21 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
                     ),
                     LogLevel::Info,
                 );
-                // DeviceDbConn wraps a SeaORM connection — extract it for
-                // t3_device_conn (keeping the same type the 80+ route files expect).
-                Some(device_conn.sea_orm().clone())
+                // For SeaORM backends (SQLite/PG/MySQL), extract the inner connection.
+                // For MSSQL, store the pool separately — t3_device_conn stays None
+                // because the 80+ route files use SeaORM which doesn't support MSSQL.
+                match device_conn {
+                    crate::device_db_conn::DeviceDbConn::SeaOrm { conn, .. } => Some(conn),
+                    crate::device_db_conn::DeviceDbConn::Mssql { pool } => {
+                        let _ = write_structured_log_with_level(
+                            "T3_Webview_Initialize",
+                            "MSSQL pool stored — SeaORM routes will be unavailable, MSSQL-specific services active",
+                            LogLevel::Info,
+                        );
+                        mssql_pool = Some(pool);
+                        None
+                    }
+                }
             }
             Err(e) => {
                 let _ = write_structured_log_with_level(
@@ -196,6 +213,7 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
         conn: shared_conn,
         t3_device_conn: shared_t3_device_conn,
         local_config_conn,
+        mssql_pool,
         // data_collector, // Temporarily disabled
         // data_sender, // Temporarily disabled
         // trend_collector, // Temporarily disabled
