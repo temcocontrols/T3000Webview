@@ -92,6 +92,40 @@ fn get_valid_table_names() -> &'static [&'static str] {
     ]
 }
 
+/// Returns the SQL to list all user tables for the active database backend.
+fn list_tables_sql(backend: DatabaseBackend) -> String {
+    match backend {
+        DatabaseBackend::Sqlite => {
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name".into()
+        }
+        DatabaseBackend::Postgres => {
+            "SELECT table_name AS name FROM information_schema.tables \
+             WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name".into()
+        }
+        DatabaseBackend::MySql => {
+            "SELECT table_name AS name FROM information_schema.tables \
+             WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' ORDER BY table_name".into()
+        }
+    }
+}
+
+/// Returns the SQL to retrieve column names for a given table.
+fn column_names_sql(backend: DatabaseBackend, table: &str) -> String {
+    match backend {
+        DatabaseBackend::Sqlite => format!("PRAGMA table_info({})", table),
+        DatabaseBackend::Postgres => format!(
+            "SELECT column_name AS name FROM information_schema.columns \
+             WHERE table_name = '{}' ORDER BY ordinal_position",
+            table.to_lowercase()
+        ),
+        DatabaseBackend::MySql => format!(
+            "SELECT column_name AS name FROM information_schema.columns \
+             WHERE table_name = '{}' AND table_schema = DATABASE() ORDER BY ordinal_position",
+            table
+        ),
+    }
+}
+
 #[derive(Deserialize)]
 pub struct QueryParams {
     pub page: Option<u64>,
@@ -122,11 +156,12 @@ pub struct QueryResult {
 // Get database status and table information
 async fn get_database_status(State(state): State<T3AppState>) -> Result<Json<DatabaseInfo>, StatusCode> {
     let db = get_t3_device_conn!(state);
+    let backend = db.get_database_backend();
 
-    // Get list of tables from SQLite database
+    // Get list of tables from database (backend-aware)
     let tables_query = Statement::from_string(
-        DatabaseBackend::Sqlite,
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name".to_string()
+        backend,
+        list_tables_sql(backend)
     );
 
     let tables_result = db.query_all(tables_query).await
@@ -174,6 +209,7 @@ async fn get_table_data(
     Query(params): Query<QueryParams>,
 ) -> Result<Json<QueryResult>, StatusCode> {
     let db = get_t3_device_conn!(state);
+    let backend = db.get_database_backend();
     let table_name = params.table.unwrap_or_else(|| "DEVICES".to_string());
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(10);
@@ -209,13 +245,13 @@ async fn get_table_data(
         )
     };
 
-    let statement = Statement::from_string(DatabaseBackend::Sqlite, query);
+    let statement = Statement::from_string(backend, query);
     let results = db.query_all(statement).await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    // Get column names for the table
-    let columns_query = format!("PRAGMA table_info({})", table_name);
-    let column_statement = Statement::from_string(DatabaseBackend::Sqlite, columns_query);
+    // Get column names for the table (backend-aware)
+    let columns_query = column_names_sql(backend, &table_name);
+    let column_statement = Statement::from_string(backend, columns_query);
     let column_results = db.query_all(column_statement).await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -320,6 +356,7 @@ async fn get_device_table_data(
     Path((serial, table)): Path<(String, String)>,
 ) -> Result<Json<QueryResult>, StatusCode> {
     let db = get_t3_device_conn!(state);
+    let backend = db.get_database_backend();
 
     // Validate table name to prevent SQL injection
     let valid_tables = get_valid_table_names();
@@ -334,13 +371,13 @@ async fn get_device_table_data(
         table, serial
     );
 
-    let statement = Statement::from_string(DatabaseBackend::Sqlite, query);
+    let statement = Statement::from_string(backend, query);
     let results = db.query_all(statement).await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    // Get column names for the table
-    let columns_query = format!("PRAGMA table_info({})", table);
-    let column_statement = Statement::from_string(DatabaseBackend::Sqlite, columns_query);
+    // Get column names for the table (backend-aware)
+    let columns_query = column_names_sql(backend, &table);
+    let column_statement = Statement::from_string(backend, columns_query);
     let column_results = db.query_all(column_statement).await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -380,6 +417,7 @@ async fn export_table(
     Path(table): Path<String>,
 ) -> Result<Json<Value>, StatusCode> {
     let db = get_t3_device_conn!(state);
+    let backend = db.get_database_backend();
 
     // Validate table name
     let valid_tables = get_valid_table_names();
@@ -389,13 +427,13 @@ async fn export_table(
     }
 
     let query = format!("SELECT * FROM {}", table);
-    let statement = Statement::from_string(DatabaseBackend::Sqlite, query);
+    let statement = Statement::from_string(backend, query);
     let results = db.query_all(statement).await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    // Get column names for the table
-    let columns_query = format!("PRAGMA table_info({})", table);
-    let column_statement = Statement::from_string(DatabaseBackend::Sqlite, columns_query);
+    // Get column names for the table (backend-aware)
+    let columns_query = column_names_sql(backend, &table);
+    let column_statement = Statement::from_string(backend, columns_query);
     let column_results = db.query_all(column_statement).await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -544,7 +582,7 @@ async fn delete_all_devices(
     let db = get_t3_device_conn!(state);
 
     // Delete all devices using raw SQL for efficiency
-    let query = Statement::from_string(DatabaseBackend::Sqlite, "DELETE FROM DEVICES".to_string());
+    let query = Statement::from_string(db.get_database_backend(), "DELETE FROM DEVICES".to_string());
 
     match db.execute(query).await {
         Ok(result) => Ok(Json(json!({
@@ -1316,6 +1354,7 @@ async fn get_table_records(
     Query(params): Query<QueryParams>,
 ) -> Result<Json<Value>, StatusCode> {
     let db = get_t3_device_conn!(state);
+    let backend = db.get_database_backend();
 
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(10);
@@ -1332,7 +1371,7 @@ async fn get_table_records(
         table, search_filter, per_page, offset
     );
 
-    match db.query_all(Statement::from_string(DatabaseBackend::Sqlite, query)).await {
+    match db.query_all(Statement::from_string(backend, query)).await {
         Ok(rows) => {
             let data: Vec<Value> = rows.into_iter().map(|row| {
                 let mut obj = serde_json::Map::new();
@@ -1366,7 +1405,7 @@ async fn get_table_count(
 
     let query = format!("SELECT COUNT(*) as count FROM {}", table);
 
-    match db.query_one(Statement::from_string(DatabaseBackend::Sqlite, query)).await {
+    match db.query_one(Statement::from_string(db.get_database_backend(), query)).await {
         Ok(Some(row)) => {
             let count: i64 = row.try_get("", "count").unwrap_or(0);
             Ok(Json(json!({
@@ -1413,7 +1452,7 @@ async fn create_table_record(
             values.join(", ")
         );
 
-        match db.execute(Statement::from_string(DatabaseBackend::Sqlite, query)).await {
+        match db.execute(Statement::from_string(db.get_database_backend(), query)).await {
             Ok(result) => {
                 Ok(Json(json!({
                     "message": format!("Record created successfully in {}", table),
@@ -1457,7 +1496,7 @@ async fn update_table_record(
             id
         );
 
-        match db.execute(Statement::from_string(DatabaseBackend::Sqlite, query)).await {
+        match db.execute(Statement::from_string(db.get_database_backend(), query)).await {
             Ok(_) => {
                 Ok(Json(json!({
                     "message": format!("Record {} updated successfully in {}", id, table),
@@ -1484,7 +1523,7 @@ async fn delete_table_record(
 
     let query = format!("DELETE FROM {} WHERE id = {}", table, id);
 
-    match db.execute(Statement::from_string(DatabaseBackend::Sqlite, query)).await {
+    match db.execute(Statement::from_string(db.get_database_backend(), query)).await {
         Ok(_) => {
             Ok(Json(json!({
                 "message": format!("Record {} deleted successfully from {}", id, table),
@@ -1773,10 +1812,11 @@ async fn get_device_capacity(
     Path(serial_number): Path<String>,
 ) -> Result<Json<DeviceCapacity>, StatusCode> {
     let db = get_t3_device_conn!(state);
+    let backend = db.get_database_backend();
 
     // Get device information
     let device_query = Statement::from_string(
-        DatabaseBackend::Sqlite,
+        backend,
         format!("SELECT Product_name, Product_class_ID FROM DEVICES WHERE Serial_ID = '{}'", serial_number)
     );
 
@@ -1798,7 +1838,7 @@ async fn get_device_capacity(
 
     // Count used inputs
     let input_count_query = Statement::from_string(
-        DatabaseBackend::Sqlite,
+        backend,
         format!("SELECT COUNT(*) as count FROM INPUTS WHERE Panel_Number = '{}' AND Label != ''", serial_number)
     );
     let input_count = db.query_one(input_count_query).await
@@ -1809,7 +1849,7 @@ async fn get_device_capacity(
 
     // Count used outputs
     let output_count_query = Statement::from_string(
-        DatabaseBackend::Sqlite,
+        backend,
         format!("SELECT COUNT(*) as count FROM OUTPUTS WHERE Panel_Number = '{}' AND Label != ''", serial_number)
     );
     let output_count = db.query_one(output_count_query).await
@@ -1820,7 +1860,7 @@ async fn get_device_capacity(
 
     // Count used variables
     let var_count_query = Statement::from_string(
-        DatabaseBackend::Sqlite,
+        backend,
         format!("SELECT COUNT(*) as count FROM VARIABLES WHERE Panel_Number = '{}' AND Label != ''", serial_number)
     );
     let var_count = db.query_one(var_count_query).await
@@ -1896,7 +1936,7 @@ async fn get_device_capacity(
 // Helper function to count records with Label field
 async fn count_records(db: &sea_orm::DatabaseConnection, table: &str, serial: &str) -> i32 {
     let query = Statement::from_string(
-        DatabaseBackend::Sqlite,
+        db.get_database_backend(),
         format!("SELECT COUNT(*) as count FROM {} WHERE SerialNumber = '{}' AND Label != ''", table, serial)
     );
     db.query_one(query).await
@@ -1909,7 +1949,7 @@ async fn count_records(db: &sea_orm::DatabaseConnection, table: &str, serial: &s
 // Helper function for PID_TABLE which uses Description field
 async fn count_records_with_desc(db: &sea_orm::DatabaseConnection, table: &str, serial: &str) -> i32 {
     let query = Statement::from_string(
-        DatabaseBackend::Sqlite,
+        db.get_database_backend(),
         format!("SELECT COUNT(*) as count FROM {} WHERE SerialNumber = '{}' AND Description != ''", table, serial)
     );
     db.query_one(query).await
@@ -1949,7 +1989,7 @@ async fn get_project_point_tree(
 
     // Get all devices - Sort by show_label_name/Screen_Name to match Equipment View
     let devices_query = Statement::from_string(
-        DatabaseBackend::Sqlite,
+        db.get_database_backend(),
         "SELECT SerialNumber, Product_Name, Product_Class_ID, show_label_name, Screen_Name
          FROM DEVICES
          ORDER BY COALESCE(show_label_name, Screen_Name, Product_Name)".to_string()

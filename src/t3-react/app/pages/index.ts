@@ -39,3 +39,6 @@ export { BuildingsPage } from '../../features/buildings/pages/BuildingsPage';
 
 // Simulator
 export { Tstat10SimulatorPage } from '../../features/tstat10-simulator/pages/Tstat10SimulatorPage';
+
+// System
+export { DatabaseConfigPage } from '../../features/system/pages/DatabaseConfigPage';

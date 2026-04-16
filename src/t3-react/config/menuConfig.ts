@@ -618,6 +618,13 @@ const systemMenu: MenuItem = {
       icon: 'Settings',
     },
     {
+      id: 'system-database-config',
+      label: 'Database Backend',
+      type: 'item',
+      action: () => window.location.hash = '#/t3000/system/database-config',
+      icon: 'Database',
+    },
+    {
       id: 'system-divider-1',
       type: 'divider',
     },

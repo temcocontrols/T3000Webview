@@ -84,6 +84,9 @@ const SettingsPageResponsive = lazy(() =>
   }))
 );
 
+// System pages
+const DatabaseConfigPage = lazy(() => import('../../features/system/pages/DatabaseConfigPage'));
+
 // Develop section pages
 const FileBrowserPage = lazy(() => import('../../features/develop/pages/FileBrowserPage'));
 const DatabaseViewerPage = lazy(() => import('../../features/develop/pages/DatabaseViewerPage'));
@@ -245,6 +248,12 @@ export const t3000Routes: T3000Route[] = [
     windowId: 17, // WINDOW_TSTAT10_SIMULATOR
     shortcut: 'Alt+M',
     requiresDevice: false,
+  },
+  // System routes
+  {
+    path: '/t3000/system/database-config',
+    element: DatabaseConfigPage,
+    title: 'Database Config',
   },
   // Develop section routes
   {
