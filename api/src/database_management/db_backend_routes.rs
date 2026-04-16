@@ -312,15 +312,14 @@ async fn get_status(
 
 /// Count the number of user tables in the connected database.
 async fn count_tables(conn: &DatabaseConnection, backend_type: &str) -> Result<i64, DbErr> {
+    // Note: MSSQL is handled separately via tiberius pool; this function only
+    // handles SeaORM-backed connections (Postgres, MySQL, SQLite).
     let sql = match backend_type {
         "postgres" => {
             "SELECT COUNT(*) AS cnt FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
         }
         "mysql" => {
             "SELECT COUNT(*) AS cnt FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'"
-        }
-        "mssql" => {
-            "SELECT COUNT(*) AS cnt FROM sys.tables"
         }
         _ => {
             // SQLite
