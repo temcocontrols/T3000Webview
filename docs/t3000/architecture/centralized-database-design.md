@@ -1,8 +1,12 @@
-# T3000 Centralized Database - Full Design Document
+# T3000 Centralized Database - Technical Design (Phases 1-7)
 
-**Date:** 2026-04-15
-**Status:** PENDING CONFIRMATION
+**Date:** 2026-04-15 (updated 2026-04-16)
+**Status:** Phases 1-7 IMPLEMENTED — Multi-PC architecture in progress
 **Scope:** Replace local SQLite `webview_t3_device.db` with optional centralized DB server
+
+> **See also:**
+> - [centralized-database-multipc.md](centralized-database-multipc.md) — Multi-PC architecture with main/reader roles
+> - [multipc-data-flow-details.md](multipc-data-flow-details.md) — Per-feature data flow diagrams
 
 ---
 
