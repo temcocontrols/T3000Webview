@@ -1610,6 +1610,30 @@ impl T3000MainService {
         }
 
         sync_logger.info(&format!("📊 Validation results: {}", validation_summary));
+
+        // ---- CENTRAL DB REPLICATION (multi-PC dual-write) ----
+        // After local transaction commits, replicate basic data to central DB
+        // if this PC is the main writer. TRENDLOG_DATA_DETAIL is handled
+        // separately via conditional inserts in the trendlog sync functions.
+        if crate::central_db_writer::is_central_write_active() {
+            sync_logger.info("🌐 Central DB replication: Starting (role=main)...");
+            let serial_numbers: Vec<i32> = panels.iter().map(|p| p.serial_number).collect();
+            match Self::replicate_basic_data_to_central(&validation_db, &serial_numbers).await {
+                Ok(stats) => {
+                    sync_logger.info(&format!(
+                        "🌐 Central DB replication complete: {} devices, {} inputs, {} outputs, {} variables",
+                        stats.0, stats.1, stats.2, stats.3
+                    ));
+                }
+                Err(e) => {
+                    sync_logger.warn(&format!(
+                        "⚠️ Central DB replication failed (local data is safe): {}",
+                        e
+                    ));
+                }
+            }
+        }
+
         sync_logger.info(&format!("🎉 SEQUENTIAL SYNC CYCLE COMPLETED"));
         sync_logger.info(&format!(
             "📈 Summary: Total={}, Successful={}, Failed={}, Skipped={}",
@@ -3503,6 +3527,199 @@ impl T3000MainService {
             })?;
 
         Ok(1)
+    }
+
+    /// Replicate basic data (DEVICES, INPUTS, OUTPUTS, VARIABLES) from local SQLite
+    /// to the central DB after a sync cycle. Called only when role=main and central enabled.
+    /// Returns (devices, inputs, outputs, variables) counts replicated.
+    async fn replicate_basic_data_to_central(
+        local_db: &DatabaseConnection,
+        serial_numbers: &[i32],
+    ) -> Result<(u64, u64, u64, u64), AppError> {
+        let central_conn_arc = crate::central_db_writer::get_central_conn()
+            .ok_or_else(|| AppError::DatabaseError("Central DB connection not available".into()))?;
+        let central = central_conn_arc.lock().await;
+
+        let mut dev_count: u64 = 0;
+        let mut inp_count: u64 = 0;
+        let mut out_count: u64 = 0;
+        let mut var_count: u64 = 0;
+
+        for &sn in serial_numbers {
+            // Replicate DEVICES
+            if let Ok(Some(device)) = devices::Entity::find()
+                .filter(devices::Column::SerialNumber.eq(sn))
+                .one(local_db)
+                .await
+            {
+                // Clone fields needed for potential update fallback
+                let status_clone = device.status.clone();
+                let address_clone = device.address.clone();
+                let building_clone = device.building_name.clone();
+
+                let model = devices::ActiveModel {
+                    serial_number: Set(device.serial_number),
+                    panel_id: Set(device.panel_id),
+                    building_name: Set(device.building_name),
+                    product_name: Set(device.product_name),
+                    address: Set(device.address),
+                    status: Set(device.status),
+                    description: Set(device.description),
+                    ip_address: Set(device.ip_address),
+                    port: Set(device.port),
+                    bacnet_mstp_mac_id: Set(device.bacnet_mstp_mac_id),
+                    modbus_address: Set(device.modbus_address),
+                    pc_ip_address: Set(device.pc_ip_address),
+                    modbus_port: Set(device.modbus_port),
+                    bacnet_ip_port: Set(device.bacnet_ip_port),
+                    show_label_name: Set(device.show_label_name),
+                    connection_type: Set(device.connection_type),
+                    ..Default::default()
+                };
+                if devices::Entity::insert(model).exec(&*central).await.is_ok() {
+                    dev_count += 1;
+                } else {
+                    // Insert failed (likely duplicate) — try update key fields
+                    let _ = devices::Entity::update_many()
+                        .filter(devices::Column::SerialNumber.eq(sn))
+                        .col_expr(devices::Column::Status, Expr::value(status_clone.unwrap_or_default()))
+                        .col_expr(devices::Column::Address, Expr::value(address_clone.unwrap_or_default()))
+                        .col_expr(devices::Column::BuildingName, Expr::value(building_clone.unwrap_or_default()))
+                        .exec(&*central)
+                        .await;
+                    dev_count += 1;
+                }
+            }
+
+            // Replicate INPUTS
+            if let Ok(inputs) = input_points::Entity::find()
+                .filter(input_points::Column::SerialNumber.eq(sn))
+                .all(local_db)
+                .await
+            {
+                for ip in &inputs {
+                    // Try insert, ignore conflicts (central may already have this point)
+                    let model = input_points::ActiveModel {
+                        serial_number: Set(ip.serial_number),
+                        input_id: Set(ip.input_id.clone()),
+                        input_index: Set(ip.input_index.clone()),
+                        panel: Set(ip.panel.clone()),
+                        full_label: Set(ip.full_label.clone()),
+                        auto_manual: Set(ip.auto_manual.clone()),
+                        f_value: Set(ip.f_value.clone()),
+                        units: Set(ip.units.clone()),
+                        range_field: Set(ip.range_field.clone()),
+                        calibration: Set(ip.calibration.clone()),
+                        sign: Set(ip.sign.clone()),
+                        status: Set(ip.status.clone()),
+                        filter_field: Set(ip.filter_field.clone()),
+                        digital_analog: Set(ip.digital_analog.clone()),
+                        label: Set(ip.label.clone()),
+                        type_field: Set(ip.type_field.clone()),
+                        calibration_h: Set(ip.calibration_h.clone()),
+                        calibration_l: Set(ip.calibration_l.clone()),
+                        calibration_sign: Set(ip.calibration_sign.clone()),
+                        control: Set(ip.control.clone()),
+                        ..Default::default()
+                    };
+                    if input_points::Entity::insert(model).exec(&*central).await.is_ok() {
+                        inp_count += 1;
+                    } else {
+                        // Update existing point in central
+                        let _ = input_points::Entity::update_many()
+                            .filter(input_points::Column::SerialNumber.eq(sn))
+                            .filter(input_points::Column::InputIndex.eq(ip.input_index.clone()))
+                            .col_expr(input_points::Column::FValue, Expr::value(ip.f_value.clone().unwrap_or_default()))
+                            .col_expr(input_points::Column::Status, Expr::value(ip.status.clone().unwrap_or_default()))
+                            .col_expr(input_points::Column::FullLabel, Expr::value(ip.full_label.clone().unwrap_or_default()))
+                            .col_expr(input_points::Column::Units, Expr::value(ip.units.clone().unwrap_or_default()))
+                            .exec(&*central)
+                            .await;
+                        inp_count += 1;
+                    }
+                }
+            }
+
+            // Replicate OUTPUTS
+            if let Ok(outputs) = output_points::Entity::find()
+                .filter(output_points::Column::SerialNumber.eq(sn))
+                .all(local_db)
+                .await
+            {
+                for op in &outputs {
+                    let model = output_points::ActiveModel {
+                        serial_number: Set(op.serial_number),
+                        output_id: Set(op.output_id.clone()),
+                        output_index: Set(op.output_index.clone()),
+                        panel: Set(op.panel.clone()),
+                        full_label: Set(op.full_label.clone()),
+                        auto_manual: Set(op.auto_manual.clone()),
+                        f_value: Set(op.f_value.clone()),
+                        units: Set(op.units.clone()),
+                        range_field: Set(op.range_field.clone()),
+                        status: Set(op.status.clone()),
+                        digital_analog: Set(op.digital_analog.clone()),
+                        label: Set(op.label.clone()),
+                        type_field: Set(op.type_field.clone()),
+                        ..Default::default()
+                    };
+                    if output_points::Entity::insert(model).exec(&*central).await.is_ok() {
+                        out_count += 1;
+                    } else {
+                        let _ = output_points::Entity::update_many()
+                            .filter(output_points::Column::SerialNumber.eq(sn))
+                            .filter(output_points::Column::OutputIndex.eq(op.output_index.clone()))
+                            .col_expr(output_points::Column::FValue, Expr::value(op.f_value.clone().unwrap_or_default()))
+                            .col_expr(output_points::Column::Status, Expr::value(op.status.clone().unwrap_or_default()))
+                            .col_expr(output_points::Column::FullLabel, Expr::value(op.full_label.clone().unwrap_or_default()))
+                            .col_expr(output_points::Column::Units, Expr::value(op.units.clone().unwrap_or_default()))
+                            .exec(&*central)
+                            .await;
+                        out_count += 1;
+                    }
+                }
+            }
+
+            // Replicate VARIABLES
+            if let Ok(vars) = variable_points::Entity::find()
+                .filter(variable_points::Column::SerialNumber.eq(sn))
+                .all(local_db)
+                .await
+            {
+                for vp in &vars {
+                    let model = variable_points::ActiveModel {
+                        serial_number: Set(vp.serial_number),
+                        variable_id: Set(vp.variable_id.clone()),
+                        variable_index: Set(vp.variable_index.clone()),
+                        panel: Set(vp.panel.clone()),
+                        full_label: Set(vp.full_label.clone()),
+                        auto_manual: Set(vp.auto_manual.clone()),
+                        f_value: Set(vp.f_value.clone()),
+                        units: Set(vp.units.clone()),
+                        status: Set(vp.status.clone()),
+                        digital_analog: Set(vp.digital_analog.clone()),
+                        label: Set(vp.label.clone()),
+                        ..Default::default()
+                    };
+                    if variable_points::Entity::insert(model).exec(&*central).await.is_ok() {
+                        var_count += 1;
+                    } else {
+                        let _ = variable_points::Entity::update_many()
+                            .filter(variable_points::Column::SerialNumber.eq(sn))
+                            .filter(variable_points::Column::VariableIndex.eq(vp.variable_index.clone()))
+                            .col_expr(variable_points::Column::FValue, Expr::value(vp.f_value.clone().unwrap_or_default()))
+                            .col_expr(variable_points::Column::Status, Expr::value(vp.status.clone().unwrap_or_default()))
+                            .col_expr(variable_points::Column::FullLabel, Expr::value(vp.full_label.clone().unwrap_or_default()))
+                            .col_expr(variable_points::Column::Units, Expr::value(vp.units.clone().unwrap_or_default()))
+                            .exec(&*central)
+                            .await;
+                        var_count += 1;
+                    }
+                }
+            }
+        }
+
+        Ok((dev_count, inp_count, out_count, var_count))
     }
 }
 

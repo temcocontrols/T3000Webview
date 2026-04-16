@@ -25,6 +25,7 @@ pub mod data_sync_metadata;
 // ============================================================================
 
 pub mod db_backend_config;
+pub mod system_logs;
 
 // ============================================================================
 // ABSTRACTED ENTITIES - T3000 device database entities (used by T3000 modules)

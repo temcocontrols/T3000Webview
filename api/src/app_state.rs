@@ -31,6 +31,7 @@ pub async fn app_state() -> Result<AppState, Box<dyn Error>> {
 // ============================================================================
 
 use crate::db_connection::{establish_t3_device_connection, establish_device_conn_from_config};
+use crate::ini_config;
 use crate::logger::write_structured_log;
 
 /// Abstracted enhanced application state with T3000 device support
@@ -122,73 +123,123 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
         }
     };
 
-    // ---- Step 2: Read DB_BACKEND_CONFIG and connect to the active backend ----
-    // If local_config_conn is available, read the active backend config and
-    // establish a connection to the chosen backend (SQLite / PG / MySQL / MSSQL).
-    // Falls back to direct local SQLite connection if config read fails.
+    // ---- Step 2: Read setting.ini [CentralDatabase] for multi-PC config ----
+    let ini_cfg = ini_config::read_central_db_config_auto();
+    let _ = write_structured_log_with_level(
+        "T3_Webview_Initialize",
+        &format!(
+            "INI config: enabled={}, role={}, store_logs={}",
+            ini_cfg.enabled, ini_cfg.role, ini_cfg.store_logs
+        ),
+        LogLevel::Info,
+    );
+
+    // ---- Step 3: Connect to the active backend based on INI + DB_BACKEND_CONFIG ----
+    // When central DB is enabled (INI enabled=1), read DB_BACKEND_CONFIG and connect
+    // to the remote backend (PG / MySQL / MSSQL). When disabled, use local SQLite.
     let mut mssql_pool: Option<crate::database_management::mssql_queries::MssqlPool> = None;
-    let t3_device_conn: Option<DatabaseConnection> = if let Some(ref lcfg) = local_config_conn {
-        let cfg_guard = lcfg.lock().await;
-        match establish_device_conn_from_config(&*cfg_guard).await {
-            Ok((device_conn, config)) => {
-                let _ = write_structured_log_with_level(
-                    "T3_Webview_Initialize",
-                    &format!(
-                        "Device DB connected via active backend: {}",
-                        config.backend_type
-                    ),
-                    LogLevel::Info,
-                );
-                // For SeaORM backends (SQLite/PG/MySQL), extract the inner connection.
-                // For MSSQL, store the pool separately — t3_device_conn stays None
-                // because the 80+ route files use SeaORM which doesn't support MSSQL.
-                match device_conn {
-                    crate::device_db_conn::DeviceDbConn::SeaOrm { conn, .. } => Some(conn),
-                    crate::device_db_conn::DeviceDbConn::Mssql { pool } => {
-                        let _ = write_structured_log_with_level(
-                            "T3_Webview_Initialize",
-                            "MSSQL pool stored — SeaORM routes will be unavailable, MSSQL-specific services active",
-                            LogLevel::Info,
-                        );
-                        mssql_pool = Some(pool);
-                        None
+    let t3_device_conn: Option<DatabaseConnection> = if ini_cfg.enabled {
+        // Central DB mode: attempt remote backend connection
+        if let Some(ref lcfg) = local_config_conn {
+            let cfg_guard = lcfg.lock().await;
+            match establish_device_conn_from_config(&*cfg_guard).await {
+                Ok((device_conn, config)) => {
+                    let _ = write_structured_log_with_level(
+                        "T3_Webview_Initialize",
+                        &format!(
+                            "Central DB connected via active backend: {} (role={})",
+                            config.backend_type, ini_cfg.role
+                        ),
+                        LogLevel::Info,
+                    );
+                    match device_conn {
+                        crate::device_db_conn::DeviceDbConn::SeaOrm { conn, .. } => Some(conn),
+                        crate::device_db_conn::DeviceDbConn::Mssql { pool } => {
+                            let _ = write_structured_log_with_level(
+                                "T3_Webview_Initialize",
+                                "MSSQL pool stored — MSSQL-specific services active",
+                                LogLevel::Info,
+                            );
+                            mssql_pool = Some(pool);
+                            None
+                        }
                     }
                 }
+                Err(e) => {
+                    let _ = write_structured_log_with_level(
+                        "T3_Webview_Initialize",
+                        &format!(
+                            "Central DB connect failed, falling back to local SQLite: {:?}",
+                            e
+                        ),
+                        LogLevel::Warn,
+                    );
+                    establish_t3_device_connection().await.ok()
+                }
             }
-            Err(e) => {
-                let _ = write_structured_log_with_level(
-                    "T3_Webview_Initialize",
-                    &format!(
-                        "Backend-aware connect failed, falling back to local SQLite: {:?}",
-                        e
-                    ),
-                    LogLevel::Warn,
-                );
-                // Fallback: connect to local SQLite directly
-                establish_t3_device_connection().await.ok()
-            }
+        } else {
+            let _ = write_structured_log_with_level(
+                "T3_Webview_Initialize",
+                "Central DB enabled but local config unavailable — falling back to local SQLite",
+                LogLevel::Warn,
+            );
+            establish_t3_device_connection().await.ok()
         }
     } else {
-        // No local config conn — try direct local SQLite as last resort
-        match establish_t3_device_connection().await {
-            Ok(conn) => {
-                let _ = write_structured_log_with_level(
-                    "T3_Webview_Initialize",
-                    "WebView T3000 database connected (direct SQLite fallback)",
-                    LogLevel::Info,
-                );
-                Some(conn)
+        // Classic mode: use local SQLite directly (or backend-config for single-PC setups)
+        if let Some(ref lcfg) = local_config_conn {
+            let cfg_guard = lcfg.lock().await;
+            match establish_device_conn_from_config(&*cfg_guard).await {
+                Ok((device_conn, config)) => {
+                    let _ = write_structured_log_with_level(
+                        "T3_Webview_Initialize",
+                        &format!(
+                            "Device DB connected via active backend: {} (classic mode)",
+                            config.backend_type
+                        ),
+                        LogLevel::Info,
+                    );
+                    match device_conn {
+                        crate::device_db_conn::DeviceDbConn::SeaOrm { conn, .. } => Some(conn),
+                        crate::device_db_conn::DeviceDbConn::Mssql { pool } => {
+                            mssql_pool = Some(pool);
+                            None
+                        }
+                    }
+                }
+                Err(e) => {
+                    let _ = write_structured_log_with_level(
+                        "T3_Webview_Initialize",
+                        &format!(
+                            "Backend-aware connect failed, falling back to local SQLite: {:?}",
+                            e
+                        ),
+                        LogLevel::Warn,
+                    );
+                    establish_t3_device_connection().await.ok()
+                }
             }
-            Err(e) => {
-                let _ = write_structured_log_with_level(
-                    "T3_Webview_Initialize",
-                    &format!(
-                        "WebView T3000 database unavailable — core services will continue: {:?}",
-                        e
-                    ),
-                    LogLevel::Warn,
-                );
-                None
+        } else {
+            match establish_t3_device_connection().await {
+                Ok(conn) => {
+                    let _ = write_structured_log_with_level(
+                        "T3_Webview_Initialize",
+                        "WebView T3000 database connected (direct SQLite fallback)",
+                        LogLevel::Info,
+                    );
+                    Some(conn)
+                }
+                Err(e) => {
+                    let _ = write_structured_log_with_level(
+                        "T3_Webview_Initialize",
+                        &format!(
+                            "WebView T3000 database unavailable — core services will continue: {:?}",
+                            e
+                        ),
+                        LogLevel::Warn,
+                    );
+                    None
+                }
             }
         }
     };
@@ -197,35 +248,14 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
     let shared_conn = Arc::new(Mutex::new(conn));
     let shared_t3_device_conn = t3_device_conn.map(|conn| Arc::new(Mutex::new(conn)));
 
-    // Create data collection broadcast channel - TEMPORARILY DISABLED
-    // let (data_sender, _data_receiver) = broadcast::channel(1000);
-
-    // Initialize data collection service (will be set up later when started) - TEMPORARILY DISABLED
-    // let data_collector = Arc::new(Mutex::new(None));
-
-    // Initialize trend data collector if webview T3000 database is available - TEMPORARILY DISABLED
-    // let (trend_collector, trend_data_sender) = if let Some(ref t3_device_conn) = shared_t3_device_conn {
-    //     let (collector, _receiver) = crate::t3_device::trend_collector::TrendDataCollector::new(
-    //         t3_device_conn.clone()
-    //     );
-    //     let sender = collector.get_data_sender();
-    //     (Some(Arc::new(collector)), Some(sender))
-    // } else {
-    //     (None, None)
-    // };
-
     // Return a T3AppState struct with the shared connections
     Ok(T3AppState {
         conn: shared_conn,
         t3_device_conn: shared_t3_device_conn,
         local_config_conn,
         mssql_pool,
-        central_db_enabled: false, // TODO: read from setting.ini
-        central_db_role: "reader".to_string(), // TODO: read from setting.ini
-        store_logs_to_central: false, // TODO: read from DB_BACKEND_CONFIG
-        // data_collector, // Temporarily disabled
-        // data_sender, // Temporarily disabled
-        // trend_collector, // Temporarily disabled
-        // trend_data_sender, // Temporarily disabled
+        central_db_enabled: ini_cfg.enabled,
+        central_db_role: ini_cfg.role,
+        store_logs_to_central: ini_cfg.store_logs,
     })
 }
