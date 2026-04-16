@@ -46,6 +46,12 @@ pub struct T3AppState {
     /// The 80+ route files use SeaORM via t3_device_conn. For MSSQL,
     /// MSSQL-specific service code uses this pool via `mssql_queries` functions.
     pub mssql_pool: Option<crate::database_management::mssql_queries::MssqlPool>,
+    /// Whether centralized DB is enabled (from setting.ini [CentralDatabase] enabled=)
+    pub central_db_enabled: bool,
+    /// PC role when central DB is active: "main" (writes FFI to central) or "reader"
+    pub central_db_role: String,
+    /// Whether to write system logs to the central DB
+    pub store_logs_to_central: bool,
 }
 
 /// Creates a webview T3000 application state with dual database connections
@@ -214,6 +220,9 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
         t3_device_conn: shared_t3_device_conn,
         local_config_conn,
         mssql_pool,
+        central_db_enabled: false, // TODO: read from setting.ini
+        central_db_role: "reader".to_string(), // TODO: read from setting.ini
+        store_logs_to_central: false, // TODO: read from DB_BACKEND_CONFIG
         // data_collector, // Temporarily disabled
         // data_sender, // Temporarily disabled
         // trend_collector, // Temporarily disabled

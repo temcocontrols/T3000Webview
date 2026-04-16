@@ -87,6 +87,10 @@ pub struct BackendConfig {
     pub password: Option<String>,
     pub connection_url: Option<String>,
     pub extra_options: Option<serde_json::Value>,
+    /// PC role: "main" (writes FFI data to central DB) or "reader" (reads only)
+    pub role: Option<String>,
+    /// Whether to store system logs to the central DB
+    pub store_logs: bool,
 }
 
 /// Backend configuration for API responses (password masked)
@@ -102,6 +106,8 @@ pub struct BackendConfigResponse {
     pub password_set: bool,
     pub connection_url: Option<String>,
     pub extra_options: Option<serde_json::Value>,
+    pub role: Option<String>,
+    pub store_logs: bool,
 }
 
 /// Request body for saving backend config
@@ -116,6 +122,8 @@ pub struct SaveBackendConfigRequest {
     pub password: Option<String>,
     pub connection_url: Option<String>,
     pub extra_options: Option<serde_json::Value>,
+    pub role: Option<String>,
+    pub store_logs: Option<bool>,
 }
 
 // ============================================================================
@@ -253,6 +261,12 @@ pub async fn save_config(
     active.password = Set(encrypted_password);
     active.connection_url = Set(req.connection_url);
     active.extra_options = Set(req.extra_options.map(|v| v.to_string()));
+    if let Some(ref role) = req.role {
+        active.role = Set(Some(role.clone()));
+    }
+    if let Some(store_logs) = req.store_logs {
+        active.store_logs = Set(Some(if store_logs { 1 } else { 0 }));
+    }
     active.updated_at = Set(Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()));
 
     active.update(local_conn).await?;
@@ -556,6 +570,8 @@ fn model_to_config(row: db_backend_config::Model) -> BackendConfig {
             .extra_options
             .as_ref()
             .and_then(|s| serde_json::from_str(s).ok()),
+        role: row.role,
+        store_logs: row.store_logs.unwrap_or(1) != 0,
     }
 }
 
@@ -574,6 +590,8 @@ fn model_to_response(row: db_backend_config::Model) -> BackendConfigResponse {
             .extra_options
             .as_ref()
             .and_then(|s| serde_json::from_str(s).ok()),
+        role: row.role.clone(),
+        store_logs: row.store_logs.unwrap_or(1) != 0,
     }
 }
 

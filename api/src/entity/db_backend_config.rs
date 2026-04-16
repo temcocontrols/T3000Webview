@@ -32,6 +32,13 @@ pub struct Model {
     /// JSON for backend-specific options
     pub extra_options: Option<String>,
 
+    /// PC role when using centralized DB: 'main' (writes FFI data to central)
+    /// or 'reader' (reads from central, FFI data stays local).
+    pub role: Option<String>,
+
+    /// Whether to store system logs to the central DB (1=yes, 0=no).
+    pub store_logs: Option<i32>,
+
     pub updated_at: Option<String>,
 }
 

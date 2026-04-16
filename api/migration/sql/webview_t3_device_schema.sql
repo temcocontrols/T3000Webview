@@ -1350,6 +1350,8 @@ CREATE TABLE IF NOT EXISTS DB_BACKEND_CONFIG (
     password      TEXT,
     connection_url TEXT,
     extra_options TEXT,
+    role          TEXT DEFAULT 'main',      -- 'main' or 'reader'
+    store_logs    INTEGER DEFAULT 1,         -- 1=write logs to central DB, 0=local only
     updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
