@@ -640,6 +640,8 @@ mod tests {
             password: Some("secret".to_string()),
             connection_url: None,
             extra_options: None,
+            role: None,
+            store_logs: false,
         };
         let url = build_seaorm_url(&config).unwrap();
         assert_eq!(url, "postgres://admin:secret@192.168.1.100:5432/T3000_Devices");
@@ -658,6 +660,8 @@ mod tests {
             password: None,
             connection_url: None,
             extra_options: None,
+            role: None,
+            store_logs: false,
         };
         let url = build_seaorm_url(&config).unwrap();
         assert_eq!(url, "mysql://root:@db.local:3306/t3000");
@@ -671,6 +675,7 @@ mod tests {
             host: None, port: None, instance: None,
             database_name: None, username: None, password: None,
             connection_url: None, extra_options: None,
+            role: None, store_logs: false,
         };
         assert!(validate_config(&config).is_ok());
     }
@@ -684,6 +689,7 @@ mod tests {
             database_name: Some("T3000".to_string()),
             username: None, password: None,
             connection_url: None, extra_options: None,
+            role: None, store_logs: false,
         };
         assert!(validate_config(&config).is_err());
     }

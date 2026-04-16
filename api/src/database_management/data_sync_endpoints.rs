@@ -32,7 +32,7 @@ pub async fn get_latest_sync_status(
     State(state): State<T3AppState>,
     Path((serial_number, data_type)): Path<(String, String)>,
 ) -> Result<Json<Option<SyncStatusResponse>>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => conn.lock().await.clone(),
         None => return Err(crate::error::Error::DatabaseError("T3000 device database unavailable".to_string())),
     };
@@ -54,7 +54,7 @@ pub async fn get_sync_history(
     Path((serial_number, data_type)): Path<(String, String)>,
     Query(query): Query<SyncHistoryQuery>,
 ) -> Result<Json<Vec<SyncStatusResponse>>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => conn.lock().await.clone(),
         None => return Err(crate::error::Error::DatabaseError("T3000 device database unavailable".to_string())),
     };
@@ -76,7 +76,7 @@ pub async fn get_all_device_sync_status(
     State(state): State<T3AppState>,
     Path(serial_number): Path<String>,
 ) -> Result<Json<Vec<SyncStatusResponse>>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => conn.lock().await.clone(),
         None => return Err(crate::error::Error::DatabaseError("T3000 device database unavailable".to_string())),
     };
@@ -96,7 +96,7 @@ pub async fn insert_sync_metadata(
     State(state): State<T3AppState>,
     Json(request): Json<InsertSyncMetadataRequest>,
 ) -> Result<Json<SyncStatusResponse>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => conn.lock().await.clone(),
         None => return Err(crate::error::Error::DatabaseError("T3000 device database unavailable".to_string())),
     };

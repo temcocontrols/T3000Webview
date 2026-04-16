@@ -67,7 +67,7 @@ async fn get_config(
     Path(key): Path<String>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Option<application_settings::Model>>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -93,7 +93,7 @@ async fn set_config(
     State(state): State<T3AppState>,
     Json(request): Json<SetConfigRequest>,
 ) -> Result<Json<application_settings::Model>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -122,7 +122,7 @@ async fn delete_config(
     Path(key): Path<String>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<DeleteResponse>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -158,7 +158,7 @@ async fn get_configs_by_prefix(
     Path(prefix): Path<String>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Vec<application_settings::Model>>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -190,7 +190,7 @@ async fn get_device_configs(
     State(state): State<T3AppState>,
     Path(device_serial): Path<String>,
 ) -> Result<Json<Vec<application_settings::Model>>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -207,7 +207,7 @@ async fn get_device_configs(
 async fn get_config_stats(
     State(state): State<T3AppState>,
 ) -> Result<Json<ConfigStats>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -237,7 +237,7 @@ async fn get_config_stats(
 async fn get_large_configs(
     State(state): State<T3AppState>,
 ) -> Result<Json<Vec<application_settings::Model>>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -255,7 +255,7 @@ async fn bulk_set_configs(
     State(state): State<T3AppState>,
     Json(requests): Json<Vec<SetConfigRequest>>,
 ) -> Result<Json<BulkOperationResponse>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -295,7 +295,7 @@ async fn bulk_delete_configs(
     State(state): State<T3AppState>,
     Json(keys): Json<Vec<String>>,
 ) -> Result<Json<BulkOperationResponse>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -330,7 +330,7 @@ async fn export_configs(
     State(state): State<T3AppState>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Vec<application_settings::Model>>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -361,7 +361,7 @@ async fn import_configs(
     State(state): State<T3AppState>,
     Json(request): Json<ImportConfigsRequest>,
 ) -> Result<Json<BulkOperationResponse>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -401,7 +401,7 @@ async fn migrate_from_localstorage(
     State(state): State<T3AppState>,
     Json(data): Json<HashMap<String, String>>,
 ) -> Result<Json<BulkOperationResponse>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -490,7 +490,7 @@ pub struct ConfigHistoryEntry {
 async fn get_ffi_sync_interval(
     State(state): State<T3AppState>,
 ) -> Result<Json<FfiSyncIntervalResponse>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -537,7 +537,7 @@ async fn update_ffi_sync_interval(
     State(state): State<T3AppState>,
     Json(request): Json<UpdateFfiSyncIntervalRequest>,
 ) -> Result<Json<FfiSyncIntervalResponse>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -623,7 +623,7 @@ pub struct UpdateRediscoverIntervalRequest {
 async fn get_rediscover_interval(
     State(state): State<T3AppState>,
 ) -> Result<Json<RediscoverIntervalResponse>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -670,7 +670,7 @@ async fn update_rediscover_interval(
     State(state): State<T3AppState>,
     Json(request): Json<UpdateRediscoverIntervalRequest>,
 ) -> Result<Json<RediscoverIntervalResponse>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -738,7 +738,7 @@ async fn get_config_history(
     State(state): State<T3AppState>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Vec<ConfigHistoryEntry>>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -815,7 +815,7 @@ async fn get_application_config(
     State(state): State<T3AppState>,
     Path(key_suffix): Path<String>,
 ) -> Result<Json<Option<application_settings::Model>>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -847,7 +847,7 @@ async fn update_application_config(
     Path(key_suffix): Path<String>,
     Json(request): Json<UpdateApplicationConfigRequest>,
 ) -> Result<Json<application_settings::Model>> {
-    let db = match &state.t3_device_conn {
+    let db = match &state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
