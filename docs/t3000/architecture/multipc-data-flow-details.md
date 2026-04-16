@@ -1,450 +1,300 @@
-# Multi-PC Data Flow — Detailed Diagrams
+# Multi-PC Data Flow Details
 
-**Date:** 2026-04-16
-**Parent doc:** [centralized-database-multipc.md](centralized-database-multipc.md)
-
----
-
-## 1. Startup Sequence (Every PC)
-
-```
-                   T3000.exe starts
-                        │
-                        ▼
-              Load setting.ini
-              [CentralDatabase] section
-                        │
-                        ▼
-              Launch Rust DLL
-              (run_server FFI call)
-                        │
-                        ▼
-            ┌───────────────────────┐
-            │ Step 1: Read INI      │
-            │  enabled = ?          │
-            │  role = ?             │
-            └───────────┬───────────┘
-                        │
-              ┌─────────┴─────────┐
-              │                   │
-         enabled=0           enabled=1
-              │                   │
-              ▼                   ▼
-     ┌────────────────┐  ┌───────────────────────────┐
-     │ CLASSIC MODE   │  │ Step 2: Open local SQLite  │
-     │                │  │ Read DB_BACKEND_CONFIG     │
-     │ Open local     │  │ Get: host, port, user,     │
-     │ SQLite for     │  │      pass (encrypted),     │
-     │ everything     │  │      backend_type, role     │
-     │                │  └──────────┬────────────────┘
-     │ FFI → local    │             │
-     │ Web → local    │             ▼
-     │                │  ┌───────────────────────────┐
-     │ Done.          │  │ Step 3: Connect to central │
-     └────────────────┘  │ MSSQL/PG/MySQL             │
-                         │                            │
-                         │ Store in T3AppState:       │
-                         │   t3_device_conn → central │
-                         │   local_config_conn → local│
-                         │   role → from INI          │
-                         │   mssql_pool → if MSSQL    │
-                         └──────────┬────────────────┘
-                                    │
-                           ┌────────┴────────┐
-                           │                 │
-                      role=main         role=reader
-                           │                 │
-                           ▼                 ▼
-                  ┌────────────────┐ ┌───────────────┐
-                  │ FFI sync:     │ │ FFI sync:     │
-                  │ write central │ │ write local   │
-                  │ DB only       │ │ SQLite only   │
-                  │               │ │               │
-                  │ Web: central  │ │ Web: central  │
-                  └────────────────┘ └───────────────┘
-```
+> Per-table data flow reference for the centralized database multi-PC architecture.
+> See [centralized-database-multipc.md](centralized-database-multipc.md) for the overall design.
 
 ---
 
-## 2. FFI Sync Cycle — Classic Mode (enabled=0)
+## 1. Data Flow Diagram — Main PC
 
 ```
-  T=0s    T3000.exe calls FFI → Rust DLL
-          │
-  T=0.1s  FFI fetches panel data from BACnet/Modbus
-          │
-  T=0.5s  ┌─────────────────────────────────────────┐
-          │ Write to local SQLite                    │
-          │ (DEVICES, INPUTS, OUTPUTS, VARIABLES,    │
-          │  TRENDLOG_DATA_DETAIL, etc.)             │
-          └──────────────────────────────────────────┘
-          │
-  T=1.0s  Done. Next cycle in 5 minutes.
+                     T3000.exe (Main PC)
+                           │
+                      FFI DLL calls
+                           │
+                    ┌──────┴──────┐
+                    ▼              ▼
+             Local SQLite    Central DB (MSSQL/PG/MySQL)
+             (fallback)      (source of truth)
+                    │              │
+                    │         ┌────┴────┐
+                    │         ▼         ▼
+                    │    Web Server   Other PCs
+                    │    reads here   read here
+                    │         │
+                    │    ┌────┴────┐
+                    │    ▼         ▼
+                    │  Browser   Browser
+                    │  (local)   (remote)
+                    ▼
+              Switch-back
+              safety net
+```
 
-  100% existing behavior. Zero changes.
+### FFI Write Flow (Main PC)
+
+```
+Panel scan complete → FFI callback fires
+  │
+  ├─ Category A-C tables (DEVICES, INPUTS, OUTPUTS, VARIABLES,
+  │   PROGRAMS, SCHEDULES, PID_TABLE, HOLIDAYS,
+  │   TRENDLOGS, TRENDLOG_INPUTS, TRENDLOG_DATA):
+  │
+  │   ├─ 1. UPSERT to local SQLite      ← always first (fast, reliable)
+  │   └─ 2. UPSERT to central DB        ← dual write
+  │
+  └─ Category D table (TRENDLOG_DATA_DETAIL):
+      │
+      └─ 1. INSERT to central DB ONLY   ← no local copy (saves GB)
+```
+
+### Web Server Flow (Main PC)
+
+```
+Browser request arrives
+  │
+  ├─ READ request for data table (Cat A-F):
+  │   └─ Query central DB → return results
+  │
+  ├─ WRITE request for data table (Cat A-F):
+  │   ├─ 1. Write to central DB
+  │   └─ 2. Write to local SQLite (dual-write for fallback)
+  │
+  ├─ READ/WRITE for local-only table (Cat G):
+  │   └─ Use local_config_conn (always local SQLite)
+  │
+  └─ READ TRENDLOG_DATA_DETAIL:
+      └─ Query central DB (only copy exists there)
 ```
 
 ---
 
-## 3. FFI Sync Cycle — Main PC (enabled=1, role=main)
+## 2. Data Flow Diagram — Reader PC
 
 ```
-  T=0s    T3000.exe calls FFI → Rust DLL
-          │
-  T=0.1s  FFI fetches panel data from BACnet/Modbus
-          │
-          │   ┌─ Check: is central DB enabled? ─┐
-          │   │ YES (enabled=1, role=main)       │
-          │   └──────────────┬───────────────────┘
-          │                  │
-  T=0.5s  ┌──────────────────▼──────────────────────┐
-          │ Write to CENTRAL DB (MSSQL)              │
-          │ (DEVICES, INPUTS, OUTPUTS, VARIABLES,    │
-          │  TRENDLOG_DATA_DETAIL, etc.)             │
-          │                                          │
-          │ Uses: UPSERT (MERGE) by SerialNumber     │
-          │ + PanelId to prevent duplicates          │
-          └──────────────────────────────────────────┘
-          │
-          │   ┌─ Write to local SQLite? ─────────┐
-          │   │ NO — skip for device/trendlog     │
-          │   │ tables (too much data, user said  │
-          │   │ "do not save to local SQLite if   │
-          │   │ using central")                   │
-          │   │                                   │
-          │   │ Local SQLite only keeps:          │
-          │   │  • DB_BACKEND_CONFIG              │
-          │   │  • APPLICATION_CONFIG (optional)  │
-          │   └───────────────────────────────────┘
-          │
-  T=1.0s  Done. Next cycle in 5 minutes.
+                     T3000.exe (Reader PC)
+                           │
+                      FFI DLL calls
+                      (own panels only)
+                           │
+                           ▼
+                    Local SQLite ONLY
+                    (fallback data)
 
-  If MSSQL is down at T=0.5s:
-  ┌─────────────────────────────────────────────────┐
-  │ Central write fails                              │
-  │ → Log error to SYSTEM_LOGS (local file)         │
-  │ → Optionally: fallback write to local SQLite    │
-  │ → Next cycle will retry central DB              │
-  │ → No data loss — panels will send same data     │
-  │   again on next poll                            │
-  └─────────────────────────────────────────────────┘
+                    Central DB ◄──── Web Server reads/writes
+                         │
+                    ┌────┴────┐
+                    ▼         ▼
+                  Browser   Browser
+                  (local)   (remote)
 ```
 
----
-
-## 4. FFI Sync Cycle — Reader PC (enabled=1, role=reader)
+### FFI Write Flow (Reader PC)
 
 ```
-  T=0s    T3000.exe calls FFI → Rust DLL
-          │
-  T=0.1s  FFI fetches panel data from BACnet/Modbus
-          │
-          │   ┌─ Check: is central DB enabled? ─┐
-          │   │ YES (enabled=1, role=reader)     │
-          │   │ Reader does NOT write to central │
-          │   └──────────────┬───────────────────┘
-          │                  │
-  T=0.5s  ┌──────────────────▼──────────────────────┐
-          │ Write to LOCAL SQLite                    │
-          │ (existing behavior, unchanged)           │
-          │                                          │
-          │ Reader's local SQLite has its own copy   │
-          │ of FFI data. This is fine — it's the     │
-          │ reader's backup/local view.              │
-          └──────────────────────────────────────────┘
-          │
-  T=1.0s  Done.
+Panel scan complete → FFI callback fires
+  │
+  ├─ Category A-C tables:
+  │   └─ UPSERT to local SQLite ONLY
+  │       (does NOT write to central — main PC owns that)
+  │
+  └─ Category D (TRENDLOG_DATA_DETAIL):
+      └─ INSERT to central DB ONLY
+         (reader's own panels' trend data still goes to central)
+```
 
-  Note: The reader's Web UI does NOT read this local data.
-  It reads from central DB. The local SQLite is just a
-  side effect of FFI running (can't stop C++ from polling).
+### Web Server Flow (Reader PC)
+
+```
+Browser request arrives
+  │
+  ├─ READ request for data table (Cat A-F):
+  │   └─ Query central DB → return results
+  │       (sees ALL data from all PCs)
+  │
+  ├─ WRITE request for data table (Cat A-F):
+  │   └─ Write to central DB ONLY
+  │       (reader doesn't dual-write via web — only main does)
+  │
+  ├─ READ/WRITE for local-only table (Cat G):
+  │   └─ Use local_config_conn (always local SQLite)
+  │
+  └─ READ TRENDLOG_DATA_DETAIL:
+      └─ Query central DB
 ```
 
 ---
 
-## 5. Web UI Data Flow
+## 3. Per-Table Detailed Flows
 
-```
-BROWSER REQUEST: GET /api/t3-device/inputs?serial=12345
-          │
-          ▼
-    Rust Web Server (Axum)
-          │
-          ├── Check: T3AppState.t3_device_conn
-          │
-          │   ┌─ enabled=0 (classic) ──────────────────────┐
-          │   │ t3_device_conn → local SQLite              │
-          │   │ Query: SELECT * FROM INPUTS WHERE ...      │
-          │   │ Returns: data from local SQLite             │
-          │   └────────────────────────────────────────────┘
-          │
-          │   ┌─ enabled=1, ANY role ──────────────────────┐
-          │   │ t3_device_conn → MSSQL connection          │
-          │   │ Query: SELECT * FROM INPUTS WHERE ...      │
-          │   │ Returns: data from central MSSQL            │
-          │   │                                            │
-          │   │ Both main AND reader PCs read from central │
-          │   │ because t3_device_conn points to MSSQL     │
-          │   │ regardless of role.                        │
-          │   └────────────────────────────────────────────┘
-          │
-          ▼
-    JSON response → browser renders table
+### 3.1 DEVICES (Category A)
+
+**Source:** FFI `GET_PANELS_LIST` → DLL scans network for Temco controllers.
+
+| PC Role | FFI Action | Web Read | Web Write |
+|---------|-----------|----------|-----------|
+| Main | UPSERT local + UPSERT central | Central | Central + local |
+| Reader | UPSERT local only | Central | Central only |
+| Classic | UPSERT local | Local | Local |
+
+**Conflict handling:** UPSERT by `(serial_number)` or `(number, product_model)` — last write wins. Since each PC scans different panels, conflicts are rare.
+
+### 3.2 INPUTS / OUTPUTS / VARIABLES (Category A)
+
+**Source:** FFI `GET_PANEL_DATA` → reads point values from each discovered device.
+
+| PC Role | FFI Action | Web Read | Web Write |
+|---------|-----------|----------|-----------|
+| Main | UPSERT local + UPSERT central | Central | Central + local |
+| Reader | UPSERT local only | Central | Central only |
+| Classic | UPSERT local | Local | Local |
+
+**Key:** `(pid, panel_number, point_index)` — unique per panel, no cross-PC conflict.
+
+### 3.3 PROGRAMS / SCHEDULES / PID_TABLE / HOLIDAYS (Category B)
+
+**Source:** FFI reads these from panels along with point data.
+
+Same flow as Category A. These are configuration data that changes rarely.
+
+### 3.4 TRENDLOGS / TRENDLOG_INPUTS / TRENDLOG_DATA (Category C)
+
+**Source:** FFI `LOGGING_DATA` cycle — discovery of trendlog configs and summary data.
+
+Same flow as Category A. These are metadata/summary tables, relatively small.
+
+### 3.5 TRENDLOG_DATA_DETAIL (Category D) ⭐ Special
+
+**Source:** FFI `LOGGING_DATA` cycle — actual timestamped trend values.
+
+| PC Role | FFI Action | Web Read | Web Write |
+|---------|-----------|----------|-----------|
+| Main | INSERT central ONLY | Central | Central |
+| Reader | INSERT central ONLY | Central | Central |
+| Classic | INSERT local | Local | Local |
+
+**Why special:**
+- Grows to millions of rows (one row per sample per trendlog per timestamp).
+- Append-only (INSERT, never UPDATE).
+- Keeping in local SQLite defeats the purpose of centralization.
+- On switch-back, historical trendlogs are not critical for immediate operation.
+
+### 3.6 UI/Config Tables (Category E) — GRAPHICS, ALARMS, etc.
+
+**Source:** Web server only (user creates graphics, configures alarms via browser).
+
+| PC Role | FFI Action | Web Read | Web Write |
+|---------|-----------|----------|-----------|
+| Main | — | Central | Central + local |
+| Reader | — | Central | Central only |
+| Classic | — | Local | Local |
+
+### 3.7 Device Settings (Category F)
+
+**Source:** Web server (user configures network/communication settings via browser).
+
+Same flow as Category E.
+
+### 3.8 Local-Only Tables (Category G)
+
+**Source:** Internal application state.
+
+| Table | Always Uses |
+|-------|-------------|
+| APPLICATION_CONFIG | Local SQLite |
+| APPLICATION_CONFIG_HISTORY | Local SQLite |
+| DB_BACKEND_CONFIG | Local SQLite |
+| database_partition_config | Local SQLite |
+| database_files | Local SQLite |
+| database_partitions | Local SQLite |
+| DATA_SYNC_METADATA | Local SQLite |
+| TRENDLOG_DATA_SYNC_METADATA | Local SQLite |
+
+These tables are **never** written to or read from the central DB. They contain per-PC state that must remain local.
+
+### 3.9 SYSTEM_LOGS (New Table)
+
+**Source:** Application events, errors, audit trail.
+
+| PC Role | Write Destination | Read Source |
+|---------|------------------|-------------|
+| Main (store_logs=1) | Central DB | Central DB |
+| Reader (store_logs=1) | Central DB | Central DB |
+| Any (store_logs=0) | Not written | — |
+| Classic | Not applicable | — |
+
+---
+
+## 4. Connection Resolution Logic
+
+```rust
+/// Determines which DB connection to use for a given operation.
+fn resolve_connection(
+    state: &T3AppState,
+    table_category: TableCategory,
+    operation: Operation,
+) -> &DatabaseConnection {
+    if !state.central_db_enabled {
+        // Classic mode — always local
+        return &state.local_config_conn;
+    }
+
+    match table_category {
+        // Category G: Always local
+        LocalOnly => &state.local_config_conn,
+
+        // Category D: Always central when enabled
+        TrendlogDetail => &state.t3_device_conn, // points to central
+
+        // Categories A-F: Central for reads, dual for writes on main
+        _ => match operation {
+            Read => &state.t3_device_conn, // central
+            Write => &state.t3_device_conn, // central (caller also writes local if main)
+        },
+    }
+}
 ```
 
 ---
 
-## 6. Trendlog Page Flow
+## 5. Failure Scenarios
+
+### Central DB goes offline during operation
 
 ```
-USER OPENS TRENDLOG PAGE (browser or built-in webview)
-          │
-          ▼
-    GET /api/t3-device/trendlog-data?serial=12345&point=AI_1
-          │
-          ▼
-    ┌─ enabled=0 ─────────────────────────────────────────┐
-    │ Read from local SQLite TRENDLOG_DATA_DETAIL         │
-    │ Data: only what THIS PC's FFI has collected         │
-    │ Size: limited (SQLite, maybe few months)            │
-    └─────────────────────────────────────────────────────┘
-
-    ┌─ enabled=1 ─────────────────────────────────────────┐
-    │ Read from MSSQL TRENDLOG_DATA_DETAIL                │
-    │ Data: everything MAIN PC has collected               │
-    │       (ALL panels, ALL points)                       │
-    │ Size: large (MSSQL can handle years of data)        │
-    │                                                      │
-    │ Works on both main AND reader PCs — same data        │
-    │                                                      │
-    │ Charts show same data regardless of which PC you    │
-    │ open the browser on.                                 │
-    └─────────────────────────────────────────────────────┘
+Write to central fails
+  │
+  ├─ FFI sync (Main):
+  │   ├─ Local write already succeeded (done first)
+  │   ├─ Log error, increment retry counter
+  │   └─ Next sync cycle retries automatically
+  │
+  ├─ FFI sync (Reader):
+  │   └─ Only writing local — unaffected
+  │
+  └─ Web server:
+      ├─ Return 503 to browser with error message
+      ├─ Log failure
+      └─ UI shows "Central DB unavailable" banner
 ```
 
----
-
-## 7. Config Page Flow
+### Switch from central to classic mode
 
 ```
-USER OPENS System → Database Backend page
-          │
-          ▼
-    ┌───────────────────────────────────────────────────────────┐
-    │  API calls at page load:                                   │
-    │                                                            │
-    │  1. GET /api/database/ini                                  │
-    │     → Reads setting.ini [CentralDatabase] section          │
-    │     → Returns: { enabled: true, role: "main" }             │
-    │                                                            │
-    │  2. GET /api/database/backend/config                       │
-    │     → Reads DB_BACKEND_CONFIG from local SQLite            │
-    │     → Returns: { backend_type:"mssql", host:"192.168.1.50",│
-    │       port:1433, instance:"SQLEXPRESS", ... }              │
-    │                                                            │
-    │  3. GET /api/database/backend/status                       │
-    │     → Tests current central DB connection                  │
-    │     → Returns: { connected:true, table_count:46 }          │
-    └───────┬───────────────────────────────────────────────────┘
-            │
-            ▼
-    ┌─ Page renders ─────────────────────────────────────────────┐
-    │                                                             │
-    │  ┌─ Status ────────────────────────────────────────────┐   │
-    │  │ 🟢 MSSQL @ 192.168.1.50\SQLEXPRESS · 46 tables     │   │
-    │  │    Role: MAIN · Connected                           │   │
-    │  └────────────────────────────────────────────────────┘   │
-    │                                                             │
-    │  ┌─ Mode ──────────────────────────────────────────────┐   │
-    │  │ (•) Central Database   ( ) Local SQLite             │   │
-    │  └────────────────────────────────────────────────────┘   │
-    │                                                             │
-    │  ┌─ Role ──────────────────────────────────────────────┐   │
-    │  │ (•) Main (this PC writes to central DB)             │   │
-    │  │ ( ) Reader (read-only from central DB)              │   │
-    │  └────────────────────────────────────────────────────┘   │
-    │                                                             │
-    │  ┌─ MSSQL Connection ─────────────────────────────────┐   │
-    │  │ Host:     [192.168.1.50          ]                  │   │
-    │  │ Port:     [1433                  ]                  │   │
-    │  │ Instance: [SQLEXPRESS            ]                  │   │
-    │  │ Database: [T3000_Devices         ]                  │   │
-    │  │ Username: [sa                    ]                  │   │
-    │  │ Password: [••••••••              ]                  │   │
-    │  └────────────────────────────────────────────────────┘   │
-    │                                                             │
-    │  ┌─ Log Storage ──────────────────────────────────────┐   │
-    │  │ [✓] Write logs to central DB                        │   │
-    │  │     Level: [WARNING ▼]  Retention: [30 days ▼]     │   │
-    │  └────────────────────────────────────────────────────┘   │
-    │                                                             │
-    │  [Scan LAN] [Test Connection] [Save] [Init Schema] [Apply] │
-    └─────────────────────────────────────────────────────────────┘
-            │
-            │ User clicks "Save"
-            ▼
-    ┌───────────────────────────────────────────────────────────┐
-    │  POST /api/database/backend/config                         │
-    │   → Saves host, port, user, pass to DB_BACKEND_CONFIG     │
-    │     (local SQLite, password encrypted)                     │
-    │                                                            │
-    │  POST /api/database/ini                                    │
-    │   → Writes [CentralDatabase] to setting.ini                │
-    │     enabled=1, role=main                                   │
-    │                                                            │
-    │  ⚠ "Restart T3000 to apply changes"                        │
-    └───────────────────────────────────────────────────────────┘
+Admin sets enabled=0 in setting.ini, restarts app
+  │
+  ├─ T3AppState.central_db_enabled = false
+  ├─ t3_device_conn points to local SQLite
+  ├─ All reads/writes go to local
+  └─ Warning: TRENDLOG_DATA_DETAIL from central period is not in local
 ```
 
----
-
-## 8. Switch-Back Flow (Central → Local)
+### Network partition between PCs
 
 ```
-USER WANTS TO GO BACK TO LOCAL SQLITE:
-          │
-          ▼
-    Open System → Database Backend page
-          │
-          ▼
-    Select: ( ) Central Database   (•) Local SQLite
-          │
-          ▼
-    Click "Save"
-          │
-          ├──► POST /api/database/ini
-          │    → setting.ini: enabled=0
-          │
-          ├──► POST /api/database/backend/switch
-          │    → DB_BACKEND_CONFIG: is_active=1 for sqlite
-          │
-          ▼
-    Restart T3000
-          │
-          ▼
-    ┌───────────────────────────────────────────────────────────┐
-    │ Startup reads: enabled=0                                   │
-    │ → Classic mode                                             │
-    │ → FFI writes to local SQLite (as before)                  │
-    │ → Web reads from local SQLite (as before)                 │
-    │ → ALL features work exactly as before central DB feature  │
-    │                                                            │
-    │ Local SQLite still has data:                               │
-    │   - Reader PCs: have their own FFI data (never stopped)   │
-    │   - Main PC: local may be stale (was writing to central)  │
-    │     but FFI will refill it on next sync cycle              │
-    └───────────────────────────────────────────────────────────┘
-```
-
----
-
-## 9. SYSTEM_LOGS Flow
-
-```
-ANY PC (main or reader) generates a log event
-          │
-          ▼
-    ┌─ store_logs=1 AND enabled=1 ──────────────────────────────┐
-    │                                                            │
-    │  Write to both:                                            │
-    │                                                            │
-    │  1. Local log file (C:\T3000\logs\*.log)                  │
-    │     → Always, regardless of settings                      │
-    │     → Same as today                                        │
-    │                                                            │
-    │  2. Central DB: SYSTEM_LOGS table                         │
-    │     INSERT INTO SYSTEM_LOGS                                │
-    │       (log_time, pc_name, pc_ip, log_level,               │
-    │        log_source, log_message, ...)                       │
-    │     → Queryable, filterable                                │
-    │     → All 5 PCs write here                                 │
-    │     → Admin can see all logs in one place                  │
-    └────────────────────────────────────────────────────────────┘
-
-    ┌─ store_logs=0 OR enabled=0 ──────────────────────────────┐
-    │                                                            │
-    │  Write to local log file only (existing behavior)          │
-    └────────────────────────────────────────────────────────────┘
-
-
-ADMIN VIEWS LOGS:
-          │
-          ▼
-    Open System → Logs page (future)
-          │
-          ▼
-    SELECT * FROM SYSTEM_LOGS
-    WHERE log_time > DATEADD(day, -7, GETDATE())
-    ORDER BY log_time DESC
-          │
-          ▼
-    ┌───────────────────────────────────────────────────────────┐
-    │ Time          │ PC      │ Level │ Source    │ Message     │
-    ├───────────────┼─────────┼───────┼──────────┼─────────────┤
-    │ 04:05 PM      │ PC-1    │ INFO  │ FFI_SYNC │ Synced 100  │
-    │               │ (main)  │       │          │ devices     │
-    │ 04:05 PM      │ PC-2    │ INFO  │ WEB_API  │ User login  │
-    │               │ (reader)│       │          │ admin       │
-    │ 04:04 PM      │ PC-1    │ WARN  │ TRENDLOG │ Point AI_3  │
-    │               │ (main)  │       │          │ timeout     │
-    └───────────────┴─────────┴───────┴──────────┴─────────────┘
-```
-
----
-
-## 10. Complete System Diagram (5 PCs, Central DB)
-
-```
-    ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
-    │ Panel #1 │  │ Panel #2 │  │ Panel #3 │  │ Panel #4 │
-    │ Floor 1  │  │ Floor 2  │  │ Floor 3  │  │ Floor 4  │
-    └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘
-         │              │              │              │
-         └──────────────┴──────┬───────┴──────────────┘
-                               │ BACnet / Modbus
-                               │
-          ┌────────────────────┴────────────────────┐
-          │              BUILDING LAN                │
-          │                                          │
-          │  ┌─────────────────────────────────────┐ │
-          │  │       MSSQL Server                  │ │
-          │  │       192.168.1.50:1433             │ │
-          │  │                                     │ │
-          │  │  ┌───────────────────────────────┐  │ │
-          │  │  │ T3000_Devices database        │  │ │
-          │  │  │                               │  │ │
-          │  │  │ DEVICES         (46 tables)   │  │ │
-          │  │  │ INPUTS                        │  │ │
-          │  │  │ OUTPUTS                       │  │ │
-          │  │  │ VARIABLES                     │  │ │
-          │  │  │ TRENDLOGS                     │  │ │
-          │  │  │ TRENDLOG_DATA_DETAIL          │  │ │
-          │  │  │ ...                           │  │ │
-          │  │  │ SYSTEM_LOGS     (new)         │  │ │
-          │  │  └───────────────────────────────┘  │ │
-          │  └────────────┬────────────────────────┘ │
-          │               │                          │
-          │    ┌──────────┼──────────┬───────────┐   │
-          │    │          │          │           │   │
-          │ ┌──┴───┐  ┌──┴───┐  ┌──┴───┐  ┌───┴──┐ │
-          │ │ PC-1 │  │ PC-2 │  │ PC-3 │  │ PC-4 │ │
-          │ │ MAIN │  │ READ │  │ READ │  │ READ │ │
-          │ │      │  │      │  │      │  │      │ │
-          │ │ FFI→ │  │ FFI→ │  │ FFI→ │  │ FFI→ │ │
-          │ │ MSSQL│  │local │  │local │  │local │ │
-          │ │      │  │      │  │      │  │      │ │
-          │ │ Web→ │  │ Web→ │  │ Web→ │  │ Web→ │ │
-          │ │ MSSQL│  │ MSSQL│  │ MSSQL│  │ MSSQL│ │
-          │ │      │  │      │  │      │  │      │ │
-          │ │ Logs→│  │ Logs→│  │ Logs→│  │ Logs→│ │
-          │ │ MSSQL│  │ MSSQL│  │ MSSQL│  │ MSSQL│ │
-          │ └──────┘  └──────┘  └──────┘  └──────┘ │
-          │                                          │
-          │         ┌───────┐                        │
-          │         │ PC-5  │  (user at home,        │
-          │         │ READ  │   VPN to building)     │
-          │         │ Web→  │                        │
-          │         │ MSSQL │                        │
-          │         └───────┘                        │
-          └──────────────────────────────────────────┘
+Main PC and Reader PC can't reach each other
+  │
+  ├─ Both can still reach central DB → no impact
+  ├─ Only Main can reach central → Reader falls back to local reads
+  └─ Neither can reach central → both operate in degraded/classic mode
 ```
