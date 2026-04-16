@@ -86,6 +86,14 @@ const SettingsPageResponsive = lazy(() =>
 
 // System pages
 const DatabaseConfigPage = lazy(() => import('../../features/system/pages/DatabaseConfigPage'));
+const SyncConfigurationPage = lazy(() => import('../../features/system/pages/SyncConfigurationPage').then(m => ({ default: m.SyncConfigurationPage })));
+
+// Additional pages in App.tsx
+const TablesPage = lazy(() => import('../../features/tables/pages/TablesPage').then(m => ({ default: m.TablesPage })));
+const UsersPage = lazy(() => import('../../features/users/pages/UsersPage').then(m => ({ default: m.UsersPage })));
+const CustomUnitsPage = lazy(() => import('../../features/customUnits/pages/CustomUnitsPage').then(m => ({ default: m.CustomUnitsPage })));
+const HvacDesignerPage = lazy(() => import('../../features/hvac-designer/pages/HvacDesignerPage').then(m => ({ default: m.HvacDesignerPage })));
+const DocumentationPage = lazy(() => import('../../features/documentation/pages/DocumentationPage').then(m => ({ default: m.DocumentationPage })));
 
 // Develop section pages
 const FileBrowserPage = lazy(() => import('../../features/develop/pages/FileBrowserPage'));
@@ -230,6 +238,23 @@ export const t3000Routes: T3000Route[] = [
     requiresDevice: true,
   },
   {
+    path: '/t3000/tables',
+    element: TablesPage,
+    title: 'Tables',
+    requiresDevice: true,
+  },
+  {
+    path: '/t3000/users',
+    element: UsersPage,
+    title: 'Users',
+  },
+  {
+    path: '/t3000/custom-units',
+    element: CustomUnitsPage,
+    title: 'Custom Units',
+    requiresDevice: true,
+  },
+  {
     path: '/t3000/discover',
     element: DiscoverPage,
     title: 'Discover Devices',
@@ -255,24 +280,46 @@ export const t3000Routes: T3000Route[] = [
     element: DatabaseConfigPage,
     title: 'Database Config',
   },
+  // System routes
+  {
+    path: '/t3000/system/sync',
+    element: SyncConfigurationPage,
+    title: 'Sync Configuration',
+  },
+  {
+    path: '/t3000/system/database-config',
+    element: DatabaseConfigPage,
+    title: 'Database Config',
+  },
+  // HVAC & Documentation (minimal layout in App.tsx)
+  {
+    path: '/t3000/hvac-designer',
+    element: HvacDesignerPage,
+    title: 'HVAC Designer',
+  },
+  {
+    path: '/t3000/documentation',
+    element: DocumentationPage,
+    title: 'Documentation',
+  },
   // Develop section routes
   {
-    path: '/develop/files',
+    path: '/t3000/develop/files',
     element: FileBrowserPage,
     title: 'File Browser',
   },
   {
-    path: '/develop/database',
+    path: '/t3000/develop/database',
     element: DatabaseViewerPage,
     title: 'Database Viewer',
   },
   {
-    path: '/develop/transport',
+    path: '/t3000/develop/transport',
     element: TransportTesterPage,
     title: 'Transport Tester',
   },
   {
-    path: '/develop/logs',
+    path: '/t3000/develop/logs',
     element: SystemLogsPage,
     title: 'T3000 Logs',
   },

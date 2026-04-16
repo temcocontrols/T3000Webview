@@ -82,7 +82,8 @@ async function handleResponse<T>(response: Response): Promise<T> {
 /** Get all backend configurations */
 export async function getConfigs(): Promise<BackendConfigResponse[]> {
   const res = await fetch(`${BASE}/config`);
-  return handleResponse<BackendConfigResponse[]>(res);
+  const data = await handleResponse<{ success: boolean; backends: BackendConfigResponse[] }>(res);
+  return data.backends;
 }
 
 /** Save (create/update) a backend configuration */
@@ -108,13 +109,20 @@ export async function testConnection(req: SaveBackendConfigRequest): Promise<Tes
 /** Scan LAN for SQL Server instances (UDP 1434) */
 export async function scanNetwork(): Promise<DiscoveredInstance[]> {
   const res = await fetch(`${BASE}/scan`);
-  return handleResponse<DiscoveredInstance[]>(res);
+  const data = await handleResponse<{ success: boolean; instances: DiscoveredInstance[] }>(res);
+  return data.instances;
 }
 
 /** Get current backend status */
 export async function getStatus(): Promise<BackendStatus> {
   const res = await fetch(`${BASE}/status`);
-  return handleResponse<BackendStatus>(res);
+  const data = await handleResponse<{ success: boolean; active_backend: string; connected: boolean; table_count: number | null; host: string | null; database_name: string | null }>(res);
+  return {
+    active_backend: data.active_backend as BackendType,
+    connected: data.connected,
+    table_count: data.table_count,
+    message: data.connected ? 'Connected' : 'Not connected',
+  };
 }
 
 /** Switch the active backend (requires restart) */

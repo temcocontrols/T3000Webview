@@ -137,6 +137,12 @@ const SystemLogsPage = React.lazy(() =>
 const SyncConfigurationPage = React.lazy(() =>
   import('../features/system/pages/SyncConfigurationPage').then((m) => ({ default: m.SyncConfigurationPage }))
 );
+const DatabaseConfigPage = React.lazy(() =>
+  import('../features/system/pages/DatabaseConfigPage')
+);
+const TrendChartPage = React.lazy(() =>
+  import('../features/trendlogs/pages/TrendChartPage').then((m) => ({ default: m.TrendChartPage }))
+);
 
 /**
  * Protected Route Wrapper
@@ -345,6 +351,22 @@ export const App: React.FC = () => {
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <SyncConfigurationPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="system/database-config"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <DatabaseConfigPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="trends/chart"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <TrendChartPage />
                     </React.Suspense>
                   }
                 />
