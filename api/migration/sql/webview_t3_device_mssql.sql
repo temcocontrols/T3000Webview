@@ -1127,3 +1127,19 @@ IF NOT EXISTS (SELECT 1 FROM APPLICATION_CONFIG WHERE config_key = 'ui.refresh.s
 INSERT INTO APPLICATION_CONFIG (config_key, config_value, config_type, description, is_system) VALUES ('ui.refresh.schedules', '{"autoRefreshEnabled":false,"refreshIntervalSecs":30}', 'json', 'UI auto-refresh settings for Schedules page', 0);
 IF NOT EXISTS (SELECT 1 FROM APPLICATION_CONFIG WHERE config_key = 'ui.refresh.holidays')
 INSERT INTO APPLICATION_CONFIG (config_key, config_value, config_type, description, is_system) VALUES ('ui.refresh.holidays', '{"autoRefreshEnabled":false,"refreshIntervalSecs":30}', 'json', 'UI auto-refresh settings for Holidays page', 0);
+
+-- ============================================================================
+-- SYSTEM_LOGS - Application event / error / audit log table
+-- ============================================================================
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SYSTEM_LOGS')
+CREATE TABLE SYSTEM_LOGS (
+    id              INT IDENTITY(1,1) PRIMARY KEY,
+    [timestamp]     DATETIME2 NOT NULL DEFAULT GETDATE(),
+    [level]         NVARCHAR(20) NOT NULL DEFAULT 'info',
+    source          NVARCHAR(255) DEFAULT '',
+    message         NVARCHAR(MAX) NOT NULL DEFAULT '',
+    hostname        NVARCHAR(255) DEFAULT '',
+    role            NVARCHAR(20) DEFAULT '',
+    details         NVARCHAR(MAX) DEFAULT '',
+    created_at      DATETIME2 DEFAULT GETDATE()
+);

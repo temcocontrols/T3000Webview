@@ -986,3 +986,18 @@ VALUES
 ('ui.refresh.schedules', '{"autoRefreshEnabled":false,"refreshIntervalSecs":30}', 'json', 'UI auto-refresh settings for Schedules page', FALSE),
 ('ui.refresh.holidays',  '{"autoRefreshEnabled":false,"refreshIntervalSecs":30}', 'json', 'UI auto-refresh settings for Holidays page', FALSE)
 ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- SYSTEM_LOGS - Application event / error / audit log table
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS SYSTEM_LOGS (
+    id              SERIAL PRIMARY KEY,
+    "timestamp"     TIMESTAMP NOT NULL DEFAULT NOW(),
+    "level"         VARCHAR(20) NOT NULL DEFAULT 'info',
+    source          VARCHAR(255) DEFAULT '',
+    message         TEXT NOT NULL DEFAULT '',
+    hostname        VARCHAR(255) DEFAULT '',
+    role            VARCHAR(20) DEFAULT '',
+    details         TEXT DEFAULT '',
+    created_at      TIMESTAMP DEFAULT NOW()
+);

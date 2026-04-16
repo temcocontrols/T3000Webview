@@ -983,3 +983,18 @@ VALUES
 ('ui.refresh.programs',  '{"autoRefreshEnabled":false,"refreshIntervalSecs":30}', 'json', 'UI auto-refresh settings for Programs page', 0),
 ('ui.refresh.schedules', '{"autoRefreshEnabled":false,"refreshIntervalSecs":30}', 'json', 'UI auto-refresh settings for Schedules page', 0),
 ('ui.refresh.holidays',  '{"autoRefreshEnabled":false,"refreshIntervalSecs":30}', 'json', 'UI auto-refresh settings for Holidays page', 0);
+
+-- ============================================================================
+-- SYSTEM_LOGS - Application event / error / audit log table
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS SYSTEM_LOGS (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    `timestamp`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `level`         VARCHAR(20) NOT NULL DEFAULT 'info',
+    source          VARCHAR(255) DEFAULT '',
+    message         TEXT NOT NULL,
+    hostname        VARCHAR(255) DEFAULT '',
+    role            VARCHAR(20) DEFAULT '',
+    details         TEXT,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+);

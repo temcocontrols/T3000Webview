@@ -1364,3 +1364,19 @@ INSERT OR IGNORE INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
     VALUES ('postgres', 0, 5432);
 INSERT OR IGNORE INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
     VALUES ('mysql', 0, 3306);
+
+-- ============================================================================
+-- SYSTEM_LOGS - Application event / error / audit log table
+-- Written to central DB when store_logs=1 in setting.ini [CentralDatabase]
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS SYSTEM_LOGS (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp       TEXT NOT NULL DEFAULT (datetime('now')),
+    level           TEXT NOT NULL DEFAULT 'info',        -- info, warn, error, debug
+    source          TEXT DEFAULT '',                     -- module or service name
+    message         TEXT NOT NULL DEFAULT '',
+    hostname        TEXT DEFAULT '',                     -- originating PC name
+    role            TEXT DEFAULT '',                     -- main or reader
+    details         TEXT DEFAULT '',                     -- JSON extra data
+    created_at      TEXT DEFAULT (datetime('now'))
+);
