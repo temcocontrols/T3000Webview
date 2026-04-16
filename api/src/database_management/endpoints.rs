@@ -710,7 +710,12 @@ struct TrendlogQueryRequest {
     point_type: Option<String>,
 }
 
-/// Query trendlog data across multiple partitions and main database
+/// Query trendlog data across multiple SQLite partition files and main database.
+///
+/// NOTE: This endpoint always uses local SQLite — partition-based queries are a
+/// SQLite-specific feature (ATTACH DATABASE across .db files). Remote databases
+/// (PostgreSQL, MySQL, MSSQL) manage trendlog data in a single table and do not
+/// need multi-partition querying.
 async fn query_trendlog_across_partitions(
     State(_app_state): State<T3AppState>,
     Json(request): Json<TrendlogQueryRequest>,
