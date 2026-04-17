@@ -38,7 +38,7 @@ pub fn db_backend_routes() -> Router<T3AppState> {
         .route("/api/database/backend/status", get(get_status))
         .route("/api/database/backend/switch", post(switch_backend))
         .route("/api/database/backend/init-schema", post(init_schema))
-        // INI config endpoints for multi-PC centralized database
+        // INI config endpoints for server/client database
         .route("/api/database/backend/ini", get(get_ini_config))
         .route("/api/database/backend/ini", post(save_ini_config))
 }
@@ -469,7 +469,7 @@ async fn init_schema(
             })?;
 
             let result =
-                db_backend_config::initialize_remote_schema(&conn, backend)
+                db_backend_config::initialize_server_schema(&conn, backend)
                     .await
                     .map_err(|e| {
                         (
@@ -575,7 +575,7 @@ async fn load_full_config_for_type(
 }
 
 // ============================================================================
-// INI Config Endpoints — setting.ini [CentralDatabase] management
+// INI Config Endpoints — setting.ini [ServerDatabase] management
 // ============================================================================
 
 /// Request body for saving INI config.
@@ -586,12 +586,12 @@ struct SaveIniConfigRequest {
     store_logs: bool,
 }
 
-/// GET /api/database/backend/ini — read current [CentralDatabase] settings from setting.ini
+/// GET /api/database/backend/ini — read current [ServerDatabase] settings from setting.ini
 async fn get_ini_config(
     State(_state): State<T3AppState>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     let ini_path = crate::ini_config::find_setting_ini_path();
-    let cfg = crate::ini_config::read_central_db_config(&ini_path);
+    let cfg = crate::ini_config::read_server_db_config(&ini_path);
 
     Ok(Json(serde_json::json!({
         "enabled": cfg.enabled,
@@ -601,7 +601,7 @@ async fn get_ini_config(
     })))
 }
 
-/// POST /api/database/backend/ini — update [CentralDatabase] section in setting.ini
+/// POST /api/database/backend/ini — update [ServerDatabase] section in setting.ini
 ///
 /// This only writes to the local setting.ini file. A service restart is required
 /// for the changes to take effect.
@@ -611,14 +611,14 @@ async fn save_ini_config(
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     // Validate role
     let role = request.role.to_lowercase();
-    if role != "main" && role != "reader" {
+    if role != "server" && role != "client" {
         return Err((
             axum::http::StatusCode::BAD_REQUEST,
-            format!("Invalid role '{}'. Must be 'main' or 'reader'.", request.role),
+            format!("Invalid role '{}'. Must be 'server' or 'client'.", request.role),
         ));
     }
 
-    let config = crate::ini_config::CentralDbIniConfig {
+    let config = crate::ini_config::ServerDbIniConfig {
         enabled: request.enabled,
         role,
         store_logs: request.store_logs,
@@ -626,7 +626,7 @@ async fn save_ini_config(
 
     let ini_path = crate::ini_config::find_setting_ini_path();
 
-    crate::ini_config::write_central_db_config(&ini_path, &config).map_err(|e| {
+    crate::ini_config::write_server_db_config(&ini_path, &config).map_err(|e| {
         (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             format!("Failed to write setting.ini: {}", e),

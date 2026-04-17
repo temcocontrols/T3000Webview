@@ -87,9 +87,9 @@ pub struct BackendConfig {
     pub password: Option<String>,
     pub connection_url: Option<String>,
     pub extra_options: Option<serde_json::Value>,
-    /// PC role: "main" (writes FFI data to central DB) or "reader" (reads only)
+    /// PC role: "server" (writes FFI data to server DB) or "client" (reads only)
     pub role: Option<String>,
-    /// Whether to store system logs to the central DB
+    /// Whether to store system logs to the server DB
     pub store_logs: bool,
 }
 
@@ -400,10 +400,10 @@ pub fn build_mssql_config(
 // ============================================================================
 
 // ============================================================================
-// Schema Initialisation for Remote Backends
+// Schema Initialisation for Server Backends
 // ============================================================================
 
-/// Embedded SQL schemas for each remote backend dialect.
+/// Embedded SQL schemas for each server backend dialect.
 const SCHEMA_POSTGRES: &str = include_str!("../../migration/sql/webview_t3_device_postgres.sql");
 const SCHEMA_MYSQL: &str    = include_str!("../../migration/sql/webview_t3_device_mysql.sql");
 // MSSQL schema is loaded directly in mssql_queries::initialize_mssql_schema()
@@ -434,7 +434,7 @@ fn split_sql_statements(script: &str) -> Vec<String> {
 
 
 
-/// Initialise the remote database schema for the given backend type.
+/// Initialise the server database schema for the given backend type.
 ///
 /// Reads the embedded SQL dialect file, splits it into statements,
 /// and executes each one against the provided SeaORM connection.
@@ -442,7 +442,7 @@ fn split_sql_statements(script: &str) -> Vec<String> {
 /// For MSSQL (Phase 5) this will need a tiberius connection instead.
 ///
 /// Returns (statements_executed, errors) so the caller can report partial success.
-pub async fn initialize_remote_schema(
+pub async fn initialize_server_schema(
     conn: &DatabaseConnection,
     backend: BackendType,
 ) -> Result<InitSchemaResult, String> {
@@ -454,7 +454,7 @@ pub async fn initialize_remote_schema(
             return Err("MSSQL schema init requires tiberius (Phase 5)".to_string());
         }
         BackendType::Sqlite   => {
-            return Err("SQLite uses static schema, not remote init".to_string());
+            return Err("SQLite uses static schema, not server init".to_string());
         }
     };
 
