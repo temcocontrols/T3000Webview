@@ -761,8 +761,12 @@ export const DatabaseConfigPage: React.FC = () => {
                   </div>
                   <div className={styles.serverCardMeta}>
                     <span>{hostname}</span>
-                    <span className={styles.serverCardMetaSep}>·</span>
-                    <span>{selfEntry?.ip_address ?? '—'}</span>
+                    {selfEntry?.ip_address && (
+                      <>
+                        <span className={styles.serverCardMetaSep}>·</span>
+                        <span>{selfEntry.ip_address}</span>
+                      </>
+                    )}
                     <span className={styles.serverCardMetaSep}>·</span>
                     <span>{BACKEND_LABELS[status?.active_backend ?? 'sqlite']}</span>
                     {status?.table_count != null && (
@@ -821,10 +825,19 @@ export const DatabaseConfigPage: React.FC = () => {
                 </div>
                 <div className={styles.serverCardMeta}>
                   <span>{serverStatus?.hostname ?? '—'}</span>
+                  {(() => {
+                    const selfIp = registryEntries.find(e => e.is_self)?.ip_address;
+                    return selfIp ? (
+                      <>
+                        <span className={styles.serverCardMetaSep}>·</span>
+                        <span>{selfIp}</span>
+                      </>
+                    ) : null;
+                  })()}
                   {activeConfig?.host && (
                     <>
                       <span className={styles.serverCardMetaSep}>·</span>
-                      <span>{activeConfig.host}</span>
+                      <span>Server: {activeConfig.host}</span>
                     </>
                   )}
                 </div>
@@ -860,6 +873,15 @@ export const DatabaseConfigPage: React.FC = () => {
                 </div>
                 <div className={styles.serverCardMeta}>
                   <span>{serverStatus?.hostname ?? '—'}</span>
+                  {(() => {
+                    const selfIp = registryEntries.find(e => e.is_self)?.ip_address;
+                    return selfIp ? (
+                      <>
+                        <span className={styles.serverCardMetaSep}>·</span>
+                        <span>{selfIp}</span>
+                      </>
+                    ) : null;
+                  })()}
                   <span className={styles.serverCardMetaSep}>·</span>
                   <span>{BACKEND_LABELS[status?.active_backend ?? 'sqlite']}</span>
                   {status?.table_count != null && (
