@@ -47,12 +47,12 @@ pub struct T3AppState {
     /// The 80+ route files use SeaORM via t3_device_conn. For MSSQL,
     /// MSSQL-specific service code uses this pool via `mssql_queries` functions.
     pub mssql_pool: Option<crate::database_management::mssql_queries::MssqlPool>,
-    /// Whether centralized DB is enabled (from setting.ini [CentralDatabase] enabled=)
-    pub central_db_enabled: bool,
-    /// PC role when central DB is active: "main" (writes FFI to central) or "reader"
-    pub central_db_role: String,
-    /// Whether to write system logs to the central DB
-    pub store_logs_to_central: bool,
+    /// Whether server DB is enabled (from setting.ini [ServerDatabase] enabled=)
+    pub server_db_enabled: bool,
+    /// PC role when server DB is active: "server" (writes FFI to server) or "client"
+    pub server_db_role: String,
+    /// Whether to write system logs to the server DB
+    pub store_logs_to_server: bool,
 }
 
 /// Creates a webview T3000 application state with dual database connections
@@ -123,8 +123,8 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
         }
     };
 
-    // ---- Step 2: Read setting.ini [CentralDatabase] for multi-PC config ----
-    let ini_cfg = ini_config::read_central_db_config_auto();
+    // ---- Step 2: Read setting.ini [ServerDatabase] for server/client config ----
+    let ini_cfg = ini_config::read_server_db_config_auto();
     let _ = write_structured_log_with_level(
         "T3_Webview_Initialize",
         &format!(
@@ -135,11 +135,11 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
     );
 
     // ---- Step 3: Connect to the active backend based on INI + DB_BACKEND_CONFIG ----
-    // When central DB is enabled (INI enabled=1), read DB_BACKEND_CONFIG and connect
-    // to the remote backend (PG / MySQL / MSSQL). When disabled, use local SQLite.
+    // When server DB is enabled (INI enabled=1), read DB_BACKEND_CONFIG and connect
+    // to the server backend (PG / MySQL / MSSQL). When disabled, use local SQLite.
     let mut mssql_pool: Option<crate::database_management::mssql_queries::MssqlPool> = None;
     let t3_device_conn: Option<DatabaseConnection> = if ini_cfg.enabled {
-        // Central DB mode: attempt remote backend connection
+        // Server DB mode: attempt server backend connection
         if let Some(ref lcfg) = local_config_conn {
             let cfg_guard = lcfg.lock().await;
             match establish_device_conn_from_config(&*cfg_guard).await {
@@ -147,7 +147,7 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
                     let _ = write_structured_log_with_level(
                         "T3_Webview_Initialize",
                         &format!(
-                            "Central DB connected via active backend: {} (role={})",
+                            "Server DB connected via active backend: {} (role={})",
                             config.backend_type, ini_cfg.role
                         ),
                         LogLevel::Info,
@@ -169,7 +169,7 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
                     let _ = write_structured_log_with_level(
                         "T3_Webview_Initialize",
                         &format!(
-                            "Central DB connect failed, falling back to local SQLite: {:?}",
+                            "Server DB connect failed, falling back to local SQLite: {:?}",
                             e
                         ),
                         LogLevel::Warn,
@@ -180,7 +180,7 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
         } else {
             let _ = write_structured_log_with_level(
                 "T3_Webview_Initialize",
-                "Central DB enabled but local config unavailable — falling back to local SQLite",
+                "Server DB enabled but local config unavailable — falling back to local SQLite",
                 LogLevel::Warn,
             );
             establish_t3_device_connection().await.ok()
@@ -254,8 +254,8 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
         t3_device_conn: shared_t3_device_conn,
         local_config_conn,
         mssql_pool,
-        central_db_enabled: ini_cfg.enabled,
-        central_db_role: ini_cfg.role,
-        store_logs_to_central: ini_cfg.store_logs,
+        server_db_enabled: ini_cfg.enabled,
+        server_db_role: ini_cfg.role,
+        store_logs_to_server: ini_cfg.store_logs,
     })
 }

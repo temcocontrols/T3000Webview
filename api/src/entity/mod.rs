@@ -21,7 +21,7 @@ pub mod database_files;
 pub mod data_sync_metadata;
 
 // ============================================================================
-// CENTRALIZED DATABASE - Backend configuration entity
+// SERVER DATABASE - Backend configuration entity
 // ============================================================================
 
 pub mod db_backend_config;

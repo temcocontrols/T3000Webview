@@ -5,13 +5,13 @@ use database_management::partition_monitor_service;
 
 pub mod app_state;
 pub mod auth;
-pub mod central_db_writer; // NEW: Global central DB state for multi-PC dual-write
+pub mod server_db_writer; // Global server DB state for server/client dual-write
 pub mod constants;
 pub mod db_connection;
-pub mod db_schema;  // NEW: Embedded SQL schema for dynamic database creation
-pub mod device_db_conn; // NEW: Multi-backend device DB connection adapter
-pub mod ini_config; // NEW: setting.ini [CentralDatabase] reader for multi-PC
-pub mod web_routing; // NEW: Web routing helpers for multi-PC central DB mode
+pub mod db_schema;  // Embedded SQL schema for dynamic database creation
+pub mod device_db_conn; // Multi-backend device DB connection adapter
+pub mod ini_config; // setting.ini [ServerDatabase] reader for server/client config
+pub mod web_routing; // Web routing helpers for server/client DB mode
 pub mod entity;
 pub mod error;
 pub mod file;

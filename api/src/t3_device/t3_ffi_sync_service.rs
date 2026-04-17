@@ -1611,23 +1611,23 @@ impl T3000MainService {
 
         sync_logger.info(&format!("📊 Validation results: {}", validation_summary));
 
-        // ---- CENTRAL DB REPLICATION (multi-PC dual-write) ----
-        // After local transaction commits, replicate basic data to central DB
-        // if this PC is the main writer. TRENDLOG_DATA_DETAIL is handled
+        // ---- SERVER DB REPLICATION (server/client dual-write) ----
+        // After local transaction commits, replicate basic data to server DB
+        // if this PC is the server writer. TRENDLOG_DATA_DETAIL is handled
         // separately via conditional inserts in the trendlog sync functions.
-        if crate::central_db_writer::is_central_write_active() {
-            sync_logger.info("🌐 Central DB replication: Starting (role=main)...");
+        if crate::server_db_writer::is_server_write_active() {
+            sync_logger.info("🌐 Server DB replication: Starting (role=server)...");
             let serial_numbers: Vec<i32> = panels.iter().map(|p| p.serial_number).collect();
-            match Self::replicate_basic_data_to_central(&validation_db, &serial_numbers).await {
+            match Self::replicate_basic_data_to_server(&validation_db, &serial_numbers).await {
                 Ok(stats) => {
                     sync_logger.info(&format!(
-                        "🌐 Central DB replication complete: {} devices, {} inputs, {} outputs, {} variables",
+                        "🌐 Server DB replication complete: {} devices, {} inputs, {} outputs, {} variables",
                         stats.0, stats.1, stats.2, stats.3
                     ));
                 }
                 Err(e) => {
                     sync_logger.warn(&format!(
-                        "⚠️ Central DB replication failed (local data is safe): {}",
+                        "⚠️ Server DB replication failed (local data is safe): {}",
                         e
                     ));
                 }
@@ -3530,15 +3530,15 @@ impl T3000MainService {
     }
 
     /// Replicate basic data (DEVICES, INPUTS, OUTPUTS, VARIABLES) from local SQLite
-    /// to the central DB after a sync cycle. Called only when role=main and central enabled.
+    /// to the server DB after a sync cycle. Called only when role=server and server enabled.
     /// Returns (devices, inputs, outputs, variables) counts replicated.
-    async fn replicate_basic_data_to_central(
+    async fn replicate_basic_data_to_server(
         local_db: &DatabaseConnection,
         serial_numbers: &[i32],
     ) -> Result<(u64, u64, u64, u64), AppError> {
-        let central_conn_arc = crate::central_db_writer::get_central_conn()
-            .ok_or_else(|| AppError::DatabaseError("Central DB connection not available".into()))?;
-        let central = central_conn_arc.lock().await;
+        let server_conn_arc = crate::server_db_writer::get_server_conn()
+            .ok_or_else(|| AppError::DatabaseError("Server DB connection not available".into()))?;
+        let server = server_conn_arc.lock().await;
 
         let mut dev_count: u64 = 0;
         let mut inp_count: u64 = 0;
@@ -3576,7 +3576,7 @@ impl T3000MainService {
                     connection_type: Set(device.connection_type),
                     ..Default::default()
                 };
-                if devices::Entity::insert(model).exec(&*central).await.is_ok() {
+                if devices::Entity::insert(model).exec(&*server).await.is_ok() {
                     dev_count += 1;
                 } else {
                     // Insert failed (likely duplicate) — try update key fields
@@ -3585,7 +3585,7 @@ impl T3000MainService {
                         .col_expr(devices::Column::Status, Expr::value(status_clone.unwrap_or_default()))
                         .col_expr(devices::Column::Address, Expr::value(address_clone.unwrap_or_default()))
                         .col_expr(devices::Column::BuildingName, Expr::value(building_clone.unwrap_or_default()))
-                        .exec(&*central)
+                        .exec(&*server)
                         .await;
                     dev_count += 1;
                 }
@@ -3598,7 +3598,7 @@ impl T3000MainService {
                 .await
             {
                 for ip in &inputs {
-                    // Try insert, ignore conflicts (central may already have this point)
+                    // Try insert, ignore conflicts (server may already have this point)
                     let model = input_points::ActiveModel {
                         serial_number: Set(ip.serial_number),
                         input_id: Set(ip.input_id.clone()),
@@ -3622,10 +3622,10 @@ impl T3000MainService {
                         control: Set(ip.control.clone()),
                         ..Default::default()
                     };
-                    if input_points::Entity::insert(model).exec(&*central).await.is_ok() {
+                    if input_points::Entity::insert(model).exec(&*server).await.is_ok() {
                         inp_count += 1;
                     } else {
-                        // Update existing point in central
+                        // Update existing point in server
                         let _ = input_points::Entity::update_many()
                             .filter(input_points::Column::SerialNumber.eq(sn))
                             .filter(input_points::Column::InputIndex.eq(ip.input_index.clone()))
@@ -3633,7 +3633,7 @@ impl T3000MainService {
                             .col_expr(input_points::Column::Status, Expr::value(ip.status.clone().unwrap_or_default()))
                             .col_expr(input_points::Column::FullLabel, Expr::value(ip.full_label.clone().unwrap_or_default()))
                             .col_expr(input_points::Column::Units, Expr::value(ip.units.clone().unwrap_or_default()))
-                            .exec(&*central)
+                            .exec(&*server)
                             .await;
                         inp_count += 1;
                     }
@@ -3663,7 +3663,7 @@ impl T3000MainService {
                         type_field: Set(op.type_field.clone()),
                         ..Default::default()
                     };
-                    if output_points::Entity::insert(model).exec(&*central).await.is_ok() {
+                    if output_points::Entity::insert(model).exec(&*server).await.is_ok() {
                         out_count += 1;
                     } else {
                         let _ = output_points::Entity::update_many()
@@ -3673,7 +3673,7 @@ impl T3000MainService {
                             .col_expr(output_points::Column::Status, Expr::value(op.status.clone().unwrap_or_default()))
                             .col_expr(output_points::Column::FullLabel, Expr::value(op.full_label.clone().unwrap_or_default()))
                             .col_expr(output_points::Column::Units, Expr::value(op.units.clone().unwrap_or_default()))
-                            .exec(&*central)
+                            .exec(&*server)
                             .await;
                         out_count += 1;
                     }
@@ -3701,7 +3701,7 @@ impl T3000MainService {
                         label: Set(vp.label.clone()),
                         ..Default::default()
                     };
-                    if variable_points::Entity::insert(model).exec(&*central).await.is_ok() {
+                    if variable_points::Entity::insert(model).exec(&*server).await.is_ok() {
                         var_count += 1;
                     } else {
                         let _ = variable_points::Entity::update_many()
@@ -3711,7 +3711,7 @@ impl T3000MainService {
                             .col_expr(variable_points::Column::Status, Expr::value(vp.status.clone().unwrap_or_default()))
                             .col_expr(variable_points::Column::FullLabel, Expr::value(vp.full_label.clone().unwrap_or_default()))
                             .col_expr(variable_points::Column::Units, Expr::value(vp.units.clone().unwrap_or_default()))
-                            .exec(&*central)
+                            .exec(&*server)
                             .await;
                         var_count += 1;
                     }

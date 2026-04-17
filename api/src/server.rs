@@ -94,8 +94,8 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         .merge(crate::database_management::config_api::config_routes())
         // Database Backend Configuration API routes
         .merge(crate::database_management::db_backend_routes::db_backend_routes())
-        // Central DB Status route (multi-PC mode)
-        .merge(crate::web_routing::central_db_routes())
+        // Server DB Status route (server/client mode)
+        .merge(crate::web_routing::server_db_routes())
         // Developer Tools routes
         .nest("/api/develop", crate::t3_develop::create_develop_routes())
         // Real-time trend data routes - TEMPORARILY DISABLED
@@ -150,17 +150,17 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
         }
     };
 
-    // Initialize global central DB writer for FFI dual-write support
-    crate::central_db_writer::init_central_db_writer(
-        state.t3_device_conn.clone(), // Points to central DB when enabled
+    // Initialize global server DB writer for FFI dual-write support
+    crate::server_db_writer::init_server_db_writer(
+        state.t3_device_conn.clone(), // Points to server DB when enabled
         state.mssql_pool.clone(),
-        state.central_db_role.clone(),
-        state.central_db_enabled,
+        state.server_db_role.clone(),
+        state.server_db_enabled,
     );
-    if state.central_db_enabled {
+    if state.server_db_enabled {
         logger.info(&format!(
-            "Central DB writer initialized (role={}, enabled=true)",
-            state.central_db_role
+            "Server DB writer initialized (role={}, enabled=true)",
+            state.server_db_role
         ));
     }
 

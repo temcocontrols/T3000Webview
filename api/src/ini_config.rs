@@ -1,35 +1,35 @@
 // ============================================================================
-// INI Configuration Reader for Multi-PC Centralized Database
+// INI Configuration Reader for Server/Client Database
 // ============================================================================
 //
-// Reads the [CentralDatabase] section from setting.ini (same directory as the
+// Reads the [ServerDatabase] section from setting.ini (same directory as the
 // executable, typically C:\T3000\setting.ini).
 //
 // INI format expected:
-//   [CentralDatabase]
+//   [ServerDatabase]
 //   enabled=1
-//   role=main
+//   role=server
 //   store_logs=1
 
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-/// Configuration read from [CentralDatabase] in setting.ini
+/// Configuration read from [ServerDatabase] in setting.ini
 #[derive(Debug, Clone)]
-pub struct CentralDbIniConfig {
-    /// Whether the centralized database feature is enabled (enabled=1)
+pub struct ServerDbIniConfig {
+    /// Whether the server database feature is enabled (enabled=1)
     pub enabled: bool,
-    /// PC role: "main" or "reader"
+    /// PC role: "server" or "client"
     pub role: String,
-    /// Whether to store system logs to the central database (store_logs=1)
+    /// Whether to store system logs to the server database (store_logs=1)
     pub store_logs: bool,
 }
 
-impl Default for CentralDbIniConfig {
+impl Default for ServerDbIniConfig {
     fn default() -> Self {
         Self {
             enabled: false,
-            role: "reader".to_string(),
+            role: "client".to_string(),
             store_logs: false,
         }
     }
@@ -58,28 +58,28 @@ pub fn find_setting_ini_path() -> PathBuf {
     PathBuf::from("setting.ini")
 }
 
-/// Read and parse the [CentralDatabase] section from the given INI file.
+/// Read and parse the [ServerDatabase] section from the given INI file.
 /// Returns the default config if the file doesn't exist or the section is missing.
-pub fn read_central_db_config(ini_path: &std::path::Path) -> CentralDbIniConfig {
+pub fn read_server_db_config(ini_path: &std::path::Path) -> ServerDbIniConfig {
     let content = match std::fs::read_to_string(ini_path) {
         Ok(c) => c,
         Err(_) => {
             // File not found or unreadable → classic mode (feature disabled)
-            return CentralDbIniConfig::default();
+            return ServerDbIniConfig::default();
         }
     };
 
-    parse_central_db_section(&content)
+    parse_server_db_section(&content)
 }
 
-/// Read the [CentralDatabase] config from the auto-detected setting.ini location.
-pub fn read_central_db_config_auto() -> CentralDbIniConfig {
+/// Read the [ServerDatabase] config from the auto-detected setting.ini location.
+pub fn read_server_db_config_auto() -> ServerDbIniConfig {
     let path = find_setting_ini_path();
-    read_central_db_config(&path)
+    read_server_db_config(&path)
 }
 
-/// Parse INI content and extract the [CentralDatabase] section.
-fn parse_central_db_section(content: &str) -> CentralDbIniConfig {
+/// Parse INI content and extract the [ServerDatabase] section.
+fn parse_server_db_section(content: &str) -> ServerDbIniConfig {
     let mut in_section = false;
     let mut values: HashMap<String, String> = HashMap::new();
 
@@ -93,7 +93,7 @@ fn parse_central_db_section(content: &str) -> CentralDbIniConfig {
 
         // Section header
         if trimmed.starts_with('[') {
-            if trimmed.eq_ignore_ascii_case("[centraldatabase]") {
+            if trimmed.eq_ignore_ascii_case("[serverdatabase]") {
                 in_section = true;
             } else {
                 // Leaving our section
@@ -117,7 +117,7 @@ fn parse_central_db_section(content: &str) -> CentralDbIniConfig {
 
     // If the section wasn't found at all, return defaults
     if values.is_empty() {
-        return CentralDbIniConfig::default();
+        return ServerDbIniConfig::default();
     }
 
     let enabled = values
@@ -129,41 +129,41 @@ fn parse_central_db_section(content: &str) -> CentralDbIniConfig {
         .get("role")
         .map(|v| {
             let lower = v.to_lowercase();
-            if lower == "main" {
-                "main".to_string()
+            if lower == "server" {
+                "server".to_string()
             } else {
-                "reader".to_string()
+                "client".to_string()
             }
         })
-        .unwrap_or_else(|| "reader".to_string());
+        .unwrap_or_else(|| "client".to_string());
 
     let store_logs = values
         .get("store_logs")
         .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
         .unwrap_or(false);
 
-    CentralDbIniConfig {
+    ServerDbIniConfig {
         enabled,
         role,
         store_logs,
     }
 }
 
-/// Write the [CentralDatabase] section to setting.ini.
+/// Write the [ServerDatabase] section to setting.ini.
 /// Preserves all other sections and content in the file.
-pub fn write_central_db_config(
+pub fn write_server_db_config(
     ini_path: &std::path::Path,
-    config: &CentralDbIniConfig,
+    config: &ServerDbIniConfig,
 ) -> Result<(), std::io::Error> {
     let existing_content = std::fs::read_to_string(ini_path).unwrap_or_default();
-    let new_content = update_central_db_section(&existing_content, config);
+    let new_content = update_server_db_section(&existing_content, config);
     std::fs::write(ini_path, new_content)
 }
 
-/// Update or insert the [CentralDatabase] section in INI content.
-fn update_central_db_section(content: &str, config: &CentralDbIniConfig) -> String {
+/// Update or insert the [ServerDatabase] section in INI content.
+fn update_server_db_section(content: &str, config: &ServerDbIniConfig) -> String {
     let section_text = format!(
-        "[CentralDatabase]\nenabled={}\nrole={}\nstore_logs={}\n",
+        "[ServerDatabase]\nenabled={}\nrole={}\nstore_logs={}\n",
         if config.enabled { "1" } else { "0" },
         config.role,
         if config.store_logs { "1" } else { "0" },
@@ -177,7 +177,7 @@ fn update_central_db_section(content: &str, config: &CentralDbIniConfig) -> Stri
     for line in content.lines() {
         let trimmed = line.trim();
 
-        if trimmed.eq_ignore_ascii_case("[centraldatabase]") {
+        if trimmed.eq_ignore_ascii_case("[serverdatabase]") {
             in_section = true;
             section_replaced = true;
             result.push_str(&section_text);
@@ -217,16 +217,16 @@ mod tests {
 
     #[test]
     fn test_parse_empty_content() {
-        let config = parse_central_db_section("");
+        let config = parse_server_db_section("");
         assert!(!config.enabled);
-        assert_eq!(config.role, "reader");
+        assert_eq!(config.role, "client");
         assert!(!config.store_logs);
     }
 
     #[test]
     fn test_parse_no_section() {
         let content = "[SomeOther]\nfoo=bar\n";
-        let config = parse_central_db_section(content);
+        let config = parse_server_db_section(content);
         assert!(!config.enabled);
     }
 
@@ -236,64 +236,64 @@ mod tests {
 [Network]
 ip=192.168.1.1
 
-[CentralDatabase]
+[ServerDatabase]
 enabled=1
-role=main
+role=server
 store_logs=1
 
 [AnotherSection]
 key=val
 ";
-        let config = parse_central_db_section(content);
+        let config = parse_server_db_section(content);
         assert!(config.enabled);
-        assert_eq!(config.role, "main");
+        assert_eq!(config.role, "server");
         assert!(config.store_logs);
     }
 
     #[test]
-    fn test_parse_reader_role() {
-        let content = "[CentralDatabase]\nenabled=1\nrole=reader\nstore_logs=0\n";
-        let config = parse_central_db_section(content);
+    fn test_parse_client_role() {
+        let content = "[ServerDatabase]\nenabled=1\nrole=client\nstore_logs=0\n";
+        let config = parse_server_db_section(content);
         assert!(config.enabled);
-        assert_eq!(config.role, "reader");
+        assert_eq!(config.role, "client");
         assert!(!config.store_logs);
     }
 
     #[test]
     fn test_parse_case_insensitive_section() {
-        let content = "[centraldatabase]\nenabled=1\nrole=Main\n";
-        let config = parse_central_db_section(content);
+        let content = "[serverdatabase]\nenabled=1\nrole=Server\n";
+        let config = parse_server_db_section(content);
         assert!(config.enabled);
-        assert_eq!(config.role, "main");
+        assert_eq!(config.role, "server");
     }
 
     #[test]
     fn test_parse_with_comments() {
         let content = "\
 ; This is a comment
-[CentralDatabase]
+[ServerDatabase]
 ; enabled toggle
 enabled=1
 # role setting
-role=main
+role=server
 store_logs=0
 ";
-        let config = parse_central_db_section(content);
+        let config = parse_server_db_section(content);
         assert!(config.enabled);
-        assert_eq!(config.role, "main");
+        assert_eq!(config.role, "server");
         assert!(!config.store_logs);
     }
 
     #[test]
     fn test_update_existing_section() {
-        let content = "[Network]\nip=1.2.3.4\n\n[CentralDatabase]\nenabled=0\nrole=reader\nstore_logs=0\n\n[Other]\nfoo=bar\n";
-        let config = CentralDbIniConfig {
+        let content = "[Network]\nip=1.2.3.4\n\n[ServerDatabase]\nenabled=0\nrole=client\nstore_logs=0\n\n[Other]\nfoo=bar\n";
+        let config = ServerDbIniConfig {
             enabled: true,
-            role: "main".to_string(),
+            role: "server".to_string(),
             store_logs: true,
         };
-        let result = update_central_db_section(content, &config);
-        assert!(result.contains("[CentralDatabase]\nenabled=1\nrole=main\nstore_logs=1\n"));
+        let result = update_server_db_section(content, &config);
+        assert!(result.contains("[ServerDatabase]\nenabled=1\nrole=server\nstore_logs=1\n"));
         assert!(result.contains("[Network]"));
         assert!(result.contains("[Other]"));
     }
@@ -301,13 +301,12 @@ store_logs=0
     #[test]
     fn test_update_append_new_section() {
         let content = "[Network]\nip=1.2.3.4\n";
-        let config = CentralDbIniConfig {
+        let config = ServerDbIniConfig {
             enabled: true,
-            role: "main".to_string(),
+            role: "server".to_string(),
             store_logs: false,
         };
-        let result = update_central_db_section(content, &config);
-        assert!(result.contains("[CentralDatabase]\nenabled=1\nrole=main\nstore_logs=0\n"));
-        assert!(result.contains("[Network]"));
+        let result = update_server_db_section(content, &config);
+        assert!(result.contains("[ServerDatabase]\nenabled=1\nrole=server\nstore_logs=0\n"));
     }
 }

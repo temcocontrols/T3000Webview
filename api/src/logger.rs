@@ -51,7 +51,7 @@ pub fn write_structured_log_with_level(base_filename: &str, message: &str, level
     Ok(())
 }
 
-/// Centralized logging for T3000 WebView Service
+/// Structured logging for T3000 WebView Service
 pub struct ServiceLogger {
     log_file: Option<std::fs::File>,
 }

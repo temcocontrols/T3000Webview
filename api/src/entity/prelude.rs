@@ -16,5 +16,5 @@ pub use super::database_files::Entity as DatabaseFiles;
 pub use super::data_sync_metadata::Entity as DataSyncMetadata;
 pub use super::db_backend_config::Entity as DbBackendConfig;
 
-// Centralized database
+// Server database
 pub use super::system_logs::Entity as SystemLogs;

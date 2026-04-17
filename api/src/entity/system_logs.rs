@@ -1,7 +1,7 @@
 //! SYSTEM_LOGS Entity
 //!
 //! Application event / error / audit log entries.
-//! Written to central DB when store_logs=1 in setting.ini [CentralDatabase].
+//! Written to server DB when store_logs=1 in setting.ini [ServerDatabase].
 
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
