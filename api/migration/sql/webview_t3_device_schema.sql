@@ -1350,8 +1350,7 @@ CREATE TABLE IF NOT EXISTS DB_BACKEND_CONFIG (
     password      TEXT,
     connection_url TEXT,
     extra_options TEXT,
-    role          TEXT DEFAULT 'main',      -- 'main' or 'reader'
-    store_logs    INTEGER DEFAULT 1,         -- 1=write logs to central DB, 0=local only
+    role          TEXT DEFAULT 'server',    -- 'server' or 'client'
     updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -1366,8 +1365,28 @@ INSERT OR IGNORE INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
     VALUES ('mysql', 0, 3306);
 
 -- ============================================================================
+-- SERVER_CLIENT_REGISTRY - Tracks all PCs participating in centralized DB mode
+-- Server writes its own entry; clients send heartbeats to the server.
+-- This table lives in the SERVER's database (not on client local DBs).
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS SERVER_CLIENT_REGISTRY (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    hostname      TEXT NOT NULL DEFAULT '',
+    ip_address    TEXT NOT NULL DEFAULT '',
+    role          TEXT NOT NULL DEFAULT 'client',  -- 'server' or 'client'
+    is_self       INTEGER NOT NULL DEFAULT 0,      -- 1 = this PC's own entry
+    status        TEXT NOT NULL DEFAULT 'online',  -- 'online' or 'offline'
+    last_seen     TEXT NOT NULL DEFAULT (datetime('now')),
+    db_backend    TEXT DEFAULT 'sqlite',            -- active backend type
+    table_count   INTEGER DEFAULT 0,
+    version       TEXT DEFAULT '',                  -- T3000 / webview version
+    created_at    TEXT DEFAULT (datetime('now')),
+    UNIQUE(hostname, ip_address)
+);
+
+-- ============================================================================
 -- SYSTEM_LOGS - Application event / error / audit log table
--- Written to central DB when store_logs=1 in setting.ini [CentralDatabase]
+-- Written to server DB when enabled via application config.
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS SYSTEM_LOGS (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
