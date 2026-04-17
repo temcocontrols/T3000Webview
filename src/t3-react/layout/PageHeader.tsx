@@ -112,6 +112,8 @@ const routeToBreadcrumb: Record<string, { label: string; segments?: string[] }> 
   '/t3000/settings': { label: 'Settings', segments: ['Settings'] },
   '/t3000/discover': { label: 'Discover', segments: ['Discover'] },
   '/t3000/buildings': { label: 'Buildings', segments: ['Buildings'] },
+  '/t3000/system/database-config': { label: 'Database Configuration', segments: ['System', 'Database Configuration'] },
+  '/t3000/system/sync': { label: 'Sync Configuration', segments: ['System', 'Sync Configuration'] },
 };
 
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => {
@@ -185,7 +187,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => 
       <div className={styles.breadcrumbSection}>
         <div className={styles.pageHeaderBar}></div>
         <h1 className={styles.pageTitle}>{pageTitle.toUpperCase()}</h1>
-        {selectedDevice && (
+        {selectedDevice && !location.pathname.startsWith('/t3000/system') && (
           <div className={styles.deviceInfo}>
             <Text className={styles.deviceLabel}>Device:</Text>
             <Text className={styles.deviceName}>

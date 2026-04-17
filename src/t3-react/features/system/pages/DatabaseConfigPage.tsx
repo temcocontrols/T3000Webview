@@ -3,13 +3,13 @@
  *
  * Allows administrators to view / configure the server database backend
  * (SQLite, PostgreSQL, MySQL, or MSSQL) used for server/client deployments.
+ * Focused on trendlog and device-data storage across multiple PCs.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   makeStyles,
   tokens,
-  Title3,
   Body1,
   Button,
   Input,
@@ -22,10 +22,8 @@ import {
   MessageBarTitle,
   Spinner,
   Text,
-  Select,
   RadioGroup,
   Radio,
-  Field,
   Tooltip,
   Switch,
   Checkbox,
@@ -38,8 +36,11 @@ import {
   SearchRegular,
   PlugConnectedRegular,
   ArrowUploadRegular,
+  InfoRegular,
+  ServerRegular,
+  DesktopRegular,
+  CloudDatabaseRegular,
 } from '@fluentui/react-icons';
-import { API_BASE_URL } from '../../../config/constants';
 import type {
   BackendType,
   BackendConfigResponse,
@@ -73,6 +74,40 @@ const useStyles = makeStyles({
     minHeight: '100%',
     backgroundColor: '#ffffff',
   },
+  /* ── Intro Banner ── */
+  introBanner: {
+    display: 'flex',
+    gap: '16px',
+    padding: '16px 20px',
+    margin: '12px',
+    backgroundColor: '#f0f6ff',
+    borderRadius: '8px',
+    border: '1px solid #c7dff7',
+  },
+  introBannerIcon: {
+    fontSize: '28px',
+    color: '#0f6cbd',
+    flexShrink: 0,
+    marginTop: '2px',
+  },
+  introBannerBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+  },
+  introBannerTitle: {
+    fontSize: '15px',
+    fontWeight: 600,
+    color: '#0f6cbd',
+    margin: 0,
+  },
+  introBannerText: {
+    fontSize: '13px',
+    color: '#323130',
+    lineHeight: '1.5',
+    margin: 0,
+  },
+  /* ── Section ── */
   section: {
     marginBottom: '12px',
   },
@@ -80,7 +115,7 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    marginBottom: '12px',
+    marginBottom: '0px',
     padding: '0 12px',
     borderTop: '1px solid #edebe9',
     borderBottom: '1px solid #edebe9',
@@ -93,6 +128,14 @@ const useStyles = makeStyles({
     color: '#323130',
     margin: 0,
   },
+  sectionDescription: {
+    fontSize: '12px',
+    color: '#605e5c',
+    padding: '6px 12px 0',
+    lineHeight: '1.4',
+    margin: 0,
+  },
+  /* ── Forms ── */
   formGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
@@ -126,6 +169,7 @@ const useStyles = makeStyles({
     backgroundColor: '#ffffff',
     zIndex: 1,
   },
+  /* ── Status Card ── */
   statusCard: {
     display: 'flex',
     alignItems: 'center',
@@ -133,6 +177,83 @@ const useStyles = makeStyles({
     padding: '12px',
     margin: '12px',
   },
+  statusCardBody: {
+    flex: 1,
+  },
+  statusTitle: {
+    fontWeight: 600,
+  },
+  statusSubtext: {
+    color: '#605e5c',
+  },
+  /* ── Status Details Grid ── */
+  statusDetailsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: '8px',
+    padding: '0 12px 12px',
+  },
+  statusDetailItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '12px',
+    color: '#605e5c',
+    padding: '4px 8px',
+    backgroundColor: '#fafafa',
+    borderRadius: '4px',
+  },
+  statusDetailLabel: {
+    fontWeight: 600,
+    color: '#323130',
+    minWidth: '80px',
+  },
+  /* ── Role Cards ── */
+  roleCardsRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '12px',
+    padding: '12px',
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  roleCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    padding: '16px',
+    border: '2px solid #edebe9',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    transition: 'border-color 0.15s, background-color 0.15s',
+  },
+  roleCardSelected: {
+    ...{borderColor: '#0f6cbd'} as any,
+    backgroundColor: '#f0f6ff',
+  },
+  roleCardHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  roleCardIcon: {
+    fontSize: '24px',
+    color: '#0f6cbd',
+  },
+  roleCardTitle: {
+    fontSize: '14px',
+    fontWeight: 600,
+    color: '#323130',
+    margin: 0,
+  },
+  roleCardDesc: {
+    fontSize: '12px',
+    color: '#605e5c',
+    lineHeight: '1.5',
+    margin: 0,
+  },
+  /* ── Misc ── */
   scanResults: {
     padding: '4px 12px 8px',
   },
@@ -147,9 +268,6 @@ const useStyles = makeStyles({
       backgroundColor: '#f5f5f5',
     },
   },
-  statusCardBody: {
-    flex: 1,
-  },
   padH12: {
     padding: '0 12px',
   },
@@ -163,12 +281,6 @@ const useStyles = makeStyles({
     color: '#605e5c',
     marginLeft: '8px',
   },
-  statusTitle: {
-    fontWeight: 600,
-  },
-  statusSubtext: {
-    color: '#605e5c',
-  },
   loadingBar: {
     display: 'flex',
     alignItems: 'center',
@@ -177,6 +289,17 @@ const useStyles = makeStyles({
     backgroundColor: 'transparent',
     marginBottom: tokens.spacingVerticalM,
     fontSize: '13px',
+  },
+  optionsRow: {
+    display: 'flex',
+    gap: '16px',
+    alignItems: 'center',
+    padding: '0 12px 12px',
+  },
+  iniPathText: {
+    fontSize: '11px',
+    color: '#a19f9d',
+    padding: '0 12px 8px',
   },
 });
 
@@ -430,6 +553,19 @@ export const DatabaseConfigPage: React.FC = () => {
 
   return (
     <div className={styles.container}>
+      {/* ── Intro Banner ── */}
+      <div className={styles.introBanner}>
+        <CloudDatabaseRegular className={styles.introBannerIcon} />
+        <div className={styles.introBannerBody}>
+          <h3 className={styles.introBannerTitle}>Centralized Trendlog &amp; Data Storage</h3>
+          <p className={styles.introBannerText}>
+            Store trend logs and device data from multiple T3000 PCs into a single shared database.
+            One PC acts as the <strong>Server</strong> (collects data), while other PCs connect as <strong>Clients</strong> (view shared data).
+            This is useful when you have several PCs polling different controllers and want all trend data in one place.
+          </p>
+        </div>
+      </div>
+
       {/* ── Status Card ── */}
       <Card className={styles.statusCard}>
         <DatabaseRegular fontSize={24} />
@@ -440,7 +576,6 @@ export const DatabaseConfigPage: React.FC = () => {
           <Text size={200} className={styles.statusSubtext}>
             {status?.connected ? 'Connected' : 'Disconnected'}
             {status?.connected && status?.table_count != null && ` · ${status.table_count} tables`}
-            {serverStatus?.enabled && ` · ${serverStatus.role === 'server' ? 'Server' : 'Client'} (${serverStatus.hostname})`}
           </Text>
         </div>
         <Badge
@@ -452,74 +587,39 @@ export const DatabaseConfigPage: React.FC = () => {
         </Badge>
       </Card>
 
-      {/* ── Server / Client Configuration ── */}
-      <div className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h3 className={styles.sectionTitle}>Server / Client Configuration</h3>
-          {serverStatus?.enabled && (
+      {/* ── Runtime Status Details ── */}
+      {serverStatus?.enabled && (
+        <div className={styles.statusDetailsGrid}>
+          <div className={styles.statusDetailItem}>
+            <span className={styles.statusDetailLabel}>Role</span>
             <Badge
               appearance="filled"
-              color={serverStatus.server_connected ? 'success' : 'warning'}
+              color={serverStatus.role === 'server' ? 'informative' : 'subtle'}
               size="small"
             >
               {serverStatus.role === 'server' ? 'Server' : 'Client'}
             </Badge>
-          )}
-        </div>
-        <div className={styles.formGrid}>
-          <div className={styles.formRow}>
-            <Label className={styles.label}>Server Database</Label>
-            <Switch
-              checked={iniForm.enabled}
-              onChange={(_, data) => setIniForm(prev => ({ ...prev, enabled: data.checked }))}
-              label={iniForm.enabled ? 'Enabled' : 'Disabled'}
-            />
           </div>
-
-          {iniForm.enabled && (
-            <>
-              <div className={styles.formRow}>
-                <Label className={styles.label}>PC Role</Label>
-                <RadioGroup
-                  value={iniForm.role}
-                  onChange={(_, data) => setIniForm(prev => ({ ...prev, role: data.value }))}
-                  layout="horizontal"
-                >
-                  <Radio value="main" label="Server (writes to server database)" />
-                  <Radio value="reader" label="Client (reads from server database)" />
-                </RadioGroup>
-              </div>
-
-              <div className={styles.formRow}>
-                <Label className={styles.label}>Options</Label>
-                <Checkbox
-                  checked={iniForm.store_logs}
-                  onChange={(_, data) => setIniForm(prev => ({ ...prev, store_logs: !!data.checked }))}
-                  label="Store system logs to server database"
-                />
-              </div>
-            </>
-          )}
-
-          <div className={styles.formRow}>
-            <Button
-              appearance="primary"
-              onClick={handleSaveIni}
-              disabled={isBusy}
+          <div className={styles.statusDetailItem}>
+            <span className={styles.statusDetailLabel}>Hostname</span>
+            <span>{serverStatus.hostname}</span>
+          </div>
+          <div className={styles.statusDetailItem}>
+            <span className={styles.statusDetailLabel}>Server DB</span>
+            <Badge
+              appearance="filled"
+              color={serverStatus.server_connected ? 'success' : 'danger'}
               size="small"
             >
-              {savingIni ? 'Saving…' : 'Save Config'}
-            </Button>
-            {iniConfig?.ini_path && (
-              <Text size={200} className={styles.statusSubtext}>
-                INI: {iniConfig.ini_path}
-              </Text>
-            )}
+              {serverStatus.server_connected ? 'Connected' : 'Not connected'}
+            </Badge>
+          </div>
+          <div className={styles.statusDetailItem}>
+            <span className={styles.statusDetailLabel}>MSSQL Pool</span>
+            <span>{serverStatus.mssql_pool_active ? 'Active' : 'Inactive'}</span>
           </div>
         </div>
-      </div>
-
-      <Divider />
+      )}
 
       {/* ── Message Bar ── */}
       {message && (
@@ -535,11 +635,111 @@ export const DatabaseConfigPage: React.FC = () => {
         </div>
       )}
 
+      {/* ── Server / Client Configuration ── */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h3 className={styles.sectionTitle}>Server / Client Configuration</h3>
+          <Tooltip content="These settings are stored in the local setting.ini file and take effect after restart." relationship="description">
+            <InfoRegular style={{ fontSize: '14px', color: '#605e5c', cursor: 'help' }} />
+          </Tooltip>
+        </div>
+        <p className={styles.sectionDescription}>
+          Enable multi-PC mode and assign this computer's role. Changes require a restart to take effect.
+        </p>
+
+        {/* Enable toggle */}
+        <div className={styles.padH12}>
+          <Tooltip content="Turn on to connect this PC to a shared server database for trend data and device info." relationship="description">
+            <Switch
+              checked={iniForm.enabled}
+              onChange={(_, data) => setIniForm(prev => ({ ...prev, enabled: data.checked }))}
+              label={iniForm.enabled ? 'Server Database: Enabled' : 'Server Database: Disabled'}
+            />
+          </Tooltip>
+        </div>
+
+        {iniForm.enabled && (
+          <>
+            {/* Role selection as cards */}
+            <div className={styles.roleCardsRow}>
+              <div
+                className={`${styles.roleCard} ${iniForm.role === 'server' ? styles.roleCardSelected : ''}`}
+                onClick={() => setIniForm(prev => ({ ...prev, role: 'server' }))}
+              >
+                <div className={styles.roleCardHeader}>
+                  <ServerRegular className={styles.roleCardIcon} />
+                  <h4 className={styles.roleCardTitle}>Server</h4>
+                  {iniForm.role === 'server' && <Badge appearance="filled" color="brand" size="small">Selected</Badge>}
+                </div>
+                <p className={styles.roleCardDesc}>
+                  This PC writes trend logs and device data to the shared database.
+                  Typically the main PC that hosts the SQL Server instance.
+                  Data is written to both the local SQLite and the server database for redundancy.
+                </p>
+              </div>
+              <div
+                className={`${styles.roleCard} ${iniForm.role === 'client' ? styles.roleCardSelected : ''}`}
+                onClick={() => setIniForm(prev => ({ ...prev, role: 'client' }))}
+              >
+                <div className={styles.roleCardHeader}>
+                  <DesktopRegular className={styles.roleCardIcon} />
+                  <h4 className={styles.roleCardTitle}>Client</h4>
+                  {iniForm.role === 'client' && <Badge appearance="filled" color="brand" size="small">Selected</Badge>}
+                </div>
+                <p className={styles.roleCardDesc}>
+                  This PC reads trend logs and device data from the shared database.
+                  It continues to write its own local data to SQLite for offline use,
+                  and can view data from all other PCs via the server.
+                </p>
+              </div>
+            </div>
+
+            {/* Options */}
+            <div className={styles.optionsRow}>
+              <Tooltip content="When enabled, system log entries (errors, warnings, info) are also written to the server database so all PCs can see a unified log." relationship="description">
+                <Checkbox
+                  checked={iniForm.store_logs}
+                  onChange={(_, data) => setIniForm(prev => ({ ...prev, store_logs: !!data.checked }))}
+                  label="Store system logs to server database"
+                />
+              </Tooltip>
+            </div>
+          </>
+        )}
+
+        {/* Save + INI path */}
+        <div className={styles.optionsRow}>
+          <Tooltip content="Write settings to setting.ini. Restart T3000 for changes to take effect." relationship="description">
+            <Button
+              appearance="primary"
+              onClick={handleSaveIni}
+              disabled={isBusy}
+              size="small"
+            >
+              {savingIni ? 'Saving…' : 'Save Config'}
+            </Button>
+          </Tooltip>
+        </div>
+        {iniConfig?.ini_path && (
+          <p className={styles.iniPathText}>
+            Config file: {iniConfig.ini_path}
+          </p>
+        )}
+      </div>
+
+      <Divider />
+
       {/* ── Backend Type Selector ── */}
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <h3 className={styles.sectionTitle}>Backend Type</h3>
+          <Tooltip content="Choose which database engine stores the shared data. SQLite is the default local engine. For multi-PC setups, select Microsoft SQL Server or another network-accessible database." relationship="description">
+            <InfoRegular style={{ fontSize: '14px', color: '#605e5c', cursor: 'help' }} />
+          </Tooltip>
         </div>
+        <p className={styles.sectionDescription}>
+          Select the database engine for the server. For multi-PC deployments, use Microsoft SQL Server or another network database.
+        </p>
         <div className={styles.padH12}>
           <RadioGroup
             value={selectedType}
@@ -561,16 +761,21 @@ export const DatabaseConfigPage: React.FC = () => {
           <div className={styles.sectionHeader}>
             <h3 className={styles.sectionTitle}>Connection Settings — {BACKEND_LABELS[selectedType]}</h3>
           </div>
+          <p className={styles.sectionDescription}>
+            Enter the connection details for the {BACKEND_LABELS[selectedType]} instance. Use "Test Connection" to verify before saving.
+          </p>
 
           <div className={styles.formGrid}>
             <div className={styles.formRow}>
               <Label className={styles.label} htmlFor="db-host">Host / IP</Label>
-              <Input
-                id="db-host"
-                value={form.host ?? ''}
-                onChange={(_, d) => setField('host', d.value)}
-                placeholder="192.168.1.100"
-              />
+              <Tooltip content="The hostname or IP address of the database server, e.g. 192.168.1.100 or db-server.local" relationship="description">
+                <Input
+                  id="db-host"
+                  value={form.host ?? ''}
+                  onChange={(_, d) => setField('host', d.value)}
+                  placeholder="192.168.1.100"
+                />
+              </Tooltip>
             </div>
 
             <div className={styles.formRow}>
@@ -586,23 +791,27 @@ export const DatabaseConfigPage: React.FC = () => {
             {selectedType === 'mssql' && (
               <div className={styles.formRow}>
                 <Label className={styles.label} htmlFor="db-instance">Instance Name</Label>
-                <Input
-                  id="db-instance"
-                  value={form.instance ?? ''}
-                  onChange={(_, d) => setField('instance', d.value)}
-                  placeholder="SQLEXPRESS"
-                />
+                <Tooltip content="Named SQL Server instance (e.g. SQLEXPRESS). Leave blank for the default instance." relationship="description">
+                  <Input
+                    id="db-instance"
+                    value={form.instance ?? ''}
+                    onChange={(_, d) => setField('instance', d.value)}
+                    placeholder="SQLEXPRESS"
+                  />
+                </Tooltip>
               </div>
             )}
 
             <div className={styles.formRow}>
               <Label className={styles.label} htmlFor="db-name">Database Name</Label>
-              <Input
-                id="db-name"
-                value={form.database_name ?? ''}
-                onChange={(_, d) => setField('database_name', d.value)}
-                placeholder="t3000"
-              />
+              <Tooltip content="The name of the database to connect to. It will be created if it doesn't exist when you run Init Schema." relationship="description">
+                <Input
+                  id="db-name"
+                  value={form.database_name ?? ''}
+                  onChange={(_, d) => setField('database_name', d.value)}
+                  placeholder="t3000"
+                />
+              </Tooltip>
             </div>
 
             <div className={styles.formRow}>
@@ -616,17 +825,19 @@ export const DatabaseConfigPage: React.FC = () => {
 
             <div className={styles.formRow}>
               <Label className={styles.label} htmlFor="db-pass">Password</Label>
-              <Input
-                id="db-pass"
-                type="password"
-                value={form.password ?? ''}
-                onChange={(_, d) => setField('password', d.value)}
-              />
+              <Tooltip content="Leave blank to keep the previously saved password." relationship="description">
+                <Input
+                  id="db-pass"
+                  type="password"
+                  value={form.password ?? ''}
+                  onChange={(_, d) => setField('password', d.value)}
+                />
+              </Tooltip>
             </div>
 
             <div className={styles.formRowFull}>
               <Label className={styles.label} htmlFor="db-url">
-                Connection URL (optional — overrides fields above)
+                Connection URL <Text size={200} className={styles.statusSubtext}>(optional — overrides the fields above)</Text>
               </Label>
               <Input
                 id="db-url"
@@ -650,14 +861,16 @@ export const DatabaseConfigPage: React.FC = () => {
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <h3 className={styles.sectionTitle}>Network Scan — SQL Server Discovery</h3>
-            <Button
-              size="small"
-              icon={scanning ? <Spinner size="tiny" /> : <SearchRegular />}
-              onClick={handleScan}
-              disabled={isBusy}
-            >
-              {scanning ? 'Scanning…' : 'Scan LAN'}
-            </Button>
+            <Tooltip content="Broadcasts a UDP probe on port 1434 to find SQL Server instances on your local network." relationship="description">
+              <Button
+                size="small"
+                icon={scanning ? <Spinner size="tiny" /> : <SearchRegular />}
+                onClick={handleScan}
+                disabled={isBusy}
+              >
+                {scanning ? 'Scanning…' : 'Scan LAN'}
+              </Button>
+            </Tooltip>
           </div>
 
           {scanResults.length > 0 && (
@@ -674,9 +887,11 @@ export const DatabaseConfigPage: React.FC = () => {
                       </Text>
                     )}
                   </span>
-                  <Button size="small" onClick={() => applyScanResult(inst)}>
-                    Use
-                  </Button>
+                  <Tooltip content="Fill in the connection fields with this server's details" relationship="description">
+                    <Button size="small" onClick={() => applyScanResult(inst)}>
+                      Use
+                    </Button>
+                  </Tooltip>
                 </div>
               ))}
             </div>
@@ -690,7 +905,7 @@ export const DatabaseConfigPage: React.FC = () => {
       <div className={styles.actions}>
         {isRemote && (
           <>
-            <Tooltip content="Test the connection without saving" relationship="label">
+            <Tooltip content="Verify the connection using the settings above — does not save anything." relationship="description">
               <Button
                 icon={testing ? <Spinner size="tiny" /> : <PlugConnectedRegular />}
                 onClick={handleTest}
@@ -700,15 +915,17 @@ export const DatabaseConfigPage: React.FC = () => {
               </Button>
             </Tooltip>
 
-            <Button
-              appearance="primary"
-              onClick={handleSave}
-              disabled={isBusy}
-            >
-              {saving ? 'Saving…' : 'Save Configuration'}
-            </Button>
+            <Tooltip content="Save the connection settings for this backend type to the local database." relationship="description">
+              <Button
+                appearance="primary"
+                onClick={handleSave}
+                disabled={isBusy}
+              >
+                {saving ? 'Saving…' : 'Save Configuration'}
+              </Button>
+            </Tooltip>
 
-            <Tooltip content="Create all T3000 tables on the server database" relationship="label">
+            <Tooltip content="Create all required T3000 tables (inputs, outputs, variables, trend logs, etc.) on the server database. Safe to run multiple times." relationship="description">
               <Button
                 icon={initializingSchema ? <Spinner size="tiny" /> : <ArrowUploadRegular />}
                 onClick={handleInitSchema}
@@ -723,10 +940,10 @@ export const DatabaseConfigPage: React.FC = () => {
         <Tooltip
           content={
             isActiveBackend
-              ? 'This backend is already active'
-              : 'Activate this backend (requires restart)'
+              ? 'This backend is already the active database engine.'
+              : 'Switch T3000 to use this backend. Changes take effect after restart.'
           }
-          relationship="label"
+          relationship="description"
         >
           <Button
             icon={switching ? <Spinner size="tiny" /> : <ArrowSyncRegular />}
