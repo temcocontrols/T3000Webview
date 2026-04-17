@@ -80,6 +80,7 @@ const useStyles = makeStyles({
     top: 0,
     zIndex: 10,
     backgroundColor: '#ffffff',
+    fontSize: '12px',
   },
   scrollArea: {
     flex: 1,
@@ -141,6 +142,11 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     gap: '4px',
   },
+  infoBannerHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
   infoBannerTitle: {
     fontSize: '13px',
     fontWeight: 600,
@@ -156,6 +162,10 @@ const useStyles = makeStyles({
   infoBannerLinks: {
     fontSize: '12.5px',
     margin: 0,
+  },
+  infoBannerDivider: {
+    margin: '0 6px',
+    color: '#c7dff7',
   },
   /* ── Section ── */
   section: {
@@ -753,9 +763,10 @@ export const DatabaseConfigPage: React.FC = () => {
         <div className={styles.messageBar}>
           <MessageBar
             intent={message.type === 'success' ? 'success' : message.type === 'warning' ? 'warning' : 'error'}
+            shape="square"
           >
-            <MessageBarBody>
-              <MessageBarTitle>{message.type === 'success' ? 'Success' : message.type === 'warning' ? 'Notice' : 'Error'}</MessageBarTitle>
+            <MessageBarBody style={{ fontSize: '12px' }}>
+              <MessageBarTitle style={{ fontSize: '12px' }}>{message.type === 'success' ? 'Success' : message.type === 'warning' ? 'Notice' : 'Error'}</MessageBarTitle>
               {message.text}
             </MessageBarBody>
             <MessageBarActions containerAction={<Button appearance="transparent" icon={<DismissRegular />} onClick={() => setMessage(null)} />} />
@@ -1066,29 +1077,38 @@ export const DatabaseConfigPage: React.FC = () => {
             <h3 className={styles.sectionTitle}>Connection Settings — {BACKEND_LABELS[selectedType]}</h3>
           </div>
           <div className={styles.infoBanner}>
-            <InfoRegular className={styles.infoBannerIcon} />
             <div className={styles.infoBannerBody}>
-              <p className={styles.infoBannerText}>
-                Enter the connection details for the <strong>{BACKEND_LABELS[selectedType]}</strong> instance manually.{selectedType === 'mssql' ? ' You can also use Scan LAN below to discover SQL Server instances on your network.' : ''} Use "Test Connection" to verify before saving.
-              </p>
+              <div className={styles.infoBannerHeader}>
+                <InfoRegular className={styles.infoBannerIcon} />
+                <p className={styles.infoBannerText}>
+                  Enter the connection details for the <strong>{BACKEND_LABELS[selectedType]}</strong> instance manually.{selectedType === 'mssql' ? ' You can also use Scan LAN below to discover SQL Server instances on your network.' : ''} Use "Test Connection" to verify before saving.
+                </p>
+              </div>
             </div>
           </div>
 
           {selectedType === 'mssql' && (
             <div className={styles.infoBanner}>
-              <InfoRegular className={styles.infoBannerIcon} />
               <div className={styles.infoBannerBody}>
-                <h4 className={styles.infoBannerTitle}>Prerequisites</h4>
+                <div className={styles.infoBannerHeader}>
+                  <InfoRegular className={styles.infoBannerIcon} />
+                  <h4 className={styles.infoBannerTitle}>Prerequisites</h4>
+                </div>
                 <p className={styles.infoBannerText}>
                   SQL Server must be installed and running. Supported: <strong>SQL Server 2022 Express</strong>, <strong>2019</strong>, or later.
                   Enable TCP/IP in SQL Server Configuration Manager and start the SQL Browser service.
                 </p>
                 <p className={styles.infoBannerLinks}>
-                  <Link href="https://learn.microsoft.com/en-us/sql/database-engine/install-windows/install-sql-server" target="_blank">
-                    Installation guide
-                  </Link>{' · '}
                   <Link href="https://www.microsoft.com/en-us/sql-server/sql-server-downloads" target="_blank">
                     Download SQL Server Express (Free)
+                  </Link>
+                  <span className={styles.infoBannerDivider}>|</span>
+                  <Link href="https://learn.microsoft.com/en-us/sql/database-engine/install-windows/install-sql-server" target="_blank">
+                    Installation guide
+                  </Link>
+                  <span className={styles.infoBannerDivider}>|</span>
+                  <Link href="https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/configure-a-server-to-listen-on-a-specific-tcp-port" target="_blank">
+                    Enable TCP/IP &amp; ports
                   </Link>
                 </p>
               </div>
