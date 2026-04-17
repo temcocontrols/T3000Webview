@@ -434,10 +434,10 @@ const useStyles = makeStyles({
 // ---------------------------------------------------------------------------
 
 const BACKEND_LABELS: Record<BackendType, string> = {
-  sqlite: 'SQLite (Local)',
+  mssql: 'Microsoft SQL Server',
   postgres: 'PostgreSQL',
   mysql: 'MySQL / MariaDB',
-  mssql: 'Microsoft SQL Server',
+  sqlite: 'SQLite (Local)',
 };
 
 const DEFAULT_PORTS: Record<BackendType, number> = {
@@ -937,7 +937,14 @@ export const DatabaseConfigPage: React.FC = () => {
             <div className={styles.roleCardsRow}>
               <div
                 className={`${styles.roleCard} ${iniForm.role === 'server' ? styles.roleCardSelected : ''}`}
-                onClick={() => setIniForm(prev => ({ ...prev, role: 'server' }))}
+                onClick={() => {
+                  setIniForm(prev => ({ ...prev, role: 'server' }));
+                  if (selectedType === 'sqlite') {
+                    setSelectedType('mssql');
+                    const existing = configs.find(c => c.backend_type === 'mssql');
+                    setForm(configToForm(existing));
+                  }
+                }}
               >
                 <div className={styles.roleCardHeader}>
                   <ServerRegular className={styles.roleCardIcon} />
@@ -991,8 +998,8 @@ export const DatabaseConfigPage: React.FC = () => {
         )}
       </div>
 
-      {/* ── Backend Type Selector ── */}
-      <div className={styles.section}>
+      {/* ── Backend Type Selector (only when enabled as server) ── */}
+      {iniForm.enabled && iniForm.role === 'server' && <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <h3 className={styles.sectionTitle}>Backend Type</h3>
           <Tooltip content="Choose which database engine stores the shared data. SQLite is the default local engine. For multi-PC setups, select Microsoft SQL Server or another network-accessible database." relationship="description">
@@ -1008,15 +1015,15 @@ export const DatabaseConfigPage: React.FC = () => {
             onChange={(_, data) => handleTypeChange(data.value as BackendType)}
             layout="horizontal"
           >
-            {(Object.keys(BACKEND_LABELS) as BackendType[]).map(bt => (
+            {(Object.keys(BACKEND_LABELS) as BackendType[]).filter(bt => bt !== 'sqlite').map(bt => (
               <Radio key={bt} value={bt} label={BACKEND_LABELS[bt]} />
             ))}
           </RadioGroup>
         </div>
-      </div>
+      </div>}
 
-      {/* ── Connection Form (remote backends only) ── */}
-      {isRemote && (
+      {/* ── Connection Form (remote backends only, server role) ── */}
+      {iniForm.enabled && iniForm.role === 'server' && isRemote && (
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <h3 className={styles.sectionTitle}>Connection Settings — {BACKEND_LABELS[selectedType]}</h3>
@@ -1104,11 +1111,13 @@ export const DatabaseConfigPage: React.FC = () => {
                 value={form.connection_url ?? ''}
                 onChange={(_, d) => setField('connection_url', d.value)}
                 placeholder={
-                  selectedType === 'postgres'
-                    ? 'postgres://user:pass@host:5432/dbname'
-                    : selectedType === 'mysql'
-                      ? 'mysql://user:pass@host:3306/dbname'
-                      : ''
+                  selectedType === 'mssql'
+                    ? 'mssql://user:pass@host:1433/dbname'
+                    : selectedType === 'postgres'
+                      ? 'postgres://user:pass@host:5432/dbname'
+                      : selectedType === 'mysql'
+                        ? 'mysql://user:pass@host:3306/dbname'
+                        : ''
                 }
               />
             </div>
@@ -1117,7 +1126,7 @@ export const DatabaseConfigPage: React.FC = () => {
       )}
 
       {/* ── MSSQL Network Scan ── */}
-      {selectedType === 'mssql' && (
+      {iniForm.enabled && iniForm.role === 'server' && selectedType === 'mssql' && (
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <h3 className={styles.sectionTitle}>Network Scan — SQL Server Discovery</h3>
