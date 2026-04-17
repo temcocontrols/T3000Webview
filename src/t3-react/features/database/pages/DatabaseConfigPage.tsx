@@ -71,13 +71,17 @@ const useStyles = makeStyles({
     backgroundColor: '#ffffff',
   },
   messageBar: {
-    padding: '8px 10px 0',
-    flexShrink: 0,
+    margin: '0 12px 8px',
+    paddingTop: '6px',
+    position: 'sticky',
+    top: 0,
+    zIndex: 10,
+    backgroundColor: '#ffffff',
   },
   scrollArea: {
     flex: 1,
     overflow: 'auto',
-    padding: '10px',
+    padding: '0 6px 10px',
     scrollbarWidth: 'thin',
     scrollbarColor: '#c1c1c1 transparent',
   },
@@ -697,6 +701,7 @@ export const DatabaseConfigPage: React.FC = () => {
 
   return (
     <div className={styles.container}>
+      <div className={styles.scrollArea}>
       {/* ── Message Bar ── */}
       {message && (
         <div className={styles.messageBar}>
@@ -710,7 +715,6 @@ export const DatabaseConfigPage: React.FC = () => {
           </MessageBar>
         </div>
       )}
-      <div className={styles.scrollArea}>
       {/* ── Intro Banner ── */}
       <div className={styles.introBanner}>
         <CloudDatabaseRegular className={styles.introBannerIcon} />
@@ -1061,7 +1065,7 @@ export const DatabaseConfigPage: React.FC = () => {
 
             <div className={styles.formRowFull}>
               <Label className={styles.label} htmlFor="db-url">
-                Connection URL <Text size={200} className={styles.statusSubtext}>(optional — overrides the fields above)</Text>
+                Connection URL <Text size={200} style={{ color: '#605e5c' }}>(optional — overrides the fields above)</Text>
               </Label>
               <Input
                 id="db-url"
