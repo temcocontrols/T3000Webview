@@ -14,7 +14,6 @@ import {
   Input,
   Label,
   Badge,
-  Divider,
   MessageBar,
   MessageBarBody,
   MessageBarTitle,
@@ -67,8 +66,16 @@ const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
-    minHeight: '100%',
+    height: 'calc(100% + 20px)',
+    margin: '-10px',
     backgroundColor: '#ffffff',
+  },
+  scrollArea: {
+    flex: 1,
+    overflow: 'auto',
+    padding: '10px',
+    scrollbarWidth: 'thin',
+    scrollbarColor: '#c1c1c1 transparent',
   },
   /* ── Intro Banner ── */
   introBanner: {
@@ -156,14 +163,12 @@ const useStyles = makeStyles({
   },
   actions: {
     display: 'flex',
+    alignItems: 'center',
     gap: '8px',
-    padding: '8px 16px',
+    padding: '12px 22px',
     borderTop: '1px solid #edebe9',
     flexShrink: 0,
-    position: 'sticky',
-    bottom: 0,
     backgroundColor: '#ffffff',
-    zIndex: 1,
   },
   /* ── Server / Client Status Card ── */
   networkStatusWrapper: {
@@ -686,6 +691,7 @@ export const DatabaseConfigPage: React.FC = () => {
 
   return (
     <div className={styles.container}>
+      <div className={styles.scrollArea}>
       {/* ── Intro Banner ── */}
       <div className={styles.introBanner}>
         <CloudDatabaseRegular className={styles.introBannerIcon} />
@@ -944,8 +950,6 @@ export const DatabaseConfigPage: React.FC = () => {
         )}
       </div>
 
-      <Divider />
-
       {/* ── Backend Type Selector ── */}
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
@@ -969,8 +973,6 @@ export const DatabaseConfigPage: React.FC = () => {
           </RadioGroup>
         </div>
       </div>
-
-      <Divider />
 
       {/* ── Connection Form (remote backends only) ── */}
       {isRemote && (
@@ -1115,8 +1117,7 @@ export const DatabaseConfigPage: React.FC = () => {
           )}
         </div>
       )}
-
-      <Divider />
+      </div>
 
       {/* ── Action Buttons ── */}
       <div className={styles.actions}>
@@ -1124,6 +1125,7 @@ export const DatabaseConfigPage: React.FC = () => {
           <>
             <Tooltip content="Verify the connection using the settings above — does not save anything." relationship="description">
               <Button
+                size="small"
                 icon={testing ? <Spinner size="tiny" /> : <PlugConnectedRegular />}
                 onClick={handleTest}
                 disabled={isBusy}
@@ -1134,6 +1136,7 @@ export const DatabaseConfigPage: React.FC = () => {
 
             <Tooltip content="Save the connection settings for this backend type to the local database." relationship="description">
               <Button
+                size="small"
                 appearance="primary"
                 onClick={handleSave}
                 disabled={isBusy}
@@ -1144,6 +1147,7 @@ export const DatabaseConfigPage: React.FC = () => {
 
             <Tooltip content="Create all required T3000 tables (inputs, outputs, variables, trend logs, etc.) on the server database. Safe to run multiple times." relationship="description">
               <Button
+                size="small"
                 icon={initializingSchema ? <Spinner size="tiny" /> : <ArrowUploadRegular />}
                 onClick={handleInitSchema}
                 disabled={isBusy}
@@ -1163,6 +1167,7 @@ export const DatabaseConfigPage: React.FC = () => {
           relationship="description"
         >
           <Button
+            size="small"
             icon={switching ? <Spinner size="tiny" /> : <ArrowSyncRegular />}
             onClick={handleSwitch}
             disabled={isBusy || isActiveBackend}
@@ -1172,7 +1177,7 @@ export const DatabaseConfigPage: React.FC = () => {
           </Button>
         </Tooltip>
 
-        <Button onClick={refresh} disabled={isBusy} appearance="subtle" icon={<ArrowSyncRegular />}>
+        <Button onClick={refresh} disabled={isBusy} size="small" appearance="subtle" icon={<ArrowSyncRegular />}>
           Refresh
         </Button>
       </div>
