@@ -14,7 +14,6 @@ const BASE = `${API_BASE_URL}/api/database/backend`;
 export type BackendType = 'sqlite' | 'postgres' | 'mysql' | 'mssql';
 
 export interface BackendConfigResponse {
-  id: number;
   backend_type: BackendType;
   is_active: boolean;
   host: string | null;
@@ -22,10 +21,11 @@ export interface BackendConfigResponse {
   instance: string | null;
   database_name: string | null;
   username: string | null;
-  has_password: boolean;
+  password_set: boolean;
   connection_url: string | null;
-  extra_options: string | null;
-  updated_at: string | null;
+  extra_options: unknown | null;
+  role: string | null;
+  store_logs: boolean;
 }
 
 export interface SaveBackendConfigRequest {
@@ -42,14 +42,14 @@ export interface SaveBackendConfigRequest {
 
 export interface TestConnectionResult {
   success: boolean;
-  message: string;
+  message?: string;
+  error?: string;
   latency_ms?: number;
 }
 
 export interface DiscoveredInstance {
-  server_name: string;
-  instance_name: string;
-  ip_address: string;
+  host: string;
+  instance: string | null;
   port: number | null;
   version: string | null;
 }
@@ -63,7 +63,9 @@ export interface BackendStatus {
 
 export interface InitSchemaResult {
   success: boolean;
-  tables_created: number;
+  executed: number;
+  total_statements: number;
+  errors: string[];
   message: string;
 }
 
@@ -87,13 +89,13 @@ export async function getConfigs(): Promise<BackendConfigResponse[]> {
 }
 
 /** Save (create/update) a backend configuration */
-export async function saveConfig(req: SaveBackendConfigRequest): Promise<BackendConfigResponse> {
+export async function saveConfig(req: SaveBackendConfigRequest): Promise<{ success: boolean; message: string }> {
   const res = await fetch(`${BASE}/config`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
   });
-  return handleResponse<BackendConfigResponse>(res);
+  return handleResponse<{ success: boolean; message: string }>(res);
 }
 
 /** Test a connection without persisting */

@@ -196,13 +196,13 @@ function configToForm(cfg: BackendConfigResponse | undefined): SaveBackendConfig
   return {
     backend_type: cfg?.backend_type ?? 'sqlite',
     host: cfg?.host ?? '',
-    port: cfg?.port ?? 0,
+    port: cfg?.port || undefined,
     instance: cfg?.instance ?? '',
     database_name: cfg?.database_name ?? '',
     username: cfg?.username ?? '',
-    password: '',
+    password: undefined, // omit to preserve existing password on backend
     connection_url: cfg?.connection_url ?? '',
-    extra_options: cfg?.extra_options ?? '',
+    extra_options: cfg?.extra_options != null ? String(cfg.extra_options) : '',
   };
 }
 
@@ -298,7 +298,10 @@ export const DatabaseConfigPage: React.FC = () => {
     try {
       setSaving(true);
       setMessage(null);
-      await saveConfig({ ...form, backend_type: selectedType });
+      // Omit password from request if blank so backend preserves existing password
+      const payload = { ...form, backend_type: selectedType };
+      if (!payload.password) delete payload.password;
+      await saveConfig(payload);
       setMessage({ text: 'Configuration saved.', type: 'success' });
       await refresh();
     } catch (err: any) {
@@ -316,7 +319,7 @@ export const DatabaseConfigPage: React.FC = () => {
       setMessage({
         text: res.success
           ? `Connection OK${res.latency_ms != null ? ` (${res.latency_ms} ms)` : ''}`
-          : `Connection failed: ${res.message}`,
+          : `Connection failed: ${res.error || res.message || 'Unknown error'}`,
         type: res.success ? 'success' : 'error',
       });
     } catch (err: any) {
@@ -349,7 +352,7 @@ export const DatabaseConfigPage: React.FC = () => {
       const res = await initSchema(selectedType);
       setMessage({
         text: res.success
-          ? `Schema initialized — ${res.tables_created} tables created.`
+          ? `Schema initialized — ${res.executed} statements executed.`
           : `Schema init failed: ${res.message}`,
         type: res.success ? 'success' : 'error',
       });
@@ -378,9 +381,9 @@ export const DatabaseConfigPage: React.FC = () => {
   const applyScanResult = (inst: DiscoveredInstance) => {
     setForm(prev => ({
       ...prev,
-      host: inst.ip_address,
+      host: inst.host,
       port: inst.port ?? DEFAULT_PORTS.mssql,
-      instance: inst.instance_name,
+      instance: inst.instance ?? '',
     }));
     setMessage(null);
   };
@@ -430,7 +433,7 @@ export const DatabaseConfigPage: React.FC = () => {
           </Body1>
           <Text size={200} className={styles.statusSubtext}>
             {status?.connected ? 'Connected' : 'Disconnected'}
-            {status?.table_count != null && ` · ${status.table_count} tables`}
+            {status?.connected && status?.table_count != null && ` · ${status.table_count} tables`}
             {centralStatus?.enabled && ` · Multi-PC: ${centralStatus.role} (${centralStatus.hostname})`}
           </Text>
         </div>
@@ -656,10 +659,8 @@ export const DatabaseConfigPage: React.FC = () => {
               {scanResults.map((inst, i) => (
                 <div key={i} className={styles.scanRow}>
                   <span>
-                    <strong>{inst.server_name}</strong>
-                    {inst.instance_name && `\\${inst.instance_name}`}
-                    {' — '}
-                    {inst.ip_address}
+                    <strong>{inst.host}</strong>
+                    {inst.instance && `\\${inst.instance}`}
                     {inst.port != null && `:${inst.port}`}
                     {inst.version && (
                       <Text size={200} className={styles.scanVersionText}>
