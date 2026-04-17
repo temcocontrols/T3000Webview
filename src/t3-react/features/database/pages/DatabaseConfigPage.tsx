@@ -70,6 +70,10 @@ const useStyles = makeStyles({
     margin: '-10px',
     backgroundColor: '#ffffff',
   },
+  messageBar: {
+    padding: '8px 10px 0',
+    flexShrink: 0,
+  },
   scrollArea: {
     flex: 1,
     overflow: 'auto',
@@ -113,6 +117,8 @@ const useStyles = makeStyles({
   /* ── Section ── */
   section: {
     margin: '0 12px 12px',
+    border: '1px solid #edebe9',
+    borderRadius: '4px',
   },
   sectionHeader: {
     display: 'flex',
@@ -691,6 +697,19 @@ export const DatabaseConfigPage: React.FC = () => {
 
   return (
     <div className={styles.container}>
+      {/* ── Message Bar ── */}
+      {message && (
+        <div className={styles.messageBar}>
+          <MessageBar
+            intent={message.type === 'success' ? 'success' : message.type === 'warning' ? 'warning' : 'error'}
+          >
+            <MessageBarBody>
+              <MessageBarTitle>{message.type === 'success' ? 'Success' : message.type === 'warning' ? 'Notice' : 'Error'}</MessageBarTitle>
+              {message.text}
+            </MessageBarBody>
+          </MessageBar>
+        </div>
+      )}
       <div className={styles.scrollArea}>
       {/* ── Intro Banner ── */}
       <div className={styles.introBanner}>
@@ -852,20 +871,6 @@ export const DatabaseConfigPage: React.FC = () => {
           </div>
         )}
       </div>
-
-      {/* ── Message Bar ── */}
-      {message && (
-        <div className={styles.padH12}>
-          <MessageBar
-            intent={message.type === 'success' ? 'success' : message.type === 'warning' ? 'warning' : 'error'}
-          >
-            <MessageBarBody>
-              <MessageBarTitle>{message.type === 'success' ? 'Success' : message.type === 'warning' ? 'Notice' : 'Error'}</MessageBarTitle>
-              {message.text}
-            </MessageBarBody>
-          </MessageBar>
-        </div>
-      )}
 
       {/* ── Server / Client Configuration ── */}
       <div className={styles.section}>
