@@ -149,7 +149,6 @@ async fn test_connection(
         connection_url: None,
         extra_options: req.extra_options,
         role: None,
-        store_logs: false,
     };
 
     // Validate required fields first
@@ -570,7 +569,6 @@ async fn load_full_config_for_type(
             .as_ref()
             .and_then(|s| serde_json::from_str(s).ok()),
         role: row.role,
-        store_logs: row.store_logs.unwrap_or(0) != 0,
     })
 }
 
@@ -583,7 +581,6 @@ async fn load_full_config_for_type(
 struct SaveIniConfigRequest {
     enabled: bool,
     role: String,
-    store_logs: bool,
 }
 
 /// GET /api/database/backend/ini — read current [ServerDatabase] settings from setting.ini
@@ -596,7 +593,6 @@ async fn get_ini_config(
     Ok(Json(serde_json::json!({
         "enabled": cfg.enabled,
         "role": cfg.role,
-        "store_logs": cfg.store_logs,
         "ini_path": ini_path.display().to_string(),
     })))
 }
@@ -621,7 +617,6 @@ async fn save_ini_config(
     let config = crate::ini_config::ServerDbIniConfig {
         enabled: request.enabled,
         role,
-        store_logs: request.store_logs,
     };
 
     let ini_path = crate::ini_config::find_setting_ini_path();
@@ -636,8 +631,8 @@ async fn save_ini_config(
     let _ = crate::logger::write_structured_log(
         "T3_Database",
         &format!(
-            "INI config updated: enabled={}, role={}, store_logs={} (restart required)",
-            config.enabled, config.role, config.store_logs,
+            "INI config updated: enabled={}, role={} (restart required)",
+            config.enabled, config.role,
         ),
     );
 
@@ -647,7 +642,6 @@ async fn save_ini_config(
         "config": {
             "enabled": config.enabled,
             "role": config.role,
-            "store_logs": config.store_logs,
         },
         "ini_path": ini_path.display().to_string(),
     })))

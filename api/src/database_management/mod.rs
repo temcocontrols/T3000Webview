@@ -27,6 +27,7 @@ pub mod db_backend_config;
 pub mod db_backend_routes;
 pub mod mssql_queries;
 pub mod network_scan;
+pub mod registry_service;
 
 /// Partition metadata cache for faster queries
 static PARTITION_CACHE: std::sync::OnceLock<Arc<RwLock<HashMap<String, PartitionMetadata>>>> = std::sync::OnceLock::new();

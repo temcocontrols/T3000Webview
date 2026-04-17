@@ -36,9 +36,6 @@ pub struct Model {
     /// or 'client' (reads from server, FFI data stays local).
     pub role: Option<String>,
 
-    /// Whether to store system logs to the server DB (1=yes, 0=no).
-    pub store_logs: Option<i32>,
-
     pub updated_at: Option<String>,
 }
 

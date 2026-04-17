@@ -24,11 +24,8 @@ import {
   Radio,
   Tooltip,
   Switch,
-  Checkbox,
 } from '@fluentui/react-components';
 import {
-  CheckmarkCircleRegular,
-  ErrorCircleRegular,
   ArrowSyncRegular,
   SearchRegular,
   PlugConnectedRegular,
@@ -46,6 +43,7 @@ import type {
   DiscoveredInstance,
   IniConfig,
   ServerDbStatus,
+  RegistryEntry,
 } from '../services/databaseConfigApi';
 import {
   getConfigs,
@@ -58,6 +56,7 @@ import {
   getIniConfig,
   saveIniConfig,
   getServerDbStatus,
+  getRegistry,
 } from '../services/databaseConfigApi';
 
 // ---------------------------------------------------------------------------
@@ -166,53 +165,157 @@ const useStyles = makeStyles({
     backgroundColor: '#ffffff',
     zIndex: 1,
   },
-  /* ── Status Row ── */
-  statusRow: {
+  /* ── Server / Client Status Card ── */
+  networkStatusWrapper: {
+    padding: '12px',
+  },
+  serverCard: {
     display: 'flex',
     alignItems: 'center',
-    gap: '16px',
-    padding: '10px 12px',
-    flexWrap: 'wrap',
+    gap: '12px',
+    padding: '12px 16px',
+    backgroundColor: '#f0f6ff',
+    border: '1px solid #c7dff7',
+    borderRadius: '8px',
   },
-  statusItem: {
+  serverCardIcon: {
+    fontSize: '22px',
+    color: '#0f6cbd',
+    flexShrink: 0,
+  },
+  serverCardInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    flexGrow: 1,
+    minWidth: 0,
+  },
+  serverCardTitle: {
+    fontSize: '14px',
+    fontWeight: 600,
+    color: '#323130',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  serverCardMeta: {
+    fontSize: '12px',
+    color: '#605e5c',
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
-    fontSize: '13px',
+    flexWrap: 'wrap',
   },
-  statusItemLabel: {
-    color: '#605e5c',
-    fontWeight: 400,
+  serverCardMetaSep: {
+    color: '#c8c6c4',
   },
-  statusItemValue: {
-    color: '#323130',
-    fontWeight: 600,
+  /* ── Client tree ── */
+  clientTreeWrapper: {
+    padding: '4px 0 0 20px',
   },
-  statusSubtext: {
-    color: '#605e5c',
-  },
-  /* ── Status Details Grid ── */
-  statusDetailsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '8px',
-    margin: '0 12px',
-    padding: '0 0 12px',
-  },
-  statusDetailItem: {
+  clientTreeRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    fontSize: '12px',
-    color: '#605e5c',
-    padding: '4px 8px',
-    backgroundColor: '#fafafa',
-    borderRadius: '4px',
-  },
-  statusDetailLabel: {
-    fontWeight: 600,
+    gap: '10px',
+    padding: '3px 0',
+    fontSize: '13px',
     color: '#323130',
+  },
+  clientTreeConnector: {
+    color: '#c8c6c4',
+    fontFamily: 'monospace',
+    fontSize: '14px',
+    width: '24px',
+    flexShrink: 0,
+    userSelect: 'none',
+  },
+  clientTreeIcon: {
+    fontSize: '14px',
+    color: '#605e5c',
+    flexShrink: 0,
+  },
+  clientTreeHostname: {
+    fontWeight: 600,
+    minWidth: '140px',
+  },
+  clientTreeIp: {
+    color: '#605e5c',
+    minWidth: '120px',
+  },
+  clientTreeStatus: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
     minWidth: '80px',
+  },
+  statusDotOnline: {
+    width: '7px',
+    height: '7px',
+    borderRadius: '50%',
+    backgroundColor: '#107c10',
+    flexShrink: 0,
+  },
+  statusDotOffline: {
+    width: '7px',
+    height: '7px',
+    borderRadius: '50%',
+    backgroundColor: '#d13438',
+    flexShrink: 0,
+  },
+  clientTreeLastSeen: {
+    color: '#a19f9d',
+    fontSize: '12px',
+  },
+  clientTreeEmpty: {
+    padding: '8px 0 0 44px',
+    color: '#a19f9d',
+    fontSize: '12px',
+    fontStyle: 'italic',
+  },
+  /* ── Client scenario: connected-to-server card ── */
+  connectedServerCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '12px 16px',
+    backgroundColor: '#fafafa',
+    border: '1px solid #edebe9',
+    borderRadius: '8px',
+  },
+  /* ── Standalone card ── */
+  standaloneCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '12px 16px',
+    backgroundColor: '#fafafa',
+    border: '1px solid #edebe9',
+    borderRadius: '8px',
+  },
+  standaloneCardIcon: {
+    fontSize: '22px',
+    color: '#605e5c',
+    flexShrink: 0,
+  },
+  /* ── Info hint below card ── */
+  statusInfoHint: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '8px',
+    padding: '10px 12px',
+    marginTop: '8px',
+    backgroundColor: '#f0f6ff',
+    borderRadius: '6px',
+    border: '1px solid #c7dff7',
+    fontSize: '12px',
+    color: '#323130',
+    lineHeight: '1.5',
+  },
+  statusInfoHintIcon: {
+    fontSize: '14px',
+    color: '#0f6cbd',
+    flexShrink: 0,
+    marginTop: '1px',
   },
   /* ── Role Cards ── */
   roleCardsRow: {
@@ -341,6 +444,24 @@ function configToForm(cfg: BackendConfigResponse | undefined): SaveBackendConfig
   };
 }
 
+/** Format a UTC timestamp string as relative time, e.g. "2s ago", "5m ago", "3h ago" */
+function formatLastSeen(utcStr: string): string {
+  try {
+    const then = new Date(utcStr + 'Z'); // append Z to treat as UTC
+    const now = Date.now();
+    const diffSec = Math.max(0, Math.floor((now - then.getTime()) / 1000));
+    if (diffSec < 60) return `${diffSec}s ago`;
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    const diffDay = Math.floor(diffHr / 24);
+    return `${diffDay}d ago`;
+  } catch {
+    return utcStr;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -356,8 +477,11 @@ export const DatabaseConfigPage: React.FC = () => {
   // Server/Client INI config state
   const [iniConfig, setIniConfig] = useState<IniConfig | null>(null);
   const [serverStatus, setServerStatus] = useState<ServerDbStatus | null>(null);
-  const [iniForm, setIniForm] = useState({ enabled: false, role: 'client', store_logs: false });
+  const [iniForm, setIniForm] = useState({ enabled: false, role: 'client' });
   const [savingIni, setSavingIni] = useState(false);
+
+  // Registry state
+  const [registryEntries, setRegistryEntries] = useState<RegistryEntry[]>([]);
 
   // Form state
   const [selectedType, setSelectedType] = useState<BackendType>('sqlite');
@@ -379,19 +503,21 @@ export const DatabaseConfigPage: React.FC = () => {
   const refresh = useCallback(async () => {
     try {
       setLoading(true);
-      const [cfgs, sts, ini, cStatus] = await Promise.all([
+      const [cfgs, sts, ini, cStatus, reg] = await Promise.all([
         getConfigs(),
         getStatus(),
         getIniConfig().catch(() => null),
         getServerDbStatus().catch(() => null),
+        getRegistry().catch(() => [] as RegistryEntry[]),
       ]);
       setConfigs(cfgs);
       setStatus(sts);
       if (ini) {
         setIniConfig(ini);
-        setIniForm({ enabled: ini.enabled, role: ini.role, store_logs: ini.store_logs });
+        setIniForm({ enabled: ini.enabled, role: ini.role });
       }
       if (cStatus) setServerStatus(cStatus);
+      setRegistryEntries(reg);
       // Select the active backend by default
       const active = cfgs.find(c => c.is_active) ?? cfgs[0];
       if (active) {
@@ -545,6 +671,7 @@ export const DatabaseConfigPage: React.FC = () => {
   const isRemote = selectedType !== 'sqlite';
   const isBusy = saving || testing || scanning || initializingSchema || switching || savingIni;
   const isActiveBackend = status?.active_backend === selectedType;
+  const activeConfig = configs.find(c => c.is_active);
 
   if (loading) {
     return (
@@ -573,69 +700,152 @@ export const DatabaseConfigPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Current Status ── */}
+      {/* ── Database Status ── */}
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
-          <h3 className={styles.sectionTitle}>Current Status</h3>
+          <h3 className={styles.sectionTitle}>Database Status</h3>
         </div>
-        <div className={styles.statusRow}>
-          <div className={styles.statusItem}>
-            <span className={styles.statusItemLabel}>Backend:</span>
-            <span className={styles.statusItemValue}>{BACKEND_LABELS[status?.active_backend ?? 'sqlite']}</span>
-          </div>
-          <div className={styles.statusItem}>
-            <span className={styles.statusItemLabel}>Status:</span>
-            <Badge
-              appearance="filled"
-              color={status?.connected ? 'success' : 'danger'}
-              icon={status?.connected ? <CheckmarkCircleRegular /> : <ErrorCircleRegular />}
-              size="small"
-            >
-              {status?.connected ? 'Online' : 'Offline'}
-            </Badge>
-          </div>
-          {status?.connected && status?.table_count != null && (
-            <div className={styles.statusItem}>
-              <span className={styles.statusItemLabel}>Tables:</span>
-              <span className={styles.statusItemValue}>{status.table_count}</span>
-            </div>
-          )}
-        </div>
-      </div>
 
-      {/* ── Runtime Status Details ── */}
-      {serverStatus?.enabled && (
-        <div className={styles.statusDetailsGrid}>
-          <div className={styles.statusDetailItem}>
-            <span className={styles.statusDetailLabel}>Role</span>
-            <Badge
-              appearance="filled"
-              color={serverStatus.role === 'server' ? 'informative' : 'subtle'}
-              size="small"
-            >
-              {serverStatus.role === 'server' ? 'Server' : 'Client'}
-            </Badge>
+        {/* ── Scenario A: This PC is the Server ── */}
+        {iniForm.enabled && iniForm.role === 'server' && (() => {
+          const selfEntry = registryEntries.find(e => e.is_self);
+          const clients = registryEntries.filter(e => !e.is_self);
+          const hostname = selfEntry?.hostname ?? serverStatus?.hostname ?? '—';
+          return (
+            <div className={styles.networkStatusWrapper}>
+              {/* Server card */}
+              <div className={styles.serverCard}>
+                <ServerRegular className={styles.serverCardIcon} />
+                <div className={styles.serverCardInfo}>
+                  <div className={styles.serverCardTitle}>
+                    Server (This PC)
+                  </div>
+                  <div className={styles.serverCardMeta}>
+                    <span>{hostname}</span>
+                    <span className={styles.serverCardMetaSep}>·</span>
+                    <span>{selfEntry?.ip_address ?? '—'}</span>
+                    <span className={styles.serverCardMetaSep}>·</span>
+                    <span>{BACKEND_LABELS[status?.active_backend ?? 'sqlite']}</span>
+                    {status?.table_count != null && (
+                      <>
+                        <span className={styles.serverCardMetaSep}>·</span>
+                        <span>{status.table_count} tables</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <Badge
+                  appearance="filled"
+                  color={status?.connected ? 'success' : 'danger'}
+                  size="small"
+                >
+                  {status?.connected ? '● Online' : '○ Offline'}
+                </Badge>
+              </div>
+
+              {/* Client tree */}
+              {clients.length > 0 ? (
+                <div className={styles.clientTreeWrapper}>
+                  {clients.map((entry, i) => (
+                    <div key={entry.id} className={styles.clientTreeRow}>
+                      <span className={styles.clientTreeConnector}>
+                        {i < clients.length - 1 ? '├──' : '└──'}
+                      </span>
+                      <DesktopRegular className={styles.clientTreeIcon} />
+                      <span className={styles.clientTreeHostname}>{entry.hostname}</span>
+                      <span className={styles.clientTreeIp}>{entry.ip_address}</span>
+                      <span className={styles.clientTreeStatus}>
+                        <span className={entry.status === 'online' ? styles.statusDotOnline : styles.statusDotOffline} />
+                        {entry.status === 'online' ? 'Online' : 'Offline'}
+                      </span>
+                      <span className={styles.clientTreeLastSeen}>Last: {formatLastSeen(entry.last_seen)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className={styles.clientTreeEmpty}>
+                  No client PCs connected yet. Clients will appear once they start sending heartbeats.
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* ── Scenario B: This PC is a Client ── */}
+        {iniForm.enabled && iniForm.role === 'client' && (
+          <div className={styles.networkStatusWrapper}>
+            <div className={styles.connectedServerCard}>
+              <DesktopRegular className={styles.serverCardIcon} />
+              <div className={styles.serverCardInfo}>
+                <div className={styles.serverCardTitle}>
+                  Client (This PC)
+                </div>
+                <div className={styles.serverCardMeta}>
+                  <span>{serverStatus?.hostname ?? '—'}</span>
+                  {activeConfig?.host && (
+                    <>
+                      <span className={styles.serverCardMetaSep}>·</span>
+                      <span>{activeConfig.host}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <Badge
+                appearance="filled"
+                color={serverStatus?.server_connected ? 'success' : 'danger'}
+                size="small"
+              >
+                {serverStatus?.server_connected ? '● Connected' : '○ Disconnected'}
+              </Badge>
+            </div>
+            <div className={styles.statusInfoHint}>
+              <InfoRegular className={styles.statusInfoHintIcon} />
+              <span>
+                {serverStatus?.server_connected
+                  ? `Connected to server at ${activeConfig?.host ?? '—'}. Reading trend logs and device data from the shared database.`
+                  : `Configured to connect to server${activeConfig?.host ? ` at ${activeConfig.host}` : ''}. Server status will appear once the connection is active.`
+                }
+              </span>
+            </div>
           </div>
-          <div className={styles.statusDetailItem}>
-            <span className={styles.statusDetailLabel}>Hostname</span>
-            <span>{serverStatus.hostname}</span>
+        )}
+
+        {/* ── Scenario C: Standalone (not enabled) ── */}
+        {!iniForm.enabled && (
+          <div className={styles.networkStatusWrapper}>
+            <div className={styles.standaloneCard}>
+              <DesktopRegular className={styles.standaloneCardIcon} />
+              <div className={styles.serverCardInfo}>
+                <div className={styles.serverCardTitle}>
+                  Standalone
+                </div>
+                <div className={styles.serverCardMeta}>
+                  <span>{serverStatus?.hostname ?? '—'}</span>
+                  <span className={styles.serverCardMetaSep}>·</span>
+                  <span>{BACKEND_LABELS[status?.active_backend ?? 'sqlite']}</span>
+                  {status?.table_count != null && (
+                    <>
+                      <span className={styles.serverCardMetaSep}>·</span>
+                      <span>{status.table_count} tables</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <Badge
+                appearance="filled"
+                color={status?.connected ? 'success' : 'danger'}
+                size="small"
+              >
+                {status?.connected ? '● Online' : '○ Offline'}
+              </Badge>
+            </div>
+            <div className={styles.statusInfoHint}>
+              <InfoRegular className={styles.statusInfoHintIcon} />
+              <span>Running in standalone mode. Enable centralized database below to share data with other PCs.</span>
+            </div>
           </div>
-          <div className={styles.statusDetailItem}>
-            <span className={styles.statusDetailLabel}>Server DB</span>
-            <Badge
-              appearance="filled"
-              color={serverStatus.server_connected ? 'success' : 'danger'}
-              size="small"
-            >
-              {serverStatus.server_connected ? 'Connected' : 'Not connected'}
-            </Badge>
-          </div>
-          <div className={styles.statusDetailItem}>
-            <span className={styles.statusDetailLabel}>MSSQL Pool</span>
-            <span>{serverStatus.mssql_pool_active ? 'Active' : 'Inactive'}</span>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ── Message Bar ── */}
       {message && (
@@ -710,16 +920,7 @@ export const DatabaseConfigPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Options */}
-            <div className={styles.optionsRow}>
-              <Tooltip content="When enabled, system log entries (errors, warnings, info) are also written to the server database so all PCs can see a unified log." relationship="description">
-                <Checkbox
-                  checked={iniForm.store_logs}
-                  onChange={(_, data) => setIniForm(prev => ({ ...prev, store_logs: !!data.checked }))}
-                  label="Store system logs to server database"
-                />
-              </Tooltip>
-            </div>
+
           </>
         )}
 

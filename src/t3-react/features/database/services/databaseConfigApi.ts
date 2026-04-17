@@ -25,7 +25,6 @@ export interface BackendConfigResponse {
   connection_url: string | null;
   extra_options: unknown | null;
   role: string | null;
-  store_logs: boolean;
 }
 
 export interface SaveBackendConfigRequest {
@@ -154,14 +153,12 @@ export async function initSchema(backendType: BackendType): Promise<InitSchemaRe
 export interface IniConfig {
   enabled: boolean;
   role: string;
-  store_logs: boolean;
   ini_path: string;
 }
 
 export interface ServerDbStatus {
   enabled: boolean;
   role: string;
-  store_logs: boolean;
   server_connected: boolean;
   mssql_pool_active: boolean;
   local_config_available: boolean;
@@ -175,7 +172,7 @@ export async function getIniConfig(): Promise<IniConfig> {
 }
 
 /** Update [ServerDatabase] section in setting.ini (restart required) */
-export async function saveIniConfig(config: { enabled: boolean; role: string; store_logs: boolean }): Promise<{ success: boolean; message: string }> {
+export async function saveIniConfig(config: { enabled: boolean; role: string }): Promise<{ success: boolean; message: string }> {
   const res = await fetch(`${BASE}/ini`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -188,4 +185,28 @@ export async function saveIniConfig(config: { enabled: boolean; role: string; st
 export async function getServerDbStatus(): Promise<ServerDbStatus> {
   const res = await fetch(`${API_BASE_URL}/api/database/server/status`);
   return handleResponse<ServerDbStatus>(res);
+}
+
+// ---------------------------------------------------------------------------
+// Server/Client Registry API
+// ---------------------------------------------------------------------------
+
+export interface RegistryEntry {
+  id: number;
+  hostname: string;
+  ip_address: string;
+  role: string;
+  is_self: boolean;
+  status: string;
+  last_seen: string;
+  db_backend: string | null;
+  table_count: number | null;
+  version: string | null;
+}
+
+/** Get all registered PCs from the server/client registry */
+export async function getRegistry(): Promise<RegistryEntry[]> {
+  const res = await fetch(`${API_BASE_URL}/api/database/server/registry`);
+  const data = await handleResponse<{ success: boolean; entries: RegistryEntry[]; count: number }>(res);
+  return data.entries;
 }

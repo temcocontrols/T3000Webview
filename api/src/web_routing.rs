@@ -9,7 +9,7 @@
 //! |----------|------------------------|------------------------|
 //! | A–F (device data) | `t3_device_conn` (local) | `t3_device_conn` (server) |
 //! | G (local-only config) | `local_config_conn` (local) | `local_config_conn` (local) |
-//! | H (system logs) | server if `store_logs` | server if `store_logs` |
+
 
 use axum::{
     extract::State,
@@ -29,8 +29,6 @@ pub struct ServerDbStatus {
     pub enabled: bool,
     /// PC role: "server" or "client"
     pub role: String,
-    /// Whether system logs are routed to server DB
-    pub store_logs: bool,
     /// Whether the server DB connection is active (t3_device_conn is Some)
     pub server_connected: bool,
     /// Whether MSSQL pool is available
@@ -63,7 +61,6 @@ async fn server_db_status_handler(
     Ok(Json(ServerDbStatus {
         enabled: state.server_db_enabled,
         role: state.server_db_role.clone(),
-        store_logs: state.store_logs_to_server,
         server_connected: state.t3_device_conn.is_some(),
         mssql_pool_active: state.mssql_pool.is_some(),
         local_config_available: state.local_config_conn.is_some(),

@@ -9,7 +9,6 @@
 //   [ServerDatabase]
 //   enabled=1
 //   role=server
-//   store_logs=1
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -21,8 +20,6 @@ pub struct ServerDbIniConfig {
     pub enabled: bool,
     /// PC role: "server" or "client"
     pub role: String,
-    /// Whether to store system logs to the server database (store_logs=1)
-    pub store_logs: bool,
 }
 
 impl Default for ServerDbIniConfig {
@@ -30,7 +27,6 @@ impl Default for ServerDbIniConfig {
         Self {
             enabled: false,
             role: "client".to_string(),
-            store_logs: false,
         }
     }
 }
@@ -137,15 +133,9 @@ fn parse_server_db_section(content: &str) -> ServerDbIniConfig {
         })
         .unwrap_or_else(|| "client".to_string());
 
-    let store_logs = values
-        .get("store_logs")
-        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-        .unwrap_or(false);
-
     ServerDbIniConfig {
         enabled,
         role,
-        store_logs,
     }
 }
 
@@ -163,10 +153,9 @@ pub fn write_server_db_config(
 /// Update or insert the [ServerDatabase] section in INI content.
 fn update_server_db_section(content: &str, config: &ServerDbIniConfig) -> String {
     let section_text = format!(
-        "[ServerDatabase]\nenabled={}\nrole={}\nstore_logs={}\n",
+        "[ServerDatabase]\nenabled={}\nrole={}\n",
         if config.enabled { "1" } else { "0" },
         config.role,
-        if config.store_logs { "1" } else { "0" },
     );
 
     // Find and replace existing section
@@ -220,7 +209,6 @@ mod tests {
         let config = parse_server_db_section("");
         assert!(!config.enabled);
         assert_eq!(config.role, "client");
-        assert!(!config.store_logs);
     }
 
     #[test]
@@ -239,7 +227,6 @@ ip=192.168.1.1
 [ServerDatabase]
 enabled=1
 role=server
-store_logs=1
 
 [AnotherSection]
 key=val
@@ -247,16 +234,14 @@ key=val
         let config = parse_server_db_section(content);
         assert!(config.enabled);
         assert_eq!(config.role, "server");
-        assert!(config.store_logs);
     }
 
     #[test]
     fn test_parse_client_role() {
-        let content = "[ServerDatabase]\nenabled=1\nrole=client\nstore_logs=0\n";
+        let content = "[ServerDatabase]\nenabled=1\nrole=client\n";
         let config = parse_server_db_section(content);
         assert!(config.enabled);
         assert_eq!(config.role, "client");
-        assert!(!config.store_logs);
     }
 
     #[test]
@@ -276,24 +261,21 @@ key=val
 enabled=1
 # role setting
 role=server
-store_logs=0
 ";
         let config = parse_server_db_section(content);
         assert!(config.enabled);
         assert_eq!(config.role, "server");
-        assert!(!config.store_logs);
     }
 
     #[test]
     fn test_update_existing_section() {
-        let content = "[Network]\nip=1.2.3.4\n\n[ServerDatabase]\nenabled=0\nrole=client\nstore_logs=0\n\n[Other]\nfoo=bar\n";
+        let content = "[Network]\nip=1.2.3.4\n\n[ServerDatabase]\nenabled=0\nrole=client\n\n[Other]\nfoo=bar\n";
         let config = ServerDbIniConfig {
             enabled: true,
             role: "server".to_string(),
-            store_logs: true,
         };
         let result = update_server_db_section(content, &config);
-        assert!(result.contains("[ServerDatabase]\nenabled=1\nrole=server\nstore_logs=1\n"));
+        assert!(result.contains("[ServerDatabase]\nenabled=1\nrole=server\n"));
         assert!(result.contains("[Network]"));
         assert!(result.contains("[Other]"));
     }
@@ -304,9 +286,8 @@ store_logs=0
         let config = ServerDbIniConfig {
             enabled: true,
             role: "server".to_string(),
-            store_logs: false,
         };
         let result = update_server_db_section(content, &config);
-        assert!(result.contains("[ServerDatabase]\nenabled=1\nrole=server\nstore_logs=0\n"));
+        assert!(result.contains("[ServerDatabase]\nenabled=1\nrole=server\n"));
     }
 }

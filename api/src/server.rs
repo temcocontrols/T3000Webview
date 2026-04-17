@@ -68,6 +68,9 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         conn: app_state.conn.clone(),
     };
 
+    // Start heartbeat task for server/client registry
+    crate::database_management::registry_service::start_heartbeat_task(app_state.clone());
+
     Ok(Router::new()
         .nest(
             "/api",
@@ -96,6 +99,8 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         .merge(crate::database_management::db_backend_routes::db_backend_routes())
         // Server DB Status route (server/client mode)
         .merge(crate::web_routing::server_db_routes())
+        // Server/Client Registry routes (heartbeat + listing)
+        .merge(crate::database_management::registry_service::registry_routes())
         // Developer Tools routes
         .nest("/api/develop", crate::t3_develop::create_develop_routes())
         // Real-time trend data routes - TEMPORARILY DISABLED

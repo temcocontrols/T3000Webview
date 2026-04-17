@@ -51,8 +51,6 @@ pub struct T3AppState {
     pub server_db_enabled: bool,
     /// PC role when server DB is active: "server" (writes FFI to server) or "client"
     pub server_db_role: String,
-    /// Whether to write system logs to the server DB
-    pub store_logs_to_server: bool,
 }
 
 /// Creates a webview T3000 application state with dual database connections
@@ -128,8 +126,8 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
     let _ = write_structured_log_with_level(
         "T3_Webview_Initialize",
         &format!(
-            "INI config: enabled={}, role={}, store_logs={}",
-            ini_cfg.enabled, ini_cfg.role, ini_cfg.store_logs
+            "INI config: enabled={}, role={}",
+            ini_cfg.enabled, ini_cfg.role
         ),
         LogLevel::Info,
     );
@@ -256,6 +254,5 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
         mssql_pool,
         server_db_enabled: ini_cfg.enabled,
         server_db_role: ini_cfg.role,
-        store_logs_to_server: ini_cfg.store_logs,
     })
 }

@@ -89,8 +89,6 @@ pub struct BackendConfig {
     pub extra_options: Option<serde_json::Value>,
     /// PC role: "server" (writes FFI data to server DB) or "client" (reads only)
     pub role: Option<String>,
-    /// Whether to store system logs to the server DB
-    pub store_logs: bool,
 }
 
 /// Backend configuration for API responses (password masked)
@@ -107,7 +105,6 @@ pub struct BackendConfigResponse {
     pub connection_url: Option<String>,
     pub extra_options: Option<serde_json::Value>,
     pub role: Option<String>,
-    pub store_logs: bool,
 }
 
 /// Request body for saving backend config
@@ -123,7 +120,6 @@ pub struct SaveBackendConfigRequest {
     pub connection_url: Option<String>,
     pub extra_options: Option<serde_json::Value>,
     pub role: Option<String>,
-    pub store_logs: Option<bool>,
 }
 
 // ============================================================================
@@ -263,9 +259,6 @@ pub async fn save_config(
     active.extra_options = Set(req.extra_options.map(|v| v.to_string()));
     if let Some(ref role) = req.role {
         active.role = Set(Some(role.clone()));
-    }
-    if let Some(store_logs) = req.store_logs {
-        active.store_logs = Set(Some(if store_logs { 1 } else { 0 }));
     }
     active.updated_at = Set(Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()));
 
@@ -571,7 +564,6 @@ fn model_to_config(row: db_backend_config::Model) -> BackendConfig {
             .as_ref()
             .and_then(|s| serde_json::from_str(s).ok()),
         role: row.role,
-        store_logs: row.store_logs.unwrap_or(1) != 0,
     }
 }
 
@@ -591,7 +583,6 @@ fn model_to_response(row: db_backend_config::Model) -> BackendConfigResponse {
             .as_ref()
             .and_then(|s| serde_json::from_str(s).ok()),
         role: row.role.clone(),
-        store_logs: row.store_logs.unwrap_or(1) != 0,
     }
 }
 
@@ -641,7 +632,6 @@ mod tests {
             connection_url: None,
             extra_options: None,
             role: None,
-            store_logs: false,
         };
         let url = build_seaorm_url(&config).unwrap();
         assert_eq!(url, "postgres://admin:secret@192.168.1.100:5432/T3000_Devices");
@@ -661,7 +651,6 @@ mod tests {
             connection_url: None,
             extra_options: None,
             role: None,
-            store_logs: false,
         };
         let url = build_seaorm_url(&config).unwrap();
         assert_eq!(url, "mysql://root:@db.local:3306/t3000");
@@ -675,7 +664,7 @@ mod tests {
             host: None, port: None, instance: None,
             database_name: None, username: None, password: None,
             connection_url: None, extra_options: None,
-            role: None, store_logs: false,
+            role: None,
         };
         assert!(validate_config(&config).is_ok());
     }
@@ -689,7 +678,7 @@ mod tests {
             database_name: Some("T3000".to_string()),
             username: None, password: None,
             connection_url: None, extra_options: None,
-            role: None, store_logs: false,
+            role: None,
         };
         assert!(validate_config(&config).is_err());
     }

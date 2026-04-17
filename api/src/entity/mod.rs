@@ -25,6 +25,7 @@ pub mod data_sync_metadata;
 // ============================================================================
 
 pub mod db_backend_config;
+pub mod server_client_registry;
 pub mod system_logs;
 
 // ============================================================================
