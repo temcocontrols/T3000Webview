@@ -10,11 +10,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   makeStyles,
   tokens,
-  Body1,
   Button,
   Input,
   Label,
-  Card,
   Badge,
   Divider,
   MessageBar,
@@ -29,7 +27,6 @@ import {
   Checkbox,
 } from '@fluentui/react-components';
 import {
-  DatabaseRegular,
   CheckmarkCircleRegular,
   ErrorCircleRegular,
   ArrowSyncRegular,
@@ -109,7 +106,7 @@ const useStyles = makeStyles({
   },
   /* ── Section ── */
   section: {
-    marginBottom: '12px',
+    margin: '0 12px 12px',
   },
   sectionHeader: {
     display: 'flex',
@@ -169,18 +166,26 @@ const useStyles = makeStyles({
     backgroundColor: '#ffffff',
     zIndex: 1,
   },
-  /* ── Status Card ── */
-  statusCard: {
+  /* ── Status Row ── */
+  statusRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
-    padding: '12px',
-    margin: '12px',
+    gap: '16px',
+    padding: '10px 12px',
+    flexWrap: 'wrap',
   },
-  statusCardBody: {
-    flex: 1,
+  statusItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontSize: '13px',
   },
-  statusTitle: {
+  statusItemLabel: {
+    color: '#605e5c',
+    fontWeight: 400,
+  },
+  statusItemValue: {
+    color: '#323130',
     fontWeight: 600,
   },
   statusSubtext: {
@@ -191,7 +196,8 @@ const useStyles = makeStyles({
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
     gap: '8px',
-    padding: '0 12px 12px',
+    margin: '0 12px',
+    padding: '0 0 12px',
   },
   statusDetailItem: {
     display: 'flex',
@@ -559,33 +565,43 @@ export const DatabaseConfigPage: React.FC = () => {
         <div className={styles.introBannerBody}>
           <h3 className={styles.introBannerTitle}>Centralized Trendlog &amp; Data Storage</h3>
           <p className={styles.introBannerText}>
-            Store trend logs and device data from multiple T3000 PCs into a single shared database.
-            One PC acts as the <strong>Server</strong> (collects data), while other PCs connect as <strong>Clients</strong> (view shared data).
-            This is useful when you have several PCs polling different controllers and want all trend data in one place.
+            If you have multiple PCs running T3000 and polling different controllers,
+            this feature collects all trend logs and device data into a single shared database.
+            Designate one PC as the <strong>Server</strong> to log and store the data centrally,
+            and configure the remaining PCs as <strong>Clients</strong> to access and view the shared data.
           </p>
         </div>
       </div>
 
-      {/* ── Status Card ── */}
-      <Card className={styles.statusCard}>
-        <DatabaseRegular fontSize={24} />
-        <div className={styles.statusCardBody}>
-          <Body1 className={styles.statusTitle}>
-            Active Backend: {BACKEND_LABELS[status?.active_backend ?? 'sqlite']}
-          </Body1>
-          <Text size={200} className={styles.statusSubtext}>
-            {status?.connected ? 'Connected' : 'Disconnected'}
-            {status?.connected && status?.table_count != null && ` · ${status.table_count} tables`}
-          </Text>
+      {/* ── Current Status ── */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h3 className={styles.sectionTitle}>Current Status</h3>
         </div>
-        <Badge
-          appearance="filled"
-          color={status?.connected ? 'success' : 'danger'}
-          icon={status?.connected ? <CheckmarkCircleRegular /> : <ErrorCircleRegular />}
-        >
-          {status?.connected ? 'Online' : 'Offline'}
-        </Badge>
-      </Card>
+        <div className={styles.statusRow}>
+          <div className={styles.statusItem}>
+            <span className={styles.statusItemLabel}>Backend:</span>
+            <span className={styles.statusItemValue}>{BACKEND_LABELS[status?.active_backend ?? 'sqlite']}</span>
+          </div>
+          <div className={styles.statusItem}>
+            <span className={styles.statusItemLabel}>Status:</span>
+            <Badge
+              appearance="filled"
+              color={status?.connected ? 'success' : 'danger'}
+              icon={status?.connected ? <CheckmarkCircleRegular /> : <ErrorCircleRegular />}
+              size="small"
+            >
+              {status?.connected ? 'Online' : 'Offline'}
+            </Badge>
+          </div>
+          {status?.connected && status?.table_count != null && (
+            <div className={styles.statusItem}>
+              <span className={styles.statusItemLabel}>Tables:</span>
+              <span className={styles.statusItemValue}>{status.table_count}</span>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* ── Runtime Status Details ── */}
       {serverStatus?.enabled && (
