@@ -14,7 +14,7 @@ export { VariablesPage } from '../../features/variables/pages/VariablesPage';
 
 // Programming
 export { ProgramsPage } from '../../features/programs/pages/ProgramsPage';
-export { default as PIDLoopsPage } from '../../features/controllers/pages/PIDLoopsPage';
+export { default as PIDLoopsPage } from '../../features/pidloops/pages/PIDLoopsPage';
 
 // Time & Scheduling
 export { default as SchedulesPage } from '../../features/schedules/pages/SchedulesPage';
@@ -28,7 +28,7 @@ export { default as AlarmsPage } from '../../features/alarms/pages/AlarmsPage';
 // Configuration
 export { SettingsPage } from '../../features/settings/pages/SettingsPage';
 export { NetworkPage } from '../../features/network/pages/NetworkPage';
-export { default as ArrayPage } from '../../features/controllers/pages/ArrayPage';
+export { default as ArrayPage } from '../../features/array/pages/ArrayPage';
 
 // Graphics
 export { GraphicsPage } from '../../features/graphics/pages/GraphicsPage';

@@ -32,7 +32,7 @@ const ProgramsPage = React.lazy(() =>
   import('../features/programs/pages/ProgramsPage').then((m) => ({ default: m.ProgramsPage }))
 );
 const PIDLoopsPage = React.lazy(() =>
-  import('../features/controllers/pages/PIDLoopsPage')
+  import('../features/pidloops/pages/PIDLoopsPage')
 );
 const GraphicsPage = React.lazy(() =>
   import('../features/graphics/pages/GraphicsPage').then((m) => ({ default: m.GraphicsPage }))
@@ -53,7 +53,7 @@ const NetworkPage = React.lazy(() =>
   import('../features/network/pages/NetworkPage').then((m) => ({ default: m.NetworkPage }))
 );
 const ArrayPage = React.lazy(() =>
-  import('../features/controllers/pages/ArrayPage')
+  import('../features/array/pages/ArrayPage')
 );
 const TablesPage = React.lazy(() =>
   import('../features/tables/pages/TablesPage').then((m) => ({ default: m.TablesPage }))
