@@ -17,6 +17,7 @@ import {
   MessageBar,
   MessageBarBody,
   MessageBarTitle,
+  MessageBarActions,
   Spinner,
   Text,
   RadioGroup,
@@ -33,6 +34,7 @@ import {
   ServerRegular,
   DesktopRegular,
   CloudDatabaseRegular,
+  DismissRegular,
 } from '@fluentui/react-icons';
 import type {
   BackendType,
@@ -511,6 +513,13 @@ export const DatabaseConfigPage: React.FC = () => {
   const [switching, setSwitching] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'warning' } | null>(null);
 
+  // Auto-dismiss message after 5 seconds
+  useEffect(() => {
+    if (!message) return;
+    const timer = setTimeout(() => setMessage(null), 5000);
+    return () => clearTimeout(timer);
+  }, [message]);
+
   // -------------------------------------------------------------------
   // Data fetching
   // -------------------------------------------------------------------
@@ -712,6 +721,7 @@ export const DatabaseConfigPage: React.FC = () => {
               <MessageBarTitle>{message.type === 'success' ? 'Success' : message.type === 'warning' ? 'Notice' : 'Error'}</MessageBarTitle>
               {message.text}
             </MessageBarBody>
+            <MessageBarActions containerAction={<Button appearance="transparent" icon={<DismissRegular />} onClick={() => setMessage(null)} />} />
           </MessageBar>
         </div>
       )}
