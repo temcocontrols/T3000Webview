@@ -24,6 +24,7 @@ import {
   Radio,
   Tooltip,
   Switch,
+  Link,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
@@ -118,6 +119,42 @@ const useStyles = makeStyles({
     fontSize: '13px',
     color: '#323130',
     lineHeight: '1.5',
+    margin: 0,
+  },
+  infoBanner: {
+    display: 'flex',
+    gap: '12px',
+    padding: '12px 16px',
+    margin: '8px 12px',
+    backgroundColor: '#f0f6ff',
+    borderRadius: '6px',
+    border: '1px solid #c7dff7',
+  },
+  infoBannerIcon: {
+    fontSize: '20px',
+    color: '#0f6cbd',
+    flexShrink: 0,
+    marginTop: '1px',
+  },
+  infoBannerBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  infoBannerTitle: {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: '#0f6cbd',
+    margin: 0,
+  },
+  infoBannerText: {
+    fontSize: '12.5px',
+    color: '#323130',
+    lineHeight: '1.5',
+    margin: 0,
+  },
+  infoBannerLinks: {
+    fontSize: '12.5px',
     margin: 0,
   },
   /* ── Section ── */
@@ -917,7 +954,7 @@ export const DatabaseConfigPage: React.FC = () => {
           </Tooltip>
         </div>
         <p className={styles.sectionDescription}>
-          Enable multi-PC mode and assign this computer's role. Changes require a restart to take effect.
+          Allow multiple T3000 PCs to share one central database. Set this PC as the Server (hosts the database) or a Client (connects to it). A restart is required after changes.
         </p>
 
         {/* Enable toggle */}
@@ -1028,9 +1065,35 @@ export const DatabaseConfigPage: React.FC = () => {
           <div className={styles.sectionHeader}>
             <h3 className={styles.sectionTitle}>Connection Settings — {BACKEND_LABELS[selectedType]}</h3>
           </div>
-          <p className={styles.sectionDescription}>
-            Enter the connection details for the {BACKEND_LABELS[selectedType]} instance. Use "Test Connection" to verify before saving.
-          </p>
+          <div className={styles.infoBanner}>
+            <InfoRegular className={styles.infoBannerIcon} />
+            <div className={styles.infoBannerBody}>
+              <p className={styles.infoBannerText}>
+                Enter the connection details for the <strong>{BACKEND_LABELS[selectedType]}</strong> instance manually.{selectedType === 'mssql' ? ' You can also use Scan LAN below to discover SQL Server instances on your network.' : ''} Use "Test Connection" to verify before saving.
+              </p>
+            </div>
+          </div>
+
+          {selectedType === 'mssql' && (
+            <div className={styles.infoBanner}>
+              <InfoRegular className={styles.infoBannerIcon} />
+              <div className={styles.infoBannerBody}>
+                <h4 className={styles.infoBannerTitle}>Prerequisites</h4>
+                <p className={styles.infoBannerText}>
+                  SQL Server must be installed and running. Supported: <strong>SQL Server 2022 Express</strong>, <strong>2019</strong>, or later.
+                  Enable TCP/IP in SQL Server Configuration Manager and start the SQL Browser service.
+                </p>
+                <p className={styles.infoBannerLinks}>
+                  <Link href="https://learn.microsoft.com/en-us/sql/database-engine/install-windows/install-sql-server" target="_blank">
+                    Installation guide
+                  </Link>{' · '}
+                  <Link href="https://www.microsoft.com/en-us/sql-server/sql-server-downloads" target="_blank">
+                    Download SQL Server Express (Free)
+                  </Link>
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className={styles.formGrid}>
             <div className={styles.formRow}>
@@ -1049,7 +1112,6 @@ export const DatabaseConfigPage: React.FC = () => {
               <Label className={styles.label} htmlFor="db-port">Port</Label>
               <Input
                 id="db-port"
-                type="number"
                 value={String(form.port ?? DEFAULT_PORTS[selectedType])}
                 onChange={(_, d) => setField('port', Number(d.value) || DEFAULT_PORTS[selectedType])}
               />
