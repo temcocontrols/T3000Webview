@@ -1,8 +1,8 @@
 /**
  * Database Backend Configuration Page
  *
- * Allows administrators to view / configure the centralized database backend
- * (SQLite, PostgreSQL, MySQL, or MSSQL) used for multi-PC deployments.
+ * Allows administrators to view / configure the server database backend
+ * (SQLite, PostgreSQL, MySQL, or MSSQL) used for server/client deployments.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -47,7 +47,7 @@ import type {
   BackendStatus,
   DiscoveredInstance,
   IniConfig,
-  CentralDbStatus,
+  ServerDbStatus,
 } from '../services/databaseConfigApi';
 import {
   getConfigs,
@@ -59,7 +59,7 @@ import {
   initSchema,
   getIniConfig,
   saveIniConfig,
-  getCentralDbStatus,
+  getServerDbStatus,
 } from '../services/databaseConfigApi';
 
 // ---------------------------------------------------------------------------
@@ -224,10 +224,10 @@ export const DatabaseConfigPage: React.FC = () => {
   const [status, setStatus] = useState<BackendStatus | null>(null);
   const [scanResults, setScanResults] = useState<DiscoveredInstance[]>([]);
 
-  // Multi-PC INI config state
+  // Server/Client INI config state
   const [iniConfig, setIniConfig] = useState<IniConfig | null>(null);
-  const [centralStatus, setCentralStatus] = useState<CentralDbStatus | null>(null);
-  const [iniForm, setIniForm] = useState({ enabled: false, role: 'reader', store_logs: false });
+  const [serverStatus, setServerStatus] = useState<ServerDbStatus | null>(null);
+  const [iniForm, setIniForm] = useState({ enabled: false, role: 'client', store_logs: false });
   const [savingIni, setSavingIni] = useState(false);
 
   // Form state
@@ -254,7 +254,7 @@ export const DatabaseConfigPage: React.FC = () => {
         getConfigs(),
         getStatus(),
         getIniConfig().catch(() => null),
-        getCentralDbStatus().catch(() => null),
+        getServerDbStatus().catch(() => null),
       ]);
       setConfigs(cfgs);
       setStatus(sts);
@@ -262,7 +262,7 @@ export const DatabaseConfigPage: React.FC = () => {
         setIniConfig(ini);
         setIniForm({ enabled: ini.enabled, role: ini.role, store_logs: ini.store_logs });
       }
-      if (cStatus) setCentralStatus(cStatus);
+      if (cStatus) setServerStatus(cStatus);
       // Select the active backend by default
       const active = cfgs.find(c => c.is_active) ?? cfgs[0];
       if (active) {
@@ -394,7 +394,7 @@ export const DatabaseConfigPage: React.FC = () => {
     setMessage(null);
   };
 
-  /** Save INI [CentralDatabase] config */
+  /** Save INI [ServerDatabase] config */
   const handleSaveIni = async () => {
     try {
       setSavingIni(true);
@@ -440,7 +440,7 @@ export const DatabaseConfigPage: React.FC = () => {
           <Text size={200} className={styles.statusSubtext}>
             {status?.connected ? 'Connected' : 'Disconnected'}
             {status?.connected && status?.table_count != null && ` · ${status.table_count} tables`}
-            {centralStatus?.enabled && ` · ${centralStatus.role === 'main' ? 'Server' : 'Client'} (${centralStatus.hostname})`}
+            {serverStatus?.enabled && ` · ${serverStatus.role === 'server' ? 'Server' : 'Client'} (${serverStatus.hostname})`}
           </Text>
         </div>
         <Badge
@@ -452,17 +452,17 @@ export const DatabaseConfigPage: React.FC = () => {
         </Badge>
       </Card>
 
-      {/* ── Multi-PC Configuration ── */}
+      {/* ── Server / Client Configuration ── */}
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <h3 className={styles.sectionTitle}>Server / Client Configuration</h3>
-          {centralStatus?.enabled && (
+          {serverStatus?.enabled && (
             <Badge
               appearance="filled"
-              color={centralStatus.central_connected ? 'success' : 'warning'}
+              color={serverStatus.server_connected ? 'success' : 'warning'}
               size="small"
             >
-              {centralStatus.role === 'main' ? 'Server' : 'Client'}
+              {serverStatus.role === 'server' ? 'Server' : 'Client'}
             </Badge>
           )}
         </div>

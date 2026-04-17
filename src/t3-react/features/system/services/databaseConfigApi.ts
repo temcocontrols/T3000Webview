@@ -148,7 +148,7 @@ export async function initSchema(backendType: BackendType): Promise<InitSchemaRe
 }
 
 // ---------------------------------------------------------------------------
-// Multi-PC INI Config API
+// Server/Client INI Config API
 // ---------------------------------------------------------------------------
 
 export interface IniConfig {
@@ -158,23 +158,23 @@ export interface IniConfig {
   ini_path: string;
 }
 
-export interface CentralDbStatus {
+export interface ServerDbStatus {
   enabled: boolean;
   role: string;
   store_logs: boolean;
-  central_connected: boolean;
+  server_connected: boolean;
   mssql_pool_active: boolean;
   local_config_available: boolean;
   hostname: string;
 }
 
-/** Read current [CentralDatabase] settings from setting.ini */
+/** Read current [ServerDatabase] settings from setting.ini */
 export async function getIniConfig(): Promise<IniConfig> {
   const res = await fetch(`${BASE}/ini`);
   return handleResponse<IniConfig>(res);
 }
 
-/** Update [CentralDatabase] section in setting.ini (restart required) */
+/** Update [ServerDatabase] section in setting.ini (restart required) */
 export async function saveIniConfig(config: { enabled: boolean; role: string; store_logs: boolean }): Promise<{ success: boolean; message: string }> {
   const res = await fetch(`${BASE}/ini`, {
     method: 'POST',
@@ -184,8 +184,8 @@ export async function saveIniConfig(config: { enabled: boolean; role: string; st
   return handleResponse<{ success: boolean; message: string }>(res);
 }
 
-/** Get current central DB runtime status */
-export async function getCentralDbStatus(): Promise<CentralDbStatus> {
-  const res = await fetch(`${API_BASE_URL}/api/database/central/status`);
-  return handleResponse<CentralDbStatus>(res);
+/** Get current server DB runtime status */
+export async function getServerDbStatus(): Promise<ServerDbStatus> {
+  const res = await fetch(`${API_BASE_URL}/api/database/server/status`);
+  return handleResponse<ServerDbStatus>(res);
 }
