@@ -76,6 +76,8 @@ const useStyles = makeStyles({
     flex: 1,
     overflow: 'auto',
     padding: '10px',
+    scrollbarWidth: 'thin',
+    scrollbarColor: '#c1c1c1 transparent',
   },
   rightPanel: {
     display: 'flex',

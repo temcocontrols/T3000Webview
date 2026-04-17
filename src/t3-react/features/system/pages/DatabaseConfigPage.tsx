@@ -70,9 +70,8 @@ const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
-    height: '100%',
+    minHeight: '100%',
     backgroundColor: '#ffffff',
-    overflowY: 'auto',
   },
   section: {
     marginBottom: '12px',
@@ -122,6 +121,10 @@ const useStyles = makeStyles({
     padding: '8px 16px',
     borderTop: '1px solid #edebe9',
     flexShrink: 0,
+    position: 'sticky',
+    bottom: 0,
+    backgroundColor: '#ffffff',
+    zIndex: 1,
   },
   statusCard: {
     display: 'flex',
@@ -131,15 +134,18 @@ const useStyles = makeStyles({
     margin: '12px',
   },
   scanResults: {
-    padding: '0 12px 12px',
+    padding: '4px 12px 8px',
   },
   scanRow: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '6px 0',
-    borderBottom: '1px solid #edebe9',
+    padding: '4px 8px',
+    borderBottom: '1px solid #f0f0f0',
     fontSize: '13px',
+    '&:hover': {
+      backgroundColor: '#f5f5f5',
+    },
   },
   statusCardBody: {
     flex: 1,
@@ -434,7 +440,7 @@ export const DatabaseConfigPage: React.FC = () => {
           <Text size={200} className={styles.statusSubtext}>
             {status?.connected ? 'Connected' : 'Disconnected'}
             {status?.connected && status?.table_count != null && ` · ${status.table_count} tables`}
-            {centralStatus?.enabled && ` · Multi-PC: ${centralStatus.role} (${centralStatus.hostname})`}
+            {centralStatus?.enabled && ` · ${centralStatus.role === 'main' ? 'Server' : 'Client'} (${centralStatus.hostname})`}
           </Text>
         </div>
         <Badge
@@ -449,20 +455,20 @@ export const DatabaseConfigPage: React.FC = () => {
       {/* ── Multi-PC Configuration ── */}
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
-          <h3 className={styles.sectionTitle}>Multi-PC Configuration</h3>
+          <h3 className={styles.sectionTitle}>Server / Client Configuration</h3>
           {centralStatus?.enabled && (
             <Badge
               appearance="filled"
               color={centralStatus.central_connected ? 'success' : 'warning'}
               size="small"
             >
-              {centralStatus.role === 'main' ? 'Main PC' : 'Reader PC'}
+              {centralStatus.role === 'main' ? 'Server' : 'Client'}
             </Badge>
           )}
         </div>
         <div className={styles.formGrid}>
           <div className={styles.formRow}>
-            <Label className={styles.label}>Centralized Database</Label>
+            <Label className={styles.label}>Server Database</Label>
             <Switch
               checked={iniForm.enabled}
               onChange={(_, data) => setIniForm(prev => ({ ...prev, enabled: data.checked }))}
@@ -479,8 +485,8 @@ export const DatabaseConfigPage: React.FC = () => {
                   onChange={(_, data) => setIniForm(prev => ({ ...prev, role: data.value }))}
                   layout="horizontal"
                 >
-                  <Radio value="main" label="Main (writes to central)" />
-                  <Radio value="reader" label="Reader (reads from central)" />
+                  <Radio value="main" label="Server (writes to server database)" />
+                  <Radio value="reader" label="Client (reads from server database)" />
                 </RadioGroup>
               </div>
 
@@ -489,7 +495,7 @@ export const DatabaseConfigPage: React.FC = () => {
                 <Checkbox
                   checked={iniForm.store_logs}
                   onChange={(_, data) => setIniForm(prev => ({ ...prev, store_logs: !!data.checked }))}
-                  label="Store system logs to central database"
+                  label="Store system logs to server database"
                 />
               </div>
             </>
@@ -502,7 +508,7 @@ export const DatabaseConfigPage: React.FC = () => {
               disabled={isBusy}
               size="small"
             >
-              {savingIni ? 'Saving…' : 'Save Multi-PC Config'}
+              {savingIni ? 'Saving…' : 'Save Config'}
             </Button>
             {iniConfig?.ini_path && (
               <Text size={200} className={styles.statusSubtext}>
@@ -702,7 +708,7 @@ export const DatabaseConfigPage: React.FC = () => {
               {saving ? 'Saving…' : 'Save Configuration'}
             </Button>
 
-            <Tooltip content="Create all T3000 tables on the remote database" relationship="label">
+            <Tooltip content="Create all T3000 tables on the server database" relationship="label">
               <Button
                 icon={initializingSchema ? <Spinner size="tiny" /> : <ArrowUploadRegular />}
                 onClick={handleInitSchema}
