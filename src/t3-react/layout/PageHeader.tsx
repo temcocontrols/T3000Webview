@@ -105,15 +105,26 @@ const routeToBreadcrumb: Record<string, { label: string; segments?: string[] }> 
   '/t3000/graphics': { label: 'Graphics', segments: ['Graphics'] },
   '/t3000/schedules': { label: 'Schedules', segments: ['Schedules'] },
   '/t3000/holidays': { label: 'Holidays', segments: ['Holidays'] },
-  '/t3000/trend-logs': { label: 'Trend Logs', segments: ['Trend Logs'] },
+  '/t3000/trendlogs': { label: 'Trend Logs', segments: ['Trend Logs'] },
+  '/t3000/trends/chart': { label: 'Trend Chart', segments: ['Trend Logs', 'Chart'] },
   '/t3000/alarms': { label: 'Alarms', segments: ['Alarms'] },
   '/t3000/array': { label: 'Array', segments: ['Array'] },
   '/t3000/network': { label: 'Network', segments: ['Network'] },
   '/t3000/settings': { label: 'Settings', segments: ['Settings'] },
   '/t3000/discover': { label: 'Discover', segments: ['Discover'] },
   '/t3000/buildings': { label: 'Buildings', segments: ['Buildings'] },
-  '/t3000/system/database-config': { label: 'Database Configuration', segments: ['System', 'Database Configuration'] },
-  '/t3000/system/sync': { label: 'Sync Configuration', segments: ['System', 'Sync Configuration'] },
+  '/t3000/tables': { label: 'Tables', segments: ['Tables'] },
+  '/t3000/users': { label: 'Users', segments: ['Users'] },
+  '/t3000/custom-units': { label: 'Custom Units', segments: ['Custom Units'] },
+  '/t3000/tstat10-simulator': { label: 'Tstat10 Simulator', segments: ['Simulator'] },
+  '/t3000/hvac-designer': { label: 'HVAC Designer', segments: ['HVAC Designer'] },
+  '/t3000/documentation': { label: 'Documentation', segments: ['Documentation'] },
+  '/t3000/database/config': { label: 'Database Configuration', segments: ['Database', 'Configuration'] },
+  '/t3000/developer/sync': { label: 'Sync Configuration', segments: ['Developer', 'Sync Configuration'] },
+  '/t3000/develop/files': { label: 'File Browser', segments: ['Developer', 'File Browser'] },
+  '/t3000/develop/database': { label: 'Database Viewer', segments: ['Developer', 'Database Viewer'] },
+  '/t3000/develop/transport': { label: 'Transport Tester', segments: ['Developer', 'Transport Tester'] },
+  '/t3000/develop/logs': { label: 'T3000 Logs', segments: ['Developer', 'T3000 Logs'] },
 };
 
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => {
@@ -187,7 +198,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => 
       <div className={styles.breadcrumbSection}>
         <div className={styles.pageHeaderBar}></div>
         <h1 className={styles.pageTitle}>{pageTitle.toUpperCase()}</h1>
-        {selectedDevice && !location.pathname.startsWith('/t3000/system') && (
+        {selectedDevice && !location.pathname.startsWith('/t3000/database/config') && !location.pathname.startsWith('/t3000/developer/') && (
           <div className={styles.deviceInfo}>
             <Text className={styles.deviceLabel}>Device:</Text>
             <Text className={styles.deviceName}>

@@ -84,9 +84,9 @@ const SettingsPageResponsive = lazy(() =>
   }))
 );
 
-// System pages
-const DatabaseConfigPage = lazy(() => import('../../features/system/pages/DatabaseConfigPage'));
-const SyncConfigurationPage = lazy(() => import('../../features/system/pages/SyncConfigurationPage').then(m => ({ default: m.SyncConfigurationPage })));
+// Database configuration page
+const DatabaseConfigPage = lazy(() => import('../../features/database/pages/DatabaseConfigPage'));
+const SyncConfigurationPage = lazy(() => import('../../features/develop/pages/SyncConfigurationPage').then(m => ({ default: m.SyncConfigurationPage })));
 
 // Additional pages in App.tsx
 const TablesPage = lazy(() => import('../../features/tables/pages/TablesPage').then(m => ({ default: m.TablesPage })));
@@ -274,22 +274,17 @@ export const t3000Routes: T3000Route[] = [
     shortcut: 'Alt+M',
     requiresDevice: false,
   },
-  // System routes
+  // Database configuration
   {
-    path: '/t3000/system/database-config',
+    path: '/t3000/database/config',
     element: DatabaseConfigPage,
-    title: 'Database Config',
+    title: 'Database Configuration',
   },
-  // System routes
+  // Developer routes
   {
-    path: '/t3000/system/sync',
+    path: '/t3000/developer/sync',
     element: SyncConfigurationPage,
     title: 'Sync Configuration',
-  },
-  {
-    path: '/t3000/system/database-config',
-    element: DatabaseConfigPage,
-    title: 'Database Config',
   },
   // HVAC & Documentation (minimal layout in App.tsx)
   {

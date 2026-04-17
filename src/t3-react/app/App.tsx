@@ -135,10 +135,10 @@ const SystemLogsPage = React.lazy(() =>
   import('../features/develop/pages/SystemLogsPage').then((m) => ({ default: m.SystemLogsPage }))
 );
 const SyncConfigurationPage = React.lazy(() =>
-  import('../features/system/pages/SyncConfigurationPage').then((m) => ({ default: m.SyncConfigurationPage }))
+  import('../features/develop/pages/SyncConfigurationPage').then((m) => ({ default: m.SyncConfigurationPage }))
 );
 const DatabaseConfigPage = React.lazy(() =>
-  import('../features/system/pages/DatabaseConfigPage')
+  import('../features/database/pages/DatabaseConfigPage')
 );
 const TrendChartPage = React.lazy(() =>
   import('../features/trendlogs/pages/TrendChartPage').then((m) => ({ default: m.TrendChartPage }))
@@ -347,7 +347,7 @@ export const App: React.FC = () => {
                   }
                 />
                 <Route
-                  path="system/sync"
+                  path="developer/sync"
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <SyncConfigurationPage />
@@ -355,7 +355,7 @@ export const App: React.FC = () => {
                   }
                 />
                 <Route
-                  path="system/database-config"
+                  path="database/config"
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <DatabaseConfigPage />

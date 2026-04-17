@@ -366,6 +366,17 @@ const databaseMenu: MenuItem = {
       action: MenuAction.LogDetail,
       icon: 'DocumentText',
     },
+    {
+      id: 'db-divider-2',
+      type: 'divider',
+    },
+    {
+      id: 'db-backend-config',
+      label: 'Database Configuration',
+      type: 'item',
+      action: () => window.location.hash = '#/t3000/database/config',
+      icon: 'Database',
+    },
   ],
 };
 
@@ -596,61 +607,54 @@ const helpMenu: MenuItem = {
 };
 
 /**
- * System Menu (System Settings & Developer Tools)
+ * Developer Menu (Developer & Debugging Tools)
  */
-const systemMenu: MenuItem = {
-  id: 'system',
-  label: 'System',
+const developerMenu: MenuItem = {
+  id: 'developer',
+  label: 'Developer',
   type: 'submenu',
   children: [
     {
-      id: 'system-sync',
+      id: 'dev-sync',
       label: 'Sync Configuration',
       type: 'item',
-      action: () => window.location.hash = '#/t3000/system/sync',
+      action: () => window.location.hash = '#/t3000/developer/sync',
       icon: 'ArrowSync',
     },
     {
-      id: 'system-settings',
+      id: 'dev-settings',
       label: 'Application Settings',
       type: 'item',
       action: () => window.location.hash = '#/t3000/settings',
       icon: 'Settings',
     },
     {
-      id: 'system-database-config',
-      label: 'Database Backend',
-      type: 'item',
-      action: () => window.location.hash = '#/t3000/system/database-config',
-      icon: 'Database',
-    },
-    {
-      id: 'system-divider-1',
+      id: 'dev-divider-1',
       type: 'divider',
     },
     {
-      id: 'system-files',
+      id: 'dev-files',
       label: 'File Browser',
       type: 'item',
       action: () => window.location.hash = '#/t3000/develop/files',
       icon: 'FolderOpen',
     },
     {
-      id: 'system-database',
-      label: 'Database',
+      id: 'dev-database',
+      label: 'Database Viewer',
       type: 'item',
       action: () => window.location.hash = '#/t3000/develop/database',
       icon: 'Database',
     },
     {
-      id: 'system-transport',
+      id: 'dev-transport',
       label: 'Transport Tester',
       type: 'item',
       action: () => window.location.hash = '#/t3000/develop/transport',
       icon: 'PlugConnected',
     },
     {
-      id: 'system-logs',
+      id: 'dev-logs',
       label: 'T3000 Logs',
       type: 'item',
       action: () => window.location.hash = '#/t3000/develop/logs',
@@ -715,7 +719,7 @@ export const topMenuConfig: MenuItem[] = [
   controlMenu,
   miscMenu,
   helpMenu,
-  systemMenu,
+  developerMenu,
   simulatorMenu,
 ];
 
