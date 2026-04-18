@@ -6,7 +6,7 @@
  * Focused on trendlog and device-data storage across multiple PCs.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   makeStyles,
   tokens,
@@ -474,6 +474,115 @@ const useStyles = makeStyles({
     color: '#a19f9d',
     padding: '0 12px 8px',
   },
+  /* ── Scan Status Bar ── */
+  scanStatusBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '8px 14px',
+    margin: '0',
+    backgroundColor: '#f7f9fc',
+    borderTop: '1px solid #edebe9',
+    fontSize: '12.5px',
+    color: '#323130',
+    lineHeight: '1.4',
+    animationName: {
+      from: { opacity: 0.6 },
+      to: { opacity: 1 },
+    },
+    animationDuration: '0.3s',
+    animationFillMode: 'both',
+  },
+  scanStatusIcon: {
+    display: 'flex',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  scanStatusText: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    flex: 1,
+    minWidth: 0,
+  },
+  scanStatusPhase: {
+    fontWeight: 600,
+    color: '#0f6cbd',
+    fontSize: '12.5px',
+  },
+  scanStatusDetail: {
+    fontSize: '11.5px',
+    color: '#605e5c',
+  },
+  scanStatusDone: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '8px 14px',
+    margin: '0',
+    backgroundColor: '#f0fff0',
+    borderTop: '1px solid #c6ecc6',
+    fontSize: '12.5px',
+    color: '#107c10',
+    fontWeight: 600,
+  },
+  scanStatusError: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '8px 14px',
+    margin: '0',
+    backgroundColor: '#fef0f1',
+    borderTop: '1px solid #f3d6d8',
+    fontSize: '12.5px',
+    color: '#d13438',
+    fontWeight: 600,
+  },
+  scanStepList: {
+    display: 'flex',
+    gap: '6px',
+    alignItems: 'center',
+    marginLeft: 'auto',
+    flexShrink: 0,
+  },
+  scanStepDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    backgroundColor: '#c8c6c4',
+    transition: 'background-color 0.3s, transform 0.3s',
+  },
+  scanStepDotActive: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    backgroundColor: '#0f6cbd',
+    transform: 'scale(1.3)',
+    transition: 'background-color 0.3s, transform 0.3s',
+  },
+  scanStepDotDone: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    backgroundColor: '#107c10',
+    transition: 'background-color 0.3s, transform 0.3s',
+  },
+  scanStatusIdle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '8px 14px',
+    margin: '0',
+    backgroundColor: '#fafafa',
+    borderTop: '1px solid #edebe9',
+    fontSize: '12.5px',
+    color: '#a19f9d',
+  },
+  scanStatusIdleIcon: {
+    fontSize: '14px',
+    color: '#c8c6c4',
+    flexShrink: 0,
+  },
 });
 
 // ---------------------------------------------------------------------------
@@ -559,6 +668,45 @@ export const DatabaseConfigPage: React.FC = () => {
   const [initializingSchema, setInitializingSchema] = useState(false);
   const [switching, setSwitching] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'warning' } | null>(null);
+
+  // Scan status bar phases
+  const [scanPhase, setScanPhase] = useState(0);
+  const [scanDone, setScanDone] = useState<{ count: number } | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const scanStatusRef = useRef<HTMLDivElement>(null);
+
+  const SCAN_PHASES = [
+    { label: 'Preparing scan…', detail: 'Binding UDP socket on port 1434' },
+    { label: 'Broadcasting probe…', detail: 'Sending discovery packet to 255.255.255.255:1434' },
+    { label: 'Listening for responses…', detail: 'Waiting for SQL Server Browser replies (~3 s)' },
+    { label: 'Processing results…', detail: 'Parsing discovered instance data' },
+  ];
+
+  // Cycle through scan phases while scanning is active
+  useEffect(() => {
+    if (!scanning) return;
+    setScanPhase(0);
+    setScanDone(null);
+    setScanError(null);
+    // Auto-scroll to the status bar when scanning starts
+    requestAnimationFrame(() => {
+      scanStatusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+    const delays = [0, 400, 1200, 2800]; // ms offsets for each phase
+    const timers = delays.map((ms, idx) =>
+      setTimeout(() => setScanPhase(idx), ms),
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [scanning]);
+
+  // Auto-scroll to status bar when scan completes or errors
+  useEffect(() => {
+    if (scanDone || scanError) {
+      requestAnimationFrame(() => {
+        scanStatusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
+  }, [scanDone, scanError]);
 
   // Auto-dismiss message after 5 seconds
   useEffect(() => {
@@ -665,12 +813,16 @@ export const DatabaseConfigPage: React.FC = () => {
     try {
       setScanning(true);
       setScanResults([]);
+      setScanDone(null);
+      setScanError(null);
       const results = await scanNetwork();
       setScanResults(results);
+      setScanDone({ count: results.length });
       if (results.length === 0) {
         setMessage({ text: 'No SQL Server instances found on the local network.', type: 'warning' });
       }
     } catch (err: any) {
+      setScanError(err.message);
       setMessage({ text: `Scan failed: ${err.message}`, type: 'error' });
     } finally {
       setScanning(false);
@@ -1245,6 +1397,63 @@ export const DatabaseConfigPage: React.FC = () => {
                   </Tooltip>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* ── Scan Status Bar ── */}
+          <div ref={scanStatusRef} />
+          {scanning && (
+            <div className={styles.scanStatusBar}>
+              <span className={styles.scanStatusIcon}>
+                <Spinner size="tiny" />
+              </span>
+              <span className={styles.scanStatusText}>
+                <span className={styles.scanStatusPhase}>{SCAN_PHASES[scanPhase].label}</span>
+                <span className={styles.scanStatusDetail}>{SCAN_PHASES[scanPhase].detail}</span>
+              </span>
+              <span className={styles.scanStepList}>
+                {SCAN_PHASES.map((_, idx) => (
+                  <span
+                    key={idx}
+                    className={
+                      idx < scanPhase
+                        ? styles.scanStepDotDone
+                        : idx === scanPhase
+                          ? styles.scanStepDotActive
+                          : styles.scanStepDot
+                    }
+                  />
+                ))}
+              </span>
+            </div>
+          )}
+          {!scanning && scanDone && (
+            <div className={scanDone.count > 0 ? styles.scanStatusDone : styles.scanStatusBar}>
+              <span className={styles.scanStatusIcon}>
+                {scanDone.count > 0 ? '✓' : '⚠'}
+              </span>
+              <span>
+                {scanDone.count > 0
+                  ? `Scan complete — found ${scanDone.count} instance${scanDone.count > 1 ? 's' : ''}`
+                  : 'Scan complete — no SQL Server instances found on the network'}
+              </span>
+              <span className={styles.scanStepList}>
+                {SCAN_PHASES.map((_, idx) => (
+                  <span key={idx} className={styles.scanStepDotDone} />
+                ))}
+              </span>
+            </div>
+          )}
+          {!scanning && scanError && (
+            <div className={styles.scanStatusError}>
+              <span>✕</span>
+              <span>Scan failed — {scanError}</span>
+            </div>
+          )}
+          {!scanning && !scanDone && !scanError && (
+            <div className={styles.scanStatusIdle}>
+              <span className={styles.scanStatusIdleIcon}>○</span>
+              <span>Not started — click <strong>Scan LAN</strong> to discover SQL Server instances on your network</span>
             </div>
           )}
         </div>
