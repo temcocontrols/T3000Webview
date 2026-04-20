@@ -145,6 +145,12 @@ pub fn write_server_db_config(
     ini_path: &std::path::Path,
     config: &ServerDbIniConfig,
 ) -> Result<(), std::io::Error> {
+    // Ensure parent directory exists (first-time setup)
+    if let Some(parent) = ini_path.parent() {
+        if !parent.as_os_str().is_empty() && !parent.exists() {
+            std::fs::create_dir_all(parent)?;
+        }
+    }
     let existing_content = std::fs::read_to_string(ini_path).unwrap_or_default();
     let new_content = update_server_db_section(&existing_content, config);
     std::fs::write(ini_path, new_content)

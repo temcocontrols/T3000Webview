@@ -6,7 +6,7 @@
 // - WebSocket broadcasting for live updates
 // - Database synchronization to webview_t3_device.db
 
-use crate::db_connection::establish_t3_device_connection;
+use crate::db_connection::{establish_t3_device_connection, establish_device_conn_for_sync};
 use crate::entity::t3_device::{
     devices, input_points, output_points, trendlog_data_detail, trendlog_data_sync_metadata,
     variable_points,
@@ -455,7 +455,7 @@ pub struct T3000MainService {
 
 impl T3000MainService {
     pub async fn new(config: T3000MainConfig) -> Result<Self, AppError> {
-        let db = establish_t3_device_connection().await?;
+        let db = establish_device_conn_for_sync().await?;
 
         Ok(Self {
             db,
@@ -791,8 +791,8 @@ impl T3000MainService {
         sleep(Duration::from_secs(DEVICE_DATA_LOAD_DELAY_SECS)).await;
         sync_logger.info("✅ Device data load delay complete, proceeding with trendlog sync");
 
-        // Get database connection
-        let db = establish_t3_device_connection().await?;
+        // Get database connection (center DB when enabled, else local SQLite)
+        let db = establish_device_conn_for_sync().await?;
 
         // Get all devices from database
         let all_devices = devices::Entity::find()
@@ -1026,7 +1026,7 @@ impl T3000MainService {
             config.timeout_seconds, config.retry_attempts
         ));
 
-        let db = establish_t3_device_connection().await.map_err(|e| {
+        let db = establish_device_conn_for_sync().await.map_err(|e| {
             sync_logger.error(&format!("❌ Database connection failed: {}", e));
             e
         })?;
@@ -1561,7 +1561,7 @@ impl T3000MainService {
         sync_logger.info("✅ Transaction committed successfully");
 
         // Validate data was actually inserted by doing a quick count check
-        let validation_db = establish_t3_device_connection().await?;
+        let validation_db = establish_device_conn_for_sync().await?;
         sync_logger.info("🔍 Validation: Checking data persistence");
 
         // Validate only successful devices
@@ -1611,25 +1611,45 @@ impl T3000MainService {
 
         sync_logger.info(&format!("📊 Validation results: {}", validation_summary));
 
-        // ---- SERVER DB REPLICATION (server/client dual-write) ----
-        // After local transaction commits, replicate basic data to server DB
-        // if this PC is the server writer. TRENDLOG_DATA_DETAIL is handled
-        // separately via conditional inserts in the trendlog sync functions.
+        // ---- SERVER DB REPLICATION (legacy, kept for MSSQL fallback) ----
+        // When center DB is active via SeaORM (PG/MySQL), the sync above already
+        // writes directly to center DB, making this a harmless no-op (upsert ON CONFLICT).
+        // When MSSQL is active, the FFI sync falls back to local SQLite, so this
+        // replication path copies data to the server DB via tiberius.
         if crate::server_db_writer::is_server_write_active() {
             sync_logger.info("🌐 Server DB replication: Starting (role=server)...");
             let serial_numbers: Vec<i32> = panels.iter().map(|p| p.serial_number).collect();
-            match Self::replicate_basic_data_to_server(&validation_db, &serial_numbers).await {
-                Ok(stats) => {
-                    sync_logger.info(&format!(
-                        "🌐 Server DB replication complete: {} devices, {} inputs, {} outputs, {} variables",
-                        stats.0, stats.1, stats.2, stats.3
-                    ));
+
+            // Try SeaORM path first (PG/MySQL), then MSSQL tiberius path
+            if crate::server_db_writer::get_server_conn().is_some() {
+                match Self::replicate_basic_data_to_server(&validation_db, &serial_numbers).await {
+                    Ok(stats) => {
+                        sync_logger.info(&format!(
+                            "🌐 Server DB replication (SeaORM) complete: {} devices, {} inputs, {} outputs, {} variables",
+                            stats.0, stats.1, stats.2, stats.3
+                        ));
+                    }
+                    Err(e) => {
+                        sync_logger.warn(&format!(
+                            "⚠️ Server DB replication (SeaORM) failed (local data is safe): {}",
+                            e
+                        ));
+                    }
                 }
-                Err(e) => {
-                    sync_logger.warn(&format!(
-                        "⚠️ Server DB replication failed (local data is safe): {}",
-                        e
-                    ));
+            } else if let Some(mssql_pool) = crate::server_db_writer::get_server_mssql_pool() {
+                match Self::replicate_all_data_to_mssql(&validation_db, &serial_numbers, mssql_pool).await {
+                    Ok(stats) => {
+                        sync_logger.info(&format!(
+                            "🌐 Server DB replication (MSSQL) complete: {} devices, {} points, {} trendlog parents, {} trendlog details",
+                            stats.0, stats.1, stats.2, stats.3
+                        ));
+                    }
+                    Err(e) => {
+                        sync_logger.warn(&format!(
+                            "⚠️ Server DB replication (MSSQL) failed (local data is safe): {}",
+                            e
+                        ));
+                    }
                 }
             }
         }
@@ -3720,6 +3740,215 @@ impl T3000MainService {
         }
 
         Ok((dev_count, inp_count, out_count, var_count))
+    }
+
+    /// Replicate ALL data from local SQLite → MSSQL server via tiberius.
+    /// Covers: DEVICES, INPUTS, OUTPUTS, VARIABLES + TRENDLOG_DATA + TRENDLOG_DATA_DETAIL.
+    /// Returns (devices, points, trendlog_parents, trendlog_details) counts.
+    async fn replicate_all_data_to_mssql(
+        local_db: &DatabaseConnection,
+        serial_numbers: &[i32],
+        pool: &crate::database_management::mssql_queries::MssqlPool,
+    ) -> Result<(u64, u64, u64, u64), AppError> {
+        use crate::database_management::mssql_queries;
+        use crate::entity::t3_device::{trendlog_data, trendlog_data_detail};
+
+        let mut dev_count: u64 = 0;
+        let mut point_count: u64 = 0;
+        let mut td_parent_count: u64 = 0;
+        let mut td_detail_count: u64 = 0;
+
+        for &sn in serial_numbers {
+            // ---- DEVICES ----
+            if let Ok(Some(device)) = devices::Entity::find()
+                .filter(devices::Column::SerialNumber.eq(sn))
+                .one(local_db)
+                .await
+            {
+                if let Err(e) = mssql_queries::upsert_device(
+                    pool,
+                    device.serial_number,
+                    device.panel_id,
+                    device.building_name.as_deref(),
+                    device.product_name.as_deref(),
+                    device.address.as_deref(),
+                    device.status.as_deref(),
+                    device.ip_address.as_deref(),
+                    device.port,
+                    device.modbus_address.map(|v| v as i32),
+                    device.modbus_port.map(|v| v as i32),
+                    device.bacnet_ip_port.map(|v| v as i32),
+                    device.connection_type.as_deref(),
+                ).await {
+                    tracing::warn!("MSSQL DEVICES upsert failed for SN {}: {}", sn, e);
+                } else {
+                    dev_count += 1;
+                }
+            }
+
+            // ---- INPUTS ----
+            if let Ok(inputs) = input_points::Entity::find()
+                .filter(input_points::Column::SerialNumber.eq(sn))
+                .all(local_db)
+                .await
+            {
+                for ip in &inputs {
+                    if let Err(e) = mssql_queries::upsert_point(
+                        pool,
+                        "INPUTS",
+                        "InputId",
+                        ip.serial_number,
+                        ip.input_id.as_deref().unwrap_or(""),
+                        ip.input_index.as_deref(),
+                        ip.panel.as_deref(),
+                        ip.full_label.as_deref(),
+                        ip.auto_manual.as_deref(),
+                        ip.f_value.as_deref(),
+                        ip.units.as_deref(),
+                        ip.range_field.as_deref(),
+                        ip.status.as_deref(),
+                        ip.digital_analog.as_deref(),
+                        ip.label.as_deref(),
+                    ).await {
+                        tracing::warn!("MSSQL INPUTS upsert failed: {}", e);
+                    } else {
+                        point_count += 1;
+                    }
+                }
+            }
+
+            // ---- OUTPUTS ----
+            if let Ok(outputs) = output_points::Entity::find()
+                .filter(output_points::Column::SerialNumber.eq(sn))
+                .all(local_db)
+                .await
+            {
+                for op in &outputs {
+                    if let Err(e) = mssql_queries::upsert_point(
+                        pool,
+                        "OUTPUTS",
+                        "OutputId",
+                        op.serial_number,
+                        op.output_id.as_deref().unwrap_or(""),
+                        op.output_index.as_deref(),
+                        op.panel.as_deref(),
+                        op.full_label.as_deref(),
+                        op.auto_manual.as_deref(),
+                        op.f_value.as_deref(),
+                        op.units.as_deref(),
+                        op.range_field.as_deref(),
+                        op.status.as_deref(),
+                        op.digital_analog.as_deref(),
+                        op.label.as_deref(),
+                    ).await {
+                        tracing::warn!("MSSQL OUTPUTS upsert failed: {}", e);
+                    } else {
+                        point_count += 1;
+                    }
+                }
+            }
+
+            // ---- VARIABLES ----
+            if let Ok(vars) = variable_points::Entity::find()
+                .filter(variable_points::Column::SerialNumber.eq(sn))
+                .all(local_db)
+                .await
+            {
+                for vp in &vars {
+                    if let Err(e) = mssql_queries::upsert_point(
+                        pool,
+                        "VARIABLES",
+                        "VariableId",
+                        vp.serial_number,
+                        vp.variable_id.as_deref().unwrap_or(""),
+                        vp.variable_index.as_deref(),
+                        vp.panel.as_deref(),
+                        vp.full_label.as_deref(),
+                        vp.auto_manual.as_deref(),
+                        vp.f_value.as_deref(),
+                        vp.units.as_deref(),
+                        None, // VARIABLES table has no Range_Field
+                        vp.status.as_deref(),
+                        vp.digital_analog.as_deref(),
+                        vp.label.as_deref(),
+                    ).await {
+                        tracing::warn!("MSSQL VARIABLES upsert failed: {}", e);
+                    } else {
+                        point_count += 1;
+                    }
+                }
+            }
+
+            // ---- TRENDLOG_DATA (parent) + TRENDLOG_DATA_DETAIL (child) ----
+            // Read all trendlog parent rows for this device from local SQLite,
+            // get-or-create each in MSSQL, then copy their detail rows.
+            if let Ok(parents) = trendlog_data::Entity::find()
+                .filter(trendlog_data::Column::SerialNumber.eq(sn))
+                .all(local_db)
+                .await
+            {
+                for parent in &parents {
+                    // Get or create parent in MSSQL (returns the MSSQL-side id)
+                    let mssql_parent_id = match mssql_queries::get_or_create_trendlog_parent(
+                        pool,
+                        parent.serial_number,
+                        parent.panel_id,
+                        &parent.point_id,
+                        parent.point_index,
+                        &parent.point_type,
+                        parent.digital_analog.as_deref(),
+                        parent.range_field.as_deref(),
+                        parent.units.as_deref(),
+                        parent.description.as_deref(),
+                    ).await {
+                        Ok(id) => {
+                            td_parent_count += 1;
+                            id
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                "MSSQL TRENDLOG_DATA get_or_create failed for SN {}, point {}: {}",
+                                sn, parent.point_id, e
+                            );
+                            continue;
+                        }
+                    };
+
+                    // Copy detail rows for this parent (from local SQLite parent.id)
+                    // Only copy recent details (last sync cycle) to avoid re-copying
+                    // everything on every sync. Use a 2x sync-interval lookback.
+                    let lookback_minutes = 15; // Match typical sync interval
+                    let cutoff = (chrono::Local::now() - chrono::Duration::minutes(lookback_minutes))
+                        .format("%Y-%m-%d %H:%M:%S")
+                        .to_string();
+
+                    if let Ok(details) = trendlog_data_detail::Entity::find()
+                        .filter(trendlog_data_detail::Column::ParentId.eq(parent.id))
+                        .filter(trendlog_data_detail::Column::LoggingTimeFmt.gte(&cutoff))
+                        .all(local_db)
+                        .await
+                    {
+                        for detail in &details {
+                            if let Err(e) = mssql_queries::insert_trendlog_detail(
+                                pool,
+                                mssql_parent_id,
+                                &detail.value,
+                                &detail.logging_time_fmt,
+                            ).await {
+                                // Duplicate inserts may fail — that's OK
+                                tracing::trace!(
+                                    "MSSQL TRENDLOG_DATA_DETAIL insert skipped: {}", e
+                                );
+                            } else {
+                                td_detail_count += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok((dev_count, point_count, td_parent_count, td_detail_count))
     }
 }
 

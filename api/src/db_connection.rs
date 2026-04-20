@@ -173,3 +173,57 @@ pub async fn establish_device_conn_from_config(
         }
     }
 }
+
+// ============================================================================
+// INI-Aware Device Connection (for background services)
+// ============================================================================
+
+/// Connect to the correct device database based on the current INI config.
+///
+/// - If `setting.ini [ServerDatabase] enabled=1`, reads `DB_BACKEND_CONFIG`
+///   from local SQLite and returns a SeaORM connection to the center DB
+///   (Postgres / MySQL). For MSSQL backends, falls back to local SQLite
+///   because the FFI sync service requires a SeaORM `DatabaseConnection`.
+/// - Otherwise returns a local SQLite connection.
+///
+/// This function is designed for background services (like the FFI sync service)
+/// that cannot access `T3AppState` but still need to write to the correct DB.
+pub async fn establish_device_conn_for_sync() -> Result<DatabaseConnection, Box<dyn std::error::Error>> {
+    let ini_cfg = crate::ini_config::read_server_db_config_auto();
+
+    if !ini_cfg.enabled {
+        // Classic mode: use local SQLite
+        return establish_t3_device_connection().await;
+    }
+
+    // Server DB mode: open local SQLite to read DB_BACKEND_CONFIG, then connect to center DB
+    let local_conn = establish_t3_device_connection().await?;
+
+    match establish_device_conn_from_config(&local_conn).await {
+        Ok((device_conn, config)) => {
+            match device_conn {
+                DeviceDbConn::SeaOrm { conn, .. } => {
+                    tracing::info!(
+                        "FFI sync connected to center DB: {} (role={})",
+                        config.backend_type, ini_cfg.role
+                    );
+                    Ok(conn)
+                }
+                DeviceDbConn::Mssql { .. } => {
+                    // MSSQL uses tiberius pool, not SeaORM — FFI sync needs SeaORM.
+                    // Fall back to local SQLite; MSSQL dual-write is a future enhancement.
+                    tracing::warn!(
+                        "MSSQL backend active — FFI sync falls back to local SQLite (MSSQL dual-write TODO)"
+                    );
+                    Ok(local_conn)
+                }
+            }
+        }
+        Err(e) => {
+            tracing::warn!(
+                "Center DB connect failed, FFI sync falling back to local SQLite: {:?}", e
+            );
+            Ok(local_conn)
+        }
+    }
+}
