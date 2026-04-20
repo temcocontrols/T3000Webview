@@ -1001,3 +1001,22 @@ CREATE TABLE IF NOT EXISTS SYSTEM_LOGS (
     details         TEXT DEFAULT '',
     created_at      TIMESTAMP DEFAULT NOW()
 );
+
+-- ============================================================================
+-- SERVER_CLIENT_REGISTRY - Tracks all PCs participating in centralized DB mode
+-- Server writes its own entry; clients send heartbeats to the server.
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS SERVER_CLIENT_REGISTRY (
+    id            SERIAL PRIMARY KEY,
+    hostname      VARCHAR(255) NOT NULL DEFAULT '',
+    ip_address    VARCHAR(45) NOT NULL DEFAULT '',
+    role          VARCHAR(20) NOT NULL DEFAULT 'client',
+    is_self       INTEGER NOT NULL DEFAULT 0,
+    status        VARCHAR(20) NOT NULL DEFAULT 'online',
+    last_seen     TIMESTAMP NOT NULL DEFAULT NOW(),
+    db_backend    VARCHAR(20) DEFAULT 'sqlite',
+    table_count   INTEGER DEFAULT 0,
+    version       VARCHAR(50) DEFAULT '',
+    created_at    TIMESTAMP DEFAULT NOW(),
+    UNIQUE(hostname, ip_address)
+);

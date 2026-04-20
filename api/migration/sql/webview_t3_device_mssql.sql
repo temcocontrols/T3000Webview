@@ -1143,3 +1143,23 @@ CREATE TABLE SYSTEM_LOGS (
     details         NVARCHAR(MAX) DEFAULT '',
     created_at      DATETIME2 DEFAULT GETDATE()
 );
+
+-- ============================================================================
+-- SERVER_CLIENT_REGISTRY - Tracks all PCs participating in centralized DB mode
+-- Server writes its own entry; clients send heartbeats to the server.
+-- ============================================================================
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SERVER_CLIENT_REGISTRY')
+CREATE TABLE SERVER_CLIENT_REGISTRY (
+    id            INT IDENTITY(1,1) PRIMARY KEY,
+    hostname      NVARCHAR(255) NOT NULL DEFAULT '',
+    ip_address    NVARCHAR(45) NOT NULL DEFAULT '',
+    role          NVARCHAR(20) NOT NULL DEFAULT 'client',
+    is_self       INT NOT NULL DEFAULT 0,
+    status        NVARCHAR(20) NOT NULL DEFAULT 'online',
+    last_seen     DATETIME2 NOT NULL DEFAULT GETDATE(),
+    db_backend    NVARCHAR(20) DEFAULT 'sqlite',
+    table_count   INT DEFAULT 0,
+    version       NVARCHAR(50) DEFAULT '',
+    created_at    DATETIME2 DEFAULT GETDATE(),
+    CONSTRAINT UQ_SCR_host_ip UNIQUE (hostname, ip_address)
+);

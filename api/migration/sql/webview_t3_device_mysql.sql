@@ -998,3 +998,22 @@ CREATE TABLE IF NOT EXISTS SYSTEM_LOGS (
     details         TEXT,
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ============================================================================
+-- SERVER_CLIENT_REGISTRY - Tracks all PCs participating in centralized DB mode
+-- Server writes its own entry; clients send heartbeats to the server.
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS SERVER_CLIENT_REGISTRY (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    hostname      VARCHAR(255) NOT NULL DEFAULT '',
+    ip_address    VARCHAR(45) NOT NULL DEFAULT '',
+    role          VARCHAR(20) NOT NULL DEFAULT 'client',
+    is_self       INT NOT NULL DEFAULT 0,
+    status        VARCHAR(20) NOT NULL DEFAULT 'online',
+    last_seen     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    db_backend    VARCHAR(20) DEFAULT 'sqlite',
+    table_count   INT DEFAULT 0,
+    version       VARCHAR(50) DEFAULT '',
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_host_ip (hostname, ip_address)
+);
