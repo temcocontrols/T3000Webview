@@ -44,6 +44,7 @@ export interface TestConnectionResult {
   message?: string;
   error?: string;
   latency_ms?: number;
+  db_exists?: boolean;
 }
 
 export interface DiscoveredInstance {

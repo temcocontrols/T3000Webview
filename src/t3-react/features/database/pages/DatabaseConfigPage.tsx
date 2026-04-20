@@ -796,12 +796,18 @@ export const DatabaseConfigPage: React.FC = () => {
         }
       }
       const res = await testConnection(payload as any);
-      setMessage({
-        text: res.success
-          ? `Connection OK${res.latency_ms != null ? ` (${res.latency_ms} ms)` : ''}`
-          : `Connection failed: ${res.error || res.message || 'Unknown error'}`,
-        type: res.success ? 'success' : 'error',
-      });
+      if (res.success) {
+        // Use backend message if available (includes DB existence details)
+        const text = res.message || `Connection OK${res.latency_ms != null ? ` (${res.latency_ms} ms)` : ''}`;
+        // Show warning when auth works but target DB doesn't exist yet
+        const msgType: 'success' | 'warning' = res.db_exists === false ? 'warning' : 'success';
+        setMessage({ text, type: msgType });
+      } else {
+        setMessage({
+          text: `Connection failed: ${res.error || res.message || 'Unknown error'}`,
+          type: 'error',
+        });
+      }
     } catch (err: any) {
       setMessage({ text: `Test failed: ${err.message}`, type: 'error' });
     } finally {
@@ -853,7 +859,9 @@ export const DatabaseConfigPage: React.FC = () => {
       ...prev,
       host: inst.host,
       port: inst.port ?? DEFAULT_PORTS.mssql,
-      instance: inst.instance ?? '',
+      instance: inst.instance ?? prev.instance ?? '',
+      username: prev.username || 'sa',
+      database_name: prev.database_name || 'T3000',
     }));
     setMessage(null);
   };
@@ -872,6 +880,12 @@ export const DatabaseConfigPage: React.FC = () => {
         }
         if (!form.database_name?.trim() && !form.connection_url?.trim()) {
           setMessage({ text: 'Database name (or Connection URL) is required.', type: 'error' });
+          return;
+        }
+        // Password required on first save (no existing password stored)
+        const existingCfgForType = configs.find(c => c.backend_type === selectedType);
+        if (!existingCfgForType?.password_set && !form.password?.trim() && !form.connection_url?.trim()) {
+          setMessage({ text: 'Password is required for the first configuration.', type: 'error' });
           return;
         }
       }
@@ -914,6 +928,7 @@ export const DatabaseConfigPage: React.FC = () => {
   const isRemote = selectedType !== 'sqlite';
   const isBusy = testing || scanning || initializingSchema || savingIni;
   const activeConfig = configs.find(c => c.is_active);
+  const existingCfg = configs.find(c => c.backend_type === selectedType);
 
   if (loading) {
     return (
@@ -1333,10 +1348,11 @@ export const DatabaseConfigPage: React.FC = () => {
 
             <div className={styles.formRow}>
               <Label className={styles.label} htmlFor="db-pass">Password</Label>
-              <Tooltip content="Leave blank to keep the previously saved password." relationship="description">
+              <Tooltip content={existingCfg?.password_set ? 'Password is saved. Leave blank to keep it, or type a new one to replace it.' : 'Enter the database password.'} relationship="description">
                 <Input
                   id="db-pass"
                   type="password"
+                  placeholder={existingCfg?.password_set ? '••••••••' : ''}
                   value={form.password ?? ''}
                   onChange={(_, d) => setField('password', d.value)}
                 />
