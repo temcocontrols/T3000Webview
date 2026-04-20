@@ -1,16 +1,17 @@
 //! Database Backend Configuration REST API
 //!
-//! 7 endpoints under `/api/database/backend/`:
+//! 8 endpoints under `/api/database/backend/`:
 //!
 //! | Method | Path           | Purpose                                    |
 //! |--------|----------------|--------------------------------------------|
 //! | GET    | /config        | Read all backend configs (passwords masked) |
 //! | POST   | /config        | Save config for one backend type            |
 //! | POST   | /test          | Test connection without saving              |
-//! | GET    | /scan          | Scan LAN for SQL Server instances (UDP)     |
+//! | GET    | /scan          | Scan LAN for SQL Server instances           |
 //! | GET    | /status        | Current runtime backend status              |
-//! | POST   | /switch        | Set active backend (restart required)       |
 //! | POST   | /init-schema   | Create 46 device tables on remote DB        |
+//! | GET    | /ini           | Read INI [ServerDatabase] config            |
+//! | POST   | /ini           | Write INI [ServerDatabase] config           |
 
 use axum::{
     extract::State,
@@ -36,7 +37,6 @@ pub fn db_backend_routes() -> Router<T3AppState> {
         .route("/api/database/backend/test", post(test_connection))
         .route("/api/database/backend/scan", get(scan_network))
         .route("/api/database/backend/status", get(get_status))
-        .route("/api/database/backend/switch", post(switch_backend))
         .route("/api/database/backend/init-schema", post(init_schema))
         // INI config endpoints for server/client database
         .route("/api/database/backend/ini", get(get_ini_config))
@@ -96,6 +96,8 @@ async fn save_config(
         .ok_or_else(no_config_conn)?;
     let db = local_conn.lock().await;
 
+    let backend_type = req.backend_type.clone();
+
     db_backend_config::save_config(&*db, req)
         .await
         .map_err(|e| {
@@ -105,9 +107,19 @@ async fn save_config(
             )
         })?;
 
+    // Also activate this backend so it becomes the active one on next restart
+    db_backend_config::switch_backend(&*db, &backend_type)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Config saved but failed to activate backend: {}", e),
+            )
+        })?;
+
     Ok(Json(serde_json::json!({
         "success": true,
-        "message": "Configuration saved",
+        "message": format!("Configuration saved and {} set as active backend", backend_type),
     })))
 }
 
@@ -124,6 +136,7 @@ struct TestConnectionRequest {
     database_name: Option<String>,
     username: Option<String>,
     password: Option<String>,
+    connection_url: Option<String>,
     extra_options: Option<serde_json::Value>,
 }
 
@@ -146,7 +159,7 @@ async fn test_connection(
         database_name: req.database_name,
         username: req.username,
         password: req.password,
-        connection_url: None,
+        connection_url: req.connection_url,
         extra_options: req.extra_options,
         role: None,
     };
@@ -252,18 +265,23 @@ async fn test_mssql_connection(config: tiberius::Config) -> Result<String, Strin
 // 4. GET /scan — scan LAN for SQL Server instances
 // ============================================================================
 
-async fn scan_network() -> Json<serde_json::Value> {
-    // Run the UDP scan in a blocking task (it uses std::net::UdpSocket)
+async fn scan_network() -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    // Run the scan in a blocking task (it uses std::net sockets)
     let instances = tokio::task::spawn_blocking(|| {
         network_scan::scan_sql_server_instances(3000) // 3 second timeout
     })
     .await
-    .unwrap_or_default();
+    .map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Scan task failed: {}", e),
+        )
+    })?;
 
-    Json(serde_json::json!({
+    Ok(Json(serde_json::json!({
         "success": true,
         "instances": instances,
-    }))
+    })))
 }
 
 // ============================================================================
@@ -347,41 +365,6 @@ async fn count_tables(conn: &DatabaseConnection, backend_type: &str) -> Result<i
     } else {
         Ok(0)
     }
-}
-
-// ============================================================================
-// 6. POST /switch — set active backend (restart required)
-// ============================================================================
-
-#[derive(Debug, Deserialize)]
-struct SwitchRequest {
-    backend_type: String,
-}
-
-async fn switch_backend(
-    State(state): State<T3AppState>,
-    Json(req): Json<SwitchRequest>,
-) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
-    let local_conn = state
-        .local_config_conn
-        .as_ref()
-        .ok_or_else(no_config_conn)?;
-    let db = local_conn.lock().await;
-
-    db_backend_config::switch_backend(&*db, &req.backend_type)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to switch backend: {}", e),
-            )
-        })?;
-
-    Ok(Json(serde_json::json!({
-        "success": true,
-        "message": format!("Active backend set to '{}'. Restart required to apply.", req.backend_type),
-        "restart_required": true,
-    })))
 }
 
 // ============================================================================
@@ -552,7 +535,29 @@ async fn load_full_config_for_type(
     let decrypted_pw = row
         .password
         .as_ref()
-        .and_then(|pw| db_backend_config::decrypt_password(pw).ok());
+        .and_then(|pw| {
+            match db_backend_config::decrypt_password(pw) {
+                Ok(p) => Some(p),
+                Err(e) => {
+                    tracing::warn!(
+                        "Failed to decrypt password for backend '{}': {}",
+                        backend_type, e
+                    );
+                    None
+                }
+            }
+        });
+
+    // Decrypt connection_url (may be plaintext for backward compat)
+    let decrypted_url = row.connection_url.as_ref().and_then(|url| {
+        if url.is_empty() {
+            return Some(String::new());
+        }
+        match db_backend_config::decrypt_password(url) {
+            Ok(plain) => Some(plain),
+            Err(_) => Some(url.clone()), // backward compat
+        }
+    });
 
     Ok(db_backend_config::BackendConfig {
         backend_type: bt,
@@ -563,7 +568,7 @@ async fn load_full_config_for_type(
         database_name: row.database_name,
         username: row.username,
         password: decrypted_pw,
-        connection_url: row.connection_url,
+        connection_url: decrypted_url,
         extra_options: row
             .extra_options
             .as_ref()

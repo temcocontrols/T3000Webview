@@ -1,11 +1,16 @@
-//! Network Scan — UDP 1434 SQL Server Browser discovery
+//! Network Scan — TCP 1433 port sweep + UDP 1434 SQL Server Browser discovery
 //!
-//! Broadcasts to the local subnet on UDP port 1434 and parses
-//! SQL Server Browser responses to find available instances.
+//! Primary: TCP-connect sweep of the local /24 subnet on port 1433
+//!          (finds SQL Server on the default port without needing Browser service).
+//! Secondary: UDP broadcast on port 1434 to discover named instances on
+//!            non-default ports (requires SQL Server Browser service).
+//!
+//! Results from both methods are merged and deduplicated.
 //! This is an optional convenience — manual config always works.
 
 use serde::{Deserialize, Serialize};
-use std::net::UdpSocket;
+use std::collections::HashSet;
+use std::net::{TcpStream, UdpSocket, SocketAddr};
 use std::time::Duration;
 
 /// Discovered SQL Server instance from a network scan.
@@ -17,14 +22,91 @@ pub struct DiscoveredInstance {
     pub version: Option<String>,
 }
 
-/// Scan the local subnet for SQL Server instances via UDP 1434 broadcast.
+/// Scan the local subnet for SQL Server instances.
 ///
-/// Sends a single `\x02` byte to the broadcast address on port 1434
-/// (SQL Server Browser protocol). Waits up to `timeout_ms` for responses.
+/// 1. **TCP 1433 sweep** — probes every IP in the local /24 subnet on port 1433.
+///    Any host that accepts the TCP connection is assumed to be running SQL Server.
+/// 2. **UDP 1434 broadcast** — sends a Browser discovery packet to find named
+///    instances (requires SQL Server Browser service to be running).
 ///
-/// Returns a list of discovered instances. Returns an empty list (not an error)
-/// if the scan finds nothing or if broadcasting is blocked by the firewall.
+/// Results are merged and deduplicated by (host, port).
 pub fn scan_sql_server_instances(timeout_ms: u64) -> Vec<DiscoveredInstance> {
+    // --- Phase 1: TCP 1433 subnet sweep (primary) ---
+    let mut results = scan_tcp_1433(timeout_ms);
+
+    // --- Phase 2: UDP 1434 Browser discovery (secondary) ---
+    let udp_results = scan_udp_1434(timeout_ms);
+
+    // --- Merge & deduplicate ---
+    let existing: HashSet<(String, Option<u16>)> = results
+        .iter()
+        .map(|r| (r.host.clone(), r.port))
+        .collect();
+
+    for inst in udp_results {
+        let key = (inst.host.clone(), inst.port);
+        if !existing.contains(&key) {
+            results.push(inst);
+        }
+    }
+
+    results
+}
+
+/// TCP 1433 subnet sweep — probe every IP in the local /24 on port 1433.
+fn scan_tcp_1433(timeout_ms: u64) -> Vec<DiscoveredInstance> {
+    let local_ip = get_local_ip();
+
+    // Skip sweep if we got a loopback address (no network / offline)
+    if local_ip.starts_with("127.") {
+        eprintln!("[network_scan] Skipping TCP sweep — local IP is loopback ({})", local_ip);
+        return Vec::new();
+    }
+
+    let parts: Vec<&str> = local_ip.split('.').collect();
+    if parts.len() != 4 {
+        eprintln!("[network_scan] Cannot determine /24 subnet from IP: {}", local_ip);
+        return Vec::new();
+    }
+
+    let subnet_prefix = format!("{}.{}.{}.", parts[0], parts[1], parts[2]);
+    let per_host_timeout = Duration::from_millis(200.min(timeout_ms));
+
+    // Probe 1–254 in parallel using threads
+    let handles: Vec<_> = (1..=254)
+        .map(|i| {
+            let host = format!("{}{}", subnet_prefix, i);
+            let local = local_ip.clone();
+            std::thread::spawn(move || {
+                // Skip our own IP
+                if host == local {
+                    return None;
+                }
+                let addr: SocketAddr = format!("{}:1433", host).parse().ok()?;
+                match TcpStream::connect_timeout(&addr, per_host_timeout) {
+                    Ok(_) => Some(DiscoveredInstance {
+                        host,
+                        instance: None,
+                        port: Some(1433),
+                        version: None,
+                    }),
+                    Err(_) => None,
+                }
+            })
+        })
+        .collect();
+
+    let mut results = Vec::new();
+    for h in handles {
+        if let Ok(Some(inst)) = h.join() {
+            results.push(inst);
+        }
+    }
+    results
+}
+
+/// UDP 1434 broadcast — SQL Server Browser discovery for named instances.
+fn scan_udp_1434(timeout_ms: u64) -> Vec<DiscoveredInstance> {
     let mut results = Vec::new();
 
     let socket = match UdpSocket::bind("0.0.0.0:0") {
@@ -71,6 +153,18 @@ pub fn scan_sql_server_instances(timeout_ms: u64) -> Vec<DiscoveredInstance> {
     }
 
     results
+}
+
+/// Get the local IP address by connecting a UDP socket to a public address.
+pub fn get_local_ip() -> String {
+    if let Ok(socket) = UdpSocket::bind("0.0.0.0:0") {
+        if socket.connect("8.8.8.8:80").is_ok() {
+            if let Ok(addr) = socket.local_addr() {
+                return addr.ip().to_string();
+            }
+        }
+    }
+    "127.0.0.1".to_string()
 }
 
 /// Parse a SQL Server Browser response payload.

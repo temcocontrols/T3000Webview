@@ -19,9 +19,6 @@ use bb8_tiberius::ConnectionManager;
 /// Type alias for a bb8-managed tiberius connection pool.
 pub type MssqlPool = Pool<ConnectionManager>;
 
-/// Type alias for a pooled MSSQL client.
-pub type MssqlClient = bb8::PooledConnection<'static, ConnectionManager>;
-
 /// Build a bb8 connection pool for SQL Server.
 ///
 /// Uses the tiberius Config already built by `db_backend_config::build_mssql_config()`.

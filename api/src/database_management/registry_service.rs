@@ -5,10 +5,14 @@
 // Background heartbeat task + REST endpoints for tracking which PCs
 // participate in centralized database mode.
 //
-// - Server PC: writes its own entry every 30s, marks stale clients offline.
-// - Client PC: POSTs heartbeat to server every 30s.
-// - GET /api/database/server/registry → returns all entries.
-// - POST /api/database/server/heartbeat → client heartbeat receiver.
+// Both server and client PCs share the same central DB via `t3_device_conn`.
+// Each PC upserts its own entry into SERVER_CLIENT_REGISTRY every 30s.
+// The server additionally marks stale entries (>2 min) as offline.
+//
+// - Server PC: writes own entry every 30s + marks stale clients offline.
+// - Client PC: writes own entry every 30s (direct DB write, no HTTP needed).
+// - GET  /api/database/server/registry  → returns all entries.
+// - POST /api/database/server/heartbeat → (legacy) external heartbeat receiver.
 // ============================================================================
 
 use axum::{
@@ -60,12 +64,15 @@ pub struct HeartbeatRequest {
 // ============================================================================
 
 /// Starts the background heartbeat loop.
-/// - On the server: upserts own entry + marks stale clients offline.
-/// - On the client: does nothing (clients POST to the server instead).
+/// - Both server and client PCs upsert their own entry every 30s into the
+///   shared central DB (which both roles connect to via `t3_device_conn`).
+/// - Only the server additionally marks stale entries as offline.
 pub fn start_heartbeat_task(state: T3AppState) {
-    if !state.server_db_enabled || state.server_db_role != "server" {
-        return; // Only the server runs the background task
+    if !state.server_db_enabled {
+        return; // Server DB mode not enabled — nothing to do
     }
+
+    let is_server = state.server_db_role == "server";
 
     tokio::spawn(async move {
         // Wait a bit for everything to initialise
@@ -75,10 +82,15 @@ pub fn start_heartbeat_task(state: T3AppState) {
         loop {
             interval.tick().await;
 
-            if let Some(ref conn) = state.t3_device_conn {
+            // Prefer t3_device_conn (central DB); fall back to local_config_conn
+            let conn_ref = state.t3_device_conn.as_ref().or(state.local_config_conn.as_ref());
+            if let Some(ref conn) = conn_ref {
                 let db = conn.lock().await;
                 let _ = upsert_self_entry(&*db, &state).await;
-                let _ = mark_stale_clients_offline(&*db).await;
+                // Only the server marks stale clients offline
+                if is_server {
+                    let _ = mark_stale_clients_offline(&*db).await;
+                }
             }
         }
     });
@@ -96,16 +108,16 @@ async fn upsert_self_entry(
     let ip = get_local_ip();
     let now = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
-    // Try to find existing entry
+    // Try to find existing entry by hostname (not IP, which may change with DHCP)
     let existing = server_client_registry::Entity::find()
         .filter(server_client_registry::Column::Hostname.eq(&hostname))
-        .filter(server_client_registry::Column::IpAddress.eq(&ip))
         .one(db)
         .await?;
 
     if let Some(row) = existing {
-        // Update last_seen
+        // Update last_seen and current IP
         let mut active: server_client_registry::ActiveModel = row.into();
+        active.ip_address = Set(ip);
         active.status = Set("online".to_string());
         active.last_seen = Set(now);
         active.role = Set(state.server_db_role.clone());
@@ -192,16 +204,16 @@ async fn receive_heartbeat(
     let db = conn.lock().await;
     let now = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
-    // Upsert
+    // Upsert by hostname (not IP, which may change with DHCP)
     let existing = server_client_registry::Entity::find()
         .filter(server_client_registry::Column::Hostname.eq(&req.hostname))
-        .filter(server_client_registry::Column::IpAddress.eq(&req.ip_address))
         .one(&*db)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     if let Some(row) = existing {
         let mut active: server_client_registry::ActiveModel = row.into();
+        active.ip_address = Set(req.ip_address.clone());
         active.status = Set("online".to_string());
         active.last_seen = Set(now);
         active.role = Set(role);
@@ -250,9 +262,17 @@ pub fn registry_routes() -> Router<T3AppState> {
 // ============================================================================
 
 fn get_device_conn(state: &T3AppState) -> Result<&Arc<Mutex<DatabaseConnection>>, (StatusCode, String)> {
-    state.t3_device_conn.as_ref().ok_or((
-        StatusCode::SERVICE_UNAVAILABLE,
-        "Device database not available".to_string(),
+    // Prefer t3_device_conn (SeaORM connection to active backend).
+    // Fall back to local_config_conn (local SQLite) when device conn is
+    // unavailable — e.g. when active backend is MSSQL (uses tiberius pool,
+    // not SeaORM). This keeps registry endpoints functional in all modes.
+    state
+        .t3_device_conn
+        .as_ref()
+        .or(state.local_config_conn.as_ref())
+        .ok_or((
+            StatusCode::SERVICE_UNAVAILABLE,
+            "No database connection available for registry".to_string(),
     ))
 }
 
@@ -271,16 +291,7 @@ fn model_to_entry(row: server_client_registry::Model) -> RegistryEntry {
     }
 }
 
-/// Get the local IP address of this machine by connecting a UDP socket.
+/// Re-export from network_scan to avoid duplication.
 fn get_local_ip() -> String {
-    // Connect a UDP socket to a public address (doesn't actually send data)
-    // to determine which local interface would be used.
-    if let Ok(socket) = std::net::UdpSocket::bind("0.0.0.0:0") {
-        if socket.connect("8.8.8.8:80").is_ok() {
-            if let Ok(addr) = socket.local_addr() {
-                return addr.ip().to_string();
-            }
-        }
-    }
-    "127.0.0.1".to_string()
+    super::network_scan::get_local_ip()
 }

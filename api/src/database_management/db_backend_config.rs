@@ -248,6 +248,17 @@ pub async fn save_config(
         row.password.clone()
     };
 
+    // Encrypt connection_url if provided; preserve existing if omitted
+    // Must be computed before `row.into()` which moves `row`.
+    let encrypted_url = if let Some(ref url) = req.connection_url {
+        if url.is_empty() { Some(String::new()) } else {
+            Some(encrypt_password(url).map_err(|e| DbErr::Custom(e))?)
+        }
+    } else {
+        // Keep existing connection_url if not provided in request
+        row.connection_url.clone()
+    };
+
     let mut active: db_backend_config::ActiveModel = row.into();
     active.host = Set(req.host);
     active.port = Set(req.port);
@@ -255,7 +266,7 @@ pub async fn save_config(
     active.database_name = Set(req.database_name);
     active.username = Set(req.username);
     active.password = Set(encrypted_password);
-    active.connection_url = Set(req.connection_url);
+    active.connection_url = Set(encrypted_url);
     active.extra_options = Set(req.extra_options.map(|v| v.to_string()));
     if let Some(ref role) = req.role {
         active.role = Set(Some(role.clone()));
@@ -266,7 +277,8 @@ pub async fn save_config(
     Ok(())
 }
 
-/// Switch active backend: set is_active=0 on all, then is_active=1 on target.
+/// Switch active backend: activate target first, then deactivate others.
+/// This order prevents leaving all backends deactivated if any step fails.
 pub async fn switch_backend(
     local_conn: &DatabaseConnection,
     backend_type: &str,
@@ -274,13 +286,7 @@ pub async fn switch_backend(
     let _bt = BackendType::from_str(backend_type)
         .ok_or_else(|| DbErr::Custom(format!("Unknown backend type: {}", backend_type)))?;
 
-    // Deactivate all
-    db_backend_config::Entity::update_many()
-        .col_expr(db_backend_config::Column::IsActive, Expr::value(0))
-        .exec(local_conn)
-        .await?;
-
-    // Activate target
+    // 1. Activate target first (safe: if this fails, the old active stays)
     let updated = db_backend_config::Entity::update_many()
         .col_expr(db_backend_config::Column::IsActive, Expr::value(1))
         .filter(db_backend_config::Column::BackendType.eq(backend_type))
@@ -294,6 +300,13 @@ pub async fn switch_backend(
         )));
     }
 
+    // 2. Deactivate all others
+    db_backend_config::Entity::update_many()
+        .col_expr(db_backend_config::Column::IsActive, Expr::value(0))
+        .filter(db_backend_config::Column::BackendType.ne(backend_type))
+        .exec(local_conn)
+        .await?;
+
     Ok(())
 }
 
@@ -302,7 +315,15 @@ pub async fn switch_backend(
 // ============================================================================
 
 /// Build a SeaORM connection URL for PostgreSQL or MySQL backends.
+/// If `connection_url` is set, it takes precedence over individual fields.
 pub fn build_seaorm_url(config: &BackendConfig) -> Result<String, String> {
+    // If user provided a connection URL, use it directly (overrides individual fields)
+    if let Some(ref url) = config.connection_url {
+        if !url.is_empty() {
+            return Ok(url.clone());
+        }
+    }
+
     match config.backend_type {
         BackendType::Postgres => {
             let host = config.host.as_deref().ok_or("PostgreSQL host required")?;
@@ -311,8 +332,8 @@ pub fn build_seaorm_url(config: &BackendConfig) -> Result<String, String> {
                 .database_name
                 .as_deref()
                 .ok_or("PostgreSQL database name required")?;
-            let username = config.username.as_deref().unwrap_or("postgres");
-            let password = config.password.as_deref().unwrap_or("");
+            let username = url_encode(config.username.as_deref().unwrap_or("postgres"));
+            let password = url_encode(config.password.as_deref().unwrap_or(""));
             Ok(format!(
                 "postgres://{}:{}@{}:{}/{}",
                 username, password, host, port, db
@@ -325,8 +346,8 @@ pub fn build_seaorm_url(config: &BackendConfig) -> Result<String, String> {
                 .database_name
                 .as_deref()
                 .ok_or("MySQL database name required")?;
-            let username = config.username.as_deref().unwrap_or("root");
-            let password = config.password.as_deref().unwrap_or("");
+            let username = url_encode(config.username.as_deref().unwrap_or("root"));
+            let password = url_encode(config.password.as_deref().unwrap_or(""));
             Ok(format!(
                 "mysql://{}:{}@{}:{}/{}",
                 username, password, host, port, db
@@ -345,9 +366,18 @@ pub fn build_seaorm_url(config: &BackendConfig) -> Result<String, String> {
 }
 
 /// Build a tiberius Config for MSSQL backend.
+/// If `connection_url` is set, it is parsed as an ADO.NET connection string.
 pub fn build_mssql_config(
     config: &BackendConfig,
 ) -> Result<tiberius::Config, String> {
+    // If the user supplied a raw connection URL / ADO.NET string, use it directly.
+    if let Some(ref url) = config.connection_url {
+        if !url.is_empty() {
+            return tiberius::Config::from_ado_string(url)
+                .map_err(|e| format!("Failed to parse MSSQL connection string: {e}"));
+        }
+    }
+
     let host = config.host.as_deref().ok_or("MSSQL host required")?;
     let port = config.port.unwrap_or(1433) as u16;
 
@@ -377,20 +407,24 @@ pub fn build_mssql_config(
     }
 
     // Trust certificate option from extra_options
+    // extra_options may be a JSON object or a JSON string containing an object
     if let Some(ref opts) = config.extra_options {
-        if let Some(trust) = opts.get("trust_cert").and_then(|v| v.as_bool()) {
-            if trust {
-                tib_config.trust_cert();
+        let obj = if opts.is_string() {
+            opts.as_str().and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
+        } else {
+            Some(opts.clone())
+        };
+        if let Some(ref obj) = obj {
+            if let Some(trust) = obj.get("trust_cert").and_then(|v| v.as_bool()) {
+                if trust {
+                    tib_config.trust_cert();
+                }
             }
         }
     }
 
     Ok(tib_config)
 }
-
-// ============================================================================
-// Validation
-// ============================================================================
 
 // ============================================================================
 // Schema Initialisation for Server Backends
@@ -502,12 +536,48 @@ fn truncate_stmt(s: &str, max: usize) -> String {
     }
 }
 
+/// Percent-encode a string for use in a database connection URL (userinfo component).
+/// Encodes characters that are reserved or meaningful in URLs: @ : / ? # [ ] %
+fn url_encode(s: &str) -> String {
+    let mut encoded = String::with_capacity(s.len());
+    for ch in s.chars() {
+        match ch {
+            '%' => encoded.push_str("%25"),
+            '@' => encoded.push_str("%40"),
+            ':' => encoded.push_str("%3A"),
+            '/' => encoded.push_str("%2F"),
+            '?' => encoded.push_str("%3F"),
+            '#' => encoded.push_str("%23"),
+            '[' => encoded.push_str("%5B"),
+            ']' => encoded.push_str("%5D"),
+            ' ' => encoded.push_str("%20"),
+            c if c.is_ascii() => encoded.push(c),
+            c => {
+                // Percent-encode each byte of the UTF-8 representation
+                let mut buf = [0u8; 4];
+                for b in c.encode_utf8(&mut buf).bytes() {
+                    use std::fmt::Write;
+                    let _ = write!(encoded, "%{:02X}", b);
+                }
+            }
+        }
+    }
+    encoded
+}
+
 // ============================================================================
 // Validation
 // ============================================================================
 
 /// Validate that a backend config has all required fields.
+/// If `connection_url` is set, individual host/database fields are not required.
 pub fn validate_config(config: &BackendConfig) -> Result<(), String> {
+    // connection_url overrides individual fields — skip field checks if set
+    let has_url = config.connection_url.as_ref().map_or(false, |u| !u.is_empty());
+    if has_url {
+        return Ok(());
+    }
+
     match config.backend_type {
         BackendType::Sqlite => Ok(()),
         BackendType::Mssql => {
@@ -546,7 +616,29 @@ pub fn validate_config(config: &BackendConfig) -> Result<(), String> {
 
 fn model_to_config(row: db_backend_config::Model) -> BackendConfig {
     let decrypted_pw = row.password.as_ref().and_then(|pw| {
-        decrypt_password(pw).ok()
+        match decrypt_password(pw) {
+            Ok(p) => Some(p),
+            Err(e) => {
+                tracing::warn!(
+                    "Failed to decrypt password for backend '{}': {}. \
+                     Password may need to be re-entered (hostname change?).",
+                    row.backend_type, e
+                );
+                None
+            }
+        }
+    });
+
+    // Decrypt connection_url (may be plaintext for backward compat)
+    let decrypted_url = row.connection_url.as_ref().and_then(|url| {
+        if url.is_empty() {
+            return Some(String::new());
+        }
+        // Try decryption first; fall back to raw value (pre-encryption data)
+        match decrypt_password(url) {
+            Ok(plain) => Some(plain),
+            Err(_) => Some(url.clone()), // backward compat: stored before encryption was added
+        }
     });
 
     BackendConfig {
@@ -558,7 +650,7 @@ fn model_to_config(row: db_backend_config::Model) -> BackendConfig {
         database_name: row.database_name,
         username: row.username,
         password: decrypted_pw,
-        connection_url: row.connection_url,
+        connection_url: decrypted_url,
         extra_options: row
             .extra_options
             .as_ref()
@@ -568,6 +660,17 @@ fn model_to_config(row: db_backend_config::Model) -> BackendConfig {
 }
 
 fn model_to_response(row: db_backend_config::Model) -> BackendConfigResponse {
+    // Decrypt connection_url for masking (may be plaintext for backward compat)
+    let decrypted_url = row.connection_url.as_ref().and_then(|url| {
+        if url.is_empty() {
+            return Some(String::new());
+        }
+        match decrypt_password(url) {
+            Ok(plain) => Some(plain),
+            Err(_) => Some(url.clone()), // backward compat
+        }
+    });
+
     BackendConfigResponse {
         backend_type: row.backend_type.clone(),
         is_active: row.is_active != 0,
@@ -576,14 +679,63 @@ fn model_to_response(row: db_backend_config::Model) -> BackendConfigResponse {
         instance: row.instance.clone(),
         database_name: row.database_name.clone(),
         username: row.username.clone(),
-        password_set: row.password.is_some(),
-        connection_url: row.connection_url.clone(),
+        password_set: row.password.as_ref().map_or(false, |p| !p.is_empty()),
+        connection_url: mask_url_password(decrypted_url.as_deref()),
         extra_options: row
             .extra_options
             .as_ref()
             .and_then(|s| serde_json::from_str(s).ok()),
         role: row.role.clone(),
     }
+}
+
+/// Strip password from a database connection URL for safe API responses.
+/// Handles formats like `postgres://user:pass@host/db` and ADO.NET strings
+/// like `Server=...;Password=secret;...`.
+fn mask_url_password(url: Option<&str>) -> Option<String> {
+    let url = url?;
+    if url.is_empty() {
+        return Some(url.to_string());
+    }
+    // Standard URL format: scheme://user:pass@host — use rfind to handle @ inside password
+    if let Some(at_pos) = url.rfind('@') {
+        if let Some(scheme_end) = url.find("://") {
+            let userinfo_start = scheme_end + 3;
+            if userinfo_start < at_pos {
+                let userinfo = &url[userinfo_start..at_pos];
+                if let Some(colon) = userinfo.find(':') {
+                    let user = &userinfo[..colon];
+                    return Some(format!("{}://{}:***@{}", &url[..scheme_end], user, &url[at_pos + 1..]));
+                }
+            }
+        }
+    }
+    // ADO.NET format: mask Password=...; — iterate by char index for UTF-8 safety
+    let lower = url.to_lowercase();
+    if lower.contains("password=") {
+        let mut result = String::with_capacity(url.len());
+        let mut pos = 0;
+        while pos < url.len() {
+            if lower[pos..].starts_with("password=") {
+                let key_end = pos + "password=".len();
+                result.push_str(&url[pos..key_end]);
+                result.push_str("***");
+                // Skip until ';' or end
+                if let Some(semi) = url[key_end..].find(';') {
+                    pos = key_end + semi;
+                } else {
+                    pos = url.len();
+                }
+            } else {
+                // Advance by one character (not one byte)
+                let ch = url[pos..].chars().next().unwrap();
+                result.push(ch);
+                pos += ch.len_utf8();
+            }
+        }
+        return Some(result);
+    }
+    Some(url.to_string())
 }
 
 // ============================================================================
