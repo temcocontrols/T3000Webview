@@ -17,4 +17,5 @@ pub use super::data_sync_metadata::Entity as DataSyncMetadata;
 pub use super::db_backend_config::Entity as DbBackendConfig;
 
 // Server database
+pub use super::server_client_registry::Entity as ServerClientRegistry;
 pub use super::system_logs::Entity as SystemLogs;

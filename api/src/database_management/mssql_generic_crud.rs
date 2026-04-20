@@ -32,11 +32,12 @@ const VALID_TABLES: &[&str] = &[
     "TRENDLOGS", "TRENDLOG_INPUTS", "TRENDLOG_DATA",
     "TRENDLOG_DATA_DETAIL", "TRENDLOG_DATA_OLD", "TRENDLOG_VIEWS",
     // Management tables
-    "DATABASE_FILES", "DATABASE_PARTITION_CONFIG",
+    "DATABASE_FILES", "DATABASE_PARTITION_CONFIG", "DATABASE_PARTITIONS",
     "DATA_SYNC_METADATA", "TRENDLOG_DATA_SYNC_METADATA",
-    "SERVER_CLIENT_REGISTRY", "APPLICATION_SETTINGS",
+    "SERVER_CLIENT_REGISTRY", "APPLICATION_CONFIG", "APPLICATION_CONFIG_HISTORY",
+    "SYSTEM_LOGS",
     // Data tables
-    "MONITORDATA", "MSV_DATA", "ALL_NODE",
+    "MONITORDATA", "MSV_DATA", "TSTAT_SCHEDULES", "VARIABLE_UNITS",
 ];
 
 /// Validate that a table name is in the whitelist.
@@ -560,7 +561,7 @@ fn detect_pk_column_simple(table: &str) -> &str {
     match table {
         "DEVICES" => "SerialNumber",
         "SERVER_CLIENT_REGISTRY" => "id",
-        "APPLICATION_SETTINGS" => "id",
+        "APPLICATION_CONFIG" => "id",
         "DATABASE_FILES" => "id",
         "DATABASE_PARTITION_CONFIG" => "id",
         "DATA_SYNC_METADATA" => "id",
