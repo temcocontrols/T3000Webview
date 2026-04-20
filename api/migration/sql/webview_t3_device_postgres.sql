@@ -1,5 +1,5 @@
 -- ==========================================================================
--- T3000 WebView Device Database Schema — PostgreSQL Dialect
+-- T3000 WebView Device Database Schema �?PostgreSQL Dialect
 -- Translated from webview_t3_device_schema.sql (SQLite)
 -- Date: 2026-04-15
 -- Purpose: Create 46 device tables on a centralized PostgreSQL server.
@@ -745,7 +745,7 @@ CREATE TABLE IF NOT EXISTS TRENDLOG_DATA_DETAIL (
 -- DATABASE MANAGEMENT TABLES
 -- =================================================================
 
-CREATE TABLE IF NOT EXISTS database_partition_config (
+CREATE TABLE IF NOT EXISTS DATABASE_PARTITION_CONFIG (
     id SERIAL PRIMARY KEY,
     strategy TEXT NOT NULL DEFAULT 'monthly' CHECK (strategy IN ('5minutes', 'daily', 'weekly', 'monthly', 'quarterly', 'custom', 'custom-months')),
     custom_days INTEGER CHECK (custom_days IS NULL OR (custom_days >= 1 AND custom_days <= 365)),
@@ -758,7 +758,7 @@ CREATE TABLE IF NOT EXISTS database_partition_config (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS database_files (
+CREATE TABLE IF NOT EXISTS DATABASE_FILES (
     id SERIAL PRIMARY KEY,
     file_name TEXT NOT NULL UNIQUE,
     file_path TEXT NOT NULL,
@@ -801,7 +801,7 @@ CREATE TABLE IF NOT EXISTS APPLICATION_CONFIG_HISTORY (
     changed_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS database_partitions (
+CREATE TABLE IF NOT EXISTS DATABASE_PARTITIONS (
     id SERIAL PRIMARY KEY,
     partition_name TEXT NOT NULL UNIQUE,
     partition_identifier TEXT NOT NULL,
@@ -927,15 +927,15 @@ CREATE INDEX IF NOT EXISTS IDX_REMOTE_TSTAT_DB_SERIAL ON REMOTE_TSTAT_DB(SerialN
 CREATE INDEX IF NOT EXISTS IDX_REMOTE_TSTAT_DB_ID ON REMOTE_TSTAT_DB(Remote_Tstat_ID);
 
 -- Database management indexes
-CREATE INDEX IF NOT EXISTS idx_database_partition_config_strategy ON database_partition_config(strategy);
-CREATE INDEX IF NOT EXISTS idx_database_partition_config_active ON database_partition_config(is_active);
-CREATE INDEX IF NOT EXISTS idx_database_partition_config_created ON database_partition_config(created_at);
-CREATE INDEX IF NOT EXISTS idx_database_files_name ON database_files(file_name);
-CREATE INDEX IF NOT EXISTS idx_database_files_active ON database_files(is_active);
-CREATE INDEX IF NOT EXISTS idx_database_files_archived ON database_files(is_archived);
-CREATE INDEX IF NOT EXISTS idx_database_files_partition ON database_files(partition_identifier);
-CREATE INDEX IF NOT EXISTS idx_database_files_created ON database_files(created_at);
-CREATE INDEX IF NOT EXISTS idx_database_files_accessed ON database_files(last_accessed_at);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITION_CONFIG_strategy ON DATABASE_PARTITION_CONFIG(strategy);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITION_CONFIG_active ON DATABASE_PARTITION_CONFIG(is_active);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITION_CONFIG_created ON DATABASE_PARTITION_CONFIG(created_at);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_FILES_name ON DATABASE_FILES(file_name);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_FILES_active ON DATABASE_FILES(is_active);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_FILES_archived ON DATABASE_FILES(is_archived);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_FILES_partition ON DATABASE_FILES(partition_identifier);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_FILES_created ON DATABASE_FILES(created_at);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_FILES_accessed ON DATABASE_FILES(last_accessed_at);
 CREATE INDEX IF NOT EXISTS idx_application_config_key ON APPLICATION_CONFIG(config_key);
 CREATE INDEX IF NOT EXISTS idx_application_config_type ON APPLICATION_CONFIG(config_type);
 CREATE INDEX IF NOT EXISTS idx_application_config_system ON APPLICATION_CONFIG(is_system);
@@ -945,11 +945,11 @@ CREATE INDEX IF NOT EXISTS idx_application_config_size ON APPLICATION_CONFIG(siz
 CREATE INDEX IF NOT EXISTS idx_application_config_history_key ON APPLICATION_CONFIG_HISTORY(config_key);
 CREATE INDEX IF NOT EXISTS idx_application_config_history_changed_at ON APPLICATION_CONFIG_HISTORY(changed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_application_config_history_changed_by ON APPLICATION_CONFIG_HISTORY(changed_by);
-CREATE INDEX IF NOT EXISTS idx_database_partitions_name ON database_partitions(partition_name);
-CREATE INDEX IF NOT EXISTS idx_database_partitions_identifier ON database_partitions(partition_identifier);
-CREATE INDEX IF NOT EXISTS idx_database_partitions_active ON database_partitions(is_active);
-CREATE INDEX IF NOT EXISTS idx_database_partitions_current ON database_partitions(is_current);
-CREATE INDEX IF NOT EXISTS idx_database_partitions_dates ON database_partitions(start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITIONS_name ON DATABASE_PARTITIONS(partition_name);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITIONS_identifier ON DATABASE_PARTITIONS(partition_identifier);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITIONS_active ON DATABASE_PARTITIONS(is_active);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITIONS_current ON DATABASE_PARTITIONS(is_current);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITIONS_dates ON DATABASE_PARTITIONS(start_date, end_date);
 CREATE INDEX IF NOT EXISTS idx_data_sync_metadata_lookup ON DATA_SYNC_METADATA(serial_number, data_type, sync_time DESC);
 CREATE INDEX IF NOT EXISTS idx_data_sync_metadata_created ON DATA_SYNC_METADATA(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_data_sync_metadata_method ON DATA_SYNC_METADATA(sync_method, created_at DESC);
@@ -958,7 +958,7 @@ CREATE INDEX IF NOT EXISTS idx_data_sync_metadata_method ON DATA_SYNC_METADATA(s
 -- SEED DATA
 -- =================================================================
 
-INSERT INTO database_partition_config (id, strategy, retention_value, retention_unit, auto_cleanup_enabled)
+INSERT INTO DATABASE_PARTITION_CONFIG (id, strategy, retention_value, retention_unit, auto_cleanup_enabled)
 VALUES (1, 'monthly', 30, 'days', TRUE)
 ON CONFLICT DO NOTHING;
 
@@ -1001,6 +1001,42 @@ CREATE TABLE IF NOT EXISTS SYSTEM_LOGS (
     details         TEXT DEFAULT '',
     created_at      TIMESTAMP DEFAULT NOW()
 );
+
+-- ============================================================================
+-- DB_BACKEND_CONFIG - Centralized Database Backend Configuration
+-- Stores connection settings for each supported database backend.
+-- Each backend type is a row. Only one row has is_active=1 at a time.
+-- This table ALWAYS lives in local SQLite (never on remote DB).
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS DB_BACKEND_CONFIG (
+    id            SERIAL PRIMARY KEY,
+    backend_type  VARCHAR(20) NOT NULL UNIQUE,
+    is_active     INTEGER NOT NULL DEFAULT 0,
+    host          TEXT,
+    port          INTEGER,
+    instance      TEXT,
+    database_name TEXT,
+    username      TEXT,
+    password      TEXT,
+    connection_url TEXT,
+    extra_options TEXT,
+    role          TEXT DEFAULT 'server',
+    updated_at    TIMESTAMP DEFAULT NOW()
+);
+
+-- Seed default rows (one per supported backend)
+INSERT INTO DB_BACKEND_CONFIG (backend_type, is_active, connection_url)
+    VALUES ('sqlite', 1, 'sqlite://Database/webview_t3_device.db')
+    ON CONFLICT DO NOTHING;
+INSERT INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
+    VALUES ('mssql', 0, 1433)
+    ON CONFLICT DO NOTHING;
+INSERT INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
+    VALUES ('postgres', 0, 5432)
+    ON CONFLICT DO NOTHING;
+INSERT INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
+    VALUES ('mysql', 0, 3306)
+    ON CONFLICT DO NOTHING;
 
 -- ============================================================================
 -- SERVER_CLIENT_REGISTRY - Tracks all PCs participating in centralized DB mode

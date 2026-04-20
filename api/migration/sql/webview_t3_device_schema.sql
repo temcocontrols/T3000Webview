@@ -1032,7 +1032,7 @@ CREATE INDEX IF NOT EXISTS IDX_REMOTE_TSTAT_DB_ID ON REMOTE_TSTAT_DB(Remote_Tsta
 
 -- Database Partition Configuration Table
 -- Stores partitioning strategy settings and retention policies
-CREATE TABLE IF NOT EXISTS database_partition_config (
+CREATE TABLE IF NOT EXISTS DATABASE_PARTITION_CONFIG (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     strategy TEXT NOT NULL DEFAULT 'monthly' CHECK (strategy IN ('5minutes', 'daily', 'weekly', 'monthly', 'quarterly', 'custom', 'custom-months')),
     custom_days INTEGER CHECK (custom_days IS NULL OR (custom_days >= 1 AND custom_days <= 365)),
@@ -1047,7 +1047,7 @@ CREATE TABLE IF NOT EXISTS database_partition_config (
 
 -- Database Files Table
 -- Tracks database file metadata and statistics
-CREATE TABLE IF NOT EXISTS database_files (
+CREATE TABLE IF NOT EXISTS DATABASE_FILES (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     file_name TEXT NOT NULL UNIQUE,
     file_path TEXT NOT NULL,
@@ -1108,7 +1108,7 @@ CREATE TABLE IF NOT EXISTS APPLICATION_CONFIG_HISTORY (
 
 -- Database Partitions Table
 -- Tracks active database partitions and their status
-CREATE TABLE IF NOT EXISTS database_partitions (
+CREATE TABLE IF NOT EXISTS DATABASE_PARTITIONS (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     partition_name TEXT NOT NULL UNIQUE,
     partition_identifier TEXT NOT NULL,
@@ -1125,18 +1125,18 @@ CREATE TABLE IF NOT EXISTS database_partitions (
 
 -- DATABASE MANAGEMENT INDEXES (Performance Optimization)
 
--- Indexes for database_partition_config
-CREATE INDEX IF NOT EXISTS idx_database_partition_config_strategy ON database_partition_config(strategy);
-CREATE INDEX IF NOT EXISTS idx_database_partition_config_active ON database_partition_config(is_active);
-CREATE INDEX IF NOT EXISTS idx_database_partition_config_created ON database_partition_config(created_at);
+-- Indexes for DATABASE_PARTITION_CONFIG
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITION_CONFIG_strategy ON DATABASE_PARTITION_CONFIG(strategy);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITION_CONFIG_active ON DATABASE_PARTITION_CONFIG(is_active);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITION_CONFIG_created ON DATABASE_PARTITION_CONFIG(created_at);
 
--- Indexes for database_files
-CREATE INDEX IF NOT EXISTS idx_database_files_name ON database_files(file_name);
-CREATE INDEX IF NOT EXISTS idx_database_files_active ON database_files(is_active);
-CREATE INDEX IF NOT EXISTS idx_database_files_archived ON database_files(is_archived);
-CREATE INDEX IF NOT EXISTS idx_database_files_partition ON database_files(partition_identifier);
-CREATE INDEX IF NOT EXISTS idx_database_files_created ON database_files(created_at);
-CREATE INDEX IF NOT EXISTS idx_database_files_accessed ON database_files(last_accessed_at);
+-- Indexes for DATABASE_FILES
+CREATE INDEX IF NOT EXISTS idx_DATABASE_FILES_name ON DATABASE_FILES(file_name);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_FILES_active ON DATABASE_FILES(is_active);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_FILES_archived ON DATABASE_FILES(is_archived);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_FILES_partition ON DATABASE_FILES(partition_identifier);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_FILES_created ON DATABASE_FILES(created_at);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_FILES_accessed ON DATABASE_FILES(last_accessed_at);
 
 -- Indexes for APPLICATION_CONFIG
 CREATE INDEX IF NOT EXISTS idx_application_config_key ON APPLICATION_CONFIG(config_key);
@@ -1151,17 +1151,17 @@ CREATE INDEX IF NOT EXISTS idx_application_config_history_key ON APPLICATION_CON
 CREATE INDEX IF NOT EXISTS idx_application_config_history_changed_at ON APPLICATION_CONFIG_HISTORY(changed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_application_config_history_changed_by ON APPLICATION_CONFIG_HISTORY(changed_by);
 
--- Indexes for database_partitions
-CREATE INDEX IF NOT EXISTS idx_database_partitions_name ON database_partitions(partition_name);
-CREATE INDEX IF NOT EXISTS idx_database_partitions_identifier ON database_partitions(partition_identifier);
-CREATE INDEX IF NOT EXISTS idx_database_partitions_active ON database_partitions(is_active);
-CREATE INDEX IF NOT EXISTS idx_database_partitions_current ON database_partitions(is_current);
-CREATE INDEX IF NOT EXISTS idx_database_partitions_dates ON database_partitions(start_date, end_date);
+-- Indexes for DATABASE_PARTITIONS
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITIONS_name ON DATABASE_PARTITIONS(partition_name);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITIONS_identifier ON DATABASE_PARTITIONS(partition_identifier);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITIONS_active ON DATABASE_PARTITIONS(is_active);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITIONS_current ON DATABASE_PARTITIONS(is_current);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITIONS_dates ON DATABASE_PARTITIONS(start_date, end_date);
 
 -- DATABASE MANAGEMENT DEFAULT DATA
 
 -- Insert default partition configuration
-INSERT OR IGNORE INTO database_partition_config (
+INSERT OR IGNORE INTO DATABASE_PARTITION_CONFIG (
     id, strategy, retention_value, retention_unit, auto_cleanup_enabled
 ) VALUES (
     1, 'monthly', 30, 'days', 1
@@ -1187,31 +1187,31 @@ INSERT OR IGNORE INTO APPLICATION_CONFIG (config_key, config_value, config_type,
 
 -- DATABASE MANAGEMENT TRIGGERS (Automatic Updates)
 
--- Trigger to update updated_at timestamp for database_partition_config
-CREATE TRIGGER IF NOT EXISTS trigger_database_partition_config_updated_at
-AFTER UPDATE ON database_partition_config
+-- Trigger to update updated_at timestamp for DATABASE_PARTITION_CONFIG
+CREATE TRIGGER IF NOT EXISTS trigger_DATABASE_PARTITION_CONFIG_updated_at
+AFTER UPDATE ON DATABASE_PARTITION_CONFIG
 FOR EACH ROW
 BEGIN
-    UPDATE database_partition_config SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+    UPDATE DATABASE_PARTITION_CONFIG SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
--- Trigger to update updated_at timestamp for database_files
-CREATE TRIGGER IF NOT EXISTS trigger_database_files_updated_at
-AFTER UPDATE ON database_files
+-- Trigger to update updated_at timestamp for DATABASE_FILES
+CREATE TRIGGER IF NOT EXISTS trigger_DATABASE_FILES_updated_at
+AFTER UPDATE ON DATABASE_FILES
 FOR EACH ROW
 BEGIN
-    UPDATE database_files SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+    UPDATE DATABASE_FILES SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
 -- NOTE: Triggers removed for APPLICATION_CONFIG to prevent recursion issues
 -- Application code should handle updated_at and size_bytes directly during INSERT/UPDATE
 
--- Trigger to update updated_at timestamp for database_partitions
-CREATE TRIGGER IF NOT EXISTS trigger_database_partitions_updated_at
-AFTER UPDATE ON database_partitions
+-- Trigger to update updated_at timestamp for DATABASE_PARTITIONS
+CREATE TRIGGER IF NOT EXISTS trigger_DATABASE_PARTITIONS_updated_at
+AFTER UPDATE ON DATABASE_PARTITIONS
 FOR EACH ROW
 BEGIN
-    UPDATE database_partitions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+    UPDATE DATABASE_PARTITIONS SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
 -- ============================================================================

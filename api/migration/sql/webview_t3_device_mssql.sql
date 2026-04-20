@@ -1,5 +1,5 @@
 -- ==========================================================================
--- T3000 WebView Device Database Schema — Microsoft SQL Server (T-SQL)
+-- T3000 WebView Device Database Schema �?Microsoft SQL Server (T-SQL)
 -- Translated from webview_t3_device_schema.sql (SQLite)
 -- Date: 2026-04-15
 -- Purpose: Create 46 device tables on a centralized SQL Server instance.
@@ -758,8 +758,8 @@ CREATE TABLE TRENDLOG_DATA_DETAIL (
 -- DATABASE MANAGEMENT TABLES
 -- =================================================================
 
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'database_partition_config')
-CREATE TABLE database_partition_config (
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'DATABASE_PARTITION_CONFIG')
+CREATE TABLE DATABASE_PARTITION_CONFIG (
     id INT IDENTITY(1,1) PRIMARY KEY,
     strategy NVARCHAR(32) NOT NULL DEFAULT 'monthly',
     custom_days INT,
@@ -772,8 +772,8 @@ CREATE TABLE database_partition_config (
     updated_at DATETIME2 NOT NULL DEFAULT GETUTCDATE()
 );
 
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'database_files')
-CREATE TABLE database_files (
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'DATABASE_FILES')
+CREATE TABLE DATABASE_FILES (
     id INT IDENTITY(1,1) PRIMARY KEY,
     file_name NVARCHAR(255) NOT NULL UNIQUE,
     file_path NVARCHAR(MAX) NOT NULL,
@@ -818,8 +818,8 @@ CREATE TABLE APPLICATION_CONFIG_HISTORY (
     changed_at DATETIME2 NOT NULL DEFAULT GETUTCDATE()
 );
 
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'database_partitions')
-CREATE TABLE database_partitions (
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'DATABASE_PARTITIONS')
+CREATE TABLE DATABASE_PARTITIONS (
     id INT IDENTITY(1,1) PRIMARY KEY,
     partition_name NVARCHAR(255) NOT NULL UNIQUE,
     partition_identifier NVARCHAR(255) NOT NULL,
@@ -1031,22 +1031,22 @@ IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IDX_REMOTE_TSTAT_DB_ID')
     CREATE INDEX IDX_REMOTE_TSTAT_DB_ID ON REMOTE_TSTAT_DB(Remote_Tstat_ID);
 
 -- Database management indexes
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_database_partition_config_strategy')
-    CREATE INDEX idx_database_partition_config_strategy ON database_partition_config(strategy);
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_database_partition_config_active')
-    CREATE INDEX idx_database_partition_config_active ON database_partition_config(is_active);
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_database_partition_config_created')
-    CREATE INDEX idx_database_partition_config_created ON database_partition_config(created_at);
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_database_files_name')
-    CREATE INDEX idx_database_files_name ON database_files(file_name);
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_database_files_active')
-    CREATE INDEX idx_database_files_active ON database_files(is_active);
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_database_files_archived')
-    CREATE INDEX idx_database_files_archived ON database_files(is_archived);
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_database_files_created')
-    CREATE INDEX idx_database_files_created ON database_files(created_at);
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_database_files_accessed')
-    CREATE INDEX idx_database_files_accessed ON database_files(last_accessed_at);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_DATABASE_PARTITION_CONFIG_strategy')
+    CREATE INDEX idx_DATABASE_PARTITION_CONFIG_strategy ON DATABASE_PARTITION_CONFIG(strategy);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_DATABASE_PARTITION_CONFIG_active')
+    CREATE INDEX idx_DATABASE_PARTITION_CONFIG_active ON DATABASE_PARTITION_CONFIG(is_active);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_DATABASE_PARTITION_CONFIG_created')
+    CREATE INDEX idx_DATABASE_PARTITION_CONFIG_created ON DATABASE_PARTITION_CONFIG(created_at);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_DATABASE_FILES_name')
+    CREATE INDEX idx_DATABASE_FILES_name ON DATABASE_FILES(file_name);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_DATABASE_FILES_active')
+    CREATE INDEX idx_DATABASE_FILES_active ON DATABASE_FILES(is_active);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_DATABASE_FILES_archived')
+    CREATE INDEX idx_DATABASE_FILES_archived ON DATABASE_FILES(is_archived);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_DATABASE_FILES_created')
+    CREATE INDEX idx_DATABASE_FILES_created ON DATABASE_FILES(created_at);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_DATABASE_FILES_accessed')
+    CREATE INDEX idx_DATABASE_FILES_accessed ON DATABASE_FILES(last_accessed_at);
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_application_config_key')
     CREATE INDEX idx_application_config_key ON APPLICATION_CONFIG(config_key);
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_application_config_type')
@@ -1065,16 +1065,16 @@ IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_application_config_hi
     CREATE INDEX idx_application_config_history_changed_at ON APPLICATION_CONFIG_HISTORY(changed_at DESC);
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_application_config_history_changed_by')
     CREATE INDEX idx_application_config_history_changed_by ON APPLICATION_CONFIG_HISTORY(changed_by);
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_database_partitions_name')
-    CREATE INDEX idx_database_partitions_name ON database_partitions(partition_name);
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_database_partitions_identifier')
-    CREATE INDEX idx_database_partitions_identifier ON database_partitions(partition_identifier);
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_database_partitions_active')
-    CREATE INDEX idx_database_partitions_active ON database_partitions(is_active);
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_database_partitions_current')
-    CREATE INDEX idx_database_partitions_current ON database_partitions(is_current);
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_database_partitions_dates')
-    CREATE INDEX idx_database_partitions_dates ON database_partitions(start_date, end_date);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_DATABASE_PARTITIONS_name')
+    CREATE INDEX idx_DATABASE_PARTITIONS_name ON DATABASE_PARTITIONS(partition_name);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_DATABASE_PARTITIONS_identifier')
+    CREATE INDEX idx_DATABASE_PARTITIONS_identifier ON DATABASE_PARTITIONS(partition_identifier);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_DATABASE_PARTITIONS_active')
+    CREATE INDEX idx_DATABASE_PARTITIONS_active ON DATABASE_PARTITIONS(is_active);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_DATABASE_PARTITIONS_current')
+    CREATE INDEX idx_DATABASE_PARTITIONS_current ON DATABASE_PARTITIONS(is_current);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_DATABASE_PARTITIONS_dates')
+    CREATE INDEX idx_DATABASE_PARTITIONS_dates ON DATABASE_PARTITIONS(start_date, end_date);
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_data_sync_metadata_lookup')
     CREATE INDEX idx_data_sync_metadata_lookup ON DATA_SYNC_METADATA(serial_number, data_type, sync_time DESC);
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_data_sync_metadata_created')
@@ -1086,8 +1086,8 @@ IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_data_sync_metadata_me
 -- SEED DATA
 -- =================================================================
 
-IF NOT EXISTS (SELECT 1 FROM database_partition_config WHERE id = 1)
-INSERT INTO database_partition_config (strategy, retention_value, retention_unit, auto_cleanup_enabled)
+IF NOT EXISTS (SELECT 1 FROM DATABASE_PARTITION_CONFIG WHERE id = 1)
+INSERT INTO DATABASE_PARTITION_CONFIG (strategy, retention_value, retention_unit, auto_cleanup_enabled)
 VALUES ('monthly', 30, 'days', 1);
 
 -- Seed APPLICATION_CONFIG rows (skip if key already exists)
@@ -1143,6 +1143,43 @@ CREATE TABLE SYSTEM_LOGS (
     details         NVARCHAR(MAX) DEFAULT '',
     created_at      DATETIME2 DEFAULT GETDATE()
 );
+
+-- ============================================================================
+-- DB_BACKEND_CONFIG - Centralized Database Backend Configuration
+-- Stores connection settings for each supported database backend.
+-- Each backend type is a row. Only one row has is_active=1 at a time.
+-- This table ALWAYS lives in local SQLite (never on remote DB).
+-- ============================================================================
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'DB_BACKEND_CONFIG')
+CREATE TABLE DB_BACKEND_CONFIG (
+    id            INT IDENTITY(1,1) PRIMARY KEY,
+    backend_type  NVARCHAR(20) NOT NULL UNIQUE,
+    is_active     INT NOT NULL DEFAULT 0,
+    host          NVARCHAR(255),
+    port          INT,
+    instance      NVARCHAR(255),
+    database_name NVARCHAR(255),
+    username      NVARCHAR(255),
+    password      NVARCHAR(255),
+    connection_url NVARCHAR(1024),
+    extra_options NVARCHAR(MAX),
+    role          NVARCHAR(20) DEFAULT 'server',
+    updated_at    DATETIME2 DEFAULT GETDATE()
+);
+
+-- Seed default rows (one per supported backend)
+IF NOT EXISTS (SELECT 1 FROM DB_BACKEND_CONFIG WHERE backend_type = 'sqlite')
+INSERT INTO DB_BACKEND_CONFIG (backend_type, is_active, connection_url)
+    VALUES ('sqlite', 1, 'sqlite://Database/webview_t3_device.db');
+IF NOT EXISTS (SELECT 1 FROM DB_BACKEND_CONFIG WHERE backend_type = 'mssql')
+INSERT INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
+    VALUES ('mssql', 0, 1433);
+IF NOT EXISTS (SELECT 1 FROM DB_BACKEND_CONFIG WHERE backend_type = 'postgres')
+INSERT INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
+    VALUES ('postgres', 0, 5432);
+IF NOT EXISTS (SELECT 1 FROM DB_BACKEND_CONFIG WHERE backend_type = 'mysql')
+INSERT INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
+    VALUES ('mysql', 0, 3306);
 
 -- ============================================================================
 -- SERVER_CLIENT_REGISTRY - Tracks all PCs participating in centralized DB mode
