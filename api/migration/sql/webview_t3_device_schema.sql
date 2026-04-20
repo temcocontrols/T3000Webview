@@ -1366,7 +1366,7 @@ INSERT OR IGNORE INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
 
 -- ============================================================================
 -- SERVER_CLIENT_REGISTRY - Tracks all PCs participating in centralized DB mode
--- Server writes its own entry; clients send heartbeats to the server.
+-- Server writes its own entry, clients send heartbeats to the server.
 -- This table lives in the SERVER's database (not on client local DBs).
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS SERVER_CLIENT_REGISTRY (

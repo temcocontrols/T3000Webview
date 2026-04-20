@@ -1183,7 +1183,7 @@ INSERT INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
 
 -- ============================================================================
 -- SERVER_CLIENT_REGISTRY - Tracks all PCs participating in centralized DB mode
--- Server writes its own entry; clients send heartbeats to the server.
+-- Server writes its own entry, clients send heartbeats to the server.
 -- ============================================================================
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SERVER_CLIENT_REGISTRY')
 CREATE TABLE SERVER_CLIENT_REGISTRY (

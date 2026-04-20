@@ -1033,7 +1033,7 @@ INSERT IGNORE INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
 
 -- ============================================================================
 -- SERVER_CLIENT_REGISTRY - Tracks all PCs participating in centralized DB mode
--- Server writes its own entry; clients send heartbeats to the server.
+-- Server writes its own entry, clients send heartbeats to the server.
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS SERVER_CLIENT_REGISTRY (
     id            INT AUTO_INCREMENT PRIMARY KEY,
