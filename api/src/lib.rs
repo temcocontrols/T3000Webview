@@ -196,19 +196,39 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Start T3000 FFI Sync Service in background with immediate trigger
-    let main_service_handle = if crate::constants::ENABLE_FFI_SYNC_SERVICE {
-        let handle = tokio::spawn(async move {
-            if let Err(e) = start_logging_sync().await {
-                let error_msg = format!("T3000 FFI Sync Service (FFI + DeviceSync + WebSocket) failed: {}", e);
-                let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Error);
-            }
-        });
-
-        let _ = write_structured_log_with_level("T3_Webview_Initialize", "✅ T3000 FFI Sync Service started in background (15-minute sync intervals with immediate startup sync)", LogLevel::Info);
-        Some(handle)
-    } else {
+    // Two-layer check:
+    //   1. Compile-time: ENABLE_FFI_SYNC_SERVICE constant (master kill switch)
+    //   2. Runtime: setting.ini [ServerDatabase] enabled=1 AND role=server
+    let main_service_handle = if !crate::constants::ENABLE_FFI_SYNC_SERVICE {
         let _ = write_structured_log_with_level("T3_Webview_Initialize", "⏸️  T3000 FFI Sync Service DISABLED by constant (ENABLE_FFI_SYNC_SERVICE = false)", LogLevel::Warn);
         None
+    } else {
+        // Constant is ON — now check INI config at runtime
+        let ini_cfg = crate::ini_config::read_server_db_config_auto();
+        let _ = write_structured_log_with_level(
+            "T3_Webview_Initialize",
+            &format!("FFI Sync runtime check: ini.enabled={}, ini.role={}", ini_cfg.enabled, ini_cfg.role),
+            LogLevel::Info,
+        );
+
+        if ini_cfg.enabled && ini_cfg.role == "server" {
+            let handle = tokio::spawn(async move {
+                if let Err(e) = start_logging_sync().await {
+                    let error_msg = format!("T3000 FFI Sync Service (FFI + DeviceSync + WebSocket) failed: {}", e);
+                    let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Error);
+                }
+            });
+            let _ = write_structured_log_with_level("T3_Webview_Initialize", "✅ T3000 FFI Sync Service started (center DB active, role=server)", LogLevel::Info);
+            Some(handle)
+        } else {
+            let reason = if !ini_cfg.enabled {
+                "center DB not enabled in setting.ini"
+            } else {
+                "role is client (only server syncs FFI data)"
+            };
+            let _ = write_structured_log_with_level("T3_Webview_Initialize", &format!("⏸️  T3000 FFI Sync Service DISABLED — {}", reason), LogLevel::Info);
+            None
+        }
     };
 
     // Start partition monitor service (hourly background checks)

@@ -1,7 +1,10 @@
 use std::path::PathBuf;
 
-/// Enable/disable T3000 FFI Sync Service (calls C++ LOGGING_DATA every 15 min)
-/// Set to false to disable automatic device data syncing from T3000.exe
+/// Master switch for T3000 FFI Sync Service (calls C++ LOGGING_DATA every 15 min)
+/// Set to false to completely disable FFI sync regardless of INI/DB config.
+/// When true, the service still checks setting.ini [ServerDatabase] at runtime:
+///   - enabled=1 AND role=server → FFI sync runs
+///   - otherwise → FFI sync stays disabled
 pub const ENABLE_FFI_SYNC_SERVICE: bool = false;
 
 /// Enable/disable Partition Monitor Service (hourly database maintenance)
