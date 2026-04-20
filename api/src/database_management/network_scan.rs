@@ -1,6 +1,7 @@
 //! Network Scan — TCP 1433 port sweep + UDP 1434 SQL Server Browser discovery
 //!
-//! Primary: TCP-connect sweep of the local /24 subnet on port 1433
+//! Scans ALL local network interfaces (LAN, VPN, etc.) — not just the primary one.
+//! Primary: TCP-connect sweep of each interface's /24 subnet on port 1433
 //!          (finds SQL Server on the default port without needing Browser service).
 //! Secondary: UDP broadcast on port 1434 to discover named instances on
 //!            non-default ports (requires SQL Server Browser service).
@@ -10,7 +11,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use std::net::{TcpStream, UdpSocket, SocketAddr};
+use std::net::{TcpStream, UdpSocket, SocketAddr, Ipv4Addr};
 use std::time::Duration;
 
 /// Discovered SQL Server instance from a network scan.
@@ -28,70 +29,113 @@ pub struct DiscoveredInstance {
 ///    Any host that accepts the TCP connection is assumed to be running SQL Server.
 /// 2. **UDP 1434 broadcast** — sends a Browser discovery packet to find named
 ///    instances (requires SQL Server Browser service to be running).
+/// 3. **Direct UDP probe** — for any TCP-found host that didn't respond to broadcast,
+///    send a unicast UDP 1434 probe to get instance name + version.
 ///
-/// Results are merged and deduplicated by (host, port).
+/// Results are merged and deduplicated by (host, instance).
 pub fn scan_sql_server_instances(timeout_ms: u64) -> Vec<DiscoveredInstance> {
     // --- Phase 1: TCP 1433 subnet sweep (primary) ---
-    let mut results = scan_tcp_1433(timeout_ms);
+    let tcp_results = scan_tcp_1433(timeout_ms);
 
     // --- Phase 2: UDP 1434 Browser discovery (secondary) ---
     let udp_results = scan_udp_1434(timeout_ms);
 
-    // --- Merge & deduplicate ---
-    let existing: HashSet<(String, Option<u16>)> = results
-        .iter()
-        .map(|r| (r.host.clone(), r.port))
-        .collect();
-
-    for inst in udp_results {
-        let key = (inst.host.clone(), inst.port);
-        if !existing.contains(&key) {
-            results.push(inst);
+    // --- Phase 3: Direct UDP probe for TCP-found hosts missing from UDP ---
+    // If a host responded to TCP but not UDP broadcast, try a unicast probe
+    let udp_hosts: HashSet<String> = udp_results.iter().map(|r| r.host.clone()).collect();
+    let mut direct_results = Vec::new();
+    for tcp_inst in &tcp_results {
+        if !udp_hosts.contains(&tcp_inst.host) {
+            let probed = probe_single_host_udp(&tcp_inst.host, timeout_ms);
+            if !probed.is_empty() {
+                direct_results.extend(probed);
+            }
         }
     }
 
-    results
+    // --- Merge: prefer UDP/direct results (have instance+version) over bare TCP ---
+    let mut merged: Vec<DiscoveredInstance> = Vec::new();
+    let mut seen: HashSet<(String, Option<u16>)> = HashSet::new();
+
+    // Add UDP broadcast results first (richest data)
+    for inst in udp_results {
+        let key = (inst.host.clone(), inst.port);
+        if seen.insert(key) {
+            merged.push(inst);
+        }
+    }
+
+    // Add direct probe results
+    for inst in direct_results {
+        let key = (inst.host.clone(), inst.port);
+        if seen.insert(key) {
+            merged.push(inst);
+        }
+    }
+
+    // Add remaining TCP-only results (no instance/version info)
+    for inst in tcp_results {
+        let key = (inst.host.clone(), inst.port);
+        if seen.insert(key) {
+            merged.push(inst);
+        }
+    }
+
+    merged
 }
 
-/// TCP 1433 subnet sweep — probe every IP in the local /24 on port 1433.
+/// TCP 1433 subnet sweep — probe every IP in each local interface's /24.
 fn scan_tcp_1433(timeout_ms: u64) -> Vec<DiscoveredInstance> {
-    let local_ip = get_local_ip();
+    let local_ips = get_all_local_ips();
 
-    // Skip sweep if we got a loopback address (no network / offline)
-    if local_ip.starts_with("127.") {
-        eprintln!("[network_scan] Skipping TCP sweep — local IP is loopback ({})", local_ip);
+    if local_ips.is_empty() {
+        eprintln!("[network_scan] No usable network interfaces found — skipping TCP sweep");
         return Vec::new();
     }
 
-    let parts: Vec<&str> = local_ip.split('.').collect();
-    if parts.len() != 4 {
-        eprintln!("[network_scan] Cannot determine /24 subnet from IP: {}", local_ip);
-        return Vec::new();
-    }
+    eprintln!("[network_scan] Scanning {} subnet(s): {:?}", local_ips.len(), local_ips);
 
-    let subnet_prefix = format!("{}.{}.{}.", parts[0], parts[1], parts[2]);
+    let local_set: HashSet<String> = local_ips.iter().cloned().collect();
     let per_host_timeout = Duration::from_millis(200.min(timeout_ms));
 
-    // Probe 1–254 in parallel using threads
-    let handles: Vec<_> = (1..=254)
-        .map(|i| {
-            let host = format!("{}{}", subnet_prefix, i);
-            let local = local_ip.clone();
-            std::thread::spawn(move || {
-                // Skip our own IP
-                if host == local {
-                    return None;
-                }
-                let addr: SocketAddr = format!("{}:1433", host).parse().ok()?;
-                match TcpStream::connect_timeout(&addr, per_host_timeout) {
-                    Ok(_) => Some(DiscoveredInstance {
-                        host,
-                        instance: None,
-                        port: Some(1433),
-                        version: None,
-                    }),
-                    Err(_) => None,
-                }
+    // Collect all (subnet_prefix, skip_ip) pairs to scan
+    let mut subnets_seen = HashSet::new();
+    let mut scan_targets = Vec::new();
+
+    for ip in &local_ips {
+        let parts: Vec<&str> = ip.split('.').collect();
+        if parts.len() != 4 {
+            continue;
+        }
+        let subnet_prefix = format!("{}.{}.{}.", parts[0], parts[1], parts[2]);
+        if subnets_seen.insert(subnet_prefix.clone()) {
+            scan_targets.push(subnet_prefix);
+        }
+    }
+
+    // Probe 1–254 on every subnet in parallel
+    let handles: Vec<_> = scan_targets
+        .into_iter()
+        .flat_map(|prefix| {
+            let local_set = local_set.clone();
+            (1..=254).map(move |i| {
+                let host = format!("{}{}", prefix, i);
+                let skip = local_set.clone();
+                std::thread::spawn(move || {
+                    if skip.contains(&host) {
+                        return None;
+                    }
+                    let addr: SocketAddr = format!("{}:1433", host).parse().ok()?;
+                    match TcpStream::connect_timeout(&addr, per_host_timeout) {
+                        Ok(_) => Some(DiscoveredInstance {
+                            host,
+                            instance: None,
+                            port: Some(1433),
+                            version: None,
+                        }),
+                        Err(_) => None,
+                    }
+                })
             })
         })
         .collect();
@@ -106,8 +150,27 @@ fn scan_tcp_1433(timeout_ms: u64) -> Vec<DiscoveredInstance> {
 }
 
 /// UDP 1434 broadcast — SQL Server Browser discovery for named instances.
+/// Sends probe to subnet broadcast address on each interface (e.g. 192.168.1.255:1434).
 fn scan_udp_1434(timeout_ms: u64) -> Vec<DiscoveredInstance> {
     let mut results = Vec::new();
+    let local_ips = get_all_local_ips();
+
+    // Build unique subnet broadcast addresses (e.g. 192.168.1.255)
+    let mut broadcast_addrs = Vec::new();
+    let mut seen = HashSet::new();
+    for ip in &local_ips {
+        let parts: Vec<&str> = ip.split('.').collect();
+        if parts.len() == 4 {
+            let bcast = format!("{}.{}.{}.255:1434", parts[0], parts[1], parts[2]);
+            if seen.insert(bcast.clone()) {
+                broadcast_addrs.push(bcast);
+            }
+        }
+    }
+    // Also include the global broadcast as fallback
+    if seen.insert("255.255.255.255:1434".to_string()) {
+        broadcast_addrs.push("255.255.255.255:1434".to_string());
+    }
 
     let socket = match UdpSocket::bind("0.0.0.0:0") {
         Ok(s) => s,
@@ -128,43 +191,117 @@ fn scan_udp_1434(timeout_ms: u64) -> Vec<DiscoveredInstance> {
         return results;
     }
 
-    // SQL Server Browser discovery packet: single byte 0x02
+    // Send probe to each broadcast address
     let probe = [0x02u8];
-    if let Err(e) = socket.send_to(&probe, "255.255.255.255:1434") {
-        eprintln!("[network_scan] Failed to send broadcast: {}", e);
-        return results;
+    for addr in &broadcast_addrs {
+        if let Err(e) = socket.send_to(&probe, addr) {
+            eprintln!("[network_scan] Failed to send broadcast to {}: {}", addr, e);
+        }
     }
 
     // Collect responses until timeout
+    let mut seen_hosts: HashSet<(String, Option<u16>)> = HashSet::new();
     let mut buf = [0u8; 4096];
     loop {
         match socket.recv_from(&mut buf) {
             Ok((n, addr)) => {
                 if n > 3 {
-                    // Skip first 3 header bytes
                     let payload = String::from_utf8_lossy(&buf[3..n]);
                     let host = addr.ip().to_string();
                     let instances = parse_browser_response(&host, &payload);
-                    results.extend(instances);
+                    for inst in instances {
+                        let key = (inst.host.clone(), inst.port);
+                        if seen_hosts.insert(key) {
+                            results.push(inst);
+                        }
+                    }
                 }
             }
-            Err(_) => break, // timeout or error — done
+            Err(_) => break,
         }
     }
 
     results
 }
 
-/// Get the local IP address by connecting a UDP socket to a public address.
-pub fn get_local_ip() -> String {
-    if let Ok(socket) = UdpSocket::bind("0.0.0.0:0") {
-        if socket.connect("8.8.8.8:80").is_ok() {
-            if let Ok(addr) = socket.local_addr() {
-                return addr.ip().to_string();
+/// Send a direct (unicast) UDP 1434 probe to a single host.
+/// Used when a host responds to TCP 1433 but didn't reply to the broadcast.
+fn probe_single_host_udp(host: &str, timeout_ms: u64) -> Vec<DiscoveredInstance> {
+    let socket = match UdpSocket::bind("0.0.0.0:0") {
+        Ok(s) => s,
+        Err(_) => return Vec::new(),
+    };
+
+    let timeout = Duration::from_millis(timeout_ms.min(1000));
+    let _ = socket.set_read_timeout(Some(timeout));
+
+    let target = format!("{}:1434", host);
+    let probe = [0x02u8];
+    if socket.send_to(&probe, &target).is_err() {
+        return Vec::new();
+    }
+
+    let mut buf = [0u8; 4096];
+    match socket.recv_from(&mut buf) {
+        Ok((n, _)) if n > 3 => {
+            let payload = String::from_utf8_lossy(&buf[3..n]);
+            parse_browser_response(host, &payload)
+        }
+        _ => Vec::new(),
+    }
+}
+
+/// Get ALL local IPv4 addresses across every network interface.
+///
+/// Uses `ipconfig` on Windows to enumerate all adapters. Falls back to the
+/// single-IP UDP trick if `ipconfig` fails.
+/// Filters out loopback (127.x), link-local (169.254.x), and APIPA addresses.
+pub fn get_all_local_ips() -> Vec<String> {
+    let mut ips = Vec::new();
+
+    // On Windows, parse `ipconfig` output for IPv4 addresses
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(output) = std::process::Command::new("ipconfig").output() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            for line in stdout.lines() {
+                let line = line.trim();
+                // Match lines like "IPv4 Address. . . . . . . . . . . : 192.168.1.4"
+                // Works for both English and many locales (key phrase contains "IPv4")
+                if line.contains("IPv4") {
+                    if let Some(ip_str) = line.rsplit(':').next() {
+                        let ip = ip_str.trim().to_string();
+                        if let Ok(addr) = ip.parse::<Ipv4Addr>() {
+                            if !addr.is_loopback() && !addr.is_link_local() {
+                                ips.push(ip);
+                            }
+                        }
+                    }
+                }
             }
         }
     }
-    "127.0.0.1".to_string()
+
+    // Fallback: UDP trick to get at least one IP
+    if ips.is_empty() {
+        if let Ok(socket) = UdpSocket::bind("0.0.0.0:0") {
+            if socket.connect("8.8.8.8:80").is_ok() {
+                if let Ok(addr) = socket.local_addr() {
+                    let ip = addr.ip().to_string();
+                    if !ip.starts_with("127.") {
+                        ips.push(ip);
+                    }
+                }
+            }
+        }
+    }
+
+    ips
+}
+
+/// Get a single local IP address (for backward compatibility).
+pub fn get_local_ip() -> String {
+    get_all_local_ips().into_iter().next().unwrap_or_else(|| "127.0.0.1".to_string())
 }
 
 /// Parse a SQL Server Browser response payload.

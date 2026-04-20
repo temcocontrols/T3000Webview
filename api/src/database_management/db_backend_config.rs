@@ -406,8 +406,11 @@ pub fn build_mssql_config(
         }
     }
 
-    // Trust certificate option from extra_options
-    // extra_options may be a JSON object or a JSON string containing an object
+    // Trust self-signed certificates by default — nearly all SQL Server
+    // installations use a self-signed cert and will fail with
+    // "invalid peer certificate: UnknownIssuer" without this.
+    // Can be disabled via extra_options: {"trust_cert": false}
+    let mut trust = true;
     if let Some(ref opts) = config.extra_options {
         let obj = if opts.is_string() {
             opts.as_str().and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
@@ -415,12 +418,13 @@ pub fn build_mssql_config(
             Some(opts.clone())
         };
         if let Some(ref obj) = obj {
-            if let Some(trust) = obj.get("trust_cert").and_then(|v| v.as_bool()) {
-                if trust {
-                    tib_config.trust_cert();
-                }
+            if let Some(v) = obj.get("trust_cert").and_then(|v| v.as_bool()) {
+                trust = v;
             }
         }
+    }
+    if trust {
+        tib_config.trust_cert();
     }
 
     Ok(tib_config)

@@ -213,17 +213,52 @@ async fn test_connection(
             }
         }
         BackendType::Mssql => {
-            // Phase 5: test via tiberius
-            let tib_config = db_backend_config::build_mssql_config(&config).map_err(|e| {
+            // Test connection by connecting to 'master' first (target DB may not exist yet).
+            // If that works, also try the target database if specified.
+            let target_db = config.database_name.clone();
+
+            // Connect to master to verify auth
+            let mut master_config = config.clone();
+            master_config.database_name = Some("master".to_string());
+            let tib_config = db_backend_config::build_mssql_config(&master_config).map_err(|e| {
                 (axum::http::StatusCode::BAD_REQUEST, e)
             })?;
 
-            // Attempt TCP connection with tiberius
             match test_mssql_connection(tib_config).await {
-                Ok(msg) => Ok(Json(serde_json::json!({
-                    "success": true,
-                    "message": msg,
-                }))),
+                Ok(_) => {
+                    // Auth works. Now check if target database exists.
+                    if let Some(ref db_name) = target_db {
+                        if !db_name.is_empty() {
+                            let tib_config2 = db_backend_config::build_mssql_config(&config).map_err(|e| {
+                                (axum::http::StatusCode::BAD_REQUEST, e)
+                            })?;
+                            match test_mssql_connection(tib_config2).await {
+                                Ok(_) => Ok(Json(serde_json::json!({
+                                    "success": true,
+                                    "message": format!("Connected to SQL Server — database '{}' exists and is accessible", db_name),
+                                    "db_exists": true,
+                                }))),
+                                Err(_) => Ok(Json(serde_json::json!({
+                                    "success": true,
+                                    "message": format!("Connected to SQL Server — authentication OK. Database '{}' does not exist yet. Click 'Init Schema' to create it.", db_name),
+                                    "db_exists": false,
+                                }))),
+                            }
+                        } else {
+                            Ok(Json(serde_json::json!({
+                                "success": true,
+                                "message": "Connected to SQL Server — authentication OK",
+                                "db_exists": false,
+                            })))
+                        }
+                    } else {
+                        Ok(Json(serde_json::json!({
+                            "success": true,
+                            "message": "Connected to SQL Server — authentication OK",
+                            "db_exists": false,
+                        })))
+                    }
+                }
                 Err(e) => Ok(Json(serde_json::json!({
                     "success": false,
                     "error": e,
@@ -474,6 +509,48 @@ async fn init_schema(
             })))
         }
         BackendType::Mssql => {
+            // Step 1: Connect to 'master' and CREATE DATABASE if needed
+            let db_name = full_config.database_name.clone().unwrap_or_else(|| "T3000".to_string());
+            {
+                let mut master_cfg = full_config.clone();
+                master_cfg.database_name = Some("master".to_string());
+                let master_tib = db_backend_config::build_mssql_config(&master_cfg).map_err(|e| {
+                    (axum::http::StatusCode::BAD_REQUEST, e)
+                })?;
+
+                let master_pool =
+                    super::mssql_queries::create_mssql_pool(master_tib, 2)
+                        .await
+                        .map_err(|e| {
+                            (
+                                axum::http::StatusCode::BAD_GATEWAY,
+                                format!("Cannot connect to SQL Server master: {}", e),
+                            )
+                        })?;
+
+                // CREATE DATABASE IF NOT EXISTS (MSSQL syntax)
+                let create_db_sql = format!(
+                    "IF DB_ID(N'{0}') IS NULL CREATE DATABASE [{0}]",
+                    db_name.replace('\'', "''").replace(']', "]]")
+                );
+                let mut conn = master_pool.get().await.map_err(|e| {
+                    (axum::http::StatusCode::BAD_GATEWAY, format!("Pool error: {}", e))
+                })?;
+                conn.simple_query(&create_db_sql)
+                    .await
+                    .map_err(|e| {
+                        (axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                         format!("Failed to create database '{}': {}", db_name, e))
+                    })?
+                    .into_results()
+                    .await
+                    .map_err(|e| {
+                        (axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                         format!("Failed to finalize CREATE DATABASE '{}': {}", db_name, e))
+                    })?;
+            }
+
+            // Step 2: Now connect to the target database and create tables
             let tib_config = db_backend_config::build_mssql_config(&full_config).map_err(|e| {
                 (axum::http::StatusCode::BAD_REQUEST, e)
             })?;
@@ -484,7 +561,7 @@ async fn init_schema(
                     .map_err(|e| {
                         (
                             axum::http::StatusCode::BAD_GATEWAY,
-                            format!("Cannot connect to MSSQL for schema init: {}", e),
+                            format!("Cannot connect to MSSQL database '{}': {}", db_name, e),
                         )
                     })?;
 
