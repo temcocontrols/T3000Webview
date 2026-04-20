@@ -5,9 +5,11 @@
 // Background heartbeat task + REST endpoints for tracking which PCs
 // participate in centralized database mode.
 //
-// Both server and client PCs share the same central DB via `t3_device_conn`.
-// Each PC upserts its own entry into SERVER_CLIENT_REGISTRY every 30s.
-// The server additionally marks stale entries (>2 min) as offline.
+// Both server and client PCs share the same **center** DB. This table must
+// never fall back to local SQLite — the whole point is cross-PC visibility.
+//
+// When the center DB is Postgres/MySQL, we use SeaORM via `t3_device_conn`.
+// When the center DB is MSSQL, we use tiberius via `mssql_pool`.
 //
 // - Server PC: writes own entry every 30s + marks stale clients offline.
 // - Client PC: writes own entry every 30s (direct DB write, no HTTP needed).
@@ -30,6 +32,7 @@ use tokio::sync::Mutex;
 
 use crate::app_state::T3AppState;
 use crate::entity::server_client_registry;
+use super::mssql_queries::MssqlPool;
 
 // ============================================================================
 // Types
@@ -65,7 +68,7 @@ pub struct HeartbeatRequest {
 
 /// Starts the background heartbeat loop.
 /// - Both server and client PCs upsert their own entry every 30s into the
-///   shared central DB (which both roles connect to via `t3_device_conn`).
+///   shared central DB.
 /// - Only the server additionally marks stale entries as offline.
 pub fn start_heartbeat_task(state: T3AppState) {
     if !state.server_db_enabled {
@@ -82,16 +85,21 @@ pub fn start_heartbeat_task(state: T3AppState) {
         loop {
             interval.tick().await;
 
-            // Prefer t3_device_conn (central DB); fall back to local_config_conn
-            let conn_ref = state.t3_device_conn.as_ref().or(state.local_config_conn.as_ref());
-            if let Some(ref conn) = conn_ref {
+            // Try MSSQL pool first, then SeaORM (t3_device_conn).
+            // Never fall back to local_config_conn — registry is center-DB only.
+            if let Some(ref pool) = state.mssql_pool {
+                let _ = mssql_upsert_self(pool, &state).await;
+                if is_server {
+                    let _ = mssql_mark_stale_offline(pool).await;
+                }
+            } else if let Some(ref conn) = state.t3_device_conn {
                 let db = conn.lock().await;
                 let _ = upsert_self_entry(&*db, &state).await;
-                // Only the server marks stale clients offline
                 if is_server {
                     let _ = mark_stale_clients_offline(&*db).await;
                 }
             }
+            // else: no center DB available — skip silently
         }
     });
 }
@@ -170,7 +178,19 @@ async fn mark_stale_clients_offline(db: &DatabaseConnection) -> Result<(), DbErr
 async fn get_registry(
     State(state): State<T3AppState>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    let conn = get_device_conn(&state)?;
+    // MSSQL path
+    if let Some(ref pool) = state.mssql_pool {
+        let entries = mssql_get_all_entries(pool).await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+        return Ok(Json(serde_json::json!({
+            "success": true,
+            "entries": entries,
+            "count": entries.len(),
+        })));
+    }
+
+    // SeaORM path (Postgres/MySQL)
+    let conn = get_center_conn(&state)?;
     let db = conn.lock().await;
 
     let rows = server_client_registry::Entity::find()
@@ -200,7 +220,19 @@ async fn receive_heartbeat(
         return Err((StatusCode::BAD_REQUEST, "Invalid role".to_string()));
     }
 
-    let conn = get_device_conn(&state)?;
+    // MSSQL path
+    if let Some(ref pool) = state.mssql_pool {
+        mssql_upsert_entry(pool, &req.hostname, &req.ip_address, &role, 0, req.version.as_deref())
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+        return Ok(Json(serde_json::json!({
+            "success": true,
+            "message": "Heartbeat received",
+        })));
+    }
+
+    // SeaORM path
+    let conn = get_center_conn(&state)?;
     let db = conn.lock().await;
     let now = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
@@ -261,19 +293,15 @@ pub fn registry_routes() -> Router<T3AppState> {
 // Helpers
 // ============================================================================
 
-fn get_device_conn(state: &T3AppState) -> Result<&Arc<Mutex<DatabaseConnection>>, (StatusCode, String)> {
-    // Prefer t3_device_conn (SeaORM connection to active backend).
-    // Fall back to local_config_conn (local SQLite) when device conn is
-    // unavailable — e.g. when active backend is MSSQL (uses tiberius pool,
-    // not SeaORM). This keeps registry endpoints functional in all modes.
+/// Get the center DB connection (SeaORM). Never falls back to local SQLite.
+fn get_center_conn(state: &T3AppState) -> Result<&Arc<Mutex<DatabaseConnection>>, (StatusCode, String)> {
     state
         .t3_device_conn
         .as_ref()
-        .or(state.local_config_conn.as_ref())
         .ok_or((
             StatusCode::SERVICE_UNAVAILABLE,
-            "No database connection available for registry".to_string(),
-    ))
+            "Center database not connected. Configure and initialize a server database first.".to_string(),
+        ))
 }
 
 fn model_to_entry(row: server_client_registry::Model) -> RegistryEntry {
@@ -294,4 +322,106 @@ fn model_to_entry(row: server_client_registry::Model) -> RegistryEntry {
 /// Re-export from network_scan to avoid duplication.
 fn get_local_ip() -> String {
     super::network_scan::get_local_ip()
+}
+
+// ============================================================================
+// MSSQL helpers (tiberius raw SQL)
+// ============================================================================
+
+/// Upsert self entry via MSSQL pool (heartbeat task).
+async fn mssql_upsert_self(pool: &MssqlPool, state: &T3AppState) -> Result<(), String> {
+    let hostname = hostname::get()
+        .map(|h| h.to_string_lossy().to_string())
+        .unwrap_or_else(|_| "unknown".to_string());
+    let ip = get_local_ip();
+    mssql_upsert_entry(pool, &hostname, &ip, &state.server_db_role, 1, None).await
+}
+
+/// Upsert a registry entry by hostname (MERGE).
+async fn mssql_upsert_entry(
+    pool: &MssqlPool,
+    hostname: &str,
+    ip_address: &str,
+    role: &str,
+    is_self: i32,
+    version: Option<&str>,
+) -> Result<(), String> {
+    let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
+    let ver = version.unwrap_or("");
+
+    conn.execute(
+        "MERGE INTO SERVER_CLIENT_REGISTRY AS target \
+         USING (SELECT @P1 AS hostname) AS source \
+         ON target.hostname = source.hostname \
+         WHEN MATCHED THEN UPDATE SET \
+           ip_address = @P2, role = @P3, is_self = @P4, status = N'online', \
+           last_seen = GETDATE(), version = @P5 \
+         WHEN NOT MATCHED THEN INSERT \
+           (hostname, ip_address, role, is_self, status, last_seen, version, created_at) \
+         VALUES (@P1, @P2, @P3, @P4, N'online', GETDATE(), @P5, GETDATE());",
+        &[&hostname, &ip_address, &role, &is_self, &ver],
+    )
+    .await
+    .map_err(|e| format!("MSSQL registry upsert failed: {}", e))?;
+
+    Ok(())
+}
+
+/// Mark stale clients offline (MSSQL).
+async fn mssql_mark_stale_offline(pool: &MssqlPool) -> Result<(), String> {
+    let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
+
+    conn.execute(
+        "UPDATE SERVER_CLIENT_REGISTRY \
+         SET status = N'offline' \
+         WHERE status = N'online' AND is_self = 0 \
+           AND last_seen < DATEADD(SECOND, -120, GETDATE())",
+        &[],
+    )
+    .await
+    .map_err(|e| format!("MSSQL mark stale failed: {}", e))?;
+
+    Ok(())
+}
+
+/// Get all registry entries (MSSQL).
+async fn mssql_get_all_entries(pool: &MssqlPool) -> Result<Vec<RegistryEntry>, String> {
+    let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
+
+    let stream = conn
+        .query(
+            "SELECT id, hostname, ip_address, role, is_self, status, \
+                    CONVERT(VARCHAR(30), last_seen, 120) AS last_seen, \
+                    db_backend, table_count, version \
+             FROM SERVER_CLIENT_REGISTRY \
+             ORDER BY role ASC, hostname ASC",
+            &[],
+        )
+        .await
+        .map_err(|e| format!("MSSQL registry query failed: {}", e))?;
+
+    let rows = stream
+        .into_results()
+        .await
+        .map_err(|e| format!("MSSQL result fetch failed: {}", e))?;
+
+    let mut entries = Vec::new();
+    for result_set in &rows {
+        for row in result_set {
+            entries.push(RegistryEntry {
+                id: row.get::<i32, _>("id").unwrap_or(0),
+                hostname: row.get::<&str, _>("hostname").unwrap_or("").to_string(),
+                ip_address: row.get::<&str, _>("ip_address").unwrap_or("").to_string(),
+                role: row.get::<&str, _>("role").unwrap_or("client").to_string(),
+                is_self: row.get::<i32, _>("is_self").unwrap_or(0) != 0,
+                status: row.get::<&str, _>("status").unwrap_or("unknown").to_string(),
+                last_seen: row.get::<&str, _>("last_seen").unwrap_or("").to_string(),
+                db_backend: row.get::<&str, _>("db_backend").map(|s| s.to_string()),
+                table_count: row.get::<i32, _>("table_count"),
+                version: row.get::<&str, _>("version").map(|s| s.to_string()),
+            });
+        }
+    }
+
+    Ok(entries)
 }

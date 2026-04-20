@@ -502,9 +502,20 @@ pub async fn insert_sync_metadata(
 pub async fn initialize_mssql_schema(pool: &MssqlPool) -> Result<(usize, Vec<String>), String> {
     let script = include_str!("../../migration/sql/webview_t3_device_mssql.sql");
 
-    let statements: Vec<&str> = script
+    let statements: Vec<String> = script
         .split(';')
-        .map(|s| s.trim())
+        .map(|s| {
+            // Strip leading comment-only lines so a stray `;` inside a comment
+            // doesn't produce a fragment that starts with real SQL keywords.
+            s.lines()
+                .skip_while(|l| {
+                    let t = l.trim();
+                    t.is_empty() || t.starts_with("--")
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        })
+        .map(|s| s.trim().to_string())
         .filter(|s| {
             !s.is_empty()
                 && s.lines()
@@ -521,7 +532,7 @@ pub async fn initialize_mssql_schema(pool: &MssqlPool) -> Result<(usize, Vec<Str
     let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
 
     for stmt in &statements {
-        match conn.execute(*stmt, &[]).await {
+        match conn.execute(stmt.as_str(), &[]).await {
             Ok(_) => executed += 1,
             Err(e) => {
                 let preview: String = stmt.chars().take(120).collect();
