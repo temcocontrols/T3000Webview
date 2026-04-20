@@ -79,8 +79,3 @@ cc = "1.0"
 strip = false  # Disabled - was causing FFI symbol issues
 opt-level = 2  # Changed from "z" to 2 for better compatibility
 lto = false  # Disabled - was causing initialization crashes
-
-# Optional: Development and testing binaries (can be removed if not needed)
-[[bin]]
-name = "t3000_server"
-path = "src/main.rs"
