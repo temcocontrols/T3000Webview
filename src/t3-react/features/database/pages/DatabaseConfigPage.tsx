@@ -53,7 +53,6 @@ import {
   testConnection,
   scanNetwork,
   getStatus,
-  switchBackend,
   initSchema,
   getIniConfig,
   saveIniConfig,
@@ -612,8 +611,8 @@ function configToForm(cfg: BackendConfigResponse | undefined): SaveBackendConfig
     database_name: cfg?.database_name ?? '',
     username: cfg?.username ?? '',
     password: undefined, // omit to preserve existing password on backend
-    connection_url: cfg?.connection_url ?? '',
-    extra_options: cfg?.extra_options != null ? String(cfg.extra_options) : '',
+    connection_url: undefined, // omit to preserve existing encrypted URL on backend
+    extra_options: cfg?.extra_options != null ? (typeof cfg.extra_options === 'string' ? cfg.extra_options : JSON.stringify(cfg.extra_options)) : '',
   };
 }
 
@@ -662,11 +661,9 @@ export const DatabaseConfigPage: React.FC = () => {
 
   // UI state
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [initializingSchema, setInitializingSchema] = useState(false);
-  const [switching, setSwitching] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'warning' } | null>(null);
 
   // Scan status bar phases
@@ -676,10 +673,10 @@ export const DatabaseConfigPage: React.FC = () => {
   const scanStatusRef = useRef<HTMLDivElement>(null);
 
   const SCAN_PHASES = [
-    { label: 'Preparing scan…', detail: 'Binding UDP socket on port 1434' },
-    { label: 'Broadcasting probe…', detail: 'Sending discovery packet to 255.255.255.255:1434' },
-    { label: 'Listening for responses…', detail: 'Waiting for SQL Server Browser replies (~3 s)' },
-    { label: 'Processing results…', detail: 'Parsing discovered instance data' },
+    { label: 'Preparing scan…', detail: 'Detecting local subnet for TCP sweep' },
+    { label: 'Scanning port 1433…', detail: 'Probing each IP on default SQL Server port' },
+    { label: 'Checking named instances…', detail: 'UDP 1434 broadcast for SQL Server Browser' },
+    { label: 'Processing results…', detail: 'Merging and deduplicating discovered instances' },
   ];
 
   // Cycle through scan phases while scanning is active
@@ -722,12 +719,11 @@ export const DatabaseConfigPage: React.FC = () => {
   const refresh = useCallback(async () => {
     try {
       setLoading(true);
-      const [cfgs, sts, ini, cStatus, reg] = await Promise.all([
+      const [cfgs, sts, ini, cStatus] = await Promise.all([
         getConfigs(),
         getStatus(),
         getIniConfig().catch(() => null),
         getServerDbStatus().catch(() => null),
-        getRegistry().catch(() => [] as RegistryEntry[]),
       ]);
       setConfigs(cfgs);
       setStatus(sts);
@@ -736,12 +732,23 @@ export const DatabaseConfigPage: React.FC = () => {
         setIniForm({ enabled: ini.enabled, role: ini.role });
       }
       if (cStatus) setServerStatus(cStatus);
-      setRegistryEntries(reg);
+
+      // Only fetch registry when server DB is enabled (avoids 404)
+      if (ini?.enabled) {
+        const reg = await getRegistry().catch(() => [] as RegistryEntry[]);
+        setRegistryEntries(reg);
+      } else {
+        setRegistryEntries([]);
+      }
       // Select the active backend by default
       const active = cfgs.find(c => c.is_active) ?? cfgs[0];
       if (active) {
-        setSelectedType(active.backend_type);
-        setForm(configToForm(active));
+        const backendType = active.backend_type;
+        // If server DB is enabled, default to mssql when active backend is sqlite
+        const effectiveType = (ini?.enabled && backendType === 'sqlite') ? 'mssql' : backendType;
+        setSelectedType(effectiveType);
+        const existing = cfgs.find(c => c.backend_type === effectiveType);
+        setForm(configToForm(existing ?? active));
       }
     } catch (err) {
       console.error('Failed to load database config:', err);
@@ -774,28 +781,21 @@ export const DatabaseConfigPage: React.FC = () => {
   // Actions
   // -------------------------------------------------------------------
 
-  const handleSave = async () => {
-    try {
-      setSaving(true);
-      setMessage(null);
-      // Omit password from request if blank so backend preserves existing password
-      const payload = { ...form, backend_type: selectedType };
-      if (!payload.password) delete payload.password;
-      await saveConfig(payload);
-      setMessage({ text: 'Configuration saved.', type: 'success' });
-      await refresh();
-    } catch (err: any) {
-      setMessage({ text: `Save failed: ${err.message}`, type: 'error' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleTest = async () => {
     try {
       setTesting(true);
       setMessage(null);
-      const res = await testConnection({ ...form, backend_type: selectedType });
+      const payload: Record<string, unknown> = { ...form, backend_type: selectedType };
+      // Parse extra_options string into a JSON object for the backend
+      if (typeof payload.extra_options === 'string') {
+        const trimmed = (payload.extra_options as string).trim();
+        if (trimmed) {
+          try { payload.extra_options = JSON.parse(trimmed); } catch { /* keep as string */ }
+        } else {
+          delete payload.extra_options;
+        }
+      }
+      const res = await testConnection(payload as any);
       setMessage({
         text: res.success
           ? `Connection OK${res.latency_ms != null ? ` (${res.latency_ms} ms)` : ''}`
@@ -819,7 +819,7 @@ export const DatabaseConfigPage: React.FC = () => {
       setScanResults(results);
       setScanDone({ count: results.length });
       if (results.length === 0) {
-        setMessage({ text: 'No SQL Server instances found on the local network.', type: 'warning' });
+        setMessage({ text: 'No SQL Server instances found. Check: (1) SQL Server service is running, (2) TCP port 1433 is open in Windows Firewall, (3) server is on the same network subnet. You can also enter the host and port manually.', type: 'warning' });
       }
     } catch (err: any) {
       setScanError(err.message);
@@ -847,20 +847,6 @@ export const DatabaseConfigPage: React.FC = () => {
     }
   };
 
-  const handleSwitch = async () => {
-    try {
-      setSwitching(true);
-      setMessage(null);
-      const res = await switchBackend(selectedType);
-      setMessage({ text: res.message, type: 'success' });
-      await refresh();
-    } catch (err: any) {
-      setMessage({ text: `Switch failed: ${err.message}`, type: 'error' });
-    } finally {
-      setSwitching(false);
-    }
-  };
-
   /** Populate form fields from a scan result */
   const applyScanResult = (inst: DiscoveredInstance) => {
     setForm(prev => ({
@@ -872,16 +858,50 @@ export const DatabaseConfigPage: React.FC = () => {
     setMessage(null);
   };
 
-  /** Save INI [ServerDatabase] config */
+  /** Save INI [ServerDatabase] config + DB connection settings */
   const handleSaveIni = async () => {
     try {
       setSavingIni(true);
       setMessage(null);
-      const res = await saveIniConfig(iniForm);
-      setMessage({ text: res.message, type: 'success' });
+
+      // 1. Validate form before persisting anything
+      if (iniForm.enabled && selectedType !== 'sqlite') {
+        if (!form.host?.trim()) {
+          setMessage({ text: 'Host / Server is required.', type: 'error' });
+          return;
+        }
+        if (!form.database_name?.trim() && !form.connection_url?.trim()) {
+          setMessage({ text: 'Database name (or Connection URL) is required.', type: 'error' });
+          return;
+        }
+      }
+
+      // 2. Save INI (enabled + role)
+      await saveIniConfig(iniForm);
+
+      // 3. If enabled with a remote backend, also save DB connection settings
+      if (iniForm.enabled && selectedType !== 'sqlite') {
+        const payload: Record<string, unknown> = { ...form, backend_type: selectedType };
+        if (!payload.password) delete payload.password;
+        // Parse extra_options string into a JSON object for the backend
+        if (typeof payload.extra_options === 'string') {
+          const trimmed = (payload.extra_options as string).trim();
+          if (trimmed) {
+            try { payload.extra_options = JSON.parse(trimmed); } catch { /* keep as string */ }
+          } else {
+            delete payload.extra_options;
+          }
+        }
+        await saveConfig(payload as any);
+      }
+
+      const summary = iniForm.enabled
+        ? `Server Database ${iniForm.role} mode + ${BACKEND_LABELS[selectedType]} settings saved. Restart T3000 to apply.`
+        : 'Server Database disabled. Restart T3000 to apply.';
+      setMessage({ text: summary, type: 'success' });
       await refresh();
     } catch (err: any) {
-      setMessage({ text: `INI save failed: ${err.message}`, type: 'error' });
+      setMessage({ text: `Save failed: ${err.message}`, type: 'error' });
     } finally {
       setSavingIni(false);
     }
@@ -892,8 +912,7 @@ export const DatabaseConfigPage: React.FC = () => {
   // -------------------------------------------------------------------
 
   const isRemote = selectedType !== 'sqlite';
-  const isBusy = saving || testing || scanning || initializingSchema || switching || savingIni;
-  const isActiveBackend = status?.active_backend === selectedType;
+  const isBusy = testing || scanning || initializingSchema || savingIni;
   const activeConfig = configs.find(c => c.is_active);
 
   if (loading) {
@@ -1179,18 +1198,6 @@ export const DatabaseConfigPage: React.FC = () => {
         )}
 
         {/* Save + INI path */}
-        <div className={styles.optionsRow}>
-          <Tooltip content="Write settings to setting.ini. Restart T3000 for changes to take effect." relationship="description">
-            <Button
-              appearance="primary"
-              onClick={handleSaveIni}
-              disabled={isBusy}
-              size="small"
-            >
-              {savingIni ? 'Saving…' : 'Save Config'}
-            </Button>
-          </Tooltip>
-        </div>
         {iniConfig?.ini_path && (
           <p className={styles.iniPathText}>
             Config file: {iniConfig.ini_path}
@@ -1198,8 +1205,8 @@ export const DatabaseConfigPage: React.FC = () => {
         )}
       </div>
 
-      {/* ── Backend Type Selector (only when enabled as server) ── */}
-      {iniForm.enabled && iniForm.role === 'server' && <div className={styles.section}>
+      {/* ── Backend Type Selector (server or client) ── */}
+      {iniForm.enabled && <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <h3 className={styles.sectionTitle}>Backend Type</h3>
           <Tooltip content="Choose which database engine stores the shared data. SQLite is the default local engine. For multi-PC setups, select Microsoft SQL Server or another network-accessible database." relationship="description">
@@ -1222,8 +1229,8 @@ export const DatabaseConfigPage: React.FC = () => {
         </div>
       </div>}
 
-      {/* ── Connection Form (remote backends only, server role) ── */}
-      {iniForm.enabled && iniForm.role === 'server' && isRemote && (
+      {/* ── Connection Form (remote backends only) ── */}
+      {iniForm.enabled && isRemote && (
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <h3 className={styles.sectionTitle}>Connection Settings — {BACKEND_LABELS[selectedType]}</h3>
@@ -1340,11 +1347,12 @@ export const DatabaseConfigPage: React.FC = () => {
               <Label className={styles.label} htmlFor="db-url">
                 Connection URL <Text size={200} style={{ color: '#605e5c' }}>(optional — overrides the fields above)</Text>
               </Label>
-              <Input
-                id="db-url"
-                value={form.connection_url ?? ''}
-                onChange={(_, d) => setField('connection_url', d.value)}
-                placeholder={
+              <Tooltip content="Leave blank to keep the previously saved URL. Enter a new URL to replace it." relationship="description">
+                <Input
+                  id="db-url"
+                  value={form.connection_url ?? ''}
+                  onChange={(_, d) => setField('connection_url', d.value)}
+                  placeholder={
                   selectedType === 'mssql'
                     ? 'mssql://user:pass@host:1433/dbname'
                     : selectedType === 'postgres'
@@ -1354,13 +1362,14 @@ export const DatabaseConfigPage: React.FC = () => {
                         : ''
                 }
               />
+              </Tooltip>
             </div>
           </div>
         </div>
       )}
 
       {/* ── MSSQL Network Scan ── */}
-      {iniForm.enabled && iniForm.role === 'server' && selectedType === 'mssql' && (
+      {iniForm.enabled && selectedType === 'mssql' && (
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <h3 className={styles.sectionTitle}>Network Scan — SQL Server Discovery</h3>
@@ -1435,7 +1444,7 @@ export const DatabaseConfigPage: React.FC = () => {
               <span>
                 {scanDone.count > 0
                   ? `Scan complete — found ${scanDone.count} instance${scanDone.count > 1 ? 's' : ''}`
-                  : 'Scan complete — no SQL Server instances found on the network'}
+                  : 'Scan complete — no instances found. Verify SQL Server is running and TCP 1433 is not blocked by firewall.'}
               </span>
               <span className={styles.scanStepList}>
                 {SCAN_PHASES.map((_, idx) => (
@@ -1462,7 +1471,7 @@ export const DatabaseConfigPage: React.FC = () => {
 
       {/* ── Action Buttons ── */}
       <div className={styles.actions}>
-        {isRemote && (
+        {isRemote && iniForm.enabled && (
           <>
             <Tooltip content="Verify the connection using the settings above — does not save anything." relationship="description">
               <Button
@@ -1472,17 +1481,6 @@ export const DatabaseConfigPage: React.FC = () => {
                 disabled={isBusy}
               >
                 {testing ? 'Testing…' : 'Test Connection'}
-              </Button>
-            </Tooltip>
-
-            <Tooltip content="Save the connection settings for this backend type to the local database." relationship="description">
-              <Button
-                size="small"
-                appearance="primary"
-                onClick={handleSave}
-                disabled={isBusy}
-              >
-                {saving ? 'Saving…' : 'Save Configuration'}
               </Button>
             </Tooltip>
 
@@ -1499,28 +1497,20 @@ export const DatabaseConfigPage: React.FC = () => {
           </>
         )}
 
-        <Tooltip
-          content={
-            isActiveBackend
-              ? 'This backend is already the active database engine.'
-              : 'Switch T3000 to use this backend. Changes take effect after restart.'
-          }
-          relationship="description"
-        >
-          <Button
-            size="small"
-            icon={switching ? <Spinner size="tiny" /> : <ArrowSyncRegular />}
-            onClick={handleSwitch}
-            disabled={isBusy || isActiveBackend}
-            appearance={isActiveBackend ? 'subtle' : 'secondary'}
-          >
-            {switching ? 'Switching…' : isActiveBackend ? 'Currently Active' : 'Switch to This Backend'}
-          </Button>
-        </Tooltip>
-
-        <Button onClick={refresh} disabled={isBusy} size="small" appearance="subtle" icon={<ArrowSyncRegular />}>
+        <Button onClick={refresh} disabled={isBusy} size="small" icon={<ArrowSyncRegular />}>
           Refresh
         </Button>
+
+        <Tooltip content="Save all settings (INI config + database connection). Restart T3000 to apply." relationship="description">
+          <Button
+            size="small"
+            appearance="primary"
+            onClick={handleSaveIni}
+            disabled={isBusy}
+          >
+            {savingIni ? 'Saving…' : 'Save Configuration'}
+          </Button>
+        </Tooltip>
       </div>
     </div>
   );

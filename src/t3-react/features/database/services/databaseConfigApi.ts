@@ -114,26 +114,19 @@ export async function scanNetwork(): Promise<DiscoveredInstance[]> {
   return data.instances;
 }
 
+const VALID_BACKENDS: BackendType[] = ['sqlite', 'postgres', 'mysql', 'mssql'];
+
 /** Get current backend status */
 export async function getStatus(): Promise<BackendStatus> {
   const res = await fetch(`${BASE}/status`);
   const data = await handleResponse<{ success: boolean; active_backend: string; connected: boolean; table_count: number | null; host: string | null; database_name: string | null }>(res);
   return {
-    active_backend: data.active_backend as BackendType,
+    active_backend: (VALID_BACKENDS.includes(data.active_backend as BackendType)
+      ? data.active_backend : 'sqlite') as BackendType,
     connected: data.connected,
     table_count: data.table_count,
     message: data.connected ? 'Connected' : 'Not connected',
   };
-}
-
-/** Switch the active backend (requires restart) */
-export async function switchBackend(backendType: BackendType): Promise<{ message: string }> {
-  const res = await fetch(`${BASE}/switch`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ backend_type: backendType }),
-  });
-  return handleResponse<{ message: string }>(res);
 }
 
 /** Initialize schema on the remote database */
