@@ -1269,7 +1269,7 @@ export const DatabaseConfigPage: React.FC = () => {
                   <h4 className={styles.infoBannerTitle}>Prerequisites</h4>
                 </div>
                 <p className={styles.infoBannerText}>
-                  SQL Server must be installed and running. Supported: <strong>SQL Server 2022 Express</strong>, <strong>2019</strong>, or later.
+                  SQL Server must be installed and running. Supported: <strong>SQL Server 2022 Express</strong>.
                   Enable TCP/IP in SQL Server Configuration Manager and start the SQL Browser service.
                 </p>
                 <p className={styles.infoBannerLinks}>

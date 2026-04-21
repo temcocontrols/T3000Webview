@@ -196,14 +196,10 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Start T3000 FFI Sync Service in background with immediate trigger
-    // Two-layer check:
-    //   1. Compile-time: ENABLE_FFI_SYNC_SERVICE constant (master kill switch)
-    //   2. Runtime: setting.ini [ServerDatabase] enabled=1 AND role=server
-    let main_service_handle = if !crate::constants::ENABLE_FFI_SYNC_SERVICE {
-        let _ = write_structured_log_with_level("T3_Webview_Initialize", "⏸️  T3000 FFI Sync Service DISABLED by constant (ENABLE_FFI_SYNC_SERVICE = false)", LogLevel::Warn);
-        None
-    } else {
-        // Constant is ON — now check INI config at runtime
+    // Checks setting.ini [ServerDatabase] at runtime:
+    //   - enabled=1 AND role=server → FFI sync runs
+    //   - otherwise → FFI sync stays disabled
+    let main_service_handle = {
         let ini_cfg = crate::ini_config::read_server_db_config_auto();
         let _ = write_structured_log_with_level(
             "T3_Webview_Initialize",
