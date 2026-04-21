@@ -1637,7 +1637,12 @@ impl T3000MainService {
                     }
                 }
             } else if let Some(mssql_pool) = crate::server_db_writer::get_server_mssql_pool() {
-                match Self::replicate_all_data_to_mssql(&validation_db, &serial_numbers, mssql_pool).await {
+                match Self::replicate_all_data_to_mssql(
+                    &validation_db,
+                    &serial_numbers,
+                    mssql_pool,
+                    config.sync_interval_secs,
+                ).await {
                     Ok(stats) => {
                         sync_logger.info(&format!(
                             "🌐 Server DB replication (MSSQL) complete: {} devices, {} points, {} trendlog parents, {} trendlog details",
@@ -3749,6 +3754,7 @@ impl T3000MainService {
         local_db: &DatabaseConnection,
         serial_numbers: &[i32],
         pool: &crate::database_management::mssql_queries::MssqlPool,
+        sync_interval_secs: u64,
     ) -> Result<(u64, u64, u64, u64), AppError> {
         use crate::database_management::mssql_queries;
         use crate::entity::t3_device::{trendlog_data, trendlog_data_detail};
@@ -3914,10 +3920,13 @@ impl T3000MainService {
                         }
                     };
 
-                    // Copy detail rows for this parent (from local SQLite parent.id)
-                    // Only copy recent details (last sync cycle) to avoid re-copying
-                    // everything on every sync. Use a 2x sync-interval lookback.
-                    let lookback_minutes = 15; // Match typical sync interval
+                    // Copy detail rows for this parent (from local SQLite parent.id).
+                    // Use a dynamic lookback window based on sync interval so long intervals
+                    // (e.g., 1 hour) do not miss rows during MSSQL replication.
+                    let lookback_minutes = std::cmp::max(
+                        15,
+                        (((sync_interval_secs.saturating_mul(2)) + 59) / 60) as i64,
+                    );
                     let cutoff = (chrono::Local::now() - chrono::Duration::minutes(lookback_minutes))
                         .format("%Y-%m-%d %H:%M:%S")
                         .to_string();
