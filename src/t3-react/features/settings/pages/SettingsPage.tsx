@@ -68,6 +68,7 @@ import { DyndnsSettingsTab, type DyndnsSettings } from '../components/DyndnsSett
 import { EmailSettingsTab, type EmailSettings } from '../components/EmailSettingsTab';
 import { UserLoginTab, type UserLoginSettings } from '../components/UserLoginTab';
 import { ExpansionIOTab, type ExpansionIOSettings } from '../components/ExpansionIOTab';
+import { API_BASE_URL } from '../../../config/constants';
 import cssStyles from './SettingsPage.module.css';
 
 // Full T3000 C++ Baudrate_Array - com_baudrate0/1/2 stores an index 0-11 into this array
@@ -700,7 +701,7 @@ export const SettingsPage: React.FC = () => {
   // fetch(`${base}/devices/${serialNumber}/settings/expansion-io`) → GET EXTIO_DEVICES table
   // ─────────────────────────────────────────────────────────────────────────────
   const fetchExternalSettings = useCallback(async (serialNumber: number) => {
-    const transport = new T3Transport({ apiBaseUrl: 'http://localhost:9103/api' });
+    const transport = new T3Transport({ apiBaseUrl: `${API_BASE_URL}/api` });
     try {
       await transport.connect('ffi');
 
@@ -1338,7 +1339,7 @@ export const SettingsPage: React.FC = () => {
         enable:                1,
       };
       const response = await fetch(
-        `http://localhost:9103/api/t3_device/devices/${selectedDevice.serialNumber}/settings/email`,
+        `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/settings/email`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -1363,7 +1364,7 @@ export const SettingsPage: React.FC = () => {
     // PUT /api/t3_device/users/:serial/:index
     // Tries FFI Action 16 entryType=14 (no-op in C++ today) + saves to local DB
     const response = await fetch(
-      `http://localhost:9103/api/t3_device/users/${selectedDevice.serialNumber}/${index}`,
+      `${API_BASE_URL}/api/t3_device/users/${selectedDevice.serialNumber}/${index}`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -1386,7 +1387,7 @@ export const SettingsPage: React.FC = () => {
     if (!selectedDevice) throw new Error('No device selected');
     // Clear the user slot by writing blank name/password (C++ stores fixed 8 slots)
     const response = await fetch(
-      `http://localhost:9103/api/t3_device/users/${selectedDevice.serialNumber}/${index}`,
+      `${API_BASE_URL}/api/t3_device/users/${selectedDevice.serialNumber}/${index}`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -1403,7 +1404,7 @@ export const SettingsPage: React.FC = () => {
     if (!selectedDevice) throw new Error('No device selected');
     // POST each ExtIO device to /api/t3_device/devices/:serial/settings/expansion-io
     // ⚠️ Saved to local DB only — device sync requires C++ to implement FFI entryType=51
-    const base = `http://localhost:9103/api/t3_device/devices/${selectedDevice.serialNumber}/settings/expansion-io`;
+    const base = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/settings/expansion-io`;
     for (let i = 0; i < settings.devices.length; i++) {
       const device = settings.devices[i];
       const response = await fetch(base, {

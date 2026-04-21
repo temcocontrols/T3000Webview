@@ -609,10 +609,18 @@ fn extract_column_value(row: &tiberius::Row, index: usize) -> Value {
     }
     // Try float
     if let Some(v) = row.get::<f64, _>(index) {
-        return json!(v);
+        // serde_json rejects NaN/Infinity; map non-finite values to null
+        // so API responses stay valid JSON and do not panic.
+        if v.is_finite() {
+            return json!(v);
+        }
+        return Value::Null;
     }
     if let Some(v) = row.get::<f32, _>(index) {
-        return json!(v);
+        if v.is_finite() {
+            return json!(v);
+        }
+        return Value::Null;
     }
     // Try string (NVARCHAR, VARCHAR)
     if let Some(v) = row.get::<&str, _>(index) {

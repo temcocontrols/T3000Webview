@@ -18,6 +18,7 @@
 import LogUtil from '../../../../lib/t3-hvac/Util/LogUtil';
 import type { DeviceSettings } from './settingsRefreshApi';
 import { SettingsRefreshApi } from './settingsRefreshApi';
+import { API_BASE_URL } from '../../../config/constants';
 
 /**
  * FFI request payload for settings update
@@ -42,7 +43,7 @@ interface SettingsUpdateResponse {
 }
 
 export class SettingsUpdateApi {
-  private static readonly FFI_ENDPOINT = 'http://localhost:9103/api/t3000/ffi/call';
+  private static readonly FFI_ENDPOINT = `${API_BASE_URL}/api/t3000/ffi/call`;
   private static readonly ENTRY_TYPE_SETTINGS_WRITE = 198; // WRITE_SETTING_COMMAND (C++ ud_str.h)
   private static readonly ENTRY_TYPE_SETTINGS_READ  = 98;  // READ_SETTING_COMMAND
   private static readonly ACTION_UPDATE = 16;          // UPDATE_WEBVIEW_LIST
