@@ -1405,16 +1405,29 @@ export const DatabaseConfigPage: React.FC = () => {
             <div className={styles.scanResults}>
               {scanResults.map((inst, i) => (
                 <div key={i} className={styles.scanRow}>
+                  {(() => {
+                    const displayInstance = inst.instance?.trim() || '';
+                    const displayPort = inst.port ?? DEFAULT_PORTS.mssql;
+                    const isTcpOnly = !inst.instance && !inst.version;
+
+                    return (
                   <span>
                     <strong>{inst.host}</strong>
-                    {inst.instance && `\\${inst.instance}`}
-                    {inst.port != null && `:${inst.port}`}
+                    {displayInstance ? `\\${displayInstance}` : ''}
+                    {`:${displayPort}`}
                     {inst.version && (
                       <Text size={200} className={styles.scanVersionText}>
                         v{inst.version}
                       </Text>
                     )}
+                    {isTcpOnly && (
+                      <Text size={200} className={styles.scanVersionText}>
+                        {' '}TCP 1433 check only
+                      </Text>
+                    )}
                   </span>
+                    );
+                  })()}
                   <Tooltip content="Fill in the connection fields with this server's details" relationship="description">
                     <Button size="small" onClick={() => applyScanResult(inst)}>
                       Use

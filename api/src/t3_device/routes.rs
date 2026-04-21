@@ -2684,10 +2684,25 @@ async fn get_smart_trendlog_data(
 async fn save_realtime_trendlog_data(
     State(state): State<T3AppState>,
     Json(payload): Json<CreateTrendlogDataRequest>,
-) -> Result<Json<Value>, StatusCode> {
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if state.server_db_enabled && !state.server_db_connected {
+        eprintln!(
+            "❌ Realtime trendlog save blocked: center DB is enabled but not connected (local fallback active)"
+        );
+        return Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({
+                "success": false,
+                "error": "Center DB is enabled but not connected",
+                "hint": "Check server database config/connection and restart API service"
+            })),
+        ));
+    }
+
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
         use crate::database_management::mssql_trendlog_service;
+        eprintln!("📤 Realtime trendlog save target: CENTER DB (MSSQL)");
         let parent_id = mssql_trendlog_service::save_realtime_data(
             pool,
             payload.serial_number,
@@ -2701,7 +2716,17 @@ async fn save_realtime_trendlog_data(
             payload.units.as_deref(),
         )
         .await
-        .map_err(|e| { eprintln!("MSSQL realtime save error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        .map_err(|e| {
+            eprintln!("MSSQL realtime save error: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({
+                    "success": false,
+                    "error": "MSSQL realtime save failed",
+                    "details": e.to_string()
+                })),
+            )
+        })?;
         return Ok(Json(json!({
             "data": parent_id,
             "message": "Realtime trendlog data saved successfully"
@@ -2709,14 +2734,38 @@ async fn save_realtime_trendlog_data(
     }
 
     // ── SeaORM branch ──
-    let db = get_t3_device_conn!(state);
+    if state.server_db_enabled {
+        eprintln!("📤 Realtime trendlog save target: CENTER DB (SeaORM backend)");
+    } else {
+        eprintln!("📤 Realtime trendlog save target: LOCAL SQLite");
+    }
+    let db = match state.t3_device_conn.as_ref() {
+        Some(conn) => conn.lock().await,
+        None => {
+            eprintln!("⚠️  T3000 device database unavailable");
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(json!({
+                    "success": false,
+                    "error": "T3000 device database unavailable"
+                })),
+            ));
+        }
+    };
 
     match T3TrendlogDataService::save_realtime_data(&*db, payload).await {
         Ok(saved_data) => Ok(Json(json!({
             "data": saved_data,
             "message": "Realtime trendlog data saved successfully"
         }))),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "success": false,
+                "error": "Realtime trendlog data save failed",
+                "details": e.to_string()
+            })),
+        )),
     }
 }
 
@@ -2724,7 +2773,7 @@ async fn save_realtime_trendlog_data(
 async fn save_realtime_trendlog_batch(
     State(state): State<T3AppState>,
     Json(payload): Json<Vec<CreateTrendlogDataRequest>>,
-) -> Result<Json<Value>, StatusCode> {
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     use crate::logger::{write_structured_log_with_level, LogLevel};
 
     // Log the batch save request
@@ -2734,9 +2783,29 @@ async fn save_realtime_trendlog_batch(
     );
     let _ = write_structured_log_with_level("T3_Webview_API", &request_info, LogLevel::Info);
 
+    if state.server_db_enabled && !state.server_db_connected {
+        let blocked_info =
+            "❌ [Routes] Realtime batch save blocked - center DB enabled but not connected (local fallback active)";
+        let _ = write_structured_log_with_level("T3_Webview_API", blocked_info, LogLevel::Error);
+        eprintln!("{}", blocked_info);
+        return Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({
+                "success": false,
+                "error": "Center DB is enabled but not connected",
+                "hint": "Check server database config/connection and restart API service"
+            })),
+        ));
+    }
+
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
         use crate::database_management::mssql_trendlog_service;
+        let _ = write_structured_log_with_level(
+            "T3_Webview_API",
+            "📤 [Routes] Realtime batch save target: CENTER DB (MSSQL)",
+            LogLevel::Info,
+        );
         let batch: Vec<mssql_trendlog_service::RealtimeDataPoint> = payload
             .iter()
             .map(|p| mssql_trendlog_service::RealtimeDataPoint {
@@ -2753,7 +2822,17 @@ async fn save_realtime_trendlog_batch(
             .collect();
         let rows = mssql_trendlog_service::save_realtime_batch(pool, &batch)
             .await
-            .map_err(|e| { eprintln!("MSSQL batch save error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+            .map_err(|e| {
+                eprintln!("MSSQL batch save error: {}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({
+                        "success": false,
+                        "error": "MSSQL batch save failed",
+                        "details": e.to_string()
+                    })),
+                )
+            })?;
         return Ok(Json(json!({
             "rows_affected": rows,
             "message": "Realtime trendlog batch data saved successfully"
@@ -2761,7 +2840,32 @@ async fn save_realtime_trendlog_batch(
     }
 
     // ── SeaORM branch ──
-    let db = get_t3_device_conn!(state);
+    if state.server_db_enabled {
+        let _ = write_structured_log_with_level(
+            "T3_Webview_API",
+            "📤 [Routes] Realtime batch save target: CENTER DB (SeaORM backend)",
+            LogLevel::Info,
+        );
+    } else {
+        let _ = write_structured_log_with_level(
+            "T3_Webview_API",
+            "📤 [Routes] Realtime batch save target: LOCAL SQLite",
+            LogLevel::Info,
+        );
+    }
+    let db = match state.t3_device_conn.as_ref() {
+        Some(conn) => conn.lock().await,
+        None => {
+            eprintln!("⚠️  T3000 device database unavailable");
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(json!({
+                    "success": false,
+                    "error": "T3000 device database unavailable"
+                })),
+            ));
+        }
+    };
 
     match T3TrendlogDataService::save_realtime_batch(&*db, payload).await {
         Ok(rows_affected) => {
@@ -2784,7 +2888,14 @@ async fn save_realtime_trendlog_batch(
             let _ = write_structured_log_with_level("T3_Webview_API", &error_info, LogLevel::Error);
 
             eprintln!("❌ [Routes] Realtime batch save error details: {:?}", error);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({
+                    "success": false,
+                    "error": "Realtime trendlog batch save failed",
+                    "details": format!("{:?}", error)
+                })),
+            ))
         }
     }
 }
