@@ -44,8 +44,10 @@ pub async fn get_trendlog_history(
          WHERE p.SerialNumber = @P2 AND p.PanelId = @P3",
     );
 
-    // Filter by trendlog_id when provided (non-empty)
-    if !trendlog_id.is_empty() {
+    // Filter by trendlog_id when provided.
+    // Frontend commonly passes "0" to mean "all points" for chart history,
+    // so skip PointId filtering for that sentinel value.
+    if !trendlog_id.is_empty() && trendlog_id != "0" {
         sql.push_str(&format!(
             " AND p.PointId = '{}'",
             trendlog_id.replace('\'', "''")
@@ -559,7 +561,7 @@ pub async fn get_view_selections(
             "SELECT Point_Type, Point_Index, Point_Label, is_selected \
              FROM TRENDLOG_VIEWS \
              WHERE SerialNumber = @P1 AND PanelId = @P2 \
-               AND Trendlog_ID = @P3 AND ViewNumber = @P4 \
+                             AND Trendlog_ID = @P3 AND View_Number = @P4 \
                AND is_selected = 1",
             &[&serial_number, &panel_id, &trendlog_id, &view_number],
         )
@@ -603,7 +605,7 @@ pub async fn save_view_selections(
     conn.execute(
         "UPDATE TRENDLOG_VIEWS SET is_selected = 0 \
          WHERE SerialNumber = @P1 AND PanelId = @P2 \
-           AND Trendlog_ID = @P3 AND ViewNumber = @P4",
+                     AND Trendlog_ID = @P3 AND View_Number = @P4",
         &[&serial_number, &panel_id, &trendlog_id, &view_number],
     )
     .await
@@ -634,12 +636,12 @@ pub async fn save_view_selections(
                            @P4 AS PT, @P5 AS PIX, @P6 AS VN) AS src \
              ON target.SerialNumber = src.SN AND target.PanelId = src.PI \
                 AND target.Trendlog_ID = src.TID AND target.Point_Type = src.PT \
-                AND target.Point_Index = src.PIX AND target.ViewNumber = src.VN \
+                                AND target.Point_Index = src.PIX AND target.View_Number = src.VN \
              WHEN MATCHED THEN UPDATE SET \
                is_selected = 1, Point_Label = @P7, updated_at = @P8 \
              WHEN NOT MATCHED THEN INSERT \
                (SerialNumber, PanelId, Trendlog_ID, Point_Type, Point_Index, \
-                ViewNumber, is_selected, Point_Label, created_at, updated_at) \
+                                View_Number, is_selected, Point_Label, created_at, updated_at) \
              VALUES (@P1, @P2, @P3, @P4, @P5, @P6, 1, @P7, @P8, @P8);",
             &[
                 &serial_number,          // @P1
