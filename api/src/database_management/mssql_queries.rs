@@ -15,6 +15,7 @@
 
 use bb8::Pool;
 use bb8_tiberius::ConnectionManager;
+use serde_json::{json, Value};
 
 /// Type alias for a bb8-managed tiberius connection pool.
 pub type MssqlPool = Pool<ConnectionManager>;
@@ -46,15 +47,27 @@ pub async fn upsert_device(
     pool: &MssqlPool,
     serial_number: i32,
     panel_id: Option<i32>,
+    main_building_name: Option<&str>,
     building_name: Option<&str>,
+    floor_name: Option<&str>,
+    room_name: Option<&str>,
+    panel_number: Option<i32>,
+    network_number: Option<i32>,
     product_name: Option<&str>,
+    product_class_id: Option<i32>,
+    product_id: Option<i32>,
+    bautrate: Option<&str>,
     address: Option<&str>,
+    description: Option<&str>,
     status: Option<&str>,
     ip_address: Option<&str>,
     port: Option<i32>,
+    bacnet_mstp_mac_id: Option<i32>,
     modbus_address: Option<i32>,
+    pc_ip_address: Option<&str>,
     modbus_port: Option<i32>,
     bacnet_ip_port: Option<i32>,
+    show_label_name: Option<&str>,
     connection_type: Option<&str>,
 ) -> Result<(), String> {
     let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
@@ -64,33 +77,138 @@ pub async fn upsert_device(
          USING (SELECT @P1 AS SerialNumber) AS source \
          ON target.SerialNumber = source.SerialNumber \
          WHEN MATCHED THEN UPDATE SET \
-           PanelId = @P2, Building_Name = @P3, Product_Name = @P4, \
-           Address = @P5, Status = @P6, ip_address = @P7, port = @P8, \
-           modbus_address = @P9, modbus_port = @P10, bacnet_ip_port = @P11, \
-           connection_type = @P12 \
+           PanelId = @P2, MainBuilding_Name = @P3, Building_Name = @P4, Floor_Name = @P5, \
+           Room_Name = @P6, Panel_Number = @P7, Network_Number = @P8, Product_Name = @P9, \
+           Product_Class_ID = @P10, Product_ID = @P11, Bautrate = @P12, Address = @P13, \
+           Description = @P14, Status = @P15, ip_address = @P16, port = @P17, \
+           bacnet_mstp_mac_id = @P18, modbus_address = @P19, pc_ip_address = @P20, \
+           modbus_port = @P21, bacnet_ip_port = @P22, show_label_name = @P23, \
+           connection_type = @P24 \
          WHEN NOT MATCHED THEN INSERT \
-           (SerialNumber, PanelId, Building_Name, Product_Name, Address, Status, \
-            ip_address, port, modbus_address, modbus_port, bacnet_ip_port, connection_type) \
-         VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9, @P10, @P11, @P12);",
+           (SerialNumber, PanelId, MainBuilding_Name, Building_Name, Floor_Name, Room_Name, \
+            Panel_Number, Network_Number, Product_Name, Product_Class_ID, Product_ID, Bautrate, \
+            Address, Description, Status, ip_address, port, bacnet_mstp_mac_id, modbus_address, \
+            pc_ip_address, modbus_port, bacnet_ip_port, show_label_name, connection_type) \
+         VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9, @P10, @P11, @P12, \
+                 @P13, @P14, @P15, @P16, @P17, @P18, @P19, @P20, @P21, @P22, @P23, @P24);",
         &[
             &serial_number,          // @P1
             &panel_id,               // @P2
-            &building_name,          // @P3
-            &product_name,           // @P4
-            &address,                // @P5
-            &status,                 // @P6
-            &ip_address,             // @P7
-            &port,                   // @P8
-            &modbus_address,         // @P9
-            &modbus_port,            // @P10
-            &bacnet_ip_port,         // @P11
-            &connection_type,        // @P12
+            &main_building_name,     // @P3
+            &building_name,          // @P4
+            &floor_name,             // @P5
+            &room_name,              // @P6
+            &panel_number,           // @P7
+            &network_number,         // @P8
+            &product_name,           // @P9
+            &product_class_id,       // @P10
+            &product_id,             // @P11
+            &bautrate,               // @P12
+            &address,                // @P13
+            &description,            // @P14
+            &status,                 // @P15
+            &ip_address,             // @P16
+            &port,                   // @P17
+            &bacnet_mstp_mac_id,     // @P18
+            &modbus_address,         // @P19
+            &pc_ip_address,          // @P20
+            &modbus_port,            // @P21
+            &bacnet_ip_port,         // @P22
+            &show_label_name,        // @P23
+            &connection_type,        // @P24
         ],
     )
     .await
     .map_err(|e| format!("DEVICES MERGE failed: {}", e))?;
 
     Ok(())
+}
+
+fn clean_cpp_string(value: Option<&str>) -> Option<String> {
+    value.and_then(|raw| {
+        let cleaned = raw.split('\0').next().unwrap_or("").trim().to_string();
+        if cleaned.is_empty() {
+            None
+        } else {
+            Some(cleaned)
+        }
+    })
+}
+
+pub async fn list_devices_with_stats(pool: &MssqlPool) -> Result<Vec<Value>, String> {
+    let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
+
+    let result = conn
+        .query(
+            "SELECT SerialNumber, PanelId, MainBuilding_Name, Building_Name, Floor_Name, Room_Name, \
+                    Panel_Number, Network_Number, Product_Name, Product_Class_ID, Product_ID, \
+                    Bautrate, Address, Description, Status, ip_address, port, bacnet_mstp_mac_id, \
+                    modbus_address, pc_ip_address, modbus_port, bacnet_ip_port, show_label_name, \
+                    connection_type \
+             FROM DEVICES \
+             ORDER BY SerialNumber",
+            &[],
+        )
+        .await
+        .map_err(|e| format!("DEVICES SELECT failed: {}", e))?;
+
+    let result_sets = result
+        .into_results()
+        .await
+        .map_err(|e| format!("DEVICES row fetch failed: {}", e))?;
+
+    let mut devices = Vec::new();
+    for result_set in result_sets {
+        for row in result_set {
+            let serial_number = row.get::<i32, _>(0).unwrap_or(0);
+            let product_name = clean_cpp_string(row.get::<&str, _>(8));
+            let show_label_name = clean_cpp_string(row.get::<&str, _>(22))
+                .or_else(|| Some(format!("Device {}", serial_number)));
+
+            devices.push(json!({
+                "device": {
+                    "serialNumber": serial_number,
+                    "panelId": row.get::<i32, _>(1),
+                    "mainBuildingName": clean_cpp_string(row.get::<&str, _>(2)),
+                    "buildingName": clean_cpp_string(row.get::<&str, _>(3)),
+                    "floorName": clean_cpp_string(row.get::<&str, _>(4)),
+                    "roomName": clean_cpp_string(row.get::<&str, _>(5)),
+                    "panelNumber": row.get::<i32, _>(6),
+                    "networkNumber": row.get::<i32, _>(7),
+                    "productName": product_name,
+                    "productClassId": row.get::<i32, _>(9),
+                    "productId": row.get::<i32, _>(10),
+                    "screenName": Value::Null,
+                    "bautrate": clean_cpp_string(row.get::<&str, _>(11)),
+                    "address": clean_cpp_string(row.get::<&str, _>(12)),
+                    "register": Value::Null,
+                    "function": Value::Null,
+                    "description": clean_cpp_string(row.get::<&str, _>(13)),
+                    "highUnits": Value::Null,
+                    "lowUnits": Value::Null,
+                    "updateField": Value::Null,
+                    "status": clean_cpp_string(row.get::<&str, _>(14)),
+                    "rangeField": Value::Null,
+                    "calibration": Value::Null,
+                    "ipAddress": clean_cpp_string(row.get::<&str, _>(15)),
+                    "port": row.get::<i32, _>(16),
+                    "bacnetMstpMacId": row.get::<i32, _>(17),
+                    "modbusAddress": row.get::<i32, _>(18),
+                    "pcIpAddress": clean_cpp_string(row.get::<&str, _>(19)),
+                    "modbusPort": row.get::<i32, _>(20),
+                    "bacnetIpPort": row.get::<i32, _>(21),
+                    "showLabelName": show_label_name,
+                    "connectionType": clean_cpp_string(row.get::<&str, _>(23))
+                },
+                "input_count": 0,
+                "output_count": 0,
+                "variable_count": 0,
+                "total_points": 0
+            }));
+        }
+    }
+
+    Ok(devices)
 }
 
 // ============================================================================

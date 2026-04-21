@@ -652,8 +652,8 @@ async fn get_devices_with_stats(
 ) -> Result<Json<Value>, StatusCode> {
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
-        let devices = mssql_generic_crud::select_all(pool, "DEVICES", 1, 10000)
+        use crate::database_management::mssql_queries;
+        let devices = mssql_queries::list_devices_with_stats(pool)
             .await
             .map_err(|e| { eprintln!("MSSQL devices error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
         return Ok(Json(json!({
@@ -682,15 +682,42 @@ async fn create_device(
 ) -> Result<Json<Value>, StatusCode> {
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
-        let json_payload = serde_json::to_value(&payload)
-            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        let id = mssql_generic_crud::insert_row(pool, "DEVICES", &json_payload)
+        use crate::database_management::mssql_queries;
+        let serial_number = payload.serial_number.unwrap_or(0);
+        mssql_queries::upsert_device(
+            pool,
+            serial_number,
+            payload.panel_id,
+            payload.main_building_name.as_deref(),
+            payload.building_name.as_deref(),
+            payload.floor_name.as_deref(),
+            payload.room_name.as_deref(),
+            payload.panel_number,
+            payload.network_number,
+            payload.product_name.as_deref(),
+            payload.product_class_id,
+            payload.product_id,
+            payload.bautrate.as_deref(),
+            payload.address.as_deref(),
+            payload.description.as_deref(),
+            payload.status.as_deref(),
+            payload.ip_address.as_deref(),
+            payload.port,
+            payload.bacnet_mstp_mac_id,
+            payload.modbus_address.map(i32::from),
+            payload.pc_ip_address.as_deref(),
+            payload.modbus_port.map(i32::from),
+            payload.bacnet_ip_port.map(i32::from),
+            payload.show_label_name.as_deref(),
+            payload.connection_type.as_deref(),
+        )
             .await
             .map_err(|e| { eprintln!("MSSQL create device error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let json_payload = serde_json::to_value(&payload)
+            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
         return Ok(Json(json!({
             "device": json_payload,
-            "id": id,
+            "id": serial_number,
             "message": "Device created successfully"
         })));
     }
