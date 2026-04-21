@@ -210,10 +210,12 @@ pub async fn establish_device_conn_for_sync() -> Result<DatabaseConnection, Box<
                     Ok(conn)
                 }
                 DeviceDbConn::Mssql { .. } => {
-                    // MSSQL uses tiberius pool, not SeaORM — FFI sync needs SeaORM.
-                    // Fall back to local SQLite; MSSQL dual-write is a future enhancement.
+                    // MSSQL uses tiberius pool, not SeaORM — this function returns SeaORM conn.
+                    // The FFI sync service detects the MSSQL pool via get_server_mssql_pool()
+                    // and writes directly via SyncWriter::MssqlDirect, so this branch is only
+                    // reached when an explicit SeaORM conn to MSSQL is requested elsewhere.
                     tracing::warn!(
-                        "MSSQL backend active — FFI sync falls back to local SQLite (MSSQL dual-write TODO)"
+                        "MSSQL backend active — returning local SQLite (MSSQL direct writes handled by SyncWriter)"
                     );
                     Ok(local_conn)
                 }

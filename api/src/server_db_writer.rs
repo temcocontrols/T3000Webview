@@ -69,10 +69,12 @@ pub fn get_server_conn() -> Option<&'static Arc<Mutex<DatabaseConnection>>> {
     })
 }
 
-/// Get the server MSSQL pool if the server backend is MSSQL.
+/// Get the server MSSQL pool if the server backend is MSSQL **and** this PC is the server role.
+/// Only the server-role PC should write FFI data directly to the MSSQL center DB.
+/// Client-role PCs write to local SQLite instead.
 pub fn get_server_mssql_pool() -> Option<&'static crate::database_management::mssql_queries::MssqlPool> {
     SERVER_DB.get().and_then(|w| {
-        if w.enabled {
+        if w.enabled && w.role == "server" {
             w.mssql_pool.as_ref()
         } else {
             None
@@ -105,7 +107,7 @@ pub async fn dual_write_insert<E, A>(
             );
         }
     }
-    // TODO: MSSQL dual-write via mssql_queries (future enhancement)
+    // MSSQL center DB is handled by SyncWriter::MssqlDirect — not via this helper.
 }
 
 /// Helper: Write trendlog detail to server DB only (skipping local).
@@ -132,5 +134,5 @@ pub async fn server_only_insert<E, A>(
             );
         }
     }
-    // TODO: MSSQL server-only write via mssql_queries (future enhancement)
+    // MSSQL center DB is handled by SyncWriter::MssqlDirect — not via this helper.
 }

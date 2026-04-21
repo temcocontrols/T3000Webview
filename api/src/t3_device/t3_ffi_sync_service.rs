@@ -1016,6 +1016,10 @@ impl T3000MainService {
     /// Implements TWO-TIER sync strategy:
     /// - QUICK SYNC: Use cached device list, only call LOGGING_DATA (every ffi.sync_interval_secs)
     /// - FULL REDISCOVERY: Call GET_PANELS_LIST + LOGGING_DATA (every rediscover.interval_secs)
+    ///
+    /// Write path is chosen automatically at the start of each cycle:
+    /// - MSSQL pool present → writes directly to MSSQL center DB (SyncWriter::MssqlDirect)
+    /// - Otherwise         → writes to local SQLite or SeaORM center DB (SyncWriter::Sqlite)
     async fn sync_logging_data_static(config: T3000MainConfig) -> Result<(), AppError> {
         // Create logger for this sync operation
         let mut sync_logger =
@@ -1026,12 +1030,22 @@ impl T3000MainService {
             config.timeout_seconds, config.retry_attempts
         ));
 
-        let db = establish_device_conn_for_sync().await.map_err(|e| {
-            sync_logger.error(&format!("❌ Database connection failed: {}", e));
+        // Always use local SQLite for metadata / audit trail
+        let local_db = establish_t3_device_connection().await.map_err(|e| {
+            sync_logger.error(&format!("❌ Local database connection failed: {}", e));
             e
         })?;
 
-        sync_logger.info("✅ Database connection established");
+        // Decide write target: MSSQL direct (center DB) if pool active, else SQLite/SeaORM
+        let writer = super::sync_writer::SyncWriter::from_pool_or_sqlite().await.map_err(|e| {
+            sync_logger.error(&format!("❌ Failed to initialize sync writer: {}", e));
+            e
+        })?;
+
+        sync_logger.info(&format!(
+            "✅ Database connections established — write target: {}",
+            if writer.is_mssql_direct() { "MSSQL (direct write to center DB)" } else { "SQLite/SeaORM" }
+        ));
 
         // STEP 1: Decide whether to perform full rediscovery or use cache
         let should_do_rediscovery = Self::should_rediscover().await;
@@ -1077,7 +1091,7 @@ impl T3000MainService {
             };
 
             trendlog_data_sync_metadata::Entity::insert(rediscover_metadata)
-                .exec(&db)
+                .exec(&local_db)
                 .await
                 .map_err(|e| {
                     sync_logger.error(&format!(
@@ -1103,7 +1117,7 @@ impl T3000MainService {
                 error_message: None,
             };
 
-            if let Err(e) = DataSyncMetadataService::insert_sync_metadata(&db, new_metadata_request).await {
+            if let Err(e) = DataSyncMetadataService::insert_sync_metadata(&local_db, new_metadata_request).await {
                 sync_logger.error(&format!("❌ Failed to insert GET_PANELS_LIST to DATA_SYNC_METADATA: {}", e));
             }
         } else {
@@ -1143,15 +1157,9 @@ impl T3000MainService {
             ));
         }
 
-        sync_logger.info("💾 Database transaction started");
+        sync_logger.info("💾 Recording sync cycle metadata (local DB)");
 
-        // Start database transaction
-        let txn = db.begin().await.map_err(|e| {
-            sync_logger.error(&format!("❌ Failed to start transaction: {}", e));
-            AppError::DatabaseError(format!("Transaction start failed: {}", e))
-        })?;
-
-        // Create sync metadata record for this LOGGING_DATA sync operation
+        // Create sync metadata record in local SQLite (metadata is always local)
         let sync_start_time = chrono::Utc::now();
         let sync_metadata = trendlog_data_sync_metadata::ActiveModel {
             sync_time_fmt: Set(sync_start_time.format("%Y-%m-%d %H:%M:%S").to_string()),
@@ -1166,7 +1174,7 @@ impl T3000MainService {
         };
 
         let sync_metadata_result = trendlog_data_sync_metadata::Entity::insert(sync_metadata)
-            .exec(&txn)
+            .exec(&local_db)
             .await
             .map_err(|e| {
                 sync_logger.error(&format!("❌ Failed to create sync metadata: {}", e));
@@ -1180,7 +1188,6 @@ impl T3000MainService {
         ));
 
         // Also insert into new DATA_SYNC_METADATA table for sync cycle start
-        // Note: Using txn.into_transaction_log() for inline insertion to avoid database lock
         let now = chrono::Utc::now();
         let sync_time = now.timestamp();
         let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
@@ -1200,7 +1207,7 @@ impl T3000MainService {
         };
 
         if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(cycle_metadata)
-            .exec(&txn)
+            .exec(&local_db)
             .await
         {
             sync_logger.error(&format!("❌ Failed to insert LOGGING_DATA_CYCLE to DATA_SYNC_METADATA: {}", e));
@@ -1333,7 +1340,7 @@ impl T3000MainService {
                 ));
 
                 if let Err(e) =
-                    Self::sync_device_basic_info(&txn, &device_with_points.device_info).await
+                    writer.sync_device(&device_with_points.device_info).await
                 {
                     sync_logger.error(&format!(
                         "❌ Device basic info sync failed - Serial: {}, Error: {}",
@@ -1360,7 +1367,7 @@ impl T3000MainService {
 
                     for (point_index, point) in device_with_points.input_points.iter().enumerate() {
                         if let Err(e) =
-                            Self::sync_input_point_static(&txn, serial_number, point).await
+                            writer.sync_input(serial_number, point).await
                         {
                             sync_logger.error(&format!(
                                 "❌ INPUT point {}/{} failed - Index: {}, Label: '{}', Error: {}",
@@ -1394,7 +1401,7 @@ impl T3000MainService {
                     };
 
                     if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(input_metadata)
-                        .exec(&txn)
+                        .exec(&local_db)
                         .await
                     {
                         sync_logger.error(&format!("❌ Failed to insert INPUTS sync metadata: {}", e));
@@ -1411,7 +1418,7 @@ impl T3000MainService {
                     for (point_index, point) in device_with_points.output_points.iter().enumerate()
                     {
                         if let Err(e) =
-                            Self::sync_output_point_static(&txn, serial_number, point).await
+                            writer.sync_output(serial_number, point).await
                         {
                             sync_logger.error(&format!(
                                 "❌ OUTPUT point {}/{} failed - Index: {}, Label: '{}', Error: {}",
@@ -1445,7 +1452,7 @@ impl T3000MainService {
                     };
 
                     if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(output_metadata)
-                        .exec(&txn)
+                        .exec(&local_db)
                         .await
                     {
                         sync_logger.error(&format!("❌ Failed to insert OUTPUTS sync metadata: {}", e));
@@ -1463,7 +1470,7 @@ impl T3000MainService {
                         device_with_points.variable_points.iter().enumerate()
                     {
                         if let Err(e) =
-                            Self::sync_variable_point_static(&txn, serial_number, point).await
+                            writer.sync_variable(serial_number, point).await
                         {
                             sync_logger.error(&format!("❌ VARIABLE point {}/{} failed - Index: {}, Label: '{}', Error: {}",
                                 point_index + 1, device_with_points.variable_points.len(), point.index, point.full_label, e));
@@ -1491,7 +1498,7 @@ impl T3000MainService {
                     };
 
                     if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(variable_metadata)
-                        .exec(&txn)
+                        .exec(&local_db)
                         .await
                     {
                         sync_logger.error(&format!("❌ Failed to insert VARIABLES sync metadata: {}", e));
@@ -1508,11 +1515,9 @@ impl T3000MainService {
                         total_trend_points
                     ));
 
-                    if let Err(e) = Self::insert_trend_logs(
-                        &txn,
+                    if let Err(e) = writer.insert_trendlogs(
                         serial_number,
                         device_with_points,
-                        sync_metadata_id,
                     )
                     .await
                     {
@@ -1546,117 +1551,89 @@ impl T3000MainService {
         }
 
         sync_logger.info(&format!(
-            "💾 Committing transaction - {} successful, {} failed, {} skipped",
+            "💾 Sync cycle complete — {} successful, {} failed, {} skipped",
             successful_devices, failed_devices, skipped_devices
         ));
 
-        let _commit_result = txn.commit().await.map_err(|e| {
-            sync_logger.error(&format!(
-                "❌ Transaction COMMIT failed - Error: {}, All {} device changes rolled back",
-                e, successful_devices
-            ));
-            AppError::DatabaseError(format!("Transaction commit failed: {}", e))
-        })?;
+        // Validation and replication apply only to the SQLite/SeaORM path.
+        // MSSQL direct path already wrote straight to center DB — no replication needed.
+        if !writer.is_mssql_direct() {
+            // Validate data was actually inserted by doing a quick count check
+            let validation_db = establish_device_conn_for_sync().await?;
+            sync_logger.info("🔍 Validation: Checking data persistence");
 
-        sync_logger.info("✅ Transaction committed successfully");
+            // Validate only successful devices
+            let mut validation_summary = String::new();
+            for panel_info in &panels {
+                let serial_number = panel_info.serial_number;
 
-        // Validate data was actually inserted by doing a quick count check
-        let validation_db = establish_device_conn_for_sync().await?;
-        sync_logger.info("🔍 Validation: Checking data persistence");
-
-        // Validate only successful devices
-        let mut validation_summary = String::new();
-        for panel_info in &panels {
-            let serial_number = panel_info.serial_number;
-
-            // Check if device exists in database
-            if let Ok(device_count) = devices::Entity::find()
-                .filter(devices::Column::SerialNumber.eq(serial_number))
-                .count(&validation_db)
-                .await
-            {
-                validation_summary.push_str(&format!(
-                    "Device {}: {} record(s) in DEVICES table; ",
-                    serial_number, device_count
-                ));
-            }
-
-            // Check input points count
-            if let Ok(input_count) = input_points::Entity::find()
-                .filter(input_points::Column::SerialNumber.eq(serial_number))
-                .count(&validation_db)
-                .await
-            {
-                validation_summary.push_str(&format!("{} INPUT points; ", input_count));
-            }
-
-            // Check output points count
-            if let Ok(output_count) = output_points::Entity::find()
-                .filter(output_points::Column::SerialNumber.eq(serial_number))
-                .count(&validation_db)
-                .await
-            {
-                validation_summary.push_str(&format!("{} OUTPUT points; ", output_count));
-            }
-
-            // Check variable points count
-            if let Ok(variable_count) = variable_points::Entity::find()
-                .filter(variable_points::Column::SerialNumber.eq(serial_number))
-                .count(&validation_db)
-                .await
-            {
-                validation_summary.push_str(&format!("{} VARIABLE points; ", variable_count));
-            }
-        }
-
-        sync_logger.info(&format!("📊 Validation results: {}", validation_summary));
-
-        // ---- SERVER DB REPLICATION (legacy, kept for MSSQL fallback) ----
-        // When center DB is active via SeaORM (PG/MySQL), the sync above already
-        // writes directly to center DB, making this a harmless no-op (upsert ON CONFLICT).
-        // When MSSQL is active, the FFI sync falls back to local SQLite, so this
-        // replication path copies data to the server DB via tiberius.
-        if crate::server_db_writer::is_server_write_active() {
-            sync_logger.info("🌐 Server DB replication: Starting (role=server)...");
-            let serial_numbers: Vec<i32> = panels.iter().map(|p| p.serial_number).collect();
-
-            // Try SeaORM path first (PG/MySQL), then MSSQL tiberius path
-            if crate::server_db_writer::get_server_conn().is_some() {
-                match Self::replicate_basic_data_to_server(&validation_db, &serial_numbers).await {
-                    Ok(stats) => {
-                        sync_logger.info(&format!(
-                            "🌐 Server DB replication (SeaORM) complete: {} devices, {} inputs, {} outputs, {} variables",
-                            stats.0, stats.1, stats.2, stats.3
-                        ));
-                    }
-                    Err(e) => {
-                        sync_logger.warn(&format!(
-                            "⚠️ Server DB replication (SeaORM) failed (local data is safe): {}",
-                            e
-                        ));
-                    }
+                // Check if device exists in database
+                if let Ok(device_count) = devices::Entity::find()
+                    .filter(devices::Column::SerialNumber.eq(serial_number))
+                    .count(&validation_db)
+                    .await
+                {
+                    validation_summary.push_str(&format!(
+                        "Device {}: {} record(s) in DEVICES table; ",
+                        serial_number, device_count
+                    ));
                 }
-            } else if let Some(mssql_pool) = crate::server_db_writer::get_server_mssql_pool() {
-                match Self::replicate_all_data_to_mssql(
-                    &validation_db,
-                    &serial_numbers,
-                    mssql_pool,
-                    config.sync_interval_secs,
-                ).await {
-                    Ok(stats) => {
-                        sync_logger.info(&format!(
-                            "🌐 Server DB replication (MSSQL) complete: {} devices, {} points, {} trendlog parents, {} trendlog details",
-                            stats.0, stats.1, stats.2, stats.3
-                        ));
-                    }
-                    Err(e) => {
-                        sync_logger.warn(&format!(
-                            "⚠️ Server DB replication (MSSQL) failed (local data is safe): {}",
-                            e
-                        ));
+
+                // Check input points count
+                if let Ok(input_count) = input_points::Entity::find()
+                    .filter(input_points::Column::SerialNumber.eq(serial_number))
+                    .count(&validation_db)
+                    .await
+                {
+                    validation_summary.push_str(&format!("{} INPUT points; ", input_count));
+                }
+
+                // Check output points count
+                if let Ok(output_count) = output_points::Entity::find()
+                    .filter(output_points::Column::SerialNumber.eq(serial_number))
+                    .count(&validation_db)
+                    .await
+                {
+                    validation_summary.push_str(&format!("{} OUTPUT points; ", output_count));
+                }
+
+                // Check variable points count
+                if let Ok(variable_count) = variable_points::Entity::find()
+                    .filter(variable_points::Column::SerialNumber.eq(serial_number))
+                    .count(&validation_db)
+                    .await
+                {
+                    validation_summary.push_str(&format!("{} VARIABLE points; ", variable_count));
+                }
+            }
+
+            sync_logger.info(&format!("📊 Validation results: {}", validation_summary));
+
+            // ---- SERVER DB REPLICATION (SQLite/SeaORM path only) ----
+            // SeaORM path (PG/MySQL) upserts directly; SQLite path replicates here.
+            if crate::server_db_writer::is_server_write_active() {
+                sync_logger.info("🌐 Server DB replication: Starting (role=server)...");
+                let serial_numbers: Vec<i32> = panels.iter().map(|p| p.serial_number).collect();
+
+                if crate::server_db_writer::get_server_conn().is_some() {
+                    match Self::replicate_basic_data_to_server(&validation_db, &serial_numbers).await {
+                        Ok(stats) => {
+                            sync_logger.info(&format!(
+                                "🌐 Server DB replication (SeaORM) complete: {} devices, {} inputs, {} outputs, {} variables",
+                                stats.0, stats.1, stats.2, stats.3
+                            ));
+                        }
+                        Err(e) => {
+                            sync_logger.warn(&format!(
+                                "⚠️ Server DB replication (SeaORM) failed (local data is safe): {}",
+                                e
+                            ));
+                        }
                     }
                 }
             }
+        } else {
+            sync_logger.info("🎯 MSSQL direct path — data written straight to center DB, replication skipped");
         }
 
         sync_logger.info(&format!("🎉 SEQUENTIAL SYNC CYCLE COMPLETED"));
@@ -1674,8 +1651,8 @@ impl T3000MainService {
     }
 
     /// UPSERT device basic info (INSERT or UPDATE based on existence)
-    async fn sync_device_basic_info(
-        txn: &DatabaseTransaction,
+    pub(crate) async fn sync_device_basic_info(
+        txn: &impl ConnectionTrait,
         device_info: &DeviceInfo,
     ) -> Result<(), AppError> {
         let serial_number = device_info.panel_serial_number;
@@ -1811,7 +1788,7 @@ impl T3000MainService {
 
     /// Convert Unix timestamp to formatted local time string for LoggingTime_Fmt
     /// Takes a Unix timestamp string and converts it to "YYYY-MM-DD HH:MM:SS" format in local timezone
-    fn format_unix_timestamp_to_local(unix_timestamp_str: &str) -> String {
+    pub(crate) fn format_unix_timestamp_to_local(unix_timestamp_str: &str) -> String {
         // Parse the Unix timestamp (handle both string and numeric formats)
         if let Ok(unix_timestamp) = unix_timestamp_str.parse::<i64>() {
             // Convert Unix timestamp to DateTime
@@ -1828,7 +1805,7 @@ impl T3000MainService {
 
     /// Derive units from range value for T3000 points
     /// Updated to match T3000 frontend variable range mappings from T3Data.ts
-    fn derive_units_from_range(range: i32) -> String {
+    pub(crate) fn derive_units_from_range(range: i32) -> String {
         match range {
             0 => "Unused".to_string(),
             1 => "Deg.C".to_string(),        // Temperature Celsius
@@ -1869,8 +1846,8 @@ impl T3000MainService {
     }
 
     /// INSERT trend log entries (ALWAYS INSERT for historical data)
-    async fn insert_trend_logs(
-        txn: &DatabaseTransaction,
+    pub(crate) async fn insert_trend_logs(
+        txn: &impl ConnectionTrait,
         serial_number: i32,
         device_data: &DeviceWithPoints,
         _sync_metadata_id: i32,
@@ -3137,8 +3114,8 @@ impl T3000MainService {
     }
 
     /// Sync input point data (UPSERT: INSERT or UPDATE)
-    async fn sync_input_point_static(
-        txn: &DatabaseTransaction,
+    pub(crate) async fn sync_input_point_static(
+        txn: &impl ConnectionTrait,
         serial_number: i32,
         point: &PointData,
     ) -> Result<(), AppError> {
@@ -3259,8 +3236,8 @@ impl T3000MainService {
     }
 
     /// Sync output point data (UPSERT: INSERT or UPDATE)
-    async fn sync_output_point_static(
-        txn: &DatabaseTransaction,
+    pub(crate) async fn sync_output_point_static(
+        txn: &impl ConnectionTrait,
         serial_number: i32,
         point: &PointData,
     ) -> Result<(), AppError> {
@@ -3375,8 +3352,8 @@ impl T3000MainService {
     }
 
     /// Sync variable point data (UPSERT: INSERT or UPDATE)
-    async fn sync_variable_point_static(
-        txn: &DatabaseTransaction,
+    pub(crate) async fn sync_variable_point_static(
+        txn: &impl ConnectionTrait,
         serial_number: i32,
         point: &PointData,
     ) -> Result<(), AppError> {
@@ -3750,6 +3727,9 @@ impl T3000MainService {
     /// Replicate ALL data from local SQLite → MSSQL server via tiberius.
     /// Covers: DEVICES, INPUTS, OUTPUTS, VARIABLES + TRENDLOG_DATA + TRENDLOG_DATA_DETAIL.
     /// Returns (devices, points, trendlog_parents, trendlog_details) counts.
+    /// NOTE: This path is superseded by `SyncWriter::MssqlDirect` which writes
+    /// directly to MSSQL without an intermediate SQLite step. Kept for reference.
+    #[allow(dead_code)]
     async fn replicate_all_data_to_mssql(
         local_db: &DatabaseConnection,
         serial_numbers: &[i32],
