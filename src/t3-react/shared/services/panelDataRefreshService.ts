@@ -306,11 +306,17 @@ export class PanelDataRefreshService {
           LogUtil.Info(`[PanelDataRefreshService] Saved ${savedCount}/${items.length} trendlog(s) to database`);
           return savedCount;
         }
+        // 503 means Center DB is configured but unreachable — surface this clearly
+        const errorText = await response.text().catch(() => response.statusText);
+        if (response.status === 503) {
+          LogUtil.Warn(`[PanelDataRefreshService] save-refreshed blocked — Center DB unreachable: ${errorText}`);
+          throw new Error(`Center DB unreachable: trendlog data was NOT saved. ${errorText}`);
+        }
         LogUtil.Error(`[PanelDataRefreshService] save-refreshed failed: ${response.statusText}`);
         return 0;
       } catch (err) {
         LogUtil.Error(`[PanelDataRefreshService] Failed to save trendlogs:`, err);
-        return 0;
+        throw err;
       }
     }
 

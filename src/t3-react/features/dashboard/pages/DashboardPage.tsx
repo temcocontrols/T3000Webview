@@ -361,6 +361,8 @@ export const DashboardPage: React.FC = () => {
   const [syncLogOpen, setSyncLogOpen] = useState(false);
   const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null);
   const [iniConfig, setIniConfig] = useState<IniConfig | null>(null);
+  // Track whether we're in "fast poll" mode (after a mode change, waiting for restart)
+  const [fastPolling, setFastPolling] = useState(false);
 
   // appMode derivation:
   // Primary = syncHealth.role (live runtime state — what the service is actually running as).
@@ -370,6 +372,21 @@ export const DashboardPage: React.FC = () => {
   const appMode: 'standalone' | 'server' | 'client' = syncHealth
     ? (syncHealth.role === 'server' ? 'server' : syncHealth.role === 'client' ? 'client' : 'standalone')
     : (iniConfig?.enabled ? (iniConfig.role === 'server' ? 'server' : 'client') : 'standalone');
+
+  // Derive restartPending here so we can use it to drive fast polling
+  const iniMode: 'standalone' | 'server' | 'client' = iniConfig?.enabled
+    ? (iniConfig.role === 'server' ? 'server' : 'client')
+    : 'standalone';
+  const restartPending = !!syncHealth && iniConfig !== null && iniMode !== appMode;
+
+  // When restartPending flips true → start fast polling; when mode stabilises → stop
+  useEffect(() => {
+    if (restartPending) {
+      setFastPolling(true);
+    } else {
+      setFastPolling(false);
+    }
+  }, [restartPending]);
 
   const fetchIniConfig = useCallback(async () => {
     try { setIniConfig(await getIniConfig()); } catch { /* ignore */ }
@@ -404,13 +421,35 @@ export const DashboardPage: React.FC = () => {
 
   useEffect(() => {
     fetchHealth();
-    const id = setInterval(fetchHealth, 60_000);
+    // Fast-poll (every 3s) right after a mode change so the banner updates quickly
+    // once the server restarts. Falls back to normal 60s once stable.
+    const interval = fastPolling ? 3_000 : 60_000;
+    const id = setInterval(fetchHealth, interval);
     return () => clearInterval(id);
-  }, [fetchHealth]);
+  }, [fetchHealth, fastPolling]);
 
+  // null = not yet loaded OR standalone (Center DB not in use)
+  // true = Center DB enabled + connected
+  // false = Center DB enabled + disconnected
   const centerDbOk: boolean | null = syncHealth
-    ? (syncHealth.centerDbEnabled ? syncHealth.centerDbConnected : true)
+    ? (syncHealth.centerDbEnabled ? syncHealth.centerDbConnected : null)
     : null;
+
+  // Human-readable CENTER DB detail for the KPI card
+  const centerDbDetail: string = syncHealth
+    ? syncHealth.centerDbEnabled
+      ? (() => {
+          const backend = (syncHealth.centerDbEnabled && syncHealth.backendType === 'sqlite')
+            ? 'SQL Server'  // sqlite means SQLite fallback — target is still SQL Server
+            : syncHealth.backendType === 'mssql' ? 'SQL Server'
+            : syncHealth.backendType;
+          const role = syncHealth.role === 'server' ? 'Server'
+            : syncHealth.role === 'client' ? 'Client'
+            : syncHealth.role;
+          return `${backend} · ${role}`;
+        })()
+      : 'Standalone mode'
+    : '—';
 
   return (
     <div className={s.container}>
@@ -421,7 +460,7 @@ export const DashboardPage: React.FC = () => {
           appMode={appMode}
           syncHealth={syncHealth}
           iniConfig={iniConfig}
-          onModeChanged={() => { fetchIniConfig(); fetchHealth(); }}
+          onModeChanged={() => { fetchIniConfig(); fetchHealth(); setFastPolling(true); }}
         />
 
         {/* ── Network Topology (Server + Client modes only) ── */}
@@ -463,18 +502,16 @@ export const DashboardPage: React.FC = () => {
                 </span>
               </div>
 
-              {/* Center DB */}
+              {/* Shared DB */}
               <div className={s.kpiCard}>
-                <span className={s.kpiLabel}>Center DB</span>
+                <span className={s.kpiLabel}>Shared DB</span>
                 <span className={mergeClasses(
                   s.kpiValueMd,
-                  centerDbOk === null ? '' : centerDbOk ? s.kpiValueGreen : s.kpiValueRed,
+                  centerDbOk === true ? s.kpiValueGreen : centerDbOk === false ? s.kpiValueRed : '',
                 )}>
-                  {centerDbOk === null ? '—' : centerDbOk ? 'Connected' : 'Disconnected'}
+                  {centerDbOk === true ? 'Connected' : centerDbOk === false ? 'Disconnected' : '—'}
                 </span>
-                <span className={s.kpiDetail}>
-                  {syncHealth ? `${syncHealth.backendType} · ${syncHealth.role}` : '—'}
-                </span>
+                <span className={s.kpiDetail}>{centerDbDetail}</span>
               </div>
 
               {/* Last Sync */}

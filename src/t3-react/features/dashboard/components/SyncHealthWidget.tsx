@@ -100,8 +100,11 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
   const connected = data.centerDbEnabled ? data.centerDbConnected : true; // standalone is always "ok"
   const roleLabel = data.role === 'server' ? 'Server' : data.role === 'client' ? 'Client' : 'Standalone';
   const RoleIcon = data.role === 'server' ? ServerRegular : DesktopRegular;
-  const backendLabel = data.backendType === 'mssql' ? 'MSSQL'
-    : data.backendType === 'postgres_or_mysql' ? 'PG / MySQL'
+  // When Center DB is enabled but backendType is sqlite, the service is in SQLite fallback —
+  // the configured target is SQL Server, so display that instead.
+  const effectiveBackend = data.centerDbEnabled && data.backendType === 'sqlite' ? 'mssql' : data.backendType;
+  const backendLabel = effectiveBackend === 'mssql' ? 'SQL Server'
+    : effectiveBackend === 'postgres_or_mysql' ? 'PG / MySQL'
     : 'SQLite';
 
   return (

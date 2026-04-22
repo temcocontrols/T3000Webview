@@ -79,7 +79,14 @@ export const SystemOverview: React.FC = () => {
             {centerStatus}
           </div>
           <div className={styles.cardDetail}>
-            {syncHealth?.backendType ?? 'N/A'} • {syncHealth?.role ?? '—'}
+            {(() => {
+              if (!syncHealth) return 'N/A';
+              const isCenterDb = syncHealth.role !== 'standalone';
+              // If Center DB mode but reporting sqlite, it's in SQLite fallback — configured target is SQL Server
+              const backend = isCenterDb && syncHealth.backendType === 'sqlite' ? 'SQL Server' : syncHealth.backendType;
+              const roleLabel = syncHealth.role === 'server' ? 'Server' : syncHealth.role === 'client' ? 'Client' : 'Standalone';
+              return `${backend} · ${roleLabel}`;
+            })()}
           </div>
         </div>
       </div>

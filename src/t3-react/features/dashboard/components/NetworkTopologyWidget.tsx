@@ -641,7 +641,7 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
             <div className={s.pauseRow}>
               <ErrorCircleRegular style={{ fontSize: '14px', color: '#8e1c1c' }} />
               <strong>Sampling paused.</strong>&nbsp;
-              {health.pausedReason ?? 'Center DB unreachable — no data is being written until the connection is restored.'}
+              {health.pausedReason ?? 'Shared DB unreachable — no data is being written until the connection is restored.'}
             </div>
           )}
           {dbResult && (

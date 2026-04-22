@@ -5,11 +5,11 @@
  * always matches what the backend is actually running.
  *
  * Standalone card  - always visible; active when appMode === 'standalone'
- * Center DB card   - always visible; active when appMode === 'server' | 'client'
+ * Shared DB card   - always visible; active when appMode === 'server' | 'client'
  *
  * Clicking the inactive card shows a contextual action bar:
- *   - Click Center DB while standalone  -> amber bar with "Database Configuration ->"
- *   - Click Standalone while Center DB  -> warning bar with switch confirmation
+ *   - Click Shared DB while standalone  -> amber bar with "Database Configuration ->"
+ *   - Click Standalone while Shared DB  -> warning bar with switch confirmation
  */
 
 import React, { useState } from 'react';
@@ -389,6 +389,12 @@ const useStyles = makeStyles({
     width: 'fit-content',
     '&:hover': { textDecorationLine: 'underline' },
   },
+  setupLinkRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    marginTop: '4px',
+  },
   inlineConfirmBox: {
     display: 'flex',
     flexDirection: 'column',
@@ -491,7 +497,7 @@ export const ModeBanner: React.FC<ModeBannerProps> = ({
   const handleCardClick = (clicked: 'standalone' | 'centerdb') => {
     if (saving) return;
     if (clicked === 'centerdb') {
-      if (!isCenterDb) setPendingAction('setupCenterDb');
+      if (!isCenterDb) setPendingAction(prev => prev === 'setupCenterDb' ? null : 'setupCenterDb');
     } else {
       if (!isCenterDb) return; // already standalone
       setPendingAction('switchToStandalone');
@@ -535,7 +541,7 @@ export const ModeBanner: React.FC<ModeBannerProps> = ({
         <span>
           Select how this workstation stores and shares T3000 data.{' '}
           <strong>Standalone</strong> uses a local SQLite database with no network dependency.{' '}
-          <strong>Center DB</strong> connects multiple T3000 PCs to a shared central database
+          <strong>Shared DB</strong> connects multiple T3000 PCs to a shared central database
           (SQL Server), with one PC designated as the Server.
         </span>
       </div>
@@ -574,7 +580,7 @@ export const ModeBanner: React.FC<ModeBannerProps> = ({
           ) : pendingAction === 'switchToStandalone' ? (
             <div className={s.inlineConfirmBox} onClick={(e) => e.stopPropagation()}>
               <span className={s.inlineConfirmText}>
-                Switching to Standalone disables Center DB sync. Data will no longer be shared
+                Switching to Standalone disables Shared DB sync. Data will no longer be shared
                 with other T3000 PCs. Takes effect after the T3000 service restarts.
               </span>
               <div className={s.inlineConfirmBtns}>
@@ -596,7 +602,7 @@ export const ModeBanner: React.FC<ModeBannerProps> = ({
           )}
         </div>
 
-        {/* -- Center DB card -- */}
+        {/* -- Shared DB card -- */}
         <div
           className={mergeClasses(s.modeCard, isCenterDb ? s.modeCardActive : undefined)}
           onClick={() => handleCardClick('centerdb')}
@@ -604,7 +610,7 @@ export const ModeBanner: React.FC<ModeBannerProps> = ({
           <div className={s.cardHeader}>
             <DatabaseRegular className={mergeClasses(s.cardIcon, isCenterDb ? s.cardIconActive : undefined)} />
             <span className={mergeClasses(s.cardTitle, isCenterDb ? s.cardTitleActive : undefined)}>
-              Center DB
+              Shared DB
             </span>
             {isCenterDb && <span className={s.badge}>Active</span>}
           </div>
@@ -634,7 +640,7 @@ export const ModeBanner: React.FC<ModeBannerProps> = ({
             <div className={s.inlineRestart} onClick={(e) => e.stopPropagation()}>
               <div className={s.inlineRestartRow}>
                 <span>
-                  &#8635; Center DB ({iniMode === 'server' ? 'Server' : 'Client'}) saved — restart T3000 to activate.
+                  &#8635; Shared DB ({iniMode === 'server' ? 'Server' : 'Client'}) saved — restart T3000 to activate.
                 </span>
                 <button className={s.setupLink} onClick={goToConfigure}>
                   Database Configuration <ArrowRightRegular style={{ fontSize: '11px' }} />
@@ -642,12 +648,17 @@ export const ModeBanner: React.FC<ModeBannerProps> = ({
               </div>
             </div>
           ) : pendingAction === 'setupCenterDb' ? (
-            <button
-              className={s.setupLink}
-              onClick={(e) => { e.stopPropagation(); goToConfigure(); }}
-            >
-              Set up Center DB <ArrowRightRegular style={{ fontSize: '11px' }} />
-            </button>
+            <div className={s.setupLinkRow} onClick={(e) => e.stopPropagation()}>
+              <button
+                className={s.setupLink}
+                onClick={(e) => { e.stopPropagation(); goToConfigure(); }}
+              >
+                Connect to Shared DB <ArrowRightRegular style={{ fontSize: '11px' }} />
+              </button>
+              <button className={s.btnCancel} onClick={(e) => { e.stopPropagation(); setPendingAction(null); }}>
+                Cancel
+              </button>
+            </div>
           ) : (
             <span className={s.cardHint}>Not configured. Click to connect to a shared SQL Server database.</span>
           )}
