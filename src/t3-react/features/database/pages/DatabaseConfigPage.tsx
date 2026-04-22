@@ -457,10 +457,11 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: tokens.spacingHorizontalS,
-    padding: '4px 8px',
+    padding: '12px 8px 4px',
     backgroundColor: 'transparent',
     marginBottom: tokens.spacingVerticalM,
     fontSize: '13px',
+    color: '#605e5c',
   },
   optionsRow: {
     display: 'flex',
@@ -602,14 +603,15 @@ const DEFAULT_PORTS: Record<BackendType, number> = {
   mssql: 1433,
 };
 
-function configToForm(cfg: BackendConfigResponse | undefined): SaveBackendConfigRequest {
+function configToForm(cfg: BackendConfigResponse | undefined, backendType?: BackendType): SaveBackendConfigRequest {
+  const isMssql = (cfg?.backend_type ?? backendType) === 'mssql';
   return {
-    backend_type: cfg?.backend_type ?? 'sqlite',
+    backend_type: cfg?.backend_type ?? backendType ?? 'sqlite',
     host: cfg?.host ?? '',
     port: cfg?.port || undefined,
     instance: cfg?.instance ?? '',
-    database_name: cfg?.database_name ?? '',
-    username: cfg?.username ?? '',
+    database_name: cfg?.database_name ?? (isMssql ? 'T3000' : ''),
+    username: cfg?.username ?? (isMssql ? 'sa' : ''),
     password: undefined, // omit to preserve existing password on backend
     connection_url: undefined, // omit to preserve existing encrypted URL on backend
     extra_options: cfg?.extra_options != null ? (typeof cfg.extra_options === 'string' ? cfg.extra_options : JSON.stringify(cfg.extra_options)) : '',
@@ -748,7 +750,7 @@ export const DatabaseConfigPage: React.FC = () => {
         const effectiveType = (ini?.enabled && backendType === 'sqlite') ? 'mssql' : backendType;
         setSelectedType(effectiveType);
         const existing = cfgs.find(c => c.backend_type === effectiveType);
-        setForm(configToForm(existing ?? active));
+        setForm(configToForm(existing ?? active, effectiveType));
       }
     } catch (err) {
       console.error('Failed to load database config:', err);
@@ -765,7 +767,7 @@ export const DatabaseConfigPage: React.FC = () => {
   const handleTypeChange = (type: BackendType) => {
     setSelectedType(type);
     const existing = configs.find(c => c.backend_type === type);
-    setForm(configToForm(existing));
+    setForm(configToForm(existing, type));
     setMessage(null);
   };
 
@@ -935,7 +937,7 @@ export const DatabaseConfigPage: React.FC = () => {
       <div className={styles.container}>
         <div className={styles.loadingBar}>
           <Spinner size="tiny" />
-          <Text>Loading database configuration…</Text>
+          <span>Loading database configuration…</span>
         </div>
       </div>
     );
@@ -1159,7 +1161,18 @@ export const DatabaseConfigPage: React.FC = () => {
           <Tooltip content="Turn on to connect this PC to a shared server database for trend data and device info." relationship="description">
             <Switch
               checked={iniForm.enabled}
-              onChange={(_, data) => setIniForm(prev => ({ ...prev, enabled: data.checked }))}
+              onChange={(_, data) => {
+                setIniForm(prev => ({ ...prev, enabled: data.checked }));
+                if (data.checked) {
+                  // Auto-select mssql when enabling
+                  setSelectedType('mssql');
+                  const existing = configs.find(c => c.backend_type === 'mssql');
+                  setForm(configToForm(existing, 'mssql'));
+                } else {
+                  // Clear selection back to sqlite when disabling
+                  setSelectedType('sqlite');
+                }
+              }}
               label={iniForm.enabled ? 'Server Database: Enabled' : 'Server Database: Disabled'}
             />
           </Tooltip>
@@ -1176,7 +1189,7 @@ export const DatabaseConfigPage: React.FC = () => {
                   if (selectedType === 'sqlite') {
                     setSelectedType('mssql');
                     const existing = configs.find(c => c.backend_type === 'mssql');
-                    setForm(configToForm(existing));
+                    setForm(configToForm(existing, 'mssql'));
                   }
                 }}
               >
@@ -1224,12 +1237,12 @@ export const DatabaseConfigPage: React.FC = () => {
       {iniForm.enabled && <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <h3 className={styles.sectionTitle}>Backend Type</h3>
-          <Tooltip content="Choose which database engine stores the shared data. SQLite is the default local engine. For multi-PC setups, select Microsoft SQL Server or another network-accessible database." relationship="description">
+          <Tooltip content="Choose which database engine stores the shared data. SQLite is the default local engine. For multi-PC setups, select Microsoft SQL Server." relationship="description">
             <InfoRegular style={{ fontSize: '14px', color: '#605e5c', cursor: 'help' }} />
           </Tooltip>
         </div>
         <p className={styles.sectionDescription}>
-          Select the database engine for the server. For multi-PC deployments, use Microsoft SQL Server or another network database.
+          Select the database engine for the server. For multi-PC deployments, use Microsoft SQL Server.
         </p>
         <div className={styles.padH12}>
           <RadioGroup
@@ -1237,7 +1250,7 @@ export const DatabaseConfigPage: React.FC = () => {
             onChange={(_, data) => handleTypeChange(data.value as BackendType)}
             layout="horizontal"
           >
-            {(Object.keys(BACKEND_LABELS) as BackendType[]).filter(bt => bt !== 'sqlite').map(bt => (
+            {(Object.keys(BACKEND_LABELS) as BackendType[]).filter(bt => bt !== 'sqlite' && bt !== 'postgres' && bt !== 'mysql').map(bt => (
               <Radio key={bt} value={bt} label={BACKEND_LABELS[bt]} />
             ))}
           </RadioGroup>
@@ -1332,7 +1345,7 @@ export const DatabaseConfigPage: React.FC = () => {
                   id="db-name"
                   value={form.database_name ?? ''}
                   onChange={(_, d) => setField('database_name', d.value)}
-                  placeholder="t3000"
+                  placeholder="T3000"
                 />
               </Tooltip>
             </div>
