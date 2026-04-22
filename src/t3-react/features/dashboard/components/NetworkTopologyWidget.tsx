@@ -518,7 +518,17 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
 
   const role = health?.role; // 'server' | 'client' | 'standalone'
   const selfEntry = registry.find((e) => e.is_self);
-  const clients = registry.filter((e) => !e.is_self && e.role === 'client');
+
+  // ── MOCK: set to true to preview client list styling ──
+  const USE_MOCK_CLIENTS = true;
+  const MOCK_CLIENTS: RegistryEntry[] = [
+    { id: 101, hostname: 'OFFICE-PC-01', ip_address: '192.168.1.101', role: 'client', is_self: false, status: 'online',  last_seen: new Date(Date.now() - 45_000).toISOString(),      db_backend: 'sqlite', table_count: 12, version: '0.8.1' },
+    { id: 102, hostname: 'OFFICE-PC-02', ip_address: '192.168.1.102', role: 'client', is_self: false, status: 'offline', last_seen: new Date(Date.now() - 320_000).toISOString(),     db_backend: 'sqlite', table_count: 12, version: '0.8.1' },
+    { id: 103, hostname: 'LAB-STATION',  ip_address: '192.168.1.115', role: 'client', is_self: false, status: 'online',  last_seen: new Date(Date.now() - 8_000).toISOString(),       db_backend: 'mssql',  table_count: 24, version: '0.8.0' },
+  ];
+  const clients = USE_MOCK_CLIENTS && registry.filter((e) => !e.is_self && e.role === 'client').length === 0
+    ? MOCK_CLIENTS
+    : registry.filter((e) => !e.is_self && e.role === 'client');
   const serverEntry = registry.find((e) => e.role === 'server' && !e.is_self);
 
   return (

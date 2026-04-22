@@ -24,6 +24,29 @@ export const TrendLogs: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ── MOCK: set to true to preview chart styling ──
+  const USE_MOCK_TRENDLOGS = true;
+
+  const buildMockData = () => {
+    const now = Date.now();
+    const step = 15 * 60 * 1000; // 15-min intervals
+    const count = 96; // 24h
+    const series = [
+      { name: 'AI 1 · SN-1001', color: '#0078d4', fn: (i: number) => 20 + 8 * Math.sin(i / 8) + Math.random() * 1.5 },
+      { name: 'AI 2 · SN-1001', color: '#107c10', fn: (i: number) => 35 + 5 * Math.cos(i / 6) + Math.random() * 1.2 },
+      { name: 'AO 1 · SN-1002', color: '#f7630c', fn: (i: number) => 60 + 15 * Math.sin(i / 12 + 1) + Math.random() * 2 },
+    ];
+    return series.map(({ name, color, fn }) => ({
+      name,
+      type: 'line' as const,
+      data: Array.from({ length: count }, (_, i) => [now - (count - i) * step, parseFloat(fn(i).toFixed(2))]),
+      smooth: true,
+      lineStyle: { width: 2, color },
+      itemStyle: { color },
+      showSymbol: false,
+    }));
+  };
+
   useEffect(() => {
     let chart: echarts.ECharts | null = null;
 
@@ -36,44 +59,46 @@ export const TrendLogs: React.FC = () => {
         `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
 
       try {
-        const resp = await fetch(`${API_BASE_URL}/api/database/trendlog/query`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ start_date: fmt(start), end_date: fmt(now) }),
-        });
+        let series: echarts.SeriesOption[];
 
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data: TrendlogRecord[] = await resp.json();
+        if (USE_MOCK_TRENDLOGS) {
+          series = buildMockData();
+        } else {
+          const resp = await fetch(`${API_BASE_URL}/api/database/trendlog/query`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ start_date: fmt(start), end_date: fmt(now) }),
+          });
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const data: TrendlogRecord[] = await resp.json();
+          if (!chartRef.current) return;
+          if (data.length === 0) {
+            setError('No trendlog data in the last 24 hours');
+            setLoading(false);
+            return;
+          }
+          const groups = new Map<string, [number, number][]>();
+          for (const rec of data) {
+            const key = `${rec.point_type ?? 'PT'} ${rec.point_id}`;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key)!.push([new Date(rec.logging_time_fmt).getTime(), parseFloat(rec.value)]);
+          }
+          const colors = ['#0078d4', '#107c10', '#f7630c', '#8764b8', '#00b7c3'];
+          series = Array.from(groups.entries())
+            .slice(0, 3)
+            .map(([name, pts], i) => ({
+              name,
+              type: 'line' as const,
+              data: pts.sort((a, b) => a[0] - b[0]),
+              smooth: true,
+              lineStyle: { width: 2, color: colors[i % colors.length] },
+              itemStyle: { color: colors[i % colors.length] },
+              showSymbol: false,
+            }));
+        }
 
         if (!chartRef.current) return;
         chart = echarts.init(chartRef.current);
-
-        if (data.length === 0) {
-          setError('No trendlog data in the last 24 hours');
-          setLoading(false);
-          return;
-        }
-
-        // Group by point_id — take first 3 series
-        const groups = new Map<string, [number, number][]>();
-        for (const rec of data) {
-          const key = `${rec.point_type ?? 'PT'} ${rec.point_id}`;
-          if (!groups.has(key)) groups.set(key, []);
-          groups.get(key)!.push([new Date(rec.logging_time_fmt).getTime(), parseFloat(rec.value)]);
-        }
-
-        const colors = ['#0078d4', '#107c10', '#f7630c', '#8764b8', '#00b7c3'];
-        const series = Array.from(groups.entries())
-          .slice(0, 3)
-          .map(([name, pts], i) => ({
-            name,
-            type: 'line' as const,
-            data: pts.sort((a, b) => a[0] - b[0]),
-            smooth: true,
-            lineStyle: { width: 2, color: colors[i % colors.length] },
-            itemStyle: { color: colors[i % colors.length] },
-            showSymbol: false,
-          }));
 
         const option: echarts.EChartsOption = {
           tooltip: { trigger: 'axis', textStyle: { fontSize: 11 } },
@@ -88,13 +113,13 @@ export const TrendLogs: React.FC = () => {
         };
 
         chart.setOption(option);
-
-        const handleResize = () => chart?.resize();
-        window.addEventListener('resize', handleResize);
         setLoading(false);
 
+        const ro = new ResizeObserver(() => chart?.resize());
+        if (chartRef.current) ro.observe(chartRef.current);
+
         return () => {
-          window.removeEventListener('resize', handleResize);
+          ro.disconnect();
           chart?.dispose();
         };
       } catch (err) {
@@ -122,7 +147,7 @@ export const TrendLogs: React.FC = () => {
           <span>{error}</span>
         </div>
       )}
-      <div ref={chartRef} className={`${styles.chart}${loading || error ? ` ${styles.chartHidden}` : ''}`} />
+      <div ref={chartRef} style={{ width: '100%', height: '300px' }} className={`${loading || error ? styles.chartHidden : ''}`} />
     </div>
   );
 };

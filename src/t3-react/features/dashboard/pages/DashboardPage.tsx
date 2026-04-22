@@ -20,6 +20,8 @@ import {
 import {
   ArrowSyncRegular,
   ChevronRightRegular,
+  CheckmarkCircleRegular,
+  DismissCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { getSyncHealth, SyncHealthData } from '../services/syncHealthApi';
@@ -27,7 +29,7 @@ import { API_BASE_URL } from '../../../config/constants';
 import { SyncHealthWidget } from '../components/SyncHealthWidget';
 import { SyncLogDrawer } from '../components/SyncLogDrawer';
 import { TrendLogs } from '../components/TrendLogs';
-import { RecentActivity } from '../components/RecentActivity';
+import { RecentActivity, ActivitySummary } from '../components/RecentActivity';
 import { NetworkTopologyWidget } from '../components/NetworkTopologyWidget';
 
 
@@ -263,7 +265,7 @@ const useStyles = makeStyles({
     padding: '8px 0',
   },
   trendlogWrapper: {
-    height: '240px',
+    height: '320px',
     padding: '8px 0',
   },
 
@@ -332,6 +334,7 @@ export const DashboardPage: React.FC = () => {
   const [alarmCount, setAlarmCount] = useState(0);
   const [healthLoading, setHealthLoading] = useState(true);
   const [syncLogOpen, setSyncLogOpen] = useState(false);
+  const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null);
 
   // Live clock
   useEffect(() => {
@@ -501,9 +504,24 @@ export const DashboardPage: React.FC = () => {
         <div className={s.section}>
           <div className={s.sectionHeader}>
             <h3 className={s.sectionTitle}>Monitoring</h3>
+            {activitySummary && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: '#605e5c' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#107c10' }}>
+                  <CheckmarkCircleRegular style={{ fontSize: '13px' }} />
+                  {activitySummary.ok} ok
+                </span>
+                <span style={{ color: '#c8c6c4' }}>·</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#d13438' }}>
+                  <DismissCircleRegular style={{ fontSize: '13px' }} />
+                  {activitySummary.fail} failed
+                </span>
+                <span style={{ color: '#c8c6c4' }}>·</span>
+                <span style={{ color: '#8a8886' }}>{activitySummary.total} total</span>
+              </div>
+            )}
           </div>
           <div className={s.monitoringColContent}>
-            <RecentActivity />
+            <RecentActivity onSummary={setActivitySummary} />
           </div>
         </div>
 
