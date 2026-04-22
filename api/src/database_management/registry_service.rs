@@ -18,7 +18,7 @@
 // ============================================================================
 
 use axum::{
-    extract::State,
+    extract::{Query as AxumQuery, State},
     http::StatusCode,
     response::Json,
     routing::{get, post},
@@ -280,6 +280,58 @@ async fn receive_heartbeat(
 }
 
 // ============================================================================
+// Ping client relay
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct PingClientQuery {
+    pub ip: String,
+    pub port: Option<u16>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PingClientResponse {
+    pub reachable: bool,
+    pub latency_ms: Option<u64>,
+    pub message: String,
+}
+
+/// GET /api/database/server/ping-client?ip=x.x.x.x&port=9103
+/// Server relays a TCP connect attempt to the target client's port.
+async fn ping_client(
+    AxumQuery(q): AxumQuery<PingClientQuery>,
+) -> Json<PingClientResponse> {
+    let port = q.port.unwrap_or(9103);
+    let addr = format!("{}:{}", q.ip, port);
+    let start = std::time::Instant::now();
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        tokio::net::TcpStream::connect(&addr),
+    )
+    .await;
+    match result {
+        Ok(Ok(_)) => {
+            let latency = start.elapsed().as_millis() as u64;
+            Json(PingClientResponse {
+                reachable: true,
+                latency_ms: Some(latency),
+                message: format!("Reachable ({}ms)", latency),
+            })
+        }
+        Ok(Err(e)) => Json(PingClientResponse {
+            reachable: false,
+            latency_ms: None,
+            message: e.to_string(),
+        }),
+        Err(_) => Json(PingClientResponse {
+            reachable: false,
+            latency_ms: None,
+            message: "Timed out".to_string(),
+        }),
+    }
+}
+
+// ============================================================================
 // Router
 // ============================================================================
 
@@ -287,6 +339,7 @@ pub fn registry_routes() -> Router<T3AppState> {
     Router::new()
         .route("/api/database/server/registry", get(get_registry))
         .route("/api/database/server/heartbeat", post(receive_heartbeat))
+        .route("/api/database/server/ping-client", get(ping_client))
 }
 
 // ============================================================================

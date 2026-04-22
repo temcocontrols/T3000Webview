@@ -204,3 +204,15 @@ export async function getRegistry(): Promise<RegistryEntry[]> {
   const data = await handleResponse<{ success: boolean; entries: RegistryEntry[]; count: number }>(res);
   return data.entries;
 }
+
+export interface PingClientResult {
+  reachable: boolean;
+  latency_ms: number | null;
+  message: string;
+}
+
+/** Ask the server to TCP-connect to a client PC and report reachability */
+export async function pingClient(ip: string, port = 9103): Promise<PingClientResult> {
+  const res = await fetch(`${API_BASE_URL}/api/database/server/ping-client?ip=${encodeURIComponent(ip)}&port=${port}`);
+  return handleResponse<PingClientResult>(res);
+}

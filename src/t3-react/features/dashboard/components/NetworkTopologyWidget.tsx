@@ -33,6 +33,7 @@ import {
   getRegistry,
   getServerDbStatus,
   testConnection,
+  pingClient,
   RegistryEntry,
 } from '../../database/services/databaseConfigApi';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
@@ -178,6 +179,48 @@ const useStyles = makeStyles({
   resultStripText: {
     flex: 1,
   },
+  clientPingBadgeOk: {
+    fontSize: '11px',
+    padding: '2px 8px',
+    borderRadius: '4px',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+    backgroundColor: '#f1faf1',
+    color: '#107c10',
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: '#a5d6a7',
+    borderRightWidth: '1px',
+    borderRightStyle: 'solid',
+    borderRightColor: '#a5d6a7',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#a5d6a7',
+    borderLeftWidth: '1px',
+    borderLeftStyle: 'solid',
+    borderLeftColor: '#a5d6a7',
+  },
+  clientPingBadgeFail: {
+    fontSize: '11px',
+    padding: '2px 8px',
+    borderRadius: '4px',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+    backgroundColor: '#fdf3f4',
+    color: '#d13438',
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: '#f4b8bb',
+    borderRightWidth: '1px',
+    borderRightStyle: 'solid',
+    borderRightColor: '#f4b8bb',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#f4b8bb',
+    borderLeftWidth: '1px',
+    borderLeftStyle: 'solid',
+    borderLeftColor: '#f4b8bb',
+  },
   resultStripDismiss: {
     cursor: 'pointer',
     background: 'none',
@@ -254,6 +297,10 @@ const useStyles = makeStyles({
   treeMeta: {
     color: '#a19f9d',
     fontSize: '11.5px',
+  },
+  treeRowPushRight: {
+    marginLeft: 'auto',
+    flexShrink: 0,
   },
   treeEmpty: {
     padding: '6px 2px 2px 30px',
@@ -398,6 +445,25 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
   const [testingPing, setTestingPing] = useState(false);
   const [pingResult, setPingResult] = useState<TestResult | null>(null);
   const [refreshingClients, setRefreshingClients] = useState(false);
+
+  // Per-client ping state: Map<client_id, { testing, result }>
+  const [clientPingState, setClientPingState] = useState<Record<number, { testing: boolean; ok: boolean | null; msg: string }>>({});
+  const clientPingTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+
+  const handlePingClient = async (entry: RegistryEntry) => {
+    setClientPingState(prev => ({ ...prev, [entry.id]: { testing: true, ok: null, msg: '' } }));
+    try {
+      const r = await pingClient(entry.ip_address);
+      setClientPingState(prev => ({ ...prev, [entry.id]: { testing: false, ok: r.reachable, msg: r.message } }));
+      // Auto-dismiss after 10s
+      if (clientPingTimers.current[entry.id]) clearTimeout(clientPingTimers.current[entry.id]);
+      clientPingTimers.current[entry.id] = setTimeout(() => {
+        setClientPingState(prev => { const n = { ...prev }; delete n[entry.id]; return n; });
+      }, 10_000);
+    } catch (e) {
+      setClientPingState(prev => ({ ...prev, [entry.id]: { testing: false, ok: false, msg: e instanceof Error ? e.message : 'Failed' } }));
+    }
+  };
 
   // Auto-dismiss timers
   const dbTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -640,7 +706,9 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
             {/* Client tree */}
             {clients.length > 0 ? (
               <div className={s.tree}>
-                {clients.map((entry, i) => (
+                {clients.map((entry, i) => {
+                  const ps = clientPingState[entry.id];
+                  return (
                   <div key={entry.id} className={s.treeRow}>
                     <span className={s.treeConnector}>{i < clients.length - 1 ? '├──' : '└──'}</span>
                     <DesktopRegular className={s.treeIcon} />
@@ -651,8 +719,24 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
                       {entry.status === 'online' ? 'Online' : 'Offline'}
                     </span>
                     <span className={s.treeMeta}>Last: {formatLastSeen(entry.last_seen)}</span>
+                    <Button
+                      size="small"
+                      appearance="subtle"
+                      icon={ps?.testing ? <Spinner size="extra-tiny" /> : <NetworkCheckRegular />}
+                      onClick={() => handlePingClient(entry)}
+                      disabled={ps?.testing}
+                      className={s.treeRowPushRight}
+                    >
+                      Test
+                    </Button>
+                    {ps && !ps.testing && ps.ok !== null && (
+                      <span className={ps.ok ? s.clientPingBadgeOk : s.clientPingBadgeFail}>
+                        {ps.msg}
+                      </span>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className={s.treeEmpty}>
