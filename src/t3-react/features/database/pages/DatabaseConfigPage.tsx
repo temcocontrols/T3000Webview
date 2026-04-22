@@ -7,6 +7,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   makeStyles,
   tokens,
@@ -36,6 +37,7 @@ import {
   DesktopRegular,
   CloudDatabaseRegular,
   DismissRegular,
+  ArrowLeftRegular,
 } from '@fluentui/react-icons';
 import type {
   BackendType,
@@ -87,6 +89,12 @@ const useStyles = makeStyles({
     padding: '0 6px 10px',
     scrollbarWidth: 'thin',
     scrollbarColor: '#c1c1c1 transparent',
+  },
+  backButtonBar: {
+    paddingTop: '10px',
+    paddingBottom: '4px',
+    paddingLeft: '12px',
+    paddingRight: '12px',
   },
   /* ── Intro Banner ── */
   introBanner: {
@@ -642,6 +650,9 @@ function formatLastSeen(utcStr: string): string {
 
 export const DatabaseConfigPage: React.FC = () => {
   const styles = useStyles();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const fromDashboard = new URLSearchParams(location.search).get('from') === 'dashboard';
 
   // Data
   const [configs, setConfigs] = useState<BackendConfigResponse[]>([]);
@@ -946,6 +957,18 @@ export const DatabaseConfigPage: React.FC = () => {
   return (
     <div className={styles.container}>
       <div className={styles.scrollArea}>
+      {/* ── Back to Dashboard ── */}
+      {fromDashboard && (
+        <div className={styles.backButtonBar}>
+          <Button
+            appearance="subtle"
+            icon={<ArrowLeftRegular />}
+            onClick={() => navigate('/t3000/dashboard')}
+          >
+            Back to Dashboard
+          </Button>
+        </div>
+      )}
       {/* ── Message Bar ── */}
       {message && (
         <div className={styles.messageBar}>

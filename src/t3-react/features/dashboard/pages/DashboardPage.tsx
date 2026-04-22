@@ -26,11 +26,13 @@ import {
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { getSyncHealth, SyncHealthData } from '../services/syncHealthApi';
 import { API_BASE_URL } from '../../../config/constants';
+import { getIniConfig, IniConfig } from '../../database/services/databaseConfigApi';
 import { SyncHealthWidget } from '../components/SyncHealthWidget';
 import { SyncLogDrawer } from '../components/SyncLogDrawer';
 import { TrendLogs } from '../components/TrendLogs';
 import { RecentActivity, ActivitySummary } from '../components/RecentActivity';
 import { NetworkTopologyWidget } from '../components/NetworkTopologyWidget';
+import { ModeBanner } from '../components/ModeBanner';
 
 
 // ---------------------------------------------------------------------------
@@ -358,6 +360,16 @@ export const DashboardPage: React.FC = () => {
   const [healthLoading, setHealthLoading] = useState(true);
   const [syncLogOpen, setSyncLogOpen] = useState(false);
   const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null);
+  const [iniConfig, setIniConfig] = useState<IniConfig | null>(null);
+
+  const appMode = !iniConfig || !iniConfig.enabled ? 'standalone'
+    : iniConfig.role === 'server' ? 'server' : 'client';
+
+  const fetchIniConfig = useCallback(async () => {
+    try { setIniConfig(await getIniConfig()); } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { fetchIniConfig(); }, [fetchIniConfig]);
 
   // Live clock
   useEffect(() => {
@@ -398,13 +410,24 @@ export const DashboardPage: React.FC = () => {
     <div className={s.container}>
       <div className={s.scrollArea}>
 
-        {/* ── Network Topology ── */}
-        <div className={mergeClasses(s.section, s.sectionFirst)}>
-          <NetworkTopologyWidget currentTime={currentTime} />
-        </div>
+        {/* ── Mode Banner ── */}
+        <ModeBanner
+          iniConfig={iniConfig}
+          statusLine={syncHealth
+            ? `${syncHealth.backendType.toUpperCase()} · ${syncHealth.role} · ${syncHealth.dbSizeHuman}`
+            : undefined}
+          onModeChanged={fetchIniConfig}
+        />
+
+        {/* ── Network Topology (Server + Client modes only) ── */}
+        {appMode !== 'standalone' && (
+          <div className={mergeClasses(s.section, s.sectionFirst)}>
+            <NetworkTopologyWidget currentTime={currentTime} />
+          </div>
+        )}
 
         {/* ── System Overview KPIs ── */}
-        <div className={s.section}>
+        <div className={mergeClasses(s.section, appMode === 'standalone' ? s.sectionFirst : undefined)}>
           <div className={s.sectionHeader}>
             <h3 className={s.sectionTitle}>System Overview</h3>
             <Button

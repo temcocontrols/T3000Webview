@@ -119,7 +119,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ onSummary }) => 
       ) : (
         <>
           <div className={styles.activityList}>
-          {activities.map((activity) => (
+          {activities.slice(0, 5).map((activity) => (
             <div key={activity.id} className={styles.activityItem}>
               <div className={styles.activityStatus}>
                 {activity.success
