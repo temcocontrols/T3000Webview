@@ -1,9 +1,15 @@
 ﻿/**
- * ModeBanner 鈥?top-of-dashboard mode selector
+ * ModeBanner - top-of-dashboard mode selector
  *
- * Two modes: Standalone (local SQLite) vs Center DB (shared server/client).
- * Clicking Standalone applies immediately.
- * Clicking Center DB shows an inline action bar 鈥?user then clicks the link to configure.
+ * Driven by live runtime state (appMode from syncHealth) so the active card
+ * always matches what the backend is actually running.
+ *
+ * Standalone card  - always visible; active when appMode === 'standalone'
+ * Center DB card   - always visible; active when appMode === 'server' | 'client'
+ *
+ * Clicking the inactive card shows a contextual action bar:
+ *   - Click Center DB while standalone  -> amber bar with "Database Configuration ->"
+ *   - Click Standalone while Center DB  -> warning bar with switch confirmation
  */
 
 import React, { useState } from 'react';
@@ -13,10 +19,10 @@ import {
   DatabaseRegular,
   ArrowRightRegular,
   InfoRegular,
-  DismissRegular,
 } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router-dom';
 import { IniConfig, saveIniConfig } from '../../database/services/databaseConfigApi';
+import { SyncHealthData } from '../services/syncHealthApi';
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -42,7 +48,7 @@ const useStyles = makeStyles({
     backgroundColor: '#ffffff',
   },
 
-  /* 鈹€鈹€ Top info strip 鈹€鈹€ */
+  /* -- Top info strip -- */
   infoStrip: {
     display: 'flex',
     alignItems: 'flex-start',
@@ -63,7 +69,7 @@ const useStyles = makeStyles({
     marginTop: '1px',
   },
 
-  /* 鈹€鈹€ Card row 鈹€鈹€ */
+  /* -- Card row -- */
   modeRow: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
@@ -113,10 +119,10 @@ const useStyles = makeStyles({
     borderLeftColor: '#0f6cbd',
     backgroundColor: '#eff6fc',
     '&:hover': {
-      borderTopColor: '#0f6cbd',
-      borderRightColor: '#0f6cbd',
-      borderBottomColor: '#0f6cbd',
-      borderLeftColor: '#0f6cbd',
+      borderTopColor: '#0078d4',
+      borderRightColor: '#0078d4',
+      borderBottomColor: '#0078d4',
+      borderLeftColor: '#0078d4',
       backgroundColor: '#ddeeff',
     },
   },
@@ -167,14 +173,19 @@ const useStyles = makeStyles({
     lineHeight: '1.5',
   },
 
-  /* Sub-note below description (e.g. current role) */
-  cardNote: {
+  /* -- Status chip row -- */
+  chipRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '6px',
+    marginTop: '2px',
+  },
+  chip: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '4px',
-    marginTop: '4px',
-    paddingTop: '3px',
-    paddingBottom: '3px',
+    paddingTop: '2px',
+    paddingBottom: '2px',
     paddingLeft: '8px',
     paddingRight: '8px',
     borderRadius: '4px',
@@ -182,24 +193,69 @@ const useStyles = makeStyles({
     color: '#0f6cbd',
     fontSize: '11px',
     fontWeight: 500,
-    width: 'fit-content',
+  },
+  chipGreen: {
+    backgroundColor: '#dff6dd',
+    color: '#107c10',
+  },
+  chipRed: {
+    backgroundColor: '#fde7e9',
+    color: '#a4262c',
+  },
+  chipOrange: {
+    backgroundColor: '#fff4ce',
+    color: '#835b00',
   },
 
-  /* 鈹€鈹€ Action bar shown when Center DB is clicked 鈹€鈹€ */
+  /* Reconfigure link inside the active Center DB card */
+  reconfigureLink: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '3px',
+    marginTop: '2px',
+    fontSize: '11.5px',
+    fontWeight: 600,
+    color: '#0f6cbd',
+    cursor: 'pointer',
+    background: 'none',
+    border: 'none',
+    paddingTop: '0',
+    paddingBottom: '0',
+    paddingLeft: '0',
+    paddingRight: '0',
+    fontFamily: 'inherit',
+    width: 'fit-content',
+    '&:hover': { textDecorationLine: 'underline' },
+  },
+
+  /* -- Action bars -- */
   actionBar: {
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
-    padding: '8px 14px',
+    paddingTop: '8px',
+    paddingBottom: '8px',
+    paddingLeft: '14px',
+    paddingRight: '14px',
+    fontSize: '12px',
+    color: '#605e5c',
+  },
+  actionBarAmber: {
     backgroundColor: '#fff8e1',
     borderTopWidth: '1px',
     borderTopStyle: 'solid',
     borderTopColor: '#ffe082',
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: '#ffe082',
-    fontSize: '12px',
-    color: '#605e5c',
+  },
+  actionBarWarning: {
+    backgroundColor: '#fff4ce',
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: '#f7ca00',
+  },
+  actionBarIcon: {
+    fontSize: '15px',
+    color: '#835b00',
+    flexShrink: 0,
   },
   actionBarText: {
     flex: 1,
@@ -215,7 +271,29 @@ const useStyles = makeStyles({
     cursor: 'pointer',
     background: 'none',
     border: 'none',
-    padding: '0',
+    paddingTop: '0',
+    paddingBottom: '0',
+    paddingLeft: '0',
+    paddingRight: '0',
+    fontFamily: 'inherit',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
+    '&:hover': { textDecorationLine: 'underline' },
+  },
+  actionBarConfirm: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#a4262c',
+    cursor: 'pointer',
+    background: 'none',
+    border: 'none',
+    paddingTop: '0',
+    paddingBottom: '0',
+    paddingLeft: '0',
+    paddingRight: '0',
     fontFamily: 'inherit',
     flexShrink: 0,
     whiteSpace: 'nowrap',
@@ -230,147 +308,352 @@ const useStyles = makeStyles({
     cursor: 'pointer',
     background: 'none',
     border: 'none',
-    padding: '2px',
+    paddingTop: '2px',
+    paddingBottom: '2px',
+    paddingLeft: '2px',
+    paddingRight: '2px',
     flexShrink: 0,
     '&:hover': { color: '#323130' },
   },
 
+  /* -- Restart-pending notice bar -- */
+  restartBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    paddingTop: '7px',
+    paddingBottom: '7px',
+    paddingLeft: '14px',
+    paddingRight: '14px',
+    backgroundColor: '#e6f2fb',
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: '#b3d6f5',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#b3d6f5',
+    fontSize: '11.5px',
+    color: '#0f5a9e',
+    lineHeight: '1.5',
+  },
+  restartBarIcon: {
+    fontSize: '14px',
+    color: '#0f6cbd',
+    flexShrink: 0,
+  },
+
+  /* -- Inline card states -- */
+  cardHint: {
+    fontSize: '11px',
+    color: '#a19f9d',
+    fontStyle: 'italic',
+  },
+  inlineRestart: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '8px',
+    paddingTop: '6px',
+    paddingBottom: '6px',
+    paddingLeft: '10px',
+    paddingRight: '10px',
+    marginTop: '2px',
+    backgroundColor: '#e6f2fb',
+    borderLeftWidth: '3px',
+    borderLeftStyle: 'solid',
+    borderLeftColor: '#0f6cbd',
+    fontSize: '11px',
+    color: '#0c4a8c',
+    lineHeight: '1.4',
+  },
+  inlineRestartRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  setupLink: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '3px',
+    marginTop: '4px',
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#0f6cbd',
+    cursor: 'pointer',
+    background: 'none',
+    border: 'none',
+    fontFamily: 'inherit',
+    paddingTop: '0',
+    paddingBottom: '0',
+    paddingLeft: '0',
+    paddingRight: '0',
+    width: 'fit-content',
+    '&:hover': { textDecorationLine: 'underline' },
+  },
+  inlineConfirmBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    paddingTop: '8px',
+    paddingBottom: '8px',
+    paddingLeft: '10px',
+    paddingRight: '10px',
+    marginTop: '2px',
+    backgroundColor: '#fff4ce',
+    borderLeftWidth: '3px',
+    borderLeftStyle: 'solid',
+    borderLeftColor: '#f7ca00',
+  },
+  inlineConfirmText: {
+    fontSize: '11px',
+    color: '#605e5c',
+    lineHeight: '1.4',
+  },
+  inlineConfirmBtns: {
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center',
+  },
+  btnConfirm: {
+    fontSize: '11.5px',
+    fontWeight: 600,
+    color: '#a4262c',
+    cursor: 'pointer',
+    background: 'none',
+    border: 'none',
+    fontFamily: 'inherit',
+    paddingTop: '0',
+    paddingBottom: '0',
+    paddingLeft: '0',
+    paddingRight: '0',
+    '&:hover': { textDecorationLine: 'underline' },
+  },
+  btnCancel: {
+    fontSize: '11.5px',
+    color: '#605e5c',
+    cursor: 'pointer',
+    background: 'none',
+    border: 'none',
+    fontFamily: 'inherit',
+    paddingTop: '0',
+    paddingBottom: '0',
+    paddingLeft: '0',
+    paddingRight: '0',
+    '&:hover': { textDecorationLine: 'underline' },
+  },
 });
 
 // ---------------------------------------------------------------------------
-// Types / helpers
+// Types
 // ---------------------------------------------------------------------------
 
-type AppMode = 'standalone' | 'centerdb';
+type PendingAction = null | 'setupCenterDb' | 'switchToStandalone';
 
 export interface ModeBannerProps {
+  /** Derived runtime mode -- drives which card shows "Active" */
+  appMode: 'standalone' | 'server' | 'client';
+  /** Live sync-health data for status chips */
+  syncHealth: SyncHealthData | null;
+  /** Raw INI config -- used only for save calls */
   iniConfig: IniConfig | null;
-  statusLine?: string;
+  /** Called after a mode save completes so parent can re-fetch state */
   onModeChanged: () => void;
-}
-
-function currentMode(ini: IniConfig | null): AppMode {
-  return ini && ini.enabled ? 'centerdb' : 'standalone';
-}
-
-function currentRole(ini: IniConfig | null): string | null {
-  if (!ini || !ini.enabled) return null;
-  return ini.role === 'server' ? 'Server' : 'Client';
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export const ModeBanner: React.FC<ModeBannerProps> = ({ iniConfig, statusLine, onModeChanged }) => {
+export const ModeBanner: React.FC<ModeBannerProps> = ({
+  appMode,
+  syncHealth,
+  iniConfig: _iniConfig,
+  onModeChanged,
+}) => {
   const s = useStyles();
   const navigate = useNavigate();
-  const active = currentMode(iniConfig);
-  const role = currentRole(iniConfig);
   const [saving, setSaving] = useState(false);
-  const [showActionBar, setShowActionBar] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  // Only show restart notice after the user explicitly saved in this session
+  const [savedStandalone, setSavedStandalone] = useState(false);
+
+  const isCenterDb = appMode === 'server' || appMode === 'client';
 
   const goToConfigure = () => navigate('/t3000/database/config?from=dashboard');
 
-  const handleCardClick = async (mode: AppMode) => {
+  // -- Restart-pending: detect when INI config disagrees with live runtime state --
+  // e.g. user saved Center DB but service hasn't restarted yet (or vice versa).
+  const iniMode: 'standalone' | 'server' | 'client' = _iniConfig?.enabled
+    ? (_iniConfig.role === 'server' ? 'server' : 'client')
+    : 'standalone';
+  // Only meaningful once both syncHealth (runtime) and iniConfig (file) are loaded
+  const restartPending = !!syncHealth && _iniConfig !== null && iniMode !== appMode;
+  // -- Card click handler --
+  const handleCardClick = (clicked: 'standalone' | 'centerdb') => {
     if (saving) return;
-
-    if (mode === 'standalone') {
-      // Switch to standalone immediately, no config needed
-      setShowActionBar(false);
-      if (active === 'standalone') return; // already active, no-op
-      setSaving(true);
-      try {
-        await saveIniConfig({ enabled: false, role: 'client' });
-        onModeChanged();
-      } finally {
-        setSaving(false);
-      }
+    if (clicked === 'centerdb') {
+      if (!isCenterDb) setPendingAction('setupCenterDb');
     } else {
-      // Center DB — show action bar instead of navigating directly
-      setShowActionBar(true);
+      if (!isCenterDb) return; // already standalone
+      setPendingAction('switchToStandalone');
     }
   };
+
+  // -- Confirm: switch to standalone --
+  const confirmStandalone = async () => {
+    setSaving(true);
+    setPendingAction(null);
+    try {
+      await saveIniConfig({ enabled: false, role: 'client' });
+      setSavedStandalone(true);
+      onModeChanged();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // -- Live status for Center DB card --
+  const connected = syncHealth?.centerDbConnected ?? false;
+  // When Center DB is active, sqlite means the service is in SQLite fallback mode —
+  // the configured target is always SQL Server, so map sqlite → mssql here.
+  const effectiveBackend = syncHealth
+    ? (isCenterDb && syncHealth.backendType === 'sqlite' ? 'mssql' : syncHealth.backendType)
+    : null;
+  const BACKEND_LABELS: Record<string, string> = {
+    mssql: 'SQL Server',
+    sqlite: 'SQLite',
+  };
+  const backendLabel = effectiveBackend ? (BACKEND_LABELS[effectiveBackend] ?? effectiveBackend.toUpperCase()) : null;
+  const roleLabel = appMode === 'server' ? 'Server' : appMode === 'client' ? 'Client' : null;
+  const paused = syncHealth?.samplingPaused ?? false;
 
   return (
     <div className={s.banner}>
 
-      {/* Top info strip */}
+      {/* Top info strip — always static */}
       <div className={s.infoStrip}>
         <InfoRegular className={s.infoStripIcon} />
         <span>
-          <strong>Standalone</strong> — this PC stores all data locally in SQLite. No network or extra setup needed.{' '}
-          <strong>Center DB</strong> — multiple T3000 PCs share one central SQL Server / PostgreSQL database.
-          One PC acts as the <strong>Server</strong> (hosts &amp; writes data); others are <strong>Clients</strong> (read from the shared DB).
+          Select how this workstation stores and shares T3000 data.{' '}
+          <strong>Standalone</strong> uses a local SQLite database with no network dependency.{' '}
+          <strong>Center DB</strong> connects multiple T3000 PCs to a shared central database
+          (SQL Server), with one PC designated as the Server.
         </span>
       </div>
 
       {/* Mode cards */}
       <div className={s.modeRow}>
 
-        {/* Standalone card */}
+        {/* -- Standalone card -- */}
         <div
-          className={mergeClasses(s.modeCard, active === 'standalone' ? s.modeCardActive : undefined)}
+          className={mergeClasses(s.modeCard, !isCenterDb ? s.modeCardActive : undefined)}
           onClick={() => handleCardClick('standalone')}
         >
           <div className={s.cardHeader}>
-            <DesktopRegular className={mergeClasses(s.cardIcon, active === 'standalone' ? s.cardIconActive : undefined)} />
-            <span className={mergeClasses(s.cardTitle, active === 'standalone' ? s.cardTitleActive : undefined)}>
+            <DesktopRegular className={mergeClasses(s.cardIcon, !isCenterDb ? s.cardIconActive : undefined)} />
+            <span className={mergeClasses(s.cardTitle, !isCenterDb ? s.cardTitleActive : undefined)}>
               Standalone
             </span>
-            {active === 'standalone' && (
+            {!isCenterDb && (
               saving
                 ? <Spinner size="extra-tiny" className={s.savingSpinner} />
                 : <span className={s.badge}>Active</span>
             )}
           </div>
           <span className={s.cardDesc}>
-            Uses a local SQLite database on this PC. Trend logs and device data are stored
-            locally — no network connection or shared server required.
+            Stores all data locally in SQLite on this PC. No network connection or shared server required.
           </span>
+          {!isCenterDb ? (
+            <div className={s.chipRow}>
+              <span className={s.chip}>SQLite</span>
+              <span className={s.chip}>Local</span>
+            </div>
+          ) : (restartPending && iniMode === 'standalone' && savedStandalone) ? (
+            <div className={s.inlineRestart}>
+              <span>&#8635; Standalone saved — restart T3000 to apply.</span>
+            </div>
+          ) : pendingAction === 'switchToStandalone' ? (
+            <div className={s.inlineConfirmBox} onClick={(e) => e.stopPropagation()}>
+              <span className={s.inlineConfirmText}>
+                Switching to Standalone disables Center DB sync. Data will no longer be shared
+                with other T3000 PCs. Takes effect after the T3000 service restarts.
+              </span>
+              <div className={s.inlineConfirmBtns}>
+                <button className={s.btnConfirm} onClick={confirmStandalone}>
+                  Switch to Standalone
+                </button>
+                <button className={s.btnCancel} onClick={(e) => { e.stopPropagation(); setPendingAction(null); }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              className={s.reconfigureLink}
+              onClick={(e) => { e.stopPropagation(); handleCardClick('standalone'); }}
+            >
+              Switch to local SQLite <ArrowRightRegular style={{ fontSize: '11px' }} />
+            </button>
+          )}
         </div>
 
-        {/* Center DB card */}
+        {/* -- Center DB card -- */}
         <div
-          className={mergeClasses(s.modeCard, active === 'centerdb' ? s.modeCardActive : undefined)}
+          className={mergeClasses(s.modeCard, isCenterDb ? s.modeCardActive : undefined)}
           onClick={() => handleCardClick('centerdb')}
         >
           <div className={s.cardHeader}>
-            <DatabaseRegular className={mergeClasses(s.cardIcon, active === 'centerdb' ? s.cardIconActive : undefined)} />
-            <span className={mergeClasses(s.cardTitle, active === 'centerdb' ? s.cardTitleActive : undefined)}>
+            <DatabaseRegular className={mergeClasses(s.cardIcon, isCenterDb ? s.cardIconActive : undefined)} />
+            <span className={mergeClasses(s.cardTitle, isCenterDb ? s.cardTitleActive : undefined)}>
               Center DB
             </span>
-            {active === 'centerdb' && <span className={s.badge}>Active</span>}
+            {isCenterDb && <span className={s.badge}>Active</span>}
           </div>
           <span className={s.cardDesc}>
-            Shares trend logs and device data across multiple T3000 PCs via a central database.
-            Requires a SQL Server or PostgreSQL instance and a designated Server PC.
+            Shares trend logs and device data across multiple T3000 PCs via a central
+            Microsoft SQL Server database. Requires a designated Server PC.
           </span>
-          {active === 'centerdb' && role && (
-            <span className={s.cardNote}>
-              Configured as: {role}
-            </span>
+          {isCenterDb ? (
+            <>
+              <div className={s.chipRow}>
+                {roleLabel && <span className={s.chip}>{roleLabel}</span>}
+                {backendLabel && <span className={s.chip}>{backendLabel}</span>}
+                {connected
+                  ? <span className={mergeClasses(s.chip, s.chipGreen)}>Connected</span>
+                  : <span className={mergeClasses(s.chip, s.chipRed)}>Disconnected</span>
+                }
+                {paused && <span className={mergeClasses(s.chip, s.chipOrange)}>Sampling Paused</span>}
+              </div>
+              <button
+                className={s.reconfigureLink}
+                onClick={(e) => { e.stopPropagation(); goToConfigure(); }}
+              >
+                Reconfigure <ArrowRightRegular style={{ fontSize: '11px' }} />
+              </button>
+            </>
+          ) : restartPending && (iniMode === 'server' || iniMode === 'client') ? (
+            <div className={s.inlineRestart} onClick={(e) => e.stopPropagation()}>
+              <div className={s.inlineRestartRow}>
+                <span>
+                  &#8635; Center DB ({iniMode === 'server' ? 'Server' : 'Client'}) saved — restart T3000 to activate.
+                </span>
+                <button className={s.setupLink} onClick={goToConfigure}>
+                  Database Configuration <ArrowRightRegular style={{ fontSize: '11px' }} />
+                </button>
+              </div>
+            </div>
+          ) : pendingAction === 'setupCenterDb' ? (
+            <button
+              className={s.setupLink}
+              onClick={(e) => { e.stopPropagation(); goToConfigure(); }}
+            >
+              Set up Center DB <ArrowRightRegular style={{ fontSize: '11px' }} />
+            </button>
+          ) : (
+            <span className={s.cardHint}>Not configured. Click to connect to a shared SQL Server database.</span>
           )}
         </div>
 
       </div>
-
-      {/* Action bar (shown after clicking Center DB) */}
-      {showActionBar && (
-        <div className={s.actionBar}>
-          <span className={s.actionBarText}>
-            {active === 'centerdb'
-              ? 'Center DB is already active. Open Database Configuration to change the Server / Client role or connection settings.'
-              : 'To enable Center DB, configure the connection and select this PC\'s role (Server or Client).'}
-          </span>
-          <button className={s.actionBarLink} onClick={goToConfigure}>
-            Database Configuration <ArrowRightRegular style={{ fontSize: '11px' }} />
-          </button>
-          <button className={s.actionBarDismiss} onClick={() => setShowActionBar(false)} title="Dismiss">
-            <DismissRegular />
-          </button>
-        </div>
-      )}
 
 
     </div>

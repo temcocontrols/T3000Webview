@@ -362,8 +362,14 @@ export const DashboardPage: React.FC = () => {
   const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null);
   const [iniConfig, setIniConfig] = useState<IniConfig | null>(null);
 
-  const appMode = !iniConfig || !iniConfig.enabled ? 'standalone'
-    : iniConfig.role === 'server' ? 'server' : 'client';
+  // appMode derivation:
+  // Primary = syncHealth.role (live runtime state — what the service is actually running as).
+  // Fallback = iniConfig (INI file) while syncHealth hasn't loaded yet.
+  // NOTE: INI changes take effect only after a service restart; the ModeBanner shows
+  //       a "restart pending" notice when INI and runtime disagree.
+  const appMode: 'standalone' | 'server' | 'client' = syncHealth
+    ? (syncHealth.role === 'server' ? 'server' : syncHealth.role === 'client' ? 'client' : 'standalone')
+    : (iniConfig?.enabled ? (iniConfig.role === 'server' ? 'server' : 'client') : 'standalone');
 
   const fetchIniConfig = useCallback(async () => {
     try { setIniConfig(await getIniConfig()); } catch { /* ignore */ }
@@ -412,11 +418,10 @@ export const DashboardPage: React.FC = () => {
 
         {/* ── Mode Banner ── */}
         <ModeBanner
+          appMode={appMode}
+          syncHealth={syncHealth}
           iniConfig={iniConfig}
-          statusLine={syncHealth
-            ? `${syncHealth.backendType.toUpperCase()} · ${syncHealth.role} · ${syncHealth.dbSizeHuman}`
-            : undefined}
-          onModeChanged={fetchIniConfig}
+          onModeChanged={() => { fetchIniConfig(); fetchHealth(); }}
         />
 
         {/* ── Network Topology (Server + Client modes only) ── */}
