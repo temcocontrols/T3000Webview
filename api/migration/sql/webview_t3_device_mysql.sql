@@ -985,19 +985,25 @@ VALUES
 ('ui.refresh.holidays',  '{"autoRefreshEnabled":false,"refreshIntervalSecs":30}', 'json', 'UI auto-refresh settings for Holidays page', 0);
 
 -- ============================================================================
--- SYSTEM_LOGS - Application event / error / audit log table
+-- T3_APP_LOG - Unified application event log
+-- Replaces SYNC_EVENT_LOG and SYSTEM_LOGS.
+-- categories: SYNC_CYCLE | SYNC_ERROR | DB_CONFIG | SAMPLING_STATE | SERVER_EVENT | HEARTBEAT
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS SYSTEM_LOGS (
-    id              INT AUTO_INCREMENT PRIMARY KEY,
-    `timestamp`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `level`         VARCHAR(20) NOT NULL DEFAULT 'info',
-    source          VARCHAR(255) DEFAULT '',
-    message         TEXT NOT NULL,
-    hostname        VARCHAR(255) DEFAULT '',
-    role            VARCHAR(20) DEFAULT '',
-    details         TEXT,
-    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS T3_APP_LOG (
+    id            INT          AUTO_INCREMENT PRIMARY KEY,
+    ts_unix       BIGINT       NOT NULL,
+    ts_fmt        VARCHAR(30)  NOT NULL,
+    level         VARCHAR(10)  NOT NULL DEFAULT 'info',
+    category      VARCHAR(30)  NOT NULL DEFAULT 'SERVER_EVENT',
+    source        VARCHAR(50),
+    hostname      VARCHAR(100),
+    role          VARCHAR(20),
+    device_serial VARCHAR(50),
+    message       TEXT         NOT NULL,
+    details       LONGTEXT
 );
+CREATE INDEX idx_t3_app_log_ts  ON T3_APP_LOG (ts_unix DESC);
+CREATE INDEX idx_t3_app_log_cat ON T3_APP_LOG (category);
 
 -- ============================================================================
 -- DB_BACKEND_CONFIG - Centralized Database Backend Configuration

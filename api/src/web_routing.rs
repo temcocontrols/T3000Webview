@@ -61,7 +61,7 @@ async fn server_db_status_handler(
     Ok(Json(ServerDbStatus {
         enabled: state.server_db_enabled,
         role: state.server_db_role.clone(),
-        server_connected: state.t3_device_conn.is_some(),
+        server_connected: state.server_db_connected, // true only when center DB actually connected
         mssql_pool_active: state.mssql_pool.is_some(),
         local_config_available: state.local_config_conn.is_some(),
         hostname,

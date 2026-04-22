@@ -988,19 +988,25 @@ VALUES
 ON CONFLICT DO NOTHING;
 
 -- ============================================================================
--- SYSTEM_LOGS - Application event / error / audit log table
+-- T3_APP_LOG - Unified application event log
+-- Replaces SYNC_EVENT_LOG and SYSTEM_LOGS.
+-- categories: SYNC_CYCLE | SYNC_ERROR | DB_CONFIG | SAMPLING_STATE | SERVER_EVENT | HEARTBEAT
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS SYSTEM_LOGS (
-    id              SERIAL PRIMARY KEY,
-    "timestamp"     TIMESTAMP NOT NULL DEFAULT NOW(),
-    "level"         VARCHAR(20) NOT NULL DEFAULT 'info',
-    source          VARCHAR(255) DEFAULT '',
-    message         TEXT NOT NULL DEFAULT '',
-    hostname        VARCHAR(255) DEFAULT '',
-    role            VARCHAR(20) DEFAULT '',
-    details         TEXT DEFAULT '',
-    created_at      TIMESTAMP DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS T3_APP_LOG (
+    id            SERIAL       PRIMARY KEY,
+    ts_unix       BIGINT       NOT NULL,
+    ts_fmt        TEXT         NOT NULL,
+    level         TEXT         NOT NULL DEFAULT 'info',
+    category      TEXT         NOT NULL DEFAULT 'SERVER_EVENT',
+    source        TEXT,
+    hostname      TEXT,
+    role          TEXT,
+    device_serial TEXT,
+    message       TEXT         NOT NULL DEFAULT '',
+    details       TEXT
 );
+CREATE INDEX IF NOT EXISTS idx_t3_app_log_ts  ON T3_APP_LOG (ts_unix DESC);
+CREATE INDEX IF NOT EXISTS idx_t3_app_log_cat ON T3_APP_LOG (category);
 
 -- ============================================================================
 -- DB_BACKEND_CONFIG - Centralized Database Backend Configuration

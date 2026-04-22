@@ -573,6 +573,13 @@ impl T3000MainService {
                 if is_running.load(Ordering::Relaxed) {
                     if let Err(e) = Self::sync_logging_data_static(config.clone()).await {
                         task_logger.error(&format!("❌ Periodic sync failed: {}", e));
+                        // If server DB is enabled and sync failed, pause sampling to avoid
+                        // writing to SQLite when center DB is expected
+                        if crate::server_db_writer::should_write_trendlog_to_server() {
+                            let reason = format!("Center DB write failed: {}", e);
+                            crate::app_state::set_sampling_paused(&reason);
+                            task_logger.warn(&format!("⏸️  Sampling paused: {}", reason));
+                        }
                     }
                 }
             }
@@ -1024,6 +1031,14 @@ impl T3000MainService {
         // Create logger for this sync operation
         let mut sync_logger =
             ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
+
+        // ── CHECK SAMPLING STATE ──────────────────────────────────────────────
+        if crate::app_state::is_sampling_paused() {
+            let reason = crate::app_state::get_pause_reason().unwrap_or_default();
+            sync_logger.warn(&format!("⏸️  Sampling paused — skipping cycle: {}", reason));
+            return Ok(());
+        }
+        // ─────────────────────────────────────────────────────────────────────
 
         sync_logger.info(&format!(
             "⚙️ Config: Timeout {}s, Retry {}x",

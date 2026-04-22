@@ -65,6 +65,11 @@ pub struct SyncHealthResponse {
 
     /// Total devices seen in sync today
     pub devices_synced_today: i64,
+
+    /// Whether FFI sampling is currently paused (center DB down)
+    pub sampling_paused: bool,
+    /// Human-readable reason for the pause, or null when active
+    pub paused_reason: Option<String>,
 }
 
 #[derive(Debug, Serialize, Default)]
@@ -78,7 +83,7 @@ pub struct RecordsToday {
 }
 
 // ============================================================================
-// Sync Event Log Types
+// App Log Types  (T3_APP_LOG — replaces SYNC_EVENT_LOG and SYSTEM_LOGS)
 // ============================================================================
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -106,23 +111,32 @@ impl EventLevel {
     }
 }
 
+/// One row returned by GET /api/sync/event-log
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SyncEventEntry {
+pub struct AppLogEntry {
     pub id: i64,
     pub ts: String,
     pub ts_unix: i64,
     pub level: EventLevel,
+    pub category: String,
+    pub source: Option<String>,
+    pub hostname: Option<String>,
+    pub role: Option<String>,
     pub device_serial: Option<String>,
     pub message: String,
+    pub details: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertEventRequest {
     pub level: Option<EventLevel>,
+    pub category: Option<String>,
+    pub source: Option<String>,
     pub device_serial: Option<String>,
     pub message: String,
+    pub details: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -132,6 +146,7 @@ pub struct EventLogQuery {
     #[serde(default)]
     pub page: u32,
     pub level: Option<String>,
+    pub category: Option<String>,
 }
 
 fn default_log_limit() -> u32 {
@@ -317,64 +332,92 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         db_folder_path,
         db_file_path,
         devices_synced_today,
+        sampling_paused: crate::app_state::is_sampling_paused(),
+        paused_reason: crate::app_state::get_pause_reason(),
     }))
 }
 
 // ============================================================================
-// Sync Event Log — SQLite raw table (no SeaORM entity needed)
+// T3_APP_LOG — SQLite raw table helpers
 // ============================================================================
 
-const CREATE_EVENT_LOG_SQL: &str = r#"
-CREATE TABLE IF NOT EXISTS SYNC_EVENT_LOG (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    ts_unix     INTEGER NOT NULL,
-    ts_fmt      TEXT    NOT NULL,
-    level       TEXT    NOT NULL DEFAULT 'info',
+const CREATE_APP_LOG_SQL: &str = r#"
+CREATE TABLE IF NOT EXISTS T3_APP_LOG (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts_unix       INTEGER NOT NULL,
+    ts_fmt        TEXT    NOT NULL,
+    level         TEXT    NOT NULL DEFAULT 'info',
+    category      TEXT    NOT NULL DEFAULT 'SERVER_EVENT',
+    source        TEXT,
+    hostname      TEXT,
+    role          TEXT,
     device_serial TEXT,
-    message     TEXT    NOT NULL
+    message       TEXT    NOT NULL DEFAULT '',
+    details       TEXT
 )
 "#;
 
-const CREATE_EVENT_LOG_IDX: &str =
-    "CREATE INDEX IF NOT EXISTS idx_sel_ts ON SYNC_EVENT_LOG (ts_unix DESC)";
+const CREATE_APP_LOG_IDX1: &str =
+    "CREATE INDEX IF NOT EXISTS idx_t3_app_log_ts  ON T3_APP_LOG (ts_unix DESC)";
+const CREATE_APP_LOG_IDX2: &str =
+    "CREATE INDEX IF NOT EXISTS idx_t3_app_log_cat ON T3_APP_LOG (category)";
+const CREATE_APP_LOG_IDX3: &str =
+    "CREATE INDEX IF NOT EXISTS idx_t3_app_log_lvl ON T3_APP_LOG (level)";
 
-/// Ensure the SYNC_EVENT_LOG table exists (called once at startup via route init, or lazily).
-pub async fn ensure_event_log_table(db: &sea_orm::DatabaseConnection) {
-    let _ = db
-        .execute(sea_orm::Statement::from_string(
-            sea_orm::DatabaseBackend::Sqlite,
-            CREATE_EVENT_LOG_SQL.to_string(),
-        ))
-        .await;
-    let _ = db
-        .execute(sea_orm::Statement::from_string(
-            sea_orm::DatabaseBackend::Sqlite,
-            CREATE_EVENT_LOG_IDX.to_string(),
-        ))
-        .await;
+/// Ensure T3_APP_LOG table and indexes exist (idempotent, called lazily or at startup).
+pub async fn ensure_app_log_table(db: &sea_orm::DatabaseConnection) {
+    for sql in &[CREATE_APP_LOG_SQL, CREATE_APP_LOG_IDX1, CREATE_APP_LOG_IDX2, CREATE_APP_LOG_IDX3] {
+        let _ = db
+            .execute(sea_orm::Statement::from_string(
+                sea_orm::DatabaseBackend::Sqlite,
+                sql.to_string(),
+            ))
+            .await;
+    }
 }
 
-/// Write a sync event to SYNC_EVENT_LOG. Best-effort — errors are swallowed.
-pub async fn write_sync_event(
+/// Backwards-compat alias used by older call sites.
+pub async fn ensure_event_log_table(db: &sea_orm::DatabaseConnection) {
+    ensure_app_log_table(db).await;
+}
+
+/// Write one entry to T3_APP_LOG. Best-effort — errors are swallowed.
+pub async fn write_app_log(
     db: &sea_orm::DatabaseConnection,
     level: &str,
+    category: &str,
+    source: Option<&str>,
     device_serial: Option<&str>,
     message: &str,
+    details: Option<&str>,
 ) {
     let now = Local::now();
     let ts_unix = now.timestamp();
     let ts_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
-    let serial_sql = match device_serial {
-        Some(s) => format!("'{}'", s.replace('\'', "''")),
+
+    let hostname_val = hostname::get()
+        .map(|h| h.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| "unknown".into());
+
+    let esc = |s: &str| s.replace('\'', "''");
+    let opt_str = |v: Option<&str>| match v {
+        Some(s) => format!("'{}'", esc(s)),
         None => "NULL".to_string(),
     };
-    let msg_escaped = message.replace('\'', "''");
-    let lvl_escaped = level.replace('\'', "''");
 
     let sql = format!(
-        "INSERT INTO SYNC_EVENT_LOG (ts_unix, ts_fmt, level, device_serial, message) \
-         VALUES ({}, '{}', '{}', {}, '{}')",
-        ts_unix, ts_fmt, lvl_escaped, serial_sql, msg_escaped
+        "INSERT INTO T3_APP_LOG \
+         (ts_unix, ts_fmt, level, category, source, hostname, device_serial, message, details) \
+         VALUES ({}, '{}', '{}', '{}', {}, '{}', {}, '{}', {})",
+        ts_unix,
+        esc(&ts_fmt),
+        esc(level),
+        esc(category),
+        opt_str(source),
+        esc(&hostname_val),
+        opt_str(device_serial),
+        esc(message),
+        opt_str(details),
     );
 
     let _ = db
@@ -384,15 +427,25 @@ pub async fn write_sync_event(
         ))
         .await;
 
-    // Keep only latest 2000 rows
+    // Keep only the latest 5000 rows
     let _ = db
         .execute(sea_orm::Statement::from_string(
             sea_orm::DatabaseBackend::Sqlite,
-            "DELETE FROM SYNC_EVENT_LOG WHERE id NOT IN \
-             (SELECT id FROM SYNC_EVENT_LOG ORDER BY ts_unix DESC LIMIT 2000)"
+            "DELETE FROM T3_APP_LOG WHERE id NOT IN \
+             (SELECT id FROM T3_APP_LOG ORDER BY ts_unix DESC LIMIT 5000)"
                 .to_string(),
         ))
         .await;
+}
+
+/// Legacy shim: write with category=SYNC_CYCLE, source=ffi_sync
+pub async fn write_sync_event(
+    db: &sea_orm::DatabaseConnection,
+    level: &str,
+    device_serial: Option<&str>,
+    message: &str,
+) {
+    write_app_log(db, level, "SYNC_CYCLE", Some("ffi_sync"), device_serial, message, None).await;
 }
 
 // ============================================================================
@@ -410,28 +463,33 @@ async fn get_event_log(
         }
     };
 
-    ensure_event_log_table(&db).await;
+    ensure_app_log_table(&db).await;
 
     let limit = q.limit.min(200);
     let offset = q.page.saturating_mul(limit);
 
     let level_filter = match q.level.as_deref() {
-        Some("error") => "AND level = 'error'",
-        Some("warn") => "AND level = 'warn'",
-        Some("info") => "AND level = 'info'",
+        Some("error") => " AND level = 'error'",
+        Some("warn")  => " AND level = 'warn'",
+        Some("info")  => " AND level = 'info'",
         _ => "",
     };
 
+    let cat_filter = match q.category.as_deref() {
+        Some(c) if !c.is_empty() => format!(" AND category = '{}'", c.replace('\'', "''")),
+        _ => String::new(),
+    };
+
     let sql = format!(
-        "SELECT id, ts_unix, ts_fmt, level, device_serial, message \
-         FROM SYNC_EVENT_LOG WHERE 1=1 {} \
+        "SELECT id, ts_unix, ts_fmt, level, category, source, hostname, role, device_serial, message, details \
+         FROM T3_APP_LOG WHERE 1=1{}{} \
          ORDER BY ts_unix DESC LIMIT {} OFFSET {}",
-        level_filter, limit, offset
+        level_filter, cat_filter, limit, offset
     );
 
     let count_sql = format!(
-        "SELECT COUNT(*) AS cnt FROM SYNC_EVENT_LOG WHERE 1=1 {}",
-        level_filter
+        "SELECT COUNT(*) AS cnt FROM T3_APP_LOG WHERE 1=1{}{}",
+        level_filter, cat_filter
     );
 
     let rows = db
@@ -453,20 +511,20 @@ async fn get_event_log(
         .and_then(|r| r.try_get::<i64>("", "cnt").ok())
         .unwrap_or(0);
 
-    let entries: Vec<SyncEventEntry> = rows
+    let entries: Vec<AppLogEntry> = rows
         .into_iter()
-        .map(|r| SyncEventEntry {
-            id: r.try_get("", "id").unwrap_or(0),
-            ts_unix: r.try_get("", "ts_unix").unwrap_or(0),
-            ts: r.try_get("", "ts_fmt").unwrap_or_default(),
-            level: EventLevel::from_str(
-                &r.try_get::<String>("", "level").unwrap_or_default(),
-            ),
-            device_serial: r
-                .try_get::<Option<String>>("", "device_serial")
-                .ok()
-                .flatten(),
-            message: r.try_get("", "message").unwrap_or_default(),
+        .map(|r| AppLogEntry {
+            id:           r.try_get("", "id").unwrap_or(0),
+            ts_unix:      r.try_get("", "ts_unix").unwrap_or(0),
+            ts:           r.try_get("", "ts_fmt").unwrap_or_default(),
+            level:        EventLevel::from_str(&r.try_get::<String>("", "level").unwrap_or_default()),
+            category:     r.try_get("", "category").unwrap_or_else(|_| "SERVER_EVENT".into()),
+            source:       r.try_get::<Option<String>>("", "source").ok().flatten(),
+            hostname:     r.try_get::<Option<String>>("", "hostname").ok().flatten(),
+            role:         r.try_get::<Option<String>>("", "role").ok().flatten(),
+            device_serial:r.try_get::<Option<String>>("", "device_serial").ok().flatten(),
+            message:      r.try_get("", "message").unwrap_or_default(),
+            details:      r.try_get::<Option<String>>("", "details").ok().flatten(),
         })
         .collect();
 
@@ -487,13 +545,19 @@ async fn post_event(
     Json(body): Json<InsertEventRequest>,
 ) -> Result<Json<serde_json::Value>> {
     if let Some(db) = get_db_conn(&state).await {
-        ensure_event_log_table(&db).await;
-        let level = body
-            .level
-            .as_ref()
-            .map(|l| l.as_str())
-            .unwrap_or("info");
-        write_sync_event(&db, level, body.device_serial.as_deref(), &body.message).await;
+        ensure_app_log_table(&db).await;
+        let level = body.level.as_ref().map(|l| l.as_str()).unwrap_or("info");
+        let category = body.category.as_deref().unwrap_or("SYNC_CYCLE");
+        write_app_log(
+            &db,
+            level,
+            category,
+            body.source.as_deref(),
+            body.device_serial.as_deref(),
+            &body.message,
+            body.details.as_deref(),
+        )
+        .await;
     }
     Ok(Json(serde_json::json!({ "ok": true })))
 }

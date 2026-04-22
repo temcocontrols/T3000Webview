@@ -27,6 +27,46 @@ pub async fn app_state() -> Result<AppState, Box<dyn Error>> {
 }
 
 // ============================================================================
+// SAMPLING STATE — global pause/resume for FFI sync cycles
+// ============================================================================
+
+use once_cell::sync::Lazy;
+use std::sync::RwLock;
+
+/// Whether FFI sampling is currently paused.
+#[derive(Debug, Clone)]
+pub enum SamplingState {
+    Active,
+    Paused { reason: String },
+}
+
+static SAMPLING_STATE: Lazy<RwLock<SamplingState>> =
+    Lazy::new(|| RwLock::new(SamplingState::Active));
+
+/// Returns true if sampling is currently paused.
+pub fn is_sampling_paused() -> bool {
+    matches!(*SAMPLING_STATE.read().unwrap(), SamplingState::Paused { .. })
+}
+
+/// Returns the pause reason, or None when active.
+pub fn get_pause_reason() -> Option<String> {
+    match &*SAMPLING_STATE.read().unwrap() {
+        SamplingState::Paused { reason } => Some(reason.clone()),
+        SamplingState::Active => None,
+    }
+}
+
+/// Pause sampling with a human-readable reason.
+pub fn set_sampling_paused(reason: impl Into<String>) {
+    *SAMPLING_STATE.write().unwrap() = SamplingState::Paused { reason: reason.into() };
+}
+
+/// Resume sampling.
+pub fn set_sampling_active() {
+    *SAMPLING_STATE.write().unwrap() = SamplingState::Active;
+}
+
+// ============================================================================
 // ABSTRACTED FUNCTIONS - All new functionality separated from original code
 // ============================================================================
 

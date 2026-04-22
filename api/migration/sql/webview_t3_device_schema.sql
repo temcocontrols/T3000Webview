@@ -1385,17 +1385,25 @@ CREATE TABLE IF NOT EXISTS SERVER_CLIENT_REGISTRY (
 );
 
 -- ============================================================================
--- SYSTEM_LOGS - Application event / error / audit log table
--- Written to server DB when enabled via application config.
+-- T3_APP_LOG - Unified application event log
+-- Replaces SYNC_EVENT_LOG (was lazy-created) and SYSTEM_LOGS (was dead code).
+-- Lives in local SQLite only — always writable, survives center DB outage.
+-- Max 5000 rows; oldest rows are auto-pruned on each insert in Rust code.
+-- categories: SYNC_CYCLE | SYNC_ERROR | DB_CONFIG | SAMPLING_STATE | SERVER_EVENT | HEARTBEAT
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS SYSTEM_LOGS (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp       TEXT NOT NULL DEFAULT (datetime('now')),
-    level           TEXT NOT NULL DEFAULT 'info',        -- info, warn, error, debug
-    source          TEXT DEFAULT '',                     -- module or service name
-    message         TEXT NOT NULL DEFAULT '',
-    hostname        TEXT DEFAULT '',                     -- originating PC name
-    role            TEXT DEFAULT '',                     -- main or reader
-    details         TEXT DEFAULT '',                     -- JSON extra data
-    created_at      TEXT DEFAULT (datetime('now'))
+CREATE TABLE IF NOT EXISTS T3_APP_LOG (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts_unix       INTEGER NOT NULL,
+    ts_fmt        TEXT    NOT NULL,                  -- "2026-04-22 11:20:08"
+    level         TEXT    NOT NULL DEFAULT 'info',   -- info | warn | error
+    category      TEXT    NOT NULL DEFAULT 'SERVER_EVENT',
+    source        TEXT,                              -- ffi_sync | heartbeat | db_config | server
+    hostname      TEXT,                              -- originating PC name
+    role          TEXT,                              -- server | client | standalone
+    device_serial TEXT,                              -- nullable, per-device events only
+    message       TEXT    NOT NULL DEFAULT '',
+    details       TEXT                               -- JSON blob for extra context
 );
+CREATE INDEX IF NOT EXISTS idx_t3_app_log_ts  ON T3_APP_LOG (ts_unix DESC);
+CREATE INDEX IF NOT EXISTS idx_t3_app_log_cat ON T3_APP_LOG (category);
+CREATE INDEX IF NOT EXISTS idx_t3_app_log_lvl ON T3_APP_LOG (level);

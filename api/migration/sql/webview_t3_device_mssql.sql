@@ -1129,20 +1129,28 @@ IF NOT EXISTS (SELECT 1 FROM APPLICATION_CONFIG WHERE config_key = 'ui.refresh.h
 INSERT INTO APPLICATION_CONFIG (config_key, config_value, config_type, description, is_system) VALUES ('ui.refresh.holidays', '{"autoRefreshEnabled":false,"refreshIntervalSecs":30}', 'json', 'UI auto-refresh settings for Holidays page', 0);
 
 -- ============================================================================
--- SYSTEM_LOGS - Application event / error / audit log table
+-- T3_APP_LOG - Unified application event log
+-- Replaces SYNC_EVENT_LOG and SYSTEM_LOGS.
+-- categories: SYNC_CYCLE | SYNC_ERROR | DB_CONFIG | SAMPLING_STATE | SERVER_EVENT | HEARTBEAT
 -- ============================================================================
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SYSTEM_LOGS')
-CREATE TABLE SYSTEM_LOGS (
-    id              INT IDENTITY(1,1) PRIMARY KEY,
-    [timestamp]     DATETIME2 NOT NULL DEFAULT GETDATE(),
-    [level]         NVARCHAR(20) NOT NULL DEFAULT 'info',
-    source          NVARCHAR(255) DEFAULT '',
-    message         NVARCHAR(MAX) NOT NULL DEFAULT '',
-    hostname        NVARCHAR(255) DEFAULT '',
-    role            NVARCHAR(20) DEFAULT '',
-    details         NVARCHAR(MAX) DEFAULT '',
-    created_at      DATETIME2 DEFAULT GETDATE()
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'T3_APP_LOG')
+CREATE TABLE T3_APP_LOG (
+    id            INT IDENTITY(1,1) PRIMARY KEY,
+    ts_unix       BIGINT        NOT NULL,
+    ts_fmt        NVARCHAR(30)  NOT NULL,
+    level         NVARCHAR(10)  NOT NULL DEFAULT 'info',
+    category      NVARCHAR(30)  NOT NULL DEFAULT 'SERVER_EVENT',
+    source        NVARCHAR(50),
+    hostname      NVARCHAR(100),
+    role          NVARCHAR(20),
+    device_serial NVARCHAR(50),
+    message       NVARCHAR(MAX) NOT NULL DEFAULT '',
+    details       NVARCHAR(MAX)
 );
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_t3_app_log_ts'  AND object_id = OBJECT_ID('T3_APP_LOG'))
+CREATE INDEX idx_t3_app_log_ts  ON T3_APP_LOG (ts_unix DESC);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_t3_app_log_cat' AND object_id = OBJECT_ID('T3_APP_LOG'))
+CREATE INDEX idx_t3_app_log_cat ON T3_APP_LOG (category);
 
 -- ============================================================================
 -- DB_BACKEND_CONFIG - Centralized Database Backend Configuration

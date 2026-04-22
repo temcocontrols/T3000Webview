@@ -158,17 +158,29 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
     };
 
     // Initialize global server DB writer for FFI dual-write support
+    // Use server_db_connected (not server_db_enabled) — only activate replication
+    // when the actual server DB connection succeeded. If MSSQL timed out and
+    // we fell back to local SQLite, server_db_connected=false, so replication
+    // is skipped to prevent self-replication and SQLite deadlocks.
     crate::server_db_writer::init_server_db_writer(
-        state.t3_device_conn.clone(), // Points to server DB when enabled
+        state.t3_device_conn.clone(),
         state.mssql_pool.clone(),
         state.server_db_role.clone(),
-        state.server_db_enabled,
+        state.server_db_connected, // only true when center DB actually connected
     );
-    if state.server_db_enabled {
+    if state.server_db_connected {
         logger.info(&format!(
-            "Server DB writer initialized (role={}, enabled=true)",
+            "Server DB writer initialized (role={}, center DB connected)",
             state.server_db_role
         ));
+    } else if state.server_db_enabled {
+        logger.warn(&format!(
+            "Server DB enabled in INI but center DB unreachable — replication disabled (role={})",
+            state.server_db_role
+        ));
+        // Pause FFI sampling so no data is written to SQLite when center DB is expected
+        crate::app_state::set_sampling_paused("Center DB unreachable at startup");
+        logger.warn("Sampling paused: center DB unreachable at startup");
     }
 
     // Create the application with T3000 device routes
