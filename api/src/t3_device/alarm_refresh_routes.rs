@@ -58,8 +58,35 @@ pub struct SaveResponse {
 /// Creates and returns the alarm refresh API routes
 pub fn create_alarm_refresh_routes() -> Router<T3AppState> {
     Router::new()
+        .route("/alarms/active", axum::routing::get(get_active_alarms))
         .route("/alarms/:serial/refresh", axum::routing::post(refresh_alarms))
         .route("/alarms/:serial/save-refreshed", axum::routing::post(save_refreshed_alarms))
+}
+
+/// GET /alarms/active — returns count of active (non-null AlarmState) alarms across all devices.
+/// Used by the Dashboard KPI card.
+async fn get_active_alarms(
+    State(state): State<T3AppState>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    use crate::entity::t3_device::alarms;
+
+    let conn = state.local_config_conn.as_ref().ok_or((
+        StatusCode::SERVICE_UNAVAILABLE,
+        "Local database not ready".to_string(),
+    ))?;
+    let db = conn.lock().await;
+
+    let all = alarms::Entity::find()
+        .all(&*db)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let total = all
+        .iter()
+        .filter(|a| a.alarm_state.as_deref().map(|s| !s.is_empty() && s != "0").unwrap_or(false))
+        .count() as i32;
+
+    Ok(Json(serde_json::json!({ "total": total })))
 }
 
 /// Refresh alarm(s) from device using GET_WEBVIEW_LIST action (Action 17)

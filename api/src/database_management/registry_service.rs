@@ -178,6 +178,15 @@ async fn mark_stale_clients_offline(db: &DatabaseConnection) -> Result<(), DbErr
 async fn get_registry(
     State(state): State<T3AppState>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    // Standalone mode — no shared registry, return empty list gracefully
+    if !state.server_db_enabled {
+        return Ok(Json(serde_json::json!({
+            "success": true,
+            "entries": [],
+            "count": 0,
+        })));
+    }
+
     // MSSQL path
     if let Some(ref pool) = state.mssql_pool {
         let entries = mssql_get_all_entries(pool).await

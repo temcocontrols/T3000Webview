@@ -9,7 +9,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::app_state::T3AppState;
 use crate::entity::t3_device::{devices, trendlogs, trendlog_inputs, input_points, output_points, variable_points};
@@ -165,6 +165,21 @@ pub async fn save_refreshed_trendlogs(
     Json(payload): Json<SaveRefreshedDataRequest>,
 ) -> Result<Json<SaveResponse>, (StatusCode, String)> {
     info!("Saving {} refreshed trendlog(s) to database - Serial: {}", payload.items.len(), serial);
+
+    // When Center DB (SQL Server) is configured but currently unreachable, the process
+    // has already fallen back to local SQLite for t3_device_conn. Writing here would
+    // silently store data only in local SQLite while the user believes it went to the
+    // center DB, causing data divergence across PCs. Block the save and tell the caller.
+    if state.server_db_enabled && !state.server_db_connected {
+        warn!("⚠️ Refusing save-refreshed for serial={}: Center DB configured but unreachable — data would be lost on server side", serial);
+        return Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            "Center DB (SQL Server) is configured but currently unreachable. \
+             Data cannot be saved — it would only land in local SQLite and \
+             never reach the shared center database. \
+             Please check your SQL Server connection.".to_string(),
+        ));
+    }
 
     let db_connection = match &state.t3_device_conn {
         Some(conn) => conn.lock().await.clone(),
