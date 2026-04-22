@@ -419,6 +419,19 @@ function formatLastSeen(ts: string | null | undefined): string {
 }
 
 // ---------------------------------------------------------------------------
+// Backend label helper
+// ---------------------------------------------------------------------------
+function backendLabel(backendType: string): string {
+  switch (backendType) {
+    case 'mssql':   return 'SQL Server';
+    case 'postgres': return 'PostgreSQL';
+    case 'mysql':   return 'MySQL';
+    case 'sqlite':  return 'SQLite';
+    default:        return backendType.toUpperCase();
+  }
+}
+
+// ---------------------------------------------------------------------------
 // TestResult sub-type
 // ---------------------------------------------------------------------------
 interface TestResult { ok: boolean; msg: string }
@@ -503,7 +516,7 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
       setDbResult({
         ok: r.success,
         msg: r.success
-          ? `${health.backendType.toUpperCase()} connected${r.latency_ms != null ? ` (${r.latency_ms}ms)` : ''}`
+          ? `${backendLabel(health.backendType)} connected${r.latency_ms != null ? ` (${r.latency_ms}ms)` : ''}`
           : (r.error ?? r.message ?? 'Connection failed'),
       });
     } catch (e) {
@@ -675,7 +688,7 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
                     <><span className={s.metaSep}>·</span><span>{selfEntry.ip_address}</span></>
                   )}
                   <span className={s.metaSep}>·</span>
-                  <span>{health.backendType.toUpperCase()}</span>
+                  <span>{backendLabel(health.centerDbEnabled && health.backendType === 'sqlite' ? 'mssql' : health.backendType)}</span>
                   {selfEntry?.table_count != null && (
                     <><span className={s.metaSep}>·</span><span>{selfEntry.table_count} tables</span></>
                   )}
@@ -825,7 +838,7 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
                 <div className={s.pcCardMeta}>
                   <span>{selfEntry?.hostname ?? health.hostname ?? '—'}</span>
                   <span className={s.metaSep}>·</span>
-                  <span>{health.backendType.toUpperCase()}</span>
+                  <span>{backendLabel(health.backendType)}</span>
                   <span className={s.metaSep}>·</span>
                   <span>Local mode</span>
                 </div>
