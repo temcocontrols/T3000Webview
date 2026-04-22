@@ -111,17 +111,26 @@ const useStyles = makeStyles({
   },
   chipBlue: {
     backgroundColor: '#e8f2fc',
-    borderColor: '#b3d4f0',
+    borderTopColor: '#b3d4f0',
+    borderRightColor: '#b3d4f0',
+    borderBottomColor: '#b3d4f0',
+    borderLeftColor: '#b3d4f0',
     color: '#0f6cbd',
   },
   chipGreen: {
     backgroundColor: '#e8f5e9',
-    borderColor: '#a5d6a7',
+    borderTopColor: '#a5d6a7',
+    borderRightColor: '#a5d6a7',
+    borderBottomColor: '#a5d6a7',
+    borderLeftColor: '#a5d6a7',
     color: '#107c10',
   },
   chipGray: {
     backgroundColor: '#f0f0f0',
-    borderColor: '#d8d8d8',
+    borderTopColor: '#d8d8d8',
+    borderRightColor: '#d8d8d8',
+    borderBottomColor: '#d8d8d8',
+    borderLeftColor: '#d8d8d8',
     color: '#605e5c',
   },
   chipDotGreen: {
@@ -145,6 +154,9 @@ const useStyles = makeStyles({
     border: '1px solid #edebe9',
     borderRadius: '4px',
     overflow: 'hidden',
+  },
+  sectionFirst: {
+    marginTop: '8px',
   },
   sectionHeader: {
     display: 'flex',
@@ -361,7 +373,7 @@ export const DashboardPage: React.FC = () => {
       <div className={s.scrollArea}>
 
         {/* ── Network Topology ── */}
-        <div className={s.section} style={{ marginTop: '8px' }}>
+        <div className={mergeClasses(s.section, s.sectionFirst)}>
           <NetworkTopologyWidget currentTime={currentTime} />
         </div>
 

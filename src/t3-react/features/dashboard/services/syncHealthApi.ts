@@ -30,21 +30,39 @@ export interface SyncHealthData {
   dbFolderPath: string;
   dbFilePath: string;
   devicesSyncedToday: number;
+  samplingPaused: boolean;
+  pausedReason: string | null;
 }
 
 export type EventLevel = 'info' | 'warn' | 'error';
+export type LogCategory =
+  | 'SYNC_CYCLE'
+  | 'SYNC_ERROR'
+  | 'DB_CONFIG'
+  | 'SAMPLING_STATE'
+  | 'SERVER_EVENT'
+  | 'HEARTBEAT';
 
-export interface SyncEventEntry {
+/** Formerly SyncEventEntry — extended with T3_APP_LOG columns */
+export interface AppLogEntry {
   id: number;
   ts: string;
   tsUnix: number;
   level: EventLevel;
+  category: string;
+  source: string | null;
+  hostname: string | null;
+  role: string | null;
   deviceSerial: string | null;
   message: string;
+  details: string | null;
 }
 
+/** @deprecated Use AppLogEntry */
+export type SyncEventEntry = AppLogEntry;
+
 export interface EventLogResponse {
-  entries: SyncEventEntry[];
+  entries: AppLogEntry[];
   total: number;
   page: number;
   limit: number;
@@ -54,6 +72,7 @@ export interface EventLogParams {
   limit?: number;
   page?: number;
   level?: EventLevel | 'all';
+  category?: LogCategory | 'all';
 }
 
 // ── API calls ─────────────────────────────────────────────────────────────────
@@ -65,11 +84,12 @@ export async function getSyncHealth(): Promise<SyncHealthData> {
 }
 
 export async function getEventLog(params: EventLogParams = {}): Promise<EventLogResponse> {
-  const { limit = 50, page = 0, level } = params;
+  const { limit = 50, page = 0, level, category } = params;
   const qs = new URLSearchParams({
     limit: String(limit),
     page: String(page),
     ...(level && level !== 'all' ? { level } : {}),
+    ...(category && category !== 'all' ? { category } : {}),
   });
   const res = await fetch(`${API_BASE_URL}/api/sync/event-log?${qs}`);
   if (!res.ok) throw new Error(`sync/event-log: HTTP ${res.status}`);

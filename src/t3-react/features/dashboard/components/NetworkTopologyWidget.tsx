@@ -92,7 +92,10 @@ const useStyles = makeStyles({
   },
   pcCardServer: {
     backgroundColor: '#f0f6ff',
-    borderColor: '#c7dff7',
+    borderTopColor: '#c7dff7',
+    borderRightColor: '#c7dff7',
+    borderBottomColor: '#c7dff7',
+    borderLeftColor: '#c7dff7',
   },
   pcCardIcon: {
     fontSize: '24px',
@@ -139,23 +142,33 @@ const useStyles = makeStyles({
   resultStrip: {
     display: 'flex',
     alignItems: 'center',
-    gap: '7px',
-    padding: '5px 14px',
+    gap: '8px',
+    padding: '10px 16px',
     fontSize: '12px',
-    borderRadius: '0 0 4px 4px',
-    marginTop: '-1px',
-    borderLeft: '1px solid',
-    borderRight: '1px solid',
-    borderBottom: '1px solid',
+    borderRadius: '4px',
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderRightWidth: '1px',
+    borderRightStyle: 'solid',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderLeftWidth: '1px',
+    borderLeftStyle: 'solid',
   },
   resultStripOk: {
     backgroundColor: '#f1faf1',
-    borderColor: '#a5d6a7',
+    borderTopColor: '#a5d6a7',
+    borderRightColor: '#a5d6a7',
+    borderBottomColor: '#a5d6a7',
+    borderLeftColor: '#a5d6a7',
     color: '#107c10',
   },
   resultStripFail: {
     backgroundColor: '#fdf3f4',
-    borderColor: '#f4b8bb',
+    borderTopColor: '#f4b8bb',
+    borderRightColor: '#f4b8bb',
+    borderBottomColor: '#f4b8bb',
+    borderLeftColor: '#f4b8bb',
     color: '#d13438',
   },
   resultStripIcon: {
@@ -308,6 +321,36 @@ const useStyles = makeStyles({
     padding: '12px 16px',
     fontSize: '12.5px',
     color: '#d13438',
+  },
+  warnRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '10px 16px',
+    fontSize: '12px',
+    color: '#7d5700',
+    backgroundColor: '#fff4ce',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#f0d070',
+    borderTopWidth: '0',
+    borderLeftWidth: '0',
+    borderRightWidth: '0',
+  },
+  pauseRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '10px 16px',
+    fontSize: '12px',
+    color: '#8e1c1c',
+    backgroundColor: '#fde7e9',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#f5c2c2',
+    borderTopWidth: '0',
+    borderLeftWidth: '0',
+    borderRightWidth: '0',
   },
 });
 
@@ -509,6 +552,31 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
         </div>
       )}
 
+      {/* Center DB / sampling banners + test result */}
+      {!loading && (health || dbResult || pingResult) && (
+        <div style={{ paddingTop: '8px', paddingLeft: '12px', paddingRight: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          {health && health.centerDbEnabled && !health.centerDbConnected && (
+            <div className={s.warnRow}>
+              <ErrorCircleRegular style={{ fontSize: '14px', color: '#c19c00' }} />
+              Center database unreachable — running on local SQLite fallback. Data may not be shared with other PCs.
+            </div>
+          )}
+          {health && health.samplingPaused && (
+            <div className={s.pauseRow}>
+              <ErrorCircleRegular style={{ fontSize: '14px', color: '#8e1c1c' }} />
+              <strong>Sampling paused.</strong>&nbsp;
+              {health.pausedReason ?? 'Center DB unreachable — no data is being written until the connection is restored.'}
+            </div>
+          )}
+          {dbResult && (
+            <ResultStrip result={dbResult} onDismiss={() => { setDbResult(null); }} />
+          )}
+          {pingResult && (
+            <ResultStrip result={pingResult} onDismiss={() => { setPingResult(null); }} />
+          )}
+        </div>
+      )}
+
       {!loading && health && (
       <div className={s.body}>
 
@@ -558,11 +626,6 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
                 </Button>
               </div>
             </div>
-
-            {/* DB test result */}
-            {dbResult && (
-              <ResultStrip result={dbResult} onDismiss={() => { setDbResult(null); }} />
-            )}
 
             {/* Client tree */}
             {clients.length > 0 ? (
@@ -633,15 +696,6 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
               </div>
             </div>
 
-            {/* Ping result */}
-            {pingResult && (
-              <ResultStrip result={pingResult} onDismiss={() => { setPingResult(null); }} />
-            )}
-            {/* DB result */}
-            {dbResult && (
-              <ResultStrip result={dbResult} onDismiss={() => { setDbResult(null); }} />
-            )}
-
             {/* Server row */}
             <div className={s.tree}>
               <div className={s.treeRow}>
@@ -695,10 +749,6 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
               </div>
             </div>
 
-            {/* DB result */}
-            {dbResult && (
-              <ResultStrip result={dbResult} onDismiss={() => { setDbResult(null); }} />
-            )}
           </>
         )}
 

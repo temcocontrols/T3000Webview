@@ -198,14 +198,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => 
       <div className={styles.breadcrumbSection}>
         <div className={styles.pageHeaderBar}></div>
         <h1 className={styles.pageTitle}>{pageTitle.toUpperCase()}</h1>
-        {selectedDevice && !location.pathname.startsWith('/t3000/database/config') && !location.pathname.startsWith('/t3000/developer/') && (
-          <div className={styles.deviceInfo}>
-            <Text className={styles.deviceLabel}>Device:</Text>
-            <Text className={styles.deviceName}>
-              {selectedDevice.nameShowOnTree || selectedDevice.panelName || `SN: ${selectedDevice.serialNumber}`}
-            </Text>
-          </div>
-        )}
+
       </div>
       {/* Slot for page-specific actions (filled via React portal) */}
       <div id="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }} />
