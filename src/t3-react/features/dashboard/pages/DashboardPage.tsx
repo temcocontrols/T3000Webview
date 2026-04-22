@@ -361,7 +361,7 @@ export const DashboardPage: React.FC = () => {
       <div className={s.scrollArea}>
 
         {/* ── Network Topology ── */}
-        <div className={s.section}>
+        <div className={s.section} style={{ marginTop: '8px' }}>
           <NetworkTopologyWidget currentTime={currentTime} />
         </div>
 
