@@ -1,52 +1,56 @@
 /**
  * System Overview Widget
- * Shows key metrics: devices, alarms, points, graphics
+ * Shows key metrics pulled from real APIs: devices, sync health, points, alarms.
  */
 
-import React, { useEffect, useState } from 'react';
-import { Text, Spinner } from '@fluentui/react-components';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Spinner, Tooltip } from '@fluentui/react-components';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { getSyncHealth, SyncHealthData } from '../services/syncHealthApi';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './SystemOverview.module.css';
 
 export const SystemOverview: React.FC = () => {
   const { devices, deviceStatuses } = useDeviceTreeStore();
-  const [stats, setStats] = useState({
-    totalDevices: 0,
-    onlineDevices: 0,
-    offlineDevices: 0,
-    totalPoints: 0,
-    activeAlarms: 0,
-    graphics: 0,
-  });
+  const [syncHealth, setSyncHealth] = useState<SyncHealthData | null>(null);
+  const [alarmCount, setAlarmCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const calculateStats = async () => {
-      const onlineCount = Array.from(deviceStatuses.values()).filter(
-        (status) => status === 'online'
-      ).length;
+  const onlineCount = Array.from(deviceStatuses.values()).filter((s) => s === 'online').length;
+  const offlineCount = devices.length - onlineCount;
 
-      // Estimate total points (this would come from API in production)
-      const estimatedPoints = devices.length * 35; // Average points per device
+  const fetchData = useCallback(async () => {
+    try {
+      const [health, alarmsResp] = await Promise.allSettled([
+        getSyncHealth(),
+        fetch(`${API_BASE_URL}/api/t3_device/alarms/active`),
+      ]);
 
-      // Get last sync time
-      const lastSync = new Date();
-      const syncMinutes = Math.floor(Math.random() * 5) + 1;
+      if (health.status === 'fulfilled') setSyncHealth(health.value);
 
-      setStats({
-        totalDevices: devices.length,
-        onlineDevices: onlineCount,
-        offlineDevices: devices.length - onlineCount,
-        totalPoints: estimatedPoints,
-        activeAlarms: 0, // TODO: Fetch from alarms API
-        graphics: 12, // TODO: Fetch from graphics API
-      });
-
+      if (alarmsResp.status === 'fulfilled' && alarmsResp.value.ok) {
+        const data = await alarmsResp.value.json();
+        // accept { total } or array length
+        setAlarmCount(typeof data?.total === 'number' ? data.total : (Array.isArray(data) ? data.length : 0));
+      }
+    } finally {
       setLoading(false);
-    };
+    }
+  }, []);
 
-    calculateStats();
-  }, [devices, deviceStatuses]);
+  useEffect(() => {
+    fetchData();
+    const id = setInterval(fetchData, 60_000);
+    return () => clearInterval(id);
+  }, [fetchData]);
+
+  const centerStatus = syncHealth
+    ? syncHealth.centerDbConnected ? 'Connected' : 'Disconnected'
+    : '—';
+
+  const centerColor = syncHealth
+    ? syncHealth.centerDbConnected ? '#107c10' : '#d13438'
+    : '#605e5c';
 
   if (loading) {
     return (
@@ -61,29 +65,35 @@ export const SystemOverview: React.FC = () => {
       <div className={styles.card}>
         <div className={styles.cardContent}>
           <div className={styles.cardLabel}>DEVICES</div>
-          <div className={styles.cardValue}>{stats.totalDevices}</div>
+          <div className={styles.cardValue}>{devices.length}</div>
           <div className={styles.cardDetail}>
-            {stats.onlineDevices} online • {stats.offlineDevices} offline
+            {onlineCount} online • {offlineCount} offline
           </div>
         </div>
       </div>
 
       <div className={styles.card}>
         <div className={styles.cardContent}>
-          <div className={styles.cardLabel}>SYSTEM HEALTH</div>
-          <div className={styles.cardValue}>Good</div>
+          <div className={styles.cardLabel}>CENTER DB</div>
+          <div className={styles.cardValue} style={{ color: centerColor, fontSize: '16px' }}>
+            {centerStatus}
+          </div>
           <div className={styles.cardDetail}>
-            45% CPU • 62% Memory
+            {syncHealth?.backendType ?? 'N/A'} • {syncHealth?.role ?? '—'}
           </div>
         </div>
       </div>
 
       <div className={styles.card}>
         <div className={styles.cardContent}>
-          <div className={styles.cardLabel}>SYNC</div>
-          <div className={styles.cardValue}>2 min ago</div>
+          <div className={styles.cardLabel}>LAST SYNC</div>
+          <Tooltip content={syncHealth?.lastSyncTime ?? 'No sync recorded'} relationship="description">
+            <div className={styles.cardValue} style={{ fontSize: '15px' }}>
+              {syncHealth?.lastSyncAgo ?? '—'}
+            </div>
+          </Tooltip>
           <div className={styles.cardDetail}>
-            Connected • {stats.totalPoints} points
+            {syncHealth?.devicesSyncedToday ?? 0} device{syncHealth?.devicesSyncedToday !== 1 ? 's' : ''} today
           </div>
         </div>
       </div>
@@ -91,29 +101,33 @@ export const SystemOverview: React.FC = () => {
       <div className={styles.card}>
         <div className={styles.cardContent}>
           <div className={styles.cardLabel}>ALARMS</div>
-          <div className={styles.cardValue}>{stats.activeAlarms}</div>
+          <div className={styles.cardValue} style={{ color: alarmCount > 0 ? '#d13438' : undefined }}>
+            {alarmCount}
+          </div>
           <div className={styles.cardDetail}>
-            {stats.activeAlarms === 0 ? 'All clear' : 'Attention needed'}
+            {alarmCount === 0 ? 'All clear' : 'Attention needed'}
           </div>
         </div>
       </div>
 
       <div className={styles.card}>
         <div className={styles.cardContent}>
-          <div className={styles.cardLabel}>POINTS</div>
-          <div className={styles.cardValue}>{stats.totalPoints}</div>
+          <div className={styles.cardLabel}>RECORDS TODAY</div>
+          <div className={styles.cardValue}>{syncHealth?.recordsToday.total ?? 0}</div>
           <div className={styles.cardDetail}>
-            Monitored
+            {syncHealth ? `${syncHealth.recordsToday.inputs}in · ${syncHealth.recordsToday.outputs}out · ${syncHealth.recordsToday.variables}var` : 'No data'}
           </div>
         </div>
       </div>
 
       <div className={styles.card}>
         <div className={styles.cardContent}>
-          <div className={styles.cardLabel}>GRAPHICS</div>
-          <div className={styles.cardValue}>{stats.graphics}</div>
-          <div className={styles.cardDetail}>
-            Active
+          <div className={styles.cardLabel}>DB SIZE</div>
+          <div className={styles.cardValue} style={{ fontSize: '15px' }}>
+            {syncHealth?.dbSizeHuman ?? '—'}
+          </div>
+          <div className={styles.cardDetail} style={{ fontFamily: 'monospace', fontSize: '10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {syncHealth?.dbFolderPath ?? '—'}
           </div>
         </div>
       </div>

@@ -1,89 +1,99 @@
 /**
  * System Health Widget
- * Shows CPU, memory, and database metrics
+ * Shows real DB health data from /api/sync/health
  */
 
-import React, { useEffect, useState } from 'react';
-import { Text } from '@fluentui/react-components';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Text, Badge, Spinner, Tooltip } from '@fluentui/react-components';
+import { getSyncHealth, SyncHealthData } from '../services/syncHealthApi';
 import styles from './SystemHealth.module.css';
 
 export const SystemHealth: React.FC = () => {
-  const [metrics, setMetrics] = useState({
-    cpu: 45,
-    memory: 32,
-    database: 245, // MB
-    databaseMax: 1024, // MB
-  });
+  const [health, setHealth] = useState<SyncHealthData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Simulate real-time updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMetrics((prev) => ({
-        ...prev,
-        cpu: Math.min(100, Math.max(0, prev.cpu + (Math.random() - 0.5) * 10)),
-        memory: Math.min(100, Math.max(0, prev.memory + (Math.random() - 0.5) * 5)),
-      }));
-    }, 5000);
-
-    return () => clearInterval(interval);
+  const fetchHealth = useCallback(async () => {
+    try {
+      const data = await getSyncHealth();
+      setHealth(data);
+    } catch {
+      // leave stale data if available
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const getBarColor = (value: number) => {
-    if (value > 80) return '#d13438';
-    if (value > 60) return '#f7630c';
-    return '#107c10';
-  };
+  useEffect(() => {
+    fetchHealth();
+    const id = setInterval(fetchHealth, 30_000);
+    return () => clearInterval(id);
+  }, [fetchHealth]);
+
+  if (loading) {
+    return (
+      <div className={styles.container} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+        <Spinner size="small" />
+      </div>
+    );
+  }
+
+  if (!health) {
+    return (
+      <div className={styles.container}>
+        <Text style={{ color: '#d13438', fontSize: '13px' }}>Unable to load health data</Text>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
       <div className={styles.metric}>
         <div className={styles.metricHeader}>
-          <Text className={styles.metricLabel}>CPU Usage</Text>
-          <Text className={styles.metricValue}>{Math.round(metrics.cpu)}%</Text>
+          <Text className={styles.metricLabel}>Center DB</Text>
+          <Badge
+            appearance="filled"
+            color={health.centerDbConnected ? 'success' : 'danger'}
+            size="small"
+          >
+            {health.centerDbConnected ? 'Connected' : 'Disconnected'}
+          </Badge>
         </div>
-        <div className={styles.progressBar}>
-          <div
-            className={styles.progressFill}
-            style={{
-              width: `${metrics.cpu}%`,
-              backgroundColor: getBarColor(metrics.cpu),
-            }}
-          />
-        </div>
+        <Text style={{ fontSize: '12px', color: '#605e5c' }}>
+          {health.backendType} • {health.role}
+          {health.hostname ? ` • ${health.hostname}` : ''}
+        </Text>
       </div>
 
       <div className={styles.metric}>
         <div className={styles.metricHeader}>
-          <Text className={styles.metricLabel}>Memory</Text>
-          <Text className={styles.metricValue}>{Math.round(metrics.memory)}%</Text>
+          <Text className={styles.metricLabel}>Last Sync</Text>
+          <Text className={styles.metricValue}>{health.lastSyncAgo}</Text>
         </div>
-        <div className={styles.progressBar}>
-          <div
-            className={styles.progressFill}
-            style={{
-              width: `${metrics.memory}%`,
-              backgroundColor: getBarColor(metrics.memory),
-            }}
-          />
+        <Text style={{ fontSize: '12px', color: '#605e5c' }}>
+          {health.lastSyncTime ?? 'No sync recorded'}
+        </Text>
+      </div>
+
+      <div className={styles.metric}>
+        <div className={styles.metricHeader}>
+          <Text className={styles.metricLabel}>Records Today</Text>
+          <Text className={styles.metricValue}>{health.recordsToday.total.toLocaleString()}</Text>
         </div>
+        <Text style={{ fontSize: '12px', color: '#605e5c' }}>
+          {health.recordsToday.inputs} inputs · {health.recordsToday.outputs} outputs · {health.recordsToday.variables} variables · {health.recordsToday.trendlogs} trendlogs
+        </Text>
       </div>
 
       <div className={styles.metric}>
         <div className={styles.metricHeader}>
           <Text className={styles.metricLabel}>Database Size</Text>
-          <Text className={styles.metricValue}>
-            {metrics.database} MB / {metrics.databaseMax} MB
+          <Text className={styles.metricValue}>{health.dbSizeHuman}</Text>
+        </div>
+        <Tooltip content={health.dbFilePath ?? '—'} relationship="description">
+          <Text style={{ fontSize: '11px', color: '#605e5c', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: '100%' }}>
+            {health.dbFolderPath ?? '—'}
           </Text>
-        </div>
-        <div className={styles.progressBar}>
-          <div
-            className={styles.progressFill}
-            style={{
-              width: `${(metrics.database / metrics.databaseMax) * 100}%`,
-              backgroundColor: '#0078d4',
-            }}
-          />
-        </div>
+        </Tooltip>
       </div>
     </div>
   );

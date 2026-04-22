@@ -1,101 +1,124 @@
 /**
  * Recent Activity Widget
- * Shows device activity and system events
+ * Shows real sync activity from DATA_SYNC_METADATA via /api/sync-status
  */
 
-import React, { useEffect, useState } from 'react';
-import { Text } from '@fluentui/react-components';
-import { ArrowSyncRegular, EditRegular, SettingsRegular, AlertRegular } from '@fluentui/react-icons';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Text, Spinner } from '@fluentui/react-components';
+import { ArrowSyncRegular, ErrorCircleRegular } from '@fluentui/react-icons';
+import { API_BASE_URL } from '../../../config/constants';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import styles from './RecentActivity.module.css';
 
+interface SyncStatus {
+  id: number;
+  syncTime: number;
+  syncTimeFmt: string;
+  dataType: string;
+  serialNumber: string;
+  recordsSynced: number;
+  syncMethod: string;
+  success: boolean;
+  errorMessage: string | null;
+}
+
 interface Activity {
   id: string;
-  type: 'sync' | 'update' | 'config' | 'alarm';
-  message: string;
   device: string;
+  dataType: string;
   timestamp: string;
-  syncType: string;
-  timeAgo: string;
+  recordsSynced: number;
+  success: boolean;
+  method: string;
 }
+
+const DATA_TYPES = ['inputs', 'outputs', 'variables', 'trendlogs'];
 
 export const RecentActivity: React.FC = () => {
   const { devices } = useDeviceTreeStore();
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Mock recent activities - in production, fetch from API
-    if (devices.length > 0) {
-      const now = new Date();
-      const syncTypes = ['Manual Sync', 'Auto Sync', 'Network Sync', 'Scheduled Sync'];
-      const mockActivities: Activity[] = devices.slice(0, 5).map((device, index) => {
-        const minutesAgo = index * 3 + 2;
-        const activityTime = new Date(now.getTime() - minutesAgo * 60000);
+  const fetchActivities = useCallback(async () => {
+    if (devices.length === 0) { setLoading(false); return; }
 
-        // Format: yyyy-mm-dd hh:mm:ss AM/PM
-        const year = activityTime.getFullYear();
-        const month = String(activityTime.getMonth() + 1).padStart(2, '0');
-        const day = String(activityTime.getDate()).padStart(2, '0');
-        const hours = activityTime.getHours();
-        const minutes = String(activityTime.getMinutes()).padStart(2, '0');
-        const seconds = String(activityTime.getSeconds()).padStart(2, '0');
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        const hours12 = hours % 12 || 12;
+    try {
+      const requests = devices.slice(0, 4).flatMap((dev) =>
+        DATA_TYPES.map(async (dt) => {
+          try {
+            const r = await fetch(`${API_BASE_URL}/api/sync-status/${dev.serialNumber}/${dt}`);
+            if (!r.ok) return null;
+            const data: SyncStatus = await r.json();
+            return {
+              id: `${dev.serialNumber}-${dt}`,
+              device: dev.nameShowOnTree,
+              dataType: dt,
+              timestamp: data.syncTimeFmt,
+              recordsSynced: data.recordsSynced,
+              success: data.success,
+              method: data.syncMethod,
+            } as Activity;
+          } catch { return null; }
+        })
+      );
 
-        const timestamp = `${year}-${month}-${day} ${String(hours12).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
-        const timeAgo = minutesAgo < 60 ? `${minutesAgo} min ago` : `${Math.floor(minutesAgo / 60)} hr ago`;
+      const settled = await Promise.all(requests);
+      const valid = settled
+        .filter((a): a is Activity => a !== null && a.recordsSynced > 0)
+        .sort((a, b) => {
+          // sort by timestamp desc (strings in yyyy-mm-dd HH:MM:SS format)
+          return b.timestamp.localeCompare(a.timestamp);
+        })
+        .slice(0, 8);
 
-        return {
-          id: `activity-${index}`,
-          type: 'sync',
-          message: 'Synced successfully',
-          device: device.nameShowOnTree,
-          timestamp,
-          timeAgo,
-          syncType: syncTypes[index % syncTypes.length],
-        };
-      });
-      setActivities(mockActivities);
+      setActivities(valid);
+    } finally {
+      setLoading(false);
     }
   }, [devices]);
 
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'sync':
-        return <ArrowSyncRegular className={styles.icon} style={{ color: '#0078d4' }} />;
-      case 'update':
-        return <EditRegular className={styles.icon} style={{ color: '#107c10' }} />;
-      case 'config':
-        return <SettingsRegular className={styles.icon} style={{ color: '#8764b8' }} />;
-      case 'alarm':
-        return <AlertRegular className={styles.icon} style={{ color: '#d13438' }} />;
-      default:
-        return <ArrowSyncRegular className={styles.icon} style={{ color: '#605e5c' }} />;
-    }
-  };
+  useEffect(() => {
+    fetchActivities();
+    const id = setInterval(fetchActivities, 60_000);
+    return () => clearInterval(id);
+  }, [fetchActivities]);
+
+  if (loading) {
+    return (
+      <div className={styles.container} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+        <Spinner size="small" />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
       {activities.length === 0 ? (
         <div className={styles.emptyState}>
-          <Text className={styles.emptyText}>No recent activity</Text>
+          <Text className={styles.emptyText}>No recent sync activity</Text>
         </div>
       ) : (
         <div className={styles.activityList}>
           {activities.map((activity) => (
             <div key={activity.id} className={styles.activityItem}>
-              <div className={styles.activityIcon}>{getActivityIcon(activity.type)}</div>
+              <div className={styles.activityIcon}>
+                {activity.success
+                  ? <ArrowSyncRegular className={styles.icon} style={{ color: '#0078d4' }} />
+                  : <ErrorCircleRegular className={styles.icon} style={{ color: '#d13438' }} />}
+              </div>
               <div className={styles.activityContent}>
                 <div className={styles.activityTop}>
                   <div className={styles.activityDevice}>{activity.device}</div>
-                  <div className={styles.activityMessage}>{activity.message}</div>
+                  <div className={styles.activityMessage}>
+                    {activity.success
+                      ? `${activity.recordsSynced} ${activity.dataType} synced`
+                      : `Sync failed (${activity.dataType})`}
+                  </div>
                 </div>
                 <div className={styles.activityTimeInfo}>
                   <span className={styles.activityTimestamp}>{activity.timestamp}</span>
                   <span className={styles.timeDivider}>•</span>
-                  <span className={styles.activityTime}>{activity.timeAgo}</span>
-                  <span className={styles.timeDivider}>•</span>
-                  <span className={styles.activitySyncType}>{activity.syncType}</span>
+                  <span className={styles.activitySyncType}>{activity.method}</span>
                 </div>
               </div>
             </div>

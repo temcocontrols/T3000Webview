@@ -1,144 +1,126 @@
 /**
  * Trend Logs Widget
- * Shows recent trend log data with sample chart
+ * Shows real trendlog data for the last 24 hours via /api/database/trendlog/query
  */
 
-import React, { useEffect, useRef } from 'react';
-import { Text } from '@fluentui/react-components';
+import React, { useEffect, useRef, useState } from 'react';
+import { Text, Spinner } from '@fluentui/react-components';
 import * as echarts from 'echarts';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './TrendLogs.module.css';
+
+interface TrendlogRecord {
+  logging_time_fmt: string;
+  value: string;
+  point_id: string;
+  point_type: string;
+  serial_number: number;
+  panel_id: number;
+}
 
 export const TrendLogs: React.FC = () => {
   const chartRef = useRef<HTMLDivElement>(null);
-
-  // Mock data - replace with API call
-  const trendLogs = [
-    { id: '1', name: 'Temperature - Zone A', lastUpdate: '2 min ago', points: 245 },
-    { id: '2', name: 'Humidity - Main Hall', lastUpdate: '5 min ago', points: 180 },
-    { id: '3', name: 'Pressure - HVAC System', lastUpdate: '8 min ago', points: 320 },
-  ];
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!chartRef.current) return;
+    let chart: echarts.ECharts | null = null;
 
-    const chart = echarts.init(chartRef.current);
+    const fetchAndDraw = async () => {
+      if (!chartRef.current) return;
 
-    // Generate sample data - 24 hours
-    const now = Date.now();
-    const tempData: [number, number][] = [];
-    const humidityData: [number, number][] = [];
+      const now = new Date();
+      const start = new Date(now.getTime() - 24 * 3600 * 1000);
+      const fmt = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
 
-    for (let i = 0; i < 24; i++) {
-      const time = now - (24 - i) * 3600000; // Last 24 hours
-      tempData.push([time, 20 + Math.random() * 5 + Math.sin(i / 4) * 3]);
-      humidityData.push([time, 50 + Math.random() * 10 + Math.cos(i / 3) * 8]);
-    }
+      try {
+        const resp = await fetch(`${API_BASE_URL}/api/database/trendlog/query`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ start_date: fmt(start), end_date: fmt(now) }),
+        });
 
-    const option: echarts.EChartsOption = {
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: {
-          type: 'cross',
-        },
-        textStyle: {
-          fontSize: 11,
-        },
-      },
-      grid: {
-        left: '50',
-        right: '40',
-        top: '30',
-        bottom: '30',
-      },
-      xAxis: {
-        type: 'time',
-        axisLabel: {
-          fontSize: 10,
-          formatter: (value: number) => {
-            const date = new Date(value);
-            return date.getHours() + ':00';
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data: TrendlogRecord[] = await resp.json();
+
+        if (!chartRef.current) return;
+        chart = echarts.init(chartRef.current);
+
+        if (data.length === 0) {
+          setError('No trendlog data in the last 24 hours');
+          setLoading(false);
+          return;
+        }
+
+        // Group by point_id — take first 3 series
+        const groups = new Map<string, [number, number][]>();
+        for (const rec of data) {
+          const key = `${rec.point_type ?? 'PT'} ${rec.point_id}`;
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key)!.push([new Date(rec.logging_time_fmt).getTime(), parseFloat(rec.value)]);
+        }
+
+        const colors = ['#0078d4', '#107c10', '#f7630c', '#8764b8', '#00b7c3'];
+        const series = Array.from(groups.entries())
+          .slice(0, 3)
+          .map(([name, pts], i) => ({
+            name,
+            type: 'line' as const,
+            data: pts.sort((a, b) => a[0] - b[0]),
+            smooth: true,
+            lineStyle: { width: 2, color: colors[i % colors.length] },
+            itemStyle: { color: colors[i % colors.length] },
+            showSymbol: false,
+          }));
+
+        const option: echarts.EChartsOption = {
+          tooltip: { trigger: 'axis', textStyle: { fontSize: 11 } },
+          legend: { top: 2, textStyle: { fontSize: 10 }, data: series.map((s) => s.name) },
+          grid: { left: 48, right: 16, top: 28, bottom: 28 },
+          xAxis: {
+            type: 'time',
+            axisLabel: { fontSize: 10, formatter: (v: number) => new Date(v).getHours() + ':00' },
           },
-        },
-      },
-      yAxis: [
-        {
-          type: 'value',
-          name: 'Temp (°C)',
-          nameTextStyle: {
-            fontSize: 10,
-          },
-          axisLabel: {
-            fontSize: 10,
-          },
-          splitLine: {
-            lineStyle: {
-              type: 'dashed',
-              color: '#e0e0e0',
-            },
-          },
-        },
-        {
-          type: 'value',
-          name: 'Humidity (%)',
-          nameTextStyle: {
-            fontSize: 10,
-          },
-          axisLabel: {
-            fontSize: 10,
-          },
-          splitLine: {
-            show: false,
-          },
-        },
-      ],
-      series: [
-        {
-          name: 'Temperature',
-          type: 'line',
-          data: tempData,
-          smooth: true,
-          lineStyle: {
-            width: 2,
-            color: '#0078d4',
-          },
-          itemStyle: {
-            color: '#0078d4',
-          },
-          showSymbol: false,
-          yAxisIndex: 0,
-        },
-        {
-          name: 'Humidity',
-          type: 'line',
-          data: humidityData,
-          smooth: true,
-          lineStyle: {
-            width: 2,
-            color: '#107c10',
-          },
-          itemStyle: {
-            color: '#107c10',
-          },
-          showSymbol: false,
-          yAxisIndex: 1,
-        },
-      ],
+          yAxis: { type: 'value', axisLabel: { fontSize: 10 }, splitLine: { lineStyle: { type: 'dashed', color: '#e0e0e0' } } },
+          series,
+        };
+
+        chart.setOption(option);
+
+        const handleResize = () => chart?.resize();
+        window.addEventListener('resize', handleResize);
+        setLoading(false);
+
+        return () => {
+          window.removeEventListener('resize', handleResize);
+          chart?.dispose();
+        };
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load trendlog data');
+        setLoading(false);
+      }
     };
 
-    chart.setOption(option);
+    fetchAndDraw();
 
-    const handleResize = () => chart.resize();
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      chart.dispose();
-    };
+    return () => { chart?.dispose(); };
   }, []);
 
   return (
     <div className={styles.container}>
-      <div ref={chartRef} className={styles.chart}></div>
+      {loading && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', fontSize: '13px', color: '#605e5c' }}>
+          <Spinner size="tiny" />
+          <span>Loading…</span>
+        </div>
+      )}
+      {error && !loading && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+          <Text style={{ color: '#605e5c', fontSize: '13px', fontStyle: 'italic' }}>{error}</Text>
+        </div>
+      )}
+      <div ref={chartRef} className={styles.chart} style={{ display: loading || error ? 'none' : 'block' }} />
     </div>
   );
 };
