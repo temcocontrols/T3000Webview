@@ -35,8 +35,6 @@ interface Activity {
   method: string;
 }
 
-const DATA_TYPES = ['inputs', 'outputs', 'variables', 'trendlogs'];
-
 // ── MOCK: set to true to preview activity list styling ──
 const USE_MOCK_ACTIVITY = true;
 
@@ -67,33 +65,29 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ onSummary }) => 
     if (devices.length === 0) { setLoading(false); return; }
 
     try {
-      const requests = devices.slice(0, 4).flatMap((dev) =>
-        DATA_TYPES.map(async (dt) => {
-          try {
-            const r = await fetch(`${API_BASE_URL}/api/sync-status/${dev.serialNumber}/${dt}`);
-            if (!r.ok) return null;
-            const data: SyncStatus = await r.json();
-            return {
-              id: `${dev.serialNumber}-${dt}`,
-              device: dev.nameShowOnTree,
-              dataType: dt,
-              timestamp: data.syncTimeFmt,
-              recordsSynced: data.recordsSynced,
-              success: data.success,
-              method: data.syncMethod,
-            } as Activity;
-          } catch { return null; }
-        })
-      );
+      // One request per device returns all data types, then flatten
+      const requests = devices.slice(0, 6).map(async (dev) => {
+        try {
+          const r = await fetch(`${API_BASE_URL}/api/sync-status/${dev.serialNumber}`);
+          if (!r.ok) return [];
+          const data: SyncStatus[] = await r.json();
+          return data.map((s) => ({
+            id: `${dev.serialNumber}-${s.dataType}`,
+            device: dev.nameShowOnTree,
+            dataType: s.dataType,
+            timestamp: s.syncTimeFmt,
+            recordsSynced: s.recordsSynced,
+            success: s.success,
+            method: s.syncMethod,
+          } as Activity));
+        } catch { return []; }
+      });
 
       const settled = await Promise.all(requests);
       const valid = settled
-        .filter((a): a is Activity => a !== null && a.recordsSynced > 0)
-        .sort((a, b) => {
-          // sort by timestamp desc (strings in yyyy-mm-dd HH:MM:SS format)
-          return b.timestamp.localeCompare(a.timestamp);
-        })
-        .slice(0, 8);
+        .flat()
+        .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+        .slice(0, 10);
 
       setActivities(valid);
       onSummary?.({ ok: valid.filter(a => a.success).length, fail: valid.filter(a => !a.success).length, total: valid.length });

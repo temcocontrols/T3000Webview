@@ -176,6 +176,31 @@ const useStyles = makeStyles({
     margin: 0,
     flex: 1,
   },
+  activitySummary: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontSize: '11.5px',
+    color: '#605e5c',
+  },
+  activitySummaryOk: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '3px',
+    color: '#107c10',
+  },
+  activitySummaryFail: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '3px',
+    color: '#d13438',
+  },
+  activitySummarySep: {
+    color: '#c8c6c4',
+  },
+  activitySummaryTotal: {
+    color: '#8a8886',
+  },
 
   /* ── KPI Cards row ── */
   kpiRow: {
@@ -297,8 +322,6 @@ const useStyles = makeStyles({
     flex: 1,
   },
   monitoringColContent: {
-    padding: '8px 12px',
-    maxHeight: '240px',
     overflow: 'auto',
     scrollbarWidth: 'thin',
     scrollbarColor: '#c1c1c1 transparent',
@@ -505,18 +528,18 @@ export const DashboardPage: React.FC = () => {
           <div className={s.sectionHeader}>
             <h3 className={s.sectionTitle}>Monitoring</h3>
             {activitySummary && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: '#605e5c' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#107c10' }}>
+              <div className={s.activitySummary}>
+                <span className={s.activitySummaryOk}>
                   <CheckmarkCircleRegular style={{ fontSize: '13px' }} />
                   {activitySummary.ok} ok
                 </span>
-                <span style={{ color: '#c8c6c4' }}>·</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#d13438' }}>
+                <span className={s.activitySummarySep}>·</span>
+                <span className={s.activitySummaryFail}>
                   <DismissCircleRegular style={{ fontSize: '13px' }} />
                   {activitySummary.fail} failed
                 </span>
-                <span style={{ color: '#c8c6c4' }}>·</span>
-                <span style={{ color: '#8a8886' }}>{activitySummary.total} total</span>
+                <span className={s.activitySummarySep}>·</span>
+                <span className={s.activitySummaryTotal}>{activitySummary.total} total</span>
               </div>
             )}
           </div>
