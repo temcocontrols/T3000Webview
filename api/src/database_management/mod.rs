@@ -23,6 +23,7 @@ pub mod partition_monitor_service;
 pub mod partition_query_service;
 pub mod data_sync_service;
 pub mod data_sync_endpoints;
+pub mod sync_health;
 pub mod db_backend_config;
 pub mod db_backend_routes;
 pub mod mssql_queries;
