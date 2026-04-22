@@ -209,26 +209,45 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         state.server_db_role.clone()
     };
 
+    // Read actual active backend type from DB_BACKEND_CONFIG in local SQLite
     let backend_type = if state.mssql_pool.is_some() {
-        "mssql"
-    } else if state.server_db_enabled && state.server_db_connected {
-        "postgres_or_mysql"
+        "mssql".to_string()
+    } else if let Some(ref lcfg) = state.local_config_conn {
+        let db = lcfg.lock().await;
+        db.query_one(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            "SELECT backend_type FROM DB_BACKEND_CONFIG WHERE is_active = 1 LIMIT 1".to_string(),
+        ))
+        .await
+        .ok()
+        .flatten()
+        .and_then(|row| row.try_get::<String>("", "backend_type").ok())
+        .unwrap_or_else(|| "sqlite".to_string())
     } else {
-        "sqlite"
-    }
-    .to_string();
+        "sqlite".to_string()
+    };
 
-    // DB file info
-    let db_path = crate::constants::get_t3000_database_path();
-    let db_size_bytes = std::fs::metadata(&db_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
+    // DB file info — derive from the actual webview SQLite URL, not the T3000 app folder
+    let raw_url = crate::utils::T3_DEVICE_DATABASE_URL.clone();
+    let rel_path = raw_url
+        .strip_prefix("sqlite://")
+        .unwrap_or("Database/webview_t3_device.db")
+        .to_string();
+    let db_path_abs = {
+        let p = std::path::Path::new(&rel_path);
+        if p.is_absolute() {
+            p.to_path_buf()
+        } else {
+            std::env::current_dir().unwrap_or_default().join(p)
+        }
+    };
+    let db_size_bytes = std::fs::metadata(&db_path_abs).map(|m| m.len()).unwrap_or(0);
     let db_size_human = format_bytes(db_size_bytes);
-    let db_folder_path = db_path
+    let db_folder_path = db_path_abs
         .parent()
         .map(|p| p.to_string_lossy().to_string())
         .unwrap_or_default();
-    let db_file_path = db_path.to_string_lossy().to_string();
+    let db_file_path = db_path_abs.to_string_lossy().to_string();
 
     // Query DATA_SYNC_METADATA for last sync + records today
     let mut last_sync_time: Option<String> = None;
