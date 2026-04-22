@@ -4,7 +4,8 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Text, Spinner } from '@fluentui/react-components';
+import { Spinner } from '@fluentui/react-components';
+import { ErrorCircleRegular } from '@fluentui/react-icons';
 import * as echarts from 'echarts';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './TrendLogs.module.css';
@@ -110,17 +111,18 @@ export const TrendLogs: React.FC = () => {
   return (
     <div className={styles.container}>
       {loading && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', fontSize: '13px', color: '#605e5c' }}>
+        <div className={styles.loading}>
           <Spinner size="tiny" />
           <span>Loading…</span>
         </div>
       )}
       {error && !loading && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-          <Text style={{ color: '#605e5c', fontSize: '13px', fontStyle: 'italic' }}>{error}</Text>
+        <div className={styles.error}>
+          <ErrorCircleRegular style={{ fontSize: '14px', flexShrink: 0 }} />
+          <span>{error}</span>
         </div>
       )}
-      <div ref={chartRef} className={styles.chart} style={{ display: loading || error ? 'none' : 'block' }} />
+      <div ref={chartRef} className={`${styles.chart}${loading || error ? ` ${styles.chartHidden}` : ''}`} />
     </div>
   );
 };

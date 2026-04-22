@@ -499,7 +499,7 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
       {loading && (
         <div className={s.loadingRow}>
           <Spinner size="tiny" />
-          Loading network status…
+          Loading…
         </div>
       )}
       {!loading && (error || !health) && (

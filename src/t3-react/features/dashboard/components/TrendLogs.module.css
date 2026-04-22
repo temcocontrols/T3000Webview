@@ -12,3 +12,25 @@
   height: 100%;
   min-height: 150px;
 }
+
+.chartHidden {
+  display: none;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #605e5c;
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #d13438;
+}

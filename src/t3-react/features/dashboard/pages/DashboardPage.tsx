@@ -12,9 +12,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   makeStyles,
+  mergeClasses,
   Button,
   Spinner,
-  Text,
   Tooltip,
 } from '@fluentui/react-components';
 import {
@@ -380,7 +380,7 @@ export const DashboardPage: React.FC = () => {
           {healthLoading ? (
             <div className={s.loadingBar}>
               <Spinner size="tiny" />
-              <Text>Loading…</Text>
+              <span>Loading…</span>
             </div>
           ) : (
             <div className={s.kpiRow}>
@@ -475,7 +475,7 @@ export const DashboardPage: React.FC = () => {
             <h3 className={s.sectionTitle}>Trend Logs — Last 24 Hours</h3>
             <button
               className={s.viewAll}
-              onClick={() => { window.location.hash = '#/t3000/trendlog'; }}
+              onClick={() => { window.location.hash = '#/t3000/trendlogs'; }}
             >
               View All <ChevronRightRegular style={{ fontSize: '12px' }} />
             </button>
