@@ -83,6 +83,17 @@ async fn probe_mssql_connection(config: tiberius::Config) -> Result<(), String> 
     Ok(())
 }
 
+fn user_friendly_unreachable_message(raw: &str) -> String {
+    let lower = raw.to_ascii_lowercase();
+    if lower.contains("10060") || lower.contains("timed out") {
+        "SQL Server is unreachable (connection timed out). Check server host, port, and firewall."
+            .to_string()
+    } else {
+        "SQL Server is unreachable. Check server host, port, network, and SQL Server service."
+            .to_string()
+    }
+}
+
 async fn resolve_live_center_db_state(
     active_config: Option<&BackendConfig>,
 ) -> (bool, String, Option<String>, bool) {
@@ -121,7 +132,7 @@ async fn resolve_live_center_db_state(
                 return (
                     false,
                     "server_unreachable".to_string(),
-                    Some(format!("SQL Server is unreachable: {}", e)),
+                    Some(user_friendly_unreachable_message(&e)),
                     false,
                 );
             }
@@ -178,7 +189,7 @@ async fn resolve_live_center_db_state(
                 Err(e) => (
                     false,
                     "server_unreachable".to_string(),
-                    Some(format!("SQL Server is unreachable: {}", e)),
+                    Some(user_friendly_unreachable_message(&e)),
                     false,
                 ),
             }

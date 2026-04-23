@@ -622,6 +622,7 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
 
   const role = health?.role; // 'server' | 'client' | 'standalone'
   const selfEntry = registry.find((e) => e.is_self);
+  const isCenterDbDown = health?.centerDbStatus === 'server_unreachable';
 
   // ── MOCK: set to true to preview client list styling ──
   const USE_MOCK_CLIENTS = true;
@@ -670,8 +671,8 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
       {!loading && (health || dbResult || pingResult) && (
         <div style={{ paddingTop: '8px', paddingLeft: '12px', paddingRight: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
           {health && health.centerDbEnabled && !health.centerDbConnected && (
-            <div className={s.warnRow}>
-              <ErrorCircleRegular style={{ fontSize: '14px', color: '#c19c00' }} />
+            <div className={isCenterDbDown ? s.pauseRow : s.warnRow}>
+              <ErrorCircleRegular style={{ fontSize: '14px', color: isCenterDbDown ? '#8e1c1c' : '#c19c00' }} />
               {health.centerDbMessage ?? 'Shared DB is not ready.'}
               {health.fallbackActive ? ' Running on local SQLite fallback.' : ''}
             </div>

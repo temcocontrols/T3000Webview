@@ -10,6 +10,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   makeStyles,
+  mergeClasses,
   tokens,
   Button,
   Input,
@@ -382,11 +383,19 @@ const useStyles = makeStyles({
     color: '#323130',
     lineHeight: '1.5',
   },
+  statusInfoHintDanger: {
+    backgroundColor: '#fde7e9',
+    border: '1px solid #f5c2c2',
+    color: '#8e1c1c',
+  },
   statusInfoHintIcon: {
     fontSize: '14px',
     color: '#0f6cbd',
     flexShrink: 0,
     marginTop: '1px',
+  },
+  statusInfoHintIconDanger: {
+    color: '#a4262c',
   },
   /* ── Role Cards ── */
   roleCardsRow: {
@@ -1129,8 +1138,18 @@ export const DatabaseConfigPage: React.FC = () => {
                 {serverStatusUi.label}
               </Badge>
             </div>
-            <div className={styles.statusInfoHint}>
-              <InfoRegular className={styles.statusInfoHintIcon} />
+            <div
+              className={mergeClasses(
+                styles.statusInfoHint,
+                serverStatus?.center_db_status === 'server_unreachable' ? styles.statusInfoHintDanger : undefined,
+              )}
+            >
+              <InfoRegular
+                className={mergeClasses(
+                  styles.statusInfoHintIcon,
+                  serverStatus?.center_db_status === 'server_unreachable' ? styles.statusInfoHintIconDanger : undefined,
+                )}
+              />
               <span>
                 {serverStatus?.center_db_message
                   ?? (serverStatus?.server_connected

@@ -348,6 +348,11 @@ const useStyles = makeStyles({
     color: '#a19f9d',
     fontStyle: 'italic',
   },
+  cardHintError: {
+    color: '#a4262c',
+    fontStyle: 'normal',
+    fontWeight: 600,
+  },
   inlineRestart: {
     display: 'flex',
     alignItems: 'flex-start',
@@ -654,7 +659,14 @@ export const ModeBanner: React.FC<ModeBannerProps> = ({
                 {paused && <span className={mergeClasses(s.chip, s.chipOrange)}>Sampling Paused</span>}
               </div>
               {syncHealth?.centerDbMessage && !connected && (
-                <span className={s.cardHint}>{syncHealth.centerDbMessage}</span>
+                <span
+                  className={mergeClasses(
+                    s.cardHint,
+                    syncHealth.centerDbStatus === 'server_unreachable' ? s.cardHintError : undefined,
+                  )}
+                >
+                  {syncHealth.centerDbMessage}
+                </span>
               )}
               <button
                 className={s.reconfigureLink}
