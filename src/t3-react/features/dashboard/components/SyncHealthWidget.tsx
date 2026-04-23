@@ -82,8 +82,22 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
     setTesting(true);
     setTestResult(null);
     try {
-      // Reuse the existing testConnection API (no password needed — tests current active config)
-      const result = await testConnection({ backend_type: data.backendType as any });
+      const backend = data.backendType as any;
+      const needsHostAndDb = backend === 'mssql' || backend === 'postgres' || backend === 'mysql';
+      if (needsHostAndDb && (!data.centerDbHost || !data.centerDbDatabaseName)) {
+        setTestResult({
+          ok: false,
+          msg: `Database config is incomplete (${backend.toUpperCase()}). Please set host and database name in Database Configuration.`,
+        });
+        return;
+      }
+
+      // Reuse the existing testConnection API using current center DB host/db from sync health
+      const result = await testConnection({
+        backend_type: backend,
+        host: data.centerDbHost ?? undefined,
+        database_name: data.centerDbDatabaseName ?? undefined,
+      });
       setTestResult({
         ok: result.success,
         msg: result.success

@@ -21,7 +21,7 @@ import {
   ServerRegular,
   DesktopRegular,
   PlugConnectedRegular,
-  ArrowSyncRegular,
+  ArrowClockwiseRegular,
   CheckmarkCircleRegular,
   ErrorCircleRegular,
   NetworkCheckRegular,
@@ -29,6 +29,7 @@ import {
   DismissRegular,
 } from '@fluentui/react-icons';
 import { getSyncHealth, SyncHealthData } from '../services/syncHealthApi';
+import { isCenterDbDegraded, isSamplingDegraded } from '../services/severityRules';
 import {
   getRegistry,
   getServerDbStatus,
@@ -79,6 +80,14 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     gap: '0',
+  },
+  bannerStack: {
+    paddingTop: '8px',
+    paddingLeft: '12px',
+    paddingRight: '12px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
   },
 
   /* ── This-PC card (Server = blue, Client/Standalone = neutral) ── */
@@ -483,6 +492,7 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
   const [testingPing, setTestingPing] = useState(false);
   const [pingResult, setPingResult] = useState<TestResult | null>(null);
   const [refreshingClients, setRefreshingClients] = useState(false);
+  const [refreshingOverview, setRefreshingOverview] = useState(false);
 
   // Per-client ping state: Map<client_id, { testing, result }>
   const [clientPingState, setClientPingState] = useState<Record<number, { testing: boolean; ok: boolean | null; msg: string }>>({});
@@ -517,19 +527,35 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
   };
 
   const load = useCallback(async () => {
-    try {
-      const [h, reg] = await Promise.allSettled([getSyncHealth(), getRegistry()]);
-      if (h.status === 'fulfilled') setHealth(h.value);
-      if (reg.status === 'fulfilled') setRegistry(reg.value);
+    const [h, reg] = await Promise.allSettled([getSyncHealth(), getRegistry()]);
+
+    if (h.status === 'fulfilled') {
+      setHealth(h.value);
       setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load');
-    } finally {
-      setLoading(false);
+    } else {
+      setHealth(null);
+      setError(h.reason instanceof Error ? h.reason.message : 'Failed to load sync health');
     }
+
+    if (reg.status === 'fulfilled') {
+      setRegistry(reg.value);
+    } else {
+      setRegistry([]);
+    }
+
+    setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const handleRefreshOverview = async () => {
+    setRefreshingOverview(true);
+    try {
+      await load();
+    } finally {
+      setRefreshingOverview(false);
+    }
+  };
 
   // ── Test DB connection ──
   const handleTestDb = async () => {
@@ -537,7 +563,21 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
     setTestingDb(true);
     setDbResult(null);
     try {
-      const r = await testConnection({ backend_type: health.backendType as any });
+      const backend = health.backendType as any;
+      const needsHostAndDb = backend === 'mssql' || backend === 'postgres' || backend === 'mysql';
+      if (needsHostAndDb && (!health.centerDbHost || !health.centerDbDatabaseName)) {
+        setDbResult({
+          ok: false,
+          msg: `Database config is incomplete (${backend.toUpperCase()}). Please set host and database name in Database Configuration.`,
+        });
+        return;
+      }
+
+      const r = await testConnection({
+        backend_type: backend,
+        host: health.centerDbHost ?? undefined,
+        database_name: health.centerDbDatabaseName ?? undefined,
+      });
       setDbResult({
         ok: r.success,
         msg: r.success
@@ -622,10 +662,11 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
 
   const role = health?.role; // 'server' | 'client' | 'standalone'
   const selfEntry = registry.find((e) => e.is_self);
-  const isCenterDbDown = health?.centerDbStatus === 'server_unreachable';
+  const isCenterDbWarn = isCenterDbDegraded(health);
+  const isSamplingWarn = isSamplingDegraded(health);
 
   // ── MOCK: set to true to preview client list styling ──
-  const USE_MOCK_CLIENTS = true;
+  const USE_MOCK_CLIENTS = false;
   const MOCK_CLIENTS: RegistryEntry[] = [
     { id: 101, hostname: 'OFFICE-PC-01', ip_address: '192.168.1.101', role: 'client', is_self: false, status: 'online',  last_seen: new Date(Date.now() - 45_000).toISOString(),      db_backend: 'sqlite', table_count: 12, version: '0.8.1' },
     { id: 102, hostname: 'OFFICE-PC-02', ip_address: '192.168.1.102', role: 'client', is_self: false, status: 'offline', last_seen: new Date(Date.now() - 320_000).toISOString(),     db_backend: 'sqlite', table_count: 12, version: '0.8.1' },
@@ -644,9 +685,10 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
         <Button
           size="small"
           appearance="subtle"
-          icon={<ArrowSyncRegular />}
-          onClick={load}
-          title="Refresh"
+          icon={refreshingOverview ? <Spinner size="extra-tiny" /> : <ArrowClockwiseRegular />}
+          onClick={handleRefreshOverview}
+          disabled={refreshingOverview}
+          title="Refresh network overview"
         />
         <span className={s.headerTime}>
           {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -669,17 +711,17 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
 
       {/* Center DB / sampling banners + test result */}
       {!loading && (health || dbResult || pingResult) && (
-        <div style={{ paddingTop: '8px', paddingLeft: '12px', paddingRight: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        <div className={s.bannerStack}>
           {health && health.centerDbEnabled && !health.centerDbConnected && (
-            <div className={isCenterDbDown ? s.pauseRow : s.warnRow}>
-              <ErrorCircleRegular style={{ fontSize: '14px', color: isCenterDbDown ? '#8e1c1c' : '#c19c00' }} />
+            <div className={isCenterDbWarn ? s.warnRow : s.pauseRow}>
+              <ErrorCircleRegular style={{ fontSize: '14px', color: isCenterDbWarn ? '#c19c00' : '#8e1c1c' }} />
               {health.centerDbMessage ?? 'Shared DB is not ready.'}
               {health.fallbackActive ? ' Running on local SQLite fallback.' : ''}
             </div>
           )}
           {health && health.samplingPaused && (
-            <div className={s.pauseRow}>
-              <ErrorCircleRegular style={{ fontSize: '14px', color: '#8e1c1c' }} />
+            <div className={isSamplingWarn ? s.warnRow : s.pauseRow}>
+              <ErrorCircleRegular style={{ fontSize: '14px', color: isSamplingWarn ? '#c19c00' : '#8e1c1c' }} />
               <strong>Sampling paused.</strong>&nbsp;
               {health.pausedReason ?? 'Shared DB unreachable — no data is being written until the connection is restored.'}
             </div>
@@ -734,9 +776,10 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
                 <Button
                   size="small"
                   appearance="outline"
-                  icon={refreshingClients ? <Spinner size="extra-tiny" /> : <ArrowSyncRegular />}
+                  icon={refreshingClients ? <Spinner size="extra-tiny" /> : <ArrowClockwiseRegular />}
                   onClick={handleRefreshClients}
                   disabled={refreshingClients}
+                  title="Refresh client list"
                 >
                   Clients
                 </Button>

@@ -158,6 +158,36 @@
             </template>
           </a-dropdown>
         </a-flex>
+
+        <!-- DB Status Warning - only shown when Center DB is enabled but not connected -->
+        <a-flex
+          v-if="dbStatus.visible"
+          align="center"
+          class="control-group db-status-indicator"
+          style="margin-left: auto;"
+        >
+          <a-tooltip placement="bottomRight" :overlayStyle="{ maxWidth: '320px' }">
+            <template #title>
+              <div class="db-status-tooltip">
+                <div class="db-status-tooltip-header">
+                  <ExclamationCircleOutlined class="db-status-tooltip-icon" />
+                  <strong>{{ dbStatus.title }}</strong>
+                </div>
+                <div class="db-status-tooltip-body">{{ dbStatus.message }}</div>
+                <div v-if="dbStatus.hint" class="db-status-tooltip-hint">
+                  {{ dbStatus.hint }}
+                </div>
+                <div class="db-status-tooltip-footer">
+                  Local logging continues. Restore Center DB connectivity to resume sync.
+                </div>
+              </div>
+            </template>
+            <span :class="['db-status-icon-btn', dbStatus.severity === 'error' ? 'db-status-error' : 'db-status-warn']">
+              <span class="db-status-bang">!</span>
+              <span class="db-status-label">DB</span>
+            </span>
+          </a-tooltip>
+        </a-flex>
       </a-flex>
     </div>
 
@@ -1680,6 +1710,63 @@
   const dataSource = ref<'realtime' | 'api'>('realtime') // Track data source for timebase changes
   const hasConnectionError = ref(false) // Track connection errors for UI display
   const hasLoadedInitialHistory = ref(false) // Track if initial history has been loaded
+
+  interface DbStatusState {
+    visible: boolean
+    severity: 'warn' | 'error'
+    title: string
+    message: string
+    hint?: string
+  }
+
+  const dbStatus = ref<DbStatusState>({
+    visible: false,
+    severity: 'warn',
+    title: '',
+    message: '',
+  })
+
+  const DB_STATUS_POLL_MS = 10000
+  let dbStatusTimer: ReturnType<typeof setInterval> | null = null
+
+  async function checkDbStatus() {
+    try {
+      const res = await fetch('http://localhost:9103/api/sync/health')
+      if (!res.ok) return
+      const data = await res.json()
+
+      if (!data.centerDbEnabled || data.centerDbConnected) {
+        dbStatus.value.visible = false
+        return
+      }
+
+      const status: string = data.centerDbStatus ?? ''
+      const isHard = status === 'server_unreachable' || status === 'db_missing'
+
+      const titleMap: Record<string, string> = {
+        server_unreachable: 'SQL Server Unreachable',
+        db_missing: 'Database Not Found',
+        schema_missing: 'Database Not Initialized',
+        misconfigured_backend: 'Shared DB Misconfigured',
+      }
+      const hintMap: Record<string, string> = {
+        server_unreachable: 'Check server host, port, network, and SQL Server service.',
+        db_missing: 'The configured database does not exist. Run Init Schema in Database Settings.',
+        schema_missing: 'Go to Database Settings and run Init Schema to create the required tables.',
+        misconfigured_backend: 'Go to Database Settings and switch the active backend to SQL Server.',
+      }
+
+      dbStatus.value = {
+        visible: true,
+        severity: isHard ? 'error' : 'warn',
+        title: titleMap[status] ?? 'Shared DB Not Connected',
+        message: data.centerDbMessage ?? 'Shared DB is enabled but the connection is not active.',
+        hint: hintMap[status] ?? 'Check Database Settings for more information.',
+      }
+    } catch (e) {
+      console.error('[TrendLogChart] dbStatus check failed:', e)
+    }
+  }
 
   // Helper functions for delayed loading indicator
   const startLoading = () => {
@@ -12701,6 +12788,9 @@
   // Lifecycle
   onMounted(async () => {
     try {
+      checkDbStatus()
+      dbStatusTimer = setInterval(checkDbStatus, DB_STATUS_POLL_MS)
+
       // 🆕 FORCE: Always reset history flag on mount to ensure data loads
       hasLoadedInitialHistory.value = false
 
@@ -13652,6 +13742,11 @@
       clearInterval(ffiCountdownTimer)
     }
 
+    if (dbStatusTimer) {
+      clearInterval(dbStatusTimer)
+      dbStatusTimer = null
+    }
+
     // 🆕 Cleanup timebase change timeout and abort controller
     if (timebaseChangeTimeout) {
       clearTimeout(timebaseChangeTimeout)
@@ -13667,6 +13762,10 @@
       LogUtil.Debug('🔥 HMR: Cleaning up old component instance to prevent duplicate intervals')
       stopRealTimeUpdates()
       destroyAllCharts()
+      if (dbStatusTimer) {
+        clearInterval(dbStatusTimer)
+        dbStatusTimer = null
+      }
       if (timebaseChangeTimeout) {
         clearTimeout(timebaseChangeTimeout)
       }
@@ -15167,6 +15266,130 @@
   .range-text {
     font-size: 10px;
     color: #1890ff;
+  }
+
+  .db-status-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    cursor: help;
+    user-select: none;
+    background: #fff;
+    white-space: nowrap;
+  }
+
+  .db-status-indicator {
+    margin-left: auto !important;
+    flex: 0 0 auto;
+    min-width: max-content;
+    white-space: nowrap;
+  }
+
+  .db-status-label {
+    letter-spacing: 0.2px;
+  }
+
+  .db-status-bang {
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .db-status-error {
+    color: #cf1322;
+    background: #fff1f0;
+    border-color: #ffa39e;
+  }
+
+  .db-status-warn {
+    color: #ad6800;
+    background: #fffbe6;
+    border-color: #ffe58f;
+  }
+
+  .db-status-tooltip {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .db-status-tooltip-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  .db-status-tooltip-icon {
+    color: #cf1322;
+  }
+
+  .db-status-tooltip-body {
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .db-status-tooltip-hint {
+    font-size: 12px;
+    opacity: 0.9;
+  }
+
+  .db-status-tooltip-footer {
+    font-size: 11px;
+    opacity: 0.8;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding-top: 6px;
+  }
+
+  @media (max-width: 768px) {
+    .controls-main-flex {
+      flex-wrap: nowrap !important;
+      justify-content: flex-start !important;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: thin;
+    }
+
+    .control-group {
+      flex: 0 0 auto !important;
+    }
+
+    .db-status-indicator {
+      margin-left: auto !important;
+      flex: 0 0 auto !important;
+      justify-content: flex-end !important;
+      order: 0;
+    }
+
+    .db-status-icon-btn {
+      font-size: 10px;
+      padding: 2px 8px;
+      gap: 4px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .db-status-indicator {
+      margin-left: auto !important;
+      justify-content: flex-end !important;
+    }
+
+    .db-status-icon-btn {
+      min-width: 0;
+      padding: 2px 6px;
+      border-radius: 12px;
+      font-size: 9px;
+    }
+
+    .db-status-label {
+      display: inline;
+      font-size: 9px;
+    }
   }
 </style>
 

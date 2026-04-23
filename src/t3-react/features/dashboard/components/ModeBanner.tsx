@@ -23,6 +23,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { IniConfig, saveIniConfig } from '../../database/services/databaseConfigApi';
 import { SyncHealthData } from '../services/syncHealthApi';
+import { isCenterDbDegraded, isSamplingDegraded } from '../services/severityRules';
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -557,6 +558,9 @@ export const ModeBanner: React.FC<ModeBannerProps> = ({
   const backendLabel = effectiveBackend ? (BACKEND_LABELS[effectiveBackend] ?? effectiveBackend.toUpperCase()) : null;
   const roleLabel = appMode === 'server' ? 'Server' : appMode === 'client' ? 'Client' : null;
   const paused = syncHealth?.samplingPaused ?? false;
+  const degradedCenter = isCenterDbDegraded(syncHealth);
+  const degradedPause = isSamplingDegraded(syncHealth);
+  const statusTone = statusChip.label === 'SQL Server Down' && degradedCenter ? 'orange' : statusChip.tone;
 
   return (
     <div className={s.banner}>
@@ -651,18 +655,18 @@ export const ModeBanner: React.FC<ModeBannerProps> = ({
                 {backendLabel && <span className={s.chip}>{backendLabel}</span>}
                 <span className={mergeClasses(
                   s.chip,
-                  statusChip.tone === 'green' ? s.chipGreen : statusChip.tone === 'orange' ? s.chipOrange : s.chipRed,
+                  statusTone === 'green' ? s.chipGreen : statusTone === 'orange' ? s.chipOrange : s.chipRed,
                 )}>
                   {statusChip.label}
                 </span>
                 {syncHealth?.fallbackActive && <span className={mergeClasses(s.chip, s.chipOrange)}>Local Fallback</span>}
-                {paused && <span className={mergeClasses(s.chip, s.chipOrange)}>Sampling Paused</span>}
+                {paused && <span className={mergeClasses(s.chip, degradedPause ? s.chipOrange : s.chipRed)}>Sampling Paused</span>}
               </div>
               {syncHealth?.centerDbMessage && !connected && (
                 <span
                   className={mergeClasses(
                     s.cardHint,
-                    syncHealth.centerDbStatus === 'server_unreachable' ? s.cardHintError : undefined,
+                    degradedCenter ? undefined : syncHealth.centerDbStatus === 'server_unreachable' ? s.cardHintError : undefined,
                   )}
                 >
                   {syncHealth.centerDbMessage}
