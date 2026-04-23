@@ -539,7 +539,12 @@ export const ModeBanner: React.FC<ModeBannerProps> = ({
   // -- Live status for Center DB card --
   const connected = syncHealth?.centerDbConnected ?? false;
   const statusChip = getSharedDbChip(syncHealth?.centerDbStatus, connected);
-  const effectiveBackend = syncHealth?.backendType ?? null;
+  // In Shared DB mode, sqlite indicates local fallback; target center DB is still SQL Server.
+  const effectiveBackend = syncHealth
+    ? (syncHealth.centerDbEnabled && syncHealth.backendType === 'sqlite'
+      ? 'mssql'
+      : syncHealth.backendType)
+    : null;
   const BACKEND_LABELS: Record<string, string> = {
     mssql: 'SQL Server',
     sqlite: 'SQLite',

@@ -448,6 +448,14 @@ function centerDbStatusLabel(status?: string, connected?: boolean): string {
   }
 }
 
+function effectiveCenterBackendType(health: SyncHealthData): string {
+  // In Shared DB mode, sqlite means local fallback while the center target remains SQL Server.
+  if (health.centerDbEnabled && health.backendType === 'sqlite') {
+    return 'mssql';
+  }
+  return health.backendType;
+}
+
 // ---------------------------------------------------------------------------
 // TestResult sub-type
 // ---------------------------------------------------------------------------
@@ -706,7 +714,7 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
                     <><span className={s.metaSep}>·</span><span>{selfEntry.ip_address}</span></>
                   )}
                   <span className={s.metaSep}>·</span>
-                  <span>{backendLabel(health.backendType)}</span>
+                  <span>{backendLabel(effectiveCenterBackendType(health))}</span>
                   {selfEntry?.table_count != null && (
                     <><span className={s.metaSep}>·</span><span>{selfEntry.table_count} tables</span></>
                   )}
@@ -856,7 +864,7 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
                 <div className={s.pcCardMeta}>
                   <span>{selfEntry?.hostname ?? health.hostname ?? '—'}</span>
                   <span className={s.metaSep}>·</span>
-                  <span>{backendLabel(health.backendType)}</span>
+                  <span>{backendLabel(effectiveCenterBackendType(health))}</span>
                   <span className={s.metaSep}>·</span>
                   <span>Local mode</span>
                 </div>

@@ -222,7 +222,25 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         server_status.role.clone()
     };
 
-    let backend_type = server_status.configured_backend.clone();
+    // Shared DB mode is always modeled as MSSQL from the dashboard perspective,
+    // even when connectivity/schema state is unhealthy.
+    let backend_type = if server_status.enabled {
+        "mssql".to_string()
+    } else {
+        server_status.configured_backend.clone()
+    };
+
+    let runtime_backend_type = if server_status.enabled {
+        "mssql".to_string()
+    } else {
+        server_status.runtime_backend.clone()
+    };
+
+    let fallback_active = if server_status.enabled {
+        false
+    } else {
+        server_status.fallback_active
+    };
 
     // DB file info — derive from the actual webview SQLite URL, not the T3000 app folder
     let raw_url = crate::utils::T3_DEVICE_DATABASE_URL.clone();
@@ -341,8 +359,8 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         center_db_message: server_status.center_db_message,
         mssql_pool_active: server_status.mssql_pool_active,
         backend_type,
-        runtime_backend_type: server_status.runtime_backend,
-        fallback_active: server_status.fallback_active,
+        runtime_backend_type,
+        fallback_active,
         center_db_host: server_status.host,
         center_db_database_name: server_status.database_name,
         can_init_schema: server_status.can_init_schema,
