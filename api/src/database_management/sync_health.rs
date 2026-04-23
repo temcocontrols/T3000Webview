@@ -39,10 +39,24 @@ pub struct SyncHealthResponse {
     pub center_db_enabled: bool,
     /// Whether the center DB runtime connection is alive
     pub center_db_connected: bool,
+    /// Detailed center DB runtime state.
+    pub center_db_status: String,
+    /// Human-readable center DB status message.
+    pub center_db_message: Option<String>,
     /// Whether MSSQL pool is active (direct write path)
     pub mssql_pool_active: bool,
-    /// Backend type in use: "sqlite" | "postgres" | "mysql" | "mssql"
+    /// Backend configured for Shared DB mode.
     pub backend_type: String,
+    /// Backend currently servicing device data at runtime.
+    pub runtime_backend_type: String,
+    /// Whether local SQLite fallback is currently active.
+    pub fallback_active: bool,
+    /// Center DB host from the active backend config.
+    pub center_db_host: Option<String>,
+    /// Center DB database name from the active backend config.
+    pub center_db_database_name: Option<String>,
+    /// Whether schema initialization is a valid next action.
+    pub can_init_schema: bool,
     /// Hostname of this PC
     pub hostname: String,
 
@@ -199,33 +213,16 @@ async fn get_db_conn(state: &T3AppState) -> Option<sea_orm::DatabaseConnection> 
 // ============================================================================
 
 async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHealthResponse>> {
-    let hostname = hostname::get()
-        .map(|h| h.to_string_lossy().to_string())
-        .unwrap_or_else(|_| "unknown".to_string());
+    let server_status = crate::web_routing::resolve_server_db_status(&state).await;
+    let hostname = server_status.hostname.clone();
 
-    let role = if !state.server_db_enabled {
+    let role = if !server_status.enabled {
         "standalone".to_string()
     } else {
-        state.server_db_role.clone()
+        server_status.role.clone()
     };
 
-    // Read actual active backend type from DB_BACKEND_CONFIG in local SQLite
-    let backend_type = if state.mssql_pool.is_some() {
-        "mssql".to_string()
-    } else if let Some(ref lcfg) = state.local_config_conn {
-        let db = lcfg.lock().await;
-        db.query_one(sea_orm::Statement::from_string(
-            sea_orm::DatabaseBackend::Sqlite,
-            "SELECT backend_type FROM DB_BACKEND_CONFIG WHERE is_active = 1 LIMIT 1".to_string(),
-        ))
-        .await
-        .ok()
-        .flatten()
-        .and_then(|row| row.try_get::<String>("", "backend_type").ok())
-        .unwrap_or_else(|| "sqlite".to_string())
-    } else {
-        "sqlite".to_string()
-    };
+    let backend_type = server_status.configured_backend.clone();
 
     // DB file info — derive from the actual webview SQLite URL, not the T3000 app folder
     let raw_url = crate::utils::T3_DEVICE_DATABASE_URL.clone();
@@ -338,10 +335,17 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
 
     Ok(Json(SyncHealthResponse {
         role,
-        center_db_enabled: state.server_db_enabled,
-        center_db_connected: state.server_db_connected,
-        mssql_pool_active: state.mssql_pool.is_some(),
+        center_db_enabled: server_status.enabled,
+        center_db_connected: server_status.server_connected,
+        center_db_status: server_status.center_db_status,
+        center_db_message: server_status.center_db_message,
+        mssql_pool_active: server_status.mssql_pool_active,
         backend_type,
+        runtime_backend_type: server_status.runtime_backend,
+        fallback_active: server_status.fallback_active,
+        center_db_host: server_status.host,
+        center_db_database_name: server_status.database_name,
+        can_init_schema: server_status.can_init_schema,
         hostname,
         last_sync_time,
         last_sync_ago,

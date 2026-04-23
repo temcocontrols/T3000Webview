@@ -326,33 +326,21 @@ async fn scan_network() -> Result<Json<serde_json::Value>, (axum::http::StatusCo
 async fn get_status(
     State(state): State<T3AppState>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
-    // Read the active config from local DB
-    let active_backend = if let Some(ref local_conn) = state.local_config_conn {
-        let db = local_conn.lock().await;
-        match db_backend_config::load_active_config(&*db).await {
-            Ok(cfg) => Some(cfg),
-            Err(_) => None,
-        }
+    let server_status = crate::web_routing::resolve_server_db_status(&state).await;
+    let backend_type = server_status.configured_backend.clone();
+    let connected = if state.server_db_enabled {
+        server_status.server_connected
     } else {
-        None
+        state.t3_device_conn.is_some() || state.mssql_pool.is_some()
     };
 
-    let backend_type = active_backend
-        .as_ref()
-        .map(|c| c.backend_type.as_str())
-        .unwrap_or("unknown");
-
-    // Check if t3_device_conn is available (i.e. the device DB is connected)
-    // For MSSQL, check the mssql_pool instead
-    let connected = state.t3_device_conn.is_some() || state.mssql_pool.is_some();
-
-    // Count tables if connected
-    let table_count = if let Some(ref pool) = state.mssql_pool {
-        // MSSQL path: count via tiberius
+    let table_count = if state.server_db_enabled && !server_status.server_connected {
+        0
+    } else if let Some(ref pool) = state.mssql_pool {
         super::mssql_queries::count_tables(pool).await.unwrap_or(0) as i64
     } else if let Some(ref t3_conn) = state.t3_device_conn {
         let db = t3_conn.lock().await;
-        count_tables(&*db, backend_type).await.unwrap_or(0)
+        count_tables(&*db, &backend_type).await.unwrap_or(0)
     } else {
         0
     };
@@ -362,8 +350,13 @@ async fn get_status(
         "active_backend": backend_type,
         "connected": connected,
         "table_count": table_count,
-        "host": active_backend.as_ref().and_then(|c| c.host.clone()),
-        "database_name": active_backend.as_ref().and_then(|c| c.database_name.clone()),
+        "host": server_status.host,
+        "database_name": server_status.database_name,
+        "center_db_status": server_status.center_db_status,
+        "center_db_message": server_status.center_db_message,
+        "runtime_backend": server_status.runtime_backend,
+        "fallback_active": server_status.fallback_active,
+        "can_init_schema": server_status.can_init_schema,
     })))
 }
 
@@ -684,7 +677,7 @@ async fn get_ini_config(
 /// This only writes to the local setting.ini file. A service restart is required
 /// for the changes to take effect.
 async fn save_ini_config(
-    State(_state): State<T3AppState>,
+    State(state): State<T3AppState>,
     Json(request): Json<SaveIniConfigRequest>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     // Validate role
@@ -710,6 +703,32 @@ async fn save_ini_config(
         )
     })?;
 
+    let mut local_db_mirror_saved = false;
+    if let Some(ref local_conn) = state.local_config_conn {
+        let db = local_conn.lock().await;
+        let enabled_saved = crate::database_management::ApplicationConfigService::set_setting(
+            &*db,
+            "server_db".to_string(),
+            "enabled".to_string(),
+            serde_json::Value::Bool(config.enabled),
+            None,
+            None,
+            None,
+        )
+        .await;
+        let role_saved = crate::database_management::ApplicationConfigService::set_setting(
+            &*db,
+            "server_db".to_string(),
+            "role".to_string(),
+            serde_json::Value::String(config.role.clone()),
+            None,
+            None,
+            None,
+        )
+        .await;
+        local_db_mirror_saved = enabled_saved.is_ok() && role_saved.is_ok();
+    }
+
     let _ = crate::logger::write_structured_log(
         "T3_Database",
         &format!(
@@ -725,6 +744,7 @@ async fn save_ini_config(
             "enabled": config.enabled,
             "role": config.role,
         },
+        "local_db_mirror_saved": local_db_mirror_saved,
         "ini_path": ini_path.display().to_string(),
     })))
 }

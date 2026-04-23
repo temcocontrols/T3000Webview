@@ -70,7 +70,9 @@ pub fn set_sampling_active() {
 // ABSTRACTED FUNCTIONS - All new functionality separated from original code
 // ============================================================================
 
-use crate::db_connection::{establish_t3_device_connection, establish_device_conn_from_config};
+use crate::db_connection::{
+    establish_device_conn_from_config, establish_t3_device_connection, validate_device_conn_ready,
+};
 use crate::ini_config;
 use crate::logger::write_structured_log;
 
@@ -186,25 +188,49 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
             let cfg_guard = lcfg.lock().await;
             match establish_device_conn_from_config(&*cfg_guard).await {
                 Ok((device_conn, config)) => {
-                    server_db_connected = true;
-                    let _ = write_structured_log_with_level(
-                        "T3_Webview_Initialize",
-                        &format!(
-                            "Server DB connected via active backend: {} (role={})",
-                            config.backend_type, ini_cfg.role
-                        ),
-                        LogLevel::Info,
-                    );
-                    match device_conn {
-                        crate::device_db_conn::DeviceDbConn::SeaOrm { conn, .. } => Some(conn),
-                        crate::device_db_conn::DeviceDbConn::Mssql { pool } => {
-                            let _ = write_structured_log_with_level(
-                                "T3_Webview_Initialize",
-                                "MSSQL pool stored — MSSQL-specific services active",
-                                LogLevel::Info,
-                            );
-                            mssql_pool = Some(pool);
-                            None
+                    if config.backend_type == crate::database_management::db_backend_config::BackendType::Sqlite {
+                        let _ = write_structured_log_with_level(
+                            "T3_Webview_Initialize",
+                            "Server DB mode is enabled, but active backend is still SQLite — treating center DB as disconnected and falling back to local SQLite",
+                            LogLevel::Warn,
+                        );
+                        establish_t3_device_connection().await.ok()
+                    } else {
+                        match validate_device_conn_ready(&device_conn).await {
+                            Ok(()) => {
+                                server_db_connected = true;
+                                let _ = write_structured_log_with_level(
+                                    "T3_Webview_Initialize",
+                                    &format!(
+                                        "Server DB connected via active backend: {} (role={})",
+                                        config.backend_type, ini_cfg.role
+                                    ),
+                                    LogLevel::Info,
+                                );
+                                match device_conn {
+                                    crate::device_db_conn::DeviceDbConn::SeaOrm { conn, .. } => Some(conn),
+                                    crate::device_db_conn::DeviceDbConn::Mssql { pool } => {
+                                        let _ = write_structured_log_with_level(
+                                            "T3_Webview_Initialize",
+                                            "MSSQL pool stored — MSSQL-specific services active",
+                                            LogLevel::Info,
+                                        );
+                                        mssql_pool = Some(pool);
+                                        None
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                let _ = write_structured_log_with_level(
+                                    "T3_Webview_Initialize",
+                                    &format!(
+                                        "Server DB validation failed, falling back to local SQLite: {}",
+                                        e
+                                    ),
+                                    LogLevel::Warn,
+                                );
+                                establish_t3_device_connection().await.ok()
+                            }
                         }
                     }
                 }

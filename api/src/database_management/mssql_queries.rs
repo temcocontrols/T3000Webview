@@ -38,6 +38,36 @@ pub async fn create_mssql_pool(
         .map_err(|e| format!("Failed to create MSSQL pool: {}", e))
 }
 
+/// Verify that the connected SQL Server database contains the minimum T3000 schema.
+pub async fn validate_t3000_schema(pool: &MssqlPool) -> Result<(), String> {
+    let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
+
+    let result = conn
+        .query(
+            "SELECT COUNT(*) \
+             FROM sys.tables \
+             WHERE name IN ('DEVICES', 'DATA_SYNC_METADATA')",
+            &[],
+        )
+        .await
+        .map_err(|e| format!("Schema validation query failed: {}", e))?;
+
+    let row = result
+        .into_row()
+        .await
+        .map_err(|e| format!("Schema validation row fetch failed: {}", e))?;
+
+    let table_count = row
+        .and_then(|r| r.get::<i32, _>(0))
+        .unwrap_or(0);
+
+    if table_count >= 2 {
+        Ok(())
+    } else {
+        Err("Connected to SQL Server, but the T3000 database is not initialized".to_string())
+    }
+}
+
 // ============================================================================
 // DEVICES — MERGE (upsert by SerialNumber)
 // ============================================================================

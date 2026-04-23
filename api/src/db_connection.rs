@@ -6,7 +6,7 @@ use crate::database_management::db_backend_config::{
 use crate::device_db_conn::DeviceDbConn;
 use crate::utils::{DATABASE_URL, T3_DEVICE_DATABASE_URL};
 
-use sea_orm::{ConnectOptions, Database, DatabaseConnection};
+use sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseBackend, DatabaseConnection, Statement};
 
 pub async fn establish_connection() -> Result<DatabaseConnection, Box<dyn std::error::Error>> {
     let mut opt = ConnectOptions::new(DATABASE_URL.as_str());
@@ -171,6 +171,56 @@ pub async fn establish_device_conn_from_config(
                 .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
             Ok((DeviceDbConn::new_mssql(pool), config))
         }
+    }
+}
+
+pub async fn validate_seaorm_backend_schema(
+    conn: &DatabaseConnection,
+    backend_type: BackendType,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let (db_backend, sql) = match backend_type {
+        BackendType::Sqlite => (
+            DatabaseBackend::Sqlite,
+            "SELECT COUNT(*) AS cnt FROM sqlite_master WHERE type = 'table' AND name IN ('DEVICES', 'DATA_SYNC_METADATA')",
+        ),
+        BackendType::Postgres => (
+            DatabaseBackend::Postgres,
+            "SELECT COUNT(*) AS cnt FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('devices', 'data_sync_metadata')",
+        ),
+        BackendType::Mysql => (
+            DatabaseBackend::MySql,
+            "SELECT COUNT(*) AS cnt FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('DEVICES', 'DATA_SYNC_METADATA')",
+        ),
+        BackendType::Mssql => {
+            return Err("MSSQL schema validation must use the tiberius pool path".into());
+        }
+    };
+
+    let row = conn
+        .query_one(Statement::from_string(db_backend, sql.to_string()))
+        .await?;
+
+    let table_count = row
+        .and_then(|r| r.try_get_by_index::<i64>(0).ok())
+        .unwrap_or(0);
+
+    if table_count >= 2 {
+        Ok(())
+    } else {
+        Err("Connected to database, but the T3000 schema is not initialized".into())
+    }
+}
+
+pub async fn validate_device_conn_ready(
+    device_conn: &DeviceDbConn,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match device_conn {
+        DeviceDbConn::SeaOrm { conn, backend_type } => {
+            validate_seaorm_backend_schema(conn, *backend_type).await
+        }
+        DeviceDbConn::Mssql { pool } => crate::database_management::mssql_queries::validate_t3000_schema(pool)
+            .await
+            .map_err(|e| -> Box<dyn std::error::Error> { e.into() }),
     }
 }
 
