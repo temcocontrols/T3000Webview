@@ -37,6 +37,7 @@ export interface SaveBackendConfigRequest {
   password?: string;
   connection_url?: string;
   extra_options?: string;
+  role?: string;
 }
 
 export interface TestConnectionResult {
@@ -59,6 +60,10 @@ export interface BackendStatus {
   connected: boolean;
   table_count: number | null;
   message: string;
+  center_db_status?: string;
+  runtime_backend?: BackendType | string;
+  fallback_active?: boolean;
+  can_init_schema?: boolean;
 }
 
 export interface InitSchemaResult {
@@ -120,13 +125,17 @@ const VALID_BACKENDS: BackendType[] = ['sqlite', 'postgres', 'mysql', 'mssql'];
 /** Get current backend status */
 export async function getStatus(): Promise<BackendStatus> {
   const res = await fetch(`${BASE}/status`);
-  const data = await handleResponse<{ success: boolean; active_backend: string; connected: boolean; table_count: number | null; host: string | null; database_name: string | null }>(res);
+  const data = await handleResponse<{ success: boolean; active_backend: string; connected: boolean; table_count: number | null; host: string | null; database_name: string | null; center_db_status?: string; center_db_message?: string; runtime_backend?: string; fallback_active?: boolean; can_init_schema?: boolean }>(res);
   return {
     active_backend: (VALID_BACKENDS.includes(data.active_backend as BackendType)
       ? data.active_backend : 'sqlite') as BackendType,
     connected: data.connected,
     table_count: data.table_count,
-    message: data.connected ? 'Connected' : 'Not connected',
+    message: data.center_db_message ?? (data.connected ? 'Connected' : 'Not connected'),
+    center_db_status: data.center_db_status,
+    runtime_backend: data.runtime_backend,
+    fallback_active: data.fallback_active,
+    can_init_schema: data.can_init_schema,
   };
 }
 
@@ -154,9 +163,17 @@ export interface ServerDbStatus {
   enabled: boolean;
   role: string;
   server_connected: boolean;
+  center_db_status: string;
+  center_db_message: string | null;
+  configured_backend: string;
+  runtime_backend: string;
+  fallback_active: boolean;
+  can_init_schema: boolean;
   mssql_pool_active: boolean;
   local_config_available: boolean;
   hostname: string;
+  host: string | null;
+  database_name: string | null;
 }
 
 /** Read current [ServerDatabase] settings from setting.ini */

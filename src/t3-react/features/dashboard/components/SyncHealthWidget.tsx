@@ -34,6 +34,24 @@ interface Props {
   onViewLog: () => void;
 }
 
+function centerDbStatusLabel(status?: string, connected?: boolean) {
+  switch (status) {
+    case 'db_missing':
+      return { label: 'Database Missing', color: 'warning' as const };
+    case 'schema_missing':
+      return { label: 'Needs Init', color: 'warning' as const };
+    case 'server_unreachable':
+      return { label: 'SQL Server Down', color: 'danger' as const };
+    case 'misconfigured_backend':
+      return { label: 'Misconfigured', color: 'warning' as const };
+    default:
+      return {
+        label: connected ? 'Connected' : 'Disconnected',
+        color: connected ? ('success' as const) : ('danger' as const),
+      };
+  }
+}
+
 export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
   const [data, setData] = useState<SyncHealthData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -100,12 +118,11 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
   const connected = data.centerDbEnabled ? data.centerDbConnected : true; // standalone is always "ok"
   const roleLabel = data.role === 'server' ? 'Server' : data.role === 'client' ? 'Client' : 'Standalone';
   const RoleIcon = data.role === 'server' ? ServerRegular : DesktopRegular;
-  // When Center DB is enabled but backendType is sqlite, the service is in SQLite fallback —
-  // the configured target is SQL Server, so display that instead.
-  const effectiveBackend = data.centerDbEnabled && data.backendType === 'sqlite' ? 'mssql' : data.backendType;
+  const effectiveBackend = data.backendType;
   const backendLabel = effectiveBackend === 'mssql' ? 'SQL Server'
     : effectiveBackend === 'postgres_or_mysql' ? 'PG / MySQL'
     : 'SQLite';
+  const statusUi = centerDbStatusLabel(data.centerDbStatus, connected);
 
   return (
     <div className={styles.container}>
@@ -122,13 +139,16 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
             : <PlugDisconnectedRegular className={styles.connIcon} style={{ color: '#d13438' }} />}
           <Badge
             appearance="filled"
-            color={connected ? 'success' : 'danger'}
+            color={statusUi.color}
             size="small"
           >
             {data.centerDbEnabled
-              ? (connected ? `${backendLabel} Connected` : `${backendLabel} Disconnected`)
+              ? `${backendLabel} ${statusUi.label}`
               : 'Local SQLite'}
           </Badge>
+          {data.fallbackActive && (
+            <Badge appearance="tint" color="warning" size="small">Fallback</Badge>
+          )}
           {data.mssqlPoolActive && (
             <Badge appearance="tint" color="informative" size="small">Direct</Badge>
           )}
@@ -163,6 +183,9 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
           />
         </div>
       </div>
+      {data.centerDbEnabled && data.centerDbMessage && !connected && (
+        <Text style={{ color: '#605e5c', fontSize: '12px' }}>{data.centerDbMessage}</Text>
+      )}
 
       {/* Test result banner */}
       {testResult && (

@@ -19,8 +19,15 @@ export interface SyncHealthData {
   role: string;               // "server" | "client" | "standalone"
   centerDbEnabled: boolean;
   centerDbConnected: boolean;
+  centerDbStatus: string;
+  centerDbMessage: string | null;
   mssqlPoolActive: boolean;
   backendType: string;
+  runtimeBackendType: string;
+  fallbackActive: boolean;
+  centerDbHost: string | null;
+  centerDbDatabaseName: string | null;
+  canInitSchema: boolean;
   hostname: string;
   lastSyncTime: string | null;
   lastSyncAgo: string | null;

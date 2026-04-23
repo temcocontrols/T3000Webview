@@ -10,6 +10,24 @@ import { getSyncHealth, SyncHealthData } from '../services/syncHealthApi';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './SystemOverview.module.css';
 
+function centerDbSummary(status?: string, connected?: boolean) {
+  switch (status) {
+    case 'db_missing':
+      return { label: 'Database Missing', color: '#c19c00' };
+    case 'schema_missing':
+      return { label: 'Needs Init', color: '#c19c00' };
+    case 'server_unreachable':
+      return { label: 'SQL Server Down', color: '#d13438' };
+    case 'misconfigured_backend':
+      return { label: 'Misconfigured', color: '#c19c00' };
+    default:
+      return {
+        label: connected ? 'Connected' : 'Disconnected',
+        color: connected ? '#107c10' : '#d13438',
+      };
+  }
+}
+
 export const SystemOverview: React.FC = () => {
   const { devices, deviceStatuses } = useDeviceTreeStore();
   const [syncHealth, setSyncHealth] = useState<SyncHealthData | null>(null);
@@ -44,13 +62,9 @@ export const SystemOverview: React.FC = () => {
     return () => clearInterval(id);
   }, [fetchData]);
 
-  const centerStatus = syncHealth
-    ? syncHealth.centerDbConnected ? 'Connected' : 'Disconnected'
-    : '—';
-
-  const centerColor = syncHealth
-    ? syncHealth.centerDbConnected ? '#107c10' : '#d13438'
-    : '#605e5c';
+  const centerUi = syncHealth
+    ? centerDbSummary(syncHealth.centerDbStatus, syncHealth.centerDbConnected)
+    : { label: '—', color: '#605e5c' };
 
   if (loading) {
     return (
@@ -75,8 +89,8 @@ export const SystemOverview: React.FC = () => {
       <div className={styles.card}>
         <div className={styles.cardContent}>
           <div className={styles.cardLabel}>CENTER DB</div>
-          <div className={styles.cardValue} style={{ color: centerColor, fontSize: '16px' }}>
-            {centerStatus}
+          <div className={styles.cardValue} style={{ color: centerUi.color, fontSize: '16px' }}>
+            {centerUi.label}
           </div>
           <div className={styles.cardDetail}>
             {(() => {

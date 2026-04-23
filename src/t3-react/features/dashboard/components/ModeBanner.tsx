@@ -465,6 +465,25 @@ export interface ModeBannerProps {
   onModeChanged: () => void;
 }
 
+function getSharedDbChip(status?: string, connected?: boolean) {
+  switch (status) {
+    case 'healthy':
+      return { label: 'Connected', tone: 'green' as const };
+    case 'server_unreachable':
+      return { label: 'SQL Server Down', tone: 'red' as const };
+    case 'db_missing':
+      return { label: 'Database Missing', tone: 'orange' as const };
+    case 'schema_missing':
+      return { label: 'Needs Init', tone: 'orange' as const };
+    case 'misconfigured_backend':
+      return { label: 'Misconfigured', tone: 'orange' as const };
+    default:
+      return connected
+        ? { label: 'Connected', tone: 'green' as const }
+        : { label: 'Disconnected', tone: 'red' as const };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -519,11 +538,8 @@ export const ModeBanner: React.FC<ModeBannerProps> = ({
 
   // -- Live status for Center DB card --
   const connected = syncHealth?.centerDbConnected ?? false;
-  // When Center DB is active, sqlite means the service is in SQLite fallback mode —
-  // the configured target is always SQL Server, so map sqlite → mssql here.
-  const effectiveBackend = syncHealth
-    ? (isCenterDb && syncHealth.backendType === 'sqlite' ? 'mssql' : syncHealth.backendType)
-    : null;
+  const statusChip = getSharedDbChip(syncHealth?.centerDbStatus, connected);
+  const effectiveBackend = syncHealth?.backendType ?? null;
   const BACKEND_LABELS: Record<string, string> = {
     mssql: 'SQL Server',
     sqlite: 'SQLite',
@@ -623,12 +639,18 @@ export const ModeBanner: React.FC<ModeBannerProps> = ({
               <div className={s.chipRow}>
                 {roleLabel && <span className={s.chip}>{roleLabel}</span>}
                 {backendLabel && <span className={s.chip}>{backendLabel}</span>}
-                {connected
-                  ? <span className={mergeClasses(s.chip, s.chipGreen)}>Connected</span>
-                  : <span className={mergeClasses(s.chip, s.chipRed)}>Disconnected</span>
-                }
+                <span className={mergeClasses(
+                  s.chip,
+                  statusChip.tone === 'green' ? s.chipGreen : statusChip.tone === 'orange' ? s.chipOrange : s.chipRed,
+                )}>
+                  {statusChip.label}
+                </span>
+                {syncHealth?.fallbackActive && <span className={mergeClasses(s.chip, s.chipOrange)}>Local Fallback</span>}
                 {paused && <span className={mergeClasses(s.chip, s.chipOrange)}>Sampling Paused</span>}
               </div>
+              {syncHealth?.centerDbMessage && !connected && (
+                <span className={s.cardHint}>{syncHealth.centerDbMessage}</span>
+              )}
               <button
                 className={s.reconfigureLink}
                 onClick={(e) => { e.stopPropagation(); goToConfigure(); }}

@@ -610,6 +610,25 @@ const DEFAULT_PORTS: Record<BackendType, number> = {
   mysql: 3306,
   mssql: 1433,
 };
+function getCenterDbStatusPresentation(status?: string, connected?: boolean) {
+  switch (status) {
+    case 'healthy':
+      return { label: 'Connected', color: 'success' as const };
+    case 'server_unreachable':
+      return { label: 'SQL Server Down', color: 'danger' as const };
+    case 'db_missing':
+      return { label: 'Database Missing', color: 'warning' as const };
+    case 'schema_missing':
+      return { label: 'Needs Init', color: 'warning' as const };
+    case 'misconfigured_backend':
+      return { label: 'Misconfigured', color: 'warning' as const };
+    default:
+      return {
+        label: connected ? 'Connected' : 'Disconnected',
+        color: connected ? ('success' as const) : ('danger' as const),
+      };
+  }
+}
 
 function configToForm(cfg: BackendConfigResponse | undefined, backendType?: BackendType): SaveBackendConfigRequest {
   const isMssql = (cfg?.backend_type ?? backendType) === 'mssql';
@@ -684,6 +703,7 @@ export const DatabaseConfigPage: React.FC = () => {
   const [scanDone, setScanDone] = useState<{ count: number } | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const scanStatusRef = useRef<HTMLDivElement>(null);
+  const serverStatusUi = getCenterDbStatusPresentation(serverStatus?.center_db_status, serverStatus?.server_connected);
 
   const SCAN_PHASES = [
     { label: 'Preparing scan…', detail: 'Detecting local subnet for TCP sweep' },
@@ -908,7 +928,7 @@ export const DatabaseConfigPage: React.FC = () => {
 
       // 3. If enabled with a remote backend, also save DB connection settings
       if (iniForm.enabled && selectedType !== 'sqlite') {
-        const payload: Record<string, unknown> = { ...form, backend_type: selectedType };
+        const payload: Record<string, unknown> = { ...form, backend_type: selectedType, role: iniForm.role };
         if (!payload.password) delete payload.password;
         // Parse extra_options string into a JSON object for the backend
         if (typeof payload.extra_options === 'string') {
@@ -1103,19 +1123,21 @@ export const DatabaseConfigPage: React.FC = () => {
               </div>
               <Badge
                 appearance="filled"
-                color={serverStatus?.server_connected ? 'success' : 'danger'}
+                color={serverStatusUi.color}
                 size="small"
               >
-                {serverStatus?.server_connected ? '● Connected' : '○ Disconnected'}
+                {serverStatusUi.label}
               </Badge>
             </div>
             <div className={styles.statusInfoHint}>
               <InfoRegular className={styles.statusInfoHintIcon} />
               <span>
-                {serverStatus?.server_connected
-                  ? `Connected to server at ${activeConfig?.host ?? '—'}. Reading trend logs and device data from the shared database.`
-                  : `Configured to connect to server${activeConfig?.host ? ` at ${activeConfig.host}` : ''}. Server status will appear once the connection is active.`
+                {serverStatus?.center_db_message
+                  ?? (serverStatus?.server_connected
+                    ? `Connected to server at ${activeConfig?.host ?? '—'}. Reading trend logs and device data from the shared database.`
+                    : `Configured to connect to server${activeConfig?.host ? ` at ${activeConfig.host}` : ''}. Server status will appear once the connection is active.`)
                 }
+                {serverStatus?.fallback_active ? ' Running on local SQLite fallback.' : ''}
               </span>
             </div>
           </div>

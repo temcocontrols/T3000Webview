@@ -431,6 +431,23 @@ function backendLabel(backendType: string): string {
   }
 }
 
+function centerDbStatusLabel(status?: string, connected?: boolean): string {
+  switch (status) {
+    case 'healthy':
+      return 'Connected';
+    case 'server_unreachable':
+      return 'SQL Server Down';
+    case 'db_missing':
+      return 'Database Missing';
+    case 'schema_missing':
+      return 'Needs Init';
+    case 'misconfigured_backend':
+      return 'Misconfigured';
+    default:
+      return connected ? 'Connected' : 'Disconnected';
+  }
+}
+
 // ---------------------------------------------------------------------------
 // TestResult sub-type
 // ---------------------------------------------------------------------------
@@ -647,7 +664,8 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
           {health && health.centerDbEnabled && !health.centerDbConnected && (
             <div className={s.warnRow}>
               <ErrorCircleRegular style={{ fontSize: '14px', color: '#c19c00' }} />
-              Center database unreachable — running on local SQLite fallback. Data may not be shared with other PCs.
+              {health.centerDbMessage ?? 'Shared DB is not ready.'}
+              {health.fallbackActive ? ' Running on local SQLite fallback.' : ''}
             </div>
           )}
           {health && health.samplingPaused && (
@@ -688,7 +706,7 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
                     <><span className={s.metaSep}>·</span><span>{selfEntry.ip_address}</span></>
                   )}
                   <span className={s.metaSep}>·</span>
-                  <span>{backendLabel(health.centerDbEnabled && health.backendType === 'sqlite' ? 'mssql' : health.backendType)}</span>
+                  <span>{backendLabel(health.backendType)}</span>
                   {selfEntry?.table_count != null && (
                     <><span className={s.metaSep}>·</span><span>{selfEntry.table_count} tables</span></>
                   )}
@@ -812,8 +830,8 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
                 <span className={s.treeIp}>{serverEntry?.ip_address ?? '—'}</span>
                 <span className={s.treeStatus}>
                   {health.centerDbConnected
-                    ? <><span className={s.treeDotOnline} />Connected</>
-                    : <><span className={s.treeDotOffline} />Disconnected</>}
+                    ? <><span className={s.treeDotOnline} />{centerDbStatusLabel(health.centerDbStatus, health.centerDbConnected)}</>
+                    : <><span className={s.treeDotOffline} />{centerDbStatusLabel(health.centerDbStatus, health.centerDbConnected)}</>}
                 </span>
                 {health.lastSyncAgo && (
                   <span className={s.treeMeta}>Last sync: {health.lastSyncAgo}</span>
