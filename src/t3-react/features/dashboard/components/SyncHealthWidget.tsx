@@ -16,7 +16,7 @@ import {
 } from '@fluentui/react-components';
 import {
   DatabaseRegular,
-  ArrowSyncRegular,
+  ArrowClockwiseRegular,
   PlugConnectedRegular,
   PlugDisconnectedRegular,
   ServerRegular,
@@ -57,6 +57,7 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -76,6 +77,15 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
     const interval = setInterval(load, 30_000);
     return () => clearInterval(interval);
   }, [load]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleTest = async () => {
     if (!data) return;
@@ -134,9 +144,13 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
   const RoleIcon = data.role === 'server' ? ServerRegular : DesktopRegular;
   const effectiveBackend = data.backendType;
   const backendLabel = effectiveBackend === 'mssql' ? 'SQL Server'
-    : effectiveBackend === 'postgres_or_mysql' ? 'PG / MySQL'
+    : effectiveBackend === 'postgres' ? 'PostgreSQL'
+    : effectiveBackend === 'mysql' ? 'MySQL'
     : 'SQLite';
   const statusUi = centerDbStatusLabel(data.centerDbStatus, connected);
+  const dbTargetText = data.centerDbEnabled
+    ? `${backendLabel} · ${data.centerDbHost ?? '—'}${data.centerDbDatabaseName ? ` / ${data.centerDbDatabaseName}` : ''}`
+    : data.dbFolderPath;
 
   return (
     <div className={styles.container}>
@@ -157,9 +171,12 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
             size="small"
           >
             {data.centerDbEnabled
-              ? `${backendLabel} ${statusUi.label}`
+              ? statusUi.label
               : 'Local SQLite'}
           </Badge>
+          {data.centerDbEnabled && (
+            <Badge appearance="tint" color="informative" size="small">{backendLabel}</Badge>
+          )}
           {data.fallbackActive && (
             <Badge appearance="tint" color="warning" size="small">Fallback</Badge>
           )}
@@ -191,9 +208,10 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
           <Button
             size="small"
             appearance="subtle"
-            icon={<ArrowSyncRegular />}
-            onClick={load}
-            title="Refresh"
+            icon={refreshing ? <Spinner size="extra-tiny" /> : <ArrowClockwiseRegular />}
+            onClick={handleRefresh}
+            disabled={refreshing}
+            title="Refresh sync health"
           />
         </div>
       </div>
@@ -245,9 +263,9 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
 
         <div className={`${styles.statCard} ${styles.statCardWide}`}>
           <FolderRegular className={styles.folderIcon} />
-          <span className={styles.statLabel}>DB Folder</span>
-          <Tooltip content={data.dbFolderPath} relationship="label">
-            <span className={styles.statPath}>{data.dbFolderPath}</span>
+          <span className={styles.statLabel}>{data.centerDbEnabled ? 'Center DB Target' : 'DB Folder'}</span>
+          <Tooltip content={dbTargetText} relationship="label">
+            <span className={styles.statPath}>{dbTargetText}</span>
           </Tooltip>
         </div>
       </div>

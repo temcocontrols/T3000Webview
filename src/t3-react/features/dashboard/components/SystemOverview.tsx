@@ -7,24 +7,40 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Spinner, Tooltip } from '@fluentui/react-components';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { getSyncHealth, SyncHealthData } from '../services/syncHealthApi';
+import { isCenterDbDegraded } from '../services/severityRules';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './SystemOverview.module.css';
 
 function centerDbSummary(status?: string, connected?: boolean) {
   switch (status) {
     case 'db_missing':
-      return { label: 'Database Missing', color: '#c19c00' };
+      return { label: 'Database Missing', tone: 'warning' as const };
     case 'schema_missing':
-      return { label: 'Needs Init', color: '#c19c00' };
+      return { label: 'Needs Init', tone: 'warning' as const };
     case 'server_unreachable':
-      return { label: 'SQL Server Down', color: '#d13438' };
+      return { label: 'SQL Server Down', tone: 'danger' as const };
     case 'misconfigured_backend':
-      return { label: 'Misconfigured', color: '#c19c00' };
+      return { label: 'Misconfigured', tone: 'warning' as const };
     default:
       return {
         label: connected ? 'Connected' : 'Disconnected',
-        color: connected ? '#107c10' : '#d13438',
+        tone: connected ? ('success' as const) : ('danger' as const),
       };
+  }
+}
+
+function backendLabel(backendType: string): string {
+  switch (backendType) {
+    case 'mssql':
+      return 'SQL Server';
+    case 'postgres':
+      return 'PostgreSQL';
+    case 'mysql':
+      return 'MySQL';
+    case 'sqlite':
+      return 'SQLite';
+    default:
+      return backendType.toUpperCase();
   }
 }
 
@@ -33,27 +49,41 @@ export const SystemOverview: React.FC = () => {
   const [syncHealth, setSyncHealth] = useState<SyncHealthData | null>(null);
   const [alarmCount, setAlarmCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [healthError, setHealthError] = useState<string | null>(null);
+  const [alarmsError, setAlarmsError] = useState<string | null>(null);
 
   const onlineCount = Array.from(deviceStatuses.values()).filter((s) => s === 'online').length;
   const offlineCount = devices.length - onlineCount;
 
   const fetchData = useCallback(async () => {
-    try {
-      const [health, alarmsResp] = await Promise.allSettled([
-        getSyncHealth(),
-        fetch(`${API_BASE_URL}/api/t3_device/alarms/active`),
-      ]);
+    const [health, alarmsResp] = await Promise.allSettled([
+      getSyncHealth(),
+      fetch(`${API_BASE_URL}/api/t3_device/alarms/active`),
+    ]);
 
-      if (health.status === 'fulfilled') setSyncHealth(health.value);
+    if (health.status === 'fulfilled') {
+      setSyncHealth(health.value);
+      setHealthError(null);
+    } else {
+      setHealthError(health.reason instanceof Error ? health.reason.message : 'Failed to refresh sync health');
+    }
 
-      if (alarmsResp.status === 'fulfilled' && alarmsResp.value.ok) {
+    if (alarmsResp.status === 'fulfilled') {
+      if (alarmsResp.value.ok) {
         const data = await alarmsResp.value.json();
         // accept { total } or array length
         setAlarmCount(typeof data?.total === 'number' ? data.total : (Array.isArray(data) ? data.length : 0));
+        setAlarmsError(null);
+      } else {
+        setAlarmsError(`alarms: HTTP ${alarmsResp.value.status}`);
       }
-    } finally {
-      setLoading(false);
+    } else {
+      setAlarmsError(alarmsResp.reason instanceof Error ? alarmsResp.reason.message : 'Failed to refresh alarms');
     }
+
+    setLastUpdated(new Date());
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -62,9 +92,16 @@ export const SystemOverview: React.FC = () => {
     return () => clearInterval(id);
   }, [fetchData]);
 
-  const centerUi = syncHealth
+  const centerUiBase = syncHealth
     ? centerDbSummary(syncHealth.centerDbStatus, syncHealth.centerDbConnected)
-    : { label: '—', color: '#605e5c' };
+    : { label: '—', tone: 'muted' as const };
+  const centerUi = syncHealth && centerUiBase.label === 'SQL Server Down' && isCenterDbDegraded(syncHealth)
+    ? { ...centerUiBase, tone: 'warning' as const }
+    : centerUiBase;
+  const isSharedDbMode = !!syncHealth && syncHealth.role !== 'standalone';
+  const dbTargetText = isSharedDbMode
+    ? `${syncHealth?.centerDbHost ?? '—'}${syncHealth?.centerDbDatabaseName ? ` / ${syncHealth.centerDbDatabaseName}` : ''}`
+    : (syncHealth?.dbFolderPath ?? '—');
 
   if (loading) {
     return (
@@ -75,7 +112,18 @@ export const SystemOverview: React.FC = () => {
   }
 
   return (
-    <div className={styles.overview}>
+    <>
+      <div className={styles.metaRow}>
+        <span className={styles.metaText}>
+          Last updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : '—'}
+        </span>
+        {(healthError || alarmsError) && (
+          <span className={styles.metaWarn}>
+            Partial refresh issue: {healthError ? 'sync health' : ''}{healthError && alarmsError ? ', ' : ''}{alarmsError ? 'alarms' : ''}. Retrying automatically.
+          </span>
+        )}
+      </div>
+      <div className={styles.overview}>
       <div className={styles.card}>
         <div className={styles.cardContent}>
           <div className={styles.cardLabel}>DEVICES</div>
@@ -89,7 +137,7 @@ export const SystemOverview: React.FC = () => {
       <div className={styles.card}>
         <div className={styles.cardContent}>
           <div className={styles.cardLabel}>CENTER DB</div>
-          <div className={styles.cardValue} style={{ color: centerUi.color, fontSize: '16px' }}>
+          <div className={`${styles.cardValue} ${styles.cardValueStatus} ${styles[centerUi.tone]}`}>
             {centerUi.label}
           </div>
           <div className={styles.cardDetail}>
@@ -97,7 +145,9 @@ export const SystemOverview: React.FC = () => {
               if (!syncHealth) return 'N/A';
               const isCenterDb = syncHealth.role !== 'standalone';
               // If Center DB mode but reporting sqlite, it's in SQLite fallback — configured target is SQL Server
-              const backend = isCenterDb && syncHealth.backendType === 'sqlite' ? 'SQL Server' : syncHealth.backendType;
+              const backend = isCenterDb && syncHealth.backendType === 'sqlite'
+                ? 'SQL Server'
+                : backendLabel(syncHealth.backendType);
               const roleLabel = syncHealth.role === 'server' ? 'Server' : syncHealth.role === 'client' ? 'Client' : 'Standalone';
               return `${backend} · ${roleLabel}`;
             })()}
@@ -109,7 +159,7 @@ export const SystemOverview: React.FC = () => {
         <div className={styles.cardContent}>
           <div className={styles.cardLabel}>LAST SYNC</div>
           <Tooltip content={syncHealth?.lastSyncTime ?? 'No sync recorded'} relationship="description">
-            <div className={styles.cardValue} style={{ fontSize: '15px' }}>
+            <div className={`${styles.cardValue} ${styles.cardValueCompact}`}>
               {syncHealth?.lastSyncAgo ?? '—'}
             </div>
           </Tooltip>
@@ -122,7 +172,7 @@ export const SystemOverview: React.FC = () => {
       <div className={styles.card}>
         <div className={styles.cardContent}>
           <div className={styles.cardLabel}>ALARMS</div>
-          <div className={styles.cardValue} style={{ color: alarmCount > 0 ? '#d13438' : undefined }}>
+          <div className={`${styles.cardValue} ${alarmCount > 0 ? styles.danger : ''}`}>
             {alarmCount}
           </div>
           <div className={styles.cardDetail}>
@@ -143,15 +193,16 @@ export const SystemOverview: React.FC = () => {
 
       <div className={styles.card}>
         <div className={styles.cardContent}>
-          <div className={styles.cardLabel}>DB SIZE</div>
-          <div className={styles.cardValue} style={{ fontSize: '15px' }}>
+          <div className={styles.cardLabel}>{isSharedDbMode ? 'LOCAL DB CACHE SIZE' : 'DB SIZE'}</div>
+          <div className={`${styles.cardValue} ${styles.cardValueCompact}`}>
             {syncHealth?.dbSizeHuman ?? '—'}
           </div>
-          <div className={styles.cardDetail} style={{ fontFamily: 'monospace', fontSize: '10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {syncHealth?.dbFolderPath ?? '—'}
+          <div className={`${styles.cardDetail} ${styles.cardDetailMono}`}>
+            {dbTargetText}
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
