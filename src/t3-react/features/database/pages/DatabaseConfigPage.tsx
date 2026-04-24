@@ -758,8 +758,9 @@ export const DatabaseConfigPage: React.FC = () => {
   // Data fetching
   // -------------------------------------------------------------------
 
-  const refresh = useCallback(async (options?: { showLoading?: boolean }) => {
+  const refresh = useCallback(async (options?: { showLoading?: boolean; preserveMessageOnError?: boolean }) => {
     const showLoading = options?.showLoading ?? true;
+    const preserveMessageOnError = options?.preserveMessageOnError ?? false;
     try {
       if (showLoading) {
         setLoading(true);
@@ -797,7 +798,9 @@ export const DatabaseConfigPage: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to load database config:', err);
-      setMessage({ text: 'Failed to load database configuration', type: 'error' });
+      if (!preserveMessageOnError) {
+        setMessage({ text: 'Failed to load database configuration', type: 'error' });
+      }
     } finally {
       if (showLoading) {
         setLoading(false);
@@ -960,7 +963,7 @@ export const DatabaseConfigPage: React.FC = () => {
         ? `Server Database ${iniForm.role} mode + ${BACKEND_LABELS[selectedType]} settings saved. Restart T3000 to apply.`
         : 'Server Database disabled. Restart T3000 to apply.';
       setMessage({ text: summary, type: 'success' });
-      await refresh({ showLoading: false });
+      await refresh({ showLoading: false, preserveMessageOnError: true });
     } catch (err: any) {
       setMessage({ text: `Save failed: ${err.message}`, type: 'error' });
     } finally {

@@ -20,12 +20,14 @@ use axum::{
 };
 use sea_orm::Database;
 use serde::Serialize;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+use tracing::{info, warn};
 
 use crate::app_state::T3AppState;
 use crate::database_management::db_backend_config::{self, BackendConfig, BackendType};
 
-const CENTER_DB_HEALTH_TIMEOUT: Duration = Duration::from_secs(3);
+const CENTER_DB_HEALTH_TIMEOUT: Duration = Duration::from_secs(2);
+const CENTER_DB_HEALTH_TOTAL_TIMEOUT: Duration = Duration::from_secs(4);
 
 /// Response for the server DB status endpoint.
 #[derive(Debug, Serialize)]
@@ -108,6 +110,38 @@ async fn validate_mssql_schema_with_timeout(config: tiberius::Config) -> Result<
     }
 }
 
+fn classify_target_db_probe_error(db_name: &str, raw_error: &str) -> (String, Option<String>, bool) {
+    let lower = raw_error.to_ascii_lowercase();
+
+    if lower.contains("cannot open database")
+        || lower.contains("does not exist")
+        || lower.contains("unknown database")
+    {
+        return (
+            "db_missing".to_string(),
+            Some(format!(
+                "SQL Server is reachable, but database '{}' does not exist or cannot be opened.",
+                db_name
+            )),
+            true,
+        );
+    }
+
+    if lower.contains("login failed") || lower.contains("authentication failed") {
+        return (
+            "misconfigured_backend".to_string(),
+            Some("SQL Server is reachable, but authentication to the target database failed. Check username/password and permissions.".to_string()),
+            false,
+        );
+    }
+
+    (
+        "server_unreachable".to_string(),
+        Some(user_friendly_unreachable_message(raw_error)),
+        false,
+    )
+}
+
 fn user_friendly_unreachable_message(raw: &str) -> String {
     let lower = raw.to_ascii_lowercase();
     if lower.contains("10060") || lower.contains("timed out") {
@@ -139,83 +173,80 @@ async fn resolve_live_center_db_state(
             false,
         ),
         BackendType::Mssql => {
-            let mut master_config = config.clone();
-            master_config.database_name = Some("master".to_string());
-            let master_tib = match db_backend_config::build_mssql_config(&master_config) {
-                Ok(cfg) => cfg,
-                Err(e) => {
-                    return (
-                        false,
-                        "misconfigured_backend".to_string(),
-                        Some(e),
-                        false,
-                    );
-                }
-            };
+            let probe_started = Instant::now();
+            let outcome = match tokio::time::timeout(CENTER_DB_HEALTH_TOTAL_TIMEOUT, async {
+                let mut master_config = config.clone();
+                master_config.database_name = Some("master".to_string());
+                let master_tib = db_backend_config::build_mssql_config(&master_config)
+                    .map_err(|e| ("misconfigured_backend".to_string(), Some(e), false))?;
 
-            if let Err(e) = probe_mssql_connection_with_timeout(master_tib).await {
-                return (
+                if let Err(e) = probe_mssql_connection_with_timeout(master_tib).await {
+                    return Err((
+                        "server_unreachable".to_string(),
+                        Some(user_friendly_unreachable_message(&e)),
+                        false,
+                    ));
+                }
+
+                let target_tib = db_backend_config::build_mssql_config(config)
+                    .map_err(|e| ("misconfigured_backend".to_string(), Some(e), false))?;
+
+                if let Err(e) = probe_mssql_connection_with_timeout(target_tib).await {
+                    let db_name = config.database_name.clone().unwrap_or_else(|| "(unknown)".to_string());
+                    return Err(classify_target_db_probe_error(&db_name, &e));
+                }
+
+                let schema_tib = db_backend_config::build_mssql_config(config)
+                    .map_err(|e| ("misconfigured_backend".to_string(), Some(e), false))?;
+
+                match validate_mssql_schema_with_timeout(schema_tib).await {
+                    Ok(()) => Ok((
+                        true,
+                        "healthy".to_string(),
+                        Some("Connected to the shared SQL Server database.".to_string()),
+                        false,
+                    )),
+                    Err(e) if e.contains("not initialized") => Err((
+                        "schema_missing".to_string(),
+                        Some("SQL Server is reachable and the database exists, but the T3000 schema is not initialized.".to_string()),
+                        true,
+                    )),
+                    Err(e) => Err((
+                        "server_unreachable".to_string(),
+                        Some(user_friendly_unreachable_message(&e)),
+                        false,
+                    )),
+                }
+            })
+            .await
+            {
+                Ok(Ok(success)) => success,
+                Ok(Err((status, message, can_init))) => (false, status, message, can_init),
+                Err(_) => (
                     false,
                     "server_unreachable".to_string(),
-                    Some(user_friendly_unreachable_message(&e)),
+                    Some("Center DB health check timed out. Showing latest known status; please retry.".to_string()),
                     false,
+                ),
+            };
+
+            let probe_elapsed_ms = probe_started.elapsed().as_millis() as u64;
+            let status_for_log = outcome.1.clone();
+            if outcome.0 {
+                info!(
+                    center_db_status = %status_for_log,
+                    elapsed_ms = probe_elapsed_ms,
+                    "Center DB health probe completed"
+                );
+            } else {
+                warn!(
+                    center_db_status = %status_for_log,
+                    elapsed_ms = probe_elapsed_ms,
+                    "Center DB health probe degraded"
                 );
             }
 
-            let target_tib = match db_backend_config::build_mssql_config(config) {
-                Ok(cfg) => cfg,
-                Err(e) => {
-                    return (
-                        false,
-                        "misconfigured_backend".to_string(),
-                        Some(e),
-                        false,
-                    );
-                }
-            };
-
-            if probe_mssql_connection_with_timeout(target_tib).await.is_err() {
-                let db_name = config.database_name.clone().unwrap_or_else(|| "(unknown)".to_string());
-                return (
-                    false,
-                    "db_missing".to_string(),
-                    Some(format!("SQL Server is reachable, but database '{}' does not exist or cannot be opened.", db_name)),
-                    true,
-                );
-            }
-
-            let schema_tib = match db_backend_config::build_mssql_config(config) {
-                Ok(cfg) => cfg,
-                Err(e) => {
-                    return (
-                        false,
-                        "misconfigured_backend".to_string(),
-                        Some(e),
-                        false,
-                    );
-                }
-            };
-
-            match validate_mssql_schema_with_timeout(schema_tib).await {
-                Ok(()) => (
-                    true,
-                    "healthy".to_string(),
-                    Some("Connected to the shared SQL Server database.".to_string()),
-                    false,
-                ),
-                Err(e) if e.contains("not initialized") => (
-                    false,
-                    "schema_missing".to_string(),
-                    Some("SQL Server is reachable and the database exists, but the T3000 schema is not initialized.".to_string()),
-                    true,
-                ),
-                Err(e) => (
-                    false,
-                    "server_unreachable".to_string(),
-                    Some(user_friendly_unreachable_message(&e)),
-                    false,
-                ),
-            }
+            outcome
         }
         BackendType::Postgres | BackendType::Mysql => {
             let url = match db_backend_config::build_seaorm_url(config) {

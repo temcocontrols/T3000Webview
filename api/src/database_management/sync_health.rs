@@ -22,6 +22,10 @@ use axum::{
 use chrono::{Datelike, Local, TimeZone, Utc};
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
+use std::sync::OnceLock;
+use std::time::{Duration, Instant};
+use tokio::sync::RwLock;
+use tracing::{debug, warn};
 
 use crate::app_state::T3AppState;
 use crate::error::Result;
@@ -30,7 +34,7 @@ use crate::error::Result;
 // Sync Health Response
 // ============================================================================
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncHealthResponse {
     /// PC role: "server" | "client" | "standalone"
@@ -86,7 +90,20 @@ pub struct SyncHealthResponse {
     pub paused_reason: Option<String>,
 }
 
-#[derive(Debug, Serialize, Default)]
+#[derive(Clone)]
+struct CachedSyncHealth {
+    created_at: Instant,
+    payload: SyncHealthResponse,
+}
+
+const SYNC_HEALTH_CACHE_TTL: Duration = Duration::from_secs(2);
+
+fn sync_health_cache() -> &'static RwLock<Option<CachedSyncHealth>> {
+    static CACHE: OnceLock<RwLock<Option<CachedSyncHealth>>> = OnceLock::new();
+    CACHE.get_or_init(|| RwLock::new(None))
+}
+
+#[derive(Debug, Serialize, Default, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RecordsToday {
     pub inputs: i64,
@@ -320,7 +337,24 @@ async fn resolve_db_info(
 // ============================================================================
 
 async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHealthResponse>> {
+    {
+        let cache_guard = sync_health_cache().read().await;
+        if let Some(cached) = cache_guard.as_ref() {
+            if cached.created_at.elapsed() <= SYNC_HEALTH_CACHE_TTL {
+                debug!(
+                    cache_age_ms = cached.created_at.elapsed().as_millis() as u64,
+                    "GET /api/sync/health cache hit"
+                );
+                return Ok(Json(cached.payload.clone()));
+            }
+        }
+    }
+
+    let total_started = Instant::now();
+
+    let resolve_status_started = Instant::now();
     let server_status = crate::web_routing::resolve_server_db_status(&state).await;
+    let resolve_status_elapsed_ms = resolve_status_started.elapsed().as_millis() as u64;
     let hostname = server_status.hostname.clone();
 
     let role = if !server_status.enabled {
@@ -343,14 +377,12 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         server_status.runtime_backend.clone()
     };
 
-    let fallback_active = if server_status.enabled {
-        false
-    } else {
-        server_status.fallback_active
-    };
+    let fallback_active = server_status.fallback_active;
 
+    let resolve_db_info_started = Instant::now();
     let (db_size_bytes, db_size_human, db_folder_path, db_file_path) =
         resolve_db_info(&state, &server_status).await;
+    let resolve_db_info_elapsed_ms = resolve_db_info_started.elapsed().as_millis() as u64;
 
     // Query DATA_SYNC_METADATA for last sync + records today
     let mut last_sync_time: Option<String> = None;
@@ -358,6 +390,7 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
     let mut records_today = RecordsToday::default();
     let mut devices_synced_today: i64 = 0;
 
+    let metadata_started = Instant::now();
     if let Some(db) = get_db_conn(&state).await {
         // -- Last sync time (most recent LOGGING_DATA_CYCLE or any FFI record)
         let raw_last = db
@@ -438,8 +471,32 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
             devices_synced_today = row.try_get::<i64>("", "cnt").unwrap_or(0);
         }
     }
+    let metadata_elapsed_ms = metadata_started.elapsed().as_millis() as u64;
 
-    Ok(Json(SyncHealthResponse {
+    let total_elapsed_ms = total_started.elapsed().as_millis() as u64;
+    if total_elapsed_ms > 1500 {
+        warn!(
+            elapsed_ms = total_elapsed_ms,
+            resolve_status_ms = resolve_status_elapsed_ms,
+            resolve_db_info_ms = resolve_db_info_elapsed_ms,
+            metadata_ms = metadata_elapsed_ms,
+            center_db_enabled = server_status.enabled,
+            center_db_status = %server_status.center_db_status,
+            "GET /api/sync/health slow response"
+        );
+    } else {
+        debug!(
+            elapsed_ms = total_elapsed_ms,
+            resolve_status_ms = resolve_status_elapsed_ms,
+            resolve_db_info_ms = resolve_db_info_elapsed_ms,
+            metadata_ms = metadata_elapsed_ms,
+            center_db_enabled = server_status.enabled,
+            center_db_status = %server_status.center_db_status,
+            "GET /api/sync/health completed"
+        );
+    }
+
+    let response = SyncHealthResponse {
         role,
         center_db_enabled: server_status.enabled,
         center_db_connected: server_status.server_connected,
@@ -463,7 +520,17 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         devices_synced_today,
         sampling_paused: crate::app_state::is_sampling_paused(),
         paused_reason: crate::app_state::get_pause_reason(),
-    }))
+    };
+
+    {
+        let mut cache_guard = sync_health_cache().write().await;
+        *cache_guard = Some(CachedSyncHealth {
+            created_at: Instant::now(),
+            payload: response.clone(),
+        });
+    }
+
+    Ok(Json(response))
 }
 
 // ============================================================================
