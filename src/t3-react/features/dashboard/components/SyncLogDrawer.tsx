@@ -47,18 +47,20 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
 
   const PAGE_SIZE = 50;
 
-  const load = useCallback(async (pg: number, lvl: LevelFilter) => {
+  const load = useCallback(async (pg: number, lvl: LevelFilter, cat: string) => {
     setLoading(true);
     try {
       const res = await getEventLog({
         limit: PAGE_SIZE,
         page: pg,
         level: lvl === 'all' ? undefined : lvl,
+        category: cat === 'all' ? undefined : cat as any,
       });
       setEntries(res.entries);
       setTotal(res.total);
@@ -72,17 +74,17 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
   useEffect(() => {
     if (open) {
       setPage(0);
-      load(0, levelFilter);
+      load(0, levelFilter, categoryFilter);
     }
-  }, [open, levelFilter, load]);
+  }, [open, levelFilter, categoryFilter, load]);
 
-  const refresh = () => load(page, levelFilter);
+  const refresh = () => load(page, levelFilter, categoryFilter);
 
   const exportCsv = () => {
-    const header = 'Time,Level,Device,Message';
+    const header = 'Time,Level,Category,Source,Device,Host,Message';
     const rows = entries.map(
       (e) =>
-        `"${e.ts}","${e.level}","${e.deviceSerial ?? ''}","${e.message.replace(/"/g, '""')}"`
+        `"${e.ts}","${e.level}","${e.category ?? ''}","${e.source ?? ''}","${e.deviceSerial ?? ''}","${e.hostname ?? ''}","${e.message.replace(/"/g, '""')}"`
     );
     const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -105,9 +107,14 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
     ? entries.filter(
         (e) =>
           e.message.toLowerCase().includes(search.toLowerCase()) ||
-          (e.deviceSerial ?? '').toLowerCase().includes(search.toLowerCase())
+            (e.deviceSerial ?? '').toLowerCase().includes(search.toLowerCase()) ||
+            (e.category ?? '').toLowerCase().includes(search.toLowerCase()) ||
+            (e.source ?? '').toLowerCase().includes(search.toLowerCase()) ||
+            (e.hostname ?? '').toLowerCase().includes(search.toLowerCase())
       )
     : entries;
+
+          const knownCategories = Array.from(new Set(entries.map((e) => e.category).filter(Boolean))).sort();
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
@@ -157,6 +164,20 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
           </TabList>
 
           <div className={styles.toolbarRight}>
+            <select
+              className={styles.categorySelect}
+              value={categoryFilter}
+              onChange={(e) => {
+                setCategoryFilter(e.target.value);
+                setPage(0);
+              }}
+              title="Filter category"
+            >
+              <option value="all">All categories</option>
+              {knownCategories.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
             <Input
               size="small"
               placeholder="Search..."
@@ -200,22 +221,30 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
           </div>
         ) : (
           <div className={styles.logList}>
-            {visibleEntries.map((e) => (
-              <div key={e.id} className={`${styles.entry} ${styles[`entry_${e.level}`]}`}>
-                <div className={styles.entryIcon}>{levelIcon(e.level)}</div>
-                <div className={styles.entryBody}>
-                  <div className={styles.entryTop}>
-                    <span className={styles.entryTime}>{e.ts}</span>
-                    {e.deviceSerial && (
-                      <Badge appearance="tint" color="informative" size="extra-small">
-                        SN {e.deviceSerial}
-                      </Badge>
+            {visibleEntries.map((e) => {
+              const metaParts = [
+                e.category ? `Category: ${e.category}` : null,
+                e.source ? `Source: ${e.source}` : null,
+                e.deviceSerial ? `SN ${e.deviceSerial}` : null,
+                e.hostname ? `Host: ${e.hostname}` : null,
+                e.details ? e.details : null,
+              ].filter(Boolean) as string[];
+
+              return (
+                <div key={e.id} className={`${styles.entry} ${styles[`entry_${e.level}`]}`}>
+                  <div className={styles.entryIcon}>{levelIcon(e.level)}</div>
+                  <div className={styles.entryBody}>
+                    <div className={styles.entryTop}>
+                      <span className={styles.entryTime}>{e.ts}</span>
+                    </div>
+                    <div className={styles.entryMsg}>{e.message}</div>
+                    {metaParts.length > 0 && (
+                      <div className={styles.entryMeta}>{metaParts.join(' • ')}</div>
                     )}
                   </div>
-                  <div className={styles.entryMsg}>{e.message}</div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -226,7 +255,7 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
               size="small"
               appearance="subtle"
               disabled={page === 0}
-              onClick={() => { const p = page - 1; setPage(p); load(p, levelFilter); }}
+              onClick={() => { const p = page - 1; setPage(p); load(p, levelFilter, categoryFilter); }}
             >
               ← Prev
             </Button>
@@ -235,7 +264,7 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
               size="small"
               appearance="subtle"
               disabled={page >= totalPages - 1}
-              onClick={() => { const p = page + 1; setPage(p); load(p, levelFilter); }}
+              onClick={() => { const p = page + 1; setPage(p); load(p, levelFilter, categoryFilter); }}
             >
               Next →
             </Button>

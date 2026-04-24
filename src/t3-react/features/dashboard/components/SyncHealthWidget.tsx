@@ -151,6 +151,9 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
   const dbTargetText = data.centerDbEnabled
     ? `${backendLabel} · ${data.centerDbHost ?? '—'}${data.centerDbDatabaseName ? ` / ${data.centerDbDatabaseName}` : ''}`
     : data.dbFolderPath;
+  const dbSizeSourceText = !data.centerDbEnabled
+    ? 'Source: Local SQLite file'
+    : (data.mssqlPoolActive ? 'Source: MSSQL sys.database_files' : 'Source: Center DB target (fallback)');
 
   return (
     <div className={styles.container}>
@@ -232,7 +235,10 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
       {/* Row 2: Stat cards */}
       <div className={styles.statsRow}>
         <div className={styles.statCard}>
-          <span className={styles.statLabel}>Last Sync</span>
+          <div className={styles.statHead}>
+            <ArrowClockwiseRegular className={styles.statIcon} />
+            <span className={styles.statLabel}>Last Sync</span>
+          </div>
           <span className={styles.statValue}>{data.lastSyncAgo ?? 'Never'}</span>
           {data.lastSyncTime && (
             <Tooltip content={data.lastSyncTime} relationship="label">
@@ -242,13 +248,19 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
         </div>
 
         <div className={styles.statCard}>
-          <span className={styles.statLabel}>Devices Today</span>
+          <div className={styles.statHead}>
+            <DesktopRegular className={styles.statIcon} />
+            <span className={styles.statLabel}>Devices Today</span>
+          </div>
           <span className={styles.statValue}>{data.devicesSyncedToday}</span>
           <span className={styles.statSub}>synced</span>
         </div>
 
         <div className={styles.statCard}>
-          <span className={styles.statLabel}>Records Today</span>
+          <div className={styles.statHead}>
+            <ListRegular className={styles.statIcon} />
+            <span className={styles.statLabel}>Records Today</span>
+          </div>
           <span className={styles.statValue}>{data.recordsToday.total.toLocaleString()}</span>
           <span className={styles.statSub}>
             {data.recordsToday.inputs}in · {data.recordsToday.outputs}out · {data.recordsToday.variables}var
@@ -256,17 +268,23 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
         </div>
 
         <div className={styles.statCard}>
-          <DatabaseRegular className={styles.dbIcon} />
-          <span className={styles.statLabel}>DB Size</span>
+          <div className={styles.statHead}>
+            <DatabaseRegular className={styles.statIcon} />
+            <span className={styles.statLabel}>DB Size</span>
+          </div>
           <span className={styles.statValue}>{data.dbSizeHuman}</span>
+          <span className={styles.statSub}>{dbSizeSourceText}</span>
         </div>
 
-        <div className={`${styles.statCard} ${styles.statCardWide}`}>
-          <FolderRegular className={styles.folderIcon} />
-          <span className={styles.statLabel}>{data.centerDbEnabled ? 'Center DB Target' : 'DB Folder'}</span>
+        <div className={styles.statCard}>
+          <div className={styles.statHead}>
+            <FolderRegular className={styles.statIcon} />
+            <span className={styles.statLabel}>{data.centerDbEnabled ? 'Center DB Target' : 'DB Folder'}</span>
+          </div>
           <Tooltip content={dbTargetText} relationship="label">
             <span className={styles.statPath}>{dbTargetText}</span>
           </Tooltip>
+          <span className={styles.statSub}>Configured target</span>
         </div>
       </div>
     </div>

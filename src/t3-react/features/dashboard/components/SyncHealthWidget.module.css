@@ -93,15 +93,16 @@
 }
 
 .statCard {
-  display: flex;
-  flex-direction: column;
-  padding: 8px 12px;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 10px 12px;
   background: #faf9f8;
   border: 1px solid #edebe9;
   border-radius: 6px;
   min-width: 90px;
   flex: 1;
-  gap: 2px;
+  row-gap: 4px;
+  min-height: 86px;
 }
 
 .statCardWide {
@@ -109,24 +110,37 @@
   min-width: 160px;
 }
 
+.statHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .statLabel {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: #a19f9d;
+  line-height: 1;
 }
 
 .statValue {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
   color: #323130;
-  line-height: 1.2;
+  line-height: 1.1;
+  align-self: center;
 }
 
 .statSub {
   font-size: 10px;
   color: #605e5c;
+  line-height: 1.25;
+  align-self: end;
+  min-height: 14px;
+  display: flex;
+  align-items: flex-end;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -134,18 +148,20 @@
 }
 
 .statPath {
-  font-size: 10px;
-  color: #605e5c;
+  font-size: 13px;
+  font-weight: 700;
+  color: #323130;
+  line-height: 1.1;
+  align-self: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: default;
-  font-family: monospace;
+  font-family: inherit;
 }
 
-.dbIcon,
-.folderIcon {
-  font-size: 14px;
+.statIcon {
+  font-size: 12px;
   color: #0078d4;
-  margin-bottom: 2px;
+  flex-shrink: 0;
 }
