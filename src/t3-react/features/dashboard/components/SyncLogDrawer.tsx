@@ -138,7 +138,7 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
             />
           }
         >
-          DB Sync Activity
+          Activity Log
         </DrawerHeaderTitle>
       </DrawerHeader>
 
