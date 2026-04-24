@@ -179,6 +179,7 @@ To remove T3000:
 
 - [Configuration Guide](configuration) - Set up your system
 - [Connecting Devices](../device-management/connecting-devices) - Add your first device
+- [SQL Server Express Setup for T3000](sql-server-express-setup) - Detailed Step 1 to Step 23 setup with screenshot slots
 
 ## Support
 
