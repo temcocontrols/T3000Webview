@@ -18,7 +18,7 @@ import {
   Tooltip,
 } from '@fluentui/react-components';
 import {
-  ArrowSyncRegular,
+  ArrowClockwiseRegular,
   ChevronRightRegular,
   CheckmarkCircleRegular,
   DismissCircleRegular,
@@ -484,7 +484,7 @@ export const DashboardPage: React.FC = () => {
             <Button
               size="small"
               appearance="subtle"
-              icon={<ArrowSyncRegular />}
+              icon={<ArrowClockwiseRegular />}
               onClick={fetchHealth}
               title="Refresh"
             />

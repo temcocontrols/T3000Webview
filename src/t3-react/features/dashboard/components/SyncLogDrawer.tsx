@@ -128,6 +128,7 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
     >
       <DrawerHeader>
         <DrawerHeaderTitle
+          className={styles.drawerTitle}
           action={
             <Button
               appearance="subtle"
@@ -137,7 +138,7 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
             />
           }
         >
-          Sync Event Log
+          DB Sync Activity
         </DrawerHeaderTitle>
       </DrawerHeader>
 
@@ -156,7 +157,11 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
             <Tab value="error">
               <span className={styles.tabWithBadge}>
                 Errors
-                <Badge color="danger" size="extra-small" appearance="filled">!</Badge>
+                {entries.filter(e => e.level === 'error').length > 0 && (
+                  <Badge color="danger" size="extra-small" appearance="filled">
+                    {entries.filter(e => e.level === 'error').length}
+                  </Badge>
+                )}
               </span>
             </Tab>
             <Tab value="warn">Warnings</Tab>

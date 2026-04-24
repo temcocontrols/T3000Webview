@@ -206,7 +206,7 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
             icon={<ListRegular />}
             onClick={onViewLog}
           >
-            Sync Log
+            Activity Log
           </Button>
           <Button
             size="small"
