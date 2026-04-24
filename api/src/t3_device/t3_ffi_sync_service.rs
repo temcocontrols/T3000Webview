@@ -12,6 +12,7 @@ use crate::entity::t3_device::{
     variable_points,
 };
 use crate::database_management::data_sync_service::{DataSyncMetadataService, InsertSyncMetadataRequest};
+use crate::database_management::mssql_queries;
 use crate::error::AppError;
 use crate::logger::ServiceLogger;
 use crate::t3_device::trendlog_parent_cache::{ParentKey, TrendlogParentCache};
@@ -454,6 +455,60 @@ pub struct T3000MainService {
 }
 
 impl T3000MainService {
+    async fn insert_data_sync_metadata(
+        writer: &super::sync_writer::SyncWriter,
+        data_type: &str,
+        serial_number: &str,
+        panel_id: Option<i32>,
+        records_synced: i32,
+        success: bool,
+        error_message: Option<String>,
+    ) -> Result<(), AppError> {
+        let now = chrono::Utc::now();
+        let sync_time_i64 = now.timestamp();
+        let sync_time_i32 = if sync_time_i64 > i32::MAX as i64 {
+            i32::MAX
+        } else {
+            sync_time_i64 as i32
+        };
+        let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
+
+        match writer {
+            super::sync_writer::SyncWriter::Sqlite(db) => {
+                let req = InsertSyncMetadataRequest {
+                    data_type: data_type.to_string(),
+                    serial_number: serial_number.to_string(),
+                    panel_id,
+                    records_synced,
+                    sync_method: "FFI_BACKEND".to_string(),
+                    success,
+                    error_message,
+                };
+                DataSyncMetadataService::insert_sync_metadata(db, req)
+                    .await
+                    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+            }
+            super::sync_writer::SyncWriter::MssqlDirect(pool) => {
+                mssql_queries::insert_sync_metadata(
+                    pool,
+                    sync_time_i32,
+                    &sync_time_fmt,
+                    data_type,
+                    serial_number,
+                    panel_id,
+                    records_synced,
+                    "FFI_BACKEND",
+                    if success { 1 } else { 0 },
+                    error_message.as_deref(),
+                )
+                .await
+                .map_err(AppError::DatabaseError)?;
+            }
+        }
+
+        Ok(())
+    }
+
     pub async fn new(config: T3000MainConfig) -> Result<Self, AppError> {
         let db = establish_device_conn_for_sync().await?;
 
@@ -1069,9 +1124,22 @@ impl T3000MainService {
             e
         })?;
 
+        let (writer_target_text, writer_target_detail) = match &writer {
+            super::sync_writer::SyncWriter::MssqlDirect(_) => (
+                "MSSQL (direct write to center DB)",
+                "target=center_mssql",
+            ),
+            super::sync_writer::SyncWriter::Sqlite(db) => match db.get_database_backend() {
+                sea_orm::DatabaseBackend::Sqlite => ("Local SQLite", "target=local_sqlite"),
+                sea_orm::DatabaseBackend::MySql | sea_orm::DatabaseBackend::Postgres => {
+                    ("Center DB (SeaORM backend)", "target=center_seaorm")
+                }
+            },
+        };
+
         sync_logger.info(&format!(
             "✅ Database connections established — write target: {}",
-            if writer.is_mssql_direct() { "MSSQL (direct write to center DB)" } else { "SQLite/SeaORM" }
+            writer_target_text
         ));
         crate::database_management::sync_health::write_app_log(
             &local_db,
@@ -1080,7 +1148,7 @@ impl T3000MainService {
             Some("ffi_sync"),
             None,
             "Sync writer target selected",
-            Some(if writer.is_mssql_direct() { "target=mssql_direct" } else { "target=sqlite_or_seaorm" }),
+            Some(writer_target_detail),
         )
         .await;
 
@@ -1164,7 +1232,17 @@ impl T3000MainService {
                 error_message: None,
             };
 
-            if let Err(e) = DataSyncMetadataService::insert_sync_metadata(&local_db, new_metadata_request).await {
+            if let Err(e) = Self::insert_data_sync_metadata(
+                &writer,
+                &new_metadata_request.data_type,
+                &new_metadata_request.serial_number,
+                new_metadata_request.panel_id,
+                new_metadata_request.records_synced,
+                new_metadata_request.success,
+                new_metadata_request.error_message,
+            )
+            .await
+            {
                 sync_logger.error(&format!("❌ Failed to insert GET_PANELS_LIST to DATA_SYNC_METADATA: {}", e));
             }
         } else {
@@ -1214,9 +1292,9 @@ impl T3000MainService {
             ));
         }
 
-        sync_logger.info("💾 Recording sync cycle metadata (local DB)");
+        sync_logger.info("💾 Recording sync cycle metadata");
 
-        // Create sync metadata record in local SQLite (metadata is always local)
+        // Legacy trendlog_data_sync_metadata stays local for diagnostic continuity.
         let sync_start_time = chrono::Utc::now();
         let sync_metadata = trendlog_data_sync_metadata::ActiveModel {
             sync_time_fmt: Set(sync_start_time.format("%Y-%m-%d %H:%M:%S").to_string()),
@@ -1244,28 +1322,17 @@ impl T3000MainService {
             sync_metadata_id
         ));
 
-        // Also insert into new DATA_SYNC_METADATA table for sync cycle start
-        let now = chrono::Utc::now();
-        let sync_time = now.timestamp();
-        let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
-
-        let cycle_metadata = crate::entity::data_sync_metadata::ActiveModel {
-            sync_time: Set(sync_time),
-            sync_time_fmt: Set(sync_time_fmt.clone()),
-            data_type: Set("LOGGING_DATA_CYCLE".to_string()),
-            serial_number: Set("ALL".to_string()),
-            panel_id: Set(None),
-            records_synced: Set(0),
-            sync_method: Set("FFI_BACKEND".to_string()),
-            success: Set(1),
-            error_message: Set(None),
-            created_at: Set(sync_time),
-            ..Default::default()
-        };
-
-        if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(cycle_metadata)
-            .exec(&local_db)
-            .await
+        // Insert start-of-cycle marker into DATA_SYNC_METADATA using active writer target.
+        if let Err(e) = Self::insert_data_sync_metadata(
+            &writer,
+            "LOGGING_DATA_CYCLE",
+            "ALL",
+            None,
+            0,
+            true,
+            None,
+        )
+        .await
         {
             sync_logger.error(&format!("❌ Failed to insert LOGGING_DATA_CYCLE to DATA_SYNC_METADATA: {}", e));
         }
@@ -1439,27 +1506,16 @@ impl T3000MainService {
                     sync_logger.info("✅ INPUT points completed");
 
                     // Insert DATA_SYNC_METADATA for INPUTS sync
-                    let now = chrono::Utc::now();
-                    let sync_time = now.timestamp();
-                    let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
-
-                    let input_metadata = crate::entity::data_sync_metadata::ActiveModel {
-                        sync_time: Set(sync_time),
-                        sync_time_fmt: Set(sync_time_fmt),
-                        data_type: Set("INPUTS".to_string()),
-                        serial_number: Set(serial_number.to_string()),
-                        panel_id: Set(Some(device_with_points.device_info.panel_id)),
-                        records_synced: Set(device_with_points.input_points.len() as i32),
-                        sync_method: Set("FFI_BACKEND".to_string()),
-                        success: Set(1),
-                        error_message: Set(None),
-                        created_at: Set(sync_time),
-                        ..Default::default()
-                    };
-
-                    if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(input_metadata)
-                        .exec(&local_db)
-                        .await
+                    if let Err(e) = Self::insert_data_sync_metadata(
+                        &writer,
+                        "INPUTS",
+                        &serial_number.to_string(),
+                        Some(device_with_points.device_info.panel_id),
+                        device_with_points.input_points.len() as i32,
+                        true,
+                        None,
+                    )
+                    .await
                     {
                         sync_logger.error(&format!("❌ Failed to insert INPUTS sync metadata: {}", e));
                     }
@@ -1490,27 +1546,16 @@ impl T3000MainService {
                     sync_logger.info("✅ OUTPUT points completed");
 
                     // Insert DATA_SYNC_METADATA for OUTPUTS sync
-                    let now = chrono::Utc::now();
-                    let sync_time = now.timestamp();
-                    let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
-
-                    let output_metadata = crate::entity::data_sync_metadata::ActiveModel {
-                        sync_time: Set(sync_time),
-                        sync_time_fmt: Set(sync_time_fmt),
-                        data_type: Set("OUTPUTS".to_string()),
-                        serial_number: Set(serial_number.to_string()),
-                        panel_id: Set(Some(device_with_points.device_info.panel_id)),
-                        records_synced: Set(device_with_points.output_points.len() as i32),
-                        sync_method: Set("FFI_BACKEND".to_string()),
-                        success: Set(1),
-                        error_message: Set(None),
-                        created_at: Set(sync_time),
-                        ..Default::default()
-                    };
-
-                    if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(output_metadata)
-                        .exec(&local_db)
-                        .await
+                    if let Err(e) = Self::insert_data_sync_metadata(
+                        &writer,
+                        "OUTPUTS",
+                        &serial_number.to_string(),
+                        Some(device_with_points.device_info.panel_id),
+                        device_with_points.output_points.len() as i32,
+                        true,
+                        None,
+                    )
+                    .await
                     {
                         sync_logger.error(&format!("❌ Failed to insert OUTPUTS sync metadata: {}", e));
                     }
@@ -1536,27 +1581,16 @@ impl T3000MainService {
                     sync_logger.info("✅ VARIABLE points completed");
 
                     // Insert DATA_SYNC_METADATA for VARIABLES sync
-                    let now = chrono::Utc::now();
-                    let sync_time = now.timestamp();
-                    let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
-
-                    let variable_metadata = crate::entity::data_sync_metadata::ActiveModel {
-                        sync_time: Set(sync_time),
-                        sync_time_fmt: Set(sync_time_fmt),
-                        data_type: Set("VARIABLES".to_string()),
-                        serial_number: Set(serial_number.to_string()),
-                        panel_id: Set(Some(device_with_points.device_info.panel_id)),
-                        records_synced: Set(device_with_points.variable_points.len() as i32),
-                        sync_method: Set("FFI_BACKEND".to_string()),
-                        success: Set(1),
-                        error_message: Set(None),
-                        created_at: Set(sync_time),
-                        ..Default::default()
-                    };
-
-                    if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(variable_metadata)
-                        .exec(&local_db)
-                        .await
+                    if let Err(e) = Self::insert_data_sync_metadata(
+                        &writer,
+                        "VARIABLES",
+                        &serial_number.to_string(),
+                        Some(device_with_points.device_info.panel_id),
+                        device_with_points.variable_points.len() as i32,
+                        true,
+                        None,
+                    )
+                    .await
                     {
                         sync_logger.error(&format!("❌ Failed to insert VARIABLES sync metadata: {}", e));
                     }

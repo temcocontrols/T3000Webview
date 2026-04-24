@@ -2729,7 +2729,7 @@ async fn save_realtime_trendlog_data(
             Json(json!({
                 "success": false,
                 "error": "Center DB is enabled but not connected",
-                "hint": "Check server database config/connection and restart API service"
+                "hint": "Realtime writes are intentionally blocked in center-db mode until center DB reconnects. Check DB config/connection and restart API service."
             })),
         ));
     }

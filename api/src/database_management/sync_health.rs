@@ -84,6 +84,12 @@ pub struct SyncHealthResponse {
     /// Total devices seen in sync today
     pub devices_synced_today: i64,
 
+    /// Scope of /api/sync/event-log storage.
+    /// Current behavior is local SQLite regardless of center DB mode.
+    pub event_log_scope: String,
+    /// Human-readable note explaining event-log storage behavior.
+    pub event_log_note: String,
+
     /// Whether FFI sampling is currently paused (center DB down)
     pub sampling_paused: bool,
     /// Human-readable reason for the pause, or null when active
@@ -215,11 +221,21 @@ fn time_ago(unix_ts: i64) -> String {
     format!("{} days ago", hours / 24)
 }
 
-async fn get_db_conn(state: &T3AppState) -> Option<sea_orm::DatabaseConnection> {
+async fn get_device_db_conn(state: &T3AppState) -> Option<sea_orm::DatabaseConnection> {
     if let Some(arc) = &state.t3_device_conn {
         return Some(arc.lock().await.clone());
     }
     if let Some(arc) = &state.local_config_conn {
+        return Some(arc.lock().await.clone());
+    }
+    None
+}
+
+async fn get_local_log_db_conn(state: &T3AppState) -> Option<sea_orm::DatabaseConnection> {
+    if let Some(arc) = &state.local_config_conn {
+        return Some(arc.lock().await.clone());
+    }
+    if let Some(arc) = &state.t3_device_conn {
         return Some(arc.lock().await.clone());
     }
     None
@@ -391,11 +407,12 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
     let mut devices_synced_today: i64 = 0;
 
     let metadata_started = Instant::now();
-    if let Some(db) = get_db_conn(&state).await {
+    if let Some(db) = get_device_db_conn(&state).await {
+        let backend = db.get_database_backend();
         // -- Last sync time (most recent LOGGING_DATA_CYCLE or any FFI record)
         let raw_last = db
             .query_one(sea_orm::Statement::from_string(
-                sea_orm::DatabaseBackend::Sqlite,
+                backend,
                 r#"SELECT MAX(sync_time) AS t FROM DATA_SYNC_METADATA
                    WHERE sync_method = 'FFI_BACKEND'"#
                     .to_string(),
@@ -425,7 +442,7 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         // Records today by type
         let today_rows = db
             .query_all(sea_orm::Statement::from_string(
-                sea_orm::DatabaseBackend::Sqlite,
+                backend,
                 format!(
                     r#"SELECT data_type, SUM(records_synced) AS total
                        FROM DATA_SYNC_METADATA
@@ -454,7 +471,7 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         // Distinct devices synced today
         let dev_row = db
             .query_one(sea_orm::Statement::from_string(
-                sea_orm::DatabaseBackend::Sqlite,
+                backend,
                 format!(
                     r#"SELECT COUNT(DISTINCT serial_number) AS cnt
                        FROM DATA_SYNC_METADATA
@@ -518,6 +535,8 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         db_folder_path,
         db_file_path,
         devices_synced_today,
+        event_log_scope: "local".to_string(),
+        event_log_note: "Activity Log entries are stored on this PC (local SQLite), not in center DB.".to_string(),
         sampling_paused: crate::app_state::is_sampling_paused(),
         paused_reason: crate::app_state::get_pause_reason(),
     };
@@ -652,7 +671,7 @@ async fn get_event_log(
     State(state): State<T3AppState>,
     Query(q): Query<EventLogQuery>,
 ) -> Result<Json<serde_json::Value>> {
-    let db = match get_db_conn(&state).await {
+    let db = match get_local_log_db_conn(&state).await {
         Some(d) => d,
         None => {
             return Ok(Json(serde_json::json!({ "entries": [], "total": 0 })));
@@ -740,7 +759,7 @@ async fn post_event(
     State(state): State<T3AppState>,
     Json(body): Json<InsertEventRequest>,
 ) -> Result<Json<serde_json::Value>> {
-    if let Some(db) = get_db_conn(&state).await {
+    if let Some(db) = get_local_log_db_conn(&state).await {
         ensure_app_log_table(&db).await;
         let level = body.level.as_ref().map(|l| l.as_str()).unwrap_or("info");
         let category = body.category.as_deref().unwrap_or("SYNC_CYCLE");
