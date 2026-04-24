@@ -716,7 +716,7 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
             <div className={isCenterDbWarn ? s.warnRow : s.pauseRow}>
               <ErrorCircleRegular style={{ fontSize: '14px', color: isCenterDbWarn ? '#c19c00' : '#8e1c1c' }} />
               {health.centerDbMessage ?? 'Shared DB is not ready.'}
-              {health.fallbackActive ? ' Running on local SQLite fallback.' : ''}
+              {health.fallbackActive ? ' Running on local SQLite.' : ''}
             </div>
           )}
           {health && health.samplingPaused && (

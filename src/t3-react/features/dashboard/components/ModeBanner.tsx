@@ -659,7 +659,7 @@ export const ModeBanner: React.FC<ModeBannerProps> = ({
                 )}>
                   {statusChip.label}
                 </span>
-                {syncHealth?.fallbackActive && <span className={mergeClasses(s.chip, s.chipOrange)}>Local Fallback</span>}
+                {syncHealth?.fallbackActive && <span className={mergeClasses(s.chip, s.chipOrange)}>Local SQLite</span>}
                 {paused && <span className={mergeClasses(s.chip, degradedPause ? s.chipOrange : s.chipRed)}>Sampling Paused</span>}
               </div>
               {syncHealth?.centerDbMessage && !connected && (

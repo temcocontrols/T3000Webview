@@ -106,7 +106,7 @@ export const SystemOverview: React.FC = () => {
     ? 'Source: N/A'
     : (!isSharedDbMode
       ? 'Source: Local SQLite file'
-      : (syncHealth.mssqlPoolActive ? 'Source: MSSQL sys.database_files' : 'Source: Center DB target (fallback)'));
+      : (syncHealth.mssqlPoolActive ? 'Source: MSSQL sys.database_files' : 'Source: Center DB target'));
 
   if (loading) {
     return (

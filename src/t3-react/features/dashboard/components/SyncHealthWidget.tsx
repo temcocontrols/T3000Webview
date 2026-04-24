@@ -153,7 +153,7 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
     : data.dbFolderPath;
   const dbSizeSourceText = !data.centerDbEnabled
     ? 'Source: Local SQLite file'
-    : (data.mssqlPoolActive ? 'Source: MSSQL sys.database_files' : 'Source: Center DB target (fallback)');
+    : (data.mssqlPoolActive ? 'Source: MSSQL sys.database_files' : 'Source: Center DB target');
 
   return (
     <div className={styles.container}>
@@ -181,7 +181,7 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
             <Badge appearance="tint" color="informative" size="small">{backendLabel}</Badge>
           )}
           {data.fallbackActive && (
-            <Badge appearance="tint" color="warning" size="small">Fallback</Badge>
+            <Badge appearance="tint" color="warning" size="small">Local SQLite</Badge>
           )}
           {data.mssqlPoolActive && (
             <Badge appearance="tint" color="informative" size="small">Direct</Badge>
