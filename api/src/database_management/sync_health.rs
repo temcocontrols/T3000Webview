@@ -208,6 +208,113 @@ async fn get_db_conn(state: &T3AppState) -> Option<sea_orm::DatabaseConnection> 
     None
 }
 
+async fn resolve_db_info(
+    state: &T3AppState,
+    server_status: &crate::web_routing::ServerDbStatus,
+) -> (u64, String, String, String) {
+    // Shared DB mode: prefer MSSQL-reported size/path.
+    if server_status.enabled {
+        let host = server_status.host.clone().unwrap_or_else(|| "SQL Server".to_string());
+        let db_name = server_status
+            .database_name
+            .clone()
+            .unwrap_or_else(|| "(unknown-db)".to_string());
+
+        if let Some(pool) = &state.mssql_pool {
+            if let Ok(mut conn) = pool.get().await {
+                // Total allocated DB size in bytes (sum of all files in current DB)
+                let size_bytes = if let Ok(stream) = conn
+                    .query(
+                        "SELECT CAST(SUM(CAST(size AS BIGINT)) * 8192 AS BIGINT) AS total_bytes FROM sys.database_files",
+                        &[],
+                    )
+                    .await
+                {
+                    stream
+                        .into_row()
+                        .await
+                        .ok()
+                        .flatten()
+                        .and_then(|r| r.get::<i64, _>(0))
+                        .unwrap_or(0)
+                        .max(0) as u64
+                } else {
+                    0
+                };
+
+                // Try to get one physical file path for visibility.
+                let physical_path = if let Ok(stream) = conn
+                    .query(
+                        "SELECT TOP 1 physical_name FROM sys.database_files ORDER BY file_id",
+                        &[],
+                    )
+                    .await
+                {
+                    if let Some(row) = stream.into_row().await.ok().flatten() {
+                        row.get::<&str, _>(0).map(|s| s.to_string())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+
+                if let Some(path) = physical_path {
+                    let folder = std::path::Path::new(&path)
+                        .parent()
+                        .map(|p| p.to_string_lossy().to_string())
+                        .unwrap_or_else(|| format!("{} / {}", host, db_name));
+                    return (size_bytes, format_bytes(size_bytes), folder, path);
+                }
+
+                // If no path was returned, fall back to host/db target text.
+                return (
+                    size_bytes,
+                    if size_bytes > 0 {
+                        format_bytes(size_bytes)
+                    } else {
+                        "N/A".to_string()
+                    },
+                    format!("{} / {}", host, db_name),
+                    format!("{} / {}", host, db_name),
+                );
+            }
+        }
+
+        // Shared mode configured but no active pool/lookup failed.
+        return (
+            0,
+            "N/A".to_string(),
+            format!("{} / {}", host, db_name),
+            format!("{} / {}", host, db_name),
+        );
+    }
+
+    // Standalone mode: local SQLite size/path from runtime DB URL.
+    let raw_url = crate::utils::T3_DEVICE_DATABASE_URL.clone();
+    let rel_path = raw_url
+        .strip_prefix("sqlite://")
+        .unwrap_or("Database/webview_t3_device.db")
+        .to_string();
+    let db_path_abs = {
+        let p = std::path::Path::new(&rel_path);
+        if p.is_absolute() {
+            p.to_path_buf()
+        } else {
+            std::env::current_dir().unwrap_or_default().join(p)
+        }
+    };
+
+    let db_size_bytes = std::fs::metadata(&db_path_abs).map(|m| m.len()).unwrap_or(0);
+    let db_size_human = format_bytes(db_size_bytes);
+    let db_folder_path = db_path_abs
+        .parent()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let db_file_path = db_path_abs.to_string_lossy().to_string();
+    (db_size_bytes, db_size_human, db_folder_path, db_file_path)
+}
+
 // ============================================================================
 // GET /api/sync/health
 // ============================================================================
@@ -242,27 +349,8 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         server_status.fallback_active
     };
 
-    // DB file info — derive from the actual webview SQLite URL, not the T3000 app folder
-    let raw_url = crate::utils::T3_DEVICE_DATABASE_URL.clone();
-    let rel_path = raw_url
-        .strip_prefix("sqlite://")
-        .unwrap_or("Database/webview_t3_device.db")
-        .to_string();
-    let db_path_abs = {
-        let p = std::path::Path::new(&rel_path);
-        if p.is_absolute() {
-            p.to_path_buf()
-        } else {
-            std::env::current_dir().unwrap_or_default().join(p)
-        }
-    };
-    let db_size_bytes = std::fs::metadata(&db_path_abs).map(|m| m.len()).unwrap_or(0);
-    let db_size_human = format_bytes(db_size_bytes);
-    let db_folder_path = db_path_abs
-        .parent()
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_default();
-    let db_file_path = db_path_abs.to_string_lossy().to_string();
+    let (db_size_bytes, db_size_human, db_folder_path, db_file_path) =
+        resolve_db_info(&state, &server_status).await;
 
     // Query DATA_SYNC_METADATA for last sync + records today
     let mut last_sync_time: Option<String> = None;

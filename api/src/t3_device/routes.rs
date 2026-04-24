@@ -996,18 +996,26 @@ async fn check_device_status(
 
     let service = TrendlogWebMsgService::new();
 
-    match service.is_device_online(device_id).await {
-        Ok(online) => {
-            let status = if online { "online" } else { "offline" };
+    match service.get_device_online_status(device_id).await {
+        Ok(result) => {
+            let status = if result.online { "online" } else { "offline" };
             Ok(Json(json!({
                 "status": status,
-                "responseTime": if online { Some(100) } else { None::<i32> }
+                "responseTime": null,
+                "onlineTime": result.online_time,
+                "ageSeconds": result.age_seconds,
+                "thresholdSeconds": result.threshold_seconds,
+                "source": "GET_PANELS_LIST"
             })))
         }
         Err(_) => {
             Ok(Json(json!({
                 "status": "offline",
-                "responseTime": None::<i32>
+                "responseTime": null,
+                "onlineTime": null,
+                "ageSeconds": null,
+                "thresholdSeconds": 120,
+                "source": "GET_PANELS_LIST"
             })))
         }
     }

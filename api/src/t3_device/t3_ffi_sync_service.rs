@@ -1051,6 +1051,18 @@ impl T3000MainService {
             e
         })?;
 
+        crate::database_management::sync_health::ensure_app_log_table(&local_db).await;
+        crate::database_management::sync_health::write_app_log(
+            &local_db,
+            "info",
+            "SYNC_CYCLE",
+            Some("ffi_sync"),
+            None,
+            "Starting FFI sync cycle",
+            Some(&format!("sync_interval_secs={}", config.sync_interval_secs)),
+        )
+        .await;
+
         // Decide write target: MSSQL direct (center DB) if pool active, else SQLite/SeaORM
         let writer = super::sync_writer::SyncWriter::from_pool_or_sqlite().await.map_err(|e| {
             sync_logger.error(&format!("❌ Failed to initialize sync writer: {}", e));
@@ -1061,6 +1073,16 @@ impl T3000MainService {
             "✅ Database connections established — write target: {}",
             if writer.is_mssql_direct() { "MSSQL (direct write to center DB)" } else { "SQLite/SeaORM" }
         ));
+        crate::database_management::sync_health::write_app_log(
+            &local_db,
+            "info",
+            "DB_CONFIG",
+            Some("ffi_sync"),
+            None,
+            "Sync writer target selected",
+            Some(if writer.is_mssql_direct() { "target=mssql_direct" } else { "target=sqlite_or_seaorm" }),
+        )
+        .await;
 
         // STEP 1: Decide whether to perform full rediscovery or use cache
         let should_do_rediscovery = Self::should_rediscover().await;
@@ -1080,6 +1102,16 @@ impl T3000MainService {
 
             if panels.is_empty() {
                 sync_logger.warn("⚠️ No devices found in GET_PANELS_LIST - skipping sync cycle");
+                crate::database_management::sync_health::write_app_log(
+                    &local_db,
+                    "warn",
+                    "SYNC_CYCLE",
+                    Some("ffi_sync"),
+                    None,
+                    "No devices found in GET_PANELS_LIST; sync cycle skipped",
+                    None,
+                )
+                .await;
                 return Ok(());
             }
 
@@ -1152,6 +1184,16 @@ impl T3000MainService {
 
                     if panels.is_empty() {
                         sync_logger.warn("⚠️ No devices found - skipping sync cycle");
+                        crate::database_management::sync_health::write_app_log(
+                            &local_db,
+                            "warn",
+                            "SYNC_CYCLE",
+                            Some("ffi_sync"),
+                            None,
+                            "No devices found after forced rediscovery; sync cycle skipped",
+                            None,
+                        )
+                        .await;
                         return Ok(());
                     }
 

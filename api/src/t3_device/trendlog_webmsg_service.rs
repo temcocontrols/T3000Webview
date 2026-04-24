@@ -35,6 +35,16 @@ pub struct TrendlogWebMsgService {
     ffi_service: T3000FfiApiService,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeviceOnlineStatus {
+    pub online: bool,
+    pub online_time: Option<i64>,
+    pub age_seconds: Option<i64>,
+    pub threshold_seconds: i64,
+}
+
+const PANEL_ONLINE_THRESHOLD_SECONDS: i64 = 120;
+
 impl TrendlogWebMsgService {
     pub fn new() -> Self {
         Self {
@@ -78,33 +88,52 @@ impl TrendlogWebMsgService {
         self.get_trendlog_entry(device_id, monitor_index).await
     }
 
-    /// Check if device is online using panel data request
-    pub async fn is_device_online(&self, device_id: i32) -> Result<bool, Error> {
-        // Instead of direct T3000_IsDeviceOnline FFI call, use panel data request
+    /// Check if a device is online via GET_PANELS_LIST (action 4) and online_time freshness.
+    pub async fn get_device_online_status(&self, device_id: i32) -> Result<DeviceOnlineStatus, Error> {
         let message = serde_json::json!({
-            "action": 0,  // GET_PANEL_DATA
-            "panelId": device_id,
+            "action": 4,  // GET_PANELS_LIST
             "msgId": format!("device_status_{}", device_id)
         });
 
-        match self.ffi_service.call_ffi(&message.to_string()).await {
-            Ok(response) => {
-                // Parse JSON response from C++
-                match serde_json::from_str::<serde_json::Value>(&response) {
-                    Ok(json_response) => {
-                        // If there's an "error" field, device is offline or has error
-                        if json_response.get("error").is_some() {
-                            Ok(false)  // Device offline or error
-                        } else {
-                            // Check for "data" field - indicates successful response
-                            Ok(json_response.get("data").is_some())
-                        }
-                    }
-                    Err(_) => Ok(false)  // Invalid JSON means device offline
-                }
-            }
-            Err(_) => Ok(false)  // If call fails, device is offline
-        }
+        let response = self.ffi_service.call_ffi(&message.to_string()).await?;
+        let json_response = serde_json::from_str::<serde_json::Value>(&response)
+            .map_err(|e| Error::ServerError(format!("JSON parse error: {}", e)))?;
+
+        let maybe_panel = json_response
+            .get("data")
+            .and_then(|v| v.as_array())
+            .and_then(|arr| {
+                arr.iter().find(|panel| {
+                    panel
+                        .get("panel_number")
+                        .and_then(|v| v.as_i64())
+                        .map(|n| n as i32 == device_id)
+                        .unwrap_or(false)
+                })
+            });
+
+        let now = chrono::Utc::now().timestamp();
+        let online_time = maybe_panel
+            .and_then(|panel| panel.get("online_time"))
+            .and_then(|v| v.as_i64())
+            .filter(|ts| *ts > 0);
+
+        let age_seconds = online_time.map(|ts| now.saturating_sub(ts));
+        let online = age_seconds
+            .map(|age| age <= PANEL_ONLINE_THRESHOLD_SECONDS)
+            .unwrap_or(false);
+
+        Ok(DeviceOnlineStatus {
+            online,
+            online_time,
+            age_seconds,
+            threshold_seconds: PANEL_ONLINE_THRESHOLD_SECONDS,
+        })
+    }
+
+    /// Convenience helper preserved for old call sites.
+    pub async fn is_device_online(&self, device_id: i32) -> Result<bool, Error> {
+        Ok(self.get_device_online_status(device_id).await?.online)
     }
 
     /// Parse trendlog list from GET_PANEL_DATA response
