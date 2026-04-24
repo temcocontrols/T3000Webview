@@ -3,7 +3,7 @@
  * Shows real sync activity from DATA_SYNC_METADATA via /api/sync-status
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Text, Spinner } from '@fluentui/react-components';
 import { CheckmarkCircleRegular, DismissCircleRegular, InfoRegular } from '@fluentui/react-icons';
 
@@ -40,9 +40,16 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ onSummary }) => 
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
+  const activitiesRef = useRef<Activity[]>([]);
+  const trackedDevices = devices.slice(0, 6);
+  const trackedDeviceKey = trackedDevices.map((device) => `${device.serialNumber}:${device.nameShowOnTree}`).join('|');
+
+  useEffect(() => {
+    activitiesRef.current = activities;
+  }, [activities]);
 
   const fetchActivities = useCallback(async () => {
-    if (devices.length === 0) {
+    if (trackedDevices.length === 0) {
       setActivities([]);
       onSummary?.({ ok: 0, fail: 0, total: 0 });
       setNotice('No devices available for sync activity yet');
@@ -52,7 +59,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ onSummary }) => 
 
     try {
       // One request per device returns all data types, then flatten
-      const requests = devices.slice(0, 6).map(async (dev) => {
+      const requests = trackedDevices.map(async (dev) => {
         try {
           const r = await fetch(`${API_BASE_URL}/api/sync-status/${dev.serialNumber}`);
           if (!r.ok) return { ok: false, items: [] as Activity[] };
@@ -84,10 +91,10 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ onSummary }) => 
         onSummary?.({ ok: valid.filter(a => a.success).length, fail: valid.filter(a => !a.success).length, total: valid.length });
         setNotice(anyFailure ? 'Partial refresh: some devices did not return activity' : null);
       } else {
-        if (activities.length > 0) {
+        if (activitiesRef.current.length > 0) {
           // Keep last known real data; do not replace with mock.
           setNotice('Unable to refresh right now; showing last known activity');
-          onSummary?.({ ok: activities.filter(a => a.success).length, fail: activities.filter(a => !a.success).length, total: activities.length });
+          onSummary?.({ ok: activitiesRef.current.filter(a => a.success).length, fail: activitiesRef.current.filter(a => !a.success).length, total: activitiesRef.current.length });
         } else {
           setActivities([]);
           onSummary?.({ ok: 0, fail: 0, total: 0 });
@@ -95,9 +102,9 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ onSummary }) => 
         }
       }
     } catch {
-      if (activities.length > 0) {
+      if (activitiesRef.current.length > 0) {
         setNotice('Unable to refresh right now; showing last known activity');
-        onSummary?.({ ok: activities.filter(a => a.success).length, fail: activities.filter(a => !a.success).length, total: activities.length });
+        onSummary?.({ ok: activitiesRef.current.filter(a => a.success).length, fail: activitiesRef.current.filter(a => !a.success).length, total: activitiesRef.current.length });
       } else {
         setActivities([]);
         onSummary?.({ ok: 0, fail: 0, total: 0 });
@@ -106,7 +113,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ onSummary }) => 
     } finally {
       setLoading(false);
     }
-  }, [devices, activities, onSummary]);
+  }, [trackedDeviceKey, onSummary]);
 
   useEffect(() => {
     fetchActivities();

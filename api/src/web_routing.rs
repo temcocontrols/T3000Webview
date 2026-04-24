@@ -20,9 +20,12 @@ use axum::{
 };
 use sea_orm::Database;
 use serde::Serialize;
+use std::time::Duration;
 
 use crate::app_state::T3AppState;
 use crate::database_management::db_backend_config::{self, BackendConfig, BackendType};
+
+const CENTER_DB_HEALTH_TIMEOUT: Duration = Duration::from_secs(3);
 
 /// Response for the server DB status endpoint.
 #[derive(Debug, Serialize)]
@@ -83,6 +86,28 @@ async fn probe_mssql_connection(config: tiberius::Config) -> Result<(), String> 
     Ok(())
 }
 
+async fn probe_mssql_connection_with_timeout(config: tiberius::Config) -> Result<(), String> {
+    match tokio::time::timeout(CENTER_DB_HEALTH_TIMEOUT, probe_mssql_connection(config)).await {
+        Ok(result) => result,
+        Err(_) => Err("SQL Server probe timed out".to_string()),
+    }
+}
+
+async fn validate_mssql_schema_with_timeout(config: tiberius::Config) -> Result<(), String> {
+    match tokio::time::timeout(
+        CENTER_DB_HEALTH_TIMEOUT,
+        async move {
+            let pool = crate::database_management::mssql_queries::create_mssql_pool(config, 1).await?;
+            crate::database_management::mssql_queries::validate_t3000_schema(&pool).await
+        },
+    )
+    .await
+    {
+        Ok(result) => result,
+        Err(_) => Err("SQL Server schema validation timed out".to_string()),
+    }
+}
+
 fn user_friendly_unreachable_message(raw: &str) -> String {
     let lower = raw.to_ascii_lowercase();
     if lower.contains("10060") || lower.contains("timed out") {
@@ -128,7 +153,7 @@ async fn resolve_live_center_db_state(
                 }
             };
 
-            if let Err(e) = probe_mssql_connection(master_tib).await {
+            if let Err(e) = probe_mssql_connection_with_timeout(master_tib).await {
                 return (
                     false,
                     "server_unreachable".to_string(),
@@ -149,7 +174,7 @@ async fn resolve_live_center_db_state(
                 }
             };
 
-            if probe_mssql_connection(target_tib).await.is_err() {
+            if probe_mssql_connection_with_timeout(target_tib).await.is_err() {
                 let db_name = config.database_name.clone().unwrap_or_else(|| "(unknown)".to_string());
                 return (
                     false,
@@ -171,21 +196,19 @@ async fn resolve_live_center_db_state(
                 }
             };
 
-            match crate::database_management::mssql_queries::create_mssql_pool(schema_tib, 1).await {
-                Ok(pool) => match crate::database_management::mssql_queries::validate_t3000_schema(&pool).await {
-                    Ok(()) => (
-                        true,
-                        "healthy".to_string(),
-                        Some("Connected to the shared SQL Server database.".to_string()),
-                        false,
-                    ),
-                    Err(_) => (
-                        false,
-                        "schema_missing".to_string(),
-                        Some("SQL Server is reachable and the database exists, but the T3000 schema is not initialized.".to_string()),
-                        true,
-                    ),
-                },
+            match validate_mssql_schema_with_timeout(schema_tib).await {
+                Ok(()) => (
+                    true,
+                    "healthy".to_string(),
+                    Some("Connected to the shared SQL Server database.".to_string()),
+                    false,
+                ),
+                Err(e) if e.contains("not initialized") => (
+                    false,
+                    "schema_missing".to_string(),
+                    Some("SQL Server is reachable and the database exists, but the T3000 schema is not initialized.".to_string()),
+                    true,
+                ),
                 Err(e) => (
                     false,
                     "server_unreachable".to_string(),

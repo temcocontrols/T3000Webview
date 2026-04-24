@@ -365,6 +365,7 @@ export const DashboardPage: React.FC = () => {
   const [syncHealth, setSyncHealth] = useState<SyncHealthData | null>(null);
   const [alarmCount, setAlarmCount] = useState(0);
   const [healthLoading, setHealthLoading] = useState(true);
+  const [healthError, setHealthError] = useState<string | null>(null);
   const [syncLogOpen, setSyncLogOpen] = useState(false);
   const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null);
   const [iniConfig, setIniConfig] = useState<IniConfig | null>(null);
@@ -416,7 +417,12 @@ export const DashboardPage: React.FC = () => {
         getSyncHealth(),
         fetch(`${API_BASE_URL}/api/t3_device/alarms/active`),
       ]);
-      if (health.status === 'fulfilled') setSyncHealth(health.value);
+      if (health.status === 'fulfilled') {
+        setSyncHealth(health.value);
+        setHealthError(null);
+      } else {
+        setHealthError(health.reason instanceof Error ? health.reason.message : 'Failed to load sync health');
+      }
       if (alarmsResp.status === 'fulfilled' && alarmsResp.value.ok) {
         const d = await alarmsResp.value.json();
         setAlarmCount(typeof d?.total === 'number' ? d.total : Array.isArray(d) ? d.length : 0);
@@ -473,7 +479,13 @@ export const DashboardPage: React.FC = () => {
         {/* ── Network Topology (Server + Client modes only) ── */}
         {appMode !== 'standalone' && (
           <div className={mergeClasses(s.section, s.sectionFirst)}>
-            <NetworkTopologyWidget currentTime={currentTime} />
+            <NetworkTopologyWidget
+              currentTime={currentTime}
+              health={syncHealth}
+              healthLoading={healthLoading}
+              healthError={healthError}
+              onRefreshOverview={fetchHealth}
+            />
           </div>
         )}
 
@@ -575,7 +587,13 @@ export const DashboardPage: React.FC = () => {
             <h3 className={s.sectionTitle}>Sync &amp; Database Health</h3>
           </div>
           <div className={s.syncHealthWrapper}>
-            <SyncHealthWidget onViewLog={() => setSyncLogOpen(true)} />
+            <SyncHealthWidget
+              onViewLog={() => setSyncLogOpen(true)}
+              data={syncHealth}
+              loading={healthLoading}
+              error={healthError}
+              onRefresh={fetchHealth}
+            />
           </div>
         </div>
 

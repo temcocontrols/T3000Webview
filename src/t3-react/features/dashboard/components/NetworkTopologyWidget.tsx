@@ -28,7 +28,7 @@ import {
   DatabaseRegular,
   DismissRegular,
 } from '@fluentui/react-icons';
-import { getSyncHealth, SyncHealthData } from '../services/syncHealthApi';
+import { SyncHealthData } from '../services/syncHealthApi';
 import { isCenterDbDegraded, isSamplingDegraded } from '../services/severityRules';
 import {
   getRegistry,
@@ -475,16 +475,18 @@ interface TestResult { ok: boolean; msg: string }
 // ---------------------------------------------------------------------------
 interface Props {
   currentTime: Date;
+  health: SyncHealthData | null;
+  healthLoading: boolean;
+  healthError: string | null;
+  onRefreshOverview: () => Promise<void>;
 }
 
-export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
+export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, healthLoading, healthError, onRefreshOverview }) => {
   const s = useStyles();
   const { devices, deviceStatuses } = useDeviceTreeStore();
 
-  const [health, setHealth] = useState<SyncHealthData | null>(null);
   const [registry, setRegistry] = useState<RegistryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [registryLoading, setRegistryLoading] = useState(true);
 
   // Per-button test state
   const [testingDb, setTestingDb] = useState(false);
@@ -526,32 +528,23 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
     pingTimer.current = setTimeout(() => setPingResult(null), 10_000);
   };
 
-  const load = useCallback(async () => {
-    const [h, reg] = await Promise.allSettled([getSyncHealth(), getRegistry()]);
-
-    if (h.status === 'fulfilled') {
-      setHealth(h.value);
-      setError(null);
-    } else {
-      setHealth(null);
-      setError(h.reason instanceof Error ? h.reason.message : 'Failed to load sync health');
-    }
-
-    if (reg.status === 'fulfilled') {
-      setRegistry(reg.value);
-    } else {
+  const loadRegistry = useCallback(async () => {
+    try {
+      const reg = await getRegistry();
+      setRegistry(reg);
+    } catch {
       setRegistry([]);
+    } finally {
+      setRegistryLoading(false);
     }
-
-    setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadRegistry(); }, [loadRegistry]);
 
   const handleRefreshOverview = async () => {
     setRefreshingOverview(true);
     try {
-      await load();
+      await Promise.all([onRefreshOverview(), loadRegistry()]);
     } finally {
       setRefreshingOverview(false);
     }
@@ -625,6 +618,8 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
 
   const onlineCount = Array.from(deviceStatuses.values()).filter((v) => v === 'online').length;
   const offlineCount = devices.length - onlineCount;
+  const loading = healthLoading || registryLoading;
+  const error = !health ? healthError : null;
 
   // ── Helper: result strip ──
   const ResultStrip = ({ result, onDismiss }: { result: TestResult; onDismiss: () => void }) => (

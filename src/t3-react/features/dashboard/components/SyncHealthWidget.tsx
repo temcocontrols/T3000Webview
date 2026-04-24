@@ -6,7 +6,7 @@
  * Test Connection button, and View Sync Log button.
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   Button,
   Badge,
@@ -26,12 +26,16 @@ import {
   CheckmarkCircleRegular,
   ErrorCircleRegular,
 } from '@fluentui/react-icons';
-import { getSyncHealth, SyncHealthData } from '../services/syncHealthApi';
+import { SyncHealthData } from '../services/syncHealthApi';
 import { testConnection } from '../../database/services/databaseConfigApi';
 import styles from './SyncHealthWidget.module.css';
 
 interface Props {
   onViewLog: () => void;
+  data: SyncHealthData | null;
+  loading: boolean;
+  error: string | null;
+  onRefresh: () => Promise<void>;
 }
 
 function centerDbStatusLabel(status?: string, connected?: boolean) {
@@ -52,36 +56,15 @@ function centerDbStatusLabel(status?: string, connected?: boolean) {
   }
 }
 
-export const SyncHealthWidget: React.FC<Props> = ({ onViewLog }) => {
-  const [data, setData] = useState<SyncHealthData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, error, onRefresh }) => {
   const [testing, setTesting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const d = await getSyncHealth();
-      setData(d);
-      setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load sync health');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-    const interval = setInterval(load, 30_000);
-    return () => clearInterval(interval);
-  }, [load]);
-
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await load();
+      await onRefresh();
     } finally {
       setRefreshing(false);
     }
