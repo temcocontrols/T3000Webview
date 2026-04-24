@@ -102,6 +102,11 @@ export const SystemOverview: React.FC = () => {
   const dbTargetText = isSharedDbMode
     ? `${syncHealth?.centerDbHost ?? '—'}${syncHealth?.centerDbDatabaseName ? ` / ${syncHealth.centerDbDatabaseName}` : ''}`
     : (syncHealth?.dbFolderPath ?? '—');
+  const dbSizeSourceText = !syncHealth
+    ? 'Source: N/A'
+    : (!isSharedDbMode
+      ? 'Source: Local SQLite file'
+      : (syncHealth.mssqlPoolActive ? 'Source: MSSQL sys.database_files' : 'Source: Center DB target (fallback)'));
 
   if (loading) {
     return (
@@ -131,6 +136,11 @@ export const SystemOverview: React.FC = () => {
           <div className={styles.cardDetail}>
             {onlineCount} online • {offlineCount} offline
           </div>
+          {isSharedDbMode && (
+            <div className={styles.debugLine}>
+              src: GET_PANELS_LIST | th: 120s | upd: {lastUpdated ? lastUpdated.toLocaleTimeString() : '—'}
+            </div>
+          )}
         </div>
       </div>
 
@@ -200,6 +210,7 @@ export const SystemOverview: React.FC = () => {
           <div className={`${styles.cardDetail} ${styles.cardDetailMono}`}>
             {dbTargetText}
           </div>
+          <div className={styles.debugLine}>{dbSizeSourceText}</div>
         </div>
       </div>
       </div>

@@ -19,33 +19,35 @@ interface TrendlogRecord {
   panel_id: number;
 }
 
+interface DeviceSummary {
+  serial: number;
+  panel: number;
+  records: number;
+  points: number;
+  lastSampleTs: number;
+}
+
+interface TrendSummary {
+  trackedPoints: number;
+  sampledPoints: number;
+  totalRecords: number;
+  recordsLastHour: number;
+  lastSampleTs: number | null;
+  devices: DeviceSummary[];
+}
+
 export const TrendLogs: React.FC = () => {
   const chartRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // ── MOCK: set to true to preview chart styling ──
-  const USE_MOCK_TRENDLOGS = true;
-
-  const buildMockData = () => {
-    const now = Date.now();
-    const step = 15 * 60 * 1000; // 15-min intervals
-    const count = 96; // 24h
-    const series = [
-      { name: 'AI 1 · SN-1001', color: '#0078d4', fn: (i: number) => 20 + 8 * Math.sin(i / 8) + Math.random() * 1.5 },
-      { name: 'AI 2 · SN-1001', color: '#107c10', fn: (i: number) => 35 + 5 * Math.cos(i / 6) + Math.random() * 1.2 },
-      { name: 'AO 1 · SN-1002', color: '#f7630c', fn: (i: number) => 60 + 15 * Math.sin(i / 12 + 1) + Math.random() * 2 },
-    ];
-    return series.map(({ name, color, fn }) => ({
-      name,
-      type: 'line' as const,
-      data: Array.from({ length: count }, (_, i) => [now - (count - i) * step, parseFloat(fn(i).toFixed(2))]),
-      smooth: true,
-      lineStyle: { width: 2, color },
-      itemStyle: { color },
-      showSymbol: false,
-    }));
-  };
+  const [summary, setSummary] = useState<TrendSummary>({
+    trackedPoints: 0,
+    sampledPoints: 0,
+    totalRecords: 0,
+    recordsLastHour: 0,
+    lastSampleTs: null,
+    devices: [],
+  });
 
   useEffect(() => {
     let chart: echarts.ECharts | null = null;
@@ -59,43 +61,105 @@ export const TrendLogs: React.FC = () => {
         `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
 
       try {
-        let series: echarts.SeriesOption[];
+        const resp = await fetch(`${API_BASE_URL}/api/database/trendlog/query`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ start_date: fmt(start), end_date: fmt(now) }),
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data: TrendlogRecord[] = await resp.json();
+        if (!chartRef.current) return;
 
-        if (USE_MOCK_TRENDLOGS) {
-          series = buildMockData();
-        } else {
-          const resp = await fetch(`${API_BASE_URL}/api/database/trendlog/query`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ start_date: fmt(start), end_date: fmt(now) }),
-          });
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          const data: TrendlogRecord[] = await resp.json();
-          if (!chartRef.current) return;
-          if (data.length === 0) {
-            setError('No trendlog data in the last 24 hours');
-            setLoading(false);
-            return;
-          }
-          const groups = new Map<string, [number, number][]>();
-          for (const rec of data) {
-            const key = `${rec.point_type ?? 'PT'} ${rec.point_id}`;
-            if (!groups.has(key)) groups.set(key, []);
-            groups.get(key)!.push([new Date(rec.logging_time_fmt).getTime(), parseFloat(rec.value)]);
-          }
-          const colors = ['#0078d4', '#107c10', '#f7630c', '#8764b8', '#00b7c3'];
-          series = Array.from(groups.entries())
-            .slice(0, 3)
-            .map(([name, pts], i) => ({
-              name,
-              type: 'line' as const,
-              data: pts.sort((a, b) => a[0] - b[0]),
-              smooth: true,
-              lineStyle: { width: 2, color: colors[i % colors.length] },
-              itemStyle: { color: colors[i % colors.length] },
-              showSymbol: false,
-            }));
+        const parsed = data
+          .map((r) => ({
+            ...r,
+            ts: new Date(r.logging_time_fmt).getTime(),
+            num: Number.parseFloat(r.value),
+          }))
+          .filter((r) => Number.isFinite(r.ts) && Number.isFinite(r.num));
+
+        const nowTs = Date.now();
+        const oneHourAgo = nowTs - 60 * 60 * 1000;
+        const activeWindowAgo = nowTs - 2 * 60 * 60 * 1000;
+
+        const pointMap = new Map<string, { count: number; lastTs: number; serial: number; panel: number; pts: [number, number][]; name: string }>();
+        const deviceMap = new Map<number, { panel: number; records: number; points: Set<string>; lastTs: number }>();
+        let lastSampleTs: number | null = null;
+        let recordsLastHour = 0;
+
+        for (const rec of parsed) {
+          if (rec.ts >= oneHourAgo) recordsLastHour += 1;
+          if (lastSampleTs === null || rec.ts > lastSampleTs) lastSampleTs = rec.ts;
+
+          const pointKey = `${rec.point_type}:${rec.point_id}:${rec.serial_number}`;
+          const pointName = `${rec.point_type ?? 'PT'} ${rec.point_id} | SN-${rec.serial_number}`;
+          const p = pointMap.get(pointKey) ?? {
+            count: 0,
+            lastTs: 0,
+            serial: rec.serial_number,
+            panel: rec.panel_id,
+            pts: [],
+            name: pointName,
+          };
+          p.count += 1;
+          if (rec.ts > p.lastTs) p.lastTs = rec.ts;
+          p.pts.push([rec.ts, rec.num]);
+          pointMap.set(pointKey, p);
+
+          const d = deviceMap.get(rec.serial_number) ?? {
+            panel: rec.panel_id,
+            records: 0,
+            points: new Set<string>(),
+            lastTs: 0,
+          };
+          d.records += 1;
+          d.points.add(pointKey);
+          if (rec.ts > d.lastTs) d.lastTs = rec.ts;
+          deviceMap.set(rec.serial_number, d);
         }
+
+        const trackedPoints = pointMap.size;
+        const sampledPoints = Array.from(pointMap.values()).filter((p) => p.lastTs >= activeWindowAgo).length;
+        const devices = Array.from(deviceMap.entries())
+          .map(([serial, d]) => ({
+            serial,
+            panel: d.panel,
+            records: d.records,
+            points: d.points.size,
+            lastSampleTs: d.lastTs,
+          }))
+          .sort((a, b) => b.records - a.records)
+          .slice(0, 5);
+
+        setSummary({
+          trackedPoints,
+          sampledPoints,
+          totalRecords: parsed.length,
+          recordsLastHour,
+          lastSampleTs,
+          devices,
+        });
+
+        if (parsed.length === 0) {
+          setError('No trendlog data in the last 24 hours');
+          setLoading(false);
+          return;
+        }
+
+        const colors = ['#0078d4', '#107c10', '#f7630c', '#8764b8', '#00b7c3'];
+        const topSeries = Array.from(pointMap.values())
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 3);
+
+        const series: echarts.SeriesOption[] = topSeries.map((s, i) => ({
+          name: s.name,
+          type: 'line' as const,
+          data: s.pts.sort((a, b) => a[0] - b[0]),
+          smooth: true,
+          lineStyle: { width: 2, color: colors[i % colors.length] },
+          itemStyle: { color: colors[i % colors.length] },
+          showSymbol: false,
+        }));
 
         if (!chartRef.current) return;
         chart = echarts.init(chartRef.current);
@@ -135,6 +199,38 @@ export const TrendLogs: React.FC = () => {
 
   return (
     <div className={styles.container}>
+      <div className={styles.summaryGrid}>
+        <div className={styles.summaryItem}>
+          <div className={styles.summaryLabel}>Tracked</div>
+          <div className={styles.summaryValue}>{summary.trackedPoints}</div>
+        </div>
+        <div className={styles.summaryItem}>
+          <div className={styles.summaryLabel}>Sampling Active</div>
+          <div className={styles.summaryValue}>{summary.sampledPoints}</div>
+        </div>
+        <div className={styles.summaryItem}>
+          <div className={styles.summaryLabel}>Records (24h)</div>
+          <div className={styles.summaryValue}>{summary.totalRecords}</div>
+        </div>
+        <div className={styles.summaryItem}>
+          <div className={styles.summaryLabel}>Last Sample</div>
+          <div className={styles.summaryValueSmall}>{summary.lastSampleTs ? new Date(summary.lastSampleTs).toLocaleTimeString() : 'N/A'}</div>
+        </div>
+      </div>
+
+      {summary.devices.length > 0 && (
+        <div className={styles.deviceRows}>
+          {summary.devices.map((d) => (
+            <div key={d.serial} className={styles.deviceRow}>
+              <span className={styles.deviceName}>SN-{d.serial} (P{d.panel})</span>
+              <span className={styles.deviceMeta}>{d.points} pts</span>
+              <span className={styles.deviceMeta}>{d.records} rec</span>
+              <span className={styles.deviceMeta}>{new Date(d.lastSampleTs).toLocaleTimeString()}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {loading && (
         <div className={styles.loading}>
           <Spinner size="tiny" />
@@ -147,7 +243,7 @@ export const TrendLogs: React.FC = () => {
           <span>{error}</span>
         </div>
       )}
-      <div ref={chartRef} style={{ width: '100%', height: '300px' }} className={`${loading || error ? styles.chartHidden : ''}`} />
+      <div ref={chartRef} className={`${styles.chartArea} ${loading || error ? styles.chartHidden : ''}`} />
     </div>
   );
 };

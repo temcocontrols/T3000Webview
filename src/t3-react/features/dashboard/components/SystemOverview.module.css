@@ -95,6 +95,14 @@
   align-items: flex-end;
 }
 
+.debugLine {
+  font-size: 11px;
+  color: #8a8886;
+  align-self: end;
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
 .success {
   color: #107c10;
 }
