@@ -6,11 +6,40 @@
   height: 100%;
 }
 
+.loadingState {
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.infoBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 12px 4px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: #f3f9fd;
+}
+
+.infoBarIcon {
+  font-size: 13px;
+  color: #0f6cbd;
+  flex-shrink: 0;
+}
+
+.infoBarText {
+  font-size: 12px;
+  color: #323130;
+  line-height: 1.25;
+}
+
 .emptyState {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 32px;
+  min-height: 120px;
   text-align: center;
 }
 

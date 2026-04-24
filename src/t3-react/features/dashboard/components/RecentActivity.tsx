@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { Text, Spinner } from '@fluentui/react-components';
-import { CheckmarkCircleRegular, DismissCircleRegular } from '@fluentui/react-icons';
+import { CheckmarkCircleRegular, DismissCircleRegular, InfoRegular } from '@fluentui/react-icons';
 
 export interface ActivitySummary { ok: number; fail: number; total: number; }
 export interface RecentActivityProps { onSummary?: (s: ActivitySummary) => void; }
@@ -35,43 +35,29 @@ interface Activity {
   method: string;
 }
 
-// ── MOCK: set to true to preview activity list styling ──
-const USE_MOCK_ACTIVITY = true;
-
-const MOCK_ACTIVITIES: Activity[] = [
-  { id: 'm1', device: 'Fandu144-BB-Test487', dataType: 'trendlogs',  timestamp: new Date(Date.now() - 2 * 60_000).toISOString(),   recordsSynced: 48,  success: true,  method: 'ffi' },
-  { id: 'm2', device: 'Fandu144-BB-Test487', dataType: 'inputs',     timestamp: new Date(Date.now() - 5 * 60_000).toISOString(),   recordsSynced: 16,  success: true,  method: 'ffi' },
-  { id: 'm3', device: 'OfficeUnit-CC-001',   dataType: 'outputs',    timestamp: new Date(Date.now() - 11 * 60_000).toISOString(),  recordsSynced: 8,   success: true,  method: 'ffi' },
-  { id: 'm4', device: 'LabStation-AA-022',   dataType: 'trendlogs',  timestamp: new Date(Date.now() - 18 * 60_000).toISOString(),  recordsSynced: 0,   success: false, method: 'ffi' },
-  { id: 'm5', device: 'Fandu144-BB-Test487', dataType: 'variables',  timestamp: new Date(Date.now() - 25 * 60_000).toISOString(),  recordsSynced: 32,  success: true,  method: 'ffi' },
-  { id: 'm6', device: 'OfficeUnit-CC-001',   dataType: 'inputs',     timestamp: new Date(Date.now() - 42 * 60_000).toISOString(),  recordsSynced: 16,  success: true,  method: 'ffi' },
-  { id: 'm7', device: 'LabStation-AA-022',   dataType: 'outputs',    timestamp: new Date(Date.now() - 58 * 60_000).toISOString(),  recordsSynced: 12,  success: true,  method: 'ffi' },
-  { id: 'm8', device: 'Fandu144-BB-Test487', dataType: 'trendlogs',  timestamp: new Date(Date.now() - 75 * 60_000).toISOString(),  recordsSynced: 48,  success: true,  method: 'ffi' },
-];
-
 export const RecentActivity: React.FC<RecentActivityProps> = ({ onSummary }) => {
   const { devices } = useDeviceTreeStore();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const fetchActivities = useCallback(async () => {
-    if (USE_MOCK_ACTIVITY) {
-      setActivities(MOCK_ACTIVITIES);
-      onSummary?.({ ok: MOCK_ACTIVITIES.filter(a => a.success).length, fail: MOCK_ACTIVITIES.filter(a => !a.success).length, total: MOCK_ACTIVITIES.length });
+    if (devices.length === 0) {
+      setActivities([]);
+      onSummary?.({ ok: 0, fail: 0, total: 0 });
+      setNotice('No devices available for sync activity yet');
       setLoading(false);
       return;
     }
-
-    if (devices.length === 0) { setLoading(false); return; }
 
     try {
       // One request per device returns all data types, then flatten
       const requests = devices.slice(0, 6).map(async (dev) => {
         try {
           const r = await fetch(`${API_BASE_URL}/api/sync-status/${dev.serialNumber}`);
-          if (!r.ok) return [];
+          if (!r.ok) return { ok: false, items: [] as Activity[] };
           const data: SyncStatus[] = await r.json();
-          return data.map((s) => ({
+          const items = data.map((s) => ({
             id: `${dev.serialNumber}-${s.dataType}`,
             device: dev.nameShowOnTree,
             dataType: s.dataType,
@@ -80,21 +66,47 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ onSummary }) => 
             success: s.success,
             method: s.syncMethod,
           } as Activity));
-        } catch { return []; }
+          return { ok: true, items };
+        } catch {
+          return { ok: false, items: [] as Activity[] };
+        }
       });
 
       const settled = await Promise.all(requests);
+      const anyFailure = settled.some((x) => !x.ok);
       const valid = settled
-        .flat()
+        .flatMap((x) => x.items)
         .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
         .slice(0, 10);
 
-      setActivities(valid);
-      onSummary?.({ ok: valid.filter(a => a.success).length, fail: valid.filter(a => !a.success).length, total: valid.length });
+      if (valid.length > 0) {
+        setActivities(valid);
+        onSummary?.({ ok: valid.filter(a => a.success).length, fail: valid.filter(a => !a.success).length, total: valid.length });
+        setNotice(anyFailure ? 'Partial refresh: some devices did not return activity' : null);
+      } else {
+        if (activities.length > 0) {
+          // Keep last known real data; do not replace with mock.
+          setNotice('Unable to refresh right now; showing last known activity');
+          onSummary?.({ ok: activities.filter(a => a.success).length, fail: activities.filter(a => !a.success).length, total: activities.length });
+        } else {
+          setActivities([]);
+          onSummary?.({ ok: 0, fail: 0, total: 0 });
+          setNotice(anyFailure ? 'Unable to load recent sync activity' : 'No recent sync activity');
+        }
+      }
+    } catch {
+      if (activities.length > 0) {
+        setNotice('Unable to refresh right now; showing last known activity');
+        onSummary?.({ ok: activities.filter(a => a.success).length, fail: activities.filter(a => !a.success).length, total: activities.length });
+      } else {
+        setActivities([]);
+        onSummary?.({ ok: 0, fail: 0, total: 0 });
+        setNotice('Unable to load recent sync activity');
+      }
     } finally {
       setLoading(false);
     }
-  }, [devices]);
+  }, [devices, activities, onSummary]);
 
   useEffect(() => {
     fetchActivities();
@@ -104,7 +116,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ onSummary }) => 
 
   if (loading) {
     return (
-      <div className={styles.container} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div className={`${styles.container} ${styles.loadingState}`}>
         <Spinner size="small" />
       </div>
     );
@@ -112,9 +124,15 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ onSummary }) => 
 
   return (
     <div className={styles.container}>
+      {notice && (
+        <div className={styles.infoBar}>
+          <InfoRegular className={styles.infoBarIcon} />
+          <Text className={styles.infoBarText}>{notice}</Text>
+        </div>
+      )}
       {activities.length === 0 ? (
         <div className={styles.emptyState}>
-          <Text className={styles.emptyText}>No recent sync activity</Text>
+          {!notice && <Text className={styles.emptyText}>No recent sync activity</Text>}
         </div>
       ) : (
         <>
@@ -134,9 +152,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ onSummary }) => 
                   : 'Sync failed'}
               </div>
               <div className={styles.activityTimestamp}>
-                {USE_MOCK_ACTIVITY
-                  ? (() => { const diff = Math.floor((Date.now() - new Date(activity.timestamp).getTime()) / 60_000); return diff < 1 ? 'just now' : `${diff} min ago`; })()
-                  : activity.timestamp}
+                {activity.timestamp}
               </div>
             </div>
           ))}

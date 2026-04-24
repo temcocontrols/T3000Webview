@@ -781,7 +781,7 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime }) => {
                   disabled={refreshingClients}
                   title="Refresh client list"
                 >
-                  Clients
+                  Connected PCs
                 </Button>
               </div>
             </div>
