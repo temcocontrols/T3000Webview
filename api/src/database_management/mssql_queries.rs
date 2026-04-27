@@ -268,7 +268,7 @@ pub async fn upsert_point(
     label: Option<&str>,
 ) -> Result<(), String> {
     // Validate table_name to prevent SQL injection (whitelist approach)
-    let (table, id_col) = validate_point_table(table_name, id_column)?;
+    let (table, id_col, index_col) = validate_point_table(table_name, id_column)?;
 
     let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
 
@@ -277,11 +277,11 @@ pub async fn upsert_point(
          USING (SELECT @P1 AS SerialNumber, @P2 AS [{id_col}]) AS source \
          ON target.SerialNumber = source.SerialNumber AND target.[{id_col}] = source.[{id_col}] \
          WHEN MATCHED THEN UPDATE SET \
-           Input_Index = @P3, Panel = @P4, Full_Label = @P5, Auto_Manual = @P6, \
+           [{index_col}] = @P3, Panel = @P4, Full_Label = @P5, Auto_Manual = @P6, \
            fValue = @P7, Units = @P8, Range_Field = @P9, Status = @P10, \
            Digital_Analog = @P11, Label = @P12 \
          WHEN NOT MATCHED THEN INSERT \
-           (SerialNumber, [{id_col}], Input_Index, Panel, Full_Label, Auto_Manual, \
+           (SerialNumber, [{id_col}], [{index_col}], Panel, Full_Label, Auto_Manual, \
             fValue, Units, Range_Field, Status, Digital_Analog, Label) \
          VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9, @P10, @P11, @P12);"
     );
@@ -310,11 +310,11 @@ pub async fn upsert_point(
 }
 
 /// Whitelist valid point table/column names to prevent injection.
-fn validate_point_table<'a>(table: &'a str, id_col: &'a str) -> Result<(&'a str, &'a str), String> {
+fn validate_point_table<'a>(table: &'a str, id_col: &'a str) -> Result<(&'a str, &'a str, &'a str), String> {
     match (table, id_col) {
-        ("INPUTS", "InputId") => Ok(("INPUTS", "InputId")),
-        ("OUTPUTS", "OutputId") => Ok(("OUTPUTS", "OutputId")),
-        ("VARIABLES", "VariableId") => Ok(("VARIABLES", "VariableId")),
+        ("INPUTS", "InputId") => Ok(("INPUTS", "InputId", "Input_Index")),
+        ("OUTPUTS", "OutputId") => Ok(("OUTPUTS", "OutputId", "Output_Index")),
+        ("VARIABLES", "VariableId") => Ok(("VARIABLES", "VariableId", "Variable_Index")),
         _ => Err(format!("Invalid point table/column: {}/{}", table, id_col)),
     }
 }
@@ -594,6 +594,45 @@ pub async fn upsert_trendlog_input(
     )
     .await
     .map_err(|e| format!("TRENDLOG_INPUTS MERGE failed: {}", e))?;
+
+    Ok(())
+}
+
+// ============================================================================
+// TRENDLOG_DATA_SYNC_METADATA — insert sync record (MSSQL mirror of local SQLite table)
+// ============================================================================
+
+pub async fn insert_trendlog_sync_metadata(
+    pool: &MssqlPool,
+    sync_time_fmt: &str,
+    message_type: &str,
+    panel_id: Option<i32>,
+    serial_number: Option<i32>,
+    records_inserted: i32,
+    sync_interval: i32,
+    success: i32,
+    error_message: Option<&str>,
+) -> Result<(), String> {
+    let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
+
+    conn.execute(
+        "INSERT INTO TRENDLOG_DATA_SYNC_METADATA \
+           (SyncTime_Fmt, MessageType, PanelId, SerialNumber, RecordsInserted, \
+            SyncInterval, Success, ErrorMessage) \
+         VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8)",
+        &[
+            &sync_time_fmt,      // @P1
+            &message_type,       // @P2
+            &panel_id,           // @P3
+            &serial_number,      // @P4
+            &records_inserted,   // @P5
+            &sync_interval,      // @P6
+            &success,            // @P7
+            &error_message,      // @P8
+        ],
+    )
+    .await
+    .map_err(|e| format!("TRENDLOG_DATA_SYNC_METADATA INSERT failed: {}", e))?;
 
     Ok(())
 }
