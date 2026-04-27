@@ -28,7 +28,7 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
 };
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
 use winapi::shared::minwindef::HINSTANCE;
@@ -76,9 +76,30 @@ pub static mut BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN: Option<BacnetWebViewHandleWe
 static mut GET_DEVICE_BASIC_SETTINGS_FN: Option<GetDeviceBasicSettingsFn> = None;
 static mut GET_DEVICE_NETWORK_CONFIG_FN: Option<GetDeviceNetworkConfigFn> = None;
 static mut T3000_LOADED: bool = false;
+static FFI_STARTUP_AT: OnceCell<Instant> = OnceCell::new();
+const FFI_MIN_STARTUP_DELAY_SECS: u64 = 30;
 
 // Load the BacnetWebView_HandleWebViewMsg function from the current executable (T3000.exe)
 pub unsafe fn load_t3000_function() -> bool {
+    // Global startup guard for all FFI callers (not only sync service).
+    // Runtime logs showed Action 4 (GET_PANELS_LIST) can be called before the sync service delay,
+    // which can still hit C++ vector bounds assertions during T3000 startup.
+    let startup_at = FFI_STARTUP_AT.get_or_init(Instant::now);
+    let elapsed = startup_at.elapsed();
+    if elapsed < Duration::from_secs(FFI_MIN_STARTUP_DELAY_SECS) {
+        let wait = Duration::from_secs(FFI_MIN_STARTUP_DELAY_SECS) - elapsed;
+
+        use crate::logger::ServiceLogger;
+        let mut init_logger = ServiceLogger::initialize()
+            .unwrap_or_else(|_| ServiceLogger::new("fallback_init").unwrap());
+        init_logger.warn(&format!(
+            "⏳ FFI startup guard active: waiting {} ms before first C++ call",
+            wait.as_millis()
+        ));
+
+        std::thread::sleep(wait);
+    }
+
     if T3000_LOADED {
         return BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN.is_some();
     }
