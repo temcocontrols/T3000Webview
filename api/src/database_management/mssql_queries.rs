@@ -640,6 +640,129 @@ pub async fn insert_sync_metadata(
 }
 
 // ============================================================================
+// T3_APP_LOG — insert one row / query rows
+// ============================================================================
+
+/// Insert one row into MSSQL T3_APP_LOG.
+/// Called fire-and-forget from `write_app_log` when the MSSQL pool is active.
+pub async fn insert_app_log(
+    pool: &MssqlPool,
+    ts_unix: i64,
+    ts_fmt: &str,
+    level: &str,
+    category: &str,
+    source: Option<&str>,
+    hostname: &str,
+    device_serial: Option<&str>,
+    message: &str,
+    details: Option<&str>,
+) -> Result<(), String> {
+    let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
+
+    conn.execute(
+        "INSERT INTO T3_APP_LOG \
+           (ts_unix, ts_fmt, level, category, source, hostname, device_serial, message, details) \
+         VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9)",
+        &[
+            &ts_unix,       // @P1
+            &ts_fmt,        // @P2
+            &level,         // @P3
+            &category,      // @P4
+            &source,        // @P5
+            &hostname,      // @P6
+            &device_serial, // @P7
+            &message,       // @P8
+            &details,       // @P9
+        ],
+    )
+    .await
+    .map_err(|e| format!("T3_APP_LOG INSERT failed: {}", e))?;
+
+    Ok(())
+}
+
+/// Fetch at most `fetch_count` recent rows from MSSQL T3_APP_LOG,
+/// optionally filtered by level and/or category.
+/// Returns rows as `serde_json::Value` objects so `sync_health` can merge
+/// them with SQLite rows without coupling the query types.
+pub async fn query_app_log(
+    pool: &MssqlPool,
+    level_filter: Option<&str>,
+    category_filter: Option<&str>,
+    fetch_count: u32,
+) -> Result<Vec<serde_json::Value>, String> {
+    let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
+
+    let mut where_parts: Vec<String> = Vec::new();
+    if let Some(lvl) = level_filter {
+        where_parts.push(format!("level = '{}'", lvl.replace('\'', "''")));
+    }
+    if let Some(cat) = category_filter {
+        where_parts.push(format!("category = '{}'", cat.replace('\'', "''")));
+    }
+    let where_sql = if where_parts.is_empty() {
+        String::new()
+    } else {
+        format!(" WHERE {}", where_parts.join(" AND "))
+    };
+
+    // Guard with IF OBJECT_ID so that if T3_APP_LOG hasn't been created yet in
+    // this MSSQL instance, SQL Server returns an empty result set instead of an
+    // "Invalid object name" error that can cause tiberius to panic in 0.12.x.
+    let sql = format!(
+        "IF OBJECT_ID('T3_APP_LOG', 'U') IS NOT NULL \
+         SELECT TOP {} id, ts_unix, ts_fmt, level, category, source, \
+                hostname, device_serial, message, details \
+         FROM T3_APP_LOG{} ORDER BY ts_unix DESC",
+        fetch_count, where_sql
+    );
+
+    let result = conn
+        .query(&sql, &[])
+        .await
+        .map_err(|e| format!("T3_APP_LOG SELECT failed: {}", e))?;
+
+    let result_sets = result
+        .into_results()
+        .await
+        .map_err(|e| format!("T3_APP_LOG row fetch failed: {}", e))?;
+
+    let mut rows = Vec::new();
+    for result_set in result_sets {
+        for row in result_set {
+            let id: i64 = row.get::<i32, _>(0).unwrap_or(0) as i64; // INT in MSSQL, cast to i64
+            let ts_unix: i64 = row.get::<i64, _>(1).unwrap_or(0);
+            let ts_fmt = clean_cpp_string(row.get::<&str, _>(2)).unwrap_or_default();
+            let level = clean_cpp_string(row.get::<&str, _>(3))
+                .unwrap_or_else(|| "info".to_string());
+            let category = clean_cpp_string(row.get::<&str, _>(4))
+                .unwrap_or_else(|| "SERVER_EVENT".to_string());
+            let source: Option<String> = clean_cpp_string(row.get::<&str, _>(5));
+            let hostname: Option<String> = clean_cpp_string(row.get::<&str, _>(6));
+            let device_serial: Option<String> = clean_cpp_string(row.get::<&str, _>(7));
+            let message = clean_cpp_string(row.get::<&str, _>(8)).unwrap_or_default();
+            let details: Option<String> = clean_cpp_string(row.get::<&str, _>(9));
+
+            rows.push(serde_json::json!({
+                "id":            id,
+                "ts_unix":       ts_unix,
+                "ts_fmt":        ts_fmt,
+                "level":         level,
+                "category":      category,
+                "source":        source,
+                "hostname":      hostname,
+                "role":          serde_json::Value::Null,
+                "device_serial": device_serial,
+                "message":       message,
+                "details":       details,
+            }));
+        }
+    }
+
+    Ok(rows)
+}
+
+// ============================================================================
 // Schema Init — execute the embedded MSSQL SQL script
 // ============================================================================
 

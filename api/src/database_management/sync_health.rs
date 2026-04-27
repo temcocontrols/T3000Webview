@@ -603,7 +603,24 @@ pub async fn ensure_event_log_table(db: &sea_orm::DatabaseConnection) {
     ensure_app_log_table(db).await;
 }
 
-/// Write one entry to T3_APP_LOG. Best-effort — errors are swallowed.
+/// Returns `true` for categories that are written at high frequency by the
+/// FFI backend sync loop (one row per cycle / per device).  These should go
+/// to MSSQL when the pool is active so they don't bloat local SQLite.
+/// Low-volume system/config categories always stay in local SQLite.
+fn is_high_volume_category(cat: &str) -> bool {
+    matches!(cat, "SYNC_CYCLE" | "SAMPLING" | "FFI_POLL" | "DEVICE_SYNC" | "TREND_LOG")
+}
+
+/// Write one entry to T3_APP_LOG.
+///
+/// Routing:
+///   • High-volume sync categories (SYNC_CYCLE, SAMPLING, …)
+///       – MSSQL pool active → write to MSSQL only (fire-and-forget).
+///       – MSSQL pool down   → fallback to local SQLite so the Activity Log
+///                             still shows "MSSQL unavailable" context.
+///   • All other categories → local SQLite always.
+///
+/// Best-effort — errors are swallowed to never affect the calling operation.
 pub async fn write_app_log(
     db: &sea_orm::DatabaseConnection,
     level: &str,
@@ -620,6 +637,61 @@ pub async fn write_app_log(
     let hostname_val = hostname::get()
         .map(|h| h.to_string_lossy().into_owned())
         .unwrap_or_else(|_| "unknown".into());
+
+    // High-volume sync categories: route to MSSQL when pool is active.
+    if is_high_volume_category(category) {
+        if let Some(pool) = crate::server_db_writer::get_server_mssql_pool() {
+            // Fire-and-forget: clone what we need across the spawn boundary.
+            let ts_unix_c = ts_unix;
+            let ts_fmt_c = ts_fmt.clone();
+            let level_c = level.to_string();
+            let category_c = category.to_string();
+            let source_c = source.map(|s| s.to_string());
+            let hostname_c = hostname_val.clone();
+            let device_serial_c = device_serial.map(|s| s.to_string());
+            let message_c = message.to_string();
+            let details_c = details.map(|s| s.to_string());
+
+            tokio::spawn(async move {
+                let _ = crate::database_management::mssql_queries::insert_app_log(
+                    pool,
+                    ts_unix_c,
+                    &ts_fmt_c,
+                    &level_c,
+                    &category_c,
+                    source_c.as_deref(),
+                    &hostname_c,
+                    device_serial_c.as_deref(),
+                    &message_c,
+                    details_c.as_deref(),
+                )
+                .await;
+            });
+
+            // Skip local SQLite write — MSSQL is the primary for high-volume logs.
+            return;
+        }
+        // MSSQL pool unavailable → fall through to local SQLite so the
+        // Activity Log still shows what was attempted and why it landed locally.
+    }
+
+    // ── Local SQLite write (system/config logs always; sync logs as fallback) ──
+
+    // When this is a sync-category log but MSSQL was unreachable, annotate the
+    // details field so the Activity Log clearly shows what failed and where it
+    // was saved, e.g.:
+    //   "Starting FFI sync cycle" → details: "[center DB unreachable — saved to local] sync_interval_secs=300"
+    let fallback_detail_storage: String;
+    let effective_details: Option<&str> = if is_high_volume_category(category) {
+        // We only reach here when the MSSQL pool was NOT available.
+        fallback_detail_storage = match details {
+            Some(d) => format!("[center DB unreachable — saved to local] {}", d),
+            None    => "[center DB unreachable — saved to local]".to_string(),
+        };
+        Some(fallback_detail_storage.as_str())
+    } else {
+        details
+    };
 
     let esc = |s: &str| s.replace('\'', "''");
     let opt_str = |v: Option<&str>| match v {
@@ -639,7 +711,7 @@ pub async fn write_app_log(
         esc(&hostname_val),
         opt_str(device_serial),
         esc(message),
-        opt_str(details),
+        opt_str(effective_details),
     );
 
     let _ = db
@@ -649,7 +721,7 @@ pub async fn write_app_log(
         ))
         .await;
 
-    // Keep only the latest 5000 rows
+    // Keep only the latest 5000 rows in local SQLite.
     let _ = db
         .execute(sea_orm::Statement::from_string(
             sea_orm::DatabaseBackend::Sqlite,
@@ -674,10 +746,137 @@ pub async fn write_sync_event(
 // GET /api/sync/event-log
 // ============================================================================
 
+/// Convert a serde_json::Value row (from MSSQL or SQLite raw query) into AppLogEntry.
+fn json_to_log_entry(v: &serde_json::Value) -> AppLogEntry {
+    AppLogEntry {
+        id:            v["id"].as_i64().unwrap_or(0),
+        ts_unix:       v["ts_unix"].as_i64().unwrap_or(0),
+        ts:            v["ts_fmt"].as_str().unwrap_or("").to_string(),
+        level:         EventLevel::from_str(v["level"].as_str().unwrap_or("info")),
+        category:      v["category"].as_str().unwrap_or("SERVER_EVENT").to_string(),
+        source:        v["source"].as_str().map(|s| s.to_string()),
+        hostname:      v["hostname"].as_str().map(|s| s.to_string()),
+        role:          v["role"].as_str().map(|s| s.to_string()),
+        device_serial: v["device_serial"].as_str().map(|s| s.to_string()),
+        message:       v["message"].as_str().unwrap_or("").to_string(),
+        details:       v["details"].as_str().map(|s| s.to_string()),
+    }
+}
+
+/// Read rows from local SQLite T3_APP_LOG as serde_json::Value, suitable for merging.
+/// Fetches at most `fetch_count` rows, most-recent-first.
+async fn query_sqlite_log_raw(
+    db: &sea_orm::DatabaseConnection,
+    level_filter: Option<&str>,
+    cat_filter: Option<&str>,
+    fetch_count: u32,
+) -> Vec<serde_json::Value> {
+    let level_sql = match level_filter {
+        Some("error") => " AND level = 'error'",
+        Some("warn")  => " AND level = 'warn'",
+        Some("info")  => " AND level = 'info'",
+        _ => "",
+    };
+    let cat_sql = match cat_filter {
+        Some(c) if !c.is_empty() => format!(" AND category = '{}'", c.replace('\'', "''")),
+        _ => String::new(),
+    };
+    let sql = format!(
+        "SELECT id, ts_unix, ts_fmt, level, category, source, hostname, role, \
+                device_serial, message, details \
+         FROM T3_APP_LOG WHERE 1=1{}{} \
+         ORDER BY ts_unix DESC LIMIT {}",
+        level_sql, cat_sql, fetch_count
+    );
+
+    let rows = db
+        .query_all(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            sql,
+        ))
+        .await
+        .unwrap_or_default();
+
+    rows.into_iter()
+        .map(|r| {
+            serde_json::json!({
+                "id":            r.try_get::<i64>("", "id").unwrap_or(0),
+                "ts_unix":       r.try_get::<i64>("", "ts_unix").unwrap_or(0),
+                "ts_fmt":        r.try_get::<String>("", "ts_fmt").unwrap_or_default(),
+                "level":         r.try_get::<String>("", "level").unwrap_or_else(|_| "info".into()),
+                "category":      r.try_get::<String>("", "category").unwrap_or_else(|_| "SERVER_EVENT".into()),
+                "source":        r.try_get::<Option<String>>("", "source").ok().flatten(),
+                "hostname":      r.try_get::<Option<String>>("", "hostname").ok().flatten(),
+                "role":          r.try_get::<Option<String>>("", "role").ok().flatten(),
+                "device_serial": r.try_get::<Option<String>>("", "device_serial").ok().flatten(),
+                "message":       r.try_get::<String>("", "message").unwrap_or_default(),
+                "details":       r.try_get::<Option<String>>("", "details").ok().flatten(),
+            })
+        })
+        .collect()
+}
+
 async fn get_event_log(
     State(state): State<T3AppState>,
     Query(q): Query<EventLogQuery>,
 ) -> Result<Json<serde_json::Value>> {
+    let limit = q.limit.min(200) as usize;
+    let offset = (q.page as usize).saturating_mul(limit);
+    // Fetch enough rows from each source to satisfy the requested page.
+    let fetch_count = (offset + limit) as u32;
+
+    let level_filter = q.level.as_deref().filter(|s| !s.is_empty());
+    let cat_filter   = q.category.as_deref().filter(|s| !s.is_empty());
+
+    // ── When MSSQL pool is active: merge rows from both stores ────────────────
+    // High-volume sync logs (SYNC_CYCLE, SAMPLING, …) live in MSSQL.
+    // System/config logs (DB_CONFIG, SERVER_EVENT, …) live in local SQLite.
+    // The two sets are disjoint, so no deduplication is needed.
+    if let Some(pool) = crate::server_db_writer::get_server_mssql_pool() {
+        // Fetch from MSSQL
+        let mssql_rows = crate::database_management::mssql_queries::query_app_log(
+            pool,
+            level_filter,
+            cat_filter,
+            fetch_count,
+        )
+        .await
+        .unwrap_or_default();
+
+        // Fetch from local SQLite
+        let sqlite_rows = if let Some(db) = get_local_log_db_conn(&state).await {
+            ensure_app_log_table(&db).await;
+            query_sqlite_log_raw(&db, level_filter, cat_filter, fetch_count).await
+        } else {
+            Vec::new()
+        };
+
+        // Merge and sort descending by ts_unix
+        let mut all_rows: Vec<(i64, serde_json::Value)> = mssql_rows
+            .into_iter()
+            .chain(sqlite_rows.into_iter())
+            .map(|v| (v["ts_unix"].as_i64().unwrap_or(0), v))
+            .collect();
+        all_rows.sort_unstable_by(|a, b| b.0.cmp(&a.0));
+
+        let total = all_rows.len() as i64;
+
+        let entries: Vec<AppLogEntry> = all_rows
+            .into_iter()
+            .skip(offset)
+            .take(limit)
+            .map(|(_, v)| json_to_log_entry(&v))
+            .collect();
+
+        return Ok(Json(serde_json::json!({
+            "entries": entries,
+            "total":   total,
+            "page":    q.page,
+            "limit":   limit,
+        })));
+    }
+
+    // ── Local SQLite only (MSSQL not active) ─────────────────────────────────
     let db = match get_local_log_db_conn(&state).await {
         Some(d) => d,
         None => {
@@ -687,17 +886,13 @@ async fn get_event_log(
 
     ensure_app_log_table(&db).await;
 
-    let limit = q.limit.min(200);
-    let offset = q.page.saturating_mul(limit);
-
-    let level_filter = match q.level.as_deref() {
+    let level_sql = match level_filter {
         Some("error") => " AND level = 'error'",
         Some("warn")  => " AND level = 'warn'",
         Some("info")  => " AND level = 'info'",
         _ => "",
     };
-
-    let cat_filter = match q.category.as_deref() {
+    let cat_sql = match cat_filter {
         Some(c) if !c.is_empty() => format!(" AND category = '{}'", c.replace('\'', "''")),
         _ => String::new(),
     };
@@ -706,12 +901,12 @@ async fn get_event_log(
         "SELECT id, ts_unix, ts_fmt, level, category, source, hostname, role, device_serial, message, details \
          FROM T3_APP_LOG WHERE 1=1{}{} \
          ORDER BY ts_unix DESC LIMIT {} OFFSET {}",
-        level_filter, cat_filter, limit, offset
+        level_sql, cat_sql, limit, offset
     );
 
     let count_sql = format!(
         "SELECT COUNT(*) AS cnt FROM T3_APP_LOG WHERE 1=1{}{}",
-        level_filter, cat_filter
+        level_sql, cat_sql
     );
 
     let rows = db
