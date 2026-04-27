@@ -980,12 +980,67 @@ async fn post_event(
 }
 
 // ============================================================================
+// GET /api/sync/health/ping — quick roundtrip through the active pool
+// ============================================================================
+
+async fn ping_center_db() -> impl axum::response::IntoResponse {
+    use axum::http::StatusCode;
+
+    let pool = match crate::server_db_writer::get_server_mssql_pool() {
+        Some(p) => p,
+        None => {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                axum::Json(serde_json::json!({
+                    "ok": false,
+                    "error": "MSSQL pool not active"
+                })),
+            );
+        }
+    };
+
+    let t0 = std::time::Instant::now();
+    let result = (|| async {
+        let mut conn = pool.get().await.map_err(|e| e.to_string())?;
+        conn.simple_query("SELECT 1 AS alive")
+            .await
+            .map_err(|e| e.to_string())?
+            .into_row()
+            .await
+            .map_err(|e| e.to_string())?;
+        Ok::<(), String>(())
+    })()
+    .await;
+
+    let latency_ms = t0.elapsed().as_millis() as u64;
+
+    match result {
+        Ok(_) => (
+            StatusCode::OK,
+            axum::Json(serde_json::json!({
+                "ok": true,
+                "latency_ms": latency_ms
+            })),
+        ),
+        Err(e) => (
+            StatusCode::OK,
+            axum::Json(serde_json::json!({
+                "ok": false,
+                "error": e,
+                "latency_ms": latency_ms
+            })),
+        ),
+    }
+}
+
+// ============================================================================
 // Router
 // ============================================================================
 
 pub fn sync_health_routes() -> Router<T3AppState> {
     Router::new()
         .route("/api/sync/health", get(get_sync_health))
+        .route("/api/sync/health/ping", get(ping_center_db))
         .route("/api/sync/event-log", get(get_event_log))
         .route("/api/sync/event-log", post(post_event))
 }

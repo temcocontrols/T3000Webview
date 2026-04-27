@@ -27,7 +27,7 @@ import {
   ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { SyncHealthData } from '../services/syncHealthApi';
-import { testConnection } from '../../database/services/databaseConfigApi';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './SyncHealthWidget.module.css';
 
 interface Props {
@@ -76,25 +76,13 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
     setTesting(true);
     setTestResult(null);
     try {
-      const backend = data.backendType as any;
-      const needsHostAndDb = backend === 'mssql' || backend === 'postgres' || backend === 'mysql';
-      if (needsHostAndDb && (!data.centerDbHost || !data.centerDbDatabaseName)) {
-        setTestResult({
-          ok: false,
-          msg: `Database config is incomplete (${backend.toUpperCase()}). Please set host and database name in Database Configuration.`,
-        });
-        return;
-      }
-
-      // Reuse the existing testConnection API using current center DB host/db from sync health
-      const result = await testConnection({
-        backend_type: backend,
-        host: data.centerDbHost ?? undefined,
-        database_name: data.centerDbDatabaseName ?? undefined,
-      });
+      // Ping through the existing active pool — avoids sending credentials from the frontend
+      // and gives an accurate latency reading from a live connection.
+      const res = await fetch(`${API_BASE_URL}/api/sync/health/ping`);
+      const result = await res.json();
       setTestResult({
-        ok: result.success,
-        msg: result.success
+        ok: result.ok,
+        msg: result.ok
           ? `Connected (${result.latency_ms ?? '?'}ms)`
           : (result.error ?? 'Connection failed'),
       });
