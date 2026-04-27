@@ -208,14 +208,48 @@ Scroll down on the Dashboard to see:
 
 ## Troubleshooting
 
+If you run into issues, first check that SQL Server Express is correctly installed and configured — most connection problems start there. See the **[SQL Server Express Setup guide](./sql-server-express-setup.md)** for the full installation and configuration walkthrough, including how to:
+
+- Enable TCP/IP in SQL Server Configuration Manager
+- Set a static port (1433 or 1432)
+- Create a SQL login with the right permissions
+- Open the correct port in Windows Firewall
+- Start the SQL Server Browser service
+
 | Symptom | Likely Cause | Fix |
 |---|---|---|
-| Connection timeout | SQL Server service stopped or unreachable | Start SQL Server service; check network and firewall |
-| Login failed | Wrong username or password | Verify SQL login credentials; ensure SQL auth is enabled |
-| Cannot connect remotely | Windows Firewall blocking port | Allow TCP 1432 or 1433 inbound in Windows Firewall |
-| Database does not exist | First-time setup | Run **Init Schema** after Test Connection succeeds |
-| Schema init error | Insufficient permissions | Ensure the SQL login has `CREATE DATABASE` / `CREATE TABLE` rights |
-| Scan LAN finds no instances | SQL Browser service not running | Start **SQL Server Browser** service on the target machine |
-| Instance shows "TCP port check only" | SQL Browser not running | Enter instance name manually, or start SQL Server Browser |
-| Dashboard still shows Standalone after save | T3000 not restarted | Close and reopen T3000 |
+| Connection timeout | SQL Server service stopped or unreachable | Start the SQL Server service; verify network connectivity and firewall rules |
+| Login failed | Wrong username or password | Check SQL login credentials; confirm **SQL Server Authentication** is enabled (not Windows-only) |
+| Cannot connect remotely | Windows Firewall blocking the port | Allow TCP 1432 or 1433 inbound — see [SQL Server Express Setup](./sql-server-express-setup.md) |
+| Database does not exist | First-time setup, database not yet created | Run **Init Schema** after Test Connection shows "authentication OK" |
+| Schema init error | Insufficient permissions on the SQL login | Ensure the SQL login has `CREATE DATABASE` and `CREATE TABLE` rights |
+| Scan LAN finds no instances | SQL Server Browser service not running | Start the **SQL Server Browser** service on the target machine |
+| Instance shows "TCP port check only" | SQL Browser not running, instance name unknown | Start SQL Server Browser, or enter the instance name manually in the connection fields |
+| Dashboard still shows Standalone after save | T3000 not restarted after saving | Close and reopen T3000 to apply the new configuration |
+| T3000 feature missing or not working | Running an older version of T3000 | Click **Help → Check for Updates** and install the latest version |
+
+---
+
+## Summary
+
+The following table shows the complete setup flow at a glance:
+
+| Step | Action | Result |
+|---|---|---|
+| 1 | Open T3000, click **Help → Check for Updates** | T3000 is on the latest version |
+| 2 | Open Dashboard in browser (`localhost:3003` or `ip:3003`) | Dashboard visible |
+| 3 | Click **Shared DB** card → **Connect to Shared DB →** | Opens Database Configuration page |
+| 4 | Review Database Configuration page | Currently in Standalone mode |
+| 5 | Enable **Server Database**, select **Server** role, select **Microsoft SQL Server** | Server DB enabled |
+| 6 | Fill in Host / IP, Port, Instance Name, Database, Username, Password | Connection fields ready |
+| 7 | Click **Scan LAN** → click **Use** next to target instance → click **Save Configuration** | Configuration saved |
+| 8 | Click **Test Connection** | Authentication OK (database may not exist yet — that's normal) |
+| 9 | Click **Init Schema** | Schema creation starts |
+| 10 | Wait for success banner: *179 statements executed* | All T3000 tables created on SQL Server |
+| 11 | Return to Dashboard, see restart prompt → close and reopen T3000 | T3000 restarts with new config |
+| 12 | Dashboard shows **Shared DB · Active · Connected** | Server is live and receiving data |
+| 13 | Check **Sync & Database Health** and **Trend Logs** sections | Data flowing into SQL Server |
+
+> For Client PC setup, repeat Steps 1–7 on each client PC, selecting **Client** role in Step 5. No Init Schema is needed on client PCs.
+
 
