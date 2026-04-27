@@ -314,11 +314,13 @@ fn build_trendlog_query(
     }
 
     if let Some(ref point_id) = filters.point_id {
-        where_clauses.push(format!("td.PointId = '{}'", point_id));
+        let escaped_point_id = point_id.replace("'", "''");
+        where_clauses.push(format!("td.PointId = '{}'", escaped_point_id));
     }
 
     if let Some(ref point_type) = filters.point_type {
-        where_clauses.push(format!("td.PointType = '{}'", point_type));
+        let escaped_point_type = point_type.replace("'", "''");
+        where_clauses.push(format!("td.PointType = '{}'", escaped_point_type));
     }
 
     let where_clause = where_clauses.join(" AND ");

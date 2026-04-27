@@ -533,6 +533,9 @@ export const DashboardPage: React.FC = () => {
       if (alarmsResp.status === 'fulfilled' && alarmsResp.value.ok) {
         const d = await alarmsResp.value.json();
         setAlarmCount(typeof d?.total === 'number' ? d.total : Array.isArray(d) ? d.length : 0);
+      } else {
+        // Avoid displaying stale alarm totals when the alarms endpoint fails.
+        setAlarmCount(0);
       }
     } finally {
       setHealthLoading(false);
