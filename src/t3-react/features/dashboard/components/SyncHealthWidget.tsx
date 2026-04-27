@@ -6,7 +6,7 @@
  * Test Connection button, and View Sync Log button.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Button,
   Badge,
@@ -25,8 +25,9 @@ import {
   ListRegular,
   CheckmarkCircleRegular,
   ErrorCircleRegular,
+  EditRegular,
 } from '@fluentui/react-icons';
-import { SyncHealthData } from '../services/syncHealthApi';
+import { SyncHealthData, updateSyncInterval } from '../services/syncHealthApi';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './SyncHealthWidget.module.css';
 
@@ -61,6 +62,21 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
   const [testing, setTesting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [editingInterval, setEditingInterval] = useState(false);
+  const [intervalPreset, setIntervalPreset] = useState<'1min' | '5min' | '15min' | 'custom'>('custom');
+  const [customMinutes, setCustomMinutes] = useState(30);
+  const [savingInterval, setSavingInterval] = useState(false);
+  const [intervalResult, setIntervalResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  useEffect(() => {
+    if (!data || editingInterval) return;
+    const minutes = Math.max(1, Math.round((data.syncIntervalSecs ?? 1800) / 60));
+    if (minutes === 1) setIntervalPreset('1min');
+    else if (minutes === 5) setIntervalPreset('5min');
+    else if (minutes === 15) setIntervalPreset('15min');
+    else setIntervalPreset('custom');
+    setCustomMinutes(minutes);
+  }, [data, editingInterval]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -90,6 +106,49 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
       setTestResult({ ok: false, msg: e instanceof Error ? e.message : 'Test failed' });
     } finally {
       setTesting(false);
+    }
+  };
+
+  const startIntervalEdit = () => {
+    if (!data) return;
+    const minutes = Math.max(1, Math.round((data.syncIntervalSecs ?? 1800) / 60));
+    if (minutes === 1) setIntervalPreset('1min');
+    else if (minutes === 5) setIntervalPreset('5min');
+    else if (minutes === 15) setIntervalPreset('15min');
+    else setIntervalPreset('custom');
+    setCustomMinutes(minutes);
+    setIntervalResult(null);
+    setEditingInterval(true);
+  };
+
+  const cancelIntervalEdit = () => {
+    setEditingInterval(false);
+    setIntervalResult(null);
+  };
+
+  const selectedMinutes = intervalPreset === '1min'
+    ? 1
+    : intervalPreset === '5min'
+      ? 5
+      : intervalPreset === '15min'
+        ? 15
+        : customMinutes;
+
+  const boundedMinutes = Math.min(1440, Math.max(1, selectedMinutes));
+
+  const handleSaveInterval = async () => {
+    const targetSecs = boundedMinutes * 60;
+    setSavingInterval(true);
+    setIntervalResult(null);
+    try {
+      await updateSyncInterval(targetSecs);
+      setIntervalResult({ ok: true, msg: `Interval updated to ${boundedMinutes} min. Effective on next cycle.` });
+      setEditingInterval(false);
+      await onRefresh();
+    } catch (e) {
+      setIntervalResult({ ok: false, msg: e instanceof Error ? e.message : 'Failed to update interval' });
+    } finally {
+      setSavingInterval(false);
     }
   };
 
@@ -162,6 +221,17 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
         </div>
 
         <div className={styles.actions}>
+          <button
+            className={`${styles.intervalChip}${editingInterval ? ` ${styles.intervalChipActive}` : ''}`}
+            onClick={editingInterval ? cancelIntervalEdit : startIntervalEdit}
+            title={editingInterval ? 'Cancel interval edit' : 'Change sync interval'}
+          >
+            <span className={styles.intervalChipLabel}>Sync</span>
+            <span className={styles.intervalChipValue}>
+              {Math.max(1, Math.round((data.syncIntervalSecs ?? 1800) / 60))} min
+            </span>
+            {!editingInterval && <EditRegular className={styles.intervalChipEdit} />}
+          </button>
           {data.centerDbEnabled && (
             <Button
               size="small"
@@ -202,6 +272,54 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
             ? <CheckmarkCircleRegular style={{ fontSize: '14px' }} />
             : <ErrorCircleRegular style={{ fontSize: '14px' }} />}
           <span>{testResult.msg}</span>
+        </div>
+      )}
+
+      {/* Interval editor bar */}
+      {editingInterval && (
+        <div className={styles.intervalBar}>
+          <ArrowClockwiseRegular className={styles.intervalBarIcon} />
+          <span className={styles.intervalBarLabel}>Set interval</span>
+          <Button size="small" appearance={intervalPreset === '1min' ? 'primary' : 'outline'} onClick={() => setIntervalPreset('1min')}>1 min</Button>
+          <Button size="small" appearance={intervalPreset === '5min' ? 'primary' : 'outline'} onClick={() => setIntervalPreset('5min')}>5 min</Button>
+          <Button size="small" appearance={intervalPreset === '15min' ? 'primary' : 'outline'} onClick={() => setIntervalPreset('15min')}>15 min</Button>
+          <Button size="small" appearance={intervalPreset === 'custom' ? 'primary' : 'outline'} onClick={() => setIntervalPreset('custom')}>Custom</Button>
+          {intervalPreset === 'custom' && (
+            <>
+              <input
+                type="number"
+                min={1}
+                max={1440}
+                value={customMinutes}
+                onChange={(e) => setCustomMinutes(Number(e.target.value) || 1)}
+                className={styles.intervalBarInput}
+                aria-label="Custom sync interval in minutes"
+                placeholder="30"
+              />
+              <span className={styles.intervalBarMinLabel}>min</span>
+            </>
+          )}
+          <div className={styles.intervalBarDivider} />
+          <Button
+            size="small"
+            appearance="primary"
+            onClick={handleSaveInterval}
+            disabled={savingInterval}
+            icon={savingInterval ? <Spinner size="extra-tiny" /> : undefined}
+          >
+            Save
+          </Button>
+          <Button size="small" appearance="subtle" onClick={cancelIntervalEdit} disabled={savingInterval}>Cancel</Button>
+        </div>
+      )}
+
+      {/* Interval save result */}
+      {intervalResult && (
+        <div className={`${styles.testResult} ${intervalResult.ok ? styles.testOk : styles.testFail}`}>
+          {intervalResult.ok
+            ? <CheckmarkCircleRegular style={{ fontSize: '14px' }} />
+            : <ErrorCircleRegular style={{ fontSize: '14px' }} />}
+          <span>{intervalResult.msg}</span>
         </div>
       )}
 

@@ -39,6 +39,7 @@ export interface SyncHealthData {
   devicesSyncedToday: number;
   samplingPaused: boolean;
   pausedReason: string | null;
+  syncIntervalSecs: number;
 }
 
 export type EventLevel = 'info' | 'warn' | 'error';
@@ -101,4 +102,16 @@ export async function getEventLog(params: EventLogParams = {}): Promise<EventLog
   const res = await fetch(`${API_BASE_URL}/api/sync/event-log?${qs}`);
   if (!res.ok) throw new Error(`sync/event-log: HTTP ${res.status}`);
   return res.json();
+}
+
+export async function updateSyncInterval(secs: number): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/config/ffi-sync-interval`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ interval_secs: secs }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`config/ffi-sync-interval: HTTP ${res.status}`);
+  }
 }
