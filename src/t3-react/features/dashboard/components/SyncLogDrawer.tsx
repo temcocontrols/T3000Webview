@@ -28,11 +28,8 @@ import {
   WarningRegular,
   InfoRegular,
 } from '@fluentui/react-icons';
-import {
-  getEventLog,
-  SyncEventEntry,
-  EventLevel,
-} from '../services/syncHealthApi';
+import { API_BASE_URL } from '../../../config/constants';
+import { SyncEventEntry, EventLevel } from '../services/syncHealthApi';
 import styles from './SyncLogDrawer.module.css';
 
 interface Props {
@@ -50,22 +47,31 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const PAGE_SIZE = 50;
 
   const load = useCallback(async (pg: number, lvl: LevelFilter, cat: string) => {
     setLoading(true);
+    setLoadError(null);
     try {
-      const res = await getEventLog({
-        limit: PAGE_SIZE,
-        page: pg,
-        level: lvl === 'all' ? undefined : lvl,
-        category: cat === 'all' ? undefined : cat as any,
+      const qs = new URLSearchParams({
+        limit: String(PAGE_SIZE),
+        page: String(pg),
+        ...(lvl !== 'all' ? { level: lvl } : {}),
+        ...(cat !== 'all' ? { category: cat } : {}),
       });
-      setEntries(res.entries);
-      setTotal(res.total);
-    } catch {
-      // silently skip
+      const url = `${API_BASE_URL}/api/sync/event-log?${qs}`;
+      console.log('[SyncLogDrawer] fetching:', url);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`event-log: HTTP ${res.status}`);
+      const data = await res.json();
+      console.log('[SyncLogDrawer] got entries:', data.total);
+      setEntries(data.entries);
+      setTotal(data.total);
+    } catch (err) {
+      console.error('[SyncLogDrawer] fetch error:', err);
+      setLoadError(err instanceof Error ? err.message : 'Failed to load activity log');
     } finally {
       setLoading(false);
     }
@@ -220,6 +226,13 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
           <div className={styles.center}>
             <Spinner size="small" />
           </div>
+        ) : loadError ? (
+          <div className={styles.empty}>
+            <ErrorCircleRegular style={{ color: '#d13438', fontSize: '20px' }} />
+            <Text className={styles.emptyText} style={{ color: '#d13438' }}>
+              {loadError}
+            </Text>
+          </div>
         ) : visibleEntries.length === 0 ? (
           <div className={styles.empty}>
             <Text className={styles.emptyText}>No log entries found</Text>
@@ -236,7 +249,7 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
               ].filter(Boolean) as string[];
 
               return (
-                <div key={e.id} className={`${styles.entry} ${styles[`entry_${e.level}`]}`}>
+                <div key={`${e.tsUnix}-${e.id}`} className={`${styles.entry} ${styles[`entry_${e.level}`]}`}>
                   <div className={styles.entryIcon}>{levelIcon(e.level)}</div>
                   <div className={styles.entryBody}>
                     <div className={styles.entryTop}>

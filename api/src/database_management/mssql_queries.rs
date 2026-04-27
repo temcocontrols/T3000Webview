@@ -268,7 +268,7 @@ pub async fn upsert_point(
     label: Option<&str>,
 ) -> Result<(), String> {
     // Validate table_name to prevent SQL injection (whitelist approach)
-    let (table, id_col) = validate_point_table(table_name, id_column)?;
+    let (table, id_col, index_col) = validate_point_table(table_name, id_column)?;
 
     let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
 
@@ -277,11 +277,11 @@ pub async fn upsert_point(
          USING (SELECT @P1 AS SerialNumber, @P2 AS [{id_col}]) AS source \
          ON target.SerialNumber = source.SerialNumber AND target.[{id_col}] = source.[{id_col}] \
          WHEN MATCHED THEN UPDATE SET \
-           Input_Index = @P3, Panel = @P4, Full_Label = @P5, Auto_Manual = @P6, \
+           [{index_col}] = @P3, Panel = @P4, Full_Label = @P5, Auto_Manual = @P6, \
            fValue = @P7, Units = @P8, Range_Field = @P9, Status = @P10, \
            Digital_Analog = @P11, Label = @P12 \
          WHEN NOT MATCHED THEN INSERT \
-           (SerialNumber, [{id_col}], Input_Index, Panel, Full_Label, Auto_Manual, \
+           (SerialNumber, [{id_col}], [{index_col}], Panel, Full_Label, Auto_Manual, \
             fValue, Units, Range_Field, Status, Digital_Analog, Label) \
          VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9, @P10, @P11, @P12);"
     );
@@ -310,11 +310,11 @@ pub async fn upsert_point(
 }
 
 /// Whitelist valid point table/column names to prevent injection.
-fn validate_point_table<'a>(table: &'a str, id_col: &'a str) -> Result<(&'a str, &'a str), String> {
+fn validate_point_table<'a>(table: &'a str, id_col: &'a str) -> Result<(&'a str, &'a str, &'a str), String> {
     match (table, id_col) {
-        ("INPUTS", "InputId") => Ok(("INPUTS", "InputId")),
-        ("OUTPUTS", "OutputId") => Ok(("OUTPUTS", "OutputId")),
-        ("VARIABLES", "VariableId") => Ok(("VARIABLES", "VariableId")),
+        ("INPUTS", "InputId") => Ok(("INPUTS", "InputId", "Input_Index")),
+        ("OUTPUTS", "OutputId") => Ok(("OUTPUTS", "OutputId", "Output_Index")),
+        ("VARIABLES", "VariableId") => Ok(("VARIABLES", "VariableId", "Variable_Index")),
         _ => Err(format!("Invalid point table/column: {}/{}", table, id_col)),
     }
 }
@@ -599,6 +599,45 @@ pub async fn upsert_trendlog_input(
 }
 
 // ============================================================================
+// TRENDLOG_DATA_SYNC_METADATA — insert sync record (MSSQL mirror of local SQLite table)
+// ============================================================================
+
+pub async fn insert_trendlog_sync_metadata(
+    pool: &MssqlPool,
+    sync_time_fmt: &str,
+    message_type: &str,
+    panel_id: Option<i32>,
+    serial_number: Option<i32>,
+    records_inserted: i32,
+    sync_interval: i32,
+    success: i32,
+    error_message: Option<&str>,
+) -> Result<(), String> {
+    let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
+
+    conn.execute(
+        "INSERT INTO TRENDLOG_DATA_SYNC_METADATA \
+           (SyncTime_Fmt, MessageType, PanelId, SerialNumber, RecordsInserted, \
+            SyncInterval, Success, ErrorMessage) \
+         VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8)",
+        &[
+            &sync_time_fmt,      // @P1
+            &message_type,       // @P2
+            &panel_id,           // @P3
+            &serial_number,      // @P4
+            &records_inserted,   // @P5
+            &sync_interval,      // @P6
+            &success,            // @P7
+            &error_message,      // @P8
+        ],
+    )
+    .await
+    .map_err(|e| format!("TRENDLOG_DATA_SYNC_METADATA INSERT failed: {}", e))?;
+
+    Ok(())
+}
+
+// ============================================================================
 // DATA_SYNC_METADATA — insert sync record
 // ============================================================================
 
@@ -637,6 +676,129 @@ pub async fn insert_sync_metadata(
     .map_err(|e| format!("DATA_SYNC_METADATA INSERT failed: {}", e))?;
 
     Ok(())
+}
+
+// ============================================================================
+// T3_APP_LOG — insert one row / query rows
+// ============================================================================
+
+/// Insert one row into MSSQL T3_APP_LOG.
+/// Called fire-and-forget from `write_app_log` when the MSSQL pool is active.
+pub async fn insert_app_log(
+    pool: &MssqlPool,
+    ts_unix: i64,
+    ts_fmt: &str,
+    level: &str,
+    category: &str,
+    source: Option<&str>,
+    hostname: &str,
+    device_serial: Option<&str>,
+    message: &str,
+    details: Option<&str>,
+) -> Result<(), String> {
+    let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
+
+    conn.execute(
+        "INSERT INTO T3_APP_LOG \
+           (ts_unix, ts_fmt, level, category, source, hostname, device_serial, message, details) \
+         VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9)",
+        &[
+            &ts_unix,       // @P1
+            &ts_fmt,        // @P2
+            &level,         // @P3
+            &category,      // @P4
+            &source,        // @P5
+            &hostname,      // @P6
+            &device_serial, // @P7
+            &message,       // @P8
+            &details,       // @P9
+        ],
+    )
+    .await
+    .map_err(|e| format!("T3_APP_LOG INSERT failed: {}", e))?;
+
+    Ok(())
+}
+
+/// Fetch at most `fetch_count` recent rows from MSSQL T3_APP_LOG,
+/// optionally filtered by level and/or category.
+/// Returns rows as `serde_json::Value` objects so `sync_health` can merge
+/// them with SQLite rows without coupling the query types.
+pub async fn query_app_log(
+    pool: &MssqlPool,
+    level_filter: Option<&str>,
+    category_filter: Option<&str>,
+    fetch_count: u32,
+) -> Result<Vec<serde_json::Value>, String> {
+    let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
+
+    let mut where_parts: Vec<String> = Vec::new();
+    if let Some(lvl) = level_filter {
+        where_parts.push(format!("level = '{}'", lvl.replace('\'', "''")));
+    }
+    if let Some(cat) = category_filter {
+        where_parts.push(format!("category = '{}'", cat.replace('\'', "''")));
+    }
+    let where_sql = if where_parts.is_empty() {
+        String::new()
+    } else {
+        format!(" WHERE {}", where_parts.join(" AND "))
+    };
+
+    // Guard with IF OBJECT_ID so that if T3_APP_LOG hasn't been created yet in
+    // this MSSQL instance, SQL Server returns an empty result set instead of an
+    // "Invalid object name" error that can cause tiberius to panic in 0.12.x.
+    let sql = format!(
+        "IF OBJECT_ID('T3_APP_LOG', 'U') IS NOT NULL \
+         SELECT TOP {} id, ts_unix, ts_fmt, level, category, source, \
+                hostname, device_serial, message, details \
+         FROM T3_APP_LOG{} ORDER BY ts_unix DESC",
+        fetch_count, where_sql
+    );
+
+    let result = conn
+        .query(&sql, &[])
+        .await
+        .map_err(|e| format!("T3_APP_LOG SELECT failed: {}", e))?;
+
+    let result_sets = result
+        .into_results()
+        .await
+        .map_err(|e| format!("T3_APP_LOG row fetch failed: {}", e))?;
+
+    let mut rows = Vec::new();
+    for result_set in result_sets {
+        for row in result_set {
+            let id: i64 = row.get::<i32, _>(0).unwrap_or(0) as i64; // INT in MSSQL, cast to i64
+            let ts_unix: i64 = row.get::<i64, _>(1).unwrap_or(0);
+            let ts_fmt = clean_cpp_string(row.get::<&str, _>(2)).unwrap_or_default();
+            let level = clean_cpp_string(row.get::<&str, _>(3))
+                .unwrap_or_else(|| "info".to_string());
+            let category = clean_cpp_string(row.get::<&str, _>(4))
+                .unwrap_or_else(|| "SERVER_EVENT".to_string());
+            let source: Option<String> = clean_cpp_string(row.get::<&str, _>(5));
+            let hostname: Option<String> = clean_cpp_string(row.get::<&str, _>(6));
+            let device_serial: Option<String> = clean_cpp_string(row.get::<&str, _>(7));
+            let message = clean_cpp_string(row.get::<&str, _>(8)).unwrap_or_default();
+            let details: Option<String> = clean_cpp_string(row.get::<&str, _>(9));
+
+            rows.push(serde_json::json!({
+                "id":            id,
+                "ts_unix":       ts_unix,
+                "ts_fmt":        ts_fmt,
+                "level":         level,
+                "category":      category,
+                "source":        source,
+                "hostname":      hostname,
+                "role":          serde_json::Value::Null,
+                "device_serial": device_serial,
+                "message":       message,
+                "details":       details,
+            }));
+        }
+    }
+
+    Ok(rows)
 }
 
 // ============================================================================

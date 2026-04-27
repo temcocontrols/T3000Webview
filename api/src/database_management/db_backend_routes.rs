@@ -224,8 +224,10 @@ async fn test_connection(
                 (axum::http::StatusCode::BAD_REQUEST, e)
             })?;
 
+            let t0 = std::time::Instant::now();
             match test_mssql_connection(tib_config).await {
                 Ok(_) => {
+                    let latency_ms = t0.elapsed().as_millis() as u64;
                     // Auth works. Now check if target database exists.
                     if let Some(ref db_name) = target_db {
                         if !db_name.is_empty() {
@@ -237,11 +239,13 @@ async fn test_connection(
                                     "success": true,
                                     "message": format!("Connected to SQL Server — database '{}' exists and is accessible", db_name),
                                     "db_exists": true,
+                                    "latency_ms": latency_ms,
                                 }))),
                                 Err(_) => Ok(Json(serde_json::json!({
                                     "success": true,
                                     "message": format!("Connected to SQL Server — authentication OK. Database '{}' does not exist yet. Click 'Init Schema' to create it.", db_name),
                                     "db_exists": false,
+                                    "latency_ms": latency_ms,
                                 }))),
                             }
                         } else {
@@ -249,6 +253,7 @@ async fn test_connection(
                                 "success": true,
                                 "message": "Connected to SQL Server — authentication OK",
                                 "db_exists": false,
+                                "latency_ms": latency_ms,
                             })))
                         }
                     } else {
@@ -256,6 +261,7 @@ async fn test_connection(
                             "success": true,
                             "message": "Connected to SQL Server — authentication OK",
                             "db_exists": false,
+                            "latency_ms": latency_ms,
                         })))
                     }
                 }

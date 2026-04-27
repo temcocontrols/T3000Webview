@@ -478,6 +478,7 @@ pub struct T3000MainService {
 impl T3000MainService {
     async fn insert_data_sync_metadata(
         writer: &super::sync_writer::SyncWriter,
+        local_db: &sea_orm::DatabaseConnection,
         data_type: &str,
         serial_number: &str,
         panel_id: Option<i32>,
@@ -524,6 +525,20 @@ impl T3000MainService {
                 )
                 .await
                 .map_err(AppError::DatabaseError)?;
+
+                // Mirror to local SQLite so the dashboard (sync_health reads
+                // DATA_SYNC_METADATA from local SQLite) can show "Last Sync"
+                // and "Devices Today" even when the primary target is MSSQL.
+                let req = InsertSyncMetadataRequest {
+                    data_type: data_type.to_string(),
+                    serial_number: serial_number.to_string(),
+                    panel_id,
+                    records_synced,
+                    sync_method: "FFI_BACKEND".to_string(),
+                    success,
+                    error_message,
+                };
+                let _ = DataSyncMetadataService::insert_sync_metadata(local_db, req).await;
             }
         }
 
@@ -568,8 +583,36 @@ impl T3000MainService {
         ));
         logger.info("⚡ Running immediate sync on startup, then continuing with periodic sync...");
 
+        // Write a startup entry immediately to local SQLite so the Activity Log
+        // is never empty right after the binary starts.  SERVER_EVENT always
+        // goes to local SQLite regardless of center-DB mode.
+        let server_cfg = crate::ini_config::read_server_db_config_auto();
+        let center_db_note = if server_cfg.enabled {
+            format!("center_db=enabled role={}", server_cfg.role)
+        } else {
+            "center_db=disabled (standalone)".to_string()
+        };
+        crate::database_management::sync_health::ensure_app_log_table(&self.db).await;
+        crate::database_management::sync_health::write_app_log(
+            &self.db,
+            "info",
+            "SERVER_EVENT",
+            Some("ffi_sync"),
+            None,
+            "FFI sync service started — waiting for T3000.exe initialization",
+            Some(&format!(
+                "sync_interval_secs={} {}",
+                self.config.sync_interval_secs, center_db_note
+            )),
+        )
+        .await;
+
         let mut config = self.config.clone(); // Make config mutable for dynamic reload
         let is_running = self.is_running.clone();
+        // Clone the already-open local DB connection so we can write startup log
+        // entries from inside the spawn without needing to re-establish (which
+        // returns Box<dyn Error>, not Send, and would fail tokio::spawn).
+        let spawn_db = self.db.clone();
 
         tokio::spawn(async move {
             // Create logger for the spawned task
@@ -586,17 +629,34 @@ impl T3000MainService {
             sleep(Duration::from_secs(30)).await;
             task_logger.info("✅ Initialization delay completed, starting sync...");
 
+            // Write a "T3000.exe ready" entry to local SQLite — this appears in the
+            // Activity Log before the first full sync cycle lands in MSSQL.
+            // Uses the pre-cloned connection captured before the spawn (avoids
+            // re-establishing, which is not Send).
+            crate::database_management::sync_health::write_app_log(
+                &spawn_db,
+                "info",
+                "SERVER_EVENT",
+                Some("ffi_sync"),
+                None,
+                "T3000.exe initialization complete — starting first sync cycle",
+                None,
+            )
+            .await;
+
             // Run immediate sync on startup with full rediscovery
             task_logger.info("🏃 Performing immediate startup sync with full rediscovery...");
-            if let Err(e) = Self::sync_logging_data_static(config.clone()).await {
+            let startup_sync_ok = if let Err(e) = Self::sync_logging_data_static(config.clone()).await {
                 task_logger.error(&format!("❌ Immediate startup sync failed: {}", e));
                 // Also log critical errors to Initialize category
                 if let Ok(mut init_logger) = ServiceLogger::initialize() {
                     init_logger.error(&format!("Immediate startup sync failed: {}", e));
                 }
+                false
             } else {
                 task_logger.info("✅ Immediate startup sync completed successfully");
-            }
+                true
+            };
 
             // Sync trendlog configurations for all devices (ONE-TIME at startup)
             task_logger.info("📊 Syncing trendlog configurations for all devices...");
@@ -604,6 +664,21 @@ impl T3000MainService {
                 task_logger.error(&format!("❌ Trendlog config sync failed: {}", e));
             } else {
                 task_logger.info("✅ Trendlog config sync completed successfully");
+            }
+
+            // If startup sync failed, retry once after a short delay before entering the normal 900s cycle.
+            // This avoids waiting 900s when T3000 just needed a bit more time to initialize.
+            if !startup_sync_ok && is_running.load(Ordering::Relaxed) {
+                task_logger.info("🔄 Startup sync failed — retrying in 60 seconds (short retry before normal 900s cycle)...");
+                sleep(Duration::from_secs(60)).await;
+                if is_running.load(Ordering::Relaxed) {
+                    task_logger.info("🔄 Short retry: Calling sync_logging_data_static...");
+                    if let Err(e) = Self::sync_logging_data_static(config.clone()).await {
+                        task_logger.error(&format!("❌ Short retry sync also failed: {}", e));
+                    } else {
+                        task_logger.info("✅ Short retry sync succeeded");
+                    }
+                }
             }
 
             // Continue with periodic sync loop (TWO-TIER sync)
@@ -650,17 +725,10 @@ impl T3000MainService {
                 ));
                 sleep(Duration::from_secs(config.sync_interval_secs)).await;
 
-                // Perform periodic logging data sync
+                // Perform periodic logging data sync — errors are logged but never stop the service
                 if is_running.load(Ordering::Relaxed) {
                     if let Err(e) = Self::sync_logging_data_static(config.clone()).await {
-                        task_logger.error(&format!("❌ Periodic sync failed: {}", e));
-                        // If server DB is enabled and sync failed, pause sampling to avoid
-                        // writing to SQLite when center DB is expected
-                        if crate::server_db_writer::should_write_trendlog_to_server() {
-                            let reason = format!("Center DB write failed: {}", e);
-                            crate::app_state::set_sampling_paused(&reason);
-                            task_logger.warn(&format!("⏸️  Sampling paused: {}", reason));
-                        }
+                        task_logger.error(&format!("❌ Periodic sync failed: {} — will retry next cycle", e));
                     }
                 }
             }
@@ -1164,7 +1232,7 @@ impl T3000MainService {
         };
 
         // Strict policy: when Shared DB mode is enabled, do not continue if
-        // resolved write target is local SQLite.
+        // resolved write target is local SQLite. Skip this cycle; service keeps running.
         let server_cfg = crate::ini_config::read_server_db_config_auto();
         if server_cfg.enabled {
             if matches!(
@@ -1172,20 +1240,19 @@ impl T3000MainService {
                 super::sync_writer::SyncWriter::Sqlite(db)
                     if db.get_database_backend() == sea_orm::DatabaseBackend::Sqlite
             ) {
-                let reason = "Center DB mode is enabled, but center DB is unavailable. Writes are blocked until center DB reconnects.";
-                crate::app_state::set_sampling_paused(reason);
-                sync_logger.error(&format!("❌ {}", reason));
+                let reason = "Center DB mode is enabled but center DB is currently unavailable — skipping this cycle, will retry next cycle";
+                sync_logger.warn(&format!("⚠️ {}", reason));
                 crate::database_management::sync_health::write_app_log(
                     &local_db,
-                    "error",
+                    "warn",
                     "SYNC_CYCLE",
                     Some("ffi_sync"),
                     None,
                     reason,
-                    Some("policy=center_db_strict_no_sqlite"),
+                    Some("policy=center_db_skip_retry"),
                 )
                 .await;
-                return Err(AppError::ServiceError(reason.to_string()));
+                return Ok(());
             }
         }
 
@@ -1213,7 +1280,13 @@ impl T3000MainService {
                 .info("🔍 FULL REDISCOVERY: Calling GET_PANELS_LIST to refresh device list...");
 
             // Get lightweight device list via GET_PANELS_LIST (Action 4)
-            panels = Self::get_panels_list_via_ffi().await?;
+            panels = match Self::get_panels_list_via_ffi().await {
+                Ok(p) => p,
+                Err(e) => {
+                    sync_logger.error(&format!("GET_PANELS_LIST FFI failed: {} -- skipping cycle, will retry next cycle", e));
+                    return Ok(());
+                }
+            };
 
             sync_logger.info(&format!(
                 "📋 Found {} devices via GET_PANELS_LIST",
@@ -1257,19 +1330,33 @@ impl T3000MainService {
                 ..Default::default()
             };
 
-            trendlog_data_sync_metadata::Entity::insert(rediscover_metadata)
+            if let Err(e) = trendlog_data_sync_metadata::Entity::insert(rediscover_metadata)
                 .exec(&local_db)
                 .await
-                .map_err(|e| {
-                    sync_logger.error(&format!(
-                        "❌ Failed to create GET_PANELS_LIST metadata: {}",
-                        e
-                    ));
-                    AppError::DatabaseError(format!(
-                        "GET_PANELS_LIST metadata creation failed: {}",
-                        e
-                    ))
-                })?;
+            {
+                sync_logger.error(&format!(
+                    "❌ Failed to create GET_PANELS_LIST metadata (non-fatal): {}",
+                    e
+                ));
+            }
+
+            // Mirror to MSSQL TRENDLOG_DATA_SYNC_METADATA
+            if let super::sync_writer::SyncWriter::MssqlDirect(pool) = &writer {
+                let ts_fmt = rediscover_start_time.format("%Y-%m-%d %H:%M:%S").to_string();
+                if let Err(e) = mssql_queries::insert_trendlog_sync_metadata(
+                    pool,
+                    &ts_fmt,
+                    "GET_PANELS_LIST",
+                    None,
+                    None,
+                    panels.len() as i32,
+                    *REDISCOVER_INTERVAL_SECS.read().await as i32,
+                    1,
+                    None,
+                ).await {
+                    sync_logger.error(&format!("❌ Failed to write GET_PANELS_LIST to MSSQL TRENDLOG_DATA_SYNC_METADATA (non-fatal): {}", e));
+                }
+            }
 
             sync_logger.info("✅ GET_PANELS_LIST metadata record created");
 
@@ -1286,6 +1373,7 @@ impl T3000MainService {
 
             if let Err(e) = Self::insert_data_sync_metadata(
                 &writer,
+                &local_db,
                 &new_metadata_request.data_type,
                 &new_metadata_request.serial_number,
                 new_metadata_request.panel_id,
@@ -1310,7 +1398,13 @@ impl T3000MainService {
                 Err(_) => {
                     // Cache is empty (should not happen after first run, but handle gracefully)
                     sync_logger.warn("⚠️ Cache is empty, performing forced rediscovery...");
-                    panels = Self::get_panels_list_via_ffi().await?;
+                    panels = match Self::get_panels_list_via_ffi().await {
+                        Ok(p) => p,
+                        Err(e) => {
+                            sync_logger.error(&format!("❌ Forced rediscovery GET_PANELS_LIST failed: {} — skipping cycle, will retry next cycle", e));
+                            return Ok(());
+                        }
+                    };
 
                     if panels.is_empty() {
                         sync_logger.warn("⚠️ No devices found - skipping sync cycle");
@@ -1360,15 +1454,35 @@ impl T3000MainService {
             ..Default::default()
         };
 
-        let sync_metadata_result = trendlog_data_sync_metadata::Entity::insert(sync_metadata)
+        let sync_metadata_id = match trendlog_data_sync_metadata::Entity::insert(sync_metadata)
             .exec(&local_db)
             .await
-            .map_err(|e| {
-                sync_logger.error(&format!("❌ Failed to create sync metadata: {}", e));
-                AppError::DatabaseError(format!("Sync metadata creation failed: {}", e))
-            })?;
+        {
+            Ok(result) => result.last_insert_id,
+            Err(e) => {
+                sync_logger.error(&format!("❌ Failed to create sync metadata (non-fatal): {} — continuing sync cycle", e));
+                0 // fallback ID; only used for legacy metadata tracking
+            }
+        };
 
-        let sync_metadata_id = sync_metadata_result.last_insert_id;
+        // Mirror to MSSQL TRENDLOG_DATA_SYNC_METADATA
+        if let super::sync_writer::SyncWriter::MssqlDirect(pool) = &writer {
+            let ts_fmt = sync_start_time.format("%Y-%m-%d %H:%M:%S").to_string();
+            if let Err(e) = mssql_queries::insert_trendlog_sync_metadata(
+                pool,
+                &ts_fmt,
+                "LOGGING_DATA",
+                None,
+                None,
+                0,
+                config.sync_interval_secs as i32,
+                1,
+                None,
+            ).await {
+                sync_logger.error(&format!("❌ Failed to write LOGGING_DATA to MSSQL TRENDLOG_DATA_SYNC_METADATA (non-fatal): {}", e));
+            }
+        }
+
         sync_logger.info(&format!(
             "📋 LOGGING_DATA sync metadata created - ID: {}",
             sync_metadata_id
@@ -1377,6 +1491,7 @@ impl T3000MainService {
         // Insert start-of-cycle marker into DATA_SYNC_METADATA using active writer target.
         if let Err(e) = Self::insert_data_sync_metadata(
             &writer,
+            &local_db,
             "LOGGING_DATA_CYCLE",
             "ALL",
             None,
@@ -1560,6 +1675,7 @@ impl T3000MainService {
                     // Insert DATA_SYNC_METADATA for INPUTS sync
                     if let Err(e) = Self::insert_data_sync_metadata(
                         &writer,
+                        &local_db,
                         "INPUTS",
                         &serial_number.to_string(),
                         Some(device_with_points.device_info.panel_id),
@@ -1600,6 +1716,7 @@ impl T3000MainService {
                     // Insert DATA_SYNC_METADATA for OUTPUTS sync
                     if let Err(e) = Self::insert_data_sync_metadata(
                         &writer,
+                        &local_db,
                         "OUTPUTS",
                         &serial_number.to_string(),
                         Some(device_with_points.device_info.panel_id),
@@ -1635,6 +1752,7 @@ impl T3000MainService {
                     // Insert DATA_SYNC_METADATA for VARIABLES sync
                     if let Err(e) = Self::insert_data_sync_metadata(
                         &writer,
+                        &local_db,
                         "VARIABLES",
                         &serial_number.to_string(),
                         Some(device_with_points.device_info.panel_id),
@@ -2476,7 +2594,7 @@ impl T3000MainService {
 
         // Run FFI call in blocking task with timeout
         let spawn_result = tokio::time::timeout(
-            Duration::from_secs(10), // 10 second timeout for lightweight operation
+            Duration::from_secs(30), // 30 second timeout — matches LOGGING_DATA timeout, needed during T3000 startup
             tokio::task::spawn_blocking(move || {
                 info!("🔌 Calling HandleWebViewMsg(GET_PANELS_LIST) for device list...");
 
