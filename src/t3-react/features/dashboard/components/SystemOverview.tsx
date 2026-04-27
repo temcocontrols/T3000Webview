@@ -99,6 +99,7 @@ export const SystemOverview: React.FC = () => {
     ? { ...centerUiBase, tone: 'warning' as const }
     : centerUiBase;
   const isSharedDbMode = !!syncHealth && syncHealth.role !== 'standalone';
+  const metricsBlocked = !!syncHealth && syncHealth.centerDbEnabled && syncHealth.samplingPaused;
   const dbTargetText = isSharedDbMode
     ? `${syncHealth?.centerDbHost ?? '—'}${syncHealth?.centerDbDatabaseName ? ` / ${syncHealth.centerDbDatabaseName}` : ''}`
     : (syncHealth?.dbFolderPath ?? '—');
@@ -169,12 +170,14 @@ export const SystemOverview: React.FC = () => {
         <div className={styles.cardContent}>
           <div className={styles.cardLabel}>LAST SYNC</div>
           <Tooltip content={syncHealth?.lastSyncTime ?? 'No sync recorded'} relationship="description">
-            <div className={`${styles.cardValue} ${styles.cardValueCompact}`}>
+            <div className={`${styles.cardValue} ${styles.cardValueCompact} ${metricsBlocked ? styles.warning : ''}`}>
               {syncHealth?.lastSyncAgo ?? '—'}
             </div>
           </Tooltip>
-          <div className={styles.cardDetail}>
-            {syncHealth?.devicesSyncedToday ?? 0} device{syncHealth?.devicesSyncedToday !== 1 ? 's' : ''} today
+          <div className={`${styles.cardDetail} ${metricsBlocked ? styles.warning : ''}`}>
+            {metricsBlocked
+              ? 'Blocked: last successful sync shown'
+              : `${syncHealth?.devicesSyncedToday ?? 0} device${syncHealth?.devicesSyncedToday !== 1 ? 's' : ''} today`}
           </div>
         </div>
       </div>
@@ -194,8 +197,8 @@ export const SystemOverview: React.FC = () => {
       <div className={styles.card}>
         <div className={styles.cardContent}>
           <div className={styles.cardLabel}>RECORDS TODAY</div>
-          <div className={styles.cardValue}>{syncHealth?.recordsToday.total ?? 0}</div>
-          <div className={styles.cardDetail}>
+          <div className={`${styles.cardValue} ${metricsBlocked ? styles.warning : ''}`}>{syncHealth?.recordsToday.total ?? 0}</div>
+          <div className={`${styles.cardDetail} ${metricsBlocked ? styles.warning : ''}`}>
             {syncHealth ? `${syncHealth.recordsToday.inputs}in · ${syncHealth.recordsToday.outputs}out · ${syncHealth.recordsToday.variables}var` : 'No data'}
           </div>
         </div>

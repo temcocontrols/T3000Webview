@@ -24,7 +24,7 @@ export interface SyncHealthData {
   mssqlPoolActive: boolean;
   backendType: string;
   runtimeBackendType: string;
-  fallbackActive: boolean;
+  writesBlocked: boolean;
   centerDbHost: string | null;
   centerDbDatabaseName: string | null;
   canInitSchema: boolean;

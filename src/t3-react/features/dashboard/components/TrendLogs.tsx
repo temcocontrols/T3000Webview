@@ -38,6 +38,7 @@ interface TrendSummary {
 
 export const TrendLogs: React.FC = () => {
   const chartRef = useRef<HTMLDivElement>(null);
+  const chartInstanceRef = useRef<echarts.ECharts | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<TrendSummary>({
@@ -50,10 +51,39 @@ export const TrendLogs: React.FC = () => {
   });
 
   useEffect(() => {
-    let chart: echarts.ECharts | null = null;
+    let disposed = false;
+    let resizeObserver: ResizeObserver | null = null;
+
+    const disposeChart = () => {
+      resizeObserver?.disconnect();
+      resizeObserver = null;
+      chartInstanceRef.current?.dispose();
+      chartInstanceRef.current = null;
+    };
+
+    const waitForChartSize = async (element: HTMLDivElement) => {
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        if (disposed) {
+          return false;
+        }
+
+        const { width, height } = element.getBoundingClientRect();
+        if (width > 0 && height > 0) {
+          return true;
+        }
+
+        await new Promise<void>((resolve) => {
+          requestAnimationFrame(() => resolve());
+        });
+      }
+
+      return false;
+    };
 
     const fetchAndDraw = async () => {
       if (!chartRef.current) return;
+      setLoading(true);
+      setError(null);
 
       const now = new Date();
       const start = new Date(now.getTime() - 24 * 3600 * 1000);
@@ -68,7 +98,7 @@ export const TrendLogs: React.FC = () => {
         });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data: TrendlogRecord[] = await resp.json();
-        if (!chartRef.current) return;
+        if (!chartRef.current || disposed) return;
 
         const parsed = data
           .map((r) => ({
@@ -141,6 +171,7 @@ export const TrendLogs: React.FC = () => {
         });
 
         if (parsed.length === 0) {
+          disposeChart();
           setError('No trendlog data in the last 24 hours');
           setLoading(false);
           return;
@@ -161,8 +192,17 @@ export const TrendLogs: React.FC = () => {
           showSymbol: false,
         }));
 
-        if (!chartRef.current) return;
-        chart = echarts.init(chartRef.current);
+        if (!chartRef.current || disposed) return;
+
+        if (!chartRef.current || disposed) return;
+
+        const chartReady = await waitForChartSize(chartRef.current);
+        if (!chartReady || !chartRef.current || disposed) {
+          return;
+        }
+
+        disposeChart();
+        chartInstanceRef.current = echarts.init(chartRef.current);
 
         const option: echarts.EChartsOption = {
           tooltip: { trigger: 'axis', textStyle: { fontSize: 11 } },
@@ -176,17 +216,14 @@ export const TrendLogs: React.FC = () => {
           series,
         };
 
-        chart.setOption(option);
+        chartInstanceRef.current.setOption(option);
         setLoading(false);
 
-        const ro = new ResizeObserver(() => chart?.resize());
-        if (chartRef.current) ro.observe(chartRef.current);
-
-        return () => {
-          ro.disconnect();
-          chart?.dispose();
-        };
+        resizeObserver = new ResizeObserver(() => chartInstanceRef.current?.resize());
+        resizeObserver.observe(chartRef.current);
+        chartInstanceRef.current.resize();
       } catch (err) {
+        disposeChart();
         setError(err instanceof Error ? err.message : 'Failed to load trendlog data');
         setLoading(false);
       }
@@ -194,7 +231,10 @@ export const TrendLogs: React.FC = () => {
 
     fetchAndDraw();
 
-    return () => { chart?.dispose(); };
+    return () => {
+      disposed = true;
+      disposeChart();
+    };
   }, []);
 
   return (

@@ -133,6 +133,10 @@
   align-self: center;
 }
 
+.statValueWarn {
+  color: #8a6d00;
+}
+
 .statSub {
   font-size: 10px;
   color: #605e5c;
@@ -145,6 +149,10 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: default;
+}
+
+.statSubWarn {
+  color: #8a6d00;
 }
 
 .statPath {

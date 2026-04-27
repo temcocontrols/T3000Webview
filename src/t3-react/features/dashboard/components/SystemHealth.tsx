@@ -49,7 +49,7 @@ export const SystemHealth: React.FC = () => {
 
   if (loading) {
     return (
-      <div className={styles.container} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div className={styles.loadingWrapper}>
         <Spinner size="small" />
       </div>
     );
@@ -58,7 +58,7 @@ export const SystemHealth: React.FC = () => {
   if (!health) {
     return (
       <div className={styles.container}>
-        <Text style={{ color: '#d13438', fontSize: '13px' }}>Unable to load health data</Text>
+        <Text className={styles.errorText}>Unable to load health data</Text>
       </div>
     );
   }

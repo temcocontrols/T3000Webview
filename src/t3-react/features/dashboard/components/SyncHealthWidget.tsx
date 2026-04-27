@@ -123,6 +123,7 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
   }
 
   const connected = data.centerDbEnabled ? data.centerDbConnected : true; // standalone is always "ok"
+  const metricsBlocked = data.centerDbEnabled && data.samplingPaused;
   const roleLabel = data.role === 'server' ? 'Server' : data.role === 'client' ? 'Client' : 'Standalone';
   const RoleIcon = data.role === 'server' ? ServerRegular : DesktopRegular;
   const effectiveBackend = data.backendType;
@@ -163,7 +164,7 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
           {data.centerDbEnabled && (
             <Badge appearance="tint" color="informative" size="small">{backendLabel}</Badge>
           )}
-          {data.fallbackActive && (
+          {!data.centerDbEnabled && data.writesBlocked && (
             <Badge appearance="tint" color="warning" size="small">Local SQLite</Badge>
           )}
           {data.mssqlPoolActive && (
@@ -222,8 +223,14 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
             <ArrowClockwiseRegular className={styles.statIcon} />
             <span className={styles.statLabel}>Last Sync</span>
           </div>
-          <span className={styles.statValue}>{data.lastSyncAgo ?? 'Never'}</span>
-          {data.lastSyncTime && (
+          <span className={`${styles.statValue} ${metricsBlocked ? styles.statValueWarn : ''}`}>
+            {data.lastSyncAgo ?? 'Never'}
+          </span>
+          {metricsBlocked ? (
+            <span className={`${styles.statSub} ${styles.statSubWarn}`}>
+              Blocked: values may be stale
+            </span>
+          ) : data.lastSyncTime && (
             <Tooltip content={data.lastSyncTime} relationship="label">
               <span className={styles.statSub}>{data.lastSyncTime}</span>
             </Tooltip>
@@ -235,8 +242,10 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
             <DesktopRegular className={styles.statIcon} />
             <span className={styles.statLabel}>Devices Today</span>
           </div>
-          <span className={styles.statValue}>{data.devicesSyncedToday}</span>
-          <span className={styles.statSub}>synced</span>
+          <span className={`${styles.statValue} ${metricsBlocked ? styles.statValueWarn : ''}`}>{data.devicesSyncedToday}</span>
+          <span className={`${styles.statSub} ${metricsBlocked ? styles.statSubWarn : ''}`}>
+            {metricsBlocked ? 'stale count' : 'synced'}
+          </span>
         </div>
 
         <div className={styles.statCard}>
@@ -244,8 +253,10 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
             <ListRegular className={styles.statIcon} />
             <span className={styles.statLabel}>Records Today</span>
           </div>
-          <span className={styles.statValue}>{data.recordsToday.total.toLocaleString()}</span>
-          <span className={styles.statSub}>
+          <span className={`${styles.statValue} ${metricsBlocked ? styles.statValueWarn : ''}`}>
+            {data.recordsToday.total.toLocaleString()}
+          </span>
+          <span className={`${styles.statSub} ${metricsBlocked ? styles.statSubWarn : ''}`}>
             {data.recordsToday.inputs}in · {data.recordsToday.outputs}out · {data.recordsToday.variables}var
           </span>
         </div>

@@ -5,11 +5,11 @@ export function isStartupPause(pausedReason?: string | null): boolean {
 }
 
 export function isCenterDbDegraded(health: SyncHealthData | null): boolean {
-  return !!health && !health.centerDbConnected && !!health.fallbackActive;
+  return !!health && !health.centerDbConnected && !!health.writesBlocked;
 }
 
 export function isSamplingDegraded(health: SyncHealthData | null): boolean {
   return !!health
     && !!health.samplingPaused
-    && (!!health.fallbackActive || isStartupPause(health.pausedReason));
+    && (!!health.writesBlocked || isStartupPause(health.pausedReason));
 }
