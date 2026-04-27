@@ -555,9 +555,14 @@ impl T3000MainService {
             let mut task_logger = ServiceLogger::ffi()
                 .unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
 
-            // 🆕 DELAY: Wait 10 seconds on first startup to let T3000.exe fully initialize
-            task_logger.info("⏱️ Waiting 10 seconds for T3000.exe to fully initialize...");
-            sleep(Duration::from_secs(10)).await;
+            // DELAY: Wait 30 seconds on first startup to let T3000.exe fully initialize.
+            // HandleWebViewMsg accesses g_Input_data[panel_id] and g_Output_data[panel_id]
+            // which are only populated in CDialogCM5_BacNet::OnInitialUpdate(). That runs
+            // after m_pMainWnd is set, so IsAppInitialized() alone does not guarantee
+            // these vectors are ready. Calling too early causes a C++ "vector subscript
+            // out of range" assertion that crashes the application.
+            task_logger.info("⏱️ Waiting 30 seconds for T3000.exe to fully initialize (g_Input_data/g_Output_data must be populated)...");
+            sleep(Duration::from_secs(30)).await;
             task_logger.info("✅ Initialization delay completed, starting sync...");
 
             // Run immediate sync on startup with full rediscovery
