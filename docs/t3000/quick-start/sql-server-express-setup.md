@@ -1,4 +1,4 @@
-# SQL Server Express 2022 Setup for T3000 (Detailed Step-by-Step)
+﻿# SQL Server Express 2022 Setup for T3000 (Detailed Step-by-Step)
 
 <!-- USER-GUIDE -->
 
@@ -233,255 +233,38 @@ Verification checklist:
 ![Step 11 - Select profiles](images/sql-server-express/34.png)
 ![Step 11 - Name the firewall rule](images/sql-server-express/35.png)
 
-## Step 12: Restart SQL Server Again
+## Step 12 (Optional): Verify Connection via mssql Tool
 
-Mixed mode authentication requires a restart to activate.
+Use the **mssql** extension in VS Code to confirm SQL Server is reachable before continuing.
 
-1. Go back to **SQL Server Configuration Manager**.
-2. Click **SQL Server Services**.
-3. Right-click **SQL Server (SQLEXPRESS)** �?**Restart**.
-4. Wait for **Running** status.
+1. Open **VS Code** and install the **mssql** extension if not already installed (search `mssql` in the Extensions panel).
+2. Press `Ctrl+Shift+P` → type **MS SQL: Add Connection** → press Enter.
+3. Enter the server name: `localhost\SQLEXPRESS`.
+4. Choose **SQL Login**, enter username `sa` and the password you set in Step 7.
+5. Click **Connect**.
+6. A green status bar item showing the server name confirms the connection is working.
 
-> **Alternative:** You can also restart from SSMS �?right-click server �?**Restart**.
+> If the connection fails, verify TCP/IP is enabled (Step 10), mixed mode is set (Step 7), and the SQL Server service is running (Step 8).
 
-![Step 12 - Restart after mixed mode](images/sql-server-express/12-restart-after-mixed-mode.png)
+![Step 12 - mssql extension connect](images/sql-server-express/36.png)
+![Step 12 - Connection verified](images/sql-server-express/37.png)
 
-## Step 13: Create the T3000 Database
-
-1. In SSMS **Object Explorer**, right-click **Databases**.
-2. Click **New Database...**.
-3. In the **Database name** field, type exactly: `T3000`
-   - Case does not matter, but avoid spaces or special characters.
-4. Leave all other settings as default.
-5. Click **OK**.
-6. You should now see **T3000** appear under **Databases** in the left panel.
-
-![Step 13 - Create database](images/sql-server-express/13-create-db.png)
-
-## Step 14: Create a SQL Login for T3000
-
-1. In SSMS **Object Explorer**, expand **Security**.
-2. Right-click **Logins** �?click **New Login...**.
-3. In the **Login name** field, type: `t3000_user`
-4. Select **SQL Server authentication**.
-5. Enter a password (remember this �?you will need it in T3000).
-6. Uncheck **Enforce password expiration** (recommended for service accounts).
-7. Uncheck **User must change password at next login**.
-
-![Step 14 - Create login](images/sql-server-express/14-create-login.png)
-
-## Step 15: Map Login to T3000 Database
-
-Still in the **New Login** window:
-
-1. Click **User Mapping** in the left list.
-2. In the top table, check the checkbox next to **T3000**.
-3. In the **Database role membership** table below, check **db_owner**.
-4. Click **OK**.
-
-> `db_owner` gives full permission to create tables and write data.
-> T3000 uses this access to initialize the schema on first run.
-
-![Step 15 - User mapping](images/sql-server-express/15-user-mapping.png)
-
-## Step 16: Enable the `sa` Account (Optional but Recommended)
-
-The `sa` (System Administrator) account is a built-in SQL login.
-Enabling it gives a reliable backup login if `t3000_user` has issues.
-
-1. In SSMS, expand **Security** �?**Logins**.
-2. Right-click **sa** �?click **Properties**.
-3. In **General**, set a strong password.
-4. Click **Status** in the left list.
-5. Set **Login** to **Enabled**.
-6. Click **OK**.
-
-> This step is optional. Only enable `sa` if you want a fallback admin account.
-
-## Step 17: Add Firewall Rule (Required if SQL Server is on a Different PC)
-
-Skip this step if T3000 and SQL Server are on the **same PC**.
-
-If SQL Server is on a **different PC** on your network:
-
-1. Press **Windows key**, search **Windows Defender Firewall with Advanced Security**.
-2. Click **Inbound Rules** in the left panel.
-3. Click **New Rule...** on the right.
-4. Select **Port** �?click **Next**.
-5. Select **TCP**, enter port `1433` �?click **Next**.
-6. Select **Allow the connection** �?click **Next**.
-7. Check **Domain** and **Private** �?click **Next**.
-8. Name: `SQL Server 1433 T3000` �?click **Finish**.
-
-Repeat for UDP port 1434 (SQL Browser):
-1. Same steps but select **UDP**, port `1434`.
-2. Name: `SQL Browser 1434 T3000`.
-
-![Step 16 - Firewall rule](images/sql-server-express/16-firewall-1433.png)
-
-## Step 17: Open T3000 Database Configuration Page
-
-1. Open T3000 application.
-2. Click the **Settings** or gear icon.
-3. Go to **Database Configuration** page.
-4. Under **Shared Database (Center DB)**, select backend type: **Microsoft SQL Server**.
-
-![Step 17 - Open database page](images/sql-server-express/17-open-t3000-db-page.png)
-
-## Step 18: Fill in SQL Server Connection Fields
-
-Enter these values exactly:
-
-| Field | Value | Example |
-|---|---|---|
-| Host / Server | IP address or hostname of the SQL Server PC | `192.168.1.22` or `localhost` |
-| Port | `1433` | `1433` |
-| Instance Name | `SQLEXPRESS` | `SQLEXPRESS` |
-| Database Name | `T3000` | `T3000` |
-| Username | `t3000_user` | `t3000_user` |
-| Password | The password you set in Step 14 | |
-
-> **Same PC?** Use `127.0.0.1` or `localhost` as the host.
->
-> **Different PC on network?** Use the IP address of the PC where SQL Server is installed.
-> You can find the IP by running `ipconfig` on that PC and looking for **IPv4 Address**.
-
-![Step 18 - Fill fields](images/sql-server-express/18-fill-fields.png)
-
-## Step 19: Click Test Connection
-
-1. Click the **Test Connection** button.
-2. Wait a few seconds.
-3. A green success message should appear with the connection latency (e.g. `Connected (12ms)`).
-
-If you see an error, go to the **Troubleshooting** section at the bottom of this guide.
-
-![Step 19 - Test connection](images/sql-server-express/19-test-connection.png)
-
-## Step 20: Click Save Configuration
-
-1. Click **Save Configuration**.
-2. Wait for the success message.
-3. T3000 will now remember these settings.
-
-![Step 20 - Save configuration](images/sql-server-express/20-save-config.png)
-
-## Step 21: Initialize Schema
-
-This step creates all required T3000 tables inside the `T3000` database.
-Only needs to be done once on first setup.
-
-1. Click the **Init Schema** button.
-2. Wait for the process to complete (usually 10�?0 seconds).
-3. Confirm success message appears.
-
-> If `Init Schema` button is greyed out, ensure Test Connection succeeded first.
-
-![Step 21 - Init schema](images/sql-server-express/21-init-schema.png)
-
-## Step 22: Set Shared DB Role
-
-1. In T3000 Database Configuration, find the **Role** setting.
-2. Set this PC's role:
-   - **Server** �?this PC owns the database and syncs all devices to it.
-   - **Client** �?this PC reads/writes through the Server PC's database.
-3. Set **Enabled** to **On**.
-4. Save again.
-
-> In most single-server deployments, set role to **Server**.
-> Only set **Client** on secondary PCs that connect to the primary Server PC.
-
-## Step 23: Restart T3000
-
-1. Close T3000 application (or stop the T3000 Windows service if running as a service).
-2. Reopen / restart T3000.
-3. T3000 will connect to SQL Server on startup using the saved configuration.
-
-![Step 22 - Restart T3000](images/sql-server-express/22-restart-t3000.png)
-
-## Step 24: Verify in Dashboard
-
-1. Open the T3000 **Dashboard**.
-2. In the **Sync & Database Health** widget:
-   - Status badge should show **Connected** (green).
-   - Role should show **Server** (or **Client**).
-   - **Last Sync** should update within 2 minutes.
-   - **Records Today** should start counting.
-3. In **System Overview**:
-   - **CENTER DB** card should show **Connected**.
-   - **DB SIZE** will show the SQL Server database size.
-
-![Step 23 - Dashboard verification](images/sql-server-express/23-dashboard-verify.png)
 
 ---
 
-## Troubleshooting
+## Summary
 
-### Error: Connection timeout / Unable to connect
+This guide covered the full installation and configuration of **SQL Server 2022 Express** on a Windows PC for use with T3000.
 
-Check in order:
-1. SQL Server service is running �?open **Services** (`Win` �?`services.msc`), look for `SQL Server (SQLEXPRESS)`, status must be **Running**.
-2. TCP/IP is enabled �?see Step 6.
-3. Static port 1433 is configured �?see Step 7.
-4. SQL Server was restarted after TCP/IP change �?see Step 9.
-5. Firewall allows TCP 1433 �?see Step 17 (required even for same-PC using IP, not `localhost`).
-6. Host/IP in T3000 is correct �?try `127.0.0.1` for same PC.
+After completing all steps, you should have:
 
-### Error: Login failed for user 't3000_user'
+- SQL Server 2022 Express installed with instance name SQLEXPRESS
+- SQL Server Management Studio (SSMS) installed for database administration
+- TCP/IP protocol enabled on port **1433**
+- Windows Firewall rule allowing TCP 1433 (required for remote connections)
+- Mixed mode authentication (SQL + Windows) enabled and active
+- SQL Server restarted to apply configuration changes
+- (Optional) Connection verified via the mssql tool in VS Code
 
-Check:
-1. Mixed mode authentication is enabled �?see Step 11.
-2. SQL Server was restarted after enabling mixed mode �?see Step 12.
-3. Username is exactly `t3000_user` (no extra spaces).
-4. Password is correct.
-5. User is mapped to T3000 database �?see Step 15.
-
-### Error: Cannot open database 'T3000'
-
-Check:
-1. Database name in T3000 config is exactly `T3000` (capital T, no spaces).
-2. T3000 database was created in SSMS �?see Step 13.
-3. The login `t3000_user` has `db_owner` rights on the T3000 database �?see Step 15.
-
-### Error: SQL Server Down (red badge in T3000 Dashboard)
-
-Check:
-1. SQL Server service is running.
-2. Port 1433 is reachable from this PC:
-   Open PowerShell and run:
-   ```powershell
-   Test-NetConnection 192.168.1.22 -Port 1433
-   ```
-   `TcpTestSucceeded: True` means port is reachable.
-3. Firewall is not blocking.
-
-### Error: Named Pipes / Wrong Instance
-
-If you see errors about Named Pipes or wrong instance:
-1. Confirm instance name is `SQLEXPRESS` (all caps, no spaces).
-2. In T3000 config, Instance Name field must say `SQLEXPRESS`.
-3. SQL Browser service must be running �?see Step 8.
-
----
-
-<!-- TECHNICAL -->
-
-## Technical Checklist (Quick Reference)
-
-| Item | Required |
-|---|---|
-| SQL Server (SQLEXPRESS) service Running | �?|
-| SQL Browser service Running + Automatic | �?|
-| TCP/IP protocol Enabled | �?|
-| Static port 1433, dynamic port empty | �?|
-| Mixed mode (SQL + Windows) authentication | �?|
-| SQL Server restarted after mode change | �?|
-| T3000 database created | �?|
-| SQL login `t3000_user` created | �?|
-| `t3000_user` mapped to T3000 with db_owner | �?|
-| Firewall TCP 1433 open (remote scenario) | �?|
-| Firewall UDP 1434 open (remote scenario) | �?|
-| T3000 Test Connection succeeds | �?|
-| Save + Init Schema completed | �?|
-| T3000 restarted | �?|
-| Dashboard shows Connected | �?|
+**Next step:** Configure T3000 to connect to this SQL Server instance.
+See the T3000 Database Configuration guide for how to enter connection details, test the connection, initialize the schema, and set the shared database role.
