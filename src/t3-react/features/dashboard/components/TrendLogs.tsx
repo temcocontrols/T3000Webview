@@ -4,11 +4,13 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Spinner } from '@fluentui/react-components';
-import { ErrorCircleRegular } from '@fluentui/react-icons';
+import { Spinner, Tooltip } from '@fluentui/react-components';
+import { ErrorCircleRegular, InfoRegular } from '@fluentui/react-icons';
 import * as echarts from 'echarts';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './TrendLogs.module.css';
+
+const CHART_COLORS = ['#2563eb', '#16a34a', '#ea580c', '#7c3aed', '#0f766e'];
 
 interface TrendlogRecord {
   logging_time_fmt: string;
@@ -53,6 +55,7 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
     lastSampleTs: null,
     devices: [],
   });
+  const [chartLegendItems, setChartLegendItems] = useState<string[]>([]);
 
   const formatAge = (timestamp: number | null): string => {
     if (!timestamp) return 'N/A';
@@ -62,6 +65,20 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
     const hours = Math.floor(mins / 60);
     const remMins = mins % 60;
     return `${hours}h ${remMins}m`;
+  };
+
+  const formatCompactNumber = (value: number): string => {
+    const abs = Math.abs(value);
+    if (abs >= 1_000_000) {
+      const n = value / 1_000_000;
+      return `${n.toFixed(abs >= 10_000_000 ? 0 : 1).replace(/\.0$/, '')}M`;
+    }
+    if (abs >= 1_000) {
+      const n = value / 1_000;
+      return `${n.toFixed(abs >= 10_000 ? 0 : 1).replace(/\.0$/, '')}k`;
+    }
+    if (Number.isInteger(value)) return value.toString();
+    return value.toFixed(1).replace(/\.0$/, '');
   };
 
   useEffect(() => {
@@ -186,23 +203,24 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
 
         if (parsed.length === 0) {
           disposeChart();
+          setChartLegendItems([]);
           setError('No trendlog data in the last 24 hours');
           setLoading(false);
           return;
         }
 
-        const colors = ['#0078d4', '#107c10', '#f7630c', '#8764b8', '#00b7c3'];
         const topSeries = Array.from(pointMap.values())
           .sort((a, b) => b.count - a.count)
           .slice(0, 3);
+        setChartLegendItems(topSeries.map((s) => s.name));
 
         const series: echarts.SeriesOption[] = topSeries.map((s, i) => ({
           name: s.name,
           type: 'line' as const,
           data: s.pts.sort((a, b) => a[0] - b[0]),
           smooth: true,
-          lineStyle: { width: 2, color: colors[i % colors.length] },
-          itemStyle: { color: colors[i % colors.length] },
+          lineStyle: { width: 2, color: CHART_COLORS[i % CHART_COLORS.length] },
+          itemStyle: { color: CHART_COLORS[i % CHART_COLORS.length] },
           showSymbol: false,
         }));
 
@@ -219,14 +237,55 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
         chartInstanceRef.current = echarts.init(chartRef.current);
 
         const option: echarts.EChartsOption = {
-          tooltip: { trigger: 'axis', textStyle: { fontSize: 11 } },
-          legend: { top: 2, textStyle: { fontSize: 10 }, data: series.map((s) => s.name) },
-          grid: { left: 48, right: 16, top: 28, bottom: 28 },
+          animationDuration: 450,
+          tooltip: {
+            trigger: 'axis',
+            textStyle: { fontSize: 11 },
+            backgroundColor: 'rgba(255, 255, 255, 0.97)',
+            borderColor: '#d6d6d6',
+            borderWidth: 1,
+            extraCssText: 'box-shadow: 0 4px 14px rgba(0,0,0,0.12);',
+            valueFormatter: (value) => `${formatCompactNumber(Number(value ?? 0))}`,
+          },
+          legend: {
+            show: false,
+          },
+          grid: { left: 56, right: 14, top: 16, bottom: 46, containLabel: false },
           xAxis: {
             type: 'time',
-            axisLabel: { fontSize: 10, formatter: (v: number) => new Date(v).getHours() + ':00' },
+            boundaryGap: false,
+            axisTick: { show: false },
+            axisLine: { lineStyle: { color: '#d4d4d8' } },
+            splitLine: {
+              show: true,
+              lineStyle: { color: '#eef0f3', type: 'solid', width: 1 },
+            },
+            axisLabel: {
+              fontSize: 10,
+              color: '#71717a',
+              interval: 0,
+              hideOverlap: false,
+              showMinLabel: true,
+              showMaxLabel: true,
+              formatter: (v: number) => {
+                const d = new Date(v);
+                return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+              },
+            },
           },
-          yAxis: { type: 'value', axisLabel: { fontSize: 10 }, splitLine: { lineStyle: { type: 'dashed', color: '#e0e0e0' } } },
+          yAxis: {
+            type: 'value',
+            axisTick: { show: false },
+            axisLine: { show: false },
+            axisLabel: {
+              fontSize: 10,
+              color: '#71717a',
+              formatter: (v: number) => formatCompactNumber(v),
+            },
+            splitLine: {
+              lineStyle: { type: 'solid', color: '#e4e4e7', width: 1 },
+            },
+          },
           series,
         };
 
@@ -238,6 +297,7 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
         chartInstanceRef.current.resize();
       } catch (err) {
         disposeChart();
+        setChartLegendItems([]);
         setError(err instanceof Error ? err.message : 'Failed to load trendlog data');
         setLoading(false);
       }
@@ -252,6 +312,13 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
   }, []);
 
   const samplingStalled = summary.trackedPoints > 0 && summary.sampledPoints === 0;
+  const legendDotClasses = [
+    styles.chartLegendDot0,
+    styles.chartLegendDot1,
+    styles.chartLegendDot2,
+    styles.chartLegendDot3,
+    styles.chartLegendDot4,
+  ];
 
   return (
     <div className={styles.container}>
@@ -299,6 +366,29 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
       )}
 
       <div className={styles.chartRow}>
+        <div className={styles.chartHeader}>
+          <div className={styles.chartHeaderMain}>
+            <div className={styles.chartTitle}>Trend Value Timeline</div>
+            <Tooltip
+              relationship="description"
+              content="Shows top 3 trend points by record count over the last 24 hours. X-axis is time and Y-axis is raw value (compact units like k, M)."
+            >
+              <button className={styles.chartInfoButton} aria-label="About trend chart">
+                <InfoRegular fontSize={12} />
+              </button>
+            </Tooltip>
+          </div>
+          <div className={styles.chartHeaderLegend}>
+            {chartLegendItems.map((label, idx) => (
+              <span key={label} className={styles.chartLegendItem}>
+                <span
+                  className={`${styles.chartLegendDot} ${legendDotClasses[idx % legendDotClasses.length]}`}
+                />
+                {label}
+              </span>
+            ))}
+          </div>
+        </div>
         <div ref={chartRef} className={`${styles.chartArea} ${loading || error ? styles.chartHidden : ''}`} />
       </div>
     </div>

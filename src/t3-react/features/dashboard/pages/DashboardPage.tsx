@@ -324,7 +324,7 @@ const useStyles = makeStyles({
     padding: '8px 0',
   },
   trendlogWrapper: {
-    minHeight: '560px',
+    minHeight: '430px',
     padding: '10px 0 12px',
     overflow: 'visible',
   },
