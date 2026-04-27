@@ -1801,10 +1801,7 @@ impl T3000MainService {
         let serial_number = device_info.panel_serial_number;
 
         // Create sync logger for device info operations
-        let mut sync_logger = ServiceLogger::ffi().map_err(|e| {
-            error!("Failed to create sync logger: {}", e);
-            AppError::LoggerError(format!("Failed to create sync logger: {}", e))
-        })?;
+        let mut sync_logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::noop());
 
         // Validate SerialNumber - skip devices with SerialNumber=0 (invalid devices)
         if serial_number == 0 {
@@ -1998,10 +1995,7 @@ impl T3000MainService {
         let timestamp = chrono::Utc::now().to_rfc3339();
 
         // Create sync logger for trend log operations
-        let mut sync_logger = ServiceLogger::ffi().map_err(|e| {
-            error!("Failed to create sync logger: {}", e);
-            AppError::LoggerError(format!("Failed to create sync logger: {}", e))
-        })?;
+        let mut sync_logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::noop());
 
         info!(
             "📊 Starting trend log insertion at timestamp: {}",
@@ -2646,10 +2640,7 @@ impl T3000MainService {
         );
 
         // Create sync logger for FFI operations
-        let mut sync_logger = ServiceLogger::ffi().map_err(|e| {
-            error!("Failed to create sync logger: {}", e);
-            AppError::LoggerError(format!("Failed to create sync logger: {}", e))
-        })?;
+        let mut sync_logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::noop());
 
         // Log FFI call start to structured log
         sync_logger.info(&format!(
