@@ -40,8 +40,6 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
-  ArrowDownloadRegular,
-  SettingsRegular,
   SearchRegular,
   ArrowSortUpRegular,
   ArrowSortDownRegular,
@@ -58,6 +56,8 @@ import { PanelDataRefreshService } from '../../../shared/services/panelDataRefre
 import { useStatusBarStore } from '../../../store/statusBarStore';
 import { SyncStatusBar } from '../../../shared/components/SyncStatusBar';
 import styles from './OutputsPage.module.css';
+import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 // Types based on Rust entity (output_points.rs)
 interface OutputPoint {
@@ -75,6 +75,10 @@ interface OutputPoint {
   lowVoltage?: string;
   highVoltage?: string;
   pwmPeriod?: string;
+  calibrationH?: number | string;
+  calibrationL?: number | string;
+  calibrationSign?: string;
+  control?: string;
   status?: string;
   signalType?: string;
   digitalAnalog?: string;
@@ -92,7 +96,8 @@ const OutputsPageDesktop: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
-  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
+  const [dbChecked, setDbChecked] = useState(false);
+  const deviceRefreshedRef = useRef<number | null>(null);
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -151,6 +156,7 @@ const OutputsPageDesktop: React.FC = () => {
       // DON'T clear outputs on database fetch error - preserve what we have
     } finally {
       setLoading(false);
+      setDbChecked(true);
     }
   }, [selectedDevice]);
 
@@ -158,20 +164,19 @@ const OutputsPageDesktop: React.FC = () => {
     fetchOutputs();
   }, [fetchOutputs]);
 
-  // Reset autoRefreshed flag when device changes
+  // Reset auto-refresh state when device changes (don't clear outputs to avoid visual flash)
   useEffect(() => {
-    setOutputs([]);
     setAutoRefreshed(false);
-    hasAutoRefreshedRef.current = false;
+    setDbChecked(false);
   }, [selectedDevice?.serialNumber]);
 
-  // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
+  // Auto-refresh once per device - ONLY if database is empty after initial DB fetch
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
+    if (!dbChecked || loading || !selectedDevice || autoRefreshed) return;
+    if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
 
-    // Check immediately if database has output data
     const checkAndRefresh = async () => {
-      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+      deviceRefreshedRef.current = selectedDevice.serialNumber;
 
       if (outputs.length > 0) {
         console.log('[OutputsPage] Database has data, skipping auto-refresh');
@@ -207,7 +212,7 @@ const OutputsPageDesktop: React.FC = () => {
     };
 
     checkAndRefresh();
-  }, [loading, selectedDevice, autoRefreshed, fetchOutputs, outputs.length, setMessage]);
+  }, [dbChecked, loading, selectedDevice, autoRefreshed, fetchOutputs, outputs.length, setMessage]);
 
   // Handlers
   const handleRefresh = async () => {
@@ -279,12 +284,49 @@ const OutputsPageDesktop: React.FC = () => {
   };
 
   const handleExport = () => {
-    console.log('Export outputs to CSV');
+    if (outputs.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<OutputPoint>[] = [
+      { header: 'Panel', accessor: o => o.panel },
+      { header: 'Output', accessor: o => o.outputId },
+      { header: 'Full Label', accessor: o => o.fullLabel },
+      { header: 'Label', accessor: o => o.label },
+      { header: 'Auto/Manual', accessor: o => o.autoManual },
+      { header: 'HOA Switch', accessor: o => o.hwSwitchStatus },
+      { header: 'Value', accessor: o => o.fValue },
+      { header: 'Units', accessor: o => o.units },
+      { header: 'Range', accessor: o => o.range },
+      { header: 'Low Voltage', accessor: o => o.lowVoltage },
+      { header: 'High Voltage', accessor: o => o.highVoltage },
+      { header: 'Status', accessor: o => o.status },
+      { header: 'Signal Type', accessor: o => o.signalType },
+    ];
+    exportToCsv(outputs, csvColumns, `outputs_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
 
-  const handleSettings = () => {
-    console.log('Settings clicked');
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<OutputPoint>[] = [
+      { header: 'Panel', accessor: o => o.panel, setter: (o, v) => { o.panel = v; } },
+      { header: 'Output', accessor: o => o.outputId, setter: (o, v) => { o.outputId = v; } },
+      { header: 'Full Label', accessor: o => o.fullLabel, setter: (o, v) => { o.fullLabel = v; } },
+      { header: 'Label', accessor: o => o.label, setter: (o, v) => { o.label = v; } },
+      { header: 'Auto/Manual', accessor: o => o.autoManual, setter: (o, v) => { o.autoManual = v; } },
+      { header: 'HOA Switch', accessor: o => o.hwSwitchStatus, setter: (o, v) => { o.hwSwitchStatus = v; } },
+      { header: 'Value', accessor: o => o.fValue, setter: (o, v) => { o.fValue = v; } },
+      { header: 'Units', accessor: o => o.units, setter: (o, v) => { o.units = v; } },
+      { header: 'Range', accessor: o => o.range, setter: (o, v) => { o.range = v; } },
+      { header: 'Low Voltage', accessor: o => o.lowVoltage, setter: (o, v) => { o.lowVoltage = v; } },
+      { header: 'High Voltage', accessor: o => o.highVoltage, setter: (o, v) => { o.highVoltage = v; } },
+      { header: 'Status', accessor: o => o.status, setter: (o, v) => { o.status = v; } },
+      { header: 'Signal Type', accessor: o => o.signalType, setter: (o, v) => { o.signalType = v; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ serialNumber: selectedDevice?.serialNumber || 0 } as OutputPoint));
+    setOutputs(imported);
   };
+
+  // Register CSV export/import handlers with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   // Auto-scroll to next device when reaching bottom
   const loadNextDevice = useCallback(async () => {
@@ -377,13 +419,16 @@ const OutputsPageDesktop: React.FC = () => {
         serialNumber: serialNumber,
         entryType: 0, // BAC_OUT (OUTPUT)
         entryIndex: parseInt(outputIndex, 10),
-        control: 0,
+        control: parseInt(String(currentOutput.control || '0'), 10),
         value: field === 'fValue' ? parseFloat(newValue || '0') : parseFloat(currentOutput.fValue || '0') / 1000,
         description: field === 'fullLabel' ? newValue : (currentOutput.fullLabel || ''),
         label: currentOutput.label || '',
         range: parseInt(currentOutput.rangeField || currentOutput.range || '0', 10),
         auto_manual: parseInt(currentOutput.autoManual || '0', 10),
         digital_analog: parseInt(currentOutput.digitalAnalog || '0', 10),
+        calibration_sign: parseInt(String(currentOutput.calibrationSign || '0'), 10),
+        calibration_h: parseInt(String(currentOutput.calibrationH || '0'), 10),
+        calibration_l: parseInt(String(currentOutput.calibrationL || '0'), 10),
         decom: 0,
         low_voltage: parseInt(currentOutput.lowVoltage || '0', 10),
         high_voltage: parseInt(currentOutput.highVoltage || '0', 10),
@@ -431,6 +476,10 @@ const OutputsPageDesktop: React.FC = () => {
         digitalAnalog: parseInt(currentOutput.digitalAnalog || '0', 10),
         lowVoltage: parseInt(currentOutput.lowVoltage || '0', 10),
         highVoltage: parseInt(currentOutput.highVoltage || '0', 10),
+        calibrationSign: parseInt(String(currentOutput.calibrationSign || '0'), 10),
+        calibrationH: parseInt(String(currentOutput.calibrationH || '0'), 10),
+        calibrationL: parseInt(String(currentOutput.calibrationL || '0'), 10),
+        control: parseInt(String(currentOutput.control || '0'), 10),
       };
 
       const response = await fetch(
@@ -470,8 +519,8 @@ const OutputsPageDesktop: React.FC = () => {
 
     setIsSaving(true);
     try {
-      // Process for all editable fields (fullLabel, fValue)
-      if (selectedDevice && ['fullLabel', 'fValue'].includes(editingCell.field)) {
+      // Process for all editable fields
+      if (selectedDevice && ['fullLabel', 'label', 'fValue', 'range', 'autoManual', 'lowVoltage', 'highVoltage'].includes(editingCell.field)) {
         console.log(`=== Updating ${editingCell.field} (Two-Step Process) ===`);
         console.log(`Device: ${selectedDevice.serialNumber}, Output: ${editingCell.outputIndex}, New Value: "${editValue}"`);
 
@@ -570,11 +619,11 @@ const OutputsPageDesktop: React.FC = () => {
     setRangeDrawerOpen(true);
   };
 
-  const handleRangeSave = async (newRange: number) => {
+  const handleRangeSave = async (newRange: number, newDigitalAnalog: number) => {
     if (!selectedOutput) return;
 
     try {
-      console.log(`[Action 16] Updating Range for Output ${selectedOutput.outputIndex} (SN: ${selectedOutput.serialNumber})`);
+      console.log(`[Action 16] Updating Range for Output ${selectedOutput.outputIndex} (SN: ${selectedOutput.serialNumber}), New DigitalAnalog: ${newDigitalAnalog}`);
 
       // Action 16 requires ALL fields
       const payload = {
@@ -583,10 +632,14 @@ const OutputsPageDesktop: React.FC = () => {
         value: parseFloat(selectedOutput.fValue || '0'),
         range: newRange,
         autoManual: parseInt(selectedOutput.autoManual || '0'),
-        control: 0,
+        control: parseInt(String(selectedOutput.control || '0')),
         lowVoltage: parseFloat(selectedOutput.lowVoltage || '0'),
         highVoltage: parseFloat(selectedOutput.highVoltage || '0'),
         pwmPeriod: parseInt(selectedOutput.pwmPeriod || '0'),
+        digitalAnalog: newDigitalAnalog,
+        calibrationSign: parseInt(String(selectedOutput.calibrationSign || '0')),
+        calibrationH: parseInt(String(selectedOutput.calibrationH || '0')),
+        calibrationL: parseInt(String(selectedOutput.calibrationL || '0')),
       };
 
       console.log('[Action 16] Full payload:', payload);
@@ -613,7 +666,7 @@ const OutputsPageDesktop: React.FC = () => {
         prevOutputs.map(output =>
           output.serialNumber === selectedOutput.serialNumber &&
           output.outputIndex === selectedOutput.outputIndex
-            ? { ...output, range: newRange.toString() }
+            ? { ...output, range: newRange.toString(), rangeField: newRange.toString(), digitalAnalog: newDigitalAnalog.toString() }
             : output
         )
       );
@@ -644,7 +697,7 @@ const OutputsPageDesktop: React.FC = () => {
   // Display data with 10 empty rows when no outputs
   const displayOutputs = React.useMemo(() => {
     if (outputs.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         serialNumber: selectedDevice?.serialNumber || 0,
         outputId: '',
         outputIndex: '',
@@ -659,6 +712,10 @@ const OutputsPageDesktop: React.FC = () => {
         lowVoltage: '',
         highVoltage: '',
         pwmPeriod: '',
+        calibrationH: '',
+        calibrationL: '',
+        calibrationSign: '',
+        control: '',
         status: '',
         signalType: '',
         digitalAnalog: '',
@@ -678,14 +735,7 @@ const OutputsPageDesktop: React.FC = () => {
     createTableColumn<OutputPoint>({
       columnId: 'panel',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('panel')}>
-          <span>Panel</span>
-          {sortColumn === 'panel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Panel</span>
       ),
       renderCell: (item) => (
         <TableCellLayout>
@@ -889,12 +939,15 @@ const OutputsPageDesktop: React.FC = () => {
               fullLabel: currentOutput.fullLabel || '',
               label: currentOutput.label || '',
               value: parseFloat(currentOutput.fValue || '0'),
-              range: parseInt(currentOutput.range || '0'),
+              range: parseInt(currentOutput.rangeField || currentOutput.range || '0'),
               autoManual: parseInt(newValue),
-              control: 0,
+              control: parseInt(String(currentOutput.control || '0')),
               lowVoltage: parseFloat(currentOutput.lowVoltage || '0'),
               highVoltage: parseFloat(currentOutput.highVoltage || '0'),
               pwmPeriod: parseInt(currentOutput.pwmPeriod || '0'),
+              calibrationSign: parseInt(String(currentOutput.calibrationSign || '0')),
+              calibrationH: parseInt(String(currentOutput.calibrationH || '0')),
+              calibrationL: parseInt(String(currentOutput.calibrationL || '0')),
             };
 
             console.log('[Action 16] Updating Auto/Man:', payload);
@@ -1037,7 +1090,9 @@ const OutputsPageDesktop: React.FC = () => {
                   onDoubleClick={() => handleCellDoubleClick(item, 'fValue', item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '0')}
                   title="Double-click to edit"
                 >
-                  <Text size={200} weight="regular">{item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}</Text>
+                  <span className={styles.valueBadge}>
+                    {item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}
+                  </span>
                 </div>
               )
             )}
@@ -1058,13 +1113,20 @@ const OutputsPageDesktop: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => (
-        <TableCellLayout>
-          {!isEmptyRow(item) && (item.units || '---')}
-        </TableCellLayout>
-      ),
+      renderCell: (item) => {
+        const rangeValue = parseInt(item.rangeField || item.range || '0', 10);
+        const digitalAnalog = parseInt(item.digitalAnalog || '0', 10);
+        const rangeLabel = getRangeLabel(rangeValue, digitalAnalog);
+        return (
+          <TableCellLayout>
+            {!isEmptyRow(item) && rangeLabel && rangeLabel !== 'Unknown' && (
+              <span className={styles.unitBadge}>{rangeLabel}</span>
+            )}
+          </TableCellLayout>
+        );
+      },
     }),
-    // 7. Range
+    // 9. Range
     createTableColumn<OutputPoint>({
       columnId: 'range',
       compare: (a, b) => {
@@ -1084,20 +1146,20 @@ const OutputsPageDesktop: React.FC = () => {
       ),
       renderCell: (item) => {
         // Parse range value and digital_analog type
-        const rangeValue = item.range ? parseInt(item.range) : 0;
-        const digitalAnalog = item.signalType === 'Digital' ? 1 : 0; // Assume analog if not digital
+        const rangeValue = parseInt(item.rangeField || item.range || '0', 10);
+        const digitalAnalog = parseInt(item.digitalAnalog || '0', 10);
         const rangeLabel = getRangeLabel(rangeValue, digitalAnalog);
 
         return (
           <TableCellLayout>
             {!isEmptyRow(item) && (
-              <div
+              <span
                 onClick={() => handleRangeClick(item)}
-                className={styles.rangeLink}
+                className={styles.rangeBadge}
                 title="Click to change range"
               >
-                <Text size={200} weight="regular">{rangeLabel}</Text>
-              </div>
+                {rangeLabel}
+              </span>
             )}
           </TableCellLayout>
         );
@@ -1107,14 +1169,7 @@ const OutputsPageDesktop: React.FC = () => {
     createTableColumn<OutputPoint>({
       columnId: 'lowVoltage',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('lowVoltage')}>
-          <span>Low V</span>
-          {sortColumn === 'lowVoltage' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Low V</span>
       ),
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
@@ -1144,7 +1199,7 @@ const OutputsPageDesktop: React.FC = () => {
                   onDoubleClick={() => handleCellDoubleClick(item, 'lowVoltage', item.lowVoltage?.toString() || '0')}
                   title="Double-click to edit"
                 >
-                  <Text size={200} weight="regular">{item.lowVoltage || '---'}</Text>
+                  <Text size={200} weight="regular">{item.lowVoltage || ''}</Text>
                 </div>
               )
             )}
@@ -1156,14 +1211,7 @@ const OutputsPageDesktop: React.FC = () => {
     createTableColumn<OutputPoint>({
       columnId: 'highVoltage',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('highVoltage')}>
-          <span>High V</span>
-          {sortColumn === 'highVoltage' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>High V</span>
       ),
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
@@ -1193,51 +1241,7 @@ const OutputsPageDesktop: React.FC = () => {
                   onDoubleClick={() => handleCellDoubleClick(item, 'highVoltage', item.highVoltage?.toString() || '0')}
                   title="Double-click to edit"
                 >
-                  <Text size={200} weight="regular">{item.highVoltage || '---'}</Text>
-                </div>
-              )
-            )}
-          </TableCellLayout>
-        );
-      },
-    }),
-    // 12. PWM Period
-    createTableColumn<OutputPoint>({
-      columnId: 'pwmPeriod',
-      renderHeaderCell: () => (
-        <div className={styles.headerCell}>
-          <span>PWM Period</span>
-        </div>
-      ),
-      renderCell: (item) => {
-        const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.outputIndex === item.outputIndex &&
-                          editingCell?.field === 'pwmPeriod';
-
-        return (
-          <TableCellLayout>
-            {!isEmptyRow(item) && (
-              isEditing ? (
-                <input
-                  type="number"
-                  step="1"
-                  className={styles.editInput}
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onBlur={handleEditSave}
-                  onKeyDown={handleEditKeyDown}
-                  autoFocus
-                  disabled={isSaving}
-                  placeholder="Enter period"
-                  aria-label="Edit PWM period"
-                />
-              ) : (
-                <div
-                  className={styles.editableCell}
-                  onDoubleClick={() => handleCellDoubleClick(item, 'pwmPeriod', item.pwmPeriod?.toString() || '0')}
-                  title="Double-click to edit"
-                >
-                  <Text size={200} weight="regular">{item.pwmPeriod || '---'}</Text>
+                  <Text size={200} weight="regular">{item.highVoltage || ''}</Text>
                 </div>
               )
             )}
@@ -1299,47 +1303,13 @@ const OutputsPageDesktop: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
-        // Type values: 0=Virtual, 1=Digital, 2=Analog, 3=Extend Digital, 4=Extend Analog, 5=Internal
-        const typeValue = item.typeField || '0';
-        let typeText = 'Virtual';
-        let badgeColor: 'success' | 'informative' | 'brand' | 'warning' = 'success';
-
-        switch (typeValue) {
-          case '0':
-            typeText = 'Virtual';
-            badgeColor = 'success';
-            break;
-          case '1':
-            typeText = 'Digital';
-            badgeColor = 'informative';
-            break;
-          case '2':
-            typeText = 'Analog';
-            badgeColor = 'brand';
-            break;
-          case '3':
-            typeText = 'Extend Digital';
-            badgeColor = 'informative';
-            break;
-          case '4':
-            typeText = 'Extend Analog';
-            badgeColor = 'brand';
-            break;
-          case '5':
-            typeText = 'Internal';
-            badgeColor = 'warning';
-            break;
-          default:
-            typeText = 'Virtual';
-            badgeColor = 'success';
-        }
-
+        const isDigital = item.digitalAnalog === '0';
         return (
           <TableCellLayout>
             {!isEmptyRow(item) && (
-              <Badge appearance="outline" color={badgeColor}>
-                {typeText}
-              </Badge>
+              <span className={isDigital ? styles.digitalType : styles.analogType}>
+                {isDigital ? 'Digital' : 'Analog'}
+              </span>
             )}
           </TableCellLayout>
         );
@@ -1382,43 +1352,6 @@ const OutputsPageDesktop: React.FC = () => {
               <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
-                  {/* Refresh Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleRefreshFromDevice}
-                    disabled={refreshing}
-                    title="Refresh all outputs from device"
-                    aria-label="Refresh from Device"
-                  >
-                    <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                  </button>
-
-                  {/* Export to CSV Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    title="Export to CSV"
-                    aria-label="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export to CSV</span>
-                  </button>
-
-                  {/* Toolbar Separator */}
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  {/* Settings Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleSettings}
-                    title="Settings"
-                    aria-label="Settings"
-                  >
-                    <SettingsRegular />
-                    <span>Settings</span>
-                  </button>
-
                   {/* Search Input Box */}
                   <div className={styles.searchInputWrapper}>
                     <SearchRegular className={styles.searchIcon} />
@@ -1433,6 +1366,20 @@ const OutputsPageDesktop: React.FC = () => {
                       aria-label="Search outputs"
                     />
                   </div>
+
+                  {/* Refresh Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefreshFromDevice}
+                    disabled={refreshing}
+                    title="Refresh all outputs from device"
+                    aria-label="Refresh from Device"
+                  >
+                    <ArrowSyncRegular />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
 
                   {/* Info Button with Tooltip */}
                   <Tooltip
@@ -1497,65 +1444,6 @@ const OutputsPageDesktop: React.FC = () => {
                       items={displayOutputs}
                       columns={columns}
                       sortable
-                      resizableColumns
-                      columnSizingOptions={{
-                        output: {
-                          minWidth: 60,
-                          defaultWidth: 80,
-                        },
-                        panel: {
-                          minWidth: 60,
-                          defaultWidth: 75,
-                        },
-                        fullLabel: {
-                          minWidth: 150,
-                          defaultWidth: 200,
-                        },
-                        autoManual: {
-                          minWidth: 90,
-                          defaultWidth: 120,
-                        },
-                        hoaSwitch: {
-                          minWidth: 80,
-                          defaultWidth: 120,
-                        },
-                        value: {
-                          minWidth: 100,
-                          defaultWidth: 140,
-                        },
-                        units: {
-                          minWidth: 100,
-                          defaultWidth: 150,
-                        },
-                        range: {
-                          minWidth: 80,
-                          defaultWidth: 120,
-                        },
-                        lowVoltage: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        highVoltage: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        pwmPeriod: {
-                          minWidth: 90,
-                          defaultWidth: 120,
-                        },
-                        status: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        signalType: {
-                          minWidth: 60,
-                          defaultWidth: 80,
-                        },
-                        label: {
-                          minWidth: 130,
-                          defaultWidth: 170,
-                        },
-                      }}
                     >
                       <DataGridHeader>
                         <DataGridRow>
@@ -1617,8 +1505,8 @@ const OutputsPageDesktop: React.FC = () => {
         <RangeSelectionDrawer
           isOpen={rangeDrawerOpen}
           onClose={() => setRangeDrawerOpen(false)}
-          currentRange={selectedOutput.range ? parseInt(selectedOutput.range) : 0}
-          digitalAnalog={selectedOutput.signalType === 'Digital' ? 1 : 0}
+          currentRange={parseInt(selectedOutput.rangeField || selectedOutput.range || '0', 10)}
+          digitalAnalog={parseInt(selectedOutput.digitalAnalog || '0', 10)}
           onSave={handleRangeSave}
           inputLabel={`Output ${selectedOutput.outputIndex || selectedOutput.outputId} - ${selectedOutput.fullLabel || 'Unnamed'}`}
         />

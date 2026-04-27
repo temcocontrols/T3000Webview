@@ -30,8 +30,6 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
-  ArrowDownloadRegular,
-  SettingsRegular,
   SearchRegular,
   ArrowSortUpRegular,
   ArrowSortDownRegular,
@@ -43,6 +41,8 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import styles from './SchedulesPage.module.css';
+import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 // Types based on Rust entity (schedules.rs) and C++ BacnetWeeklyRoutine structure
 interface SchedulePoint {
@@ -76,7 +76,8 @@ export const SchedulesPage: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
-  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
+  const [dbChecked, setDbChecked] = useState(false);
+  const deviceRefreshedRef = useRef<number | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
   const isAtBottomRef = useRef(false);
@@ -124,6 +125,7 @@ export const SchedulesPage: React.FC = () => {
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setDbChecked(true);
     }
   }, [selectedDevice]);
 
@@ -131,19 +133,19 @@ export const SchedulesPage: React.FC = () => {
     fetchSchedules();
   }, [fetchSchedules]);
 
-  // Reset autoRefreshed flag when device changes
+  // Reset auto-refresh state when device changes (don't clear data to avoid visual flash)
   useEffect(() => {
-    setSchedules([]);
     setAutoRefreshed(false);
-    hasAutoRefreshedRef.current = false;
+    setDbChecked(false);
   }, [selectedDevice?.serialNumber]);
 
-  // Auto-refresh on page load (Trigger #1) - ONLY if database is empty
+  // Auto-refresh once per device - ONLY if database is empty after initial DB fetch
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
+    if (!dbChecked || loading || !selectedDevice || autoRefreshed) return;
+    if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
 
     const checkAndRefresh = async () => {
-      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+      deviceRefreshedRef.current = selectedDevice.serialNumber;
 
       // Check if database has schedule data
       if (schedules.length > 0) {
@@ -166,7 +168,7 @@ export const SchedulesPage: React.FC = () => {
     };
 
     checkAndRefresh();
-  }, [loading, selectedDevice, autoRefreshed, fetchSchedules, schedules.length]);
+  }, [dbChecked, loading, selectedDevice, autoRefreshed, fetchSchedules, schedules.length]);
 
   // Refresh from database (toolbar button)
   const handleRefreshFromDatabase = () => {
@@ -224,13 +226,39 @@ export const SchedulesPage: React.FC = () => {
 
   // Export handler
   const handleExport = () => {
-    console.log('Export schedules clicked');
+    if (schedules.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<SchedulePoint>[] = [
+      { header: 'Schedule', accessor: s => s.scheduleId },
+      { header: 'Auto/Manual', accessor: s => s.autoManual },
+      { header: 'Output', accessor: s => s.outputField },
+      { header: 'Variable', accessor: s => s.variableField },
+      { header: 'Holiday1', accessor: s => s.holiday1 },
+      { header: 'Status1', accessor: s => s.status1 },
+      { header: 'Holiday2', accessor: s => s.holiday2 },
+      { header: 'Status2', accessor: s => s.status2 },
+    ];
+    exportToCsv(schedules, csvColumns, `schedules_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
 
-  // Settings handler
-  const handleSettings = () => {
-    console.log('Settings clicked');
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<SchedulePoint>[] = [
+      { header: 'Schedule', accessor: s => s.scheduleId, setter: (s, v) => { s.scheduleId = v; } },
+      { header: 'Auto/Manual', accessor: s => s.autoManual, setter: (s, v) => { s.autoManual = v; } },
+      { header: 'Output', accessor: s => s.outputField, setter: (s, v) => { s.outputField = v; } },
+      { header: 'Variable', accessor: s => s.variableField, setter: (s, v) => { s.variableField = v; } },
+      { header: 'Holiday1', accessor: s => s.holiday1, setter: (s, v) => { s.holiday1 = v; } },
+      { header: 'Status1', accessor: s => s.status1, setter: (s, v) => { s.status1 = v; } },
+      { header: 'Holiday2', accessor: s => s.holiday2, setter: (s, v) => { s.holiday2 = v; } },
+      { header: 'Status2', accessor: s => s.status2, setter: (s, v) => { s.status2 = v; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ serialNumber: selectedDevice?.serialNumber || 0 } as SchedulePoint));
+    setSchedules(imported);
   };
+
+  // Register CSV export/import handlers with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   // Search handler
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -295,7 +323,7 @@ export const SchedulesPage: React.FC = () => {
   // Display schedules with empty rows when no data (show 10 empty rows)
   const displaySchedules = React.useMemo(() => {
     if (schedules.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         serialNumber: 0,
         scheduleId: '',
         autoManual: '',
@@ -563,43 +591,6 @@ export const SchedulesPage: React.FC = () => {
               <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
-                  {/* Refresh Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleRefreshFromDevice}
-                    disabled={refreshing}
-                    title="Refresh from Device"
-                    aria-label="Refresh from Device"
-                  >
-                    <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                  </button>
-
-                  {/* Export to CSV Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    title="Export to CSV"
-                    aria-label="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export to CSV</span>
-                  </button>
-
-                  {/* Toolbar Separator */}
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  {/* Settings Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleSettings}
-                    title="Settings"
-                    aria-label="Settings"
-                  >
-                    <SettingsRegular />
-                    <span>Settings</span>
-                  </button>
-
                   {/* Search Input Box */}
                   <div className={styles.searchInputWrapper}>
                     <SearchRegular className={styles.searchIcon} />
@@ -614,6 +605,20 @@ export const SchedulesPage: React.FC = () => {
                       aria-label="Search schedules"
                     />
                   </div>
+
+                  {/* Refresh Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefreshFromDevice}
+                    disabled={refreshing}
+                    title="Refresh from Device"
+                    aria-label="Refresh from Device"
+                  >
+                    <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
 
                   {/* Info Button with Tooltip */}
                   <Tooltip
@@ -678,41 +683,6 @@ export const SchedulesPage: React.FC = () => {
                     items={sortedSchedules}
                     columns={columns}
                     sortable
-                    resizableColumns
-                    columnSizingOptions={{
-                      scheduleId: {
-                        minWidth: 70,
-                        idealWidth: '10%',
-                      },
-                      autoManual: {
-                        minWidth: 100,
-                        idealWidth: '15%',
-                      },
-                      outputField: {
-                        minWidth: 80,
-                        idealWidth: '12%',
-                      },
-                      variableField: {
-                        minWidth: 80,
-                        idealWidth: '12%',
-                      },
-                      holiday1: {
-                        minWidth: 80,
-                        idealWidth: '15%',
-                      },
-                      status1: {
-                        minWidth: 80,
-                        idealWidth: '12%',
-                      },
-                      holiday2: {
-                        minWidth: 80,
-                        idealWidth: '12%',
-                      },
-                      status2: {
-                        minWidth: 80,
-                        idealWidth: '12%',
-                      },
-                    }}
                   >
                     <DataGridHeader>
                       <DataGridRow>

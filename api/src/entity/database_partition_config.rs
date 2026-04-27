@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use chrono::{Datelike, Timelike};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "database_partition_config")]
+#[sea_orm(table_name = "DATABASE_PARTITION_CONFIG")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,

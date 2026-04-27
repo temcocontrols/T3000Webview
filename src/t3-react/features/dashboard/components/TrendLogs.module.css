@@ -5,10 +5,109 @@
   flex-direction: column;
   height: 100%;
   width: 100%;
+  gap: 8px;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(110px, 1fr));
+  gap: 8px;
+  padding: 8px 12px 0;
+}
+
+.summaryItem {
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  padding: 6px 8px;
+  background: #faf9f8;
+}
+
+.summaryLabel {
+  font-size: 11px;
+  color: #605e5c;
+}
+
+.summaryValue {
+  font-size: 18px;
+  font-weight: 600;
+  color: #323130;
+  line-height: 1.2;
+}
+
+.summaryValueSmall {
+  font-size: 13px;
+  font-weight: 600;
+  color: #323130;
+  line-height: 1.2;
+}
+
+.deviceRows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 12px;
+}
+
+.deviceRow {
+  display: grid;
+  grid-template-columns: 1.6fr 0.8fr 0.8fr 1fr;
+  gap: 8px;
+  padding: 4px 8px;
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 12px;
+}
+
+.deviceName {
+  color: #323130;
+  font-weight: 600;
+}
+
+.deviceMeta {
+  color: #605e5c;
 }
 
 .chart {
   width: 100%;
   height: 100%;
   min-height: 150px;
+}
+
+.chartArea {
+  width: 100%;
+  height: 300px;
+}
+
+.chartHidden {
+  visibility: hidden;
+  opacity: 0;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #605e5c;
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #d13438;
+}
+
+@media (max-width: 900px) {
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(110px, 1fr));
+  }
+
+  .deviceRow {
+    grid-template-columns: 1.4fr 0.7fr 0.7fr 1fr;
+  }
 }

@@ -4,7 +4,7 @@ use chrono::{Utc, Timelike};
 use crate::constants::get_t3000_runtime_path;
 
 /// Global flag to enable/disable T3WebLog functionality
-pub static ENABLE_T3_WEB_LOG: bool = false; // ❌ DISABLED - Set to true to enable logging
+pub static ENABLE_T3_WEB_LOG: bool = true; // ❌ DISABLED - Set to true to enable logging
 
 /// Creates structured log file path with 4-hour bucket system: T3000_Runtime/T3WebLog/YYYY-MM/MMDD/filename_HHHH.txt
 pub fn create_structured_log_path(base_filename: &str) -> Result<String, std::io::Error> {
@@ -51,7 +51,7 @@ pub fn write_structured_log_with_level(base_filename: &str, message: &str, level
     Ok(())
 }
 
-/// Centralized logging for T3000 WebView Service
+/// Structured logging for T3000 WebView Service
 pub struct ServiceLogger {
     log_file: Option<std::fs::File>,
 }

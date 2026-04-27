@@ -26,6 +26,7 @@ pub struct BatchSaveInputsRequest {
 #[serde(rename_all = "camelCase")]
 pub struct InputUpdate {
     pub input_index: String,
+    pub input_id: Option<String>,
     pub panel: Option<String>,
     pub full_label: Option<String>,
     pub label: Option<String>,
@@ -38,6 +39,9 @@ pub struct InputUpdate {
     pub calibration: Option<String>,
     pub status: Option<String>,
     pub units: Option<String>,
+    pub calibration_h: Option<i32>,
+    pub calibration_l: Option<i32>,
+    pub control: Option<String>,
 }
 
 /// Response for batch save operation
@@ -128,7 +132,15 @@ async fn execute_batch_save(
     let txn = db_connection.begin().await
         .map_err(|e| format!("Transaction start error: {}", e))?;
 
-    // Process each input update
+    // Delete all existing rows for this serial to clean up corrupted data
+    // (Refresh from Device always sends ALL points, so replacing all rows is safe)
+    input_points::Entity::delete_many()
+        .filter(input_points::Column::SerialNumber.eq(serial))
+        .exec(&txn)
+        .await
+        .map_err(|e| format!("Failed to clean existing input data: {}", e))?;
+
+    // Insert all input points fresh
     for input_update in &payload.inputs {
         let index = &input_update.input_index;
 
@@ -152,6 +164,7 @@ async fn execute_batch_save(
                 let update_result = input_points::Entity::update_many()
                     .filter(input_points::Column::SerialNumber.eq(serial))
                     .filter(input_points::Column::InputIndex.eq(index))
+                    .col_expr(input_points::Column::InputId, Expr::value(input_update.input_id.clone()))
                     .col_expr(input_points::Column::Panel, Expr::value(input_update.panel.clone()))
                     .col_expr(input_points::Column::FullLabel, Expr::value(input_update.full_label.clone()))
                     .col_expr(input_points::Column::Label, Expr::value(input_update.label.clone()))
@@ -164,6 +177,10 @@ async fn execute_batch_save(
                     .col_expr(input_points::Column::Calibration, Expr::value(input_update.calibration.clone()))
                     .col_expr(input_points::Column::Status, Expr::value(input_update.status.clone()))
                     .col_expr(input_points::Column::Units, Expr::value(input_update.units.clone()))
+                    .col_expr(input_points::Column::CalibrationH, Expr::value(input_update.calibration_h.map(|v| v.to_string())))
+                    .col_expr(input_points::Column::CalibrationL, Expr::value(input_update.calibration_l.map(|v| v.to_string())))
+                    .col_expr(input_points::Column::CalibrationSign, Expr::value(input_update.sign.clone()))
+                    .col_expr(input_points::Column::Control, Expr::value(input_update.control.clone()))
                     .exec(&txn)
                     .await;
 
@@ -195,6 +212,7 @@ async fn execute_batch_save(
                 let new_input = input_points::ActiveModel {
                     serial_number: Set(serial),
                     input_index: Set(Some(index.clone())),
+                    input_id: Set(input_update.input_id.clone()),
                     panel: Set(input_update.panel.clone()),
                     full_label: Set(input_update.full_label.clone()),
                     label: Set(input_update.label.clone()),
@@ -207,6 +225,10 @@ async fn execute_batch_save(
                     calibration: Set(input_update.calibration.clone()),
                     status: Set(input_update.status.clone()),
                     units: Set(input_update.units.clone()),
+                    calibration_h: Set(input_update.calibration_h.map(|v| v.to_string())),
+                    calibration_l: Set(input_update.calibration_l.map(|v| v.to_string())),
+                    calibration_sign: Set(input_update.sign.clone()),
+                    control: Set(input_update.control.clone()),
                     ..Default::default()
                 };
 
@@ -243,7 +265,7 @@ async fn execute_batch_save(
 
     // Commit transaction
     txn.commit().await
-        .map_err(|e| format!("database is locked: {}", e))?;
+        .map_err(|e| format!("{}", e))?;
 
     info!("✅ Batch save complete: {} updated, {} failed", updated_count, failed_count);
 

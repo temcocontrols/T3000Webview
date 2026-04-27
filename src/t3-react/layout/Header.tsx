@@ -108,6 +108,7 @@ import { useControlMenu } from '@t3-react/shared/hooks/useControlMenu';
 import { useMiscellaneousMenu } from '@t3-react/shared/hooks/useMiscellaneousMenu';
 import { useHelpMenu } from '@t3-react/shared/hooks/useHelpMenu';
 import { useDeviceData } from '@t3-react/shared/hooks/useDeviceData';
+import { useCsvOperations } from '@t3-react/shared/context/CsvOperationsContext';
 import type { DeviceInfo } from '@t3-react/shared/types/device';
 
 const useStyles = makeStyles({
@@ -250,6 +251,9 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
   // Help menu handlers
   const { handlers: helpHandlers } = useHelpMenu();
 
+  // CSV operations (global context — Export/Import to CSV)
+  const { triggerExport, triggerImport, isExportAvailable, isImportAvailable } = useCsvOperations();
+
   console.log('🎯 Header rendering...', { location: location.pathname, user, toolbarConfig });
 
   // Helper function to convert TreeNode to DeviceInfo
@@ -308,6 +312,12 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
         // Tools menu
         case MenuAction.Connect:
           toolsHandlers.handleConnect();
+          break;
+        case MenuAction.ExportToCsv:
+          triggerExport();
+          break;
+        case MenuAction.ImportFromCsv:
+          triggerImport();
           break;
         case MenuAction.Disconnect:
           toolsHandlers.handleDisconnect();
@@ -612,7 +622,11 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
                     <MenuItem
                       key={item.id}
                       onClick={() => handleMenuClick(item.action)}
-                      disabled={item.disabled}
+                      disabled={
+                        item.action === MenuAction.ExportToCsv ? !isExportAvailable :
+                        item.action === MenuAction.ImportFromCsv ? !isImportAvailable :
+                        item.disabled
+                      }
                       icon={IconComponent ? <IconComponent /> : undefined}
                       className={menu.id === 'tools' ? styles.menuItemWide : undefined}
                       style={{

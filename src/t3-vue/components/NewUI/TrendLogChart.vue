@@ -107,11 +107,11 @@
             </template>
             Live-{{ lastSyncTime }}
           </a-tag>
-          <a-tag color="blue" v-else size="small">
+          <a-tag v-else size="small" @click="restoreLiveMode" class="live-restore-tag">
             <template #icon>
-              <ClockCircleOutlined />
+              <SyncOutlined />
             </template>
-            Historical
+            Live
           </a-tag>
 
           <!-- Range Info -->
@@ -158,6 +158,36 @@
             </template>
           </a-dropdown>
         </a-flex>
+
+        <!-- DB Status Warning - only shown when Center DB is enabled but not connected -->
+        <a-flex
+          v-if="dbStatus.visible"
+          align="center"
+          class="control-group db-status-indicator"
+          style="margin-left: auto;"
+        >
+          <a-tooltip placement="bottomRight" :overlayStyle="{ maxWidth: '320px' }">
+            <template #title>
+              <div class="db-status-tooltip">
+                <div class="db-status-tooltip-header">
+                  <ExclamationCircleOutlined class="db-status-tooltip-icon" />
+                  <strong>{{ dbStatus.title }}</strong>
+                </div>
+                <div class="db-status-tooltip-body">{{ dbStatus.message }}</div>
+                <div v-if="dbStatus.hint" class="db-status-tooltip-hint">
+                  {{ dbStatus.hint }}
+                </div>
+                <div class="db-status-tooltip-footer">
+                  Local logging continues. Restore Center DB connectivity to resume sync.
+                </div>
+              </div>
+            </template>
+            <span :class="['db-status-icon-btn', dbStatus.severity === 'error' ? 'db-status-error' : 'db-status-warn']">
+              <span class="db-status-bang">!</span>
+              <span class="db-status-label">DB</span>
+            </span>
+          </a-tooltip>
+        </a-flex>
       </a-flex>
     </div>
 
@@ -193,27 +223,7 @@
           <!-- Data Series - Analog + Digital -->
           <div class="control-section">
             <div class="data-series-header">
-              <!-- Single line: Title, count, and status -->
-              <div class="header-line-1">
-                <div :title="devVersion" class="chart-title-with-version">
-                  {{ chartTitle }}
-                </div>
-                <!-- Data Source Indicator -->
-                <div class="data-source-indicator">
-                  <span v-if="shouldShowLoading" class="source-badge loading">
-                    Loading...
-                  </span>
-                  <span v-else-if="dataSource === 'realtime'" class="source-badge realtime">
-                    <ThunderboltFilled :style="{ fontSize: '12px', marginRight: '4px' }" /> Live ({{ timeBase }})
-                  </span>
-                  <span v-else-if="dataSource === 'api'" class="source-badge historical">
-                    📚 Historical (Custom Date)
-                  </span>
-                  <span v-else-if="hasConnectionError" class="source-badge error">
-                    ⚠️ Connection Error
-                  </span>
-                </div>
-              </div> <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
+              <!-- Line 2: All dropdown, By Type dropdown -->
               <div class="header-line-2">
                 <div class="left-controls">
                   <a-dropdown>
@@ -264,10 +274,19 @@
                       </a-menu>
                     </template>
                   </a-dropdown>
-                </div>
-                <div class="auto-scroll-toggle">
-                  <a-typography-text class="toggle-label">Auto Scroll:</a-typography-text>
-                  <a-switch v-model:checked="isRealTime" size="small" @change="onRealTimeToggle" />
+                  <a-dropdown>
+                    <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
+                      <span>By Unit</span>
+                      <DownOutlined style="margin-left: 4px;" />
+                    </a-button>
+                    <template #overlay>
+                      <a-menu @click="handleByUnitMenu" class="byunit-dropdown-menu">
+                        <a-menu-item v-for="[unit, info] of distinctUnits" :key="unit">
+                          {{ info.allEnabled ? 'Disable' : 'Enable' }} {{ unit }} ({{ info.count }})
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
                 </div>
               </div>
             </div>
@@ -479,7 +498,7 @@
 
         <!-- Right Panel: Unified Chart (analog + digital in one canvas) -->
         <div class="right-panel">
-          <div class="oscilloscope-container" @wheel="handleMouseWheel">
+          <div class="oscilloscope-container">
             <!-- Always render canvas for chart initialization, hide with CSS when no visible series -->
             <div class="combined-analog-chart" :style="{ display: (visibleAnalogSeries.length > 0 || visibleDigitalSeries.length > 0) ? 'block' : 'none' }">
               <canvas ref="analogChartCanvas" id="analog-chart"></canvas>
@@ -1464,6 +1483,11 @@
   let chartCreationRetries = 0
   const MAX_CHART_CREATION_RETRIES = 10 // Maximum retries before giving up
 
+  // Cache last-known Y-axis ranges so axes stay visible when scrolling to empty data regions
+  const lastKnownY1Range = ref<{ min: number; max: number; step: number; nSteps: number } | null>(null)
+  const lastKnownY2Range = ref<{ min: number; max: number; step: number; nSteps: number } | null>(null)
+  const lastKnownY3Range = ref<{ min: number; max: number; step: number; nSteps: number } | null>(null)
+
   // 🆕 Gap detection threshold (minutes) - configurable threshold for breaking lines when data gaps occur
   // Default: 1 minute (reasonable since Action 15 runs every 15s minimum - detects ~4 missed data points)
   const gapDetectionThreshold = ref(1) // Default: 1 minute
@@ -1687,6 +1711,63 @@
   const hasConnectionError = ref(false) // Track connection errors for UI display
   const hasLoadedInitialHistory = ref(false) // Track if initial history has been loaded
 
+  interface DbStatusState {
+    visible: boolean
+    severity: 'warn' | 'error'
+    title: string
+    message: string
+    hint?: string
+  }
+
+  const dbStatus = ref<DbStatusState>({
+    visible: false,
+    severity: 'warn',
+    title: '',
+    message: '',
+  })
+
+  const DB_STATUS_POLL_MS = 10000
+  let dbStatusTimer: ReturnType<typeof setInterval> | null = null
+
+  async function checkDbStatus() {
+    try {
+      const res = await fetch('http://localhost:9103/api/sync/health')
+      if (!res.ok) return
+      const data = await res.json()
+
+      if (!data.centerDbEnabled || data.centerDbConnected) {
+        dbStatus.value.visible = false
+        return
+      }
+
+      const status: string = data.centerDbStatus ?? ''
+      const isHard = status === 'server_unreachable' || status === 'db_missing'
+
+      const titleMap: Record<string, string> = {
+        server_unreachable: 'SQL Server Unreachable',
+        db_missing: 'Database Not Found',
+        schema_missing: 'Database Not Initialized',
+        misconfigured_backend: 'Shared DB Misconfigured',
+      }
+      const hintMap: Record<string, string> = {
+        server_unreachable: 'Check server host, port, network, and SQL Server service.',
+        db_missing: 'The configured database does not exist. Run Init Schema in Database Settings.',
+        schema_missing: 'Go to Database Settings and run Init Schema to create the required tables.',
+        misconfigured_backend: 'Go to Database Settings and switch the active backend to SQL Server.',
+      }
+
+      dbStatus.value = {
+        visible: true,
+        severity: isHard ? 'error' : 'warn',
+        title: titleMap[status] ?? 'Shared DB Not Connected',
+        message: data.centerDbMessage ?? 'Shared DB is enabled but the connection is not active.',
+        hint: hintMap[status] ?? 'Check Database Settings for more information.',
+      }
+    } catch (e) {
+      console.error('[TrendLogChart] dbStatus check failed:', e)
+    }
+  }
+
   // Helper functions for delayed loading indicator
   const startLoading = () => {
     isLoading.value = true
@@ -1745,22 +1826,24 @@
     // Generate search ID (panel data is 1-based, param is 0-based)
     const idToFind = `${pointTypeInfo.category}${pointNumber + 1}`
 
+    // Priority: description (20-char Full_Label) → label (8-char) → "{panelId}-{id}" fallback
+    // This ensures the longest user-defined name is shown first.
+
     // 1. Try fresh Action 17 cache first (most reliable, reads directly from device)
     const cachedDevice = freshWebviewCache.value.get(`${panelId}_${idToFind}`)
     if (cachedDevice) {
-      const desc = (cachedDevice.label && cachedDevice.label.trim())
-        || cachedDevice.description
-        || cachedDevice.id
+      const desc = (cachedDevice.description && cachedDevice.description.trim())
+        || (cachedDevice.label && cachedDevice.label.trim())
         || ''
       if (desc) return desc
+      // Has device but no label fields → fall through to panelsData
     }
 
     // 2. Fall back to panelsData (Action 0 cached response)
     const panelsData = T3000_Data.value.panelsData
 
     if (!panelsData?.length) {
-      // No panelsData available for device description
-      return ''
+      return cachedDevice ? `${panelId}-${idToFind}` : ''
     }
 
     const device = panelsData.find((d: any) =>
@@ -1773,23 +1856,15 @@
         pointType,
         pointNumber,
         idToFind,
-        availableDevices: panelsData.map(d => ({ pid: d.pid, id: d.id })).slice(0, 5) // Show first 5 for debugging
+        availableDevices: panelsData.map(d => ({ pid: d.pid, id: d.id })).slice(0, 5)
       })
       return ''
     }
 
-    // Priority order: label (if not empty) → description → fullLabel → command → id
-    // Use label first if it exists and is not empty, otherwise fall back to description
-    const description = (device.label && device.label.trim())
-      || device.description
-      || device.fullLabel
-      || device.command
-      || device.id
-      || ''
-
-    if (!description) {
-      LogUtil.Debug('⚠️ TrendLogChart: Device found but no description fields available', { device })
-    }
+    // Priority: description (20-char) → label (8-char) → "{panelId}-{id}" fallback
+    const description = (device.description && device.description.trim())
+      || (device.label && device.label.trim())
+      || `${panelId}-${idToFind}`
 
     return description
   }
@@ -1858,6 +1933,11 @@
       const panelId: number = rawPanelId === 0 ? mainPanelIdForSeries : rawPanelId
       const { point_type: pointType, point_number: pointNumber } = inputItem
 
+      // Skip empty/unused MON input slots (point_type=0 or undefined means unconfigured)
+      if (!pointType || pointType <= 0) {
+        continue
+      }
+
       // Get all required info in one pass
       const pointTypeInfo = getPointTypeInfo(pointType)
       const digitalAnalog = getDigitalAnalogFromPanelData(panelId, pointType, pointNumber)
@@ -1865,32 +1945,38 @@
       const description = getDeviceDescription(panelId, pointType, pointNumber)
 
       // FILTER OUT DEMO/PLACEHOLDER DATA
-      // Enhanced filtering to remove all types of demo/test data:
-      // 1. No description AND panel ID is 0 (original filter)
-      // 2. No description at all (prevents generic names like "1 (P0)")
-      // 3. Names that contain "(P0)" pattern (explicit demo data check)
-      // 4. Only allow items with valid device descriptions
-      const potentialSeriesName = description // No fallback - description is required
+      // 1. Panel 0 with no description → demo/placeholder
+      // 2. Demo/test/sample patterns → skip
+      // 3. "(P0)" patterns → skip
+      // Note: getDeviceDescription now always returns a name for real devices
+      // (falls back to "{panelId}-{id}"), so "no description" only happens
+      // when the device isn't found at all (timing / panel not loaded yet).
 
       if (!description && panelId === 0) {
-        // Filtering out placeholder data (no description + panel 0)
-        continue; // Skip this item
+        continue; // Placeholder data (no description + panel 0)
       }
 
       if (!description) {
-        // Filtering out undescribed data (prevents demo names)
-        continue; // Skip this item
+        // Device not found yet — log and skip (will be picked up on regenerate)
+        if (index < 5) {
+          LogUtil.Debug('⚠️ generateDataSeries: filtered (device not found)', {
+            index, rawPanelId, panelId, pointType, pointNumber,
+            category: pointTypeInfo.category,
+            idToFind: `${pointTypeInfo.category}${pointNumber + 1}`,
+            panelsDataLength: T3000_Data.value.panelsData?.length || 0,
+            rawInputItem: JSON.parse(JSON.stringify(inputItem))
+          })
+        }
+        continue;
       }
 
       // Check for demo/test patterns in the description
       if (/demo|test|sample/i.test(description)) {
-        // Filtering out explicit demo data (demo pattern)
-        continue; // Skip this item
+        continue; // Explicit demo data
       }
 
-      if (potentialSeriesName && (potentialSeriesName.includes('(P0)') || potentialSeriesName.match(/^\d+\s*\([P]\d+\)$/))) {
-        // Filtering out explicit demo data (demo pattern)
-        continue; // Skip this item
+      if (description.includes('(P0)') || description.match(/^\d+\s*\([P]\d+\)$/)) {
+        continue; // Demo/placeholder pattern
       }
 
       // Only include items with valid data
@@ -2064,6 +2150,15 @@
   // Regenerate data series when data source changes
   const regenerateDataSeries = () => {
     const newSeries = generateDataSeries()
+
+    // Guard: Don't wipe existing good series if new generation produces nothing.
+    // This prevents data loss when freshMonitorData has unresolvable inputs
+    // (e.g. foreign-panel items whose panelsData hasn't been loaded yet).
+    if (newSeries.length === 0 && dataSeries.value.length > 0) {
+      LogUtil.Warn('🔄 regenerateDataSeries: New generation produced 0 series but existing has', dataSeries.value.length, '— keeping existing')
+      return
+    }
+
     const existingSeriesMap = new Map()
 
     // Create a map of existing series for efficient lookup
@@ -2821,7 +2916,7 @@
   const DIGITAL_BAND_SIZE = 1.05  // virtual units per digital series band (controls per-series height)
   const DBS_HIGH = DIGITAL_BAND_SIZE * 0.25  // Y offset for "active" state tick within a digital band
   const DBS_LOW  = DIGITAL_BAND_SIZE * 0.75  // Y offset for "inactive" state tick within a digital band
-  interface YBandInfo { unit: string; colors: string[]; realMin: number; realMax: number; virtualBase: number }
+  interface YBandInfo { unit: string; colors: string[]; realMin: number; realMax: number; virtualBase: number; step: number }
   const yBandInfo = ref<YBandInfo[]>([])
   // Tracks the virtual Y offset where analog bands start (= digitalZoneHeight + DIGITAL_GAP when digital exists, else 0).
   // Read by the Y-axis tick callback and color function to distinguish digital vs analog zone.
@@ -2942,9 +3037,10 @@
 
   // Computed properties for navigation button states
   const canScroll = computed(() => {
-    // Scroll buttons only work for regular timebases in non-real-time mode
-    // Disabled for: real-time mode (always current) and custom dates (fixed range)
-    return !isRealTime.value && timeBase.value !== 'custom'
+    // Scroll buttons work for all regular timebases (including live mode)
+    // Left arrow in live mode will exit live first, then scroll
+    // Disabled only for custom date ranges (fixed range)
+    return timeBase.value !== 'custom'
   })
 
   const canZoomIn = computed(() => {
@@ -3067,11 +3163,62 @@
         isRealTime.value = false
       }
       if (typeof state.timeOffset === 'number') {
-        timeOffset.value = state.timeOffset
+        // FIX: Only restore negative offsets (user scrolled into the past).
+        // A positive timeOffset shifts the chart window into the future, which
+        // causes the chart to appear blank on page load because all existing
+        // data points fall outside the visible time range. This happens when a
+        // stale offset (e.g. +90 min) is persisted from a previous navigation
+        // session and then restored before fresh data arrives.
+        if (state.timeOffset <= 0) {
+          timeOffset.value = state.timeOffset
+        } else {
+          LogUtil.Info('📦 TrendLogChart: Ignoring stale positive timeOffset from localStorage', { storedOffset: state.timeOffset })
+          timeOffset.value = 0
+        }
       }
-      LogUtil.Info('📦 TrendLogChart: View state restored from localStorage', state)
+      LogUtil.Info('📦 TrendLogChart: View state restored from localStorage', { ...state, appliedTimeOffset: timeOffset.value })
     } catch (_e) { /* Malformed state ignore */ }
     _restoringViewState = false
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // ─── Series visibility persistence (all views) ────────────────────────────
+  const _seriesVisKey = () => `${_viewStateKey()}_v${currentView.value}_seriesVis`
+
+  const saveSeriesVisibility = () => {
+    if (dataSeries.value.length === 0) return
+    try {
+      const arr = dataSeries.value.map(s => s.visible ? 1 : 0)
+      localStorage.setItem(_seriesVisKey(), JSON.stringify(arr))
+    } catch (_e) { /* ignore */ }
+  }
+
+  const loadSeriesVisibility = () => {
+    try {
+      const raw = localStorage.getItem(_seriesVisKey())
+      if (!raw) return
+      const arr: number[] = JSON.parse(raw)
+      if (!Array.isArray(arr)) return
+      dataSeries.value.forEach((s, i) => {
+        if (i < arr.length) s.visible = !!arr[i]
+      })
+    } catch (_e) { /* ignore */ }
+  }
+
+  /** Re-apply visibility for the current view after dataSeries is replaced */
+  const restoreCurrentViewVisibility = () => {
+    if (currentView.value === 1) {
+      loadSeriesVisibility()
+    } else {
+      // First apply tracked items, then restore saved overrides
+      const trackedItems = viewTrackedSeries.value[currentView.value] || []
+      if (trackedItems.length > 0) {
+        dataSeries.value.forEach(series => {
+          series.visible = trackedItems.includes(series.key)
+        })
+      }
+      loadSeriesVisibility()
+    }
   }
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -3190,6 +3337,22 @@
 
   const allVariableEnabled = computed(() => {
     return variableSeries.value.length > 0 && variableSeries.value.every(series => series.visible)
+  })
+
+  // "By Unit" dropdown: distinct units with counts and enabled states
+  const distinctUnits = computed(() => {
+    const unitMap = new Map<string, { count: number; allEnabled: boolean }>()
+    for (const series of dataSeries.value) {
+      const unit = series.unit || 'Unknown'
+      const entry = unitMap.get(unit)
+      if (entry) {
+        entry.count++
+        if (!series.visible) entry.allEnabled = false
+      } else {
+        unitMap.set(unit, { count: 1, allEnabled: series.visible })
+      }
+    }
+    return unitMap
   })
 
   // Computed properties for visible series (for multi-canvas)
@@ -3774,7 +3937,28 @@
       },
       {
         id: 'dividerBridge',
-        afterRender: () => { /* no-op: bridge canvas removed in favour of unified single chart */ }
+        afterDatasetsDraw: (chart: any) => {
+          const ctx = chart.ctx
+          const chartArea = chart.chartArea
+          if (!chartArea) return
+          const yScale = chart.scales.y
+          if (!yScale) return
+          const bands = yBandInfo.value
+          if (bands.length === 0) return
+          const aOffset = unifiedAnalogOffset.value
+          ctx.save()
+          ctx.strokeStyle = '#666'
+          ctx.lineWidth = 1
+          // Draw a line at the min (bottom) and max (top) of every band
+          for (let i = 0; i <= bands.length; i++) {
+            const py = yScale.getPixelForValue(aOffset + i * BAND_SIZE)
+            ctx.beginPath()
+            ctx.moveTo(chartArea.left, py)
+            ctx.lineTo(chartArea.right, py)
+            ctx.stroke()
+          }
+          ctx.restore()
+        }
       },
       {
         // Draw a light grey background band behind each digital binary row so
@@ -4367,7 +4551,7 @@
                 if (Math.abs(withinSeries - DBS_LOW) < 0.05) return digitalStates[0] || ''
                 return ''
               }
-              // Analog zone: reverse-transform to real value
+              // Analog zone: reverse-transform to real value, snap to nice step
               const bands = yBandInfo.value
               if (!bands.length) return ''
               const bi = Math.max(0, Math.min(bands.length - 1, Math.floor((v - analogOffset) / BAND_SIZE)))
@@ -4375,25 +4559,30 @@
               if (!band) return ''
               const range = band.realMax - band.realMin
               const realV = band.realMin + (v - band.virtualBase - BAND_MARGIN) / (BAND_SIZE - 2 * BAND_MARGIN) * range
-              const rounded = Math.round(realV)
-              if (Math.abs(rounded) >= 1_000_000) return (rounded / 1_000_000).toFixed(1) + 'M'
-              if (Math.abs(rounded) >= 10_000)    return (rounded / 1_000).toFixed(0) + 'K'
-              if (Math.abs(rounded) >= 1_000)     return (rounded / 1_000).toFixed(1) + 'K'
-              return rounded.toString()
+              // Use the pre-computed step from the band for consistent formatting
+              const step = band.step
+              // Snap to nearest step multiple to eliminate float drift from reverse-transform
+              const snapped = Math.round(realV / step) * step
+              const decimals = step < 1 ? Math.max(1, Math.ceil(-Math.log10(step))) : 0
+              if (Math.abs(snapped) >= 1_000_000) return (snapped / 1_000_000).toFixed(1) + 'M'
+              if (Math.abs(snapped) >= 10_000)    return (snapped / 1_000).toFixed(0) + 'K'
+              if (Math.abs(snapped) >= 1_000)     return (snapped / 1_000).toFixed(1) + 'K'
+              return decimals > 0 ? snapped.toFixed(decimals) : Math.round(snapped).toString()
             }
           },
-          // Ticks: 2 per digital series (at DBS_HIGH and DBS_LOW) + up to 5 per analog band.
-          // For small-range bands, tick count is capped to the number of distinct integers
-          // in the range so integer labels are never duplicated.
+          // Ticks: 2 per digital series (at DBS_HIGH and DBS_LOW) + nice-step rounded
+          // ticks per analog band.  Nice-step produces clean round labels (e.g. 220, 230,
+          // 240, 250) instead of arbitrary reverse-transform artefacts (231, 239, 246).
           // autoSkip is off — we own tick density here.
           afterBuildTicks: function(scale: any) {
             const pwC: Array<{vMin: number; vMax: number}> | null = scale.options._pwClusters ?? null
             if (!pwC || pwC.length === 0) return
 
             const digitalCount = visibleDigitalSeries.value.length
-            const MAX_INTERVALS = 4  // default: 5 tick lines per analog band
+            const TARGET_TICKS = 5  // aim for ~5 tick lines per analog band
             const kept: Array<{value: number}> = []
             const bands = yBandInfo.value
+            const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
 
             pwC.forEach((cluster: any, clusterIdx: number) => {
               if (clusterIdx === 0 && digitalCount > 0) {
@@ -4404,15 +4593,39 @@
                   kept.push({ value: bY + DBS_LOW })
                 }
               } else {
-                // Analog cluster: cap intervals so integers are never duplicated
+                // Analog band: generate nice-step ticks in REAL value space,
+                // then map each back to virtual position for the scale.
                 const bandIdx = clusterIdx - (digitalCount > 0 ? 1 : 0)
                 const band = bands[bandIdx]
-                const realRange = band ? (band.realMax - band.realMin) : MAX_INTERVALS
-                // Allow at most as many intervals as there are distinct integer steps in range
-                const intervals = Math.min(MAX_INTERVALS, Math.max(1, Math.floor(realRange)))
-                const span = cluster.vMax - cluster.vMin
-                for (let k = 0; k <= intervals; k++) {
-                  kept.push({ value: cluster.vMin + (span * k) / intervals })
+                if (!band) return
+
+                const realMin = band.realMin
+                const realMax = band.realMax
+                const realRange = realMax - realMin
+                const usableVirtual = BAND_SIZE - 2 * BAND_MARGIN // 84 virtual units
+
+                // Use the pre-computed step from the band (same step used for boundary snapping)
+                const step = band.step
+
+                // Generate clean multiples of step within [realMin, realMax]
+                const firstTick = Math.ceil(realMin / step) * step
+                const lastTick  = Math.floor(realMax / step) * step
+
+                for (let rv = firstTick; rv <= lastTick + step * 0.001; rv += step) {
+                  const niceVal = Math.round(rv / step) * step  // eliminate float drift
+                  // Map real value → virtual position
+                  const t = (realRange > 0.001) ? (niceVal - realMin) / realRange : 0.5
+                  const virtualPos = band.virtualBase + BAND_MARGIN + t * usableVirtual
+                  kept.push({ value: virtualPos })
+                }
+
+                // If no ticks were emitted (range too small for step), emit midpoint
+                if (firstTick > lastTick + step * 0.001) {
+                  const mid = (realMin + realMax) / 2
+                  const roundedMid = Math.round(mid / step) * step
+                  const t = (realRange > 0.001) ? (roundedMid - realMin) / realRange : 0.5
+                  const virtualPos = band.virtualBase + BAND_MARGIN + t * usableVirtual
+                  kept.push({ value: virtualPos })
                 }
               }
             })
@@ -4514,6 +4727,7 @@
 
             if (y1Datasets.length === 0) {
               scale.display = false
+              lastKnownY1Range.value = null
               return
             }
 
@@ -4536,7 +4750,17 @@
             })
 
             if (allValues.length === 0) {
-              scale.display = false
+              // Use cached range so Y-axis stays visible when scrolling to empty region
+              if (lastKnownY1Range.value) {
+                scale.min = lastKnownY1Range.value.min
+                scale.max = lastKnownY1Range.value.max
+                scale.options.ticks.stepSize = lastKnownY1Range.value.step
+                scale.options.ticks.maxTicksLimit = lastKnownY1Range.value.nSteps + 1
+                scale.options._pwClusters = null
+                scale.options._pwDistinct = null
+              } else {
+                scale.display = false
+              }
               return
             }
 
@@ -4545,7 +4769,7 @@
             const dRange = dMax - dMin
 
             const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
-            const step = niceSteps.find(s => s >= Math.max(dRange, 0.001) / 8) ?? niceSteps[niceSteps.length - 1]
+            let step = niceSteps.find(s => s >= Math.max(dRange, 0.001) / 8) ?? niceSteps[niceSteps.length - 1]
 
             let sMinSteps = Math.floor(dMin / step)
             let sMaxSteps = Math.ceil(dMax / step)
@@ -4569,6 +4793,21 @@
               nSteps = sMaxSteps
             }
 
+            // Round boundaries to visually clean multiples (5, 10, 50, etc.)
+            const maxAbs1 = Math.max(Math.abs(dMin), Math.abs(dMax), 1)
+            const mag1 = Math.pow(10, Math.floor(Math.log10(maxAbs1)))
+            const boundaryRound1 = niceSteps.find(s => s >= mag1 / 2) ?? step
+            if (boundaryRound1 > step) {
+              const rMin = Math.floor(sMin / boundaryRound1) * boundaryRound1
+              const rMax = Math.ceil(sMax / boundaryRound1) * boundaryRound1
+              if ((rMax - rMin) <= Math.max(dRange, 1) * 3) {
+                sMin = rMin
+                sMax = rMax
+                step = niceSteps.find(s => s >= (sMax - sMin) / 8) ?? step
+                nSteps = Math.round((sMax - sMin) / step)
+              }
+            }
+
             scale.min = sMin
             scale.max = sMax
 
@@ -4578,6 +4817,9 @@
 
             scale.options.ticks.stepSize = step
             scale.options.ticks.maxTicksLimit = nSteps + 1
+
+            // Cache last-known-good range for y1
+            lastKnownY1Range.value = { min: sMin, max: sMax, step, nSteps }
           }
         },
         // Y2 axis (left side, 3rd value-range group)
@@ -4634,6 +4876,7 @@
 
             if (y2Datasets.length === 0) {
               scale.display = false
+              lastKnownY2Range.value = null
               return
             }
 
@@ -4655,7 +4898,16 @@
             })
 
             if (allValues.length === 0) {
-              scale.display = false
+              if (lastKnownY2Range.value) {
+                scale.min = lastKnownY2Range.value.min
+                scale.max = lastKnownY2Range.value.max
+                scale.options.ticks.stepSize = lastKnownY2Range.value.step
+                scale.options.ticks.maxTicksLimit = lastKnownY2Range.value.nSteps + 1
+                scale.options._pwClusters = null
+                scale.options._pwDistinct = null
+              } else {
+                scale.display = false
+              }
               return
             }
 
@@ -4664,7 +4916,7 @@
             const dRange = dMax - dMin
 
             const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
-            const step = niceSteps.find(s => s >= Math.max(dRange, 0.001) / 8) ?? niceSteps[niceSteps.length - 1]
+            let step = niceSteps.find(s => s >= Math.max(dRange, 0.001) / 8) ?? niceSteps[niceSteps.length - 1]
 
             let sMinSteps = Math.floor(dMin / step)
             let sMaxSteps = Math.ceil(dMax / step)
@@ -4688,6 +4940,21 @@
               nSteps = sMaxSteps
             }
 
+            // Round boundaries to visually clean multiples (5, 10, 50, etc.)
+            const maxAbs2 = Math.max(Math.abs(dMin), Math.abs(dMax), 1)
+            const mag2 = Math.pow(10, Math.floor(Math.log10(maxAbs2)))
+            const boundaryRound2 = niceSteps.find(s => s >= mag2 / 2) ?? step
+            if (boundaryRound2 > step) {
+              const rMin = Math.floor(sMin / boundaryRound2) * boundaryRound2
+              const rMax = Math.ceil(sMax / boundaryRound2) * boundaryRound2
+              if ((rMax - rMin) <= Math.max(dRange, 1) * 3) {
+                sMin = rMin
+                sMax = rMax
+                step = niceSteps.find(s => s >= (sMax - sMin) / 8) ?? step
+                nSteps = Math.round((sMax - sMin) / step)
+              }
+            }
+
             scale.min = sMin
             scale.max = sMax
 
@@ -4697,6 +4964,8 @@
 
             scale.options.ticks.stepSize = step
             scale.options.ticks.maxTicksLimit = nSteps + 1
+
+            lastKnownY2Range.value = { min: sMin, max: sMax, step, nSteps }
           }
         },
         // Y3 axis (left side, 4th value-range group)
@@ -4753,6 +5022,7 @@
 
             if (y3Datasets.length === 0) {
               scale.display = false
+              lastKnownY3Range.value = null
               return
             }
 
@@ -4774,7 +5044,16 @@
             })
 
             if (allValues.length === 0) {
-              scale.display = false
+              if (lastKnownY3Range.value) {
+                scale.min = lastKnownY3Range.value.min
+                scale.max = lastKnownY3Range.value.max
+                scale.options.ticks.stepSize = lastKnownY3Range.value.step
+                scale.options.ticks.maxTicksLimit = lastKnownY3Range.value.nSteps + 1
+                scale.options._pwClusters = null
+                scale.options._pwDistinct = null
+              } else {
+                scale.display = false
+              }
               return
             }
 
@@ -4783,7 +5062,7 @@
             const dRange = dMax - dMin
 
             const niceSteps = [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000,5000,10000]
-            const step = niceSteps.find(s => s >= Math.max(dRange, 0.001) / 8) ?? niceSteps[niceSteps.length - 1]
+            let step = niceSteps.find(s => s >= Math.max(dRange, 0.001) / 8) ?? niceSteps[niceSteps.length - 1]
 
             let sMinSteps = Math.floor(dMin / step)
             let sMaxSteps = Math.ceil(dMax / step)
@@ -4807,6 +5086,21 @@
               nSteps = sMaxSteps
             }
 
+            // Round boundaries to visually clean multiples (5, 10, 50, etc.)
+            const maxAbs3 = Math.max(Math.abs(dMin), Math.abs(dMax), 1)
+            const mag3 = Math.pow(10, Math.floor(Math.log10(maxAbs3)))
+            const boundaryRound3 = niceSteps.find(s => s >= mag3 / 2) ?? step
+            if (boundaryRound3 > step) {
+              const rMin = Math.floor(sMin / boundaryRound3) * boundaryRound3
+              const rMax = Math.ceil(sMax / boundaryRound3) * boundaryRound3
+              if ((rMax - rMin) <= Math.max(dRange, 1) * 3) {
+                sMin = rMin
+                sMax = rMax
+                step = niceSteps.find(s => s >= (sMax - sMin) / 8) ?? step
+                nSteps = Math.round((sMax - sMin) / step)
+              }
+            }
+
             scale.min = sMin
             scale.max = sMax
 
@@ -4816,6 +5110,8 @@
 
             scale.options.ticks.stepSize = step
             scale.options.ticks.maxTicksLimit = nSteps + 1
+
+            lastKnownY3Range.value = { min: sMin, max: sMax, step, nSteps }
           }
         }
       }
@@ -6126,6 +6422,9 @@
 
       dataSeries.value = newDataSeries
 
+      // Restore visibility for the current view after data regeneration
+      restoreCurrentViewVisibility()
+
       // Update sync time since we successfully created series structure
       lastSyncTime.value = new Date().toLocaleTimeString()
 
@@ -7257,6 +7556,9 @@
 
       // Assign the new series
       dataSeries.value = newSeries
+
+      // Restore visibility for the current view
+      restoreCurrentViewVisibility()
 
       LogUtil.Info('✅Series created from historical data:', {
         seriesCount: newSeries.length,
@@ -8797,11 +9099,23 @@
       return unit.trim().toLowerCase()
     }
 
-    // Analyze all series
+    // Analyze all series — only consider data within the visible x-range
+    // Compute the visible time window FIRST so yBandInfo uses the correct range
+    // (analogXWindow may still hold the previous render's range at this point).
+    const currentTimeWindow = getCurrentTimeWindow()
+    analogXWindow.min = currentTimeWindow.min
+    analogXWindow.max = currentTimeWindow.max
+    const xMin = analogXWindow.min
+    const xMax = analogXWindow.max
     for (const series of visibleAnalog) {
       if (!series.data || series.data.length === 0) continue
 
       const values = series.data
+        .filter((point: any) => {
+          if (!point) return false
+          const ts = typeof point.timestamp === 'number' ? point.timestamp : +new Date(point.timestamp)
+          return ts >= xMin && ts <= xMax
+        })
         .map((point: any) => point?.value)
         .filter((y: any) => typeof y === 'number' && isFinite(y) && y > -99999 && y < 999999)
 
@@ -8850,21 +9164,116 @@
       const allVals: number[] = []
       items.forEach(item => {
         item.series.data.forEach((p: any) => {
+          // Only include data within the visible x-range
+          const ts = typeof p.timestamp === 'number' ? p.timestamp : +new Date(p.timestamp)
+          if (ts < xMin || ts > xMax) return
           const v = typeof p.value === 'number' ? p.value : (p.value != null ? Number(p.value) : NaN)
           if (!isNaN(v) && isFinite(v) && v > -99999 && v < 999999) allVals.push(v)
         })
       })
-      let realMin = allVals.length ? Math.min(...allVals) : 0
-      let realMax = allVals.length ? Math.max(...allVals) : 100
+      // Determine Y range: use full min/max by default, but apply IQR outlier
+      // filtering when the full range is dramatically wider than the core data
+      // cluster (ratio > 5). This trims distant baselines (e.g. a cooling series
+      // stuck at 0 among 500-580 p/min data) while preserving real data spikes
+      // (e.g. temperature 23→31 where ratio ≈ 4).
+      let realMin: number, realMax: number
+      if (allVals.length >= 10) {
+        const sorted = allVals.slice().sort((a, b) => a - b)
+        const fullMin = sorted[0], fullMax = sorted[sorted.length - 1]
+        const fullRange = fullMax - fullMin
+        const q1 = sorted[Math.floor(sorted.length * 0.25)]
+        const q3 = sorted[Math.ceil(sorted.length * 0.75) - 1]
+        const iqr = q3 - q1
+        const fenceMin = q1 - 1.5 * iqr
+        const fenceMax = q3 + 1.5 * iqr
+        const inliers = sorted.filter(v => v >= fenceMin && v <= fenceMax)
+        const iqrMin = inliers.length ? inliers[0] : fullMin
+        const iqrMax = inliers.length ? inliers[inliers.length - 1] : fullMax
+        const iqrRange = iqrMax - iqrMin || 1
+        if (fullRange / iqrRange > 5) {
+          // Distant outliers detected — use IQR-trimmed range
+          realMin = iqrMin; realMax = iqrMax
+        } else {
+          // Range is reasonable — use full min/max to keep spikes visible
+          realMin = fullMin; realMax = fullMax
+        }
+      } else if (allVals.length) {
+        realMin = Math.min(...allVals)
+        realMax = Math.max(...allVals)
+      } else {
+        realMin = 0
+        realMax = 100
+      }
       if (realMin === realMax) { realMin -= 1; realMax += 1 }
+
+      // Snap realMin/realMax to nice step boundaries so tick labels always
+      // include the min and max of the visible range (e.g. 0→500 instead of 0→450).
+      const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+      const rawRange = realMax - realMin
+      const rangeStep = niceSteps.find(s => s >= Math.max(rawRange, 0.001) / 5) ?? niceSteps[niceSteps.length - 1]
+      // Minimum "visually round" step for the value magnitude — labels should land
+      // on integers for values ≥10 (e.g. 60,61,62 not 60.5,61.0,61.5).
+      const maxAbs = Math.max(Math.abs(realMin), Math.abs(realMax), 1)
+      const mag = Math.pow(10, Math.floor(Math.log10(maxAbs)))
+      const magStep = niceSteps.find(s => s >= mag / 10) ?? 0.1
+      let step = Math.max(rangeStep, magStep)
+      // Upgrade to the largest nice step where:
+      // 1. At least 2 intervals (3 tick labels)
+      // 2. Each boundary extends at most 80% of one step beyond the data
+      // 3. Total snapped range is at most 1.5× the raw data range
+      // This gives rounder labels while preventing excessive dead space.
+      let idx = niceSteps.indexOf(step)
+      while (idx >= 0 && idx < niceSteps.length - 1) {
+        const bigStep = niceSteps[idx + 1]
+        const tMin = Math.floor(realMin / bigStep) * bigStep
+        const tMax = Math.ceil(realMax / bigStep) * bigStep
+        const snappedRange = tMax - tMin
+        const intervals = snappedRange / bigStep
+        const lowPad = realMin - tMin
+        const highPad = tMax - realMax
+        if (intervals >= 2 && lowPad <= bigStep * 0.8 && highPad <= bigStep * 0.8 && snappedRange <= rawRange * 1.5) { step = bigStep; idx++ }
+        else break
+      }
+      // Snap boundaries to step multiples
+      realMin = Math.floor(realMin / step) * step
+      realMax = Math.ceil(realMax / step) * step
+      // Ensure at least 2 step intervals so the band isn't degenerate
+      if ((realMax - realMin) / step < 2) {
+        realMax = realMin + step * 2
+      }
+
+      // Round boundaries to visually clean multiples (5, 10, 50, etc.)
+      // so axis labels start at values like 20, 55, 500 instead of 22, 57, 520
+      const snappedRange = realMax - realMin // range AFTER step-snapping (≥ rawRange)
+      const boundaryRound = niceSteps.find(s => s >= mag / 2) ?? step
+      if (boundaryRound > step) {
+        const rMin = Math.floor(realMin / boundaryRound) * boundaryRound
+        const rMax = Math.ceil(realMax / boundaryRound) * boundaryRound
+        // Only apply if the expanded range stays reasonable (≤ 3× snapped span)
+        if ((rMax - rMin) <= Math.max(snappedRange * 3, boundaryRound * 4)) {
+          realMin = rMin
+          realMax = rMax
+          // Recompute step for the expanded range to maintain ~5-6 ticks
+          step = niceSteps.find(s => s >= (realMax - realMin) / 6) ?? step
+          step = Math.max(step, magStep)
+        }
+      }
+
       return {
         unit: items[0].unit || groupKey,
         colors: items.map(it => it.color),
         realMin, realMax,
-        virtualBase: analogOffset + i * BAND_SIZE  // shifted to make room for digital zone
+        virtualBase: analogOffset + i * BAND_SIZE,  // shifted to make room for digital zone
+        step
       }
     })
-    yBandInfo.value = newBandInfo
+    // Preserve last-known-good Y-axis bands when scrolling to empty data region
+    if (newBandInfo.length > 0) {
+      yBandInfo.value = newBandInfo
+    } else if (yBandInfo.value.length === 0) {
+      yBandInfo.value = newBandInfo // first load, nothing to cache
+    }
+    // else: keep previous yBandInfo.value so Y-axis labels stay visible
 
     // Series (panelId:id) → band index map — must include panelId because multiple
     // series from different panels can share the same point id (e.g. all VAR1).
@@ -8880,7 +9289,10 @@
       const band = newBandInfo[bi]
       if (!band) return realY
       const range = band.realMax - band.realMin
-      return band.virtualBase + BAND_MARGIN + (realY - band.realMin) / range * (BAND_SIZE - 2 * BAND_MARGIN)
+      const t = (realY - band.realMin) / range
+      // Clamp to band boundaries so outlier values don't overflow into other bands
+      const tClamped = Math.max(0, Math.min(1, t))
+      return band.virtualBase + BAND_MARGIN + tClamped * (BAND_SIZE - 2 * BAND_MARGIN)
     }
 
     // 🆕 STEP 4: Create datasets with assigned yAxisID
@@ -9332,6 +9744,7 @@
     dataSeries.value.forEach(series => {
       series.visible = true
     })
+    saveSeriesVisibility()
     updateCharts()
   }
 
@@ -9339,6 +9752,7 @@
     dataSeries.value.forEach(series => {
       series.visible = false
     })
+    saveSeriesVisibility()
     updateCharts()
   }
 
@@ -9353,6 +9767,7 @@
     })
 
     // debugDataSeriesFlow(`After toggle analog (enabled: ${enableAnalog})`)
+    saveSeriesVisibility()
     updateCharts()
   }
 
@@ -9363,6 +9778,7 @@
         series.visible = enableDigital
       }
     })
+    saveSeriesVisibility()
     updateCharts()
   }
 
@@ -9398,9 +9814,24 @@
 
 
   // New control functions - Updated to use timeOffset and regenerate data
+  const restoreLiveMode = () => {
+    LogUtil.Info('🔴→🟢 Restoring live mode via Live tag click')
+    timeOffset.value = 0
+    isRealTime.value = true
+    dataSource.value = 'realtime'
+    initializeData()
+    startRealTimeUpdates()
+  }
+
   const moveTimeLeft = async () => {
-    // Guard: Don't allow scroll for real-time mode or custom date ranges
-    if (isRealTime.value || timeBase.value === 'custom') return
+    // Guard: Don't allow scroll for custom date ranges
+    if (timeBase.value === 'custom') return
+
+    // If in live mode, exit live mode first, then scroll
+    if (isRealTime.value) {
+      isRealTime.value = false
+      stopRealTimeUpdates()
+    }
 
     // Move time window left by exactly the timebase period
     const shiftMinutes = getTimeRangeMinutes(timeBase.value)
@@ -9421,13 +9852,18 @@
     // Move time window right by exactly the timebase period
     const shiftMinutes = getTimeRangeMinutes(timeBase.value)
 
-    // Update the time offset to track navigation
-    timeOffset.value += shiftMinutes
+    // Update the time offset, but clamp to 0 (never scroll past current time)
+    timeOffset.value = Math.min(0, timeOffset.value + shiftMinutes)
+
+    // If we've returned to offset 0, restore live mode
+    if (timeOffset.value === 0) {
+      isRealTime.value = true
+      startRealTimeUpdates()
+      return
+    }
 
     // Regenerate data for the new time window
     await initializeData()
-
-    // message.info(`Moved ${shiftMinutes} minutes forward`)
   }
 
   const zoomIn = () => {
@@ -9469,23 +9905,6 @@
         timeOffset: timeOffset.value,
         note: 'Timebase watcher will handle data loading'
       })
-    }
-  }
-
-  // Mouse wheel zoom handler
-  const handleMouseWheel = (event: WheelEvent) => {
-    event.preventDefault() // Prevent page scroll
-
-    if (event.deltaY < 0) {
-      // Scroll up = Zoom In
-      if (canZoomIn.value) {
-        zoomIn()
-      }
-    } else if (event.deltaY > 0) {
-      // Scroll down = Zoom Out
-      if (canZoomOut.value) {
-        zoomOut()
-      }
     }
   }
 
@@ -9532,10 +9951,13 @@
         series.visible = true
       })
 
-      LogUtil.Info(`Set View: View 1 activated - showing all items`, {
+      // Restore saved visibility for View 1 (overrides the show-all default)
+      loadSeriesVisibility()
+
+      LogUtil.Info(`Set View: View 1 activated`, {
         totalSeries: dataSeries.value.length,
-        visibleSeries: dataSeries.value.length,
-        behavior: 'AUTO_SHOW_ALL'
+        visibleSeries: dataSeries.value.filter(s => s.visible).length,
+        behavior: 'RESTORED_FROM_STORAGE'
       })
     } else {
       // View 2 & 3: Show only user selected items.
@@ -9564,6 +9986,9 @@
           })
         }
       })
+
+      // Restore saved visibility overrides for this view
+      loadSeriesVisibility()
 
       const finalVisibleSeries = dataSeries.value.filter(s => s.visible)
 
@@ -9772,24 +10197,24 @@
   const selectAllItems = async () => {
     if (isSavingSelections.value) return
 
-    const allSeriesNames = dataSeries.value.map(series => series.name)
+    const allSeriesKeys = dataSeries.value.map(series => series.key)
     const beforeCount = (viewTrackedSeries.value[currentView.value] || []).length
 
     LogUtil.Info(`📋 Select All Items: Selecting all available items for View ${currentView.value}`, {
       currentView: currentView.value,
       beforeCount,
-      afterCount: allSeriesNames.length,
+      afterCount: allSeriesKeys.length,
       action: 'SELECT_ALL',
-      allSeriesNames,
+      allSeriesKeys,
       timestamp: new Date().toISOString()
     })
 
     isSavingSelections.value = true
 
     try {
-      viewTrackedSeries.value[currentView.value] = [...allSeriesNames]
+      viewTrackedSeries.value[currentView.value] = [...allSeriesKeys]
 
-      await saveViewTracking(currentView.value, allSeriesNames)
+      await saveViewTracking(currentView.value, allSeriesKeys)
       LogUtil.Info(`Select All Items: Database save successful`, {
         currentView: currentView.value,
         dbSaveSuccessful: true
@@ -9799,8 +10224,8 @@
 
       LogUtil.Info(`Select All Items: All items selected`, {
         currentView: currentView.value,
-        selectedCount: allSeriesNames.length,
-        finalState: allSeriesNames
+        selectedCount: allSeriesKeys.length,
+        finalState: allSeriesKeys
       })
     } catch (error) {
       LogUtil.Error(`Select All Items: Database save failed`, {
@@ -10012,7 +10437,7 @@
       case 'Enter': // Toggle selected item
         if (selectedItemIndex.value >= 0 && selectedItemIndex.value < displayedSeries.value.length) {
           const selectedSeries = displayedSeries.value[selectedItemIndex.value]
-          const masterSeriesIndex = dataSeries.value.findIndex(s => s.name === selectedSeries.name)
+          const masterSeriesIndex = dataSeries.value.findIndex(s => s.key === selectedSeries.key)
 
           if (masterSeriesIndex >= 0) {
             toggleSeriesVisibility(masterSeriesIndex, null)
@@ -10520,6 +10945,7 @@
     }
 
     dataSeries.value[index].visible = !dataSeries.value[index].visible
+    saveSeriesVisibility()
     updateCharts()
     LogUtil.Debug(`Toggled visibility for series ${dataSeries.value[index].name} to ${dataSeries.value[index].visible}`)
   }
@@ -10560,6 +10986,10 @@
       `\n  monitorConfig raw intervals: hour=${monitorConfigData?.hour_interval_time} min=${monitorConfigData?.minute_interval_time} sec=${monitorConfigData?.second_interval_time}` +
       `\n  monitorConfig.dataIntervalMs=${monitorConfigData?.dataIntervalMs}`
     )
+    // Fire one immediate poll so the Live indicator shows a timestamp right away
+    // instead of staying "N/A" until the first interval tick.
+    addRealtimeDataPoint()
+
     realtimeInterval = setInterval(addRealtimeDataPoint, dataInterval)
     LogUtil.Info('✅Interval created - ID:', realtimeInterval, '- fires every', dataInterval / 1000, 'seconds')
   }
@@ -10703,6 +11133,19 @@
         toggleVariableSeries()
         break
     }
+  }
+
+  const handleByUnitMenu = ({ key }: { key: string }) => {
+    const unitInfo = distinctUnits.value.get(key)
+    if (!unitInfo) return
+    const enable = !unitInfo.allEnabled
+    dataSeries.value.forEach(series => {
+      if ((series.unit || 'Unknown') === key) {
+        series.visible = enable
+      }
+    })
+    saveSeriesVisibility()
+    updateCharts()
   }
 
   // Dropdown menu handlers
@@ -11083,6 +11526,9 @@
 
         // Update the data series with historical data
         dataSeries.value = historicalSeries
+
+        // Restore visibility for the current view
+        restoreCurrentViewVisibility()
 
         // Update charts to display new data
         updateCharts()
@@ -12342,6 +12788,9 @@
   // Lifecycle
   onMounted(async () => {
     try {
+      checkDbStatus()
+      dbStatusTimer = setInterval(checkDbStatus, DB_STATUS_POLL_MS)
+
       // 🆕 FORCE: Always reset history flag on mount to ensure data loads
       hasLoadedInitialHistory.value = false
 
@@ -12427,6 +12876,92 @@
             console.log('[SETTINGS] Monitor Index   :', monFromAction0.index)
             console.log('[SETTINGS] Input channels  :', monFromAction0.input?.length ?? 0)
             console.log('[SETTINGS] Full data       :', JSON.parse(JSON.stringify(monFromAction0)))
+
+            // 🆕 FIX: Build monitorConfig.value directly from Action 0 data
+            // getMonitorConfigFromT3000Data() relies on t3000DataManager which often isn't ready yet,
+            // causing monitorConfig to stay null and addRealtimeDataPoint to exit every cycle.
+            const urlInputItems = props.itemData?.t3Entry?.input || []
+            const urlRangeItems = props.itemData?.t3Entry?.range || []
+            const monInputs = monFromAction0.input || []
+
+            // Match URL inputs against MON inputs (same logic as getMonitorConfigFromT3000Data)
+            let builtInputItems: any[] = []
+            let builtRanges: any[] = []
+
+            if (urlInputItems.length > 0) {
+              for (let ui = 0; ui < urlInputItems.length; ui++) {
+                const urlItem = urlInputItems[ui]
+                const match = monInputs.find((ci: any) =>
+                  ci.panel === urlItem.panel &&
+                  ci.point_number === urlItem.point_number &&
+                  ci.point_type === urlItem.point_type
+                )
+                if (match) {
+                  builtInputItems.push({
+                    panel: match.panel,
+                    point_number: match.point_number,
+                    index: ui,
+                    point_type: match.point_type,
+                    network: match.network,
+                    sub_panel: match.sub_panel
+                  })
+                  builtRanges.push(urlRangeItems[ui] || 0)
+                }
+              }
+            }
+
+            // Fallback: if URL matching found nothing, use all MON inputs directly
+            if (builtInputItems.length === 0 && monInputs.length > 0) {
+              LogUtil.Warn('⚠️ STEP 0: URL input matching failed, using all MON inputs as fallback')
+              for (let mi = 0; mi < monInputs.length; mi++) {
+                const inp = monInputs[mi]
+                if (inp && inp.panel !== undefined && inp.point_number !== undefined) {
+                  builtInputItems.push({
+                    panel: inp.panel,
+                    point_number: inp.point_number,
+                    index: mi,
+                    point_type: inp.point_type,
+                    network: inp.network,
+                    sub_panel: inp.sub_panel
+                  })
+                  builtRanges.push((monFromAction0.range && monFromAction0.range[mi]) || 0)
+                }
+              }
+            }
+
+            if (builtInputItems.length > 0) {
+              const propEntry = (props.itemData as any)?.t3Entry
+              const intervalMs = calculateT3000Interval({
+                hour_interval_time: propEntry?.hour_interval_time ?? monFromAction0.hour_interval_time ?? 0,
+                minute_interval_time: propEntry?.minute_interval_time ?? monFromAction0.minute_interval_time ?? 0,
+                second_interval_time: propEntry?.second_interval_time ?? monFromAction0.second_interval_time ?? 0
+              })
+
+              monitorConfig.value = {
+                id: monFromAction0.id,
+                label: monFromAction0.label || monFromAction0.description || `Monitor ${monFromAction0.id}`,
+                pid: monFromAction0.pid ?? urlPanelId,
+                type: monFromAction0.type,
+                status: monFromAction0.status,
+                numInputs: builtInputItems.length,
+                inputItems: builtInputItems,
+                ranges: builtRanges,
+                dataIntervalMs: intervalMs,
+                originalConfig: monFromAction0
+              }
+
+              LogUtil.Info('✅ STEP 0: Built monitorConfig from Action 0 data', {
+                inputItemsCount: builtInputItems.length,
+                dataIntervalMs: intervalMs,
+                pid: monitorConfig.value.pid
+              })
+
+              // Start real-time polling immediately since we have a valid config
+              startRealTimeUpdates()
+            } else {
+              LogUtil.Warn('⚠️ STEP 0: Could not build monitorConfig — no valid input items found')
+            }
+
             fetchFreshPointsForAllPanels()
               .catch(err => LogUtil.Warn('⚠️ fetchFreshPointsForAllPanels (STEP 0) failed', err))
               .then(() => {
@@ -12441,10 +12976,64 @@
       } else {
         LogUtil.Warn('⚠️ STEP 0: missing panel_id or trendlog_id in URL — skipping')
       }
+
+      // 🆕 FALLBACK: If STEP 0 didn't build monitorConfig (e.g. panel has no cached data,
+      // which happens for foreign-panel MONs), build it from URL all_data (props.itemData.t3Entry).
+      if (!monitorConfig.value) {
+        const propEntry = (props.itemData as any)?.t3Entry
+        const propInputs = propEntry?.input
+        const propRanges = propEntry?.range
+        if (propInputs?.length > 0) {
+          LogUtil.Info('🔧 STEP 0 FALLBACK: Building monitorConfig from URL all_data (props.itemData.t3Entry)')
+          const fallbackInputItems: any[] = []
+          const fallbackRanges: any[] = []
+          for (let fi = 0; fi < propInputs.length; fi++) {
+            const inp = propInputs[fi]
+            if (inp && inp.point_type > 0) {
+              fallbackInputItems.push({
+                panel: inp.panel,
+                point_number: inp.point_number,
+                index: fi,
+                point_type: inp.point_type,
+                network: inp.network || 0,
+                sub_panel: inp.sub_panel || 0
+              })
+              fallbackRanges.push(propRanges?.[fi] || 0)
+            }
+          }
+          if (fallbackInputItems.length > 0) {
+            const intervalMs = calculateT3000Interval({
+              hour_interval_time: propEntry?.hour_interval_time ?? 0,
+              minute_interval_time: propEntry?.minute_interval_time ?? 0,
+              second_interval_time: propEntry?.second_interval_time ?? 0
+            })
+            monitorConfig.value = {
+              id: propEntry?.id || `MON${(urlTrendlogId ?? 0) + 1}`,
+              label: propEntry?.label || propEntry?.description || `Monitor ${propEntry?.id || ''}`,
+              pid: propEntry?.pid ?? urlPanelId,
+              type: 'MON',
+              status: propEntry?.status ?? 1,
+              numInputs: fallbackInputItems.length,
+              inputItems: fallbackInputItems,
+              ranges: fallbackRanges,
+              dataIntervalMs: intervalMs,
+              originalConfig: propEntry
+            }
+            LogUtil.Info('✅ STEP 0 FALLBACK: Built monitorConfig from props', {
+              inputItemsCount: fallbackInputItems.length,
+              dataIntervalMs: intervalMs,
+              pid: monitorConfig.value.pid
+            })
+            startRealTimeUpdates()
+          }
+        }
+      }
+
       LogUtil.Debug('══════════════════════════════════════════════════════════════')
 
       // Initialize monitor configuration
-      const monitorConfigData = await getMonitorConfigFromT3000Data()
+      // Skip if STEP 0 already built monitorConfig from Action 0 data
+      const monitorConfigData = monitorConfig.value || await getMonitorConfigFromT3000Data()
 
       LogUtil.Info('📊 TrendLogChart: Monitor config result', {
         hasMonitorConfig: !!monitorConfigData,
@@ -13153,6 +13742,11 @@
       clearInterval(ffiCountdownTimer)
     }
 
+    if (dbStatusTimer) {
+      clearInterval(dbStatusTimer)
+      dbStatusTimer = null
+    }
+
     // 🆕 Cleanup timebase change timeout and abort controller
     if (timebaseChangeTimeout) {
       clearTimeout(timebaseChangeTimeout)
@@ -13168,6 +13762,10 @@
       LogUtil.Debug('🔥 HMR: Cleaning up old component instance to prevent duplicate intervals')
       stopRealTimeUpdates()
       destroyAllCharts()
+      if (dbStatusTimer) {
+        clearInterval(dbStatusTimer)
+        dbStatusTimer = null
+      }
       if (timebaseChangeTimeout) {
         clearTimeout(timebaseChangeTimeout)
       }
@@ -13394,60 +13992,15 @@
       /* Add ellipsis for very long titles */
     }
 
-  /* Data Source Indicator */
-  .data-source-indicator {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    /* Prevent badge from shrinking */
+  /* Live restore tag (grey, clickable) */
+  .live-restore-tag {
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s;
   }
-
-  .source-badge {
-    display: inline-block;
-    padding: 2px 6px;
-    /* Slightly more compact padding */
-    border-radius: 10px;
-    font-size: 9px;
-    /* Slightly smaller font */
-    font-weight: 500;
-    color: white;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    white-space: nowrap;
-    /* Prevent badge text from wrapping */
+  .live-restore-tag:hover {
+    opacity: 1;
   }
-
-    .source-badge.realtime {
-      background: linear-gradient(45deg, #52c41a, #389e0d);
-      animation: pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.85; }
-    }
-
-    .source-badge.historical {
-      background: linear-gradient(45deg, #2196F3, #1976D2);
-    }
-
-    .source-badge.error {
-      background: linear-gradient(45deg, #f56565, #e53e3e);
-    }
-
-    .source-badge.loading {
-      background: linear-gradient(45deg, #4CAF50, #45a049);
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-      .source-badge.loading .ant-spin {
-        font-size: 10px !important;
-      }
-
-      .source-badge.loading .ant-spin-dot {
-        font-size: 10px !important;
-      }
 
   .header-line-2 {
     display: flex;
@@ -13477,19 +14030,6 @@
   .control-group-label {
     color: #8c8c8c !important;
     font-size: 10px;
-    font-weight: 500;
-    white-space: nowrap;
-  }
-
-  .auto-scroll-toggle {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .toggle-label {
-    color: #595959 !important;
-    font-size: 11px;
     font-weight: 500;
     white-space: nowrap;
   }
@@ -14726,6 +15266,130 @@
   .range-text {
     font-size: 10px;
     color: #1890ff;
+  }
+
+  .db-status-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    cursor: help;
+    user-select: none;
+    background: #fff;
+    white-space: nowrap;
+  }
+
+  .db-status-indicator {
+    margin-left: auto !important;
+    flex: 0 0 auto;
+    min-width: max-content;
+    white-space: nowrap;
+  }
+
+  .db-status-label {
+    letter-spacing: 0.2px;
+  }
+
+  .db-status-bang {
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .db-status-error {
+    color: #cf1322;
+    background: #fff1f0;
+    border-color: #ffa39e;
+  }
+
+  .db-status-warn {
+    color: #ad6800;
+    background: #fffbe6;
+    border-color: #ffe58f;
+  }
+
+  .db-status-tooltip {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .db-status-tooltip-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  .db-status-tooltip-icon {
+    color: #cf1322;
+  }
+
+  .db-status-tooltip-body {
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .db-status-tooltip-hint {
+    font-size: 12px;
+    opacity: 0.9;
+  }
+
+  .db-status-tooltip-footer {
+    font-size: 11px;
+    opacity: 0.8;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding-top: 6px;
+  }
+
+  @media (max-width: 768px) {
+    .controls-main-flex {
+      flex-wrap: nowrap !important;
+      justify-content: flex-start !important;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: thin;
+    }
+
+    .control-group {
+      flex: 0 0 auto !important;
+    }
+
+    .db-status-indicator {
+      margin-left: auto !important;
+      flex: 0 0 auto !important;
+      justify-content: flex-end !important;
+      order: 0;
+    }
+
+    .db-status-icon-btn {
+      font-size: 10px;
+      padding: 2px 8px;
+      gap: 4px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .db-status-indicator {
+      margin-left: auto !important;
+      justify-content: flex-end !important;
+    }
+
+    .db-status-icon-btn {
+      min-width: 0;
+      padding: 2px 6px;
+      border-radius: 12px;
+      font-size: 9px;
+    }
+
+    .db-status-label {
+      display: inline;
+      font-size: 9px;
+    }
   }
 </style>
 

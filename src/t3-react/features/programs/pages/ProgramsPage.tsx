@@ -38,8 +38,6 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
-  ArrowDownloadRegular,
-  SettingsRegular,
   SearchRegular,
   ArrowSortUpRegular,
   ArrowSortDownRegular,
@@ -54,6 +52,8 @@ import { PanelDataRefreshService } from '../../../shared/services/panelDataRefre
 import { SyncStatusBar } from '../../../shared/components/SyncStatusBar';
 import { ProgrammingDrawer } from '../components/ProgrammingDrawer';
 import styles from './ProgramsPage.module.css';
+import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 // Types based on Rust entity (programs.rs) and C++ BacnetProgram structure
 interface ProgramPoint {
@@ -77,7 +77,8 @@ export const ProgramsPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
-  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
+  const [dbChecked, setDbChecked] = useState(false);
+  const deviceRefreshedRef = useRef<number | null>(null);
 
   // Programming drawer state
   const [isProgrammingOpen, setIsProgrammingOpen] = useState(false);
@@ -125,6 +126,7 @@ export const ProgramsPage: React.FC = () => {
       // DON'T clear programs on database fetch error - preserve what we have
     } finally {
       setLoading(false);
+      setDbChecked(true);
     }
   }, [selectedDevice]);
 
@@ -132,20 +134,19 @@ export const ProgramsPage: React.FC = () => {
     fetchPrograms();
   }, [fetchPrograms]);
 
-  // Reset autoRefreshed flag when device changes
+  // Reset auto-refresh state when device changes (don't clear data to avoid visual flash)
   useEffect(() => {
-    setPrograms([]);
     setAutoRefreshed(false);
-    hasAutoRefreshedRef.current = false;
+    setDbChecked(false);
   }, [selectedDevice?.serialNumber]);
 
-  // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
+  // Auto-refresh once per device - ONLY if database is empty after initial DB fetch
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
+    if (!dbChecked || loading || !selectedDevice || autoRefreshed) return;
+    if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
 
-    // Check immediately if database has program data
     const checkAndRefresh = async () => {
-      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+      deviceRefreshedRef.current = selectedDevice.serialNumber;
 
       try {
         // Check if database has program data
@@ -170,7 +171,7 @@ export const ProgramsPage: React.FC = () => {
     };
 
     checkAndRefresh();
-  }, [loading, selectedDevice, autoRefreshed, fetchPrograms, programs.length]);
+  }, [dbChecked, loading, selectedDevice, autoRefreshed, fetchPrograms, programs.length]);
 
   // Handlers
   const handleRefresh = async () => {
@@ -230,12 +231,35 @@ export const ProgramsPage: React.FC = () => {
   };
 
   const handleExport = () => {
-    console.log('Export programs to CSV');
+    if (programs.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<ProgramPoint>[] = [
+      { header: 'Program', accessor: p => p.programId },
+      { header: 'Full Label', accessor: p => p.programList },
+      { header: 'Status', accessor: p => p.programStatus },
+      { header: 'Auto/Manual', accessor: p => p.autoManual },
+      { header: 'Size', accessor: p => p.programSize },
+      { header: 'Label', accessor: p => p.programLabel },
+    ];
+    exportToCsv(programs, csvColumns, `programs_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
 
-  const handleSettings = () => {
-    console.log('Settings clicked');
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<ProgramPoint>[] = [
+      { header: 'Program', accessor: p => p.programId, setter: (p, v) => { p.programId = v; } },
+      { header: 'Full Label', accessor: p => p.programList, setter: (p, v) => { p.programList = v; } },
+      { header: 'Status', accessor: p => p.programStatus, setter: (p, v) => { p.programStatus = v; } },
+      { header: 'Auto/Manual', accessor: p => p.autoManual, setter: (p, v) => { p.autoManual = v; } },
+      { header: 'Size', accessor: p => p.programSize, setter: (p, v) => { p.programSize = v; } },
+      { header: 'Label', accessor: p => p.programLabel, setter: (p, v) => { p.programLabel = v; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ serialNumber: selectedDevice?.serialNumber || 0 } as ProgramPoint));
+    setPrograms(imported);
   };
+
+  // Register CSV export/import handlers with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   // Auto-scroll handlers
   const loadNextDevice = useCallback(async () => {
@@ -357,7 +381,7 @@ export const ProgramsPage: React.FC = () => {
   // Display data with 10 empty rows when no programs
   const displayPrograms = React.useMemo(() => {
     if (programs.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         serialNumber: selectedDevice?.serialNumber || 0,
         programId: '',
         switchNode: '',
@@ -710,40 +734,6 @@ export const ProgramsPage: React.FC = () => {
               <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
-                  {/* Refresh Button - Refresh from Device */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleRefreshFromDevice}
-                    disabled={refreshing}
-                    title="Refresh all programs from device"
-                    aria-label="Refresh from Device"
-                  >
-                    <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                  </button>
-
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    title="Export to CSV"
-                    aria-label="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export to CSV</span>
-                  </button>
-
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleSettings}
-                    title="Settings"
-                    aria-label="Settings"
-                  >
-                    <SettingsRegular />
-                    <span>Settings</span>
-                  </button>
-
                   <div className={styles.searchInputWrapper}>
                     <SearchRegular className={styles.searchIcon} />
                     <input
@@ -757,6 +747,20 @@ export const ProgramsPage: React.FC = () => {
                       aria-label="Search programs"
                     />
                   </div>
+
+                  {/* Refresh Button - Refresh from Device */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefreshFromDevice}
+                    disabled={refreshing}
+                    title="Refresh all programs from device"
+                    aria-label="Refresh from Device"
+                  >
+                    <ArrowSyncRegular />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
 
                   {/* Info Button with Tooltip */}
                   <Tooltip
@@ -813,41 +817,6 @@ export const ProgramsPage: React.FC = () => {
                     items={displayPrograms}
                     columns={columns}
                     sortable
-                    resizableColumns
-                    columnSizingOptions={{
-                      program: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      fullLabel: {
-                        minWidth: 150,
-                        defaultWidth: 200,
-                      },
-                      status: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      autoManual: {
-                        minWidth: 100,
-                        defaultWidth: 120,
-                      },
-                      size: {
-                        minWidth: 60,
-                        defaultWidth: 80,
-                      },
-                      executionTime: {
-                        minWidth: 120,
-                        defaultWidth: 180,
-                      },
-                      label: {
-                        minWidth: 130,
-                        defaultWidth: 200,
-                      },
-                      programming: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                    }}
                   >
                     <DataGridHeader>
                       <DataGridRow>

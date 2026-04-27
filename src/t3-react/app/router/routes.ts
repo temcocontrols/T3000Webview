@@ -26,6 +26,17 @@ const NetworkPage = lazy(() => import('../pages').then(m => ({ default: m.Networ
 const ArrayPage = lazy(() => import('../pages').then(m => ({ default: m.ArrayPage })));
 const DiscoverPage = lazy(() => import('../pages').then(m => ({ default: m.DiscoverPage })));
 const BuildingsPage = lazy(() => import('../pages').then(m => ({ default: m.BuildingsPage })));
+const Tstat10SimulatorPage = lazy(() => import('../pages').then(m => ({ default: m.Tstat10SimulatorPage })));
+
+// Create responsive route for Tstat10 Simulator (desktop + mobile)
+const Tstat10SimulatorPageResponsive = lazy(() =>
+  Promise.all([
+    import('../pages').then(m => m.Tstat10SimulatorPage),
+    import('../../../t3-mobile/features/tstat10-simulator/pages/Tstat10SimulatorPageMobile').then(m => m.Tstat10SimulatorPageMobile),
+  ]).then(([DesktopPage, MobilePage]) => ({
+    default: createResponsiveRoute(DesktopPage, MobilePage)
+  }))
+);
 
 // Create responsive route components that switch between desktop and mobile
 const InputsPageResponsive = lazy(() =>
@@ -72,6 +83,17 @@ const SettingsPageResponsive = lazy(() =>
     default: createResponsiveRoute(SettingsPage, SettingsPageMobile)
   }))
 );
+
+// Database configuration page
+const DatabaseConfigPage = lazy(() => import('../../features/database/pages/DatabaseConfigPage'));
+const SyncConfigurationPage = lazy(() => import('../../features/develop/pages/SyncConfigurationPage').then(m => ({ default: m.SyncConfigurationPage })));
+
+// Additional pages in App.tsx
+const TablesPage = lazy(() => import('../../features/tables/pages/TablesPage').then(m => ({ default: m.TablesPage })));
+const UsersPage = lazy(() => import('../../features/users/pages/UsersPage').then(m => ({ default: m.UsersPage })));
+const CustomUnitsPage = lazy(() => import('../../features/customUnits/pages/CustomUnitsPage').then(m => ({ default: m.CustomUnitsPage })));
+const HvacDesignerPage = lazy(() => import('../../features/hvac-designer/pages/HvacDesignerPage').then(m => ({ default: m.HvacDesignerPage })));
+const DocumentationPage = lazy(() => import('../../features/documentation/pages/DocumentationPage').then(m => ({ default: m.DocumentationPage })));
 
 // Develop section pages
 const FileBrowserPage = lazy(() => import('../../features/develop/pages/FileBrowserPage'));
@@ -216,6 +238,23 @@ export const t3000Routes: T3000Route[] = [
     requiresDevice: true,
   },
   {
+    path: '/t3000/tables',
+    element: TablesPage,
+    title: 'Tables',
+    requiresDevice: true,
+  },
+  {
+    path: '/t3000/users',
+    element: UsersPage,
+    title: 'Users',
+  },
+  {
+    path: '/t3000/custom-units',
+    element: CustomUnitsPage,
+    title: 'Custom Units',
+    requiresDevice: true,
+  },
+  {
     path: '/t3000/discover',
     element: DiscoverPage,
     title: 'Discover Devices',
@@ -227,24 +266,55 @@ export const t3000Routes: T3000Route[] = [
     title: 'Buildings',
     windowId: 16, // WINDOW_BUILDINGS
   },
+  {
+    path: '/t3000/tstat10-simulator',
+    element: Tstat10SimulatorPageResponsive,
+    title: 'Tstat10 Simulator',
+    windowId: 17, // WINDOW_TSTAT10_SIMULATOR
+    shortcut: 'Alt+M',
+    requiresDevice: false,
+  },
+  // Database configuration
+  {
+    path: '/t3000/database/config',
+    element: DatabaseConfigPage,
+    title: 'Database Configuration',
+  },
+  // Developer routes
+  {
+    path: '/t3000/developer/sync',
+    element: SyncConfigurationPage,
+    title: 'Sync Configuration',
+  },
+  // HVAC & Documentation (minimal layout in App.tsx)
+  {
+    path: '/t3000/hvac-designer',
+    element: HvacDesignerPage,
+    title: 'HVAC Designer',
+  },
+  {
+    path: '/t3000/documentation',
+    element: DocumentationPage,
+    title: 'Documentation',
+  },
   // Develop section routes
   {
-    path: '/develop/files',
+    path: '/t3000/develop/files',
     element: FileBrowserPage,
     title: 'File Browser',
   },
   {
-    path: '/develop/database',
+    path: '/t3000/develop/database',
     element: DatabaseViewerPage,
     title: 'Database Viewer',
   },
   {
-    path: '/develop/transport',
+    path: '/t3000/develop/transport',
     element: TransportTesterPage,
     title: 'Transport Tester',
   },
   {
-    path: '/develop/logs',
+    path: '/t3000/develop/logs',
     element: SystemLogsPage,
     title: 'T3000 Logs',
   },

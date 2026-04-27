@@ -68,6 +68,9 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         conn: app_state.conn.clone(),
     };
 
+    // Start heartbeat task for server/client registry
+    crate::database_management::registry_service::start_heartbeat_task(app_state.clone());
+
     Ok(Router::new()
         .nest(
             "/api",
@@ -92,6 +95,14 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         .merge(crate::database_management::endpoints::database_management_routes())
         // Application Configuration API routes
         .merge(crate::database_management::config_api::config_routes())
+        // Database Backend Configuration API routes
+        .merge(crate::database_management::db_backend_routes::db_backend_routes())
+        // Server DB Status route (server/client mode)
+        .merge(crate::web_routing::server_db_routes())
+        // Server/Client Registry routes (heartbeat + listing)
+        .merge(crate::database_management::registry_service::registry_routes())
+        // Sync Health + Event Log routes
+        .merge(crate::database_management::sync_health::sync_health_routes())
         // Developer Tools routes
         .nest("/api/develop", crate::t3_develop::create_develop_routes())
         // Real-time trend data routes - TEMPORARILY DISABLED
@@ -145,6 +156,32 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
             return Err(e);
         }
     };
+
+    // Initialize global server DB writer for FFI dual-write support
+    // Use server_db_connected (not server_db_enabled) — only activate replication
+    // when the actual server DB connection succeeded. If MSSQL timed out and
+    // we fell back to local SQLite, server_db_connected=false, so replication
+    // is skipped to prevent self-replication and SQLite deadlocks.
+    crate::server_db_writer::init_server_db_writer(
+        state.t3_device_conn.clone(),
+        state.mssql_pool.clone(),
+        state.server_db_role.clone(),
+        state.server_db_connected, // only true when center DB actually connected
+    );
+    if state.server_db_connected {
+        logger.info(&format!(
+            "Server DB writer initialized (role={}, center DB connected)",
+            state.server_db_role
+        ));
+    } else if state.server_db_enabled {
+        logger.warn(&format!(
+            "Server DB enabled in INI but center DB unreachable — replication disabled (role={})",
+            state.server_db_role
+        ));
+        // Pause FFI sampling so no data is written to SQLite when center DB is expected
+        crate::app_state::set_sampling_paused("Center DB unreachable at startup");
+        logger.warn("Sampling paused: center DB unreachable at startup");
+    }
 
     // Create the application with T3000 device routes
     let app = match create_t3_app(state.clone()).await {

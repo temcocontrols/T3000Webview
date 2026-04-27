@@ -46,12 +46,12 @@ export const TreePanel: React.FC = () => {
     const initializeDevices = async () => {
       // Prevent duplicate runs in StrictMode
       if (hasInitialized.current) {
-        console.log('[TreePanel] Already initialized, skipping...');
+        //console.log('[TreePanel] Already initialized, skipping...');
         return;
       }
       hasInitialized.current = true;
 
-      console.log('[TreePanel] First-time initialization...');
+      //console.log('[TreePanel] First-time initialization...');
 
       // First, check database
       await fetchDevices();
@@ -59,10 +59,10 @@ export const TreePanel: React.FC = () => {
       // If database is empty, auto-sync from T3000
       const { devices } = useDeviceTreeStore.getState();
       if (devices.length === 0) {
-        console.log('[TreePanel] No devices in database, auto-syncing from T3000...');
+        //console.log('[TreePanel] No devices in database, auto-syncing from T3000...');
         await loadDevicesWithSync();
       } else {
-        console.log(`[TreePanel] Found ${devices.length} devices in database, skipping auto-sync`);
+        //console.log(`[TreePanel] Found ${devices.length} devices in database, skipping auto-sync`);
       }
     };
 

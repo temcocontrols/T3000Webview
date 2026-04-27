@@ -250,11 +250,18 @@
 }
 
 .markdown img {
-  max-width: 100%;
+  max-width: min(100%, 760px);
   height: auto;
   margin: 12px 0;
   border-radius: 4px;
   border: 1px solid #edebe9;
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .markdown img {
+    max-width: 100%;
+  }
 }
 
 .markdown hr {

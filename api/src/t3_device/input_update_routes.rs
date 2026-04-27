@@ -164,7 +164,7 @@ pub async fn update_input_full(
         "serialNumber": serial,
         "entryType": BAC_IN,  // 1 = INPUT
         "entryIndex": index,
-        "control": payload.control.unwrap_or(0),  // control not stored in database
+        "control": payload.control.unwrap_or_else(|| current_input.control.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
         "value": payload.value.unwrap_or_else(|| current_input.f_value.and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0)),
         "description": full_label_clone.unwrap_or_else(|| current_input.full_label.unwrap_or_default()),
         "label": label_clone.unwrap_or_else(|| current_input.label.unwrap_or_default()),
@@ -172,9 +172,9 @@ pub async fn update_input_full(
         "auto_manual": payload.auto_manual.unwrap_or_else(|| current_input.auto_manual.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
         "filter": payload.filter.unwrap_or_else(|| current_input.filter_field.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
         "digital_analog": payload.digital_analog.unwrap_or_else(|| current_input.digital_analog.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
-        "calibration_sign": payload.calibration_sign.unwrap_or_else(|| current_input.sign.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
-        "calibration_h": payload.calibration_h.unwrap_or_else(|| current_input.calibration.as_ref().and_then(|c| c.split('.').next()).and_then(|h| h.parse::<i32>().ok()).unwrap_or(0)),
-        "calibration_l": payload.calibration_l.unwrap_or_else(|| current_input.calibration.as_ref().and_then(|c| c.split('.').nth(1)).and_then(|l| l.parse::<i32>().ok()).unwrap_or(0)),
+        "calibration_sign": payload.calibration_sign.unwrap_or_else(|| current_input.calibration_sign.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
+        "calibration_h": payload.calibration_h.unwrap_or_else(|| current_input.calibration_h.as_ref().and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
+        "calibration_l": payload.calibration_l.unwrap_or_else(|| current_input.calibration_l.as_ref().and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
         "decom": payload.decom.unwrap_or(0),
     });
 
@@ -313,7 +313,7 @@ pub async fn update_input_device_only(
         "serialNumber": serial,
         "entryType": BAC_IN,  // 1 = INPUT
         "entryIndex": index,
-        "control": payload.control.unwrap_or(0),  // control not stored in database
+        "control": payload.control.unwrap_or_else(|| current_input.control.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
         "value": payload.value.unwrap_or_else(|| current_input.f_value.and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0)),
         "description": full_label_clone.unwrap_or_else(|| current_input.full_label.unwrap_or_default()),
         "label": label_clone.unwrap_or_else(|| current_input.label.unwrap_or_default()),
@@ -321,9 +321,9 @@ pub async fn update_input_device_only(
         "auto_manual": payload.auto_manual.unwrap_or_else(|| current_input.auto_manual.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
         "filter": payload.filter.unwrap_or_else(|| current_input.filter_field.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
         "digital_analog": payload.digital_analog.unwrap_or_else(|| current_input.digital_analog.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
-        "calibration_sign": payload.calibration_sign.unwrap_or_else(|| current_input.sign.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
-        "calibration_h": payload.calibration_h.unwrap_or_else(|| current_input.calibration.as_ref().and_then(|c| c.split('.').next()).and_then(|h| h.parse::<i32>().ok()).unwrap_or(0)),
-        "calibration_l": payload.calibration_l.unwrap_or_else(|| current_input.calibration.as_ref().and_then(|c| c.split('.').nth(1)).and_then(|l| l.parse::<i32>().ok()).unwrap_or(0)),
+        "calibration_sign": payload.calibration_sign.unwrap_or_else(|| current_input.calibration_sign.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
+        "calibration_h": payload.calibration_h.unwrap_or_else(|| current_input.calibration_h.as_ref().and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
+        "calibration_l": payload.calibration_l.unwrap_or_else(|| current_input.calibration_l.as_ref().and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
         "decom": payload.decom.unwrap_or(0),
     });
 
@@ -468,9 +468,24 @@ async fn save_input_to_db(
         }
         if let Some(val) = payload.calibration_sign {
             active_model.sign = Set(Some(val.to_string()));
+            active_model.calibration_sign = Set(Some(val.to_string()));
         }
         if let Some(val) = payload.calibration_h {
-            active_model.calibration = Set(Some(val.to_string()));
+            active_model.calibration_h = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.calibration_l {
+            active_model.calibration_l = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.control {
+            active_model.control = Set(Some(val.to_string()));
+        }
+        // Update legacy Calibration column with combined display value
+        if payload.calibration_h.is_some() || payload.calibration_l.is_some() {
+            let cal_h = payload.calibration_h.unwrap_or(0);
+            let cal_l = payload.calibration_l.unwrap_or(0);
+            let cal_combined = (cal_h << 8) | cal_l;
+            let cal_display = cal_combined as f64 / 10.0;
+            active_model.calibration = Set(Some(format!("{:.1}", cal_display)));
         }
 
         if let Ok(mut logger) = ServiceLogger::database_inputs() {

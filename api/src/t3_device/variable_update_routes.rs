@@ -36,8 +36,12 @@ pub struct UpdateVariableFullRequest {
     pub range: Option<i32>,
     pub auto_manual: Option<i32>,
     pub control: Option<i32>,
+    pub filter: Option<i32>,
     pub digital_analog: Option<i32>,
     pub decom: Option<i32>,
+    pub calibration_sign: Option<i32>,
+    pub calibration_h: Option<i32>,
+    pub calibration_l: Option<i32>,
 }
 
 /// Standard API response structure
@@ -52,7 +56,46 @@ pub struct ApiResponse {
 /// Creates and returns the variable update API routes
 pub fn create_variable_update_routes() -> Router<T3AppState> {
     Router::new()
+        .route("/variables/:serial/:index/db", axum::routing::put(update_variable_database_only))
         .route("/variables/:serial/:index", axum::routing::put(update_variable_full))
+}
+
+/// Update variable in database only (NO FFI call to device)
+/// PUT /api/t3_device/variables/:serial/:index/db
+pub async fn update_variable_database_only(
+    State(state): State<T3AppState>,
+    Path((serial, index_str)): Path<(i32, String)>,
+    Json(payload): Json<UpdateVariableFullRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let index = index_str.parse::<i32>().unwrap_or(0);
+    info!("DATABASE_ONLY: Updating variable in database - Serial: {}, Index: {}", serial, index);
+
+    let db_connection = match &state.t3_device_conn {
+        Some(conn) => conn.lock().await.clone(),
+        None => {
+            error!("❌ T3000 device database unavailable");
+            return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+        }
+    };
+
+    match save_variable_to_db(&db_connection, serial, index, payload).await {
+        Ok(_) => {
+            info!("✅ Database-only update completed - serial: {}, index: {}", serial, index);
+            Ok(Json(json!({
+                "success": true,
+                "message": "Variable updated in database only (device not modified)",
+                "data": {
+                    "serialNumber": serial,
+                    "variableIndex": index,
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                }
+            })))
+        }
+        Err(e) => {
+            error!("❌ Database-only update failed: {}", e);
+            Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update database: {}", e)))
+        }
+    }
 }
 
 /// Update full variable record using UPDATE_WEBVIEW_LIST action (Action 16)
@@ -223,6 +266,29 @@ async fn save_variable_to_db(
         }
         if let Some(val) = payload.digital_analog {
             active_model.digital_analog = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.filter {
+            active_model.filter_field = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.calibration_sign {
+            active_model.calibration_sign = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.calibration_h {
+            active_model.calibration_h = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.calibration_l {
+            active_model.calibration_l = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.control {
+            active_model.control = Set(Some(val.to_string()));
+        }
+        // Update legacy Calibration column with combined display value
+        if payload.calibration_h.is_some() || payload.calibration_l.is_some() {
+            let cal_h = payload.calibration_h.unwrap_or(0);
+            let cal_l = payload.calibration_l.unwrap_or(0);
+            let cal_combined = (cal_h << 8) | cal_l;
+            let cal_display = cal_combined as f64 / 10.0;
+            active_model.calibration = Set(Some(format!("{:.1}", cal_display)));
         }
 
         // Use update_many with explicit filters

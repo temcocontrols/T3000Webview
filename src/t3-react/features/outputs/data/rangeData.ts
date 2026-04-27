@@ -11,24 +11,24 @@ export interface RangeOption {
 }
 
 /**
- * Output Analog Units (9 options: 0-8)
- * Used when output digital_analog === BAC_UNITS_ANALOG
+ * Output Analog Units — C++ native indices 31–38
+ * Used when output digital_analog === BAC_UNITS_ANALOG (1)
  */
 export const OUTPUT_ANALOG_RANGES: RangeOption[] = [
-  { value: 0, label: 'Unused', unit: '', category: 'General' },
-  { value: 1, label: '0.0 -> 10', unit: 'Volts', category: 'Voltage' },
-  { value: 2, label: '0.0 -> 100', unit: '%Open', category: 'Percentage' },
-  { value: 3, label: '4 -> 20', unit: 'psi', category: 'Pressure' },
-  { value: 4, label: '0.0 -> 100', unit: '%', category: 'Percentage' },
-  { value: 5, label: '0.0 -> 100', unit: '%Cls', category: 'Percentage' },
-  { value: 6, label: '4 -> 20', unit: 'ma', category: 'Current' },
-  { value: 7, label: '0.0 -> 100', unit: 'PWM', category: 'PWM' },
-  { value: 8, label: '2 -> 10', unit: 'Volts', category: 'Voltage' },
+  { value: 0, label: 'Unused', category: 'General' },
+  { value: 31, label: '0.0 -> 10 Volts', category: 'Voltage' },
+  { value: 32, label: '0.0 -> 100 %Open', category: 'Percentage' },
+  { value: 33, label: '0.0 -> 20 psi', category: 'Pressure' },
+  { value: 34, label: '0.0 -> 100 % (0-10V)', category: 'Percentage' },
+  { value: 35, label: '0.0 -> 100 %Cls', category: 'Percentage' },
+  { value: 36, label: '0.0 -> 20 ma', category: 'Current' },
+  { value: 37, label: '0.0 -> 100 PWM', category: 'PWM' },
+  { value: 38, label: '0.0 -> 100 % (2-10V)', category: 'Percentage' },
 ];
 
 /**
  * Digital Units (23 options: 0-22)
- * Used when output digital_analog === BAC_UNITS_DIGITAL
+ * Used when output digital_analog === BAC_UNITS_DIGITAL (0)
  * Same as input digital ranges
  */
 export const OUTPUT_DIGITAL_RANGES: RangeOption[] = [
@@ -63,13 +63,18 @@ export const OUTPUT_DIGITAL_RANGES: RangeOption[] = [
   { value: 28, label: 'Custom Digital 6', category: 'Custom' },
   { value: 29, label: 'Custom Digital 7', category: 'Custom' },
   { value: 30, label: 'Custom Digital 8', category: 'Custom' },
+  { value: 101, label: 'MSV 1', category: 'Multi-State' },
+  { value: 102, label: 'MSV 2', category: 'Multi-State' },
+  { value: 103, label: 'MSV 3', category: 'Multi-State' },
+  { value: 104, label: 'MSV 4', category: 'Multi-State' },
 ];
 
 /**
  * Constants for output type
+ * NOTE: C++ convention: 0 = Digital, 1 = Analog
  */
-export const BAC_UNITS_ANALOG = 0;
-export const BAC_UNITS_DIGITAL = 1;
+export const BAC_UNITS_DIGITAL = 0;
+export const BAC_UNITS_ANALOG = 1;
 
 /**
  * Get range options based on output type
@@ -79,27 +84,11 @@ export function getRangeOptions(digitalAnalog: number): RangeOption[] {
 }
 
 /**
- * Get range label by value and type
+ * Get range label by value and type.
+ * Uses digitalAnalog to pick the correct table (digital vs analog),
+ * then looks up the value in that table.
  */
 export function getRangeLabel(value: number, digitalAnalog: number): string {
-  // Hardcoded mappings for custom digital units (23-30)
-  const customMappings: { [key: number]: string } = {
-    23: '9/9',
-    24: '/',
-    25: '/',
-    26: '/',
-    27: '/',
-    28: '/',
-    29: '/',
-    30: '/',
-  };
-
-  // Check custom mappings first
-  if (customMappings.hasOwnProperty(value)) {
-    return customMappings[value];
-  }
-
-  // Fall back to standard ranges
   const ranges = getRangeOptions(digitalAnalog);
   const range = ranges.find(r => r.value === value);
   return range ? range.label : 'Unknown';

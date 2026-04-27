@@ -21,6 +21,7 @@ import {
   Button,
   Spinner,
   makeStyles,
+  mergeClasses,
   tokens,
 } from '@fluentui/react-components';
 import { Dismiss24Regular } from '@fluentui/react-icons';
@@ -293,7 +294,7 @@ export const NetworkHealthDialog: React.FC<NetworkHealthDialogProps> = ({
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th className={`${styles.th} ${styles.thLabel}`} />
+                    <th className={mergeClasses(styles.th, styles.thLabel)} />
                     <th className={styles.th}>Rx (Byte)</th>
                     <th className={styles.th}>Tx (Byte)</th>
                     <th className={styles.th}>ID Collision</th>
@@ -304,7 +305,7 @@ export const NetworkHealthDialog: React.FC<NetworkHealthDialogProps> = ({
                 <tbody>
                   {rows.map((row) => (
                     <tr key={row.label}>
-                      <td className={`${styles.td} ${styles.tdLabel}`}>{row.label}</td>
+                      <td className={mergeClasses(styles.td, styles.tdLabel)}>{row.label}</td>
                       {[row.rx, row.tx, row.collision, row.packetError, row.timeout].map((val, i) => (
                         <td key={i} className={styles.td}>
                           <input

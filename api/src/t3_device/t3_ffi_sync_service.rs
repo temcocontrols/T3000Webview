@@ -6,17 +6,19 @@
 // - WebSocket broadcasting for live updates
 // - Database synchronization to webview_t3_device.db
 
-use crate::db_connection::establish_t3_device_connection;
+use crate::db_connection::{establish_t3_device_connection, establish_device_conn_for_sync};
 use crate::entity::t3_device::{
     devices, input_points, output_points, trendlog_data_detail, trendlog_data_sync_metadata,
     variable_points,
 };
 use crate::database_management::data_sync_service::{DataSyncMetadataService, InsertSyncMetadataRequest};
+use crate::database_management::mssql_queries;
 use crate::error::AppError;
 use crate::logger::ServiceLogger;
 use crate::t3_device::trendlog_parent_cache::{ParentKey, TrendlogParentCache};
 use once_cell::sync::OnceCell;
 use sea_orm::*;
+use sea_orm::sea_query::Expr;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use std::env;
@@ -416,7 +418,8 @@ pub struct PointData {
     pub control: Option<i32>,
     pub command: Option<String>,
     pub id: Option<String>,
-    pub calibration_l: Option<f64>,
+    pub calibration_l: Option<i32>,
+    pub calibration_h: Option<i32>,
 
     // OUTPUT specific fields
     pub low_voltage: Option<f64>,
@@ -452,8 +455,62 @@ pub struct T3000MainService {
 }
 
 impl T3000MainService {
+    async fn insert_data_sync_metadata(
+        writer: &super::sync_writer::SyncWriter,
+        data_type: &str,
+        serial_number: &str,
+        panel_id: Option<i32>,
+        records_synced: i32,
+        success: bool,
+        error_message: Option<String>,
+    ) -> Result<(), AppError> {
+        let now = chrono::Utc::now();
+        let sync_time_i64 = now.timestamp();
+        let sync_time_i32 = if sync_time_i64 > i32::MAX as i64 {
+            i32::MAX
+        } else {
+            sync_time_i64 as i32
+        };
+        let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
+
+        match writer {
+            super::sync_writer::SyncWriter::Sqlite(db) => {
+                let req = InsertSyncMetadataRequest {
+                    data_type: data_type.to_string(),
+                    serial_number: serial_number.to_string(),
+                    panel_id,
+                    records_synced,
+                    sync_method: "FFI_BACKEND".to_string(),
+                    success,
+                    error_message,
+                };
+                DataSyncMetadataService::insert_sync_metadata(db, req)
+                    .await
+                    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+            }
+            super::sync_writer::SyncWriter::MssqlDirect(pool) => {
+                mssql_queries::insert_sync_metadata(
+                    pool,
+                    sync_time_i32,
+                    &sync_time_fmt,
+                    data_type,
+                    serial_number,
+                    panel_id,
+                    records_synced,
+                    "FFI_BACKEND",
+                    if success { 1 } else { 0 },
+                    error_message.as_deref(),
+                )
+                .await
+                .map_err(AppError::DatabaseError)?;
+            }
+        }
+
+        Ok(())
+    }
+
     pub async fn new(config: T3000MainConfig) -> Result<Self, AppError> {
-        let db = establish_t3_device_connection().await?;
+        let db = establish_device_conn_for_sync().await?;
 
         Ok(Self {
             db,
@@ -498,9 +555,14 @@ impl T3000MainService {
             let mut task_logger = ServiceLogger::ffi()
                 .unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
 
-            // 🆕 DELAY: Wait 10 seconds on first startup to let T3000.exe fully initialize
-            task_logger.info("⏱️ Waiting 10 seconds for T3000.exe to fully initialize...");
-            sleep(Duration::from_secs(10)).await;
+            // DELAY: Wait 30 seconds on first startup to let T3000.exe fully initialize.
+            // HandleWebViewMsg accesses g_Input_data[panel_id] and g_Output_data[panel_id]
+            // which are only populated in CDialogCM5_BacNet::OnInitialUpdate(). That runs
+            // after m_pMainWnd is set, so IsAppInitialized() alone does not guarantee
+            // these vectors are ready. Calling too early causes a C++ "vector subscript
+            // out of range" assertion that crashes the application.
+            task_logger.info("⏱️ Waiting 30 seconds for T3000.exe to fully initialize (g_Input_data/g_Output_data must be populated)...");
+            sleep(Duration::from_secs(30)).await;
             task_logger.info("✅ Initialization delay completed, starting sync...");
 
             // Run immediate sync on startup with full rediscovery
@@ -571,6 +633,13 @@ impl T3000MainService {
                 if is_running.load(Ordering::Relaxed) {
                     if let Err(e) = Self::sync_logging_data_static(config.clone()).await {
                         task_logger.error(&format!("❌ Periodic sync failed: {}", e));
+                        // If server DB is enabled and sync failed, pause sampling to avoid
+                        // writing to SQLite when center DB is expected
+                        if crate::server_db_writer::should_write_trendlog_to_server() {
+                            let reason = format!("Center DB write failed: {}", e);
+                            crate::app_state::set_sampling_paused(&reason);
+                            task_logger.warn(&format!("⏸️  Sampling paused: {}", reason));
+                        }
                     }
                 }
             }
@@ -789,8 +858,8 @@ impl T3000MainService {
         sleep(Duration::from_secs(DEVICE_DATA_LOAD_DELAY_SECS)).await;
         sync_logger.info("✅ Device data load delay complete, proceeding with trendlog sync");
 
-        // Get database connection
-        let db = establish_t3_device_connection().await?;
+        // Get database connection (center DB when enabled, else local SQLite)
+        let db = establish_device_conn_for_sync().await?;
 
         // Get all devices from database
         let all_devices = devices::Entity::find()
@@ -812,12 +881,13 @@ impl T3000MainService {
 
         // Sync trendlog config for each device
         for device in all_devices {
-            let panel_id = device.panel_id.unwrap_or(0);
+            // Use panel_number (Panel_Number column) as primary source, fall back to panel_id (PanelId column)
+            let panel_id = device.panel_number.or(device.panel_id).unwrap_or(0);
             let serial_number = device.serial_number;
 
             if panel_id == 0 {
                 sync_logger.warn(&format!(
-                    "⚠️ Skipping device {} - invalid panel_id",
+                    "⚠️ Skipping device {} - invalid panel_id (both Panel_Number and PanelId are empty)",
                     serial_number
                 ));
                 continue;
@@ -1013,22 +1083,105 @@ impl T3000MainService {
     /// Implements TWO-TIER sync strategy:
     /// - QUICK SYNC: Use cached device list, only call LOGGING_DATA (every ffi.sync_interval_secs)
     /// - FULL REDISCOVERY: Call GET_PANELS_LIST + LOGGING_DATA (every rediscover.interval_secs)
+    ///
+    /// Write path is chosen automatically at the start of each cycle:
+    /// - MSSQL pool present → writes directly to MSSQL center DB (SyncWriter::MssqlDirect)
+    /// - Otherwise         → writes to local SQLite or SeaORM center DB (SyncWriter::Sqlite)
     async fn sync_logging_data_static(config: T3000MainConfig) -> Result<(), AppError> {
         // Create logger for this sync operation
         let mut sync_logger =
             ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
+
+        // ── CHECK SAMPLING STATE ──────────────────────────────────────────────
+        if crate::app_state::is_sampling_paused() {
+            let reason = crate::app_state::get_pause_reason().unwrap_or_default();
+            sync_logger.warn(&format!("⏸️  Sampling paused — skipping cycle: {}", reason));
+            return Ok(());
+        }
+        // ─────────────────────────────────────────────────────────────────────
 
         sync_logger.info(&format!(
             "⚙️ Config: Timeout {}s, Retry {}x",
             config.timeout_seconds, config.retry_attempts
         ));
 
-        let db = establish_t3_device_connection().await.map_err(|e| {
-            sync_logger.error(&format!("❌ Database connection failed: {}", e));
+        // Always use local SQLite for metadata / audit trail
+        let local_db = establish_t3_device_connection().await.map_err(|e| {
+            sync_logger.error(&format!("❌ Local database connection failed: {}", e));
             e
         })?;
 
-        sync_logger.info("✅ Database connection established");
+        crate::database_management::sync_health::ensure_app_log_table(&local_db).await;
+        crate::database_management::sync_health::write_app_log(
+            &local_db,
+            "info",
+            "SYNC_CYCLE",
+            Some("ffi_sync"),
+            None,
+            "Starting FFI sync cycle",
+            Some(&format!("sync_interval_secs={}", config.sync_interval_secs)),
+        )
+        .await;
+
+        // Decide write target: MSSQL direct (center DB) if pool active, else SQLite/SeaORM
+        let writer = super::sync_writer::SyncWriter::from_pool_or_sqlite().await.map_err(|e| {
+            sync_logger.error(&format!("❌ Failed to initialize sync writer: {}", e));
+            e
+        })?;
+
+        let (writer_target_text, writer_target_detail) = match &writer {
+            super::sync_writer::SyncWriter::MssqlDirect(_) => (
+                "MSSQL (direct write to center DB)",
+                "target=center_mssql",
+            ),
+            super::sync_writer::SyncWriter::Sqlite(db) => match db.get_database_backend() {
+                sea_orm::DatabaseBackend::Sqlite => ("Local SQLite", "target=local_sqlite"),
+                sea_orm::DatabaseBackend::MySql | sea_orm::DatabaseBackend::Postgres => {
+                    ("Center DB (SeaORM backend)", "target=center_seaorm")
+                }
+            },
+        };
+
+        // Strict policy: when Shared DB mode is enabled, do not continue if
+        // resolved write target is local SQLite.
+        let server_cfg = crate::ini_config::read_server_db_config_auto();
+        if server_cfg.enabled {
+            if matches!(
+                &writer,
+                super::sync_writer::SyncWriter::Sqlite(db)
+                    if db.get_database_backend() == sea_orm::DatabaseBackend::Sqlite
+            ) {
+                let reason = "Center DB mode is enabled, but center DB is unavailable. Writes are blocked until center DB reconnects.";
+                crate::app_state::set_sampling_paused(reason);
+                sync_logger.error(&format!("❌ {}", reason));
+                crate::database_management::sync_health::write_app_log(
+                    &local_db,
+                    "error",
+                    "SYNC_CYCLE",
+                    Some("ffi_sync"),
+                    None,
+                    reason,
+                    Some("policy=center_db_strict_no_sqlite"),
+                )
+                .await;
+                return Err(AppError::ServiceError(reason.to_string()));
+            }
+        }
+
+        sync_logger.info(&format!(
+            "✅ Database connections established — write target: {}",
+            writer_target_text
+        ));
+        crate::database_management::sync_health::write_app_log(
+            &local_db,
+            "info",
+            "DB_CONFIG",
+            Some("ffi_sync"),
+            None,
+            "Sync writer target selected",
+            Some(writer_target_detail),
+        )
+        .await;
 
         // STEP 1: Decide whether to perform full rediscovery or use cache
         let should_do_rediscovery = Self::should_rediscover().await;
@@ -1048,6 +1201,16 @@ impl T3000MainService {
 
             if panels.is_empty() {
                 sync_logger.warn("⚠️ No devices found in GET_PANELS_LIST - skipping sync cycle");
+                crate::database_management::sync_health::write_app_log(
+                    &local_db,
+                    "warn",
+                    "SYNC_CYCLE",
+                    Some("ffi_sync"),
+                    None,
+                    "No devices found in GET_PANELS_LIST; sync cycle skipped",
+                    None,
+                )
+                .await;
                 return Ok(());
             }
 
@@ -1074,7 +1237,7 @@ impl T3000MainService {
             };
 
             trendlog_data_sync_metadata::Entity::insert(rediscover_metadata)
-                .exec(&db)
+                .exec(&local_db)
                 .await
                 .map_err(|e| {
                     sync_logger.error(&format!(
@@ -1100,7 +1263,17 @@ impl T3000MainService {
                 error_message: None,
             };
 
-            if let Err(e) = DataSyncMetadataService::insert_sync_metadata(&db, new_metadata_request).await {
+            if let Err(e) = Self::insert_data_sync_metadata(
+                &writer,
+                &new_metadata_request.data_type,
+                &new_metadata_request.serial_number,
+                new_metadata_request.panel_id,
+                new_metadata_request.records_synced,
+                new_metadata_request.success,
+                new_metadata_request.error_message,
+            )
+            .await
+            {
                 sync_logger.error(&format!("❌ Failed to insert GET_PANELS_LIST to DATA_SYNC_METADATA: {}", e));
             }
         } else {
@@ -1120,6 +1293,16 @@ impl T3000MainService {
 
                     if panels.is_empty() {
                         sync_logger.warn("⚠️ No devices found - skipping sync cycle");
+                        crate::database_management::sync_health::write_app_log(
+                            &local_db,
+                            "warn",
+                            "SYNC_CYCLE",
+                            Some("ffi_sync"),
+                            None,
+                            "No devices found after forced rediscovery; sync cycle skipped",
+                            None,
+                        )
+                        .await;
                         return Ok(());
                     }
 
@@ -1140,15 +1323,9 @@ impl T3000MainService {
             ));
         }
 
-        sync_logger.info("💾 Database transaction started");
+        sync_logger.info("💾 Recording sync cycle metadata");
 
-        // Start database transaction
-        let txn = db.begin().await.map_err(|e| {
-            sync_logger.error(&format!("❌ Failed to start transaction: {}", e));
-            AppError::DatabaseError(format!("Transaction start failed: {}", e))
-        })?;
-
-        // Create sync metadata record for this LOGGING_DATA sync operation
+        // Legacy trendlog_data_sync_metadata stays local for diagnostic continuity.
         let sync_start_time = chrono::Utc::now();
         let sync_metadata = trendlog_data_sync_metadata::ActiveModel {
             sync_time_fmt: Set(sync_start_time.format("%Y-%m-%d %H:%M:%S").to_string()),
@@ -1163,7 +1340,7 @@ impl T3000MainService {
         };
 
         let sync_metadata_result = trendlog_data_sync_metadata::Entity::insert(sync_metadata)
-            .exec(&txn)
+            .exec(&local_db)
             .await
             .map_err(|e| {
                 sync_logger.error(&format!("❌ Failed to create sync metadata: {}", e));
@@ -1176,29 +1353,17 @@ impl T3000MainService {
             sync_metadata_id
         ));
 
-        // Also insert into new DATA_SYNC_METADATA table for sync cycle start
-        // Note: Using txn.into_transaction_log() for inline insertion to avoid database lock
-        let now = chrono::Utc::now();
-        let sync_time = now.timestamp();
-        let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
-
-        let cycle_metadata = crate::entity::data_sync_metadata::ActiveModel {
-            sync_time: Set(sync_time),
-            sync_time_fmt: Set(sync_time_fmt.clone()),
-            data_type: Set("LOGGING_DATA_CYCLE".to_string()),
-            serial_number: Set("ALL".to_string()),
-            panel_id: Set(None),
-            records_synced: Set(0),
-            sync_method: Set("FFI_BACKEND".to_string()),
-            success: Set(1),
-            error_message: Set(None),
-            created_at: Set(sync_time),
-            ..Default::default()
-        };
-
-        if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(cycle_metadata)
-            .exec(&txn)
-            .await
+        // Insert start-of-cycle marker into DATA_SYNC_METADATA using active writer target.
+        if let Err(e) = Self::insert_data_sync_metadata(
+            &writer,
+            "LOGGING_DATA_CYCLE",
+            "ALL",
+            None,
+            0,
+            true,
+            None,
+        )
+        .await
         {
             sync_logger.error(&format!("❌ Failed to insert LOGGING_DATA_CYCLE to DATA_SYNC_METADATA: {}", e));
         }
@@ -1330,7 +1495,7 @@ impl T3000MainService {
                 ));
 
                 if let Err(e) =
-                    Self::sync_device_basic_info(&txn, &device_with_points.device_info).await
+                    writer.sync_device(&device_with_points.device_info).await
                 {
                     sync_logger.error(&format!(
                         "❌ Device basic info sync failed - Serial: {}, Error: {}",
@@ -1357,7 +1522,7 @@ impl T3000MainService {
 
                     for (point_index, point) in device_with_points.input_points.iter().enumerate() {
                         if let Err(e) =
-                            Self::sync_input_point_static(&txn, serial_number, point).await
+                            writer.sync_input(serial_number, point).await
                         {
                             sync_logger.error(&format!(
                                 "❌ INPUT point {}/{} failed - Index: {}, Label: '{}', Error: {}",
@@ -1372,27 +1537,16 @@ impl T3000MainService {
                     sync_logger.info("✅ INPUT points completed");
 
                     // Insert DATA_SYNC_METADATA for INPUTS sync
-                    let now = chrono::Utc::now();
-                    let sync_time = now.timestamp();
-                    let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
-
-                    let input_metadata = crate::entity::data_sync_metadata::ActiveModel {
-                        sync_time: Set(sync_time),
-                        sync_time_fmt: Set(sync_time_fmt),
-                        data_type: Set("INPUTS".to_string()),
-                        serial_number: Set(serial_number.to_string()),
-                        panel_id: Set(Some(device_with_points.device_info.panel_id)),
-                        records_synced: Set(device_with_points.input_points.len() as i32),
-                        sync_method: Set("FFI_BACKEND".to_string()),
-                        success: Set(1),
-                        error_message: Set(None),
-                        created_at: Set(sync_time),
-                        ..Default::default()
-                    };
-
-                    if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(input_metadata)
-                        .exec(&txn)
-                        .await
+                    if let Err(e) = Self::insert_data_sync_metadata(
+                        &writer,
+                        "INPUTS",
+                        &serial_number.to_string(),
+                        Some(device_with_points.device_info.panel_id),
+                        device_with_points.input_points.len() as i32,
+                        true,
+                        None,
+                    )
+                    .await
                     {
                         sync_logger.error(&format!("❌ Failed to insert INPUTS sync metadata: {}", e));
                     }
@@ -1408,7 +1562,7 @@ impl T3000MainService {
                     for (point_index, point) in device_with_points.output_points.iter().enumerate()
                     {
                         if let Err(e) =
-                            Self::sync_output_point_static(&txn, serial_number, point).await
+                            writer.sync_output(serial_number, point).await
                         {
                             sync_logger.error(&format!(
                                 "❌ OUTPUT point {}/{} failed - Index: {}, Label: '{}', Error: {}",
@@ -1423,27 +1577,16 @@ impl T3000MainService {
                     sync_logger.info("✅ OUTPUT points completed");
 
                     // Insert DATA_SYNC_METADATA for OUTPUTS sync
-                    let now = chrono::Utc::now();
-                    let sync_time = now.timestamp();
-                    let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
-
-                    let output_metadata = crate::entity::data_sync_metadata::ActiveModel {
-                        sync_time: Set(sync_time),
-                        sync_time_fmt: Set(sync_time_fmt),
-                        data_type: Set("OUTPUTS".to_string()),
-                        serial_number: Set(serial_number.to_string()),
-                        panel_id: Set(Some(device_with_points.device_info.panel_id)),
-                        records_synced: Set(device_with_points.output_points.len() as i32),
-                        sync_method: Set("FFI_BACKEND".to_string()),
-                        success: Set(1),
-                        error_message: Set(None),
-                        created_at: Set(sync_time),
-                        ..Default::default()
-                    };
-
-                    if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(output_metadata)
-                        .exec(&txn)
-                        .await
+                    if let Err(e) = Self::insert_data_sync_metadata(
+                        &writer,
+                        "OUTPUTS",
+                        &serial_number.to_string(),
+                        Some(device_with_points.device_info.panel_id),
+                        device_with_points.output_points.len() as i32,
+                        true,
+                        None,
+                    )
+                    .await
                     {
                         sync_logger.error(&format!("❌ Failed to insert OUTPUTS sync metadata: {}", e));
                     }
@@ -1460,7 +1603,7 @@ impl T3000MainService {
                         device_with_points.variable_points.iter().enumerate()
                     {
                         if let Err(e) =
-                            Self::sync_variable_point_static(&txn, serial_number, point).await
+                            writer.sync_variable(serial_number, point).await
                         {
                             sync_logger.error(&format!("❌ VARIABLE point {}/{} failed - Index: {}, Label: '{}', Error: {}",
                                 point_index + 1, device_with_points.variable_points.len(), point.index, point.full_label, e));
@@ -1469,27 +1612,16 @@ impl T3000MainService {
                     sync_logger.info("✅ VARIABLE points completed");
 
                     // Insert DATA_SYNC_METADATA for VARIABLES sync
-                    let now = chrono::Utc::now();
-                    let sync_time = now.timestamp();
-                    let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
-
-                    let variable_metadata = crate::entity::data_sync_metadata::ActiveModel {
-                        sync_time: Set(sync_time),
-                        sync_time_fmt: Set(sync_time_fmt),
-                        data_type: Set("VARIABLES".to_string()),
-                        serial_number: Set(serial_number.to_string()),
-                        panel_id: Set(Some(device_with_points.device_info.panel_id)),
-                        records_synced: Set(device_with_points.variable_points.len() as i32),
-                        sync_method: Set("FFI_BACKEND".to_string()),
-                        success: Set(1),
-                        error_message: Set(None),
-                        created_at: Set(sync_time),
-                        ..Default::default()
-                    };
-
-                    if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(variable_metadata)
-                        .exec(&txn)
-                        .await
+                    if let Err(e) = Self::insert_data_sync_metadata(
+                        &writer,
+                        "VARIABLES",
+                        &serial_number.to_string(),
+                        Some(device_with_points.device_info.panel_id),
+                        device_with_points.variable_points.len() as i32,
+                        true,
+                        None,
+                    )
+                    .await
                     {
                         sync_logger.error(&format!("❌ Failed to insert VARIABLES sync metadata: {}", e));
                     }
@@ -1505,11 +1637,9 @@ impl T3000MainService {
                         total_trend_points
                     ));
 
-                    if let Err(e) = Self::insert_trend_logs(
-                        &txn,
+                    if let Err(e) = writer.insert_trendlogs(
                         serial_number,
                         device_with_points,
-                        sync_metadata_id,
                     )
                     .await
                     {
@@ -1543,70 +1673,91 @@ impl T3000MainService {
         }
 
         sync_logger.info(&format!(
-            "💾 Committing transaction - {} successful, {} failed, {} skipped",
+            "💾 Sync cycle complete — {} successful, {} failed, {} skipped",
             successful_devices, failed_devices, skipped_devices
         ));
 
-        let _commit_result = txn.commit().await.map_err(|e| {
-            sync_logger.error(&format!(
-                "❌ Transaction COMMIT failed - Error: {}, All {} device changes rolled back",
-                e, successful_devices
-            ));
-            AppError::DatabaseError(format!("Transaction commit failed: {}", e))
-        })?;
+        // Validation and replication apply only to the SQLite/SeaORM path.
+        // MSSQL direct path already wrote straight to center DB — no replication needed.
+        if !writer.is_mssql_direct() {
+            // Validate data was actually inserted by doing a quick count check
+            let validation_db = establish_device_conn_for_sync().await?;
+            sync_logger.info("🔍 Validation: Checking data persistence");
 
-        sync_logger.info("✅ Transaction committed successfully");
+            // Validate only successful devices
+            let mut validation_summary = String::new();
+            for panel_info in &panels {
+                let serial_number = panel_info.serial_number;
 
-        // Validate data was actually inserted by doing a quick count check
-        let validation_db = establish_t3_device_connection().await?;
-        sync_logger.info("🔍 Validation: Checking data persistence");
+                // Check if device exists in database
+                if let Ok(device_count) = devices::Entity::find()
+                    .filter(devices::Column::SerialNumber.eq(serial_number))
+                    .count(&validation_db)
+                    .await
+                {
+                    validation_summary.push_str(&format!(
+                        "Device {}: {} record(s) in DEVICES table; ",
+                        serial_number, device_count
+                    ));
+                }
 
-        // Validate only successful devices
-        let mut validation_summary = String::new();
-        for panel_info in &panels {
-            let serial_number = panel_info.serial_number;
+                // Check input points count
+                if let Ok(input_count) = input_points::Entity::find()
+                    .filter(input_points::Column::SerialNumber.eq(serial_number))
+                    .count(&validation_db)
+                    .await
+                {
+                    validation_summary.push_str(&format!("{} INPUT points; ", input_count));
+                }
 
-            // Check if device exists in database
-            if let Ok(device_count) = devices::Entity::find()
-                .filter(devices::Column::SerialNumber.eq(serial_number))
-                .count(&validation_db)
-                .await
-            {
-                validation_summary.push_str(&format!(
-                    "Device {}: {} record(s) in DEVICES table; ",
-                    serial_number, device_count
-                ));
+                // Check output points count
+                if let Ok(output_count) = output_points::Entity::find()
+                    .filter(output_points::Column::SerialNumber.eq(serial_number))
+                    .count(&validation_db)
+                    .await
+                {
+                    validation_summary.push_str(&format!("{} OUTPUT points; ", output_count));
+                }
+
+                // Check variable points count
+                if let Ok(variable_count) = variable_points::Entity::find()
+                    .filter(variable_points::Column::SerialNumber.eq(serial_number))
+                    .count(&validation_db)
+                    .await
+                {
+                    validation_summary.push_str(&format!("{} VARIABLE points; ", variable_count));
+                }
             }
 
-            // Check input points count
-            if let Ok(input_count) = input_points::Entity::find()
-                .filter(input_points::Column::SerialNumber.eq(serial_number))
-                .count(&validation_db)
-                .await
-            {
-                validation_summary.push_str(&format!("{} INPUT points; ", input_count));
-            }
+            sync_logger.info(&format!("📊 Validation results: {}", validation_summary));
 
-            // Check output points count
-            if let Ok(output_count) = output_points::Entity::find()
-                .filter(output_points::Column::SerialNumber.eq(serial_number))
-                .count(&validation_db)
-                .await
-            {
-                validation_summary.push_str(&format!("{} OUTPUT points; ", output_count));
-            }
+            // ---- SERVER DB REPLICATION (SQLite/SeaORM path only) ----
+            // SeaORM path (PG/MySQL) upserts directly; SQLite path replicates here.
+            if crate::server_db_writer::is_server_write_active() {
+                sync_logger.info("🌐 Server DB replication: Starting (role=server)...");
+                let serial_numbers: Vec<i32> = panels.iter().map(|p| p.serial_number).collect();
 
-            // Check variable points count
-            if let Ok(variable_count) = variable_points::Entity::find()
-                .filter(variable_points::Column::SerialNumber.eq(serial_number))
-                .count(&validation_db)
-                .await
-            {
-                validation_summary.push_str(&format!("{} VARIABLE points; ", variable_count));
+                if crate::server_db_writer::get_server_conn().is_some() {
+                    match Self::replicate_basic_data_to_server(&validation_db, &serial_numbers).await {
+                        Ok(stats) => {
+                            sync_logger.info(&format!(
+                                "🌐 Server DB replication (SeaORM) complete: {} devices, {} inputs, {} outputs, {} variables",
+                                stats.0, stats.1, stats.2, stats.3
+                            ));
+                        }
+                        Err(e) => {
+                            sync_logger.warn(&format!(
+                                "⚠️ Server DB replication (SeaORM) failed (local data is safe): {}",
+                                e
+                            ));
+                        }
+                    }
+                }
             }
+        } else {
+            sync_logger.info("🎯 MSSQL direct path — data written straight to center DB, replication skipped");
         }
 
-        sync_logger.info(&format!("📊 Validation results: {}", validation_summary));
         sync_logger.info(&format!("🎉 SEQUENTIAL SYNC CYCLE COMPLETED"));
         sync_logger.info(&format!(
             "📈 Summary: Total={}, Successful={}, Failed={}, Skipped={}",
@@ -1622,8 +1773,8 @@ impl T3000MainService {
     }
 
     /// UPSERT device basic info (INSERT or UPDATE based on existence)
-    async fn sync_device_basic_info(
-        txn: &DatabaseTransaction,
+    pub(crate) async fn sync_device_basic_info(
+        txn: &impl ConnectionTrait,
         device_info: &DeviceInfo,
     ) -> Result<(), AppError> {
         let serial_number = device_info.panel_serial_number;
@@ -1759,7 +1910,7 @@ impl T3000MainService {
 
     /// Convert Unix timestamp to formatted local time string for LoggingTime_Fmt
     /// Takes a Unix timestamp string and converts it to "YYYY-MM-DD HH:MM:SS" format in local timezone
-    fn format_unix_timestamp_to_local(unix_timestamp_str: &str) -> String {
+    pub(crate) fn format_unix_timestamp_to_local(unix_timestamp_str: &str) -> String {
         // Parse the Unix timestamp (handle both string and numeric formats)
         if let Ok(unix_timestamp) = unix_timestamp_str.parse::<i64>() {
             // Convert Unix timestamp to DateTime
@@ -1776,7 +1927,7 @@ impl T3000MainService {
 
     /// Derive units from range value for T3000 points
     /// Updated to match T3000 frontend variable range mappings from T3Data.ts
-    fn derive_units_from_range(range: i32) -> String {
+    pub(crate) fn derive_units_from_range(range: i32) -> String {
         match range {
             0 => "Unused".to_string(),
             1 => "Deg.C".to_string(),        // Temperature Celsius
@@ -1817,8 +1968,8 @@ impl T3000MainService {
     }
 
     /// INSERT trend log entries (ALWAYS INSERT for historical data)
-    async fn insert_trend_logs(
-        txn: &DatabaseTransaction,
+    pub(crate) async fn insert_trend_logs(
+        txn: &impl ConnectionTrait,
         serial_number: i32,
         device_data: &DeviceWithPoints,
         _sync_metadata_id: i32,
@@ -2958,8 +3109,40 @@ impl T3000MainService {
         })
     }
 
+    /// Helper: parse a JSON value as i64, handling both integer and string representations
+    fn json_value_as_i64(val: &JsonValue) -> Option<i64> {
+        val.as_i64()
+            .or_else(|| val.as_u64().map(|v| v as i64))
+            .or_else(|| val.as_f64().map(|v| v as i64))
+            .or_else(|| val.as_str().and_then(|s| s.parse::<i64>().ok()))
+    }
+
     /// Parse individual point data from C++ JSON structure
     fn parse_point_data(point_json: &JsonValue) -> Result<PointData, AppError> {
+        // Parse calibration fields with robust type handling
+        let cal_h_raw = point_json.get("calibration_h");
+        let cal_l_raw = point_json.get("calibration_l");
+        let cal_sign_raw = point_json.get("calibration_sign");
+        let filter_raw = point_json.get("filter");
+        let control_raw = point_json.get("control");
+
+        let cal_h = cal_h_raw.and_then(Self::json_value_as_i64).unwrap_or(0);
+        let cal_l = cal_l_raw.and_then(Self::json_value_as_i64).unwrap_or(0);
+        let cal_sign = cal_sign_raw.and_then(Self::json_value_as_i64).unwrap_or(0);
+        let filter_val = filter_raw.and_then(Self::json_value_as_i64);
+        let control_val = control_raw.and_then(Self::json_value_as_i64);
+
+        // Debug: log raw calibration JSON values for first point to help diagnose sync issues
+        let point_type = point_json.get("type").and_then(|v| v.as_str()).unwrap_or("?");
+        let point_idx = point_json.get("index").and_then(|v| v.as_u64()).unwrap_or(0);
+        if point_idx == 0 {
+            info!(
+                "🔬 [{}] idx=0 raw JSON: cal_h={:?}, cal_l={:?}, cal_sign={:?}, filter={:?}, control={:?} → parsed: cal_h={}, cal_l={}, sign={}, filter={:?}, control={:?}",
+                point_type, cal_h_raw, cal_l_raw, cal_sign_raw, filter_raw, control_raw,
+                cal_h, cal_l, cal_sign, filter_val, control_val
+            );
+        }
+
         let point_data = PointData {
             index: point_json
                 .get("index")
@@ -2989,14 +3172,11 @@ impl T3000MainService {
                 .get("range")
                 .and_then(|v| v.as_i64())
                 .unwrap_or(0) as i32,
-            calibration: point_json
-                .get("calibration_h")
-                .and_then(|v| v.as_f64())
-                .unwrap_or(0.0),
-            sign: point_json
-                .get("calibration_sign")
-                .and_then(|v| v.as_i64())
-                .unwrap_or(0) as i32,
+            calibration: {
+                // Legacy: compute combined display value from h+l bytes
+                ((cal_h << 8) | cal_l) as f64 / 10.0
+            },
+            sign: cal_sign as i32,
             status: point_json
                 .get("decom")
                 .and_then(|v| v.as_i64())
@@ -3022,16 +3202,10 @@ impl T3000MainService {
                 .map(|s| s.to_string()),
             digital_analog: point_json
                 .get("digital_analog")
-                .and_then(|v| v.as_i64())
+                .and_then(Self::json_value_as_i64)
                 .map(|v| v as i32),
-            filter: point_json
-                .get("filter")
-                .and_then(|v| v.as_i64())
-                .map(|v| v as i32),
-            control: point_json
-                .get("control")
-                .and_then(|v| v.as_i64())
-                .map(|v| v as i32),
+            filter: filter_val.map(|v| v as i32),
+            control: control_val.map(|v| v as i32),
             command: point_json
                 .get("command")
                 .and_then(|v| v.as_str())
@@ -3040,20 +3214,21 @@ impl T3000MainService {
                 .get("id")
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string()),
-            calibration_l: point_json.get("calibration_l").and_then(|v| v.as_f64()),
+            calibration_l: cal_l_raw.and_then(Self::json_value_as_i64).map(|v| v as i32),
+            calibration_h: cal_h_raw.and_then(Self::json_value_as_i64).map(|v| v as i32),
 
             // OUTPUT specific fields
             low_voltage: point_json.get("low_voltage").and_then(|v| v.as_f64()),
             high_voltage: point_json.get("high_voltage").and_then(|v| v.as_f64()),
             hw_switch_status: point_json
                 .get("hw_switch_status")
-                .and_then(|v| v.as_i64())
+                .and_then(Self::json_value_as_i64)
                 .map(|v| v as i32),
 
             // VARIABLE specific fields
             unused: point_json
                 .get("unused")
-                .and_then(|v| v.as_i64())
+                .and_then(Self::json_value_as_i64)
                 .map(|v| v as i32),
         };
 
@@ -3061,8 +3236,8 @@ impl T3000MainService {
     }
 
     /// Sync input point data (UPSERT: INSERT or UPDATE)
-    async fn sync_input_point_static(
-        txn: &DatabaseTransaction,
+    pub(crate) async fn sync_input_point_static(
+        txn: &impl ConnectionTrait,
         serial_number: i32,
         point: &PointData,
     ) -> Result<(), AppError> {
@@ -3080,36 +3255,42 @@ impl T3000MainService {
         // Derive units from range field
         let derived_units = Self::derive_units_from_range(point.range);
 
-        let input_model = input_points::ActiveModel {
-            serial_number: Set(serial_number),
-            input_id: Set(point.id.clone()), // New InputId field from JSON "id" field
-            input_index: Set(Some(point.index.to_string())), // Updated column name to Input_Index
-            panel: Set(Some(point.panel.to_string())),
-            full_label: Set(Some(point.full_label.clone())),
-            auto_manual: Set(Some(point.auto_manual.to_string())),
-            f_value: Set(Some(point.value.to_string())),
-            units: Set(Some(derived_units.clone())), // Use derived units from range
-            range_field: Set(Some(point.range.to_string())),
-            calibration: Set(Some(point.calibration.to_string())),
-            sign: Set(Some(point.sign.to_string())),
-            status: Set(Some(point.status.to_string())),
-            filter_field: Set(point.control.map(|c| c.to_string())),
-            digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
-            label: Set(point.label.clone()),
-            type_field: Set(point.command.clone()),
-        };
-
         match existing {
             Some(_) => {
-                // UPDATE existing input point
+                // UPDATE existing input point using update_many + col_expr
+                // (Safe pattern: PK doesn't include Input_Index, so Entity::update() could target wrong rows)
+                if point.index == 0 {
+                    sync_logger.info(&format!(
+                        "🔬 INPUT UPDATE idx=0 calibration fields: cal_h={:?}, cal_l={:?}, sign={}, filter={:?}, control={:?}",
+                        point.calibration_h, point.calibration_l, point.sign, point.filter, point.control
+                    ));
+                }
                 info!(
                     "🔄 Updating existing INPUT point {}:{} - ID: {:?}, Label: '{}'",
                     serial_number, point.index, point.id, point.full_label
                 );
 
-                let _update_result = input_points::Entity::update(input_model)
+                let _update_result = input_points::Entity::update_many()
                     .filter(input_points::Column::SerialNumber.eq(serial_number))
                     .filter(input_points::Column::InputIndex.eq(Some(point.index.to_string())))
+                    .col_expr(input_points::Column::InputId, Expr::value(point.id.clone()))
+                    .col_expr(input_points::Column::Panel, Expr::value(Some(point.panel.to_string())))
+                    .col_expr(input_points::Column::FullLabel, Expr::value(Some(point.full_label.clone())))
+                    .col_expr(input_points::Column::AutoManual, Expr::value(Some(point.auto_manual.to_string())))
+                    .col_expr(input_points::Column::FValue, Expr::value(Some(point.value.to_string())))
+                    .col_expr(input_points::Column::Units, Expr::value(Some(derived_units.clone())))
+                    .col_expr(input_points::Column::RangeField, Expr::value(Some(point.range.to_string())))
+                    .col_expr(input_points::Column::Calibration, Expr::value(Some(point.calibration.to_string())))
+                    .col_expr(input_points::Column::Sign, Expr::value(Some(point.sign.to_string())))
+                    .col_expr(input_points::Column::Status, Expr::value(Some(point.status.to_string())))
+                    .col_expr(input_points::Column::FilterField, Expr::value(point.filter.map(|f| f.to_string())))
+                    .col_expr(input_points::Column::DigitalAnalog, Expr::value(point.digital_analog.map(|da| da.to_string())))
+                    .col_expr(input_points::Column::Label, Expr::value(point.label.clone()))
+                    .col_expr(input_points::Column::TypeField, Expr::value(point.command.clone()))
+                    .col_expr(input_points::Column::CalibrationH, Expr::value(point.calibration_h.map(|v| v.to_string())))
+                    .col_expr(input_points::Column::CalibrationL, Expr::value(point.calibration_l.map(|v| v.to_string())))
+                    .col_expr(input_points::Column::CalibrationSign, Expr::value(Some(point.sign.to_string())))
+                    .col_expr(input_points::Column::Control, Expr::value(point.control.map(|c| c.to_string())))
                     .exec(txn).await
                     .map_err(|e| {
                         sync_logger.error(&format!(
@@ -3133,6 +3314,29 @@ impl T3000MainService {
                     serial_number, point.index, point.id, point.full_label
                 );
 
+                let input_model = input_points::ActiveModel {
+                    serial_number: Set(serial_number),
+                    input_id: Set(point.id.clone()),
+                    input_index: Set(Some(point.index.to_string())),
+                    panel: Set(Some(point.panel.to_string())),
+                    full_label: Set(Some(point.full_label.clone())),
+                    auto_manual: Set(Some(point.auto_manual.to_string())),
+                    f_value: Set(Some(point.value.to_string())),
+                    units: Set(Some(derived_units.clone())),
+                    range_field: Set(Some(point.range.to_string())),
+                    calibration: Set(Some(point.calibration.to_string())),
+                    sign: Set(Some(point.sign.to_string())),
+                    status: Set(Some(point.status.to_string())),
+                    filter_field: Set(point.filter.map(|f| f.to_string())),
+                    digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
+                    label: Set(point.label.clone()),
+                    type_field: Set(point.command.clone()),
+                    calibration_h: Set(point.calibration_h.map(|v| v.to_string())),
+                    calibration_l: Set(point.calibration_l.map(|v| v.to_string())),
+                    calibration_sign: Set(Some(point.sign.to_string())),
+                    control: Set(point.control.map(|c| c.to_string())),
+                };
+
                 let insert_result = input_points::Entity::insert(input_model)
                     .exec(txn).await
                     .map_err(|e| {
@@ -3154,8 +3358,8 @@ impl T3000MainService {
     }
 
     /// Sync output point data (UPSERT: INSERT or UPDATE)
-    async fn sync_output_point_static(
-        txn: &DatabaseTransaction,
+    pub(crate) async fn sync_output_point_static(
+        txn: &impl ConnectionTrait,
         serial_number: i32,
         point: &PointData,
     ) -> Result<(), AppError> {
@@ -3173,36 +3377,36 @@ impl T3000MainService {
         // Derive units from range field
         let derived_units = Self::derive_units_from_range(point.range);
 
-        let output_model = output_points::ActiveModel {
-            serial_number: Set(serial_number),
-            output_id: Set(point.id.clone()), // New OutputId field from JSON "id" field
-            output_index: Set(Some(point.index.to_string())), // Updated column name to Output_Index
-            panel: Set(Some(point.panel.to_string())),
-            full_label: Set(Some(point.full_label.clone())),
-            auto_manual: Set(Some(point.auto_manual.to_string())),
-            f_value: Set(Some(point.value.to_string())),
-            units: Set(Some(derived_units.clone())), // Use derived units from range
-            range_field: Set(Some(point.range.to_string())),
-            calibration: Set(Some(point.calibration.to_string())),
-            sign: Set(Some(point.sign.to_string())),
-            status: Set(Some(point.status.to_string())),
-            filter_field: Set(point.control.map(|c| c.to_string())),
-            digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
-            label: Set(point.label.clone()),
-            type_field: Set(point.command.clone()),
-        };
-
         match existing {
             Some(_) => {
-                // UPDATE existing output point
+                // UPDATE existing output point using update_many + col_expr
+                // (Safe pattern: PK doesn't include Output_Index, so Entity::update() could target wrong rows)
                 info!(
                     "🔄 Updating existing OUTPUT point {}:{} - ID: {:?}, Label: '{}'",
                     serial_number, point.index, point.id, point.full_label
                 );
 
-                let _update_result = output_points::Entity::update(output_model)
+                let _update_result = output_points::Entity::update_many()
                     .filter(output_points::Column::SerialNumber.eq(serial_number))
                     .filter(output_points::Column::OutputIndex.eq(Some(point.index.to_string())))
+                    .col_expr(output_points::Column::OutputId, Expr::value(point.id.clone()))
+                    .col_expr(output_points::Column::Panel, Expr::value(Some(point.panel.to_string())))
+                    .col_expr(output_points::Column::FullLabel, Expr::value(Some(point.full_label.clone())))
+                    .col_expr(output_points::Column::AutoManual, Expr::value(Some(point.auto_manual.to_string())))
+                    .col_expr(output_points::Column::FValue, Expr::value(Some(point.value.to_string())))
+                    .col_expr(output_points::Column::Units, Expr::value(Some(derived_units.clone())))
+                    .col_expr(output_points::Column::RangeField, Expr::value(Some(point.range.to_string())))
+                    .col_expr(output_points::Column::Calibration, Expr::value(Some(point.calibration.to_string())))
+                    .col_expr(output_points::Column::Sign, Expr::value(Some(point.sign.to_string())))
+                    .col_expr(output_points::Column::Status, Expr::value(Some(point.status.to_string())))
+                    .col_expr(output_points::Column::FilterField, Expr::value(point.filter.map(|f| f.to_string())))
+                    .col_expr(output_points::Column::DigitalAnalog, Expr::value(point.digital_analog.map(|da| da.to_string())))
+                    .col_expr(output_points::Column::Label, Expr::value(point.label.clone()))
+                    .col_expr(output_points::Column::TypeField, Expr::value(point.command.clone()))
+                    .col_expr(output_points::Column::CalibrationH, Expr::value(point.calibration_h.map(|v| v.to_string())))
+                    .col_expr(output_points::Column::CalibrationL, Expr::value(point.calibration_l.map(|v| v.to_string())))
+                    .col_expr(output_points::Column::CalibrationSign, Expr::value(Some(point.sign.to_string())))
+                    .col_expr(output_points::Column::Control, Expr::value(point.control.map(|c| c.to_string())))
                     .exec(txn).await
                     .map_err(|e| {
                         sync_logger.error(&format!(
@@ -3226,6 +3430,29 @@ impl T3000MainService {
                     serial_number, point.index, point.id, point.full_label
                 );
 
+                let output_model = output_points::ActiveModel {
+                    serial_number: Set(serial_number),
+                    output_id: Set(point.id.clone()),
+                    output_index: Set(Some(point.index.to_string())),
+                    panel: Set(Some(point.panel.to_string())),
+                    full_label: Set(Some(point.full_label.clone())),
+                    auto_manual: Set(Some(point.auto_manual.to_string())),
+                    f_value: Set(Some(point.value.to_string())),
+                    units: Set(Some(derived_units.clone())),
+                    range_field: Set(Some(point.range.to_string())),
+                    calibration: Set(Some(point.calibration.to_string())),
+                    sign: Set(Some(point.sign.to_string())),
+                    status: Set(Some(point.status.to_string())),
+                    filter_field: Set(point.filter.map(|f| f.to_string())),
+                    digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
+                    label: Set(point.label.clone()),
+                    type_field: Set(point.command.clone()),
+                    calibration_h: Set(point.calibration_h.map(|v| v.to_string())),
+                    calibration_l: Set(point.calibration_l.map(|v| v.to_string())),
+                    calibration_sign: Set(Some(point.sign.to_string())),
+                    control: Set(point.control.map(|c| c.to_string())),
+                };
+
                 let insert_result = output_points::Entity::insert(output_model)
                     .exec(txn).await
                     .map_err(|e| {
@@ -3247,8 +3474,8 @@ impl T3000MainService {
     }
 
     /// Sync variable point data (UPSERT: INSERT or UPDATE)
-    async fn sync_variable_point_static(
-        txn: &DatabaseTransaction,
+    pub(crate) async fn sync_variable_point_static(
+        txn: &impl ConnectionTrait,
         serial_number: i32,
         point: &PointData,
     ) -> Result<(), AppError> {
@@ -3268,36 +3495,36 @@ impl T3000MainService {
         // Derive units from range field
         let derived_units = Self::derive_units_from_range(point.range);
 
-        let variable_model = variable_points::ActiveModel {
-            serial_number: Set(serial_number),
-            variable_id: Set(point.id.clone()), // New VariableId field from JSON "id" field
-            variable_index: Set(Some(point.index.to_string())), // Updated column name to Variable_Index
-            panel: Set(Some(point.pid.to_string())),
-            full_label: Set(Some(point.full_label.clone())),
-            auto_manual: Set(Some(point.auto_manual.to_string())),
-            f_value: Set(Some(point.value.to_string())),
-            units: Set(Some(derived_units.clone())), // Use derived units from range
-            range_field: Set(Some(point.range.to_string())),
-            calibration: Set(Some(point.calibration.to_string())),
-            sign: Set(Some(point.sign.to_string())),
-            filter_field: Set(point.control.map(|c| c.to_string())),
-            status: Set(Some(point.status.to_string())),
-            digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
-            label: Set(point.label.clone()),
-            type_field: Set(point.command.clone()),
-        };
-
         match existing {
             Some(_) => {
-                // UPDATE existing variable point
+                // UPDATE existing variable point using update_many + col_expr
+                // (Safe pattern: PK doesn't include Variable_Index, so Entity::update() could target wrong rows)
                 info!(
                     "🔄 Updating existing VARIABLE point {}:{} - ID: {:?}, Label: '{}'",
                     serial_number, point.index, point.id, point.full_label
                 );
 
-                let _update_result = variable_points::Entity::update(variable_model)
+                let _update_result = variable_points::Entity::update_many()
                     .filter(variable_points::Column::SerialNumber.eq(serial_number))
                     .filter(variable_points::Column::VariableIndex.eq(Some(point.index.to_string())))
+                    .col_expr(variable_points::Column::VariableId, Expr::value(point.id.clone()))
+                    .col_expr(variable_points::Column::Panel, Expr::value(Some(point.pid.to_string())))
+                    .col_expr(variable_points::Column::FullLabel, Expr::value(Some(point.full_label.clone())))
+                    .col_expr(variable_points::Column::AutoManual, Expr::value(Some(point.auto_manual.to_string())))
+                    .col_expr(variable_points::Column::FValue, Expr::value(Some(point.value.to_string())))
+                    .col_expr(variable_points::Column::Units, Expr::value(Some(derived_units.clone())))
+                    .col_expr(variable_points::Column::RangeField, Expr::value(Some(point.range.to_string())))
+                    .col_expr(variable_points::Column::Calibration, Expr::value(Some(point.calibration.to_string())))
+                    .col_expr(variable_points::Column::Sign, Expr::value(Some(point.sign.to_string())))
+                    .col_expr(variable_points::Column::FilterField, Expr::value(point.filter.map(|f| f.to_string())))
+                    .col_expr(variable_points::Column::Status, Expr::value(Some(point.status.to_string())))
+                    .col_expr(variable_points::Column::DigitalAnalog, Expr::value(point.digital_analog.map(|da| da.to_string())))
+                    .col_expr(variable_points::Column::Label, Expr::value(point.label.clone()))
+                    .col_expr(variable_points::Column::TypeField, Expr::value(point.command.clone()))
+                    .col_expr(variable_points::Column::CalibrationH, Expr::value(point.calibration_h.map(|v| v.to_string())))
+                    .col_expr(variable_points::Column::CalibrationL, Expr::value(point.calibration_l.map(|v| v.to_string())))
+                    .col_expr(variable_points::Column::CalibrationSign, Expr::value(Some(point.sign.to_string())))
+                    .col_expr(variable_points::Column::Control, Expr::value(point.control.map(|c| c.to_string())))
                     .exec(txn).await
                     .map_err(|e| {
                         sync_logger.error(&format!(
@@ -3323,6 +3550,29 @@ impl T3000MainService {
                     "➕ Inserting new VARIABLE point {}:{} - ID: {:?}, Label: '{}'",
                     serial_number, point.index, point.id, point.full_label
                 );
+
+                let variable_model = variable_points::ActiveModel {
+                    serial_number: Set(serial_number),
+                    variable_id: Set(point.id.clone()),
+                    variable_index: Set(Some(point.index.to_string())),
+                    panel: Set(Some(point.pid.to_string())),
+                    full_label: Set(Some(point.full_label.clone())),
+                    auto_manual: Set(Some(point.auto_manual.to_string())),
+                    f_value: Set(Some(point.value.to_string())),
+                    units: Set(Some(derived_units.clone())),
+                    range_field: Set(Some(point.range.to_string())),
+                    calibration: Set(Some(point.calibration.to_string())),
+                    sign: Set(Some(point.sign.to_string())),
+                    filter_field: Set(point.filter.map(|f| f.to_string())),
+                    status: Set(Some(point.status.to_string())),
+                    digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
+                    label: Set(point.label.clone()),
+                    type_field: Set(point.command.clone()),
+                    calibration_h: Set(point.calibration_h.map(|v| v.to_string())),
+                    calibration_l: Set(point.calibration_l.map(|v| v.to_string())),
+                    calibration_sign: Set(Some(point.sign.to_string())),
+                    control: Set(point.control.map(|c| c.to_string())),
+                };
 
                 let insert_result = variable_points::Entity::insert(variable_model)
                     .exec(txn).await
@@ -3401,6 +3651,427 @@ impl T3000MainService {
             })?;
 
         Ok(1)
+    }
+
+    /// Replicate basic data (DEVICES, INPUTS, OUTPUTS, VARIABLES) from local SQLite
+    /// to the server DB after a sync cycle. Called only when role=server and server enabled.
+    /// Returns (devices, inputs, outputs, variables) counts replicated.
+    async fn replicate_basic_data_to_server(
+        local_db: &DatabaseConnection,
+        serial_numbers: &[i32],
+    ) -> Result<(u64, u64, u64, u64), AppError> {
+        let server_conn_arc = crate::server_db_writer::get_server_conn()
+            .ok_or_else(|| AppError::DatabaseError("Server DB connection not available".into()))?;
+        let server = server_conn_arc.lock().await;
+
+        let mut dev_count: u64 = 0;
+        let mut inp_count: u64 = 0;
+        let mut out_count: u64 = 0;
+        let mut var_count: u64 = 0;
+
+        for &sn in serial_numbers {
+            // Replicate DEVICES
+            if let Ok(Some(device)) = devices::Entity::find()
+                .filter(devices::Column::SerialNumber.eq(sn))
+                .one(local_db)
+                .await
+            {
+                // Clone fields needed for potential update fallback
+                let status_clone = device.status.clone();
+                let address_clone = device.address.clone();
+                let building_clone = device.building_name.clone();
+
+                let model = devices::ActiveModel {
+                    serial_number: Set(device.serial_number),
+                    panel_id: Set(device.panel_id),
+                    building_name: Set(device.building_name),
+                    product_name: Set(device.product_name),
+                    address: Set(device.address),
+                    status: Set(device.status),
+                    description: Set(device.description),
+                    ip_address: Set(device.ip_address),
+                    port: Set(device.port),
+                    bacnet_mstp_mac_id: Set(device.bacnet_mstp_mac_id),
+                    modbus_address: Set(device.modbus_address),
+                    pc_ip_address: Set(device.pc_ip_address),
+                    modbus_port: Set(device.modbus_port),
+                    bacnet_ip_port: Set(device.bacnet_ip_port),
+                    show_label_name: Set(device.show_label_name),
+                    connection_type: Set(device.connection_type),
+                    ..Default::default()
+                };
+                if devices::Entity::insert(model).exec(&*server).await.is_ok() {
+                    dev_count += 1;
+                } else {
+                    // Insert failed (likely duplicate) — try update key fields
+                    let _ = devices::Entity::update_many()
+                        .filter(devices::Column::SerialNumber.eq(sn))
+                        .col_expr(devices::Column::Status, Expr::value(status_clone.unwrap_or_default()))
+                        .col_expr(devices::Column::Address, Expr::value(address_clone.unwrap_or_default()))
+                        .col_expr(devices::Column::BuildingName, Expr::value(building_clone.unwrap_or_default()))
+                        .exec(&*server)
+                        .await;
+                    dev_count += 1;
+                }
+            }
+
+            // Replicate INPUTS
+            if let Ok(inputs) = input_points::Entity::find()
+                .filter(input_points::Column::SerialNumber.eq(sn))
+                .all(local_db)
+                .await
+            {
+                for ip in &inputs {
+                    // Try insert, ignore conflicts (server may already have this point)
+                    let model = input_points::ActiveModel {
+                        serial_number: Set(ip.serial_number),
+                        input_id: Set(ip.input_id.clone()),
+                        input_index: Set(ip.input_index.clone()),
+                        panel: Set(ip.panel.clone()),
+                        full_label: Set(ip.full_label.clone()),
+                        auto_manual: Set(ip.auto_manual.clone()),
+                        f_value: Set(ip.f_value.clone()),
+                        units: Set(ip.units.clone()),
+                        range_field: Set(ip.range_field.clone()),
+                        calibration: Set(ip.calibration.clone()),
+                        sign: Set(ip.sign.clone()),
+                        status: Set(ip.status.clone()),
+                        filter_field: Set(ip.filter_field.clone()),
+                        digital_analog: Set(ip.digital_analog.clone()),
+                        label: Set(ip.label.clone()),
+                        type_field: Set(ip.type_field.clone()),
+                        calibration_h: Set(ip.calibration_h.clone()),
+                        calibration_l: Set(ip.calibration_l.clone()),
+                        calibration_sign: Set(ip.calibration_sign.clone()),
+                        control: Set(ip.control.clone()),
+                        ..Default::default()
+                    };
+                    if input_points::Entity::insert(model).exec(&*server).await.is_ok() {
+                        inp_count += 1;
+                    } else {
+                        // Update existing point in server
+                        let _ = input_points::Entity::update_many()
+                            .filter(input_points::Column::SerialNumber.eq(sn))
+                            .filter(input_points::Column::InputIndex.eq(ip.input_index.clone()))
+                            .col_expr(input_points::Column::FValue, Expr::value(ip.f_value.clone().unwrap_or_default()))
+                            .col_expr(input_points::Column::Status, Expr::value(ip.status.clone().unwrap_or_default()))
+                            .col_expr(input_points::Column::FullLabel, Expr::value(ip.full_label.clone().unwrap_or_default()))
+                            .col_expr(input_points::Column::Units, Expr::value(ip.units.clone().unwrap_or_default()))
+                            .exec(&*server)
+                            .await;
+                        inp_count += 1;
+                    }
+                }
+            }
+
+            // Replicate OUTPUTS
+            if let Ok(outputs) = output_points::Entity::find()
+                .filter(output_points::Column::SerialNumber.eq(sn))
+                .all(local_db)
+                .await
+            {
+                for op in &outputs {
+                    let model = output_points::ActiveModel {
+                        serial_number: Set(op.serial_number),
+                        output_id: Set(op.output_id.clone()),
+                        output_index: Set(op.output_index.clone()),
+                        panel: Set(op.panel.clone()),
+                        full_label: Set(op.full_label.clone()),
+                        auto_manual: Set(op.auto_manual.clone()),
+                        f_value: Set(op.f_value.clone()),
+                        units: Set(op.units.clone()),
+                        range_field: Set(op.range_field.clone()),
+                        status: Set(op.status.clone()),
+                        digital_analog: Set(op.digital_analog.clone()),
+                        label: Set(op.label.clone()),
+                        type_field: Set(op.type_field.clone()),
+                        ..Default::default()
+                    };
+                    if output_points::Entity::insert(model).exec(&*server).await.is_ok() {
+                        out_count += 1;
+                    } else {
+                        let _ = output_points::Entity::update_many()
+                            .filter(output_points::Column::SerialNumber.eq(sn))
+                            .filter(output_points::Column::OutputIndex.eq(op.output_index.clone()))
+                            .col_expr(output_points::Column::FValue, Expr::value(op.f_value.clone().unwrap_or_default()))
+                            .col_expr(output_points::Column::Status, Expr::value(op.status.clone().unwrap_or_default()))
+                            .col_expr(output_points::Column::FullLabel, Expr::value(op.full_label.clone().unwrap_or_default()))
+                            .col_expr(output_points::Column::Units, Expr::value(op.units.clone().unwrap_or_default()))
+                            .exec(&*server)
+                            .await;
+                        out_count += 1;
+                    }
+                }
+            }
+
+            // Replicate VARIABLES
+            if let Ok(vars) = variable_points::Entity::find()
+                .filter(variable_points::Column::SerialNumber.eq(sn))
+                .all(local_db)
+                .await
+            {
+                for vp in &vars {
+                    let model = variable_points::ActiveModel {
+                        serial_number: Set(vp.serial_number),
+                        variable_id: Set(vp.variable_id.clone()),
+                        variable_index: Set(vp.variable_index.clone()),
+                        panel: Set(vp.panel.clone()),
+                        full_label: Set(vp.full_label.clone()),
+                        auto_manual: Set(vp.auto_manual.clone()),
+                        f_value: Set(vp.f_value.clone()),
+                        units: Set(vp.units.clone()),
+                        status: Set(vp.status.clone()),
+                        digital_analog: Set(vp.digital_analog.clone()),
+                        label: Set(vp.label.clone()),
+                        ..Default::default()
+                    };
+                    if variable_points::Entity::insert(model).exec(&*server).await.is_ok() {
+                        var_count += 1;
+                    } else {
+                        let _ = variable_points::Entity::update_many()
+                            .filter(variable_points::Column::SerialNumber.eq(sn))
+                            .filter(variable_points::Column::VariableIndex.eq(vp.variable_index.clone()))
+                            .col_expr(variable_points::Column::FValue, Expr::value(vp.f_value.clone().unwrap_or_default()))
+                            .col_expr(variable_points::Column::Status, Expr::value(vp.status.clone().unwrap_or_default()))
+                            .col_expr(variable_points::Column::FullLabel, Expr::value(vp.full_label.clone().unwrap_or_default()))
+                            .col_expr(variable_points::Column::Units, Expr::value(vp.units.clone().unwrap_or_default()))
+                            .exec(&*server)
+                            .await;
+                        var_count += 1;
+                    }
+                }
+            }
+        }
+
+        Ok((dev_count, inp_count, out_count, var_count))
+    }
+
+    /// Replicate ALL data from local SQLite → MSSQL server via tiberius.
+    /// Covers: DEVICES, INPUTS, OUTPUTS, VARIABLES + TRENDLOG_DATA + TRENDLOG_DATA_DETAIL.
+    /// Returns (devices, points, trendlog_parents, trendlog_details) counts.
+    /// NOTE: This path is superseded by `SyncWriter::MssqlDirect` which writes
+    /// directly to MSSQL without an intermediate SQLite step. Kept for reference.
+    #[allow(dead_code)]
+    async fn replicate_all_data_to_mssql(
+        local_db: &DatabaseConnection,
+        serial_numbers: &[i32],
+        pool: &crate::database_management::mssql_queries::MssqlPool,
+        sync_interval_secs: u64,
+    ) -> Result<(u64, u64, u64, u64), AppError> {
+        use crate::database_management::mssql_queries;
+        use crate::entity::t3_device::{trendlog_data, trendlog_data_detail};
+
+        let mut dev_count: u64 = 0;
+        let mut point_count: u64 = 0;
+        let mut td_parent_count: u64 = 0;
+        let mut td_detail_count: u64 = 0;
+
+        for &sn in serial_numbers {
+            // ---- DEVICES ----
+            if let Ok(Some(device)) = devices::Entity::find()
+                .filter(devices::Column::SerialNumber.eq(sn))
+                .one(local_db)
+                .await
+            {
+                if let Err(e) = mssql_queries::upsert_device(
+                    pool,
+                    device.serial_number,
+                    device.panel_id,
+                    device.main_building_name.as_deref(),
+                    device.building_name.as_deref(),
+                    device.floor_name.as_deref(),
+                    device.room_name.as_deref(),
+                    device.panel_number,
+                    device.network_number,
+                    device.product_name.as_deref(),
+                    device.product_class_id,
+                    device.product_id,
+                    device.bautrate.as_deref(),
+                    device.address.as_deref(),
+                    device.description.as_deref(),
+                    device.status.as_deref(),
+                    device.ip_address.as_deref(),
+                    device.port,
+                    device.bacnet_mstp_mac_id,
+                    device.modbus_address.map(|v| v as i32),
+                    device.pc_ip_address.as_deref(),
+                    device.modbus_port.map(|v| v as i32),
+                    device.bacnet_ip_port.map(|v| v as i32),
+                    device.show_label_name.as_deref(),
+                    device.connection_type.as_deref(),
+                ).await {
+                    tracing::warn!("MSSQL DEVICES upsert failed for SN {}: {}", sn, e);
+                } else {
+                    dev_count += 1;
+                }
+            }
+
+            // ---- INPUTS ----
+            if let Ok(inputs) = input_points::Entity::find()
+                .filter(input_points::Column::SerialNumber.eq(sn))
+                .all(local_db)
+                .await
+            {
+                for ip in &inputs {
+                    if let Err(e) = mssql_queries::upsert_point(
+                        pool,
+                        "INPUTS",
+                        "InputId",
+                        ip.serial_number,
+                        ip.input_id.as_deref().unwrap_or(""),
+                        ip.input_index.as_deref(),
+                        ip.panel.as_deref(),
+                        ip.full_label.as_deref(),
+                        ip.auto_manual.as_deref(),
+                        ip.f_value.as_deref(),
+                        ip.units.as_deref(),
+                        ip.range_field.as_deref(),
+                        ip.status.as_deref(),
+                        ip.digital_analog.as_deref(),
+                        ip.label.as_deref(),
+                    ).await {
+                        tracing::warn!("MSSQL INPUTS upsert failed: {}", e);
+                    } else {
+                        point_count += 1;
+                    }
+                }
+            }
+
+            // ---- OUTPUTS ----
+            if let Ok(outputs) = output_points::Entity::find()
+                .filter(output_points::Column::SerialNumber.eq(sn))
+                .all(local_db)
+                .await
+            {
+                for op in &outputs {
+                    if let Err(e) = mssql_queries::upsert_point(
+                        pool,
+                        "OUTPUTS",
+                        "OutputId",
+                        op.serial_number,
+                        op.output_id.as_deref().unwrap_or(""),
+                        op.output_index.as_deref(),
+                        op.panel.as_deref(),
+                        op.full_label.as_deref(),
+                        op.auto_manual.as_deref(),
+                        op.f_value.as_deref(),
+                        op.units.as_deref(),
+                        op.range_field.as_deref(),
+                        op.status.as_deref(),
+                        op.digital_analog.as_deref(),
+                        op.label.as_deref(),
+                    ).await {
+                        tracing::warn!("MSSQL OUTPUTS upsert failed: {}", e);
+                    } else {
+                        point_count += 1;
+                    }
+                }
+            }
+
+            // ---- VARIABLES ----
+            if let Ok(vars) = variable_points::Entity::find()
+                .filter(variable_points::Column::SerialNumber.eq(sn))
+                .all(local_db)
+                .await
+            {
+                for vp in &vars {
+                    if let Err(e) = mssql_queries::upsert_point(
+                        pool,
+                        "VARIABLES",
+                        "VariableId",
+                        vp.serial_number,
+                        vp.variable_id.as_deref().unwrap_or(""),
+                        vp.variable_index.as_deref(),
+                        vp.panel.as_deref(),
+                        vp.full_label.as_deref(),
+                        vp.auto_manual.as_deref(),
+                        vp.f_value.as_deref(),
+                        vp.units.as_deref(),
+                        None, // VARIABLES table has no Range_Field
+                        vp.status.as_deref(),
+                        vp.digital_analog.as_deref(),
+                        vp.label.as_deref(),
+                    ).await {
+                        tracing::warn!("MSSQL VARIABLES upsert failed: {}", e);
+                    } else {
+                        point_count += 1;
+                    }
+                }
+            }
+
+            // ---- TRENDLOG_DATA (parent) + TRENDLOG_DATA_DETAIL (child) ----
+            // Read all trendlog parent rows for this device from local SQLite,
+            // get-or-create each in MSSQL, then copy their detail rows.
+            if let Ok(parents) = trendlog_data::Entity::find()
+                .filter(trendlog_data::Column::SerialNumber.eq(sn))
+                .all(local_db)
+                .await
+            {
+                for parent in &parents {
+                    // Get or create parent in MSSQL (returns the MSSQL-side id)
+                    let mssql_parent_id = match mssql_queries::get_or_create_trendlog_parent(
+                        pool,
+                        parent.serial_number,
+                        parent.panel_id,
+                        &parent.point_id,
+                        parent.point_index,
+                        &parent.point_type,
+                        parent.digital_analog.as_deref(),
+                        parent.range_field.as_deref(),
+                        parent.units.as_deref(),
+                        parent.description.as_deref(),
+                    ).await {
+                        Ok(id) => {
+                            td_parent_count += 1;
+                            id
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                "MSSQL TRENDLOG_DATA get_or_create failed for SN {}, point {}: {}",
+                                sn, parent.point_id, e
+                            );
+                            continue;
+                        }
+                    };
+
+                    // Copy detail rows for this parent (from local SQLite parent.id).
+                    // Use a dynamic lookback window based on sync interval so long intervals
+                    // (e.g., 1 hour) do not miss rows during MSSQL replication.
+                    let lookback_minutes = std::cmp::max(
+                        15,
+                        (((sync_interval_secs.saturating_mul(2)) + 59) / 60) as i64,
+                    );
+                    let cutoff = (chrono::Local::now() - chrono::Duration::minutes(lookback_minutes))
+                        .format("%Y-%m-%d %H:%M:%S")
+                        .to_string();
+
+                    if let Ok(details) = trendlog_data_detail::Entity::find()
+                        .filter(trendlog_data_detail::Column::ParentId.eq(parent.id))
+                        .filter(trendlog_data_detail::Column::LoggingTimeFmt.gte(&cutoff))
+                        .all(local_db)
+                        .await
+                    {
+                        for detail in &details {
+                            if let Err(e) = mssql_queries::insert_trendlog_detail(
+                                pool,
+                                mssql_parent_id,
+                                &detail.value,
+                                &detail.logging_time_fmt,
+                            ).await {
+                                // Duplicate inserts may fail — that's OK
+                                tracing::trace!(
+                                    "MSSQL TRENDLOG_DATA_DETAIL insert skipped: {}", e
+                                );
+                            } else {
+                                td_detail_count += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok((dev_count, point_count, td_parent_count, td_detail_count))
     }
 }
 

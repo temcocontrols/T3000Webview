@@ -209,7 +209,7 @@ PCWSTR BacnetWebViewAppWindow::GetWindowClass()
 			GetSystemMetrics(SM_CYSMICON),
 			LR_DEFAULTCOLOR);
 
-		// Register the window class. 
+		// Register the window class.
 		RegisterClassEx(&wcx);
 		return windowClass.c_str();
 		}();
@@ -1005,7 +1005,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 			tempjson["data"][p_i]["control"] = g_Output_data[npanel_id].at(i).control;
 			tempjson["data"][p_i]["digital_analog"] = g_Output_data[npanel_id].at(i).digital_analog;
 			tempjson["data"][p_i]["hw_switch_status"] = g_Output_data[npanel_id].at(i).hw_switch_status;
-			tempjson["data"][p_i]["decom"] = g_Output_data[npanel_id].at(i).decom; //for output   0 "Normal"    1"Alarm"  
+			tempjson["data"][p_i]["decom"] = g_Output_data[npanel_id].at(i).decom; //for output   0 "Normal"    1"Alarm"
 			p_i++;
 		}
 
@@ -1988,7 +1988,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 							// Copy read data to global cache
 							for (int idx = temp_start; idx <= temp_end; ++idx)
 							{
-								if (idx < BAC_PROGRAM_ITEM_COUNT) 
+								if (idx < BAC_PROGRAM_ITEM_COUNT)
 								{
 									memcpy(&g_Program_data[temp_panel_id].at(idx), &s_Program_data[idx], sizeof(Str_program_point));
 								}
@@ -2074,7 +2074,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 							// Copy read data to global cache
 							for (int idx = temp_start; idx <= temp_end; ++idx)
 							{
-								if (idx < BAC_SCREEN_COUNT) 
+								if (idx < BAC_SCREEN_COUNT)
 								{
 									memcpy(&g_screen_data[temp_panel_id].at(idx), &s_screen_data[idx], sizeof(Control_group_point));
 									if ((debug_item_show == DEBUG_SHOW_MESSAGE_THREAD) || (debug_item_show == DEBUG_SHOW_ALL))
@@ -2158,7 +2158,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 							// Copy read data to global cache
 							for (int idx = temp_start; idx <= temp_end; ++idx)
 							{
-								if (idx < BAC_PID_COUNT) 
+								if (idx < BAC_PID_COUNT)
 								{
 									memcpy(&g_controller_data[temp_panel_id].at(idx), &s_controller_data[idx], sizeof(Str_controller_point));
 									if ((debug_item_show == DEBUG_SHOW_MESSAGE_THREAD) || (debug_item_show == DEBUG_SHOW_ALL))
@@ -2259,7 +2259,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 							// Copy read data to global cache
 							for (int idx = temp_start; idx <= temp_end; ++idx)
 							{
-								if (idx < BAC_SCHEDULE_COUNT) 
+								if (idx < BAC_SCHEDULE_COUNT)
 								{
 									memcpy(&g_Weekly_data[temp_panel_id].at(idx), &s_Weekly_data[idx], sizeof(Str_weekly_routine_point));
 									if ((debug_item_show == DEBUG_SHOW_MESSAGE_THREAD) || (debug_item_show == DEBUG_SHOW_ALL))
@@ -2350,7 +2350,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 							// Copy read data to global cache
 							for (int idx = temp_start; idx <= temp_end; ++idx)
 							{
-								if (idx < BAC_HOLIDAY_COUNT) 
+								if (idx < BAC_HOLIDAY_COUNT)
 								{
 									memcpy(&g_Annual_data[temp_panel_id].at(idx), &s_Annual_data[idx], sizeof(Str_annual_routine_point));
 									if ((debug_item_show == DEBUG_SHOW_MESSAGE_THREAD) || (debug_item_show == DEBUG_SHOW_ALL))
@@ -2490,19 +2490,19 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 							tempjson["data"]["device_data"][point_idx]["status"] = g_monitor_data[npanel_id].at(entry_index).status;
 							//There is also additional data that does not need to be passed to the webview interface
 
-							tempjson["data"]["device_data"][point_idx]["num_inputs"] = g_monitor_data[npanel_id].at(i).num_inputs; ///* total number of points */
-							tempjson["data"]["device_data"][point_idx]["an_inputs"] = g_monitor_data[npanel_id].at(i).an_inputs;  ///* number of analog points */
+							tempjson["data"]["device_data"][point_idx]["num_inputs"] = g_monitor_data[npanel_id].at(idx).num_inputs; ///* total number of points */
+							tempjson["data"]["device_data"][point_idx]["an_inputs"] = g_monitor_data[npanel_id].at(idx).an_inputs;  ///* number of analog points */
 							for (int m = 0; m < MAX_POINTS_IN_MONITOR; m++)
 							{
-								tempjson["data"]["device_data"][point_idx]["range"][m] = g_monitor_data[npanel_id].at(i).range[m]; //14个input对应的range
+								tempjson["data"]["device_data"][point_idx]["range"][m] = g_monitor_data[npanel_id].at(idx).range[m]; //14个input对应的range
 								//例如 例子1  111OUT45          panel = 111 , sub_panel = 0 . point_type = 0 ，number = 45 , network 默认为0
 								//例如 例子2  123.45.MB_REG67   panel = 123 , sub_panel = 45, point_type = 2 , number = 67 , network 默认为0
-								//例子3		  45678AV90         
-								tempjson["data"]["device_data"][point_idx]["input"][m]["panel"] = g_monitor_data[npanel_id].at(i).inputs[m].panel;
-								tempjson["data"]["device_data"][point_idx]["input"][m]["sub_panel"] = g_monitor_data[npanel_id].at(i).inputs[m].sub_panel;
-								tempjson["data"]["device_data"][point_idx]["input"][m]["point_type"] = g_monitor_data[npanel_id].at(i).inputs[m].point_type;
-								tempjson["data"]["device_data"][point_idx]["input"][m]["point_number"] = g_monitor_data[npanel_id].at(i).inputs[m].number;
-								tempjson["data"]["device_data"][point_idx]["input"][m]["network"] = g_monitor_data[npanel_id].at(i).inputs[m].network;
+								//例子3		  45678AV90
+								tempjson["data"]["device_data"][point_idx]["input"][m]["panel"] = g_monitor_data[npanel_id].at(idx).inputs[m].panel;
+								tempjson["data"]["device_data"][point_idx]["input"][m]["sub_panel"] = g_monitor_data[npanel_id].at(idx).inputs[m].sub_panel;
+								tempjson["data"]["device_data"][point_idx]["input"][m]["point_type"] = g_monitor_data[npanel_id].at(idx).inputs[m].point_type;
+								tempjson["data"]["device_data"][point_idx]["input"][m]["point_number"] = g_monitor_data[npanel_id].at(idx).inputs[m].number;
+								tempjson["data"]["device_data"][point_idx]["input"][m]["network"] = g_monitor_data[npanel_id].at(idx).inputs[m].network;
 							}
 							point_idx++;
 						}
@@ -2564,7 +2564,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 
 
 				} // for groups
-				
+
 				break;
 			}
 
@@ -2743,7 +2743,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 			g_Output_data[temp_panel_id].at(entry_index).range = json["range"].asInt();
 			g_Output_data[temp_panel_id].at(entry_index).digital_analog = json["digital_analog"].asInt();
 			g_Output_data[temp_panel_id].at(entry_index).hw_switch_status = json["hw_switch_status"].asInt();
-			g_Output_data[temp_panel_id].at(entry_index).decom = json["decom"].asInt();  ////for output   0 "Normal"    1"Alarm"  
+			g_Output_data[temp_panel_id].at(entry_index).decom = json["decom"].asInt();  ////for output   0 "Normal"    1"Alarm"
 			if (g_Device_Basic_Setting[temp_panel_id].reg.n_serial_number != temp_serial_number)
 			{
 				if (msg_source == 0)
@@ -3215,14 +3215,14 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 
 		int send_index = 0;
 		for (int i = 0; i < g_bacnet_panel_info.size(); i++)
-		{            
+		{
 			int nret = LoadOnlinePanelData(g_bacnet_panel_info.at(i).panel_number);
 			if (nret > 0)
 			{
 				tempjson["data"][send_index]["panel_number"] = g_bacnet_panel_info.at(i).panel_number;
 				tempjson["data"][send_index]["object_instance"] = g_bacnet_panel_info.at(i).object_instance;
 				tempjson["data"][send_index]["serial_number"] = g_bacnet_panel_info.at(i).nseiral_number;
-				tempjson["data"][send_index]["online_time"] = g_bacnet_panel_info.at(i).online_time; //Last response time .4bytes.   0  means 1970 1 1 0 
+				tempjson["data"][send_index]["online_time"] = g_bacnet_panel_info.at(i).online_time; //Last response time .4bytes.   0  means 1970 1 1 0
 				tempjson["data"][send_index]["pid"] = g_bacnet_panel_info.at(i).npid;
 					tempjson["data"][send_index]["panel_name"] = (char*)g_Device_Basic_Setting[g_bacnet_panel_info.at(i).panel_number].reg.panel_name;
 				send_index++;
@@ -3240,7 +3240,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 				tempjson["data"][send_index]["panel_number"] = temp_panel;
 				tempjson["data"][send_index]["object_instance"] = g_bacnet_panel_info.at(i).object_instance;// g_Device_Basic_Setting[temp_panel].reg.object_instance;
 				tempjson["data"][send_index]["serial_number"] = g_bacnet_panel_info.at(i).nseiral_number;// g_Device_Basic_Setting[temp_panel].reg.n_serial_number;
-				tempjson["data"][send_index]["online_time"] = g_bacnet_panel_info.at(i).online_time; //Last response time .4bytes.   0  means 1970 1 1 0 
+				tempjson["data"][send_index]["online_time"] = g_bacnet_panel_info.at(i).online_time; //Last response time .4bytes.   0  means 1970 1 1 0
 				tempjson["data"][send_index]["pid"] = g_bacnet_panel_info.at(i).npid;// g_Device_Basic_Setting[temp_panel].reg.panel_type;
 				//判断g_Device_Basic_Setting[g_bacnet_panel_info.at(i).panel_number].reg.panel_name 是否是空字符
 				const char* panelNamePtr = reinterpret_cast<const char*>(g_Device_Basic_Setting[g_bacnet_panel_info.at(i).panel_number].reg.panel_name);
@@ -3264,7 +3264,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 
 		// Final log message - write to T3WebLog\YYYY-MM\MMDD\ if logging enabled
 			WriteHandleWebViewMsgLog(_T("GET_PANELS_LIST"), outmsg, g_bacnet_panel_info.size());
-		
+
 		break;
 	}
 	case WEBVIEW_MESSAGE_TYPE::GET_ENTRIES:
@@ -3348,7 +3348,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 					tempjson["data"][i]["control"] = g_Output_data[npanel_id].at(entry_index).control;
 					tempjson["data"][i]["digital_analog"] = g_Output_data[npanel_id].at(entry_index).digital_analog;
 					tempjson["data"][i]["hw_switch_status"] = g_Output_data[npanel_id].at(entry_index).hw_switch_status;
-					tempjson["data"][i]["decom"] = g_Output_data[npanel_id].at(entry_index).decom; //for output   0 "Normal"    1"Alarm"  
+					tempjson["data"][i]["decom"] = g_Output_data[npanel_id].at(entry_index).decom; //for output   0 "Normal"    1"Alarm"
 
 				}
 				else if (entry_type == BAC_VAR)
@@ -3507,7 +3507,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 						tempjson["data"][i]["range"][m] = g_monitor_data[npanel_id].at(i).range[m]; //14个input对应的range
 						//例如 例子1  111OUT45          panel = 111 , sub_panel = 0 . point_type = 0 ，number = 45 , network 默认为0
 						//例如 例子2  123.45.MB_REG67   panel = 123 , sub_panel = 45, point_type = 2 , number = 67 , network 默认为0
-						//例子3		  45678AV90         
+						//例子3		  45678AV90
 						tempjson["data"][i]["input"][m]["panel"] = g_monitor_data[npanel_id].at(i).inputs[m].panel;
 						tempjson["data"][i]["input"][m]["sub_panel"] = g_monitor_data[npanel_id].at(i).inputs[m].sub_panel;
 						tempjson["data"][i]["input"][m]["point_type"] = g_monitor_data[npanel_id].at(i).inputs[m].point_type;
@@ -4075,7 +4075,7 @@ void BacnetWebViewAppWindow::get_png_image_dimensions(CString& file_path, unsign
 //	}
 //}
 
-//void setup_console() 
+//void setup_console()
 //{
 //	AllocConsole();
 //	freopen("CONOUT$", "w", stdout);

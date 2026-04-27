@@ -63,11 +63,24 @@ pub async fn get_trendlog_list_handler(
     // Optionally sync to database
     if query.sync_to_db.unwrap_or(false) {
         // Need to look up serial_number from devices table using panel_id
+        // Try Panel_Number first (populated), then PanelId (often NULL)
         let db = db_connection.lock().await;
-        if let Ok(Some(device)) = devices::Entity::find()
-            .filter(devices::Column::PanelId.eq(panel_id))
+        let device = devices::Entity::find()
+            .filter(devices::Column::PanelNumber.eq(panel_id))
             .one(&*db)
-            .await {
+            .await
+            .ok()
+            .flatten();
+        let device = match device {
+            Some(d) => Some(d),
+            None => devices::Entity::find()
+                .filter(devices::Column::PanelId.eq(panel_id))
+                .one(&*db)
+                .await
+                .ok()
+                .flatten(),
+        };
+        if let Some(device) = device {
             let _ = service.sync_trendlogs_to_database(panel_id, device.serial_number).await;
         }
     }
@@ -111,11 +124,18 @@ pub async fn sync_trendlogs_handler(
         .ok_or_else(|| AppError::DatabaseError("T3 device database not available".to_string()))?;
 
     // Look up serial_number from devices table using panel_id
+    // Try Panel_Number first (populated), then PanelId (often NULL)
     let db = db_connection.lock().await;
     let device = devices::Entity::find()
-        .filter(devices::Column::PanelId.eq(panel_id))
+        .filter(devices::Column::PanelNumber.eq(panel_id))
         .one(&*db)
         .await?
+        .or({
+            devices::Entity::find()
+                .filter(devices::Column::PanelId.eq(panel_id))
+                .one(&*db)
+                .await?
+        })
         .ok_or_else(|| AppError::DatabaseError(format!("Device with panel_id {} not found", panel_id)))?;
 
     let serial_number = device.serial_number;

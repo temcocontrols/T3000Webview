@@ -1,0 +1,27 @@
+{
+  "page": "OAT_SETTINGS",
+  "title": "Outside Air Temp",
+  "styles": {
+    "bg": "#2c7cc4",
+    "highlight": "#008080",
+    "fontFamily": "'Fira Mono', 'Consolas', monospace",
+    "fontWeight": "900",
+    "fontSize": "26px"
+  },
+  "widgets": [
+    {
+      "type": "menu_row",
+      "id": "ui_item_oat_val",
+      "label": "OAT Value",
+      "value": "20.5 C",
+      "lcdRow": 3
+    },
+    {
+      "type": "menu_row",
+      "id": "ui_item_oat_offset",
+      "label": "Offset",
+      "value": "0.0",
+      "lcdRow": 4
+    }
+  ]
+}

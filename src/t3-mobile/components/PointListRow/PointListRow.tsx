@@ -57,8 +57,8 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     height: '32px',
-    backgroundColor: '#fafafa',
-    borderBottom: `1px solid #edebe9`,
+    backgroundColor: '#e8f0fe',
+    borderBottom: `1px solid #c8d6e5`,
     paddingLeft: '8px',
     paddingRight: '6px',
     gap: '0px',
@@ -67,7 +67,7 @@ const useStyles = makeStyles({
   headerCell: {
     fontSize: '12px',
     fontWeight: 600,
-    color: '#323130',
+    color: '#1a3a5c',
     letterSpacing: '0.01em',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
@@ -299,6 +299,12 @@ const useStyles = makeStyles({
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
+  rangeCellClickable: {
+    cursor: 'pointer',
+    color: '#0078d4',
+    textDecorationLine: 'underline',
+    ':active': { color: '#004578' },
+  },
   /* Tier 2 (≥800px) data columns */
   statusCell: {
     width: '80px',
@@ -437,6 +443,8 @@ export interface PointListRowProps {
   expanded?: boolean;
   /** Called when the row is clicked to toggle expand */
   onToggle?: () => void;
+  /** Called when the range cell is tapped (mobile range picker) */
+  onRangeClick?: () => void;
   /** Kept for API compatibility */
   onRefresh?: () => void;
   refreshing?: boolean;
@@ -513,6 +521,7 @@ export const PointListRow: React.FC<PointListRowProps> = React.memo(({
   details = [],
   expanded = false,
   onToggle,
+  onRangeClick,
   onRefresh: _onRefresh,
   refreshing: _refreshing,
 }) => {
@@ -570,7 +579,12 @@ export const PointListRow: React.FC<PointListRowProps> = React.memo(({
 
           {/* Range — tier 1 only */}
           {isWide && (
-            <span className={styles.rangeCell}>{range ?? '—'}</span>
+            <span
+              className={mergeClasses(styles.rangeCell, onRangeClick && styles.rangeCellClickable)}
+              onClick={onRangeClick ? (e) => { e.stopPropagation(); onRangeClick(); } : undefined}
+            >
+              {range ?? '—'}
+            </span>
           )}
 
           {/* Status — tier 2 */}
@@ -635,5 +649,6 @@ export const PointListRow: React.FC<PointListRowProps> = React.memo(({
          prev.unit       === next.unit       &&
          prev.range      === next.range      &&
          prev.badgeText  === next.badgeText  &&
-         prev.statusColor === next.statusColor;
+         prev.statusColor === next.statusColor &&
+         prev.onRangeClick === next.onRangeClick;
 });

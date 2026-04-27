@@ -181,6 +181,26 @@ const toolsMenu: MenuItem = {
       type: 'divider',
     },
     {
+      id: 'tools-export-csv',
+      label: 'Export to CSV',
+      type: 'item',
+      action: MenuAction.ExportToCsv,
+      shortcut: 'Ctrl+Shift+E',
+      icon: 'ArrowDownload',
+    },
+    {
+      id: 'tools-import-csv',
+      label: 'Import from CSV',
+      type: 'item',
+      action: MenuAction.ImportFromCsv,
+      shortcut: 'Ctrl+Shift+I',
+      icon: 'ArrowUpload',
+    },
+    {
+      id: 'tools-divider-1b',
+      type: 'divider',
+    },
+    {
       id: 'tools-change-modbus-id',
       label: 'Change Modbus ID',
       type: 'item',
@@ -345,6 +365,17 @@ const databaseMenu: MenuItem = {
       type: 'item',
       action: MenuAction.LogDetail,
       icon: 'DocumentText',
+    },
+    {
+      id: 'db-divider-2',
+      type: 'divider',
+    },
+    {
+      id: 'db-backend-config',
+      label: 'Database Configuration',
+      type: 'item',
+      action: () => window.location.hash = '#/t3000/database/config',
+      icon: 'Database',
     },
   ],
 };
@@ -576,58 +607,102 @@ const helpMenu: MenuItem = {
 };
 
 /**
- * System Menu (System Settings & Developer Tools)
+ * Developer Menu (Developer & Debugging Tools)
  */
-const systemMenu: MenuItem = {
-  id: 'system',
-  label: 'System',
+const developerMenu: MenuItem = {
+  id: 'developer',
+  label: 'Developer',
   type: 'submenu',
   children: [
     {
-      id: 'system-sync',
+      id: 'dev-sync',
       label: 'Sync Configuration',
       type: 'item',
-      action: () => window.location.hash = '#/t3000/system/sync',
+      action: () => window.location.hash = '#/t3000/developer/sync',
       icon: 'ArrowSync',
     },
     {
-      id: 'system-settings',
+      id: 'dev-settings',
       label: 'Application Settings',
       type: 'item',
       action: () => window.location.hash = '#/t3000/settings',
       icon: 'Settings',
     },
     {
-      id: 'system-divider-1',
+      id: 'dev-divider-1',
       type: 'divider',
     },
     {
-      id: 'system-files',
+      id: 'dev-files',
       label: 'File Browser',
       type: 'item',
       action: () => window.location.hash = '#/t3000/develop/files',
       icon: 'FolderOpen',
     },
     {
-      id: 'system-database',
-      label: 'Database',
+      id: 'dev-database',
+      label: 'Database Viewer',
       type: 'item',
       action: () => window.location.hash = '#/t3000/develop/database',
       icon: 'Database',
     },
     {
-      id: 'system-transport',
+      id: 'dev-transport',
       label: 'Transport Tester',
       type: 'item',
       action: () => window.location.hash = '#/t3000/develop/transport',
       icon: 'PlugConnected',
     },
     {
-      id: 'system-logs',
+      id: 'dev-logs',
       label: 'T3000 Logs',
       type: 'item',
       action: () => window.location.hash = '#/t3000/develop/logs',
       icon: 'DocumentText',
+    },
+  ],
+};
+
+/**
+ * Simulator Menu
+ */
+const simulatorMenu: MenuItem = {
+  id: 'simulator',
+  label: 'Simulator',
+  type: 'submenu',
+  children: [
+    {
+      id: 'simulator-tstat10',
+      label: 'Tstat10 Simulator',
+      type: 'item',
+      action: () => window.location.hash = '#/t3000/tstat10-simulator',
+      shortcut: 'Alt+M',
+      icon: 'Board',
+    },
+    {
+      id: 'simulator-divider-1',
+      type: 'divider',
+    },
+    {
+      id: 'simulator-toggle-drift',
+      label: 'Toggle Temperature Drift',
+      type: 'item',
+      action: MenuAction.ToggleDrift,
+      icon: 'Temperature',
+    },
+    {
+      id: 'simulator-toggle-debug',
+      label: 'Toggle Debug Panel',
+      type: 'item',
+      action: MenuAction.ToggleDebugPanel,
+      icon: 'Bug',
+    },
+    {
+      id: 'simulator-reset',
+      label: 'Reset Simulator',
+      type: 'item',
+      action: MenuAction.ResetSimulator,
+      icon: 'ArrowReset',
     },
   ],
 };
@@ -644,7 +719,8 @@ export const topMenuConfig: MenuItem[] = [
   controlMenu,
   miscMenu,
   helpMenu,
-  systemMenu,
+  developerMenu,
+  simulatorMenu,
 ];
 
 /**

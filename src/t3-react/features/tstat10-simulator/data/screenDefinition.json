@@ -1,0 +1,469 @@
+{
+  "pages": [
+    {
+      "id": "main",
+      "label": "Main Display",
+      "styles": {
+        "bg": "#2c7cc4",
+        "highlight": "#008080",
+        "fontFamily": "system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+        "fontSize": "20px",
+        "fontWeight": "600"
+      },
+      "widgets": [
+        {
+          "type": "wifi_icon",
+          "id": "w_wifi",
+          "row": 0,
+          "col": 15,
+          "colSpan": 2,
+          "rowSpan": 1
+        },
+        {
+          "type": "large_text",
+          "id": "w_temp",
+          "field": "temp",
+          "row": 1,
+          "col": 0,
+          "colSpan": 17,
+          "rowSpan": 3,
+          "fontSize": "72px",
+          "suffix": "°C",
+          "align": "center"
+        },
+        {
+          "type": "label_value",
+          "id": "w_set",
+          "label": "SET",
+          "field": "stp",
+          "register": 345,
+          "row": 4,
+          "col": 0,
+          "colSpan": 17,
+          "editable": true,
+          "step": 0.5,
+          "minValue": 10,
+          "maxValue": 35
+        },
+        {
+          "type": "label_value",
+          "id": "w_fan",
+          "label": "FAN",
+          "field": "fan",
+          "row": 5,
+          "col": 0,
+          "colSpan": 17,
+          "editable": true,
+          "options": ["OFF", "LOW", "MED", "HIGH", "AUTO"]
+        },
+        {
+          "type": "label_value",
+          "id": "w_sys",
+          "label": "SYS",
+          "field": "sys",
+          "row": 6,
+          "col": 0,
+          "colSpan": 17,
+          "editable": true,
+          "options": ["OFF", "HEAT", "COOL", "AUTO"]
+        },
+        {
+          "type": "text",
+          "id": "w_etext",
+          "text": "e",
+          "row": 7,
+          "col": 0,
+          "colSpan": 2,
+          "fontSize": "15px"
+        },
+        {
+          "type": "icon_bar",
+          "id": "w_nav_icons",
+          "row": 9,
+          "col": 0,
+          "colSpan": 17,
+          "icons": [
+            { "icon": "moon", "pageId": "schedule" },
+            { "icon": "house", "pageId": "main" },
+            { "icon": "snowflake", "pageId": "inside" },
+            { "icon": "fan", "pageId": "fan_control" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup",
+      "label": "Setup Menu",
+      "styles": {
+        "bg": "#2c7cc4",
+        "highlight": "#008080",
+        "fontFamily": "'Fira Mono', 'Consolas', monospace",
+        "fontSize": "26px",
+        "fontWeight": "900"
+      },
+      "widgets": [
+        {
+          "type": "header",
+          "id": "w_setup_hdr",
+          "text": "Setup Menu",
+          "row": 1,
+          "col": 0,
+          "colSpan": 17,
+          "rowSpan": 2,
+          "fontSize": "26px",
+          "align": "center"
+        },
+        {
+          "type": "label_value",
+          "id": "w_setup_wifi",
+          "label": "WiFi Setup",
+          "row": 3,
+          "col": 0,
+          "colSpan": 17,
+          "navigateTo": "wifi"
+        },
+        {
+          "type": "label_value",
+          "id": "w_setup_clock",
+          "label": "Clock",
+          "row": 4,
+          "col": 0,
+          "colSpan": 17,
+          "navigateTo": "clock"
+        },
+        {
+          "type": "label_value",
+          "id": "w_setup_oat",
+          "label": "Outside Air Temp",
+          "row": 5,
+          "col": 0,
+          "colSpan": 17,
+          "navigateTo": "oat"
+        },
+        {
+          "type": "label_value",
+          "id": "w_setup_rs485",
+          "label": "RS485 Settings",
+          "row": 6,
+          "col": 0,
+          "colSpan": 17,
+          "navigateTo": "rs485"
+        },
+        {
+          "type": "label_value",
+          "id": "w_setup_tbd",
+          "label": "To Be Done",
+          "row": 7,
+          "col": 0,
+          "colSpan": 17,
+          "navigateTo": "tbd"
+        },
+        {
+          "type": "footer_nav",
+          "id": "w_setup_nav",
+          "text": "BACK  ▼  ▲  NEXT",
+          "row": 9,
+          "col": 0,
+          "colSpan": 17
+        }
+      ]
+    },
+    {
+      "id": "wifi",
+      "label": "WiFi Setup",
+      "styles": {
+        "bg": "#2c7cc4",
+        "highlight": "#008080",
+        "fontFamily": "'Fira Mono', 'Consolas', monospace",
+        "fontSize": "26px",
+        "fontWeight": "900"
+      },
+      "widgets": [
+        {
+          "type": "header",
+          "id": "w_wifi_hdr",
+          "text": "WiFi Setup",
+          "row": 1,
+          "col": 0,
+          "colSpan": 17,
+          "rowSpan": 2,
+          "fontSize": "26px",
+          "align": "center"
+        },
+        {
+          "type": "label_value",
+          "id": "w_wifi_ip",
+          "label": "IP",
+          "field": "ip",
+          "row": 3,
+          "col": 0,
+          "colSpan": 17,
+          "editable": true
+        },
+        {
+          "type": "label_value",
+          "id": "w_wifi_mask",
+          "label": "Mask",
+          "field": "mask",
+          "row": 4,
+          "col": 0,
+          "colSpan": 17,
+          "editable": true
+        },
+        {
+          "type": "label_value",
+          "id": "w_wifi_gw",
+          "label": "Gate",
+          "field": "gw",
+          "row": 5,
+          "col": 0,
+          "colSpan": 17,
+          "editable": true
+        },
+        {
+          "type": "label_value",
+          "id": "w_wifi_dhcp",
+          "label": "DHCP",
+          "field": "dhcp",
+          "row": 6,
+          "col": 0,
+          "colSpan": 17,
+          "editable": true,
+          "options": ["ON", "OFF"]
+        },
+        {
+          "type": "footer_nav",
+          "id": "w_wifi_nav",
+          "text": "BACK  ▼  ▲  NEXT",
+          "row": 9,
+          "col": 0,
+          "colSpan": 17
+        }
+      ]
+    },
+    {
+      "id": "rs485",
+      "label": "RS485 Settings",
+      "styles": {
+        "bg": "#2c7cc4",
+        "highlight": "#008080",
+        "fontFamily": "'Fira Mono', 'Consolas', monospace",
+        "fontSize": "26px",
+        "fontWeight": "900"
+      },
+      "widgets": [
+        {
+          "type": "header",
+          "id": "w_rs485_hdr",
+          "text": "RS485 Settings",
+          "row": 1,
+          "col": 0,
+          "colSpan": 17,
+          "rowSpan": 2,
+          "fontSize": "26px",
+          "align": "center"
+        },
+        {
+          "type": "label_value",
+          "id": "w_rs485_prot",
+          "label": "Protocol",
+          "field": "protocol",
+          "register": 8,
+          "row": 3,
+          "col": 0,
+          "colSpan": 17,
+          "editable": true,
+          "options": ["MODBUS", "BACNET"]
+        },
+        {
+          "type": "label_value",
+          "id": "w_rs485_addr",
+          "label": "NetID",
+          "field": "modbus",
+          "register": 6,
+          "row": 4,
+          "col": 0,
+          "colSpan": 17,
+          "editable": true,
+          "maxValue": 247,
+          "minValue": 1
+        },
+        {
+          "type": "label_value",
+          "id": "w_rs485_baud",
+          "label": "Baud",
+          "field": "baud",
+          "register": 7,
+          "row": 5,
+          "col": 0,
+          "colSpan": 17,
+          "editable": true,
+          "options": [9600, 19200, 38400, 115200]
+        },
+        {
+          "type": "footer_hint",
+          "id": "w_rs485_hint",
+          "text": "  +  Edit  -  ",
+          "row": 8,
+          "col": 0,
+          "colSpan": 17
+        },
+        {
+          "type": "footer_nav",
+          "id": "w_rs485_nav",
+          "text": "< Back   Next >",
+          "row": 9,
+          "col": 0,
+          "colSpan": 17
+        }
+      ]
+    },
+    {
+      "id": "clock",
+      "label": "Clock Setup",
+      "styles": {
+        "bg": "#2c7cc4",
+        "highlight": "#008080",
+        "fontFamily": "'Fira Mono', 'Consolas', monospace",
+        "fontSize": "26px",
+        "fontWeight": "900"
+      },
+      "widgets": [
+        {
+          "type": "header",
+          "id": "w_clock_hdr",
+          "text": "Clock Setup",
+          "row": 1,
+          "col": 0,
+          "colSpan": 17,
+          "rowSpan": 2,
+          "fontSize": "26px",
+          "align": "center"
+        },
+        {
+          "type": "label_value",
+          "id": "w_clock_time",
+          "label": "Time",
+          "field": "time",
+          "row": 3,
+          "col": 0,
+          "colSpan": 17,
+          "editable": true
+        },
+        {
+          "type": "label_value",
+          "id": "w_clock_date",
+          "label": "Date",
+          "field": "date",
+          "row": 4,
+          "col": 0,
+          "colSpan": 17,
+          "editable": true
+        },
+        {
+          "type": "footer_nav",
+          "id": "w_clock_nav",
+          "text": "BACK  ▼  ▲  NEXT",
+          "row": 9,
+          "col": 0,
+          "colSpan": 17
+        }
+      ]
+    },
+    {
+      "id": "oat",
+      "label": "Outside Air Temp",
+      "styles": {
+        "bg": "#2c7cc4",
+        "highlight": "#008080",
+        "fontFamily": "'Fira Mono', 'Consolas', monospace",
+        "fontSize": "26px",
+        "fontWeight": "900"
+      },
+      "widgets": [
+        {
+          "type": "header",
+          "id": "w_oat_hdr",
+          "text": "Outside Air Temp",
+          "row": 1,
+          "col": 0,
+          "colSpan": 17,
+          "rowSpan": 2,
+          "fontSize": "26px",
+          "align": "center"
+        },
+        {
+          "type": "label_value",
+          "id": "w_oat_val",
+          "label": "OAT Value",
+          "field": "oat",
+          "row": 3,
+          "col": 0,
+          "colSpan": 17
+        },
+        {
+          "type": "label_value",
+          "id": "w_oat_offset",
+          "label": "Offset",
+          "field": "oat_offset",
+          "row": 4,
+          "col": 0,
+          "colSpan": 17,
+          "editable": true
+        },
+        {
+          "type": "footer_nav",
+          "id": "w_oat_nav",
+          "text": "BACK  ▼  ▲  NEXT",
+          "row": 9,
+          "col": 0,
+          "colSpan": 17
+        }
+      ]
+    },
+    {
+      "id": "tbd",
+      "label": "To Be Done",
+      "styles": {
+        "bg": "#2c7cc4",
+        "highlight": "#008080",
+        "fontFamily": "'Fira Mono', 'Consolas', monospace",
+        "fontSize": "26px",
+        "fontWeight": "900"
+      },
+      "widgets": [
+        {
+          "type": "header",
+          "id": "w_tbd_hdr",
+          "text": "To Be Done",
+          "row": 1,
+          "col": 0,
+          "colSpan": 17,
+          "rowSpan": 2,
+          "fontSize": "26px",
+          "align": "center"
+        },
+        {
+          "type": "label_value",
+          "id": "w_tbd_feature",
+          "label": "Feature",
+          "field": "tbd",
+          "row": 3,
+          "col": 0,
+          "colSpan": 17
+        },
+        {
+          "type": "footer_nav",
+          "id": "w_tbd_nav",
+          "text": "BACK  ▼  ▲  NEXT",
+          "row": 9,
+          "col": 0,
+          "colSpan": 17
+        }
+      ]
+    }
+  ],
+  "navigation": {
+    "defaultPage": "main"
+  }
+}

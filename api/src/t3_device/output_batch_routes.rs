@@ -26,6 +26,7 @@ pub struct BatchSaveOutputsRequest {
 #[serde(rename_all = "camelCase")]
 pub struct OutputUpdate {
     pub output_index: String,
+    pub output_id: Option<String>,
     pub panel: Option<String>,
     pub full_label: Option<String>,
     pub label: Option<String>,
@@ -38,6 +39,9 @@ pub struct OutputUpdate {
     pub sign: Option<String>,
     pub status: Option<String>,
     pub units: Option<String>,
+    pub calibration_h: Option<i32>,
+    pub calibration_l: Option<i32>,
+    pub control: Option<String>,
 }
 
 /// Response for batch save operation
@@ -128,7 +132,15 @@ async fn execute_output_batch_save(
     let txn = db_connection.begin().await
         .map_err(|e| format!("Transaction start error: {}", e))?;
 
-    // Process each output update
+    // Delete all existing rows for this serial to clean up corrupted data
+    // (Refresh from Device always sends ALL points, so replacing all rows is safe)
+    output_points::Entity::delete_many()
+        .filter(output_points::Column::SerialNumber.eq(serial))
+        .exec(&txn)
+        .await
+        .map_err(|e| format!("Failed to clean existing output data: {}", e))?;
+
+    // Insert all output points fresh
     for output_update in &payload.outputs {
         let index = &output_update.output_index;
 
@@ -146,6 +158,7 @@ async fn execute_output_batch_save(
                 let update_result = output_points::Entity::update_many()
                     .filter(output_points::Column::SerialNumber.eq(serial))
                     .filter(output_points::Column::OutputIndex.eq(index))
+                    .col_expr(output_points::Column::OutputId, Expr::value(output_update.output_id.clone()))
                     .col_expr(output_points::Column::Panel, Expr::value(output_update.panel.clone()))
                     .col_expr(output_points::Column::FullLabel, Expr::value(output_update.full_label.clone()))
                     .col_expr(output_points::Column::Label, Expr::value(output_update.label.clone()))
@@ -158,6 +171,10 @@ async fn execute_output_batch_save(
                     .col_expr(output_points::Column::Sign, Expr::value(output_update.sign.clone()))
                     .col_expr(output_points::Column::Status, Expr::value(output_update.status.clone()))
                     .col_expr(output_points::Column::Units, Expr::value(output_update.units.clone()))
+                    .col_expr(output_points::Column::CalibrationH, Expr::value(output_update.calibration_h.map(|v| v.to_string())))
+                    .col_expr(output_points::Column::CalibrationL, Expr::value(output_update.calibration_l.map(|v| v.to_string())))
+                    .col_expr(output_points::Column::CalibrationSign, Expr::value(output_update.sign.clone()))
+                    .col_expr(output_points::Column::Control, Expr::value(output_update.control.clone()))
                     .exec(&txn)
                     .await;
 
@@ -188,6 +205,7 @@ async fn execute_output_batch_save(
                 let new_output = output_points::ActiveModel {
                     serial_number: Set(serial),
                     output_index: Set(Some(index.clone())),
+                    output_id: Set(output_update.output_id.clone()),
                     panel: Set(output_update.panel.clone()),
                     full_label: Set(output_update.full_label.clone()),
                     label: Set(output_update.label.clone()),
@@ -200,6 +218,10 @@ async fn execute_output_batch_save(
                     sign: Set(output_update.sign.clone()),
                     status: Set(output_update.status.clone()),
                     units: Set(output_update.units.clone()),
+                    calibration_h: Set(output_update.calibration_h.map(|v| v.to_string())),
+                    calibration_l: Set(output_update.calibration_l.map(|v| v.to_string())),
+                    calibration_sign: Set(output_update.sign.clone()),
+                    control: Set(output_update.control.clone()),
                     ..Default::default()
                 };
 
@@ -236,7 +258,7 @@ async fn execute_output_batch_save(
 
     // Commit transaction
     txn.commit().await
-        .map_err(|e| format!("database is locked: {}", e))?;
+        .map_err(|e| format!("{}", e))?;
 
     info!("✅ Batch save complete: {} updated, {} failed", updated_count, failed_count);
 

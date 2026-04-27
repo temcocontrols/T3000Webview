@@ -11,6 +11,26 @@ use std::sync::Arc;
 
 use crate::logger::{write_structured_log_with_level, LogLevel};
 
+/// Convert `?` placeholders to `$1, $2, …` when the backend is PostgreSQL.
+/// SQLite and MySQL both accept `?`, so they pass through unchanged.
+fn adapt_placeholders(backend: DbBackend, sql: &str) -> String {
+    if backend != DbBackend::Postgres {
+        return sql.to_string();
+    }
+    let mut out = String::with_capacity(sql.len() + 32);
+    let mut idx = 1u32;
+    for ch in sql.chars() {
+        if ch == '?' {
+            out.push('$');
+            out.push_str(&idx.to_string());
+            idx += 1;
+        } else {
+            out.push(ch);
+        }
+    }
+    out
+}
+
 #[derive(Debug, Serialize, Deserialize, FromQueryResult)]
 pub struct TrendlogDataPoint {
     pub serial_number: i32,
@@ -319,7 +339,7 @@ impl T3TrendlogDataService {
         let query_start_time = std::time::Instant::now();
 
         let trendlog_data_list = JoinedTrendlogData::find_by_statement(
-            Statement::from_sql_and_values(DbBackend::Sqlite, &sql, params)
+            Statement::from_sql_and_values(db.get_database_backend(), &adapt_placeholders(db.get_database_backend(), &sql), params)
         )
         .all(db)
         .await?;
@@ -725,7 +745,7 @@ impl T3TrendlogDataService {
             sql.push_str(&format!(" LIMIT {}", limit_val));
         }
 
-        let stmt = Statement::from_sql_and_values(DbBackend::Sqlite, &sql, params);
+        let stmt = Statement::from_sql_and_values(db.get_database_backend(), &adapt_placeholders(db.get_database_backend(), &sql), params);
 
         match TrendlogDataPoint::find_by_statement(stmt).all(db).await {
             Ok(recent_data) => {
@@ -773,8 +793,8 @@ impl T3TrendlogDataService {
         "#;
 
         let result = db.execute(Statement::from_sql_and_values(
-            DbBackend::Sqlite,
-            sql,
+            db.get_database_backend(),
+            &adapt_placeholders(db.get_database_backend(), sql),
             vec![serial_number.into(), cutoff_timestamp.into()],
         )).await?;
 
@@ -826,8 +846,8 @@ impl T3TrendlogDataService {
         "#;
 
         let counts = CountResult::find_by_statement(Statement::from_sql_and_values(
-            DbBackend::Sqlite,
-            count_sql,
+            db.get_database_backend(),
+            &adapt_placeholders(db.get_database_backend(), count_sql),
             vec![serial_number.into(), panel_id.into()],
         ))
         .one(db)
@@ -855,8 +875,8 @@ impl T3TrendlogDataService {
         }
 
         let latest_timestamp = LatestResult::find_by_statement(Statement::from_sql_and_values(
-            DbBackend::Sqlite,
-            latest_sql,
+            db.get_database_backend(),
+            &adapt_placeholders(db.get_database_backend(), latest_sql),
             vec![serial_number.into(), panel_id.into()],
         ))
         .one(db)
@@ -957,7 +977,7 @@ impl T3TrendlogDataService {
             sql.push_str(" LIMIT 10000");
         }
 
-        let stmt = Statement::from_sql_and_values(DbBackend::Sqlite, &sql, params);
+        let stmt = Statement::from_sql_and_values(db.get_database_backend(), &adapt_placeholders(db.get_database_backend(), &sql), params);
         let raw_data = TrendlogDataPoint::find_by_statement(stmt).all(db).await?;
 
         let has_historical_data = !raw_data.is_empty();

@@ -35,8 +35,6 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
-  ArrowDownloadRegular,
-  SettingsRegular,
   SearchRegular,
   ArrowSortUpRegular,
   ArrowSortDownRegular,
@@ -48,6 +46,8 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import styles from './HolidaysPage.module.css';
+import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 // Types based on C++ BacnetAnnualRoutine structure
 interface HolidayPoint {
@@ -74,7 +74,8 @@ export const HolidaysPage: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
-  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
+  const [dbChecked, setDbChecked] = useState(false);
+  const deviceRefreshedRef = useRef<number | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
   const isAtBottomRef = useRef(false);
@@ -116,6 +117,7 @@ export const HolidaysPage: React.FC = () => {
       // DON'T clear holidays on database fetch error - preserve what we have
     } finally {
       setLoading(false);
+      setDbChecked(true);
     }
   }, [selectedDevice]);
 
@@ -123,19 +125,19 @@ export const HolidaysPage: React.FC = () => {
     fetchHolidays();
   }, [fetchHolidays]);
 
-  // Reset autoRefreshed flag when device changes
+  // Reset auto-refresh state when device changes (don't clear data to avoid visual flash)
   useEffect(() => {
-    setHolidays([]);
     setAutoRefreshed(false);
-    hasAutoRefreshedRef.current = false;
+    setDbChecked(false);
   }, [selectedDevice?.serialNumber]);
 
-  // Auto-refresh on page load (Trigger #1) - ONLY if database is empty
+  // Auto-refresh once per device - ONLY if database is empty after initial DB fetch
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
+    if (!dbChecked || loading || !selectedDevice || autoRefreshed) return;
+    if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
 
     const checkAndRefresh = async () => {
-      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+      deviceRefreshedRef.current = selectedDevice.serialNumber;
 
       // Check if database has holiday data
       if (holidays.length > 0) {
@@ -158,7 +160,7 @@ export const HolidaysPage: React.FC = () => {
     };
 
     checkAndRefresh();
-  }, [loading, selectedDevice, autoRefreshed, fetchHolidays, holidays.length]);
+  }, [dbChecked, loading, selectedDevice, autoRefreshed, fetchHolidays, holidays.length]);
 
   // Refresh from database
   const handleRefreshFromDatabase = async () => {
@@ -216,12 +218,33 @@ export const HolidaysPage: React.FC = () => {
   };
 
   const handleExport = () => {
-    console.log('Export holidays to CSV');
+    if (holidays.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<HolidayPoint>[] = [
+      { header: 'Holiday', accessor: h => h.holidayId },
+      { header: 'Full Label', accessor: h => h.fullLabel },
+      { header: 'Auto/Manual', accessor: h => h.autoManual },
+      { header: 'Value', accessor: h => h.value },
+      { header: 'Label', accessor: h => h.label },
+    ];
+    exportToCsv(holidays, csvColumns, `holidays_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
 
-  const handleSettings = () => {
-    console.log('Settings clicked');
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<HolidayPoint>[] = [
+      { header: 'Holiday', accessor: h => h.holidayId, setter: (h, v) => { h.holidayId = v; } },
+      { header: 'Full Label', accessor: h => h.fullLabel, setter: (h, v) => { h.fullLabel = v; } },
+      { header: 'Auto/Manual', accessor: h => h.autoManual, setter: (h, v) => { h.autoManual = v; } },
+      { header: 'Value', accessor: h => h.value, setter: (h, v) => { h.value = v; } },
+      { header: 'Label', accessor: h => h.label, setter: (h, v) => { h.label = v; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ serialNumber: selectedDevice?.serialNumber || 0 } as HolidayPoint));
+    setHolidays(imported);
   };
+
+  // Register CSV export/import handlers with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
@@ -284,7 +307,7 @@ export const HolidaysPage: React.FC = () => {
   // Display holidays with empty rows when no data (show 10 empty rows)
   const displayHolidays = React.useMemo(() => {
     if (holidays.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         serialNumber: 0,
         holidayId: '',
         fullLabel: '',
@@ -570,39 +593,6 @@ export const HolidaysPage: React.FC = () => {
             <>
             <div className={styles.toolbar}>
               <div className={styles.toolbarContainer}>
-                <button
-                  className={styles.toolbarButton}
-                  onClick={handleRefreshFromDevice}
-                  disabled={refreshing}
-                  title="Refresh from Device"
-                  aria-label="Refresh from Device"
-                >
-                  <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
-                  <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                </button>
-
-                <button
-                  className={styles.toolbarButton}
-                  onClick={handleExport}
-                  title="Export to CSV"
-                  aria-label="Export to CSV"
-                >
-                  <ArrowDownloadRegular />
-                  <span>Export to CSV</span>
-                </button>
-
-                <div className={styles.toolbarSeparator} role="separator" />
-
-                <button
-                  className={styles.toolbarButton}
-                  onClick={handleSettings}
-                  title="Settings"
-                  aria-label="Settings"
-                >
-                  <SettingsRegular />
-                  <span>Settings</span>
-                </button>
-
                 <div className={styles.searchInputWrapper}>
                   <SearchRegular className={styles.searchIcon} />
                   <input
@@ -616,6 +606,19 @@ export const HolidaysPage: React.FC = () => {
                     aria-label="Search holidays"
                   />
                 </div>
+
+                <button
+                  className={styles.toolbarButton}
+                  onClick={handleRefreshFromDevice}
+                  disabled={refreshing}
+                  title="Refresh from Device"
+                  aria-label="Refresh from Device"
+                >
+                  <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
+                  <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                </button>
+
+                <div className={styles.toolbarSeparator} role="separator" />
 
                 {/* Info Button with Tooltip */}
                 <Tooltip
@@ -671,29 +674,6 @@ export const HolidaysPage: React.FC = () => {
                     items={displayHolidays}
                     columns={columns}
                     sortable
-                    resizableColumns
-                    columnSizingOptions={{
-                      holidayId: {
-                        minWidth: 60,
-                        idealWidth: 100,
-                      },
-                      fullLabel: {
-                        minWidth: 150,
-                        idealWidth: 200,
-                      },
-                      autoManual: {
-                        minWidth: 100,
-                        idealWidth: 130,
-                      },
-                      value: {
-                        minWidth: 80,
-                        idealWidth: 100,
-                      },
-                      label: {
-                        minWidth: 90,
-                        idealWidth: 130,
-                      },
-                    }}
                   >
                     <DataGridHeader>
                       <DataGridRow>

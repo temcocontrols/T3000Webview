@@ -151,6 +151,68 @@ export const useOutputsPage = () => {
     }
   };
 
+  // Update output field using Action 16
+  const updateOutputField = async (
+    outputIndex: string,
+    field: string,
+    newValue: string,
+    currentOutput: OutputPoint
+  ) => {
+    if (!selectedDevice) return;
+
+    try {
+      console.log(`[useOutputsPage] Updating ${field} for Output ${outputIndex}`);
+
+      const payload = {
+        fullLabel: field === 'fullLabel' ? newValue : (currentOutput.fullLabel || ''),
+        label: field === 'label' ? newValue : (currentOutput.label || ''),
+        value: field === 'fValue' ? parseFloat(newValue || '0') : parseFloat(currentOutput.fValue || '0') / 1000,
+        range: field === 'range' ? parseInt(newValue || '0', 10) : parseInt(currentOutput.rangeField || currentOutput.range || '0', 10),
+        autoManual: field === 'autoManual' ? parseInt(newValue || '0', 10) : parseInt(currentOutput.autoManual || '0', 10),
+        control: 0,
+        digitalAnalog: parseInt(currentOutput.digitalAnalog || '0', 10),
+        decom: 0,
+        lowVoltage: parseInt(currentOutput.lowVoltage || '0', 10),
+        highVoltage: parseInt(currentOutput.highVoltage || '0', 10),
+      };
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/t3_device/outputs/${selectedDevice.serialNumber}/${outputIndex}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('[useOutputsPage] Update success:', result);
+
+      setOutputs(prevOutputs =>
+        prevOutputs.map(output =>
+          output.outputIndex === outputIndex
+            ? {
+                ...output,
+                [field]: field === 'fValue'
+                  ? (parseFloat(newValue || '0') * 1000).toString()
+                  : newValue
+              }
+            : output
+        )
+      );
+
+      return result;
+    } catch (error) {
+      console.error('[useOutputsPage] Failed to update:', error);
+      throw error;
+    }
+  };
+
   return {
     outputs,
     loading,
@@ -161,5 +223,6 @@ export const useOutputsPage = () => {
     handleRefresh,
     handleRefreshFromDevice,
     handleRefreshSingleOutput,
+    updateOutputField,
   };
 };

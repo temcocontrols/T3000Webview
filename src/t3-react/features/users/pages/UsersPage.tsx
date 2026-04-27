@@ -384,7 +384,6 @@ const UsersPage: React.FC = () => {
                     items={users}
                     columns={columns}
                     sortable
-                    resizableColumns
                     focusMode="composite"
                   >
                     <DataGridHeader>

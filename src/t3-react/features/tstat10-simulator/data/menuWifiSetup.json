@@ -1,0 +1,42 @@
+{
+  "page": "WIFI_SETTINGS",
+  "title": "WiFi Setup",
+  "styles": {
+    "bg": "#2c7cc4",
+    "highlight": "#008080",
+    "fontFamily": "'Fira Mono', 'Consolas', monospace",
+    "fontWeight": "900",
+    "fontSize": "26px"
+  },
+  "widgets": [
+    {
+      "type": "menu_row",
+      "id": "ui_item_ip",
+      "label": "IP",
+      "value": "192.168.1.100",
+      "lcdRow": 3
+    },
+    {
+      "type": "menu_row",
+      "id": "ui_item_mask",
+      "label": "Mask",
+      "value": "255.255.255.0",
+      "lcdRow": 4
+    },
+    {
+      "type": "menu_row",
+      "id": "ui_item_gw",
+      "label": "Gate",
+      "value": "192.168.1.1",
+      "lcdRow": 5
+    },
+    {
+      "type": "menu_row",
+      "id": "ui_item_dhcp",
+      "label": "DHCP",
+      "value": "ON",
+      "options": ["ON", "OFF"],
+      "lcdRow": 6
+    }
+  ]
+}

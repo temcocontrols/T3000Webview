@@ -73,7 +73,7 @@ export class PanelDataRefreshService {
         'schedule': EntryType.SCHEDULE,      // BAC_SCH = 4
         'holiday': EntryType.ANNUAL,         // BAC_HOL = 5
         'program': EntryType.PROGRAM,        // BAC_PRG = 6
-        'trendlog': EntryType.TABLE,         // BAC_TBL = 7
+        'trendlog': EntryType.AMON,          // BAC_AMON = 9 (Analog Monitors / Trendlogs)
         'graphic': EntryType.GROUP,          // BAC_GRP = 10
         'alarm': EntryType.ALARMS,           // BAC_ALARMS = 15
       };
@@ -291,6 +291,35 @@ export class PanelDataRefreshService {
       'graphic': db.graphics,
     };
 
+    // Trendlogs: single batch POST to save-refreshed endpoint
+    if (type === 'trendlog') {
+      try {
+        const url = `${API_BASE_URL}/api/t3_device/trendlogs/${serialNumber}/save-refreshed`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: transformedItems }),
+        });
+        if (response.ok) {
+          const result = await response.json();
+          const savedCount = result.savedCount || 0;
+          LogUtil.Info(`[PanelDataRefreshService] Saved ${savedCount}/${items.length} trendlog(s) to database`);
+          return savedCount;
+        }
+        // 503 means Center DB is configured but unreachable — surface this clearly
+        const errorText = await response.text().catch(() => response.statusText);
+        if (response.status === 503) {
+          LogUtil.Warn(`[PanelDataRefreshService] save-refreshed blocked — Center DB unreachable: ${errorText}`);
+          throw new Error(`Center DB unreachable: trendlog data was NOT saved. ${errorText}`);
+        }
+        LogUtil.Error(`[PanelDataRefreshService] save-refreshed failed: ${response.statusText}`);
+        return 0;
+      } catch (err) {
+        LogUtil.Error(`[PanelDataRefreshService] Failed to save trendlogs:`, err);
+        throw err;
+      }
+    }
+
     const entity = entityMap[type];
 
     if (!entity) {
@@ -333,9 +362,20 @@ export class PanelDataRefreshService {
       transformed.fValue = item.value?.toString() || item.fValue;
       transformed.units = item.unit?.toString() || item.units;  // C++ sends 'unit' not 'units'
       transformed.rangeField = item.range?.toString() || item.rangeField;  // FIXED: Backend expects rangeField
-      transformed.calibration = item.calibration_h?.toString() || item.calibration;  // C++ sends 'calibration_h'
+      // C++ calibration: temp_cal_value = calibration_h * 256 + calibration_l, display = temp_cal_value / 10
+      const calH = parseInt(item.calibration_h?.toString() || '0', 10);
+      const calL = parseInt(item.calibration_l?.toString() || '0', 10);
+      if (item.calibration_h !== undefined && item.calibration_l !== undefined) {
+        const tempCalValue = calH * 256 + calL;
+        transformed.calibration = (tempCalValue / 10).toFixed(1);
+      } else {
+        transformed.calibration = item.calibration || '0.0';
+      }
+      transformed.calibrationH = calH;
+      transformed.calibrationL = calL;
       transformed.sign = item.calibration_sign?.toString() || item.sign;  // C++ sends 'calibration_sign'
       transformed.filterField = item.filter?.toString() || item.filterField;
+      transformed.control = item.control?.toString() || item.control;
       transformed.status = item.decom?.toString() || item.status;  // C++ sends 'decom'
       transformed.label = item.label;
       transformed.digitalAnalog = item.digital_analog?.toString() || item.digitalAnalog;
@@ -349,9 +389,20 @@ export class PanelDataRefreshService {
       transformed.fValue = item.value?.toString() || item.fValue;
       transformed.units = item.unit?.toString() || item.units;  // C++ sends 'unit' not 'units'
       transformed.rangeField = item.range?.toString() || item.rangeField;  // FIXED: Backend expects rangeField
-      transformed.calibration = item.calibration_h?.toString() || item.calibration;  // C++ sends 'calibration_h'
+      // C++ calibration: temp_cal_value = calibration_h * 256 + calibration_l, display = temp_cal_value / 10
+      const outCalH = parseInt(item.calibration_h?.toString() || '0', 10);
+      const outCalL = parseInt(item.calibration_l?.toString() || '0', 10);
+      if (item.calibration_h !== undefined && item.calibration_l !== undefined) {
+        const tempCalValue = outCalH * 256 + outCalL;
+        transformed.calibration = (tempCalValue / 10).toFixed(1);
+      } else {
+        transformed.calibration = item.calibration || '0.0';
+      }
+      transformed.calibrationH = outCalH;
+      transformed.calibrationL = outCalL;
       transformed.sign = item.calibration_sign?.toString() || item.sign;  // C++ sends 'calibration_sign'
       transformed.filterField = item.filter?.toString() || item.filterField;
+      transformed.control = item.control?.toString() || item.control;
       transformed.status = item.decom?.toString() || item.status;  // C++ sends 'decom'
       transformed.label = item.label;
       transformed.digitalAnalog = item.digital_analog?.toString() || item.digitalAnalog;
@@ -365,9 +416,20 @@ export class PanelDataRefreshService {
       transformed.fValue = item.value?.toString() || item.fValue;
       transformed.units = item.unit?.toString() || item.units;  // C++ sends 'unit' not 'units'
       transformed.rangeField = item.range?.toString() || item.rangeField;  // FIXED: Backend expects rangeField
-      transformed.calibration = item.calibration_h?.toString() || item.calibration;  // C++ sends 'calibration_h'
+      // C++ calibration: temp_cal_value = calibration_h * 256 + calibration_l, display = temp_cal_value / 10
+      const varCalH = parseInt(item.calibration_h?.toString() || '0', 10);
+      const varCalL = parseInt(item.calibration_l?.toString() || '0', 10);
+      if (item.calibration_h !== undefined && item.calibration_l !== undefined) {
+        const tempCalValue = varCalH * 256 + varCalL;
+        transformed.calibration = (tempCalValue / 10).toFixed(1);
+      } else {
+        transformed.calibration = item.calibration || '0.0';
+      }
+      transformed.calibrationH = varCalH;
+      transformed.calibrationL = varCalL;
       transformed.sign = item.calibration_sign?.toString() || item.sign;  // C++ sends 'calibration_sign'
       transformed.filterField = item.filter?.toString() || item.filterField;
+      transformed.control = item.control?.toString() || item.control;
       transformed.status = item.decom?.toString() || item.status;  // C++ sends 'decom'
       transformed.label = item.label;
       transformed.digitalAnalog = item.digital_analog?.toString() || item.digitalAnalog;
@@ -429,6 +491,26 @@ export class PanelDataRefreshService {
       transformed.full_label = item.description ?? item.full_label ?? item.fullLabel ?? '';
       transformed.picture_file = item.picture_file ?? item.pictureFile ?? '';
       transformed.total_point = item.count?.toString() ?? item.total_point ?? item.totalPoint ?? '';
+    } else if (type === 'trendlog') {
+      // Trendlog transformation - map C++ BAC_AMON fields to database format
+      // C++ returns: id ("MON1"), label, hour_interval_time, minute_interval_time, second_interval_time, status, index, pid
+      // Plus input[] array with {panel, sub_panel, point_type, point_number, network} and num_inputs, range[]
+      const indexValue = item.index ?? 0;
+      transformed.trendlogId = item.id || `MON${indexValue + 1}`;
+      transformed.trendlogLabel = item.label ?? '';
+      // Convert h/m/s interval to total seconds
+      const hours = parseInt(item.hour_interval_time?.toString() || '0', 10);
+      const minutes = parseInt(item.minute_interval_time?.toString() || '0', 10);
+      const seconds = parseInt(item.second_interval_time?.toString() || '0', 10);
+      transformed.intervalSeconds = hours * 3600 + minutes * 60 + seconds;
+      // C++ sends status as integer (0=OFF, 1=ON)
+      const statusVal = item.status;
+      transformed.status = typeof statusVal === 'number' ? (statusVal === 0 ? 'OFF' : 'ON') : (statusVal?.toString() ?? '');
+      transformed.panelId = item.pid ?? 0;
+      // Pass through input points for saving to TRENDLOG_INPUTS
+      transformed.numInputs = item.num_inputs ?? 0;
+      transformed.inputs = item.input ?? [];
+      transformed.ranges = item.range ?? [];
     }
 
     return transformed;

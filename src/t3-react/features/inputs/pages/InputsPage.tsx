@@ -38,8 +38,6 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
-  ArrowDownloadRegular,
-  SettingsRegular,
   SearchRegular,
   ArrowSortUpRegular,
   ArrowSortDownRegular,
@@ -50,7 +48,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
-import { getRangeLabel } from '../data/rangeData';
+import { getRangeLabel, getUnitSymbol } from '../data/rangeData';
 import { API_BASE_URL } from '../../../config/constants';
 import { T3Database } from '../../../../lib/t3-database';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
@@ -58,6 +56,8 @@ import { useStatusBarStore } from '../../../store/statusBarStore';
 import { useResponsive } from '@t3-shared/core/hooks/useResponsive';
 import { InputsPageMobile } from '@t3-mobile/features/inputs/pages/InputsPageMobile';
 import styles from './InputsPage.module.css';
+import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 // Types based on Rust entity (input_points.rs)
 interface InputPoint {
@@ -73,6 +73,10 @@ interface InputPoint {
   rangeField?: string;
   calibration?: string;
   sign?: string;
+  calibrationH?: number | string;
+  calibrationL?: number | string;
+  calibrationSign?: string;
+  control?: string;
   filterField?: string;
   status?: string;
   signalType?: string;
@@ -91,7 +95,8 @@ const InputsPageDesktop: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
-  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
+  const [dbChecked, setDbChecked] = useState(false); // true after fetchInputs completes for current device
+  const deviceRefreshedRef = useRef<number | null>(null); // stores serialNumber to prevent StrictMode double-fire
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -151,6 +156,7 @@ const InputsPageDesktop: React.FC = () => {
       // DON'T clear inputs on database fetch error - preserve what we have
     } finally {
       setLoading(false);
+      setDbChecked(true); // signal that DB fetch for current device is complete
     }
   }, [selectedDevice]);
 
@@ -158,20 +164,21 @@ const InputsPageDesktop: React.FC = () => {
     fetchInputs();
   }, [fetchInputs]);
 
-  // Reset autoRefreshed flag when device changes
+  // Reset auto-refresh state when device changes (don't clear inputs to avoid visual flash)
   useEffect(() => {
-    setInputs([]);
     setAutoRefreshed(false);
-    hasAutoRefreshedRef.current = false;
+    setDbChecked(false); // must wait for new fetchInputs to complete before checking
   }, [selectedDevice?.serialNumber]);
 
-  // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
+  // Auto-refresh once per device - ONLY if database is empty after initial DB fetch
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
+    // Wait until DB fetch has completed for this device before deciding to auto-refresh
+    if (!dbChecked || loading || !selectedDevice || autoRefreshed) return;
+    // Prevent StrictMode double-fire: skip if we already handled this device's serial number
+    if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
 
-    // Check immediately if database has input data
     const checkAndRefresh = async () => {
-      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+      deviceRefreshedRef.current = selectedDevice.serialNumber;
 
       if (inputs.length > 0) {
         console.log('[InputsPage] Database has data, skipping auto-refresh');
@@ -207,7 +214,7 @@ const InputsPageDesktop: React.FC = () => {
     };
 
     checkAndRefresh();
-  }, [loading, selectedDevice, autoRefreshed, fetchInputs, inputs.length, setMessage]);
+  }, [dbChecked, loading, selectedDevice, autoRefreshed, fetchInputs, inputs.length, setMessage]);
 
   // Handlers
   const handleRefresh = async () => {
@@ -287,12 +294,49 @@ const InputsPageDesktop: React.FC = () => {
   };
 
   const handleExport = () => {
-    console.log('Export inputs to CSV');
+    if (inputs.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<InputPoint>[] = [
+      { header: 'Panel', accessor: i => i.panel },
+      { header: 'Input', accessor: i => i.inputId },
+      { header: 'Full Label', accessor: i => i.fullLabel },
+      { header: 'Label', accessor: i => i.label },
+      { header: 'Auto/Manual', accessor: i => i.autoManual },
+      { header: 'Value', accessor: i => i.fValue },
+      { header: 'Units', accessor: i => i.units },
+      { header: 'Range', accessor: i => i.range },
+      { header: 'Calibration', accessor: i => i.calibration },
+      { header: 'Sign', accessor: i => i.sign },
+      { header: 'Filter', accessor: i => i.filterField },
+      { header: 'Status', accessor: i => i.status },
+      { header: 'Signal Type', accessor: i => i.signalType },
+    ];
+    exportToCsv(inputs, csvColumns, `inputs_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
 
-  const handleSettings = () => {
-    console.log('Settings clicked');
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<InputPoint>[] = [
+      { header: 'Panel', accessor: i => i.panel, setter: (i, v) => { i.panel = v; } },
+      { header: 'Input', accessor: i => i.inputId, setter: (i, v) => { i.inputId = v; } },
+      { header: 'Full Label', accessor: i => i.fullLabel, setter: (i, v) => { i.fullLabel = v; } },
+      { header: 'Label', accessor: i => i.label, setter: (i, v) => { i.label = v; } },
+      { header: 'Auto/Manual', accessor: i => i.autoManual, setter: (i, v) => { i.autoManual = v; } },
+      { header: 'Value', accessor: i => i.fValue, setter: (i, v) => { i.fValue = v; } },
+      { header: 'Units', accessor: i => i.units, setter: (i, v) => { i.units = v; } },
+      { header: 'Range', accessor: i => i.range, setter: (i, v) => { i.range = v; } },
+      { header: 'Calibration', accessor: i => i.calibration, setter: (i, v) => { i.calibration = v; } },
+      { header: 'Sign', accessor: i => i.sign, setter: (i, v) => { i.sign = v; } },
+      { header: 'Filter', accessor: i => i.filterField, setter: (i, v) => { i.filterField = v; } },
+      { header: 'Status', accessor: i => i.status, setter: (i, v) => { i.status = v; } },
+      { header: 'Signal Type', accessor: i => i.signalType, setter: (i, v) => { i.signalType = v; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ serialNumber: selectedDevice?.serialNumber || 0 } as InputPoint));
+    setInputs(imported);
   };
+
+  // Register CSV export/import handlers with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   // Auto-scroll to next device when reaching bottom
   const loadNextDevice = useCallback(async () => {
@@ -443,9 +487,9 @@ const InputsPageDesktop: React.FC = () => {
         auto_manual: field === 'autoManual' ? parseInt(newValue || '0', 10) : parseInt(currentInput.autoManual || '0', 10),
         filter: parseInt(currentInput.filterField || '0', 10),
         digital_analog: parseInt(currentInput.digitalAnalog || '0', 10),
-        calibration_sign: parseInt(currentInput.sign || '0', 10),
-        calibration_h: parseInt(currentInput.calibration?.split('.')[0] || '0', 10),
-        calibration_l: parseInt(currentInput.calibration?.split('.')[1] || '0', 10),
+        calibration_sign: parseInt(String(currentInput.calibrationSign || currentInput.sign || '0'), 10),
+        calibration_h: parseInt(String(currentInput.calibrationH || '0'), 10),
+        calibration_l: parseInt(String(currentInput.calibrationL || '0'), 10),
         decom: 0,
       };
 
@@ -490,9 +534,9 @@ const InputsPageDesktop: React.FC = () => {
         autoManual: field === 'autoManual' ? parseInt(newValue || '0', 10) : parseInt(currentInput.autoManual || '0', 10),
         filter: parseInt(currentInput.filterField || '0', 10),
         digitalAnalog: parseInt(currentInput.digitalAnalog || '0', 10),
-        calibrationSign: parseInt(currentInput.sign || '0', 10),
-        calibrationH: parseInt(currentInput.calibration?.split('.')[0] || '0', 10),
-        calibrationL: parseInt(currentInput.calibration?.split('.')[1] || '0', 10),
+        calibrationSign: parseInt(String(currentInput.calibrationSign || currentInput.sign || '0'), 10),
+        calibrationH: parseInt(String(currentInput.calibrationH || '0'), 10),
+        calibrationL: parseInt(String(currentInput.calibrationL || '0'), 10),
       };
 
       const response = await fetch(
@@ -632,12 +676,12 @@ const InputsPageDesktop: React.FC = () => {
     setRangeDrawerOpen(true);
   };
 
-  const handleRangeSave = async (newRange: number) => {
+  const handleRangeSave = async (newRange: number, newDigitalAnalog: number) => {
     if (!selectedInputForRange || !selectedDevice) return;
 
     try {
       console.log(`=== Updating range (Two-Step Process) ===`);
-      console.log(`Device: ${selectedDevice.serialNumber}, Input: ${selectedInputForRange.inputIndex}, New Range: ${newRange}`);
+      console.log(`Device: ${selectedDevice.serialNumber}, Input: ${selectedInputForRange.inputIndex}, New Range: ${newRange}, New DigitalAnalog: ${newDigitalAnalog}`);
 
       // Find the current input data
       const currentInput = inputs.find(
@@ -648,6 +692,8 @@ const InputsPageDesktop: React.FC = () => {
         throw new Error('Current input data not found');
       }
 
+      // Override digitalAnalog so FFI/DB calls pick up the new value
+      const updatedInput = { ...currentInput, digitalAnalog: newDigitalAnalog.toString() };
       const panelId = selectedDevice.panelId || 1;
 
       // Step 1: Update device FIRST using FFI
@@ -658,7 +704,7 @@ const InputsPageDesktop: React.FC = () => {
         selectedInputForRange.inputIndex,
         'range',
         newRange.toString(),
-        currentInput
+        updatedInput
       );
       console.log('✅ Device updated successfully');
 
@@ -669,7 +715,7 @@ const InputsPageDesktop: React.FC = () => {
         selectedInputForRange.inputIndex,
         'range',
         newRange.toString(),
-        currentInput
+        updatedInput
       );
       console.log('✅ Database updated successfully');
 
@@ -678,7 +724,7 @@ const InputsPageDesktop: React.FC = () => {
         prevInputs.map(input =>
           input.serialNumber === selectedInputForRange.serialNumber &&
           input.inputIndex === selectedInputForRange.inputIndex
-            ? { ...input, range: newRange.toString(), rangeField: newRange.toString() }
+            ? { ...input, range: newRange.toString(), rangeField: newRange.toString(), digitalAnalog: newDigitalAnalog.toString() }
             : input
         )
       );
@@ -711,7 +757,7 @@ const InputsPageDesktop: React.FC = () => {
   // Display data with 10 empty rows when no inputs
   const displayInputs = React.useMemo(() => {
     if (inputs.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         serialNumber: selectedDevice?.serialNumber || 0,
         inputId: '',
         inputIndex: '',
@@ -724,6 +770,10 @@ const InputsPageDesktop: React.FC = () => {
         rangeField: '',
         calibration: '',
         sign: '',
+        calibrationH: '',
+        calibrationL: '',
+        calibrationSign: '',
+        control: '',
         filterField: '',
         status: '',
         signalType: '',
@@ -738,20 +788,13 @@ const InputsPageDesktop: React.FC = () => {
   // Helper to identify empty rows
   const isEmptyRow = (item: InputPoint) => !item.inputIndex && !item.inputId && inputs.length === 0;
 
-  // Column definitions matching the sequence: Panel, Input, Full Label, Label, Auto/Man, Value, Units, Range, Calibration, Sign, Filter, Status, Signal Type, Type
+  // Column definitions matching the sequence: Panel, Input, Full Label, Label, Auto/Man, Value, Units, Range, Cal/Sign, Filter, Status, Type
   const columns: TableColumnDefinition<InputPoint>[] = [
     // 1. Panel ID
     createTableColumn<InputPoint>({
       columnId: 'panel',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('panel')}>
-          <span>Panel</span>
-          {sortColumn === 'panel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Panel</span>
       ),
       renderCell: (item) => (
         <TableCellLayout>
@@ -1068,7 +1111,9 @@ const InputsPageDesktop: React.FC = () => {
                   onDoubleClick={() => handleCellDoubleClick(item, 'fValue', item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '0')}
                   title="Double-click to edit"
                 >
-                  <Text size={200} weight="regular">{item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}</Text>
+                  <span className={styles.valueBadge}>
+                    {item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}
+                  </span>
                 </div>
               )
             )}
@@ -1089,11 +1134,18 @@ const InputsPageDesktop: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => (
-        <TableCellLayout>
-          {!isEmptyRow(item) && (item.units || '---')}
-        </TableCellLayout>
-      ),
+      renderCell: (item) => {
+        const rangeValue = parseInt(item.rangeField || item.range || '0', 10);
+        const digitalAnalog = parseInt(item.digitalAnalog || '0', 10);
+        const unitSymbol = getUnitSymbol(rangeValue, digitalAnalog);
+        return (
+          <TableCellLayout>
+            {!isEmptyRow(item) && unitSymbol && unitSymbol !== '---' && (
+              <span className={styles.unitBadge}>{unitSymbol}</span>
+            )}
+          </TableCellLayout>
+        );
+      },
     }),
     // 7. Range
     createTableColumn<InputPoint>({
@@ -1110,54 +1162,48 @@ const InputsPageDesktop: React.FC = () => {
       ),
       renderCell: (item) => {
         // Parse range value and digital_analog type
-        const rangeValue = item.range ? parseInt(item.range) : 0;
-        const digitalAnalog = item.signalType === 'Digital' ? 1 : 0; // Assume analog if not digital
+        const rangeValue = parseInt(item.rangeField || item.range || '0', 10);
+        const digitalAnalog = parseInt(item.digitalAnalog || '0', 10);
         const rangeLabel = getRangeLabel(rangeValue, digitalAnalog);
 
         return (
           <TableCellLayout>
             {!isEmptyRow(item) && (
-              <div
+              <span
                 onClick={() => handleRangeClick(item)}
-                className={styles.rangeLink}
+                className={styles.rangeBadge}
                 title="Click to change range"
               >
-                <Text size={200} weight="regular">{rangeLabel}</Text>
-              </div>
+                {rangeLabel}
+              </span>
             )}
           </TableCellLayout>
         );
       },
     }),
-    // 8. Calibration
+    // 8. Calibration / Sign (combined)
     createTableColumn<InputPoint>({
-      columnId: 'calibration',
+      columnId: 'calibration_sign',
       renderHeaderCell: () => (
         <div className={styles.headerCell}>
-          <span>Calibration</span>
+          <span>Calibration/Sign</span>
         </div>
       ),
-      renderCell: (item) => (
-        <TableCellLayout>
-          {!isEmptyRow(item) && (item.calibration || '0')}
-        </TableCellLayout>
-      ),
+      renderCell: (item) => {
+        if (isEmptyRow(item)) return <TableCellLayout />;
+        const calH = parseInt(String(item.calibrationH || '0'), 10);
+        const calL = parseInt(String(item.calibrationL || '0'), 10);
+        const calValue = ((calH << 8) | calL) / 10;
+        const signVal = item.calibrationSign || item.sign;
+        const signChar = (signVal === '1' || signVal === '-') ? '-' : '+';
+        return (
+          <TableCellLayout>
+            {`${signChar} ${calValue.toFixed(1)}`}
+          </TableCellLayout>
+        );
+      },
     }),
-    // 9. Sign
-    createTableColumn<InputPoint>({
-      columnId: 'sign',
-      renderHeaderCell: () => (
-        <div className={styles.headerCell}>
-          <span>Sign</span>
-        </div>
-      ),
-      renderCell: (item) => (
-        <TableCellLayout>
-          {!isEmptyRow(item) && (item.sign || '+')}
-        </TableCellLayout>
-      ),
-    }),
-    // 10. Filter
+    // 9. Filter
     createTableColumn<InputPoint>({
       columnId: 'filter',
       renderHeaderCell: () => (
@@ -1171,17 +1217,12 @@ const InputsPageDesktop: React.FC = () => {
         </TableCellLayout>
       ),
     }),
-    // 11. Status
+    // 10. Status
     createTableColumn<InputPoint>({
       columnId: 'status',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('status')}>
+        <div className={styles.headerCell}>
           <span>Status</span>
-          {sortColumn === 'status' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
         </div>
       ),
       renderCell: (item) => {
@@ -1216,17 +1257,7 @@ const InputsPageDesktop: React.FC = () => {
         );
       },
     }),
-    // 12. Signal Type (keep empty for now)
-    createTableColumn<InputPoint>({
-      columnId: 'signalType',
-      renderHeaderCell: () => (
-        <div className={styles.headerCell}>
-          <span>Signal Type</span>
-        </div>
-      ),
-      renderCell: () => <TableCellLayout></TableCellLayout>,
-    }),
-    // 13. Type (Digital/Analog)
+    // 11. Type (Digital/Analog)
     createTableColumn<InputPoint>({
       columnId: 'type',
       renderHeaderCell: () => (
@@ -1239,12 +1270,9 @@ const InputsPageDesktop: React.FC = () => {
         return (
           <TableCellLayout>
             {!isEmptyRow(item) && (
-              <Badge
-                appearance="outline"
-                color={isDigital ? 'informative' : 'brand'}
-              >
+              <span className={isDigital ? styles.digitalType : styles.analogType}>
                 {isDigital ? 'Digital' : 'Analog'}
-              </Badge>
+              </span>
             )}
           </TableCellLayout>
         );
@@ -1287,43 +1315,6 @@ const InputsPageDesktop: React.FC = () => {
               <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
-                  {/* Refresh Button - Refresh from Device */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleRefreshFromDevice}
-                    disabled={refreshing}
-                    title="Refresh all inputs from device"
-                    aria-label="Refresh from Device"
-                  >
-                    <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                  </button>
-
-                  {/* Export to CSV Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    title="Export to CSV"
-                    aria-label="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export to CSV</span>
-                  </button>
-
-                  {/* Toolbar Separator */}
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  {/* Settings Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleSettings}
-                    title="Settings"
-                    aria-label="Settings"
-                  >
-                    <SettingsRegular />
-                    <span>Settings</span>
-                  </button>
-
                   {/* Search Input Box */}
                   <div className={styles.searchInputWrapper}>
                     <SearchRegular className={styles.searchIcon} />
@@ -1338,6 +1329,20 @@ const InputsPageDesktop: React.FC = () => {
                       aria-label="Search inputs"
                     />
                   </div>
+
+                  {/* Refresh Button - Refresh from Device */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefreshFromDevice}
+                    disabled={refreshing}
+                    title="Refresh all inputs from device"
+                    aria-label="Refresh from Device"
+                  >
+                    <ArrowSyncRegular />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
 
                   {/* Info Button with Tooltip */}
                   <Tooltip
@@ -1412,66 +1417,7 @@ const InputsPageDesktop: React.FC = () => {
                       items={displayInputs}
                       columns={columns}
                       sortable
-                      resizableColumns
-                      columnSizingOptions={{
-                        input: {
-                          minWidth: 60,
-                          defaultWidth: 80,
-                        },
-                        panel: {
-                          minWidth: 60,
-                          defaultWidth: 75,
-                        },
-                        fullLabel: {
-                          minWidth: 180,
-                          defaultWidth: 250,
-                        },
-                        autoManual: {
-                          minWidth: 90,
-                        defaultWidth: 120,
-                      },
-                      value: {
-                        minWidth: 120,
-                        defaultWidth: 180,
-                      },
-                      units: {
-                        minWidth: 100,
-                        defaultWidth: 150,
-                      },
-                      range: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      calibration: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      sign: {
-                        minWidth: 50,
-                        defaultWidth: 60,
-                      },
-                      filter: {
-                        minWidth: 60,
-                        defaultWidth: 80,
-                      },
-                      status: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      signalType: {
-                        minWidth: 90,
-                        defaultWidth: 110,
-                      },
-                      label: {
-                        minWidth: 130,
-                        defaultWidth: 170,
-                      },
-                      type: {
-                        minWidth: 60,
-                        defaultWidth: 75,
-                      },
-                    }}
-                  >
+                    >
                     <DataGridHeader>
                       <DataGridRow>
                         {({ renderHeaderCell }) => (
@@ -1511,8 +1457,8 @@ const InputsPageDesktop: React.FC = () => {
         <RangeSelectionDrawer
           isOpen={rangeDrawerOpen}
           onClose={() => setRangeDrawerOpen(false)}
-          currentRange={selectedInputForRange.range ? parseInt(selectedInputForRange.range) : 0}
-          digitalAnalog={selectedInputForRange.signalType === 'Digital' ? 1 : 0}
+          currentRange={parseInt(selectedInputForRange.rangeField || selectedInputForRange.range || '0', 10)}
+          digitalAnalog={parseInt(selectedInputForRange.digitalAnalog || '0', 10)}
           onSave={handleRangeSave}
           inputLabel={`Input ${selectedInputForRange.inputIndex || selectedInputForRange.inputId} - ${selectedInputForRange.fullLabel || 'Unnamed'}`}
         />

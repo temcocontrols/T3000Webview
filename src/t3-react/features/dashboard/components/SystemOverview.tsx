@@ -1,52 +1,113 @@
 /**
  * System Overview Widget
- * Shows key metrics: devices, alarms, points, graphics
+ * Shows key metrics pulled from real APIs: devices, sync health, points, alarms.
  */
 
-import React, { useEffect, useState } from 'react';
-import { Text, Spinner } from '@fluentui/react-components';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Spinner, Tooltip } from '@fluentui/react-components';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { getSyncHealth, SyncHealthData } from '../services/syncHealthApi';
+import { isCenterDbDegraded } from '../services/severityRules';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './SystemOverview.module.css';
+
+function centerDbSummary(status?: string, connected?: boolean) {
+  switch (status) {
+    case 'db_missing':
+      return { label: 'Database Missing', tone: 'warning' as const };
+    case 'schema_missing':
+      return { label: 'Needs Init', tone: 'warning' as const };
+    case 'server_unreachable':
+      return { label: 'SQL Server Down', tone: 'danger' as const };
+    case 'misconfigured_backend':
+      return { label: 'Misconfigured', tone: 'warning' as const };
+    default:
+      return {
+        label: connected ? 'Connected' : 'Disconnected',
+        tone: connected ? ('success' as const) : ('danger' as const),
+      };
+  }
+}
+
+function backendLabel(backendType: string): string {
+  switch (backendType) {
+    case 'mssql':
+      return 'SQL Server';
+    case 'postgres':
+      return 'PostgreSQL';
+    case 'mysql':
+      return 'MySQL';
+    case 'sqlite':
+      return 'SQLite';
+    default:
+      return backendType.toUpperCase();
+  }
+}
 
 export const SystemOverview: React.FC = () => {
   const { devices, deviceStatuses } = useDeviceTreeStore();
-  const [stats, setStats] = useState({
-    totalDevices: 0,
-    onlineDevices: 0,
-    offlineDevices: 0,
-    totalPoints: 0,
-    activeAlarms: 0,
-    graphics: 0,
-  });
+  const [syncHealth, setSyncHealth] = useState<SyncHealthData | null>(null);
+  const [alarmCount, setAlarmCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [healthError, setHealthError] = useState<string | null>(null);
+  const [alarmsError, setAlarmsError] = useState<string | null>(null);
+
+  const onlineCount = Array.from(deviceStatuses.values()).filter((s) => s === 'online').length;
+  const offlineCount = devices.length - onlineCount;
+
+  const fetchData = useCallback(async () => {
+    const [health, alarmsResp] = await Promise.allSettled([
+      getSyncHealth(),
+      fetch(`${API_BASE_URL}/api/t3_device/alarms/active`),
+    ]);
+
+    if (health.status === 'fulfilled') {
+      setSyncHealth(health.value);
+      setHealthError(null);
+    } else {
+      setHealthError(health.reason instanceof Error ? health.reason.message : 'Failed to refresh sync health');
+    }
+
+    if (alarmsResp.status === 'fulfilled') {
+      if (alarmsResp.value.ok) {
+        const data = await alarmsResp.value.json();
+        // accept { total } or array length
+        setAlarmCount(typeof data?.total === 'number' ? data.total : (Array.isArray(data) ? data.length : 0));
+        setAlarmsError(null);
+      } else {
+        setAlarmsError(`alarms: HTTP ${alarmsResp.value.status}`);
+      }
+    } else {
+      setAlarmsError(alarmsResp.reason instanceof Error ? alarmsResp.reason.message : 'Failed to refresh alarms');
+    }
+
+    setLastUpdated(new Date());
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    const calculateStats = async () => {
-      const onlineCount = Array.from(deviceStatuses.values()).filter(
-        (status) => status === 'online'
-      ).length;
+    fetchData();
+    const id = setInterval(fetchData, 60_000);
+    return () => clearInterval(id);
+  }, [fetchData]);
 
-      // Estimate total points (this would come from API in production)
-      const estimatedPoints = devices.length * 35; // Average points per device
-
-      // Get last sync time
-      const lastSync = new Date();
-      const syncMinutes = Math.floor(Math.random() * 5) + 1;
-
-      setStats({
-        totalDevices: devices.length,
-        onlineDevices: onlineCount,
-        offlineDevices: devices.length - onlineCount,
-        totalPoints: estimatedPoints,
-        activeAlarms: 0, // TODO: Fetch from alarms API
-        graphics: 12, // TODO: Fetch from graphics API
-      });
-
-      setLoading(false);
-    };
-
-    calculateStats();
-  }, [devices, deviceStatuses]);
+  const centerUiBase = syncHealth
+    ? centerDbSummary(syncHealth.centerDbStatus, syncHealth.centerDbConnected)
+    : { label: '—', tone: 'muted' as const };
+  const centerUi = syncHealth && centerUiBase.label === 'SQL Server Down' && isCenterDbDegraded(syncHealth)
+    ? { ...centerUiBase, tone: 'warning' as const }
+    : centerUiBase;
+  const isSharedDbMode = !!syncHealth && syncHealth.role !== 'standalone';
+  const metricsBlocked = !!syncHealth && syncHealth.centerDbEnabled && syncHealth.samplingPaused;
+  const dbTargetText = isSharedDbMode
+    ? `${syncHealth?.centerDbHost ?? '—'}${syncHealth?.centerDbDatabaseName ? ` / ${syncHealth.centerDbDatabaseName}` : ''}`
+    : (syncHealth?.dbFolderPath ?? '—');
+  const dbSizeSourceText = !syncHealth
+    ? 'Source: N/A'
+    : (!isSharedDbMode
+      ? 'Source: Local SQLite file'
+      : (syncHealth.mssqlPoolActive ? 'Source: MSSQL sys.database_files' : 'Source: Center DB target'));
 
   if (loading) {
     return (
@@ -57,33 +118,66 @@ export const SystemOverview: React.FC = () => {
   }
 
   return (
-    <div className={styles.overview}>
+    <>
+      <div className={styles.metaRow}>
+        <span className={styles.metaText}>
+          Last updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : '—'}
+        </span>
+        {(healthError || alarmsError) && (
+          <span className={styles.metaWarn}>
+            Partial refresh issue: {healthError ? 'sync health' : ''}{healthError && alarmsError ? ', ' : ''}{alarmsError ? 'alarms' : ''}. Retrying automatically.
+          </span>
+        )}
+      </div>
+      <div className={styles.overview}>
       <div className={styles.card}>
         <div className={styles.cardContent}>
           <div className={styles.cardLabel}>DEVICES</div>
-          <div className={styles.cardValue}>{stats.totalDevices}</div>
+          <div className={styles.cardValue}>{devices.length}</div>
           <div className={styles.cardDetail}>
-            {stats.onlineDevices} online • {stats.offlineDevices} offline
+            {onlineCount} online • {offlineCount} offline
+          </div>
+          {isSharedDbMode && (
+            <div className={styles.debugLine}>
+              src: GET_PANELS_LIST | th: 120s | upd: {lastUpdated ? lastUpdated.toLocaleTimeString() : '—'}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className={styles.card}>
+        <div className={styles.cardContent}>
+          <div className={styles.cardLabel}>CENTER DB</div>
+          <div className={`${styles.cardValue} ${styles.cardValueStatus} ${styles[centerUi.tone]}`}>
+            {centerUi.label}
+          </div>
+          <div className={styles.cardDetail}>
+            {(() => {
+              if (!syncHealth) return 'N/A';
+              const isCenterDb = syncHealth.role !== 'standalone';
+              // If Center DB mode but reporting sqlite, it's in SQLite fallback — configured target is SQL Server
+              const backend = isCenterDb && syncHealth.backendType === 'sqlite'
+                ? 'SQL Server'
+                : backendLabel(syncHealth.backendType);
+              const roleLabel = syncHealth.role === 'server' ? 'Server' : syncHealth.role === 'client' ? 'Client' : 'Standalone';
+              return `${backend} · ${roleLabel}`;
+            })()}
           </div>
         </div>
       </div>
 
       <div className={styles.card}>
         <div className={styles.cardContent}>
-          <div className={styles.cardLabel}>SYSTEM HEALTH</div>
-          <div className={styles.cardValue}>Good</div>
-          <div className={styles.cardDetail}>
-            45% CPU • 62% Memory
-          </div>
-        </div>
-      </div>
-
-      <div className={styles.card}>
-        <div className={styles.cardContent}>
-          <div className={styles.cardLabel}>SYNC</div>
-          <div className={styles.cardValue}>2 min ago</div>
-          <div className={styles.cardDetail}>
-            Connected • {stats.totalPoints} points
+          <div className={styles.cardLabel}>LAST SYNC</div>
+          <Tooltip content={syncHealth?.lastSyncTime ?? 'No sync recorded'} relationship="description">
+            <div className={`${styles.cardValue} ${styles.cardValueCompact} ${metricsBlocked ? styles.warning : ''}`}>
+              {syncHealth?.lastSyncAgo ?? '—'}
+            </div>
+          </Tooltip>
+          <div className={`${styles.cardDetail} ${metricsBlocked ? styles.warning : ''}`}>
+            {metricsBlocked
+              ? 'Blocked: last successful sync shown'
+              : `${syncHealth?.devicesSyncedToday ?? 0} device${syncHealth?.devicesSyncedToday !== 1 ? 's' : ''} today`}
           </div>
         </div>
       </div>
@@ -91,32 +185,38 @@ export const SystemOverview: React.FC = () => {
       <div className={styles.card}>
         <div className={styles.cardContent}>
           <div className={styles.cardLabel}>ALARMS</div>
-          <div className={styles.cardValue}>{stats.activeAlarms}</div>
+          <div className={`${styles.cardValue} ${alarmCount > 0 ? styles.danger : ''}`}>
+            {alarmCount}
+          </div>
           <div className={styles.cardDetail}>
-            {stats.activeAlarms === 0 ? 'All clear' : 'Attention needed'}
+            {alarmCount === 0 ? 'All clear' : 'Attention needed'}
           </div>
         </div>
       </div>
 
       <div className={styles.card}>
         <div className={styles.cardContent}>
-          <div className={styles.cardLabel}>POINTS</div>
-          <div className={styles.cardValue}>{stats.totalPoints}</div>
-          <div className={styles.cardDetail}>
-            Monitored
+          <div className={styles.cardLabel}>RECORDS TODAY</div>
+          <div className={`${styles.cardValue} ${metricsBlocked ? styles.warning : ''}`}>{syncHealth?.recordsToday.total ?? 0}</div>
+          <div className={`${styles.cardDetail} ${metricsBlocked ? styles.warning : ''}`}>
+            {syncHealth ? `${syncHealth.recordsToday.inputs}in · ${syncHealth.recordsToday.outputs}out · ${syncHealth.recordsToday.variables}var` : 'No data'}
           </div>
         </div>
       </div>
 
       <div className={styles.card}>
         <div className={styles.cardContent}>
-          <div className={styles.cardLabel}>GRAPHICS</div>
-          <div className={styles.cardValue}>{stats.graphics}</div>
-          <div className={styles.cardDetail}>
-            Active
+          <div className={styles.cardLabel}>{isSharedDbMode ? 'LOCAL DB CACHE SIZE' : 'DB SIZE'}</div>
+          <div className={`${styles.cardValue} ${styles.cardValueCompact}`}>
+            {syncHealth?.dbSizeHuman ?? '—'}
           </div>
+          <div className={`${styles.cardDetail} ${styles.cardDetailMono}`}>
+            {dbTargetText}
+          </div>
+          <div className={styles.debugLine}>{dbSizeSourceText}</div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };

@@ -12,7 +12,7 @@ use serde_json::{json, Value};
 use crate::app_state::T3AppState;
 use crate::t3_device::services::{T3DeviceService, CreateDeviceRequest, UpdateDeviceRequest};
 use crate::t3_device::points_service::{T3PointsService, CreateInputPointRequest, CreateOutputPointRequest, CreateVariablePointRequest};
-use crate::entity::t3_device::{input_points, output_points, variable_points};
+use crate::entity::t3_device::{input_points, output_points, variable_points, trendlogs};
 use crate::t3_device::schedules_service::{T3ScheduleService, CreateScheduleRequest, UpdateScheduleRequest};
 use crate::t3_device::programs_service::{T3ProgramService, CreateProgramRequest, UpdateProgramRequest};
 use crate::t3_device::trendlogs_service::{T3TrendlogService, CreateTrendlogRequest, UpdateTrendlogRequest};
@@ -92,6 +92,40 @@ fn get_valid_table_names() -> &'static [&'static str] {
     ]
 }
 
+/// Returns the SQL to list all user tables for the active database backend.
+fn list_tables_sql(backend: DatabaseBackend) -> String {
+    match backend {
+        DatabaseBackend::Sqlite => {
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name".into()
+        }
+        DatabaseBackend::Postgres => {
+            "SELECT table_name AS name FROM information_schema.tables \
+             WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name".into()
+        }
+        DatabaseBackend::MySql => {
+            "SELECT table_name AS name FROM information_schema.tables \
+             WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' ORDER BY table_name".into()
+        }
+    }
+}
+
+/// Returns the SQL to retrieve column names for a given table.
+fn column_names_sql(backend: DatabaseBackend, table: &str) -> String {
+    match backend {
+        DatabaseBackend::Sqlite => format!("PRAGMA table_info({})", table),
+        DatabaseBackend::Postgres => format!(
+            "SELECT column_name AS name FROM information_schema.columns \
+             WHERE table_name = '{}' ORDER BY ordinal_position",
+            table.to_lowercase()
+        ),
+        DatabaseBackend::MySql => format!(
+            "SELECT column_name AS name FROM information_schema.columns \
+             WHERE table_name = '{}' AND table_schema = DATABASE() ORDER BY ordinal_position",
+            table
+        ),
+    }
+}
+
 #[derive(Deserialize)]
 pub struct QueryParams {
     pub page: Option<u64>,
@@ -121,12 +155,47 @@ pub struct QueryResult {
 
 // Get database status and table information
 async fn get_database_status(State(state): State<T3AppState>) -> Result<Json<DatabaseInfo>, StatusCode> {
-    let db = get_t3_device_conn!(state);
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let table_names = mssql_generic_crud::list_tables(pool)
+            .await
+            .map_err(|e| { eprintln!("MSSQL list tables error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let tables: Vec<TableInfo> = table_names.into_iter().map(|name| {
+            let description = match name.as_str() {
+                "DEVICES" => "T3000 devices and nodes (main device table)",
+                "INPUTS" => "Input points and sensors",
+                "OUTPUTS" => "Output points and actuators",
+                "VARIABLES" => "Variable points and calculated values",
+                "PROGRAMS" => "Control programs and logic",
+                "SCHEDULES" => "Time schedules and operations",
+                "PID_TABLE" => "PID controllers and loops",
+                "HOLIDAYS" => "Holiday schedules and exceptions",
+                "GRAPHICS" => "Graphical displays and layouts",
+                "ALARMS" => "Alarm conditions and notifications",
+                "MONITORDATA" => "Real-time monitoring data",
+                "TRENDLOGS" => "Trend log configurations",
+                "TRENDLOG_INPUTS" => "Trend log input point configurations",
+                "TRENDLOG_DATA" => "Historical trend data",
+                _ => "Database table",
+            };
+            TableInfo { name, description: description.to_string() }
+        }).collect();
+        return Ok(Json(DatabaseInfo {
+            status: "connected".to_string(),
+            tables,
+            connection_type: "MSSQL Center Database".to_string(),
+        }));
+    }
 
-    // Get list of tables from SQLite database
+    // ── SeaORM branch ──
+    let db = get_t3_device_conn!(state);
+    let backend = db.get_database_backend();
+
+    // Get list of tables from database (backend-aware)
     let tables_query = Statement::from_string(
-        DatabaseBackend::Sqlite,
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name".to_string()
+        backend,
+        list_tables_sql(backend)
     );
 
     let tables_result = db.query_all(tables_query).await
@@ -173,7 +242,31 @@ async fn get_table_data(
     State(state): State<T3AppState>,
     Query(params): Query<QueryParams>,
 ) -> Result<Json<QueryResult>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let table_name = params.table.unwrap_or_else(|| "DEVICES".to_string());
+        let page = params.page.unwrap_or(1);
+        let per_page = params.per_page.unwrap_or(10);
+        let data = if let Some(search) = &params.search {
+            mssql_generic_crud::search_rows(pool, &table_name, search, page, per_page)
+                .await
+                .map_err(|e| { eprintln!("MSSQL search error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?
+        } else {
+            mssql_generic_crud::select_all(pool, &table_name, page, per_page)
+                .await
+                .map_err(|e| { eprintln!("MSSQL select error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?
+        };
+        let data_len = data.len();
+        return Ok(Json(QueryResult {
+            data,
+            message: format!("Retrieved {} records from {}", data_len, table_name),
+        }));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
+    let backend = db.get_database_backend();
     let table_name = params.table.unwrap_or_else(|| "DEVICES".to_string());
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(10);
@@ -209,13 +302,13 @@ async fn get_table_data(
         )
     };
 
-    let statement = Statement::from_string(DatabaseBackend::Sqlite, query);
+    let statement = Statement::from_string(backend, query);
     let results = db.query_all(statement).await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    // Get column names for the table
-    let columns_query = format!("PRAGMA table_info({})", table_name);
-    let column_statement = Statement::from_string(DatabaseBackend::Sqlite, columns_query);
+    // Get column names for the table (backend-aware)
+    let columns_query = column_names_sql(backend, &table_name);
+    let column_statement = Statement::from_string(backend, columns_query);
     let column_results = db.query_all(column_statement).await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -255,6 +348,20 @@ async fn create_record(
     Path(table): Path<String>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let id = mssql_generic_crud::insert_row(pool, &table, &payload)
+            .await
+            .map_err(|e| { eprintln!("MSSQL insert error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "message": format!("Record created in {}", table),
+            "id": id,
+            "table": table
+        })));
+    }
+
+    // ── SeaORM branch ──
     let _db = get_t3_device_conn!(state);
 
     // Validate table name
@@ -278,6 +385,21 @@ async fn update_record(
     Path((table, id)): Path<(String, i32)>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let rows = mssql_generic_crud::update_row(pool, &table, id, &payload)
+            .await
+            .map_err(|e| { eprintln!("MSSQL update error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "message": format!("Record {} updated in {}", id, table),
+            "id": id,
+            "table": table,
+            "rows_affected": rows
+        })));
+    }
+
+    // ── SeaORM branch ──
     let _db = get_t3_device_conn!(state);
 
     // Validate table name
@@ -299,6 +421,21 @@ async fn delete_record(
     State(state): State<T3AppState>,
     Path((table, id)): Path<(String, i32)>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let rows = mssql_generic_crud::delete_row(pool, &table, id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL delete error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "message": format!("Record {} deleted from {}", id, table),
+            "id": id,
+            "table": table,
+            "rows_affected": rows
+        })));
+    }
+
+    // ── SeaORM branch ──
     let _db = get_t3_device_conn!(state);
 
     // Validate table name
@@ -319,7 +456,23 @@ async fn get_device_table_data(
     State(state): State<T3AppState>,
     Path((serial, table)): Path<(String, String)>,
 ) -> Result<Json<QueryResult>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let serial_number: i32 = serial.parse().map_err(|_| StatusCode::BAD_REQUEST)?;
+        let data = mssql_generic_crud::select_by_device(pool, &table, serial_number)
+            .await
+            .map_err(|e| { eprintln!("MSSQL device table error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let data_len = data.len();
+        return Ok(Json(QueryResult {
+            data,
+            message: format!("Retrieved {} records from {} for device {}", data_len, table, serial),
+        }));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
+    let backend = db.get_database_backend();
 
     // Validate table name to prevent SQL injection
     let valid_tables = get_valid_table_names();
@@ -334,13 +487,13 @@ async fn get_device_table_data(
         table, serial
     );
 
-    let statement = Statement::from_string(DatabaseBackend::Sqlite, query);
+    let statement = Statement::from_string(backend, query);
     let results = db.query_all(statement).await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    // Get column names for the table
-    let columns_query = format!("PRAGMA table_info({})", table);
-    let column_statement = Statement::from_string(DatabaseBackend::Sqlite, columns_query);
+    // Get column names for the table (backend-aware)
+    let columns_query = column_names_sql(backend, &table);
+    let column_statement = Statement::from_string(backend, columns_query);
     let column_results = db.query_all(column_statement).await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -379,7 +532,23 @@ async fn export_table(
     State(state): State<T3AppState>,
     Path(table): Path<String>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let data = mssql_generic_crud::select_all(pool, &table, 1, 100_000)
+            .await
+            .map_err(|e| { eprintln!("MSSQL export error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "table": table,
+            "data": data,
+            "exported_at": chrono::Utc::now().to_rfc3339(),
+            "count": data.len()
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
+    let backend = db.get_database_backend();
 
     // Validate table name
     let valid_tables = get_valid_table_names();
@@ -389,13 +558,13 @@ async fn export_table(
     }
 
     let query = format!("SELECT * FROM {}", table);
-    let statement = Statement::from_string(DatabaseBackend::Sqlite, query);
+    let statement = Statement::from_string(backend, query);
     let results = db.query_all(statement).await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    // Get column names for the table
-    let columns_query = format!("PRAGMA table_info({})", table);
-    let column_statement = Statement::from_string(DatabaseBackend::Sqlite, columns_query);
+    // Get column names for the table (backend-aware)
+    let columns_query = column_names_sql(backend, &table);
+    let column_statement = Statement::from_string(backend, columns_query);
     let column_results = db.query_all(column_statement).await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -436,6 +605,27 @@ async fn import_table(
     Path(table): Path<String>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let data = payload.get("data")
+            .and_then(|d| d.as_array())
+            .ok_or(StatusCode::BAD_REQUEST)?;
+        let mut inserted = 0u64;
+        for row in data {
+            match mssql_generic_crud::insert_row(pool, &table, row).await {
+                Ok(_) => inserted += 1,
+                Err(e) => eprintln!("MSSQL import row error: {}", e),
+            }
+        }
+        return Ok(Json(json!({
+            "message": format!("Imported {} rows into {}", inserted, table),
+            "rows_imported": inserted,
+            "table": table
+        })));
+    }
+
+    // ── SeaORM branch ──
     let _db = get_t3_device_conn!(state);
 
     // Validate table name
@@ -460,6 +650,20 @@ async fn import_table(
 async fn get_devices_with_stats(
     State(state): State<T3AppState>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_queries;
+        let devices = mssql_queries::list_devices_with_stats(pool)
+            .await
+            .map_err(|e| { eprintln!("MSSQL devices error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "devices": devices,
+            "total": devices.len(),
+            "message": "Devices retrieved successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3DeviceService::get_all_devices_with_stats(&*db).await {
@@ -476,6 +680,49 @@ async fn create_device(
     State(state): State<T3AppState>,
     Json(payload): Json<CreateDeviceRequest>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_queries;
+        let serial_number = payload.serial_number.unwrap_or(0);
+        mssql_queries::upsert_device(
+            pool,
+            serial_number,
+            payload.panel_id,
+            payload.main_building_name.as_deref(),
+            payload.building_name.as_deref(),
+            payload.floor_name.as_deref(),
+            payload.room_name.as_deref(),
+            payload.panel_number,
+            payload.network_number,
+            payload.product_name.as_deref(),
+            payload.product_class_id,
+            payload.product_id,
+            payload.bautrate.as_deref(),
+            payload.address.as_deref(),
+            payload.description.as_deref(),
+            payload.status.as_deref(),
+            payload.ip_address.as_deref(),
+            payload.port,
+            payload.bacnet_mstp_mac_id,
+            payload.modbus_address.map(i32::from),
+            payload.pc_ip_address.as_deref(),
+            payload.modbus_port.map(i32::from),
+            payload.bacnet_ip_port.map(i32::from),
+            payload.show_label_name.as_deref(),
+            payload.connection_type.as_deref(),
+        )
+            .await
+            .map_err(|e| { eprintln!("MSSQL create device error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let json_payload = serde_json::to_value(&payload)
+            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "device": json_payload,
+            "id": serial_number,
+            "message": "Device created successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3DeviceService::create_device(&*db, payload).await {
@@ -494,6 +741,19 @@ async fn get_device_by_id(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let device = mssql_generic_crud::select_by_id(pool, "DEVICES", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL get device error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return match device {
+            Some(d) => Ok(Json(json!({ "device": d, "message": "Device found" }))),
+            None => Err(StatusCode::NOT_FOUND),
+        };
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3DeviceService::get_device_by_id(&*db, device_id).await {
@@ -511,6 +771,21 @@ async fn update_device(
     Path(device_id): Path<i32>,
     Json(payload): Json<UpdateDeviceRequest>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let json_payload = serde_json::to_value(&payload)
+            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        mssql_generic_crud::update_row(pool, "DEVICES", device_id, &json_payload)
+            .await
+            .map_err(|e| { eprintln!("MSSQL update device error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "device": json_payload,
+            "message": "Device updated successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3DeviceService::update_device(&*db, device_id, payload).await {
@@ -527,6 +802,20 @@ async fn delete_device(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let rows = mssql_generic_crud::delete_row(pool, "DEVICES", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL delete device error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return if rows > 0 {
+            Ok(Json(json!({ "message": "Device deleted successfully" })))
+        } else {
+            Err(StatusCode::NOT_FOUND)
+        };
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3DeviceService::delete_device(&*db, device_id).await {
@@ -541,10 +830,23 @@ async fn delete_device(
 async fn delete_all_devices(
     State(state): State<T3AppState>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let rows = mssql_generic_crud::delete_all(pool, "DEVICES")
+            .await
+            .map_err(|e| { eprintln!("MSSQL delete all devices error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "message": "All devices deleted successfully",
+            "rows_affected": rows
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     // Delete all devices using raw SQL for efficiency
-    let query = Statement::from_string(DatabaseBackend::Sqlite, "DELETE FROM DEVICES".to_string());
+    let query = Statement::from_string(db.get_database_backend(), "DELETE FROM DEVICES".to_string());
 
     match db.execute(query).await {
         Ok(result) => Ok(Json(json!({
@@ -562,6 +864,31 @@ async fn get_device_with_points(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let device = mssql_generic_crud::select_by_id(pool, "DEVICES", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let device = match device {
+            Some(d) => d,
+            None => return Err(StatusCode::NOT_FOUND),
+        };
+        let inputs = mssql_generic_crud::select_by_device(pool, "INPUTS", device_id).await.unwrap_or_default();
+        let outputs = mssql_generic_crud::select_by_device(pool, "OUTPUTS", device_id).await.unwrap_or_default();
+        let variables = mssql_generic_crud::select_by_device(pool, "VARIABLES", device_id).await.unwrap_or_default();
+        return Ok(Json(json!({
+            "device": {
+                "device": device,
+                "inputs": inputs,
+                "outputs": outputs,
+                "variables": variables,
+            },
+            "message": "Device with points retrieved successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3DeviceService::get_device_with_points(&*db, device_id).await {
@@ -580,6 +907,23 @@ async fn get_all_points_by_device(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let inputs = mssql_generic_crud::select_by_device(pool, "INPUTS", device_id).await.unwrap_or_default();
+        let outputs = mssql_generic_crud::select_by_device(pool, "OUTPUTS", device_id).await.unwrap_or_default();
+        let variables = mssql_generic_crud::select_by_device(pool, "VARIABLES", device_id).await.unwrap_or_default();
+        return Ok(Json(json!({
+            "data": {
+                "inputs": inputs,
+                "outputs": outputs,
+                "variables": variables,
+            },
+            "message": "All points retrieved successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3PointsService::get_all_points_by_device(&*db, device_id).await {
@@ -599,6 +943,21 @@ async fn get_device_points_count(
     State(state): State<T3AppState>,
     Path(serial): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let input_count = mssql_generic_crud::count_by_device(pool, "INPUTS", serial).await.unwrap_or(0) as u64;
+        let output_count = mssql_generic_crud::count_by_device(pool, "OUTPUTS", serial).await.unwrap_or(0) as u64;
+        let variable_count = mssql_generic_crud::count_by_device(pool, "VARIABLES", serial).await.unwrap_or(0) as u64;
+        return Ok(Json(json!({
+            "inputCount": input_count,
+            "outputCount": output_count,
+            "variableCount": variable_count,
+            "totalCount": input_count + output_count + variable_count
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db_guard = get_t3_device_conn!(state);
     let db: &sea_orm::DatabaseConnection = &*db_guard;
 
@@ -637,18 +996,26 @@ async fn check_device_status(
 
     let service = TrendlogWebMsgService::new();
 
-    match service.is_device_online(device_id).await {
-        Ok(online) => {
-            let status = if online { "online" } else { "offline" };
+    match service.get_device_online_status(device_id).await {
+        Ok(result) => {
+            let status = if result.online { "online" } else { "offline" };
             Ok(Json(json!({
                 "status": status,
-                "responseTime": if online { Some(100) } else { None::<i32> }
+                "responseTime": null,
+                "onlineTime": result.online_time,
+                "ageSeconds": result.age_seconds,
+                "thresholdSeconds": result.threshold_seconds,
+                "source": "GET_PANELS_LIST"
             })))
         }
         Err(_) => {
             Ok(Json(json!({
                 "status": "offline",
-                "responseTime": None::<i32>
+                "responseTime": null,
+                "onlineTime": null,
+                "ageSeconds": null,
+                "thresholdSeconds": 120,
+                "source": "GET_PANELS_LIST"
             })))
         }
     }
@@ -658,6 +1025,20 @@ async fn get_input_points(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let points = mssql_generic_crud::select_by_device(pool, "INPUTS", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "input_points": points,
+            "count": points.len(),
+            "message": "Input points retrieved successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3PointsService::get_input_points_by_device(&*db, device_id).await {
@@ -674,6 +1055,20 @@ async fn get_output_points(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let points = mssql_generic_crud::select_by_device(pool, "OUTPUTS", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "output_points": points,
+            "count": points.len(),
+            "message": "Output points retrieved successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3PointsService::get_output_points_by_device(&*db, device_id).await {
@@ -690,6 +1085,20 @@ async fn get_variable_points(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let points = mssql_generic_crud::select_by_device(pool, "VARIABLES", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "variable_points": points,
+            "count": points.len(),
+            "message": "Variable points retrieved successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3PointsService::get_variable_points_by_device(&*db, device_id).await {
@@ -706,6 +1115,22 @@ async fn create_input_point(
     State(state): State<T3AppState>,
     Json(payload): Json<CreateInputPointRequest>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let json_payload = serde_json::to_value(&payload)
+            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let id = mssql_generic_crud::insert_row(pool, "INPUTS", &json_payload)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "input_point": json_payload,
+            "id": id,
+            "message": "Input point created successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3PointsService::create_input_point(&*db, payload).await {
@@ -721,6 +1146,22 @@ async fn create_output_point(
     State(state): State<T3AppState>,
     Json(payload): Json<CreateOutputPointRequest>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let json_payload = serde_json::to_value(&payload)
+            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let id = mssql_generic_crud::insert_row(pool, "OUTPUTS", &json_payload)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "output_point": json_payload,
+            "id": id,
+            "message": "Output point created successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3PointsService::create_output_point(&*db, payload).await {
@@ -736,6 +1177,22 @@ async fn create_variable_point(
     State(state): State<T3AppState>,
     Json(payload): Json<CreateVariablePointRequest>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let json_payload = serde_json::to_value(&payload)
+            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let id = mssql_generic_crud::insert_row(pool, "VARIABLES", &json_payload)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "variable_point": json_payload,
+            "id": id,
+            "message": "Variable point created successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3PointsService::create_variable_point(&*db, payload).await {
@@ -753,6 +1210,21 @@ async fn get_schedules_by_device(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let schedules = mssql_generic_crud::select_by_device(pool, "SCHEDULES", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "schedules": schedules,
+            "count": schedules.len(),
+            "device_id": device_id,
+            "message": "Schedules retrieved successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3ScheduleService::get_schedules_by_device(&*db, device_id).await {
@@ -770,6 +1242,19 @@ async fn get_schedule_stats(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let count = mssql_generic_crud::count_by_device(pool, "SCHEDULES", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "data": { "total_schedules": count },
+            "message": "Schedule statistics retrieved successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3ScheduleService::get_schedule_stats_by_device(&*db, device_id).await {
@@ -784,6 +1269,20 @@ async fn get_schedule_stats(
 async fn get_all_schedules(
     State(state): State<T3AppState>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let schedules = mssql_generic_crud::select_all(pool, "SCHEDULES", 1, 10000)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "schedules": schedules,
+            "count": schedules.len(),
+            "message": "All schedules retrieved successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3ScheduleService::get_all_schedules_with_device_info(&*db).await {
@@ -800,6 +1299,22 @@ async fn create_schedule(
     State(state): State<T3AppState>,
     Json(payload): Json<CreateScheduleRequest>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let json_payload = serde_json::to_value(&payload)
+            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let id = mssql_generic_crud::insert_row(pool, "SCHEDULES", &json_payload)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "schedule": json_payload,
+            "id": id,
+            "message": "Schedule created successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3ScheduleService::create_schedule(&*db, payload).await {
@@ -815,6 +1330,23 @@ async fn get_schedule_by_id(
     State(state): State<T3AppState>,
     Path((device_id, schedule_id)): Path<(i32, String)>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let all = mssql_generic_crud::select_by_device(pool, "SCHEDULES", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let found = all.into_iter().find(|s| {
+            s.get("Schedule_ID").and_then(|v| v.as_str()) == Some(&schedule_id)
+                || s.get("schedule_id").and_then(|v| v.as_str()) == Some(&schedule_id)
+        });
+        return match found {
+            Some(schedule) => Ok(Json(json!({ "schedule": schedule, "message": "Schedule found" }))),
+            None => Err(StatusCode::NOT_FOUND),
+        };
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     // Since schedules don't have a separate get by ID method, let's get all and filter
@@ -840,6 +1372,32 @@ async fn update_schedule(
     Path((device_id, schedule_id)): Path<(i32, String)>,
     Json(payload): Json<UpdateScheduleRequest>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let all = mssql_generic_crud::select_by_device(pool, "SCHEDULES", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let found = all.iter().find(|s| {
+            s.get("Schedule_ID").and_then(|v| v.as_str()) == Some(&schedule_id)
+                || s.get("schedule_id").and_then(|v| v.as_str()) == Some(&schedule_id)
+        });
+        let row_id = match found {
+            Some(s) => s.get("id").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+            None => return Err(StatusCode::NOT_FOUND),
+        };
+        let json_payload = serde_json::to_value(&payload)
+            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        mssql_generic_crud::update_row(pool, "SCHEDULES", row_id, &json_payload)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "schedule": json_payload,
+            "message": "Schedule updated successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3ScheduleService::update_schedule(&*db, device_id, schedule_id, payload).await {
@@ -856,6 +1414,31 @@ async fn delete_schedule(
     State(state): State<T3AppState>,
     Path((device_id, schedule_id)): Path<(i32, String)>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let all = mssql_generic_crud::select_by_device(pool, "SCHEDULES", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let found = all.iter().find(|s| {
+            s.get("Schedule_ID").and_then(|v| v.as_str()) == Some(&schedule_id)
+                || s.get("schedule_id").and_then(|v| v.as_str()) == Some(&schedule_id)
+        });
+        let row_id = match found {
+            Some(s) => s.get("id").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+            None => return Err(StatusCode::NOT_FOUND),
+        };
+        let rows = mssql_generic_crud::delete_row(pool, "SCHEDULES", row_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return if rows > 0 {
+            Ok(Json(json!({ "message": "Schedule deleted successfully" })))
+        } else {
+            Err(StatusCode::NOT_FOUND)
+        };
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3ScheduleService::delete_schedule(&*db, device_id, schedule_id).await {
@@ -873,6 +1456,21 @@ async fn get_programs_by_device(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let programs = mssql_generic_crud::select_by_device(pool, "PROGRAMS", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "programs": programs,
+            "count": programs.len(),
+            "device_id": device_id,
+            "message": "Programs retrieved successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3ProgramService::get_programs_by_device(&*db, device_id).await {
@@ -890,6 +1488,19 @@ async fn get_program_stats(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let count = mssql_generic_crud::count_by_device(pool, "PROGRAMS", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "data": { "total_programs": count },
+            "message": "Program statistics retrieved successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3ProgramService::get_program_stats_by_device(&*db, device_id).await {
@@ -905,6 +1516,19 @@ async fn get_programs_with_status(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let programs = mssql_generic_crud::select_by_device(pool, "PROGRAMS", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "data": programs,
+            "message": "Programs with status retrieved successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3ProgramService::get_programs_with_status(&*db, device_id).await {
@@ -919,6 +1543,20 @@ async fn get_programs_with_status(
 async fn get_all_programs(
     State(state): State<T3AppState>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let programs = mssql_generic_crud::select_all(pool, "PROGRAMS", 1, 10000)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "programs": programs,
+            "count": programs.len(),
+            "message": "All programs retrieved successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3ProgramService::get_all_programs_with_device_info(&*db).await {
@@ -935,6 +1573,22 @@ async fn create_program(
     State(state): State<T3AppState>,
     Json(payload): Json<CreateProgramRequest>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let json_payload = serde_json::to_value(&payload)
+            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let id = mssql_generic_crud::insert_row(pool, "PROGRAMS", &json_payload)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "program": json_payload,
+            "id": id,
+            "message": "Program created successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3ProgramService::create_program(&*db, payload).await {
@@ -950,6 +1604,23 @@ async fn get_program_by_id(
     State(state): State<T3AppState>,
     Path((device_id, program_id)): Path<(i32, String)>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let all = mssql_generic_crud::select_by_device(pool, "PROGRAMS", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let found = all.into_iter().find(|p| {
+            p.get("Program_ID").and_then(|v| v.as_str()) == Some(&program_id)
+                || p.get("program_id").and_then(|v| v.as_str()) == Some(&program_id)
+        });
+        return match found {
+            Some(program) => Ok(Json(json!({ "program": program, "message": "Program found" }))),
+            None => Err(StatusCode::NOT_FOUND),
+        };
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3ProgramService::get_program_by_id(&*db, device_id, program_id).await {
@@ -967,6 +1638,32 @@ async fn update_program(
     Path((device_id, program_id)): Path<(i32, String)>,
     Json(payload): Json<UpdateProgramRequest>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let all = mssql_generic_crud::select_by_device(pool, "PROGRAMS", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let found = all.iter().find(|p| {
+            p.get("Program_ID").and_then(|v| v.as_str()) == Some(&program_id)
+                || p.get("program_id").and_then(|v| v.as_str()) == Some(&program_id)
+        });
+        let row_id = match found {
+            Some(p) => p.get("id").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+            None => return Err(StatusCode::NOT_FOUND),
+        };
+        let json_payload = serde_json::to_value(&payload)
+            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        mssql_generic_crud::update_row(pool, "PROGRAMS", row_id, &json_payload)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "program": json_payload,
+            "message": "Program updated successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3ProgramService::update_program(&*db, device_id, program_id, payload).await {
@@ -983,6 +1680,31 @@ async fn delete_program(
     State(state): State<T3AppState>,
     Path((device_id, program_id)): Path<(i32, String)>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let all = mssql_generic_crud::select_by_device(pool, "PROGRAMS", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let found = all.iter().find(|p| {
+            p.get("Program_ID").and_then(|v| v.as_str()) == Some(&program_id)
+                || p.get("program_id").and_then(|v| v.as_str()) == Some(&program_id)
+        });
+        let row_id = match found {
+            Some(p) => p.get("id").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+            None => return Err(StatusCode::NOT_FOUND),
+        };
+        let rows = mssql_generic_crud::delete_row(pool, "PROGRAMS", row_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return if rows > 0 {
+            Ok(Json(json!({ "message": "Program deleted successfully" })))
+        } else {
+            Err(StatusCode::NOT_FOUND)
+        };
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3ProgramService::delete_program(&*db, device_id, program_id).await {
@@ -999,16 +1721,77 @@ async fn delete_program(
 async fn get_trendlogs_by_device(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<Value>, StatusCode> {
-    let db = get_t3_device_conn!(state);
-
-    match T3TrendlogService::get_trendlogs_by_device(&*db, device_id).await {
-        Ok(trendlogs) => Ok(Json(json!({
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let mut trendlogs = mssql_generic_crud::select_by_device(pool, "TRENDLOGS", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL get trendlogs error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        // Optional: filter by panel_id query parameter
+        if let Some(panel_id_str) = params.get("panel_id") {
+            if let Ok(panel_id) = panel_id_str.parse::<i64>() {
+                trendlogs.retain(|t| t.get("PanelId").and_then(|v| v.as_i64()) == Some(panel_id));
+            }
+        }
+        return Ok(Json(json!({
             "trendlogs": trendlogs,
             "count": trendlogs.len(),
             "device_id": device_id,
             "message": "Trendlogs retrieved successfully"
-        }))),
+        })));
+    }
+
+    // ── SeaORM branch ──
+    let db = get_t3_device_conn!(state);
+
+    match T3TrendlogService::get_trendlogs_by_device(&*db, device_id).await {
+        Ok(mut trendlogs) => {
+            // Optional: filter by panel_id query parameter
+            if let Some(panel_id_str) = params.get("panel_id") {
+                if let Ok(panel_id) = panel_id_str.parse::<i32>() {
+                    trendlogs.retain(|t| t.panel_id == panel_id);
+                }
+            }
+
+            // Deduplicate by trendlog_id: keep the row with the highest panel_id
+            // (real device panel) and delete duplicates from the database.
+            let mut best: std::collections::HashMap<String, trendlogs::Model> = std::collections::HashMap::new();
+            let mut duplicate_ids: Vec<i32> = Vec::new();
+
+            for t in trendlogs.iter() {
+                let key = t.trendlog_id.clone();
+                if let Some(existing) = best.get(&key) {
+                    // Keep whichever has higher panel_id; mark the other for deletion
+                    if t.panel_id > existing.panel_id {
+                        duplicate_ids.push(existing.id);
+                        best.insert(key, t.clone());
+                    } else {
+                        duplicate_ids.push(t.id);
+                    }
+                } else {
+                    best.insert(key, t.clone());
+                }
+            }
+
+            // Clean up duplicates from the database
+            if !duplicate_ids.is_empty() {
+                let _ = trendlogs::Entity::delete_many()
+                    .filter(trendlogs::Column::Id.is_in(duplicate_ids.clone()))
+                    .exec(&*db)
+                    .await;
+                // Return only the deduplicated entries
+                trendlogs.retain(|t| !duplicate_ids.contains(&t.id));
+            }
+
+            Ok(Json(json!({
+                "trendlogs": trendlogs,
+                "count": trendlogs.len(),
+                "device_id": device_id,
+                "message": "Trendlogs retrieved successfully"
+            })))
+        },
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
     }
 }
@@ -1017,6 +1800,25 @@ async fn get_trendlog_stats(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let trendlogs = mssql_generic_crud::select_by_device(pool, "TRENDLOGS", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL trendlog stats error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let count = mssql_generic_crud::count_by_device(pool, "TRENDLOGS", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL trendlog count error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "data": {
+                "total_trendlogs": count,
+                "trendlogs": trendlogs,
+            },
+            "message": "Trendlog statistics retrieved successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3TrendlogService::get_trendlog_stats_by_device(&*db, device_id).await {
@@ -1032,6 +1834,19 @@ async fn get_trendlogs_with_config(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let trendlogs = mssql_generic_crud::select_by_device(pool, "TRENDLOGS", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL trendlogs config error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "data": trendlogs,
+            "message": "Trendlogs with configuration retrieved successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3TrendlogService::get_trendlogs_with_config(&*db, device_id).await {
@@ -1046,6 +1861,20 @@ async fn get_trendlogs_with_config(
 async fn get_all_trendlogs(
     State(state): State<T3AppState>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let trendlogs = mssql_generic_crud::select_all(pool, "TRENDLOGS", 1, 10000)
+            .await
+            .map_err(|e| { eprintln!("MSSQL all trendlogs error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "trendlogs": trendlogs,
+            "count": trendlogs.len(),
+            "message": "All trendlogs retrieved successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3TrendlogService::get_all_trendlogs_with_device_info(&*db).await {
@@ -1062,6 +1891,22 @@ async fn create_trendlog(
     State(state): State<T3AppState>,
     Json(payload): Json<CreateTrendlogRequest>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let json_payload = serde_json::to_value(&payload)
+            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let id = mssql_generic_crud::insert_row(pool, "TRENDLOGS", &json_payload)
+            .await
+            .map_err(|e| { eprintln!("MSSQL create trendlog error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "trendlog": json_payload,
+            "id": id,
+            "message": "Trendlog created successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3TrendlogService::create_trendlog(&*db, payload).await {
@@ -1077,6 +1922,23 @@ async fn get_trendlog_by_index(
     State(state): State<T3AppState>,
     Path((device_id, trendlog_index)): Path<(i32, String)>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let all = mssql_generic_crud::select_by_device(pool, "TRENDLOGS", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL get trendlog error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let found = all.into_iter().find(|t| {
+            t.get("Trendlog_ID").and_then(|v| v.as_str()) == Some(&trendlog_index)
+                || t.get("trendlog_id").and_then(|v| v.as_str()) == Some(&trendlog_index)
+        });
+        return match found {
+            Some(trendlog) => Ok(Json(json!({ "trendlog": trendlog, "message": "Trendlog found" }))),
+            None => Err(StatusCode::NOT_FOUND),
+        };
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3TrendlogService::get_trendlog_by_index(&*db, device_id, trendlog_index).await {
@@ -1094,6 +1956,33 @@ async fn update_trendlog(
     Path((device_id, trendlog_index)): Path<(i32, String)>,
     Json(payload): Json<UpdateTrendlogRequest>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        // Find trendlog by device + trendlog_index to get its id
+        let all = mssql_generic_crud::select_by_device(pool, "TRENDLOGS", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL update trendlog error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let found = all.iter().find(|t| {
+            t.get("Trendlog_ID").and_then(|v| v.as_str()) == Some(&trendlog_index)
+                || t.get("trendlog_id").and_then(|v| v.as_str()) == Some(&trendlog_index)
+        });
+        let row_id = match found {
+            Some(t) => t.get("id").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+            None => return Err(StatusCode::NOT_FOUND),
+        };
+        let json_payload = serde_json::to_value(&payload)
+            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        mssql_generic_crud::update_row(pool, "TRENDLOGS", row_id, &json_payload)
+            .await
+            .map_err(|e| { eprintln!("MSSQL update trendlog error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "trendlog": json_payload,
+            "message": "Trendlog updated successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3TrendlogService::update_trendlog(&*db, device_id, trendlog_index, payload).await {
@@ -1110,6 +1999,32 @@ async fn delete_trendlog(
     State(state): State<T3AppState>,
     Path((device_id, trendlog_index)): Path<(i32, String)>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        // Find trendlog by device + trendlog_index to get its id
+        let all = mssql_generic_crud::select_by_device(pool, "TRENDLOGS", device_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL delete trendlog error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        let found = all.iter().find(|t| {
+            t.get("Trendlog_ID").and_then(|v| v.as_str()) == Some(&trendlog_index)
+                || t.get("trendlog_id").and_then(|v| v.as_str()) == Some(&trendlog_index)
+        });
+        let row_id = match found {
+            Some(t) => t.get("id").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+            None => return Err(StatusCode::NOT_FOUND),
+        };
+        let rows = mssql_generic_crud::delete_row(pool, "TRENDLOGS", row_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL delete trendlog error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return if rows > 0 {
+            Ok(Json(json!({ "message": "Trendlog deleted successfully" })))
+        } else {
+            Err(StatusCode::NOT_FOUND)
+        };
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     match T3TrendlogService::delete_trendlog(&*db, device_id, trendlog_index).await {
@@ -1123,7 +2038,7 @@ async fn delete_trendlog(
 
 pub fn t3_device_routes() -> Router<T3AppState> {
     Router::new()
-        // Generic table endpoints for T3DeviceDb.vue interface
+        // Generic table CRUD endpoints (used by T3DeviceApi.ts, HVAC, dashboard, etc.)
         .route("/:table", get(get_table_records))           // GET /api/t3_device/{table}
         .route("/:table/count", get(get_table_count))       // GET /api/t3_device/{table}/count
         .route("/:table", post(create_table_record))        // POST /api/t3_device/{table}
@@ -1266,7 +2181,8 @@ pub fn t3_device_routes() -> Router<T3AppState> {
 }
 
 // ============================================================================
-// GENERIC TABLE HANDLERS - For T3DeviceDb.vue interface
+// GENERIC TABLE HANDLERS
+// Supports both SeaORM (PG/MySQL/SQLite) and MSSQL (tiberius) backends
 // ============================================================================
 
 /// Get all records from a specific table
@@ -1275,10 +2191,33 @@ async fn get_table_records(
     Path(table): Path<String>,
     Query(params): Query<QueryParams>,
 ) -> Result<Json<Value>, StatusCode> {
-    let db = get_t3_device_conn!(state);
-
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(10);
+
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+
+        let data = if let Some(search) = &params.search {
+            mssql_generic_crud::search_rows(pool, &table, search, page, per_page)
+                .await
+                .map_err(|e| { eprintln!("MSSQL search error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?
+        } else {
+            mssql_generic_crud::select_all(pool, &table, page, per_page)
+                .await
+                .map_err(|e| { eprintln!("MSSQL select error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?
+        };
+        return Ok(Json(json!({
+            "data": data,
+            "message": format!("Retrieved {} records from {}", data.len(), table),
+            "total": data.len()
+        })));
+    }
+
+    // ── SeaORM branch ──
+    let db = get_t3_device_conn!(state);
+    let backend = db.get_database_backend();
+
     let offset = (page - 1) * per_page;
 
     let search_filter = if let Some(search) = &params.search {
@@ -1292,7 +2231,7 @@ async fn get_table_records(
         table, search_filter, per_page, offset
     );
 
-    match db.query_all(Statement::from_string(DatabaseBackend::Sqlite, query)).await {
+    match db.query_all(Statement::from_string(backend, query)).await {
         Ok(rows) => {
             let data: Vec<Value> = rows.into_iter().map(|row| {
                 let mut obj = serde_json::Map::new();
@@ -1322,11 +2261,26 @@ async fn get_table_count(
     State(state): State<T3AppState>,
     Path(table): Path<String>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+
+        let count = mssql_generic_crud::count_rows(pool, &table)
+            .await
+            .map_err(|e| { eprintln!("MSSQL count error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "count": count,
+            "table": table,
+            "message": format!("Table {} has {} records", table, count)
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     let query = format!("SELECT COUNT(*) as count FROM {}", table);
 
-    match db.query_one(Statement::from_string(DatabaseBackend::Sqlite, query)).await {
+    match db.query_one(Statement::from_string(db.get_database_backend(), query)).await {
         Ok(Some(row)) => {
             let count: i64 = row.try_get("", "count").unwrap_or(0);
             Ok(Json(json!({
@@ -1353,6 +2307,21 @@ async fn create_table_record(
     Path(table): Path<String>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+
+        let id = mssql_generic_crud::insert_row(pool, &table, &payload)
+            .await
+            .map_err(|e| { eprintln!("MSSQL insert error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "message": format!("Record created successfully in {}", table),
+            "id": id,
+            "table": table
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     if let Some(obj) = payload.as_object() {
@@ -1373,7 +2342,7 @@ async fn create_table_record(
             values.join(", ")
         );
 
-        match db.execute(Statement::from_string(DatabaseBackend::Sqlite, query)).await {
+        match db.execute(Statement::from_string(db.get_database_backend(), query)).await {
             Ok(result) => {
                 Ok(Json(json!({
                     "message": format!("Record created successfully in {}", table),
@@ -1397,6 +2366,22 @@ async fn update_table_record(
     Path((table, id)): Path<(String, i32)>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+
+        let rows_affected = mssql_generic_crud::update_row(pool, &table, id, &payload)
+            .await
+            .map_err(|e| { eprintln!("MSSQL update error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "message": format!("Record {} updated successfully in {}", id, table),
+            "id": id,
+            "table": table,
+            "rows_affected": rows_affected
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     if let Some(obj) = payload.as_object() {
@@ -1417,7 +2402,7 @@ async fn update_table_record(
             id
         );
 
-        match db.execute(Statement::from_string(DatabaseBackend::Sqlite, query)).await {
+        match db.execute(Statement::from_string(db.get_database_backend(), query)).await {
             Ok(_) => {
                 Ok(Json(json!({
                     "message": format!("Record {} updated successfully in {}", id, table),
@@ -1440,11 +2425,27 @@ async fn delete_table_record(
     State(state): State<T3AppState>,
     Path((table, id)): Path<(String, i32)>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+
+        let rows_affected = mssql_generic_crud::delete_row(pool, &table, id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL delete error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "message": format!("Record {} deleted successfully from {}", id, table),
+            "id": id,
+            "table": table,
+            "rows_affected": rows_affected
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     let query = format!("DELETE FROM {} WHERE id = {}", table, id);
 
-    match db.execute(Statement::from_string(DatabaseBackend::Sqlite, query)).await {
+    match db.execute(Statement::from_string(db.get_database_backend(), query)).await {
         Ok(_) => {
             Ok(Json(json!({
                 "message": format!("Record {} deleted successfully from {}", id, table),
@@ -1471,11 +2472,9 @@ async fn get_trendlog_history(
 ) -> Result<Json<Value>, StatusCode> {
     use crate::logger::{write_structured_log_with_level, LogLevel};
 
-    let db = get_t3_device_conn!(state);
-
     // Ensure the payload has the correct device_id and trendlog_id from the URL path
     payload.serial_number = device_id;
-    payload.trendlog_id = trendlog_id.clone(); // Clone for later use in error logging
+    payload.trendlog_id = trendlog_id.clone();
 
     // Log the history request
     let request_info = format!(
@@ -1489,6 +2488,45 @@ async fn get_trendlog_history(
         payload.specific_points.as_ref().map(|sp| sp.len()).unwrap_or(0)
     );
     let _ = write_structured_log_with_level("T3_Webview_API", &request_info, LogLevel::Info);
+
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_trendlog_service;
+
+        let specific_points: Option<Vec<mssql_trendlog_service::SpecificPoint>> =
+            payload.specific_points.as_ref().map(|sp| {
+                sp.iter()
+                    .map(|p| mssql_trendlog_service::SpecificPoint {
+                        point_id: p.point_id.clone(),
+                        point_type: p.point_type.clone(),
+                        point_index: p.point_index,
+                        panel_id: p.panel_id,
+                    })
+                    .collect()
+            });
+
+        let result = mssql_trendlog_service::get_trendlog_history(
+            pool,
+            device_id,
+            payload.panel_id,
+            &trendlog_id,
+            payload.start_time.as_deref(),
+            payload.end_time.as_deref(),
+            payload.limit,
+            payload.point_types.as_deref(),
+            specific_points.as_deref(),
+        )
+        .await
+        .map_err(|e| {
+            eprintln!("MSSQL trendlog history error: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+        return Ok(Json(result));
+    }
+
+    // ── SeaORM branch ──
+    let db = get_t3_device_conn!(state);
 
     match T3TrendlogDataService::get_trendlog_history(&*db, payload).await {
         Ok(history_data) => {
@@ -1520,11 +2558,21 @@ async fn get_trendlog_data_stats(
     Path(device_id): Path<i32>,
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<Value>, StatusCode> {
-    let db = get_t3_device_conn!(state);
-
     let panel_id = params.get("panel_id")
         .and_then(|p| p.parse::<i32>().ok())
         .unwrap_or(1);
+
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_trendlog_service;
+        let stats = mssql_trendlog_service::get_data_statistics(pool, device_id, panel_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL stats error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(stats));
+    }
+
+    // ── SeaORM branch ──
+    let db = get_t3_device_conn!(state);
 
     match T3TrendlogDataService::get_data_statistics(&*db, device_id, panel_id).await {
         Ok(stats) => Ok(Json(stats)),
@@ -1538,8 +2586,6 @@ async fn get_recent_trendlog_data(
     Path(device_id): Path<i32>,
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<Value>, StatusCode> {
-    let db = get_t3_device_conn!(state);
-
     let panel_id = params.get("panel_id")
         .and_then(|p| p.parse::<i32>().ok())
         .unwrap_or(1);
@@ -1549,6 +2595,18 @@ async fn get_recent_trendlog_data(
 
     let point_types = params.get("point_types")
         .map(|types| types.split(',').map(|s| s.to_string()).collect::<Vec<String>>());
+
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_trendlog_service;
+        let recent = mssql_trendlog_service::get_recent_data(pool, device_id, panel_id, point_types, limit)
+            .await
+            .map_err(|e| { eprintln!("MSSQL recent data error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(recent));
+    }
+
+    // ── SeaORM branch ──
+    let db = get_t3_device_conn!(state);
 
     match T3TrendlogDataService::get_recent_data(&*db, device_id, panel_id, point_types, limit).await {
         Ok(recent_data) => {
@@ -1594,6 +2652,43 @@ async fn get_smart_trendlog_data(
     Path(device_id): Path<i32>,
     Json(request): Json<SmartTrendlogRequest>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── MSSQL branch — fall back to history query (smart features use same data) ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_trendlog_service;
+        let lookback_start = chrono::Local::now() - chrono::Duration::minutes(request.lookback_minutes as i64);
+        let start_str = lookback_start.format("%Y-%m-%d %H:%M:%S").to_string();
+
+        let specific_points: Option<Vec<mssql_trendlog_service::SpecificPoint>> =
+            request.specific_points.as_ref().map(|sp| {
+                sp.iter()
+                    .map(|p| mssql_trendlog_service::SpecificPoint {
+                        point_id: p.point_id.clone(),
+                        point_type: p.point_type.clone(),
+                        point_index: p.point_index,
+                        panel_id: p.panel_id,
+                    })
+                    .collect()
+            });
+
+        let limit = request.max_points.map(|m| m as u64);
+        let result = mssql_trendlog_service::get_trendlog_history(
+            pool, device_id, request.panel_id, "",
+            Some(&start_str), None, limit, None, specific_points.as_deref(),
+        )
+        .await
+        .map_err(|e| { eprintln!("MSSQL smart data error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+
+        return Ok(Json(json!({
+            "data": result["data"],
+            "total_points": result["count"],
+            "sources_used": ["MSSQL"],
+            "consolidation_applied": false,
+            "has_historical_data": result["count"].as_u64().unwrap_or(0) > 0,
+            "message": "Smart trendlog data retrieved successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(state);
 
     // Create smart trendlog request with device_id
@@ -1624,15 +2719,88 @@ async fn get_smart_trendlog_data(
 async fn save_realtime_trendlog_data(
     State(state): State<T3AppState>,
     Json(payload): Json<CreateTrendlogDataRequest>,
-) -> Result<Json<Value>, StatusCode> {
-    let db = get_t3_device_conn!(state);
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if state.server_db_enabled && !state.server_db_connected {
+        eprintln!(
+            "❌ Realtime trendlog save blocked: center DB is enabled but not connected (local fallback active)"
+        );
+        return Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({
+                "success": false,
+                "error": "Center DB is enabled but not connected",
+                "hint": "Realtime writes are intentionally blocked in center-db mode until center DB reconnects. Check DB config/connection and restart API service."
+            })),
+        ));
+    }
+
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_trendlog_service;
+        eprintln!("📤 Realtime trendlog save target: CENTER DB (MSSQL)");
+        let parent_id = mssql_trendlog_service::save_realtime_data(
+            pool,
+            payload.serial_number,
+            payload.panel_id,
+            &payload.point_id,
+            payload.point_index,
+            &payload.point_type,
+            &payload.value,
+            payload.range_field.as_deref(),
+            payload.digital_analog.as_deref(),
+            payload.units.as_deref(),
+        )
+        .await
+        .map_err(|e| {
+            eprintln!("MSSQL realtime save error: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({
+                    "success": false,
+                    "error": "MSSQL realtime save failed",
+                    "details": e.to_string()
+                })),
+            )
+        })?;
+        return Ok(Json(json!({
+            "data": parent_id,
+            "message": "Realtime trendlog data saved successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
+    if state.server_db_enabled {
+        eprintln!("📤 Realtime trendlog save target: CENTER DB (SeaORM backend)");
+    } else {
+        eprintln!("📤 Realtime trendlog save target: LOCAL SQLite");
+    }
+    let db = match state.t3_device_conn.as_ref() {
+        Some(conn) => conn.lock().await,
+        None => {
+            eprintln!("⚠️  T3000 device database unavailable");
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(json!({
+                    "success": false,
+                    "error": "T3000 device database unavailable"
+                })),
+            ));
+        }
+    };
 
     match T3TrendlogDataService::save_realtime_data(&*db, payload).await {
         Ok(saved_data) => Ok(Json(json!({
             "data": saved_data,
             "message": "Realtime trendlog data saved successfully"
         }))),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "success": false,
+                "error": "Realtime trendlog data save failed",
+                "details": e.to_string()
+            })),
+        )),
     }
 }
 
@@ -1640,10 +2808,8 @@ async fn save_realtime_trendlog_data(
 async fn save_realtime_trendlog_batch(
     State(state): State<T3AppState>,
     Json(payload): Json<Vec<CreateTrendlogDataRequest>>,
-) -> Result<Json<Value>, StatusCode> {
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     use crate::logger::{write_structured_log_with_level, LogLevel};
-
-    let db = get_t3_device_conn!(state);
 
     // Log the batch save request
     let request_info = format!(
@@ -1651,6 +2817,90 @@ async fn save_realtime_trendlog_batch(
         payload.len()
     );
     let _ = write_structured_log_with_level("T3_Webview_API", &request_info, LogLevel::Info);
+
+    if state.server_db_enabled && !state.server_db_connected {
+        let blocked_info =
+            "❌ [Routes] Realtime batch save blocked - center DB enabled but not connected (local fallback active)";
+        let _ = write_structured_log_with_level("T3_Webview_API", blocked_info, LogLevel::Error);
+        eprintln!("{}", blocked_info);
+        return Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({
+                "success": false,
+                "error": "Center DB is enabled but not connected",
+                "hint": "Check server database config/connection and restart API service"
+            })),
+        ));
+    }
+
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_trendlog_service;
+        let _ = write_structured_log_with_level(
+            "T3_Webview_API",
+            "📤 [Routes] Realtime batch save target: CENTER DB (MSSQL)",
+            LogLevel::Info,
+        );
+        let batch: Vec<mssql_trendlog_service::RealtimeDataPoint> = payload
+            .iter()
+            .map(|p| mssql_trendlog_service::RealtimeDataPoint {
+                serial_number: p.serial_number,
+                panel_id: p.panel_id,
+                point_id: p.point_id.clone(),
+                point_index: p.point_index,
+                point_type: p.point_type.clone(),
+                value: p.value.clone(),
+                range_field: p.range_field.clone(),
+                digital_analog: p.digital_analog.clone(),
+                units: p.units.clone(),
+            })
+            .collect();
+        let rows = mssql_trendlog_service::save_realtime_batch(pool, &batch)
+            .await
+            .map_err(|e| {
+                eprintln!("MSSQL batch save error: {}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({
+                        "success": false,
+                        "error": "MSSQL batch save failed",
+                        "details": e.to_string()
+                    })),
+                )
+            })?;
+        return Ok(Json(json!({
+            "rows_affected": rows,
+            "message": "Realtime trendlog batch data saved successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
+    if state.server_db_enabled {
+        let _ = write_structured_log_with_level(
+            "T3_Webview_API",
+            "📤 [Routes] Realtime batch save target: CENTER DB (SeaORM backend)",
+            LogLevel::Info,
+        );
+    } else {
+        let _ = write_structured_log_with_level(
+            "T3_Webview_API",
+            "📤 [Routes] Realtime batch save target: LOCAL SQLite",
+            LogLevel::Info,
+        );
+    }
+    let db = match state.t3_device_conn.as_ref() {
+        Some(conn) => conn.lock().await,
+        None => {
+            eprintln!("⚠️  T3000 device database unavailable");
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(json!({
+                    "success": false,
+                    "error": "T3000 device database unavailable"
+                })),
+            ));
+        }
+    };
 
     match T3TrendlogDataService::save_realtime_batch(&*db, payload).await {
         Ok(rows_affected) => {
@@ -1673,7 +2923,14 @@ async fn save_realtime_trendlog_batch(
             let _ = write_structured_log_with_level("T3_Webview_API", &error_info, LogLevel::Error);
 
             eprintln!("❌ [Routes] Realtime batch save error details: {:?}", error);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({
+                    "success": false,
+                    "error": "Realtime trendlog batch save failed",
+                    "details": format!("{:?}", error)
+                })),
+            ))
         }
     }
 }
@@ -1684,11 +2941,25 @@ async fn cleanup_old_trendlog_data(
     Path(device_id): Path<i32>,
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<Value>, StatusCode> {
-    let db = get_t3_device_conn!(state);
-
     let days_to_keep = params.get("days")
         .and_then(|d| d.parse::<i64>().ok())
         .unwrap_or(30); // Default keep 30 days
+
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_trendlog_service;
+        let rows_deleted = mssql_trendlog_service::cleanup_old_data(pool, device_id, days_to_keep)
+            .await
+            .map_err(|e| { eprintln!("MSSQL cleanup error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(json!({
+            "rows_deleted": rows_deleted,
+            "days_kept": days_to_keep,
+            "message": "Old trendlog data cleaned up successfully"
+        })));
+    }
+
+    // ── SeaORM branch ──
+    let db = get_t3_device_conn!(state);
 
     match T3TrendlogDataService::cleanup_old_data(&*db, device_id, days_to_keep).await {
         Ok(rows_deleted) => Ok(Json(json!({
@@ -1732,11 +3003,66 @@ async fn get_device_capacity(
     State(state): State<T3AppState>,
     Path(serial_number): Path<String>,
 ) -> Result<Json<DeviceCapacity>, StatusCode> {
+    // MSSQL branch
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+
+        let serial_num: i32 = serial_number.parse().map_err(|_| StatusCode::BAD_REQUEST)?;
+
+        // Get device info
+        let devices = mssql_generic_crud::select_all(pool, "DEVICES", 1, 10000).await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        let device = devices.iter()
+            .find(|d| d.get("Serial_ID").and_then(|v| v.as_str()) == Some(&serial_number)
+                    || d.get("SerialNumber").and_then(|v| v.as_i64()).map(|v| v.to_string()).as_deref() == Some(&serial_number))
+            .ok_or(StatusCode::NOT_FOUND)?;
+
+        let device_name = device.get("Product_name").or(device.get("Product_Name"))
+            .and_then(|v| v.as_str()).unwrap_or("Unknown").to_string();
+        let product_class_id = device.get("Product_class_ID").or(device.get("Product_Class_ID"))
+            .and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+
+        let (input_total, output_total, var_total) = match product_class_id {
+            74 | 88 => (64, 64, 128),
+            35 => (32, 32, 64),
+            _ => (64, 64, 128),
+        };
+
+        let input_count = mssql_generic_crud::count_by_device(pool, "INPUTS", serial_num).await.unwrap_or(0) as i32;
+        let output_count = mssql_generic_crud::count_by_device(pool, "OUTPUTS", serial_num).await.unwrap_or(0) as i32;
+        let var_count = mssql_generic_crud::count_by_device(pool, "VARIABLES", serial_num).await.unwrap_or(0) as i32;
+        let program_count = mssql_generic_crud::count_by_device(pool, "PROGRAMS", serial_num).await.unwrap_or(0) as i32;
+        let schedule_count = mssql_generic_crud::count_by_device(pool, "SCHEDULES", serial_num).await.unwrap_or(0) as i32;
+        let holiday_count = mssql_generic_crud::count_by_device(pool, "HOLIDAYS", serial_num).await.unwrap_or(0) as i32;
+        let pid_count = mssql_generic_crud::count_by_device(pool, "PID_TABLE", serial_num).await.unwrap_or(0) as i32;
+        let graphic_count = mssql_generic_crud::count_by_device(pool, "GRAPHICS", serial_num).await.unwrap_or(0) as i32;
+        let trendlog_count = mssql_generic_crud::count_by_device(pool, "TRENDLOGS", serial_num).await.unwrap_or(0) as i32;
+
+        let calc_percentage = |used: i32, total: i32| -> f32 {
+            if total == 0 { 0.0 } else { (used as f32 / total as f32) * 100.0 }
+        };
+
+        return Ok(Json(DeviceCapacity {
+            serial_number: serial_number.clone(),
+            device_name,
+            inputs: CapacityInfo { used: input_count, total: input_total, percentage: calc_percentage(input_count, input_total) },
+            outputs: CapacityInfo { used: output_count, total: output_total, percentage: calc_percentage(output_count, output_total) },
+            variables: CapacityInfo { used: var_count, total: var_total, percentage: calc_percentage(var_count, var_total) },
+            programs: CapacityInfo { used: program_count, total: 16, percentage: calc_percentage(program_count, 16) },
+            schedules: CapacityInfo { used: schedule_count, total: 8, percentage: calc_percentage(schedule_count, 8) },
+            holidays: CapacityInfo { used: holiday_count, total: 4, percentage: calc_percentage(holiday_count, 4) },
+            pid_controllers: CapacityInfo { used: pid_count, total: 16, percentage: calc_percentage(pid_count, 16) },
+            graphics: CapacityInfo { used: graphic_count, total: 16, percentage: calc_percentage(graphic_count, 16) },
+            trendlogs: CapacityInfo { used: trendlog_count, total: 12, percentage: calc_percentage(trendlog_count, 12) },
+        }));
+    }
+
     let db = get_t3_device_conn!(state);
+    let backend = db.get_database_backend();
 
     // Get device information
     let device_query = Statement::from_string(
-        DatabaseBackend::Sqlite,
+        backend,
         format!("SELECT Product_name, Product_class_ID FROM DEVICES WHERE Serial_ID = '{}'", serial_number)
     );
 
@@ -1758,7 +3084,7 @@ async fn get_device_capacity(
 
     // Count used inputs
     let input_count_query = Statement::from_string(
-        DatabaseBackend::Sqlite,
+        backend,
         format!("SELECT COUNT(*) as count FROM INPUTS WHERE Panel_Number = '{}' AND Label != ''", serial_number)
     );
     let input_count = db.query_one(input_count_query).await
@@ -1769,7 +3095,7 @@ async fn get_device_capacity(
 
     // Count used outputs
     let output_count_query = Statement::from_string(
-        DatabaseBackend::Sqlite,
+        backend,
         format!("SELECT COUNT(*) as count FROM OUTPUTS WHERE Panel_Number = '{}' AND Label != ''", serial_number)
     );
     let output_count = db.query_one(output_count_query).await
@@ -1780,7 +3106,7 @@ async fn get_device_capacity(
 
     // Count used variables
     let var_count_query = Statement::from_string(
-        DatabaseBackend::Sqlite,
+        backend,
         format!("SELECT COUNT(*) as count FROM VARIABLES WHERE Panel_Number = '{}' AND Label != ''", serial_number)
     );
     let var_count = db.query_one(var_count_query).await
@@ -1856,7 +3182,7 @@ async fn get_device_capacity(
 // Helper function to count records with Label field
 async fn count_records(db: &sea_orm::DatabaseConnection, table: &str, serial: &str) -> i32 {
     let query = Statement::from_string(
-        DatabaseBackend::Sqlite,
+        db.get_database_backend(),
         format!("SELECT COUNT(*) as count FROM {} WHERE SerialNumber = '{}' AND Label != ''", table, serial)
     );
     db.query_one(query).await
@@ -1869,7 +3195,7 @@ async fn count_records(db: &sea_orm::DatabaseConnection, table: &str, serial: &s
 // Helper function for PID_TABLE which uses Description field
 async fn count_records_with_desc(db: &sea_orm::DatabaseConnection, table: &str, serial: &str) -> i32 {
     let query = Statement::from_string(
-        DatabaseBackend::Sqlite,
+        db.get_database_backend(),
         format!("SELECT COUNT(*) as count FROM {} WHERE SerialNumber = '{}' AND Description != ''", table, serial)
     );
     db.query_one(query).await
@@ -1905,11 +3231,93 @@ pub struct ProjectTreeNode {
 async fn get_project_point_tree(
     State(state): State<T3AppState>,
 ) -> Result<Json<ProjectTreeNode>, StatusCode> {
+    // MSSQL branch
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+
+        let devices = mssql_generic_crud::select_all(pool, "DEVICES", 1, 10000).await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+        let mut device_nodes = Vec::new();
+
+        for device in &devices {
+            let serial_str = device.get("SerialNumber")
+                .and_then(|v| v.as_i64()).map(|v| v.to_string())
+                .or_else(|| device.get("Serial_ID").and_then(|v| v.as_str()).map(|s| s.to_string()))
+                .unwrap_or_default();
+
+            let show_label = device.get("show_label_name").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
+            let screen_name = device.get("Screen_Name").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
+            let product_name = device.get("Product_Name").or(device.get("Product_name")).and_then(|v| v.as_str());
+            let device_name = show_label.or(screen_name).or(product_name)
+                .unwrap_or("Unknown Device").to_string();
+
+            let product_class_id = device.get("Product_Class_ID").or(device.get("Product_class_ID"))
+                .and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+
+            let (input_total, output_total, var_total) = match product_class_id {
+                74 | 88 => (64, 64, 128),
+                35 => (32, 32, 64),
+                _ => (64, 64, 128),
+            };
+
+            let serial_num: i32 = serial_str.parse().unwrap_or(0);
+            let input_count = mssql_generic_crud::count_by_device(pool, "INPUTS", serial_num).await.unwrap_or(0) as i32;
+            let output_count = mssql_generic_crud::count_by_device(pool, "OUTPUTS", serial_num).await.unwrap_or(0) as i32;
+            let var_count = mssql_generic_crud::count_by_device(pool, "VARIABLES", serial_num).await.unwrap_or(0) as i32;
+            let program_count = mssql_generic_crud::count_by_device(pool, "PROGRAMS", serial_num).await.unwrap_or(0) as i32;
+            let schedule_count = mssql_generic_crud::count_by_device(pool, "SCHEDULES", serial_num).await.unwrap_or(0) as i32;
+            let holiday_count = mssql_generic_crud::count_by_device(pool, "HOLIDAYS", serial_num).await.unwrap_or(0) as i32;
+            let pid_count = mssql_generic_crud::count_by_device(pool, "PID_TABLE", serial_num).await.unwrap_or(0) as i32;
+            let graphic_count = mssql_generic_crud::count_by_device(pool, "GRAPHICS", serial_num).await.unwrap_or(0) as i32;
+            let trendlog_count = mssql_generic_crud::count_by_device(pool, "TRENDLOGS", serial_num).await.unwrap_or(0) as i32;
+
+            let calc_percentage = |used: i32, total: i32| -> f32 {
+                if total == 0 { 0.0 } else { (used as f32 / total as f32) * 100.0 }
+            };
+
+            let point_children = vec![
+                ProjectTreeNode { name: format!("Input ({}/{})", input_count, input_total), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("inputs".to_string()), used: Some(input_count), total: Some(input_total), percentage: Some(calc_percentage(input_count, input_total)), children: vec![] },
+                ProjectTreeNode { name: format!("Output ({}/{})", output_count, output_total), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("outputs".to_string()), used: Some(output_count), total: Some(output_total), percentage: Some(calc_percentage(output_count, output_total)), children: vec![] },
+                ProjectTreeNode { name: format!("Variable ({}/{})", var_count, var_total), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("variables".to_string()), used: Some(var_count), total: Some(var_total), percentage: Some(calc_percentage(var_count, var_total)), children: vec![] },
+                ProjectTreeNode { name: format!("Program ({}/16)", program_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("programs".to_string()), used: Some(program_count), total: Some(16), percentage: Some(calc_percentage(program_count, 16)), children: vec![] },
+                ProjectTreeNode { name: format!("PID Loop ({}/16)", pid_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("pidloops".to_string()), used: Some(pid_count), total: Some(16), percentage: Some(calc_percentage(pid_count, 16)), children: vec![] },
+                ProjectTreeNode { name: format!("Schedule ({}/8)", schedule_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("schedules".to_string()), used: Some(schedule_count), total: Some(8), percentage: Some(calc_percentage(schedule_count, 8)), children: vec![] },
+                ProjectTreeNode { name: format!("Holiday ({}/4)", holiday_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("holidays".to_string()), used: Some(holiday_count), total: Some(4), percentage: Some(calc_percentage(holiday_count, 4)), children: vec![] },
+                ProjectTreeNode { name: format!("Graphic ({}/16)", graphic_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("graphics".to_string()), used: Some(graphic_count), total: Some(16), percentage: Some(calc_percentage(graphic_count, 16)), children: vec![] },
+                ProjectTreeNode { name: format!("Trendlog ({}/12)", trendlog_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("trendlogs".to_string()), used: Some(trendlog_count), total: Some(12), percentage: Some(calc_percentage(trendlog_count, 12)), children: vec![] },
+            ];
+
+            device_nodes.push(ProjectTreeNode {
+                name: device_name,
+                node_type: "device".to_string(),
+                serial_number: Some(serial_str),
+                status: Some("offline".to_string()),
+                point_type: None, used: None, total: None, percentage: None,
+                children: point_children,
+            });
+        }
+
+        let root_node = ProjectTreeNode {
+            name: "Point List".to_string(),
+            node_type: "root".to_string(),
+            serial_number: None, status: None, point_type: None, used: None, total: None, percentage: None,
+            children: vec![ProjectTreeNode {
+                name: "System List".to_string(),
+                node_type: "system".to_string(),
+                serial_number: None, status: None, point_type: None, used: None, total: None, percentage: None,
+                children: device_nodes,
+            }],
+        };
+
+        return Ok(Json(root_node));
+    }
+
     let db = get_t3_device_conn!(state);
 
     // Get all devices - Sort by show_label_name/Screen_Name to match Equipment View
     let devices_query = Statement::from_string(
-        DatabaseBackend::Sqlite,
+        db.get_database_backend(),
         "SELECT SerialNumber, Product_Name, Product_Class_ID, show_label_name, Screen_Name
          FROM DEVICES
          ORDER BY COALESCE(show_label_name, Screen_Name, Product_Name)".to_string()

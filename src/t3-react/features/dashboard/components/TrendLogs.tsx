@@ -1,144 +1,289 @@
 /**
  * Trend Logs Widget
- * Shows recent trend log data with sample chart
+ * Shows real trendlog data for the last 24 hours via /api/database/trendlog/query
  */
 
-import React, { useEffect, useRef } from 'react';
-import { Text } from '@fluentui/react-components';
+import React, { useEffect, useRef, useState } from 'react';
+import { Spinner } from '@fluentui/react-components';
+import { ErrorCircleRegular } from '@fluentui/react-icons';
 import * as echarts from 'echarts';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './TrendLogs.module.css';
+
+interface TrendlogRecord {
+  logging_time_fmt: string;
+  value: string;
+  point_id: string;
+  point_type: string;
+  serial_number: number;
+  panel_id: number;
+}
+
+interface DeviceSummary {
+  serial: number;
+  panel: number;
+  records: number;
+  points: number;
+  lastSampleTs: number;
+}
+
+interface TrendSummary {
+  trackedPoints: number;
+  sampledPoints: number;
+  totalRecords: number;
+  recordsLastHour: number;
+  lastSampleTs: number | null;
+  devices: DeviceSummary[];
+}
 
 export const TrendLogs: React.FC = () => {
   const chartRef = useRef<HTMLDivElement>(null);
-
-  // Mock data - replace with API call
-  const trendLogs = [
-    { id: '1', name: 'Temperature - Zone A', lastUpdate: '2 min ago', points: 245 },
-    { id: '2', name: 'Humidity - Main Hall', lastUpdate: '5 min ago', points: 180 },
-    { id: '3', name: 'Pressure - HVAC System', lastUpdate: '8 min ago', points: 320 },
-  ];
+  const chartInstanceRef = useRef<echarts.ECharts | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<TrendSummary>({
+    trackedPoints: 0,
+    sampledPoints: 0,
+    totalRecords: 0,
+    recordsLastHour: 0,
+    lastSampleTs: null,
+    devices: [],
+  });
 
   useEffect(() => {
-    if (!chartRef.current) return;
+    let disposed = false;
+    let resizeObserver: ResizeObserver | null = null;
 
-    const chart = echarts.init(chartRef.current);
-
-    // Generate sample data - 24 hours
-    const now = Date.now();
-    const tempData: [number, number][] = [];
-    const humidityData: [number, number][] = [];
-
-    for (let i = 0; i < 24; i++) {
-      const time = now - (24 - i) * 3600000; // Last 24 hours
-      tempData.push([time, 20 + Math.random() * 5 + Math.sin(i / 4) * 3]);
-      humidityData.push([time, 50 + Math.random() * 10 + Math.cos(i / 3) * 8]);
-    }
-
-    const option: echarts.EChartsOption = {
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: {
-          type: 'cross',
-        },
-        textStyle: {
-          fontSize: 11,
-        },
-      },
-      grid: {
-        left: '50',
-        right: '40',
-        top: '30',
-        bottom: '30',
-      },
-      xAxis: {
-        type: 'time',
-        axisLabel: {
-          fontSize: 10,
-          formatter: (value: number) => {
-            const date = new Date(value);
-            return date.getHours() + ':00';
-          },
-        },
-      },
-      yAxis: [
-        {
-          type: 'value',
-          name: 'Temp (°C)',
-          nameTextStyle: {
-            fontSize: 10,
-          },
-          axisLabel: {
-            fontSize: 10,
-          },
-          splitLine: {
-            lineStyle: {
-              type: 'dashed',
-              color: '#e0e0e0',
-            },
-          },
-        },
-        {
-          type: 'value',
-          name: 'Humidity (%)',
-          nameTextStyle: {
-            fontSize: 10,
-          },
-          axisLabel: {
-            fontSize: 10,
-          },
-          splitLine: {
-            show: false,
-          },
-        },
-      ],
-      series: [
-        {
-          name: 'Temperature',
-          type: 'line',
-          data: tempData,
-          smooth: true,
-          lineStyle: {
-            width: 2,
-            color: '#0078d4',
-          },
-          itemStyle: {
-            color: '#0078d4',
-          },
-          showSymbol: false,
-          yAxisIndex: 0,
-        },
-        {
-          name: 'Humidity',
-          type: 'line',
-          data: humidityData,
-          smooth: true,
-          lineStyle: {
-            width: 2,
-            color: '#107c10',
-          },
-          itemStyle: {
-            color: '#107c10',
-          },
-          showSymbol: false,
-          yAxisIndex: 1,
-        },
-      ],
+    const disposeChart = () => {
+      resizeObserver?.disconnect();
+      resizeObserver = null;
+      chartInstanceRef.current?.dispose();
+      chartInstanceRef.current = null;
     };
 
-    chart.setOption(option);
+    const waitForChartSize = async (element: HTMLDivElement) => {
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        if (disposed) {
+          return false;
+        }
 
-    const handleResize = () => chart.resize();
-    window.addEventListener('resize', handleResize);
+        const { width, height } = element.getBoundingClientRect();
+        if (width > 0 && height > 0) {
+          return true;
+        }
+
+        await new Promise<void>((resolve) => {
+          requestAnimationFrame(() => resolve());
+        });
+      }
+
+      return false;
+    };
+
+    const fetchAndDraw = async () => {
+      if (!chartRef.current) return;
+      setLoading(true);
+      setError(null);
+
+      const now = new Date();
+      const start = new Date(now.getTime() - 24 * 3600 * 1000);
+      const fmt = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+
+      try {
+        const resp = await fetch(`${API_BASE_URL}/api/database/trendlog/query`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ start_date: fmt(start), end_date: fmt(now) }),
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data: TrendlogRecord[] = await resp.json();
+        if (!chartRef.current || disposed) return;
+
+        const parsed = data
+          .map((r) => ({
+            ...r,
+            ts: new Date(r.logging_time_fmt).getTime(),
+            num: Number.parseFloat(r.value),
+          }))
+          .filter((r) => Number.isFinite(r.ts) && Number.isFinite(r.num));
+
+        const nowTs = Date.now();
+        const oneHourAgo = nowTs - 60 * 60 * 1000;
+        const activeWindowAgo = nowTs - 2 * 60 * 60 * 1000;
+
+        const pointMap = new Map<string, { count: number; lastTs: number; serial: number; panel: number; pts: [number, number][]; name: string }>();
+        const deviceMap = new Map<number, { panel: number; records: number; points: Set<string>; lastTs: number }>();
+        let lastSampleTs: number | null = null;
+        let recordsLastHour = 0;
+
+        for (const rec of parsed) {
+          if (rec.ts >= oneHourAgo) recordsLastHour += 1;
+          if (lastSampleTs === null || rec.ts > lastSampleTs) lastSampleTs = rec.ts;
+
+          const pointKey = `${rec.point_type}:${rec.point_id}:${rec.serial_number}`;
+          const pointName = `${rec.point_type ?? 'PT'} ${rec.point_id} | SN-${rec.serial_number}`;
+          const p = pointMap.get(pointKey) ?? {
+            count: 0,
+            lastTs: 0,
+            serial: rec.serial_number,
+            panel: rec.panel_id,
+            pts: [],
+            name: pointName,
+          };
+          p.count += 1;
+          if (rec.ts > p.lastTs) p.lastTs = rec.ts;
+          p.pts.push([rec.ts, rec.num]);
+          pointMap.set(pointKey, p);
+
+          const d = deviceMap.get(rec.serial_number) ?? {
+            panel: rec.panel_id,
+            records: 0,
+            points: new Set<string>(),
+            lastTs: 0,
+          };
+          d.records += 1;
+          d.points.add(pointKey);
+          if (rec.ts > d.lastTs) d.lastTs = rec.ts;
+          deviceMap.set(rec.serial_number, d);
+        }
+
+        const trackedPoints = pointMap.size;
+        const sampledPoints = Array.from(pointMap.values()).filter((p) => p.lastTs >= activeWindowAgo).length;
+        const devices = Array.from(deviceMap.entries())
+          .map(([serial, d]) => ({
+            serial,
+            panel: d.panel,
+            records: d.records,
+            points: d.points.size,
+            lastSampleTs: d.lastTs,
+          }))
+          .sort((a, b) => b.records - a.records)
+          .slice(0, 5);
+
+        setSummary({
+          trackedPoints,
+          sampledPoints,
+          totalRecords: parsed.length,
+          recordsLastHour,
+          lastSampleTs,
+          devices,
+        });
+
+        if (parsed.length === 0) {
+          disposeChart();
+          setError('No trendlog data in the last 24 hours');
+          setLoading(false);
+          return;
+        }
+
+        const colors = ['#0078d4', '#107c10', '#f7630c', '#8764b8', '#00b7c3'];
+        const topSeries = Array.from(pointMap.values())
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 3);
+
+        const series: echarts.SeriesOption[] = topSeries.map((s, i) => ({
+          name: s.name,
+          type: 'line' as const,
+          data: s.pts.sort((a, b) => a[0] - b[0]),
+          smooth: true,
+          lineStyle: { width: 2, color: colors[i % colors.length] },
+          itemStyle: { color: colors[i % colors.length] },
+          showSymbol: false,
+        }));
+
+        if (!chartRef.current || disposed) return;
+
+        if (!chartRef.current || disposed) return;
+
+        const chartReady = await waitForChartSize(chartRef.current);
+        if (!chartReady || !chartRef.current || disposed) {
+          return;
+        }
+
+        disposeChart();
+        chartInstanceRef.current = echarts.init(chartRef.current);
+
+        const option: echarts.EChartsOption = {
+          tooltip: { trigger: 'axis', textStyle: { fontSize: 11 } },
+          legend: { top: 2, textStyle: { fontSize: 10 }, data: series.map((s) => s.name) },
+          grid: { left: 48, right: 16, top: 28, bottom: 28 },
+          xAxis: {
+            type: 'time',
+            axisLabel: { fontSize: 10, formatter: (v: number) => new Date(v).getHours() + ':00' },
+          },
+          yAxis: { type: 'value', axisLabel: { fontSize: 10 }, splitLine: { lineStyle: { type: 'dashed', color: '#e0e0e0' } } },
+          series,
+        };
+
+        chartInstanceRef.current.setOption(option);
+        setLoading(false);
+
+        resizeObserver = new ResizeObserver(() => chartInstanceRef.current?.resize());
+        resizeObserver.observe(chartRef.current);
+        chartInstanceRef.current.resize();
+      } catch (err) {
+        disposeChart();
+        setError(err instanceof Error ? err.message : 'Failed to load trendlog data');
+        setLoading(false);
+      }
+    };
+
+    fetchAndDraw();
 
     return () => {
-      window.removeEventListener('resize', handleResize);
-      chart.dispose();
+      disposed = true;
+      disposeChart();
     };
   }, []);
 
   return (
     <div className={styles.container}>
-      <div ref={chartRef} className={styles.chart}></div>
+      <div className={styles.summaryGrid}>
+        <div className={styles.summaryItem}>
+          <div className={styles.summaryLabel}>Tracked</div>
+          <div className={styles.summaryValue}>{summary.trackedPoints}</div>
+        </div>
+        <div className={styles.summaryItem}>
+          <div className={styles.summaryLabel}>Sampling Active</div>
+          <div className={styles.summaryValue}>{summary.sampledPoints}</div>
+        </div>
+        <div className={styles.summaryItem}>
+          <div className={styles.summaryLabel}>Records (24h)</div>
+          <div className={styles.summaryValue}>{summary.totalRecords}</div>
+        </div>
+        <div className={styles.summaryItem}>
+          <div className={styles.summaryLabel}>Last Sample</div>
+          <div className={styles.summaryValueSmall}>{summary.lastSampleTs ? new Date(summary.lastSampleTs).toLocaleTimeString() : 'N/A'}</div>
+        </div>
+      </div>
+
+      {summary.devices.length > 0 && (
+        <div className={styles.deviceRows}>
+          {summary.devices.map((d) => (
+            <div key={d.serial} className={styles.deviceRow}>
+              <span className={styles.deviceName}>SN-{d.serial} (P{d.panel})</span>
+              <span className={styles.deviceMeta}>{d.points} pts</span>
+              <span className={styles.deviceMeta}>{d.records} rec</span>
+              <span className={styles.deviceMeta}>{new Date(d.lastSampleTs).toLocaleTimeString()}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {loading && (
+        <div className={styles.loading}>
+          <Spinner size="tiny" />
+          <span>Loading…</span>
+        </div>
+      )}
+      {error && !loading && (
+        <div className={styles.error}>
+          <ErrorCircleRegular style={{ fontSize: '14px', flexShrink: 0 }} />
+          <span>{error}</span>
+        </div>
+      )}
+      <div ref={chartRef} className={`${styles.chartArea} ${loading || error ? styles.chartHidden : ''}`} />
     </div>
   );
 };

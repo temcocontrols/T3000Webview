@@ -132,7 +132,7 @@ export const DiscoverPage: React.FC = () => {
   // Display data with 10 empty rows when no devices
   const displayDevices = React.useMemo(() => {
     if (devices.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         id: '',
         model: '',
         building: '',
@@ -369,6 +369,21 @@ export const DiscoverPage: React.FC = () => {
               <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
+                  {/* Search Input Box */}
+                  <div className={styles.searchInputWrapper}>
+                    <SearchRegular className={styles.searchIcon} />
+                    <input
+                      className={styles.searchInput}
+                      type="text"
+                      placeholder="Search devices..."
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      spellCheck="false"
+                      role="searchbox"
+                      aria-label="Search devices"
+                    />
+                  </div>
+
                   <button
                     className={styles.toolbarButton}
                     onClick={handleRefresh}
@@ -379,6 +394,8 @@ export const DiscoverPage: React.FC = () => {
                     <ArrowSyncRegular />
                     <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
 
                   <button
                     className={styles.toolbarButton}
@@ -401,20 +418,6 @@ export const DiscoverPage: React.FC = () => {
                     <DeleteRegular />
                     <span>Delete Device</span>
                   </button>
-
-                  <div className={styles.searchInputWrapper}>
-                    <SearchRegular className={styles.searchIcon} />
-                    <input
-                      className={styles.searchInput}
-                      type="text"
-                      placeholder="Search devices..."
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                      spellCheck="false"
-                      role="searchbox"
-                      aria-label="Search devices"
-                    />
-                  </div>
                 </div>
               </div>
 
@@ -451,49 +454,6 @@ export const DiscoverPage: React.FC = () => {
                     items={displayDevices}
                     columns={columns}
                     sortable
-                    resizableColumns
-                    columnSizingOptions={{
-                      model: {
-                        minWidth: 150,
-                        defaultWidth: 200,
-                      },
-                      building: {
-                        minWidth: 100,
-                        defaultWidth: 130,
-                      },
-                      floor: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      room: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      subnet: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      serialNumber: {
-                        minWidth: 100,
-                        defaultWidth: 120,
-                      },
-                      ipAddress: {
-                        minWidth: 120,
-                        defaultWidth: 150,
-                      },
-                      port: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      protocol: {
-                        minWidth: 100,
-                        defaultWidth: 120,
-                      },
-                      modbusId: {
-                        minWidth: 60,
-                        defaultWidth: 80,
-                      },
-                    }}
                     focusMode="composite"
                   >
                     <DataGridHeader>

@@ -20,12 +20,15 @@ import {
 } from '../data/rangeData';
 import styles from './RangeSelectionDrawer.module.css';
 
+// Display offset: analog display number = C++ value + 30 (so digital 1-30 and analog 31+ don't overlap visually)
+const ANALOG_DISPLAY_OFFSET = 30;
+
 interface RangeSelectionDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   currentRange: number;
-  digitalAnalog: number; // BAC_UNITS_ANALOG (0) or BAC_UNITS_DIGITAL (1)
-  onSave: (newRange: number) => void;
+  digitalAnalog: number; // BAC_UNITS_DIGITAL (0) or BAC_UNITS_ANALOG (1)
+  onSave: (newRange: number, newDigitalAnalog: number) => void;
   inputLabel?: string;
 }
 
@@ -37,26 +40,60 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
   onSave,
   inputLabel,
 }) => {
+  // selectedRange holds the C++ value (0-30 digital, 0-39 analog)
   const [selectedRange, setSelectedRange] = useState<number>(currentRange);
-  const [manualInput, setManualInput] = useState<string>(currentRange.toString());
-  const [tempUnit, setTempUnit] = useState<string>('55'); // Default to °C
+  // manualInput shows the DISPLAY number (analog = C++ value + 30)
+  const [manualInput, setManualInput] = useState<string>(() =>
+    digitalAnalog === 1 && currentRange > 0
+      ? (currentRange + ANALOG_DISPLAY_OFFSET).toString()
+      : currentRange.toString()
+  );
+  // Track which section (digital vs analog) the selection belongs to, since range numbers
+  // overlap between digital (0-30) and analog (0-39) namespaces in C++
+  const [selectedSection, setSelectedSection] = useState<'digital' | 'analog'>(() =>
+    digitalAnalog === 0 ? 'digital' : 'analog'
+  );
+  // Temp sensors: C++ native indices — odd = °C, even = °F (values 1-10)
+  const [useFahrenheit, setUseFahrenheit] = useState<boolean>(() =>
+    currentRange >= 1 && currentRange <= 10 ? currentRange % 2 === 0 : false
+  );
+
+  // Convert C++ value to display number
+  const cppToDisplay = (cppValue: number, isAnalog: boolean): string =>
+    (isAnalog && cppValue > 0 ? cppValue + ANALOG_DISPLAY_OFFSET : cppValue).toString();
 
   const handleSave = () => {
-    onSave(selectedRange);
+    const newDigitalAnalog = selectedSection === 'analog' ? 1 : 0;
+    onSave(selectedRange, newDigitalAnalog);
     onClose();
   };
 
   const handleCancel = () => {
-    setSelectedRange(currentRange); // Reset to original
-    setManualInput(currentRange.toString());
+    setSelectedRange(currentRange);
+    const section = digitalAnalog === 0 ? 'digital' : 'analog';
+    setManualInput(cppToDisplay(currentRange, section === 'analog'));
+    setSelectedSection(section);
+    setUseFahrenheit(currentRange >= 1 && currentRange <= 10 ? currentRange % 2 === 0 : false);
     onClose();
   };
 
+  // Manual input accepts DISPLAY numbers: 0=unused, 1-30=digital, 31-69=analog (cpp=display-30), 101-104=MSV
   const handleManualInputChange = (value: string) => {
     setManualInput(value);
-    const numValue = parseInt(value, 10);
-    if (!isNaN(numValue) && numValue >= 0 && numValue <= 64) {
-      setSelectedRange(numValue);
+    const displayNum = parseInt(value, 10);
+    if (isNaN(displayNum) || displayNum < 0) return;
+    if (displayNum === 0) {
+      setSelectedRange(0);
+      setSelectedSection('digital');
+    } else if (displayNum >= 1 && displayNum <= 30) {
+      setSelectedRange(displayNum);
+      setSelectedSection('digital');
+    } else if (displayNum >= 31 && displayNum <= 69) {
+      setSelectedRange(displayNum - ANALOG_DISPLAY_OFFSET);
+      setSelectedSection('analog');
+    } else if (displayNum >= 101 && displayNum <= 104) {
+      setSelectedRange(displayNum);
+      setSelectedSection('digital');
     }
   };
 
@@ -64,22 +101,62 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
   React.useEffect(() => {
     if (isOpen) {
       setSelectedRange(currentRange);
-      setManualInput(currentRange.toString());
+      const section = digitalAnalog === 0 ? 'digital' : 'analog';
+      setManualInput(cppToDisplay(currentRange, section === 'analog'));
+      setSelectedSection(section);
+      setUseFahrenheit(currentRange >= 1 && currentRange <= 10 ? currentRange % 2 === 0 : false);
     }
-  }, [isOpen, currentRange]);
+  }, [isOpen, currentRange, digitalAnalog]);
 
-  // Determine the type based on selected value
+  // Determine the type based on selected value and current section
   const getDigitalAnalogForValue = (value: number): number => {
-    // Digital ranges: 1-30, 100-103
-    if ((value >= 1 && value <= 30) || (value >= 100 && value <= 103)) {
-      return 1; // BAC_UNITS_DIGITAL
-    }
-    // Everything else is analog
-    return 0; // BAC_UNITS_ANALOG
+    // Use the selected section to disambiguate overlapping ranges
+    if (selectedSection === 'analog') return 1; // BAC_UNITS_ANALOG
+    if (selectedSection === 'digital') return 0; // BAC_UNITS_DIGITAL
+    return digitalAnalog;
   };
 
   // Get current range label with correct type
   const currentRangeLabel = getRangeLabel(selectedRange, getDigitalAnalogForValue(selectedRange));
+
+  // Temp sensor helpers — C++ native: odd = °C, even = °F, range 1–10
+  const isTempSensorRange = (range: number) => range >= 1 && range <= 10;
+  const getTempBase = (range: number) => range % 2 === 0 ? range - 1 : range;
+
+  // Unified RadioGroup value: analog values use 'a' prefix to avoid collision with
+  // digital values 1–30 within the shared RadioGroup (e.g. 'a1' = 3K YSI, 'a3' = 10K Type2)
+  // Range 0 (Unused) is always "0" regardless of digital/analog section
+  const radioGroupValue = selectedRange === 0
+    ? '0'
+    : selectedSection === 'analog'
+      ? (isTempSensorRange(selectedRange) ? 'a' + getTempBase(selectedRange) : 'a' + selectedRange)
+      : selectedRange.toString();
+
+  // Single onChange handler for the unified RadioGroup
+  const handleRadioChange = (_: React.ChangeEvent<HTMLInputElement>, data: { value: string }) => {
+    const v = data.value;
+    if (v.startsWith('a')) {
+      // Analog value — 'a' prefix with C++ value
+      const cppValue = parseInt(v.slice(1));
+      // Temp sensors (1-10): apply °C/°F based on useFahrenheit
+      if (cppValue >= 1 && cppValue <= 10) {
+        const base = cppValue % 2 === 0 ? cppValue - 1 : cppValue;
+        const actual = useFahrenheit ? base + 1 : base;
+        setSelectedSection('analog');
+        setSelectedRange(actual);
+        setManualInput((actual + ANALOG_DISPLAY_OFFSET).toString());
+      } else {
+        setSelectedSection('analog');
+        setSelectedRange(cppValue);
+        setManualInput((cppValue + ANALOG_DISPLAY_OFFSET).toString());
+      }
+    } else {
+      const num = parseInt(v);
+      setSelectedSection('digital');
+      setSelectedRange(num);
+      setManualInput(num.toString());
+    }
+  };
 
   return (
     <Drawer
@@ -123,8 +200,8 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
             </div>
             <div className={styles.defaultSection}>
               <RadioGroup
-                value={selectedRange.toString()}
-                onChange={(_, data) => setSelectedRange(Number(data.value))}
+                value={radioGroupValue}
+                onChange={handleRadioChange}
               >
                 <Radio value="0" label="0. Unused" />
               </RadioGroup>
@@ -146,7 +223,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 onChange={(_, data) => handleManualInputChange(data.value)}
                 className={styles.numberInput}
                 min={0}
-                max={64}
+                max={104}
               />
               <div className={styles.currentLabel}>
                 {currentRangeLabel}
@@ -169,10 +246,11 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
         </div>
 
         <RadioGroup
-          value={selectedRange.toString()}
-          onChange={(_, data) => setSelectedRange(Number(data.value))}
+          value={radioGroupValue}
+          onChange={handleRadioChange}
         >
-        {/* Main content: 3-column layout */}
+        {/* Main content: 3-column layout — digital AND analog are in one group so
+            selecting a digital range deselects any analog range and vice versa */}
         <div className={styles.mainContent}>
             <div className={styles.digitalSection}>
               {/* Left column: Digital Units */}
@@ -261,17 +339,10 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
             </div>
 
         </div>
-        </RadioGroup>
-
         {/* Input Analog Units section divider */}
         <div className={styles.sectionDivider}>
           <span className={styles.dividerText}>Input Analog Units</span>
         </div>
-
-        <RadioGroup
-          value={selectedRange.toString()}
-          onChange={(_, data) => setSelectedRange(Number(data.value))}
-        >
         {/* Input Analog Units section - 3 columns like Digital */}
         <div className={styles.analogSection}>
           <div className={styles.analogColumns}>
@@ -285,22 +356,42 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
               <div className={styles.tempSensorsColumn}>
                 <div className={styles.tempTypeRow}>
                   <Checkbox
-                    checked={tempUnit === '55'}
-                    onChange={() => setTempUnit('55')}
+                    checked={!useFahrenheit}
+                    onChange={() => {
+                      if (useFahrenheit && selectedSection === 'analog' && isTempSensorRange(selectedRange)) {
+                        const base = getTempBase(selectedRange);
+                        setSelectedRange(base);
+                        setManualInput((base + ANALOG_DISPLAY_OFFSET).toString());
+                      }
+                      setUseFahrenheit(false);
+                    }}
                     label="°C"
                     className={styles.tempCheckbox}
                   />
                   <Checkbox
-                    checked={tempUnit === '56'}
-                    onChange={() => setTempUnit('56')}
+                    checked={useFahrenheit}
+                    onChange={() => {
+                      if (!useFahrenheit && selectedSection === 'analog' && isTempSensorRange(selectedRange)) {
+                        const base = getTempBase(selectedRange);
+                        const f = base + 1;
+                        setSelectedRange(f);
+                        setManualInput((f + ANALOG_DISPLAY_OFFSET).toString());
+                      }
+                      setUseFahrenheit(true);
+                    }}
                     label="°F"
                     className={styles.tempCheckbox}
                   />
                 </div>
-                <Radio value="1" label="3K YSI 44005" />
-                <Radio value="3" label="10K Type2" />
-                <Radio value="7" label="10K Type3" />
-                <Radio value="5" label="3K Allerton/ASI" />
+                {/* 'a' prefix distinguishes analog from digital values within the shared RadioGroup.
+                    C++ stores: 1=3K YSI °C, 2=°F | 3=10K Type2 °C, 4=°F | 5=3K Allerton °C, 6=°F
+                              | 7=10K Type3 °C, 8=°F | 9=PT 1K °C, 10=°F
+                    Display: C++ value + 30 (°C: 31,33,35,37,39  °F: 32,34,36,38,40) */}
+                <Radio value="a1" label={`${useFahrenheit ? 32 : 31}. 3K YSI 44005`} />
+                <Radio value="a3" label={`${useFahrenheit ? 34 : 33}. 10K Type2`} />
+                <Radio value="a5" label={`${useFahrenheit ? 36 : 35}. 3K Allerton/ASI`} />
+                <Radio value="a7" label={`${useFahrenheit ? 38 : 37}. 10K Type3`} />
+                <Radio value="a9" label={`${useFahrenheit ? 40 : 39}. PT 1K`} />
               </div>
             </div>
 
@@ -313,64 +404,64 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
               </div>
               <div className={styles.otherOptionsGrid}>
                 <div className={styles.rangeOption}>
-                  <Radio value="41" label="41. 0.0 to 5.0 Volts" />
+                  <Radio value="a11" label="41. 0.0 to 5.0 Volts" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="42" label="42. 0.0 to 100 Amps" />
+                  <Radio value="a12" label="42. 0.0 to 100 Amps" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="43" label="43. 4.0 to 20 ma" />
+                  <Radio value="a13" label="43. 4.0 to 20 ma" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="44" label="44. 0.0 to 20 psi" />
+                  <Radio value="a14" label="44. 0.0 to 20 psi" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="45" label="45. Pulse Count (Slow 1Hz)" />
+                  <Radio value="a15" label="45. Pulse Count (Slow 1Hz)" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="46" label="46. 0 to 100 % (0-10V)" />
+                  <Radio value="a16" label="46. 0 to 100 % (0-10V)" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="47" label="47. 0 to 100 % (0-5V)" />
+                  <Radio value="a17" label="47. 0 to 100 % (0-5V)" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="48" label="48. 0 to 100 % (4-20ma)" />
+                  <Radio value="a18" label="48. 0 to 100 % (4-20ma)" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="49" label="49. 0.0 to 10.0 Volts" />
+                  <Radio value="a19" label="49. 0.0 to 10.0 Volts" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="65" label="65. Reserved" />
+                  <Radio value="a35" label="65. Reserved" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="55" label="55. Pulse Count (Fast 100Hz)" />
+                  <Radio value="a25" label="55. Pulse Count (Fast 100Hz)" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="56" label="56. Hz" />
+                  <Radio value="a26" label="56. Frequency" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="57" label="57. Humidity %" />
+                  <Radio value="a27" label="57. Humidity %" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="58" label="58. CO2 PPM" />
+                  <Radio value="a28" label="58. CO2 PPM" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="59" label="59. Revolutions Per Minute" />
+                  <Radio value="a29" label="59. Revolutions Per Minute" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="60" label="60. TVOC PPB" />
+                  <Radio value="a30" label="60. TVOC PPB" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="61" label="61. ug/m3" />
+                  <Radio value="a31" label="61. ug/m3" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="62" label="62. #/cm3" />
+                  <Radio value="a32" label="62. #/cm3" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="63" label="63. dB" />
+                  <Radio value="a33" label="63. dB" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="64" label="64. Lux" />
+                  <Radio value="a34" label="64. Lux" />
                 </div>
               </div>
             </div>
@@ -384,19 +475,19 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
               </div>
               <div className={styles.rangeGroup}>
                 <div className={styles.rangeOption}>
-                  <Radio value="50" label="50. Table 1" />
+                  <Radio value="a20" label="50. Table 1" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="51" label="51. Table 2" />
+                  <Radio value="a21" label="51. Table 2" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="52" label="52. Table 3" />
+                  <Radio value="a22" label="52. Table 3" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="53" label="53. Table 4" />
+                  <Radio value="a23" label="53. Table 4" />
                 </div>
                 <div className={styles.rangeOption}>
-                  <Radio value="54" label="54. Table 5" />
+                  <Radio value="a24" label="54. Table 5" />
                 </div>
               </div>
             </div>

@@ -36,8 +36,6 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
-  ArrowDownloadRegular,
-  SettingsRegular,
   SearchRegular,
   ArrowSortUpRegular,
   ArrowSortDownRegular,
@@ -48,12 +46,14 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
-import { getRangeLabel } from '../data/rangeData';
+import { getRangeLabel, getUnitSymbol } from '../data/rangeData';
 import { API_BASE_URL } from '../../../config/constants';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import { useStatusBarStore } from '../../../store/statusBarStore';
 import { SyncStatusBar } from '../../../shared/components/SyncStatusBar';
 import styles from './VariablesPage.module.css';
+import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 // Types based on Rust entity (variable_points.rs)
 interface VariablePoint {
@@ -68,6 +68,10 @@ interface VariablePoint {
   rangeField?: string;
   calibration?: string;
   sign?: string;
+  calibrationH?: number | string;
+  calibrationL?: number | string;
+  calibrationSign?: string;
+  control?: string;
   filterField?: string;
   status?: string;
   digitalAnalog?: string;
@@ -85,7 +89,8 @@ const VariablesPageDesktop: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
-  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
+  const [dbChecked, setDbChecked] = useState(false);
+  const deviceRefreshedRef = useRef<number | null>(null);
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -144,6 +149,7 @@ const VariablesPageDesktop: React.FC = () => {
       // DON'T clear variables on database fetch error - preserve what we have
     } finally {
       setLoading(false);
+      setDbChecked(true);
     }
   }, [selectedDevice]);
 
@@ -151,20 +157,19 @@ const VariablesPageDesktop: React.FC = () => {
     fetchVariables();
   }, [fetchVariables]);
 
-  // Reset autoRefreshed flag when device changes
+  // Reset auto-refresh state when device changes (don't clear variables to avoid visual flash)
   useEffect(() => {
-    setVariables([]);
     setAutoRefreshed(false);
-    hasAutoRefreshedRef.current = false;
+    setDbChecked(false);
   }, [selectedDevice?.serialNumber]);
 
-  // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
+  // Auto-refresh once per device - ONLY if database is empty after initial DB fetch
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
+    if (!dbChecked || loading || !selectedDevice || autoRefreshed) return;
+    if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
 
-    // Check immediately if database has variable data
     const checkAndRefresh = async () => {
-      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+      deviceRefreshedRef.current = selectedDevice.serialNumber;
 
       if (variables.length > 0) {
         console.log('[VariablesPage] Database has data, skipping auto-refresh');
@@ -200,7 +205,7 @@ const VariablesPageDesktop: React.FC = () => {
     };
 
     checkAndRefresh();
-  }, [loading, selectedDevice, autoRefreshed, fetchVariables, variables.length, setMessage]);
+  }, [dbChecked, loading, selectedDevice, autoRefreshed, fetchVariables, variables.length, setMessage]);
 
   // Handlers
   const handleRefresh = async () => {
@@ -272,12 +277,47 @@ const VariablesPageDesktop: React.FC = () => {
   };
 
   const handleExport = () => {
-    console.log('Export variables to CSV');
+    if (variables.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<VariablePoint>[] = [
+      { header: 'Panel', accessor: v => v.panel },
+      { header: 'Variable', accessor: v => v.variableId },
+      { header: 'Full Label', accessor: v => v.fullLabel },
+      { header: 'Label', accessor: v => v.label },
+      { header: 'Auto/Manual', accessor: v => v.autoManual },
+      { header: 'Value', accessor: v => v.fValue },
+      { header: 'Units', accessor: v => v.units },
+      { header: 'Range', accessor: v => v.rangeField },
+      { header: 'Calibration', accessor: v => v.calibration },
+      { header: 'Sign', accessor: v => v.sign },
+      { header: 'Filter', accessor: v => v.filterField },
+      { header: 'Status', accessor: v => v.status },
+    ];
+    exportToCsv(variables, csvColumns, `variables_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
 
-  const handleSettings = () => {
-    console.log('Settings clicked');
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<VariablePoint>[] = [
+      { header: 'Panel', accessor: v => v.panel, setter: (v, val) => { v.panel = val; } },
+      { header: 'Variable', accessor: v => v.variableId, setter: (v, val) => { v.variableId = val; } },
+      { header: 'Full Label', accessor: v => v.fullLabel, setter: (v, val) => { v.fullLabel = val; } },
+      { header: 'Label', accessor: v => v.label, setter: (v, val) => { v.label = val; } },
+      { header: 'Auto/Manual', accessor: v => v.autoManual, setter: (v, val) => { v.autoManual = val; } },
+      { header: 'Value', accessor: v => v.fValue, setter: (v, val) => { v.fValue = val; } },
+      { header: 'Units', accessor: v => v.units, setter: (v, val) => { v.units = val; } },
+      { header: 'Range', accessor: v => v.rangeField, setter: (v, val) => { v.rangeField = val; } },
+      { header: 'Calibration', accessor: v => v.calibration, setter: (v, val) => { v.calibration = val; } },
+      { header: 'Sign', accessor: v => v.sign, setter: (v, val) => { v.sign = val; } },
+      { header: 'Filter', accessor: v => v.filterField, setter: (v, val) => { v.filterField = val; } },
+      { header: 'Status', accessor: v => v.status, setter: (v, val) => { v.status = val; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ serialNumber: selectedDevice?.serialNumber || 0 } as VariablePoint));
+    setVariables(imported);
   };
+
+  // Register CSV export/import handlers with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   // Auto-scroll to next device when reaching bottom
   const loadNextDevice = useCallback(async () => {
@@ -370,7 +410,7 @@ const VariablesPageDesktop: React.FC = () => {
         serialNumber: serialNumber,
         entryType: 2, // BAC_VAR (VARIABLE)
         entryIndex: parseInt(variableIndex, 10),
-        control: 0,
+        control: parseInt(String(currentVariable.control || '0'), 10),
         value: field === 'fValue' ? parseFloat(newValue || '0') : parseFloat(currentVariable.fValue || '0') / 1000,
         description: field === 'fullLabel' ? newValue : (currentVariable.fullLabel || ''),
         label: currentVariable.label || '',
@@ -378,6 +418,9 @@ const VariablesPageDesktop: React.FC = () => {
         auto_manual: parseInt(currentVariable.autoManual || '0', 10),
         filter: parseInt(currentVariable.filterField || '0', 10),
         digital_analog: currentVariable.digitalAnalog === '1' ? 1 : 0,
+        calibration_sign: parseInt(String(currentVariable.calibrationSign || currentVariable.sign || '0'), 10),
+        calibration_h: parseInt(String(currentVariable.calibrationH || '0'), 10),
+        calibration_l: parseInt(String(currentVariable.calibrationL || '0'), 10),
         decom: 0,
       };
 
@@ -422,6 +465,10 @@ const VariablesPageDesktop: React.FC = () => {
         autoManual: parseInt(currentVariable.autoManual || '0', 10),
         filter: parseInt(currentVariable.filterField || '0', 10),
         digitalAnalog: currentVariable.digitalAnalog === '1' ? 1 : 0,
+        calibrationSign: parseInt(String(currentVariable.calibrationSign || currentVariable.sign || '0'), 10),
+        calibrationH: parseInt(String(currentVariable.calibrationH || '0'), 10),
+        calibrationL: parseInt(String(currentVariable.calibrationL || '0'), 10),
+        control: parseInt(String(currentVariable.control || '0'), 10),
       };
 
       const response = await fetch(
@@ -461,8 +508,8 @@ const VariablesPageDesktop: React.FC = () => {
 
     setIsSaving(true);
     try {
-      // Process for all editable fields (fullLabel, fValue)
-      if (selectedDevice && ['fullLabel', 'fValue'].includes(editingCell.field)) {
+      // Process for all editable fields
+      if (selectedDevice && ['fullLabel', 'label', 'fValue', 'range', 'autoManual'].includes(editingCell.field)) {
         console.log(`=== Updating ${editingCell.field} (Two-Step Process) ===`);
         console.log(`Device: ${selectedDevice.serialNumber}, Variable: ${editingCell.variableIndex}, New Value: "${editValue}"`);
 
@@ -561,11 +608,11 @@ const VariablesPageDesktop: React.FC = () => {
     setRangeDrawerOpen(true);
   };
 
-  const handleRangeSave = async (newRange: number) => {
+  const handleRangeSave = async (newRange: number, newDigitalAnalog: number) => {
     if (!selectedVariableForRange) return;
 
     try {
-      console.log(`[Action 16] Updating Range/Units for Variable ${selectedVariableForRange.variableIndex} (SN: ${selectedVariableForRange.serialNumber})`);
+      console.log(`[Action 16] Updating Range/Units for Variable ${selectedVariableForRange.variableIndex} (SN: ${selectedVariableForRange.serialNumber}), New DigitalAnalog: ${newDigitalAnalog}`);
 
       // Action 16 requires ALL fields
       const payload = {
@@ -574,12 +621,12 @@ const VariablesPageDesktop: React.FC = () => {
         value: parseFloat(selectedVariableForRange.fValue || '0'),
         range: newRange,
         autoManual: parseInt(selectedVariableForRange.autoManual || '0'),
-        control: 0,
+        control: parseInt(String(selectedVariableForRange.control || '0')),
         filter: parseInt(selectedVariableForRange.filterField || '0'),
-        digitalAnalog: selectedVariableForRange.digitalAnalog === '1' ? 1 : 0,
-        calibrationSign: parseInt(selectedVariableForRange.sign || '0'),
-        calibrationH: 0,
-        calibrationL: 0,
+        digitalAnalog: newDigitalAnalog,
+        calibrationSign: parseInt(String(selectedVariableForRange.calibrationSign || selectedVariableForRange.sign || '0')),
+        calibrationH: parseInt(String(selectedVariableForRange.calibrationH || '0')),
+        calibrationL: parseInt(String(selectedVariableForRange.calibrationL || '0')),
       };
 
       console.log('[Action 16] Full payload:', payload);
@@ -606,7 +653,7 @@ const VariablesPageDesktop: React.FC = () => {
         prevVariables.map(variable =>
           variable.serialNumber === selectedVariableForRange.serialNumber &&
           variable.variableIndex === selectedVariableForRange.variableIndex
-            ? { ...variable, rangeField: newRange.toString() }
+            ? { ...variable, rangeField: newRange.toString(), digitalAnalog: newDigitalAnalog.toString() }
             : variable
         )
       );
@@ -637,7 +684,7 @@ const VariablesPageDesktop: React.FC = () => {
   // Display data with 10 empty rows when no variables
   const displayVariables = React.useMemo(() => {
     if (variables.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         serialNumber: selectedDevice?.serialNumber || 0,
         variableId: '',
         variableIndex: '',
@@ -649,6 +696,10 @@ const VariablesPageDesktop: React.FC = () => {
         rangeField: '',
         calibration: '',
         sign: '',
+        calibrationH: '',
+        calibrationL: '',
+        calibrationSign: '',
+        control: '',
         filterField: '',
         status: '',
         digitalAnalog: '',
@@ -662,19 +713,14 @@ const VariablesPageDesktop: React.FC = () => {
   // Helper to identify empty rows
   const isEmptyRow = (item: VariablePoint) => !item.variableIndex && !item.variableId && variables.length === 0;
 
-  // Column definitions matching the sequence: Panel, Variable, Full Label, Label, Auto/Manual, Value, Units
+  // Column definitions matching the sequence: Panel, Variable, Full Label, Label, Value, Units, Auto/Manual
   const columns: TableColumnDefinition<VariablePoint>[] = [
     // 1. Panel ID
     createTableColumn<VariablePoint>({
       columnId: 'panel',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('panel')}>
+        <div className={styles.headerCell}>
           <span>Panel</span>
-          {sortColumn === 'panel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
         </div>
       ),
       renderCell: (item) => (
@@ -853,100 +899,6 @@ const VariablesPageDesktop: React.FC = () => {
         );
       },
     }),
-    // 4. Auto/Manual
-    createTableColumn<VariablePoint>({
-      columnId: 'autoManual',
-      renderHeaderCell: () => (
-        <div className={styles.headerCell}>
-          <span>Auto/Manual</span>
-        </div>
-      ),
-      renderCell: (item) => {
-        if (isEmptyRow(item)) {
-          return <TableCellLayout></TableCellLayout>;
-        }
-
-        // Check if Auto: value could be 'auto', 'Auto', or '1' (Manual is '0')
-        const value = item.autoManual?.toString().toLowerCase();
-        const isAuto = value === 'auto' || value === '1';
-
-        const handleToggle = async () => {
-          const newValue = !isAuto ? '1' : '0';
-          console.log('Auto/Man toggled:', item.serialNumber, item.variableIndex, newValue);
-
-          try {
-            // Find the current variable data to pass all fields for Action 16
-            const currentVariable = variables.find(
-              variable => variable.serialNumber === item.serialNumber && variable.variableIndex === item.variableIndex
-            );
-
-            if (!currentVariable) {
-              throw new Error('Current variable data not found');
-            }
-
-            // Use Action 16 (UPDATE_WEBVIEW_LIST) - requires ALL fields
-            const payload = {
-              fullLabel: currentVariable.fullLabel || '',
-              label: currentVariable.label || '',
-              value: parseFloat(currentVariable.fValue || '0'),
-              range: parseInt(currentVariable.rangeField || '0'),
-              autoManual: parseInt(newValue),
-              control: 0,
-              filter: parseInt(currentVariable.filterField || '0'),
-              digitalAnalog: currentVariable.digitalAnalog === '1' ? 1 : 0,
-              calibrationSign: parseInt(currentVariable.sign || '0'),
-              calibrationH: 0,
-              calibrationL: 0,
-            };
-
-            console.log('[Action 16] Updating Auto/Man:', payload);
-
-            const response = await fetch(
-              `${API_BASE_URL}/api/t3_device/variables/${item.serialNumber}/${item.variableIndex}`,
-              {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-              }
-            );
-
-            if (!response.ok) {
-              const errorText = await response.text();
-              throw new Error(`HTTP ${response.status}: ${errorText}`);
-            }
-
-            const result = await response.json();
-            console.log('[Action 16] Auto/Man updated successfully:', result);
-
-            // Update local state optimistically
-            setVariables(prevVariables =>
-              prevVariables.map(variable =>
-                variable.serialNumber === item.serialNumber && variable.variableIndex === item.variableIndex
-                  ? { ...variable, autoManual: newValue }
-                  : variable
-              )
-            );
-          } catch (error) {
-            console.error('Failed to update Auto/Man:', error);
-            alert(`Failed to update Auto/Man: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          }
-        };
-
-        return (
-          <TableCellLayout>
-            <div
-              onClick={handleToggle}
-              className={styles.switchContainer}
-            >
-              <Switch
-                checked={isAuto}
-                className={styles.switchScale}
-              />
-            </div>
-          </TableCellLayout>
-        );
-      },
-    }),
     // 5. Value
     createTableColumn<VariablePoint>({
       columnId: 'value',
@@ -1004,14 +956,14 @@ const VariablesPageDesktop: React.FC = () => {
                 onDoubleClick={() => handleCellDoubleClick(item, 'fValue', item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '0')}
                 title="Double-click to edit"
               >
-                <Text size={200} weight="regular">{item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}</Text>
+                <span className={styles.valueBadge}>{item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}</span>
               </div>
             )}
           </TableCellLayout>
         );
       },
     }),
-    // 7. Units
+    // 6. Units
     createTableColumn<VariablePoint>({
       columnId: 'units',
       renderHeaderCell: () => (
@@ -1033,6 +985,7 @@ const VariablesPageDesktop: React.FC = () => {
         const rangeValue = item.rangeField ? parseInt(item.rangeField) : 0;
         const digitalAnalog = item.digitalAnalog === '1' ? 1 : 0;
         const rangeLabel = getRangeLabel(rangeValue, digitalAnalog);
+        const unitSymbol = getUnitSymbol(rangeValue, digitalAnalog);
 
         return (
           <TableCellLayout>
@@ -1041,7 +994,101 @@ const VariablesPageDesktop: React.FC = () => {
               className={styles.rangeLink}
               title="Click to change range/units"
             >
-              <Text size={200} weight="regular">{rangeLabel}</Text>
+              <span className={styles.unitBadge}>{unitSymbol !== '---' ? unitSymbol : rangeLabel}</span>
+            </div>
+          </TableCellLayout>
+        );
+      },
+    }),
+    // 7. Auto/Manual
+    createTableColumn<VariablePoint>({
+      columnId: 'autoManual',
+      renderHeaderCell: () => (
+        <div className={styles.headerCell}>
+          <span>Auto/Manual</span>
+        </div>
+      ),
+      renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
+        // Check if Auto: value could be 'auto', 'Auto', or '1' (Manual is '0')
+        const value = item.autoManual?.toString().toLowerCase();
+        const isAuto = value === 'auto' || value === '1';
+
+        const handleToggle = async () => {
+          const newValue = !isAuto ? '1' : '0';
+          console.log('Auto/Man toggled:', item.serialNumber, item.variableIndex, newValue);
+
+          try {
+            // Find the current variable data to pass all fields for Action 16
+            const currentVariable = variables.find(
+              variable => variable.serialNumber === item.serialNumber && variable.variableIndex === item.variableIndex
+            );
+
+            if (!currentVariable) {
+              throw new Error('Current variable data not found');
+            }
+
+            // Use Action 16 (UPDATE_WEBVIEW_LIST) - requires ALL fields
+            const payload = {
+              fullLabel: currentVariable.fullLabel || '',
+              label: currentVariable.label || '',
+              value: parseFloat(currentVariable.fValue || '0'),
+              range: parseInt(currentVariable.rangeField || '0'),
+              autoManual: parseInt(newValue),
+              control: parseInt(String(currentVariable.control || '0')),
+              filter: parseInt(currentVariable.filterField || '0'),
+              digitalAnalog: currentVariable.digitalAnalog === '1' ? 1 : 0,
+              calibrationSign: parseInt(String(currentVariable.calibrationSign || currentVariable.sign || '0')),
+              calibrationH: parseInt(String(currentVariable.calibrationH || '0')),
+              calibrationL: parseInt(String(currentVariable.calibrationL || '0')),
+            };
+
+            console.log('[Action 16] Updating Auto/Man:', payload);
+
+            const response = await fetch(
+              `${API_BASE_URL}/api/t3_device/variables/${item.serialNumber}/${item.variableIndex}`,
+              {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              }
+            );
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            const result = await response.json();
+            console.log('[Action 16] Auto/Man updated successfully:', result);
+
+            // Update local state optimistically
+            setVariables(prevVariables =>
+              prevVariables.map(variable =>
+                variable.serialNumber === item.serialNumber && variable.variableIndex === item.variableIndex
+                  ? { ...variable, autoManual: newValue }
+                  : variable
+              )
+            );
+          } catch (error) {
+            console.error('Failed to update Auto/Man:', error);
+            alert(`Failed to update Auto/Man: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        };
+
+        return (
+          <TableCellLayout>
+            <div
+              onClick={handleToggle}
+              className={styles.switchContainer}
+            >
+              <Switch
+                checked={isAuto}
+                className={styles.switchScale}
+              />
             </div>
           </TableCellLayout>
         );
@@ -1084,43 +1131,6 @@ const VariablesPageDesktop: React.FC = () => {
               <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
-                  {/* Refresh Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleRefreshFromDevice}
-                    disabled={refreshing}
-                    title="Refresh all variables from device"
-                    aria-label="Refresh from Device"
-                  >
-                    <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                  </button>
-
-                  {/* Export to CSV Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    title="Export to CSV"
-                    aria-label="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export to CSV</span>
-                  </button>
-
-                  {/* Toolbar Separator */}
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  {/* Settings Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleSettings}
-                    title="Settings"
-                    aria-label="Settings"
-                  >
-                    <SettingsRegular />
-                    <span>Settings</span>
-                  </button>
-
                   {/* Search Input Box */}
                   <div className={styles.searchInputWrapper}>
                     <SearchRegular className={styles.searchIcon} />
@@ -1135,6 +1145,20 @@ const VariablesPageDesktop: React.FC = () => {
                       aria-label="Search variables"
                     />
                   </div>
+
+                  {/* Refresh Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefreshFromDevice}
+                    disabled={refreshing}
+                    title="Refresh all variables from device"
+                    aria-label="Refresh from Device"
+                  >
+                    <ArrowSyncRegular />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
 
                   {/* Info Button with Tooltip */}
                   <Tooltip
@@ -1199,37 +1223,6 @@ const VariablesPageDesktop: React.FC = () => {
                     items={displayVariables}
                     columns={columns}
                     sortable
-                    resizableColumns
-                    columnSizingOptions={{
-                      variable: {
-                        minWidth: 60,
-                        defaultWidth: 80,
-                      },
-                      panel: {
-                        minWidth: 60,
-                        defaultWidth: 75,
-                      },
-                      fullLabel: {
-                        minWidth: 180,
-                        defaultWidth: 250,
-                      },
-                      label: {
-                        minWidth: 130,
-                        defaultWidth: 170,
-                      },
-                      autoManual: {
-                        minWidth: 90,
-                        defaultWidth: 120,
-                      },
-                      value: {
-                        minWidth: 120,
-                        defaultWidth: 180,
-                      },
-                      units: {
-                        minWidth: 100,
-                        defaultWidth: 150,
-                      },
-                    }}
                   >
                     <DataGridHeader>
                       <DataGridRow>

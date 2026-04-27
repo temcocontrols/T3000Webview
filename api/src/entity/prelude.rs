@@ -9,7 +9,13 @@ pub use super::user::Entity as User;
 
 // Database management entities
 pub use super::application_settings::Entity as ApplicationSettings;
+pub use super::application_config_history::Entity as ApplicationConfigHistory;
 pub use super::database_partitions::Entity as DatabasePartitions;
 pub use super::database_partition_config::Entity as DatabasePartitionConfig;
 pub use super::database_files::Entity as DatabaseFiles;
 pub use super::data_sync_metadata::Entity as DataSyncMetadata;
+pub use super::db_backend_config::Entity as DbBackendConfig;
+
+// Server database
+pub use super::server_client_registry::Entity as ServerClientRegistry;
+pub use super::system_logs::Entity as SystemLogs;

@@ -35,7 +35,6 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
-  ArrowDownloadRegular,
   SettingsRegular,
   SearchRegular,
   ErrorCircleRegular,
@@ -43,6 +42,8 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import styles from './NetworkPage.module.css';
+import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 // Network interface based on C++ Subnetwork structure and device network fields
 interface NetworkItem {
@@ -117,8 +118,37 @@ export const NetworkPage: React.FC = () => {
   };
 
   const handleExport = () => {
-    console.log('Export networks to CSV');
+    if (networks.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<NetworkItem>[] = [
+      { header: 'Network ID', accessor: n => n.networkId },
+      { header: 'Number', accessor: n => n.networkNumber },
+      { header: 'Building Name', accessor: n => n.buildingName },
+      { header: 'Devices', accessor: n => n.deviceCount },
+      { header: 'Status', accessor: n => n.status },
+      { header: 'Protocol', accessor: n => n.protocol },
+      { header: 'Description', accessor: n => n.description },
+    ];
+    exportToCsv(networks, csvColumns, `networks_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
+
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<NetworkItem>[] = [
+      { header: 'Network ID', accessor: n => n.networkId, setter: (n, v) => { n.networkId = v; } },
+      { header: 'Number', accessor: n => n.networkNumber, setter: (n, v) => { n.networkNumber = parseInt(v) || 0; } },
+      { header: 'Building Name', accessor: n => n.buildingName, setter: (n, v) => { n.buildingName = v; } },
+      { header: 'Devices', accessor: n => n.deviceCount, setter: (n, v) => { n.deviceCount = parseInt(v) || 0; } },
+      { header: 'Status', accessor: n => n.status, setter: (n, v) => { n.status = v; } },
+      { header: 'Protocol', accessor: n => n.protocol, setter: (n, v) => { n.protocol = v; } },
+      { header: 'Description', accessor: n => n.description, setter: (n, v) => { n.description = v; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ networkId: '' } as NetworkItem));
+    setNetworks(imported);
+  };
+
+  // Register CSV export/import handlers with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   const handleSettings = () => {
     console.log('Settings clicked');
@@ -133,7 +163,7 @@ export const NetworkPage: React.FC = () => {
   // Display networks with empty rows when no data (show 10 empty rows)
   const displayNetworks = React.useMemo(() => {
     if (networks.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         networkId: '',
         networkNumber: undefined,
         buildingName: '',
@@ -266,43 +296,6 @@ export const NetworkPage: React.FC = () => {
               <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
-                  {/* Refresh Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleRefresh}
-                    disabled={loading}
-                    title="Refresh"
-                    aria-label="Refresh"
-                  >
-                    <ArrowSyncRegular />
-                    <span>Refresh</span>
-                  </button>
-
-                  {/* Export to CSV Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    title="Export to CSV"
-                    aria-label="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export to CSV</span>
-                  </button>
-
-                  {/* Toolbar Separator */}
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  {/* Settings Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleSettings}
-                    title="Settings"
-                    aria-label="Settings"
-                  >
-                    <SettingsRegular />
-                    <span>Settings</span>
-                  </button>
-
                   {/* Search Input Box */}
                   <div className={styles.searchInputWrapper}>
                     <SearchRegular className={styles.searchIcon} />
@@ -318,6 +311,20 @@ export const NetworkPage: React.FC = () => {
                     />
                   </div>
 
+                  {/* Refresh Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefresh}
+                    disabled={loading}
+                    title="Refresh"
+                    aria-label="Refresh"
+                  >
+                    <ArrowSyncRegular />
+                    <span>Refresh</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
+
                   {/* Info Button with Tooltip */}
                   {selectedDevice && (
                     <Tooltip
@@ -325,8 +332,7 @@ export const NetworkPage: React.FC = () => {
                       relationship="description"
                     >
                       <button
-                        className={styles.toolbarButton}
-                        style={{ marginLeft: '8px' }}
+                        className={`${styles.toolbarButton} ${styles.marginLeft8}`}
                         title="Information"
                         aria-label="Information about this page"
                       >
@@ -379,37 +385,6 @@ export const NetworkPage: React.FC = () => {
                       items={displayNetworks}
                       columns={columns}
                       sortable
-                      resizableColumns
-                      columnSizingOptions={{
-                        networkId: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        networkNumber: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        buildingName: {
-                          minWidth: 150,
-                          defaultWidth: 200,
-                        },
-                        deviceCount: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        status: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        protocol: {
-                          minWidth: 100,
-                          defaultWidth: 120,
-                        },
-                        description: {
-                          minWidth: 150,
-                          defaultWidth: 250,
-                        },
-                      }}
                     >
                       <DataGridHeader>
                         <DataGridRow>

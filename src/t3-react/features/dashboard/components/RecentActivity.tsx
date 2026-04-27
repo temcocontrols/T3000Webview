@@ -1,106 +1,170 @@
 /**
  * Recent Activity Widget
- * Shows device activity and system events
+ * Shows real sync activity from DATA_SYNC_METADATA via /api/sync-status
  */
 
-import React, { useEffect, useState } from 'react';
-import { Text } from '@fluentui/react-components';
-import { ArrowSyncRegular, EditRegular, SettingsRegular, AlertRegular } from '@fluentui/react-icons';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Text, Spinner } from '@fluentui/react-components';
+import { CheckmarkCircleRegular, DismissCircleRegular, InfoRegular } from '@fluentui/react-icons';
+
+export interface ActivitySummary { ok: number; fail: number; total: number; }
+export interface RecentActivityProps { onSummary?: (s: ActivitySummary) => void; }
+import { API_BASE_URL } from '../../../config/constants';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import styles from './RecentActivity.module.css';
 
-interface Activity {
-  id: string;
-  type: 'sync' | 'update' | 'config' | 'alarm';
-  message: string;
-  device: string;
-  timestamp: string;
-  syncType: string;
-  timeAgo: string;
+interface SyncStatus {
+  id: number;
+  syncTime: number;
+  syncTimeFmt: string;
+  dataType: string;
+  serialNumber: string;
+  recordsSynced: number;
+  syncMethod: string;
+  success: boolean;
+  errorMessage: string | null;
 }
 
-export const RecentActivity: React.FC = () => {
+interface Activity {
+  id: string;
+  device: string;
+  dataType: string;
+  timestamp: string;
+  recordsSynced: number;
+  success: boolean;
+  method: string;
+}
+
+export const RecentActivity: React.FC<RecentActivityProps> = ({ onSummary }) => {
   const { devices } = useDeviceTreeStore();
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState<string | null>(null);
+  const activitiesRef = useRef<Activity[]>([]);
+  const trackedDevices = devices.slice(0, 6);
+  const trackedDeviceKey = trackedDevices.map((device) => `${device.serialNumber}:${device.nameShowOnTree}`).join('|');
 
   useEffect(() => {
-    // Mock recent activities - in production, fetch from API
-    if (devices.length > 0) {
-      const now = new Date();
-      const syncTypes = ['Manual Sync', 'Auto Sync', 'Network Sync', 'Scheduled Sync'];
-      const mockActivities: Activity[] = devices.slice(0, 5).map((device, index) => {
-        const minutesAgo = index * 3 + 2;
-        const activityTime = new Date(now.getTime() - minutesAgo * 60000);
+    activitiesRef.current = activities;
+  }, [activities]);
 
-        // Format: yyyy-mm-dd hh:mm:ss AM/PM
-        const year = activityTime.getFullYear();
-        const month = String(activityTime.getMonth() + 1).padStart(2, '0');
-        const day = String(activityTime.getDate()).padStart(2, '0');
-        const hours = activityTime.getHours();
-        const minutes = String(activityTime.getMinutes()).padStart(2, '0');
-        const seconds = String(activityTime.getSeconds()).padStart(2, '0');
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        const hours12 = hours % 12 || 12;
+  const fetchActivities = useCallback(async () => {
+    if (trackedDevices.length === 0) {
+      setActivities([]);
+      onSummary?.({ ok: 0, fail: 0, total: 0 });
+      setNotice('No devices available for sync activity yet');
+      setLoading(false);
+      return;
+    }
 
-        const timestamp = `${year}-${month}-${day} ${String(hours12).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
-        const timeAgo = minutesAgo < 60 ? `${minutesAgo} min ago` : `${Math.floor(minutesAgo / 60)} hr ago`;
-
-        return {
-          id: `activity-${index}`,
-          type: 'sync',
-          message: 'Synced successfully',
-          device: device.nameShowOnTree,
-          timestamp,
-          timeAgo,
-          syncType: syncTypes[index % syncTypes.length],
-        };
+    try {
+      // One request per device returns all data types, then flatten
+      const requests = trackedDevices.map(async (dev) => {
+        try {
+          const r = await fetch(`${API_BASE_URL}/api/sync-status/${dev.serialNumber}`);
+          if (!r.ok) return { ok: false, items: [] as Activity[] };
+          const data: SyncStatus[] = await r.json();
+          const items = data.map((s) => ({
+            id: `${dev.serialNumber}-${s.dataType}`,
+            device: dev.nameShowOnTree,
+            dataType: s.dataType,
+            timestamp: s.syncTimeFmt,
+            recordsSynced: s.recordsSynced,
+            success: s.success,
+            method: s.syncMethod,
+          } as Activity));
+          return { ok: true, items };
+        } catch {
+          return { ok: false, items: [] as Activity[] };
+        }
       });
-      setActivities(mockActivities);
-    }
-  }, [devices]);
 
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'sync':
-        return <ArrowSyncRegular className={styles.icon} style={{ color: '#0078d4' }} />;
-      case 'update':
-        return <EditRegular className={styles.icon} style={{ color: '#107c10' }} />;
-      case 'config':
-        return <SettingsRegular className={styles.icon} style={{ color: '#8764b8' }} />;
-      case 'alarm':
-        return <AlertRegular className={styles.icon} style={{ color: '#d13438' }} />;
-      default:
-        return <ArrowSyncRegular className={styles.icon} style={{ color: '#605e5c' }} />;
+      const settled = await Promise.all(requests);
+      const anyFailure = settled.some((x) => !x.ok);
+      const valid = settled
+        .flatMap((x) => x.items)
+        .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+        .slice(0, 10);
+
+      if (valid.length > 0) {
+        setActivities(valid);
+        onSummary?.({ ok: valid.filter(a => a.success).length, fail: valid.filter(a => !a.success).length, total: valid.length });
+        setNotice(anyFailure ? 'Partial refresh: some devices did not return activity' : null);
+      } else {
+        if (activitiesRef.current.length > 0) {
+          // Keep last known real data; do not replace with mock.
+          setNotice('Unable to refresh right now; showing last known activity');
+          onSummary?.({ ok: activitiesRef.current.filter(a => a.success).length, fail: activitiesRef.current.filter(a => !a.success).length, total: activitiesRef.current.length });
+        } else {
+          setActivities([]);
+          onSummary?.({ ok: 0, fail: 0, total: 0 });
+          setNotice(anyFailure ? 'Unable to load recent sync activity' : 'No recent sync activity');
+        }
+      }
+    } catch {
+      if (activitiesRef.current.length > 0) {
+        setNotice('Unable to refresh right now; showing last known activity');
+        onSummary?.({ ok: activitiesRef.current.filter(a => a.success).length, fail: activitiesRef.current.filter(a => !a.success).length, total: activitiesRef.current.length });
+      } else {
+        setActivities([]);
+        onSummary?.({ ok: 0, fail: 0, total: 0 });
+        setNotice('Unable to load recent sync activity');
+      }
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [trackedDeviceKey, onSummary]);
+
+  useEffect(() => {
+    fetchActivities();
+    const id = setInterval(fetchActivities, 60_000);
+    return () => clearInterval(id);
+  }, [fetchActivities]);
+
+  if (loading) {
+    return (
+      <div className={`${styles.container} ${styles.loadingState}`}>
+        <Spinner size="small" />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
+      {notice && (
+        <div className={styles.infoBar}>
+          <InfoRegular className={styles.infoBarIcon} />
+          <Text className={styles.infoBarText}>{notice}</Text>
+        </div>
+      )}
       {activities.length === 0 ? (
         <div className={styles.emptyState}>
-          <Text className={styles.emptyText}>No recent activity</Text>
+          {!notice && <Text className={styles.emptyText}>No recent sync activity</Text>}
         </div>
       ) : (
-        <div className={styles.activityList}>
-          {activities.map((activity) => (
+        <>
+          <div className={styles.activityList}>
+          {activities.slice(0, 5).map((activity) => (
             <div key={activity.id} className={styles.activityItem}>
-              <div className={styles.activityIcon}>{getActivityIcon(activity.type)}</div>
-              <div className={styles.activityContent}>
-                <div className={styles.activityTop}>
-                  <div className={styles.activityDevice}>{activity.device}</div>
-                  <div className={styles.activityMessage}>{activity.message}</div>
-                </div>
-                <div className={styles.activityTimeInfo}>
-                  <span className={styles.activityTimestamp}>{activity.timestamp}</span>
-                  <span className={styles.timeDivider}>•</span>
-                  <span className={styles.activityTime}>{activity.timeAgo}</span>
-                  <span className={styles.timeDivider}>•</span>
-                  <span className={styles.activitySyncType}>{activity.syncType}</span>
-                </div>
+              <div className={styles.activityStatus}>
+                {activity.success
+                  ? <CheckmarkCircleRegular style={{ fontSize: '14px', color: '#107c10' }} />
+                  : <DismissCircleRegular style={{ fontSize: '14px', color: '#d13438' }} />}
+              </div>
+              <div className={styles.activityDevice}>{activity.device}</div>
+              <div className={styles.activityDataType}>{activity.dataType}</div>
+              <div className={styles.activityMessage}>
+                {activity.success
+                  ? `${activity.recordsSynced} records`
+                  : 'Sync failed'}
+              </div>
+              <div className={styles.activityTimestamp}>
+                {activity.timestamp}
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

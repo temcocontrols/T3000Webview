@@ -22,7 +22,7 @@ export function useDocNavigation(initialPath: string = 't3000/quick-start/overvi
 
   const [currentPath, setCurrentPath] = useState<string>(getDocPathFromUrl());
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set(['Quick Start'])
+    new Set(['Shared DB'])
   );
 
   // Auto-expand section based on current path
@@ -31,8 +31,15 @@ export function useDocNavigation(initialPath: string = 't3000/quick-start/overvi
     setCurrentPath(pathFromUrl);
 
     // Auto-expand the section containing the current page
-    if (pathFromUrl.includes('quick-start')) {
-      setExpandedSections(prev => new Set(prev).add('Quick Start'));
+    if (
+      pathFromUrl.includes('shared-db/sql-server-express-setup') ||
+      pathFromUrl.includes('shared-db/t3000-center-db-config')
+    ) {
+      setExpandedSections(prev => {
+        const next = new Set(prev);
+        next.add('Shared DB');
+        return next;
+      });
     } else if (pathFromUrl.includes('architecture')) {
       setExpandedSections(prev => new Set(prev).add('Architecture'));
     } else if (pathFromUrl.includes('device-management')) {

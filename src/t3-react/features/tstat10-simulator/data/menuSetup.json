@@ -1,0 +1,48 @@
+{
+  "page": "SETUP_MENU",
+  "title": "Setup Menu",
+  "styles": {
+    "bg": "#2c7cc4",
+    "highlight": "#008080",
+    "fontFamily": "'Fira Mono', 'Consolas', monospace",
+    "fontWeight": "900",
+    "fontSize": "26px"
+  },
+  "widgets": [
+    {
+      "type": "menu_row",
+      "id": "ui_item_wifi",
+      "label": "WiFi Setup",
+      "navigateTo": "wifi",
+      "lcdRow": 3
+    },
+    {
+      "type": "menu_row",
+      "id": "ui_item_clock",
+      "label": "Clock",
+      "navigateTo": "clock",
+      "lcdRow": 4
+    },
+    {
+      "type": "menu_row",
+      "id": "ui_item_oat",
+      "label": "Outside Air Temp",
+      "navigateTo": "oat",
+      "lcdRow": 5
+    },
+    {
+      "type": "menu_row",
+      "id": "ui_item_rs485",
+      "label": "RS485 Settings",
+      "navigateTo": "rs485",
+      "lcdRow": 6
+    },
+    {
+      "type": "menu_row",
+      "id": "ui_item_tbd",
+      "label": "To Be Done",
+      "navigateTo": "tbd",
+      "lcdRow": 7
+    }
+  ]
+}

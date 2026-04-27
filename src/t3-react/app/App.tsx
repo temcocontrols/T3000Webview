@@ -10,6 +10,7 @@ import { FluentProvider, webLightTheme, webDarkTheme, Spinner } from '@fluentui/
 import { ErrorBoundary } from '../shared/components/ErrorBoundary';
 import { ThemeProvider } from '../theme/ThemeProvider';
 import { NotificationProvider } from '../shared/components/NotificationCenter';
+import { CsvOperationsProvider } from '../shared/context/CsvOperationsContext';
 import { MainLayout } from '../layout/MainLayout';
 import { MinimalLayout } from '../layout/MinimalLayout';
 import styles from './App.module.css';
@@ -31,7 +32,7 @@ const ProgramsPage = React.lazy(() =>
   import('../features/programs/pages/ProgramsPage').then((m) => ({ default: m.ProgramsPage }))
 );
 const PIDLoopsPage = React.lazy(() =>
-  import('../features/controllers/pages/PIDLoopsPage')
+  import('../features/pidloops/pages/PIDLoopsPage')
 );
 const GraphicsPage = React.lazy(() =>
   import('../features/graphics/pages/GraphicsPage').then((m) => ({ default: m.GraphicsPage }))
@@ -52,7 +53,7 @@ const NetworkPage = React.lazy(() =>
   import('../features/network/pages/NetworkPage').then((m) => ({ default: m.NetworkPage }))
 );
 const ArrayPage = React.lazy(() =>
-  import('../features/controllers/pages/ArrayPage')
+  import('../features/array/pages/ArrayPage')
 );
 const TablesPage = React.lazy(() =>
   import('../features/tables/pages/TablesPage').then((m) => ({ default: m.TablesPage }))
@@ -90,6 +91,23 @@ const DiscoverPage = React.lazy(() =>
 const BuildingsPage = React.lazy(() =>
   import('../features/buildings/pages/BuildingsPage').then((m) => ({ default: m.BuildingsPage }))
 );
+const Tstat10SimulatorPage = React.lazy(() =>
+  Promise.all([
+    import('../features/tstat10-simulator/pages/Tstat10SimulatorPage').then(m => m.Tstat10SimulatorPage),
+    import('../../t3-mobile/features/tstat10-simulator/pages/Tstat10SimulatorPageMobile').then(m => m.Tstat10SimulatorPageMobile),
+  ]).then(([DesktopComp, MobileComp]) => {
+    const ResponsiveWrapper: React.FC = () => {
+      const [isMobile, setIsMobile] = React.useState(() => window.innerWidth < 1200);
+      React.useEffect(() => {
+        const handler = () => setIsMobile(window.innerWidth < 1200);
+        window.addEventListener('resize', handler);
+        return () => window.removeEventListener('resize', handler);
+      }, []);
+      return isMobile ? React.createElement(MobileComp) : React.createElement(DesktopComp);
+    };
+    return { default: ResponsiveWrapper };
+  })
+);
 const HvacDesignerPage = React.lazy(() =>
   import('../features/hvac-designer/pages/HvacDesignerPage').then((m) => ({ default: m.HvacDesignerPage }))
 );
@@ -117,7 +135,13 @@ const SystemLogsPage = React.lazy(() =>
   import('../features/develop/pages/SystemLogsPage').then((m) => ({ default: m.SystemLogsPage }))
 );
 const SyncConfigurationPage = React.lazy(() =>
-  import('../features/system/pages/SyncConfigurationPage').then((m) => ({ default: m.SyncConfigurationPage }))
+  import('../features/develop/pages/SyncConfigurationPage').then((m) => ({ default: m.SyncConfigurationPage }))
+);
+const DatabaseConfigPage = React.lazy(() =>
+  import('../features/database/pages/DatabaseConfigPage')
+);
+const TrendChartPage = React.lazy(() =>
+  import('../features/trendlogs/pages/TrendChartPage').then((m) => ({ default: m.TrendChartPage }))
 );
 
 /**
@@ -148,6 +172,7 @@ export const App: React.FC = () => {
       <ThemeProvider>
         <FluentProvider theme={theme === 'light' ? webLightTheme : webDarkTheme}>
           <NotificationProvider>
+            <CsvOperationsProvider>
             <ErrorBoundary>
               <HashRouter>
               <Routes>
@@ -322,10 +347,34 @@ export const App: React.FC = () => {
                   }
                 />
                 <Route
-                  path="system/sync"
+                  path="developer/sync"
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <SyncConfigurationPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="database/config"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <DatabaseConfigPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="trends/chart"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <TrendChartPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="tstat10-simulator"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <Tstat10SimulatorPage />
                     </React.Suspense>
                   }
                 />
@@ -424,6 +473,7 @@ export const App: React.FC = () => {
               </Routes>
             </HashRouter>
           </ErrorBoundary>
+            </CsvOperationsProvider>
         </NotificationProvider>
       </FluentProvider>
       </ThemeProvider>

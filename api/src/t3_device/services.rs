@@ -23,7 +23,7 @@ pub struct DeviceWithPoints {
     pub point_count: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CreateDeviceRequest {
     #[serde(rename = "SerialNumber", alias = "serialNumber")]
     pub serial_number: Option<i32>,                // T3000: SerialNumber (primary key, renamed from Serial_ID)
@@ -83,7 +83,7 @@ pub struct CreateDeviceRequest {
     pub is_online: Option<bool>,                   // Online status - not in DEVICES table yet
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateDeviceRequest {
     #[serde(rename = "PanelId")]
     pub panel_id: Option<i32>,                      // T3000: PanelId (new column for panel identification)

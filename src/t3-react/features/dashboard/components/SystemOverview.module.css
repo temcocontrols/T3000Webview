@@ -6,6 +6,28 @@
   gap: 16px;
 }
 
+.metaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 8px;
+}
+
+.metaText {
+  font-size: 11px;
+  color: #605e5c;
+}
+
+.metaWarn {
+  font-size: 11px;
+  color: #8a6d00;
+  background: #fff4ce;
+  border: 1px solid #f0d070;
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+
 .loading {
   display: flex;
   justify-content: center;
@@ -19,6 +41,7 @@
   border-radius: 4px;
   padding: 20px 16px;
   display: flex;
+  align-items: stretch;
   transition: all 0.2s ease;
   cursor: pointer;
 }
@@ -30,9 +53,11 @@
 
 .cardContent {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  row-gap: 2px;
+  min-height: 100px;
+  height: 100%;
 }
 
 .cardLabel {
@@ -48,13 +73,33 @@
   font-weight: 600;
   color: #323130;
   line-height: 1;
-  margin-bottom: 8px;
+  margin-bottom: 0;
+}
+
+.cardValueStatus {
+  font-size: 16px;
+}
+
+.cardValueCompact {
+  font-size: 15px;
 }
 
 .cardDetail {
   font-size: 12px;
   color: #605e5c;
-  margin-top: 46;
+  margin-top: 0;
+  align-self: end;
+  line-height: 1.25;
+  min-height: 18px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.debugLine {
+  font-size: 11px;
+  color: #8a8886;
+  align-self: end;
+  line-height: 1.2;
   margin-top: 2px;
 }
 
@@ -62,12 +107,25 @@
   color: #107c10;
 }
 
+.danger {
+  color: #d13438;
+}
+
 .warning {
-  color: #f7630c;
+  color: #c19c00;
 }
 
 .muted {
   color: #8a8886;
+}
+
+.cardDetailMono {
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .link {

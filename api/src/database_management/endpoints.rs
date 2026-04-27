@@ -481,7 +481,7 @@ async fn backup_database(
 async fn get_database_config(
     State(app_state): State<T3AppState>,
 ) -> Result<Json<database_partition_config::DatabasePartitionConfig>> {
-    let db = match &app_state.t3_device_conn {
+    let db = match &app_state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -496,7 +496,7 @@ async fn update_database_config(
 ) -> Result<Json<database_partition_config::DatabasePartitionConfig>> {
     crate::logger::write_structured_log("T3_Database", &format!("[DatabaseConfig] Received update request: strategy={:?}, retention={}:{:?}", config.strategy, config.retention_value, config.retention_unit)).ok();
 
-    let db = match &app_state.t3_device_conn {
+    let db = match &app_state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => {
             crate::logger::write_structured_log_with_level("T3_Database", "[DatabaseConfig] T3 device database not available", crate::logger::LogLevel::Error).ok();
@@ -520,7 +520,7 @@ async fn update_database_config(
 async fn initialize_database_partitioning(
     State(app_state): State<T3AppState>,
 ) -> Result<Json<crate::entity::database_files::DatabaseInitializationResult>> {
-    let db = match &app_state.t3_device_conn {
+    let db = match &app_state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -533,7 +533,7 @@ async fn initialize_database_partitioning(
 async fn apply_partitioning_strategy(
     State(app_state): State<T3AppState>,
 ) -> Result<Json<serde_json::Value>> {
-    let db = match &app_state.t3_device_conn {
+    let db = match &app_state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -551,7 +551,7 @@ async fn apply_partitioning_strategy(
 async fn check_and_apply_partitioning(
     State(app_state): State<T3AppState>,
 ) -> Result<Json<serde_json::Value>> {
-    let db = match &app_state.t3_device_conn {
+    let db = match &app_state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -577,7 +577,7 @@ async fn check_and_apply_partitioning(
 async fn ensure_partitions_on_trendlog_open(
     State(app_state): State<T3AppState>,
 ) -> Result<Json<serde_json::Value>> {
-    let db = match &app_state.t3_device_conn {
+    let db = match &app_state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -600,7 +600,7 @@ async fn ensure_partitions_on_trendlog_open(
 async fn get_database_files(
     State(app_state): State<T3AppState>,
 ) -> Result<Json<Vec<database_files::DatabaseFileInfo>>> {
-    let db = match &app_state.t3_device_conn {
+    let db = match &app_state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -614,7 +614,7 @@ async fn delete_database_file(
     State(app_state): State<T3AppState>,
     Path(file_id): Path<i32>,
 ) -> Result<Json<serde_json::Value>> {
-    let db = match &app_state.t3_device_conn {
+    let db = match &app_state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -647,7 +647,7 @@ async fn cleanup_old_files(
     State(app_state): State<T3AppState>,
     Query(params): Query<CleanupQuery>,
 ) -> Result<Json<CleanupResult>> {
-    let db = match &app_state.t3_device_conn {
+    let db = match &app_state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -660,7 +660,7 @@ async fn cleanup_old_files(
 async fn cleanup_all_files(
     State(app_state): State<T3AppState>,
 ) -> Result<Json<CleanupResult>> {
-    let db = match &app_state.t3_device_conn {
+    let db = match &app_state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -672,7 +672,7 @@ async fn cleanup_all_files(
 async fn optimize_database(
     State(app_state): State<T3AppState>,
 ) -> Result<Json<serde_json::Value>> {
-    let db = match &app_state.t3_device_conn {
+    let db = match &app_state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -688,7 +688,7 @@ async fn optimize_database(
 async fn get_database_file_stats(
     State(app_state): State<T3AppState>,
 ) -> Result<Json<database_files::DatabaseStats>> {
-    let db = match &app_state.t3_device_conn {
+    let db = match &app_state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
@@ -710,7 +710,12 @@ struct TrendlogQueryRequest {
     point_type: Option<String>,
 }
 
-/// Query trendlog data across multiple partitions and main database
+/// Query trendlog data across multiple SQLite partition files and main database.
+///
+/// NOTE: This endpoint always uses local SQLite — partition-based queries are a
+/// SQLite-specific feature (ATTACH DATABASE across .db files). Server databases
+/// (PostgreSQL, MySQL, MSSQL) manage trendlog data in a single table and do not
+/// need multi-partition querying.
 async fn query_trendlog_across_partitions(
     State(_app_state): State<T3AppState>,
     Json(request): Json<TrendlogQueryRequest>,

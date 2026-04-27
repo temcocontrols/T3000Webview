@@ -24,10 +24,41 @@ import { API_BASE_URL } from '../config/constants';
  * Frontend expects: nameShowOnTree (derived from showLabelName or productName)
  */
 function transformDeviceData(device: any): DeviceInfo {
+  const source = device?.device ?? device ?? {};
+  const serialNumber = source.serialNumber ?? source.SerialNumber;
+  const showLabelName = source.showLabelName ?? source.Show_Label_Name;
+  const productName = source.productName ?? source.Product_Name ?? showLabelName;
+
   return {
-    ...device,
+    ...source,
+    serialNumber,
+    panelId: source.panelId ?? source.PanelId,
+    panelNumber: source.panelNumber ?? source.Panel_Number,
+    mainBuildingName: source.mainBuildingName ?? source.MainBuilding_Name,
+    buildingName: source.buildingName ?? source.Building_Name,
+    floorName: source.floorName ?? source.Floor_Name,
+    roomName: source.roomName ?? source.Room_Name,
+    productName,
+    productClassId: source.productClassId ?? source.Product_Class_ID ?? null,
+    productId: source.productId ?? source.Product_ID ?? null,
+    ipAddress: source.ipAddress ?? source.IP_Address,
+    port: source.port ?? source.Port,
+    bacnetMstpMacId: source.bacnetMstpMacId ?? source.BACnet_MSTP_MAC_ID,
+    modbusAddress: source.modbusAddress ?? source.Modbus_Address,
+    pcIpAddress: source.pcIpAddress ?? source.PC_IP_Address,
+    modbusPort: source.modbusPort ?? source.Modbus_Port,
+    bacnetIpPort: source.bacnetIpPort ?? source.BACnet_IP_Port,
+    connectionType: source.connectionType ?? source.Connection_Type,
+    showLabelName,
+    status: source.status ?? source.Status ?? 'unknown',
+    statusHistory: source.statusHistory ?? [false, false, false, false, false],
+    protocol: source.protocol ?? 'Native',
     // Compute nameShowOnTree from showLabelName or fallback to productName
-    nameShowOnTree: device.showLabelName || device.productName || `Device ${device.serialNumber}`,
+    nameShowOnTree: showLabelName || productName || `Device ${serialNumber}`,
+    inputCount: device?.inputCount ?? device?.input_count ?? 0,
+    outputCount: device?.outputCount ?? device?.output_count ?? 0,
+    variableCount: device?.variableCount ?? device?.variable_count ?? 0,
+    totalPoints: device?.totalPoints ?? device?.total_points ?? 0,
   };
 }
 
@@ -59,7 +90,9 @@ export class DeviceApiService {
 
       const data = await response.json();
       // Transform devices to match frontend interface
-      const transformedDevices = data.devices.map(transformDeviceData);
+      const transformedDevices = (data.devices || [])
+        .map(transformDeviceData)
+        .filter((d: DeviceInfo) => Number.isFinite(d.serialNumber));
       return {
         ...data,
         devices: transformedDevices,

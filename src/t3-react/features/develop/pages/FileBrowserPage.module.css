@@ -110,17 +110,26 @@
   display: flex;
   flex-direction: column;
   min-height: fit-content;
-  min-width: max-content;
 }
 
 .fileGrid :global(.fui-DataGridHeader) {
-  background-color: #fafafa;
-  border-bottom: 1px solid #edebe9;
+  background-color: #d6e4f7;
+  border-bottom: none;
   flex-shrink: 0;
   width: 100%;
   position: sticky;
   top: 0;
   z-index: 5;
+}
+
+/* Header row inside DataGridHeader */
+.fileGrid :global(.fui-DataGridHeader) :global(.fui-DataGridRow) {
+  background-color: #d6e4f7;
+  width: 100%;
+}
+
+.fileGrid :global(.fui-DataGridHeader) :global(.fui-DataGridRow):hover {
+  background-color: #d6e4f7;
 }
 
 .fileGrid :global(.fui-DataGridBody) {
@@ -131,9 +140,26 @@
 .fileGrid :global(.fui-DataGridHeaderCell) {
   font-weight: 600;
   padding: 0 8px;
-  height: 32px;
-  line-height: 32px;
-  background-color: transparent;
+  height: 36px;
+  line-height: 36px;
+  background-color: #d6e4f7;
+  color: #2c4c7c;
+  transition: color 0.15s ease, background-color 0.15s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+}
+
+.fileGrid :global(.fui-DataGridHeaderCell):hover {
+  background-color: #c8d9f0;
+  color: #1b3a5c;
+}
+
+.fileGrid :global(.fui-DataGridHeaderCell) svg {
+  width: 12px;
+  height: 12px;
+  color: #5b7da5;
+  flex-shrink: 0;
 }
 
 .fileGrid :global(.fui-DataGridCell) {
@@ -141,6 +167,9 @@
   min-height: 32px;
   display: flex;
   align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
 }
 
 .fileGrid :global(.fui-DataGridHeaderCell),

@@ -22,7 +22,6 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
-  ArrowDownloadRegular,
   SettingsRegular,
   SearchRegular,
   ArrowSortUpRegular,
@@ -39,6 +38,8 @@ import type { Graphic } from '../../../../lib/t3-database/types/graphics.types';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import { useStatusBarStore } from '../../../store/statusBarStore';
 import styles from './GraphicsPage.module.css';
+import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 export const GraphicsPage: React.FC = () => {
   const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
@@ -49,7 +50,8 @@ export const GraphicsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [autoRefreshed, setAutoRefreshed] = useState(false);
-  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
+  const [dbChecked, setDbChecked] = useState(false);
+  const deviceRefreshedRef = useRef<number | null>(null);
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -93,22 +95,27 @@ export const GraphicsPage: React.FC = () => {
       console.error('Error fetching graphics:', err);
     } finally {
       setLoading(false);
+      setDbChecked(true);
     }
   }, [selectedDevice]);
 
   useEffect(() => {
     fetchGraphics();
-    // Reset auto-refresh flag when device changes
-    setAutoRefreshed(false);
-    hasAutoRefreshedRef.current = false;
   }, [fetchGraphics]);
 
-  // Auto-refresh once after page load - ONLY if database is empty
+  // Reset auto-refresh state when device changes (don't clear data to avoid visual flash)
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
+    setAutoRefreshed(false);
+    setDbChecked(false);
+  }, [selectedDevice?.serialNumber]);
+
+  // Auto-refresh once per device - ONLY if database is empty after initial DB fetch
+  useEffect(() => {
+    if (!dbChecked || loading || !selectedDevice || autoRefreshed) return;
+    if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
 
     const checkAndRefresh = async () => {
-      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+      deviceRefreshedRef.current = selectedDevice.serialNumber;
 
       if (graphics.length > 0) {
         console.log('[GraphicsPage] Database has data, skipping auto-refresh');
@@ -144,7 +151,7 @@ export const GraphicsPage: React.FC = () => {
     };
 
     checkAndRefresh();
-  }, [loading, selectedDevice, autoRefreshed, fetchGraphics, graphics.length, setMessage]);
+  }, [dbChecked, loading, selectedDevice, autoRefreshed, fetchGraphics, graphics.length, setMessage]);
 
   // Load next device in tree (auto-scroll feature)
   const loadNextDevice = useCallback(() => {
@@ -249,6 +256,24 @@ export const GraphicsPage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  // Register CSV export handler with global context (Tools menu)
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<Graphic>[] = [
+      { header: 'Graphic ID', accessor: g => g.graphicId, setter: (g, v) => { g.graphicId = v; } },
+      { header: 'Label', accessor: g => g.graphicLabel, setter: (g, v) => { g.graphicLabel = v; } },
+      { header: 'Full Label', accessor: g => g.graphicFullLabel, setter: (g, v) => { g.graphicFullLabel = v; } },
+      { header: 'Picture File', accessor: g => g.graphicPictureFile, setter: (g, v) => { g.graphicPictureFile = v; } },
+      { header: 'Switch Node', accessor: g => g.switchNode, setter: (g, v) => { g.switchNode = v; } },
+      { header: 'Element Count', accessor: g => g.graphicTotalPoint, setter: (g, v) => { g.graphicTotalPoint = v; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({} as Graphic));
+    setGraphics(imported);
+  };
+
+  useRegisterCsvHandlers(handleExport, handleImport);
+
   const handleViewWebview = useCallback((graphic: Graphic) => {
     if (!selectedDevice || !graphic.Graphic_ID) return;
 
@@ -308,7 +333,7 @@ export const GraphicsPage: React.FC = () => {
   // Display data with 10 empty rows when no graphics
   const displayGraphics = React.useMemo(() => {
     if (sortedGraphics.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         GraphicId: -(index + 1), // Negative IDs for empty rows
         serialNumber: selectedDevice?.serialNumber || 0,
         graphicId: '',
@@ -469,40 +494,6 @@ export const GraphicsPage: React.FC = () => {
               <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleRefreshFromDevice}
-                    disabled={refreshing}
-                    title="Refresh all graphics from device"
-                  >
-                    <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                  </button>
-
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    disabled={graphics.length === 0}
-                    title="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export</span>
-                  </button>
-
-                  {/* Toolbar Separator */}
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  {/* Settings Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={() => {}}
-                    title="Settings"
-                    aria-label="Settings"
-                  >
-                    <SettingsRegular />
-                    <span>Settings</span>
-                  </button>
-
                   {/* Search Input Box */}
                   <div className={styles.searchInputWrapper}>
                     <SearchRegular className={styles.searchIcon} />
@@ -517,6 +508,18 @@ export const GraphicsPage: React.FC = () => {
                       aria-label="Search graphics"
                     />
                   </div>
+
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefreshFromDevice}
+                    disabled={refreshing}
+                    title="Refresh all graphics from device"
+                  >
+                    <ArrowSyncRegular />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
 
                   {/* Info Button with Tooltip */}
                   <Tooltip

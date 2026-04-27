@@ -43,6 +43,9 @@
 .home-panel {
   .container {
     display: flex;
+    max-width: none;
+    margin: 0;
+    padding: 0;
     /* flex-wrap: wrap; */
     /* gap: 10px; */
   }

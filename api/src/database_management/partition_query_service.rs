@@ -16,14 +16,10 @@ pub struct TrendlogDataRecord {
     pub point_index: i32,
     pub point_type: String,
     pub value: String,
-    pub logging_time: i64,
     pub logging_time_fmt: String,
     pub digital_analog: Option<String>,
     pub range_field: Option<String>,
     pub units: Option<String>,
-    pub data_source: Option<String>,
-    pub sync_interval: Option<i32>,
-    pub created_by: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -291,8 +287,8 @@ fn build_trendlog_query(
     filters: &TrendlogFilters,
 ) -> String {
     let mut where_clauses = vec![
-        format!("datetime(tdd.logging_time_fmt) >= datetime('{}')", start_date.format("%Y-%m-%d %H:%M:%S")),
-        format!("datetime(tdd.logging_time_fmt) <= datetime('{}')", end_date.format("%Y-%m-%d %H:%M:%S")),
+        format!("datetime(tdd.LoggingTime_Fmt) >= datetime('{}')", start_date.format("%Y-%m-%d %H:%M:%S")),
+        format!("datetime(tdd.LoggingTime_Fmt) <= datetime('{}')", end_date.format("%Y-%m-%d %H:%M:%S")),
     ];
 
     if let Some(serial) = filters.serial_number {
@@ -321,19 +317,15 @@ fn build_trendlog_query(
             td.PointId,
             td.PointIndex,
             td.PointType,
-            tdd.value,
-            tdd.logging_time,
-            tdd.logging_time_fmt,
+            tdd.Value,
+            tdd.LoggingTime_Fmt,
             td.Digital_Analog,
             td.Range_Field,
-            td.Units,
-            tdd.data_source,
-            tdd.sync_interval,
-            tdd.created_by
+            td.Units
         FROM {}.TRENDLOG_DATA td
-        INNER JOIN {}.TRENDLOG_DATA_DETAIL tdd ON td.rowid = tdd.parent_id
+        INNER JOIN {}.TRENDLOG_DATA_DETAIL tdd ON td.id = tdd.ParentId
         WHERE {}
-        ORDER BY tdd.logging_time_fmt ASC
+        ORDER BY tdd.LoggingTime_Fmt ASC
         "#,
         db_alias, db_alias, where_clause
     )
@@ -355,18 +347,13 @@ fn parse_query_results(results: Vec<QueryResult>) -> Result<Vec<TrendlogDataReco
                 .map_err(|e| crate::error::Error::ServerError(format!("Failed to get PointIndex: {}", e)))?,
             point_type: row.try_get("", "PointType")
                 .map_err(|e| crate::error::Error::ServerError(format!("Failed to get PointType: {}", e)))?,
-            value: row.try_get("", "value")
-                .map_err(|e| crate::error::Error::ServerError(format!("Failed to get value: {}", e)))?,
-            logging_time: row.try_get("", "logging_time")
-                .map_err(|e| crate::error::Error::ServerError(format!("Failed to get logging_time: {}", e)))?,
-            logging_time_fmt: row.try_get("", "logging_time_fmt")
-                .map_err(|e| crate::error::Error::ServerError(format!("Failed to get logging_time_fmt: {}", e)))?,
+            value: row.try_get("", "Value")
+                .map_err(|e| crate::error::Error::ServerError(format!("Failed to get Value: {}", e)))?,
+            logging_time_fmt: row.try_get("", "LoggingTime_Fmt")
+                .map_err(|e| crate::error::Error::ServerError(format!("Failed to get LoggingTime_Fmt: {}", e)))?,
             digital_analog: row.try_get("", "Digital_Analog").ok(),
             range_field: row.try_get("", "Range_Field").ok(),
             units: row.try_get("", "Units").ok(),
-            data_source: row.try_get("", "data_source").ok(),
-            sync_interval: row.try_get("", "sync_interval").ok(),
-            created_by: row.try_get("", "created_by").ok(),
         };
 
         records.push(record);

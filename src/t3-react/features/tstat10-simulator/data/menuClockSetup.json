@@ -1,0 +1,27 @@
+{
+  "page": "CLOCK_SETTINGS",
+  "title": "Clock Setup",
+  "styles": {
+    "bg": "#2c7cc4",
+    "highlight": "#008080",
+    "fontFamily": "'Fira Mono', 'Consolas', monospace",
+    "fontWeight": "900",
+    "fontSize": "26px"
+  },
+  "widgets": [
+    {
+      "type": "menu_row",
+      "id": "ui_item_time",
+      "label": "Time",
+      "value": "14:30",
+      "lcdRow": 3
+    },
+    {
+      "type": "menu_row",
+      "id": "ui_item_date",
+      "label": "Date",
+      "value": "2026-04-09",
+      "lcdRow": 4
+    }
+  ]
+}

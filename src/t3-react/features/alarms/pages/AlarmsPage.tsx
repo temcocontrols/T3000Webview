@@ -22,7 +22,6 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
-  ArrowDownloadRegular,
   SettingsRegular,
   SearchRegular,
   ArrowClockwise24Regular,
@@ -39,6 +38,8 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
 import { AlarmRefreshApi } from '../services/alarmRefreshApi';
 import styles from './AlarmsPage.module.css';
+import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
+import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
 // Alarm interface matching ALARMS entity and C++ BacnetAlarmLog (7 columns)
 interface Alarm {
@@ -76,11 +77,41 @@ const AlarmsPageDesktop: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
-  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
+  const [dbChecked, setDbChecked] = useState(false);
+  const deviceRefreshedRef = useRef<number | null>(null);
 
   const handleExport = () => {
-    console.log('Export alarms to CSV');
+    if (alarms.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<Alarm>[] = [
+      { header: 'Alarm ID', accessor: a => a.alarm_id },
+      { header: 'Panel', accessor: a => a.panel },
+      { header: 'Message', accessor: a => a.message },
+      { header: 'Timestamp', accessor: a => a.time_stamp },
+      { header: 'Acknowledged', accessor: a => a.acknowledged },
+      { header: 'Status', accessor: a => a.status },
+      { header: 'Priority', accessor: a => a.priority },
+    ];
+    exportToCsv(alarms, csvColumns, `alarms_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
+
+  const handleImport = async (file: File) => {
+    const { headers, rows } = await parseCsvFile(file);
+    if (rows.length === 0) return;
+    const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<Alarm>[] = [
+      { header: 'Alarm ID', accessor: a => a.alarm_id, setter: (a, v) => { a.alarm_id = v; } },
+      { header: 'Panel', accessor: a => a.panel, setter: (a, v) => { a.panel = v; } },
+      { header: 'Message', accessor: a => a.message, setter: (a, v) => { a.message = v; } },
+      { header: 'Timestamp', accessor: a => a.time_stamp, setter: (a, v) => { a.time_stamp = v; } },
+      { header: 'Acknowledged', accessor: a => a.acknowledged, setter: (a, v) => { a.acknowledged = v; } },
+      { header: 'Status', accessor: a => a.status, setter: (a, v) => { a.status = v; } },
+      { header: 'Priority', accessor: a => a.priority, setter: (a, v) => { a.priority = v; } },
+    ];
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ alarm_id: '', panel: '', message: '', time_stamp: '', acknowledged: '', status: '' } as Alarm));
+    setAlarms(imported);
+  };
+
+  // Register CSV export/import handlers with global context (Tools menu)
+  useRegisterCsvHandlers(handleExport, handleImport);
 
   const handleSettings = () => {
     console.log('Settings clicked');
@@ -133,22 +164,27 @@ const AlarmsPageDesktop: React.FC = () => {
       setAlarms([]);
     } finally {
       setIsLoading(false);
+      setDbChecked(true);
     }
   }, [selectedDevice]);
 
   useEffect(() => {
     fetchAlarms();
-    // Reset auto-refresh flag when device changes
-    setAutoRefreshed(false);
-    hasAutoRefreshedRef.current = false;
   }, [fetchAlarms]);
 
-  // Auto-refresh on page load (Trigger #1)
+  // Reset auto-refresh state when device changes (don't clear data to avoid visual flash)
   useEffect(() => {
-    if (isLoading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
+    setAutoRefreshed(false);
+    setDbChecked(false);
+  }, [selectedDevice?.serialNumber]);
+
+  // Auto-refresh once per device - ONLY after initial DB fetch completes
+  useEffect(() => {
+    if (!dbChecked || isLoading || !selectedDevice || autoRefreshed) return;
+    if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
 
     const checkAndRefresh = async () => {
-      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+      deviceRefreshedRef.current = selectedDevice.serialNumber;
 
       console.log('🔄 Auto-refreshing alarms from device on page load...');
       try {
@@ -163,7 +199,7 @@ const AlarmsPageDesktop: React.FC = () => {
     };
 
     checkAndRefresh();
-  }, [isLoading, selectedDevice, autoRefreshed, fetchAlarms]);
+  }, [dbChecked, isLoading, selectedDevice, autoRefreshed, fetchAlarms]);
 
   // Refresh from device (Trigger #2 - Manual button)
   const handleRefreshFromDevice = async () => {
@@ -276,7 +312,7 @@ const AlarmsPageDesktop: React.FC = () => {
   // Display alarms with empty rows when no data (show 10 empty rows)
   const displayAlarms = React.useMemo(() => {
     if (alarms.length === 0) {
-      return Array(10).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map((_, index) => ({
         alarm_id: '',
         panel: '',
         message: '',
@@ -473,39 +509,6 @@ const AlarmsPageDesktop: React.FC = () => {
               <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleRefreshFromDevice}
-                    disabled={refreshing}
-                    title="Refresh from Device"
-                    aria-label="Refresh from Device"
-                  >
-                    <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                  </button>
-
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleExport}
-                    title="Export to CSV"
-                    aria-label="Export to CSV"
-                  >
-                    <ArrowDownloadRegular />
-                    <span>Export to CSV</span>
-                  </button>
-
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleSettings}
-                    title="Settings"
-                    aria-label="Settings"
-                  >
-                    <SettingsRegular />
-                    <span>Settings</span>
-                  </button>
-
                   <div className={styles.searchInputWrapper}>
                     <SearchRegular className={styles.searchIcon} />
                     <input
@@ -519,6 +522,19 @@ const AlarmsPageDesktop: React.FC = () => {
                       aria-label="Search alarms"
                     />
                   </div>
+
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefreshFromDevice}
+                    disabled={refreshing}
+                    title="Refresh from Device"
+                    aria-label="Refresh from Device"
+                  >
+                    <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
 
                   {/* Info Button with Tooltip */}
                   {selectedDevice && (
@@ -604,37 +620,6 @@ const AlarmsPageDesktop: React.FC = () => {
                       items={displayAlarms}
                       columns={columns}
                       sortable
-                      resizableColumns
-                      columnSizingOptions={{
-                        alarm_id: {
-                          minWidth: 60,
-                          defaultWidth: 80,
-                        },
-                        panel: {
-                          minWidth: 100,
-                          defaultWidth: 120,
-                        },
-                        message: {
-                          minWidth: 200,
-                          defaultWidth: 300,
-                        },
-                        time_stamp: {
-                          minWidth: 140,
-                          defaultWidth: 180,
-                        },
-                        acknowledged: {
-                          minWidth: 100,
-                          defaultWidth: 120,
-                        },
-                        status: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        actions: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                      }}
                     >
                       <DataGridHeader>
                         <DataGridRow>

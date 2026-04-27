@@ -12,7 +12,7 @@ export interface RangeOption {
 
 /**
  * Input Analog Units (40 options)
- * Used when input digital_analog === BAC_UNITS_ANALOG
+ * Used when input digital_analog === BAC_UNITS_ANALOG (1)
  */
 export const INPUT_ANALOG_RANGES: RangeOption[] = [
   { value: 0, label: 'Unused', unit: '', category: 'General' },
@@ -59,7 +59,7 @@ export const INPUT_ANALOG_RANGES: RangeOption[] = [
 
 /**
  * Digital Units (31 options)
- * Used when input digital_analog === BAC_UNITS_DIGITAL
+ * Used when input digital_analog === BAC_UNITS_DIGITAL (0)
  * Includes standard digital (0-22) and custom digital (23-30)
  */
 export const DIGITAL_RANGES: RangeOption[] = [
@@ -94,13 +94,18 @@ export const DIGITAL_RANGES: RangeOption[] = [
   { value: 28, label: 'Custom Digital 6', category: 'Custom' },
   { value: 29, label: 'Custom Digital 7', category: 'Custom' },
   { value: 30, label: 'Custom Digital 8', category: 'Custom' },
+  { value: 101, label: 'MSV 1', category: 'Multi-State' },
+  { value: 102, label: 'MSV 2', category: 'Multi-State' },
+  { value: 103, label: 'MSV 3', category: 'Multi-State' },
+  { value: 104, label: 'MSV 4', category: 'Multi-State' },
 ];
 
 /**
  * Constants for input type
+ * NOTE: C++ convention: 0 = Digital, 1 = Analog
  */
-export const BAC_UNITS_ANALOG = 0;
-export const BAC_UNITS_DIGITAL = 1;
+export const BAC_UNITS_DIGITAL = 0;
+export const BAC_UNITS_ANALOG = 1;
 
 /**
  * Get range options based on input type
@@ -110,61 +115,56 @@ export function getRangeOptions(digitalAnalog: number): RangeOption[] {
 }
 
 /**
- * Get range label by value and type
+ * Get range label by value and type.
+ * Uses digitalAnalog to pick the correct table (digital vs analog),
+ * then looks up the value in that table.
  */
 export function getRangeLabel(value: number, digitalAnalog: number): string {
-  // Hardcoded mappings for custom and remapped values
-  const customMappings: { [key: number]: string } = {
-    // Digital Custom (23-30)
-    23: '9/9',
-    24: '/',
-    25: '/',
-    26: '/',
-    27: '/',
-    28: '/',
-    29: '/',
-    30: '/',
-    // Analog - Other Options (41-49, 55-65)
-    41: '0.0 to 5.0 Volts',
-    42: '0.0 to 100 Amps',
-    43: '4.0 to 20 ma',
-    44: '0.0 to 20 psi',
-    45: 'Pulse Count (Slow 1Hz)',
-    46: '0 to 100 % (0-10V)',
-    47: '0 to 100 % (0-5V)',
-    48: '0 to 100 % (4-20ma)',
-    49: '0.0 to 10.0 Volts',
-    50: 'Table 1',
-    51: 'Table 2',
-    52: 'Table 3',
-    53: 'Table 4',
-    54: 'Table 5',
-    55: 'Pulse Count (Fast 100Hz)',
-    56: 'Hz',
-    57: 'Humidity %',
-    58: 'CO2 PPM',
-    59: 'Revolutions Per Minute',
-    60: 'TVOC PPB',
-    61: 'ug/m3',
-    62: '#/cm3',
-    63: 'dB',
-    64: 'Lux',
-    65: 'Reserved',
-    // Multi State (100-103)
-    100: '',
-    101: '',
-    102: '',
-    103: '',
-  };
-
-  // Check custom mappings first
-  if (customMappings.hasOwnProperty(value)) {
-    return customMappings[value];
-  }
-
-  // Fall back to standard ranges
   const ranges = getRangeOptions(digitalAnalog);
   const range = ranges.find(r => r.value === value);
   return range ? range.label : 'Unknown';
+}
+
+/**
+ * Get unit symbol by range value and type.
+ * For analog: returns the unit (Deg.C, Volts, %, etc.)
+ * For digital: returns "0/1"
+ */
+export function getUnitSymbol(value: number, digitalAnalog: number): string {
+  if (digitalAnalog === BAC_UNITS_DIGITAL) {
+    return '0/1';
+  }
+  const range = INPUT_ANALOG_RANGES.find(r => r.value === value);
+  return range?.unit || '---';
+}
+
+/**
+ * Get signal type (hardware type) based on range and digital/analog.
+ * Maps range categories to hardware signal types.
+ * Default: "Thermistor Dry Contact"
+ */
+export function getSignalType(rangeValue: number, digitalAnalog: number): string {
+  if (digitalAnalog === BAC_UNITS_DIGITAL) {
+    return 'Dry Contact';
+  }
+  const range = INPUT_ANALOG_RANGES.find(r => r.value === rangeValue);
+  if (!range) return 'Thermistor Dry Contact';
+
+  switch (range.category) {
+    case 'Temperature': return 'Thermistor';
+    case 'Voltage': return 'Voltage';
+    case 'Current': return 'Current';
+    case 'Pressure': return 'Pressure';
+    case 'Pulse': return 'Pulse';
+    case 'Percentage': return 'Percentage';
+    case 'Frequency': return 'Frequency';
+    case 'Environmental': return 'Environmental';
+    case 'Speed': return 'Speed';
+    case 'Sound': return 'Sound';
+    case 'Light': return 'Light';
+    case 'Custom Tables': return 'Custom';
+    case 'General': return 'Thermistor Dry Contact';
+    default: return 'Thermistor Dry Contact';
+  }
 }
 

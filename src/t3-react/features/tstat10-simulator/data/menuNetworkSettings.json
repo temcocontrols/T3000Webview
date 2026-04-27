@@ -1,0 +1,41 @@
+{
+  "page": "RS485_SETTINGS",
+  "title": "RS485 Settings",
+  "styles": {
+    "bg": "#2c7cc4",
+    "highlight": "#008080",
+    "fontFamily": "'Fira Mono', 'Consolas', monospace",
+    "fontWeight": "900",
+    "fontSize": "26px"
+  },
+  "widgets": [
+    {
+      "type": "menu_row",
+      "id": "ui_item_prot",
+      "label": "Protocol",
+      "register": 8,
+      "value": "MODBUS",
+      "options": ["MODBUS", "BACNET"],
+      "lcdRow": 3
+    },
+    {
+      "type": "menu_row",
+      "id": "ui_item_addr",
+      "label": "NetID",
+      "register": 6,
+      "value": 1,
+      "is_focused": true,
+      "maxValue": 247,
+      "lcdRow": 4
+    },
+    {
+      "type": "menu_row",
+      "id": "ui_item_baud",
+      "label": "Baud",
+      "register": 7,
+      "value": 9600,
+      "options": [9600, 19200, 38400, 115200],
+      "lcdRow": 5
+    }
+  ]
+}

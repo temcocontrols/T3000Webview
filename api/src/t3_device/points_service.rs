@@ -1,5 +1,6 @@
 // T3000 Points Service - Input, Output, and Variable Points Management
 use sea_orm::*;
+use sea_orm::sea_query::Expr;
 use serde::{Deserialize, Serialize};
 use crate::entity::t3_device::{input_points, output_points, variable_points};
 use crate::error::AppError;
@@ -121,6 +122,7 @@ impl T3PointsService {
     pub async fn get_input_points_by_device(db: &DatabaseConnection, device_id: i32) -> Result<Vec<input_points::Model>, AppError> {
         let points = input_points::Entity::find()
             .filter(input_points::Column::SerialNumber.eq(device_id))
+            .order_by_asc(Expr::cust("CAST(REPLACE(InputId, 'IN', '') AS INTEGER)"))
             .all(db)
             .await?;
         Ok(points)
@@ -145,6 +147,10 @@ impl T3PointsService {
             digital_analog: Set(point_data.digital_analog),
             label: Set(point_data.label),
             type_field: Set(point_data.type_field),
+            calibration_h: NotSet,
+            calibration_l: NotSet,
+            calibration_sign: NotSet,
+            control: NotSet,
         };
 
         let point = new_point.insert(db).await?;
@@ -157,6 +163,7 @@ impl T3PointsService {
     pub async fn get_output_points_by_device(db: &DatabaseConnection, device_id: i32) -> Result<Vec<output_points::Model>, AppError> {
         let points = output_points::Entity::find()
             .filter(output_points::Column::SerialNumber.eq(device_id))
+            .order_by_asc(Expr::cust("CAST(REPLACE(OutputId, 'OUT', '') AS INTEGER)"))
             .all(db)
             .await?;
         Ok(points)
@@ -181,6 +188,10 @@ impl T3PointsService {
             digital_analog: Set(point_data.digital_analog),
             label: Set(point_data.label),
             type_field: Set(point_data.type_field),
+            calibration_h: NotSet,
+            calibration_l: NotSet,
+            calibration_sign: NotSet,
+            control: NotSet,
         };
 
         let point = new_point.insert(db).await?;
@@ -193,6 +204,7 @@ impl T3PointsService {
     pub async fn get_variable_points_by_device(db: &DatabaseConnection, device_id: i32) -> Result<Vec<variable_points::Model>, AppError> {
         let points = variable_points::Entity::find()
             .filter(variable_points::Column::SerialNumber.eq(device_id))
+            .order_by_asc(Expr::cust("CAST(REPLACE(VariableId, 'VAR', '') AS INTEGER)"))
             .all(db)
             .await?;
         Ok(points)
@@ -217,6 +229,10 @@ impl T3PointsService {
             digital_analog: Set(point_data.digital_analog),
             label: Set(point_data.label),
             type_field: Set(point_data.type_field),
+            calibration_h: NotSet,
+            calibration_l: NotSet,
+            calibration_sign: NotSet,
+            control: NotSet,
         };
 
         let point = new_point.insert(db).await?;

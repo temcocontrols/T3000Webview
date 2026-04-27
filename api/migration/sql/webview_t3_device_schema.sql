@@ -58,13 +58,17 @@ CREATE TABLE IF NOT EXISTS INPUTS (
     fValue TEXT,                               -- C++ fValue (stored as string in T3000.db)
     Units TEXT,                                -- C++ Units (derived from Range_Field: °C, °F, %, ppm, etc.)
     Range_Field TEXT,                          -- C++ Range
-    Calibration TEXT,                          -- C++ Calibration
-    Sign TEXT,                                 -- C++ Sign (calibration_sign)
-    Filter_Field TEXT,                         -- C++ Filter (from "control" JSON field)
+    Calibration TEXT,                          -- Legacy combined calibration display value
+    Sign TEXT,                                 -- Legacy sign (same as Calibration_Sign)
+    Filter_Field TEXT,                         -- C++ filter (raw int from JSON)
     Status TEXT,                               -- C++ Status (from "decom" JSON field)
-    Digital_Analog TEXT,                       -- From JSON field "digital_analog" (0=digital, 1=analog)
+    Digital_Analog TEXT,                       -- C++ digital_analog (0=digital, 1=analog)
     Label TEXT,                                -- C++ Label (from "label" JSON field directly)
-    Type_Field TEXT                            -- C++ Type_Field (from "command" JSON field)
+    Type_Field TEXT,                           -- C++ Type_Field (from "command" JSON field)
+    Calibration_H TEXT,                        -- C++ calibration_h (raw high byte, uint8)
+    Calibration_L TEXT,                        -- C++ calibration_l (raw low byte, uint8)
+    Calibration_Sign TEXT,                     -- C++ calibration_sign (0=positive, 1=negative)
+    Control TEXT                               -- C++ control (0=OFF, 1=ON)
 );
 
 -- OUTPUTS table (Original T3000 output points table)
@@ -79,13 +83,17 @@ CREATE TABLE IF NOT EXISTS OUTPUTS (
     fValue TEXT,                               -- C++ fValue (stored as string)
     Units TEXT,                                -- C++ Units (derived from Range_Field: °C, °F, %, ppm, etc.)
     Range_Field TEXT,                          -- C++ Range
-    Calibration TEXT,                          -- C++ Calibration
-    Sign TEXT,                                 -- C++ Sign
-    Filter_Field TEXT,                         -- C++ Filter (from "control" JSON field)
+    Calibration TEXT,                          -- Legacy combined calibration display value
+    Sign TEXT,                                 -- Legacy sign (same as Calibration_Sign)
+    Filter_Field TEXT,                         -- C++ filter (raw int from JSON)
     Status TEXT,                               -- C++ Status (from "decom" JSON field)
-    Digital_Analog TEXT,                       -- From JSON field "digital_analog" (0=digital, 1=analog)
+    Digital_Analog TEXT,                       -- C++ digital_analog (0=digital, 1=analog)
     Label TEXT,                                -- C++ Label (from "label" JSON field directly)
-    Type_Field TEXT                            -- C++ Type_Field (from "command" JSON field)
+    Type_Field TEXT,                           -- C++ Type_Field (from "command" JSON field)
+    Calibration_H TEXT,                        -- C++ calibration_h (raw high byte, uint8)
+    Calibration_L TEXT,                        -- C++ calibration_l (raw low byte, uint8)
+    Calibration_Sign TEXT,                     -- C++ calibration_sign (0=positive, 1=negative)
+    Control TEXT                               -- C++ control (0=OFF, 1=ON)
 );
 
 -- VARIABLES table (Original T3000 variable points table)
@@ -100,13 +108,17 @@ CREATE TABLE IF NOT EXISTS VARIABLES (
     fValue TEXT,                               -- C++ fValue (stored as string)
     Units TEXT,                                -- C++ Units (derived from Range_Field: °C, °F, %, ppm, etc.)
     Range_Field TEXT,                          -- C++ Range_Field (from "range" JSON field)
-    Calibration TEXT,                          -- C++ Calibration
-    Sign TEXT,                                 -- C++ Sign
-    Filter_Field TEXT,                         -- C++ Filter_Field (from "control" JSON field)
+    Calibration TEXT,                          -- Legacy combined calibration display value
+    Sign TEXT,                                 -- Legacy sign (same as Calibration_Sign)
+    Filter_Field TEXT,                         -- C++ filter (raw int from JSON)
     Status TEXT,                               -- C++ Status
-    Digital_Analog TEXT,                       -- From JSON field "digital_analog" (0=digital, 1=analog)
+    Digital_Analog TEXT,                       -- C++ digital_analog (0=digital, 1=analog)
     Label TEXT,                                -- C++ Label (from "label" JSON field directly)
-    Type_Field TEXT                            -- C++ Type_Field (from "command" JSON field)
+    Type_Field TEXT,                           -- C++ Type_Field (from "command" JSON field)
+    Calibration_H TEXT,                        -- C++ calibration_h (raw high byte, uint8)
+    Calibration_L TEXT,                        -- C++ calibration_l (raw low byte, uint8)
+    Calibration_Sign TEXT,                     -- C++ calibration_sign (0=positive, 1=negative)
+    Control TEXT                               -- C++ control (0=OFF, 1=ON)
 );
 
 -- PROGRAMS table (Original T3000 programs table)
@@ -1020,7 +1032,7 @@ CREATE INDEX IF NOT EXISTS IDX_REMOTE_TSTAT_DB_ID ON REMOTE_TSTAT_DB(Remote_Tsta
 
 -- Database Partition Configuration Table
 -- Stores partitioning strategy settings and retention policies
-CREATE TABLE IF NOT EXISTS database_partition_config (
+CREATE TABLE IF NOT EXISTS DATABASE_PARTITION_CONFIG (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     strategy TEXT NOT NULL DEFAULT 'monthly' CHECK (strategy IN ('5minutes', 'daily', 'weekly', 'monthly', 'quarterly', 'custom', 'custom-months')),
     custom_days INTEGER CHECK (custom_days IS NULL OR (custom_days >= 1 AND custom_days <= 365)),
@@ -1035,7 +1047,7 @@ CREATE TABLE IF NOT EXISTS database_partition_config (
 
 -- Database Files Table
 -- Tracks database file metadata and statistics
-CREATE TABLE IF NOT EXISTS database_files (
+CREATE TABLE IF NOT EXISTS DATABASE_FILES (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     file_name TEXT NOT NULL UNIQUE,
     file_path TEXT NOT NULL,
@@ -1096,7 +1108,7 @@ CREATE TABLE IF NOT EXISTS APPLICATION_CONFIG_HISTORY (
 
 -- Database Partitions Table
 -- Tracks active database partitions and their status
-CREATE TABLE IF NOT EXISTS database_partitions (
+CREATE TABLE IF NOT EXISTS DATABASE_PARTITIONS (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     partition_name TEXT NOT NULL UNIQUE,
     partition_identifier TEXT NOT NULL,
@@ -1113,18 +1125,18 @@ CREATE TABLE IF NOT EXISTS database_partitions (
 
 -- DATABASE MANAGEMENT INDEXES (Performance Optimization)
 
--- Indexes for database_partition_config
-CREATE INDEX IF NOT EXISTS idx_database_partition_config_strategy ON database_partition_config(strategy);
-CREATE INDEX IF NOT EXISTS idx_database_partition_config_active ON database_partition_config(is_active);
-CREATE INDEX IF NOT EXISTS idx_database_partition_config_created ON database_partition_config(created_at);
+-- Indexes for DATABASE_PARTITION_CONFIG
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITION_CONFIG_strategy ON DATABASE_PARTITION_CONFIG(strategy);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITION_CONFIG_active ON DATABASE_PARTITION_CONFIG(is_active);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITION_CONFIG_created ON DATABASE_PARTITION_CONFIG(created_at);
 
--- Indexes for database_files
-CREATE INDEX IF NOT EXISTS idx_database_files_name ON database_files(file_name);
-CREATE INDEX IF NOT EXISTS idx_database_files_active ON database_files(is_active);
-CREATE INDEX IF NOT EXISTS idx_database_files_archived ON database_files(is_archived);
-CREATE INDEX IF NOT EXISTS idx_database_files_partition ON database_files(partition_identifier);
-CREATE INDEX IF NOT EXISTS idx_database_files_created ON database_files(created_at);
-CREATE INDEX IF NOT EXISTS idx_database_files_accessed ON database_files(last_accessed_at);
+-- Indexes for DATABASE_FILES
+CREATE INDEX IF NOT EXISTS idx_DATABASE_FILES_name ON DATABASE_FILES(file_name);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_FILES_active ON DATABASE_FILES(is_active);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_FILES_archived ON DATABASE_FILES(is_archived);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_FILES_partition ON DATABASE_FILES(partition_identifier);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_FILES_created ON DATABASE_FILES(created_at);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_FILES_accessed ON DATABASE_FILES(last_accessed_at);
 
 -- Indexes for APPLICATION_CONFIG
 CREATE INDEX IF NOT EXISTS idx_application_config_key ON APPLICATION_CONFIG(config_key);
@@ -1139,17 +1151,17 @@ CREATE INDEX IF NOT EXISTS idx_application_config_history_key ON APPLICATION_CON
 CREATE INDEX IF NOT EXISTS idx_application_config_history_changed_at ON APPLICATION_CONFIG_HISTORY(changed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_application_config_history_changed_by ON APPLICATION_CONFIG_HISTORY(changed_by);
 
--- Indexes for database_partitions
-CREATE INDEX IF NOT EXISTS idx_database_partitions_name ON database_partitions(partition_name);
-CREATE INDEX IF NOT EXISTS idx_database_partitions_identifier ON database_partitions(partition_identifier);
-CREATE INDEX IF NOT EXISTS idx_database_partitions_active ON database_partitions(is_active);
-CREATE INDEX IF NOT EXISTS idx_database_partitions_current ON database_partitions(is_current);
-CREATE INDEX IF NOT EXISTS idx_database_partitions_dates ON database_partitions(start_date, end_date);
+-- Indexes for DATABASE_PARTITIONS
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITIONS_name ON DATABASE_PARTITIONS(partition_name);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITIONS_identifier ON DATABASE_PARTITIONS(partition_identifier);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITIONS_active ON DATABASE_PARTITIONS(is_active);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITIONS_current ON DATABASE_PARTITIONS(is_current);
+CREATE INDEX IF NOT EXISTS idx_DATABASE_PARTITIONS_dates ON DATABASE_PARTITIONS(start_date, end_date);
 
 -- DATABASE MANAGEMENT DEFAULT DATA
 
 -- Insert default partition configuration
-INSERT OR IGNORE INTO database_partition_config (
+INSERT OR IGNORE INTO DATABASE_PARTITION_CONFIG (
     id, strategy, retention_value, retention_unit, auto_cleanup_enabled
 ) VALUES (
     1, 'monthly', 30, 'days', 1
@@ -1175,31 +1187,31 @@ INSERT OR IGNORE INTO APPLICATION_CONFIG (config_key, config_value, config_type,
 
 -- DATABASE MANAGEMENT TRIGGERS (Automatic Updates)
 
--- Trigger to update updated_at timestamp for database_partition_config
-CREATE TRIGGER IF NOT EXISTS trigger_database_partition_config_updated_at
-AFTER UPDATE ON database_partition_config
+-- Trigger to update updated_at timestamp for DATABASE_PARTITION_CONFIG
+CREATE TRIGGER IF NOT EXISTS trigger_DATABASE_PARTITION_CONFIG_updated_at
+AFTER UPDATE ON DATABASE_PARTITION_CONFIG
 FOR EACH ROW
 BEGIN
-    UPDATE database_partition_config SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+    UPDATE DATABASE_PARTITION_CONFIG SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
--- Trigger to update updated_at timestamp for database_files
-CREATE TRIGGER IF NOT EXISTS trigger_database_files_updated_at
-AFTER UPDATE ON database_files
+-- Trigger to update updated_at timestamp for DATABASE_FILES
+CREATE TRIGGER IF NOT EXISTS trigger_DATABASE_FILES_updated_at
+AFTER UPDATE ON DATABASE_FILES
 FOR EACH ROW
 BEGIN
-    UPDATE database_files SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+    UPDATE DATABASE_FILES SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
 -- NOTE: Triggers removed for APPLICATION_CONFIG to prevent recursion issues
 -- Application code should handle updated_at and size_bytes directly during INSERT/UPDATE
 
--- Trigger to update updated_at timestamp for database_partitions
-CREATE TRIGGER IF NOT EXISTS trigger_database_partitions_updated_at
-AFTER UPDATE ON database_partitions
+-- Trigger to update updated_at timestamp for DATABASE_PARTITIONS
+CREATE TRIGGER IF NOT EXISTS trigger_DATABASE_PARTITIONS_updated_at
+AFTER UPDATE ON DATABASE_PARTITIONS
 FOR EACH ROW
 BEGIN
-    UPDATE database_partitions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+    UPDATE DATABASE_PARTITIONS SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
 -- ============================================================================
@@ -1319,3 +1331,79 @@ VALUES (
 );
 
 -- Database ready for T3000 WebView development with Database Management System (no foreign key constraints)
+
+-- ============================================================================
+-- DB_BACKEND_CONFIG - Centralized Database Backend Configuration
+-- Stores connection settings for each supported database backend.
+-- Each backend type is a row. Only one row has is_active=1 at a time.
+-- This table ALWAYS lives in local SQLite (never on remote DB).
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS DB_BACKEND_CONFIG (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    backend_type  TEXT NOT NULL UNIQUE,
+    is_active     INTEGER NOT NULL DEFAULT 0,
+    host          TEXT,
+    port          INTEGER,
+    instance      TEXT,
+    database_name TEXT,
+    username      TEXT,
+    password      TEXT,
+    connection_url TEXT,
+    extra_options TEXT,
+    role          TEXT DEFAULT 'server',    -- 'server' or 'client'
+    updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Seed default rows (one per supported backend)
+INSERT OR IGNORE INTO DB_BACKEND_CONFIG (backend_type, is_active, connection_url)
+    VALUES ('sqlite', 1, 'sqlite://Database/webview_t3_device.db');
+INSERT OR IGNORE INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
+    VALUES ('mssql', 0, 1433);
+INSERT OR IGNORE INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
+    VALUES ('postgres', 0, 5432);
+INSERT OR IGNORE INTO DB_BACKEND_CONFIG (backend_type, is_active, port)
+    VALUES ('mysql', 0, 3306);
+
+-- ============================================================================
+-- SERVER_CLIENT_REGISTRY - Tracks all PCs participating in centralized DB mode
+-- Server writes its own entry, clients send heartbeats to the server.
+-- This table lives in the SERVER's database (not on client local DBs).
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS SERVER_CLIENT_REGISTRY (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    hostname      TEXT NOT NULL DEFAULT '',
+    ip_address    TEXT NOT NULL DEFAULT '',
+    role          TEXT NOT NULL DEFAULT 'client',  -- 'server' or 'client'
+    is_self       INTEGER NOT NULL DEFAULT 0,      -- 1 = this PC's own entry
+    status        TEXT NOT NULL DEFAULT 'online',  -- 'online' or 'offline'
+    last_seen     TEXT NOT NULL DEFAULT (datetime('now')),
+    db_backend    TEXT DEFAULT 'sqlite',            -- active backend type
+    table_count   INTEGER DEFAULT 0,
+    version       TEXT DEFAULT '',                  -- T3000 / webview version
+    created_at    TEXT DEFAULT (datetime('now')),
+    UNIQUE(hostname, ip_address)
+);
+
+-- ============================================================================
+-- T3_APP_LOG - Unified application event log
+-- Replaces SYNC_EVENT_LOG (was lazy-created) and SYSTEM_LOGS (was dead code).
+-- Lives in local SQLite only — always writable, survives center DB outage.
+-- Max 5000 rows; oldest rows are auto-pruned on each insert in Rust code.
+-- categories: SYNC_CYCLE | SYNC_ERROR | DB_CONFIG | SAMPLING_STATE | SERVER_EVENT | HEARTBEAT
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS T3_APP_LOG (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts_unix       INTEGER NOT NULL,
+    ts_fmt        TEXT    NOT NULL,                  -- "2026-04-22 11:20:08"
+    level         TEXT    NOT NULL DEFAULT 'info',   -- info | warn | error
+    category      TEXT    NOT NULL DEFAULT 'SERVER_EVENT',
+    source        TEXT,                              -- ffi_sync | heartbeat | db_config | server
+    hostname      TEXT,                              -- originating PC name
+    role          TEXT,                              -- server | client | standalone
+    device_serial TEXT,                              -- nullable, per-device events only
+    message       TEXT    NOT NULL DEFAULT '',
+    details       TEXT                               -- JSON blob for extra context
+);
+CREATE INDEX IF NOT EXISTS idx_t3_app_log_ts  ON T3_APP_LOG (ts_unix DESC);
+CREATE INDEX IF NOT EXISTS idx_t3_app_log_cat ON T3_APP_LOG (category);
+CREATE INDEX IF NOT EXISTS idx_t3_app_log_lvl ON T3_APP_LOG (level);

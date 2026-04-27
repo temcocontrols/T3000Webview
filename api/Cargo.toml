@@ -2,6 +2,7 @@
 name = "t3_webview_api"
 version = "0.8.1"
 edition = "2021"
+autobins = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -49,12 +50,23 @@ winapi = { version = "0.3", features = ["libloaderapi", "winnt"] }
 # SQLite support for T3000 C++ database access (use compatible version with sea-orm)
 rusqlite = { version = "0.29.0", features = ["bundled"] }
 
+# ============================================================================
+# CENTRALIZED DATABASE - Backend connectivity and security
+# ============================================================================
+tiberius = { version = "0.12", default-features = false, features = ["rustls", "chrono"] }
+bb8 = "0.8"
+bb8-tiberius = "0.15"
+tokio-util = { version = "0.7", features = ["compat"] }
+aes-gcm = "0.10"
+base64 = "0.22"
+hostname = "0.4"
+
 [dependencies.sea-orm]
 version = "1.0.0"
 features = [
   "runtime-tokio",
-  # "sqlx-postgres",
-  # "sqlx-mysql",
+  "sqlx-postgres",
+  "sqlx-mysql",
   "sqlx-sqlite",
 ]
 
@@ -68,8 +80,3 @@ cc = "1.0"
 strip = false  # Disabled - was causing FFI symbol issues
 opt-level = 2  # Changed from "z" to 2 for better compatibility
 lto = false  # Disabled - was causing initialization crashes
-
-# Optional: Development and testing binaries (can be removed if not needed)
-[[bin]]
-name = "t3000_server"
-path = "src/main.rs"

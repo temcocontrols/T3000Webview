@@ -1,5 +1,17 @@
 /* System Health Styles */
 
+.loadingWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.errorText {
+  color: #d13438;
+  font-size: 13px;
+}
+
 .container {
   display: flex;
   flex-direction: column;

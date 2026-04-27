@@ -78,6 +78,21 @@ pub async fn create_initial_trendlog(
     State(app_state): State<T3AppState>,
     Path((serial_number, trendlog_id)): Path<(i32, String)>,
 ) -> Result<Json<TrendLogFFIResponse>, AppError> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &app_state.mssql_pool {
+        use crate::database_management::mssql_trendlog_service;
+        let info = mssql_trendlog_service::create_initial_trendlog_info(pool, serial_number, 1, &trendlog_id, None)
+            .await
+            .map_err(|e| AppError::InternalError(format!("MSSQL trendlog init: {}", e)))?;
+        // Convert the Value response into TrendLogFFIResponse-like structure
+        return Ok(Json(TrendLogFFIResponse {
+            success: info["success"].as_bool().unwrap_or(true),
+            message: info["message"].as_str().unwrap_or("OK").to_string(),
+            trendlog_info: serde_json::from_value(info["trendlog_info"].clone()).ok(),
+        }));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(app_state);
 
     match TrendLogFFIService::create_initial_trendlog_info(serial_number as u32, &trendlog_id, &*db).await {
@@ -104,6 +119,22 @@ pub async fn create_initial_trendlog_frontend_pattern(
     Path(trendlog_id): Path<String>,
     Json(request): Json<FrontendFFISyncRequest>,
 ) -> Result<Json<TrendLogFFIResponse>, AppError> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &app_state.mssql_pool {
+        use crate::database_management::mssql_trendlog_service;
+        let info = mssql_trendlog_service::create_initial_trendlog_info(
+            pool, request.device_id, request.panel_id, &trendlog_id, request.chart_title.as_deref(),
+        )
+        .await
+        .map_err(|e| AppError::InternalError(format!("MSSQL trendlog init: {}", e)))?;
+        return Ok(Json(TrendLogFFIResponse {
+            success: info["success"].as_bool().unwrap_or(true),
+            message: info["message"].as_str().unwrap_or("OK").to_string(),
+            trendlog_info: serde_json::from_value(info["trendlog_info"].clone()).ok(),
+        }));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(app_state);
 
     match TrendLogFFIService::create_initial_trendlog_info_with_panel_and_title(request.device_id as u32, request.panel_id, &trendlog_id, request.chart_title.as_deref(), &*db).await {
@@ -129,6 +160,20 @@ pub async fn sync_detailed_trendlog(
     State(app_state): State<T3AppState>,
     Path((serial_number, trendlog_id)): Path<(i32, String)>,
 ) -> Result<Json<TrendLogFFIResponse>, AppError> {
+    // ── MSSQL branch — FFI sync not applicable, return existing info ──
+    if let Some(pool) = &app_state.mssql_pool {
+        use crate::database_management::mssql_trendlog_service;
+        let info = mssql_trendlog_service::create_initial_trendlog_info(pool, serial_number, 1, &trendlog_id, None)
+            .await
+            .map_err(|e| AppError::InternalError(format!("MSSQL sync: {}", e)))?;
+        return Ok(Json(TrendLogFFIResponse {
+            success: info["success"].as_bool().unwrap_or(true),
+            message: "Detailed TrendLog info retrieved from MSSQL (FFI sync skipped)".to_string(),
+            trendlog_info: serde_json::from_value(info["trendlog_info"].clone()).ok(),
+        }));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(app_state);
 
     match TrendLogFFIService::sync_detailed_trendlog_info(serial_number as u32, &trendlog_id, &*db).await {
@@ -154,6 +199,20 @@ pub async fn sync_trendlog_with_ffi(
     State(app_state): State<T3AppState>,
     Path((serial_number, trendlog_id)): Path<(i32, String)>,
 ) -> Result<Json<TrendLogFFIResponse>, AppError> {
+    // ── MSSQL branch — FFI sync not applicable, return existing info ──
+    if let Some(pool) = &app_state.mssql_pool {
+        use crate::database_management::mssql_trendlog_service;
+        let info = mssql_trendlog_service::create_initial_trendlog_info(pool, serial_number, 1, &trendlog_id, None)
+            .await
+            .map_err(|e| AppError::InternalError(format!("MSSQL sync: {}", e)))?;
+        return Ok(Json(TrendLogFFIResponse {
+            success: info["success"].as_bool().unwrap_or(true),
+            message: "TrendLog info retrieved from MSSQL (FFI sync skipped)".to_string(),
+            trendlog_info: serde_json::from_value(info["trendlog_info"].clone()).ok(),
+        }));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(app_state);
 
     match TrendLogFFIService::sync_complete_trendlog_info(serial_number as u32, &trendlog_id, &*db).await {
@@ -185,6 +244,22 @@ pub async fn sync_trendlog_frontend_pattern(
     // Add request logging to check if route is being called
     println!("🔥 FRONTEND FFI ROUTE CALLED: trendlog_id={}, device_id={}", trendlog_id, request.device_id);
 
+    // ── MSSQL branch ──
+    if let Some(pool) = &app_state.mssql_pool {
+        use crate::database_management::mssql_trendlog_service;
+        let info = mssql_trendlog_service::create_initial_trendlog_info(
+            pool, request.device_id, request.panel_id, &trendlog_id, request.chart_title.as_deref(),
+        )
+        .await
+        .map_err(|e| AppError::InternalError(format!("MSSQL frontend sync: {}", e)))?;
+        return Ok(Json(TrendLogFFIResponse {
+            success: info["success"].as_bool().unwrap_or(true),
+            message: "TrendLog synchronized successfully via MSSQL (FFI skipped)".to_string(),
+            trendlog_info: serde_json::from_value(info["trendlog_info"].clone()).ok(),
+        }));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(app_state);
 
     match TrendLogFFIService::sync_complete_trendlog_info(request.device_id as u32, &trendlog_id, &*db).await {
@@ -210,11 +285,27 @@ pub async fn get_view_selections(
     State(app_state): State<T3AppState>,
     Path((serial_number, trendlog_id, view_number)): Path<(i32, String, i32)>,
 ) -> Result<Json<Vec<ViewSelection>>, AppError> {
-    let db = get_t3_device_conn!(app_state);
-
     if view_number < 2 || view_number > 3 {
         return Err(AppError::ValidationError("View number must be 2 or 3".to_string()));
     }
+
+    // ── MSSQL branch ──
+    if let Some(pool) = &app_state.mssql_pool {
+        use crate::database_management::mssql_trendlog_service;
+        let sels = mssql_trendlog_service::get_view_selections(pool, serial_number, 1, &trendlog_id, view_number)
+            .await
+            .map_err(|e| AppError::InternalError(format!("MSSQL view selections: {}", e)))?;
+        let converted: Vec<ViewSelection> = sels.iter().map(|v| ViewSelection {
+            point_type: v["point_type"].as_str().unwrap_or("").to_string(),
+            point_index: v["point_index"].as_str().unwrap_or("0").to_string(),
+            point_label: v["point_label"].as_str().unwrap_or("").to_string(),
+            is_selected: v["is_selected"].as_bool().unwrap_or(true),
+        }).collect();
+        return Ok(Json(converted));
+    }
+
+    // ── SeaORM branch ──
+    let db = get_t3_device_conn!(app_state);
 
     let selections = TrendLogFFIService::get_view_selections(serial_number as u32, &trendlog_id, view_number, &*db).await?;
     Ok(Json(selections))
@@ -226,11 +317,29 @@ pub async fn save_view_selections(
     Path((serial_number, trendlog_id, view_number)): Path<(i32, String, i32)>,
     Json(request): Json<SaveSelectionsRequest>,
 ) -> Result<Json<String>, AppError> {
-    let db = get_t3_device_conn!(app_state);
-
     if view_number < 2 || view_number > 3 {
         return Err(AppError::ValidationError("View number must be 2 or 3".to_string()));
     }
+
+    // ── MSSQL branch ──
+    if let Some(pool) = &app_state.mssql_pool {
+        use crate::database_management::mssql_trendlog_service;
+        let sels: Vec<mssql_trendlog_service::ViewSelectionInput> = request.selections.into_iter().map(|s| {
+            mssql_trendlog_service::ViewSelectionInput {
+                point_type: s.point_type,
+                point_index: s.point_index,
+                point_label: s.point_label,
+                is_selected: s.is_selected,
+            }
+        }).collect();
+        mssql_trendlog_service::save_view_selections(pool, serial_number, 1, &trendlog_id, view_number, &sels)
+            .await
+            .map_err(|e| AppError::InternalError(format!("MSSQL save views: {}", e)))?;
+        return Ok(Json("View selections saved successfully".to_string()));
+    }
+
+    // ── SeaORM branch ──
+    let db = get_t3_device_conn!(app_state);
 
     TrendLogFFIService::add_points_to_view_selection(
         serial_number as u32,
@@ -248,6 +357,20 @@ pub async fn get_trendlog_info(
     State(app_state): State<T3AppState>,
     Path(trendlog_id): Path<String>,
 ) -> Result<Json<Option<TrendLogInfo>>, AppError> {
+    // ── MSSQL branch ──
+    if let Some(pool) = &app_state.mssql_pool {
+        use crate::database_management::mssql_trendlog_service;
+        let info = mssql_trendlog_service::get_trendlog_info(pool, &trendlog_id)
+            .await
+            .map_err(|e| AppError::InternalError(format!("MSSQL trendlog info: {}", e)))?;
+        if info.is_null() {
+            return Ok(Json(None));
+        }
+        let trendlog_info: Option<TrendLogInfo> = serde_json::from_value(info).ok();
+        return Ok(Json(trendlog_info));
+    }
+
+    // ── SeaORM branch ──
     let db = get_t3_device_conn!(app_state);
 
     let info = TrendLogFFIService::get_trendlog_info(&trendlog_id, &*db).await?;
@@ -262,8 +385,6 @@ pub async fn get_view_selections_frontend(
     Path((trendlog_id, view_number)): Path<(String, i32)>,
     Query(query_params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<Vec<ViewSelection>>, AppError> {
-    let db = get_t3_device_conn!(app_state);
-
     if view_number < 2 || view_number > 3 {
         return Err(AppError::ValidationError("View number must be 2 or 3".to_string()));
     }
@@ -271,11 +392,29 @@ pub async fn get_view_selections_frontend(
     // Parse device context from query parameters
     let serial_number = query_params.get("serial_number")
         .and_then(|s| s.parse::<i32>().ok())
-        .unwrap_or(0); // Fallback to 0 for backward compatibility
+        .unwrap_or(0);
 
     let panel_id = query_params.get("panel_id")
         .and_then(|s| s.parse::<i32>().ok())
-        .unwrap_or(1); // Fallback to 1 for backward compatibility
+        .unwrap_or(1);
+
+    // ── MSSQL branch ──
+    if let Some(pool) = &app_state.mssql_pool {
+        use crate::database_management::mssql_trendlog_service;
+        let sels = mssql_trendlog_service::get_view_selections(pool, serial_number, panel_id, &trendlog_id, view_number)
+            .await
+            .map_err(|e| AppError::InternalError(format!("MSSQL view selections: {}", e)))?;
+        let converted: Vec<ViewSelection> = sels.iter().map(|v| ViewSelection {
+            point_type: v["point_type"].as_str().unwrap_or("").to_string(),
+            point_index: v["point_index"].as_str().unwrap_or("0").to_string(),
+            point_label: v["point_label"].as_str().unwrap_or("").to_string(),
+            is_selected: v["is_selected"].as_bool().unwrap_or(true),
+        }).collect();
+        return Ok(Json(converted));
+    }
+
+    // ── SeaORM branch ──
+    let db = get_t3_device_conn!(app_state);
 
     println!("🔧 API: Loading view selections with device context: serial_number={}, panel_id={}, trendlog_id={}, view_number={}",
              serial_number, panel_id, trendlog_id, view_number);
@@ -299,16 +438,32 @@ pub async fn save_view_selections_frontend(
     Path((trendlog_id, view_number)): Path<(String, i32)>,
     Json(request): Json<SaveSelectionsRequest>,
 ) -> Result<Json<String>, AppError> {
-    let db = get_t3_device_conn!(app_state);
-
     if view_number < 2 || view_number > 3 {
         return Err(AppError::ValidationError("View number must be 2 or 3".to_string()));
     }
 
-    // Use device parameters from request body for proper multi-device support
-    // Fallback to 0 for backward compatibility if not provided
     let serial_number = request.serial_number.unwrap_or(0);
-    let panel_id = request.panel_id.unwrap_or(1); // Default to 1 for backward compatibility
+    let panel_id = request.panel_id.unwrap_or(1);
+
+    // ── MSSQL branch ──
+    if let Some(pool) = &app_state.mssql_pool {
+        use crate::database_management::mssql_trendlog_service;
+        let sels: Vec<mssql_trendlog_service::ViewSelectionInput> = request.selections.into_iter().map(|s| {
+            mssql_trendlog_service::ViewSelectionInput {
+                point_type: s.point_type,
+                point_index: s.point_index,
+                point_label: s.point_label,
+                is_selected: s.is_selected,
+            }
+        }).collect();
+        mssql_trendlog_service::save_view_selections(pool, serial_number, panel_id, &trendlog_id, view_number, &sels)
+            .await
+            .map_err(|e| AppError::InternalError(format!("MSSQL save views: {}", e)))?;
+        return Ok(Json("View selections saved successfully".to_string()));
+    }
+
+    // ── SeaORM branch ──
+    let db = get_t3_device_conn!(app_state);
 
     println!("🔧 API: Saving view selections with device context: serial_number={}, panel_id={}, trendlog_id={}, view_number={}",
              serial_number, panel_id, trendlog_id, view_number);

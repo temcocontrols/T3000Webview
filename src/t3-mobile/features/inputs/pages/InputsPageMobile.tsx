@@ -22,6 +22,7 @@ import { useMobilePage } from '../../../layout/MobilePageContext';
 import { PointListRow, PointListHeader } from '../../../components/PointListRow/PointListRow';
 import { useInputsPage } from '../../../../shared/features/inputs/hooks/useInputsPage';
 import { getRangeLabel } from '../../../../t3-react/features/inputs/data/rangeData';
+import { MobileRangeDrawer } from '../components/MobileRangeDrawer';
 
 const useStyles = makeStyles({
   wrapper: {
@@ -116,6 +117,8 @@ export const InputsPageMobile: React.FC = () => {
   const styles = useStyles();
   const [search, setSearch] = useState('');
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [rangeDrawerOpen, setRangeDrawerOpen] = useState(false);
+  const [selectedInputForRange, setSelectedInputForRange] = useState<any>(null);
   const {
     inputs,
     loading,
@@ -126,10 +129,30 @@ export const InputsPageMobile: React.FC = () => {
     handleRefresh,
     handleRefreshFromDevice,
     handleRefreshSingleInput,
+    updateInputField,
   } = useInputsPage();
 
   const title = inputs.length > 0 ? `Inputs (${inputs.length})` : 'Inputs';
   useMobilePage({ title, onRefresh: error && inputs.length === 0 ? handleRefresh : handleRefreshFromDevice });
+
+  const handleRangeClick = (input: any) => {
+    setSelectedInputForRange(input);
+    setRangeDrawerOpen(true);
+  };
+
+  const handleRangeSave = async (newRange: number, newDigitalAnalog: number) => {
+    if (!selectedInputForRange || !selectedDevice) return;
+    try {
+      const currentInput = inputs.find(
+        i => i.serialNumber === selectedInputForRange.serialNumber && i.inputIndex === selectedInputForRange.inputIndex
+      );
+      if (!currentInput) return;
+      const updatedInput = { ...currentInput, digitalAnalog: newDigitalAnalog.toString() };
+      await updateInputField(selectedInputForRange.inputIndex, 'range', newRange.toString(), updatedInput);
+    } catch (error) {
+      console.error('Failed to update range:', error);
+    }
+  };
 
   if (loading && inputs.length === 0) {
     return (
@@ -235,6 +258,7 @@ export const InputsPageMobile: React.FC = () => {
               range={rangeLabel}
               expanded={expandedKey === `${input.serialNumber}-${input.inputIndex}`}
               onToggle={() => setExpandedKey(prev => prev === `${input.serialNumber}-${input.inputIndex}` ? null : `${input.serialNumber}-${input.inputIndex}`)}
+              onRangeClick={() => handleRangeClick(input)}
               details={[
                 { label: 'Panel', value: input.panel || '-' },
                 { label: 'Input', value: `IN${parseInt(input.inputIndex || '0') + 1}` },
@@ -257,6 +281,18 @@ export const InputsPageMobile: React.FC = () => {
           );
         })}
       </div>
+
+      {/* Range selection drawer */}
+      {selectedInputForRange && (
+        <MobileRangeDrawer
+          isOpen={rangeDrawerOpen}
+          onClose={() => setRangeDrawerOpen(false)}
+          currentRange={parseInt(selectedInputForRange.rangeField || selectedInputForRange.range || '0', 10)}
+          digitalAnalog={parseInt(selectedInputForRange.digitalAnalog || '0', 10)}
+          onSave={handleRangeSave}
+          inputLabel={`Input ${parseInt(selectedInputForRange.inputIndex || '0') + 1} - ${selectedInputForRange.fullLabel || 'Unnamed'}`}
+        />
+      )}
     </div>
   );
 };

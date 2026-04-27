@@ -19,15 +19,15 @@ let isInitialized = false;
 export function initializeReactApp() {
   // Check if current route should be handled by React
   if (!isReactRoute()) {
-    console.log('📘 Vue route detected - skipping React initialization');
+    //console.log('📘 Vue route detected - skipping React initialization');
     return;
   }
 
-  console.log('⚛️ React route detected - initializing React app...');
+  //console.log('⚛️ React route detected - initializing React app...');
 
   // Prevent multiple initializations
   if (isInitialized) {
-    console.log('⚠️ React already initialized, skipping...');
+    //console.log('⚠️ React already initialized, skipping...');
     return;
   }
 
@@ -42,14 +42,14 @@ export function initializeReactApp() {
   try {
     // Lazy load React app (code splitting)
     import('../t3-react/app/App').then(({ App }) => {
-      console.log('📦 React App module loaded, rootElement:', rootElement);
-      console.log('📦 rootElement innerHTML before mount:', rootElement.innerHTML);
-      console.log('📦 rootElement parent:', rootElement.parentElement);
+      //console.log('📦 React App module loaded, rootElement:', rootElement);
+      //console.log('📦 rootElement innerHTML before mount:', rootElement.innerHTML);
+      //console.log('📦 rootElement parent:', rootElement.parentElement);
 
       // Create React root and render app
       reactRoot = ReactDOM.createRoot(rootElement);
 
-      console.log('📦 React root created:', reactRoot);
+      //console.log('📦 React root created:', reactRoot);
 
       reactRoot.render(
         <React.StrictMode>
@@ -58,22 +58,22 @@ export function initializeReactApp() {
       );
 
       isInitialized = true;
-      console.log('📦 React render called');
+      //console.log('📦 React render called');
 
       // Check after a brief delay
       setTimeout(() => {
-        console.log('📦 rootElement innerHTML after mount:', rootElement.innerHTML);
-        console.log('📦 rootElement children count:', rootElement.children.length);
+        //console.log('📦 rootElement innerHTML after mount:', rootElement.innerHTML);
+        //console.log('📦 rootElement children count:', rootElement.children.length);
       }, 100);
 
       // Check again after 500ms to see if Vue cleared it
       setTimeout(() => {
-        console.log('🔍 rootElement innerHTML after 500ms:', rootElement.innerHTML);
-        console.log('🔍 rootElement children count after 500ms:', rootElement.children.length);
-        console.log('🔍 rootElement still in DOM?', document.contains(rootElement));
+        //console.log('🔍 rootElement innerHTML after 500ms:', rootElement.innerHTML);
+        //console.log('🔍 rootElement children count after 500ms:', rootElement.children.length);
+        //console.log('🔍 rootElement still in DOM?', document.contains(rootElement));
       }, 500);
 
-      console.log('✅ T3000 React application initialized');
+      //console.log('✅ T3000 React application initialized');
     }).catch((error) => {
       console.error('Failed to load React application:', error);
     });
@@ -88,5 +88,5 @@ export function initializeReactApp() {
  * This ensures the DOM element exists before React tries to mount
  */
 export default () => {
-  console.log('⚛️ React boot file loaded (initialization handled by ReactContainer)');
+  //console.log('⚛️ React boot file loaded (initialization handled by ReactContainer)');
 };

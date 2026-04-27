@@ -373,32 +373,9 @@ export const FileBrowserPage: React.FC = () => {
                 items={getSortedFiles()}
                 columns={columns}
                 sortable={false}
-                resizableColumns
                 focusMode="composite"
                 size="small"
                 style={{ minWidth: '100%' }}
-                columnSizingOptions={{
-                  name: {
-                    minWidth: 250,
-                    idealWidth: '43%',
-                  },
-                  modified: {
-                    minWidth: 150,
-                    idealWidth: '25%',
-                  },
-                  type: {
-                    minWidth: 80,
-                    idealWidth: '14%',
-                  },
-                  size: {
-                    minWidth: 60,
-                    idealWidth: '10%',
-                  },
-                  actions: {
-                    minWidth: 70,
-                    idealWidth: '8%',
-                  },
-                }}
               >
                 <DataGridHeader>
                   <DataGridRow>

@@ -26,19 +26,27 @@ pub struct Model {
     #[sea_orm(column_name = "Range_Field")]
     pub range_field: Option<String>,            // C++ Range
     #[sea_orm(column_name = "Calibration")]
-    pub calibration: Option<String>,            // C++ Calibration
+    pub calibration: Option<String>,            // Legacy - kept for backward compat
     #[sea_orm(column_name = "Sign")]
-    pub sign: Option<String>,                   // C++ Sign (calibration_sign)
+    pub sign: Option<String>,                   // Legacy - kept for backward compat
     #[sea_orm(column_name = "Filter_Field")]
-    pub filter_field: Option<String>,           // C++ Filter
+    pub filter_field: Option<String>,           // C++ filter (raw int)
     #[sea_orm(column_name = "Status")]
-    pub status: Option<String>,                 // C++ Status
+    pub status: Option<String>,                 // C++ Status (decom)
     #[sea_orm(column_name = "Digital_Analog")]
-    pub digital_analog: Option<String>,         // From JSON field "digital_analog" (0=digital, 1=analog)
+    pub digital_analog: Option<String>,         // C++ digital_analog (0=digital, 1=analog)
     #[sea_orm(column_name = "Label")]
     pub label: Option<String>,                  // C++ Label (label[9])
     #[sea_orm(column_name = "Type_Field")]
     pub type_field: Option<String>,             // C++ Type
+    #[sea_orm(column_name = "Calibration_H")]
+    pub calibration_h: Option<String>,          // C++ calibration_h (raw high byte)
+    #[sea_orm(column_name = "Calibration_L")]
+    pub calibration_l: Option<String>,          // C++ calibration_l (raw low byte)
+    #[sea_orm(column_name = "Calibration_Sign")]
+    pub calibration_sign: Option<String>,       // C++ calibration_sign (0=positive, 1=negative)
+    #[sea_orm(column_name = "Control")]
+    pub control: Option<String>,                // C++ control (0=OFF, 1=ON)
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

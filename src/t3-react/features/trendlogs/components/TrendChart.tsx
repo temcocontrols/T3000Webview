@@ -55,6 +55,7 @@ interface TrendChartProps {
   showGrid?: boolean;
   chartType?: 'analog' | 'digital'; // New prop to distinguish chart types
   onTimeRangeChange?: (startTime: number, endTime: number) => void;
+  onChartReady?: (instance: echarts.ECharts) => void;
 }
 
 // Color palette - Cyan moved to position 20 as per user requirement
@@ -83,6 +84,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
   showGrid = true,
   chartType = 'analog', // Default to analog for backward compatibility
   onTimeRangeChange,
+  onChartReady,
 }) => {
   const styles = useStyles();
   const chartRef = useRef<HTMLDivElement>(null);
@@ -160,6 +162,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
     if (!chart) {
       chart = echarts.init(chartRef.current);
       chartInstanceRef.current = chart;
+      onChartReady?.(chart);
     }
 
     const timeConfig = TIME_CONFIGS[timeBase];
