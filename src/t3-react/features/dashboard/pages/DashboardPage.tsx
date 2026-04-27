@@ -521,26 +521,43 @@ export const DashboardPage: React.FC = () => {
                 </span>
               </div>
 
-              {/* Shared DB */}
-              <div className={s.kpiCard}>
-                <span className={s.kpiLabel}>Shared DB</span>
-                <span className={mergeClasses(
-                  s.kpiValueMd,
-                  centerDbOk === true ? s.kpiValueGreen : centerDbOk === false ? s.kpiValueRed : '',
-                )}>
-                  {centerDbOk === true ? 'Connected' : centerDbOk === false ? 'Disconnected' : '—'}
-                </span>
-                <span className={s.kpiDetail}>{centerDbDetail}</span>
-              </div>
+              {/* Shared DB (server/client) OR Realtime Poll (standalone) */}
+              {appMode === 'standalone' ? (
+                <div className={s.kpiCard}>
+                  <span className={s.kpiLabel}>Realtime Poll</span>
+                  <span className={mergeClasses(
+                    s.kpiValueMd,
+                    syncHealth?.samplingPaused ? s.kpiValueRed : s.kpiValueGreen,
+                  )}>
+                    {syncHealth ? (syncHealth.samplingPaused ? 'Paused' : 'Active') : '—'}
+                  </span>
+                  <span className={s.kpiDetail}>
+                    {syncHealth?.samplingPaused ? (syncHealth.pausedReason ?? 'Paused') : 'FFI polling running'}
+                  </span>
+                </div>
+              ) : (
+                <div className={s.kpiCard}>
+                  <span className={s.kpiLabel}>Shared DB</span>
+                  <span className={mergeClasses(
+                    s.kpiValueMd,
+                    centerDbOk === true ? s.kpiValueGreen : centerDbOk === false ? s.kpiValueRed : '',
+                  )}>
+                    {centerDbOk === true ? 'Connected' : centerDbOk === false ? 'Disconnected' : '—'}
+                  </span>
+                  <span className={s.kpiDetail}>{centerDbDetail}</span>
+                </div>
+              )}
 
-              {/* Last Sync */}
+              {/* Last Poll (standalone) / Last Sync (server/client) */}
               <div className={s.kpiCard}>
-                <span className={s.kpiLabel}>Last Sync</span>
-                <Tooltip content={syncHealth?.lastSyncTime ?? 'No sync recorded'} relationship="description">
+                <span className={s.kpiLabel}>{appMode === 'standalone' ? 'Last Poll' : 'Last Sync'}</span>
+                <Tooltip content={syncHealth?.lastSyncTime ?? 'No data recorded'} relationship="description">
                   <span className={s.kpiValueMd}>{syncHealth?.lastSyncAgo ?? '—'}</span>
                 </Tooltip>
                 <span className={s.kpiDetail}>
-                  {syncHealth?.devicesSyncedToday ?? 0} device{syncHealth?.devicesSyncedToday !== 1 ? 's' : ''} today
+                  {appMode === 'standalone'
+                    ? `${syncHealth?.devicesSyncedToday ?? 0} device${syncHealth?.devicesSyncedToday !== 1 ? 's' : ''} polled`
+                    : `${syncHealth?.devicesSyncedToday ?? 0} device${syncHealth?.devicesSyncedToday !== 1 ? 's' : ''} today`}
                 </span>
               </div>
 
@@ -584,7 +601,9 @@ export const DashboardPage: React.FC = () => {
         {/* ── Sync & DB Health ── */}
         <div className={s.section}>
           <div className={s.sectionHeader}>
-            <h3 className={s.sectionTitle}>Sync &amp; Database Health</h3>
+            <h3 className={s.sectionTitle}>
+              {appMode === 'standalone' ? 'Local Database Health' : 'Sync \u0026 Database Health'}
+            </h3>
           </div>
           <div className={s.syncHealthWrapper}>
             <SyncHealthWidget
@@ -593,6 +612,7 @@ export const DashboardPage: React.FC = () => {
               loading={healthLoading}
               error={healthError}
               onRefresh={fetchHealth}
+              isStandalone={appMode === 'standalone'}
             />
           </div>
         </div>
@@ -609,7 +629,7 @@ export const DashboardPage: React.FC = () => {
             </button>
           </div>
           <div className={s.trendlogWrapper}>
-            <TrendLogs />
+            <TrendLogs isStandalone={appMode === 'standalone'} />
           </div>
         </div>
 

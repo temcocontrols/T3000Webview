@@ -36,7 +36,11 @@ interface TrendSummary {
   devices: DeviceSummary[];
 }
 
-export const TrendLogs: React.FC = () => {
+interface TrendLogsProps {
+  isStandalone?: boolean;
+}
+
+export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<echarts.ECharts | null>(null);
   const [loading, setLoading] = useState(true);
@@ -280,7 +284,11 @@ export const TrendLogs: React.FC = () => {
       {error && !loading && (
         <div className={styles.error}>
           <ErrorCircleRegular style={{ fontSize: '14px', flexShrink: 0 }} />
-          <span>{error}</span>
+          <span>
+            {isStandalone && error === 'No trendlog data in the last 24 hours'
+              ? 'No trend log data yet. Enable trend log points in the Trend Logs tab to start recording.'
+              : error}
+          </span>
         </div>
       )}
       <div ref={chartRef} className={`${styles.chartArea} ${loading || error ? styles.chartHidden : ''}`} />

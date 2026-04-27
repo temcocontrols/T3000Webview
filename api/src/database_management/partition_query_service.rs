@@ -47,9 +47,9 @@ pub async fn query_trendlog_data(
 ) -> Result<Vec<TrendlogDataRecord>> {
     use crate::logger::ServiceLogger;
 
-    // Create logger for query tracking
+    // Create logger for query tracking — non-fatal, fall back to no-op if log dir unavailable
     let mut logger = ServiceLogger::new("T3_PartitionQuery")
-        .map_err(|e| crate::error::Error::ServerError(format!("Logger creation failed: {}", e)))?;
+        .unwrap_or_else(|_| ServiceLogger::noop());
 
     logger.info(&format!("🔍 Trendlog query: {} to {}",
         start_date.format("%Y-%m-%d %H:%M:%S"),
@@ -67,7 +67,21 @@ pub async fn query_trendlog_data(
 
     let db = establish_t3_device_connection().await
         .map_err(|e| crate::error::Error::ServerError(format!("Database connection failed: {}", e)))?;
-    let config = DatabaseConfigService::get_config(&db).await?;
+
+    // If the partition config table is missing (old DB schema) or returns an error,
+    // fall back to a direct main-DB query rather than propagating HTTP 500.
+    let config = DatabaseConfigService::get_config(&db).await.unwrap_or_else(|_| {
+        crate::entity::database_partition_config::DatabasePartitionConfig {
+            id: None,
+            strategy: crate::entity::database_partition_config::PartitionStrategy::Monthly,
+            custom_days: Some(30),
+            custom_months: Some(2),
+            auto_cleanup_enabled: false,
+            retention_value: 30,
+            retention_unit: crate::entity::database_partition_config::RetentionUnit::Days,
+            is_active: false, // force non-partitioned path
+        }
+    });
 
     if !config.is_active {
         logger.info("📊 Partitioning disabled - querying main DB only");

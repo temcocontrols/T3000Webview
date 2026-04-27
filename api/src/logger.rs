@@ -96,6 +96,12 @@ impl ServiceLogger {
         Self::new("T3_Webview_Initialize")
     }
 
+    /// Create a no-op logger that silently discards all messages.
+    /// Used as a fallback when the log file cannot be created.
+    pub fn noop() -> Self {
+        ServiceLogger { log_file: None }
+    }
+
     /// Create a logger for Input API operations
     pub fn api_inputs() -> Result<Self, std::io::Error> {
         Self::new("T3_Webview_API_Inputs")

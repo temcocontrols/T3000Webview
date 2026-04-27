@@ -1,8 +1,8 @@
-//! Network Scan — TCP 1433 port sweep + UDP 1434 SQL Server Browser discovery
+//! Network Scan — TCP port sweep (1432, 1433, 1434) + UDP 1434 SQL Server Browser discovery
 //!
 //! Scans ALL local network interfaces (LAN, VPN, etc.) — not just the primary one.
-//! Primary: TCP-connect sweep of each interface's /24 subnet on port 1433
-//!          (finds SQL Server on the default port without needing Browser service).
+//! Primary: TCP-connect sweep of each interface's /24 subnet on ports 1432, 1433, and 1434
+//!          (finds SQL Server on default and common alternate ports without needing Browser service).
 //! Secondary: UDP broadcast on port 1434 to discover named instances on
 //!            non-default ports (requires SQL Server Browser service).
 //!
@@ -34,18 +34,44 @@ pub struct DiscoveredInstance {
 ///
 /// Results are merged and deduplicated by (host, instance).
 pub fn scan_sql_server_instances(timeout_ms: u64) -> Vec<DiscoveredInstance> {
-    // --- Phase 1: TCP 1433 subnet sweep (primary) ---
+    // --- Phase 0: Probe the local machine's own IPs ---
+    // The subnet sweep skips local IPs to avoid noise, but the user may have SQL Server
+    // installed on the same machine as T3000. Scan them explicitly here.
+    let local_ips = get_all_local_ips();
+    let sql_ports: &[u16] = &[1433, 1432, 1434];
+    let local_timeout = Duration::from_millis(300);
+    let mut local_results: Vec<DiscoveredInstance> = Vec::new();
+    for ip in &local_ips {
+        for &port in sql_ports {
+            let addr_str = format!("{}:{}", ip, port);
+            if let Ok(addr) = addr_str.parse::<SocketAddr>() {
+                if TcpStream::connect_timeout(&addr, local_timeout).is_ok() {
+                    local_results.push(DiscoveredInstance {
+                        host: ip.clone(),
+                        instance: None,
+                        port: Some(port),
+                        version: None,
+                    });
+                }
+            }
+        }
+    }
+
+    // --- Phase 1: TCP subnet sweep (primary) ---
     let tcp_results = scan_tcp_1433(timeout_ms);
 
     // --- Phase 2: UDP 1434 Browser discovery (secondary) ---
     let udp_results = scan_udp_1434(timeout_ms);
 
-    // --- Phase 3: Direct UDP probe for TCP-found hosts missing from UDP ---
-    // If a host responded to TCP but not UDP broadcast, try a unicast probe
-    let udp_hosts: HashSet<String> = udp_results.iter().map(|r| r.host.clone()).collect();
+    // --- Phase 3: Direct unicast UDP probe for ALL TCP-found hosts ---
+    // Always unicast-probe every TCP-found host (not just those missing from broadcast).
+    // Reason: UDP broadcast may only return some instances (e.g. MSSQLSERVER but not SQLEXPRESS).
+    // A unicast CLNT_UCAST_EX (0x03) probe asks the Browser for ALL instances on that specific host.
+    let all_tcp: Vec<&DiscoveredInstance> = tcp_results.iter().chain(local_results.iter()).collect();
     let mut direct_results = Vec::new();
-    for tcp_inst in &tcp_results {
-        if !udp_hosts.contains(&tcp_inst.host) {
+    let mut probed_hosts: HashSet<String> = HashSet::new();
+    for tcp_inst in &all_tcp {
+        if probed_hosts.insert(tcp_inst.host.clone()) {
             let probed = probe_single_host_udp(&tcp_inst.host, timeout_ms);
             if !probed.is_empty() {
                 direct_results.extend(probed);
@@ -73,8 +99,16 @@ pub fn scan_sql_server_instances(timeout_ms: u64) -> Vec<DiscoveredInstance> {
         }
     }
 
-    // Add remaining TCP-only results (no instance/version info)
+    // Add TCP subnet results (skip any already found above)
     for inst in tcp_results {
+        let key = (inst.host.clone(), inst.port);
+        if seen.insert(key) {
+            merged.push(inst);
+        }
+    }
+
+    // Add local machine results last (skip any already found above)
+    for inst in local_results {
         let key = (inst.host.clone(), inst.port);
         if seen.insert(key) {
             merged.push(inst);
@@ -113,7 +147,12 @@ fn scan_tcp_1433(timeout_ms: u64) -> Vec<DiscoveredInstance> {
         }
     }
 
-    // Probe 1–254 on every subnet in parallel
+    // SQL Server ports to probe per host: 1433 (default), 1432 (alternate), 1434 (alternate/Browser)
+    // One thread per host — ALL ports are checked inside that thread (not early-exit) so that
+    // e.g. a host with both 1433 (some other service) and 1432 (SQL Server) is reported correctly.
+    const SQL_PORTS: &[u16] = &[1433, 1432, 1434];
+
+    // One thread per host; probe ALL ports inside that thread and return every hit
     let handles: Vec<_> = scan_targets
         .into_iter()
         .flat_map(|prefix| {
@@ -121,20 +160,29 @@ fn scan_tcp_1433(timeout_ms: u64) -> Vec<DiscoveredInstance> {
             (1..=254).map(move |i| {
                 let host = format!("{}{}", prefix, i);
                 let skip = local_set.clone();
-                std::thread::spawn(move || {
+                std::thread::spawn(move || -> Vec<DiscoveredInstance> {
                     if skip.contains(&host) {
-                        return None;
+                        return Vec::new();
                     }
-                    let addr: SocketAddr = format!("{}:1433", host).parse().ok()?;
-                    match TcpStream::connect_timeout(&addr, per_host_timeout) {
-                        Ok(_) => Some(DiscoveredInstance {
-                            host,
-                            instance: None,
-                            port: Some(1433),
-                            version: None,
-                        }),
-                        Err(_) => None,
+                    let mut found = Vec::new();
+                    for &port in SQL_PORTS {
+                        let addr: SocketAddr = match format!("{}:{}", host, port).parse() {
+                            Ok(a) => a,
+                            Err(_) => continue,
+                        };
+                        if TcpStream::connect_timeout(&addr, per_host_timeout).is_ok() {
+                            // No instance name guessed from port number — could be anything.
+                            // UDP Browser discovery (Phase 2/3) will fill in the real
+                            // instance name and version when the Browser service is running.
+                            found.push(DiscoveredInstance {
+                                host: host.clone(),
+                                instance: None,
+                                port: Some(port),
+                                version: None,
+                            });
+                        }
                     }
+                    found
                 })
             })
         })
@@ -142,8 +190,8 @@ fn scan_tcp_1433(timeout_ms: u64) -> Vec<DiscoveredInstance> {
 
     let mut results = Vec::new();
     for h in handles {
-        if let Ok(Some(inst)) = h.join() {
-            results.push(inst);
+        if let Ok(found) = h.join() {
+            results.extend(found);
         }
     }
     results
@@ -236,7 +284,9 @@ fn probe_single_host_udp(host: &str, timeout_ms: u64) -> Vec<DiscoveredInstance>
     let _ = socket.set_read_timeout(Some(timeout));
 
     let target = format!("{}:1434", host);
-    let probe = [0x02u8];
+    // 0x03 = CLNT_UCAST_EX: request all instances from a specific host (correct unicast opcode).
+    // 0x02 = CLNT_BCAST_EX: broadcast opcode — some Browser implementations ignore it on unicast.
+    let probe = [0x03u8];
     if socket.send_to(&probe, &target).is_err() {
         return Vec::new();
     }
