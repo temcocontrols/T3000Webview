@@ -36,6 +36,7 @@ interface Props {
   loading: boolean;
   error: string | null;
   onRefresh: () => Promise<void>;
+  isStandalone?: boolean;
 }
 
 function centerDbStatusLabel(status?: string, connected?: boolean) {
@@ -56,7 +57,7 @@ function centerDbStatusLabel(status?: string, connected?: boolean) {
   }
 }
 
-export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, error, onRefresh }) => {
+export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, error, onRefresh, isStandalone = false }) => {
   const [testing, setTesting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -221,7 +222,7 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
         <div className={styles.statCard}>
           <div className={styles.statHead}>
             <ArrowClockwiseRegular className={styles.statIcon} />
-            <span className={styles.statLabel}>Last Sync</span>
+            <span className={styles.statLabel}>{isStandalone ? 'Last Poll' : 'Last Sync'}</span>
           </div>
           <span className={`${styles.statValue} ${metricsBlocked ? styles.statValueWarn : ''}`}>
             {data.lastSyncAgo ?? 'Never'}
@@ -244,7 +245,7 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
           </div>
           <span className={`${styles.statValue} ${metricsBlocked ? styles.statValueWarn : ''}`}>{data.devicesSyncedToday}</span>
           <span className={`${styles.statSub} ${metricsBlocked ? styles.statSubWarn : ''}`}>
-            {metricsBlocked ? 'stale count' : 'synced'}
+            {metricsBlocked ? 'stale count' : isStandalone ? 'polled' : 'synced'}
           </span>
         </div>
 

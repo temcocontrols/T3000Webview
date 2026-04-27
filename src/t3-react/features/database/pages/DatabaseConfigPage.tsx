@@ -1506,7 +1506,7 @@ export const DatabaseConfigPage: React.FC = () => {
                     )}
                     {isTcpOnly && (
                       <Text size={200} className={styles.scanVersionText}>
-                        {' '}TCP 1433 check only
+                        {' '}TCP port check only
                       </Text>
                     )}
                   </span>
