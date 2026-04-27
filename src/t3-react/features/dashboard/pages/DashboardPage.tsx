@@ -206,20 +206,41 @@ const useStyles = makeStyles({
   activitySummary: {
     display: 'flex',
     alignItems: 'center',
-    gap: '6px',
-    fontSize: '11.5px',
+    gap: '8px',
+    fontSize: '12px',
+    fontWeight: 500,
     color: '#605e5c',
   },
-  activitySummaryOk: {
-    display: 'flex',
+  summaryTag: {
+    display: 'inline-flex',
     alignItems: 'center',
-    gap: '3px',
+    gap: '4px',
+    padding: '1px 7px',
+    borderRadius: '999px',
+    fontSize: '11.5px',
+    fontWeight: 600,
+    lineHeight: 1.2,
+    border: '1px solid transparent',
+  },
+  summaryTagOk: {
+    color: '#107c10',
+    backgroundColor: '#edf7ed',
+    borderColor: '#c7e7cb',
+  },
+  summaryTagFail: {
+    color: '#d13438',
+    backgroundColor: '#fdeeee',
+    borderColor: '#f5c2c3',
+  },
+  summaryTagTotal: {
+    color: '#605e5c',
+    backgroundColor: '#f3f2f1',
+    borderColor: '#e1dfdd',
+  },
+  activitySummaryOk: {
     color: '#107c10',
   },
   activitySummaryFail: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '3px',
     color: '#d13438',
   },
   activitySummarySep: {
@@ -227,6 +248,65 @@ const useStyles = makeStyles({
   },
   activitySummaryTotal: {
     color: '#8a8886',
+  },
+  monitoringHeaderLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    flex: 1,
+    minWidth: 0,
+  },
+  monitoringTitle: {
+    flex: 'unset',
+    marginRight: '2px',
+  },
+  monitoringHeaderRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  iconButton: {
+    border: 'none',
+    background: 'transparent',
+    color: '#8a8886',
+    cursor: 'help',
+    padding: 0,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '18px',
+    height: '18px',
+    flexShrink: 0,
+    transitionProperty: 'color',
+    transitionDuration: '120ms',
+    '&:hover': {
+      color: '#605e5c',
+    },
+  },
+  refreshIconButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '24px',
+    height: '24px',
+    borderRadius: '6px',
+    border: '1px solid #bfd8f2',
+    background: '#edf5fe',
+    color: '#0f6cbd',
+    cursor: 'pointer',
+    padding: 0,
+    flexShrink: 0,
+    transitionProperty: 'background-color, color, border-color, box-shadow',
+    transitionDuration: '120ms',
+    '&:hover': {
+      background: '#e4f0fc',
+      borderColor: '#a9caed',
+      boxShadow: '0 0 0 1px #e5f1fb inset',
+    },
+    '&:active': {
+      background: '#ebf3fc',
+      borderColor: '#a9caed',
+    },
   },
 
   /* ── KPI Cards row ── */
@@ -394,6 +474,7 @@ export const DashboardPage: React.FC = () => {
   const [healthError, setHealthError] = useState<string | null>(null);
   const [syncLogOpen, setSyncLogOpen] = useState(false);
   const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null);
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [iniConfig, setIniConfig] = useState<IniConfig | null>(null);
   // Track whether we're in "fast poll" mode (after a mode change, waiting for restart)
   const [fastPolling, setFastPolling] = useState(false);
@@ -672,25 +753,44 @@ export const DashboardPage: React.FC = () => {
         {/* ── Monitoring ── */}
         <div className={s.section}>
           <div className={s.sectionHeader}>
-            <h3 className={s.sectionTitle}>Monitoring</h3>
-            {activitySummary && (
-              <div className={s.activitySummary}>
-                <span className={s.activitySummaryOk}>
-                  <CheckmarkCircleRegular style={{ fontSize: '13px' }} />
-                  {activitySummary.ok} ok
-                </span>
-                <span className={s.activitySummarySep}>·</span>
-                <span className={s.activitySummaryFail}>
-                  <DismissCircleRegular style={{ fontSize: '13px' }} />
-                  {activitySummary.fail} failed
-                </span>
-                <span className={s.activitySummarySep}>·</span>
-                <span className={s.activitySummaryTotal}>{activitySummary.total} total</span>
-              </div>
-            )}
+            <div className={s.monitoringHeaderLeft}>
+              <h3 className={mergeClasses(s.sectionTitle, s.monitoringTitle)}>Monitoring</h3>
+              <Tooltip
+                relationship="description"
+                content="Shows recent per-device sync activity, latest data type updates, and success/fail status."
+              >
+                <button className={s.iconButton} aria-label="About monitoring">
+                  <InfoRegular style={{ fontSize: '12px' }} />
+                </button>
+              </Tooltip>
+            </div>
+            <div className={s.monitoringHeaderRight}>
+              {activitySummary && (
+                <div className={s.activitySummary}>
+                  <span className={mergeClasses(s.summaryTag, s.summaryTagOk)}>
+                    <CheckmarkCircleRegular style={{ fontSize: '14px' }} />
+                    {activitySummary.ok} ok
+                  </span>
+                  <span className={mergeClasses(s.summaryTag, s.summaryTagFail)}>
+                    <DismissCircleRegular style={{ fontSize: '14px' }} />
+                    {activitySummary.fail} failed
+                  </span>
+                  <span className={mergeClasses(s.summaryTag, s.summaryTagTotal)}>{activitySummary.total} total</span>
+                </div>
+              )}
+              <Tooltip relationship="description" content="Refresh monitoring activity now">
+                <button
+                  className={s.refreshIconButton}
+                  aria-label="Refresh monitoring"
+                  onClick={() => setActivityRefreshKey((v) => v + 1)}
+                >
+                  <ArrowClockwiseRegular style={{ fontSize: '13px' }} />
+                </button>
+              </Tooltip>
+            </div>
           </div>
           <div className={s.monitoringColContent}>
-            <RecentActivity onSummary={setActivitySummary} />
+            <RecentActivity key={activityRefreshKey} onSummary={setActivitySummary} />
           </div>
         </div>
 

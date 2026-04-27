@@ -56,7 +56,7 @@
 
 .activityItem {
   display: grid;
-  grid-template-columns: 16px 1fr auto auto auto;
+  grid-template-columns: 16px minmax(160px, 250px) minmax(90px, 1fr) auto auto auto;
   align-items: center;
   gap: 8px;
   padding: 5px 12px;
@@ -98,6 +98,12 @@
   border-radius: 3px;
 }
 
+.activityMethod {
+  font-size: 11px;
+  color: #605e5c;
+  white-space: nowrap;
+}
+
 .activityMessage {
   font-size: 11.5px;
   color: #605e5c;
@@ -108,4 +114,12 @@
   font-size: 11px;
   color: #a19f9d;
   white-space: nowrap;
+}
+
+.footerBar {
+  padding: 6px 12px;
+  border-bottom: 1px solid #f3f2f1;
+  background: #faf9f8;
+  font-size: 11px;
+  color: #8a8886;
 }

@@ -143,6 +143,9 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ onSummary }) => 
         </div>
       ) : (
         <>
+          <div className={styles.footerBar}>
+            Showing {Math.min(5, activities.length)} of {activities.length} latest updates · auto-refresh every 60s
+          </div>
           <div className={styles.activityList}>
           {activities.slice(0, 5).map((activity) => (
             <div key={activity.id} className={styles.activityItem}>
@@ -152,6 +155,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ onSummary }) => 
                   : <DismissCircleRegular style={{ fontSize: '14px', color: '#d13438' }} />}
               </div>
               <div className={styles.activityDevice}>{activity.device}</div>
+              <div className={styles.activityMethod}>{activity.method.toUpperCase()}</div>
               <div className={styles.activityDataType}>{activity.dataType}</div>
               <div className={styles.activityMessage}>
                 {activity.success
