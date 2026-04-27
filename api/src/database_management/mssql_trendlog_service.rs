@@ -55,9 +55,13 @@ pub async fn get_trendlog_history(
     );
 
     // Filter by trendlog_id when provided.
-    // Frontend commonly passes "0" to mean "all points" for chart history,
-    // so skip PointId filtering for that sentinel value.
-    if !trendlog_id.is_empty() && trendlog_id != "0" {
+    // Skip when:
+    //   - trendlog_id is empty or "0" (frontend sentinel for "all points")
+    //   - specific_points are provided (they already fully identify the rows;
+    //     applying PointId = trendlog_id would conflict since actual PointIds
+    //     are e.g. "VAR1", "IN1", not the numeric trendlog slot "1")
+    let has_specific_points = specific_points.map(|sp| !sp.is_empty()).unwrap_or(false);
+    if !trendlog_id.is_empty() && trendlog_id != "0" && !has_specific_points {
         sql.push_str(&format!(
             " AND p.PointId = '{}'",
             trendlog_id.replace('\'', "''")
