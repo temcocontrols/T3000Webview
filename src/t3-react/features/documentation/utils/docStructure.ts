@@ -23,7 +23,14 @@ export const docStructure: DocSection[] = [
       { title: 'Overview', path: 't3000/quick-start/overview' },
       { title: 'Installation', path: 't3000/quick-start/installation' },
       { title: 'Configuration', path: 't3000/quick-start/configuration' },
-      { title: 'SQL Server Express Setup', path: 't3000/quick-start/sql-server-express-setup' },
+    ],
+  },
+  {
+    title: 'Shared DB',
+    icon: 'DataUsage',
+    items: [
+      { title: '1. SQL Server Express Setup', path: 't3000/shared-db/sql-server-express-setup' },
+      { title: '2. T3000 Center DB Configuration', path: 't3000/shared-db/t3000-center-db-config' },
     ],
   },
   {

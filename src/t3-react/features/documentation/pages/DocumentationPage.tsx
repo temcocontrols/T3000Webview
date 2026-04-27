@@ -20,7 +20,7 @@ export const DocumentationPage: React.FC = () => {
 
   // Get all expanded sections as a Set
   const expandedSections = new Set(
-    ['Quick Start', 'Architecture', 'Device Management', 'Data Points', 'Features', 'API Reference', 'Guides', 'Building Platform'].filter(
+    ['Quick Start', 'Shared DB', 'Architecture', 'Device Management', 'Data Points', 'Features', 'API Reference', 'Guides', 'Building Platform'].filter(
       (title) => isSectionExpanded(title)
     )
   );
