@@ -22,6 +22,7 @@ import {
   ChevronRightRegular,
   CheckmarkCircleRegular,
   DismissCircleRegular,
+  InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { getSyncHealth, SyncHealthData } from '../services/syncHealthApi';
@@ -159,6 +160,9 @@ const useStyles = makeStyles({
     borderRadius: '4px',
     overflow: 'hidden',
   },
+  trendSection: {
+    overflow: 'visible',
+  },
   sectionFirst: {
     marginTop: '8px',
   },
@@ -177,6 +181,27 @@ const useStyles = makeStyles({
     color: '#323130',
     margin: 0,
     flex: 1,
+  },
+  sectionTitleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    flex: 1,
+    minWidth: 0,
+  },
+  sectionInfoButton: {
+    border: 'none',
+    background: 'transparent',
+    color: '#8a8886',
+    cursor: 'help',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+    flexShrink: 0,
+    '&:hover': {
+      color: '#605e5c',
+    },
   },
   activitySummary: {
     display: 'flex',
@@ -299,8 +324,9 @@ const useStyles = makeStyles({
     padding: '8px 0',
   },
   trendlogWrapper: {
-    height: '320px',
-    padding: '8px 0',
+    minHeight: '560px',
+    padding: '10px 0 12px',
+    overflow: 'visible',
   },
 
   /* ── 2-column monitoring ── */
@@ -618,9 +644,19 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* ── Trend Logs ── */}
-        <div className={s.section}>
+        <div className={mergeClasses(s.section, s.trendSection)}>
           <div className={s.sectionHeader}>
-            <h3 className={s.sectionTitle}>Trend Logs — Last 24 Hours</h3>
+            <div className={s.sectionTitleRow}>
+              <h3 className={s.sectionTitle}>Trend Logs — Last 24 Hours</h3>
+              <Tooltip
+                relationship="description"
+                content="Shows the last 24h trend history. Use View All for detailed point-level diagnostics and filtering."
+              >
+                <button className={s.sectionInfoButton} aria-label="About Trend Logs section">
+                  <InfoRegular style={{ fontSize: '12px' }} />
+                </button>
+              </Tooltip>
+            </div>
             <button
               className={s.viewAll}
               onClick={() => { window.location.hash = '#/t3000/trendlogs'; }}

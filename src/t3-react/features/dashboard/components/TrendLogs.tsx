@@ -54,6 +54,16 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
     devices: [],
   });
 
+  const formatAge = (timestamp: number | null): string => {
+    if (!timestamp) return 'N/A';
+    const ageMs = Math.max(0, Date.now() - timestamp);
+    const mins = Math.floor(ageMs / 60000);
+    if (mins < 60) return `${mins}m`;
+    const hours = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return `${hours}h ${remMins}m`;
+  };
+
   useEffect(() => {
     let disposed = false;
     let resizeObserver: ResizeObserver | null = null;
@@ -241,39 +251,35 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
     };
   }, []);
 
+  const samplingStalled = summary.trackedPoints > 0 && summary.sampledPoints === 0;
+
   return (
     <div className={styles.container}>
-      <div className={styles.summaryGrid}>
-        <div className={styles.summaryItem}>
-          <div className={styles.summaryLabel}>Tracked</div>
-          <div className={styles.summaryValue}>{summary.trackedPoints}</div>
+      <div className={styles.healthStrip}>
+        <div className={styles.healthCard}>
+          <div className={styles.healthTitle}>Sampling Health</div>
+          <div className={`${styles.healthValue} ${samplingStalled ? styles.stateBad : styles.stateGood}`}>
+            {samplingStalled ? 'Stalled' : 'Active'}
+          </div>
+          <div className={styles.healthSub}>
+            {summary.trackedPoints} tracked, {summary.sampledPoints} active in last 2h
+          </div>
         </div>
-        <div className={styles.summaryItem}>
-          <div className={styles.summaryLabel}>Sampling Active</div>
-          <div className={styles.summaryValue}>{summary.sampledPoints}</div>
+
+        <div className={styles.healthCard}>
+          <div className={styles.healthTitle}>Last Sample Age</div>
+          <div className={styles.healthValue}>{formatAge(summary.lastSampleTs)}</div>
+          <div className={styles.healthSub}>
+            Most recent: {summary.lastSampleTs ? new Date(summary.lastSampleTs).toLocaleTimeString() : 'N/A'}
+          </div>
         </div>
-        <div className={styles.summaryItem}>
-          <div className={styles.summaryLabel}>Records (24h)</div>
-          <div className={styles.summaryValue}>{summary.totalRecords}</div>
-        </div>
-        <div className={styles.summaryItem}>
-          <div className={styles.summaryLabel}>Last Sample</div>
-          <div className={styles.summaryValueSmall}>{summary.lastSampleTs ? new Date(summary.lastSampleTs).toLocaleTimeString() : 'N/A'}</div>
+
+        <div className={styles.healthCard}>
+          <div className={styles.healthTitle}>Suggested Action</div>
+          <div className={styles.healthAction}>Check trendlog selection + sync cycle</div>
+          <div className={styles.healthSub}>Open View All for detailed point-level diagnostics.</div>
         </div>
       </div>
-
-      {summary.devices.length > 0 && (
-        <div className={styles.deviceRows}>
-          {summary.devices.map((d) => (
-            <div key={d.serial} className={styles.deviceRow}>
-              <span className={styles.deviceName}>SN-{d.serial} (P{d.panel})</span>
-              <span className={styles.deviceMeta}>{d.points} pts</span>
-              <span className={styles.deviceMeta}>{d.records} rec</span>
-              <span className={styles.deviceMeta}>{new Date(d.lastSampleTs).toLocaleTimeString()}</span>
-            </div>
-          ))}
-        </div>
-      )}
 
       {loading && (
         <div className={styles.loading}>
@@ -291,7 +297,10 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
           </span>
         </div>
       )}
-      <div ref={chartRef} className={`${styles.chartArea} ${loading || error ? styles.chartHidden : ''}`} />
+
+      <div className={styles.chartRow}>
+        <div ref={chartRef} className={`${styles.chartArea} ${loading || error ? styles.chartHidden : ''}`} />
+      </div>
     </div>
   );
 };
