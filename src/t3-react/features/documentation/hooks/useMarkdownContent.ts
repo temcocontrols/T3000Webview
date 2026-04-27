@@ -11,6 +11,37 @@ interface MarkdownResult {
   error: Error | null;
 }
 
+function rewriteRelativeImagePaths(markdown: string, path: string): string {
+  const pathWithoutExt = path.replace(/\.md$/i, '');
+  const lastSlash = pathWithoutExt.lastIndexOf('/');
+  const baseDir = lastSlash >= 0 ? pathWithoutExt.slice(0, lastSlash) : '';
+
+  // Convert markdown image refs like ![alt](images/foo.png)
+  // into absolute docs refs like ![alt](/docs/t3000/quick-start/images/foo.png).
+  return markdown.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (full, alt, rawUrl) => {
+    const url = String(rawUrl).trim();
+    if (!url) {
+      return full;
+    }
+
+    const lower = url.toLowerCase();
+    if (
+      lower.startsWith('http://') ||
+      lower.startsWith('https://') ||
+      lower.startsWith('data:') ||
+      lower.startsWith('/') ||
+      lower.startsWith('#')
+    ) {
+      return full;
+    }
+
+    const normalizedBase = baseDir.replace(/^\/+/, '').replace(/\/+$/, '');
+    const normalizedUrl = url.replace(/^\.+\//, '').replace(/^\/+/, '');
+    const absolute = `${DOCS_CONFIG.baseUrl}/${normalizedBase}/${normalizedUrl}`.replace(/\/+/g, '/');
+    return `![${alt}](${absolute})`;
+  });
+}
+
 export function useMarkdownContent(path: string): MarkdownResult {
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
@@ -46,9 +77,10 @@ export function useMarkdownContent(path: string): MarkdownResult {
         }
 
         const text = await response.text();
+        const normalizedText = rewriteRelativeImagePaths(text, path);
 
         if (isMounted) {
-          setContent(text);
+          setContent(normalizedText);
           setLoading(false);
         }
       } catch (err) {

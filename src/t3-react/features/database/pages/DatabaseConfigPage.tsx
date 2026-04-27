@@ -1164,7 +1164,6 @@ export const DatabaseConfigPage: React.FC = () => {
                     ? `Connected to server at ${activeConfig?.host ?? '—'}. Reading trend logs and device data from the shared database.`
                     : `Configured to connect to server${activeConfig?.host ? ` at ${activeConfig.host}` : ''}. Server status will appear once the connection is active.`)
                 }
-                {serverStatus?.fallback_active ? ' Running on local SQLite fallback.' : ''}
               </span>
             </div>
           </div>

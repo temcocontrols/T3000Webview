@@ -62,7 +62,7 @@ export interface BackendStatus {
   message: string;
   center_db_status?: string;
   runtime_backend?: BackendType | string;
-  fallback_active?: boolean;
+  writes_blocked?: boolean;
   can_init_schema?: boolean;
 }
 
@@ -125,7 +125,7 @@ const VALID_BACKENDS: BackendType[] = ['sqlite', 'postgres', 'mysql', 'mssql'];
 /** Get current backend status */
 export async function getStatus(): Promise<BackendStatus> {
   const res = await fetch(`${BASE}/status`);
-  const data = await handleResponse<{ success: boolean; active_backend: string; connected: boolean; table_count: number | null; host: string | null; database_name: string | null; center_db_status?: string; center_db_message?: string; runtime_backend?: string; fallback_active?: boolean; can_init_schema?: boolean }>(res);
+  const data = await handleResponse<{ success: boolean; active_backend: string; connected: boolean; table_count: number | null; host: string | null; database_name: string | null; center_db_status?: string; center_db_message?: string; runtime_backend?: string; writes_blocked?: boolean; can_init_schema?: boolean }>(res);
   return {
     active_backend: (VALID_BACKENDS.includes(data.active_backend as BackendType)
       ? data.active_backend : 'sqlite') as BackendType,
@@ -134,7 +134,7 @@ export async function getStatus(): Promise<BackendStatus> {
     message: data.center_db_message ?? (data.connected ? 'Connected' : 'Not connected'),
     center_db_status: data.center_db_status,
     runtime_backend: data.runtime_backend,
-    fallback_active: data.fallback_active,
+    writes_blocked: data.writes_blocked,
     can_init_schema: data.can_init_schema,
   };
 }
@@ -167,7 +167,7 @@ export interface ServerDbStatus {
   center_db_message: string | null;
   configured_backend: string;
   runtime_backend: string;
-  fallback_active: boolean;
+  writes_blocked: boolean;
   can_init_schema: boolean;
   mssql_pool_active: boolean;
   local_config_available: boolean;
