@@ -355,7 +355,7 @@ async fn get_status(
         "center_db_status": server_status.center_db_status,
         "center_db_message": server_status.center_db_message,
         "runtime_backend": server_status.runtime_backend,
-        "fallback_active": server_status.fallback_active,
+        "writes_blocked": server_status.writes_blocked,
         "can_init_schema": server_status.can_init_schema,
     })))
 }

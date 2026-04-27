@@ -53,8 +53,8 @@ pub struct SyncHealthResponse {
     pub backend_type: String,
     /// Backend currently servicing device data at runtime.
     pub runtime_backend_type: String,
-    /// Whether local SQLite fallback is currently active.
-    pub fallback_active: bool,
+    /// Whether writes are currently blocked because center DB is unavailable.
+    pub writes_blocked: bool,
     /// Center DB host from the active backend config.
     pub center_db_host: Option<String>,
     /// Center DB database name from the active backend config.
@@ -393,7 +393,7 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         server_status.runtime_backend.clone()
     };
 
-    let fallback_active = server_status.fallback_active;
+    let writes_blocked = server_status.writes_blocked;
 
     let resolve_db_info_started = Instant::now();
     let (db_size_bytes, db_size_human, db_folder_path, db_file_path) =
@@ -490,6 +490,13 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
     }
     let metadata_elapsed_ms = metadata_started.elapsed().as_millis() as u64;
 
+    // In center DB mode with blocked writes, do not surface historical local
+    // metadata as "today" counts. Keep dashboard counts explicitly at zero.
+    if server_status.enabled && writes_blocked {
+        records_today = RecordsToday::default();
+        devices_synced_today = 0;
+    }
+
     let total_elapsed_ms = total_started.elapsed().as_millis() as u64;
     if total_elapsed_ms > 1500 {
         warn!(
@@ -522,7 +529,7 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         mssql_pool_active: server_status.mssql_pool_active,
         backend_type,
         runtime_backend_type,
-        fallback_active,
+        writes_blocked,
         center_db_host: server_status.host,
         center_db_database_name: server_status.database_name,
         can_init_schema: server_status.can_init_schema,
@@ -536,7 +543,7 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         db_file_path,
         devices_synced_today,
         event_log_scope: "local".to_string(),
-        event_log_note: "Activity Log entries are stored on this PC (local SQLite), not in center DB.".to_string(),
+        event_log_note: "Activity Log entries are stored on this PC, not in center DB.".to_string(),
         sampling_paused: crate::app_state::is_sampling_paused(),
         paused_reason: crate::app_state::get_pause_reason(),
     };

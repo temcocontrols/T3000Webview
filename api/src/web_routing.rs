@@ -46,8 +46,8 @@ pub struct ServerDbStatus {
     pub configured_backend: String,
     /// Backend currently servicing device data at runtime.
     pub runtime_backend: String,
-    /// Whether local SQLite fallback is active.
-    pub fallback_active: bool,
+    /// Whether writes are blocked because Shared DB mode is enabled but center DB is unavailable.
+    pub writes_blocked: bool,
     /// Whether schema initialization is a valid next action.
     pub can_init_schema: bool,
     /// Whether MSSQL pool is available
@@ -169,7 +169,7 @@ async fn resolve_live_center_db_state(
         BackendType::Sqlite => (
             false,
             "misconfigured_backend".to_string(),
-            Some("Shared DB mode is enabled, but the active backend is still local SQLite.".to_string()),
+            Some("Shared DB mode is enabled, but the active backend is not configured to a center database.".to_string()),
             false,
         ),
         BackendType::Mssql => {
@@ -328,7 +328,10 @@ pub async fn resolve_server_db_status(state: &T3AppState) -> ServerDbStatus {
         configured_backend.clone()
     };
 
-    let fallback_active = state.server_db_enabled && !server_connected && runtime_backend == "sqlite";
+    // Writes are blocked whenever center DB mode is enabled but the live probe
+    // shows the center DB is unreachable — regardless of which backend type is
+    // configured (MSSQL pool may still exist from startup but be non-functional).
+    let writes_blocked = state.server_db_enabled && !server_connected;
 
     ServerDbStatus {
         enabled: state.server_db_enabled,
@@ -338,7 +341,7 @@ pub async fn resolve_server_db_status(state: &T3AppState) -> ServerDbStatus {
         center_db_message,
         configured_backend,
         runtime_backend,
-        fallback_active,
+        writes_blocked,
         can_init_schema,
         mssql_pool_active: state.mssql_pool.is_some(),
         local_config_available: state.local_config_conn.is_some(),

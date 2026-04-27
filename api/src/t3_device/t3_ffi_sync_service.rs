@@ -1137,6 +1137,32 @@ impl T3000MainService {
             },
         };
 
+        // Strict policy: when Shared DB mode is enabled, do not continue if
+        // resolved write target is local SQLite.
+        let server_cfg = crate::ini_config::read_server_db_config_auto();
+        if server_cfg.enabled {
+            if matches!(
+                &writer,
+                super::sync_writer::SyncWriter::Sqlite(db)
+                    if db.get_database_backend() == sea_orm::DatabaseBackend::Sqlite
+            ) {
+                let reason = "Center DB mode is enabled, but center DB is unavailable. Writes are blocked until center DB reconnects.";
+                crate::app_state::set_sampling_paused(reason);
+                sync_logger.error(&format!("❌ {}", reason));
+                crate::database_management::sync_health::write_app_log(
+                    &local_db,
+                    "error",
+                    "SYNC_CYCLE",
+                    Some("ffi_sync"),
+                    None,
+                    reason,
+                    Some("policy=center_db_strict_no_sqlite"),
+                )
+                .await;
+                return Err(AppError::ServiceError(reason.to_string()));
+            }
+        }
+
         sync_logger.info(&format!(
             "✅ Database connections established — write target: {}",
             writer_target_text

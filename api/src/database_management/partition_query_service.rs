@@ -287,8 +287,8 @@ fn build_trendlog_query(
     filters: &TrendlogFilters,
 ) -> String {
     let mut where_clauses = vec![
-        format!("datetime(tdd.logging_time_fmt) >= datetime('{}')", start_date.format("%Y-%m-%d %H:%M:%S")),
-        format!("datetime(tdd.logging_time_fmt) <= datetime('{}')", end_date.format("%Y-%m-%d %H:%M:%S")),
+        format!("datetime(tdd.LoggingTime_Fmt) >= datetime('{}')", start_date.format("%Y-%m-%d %H:%M:%S")),
+        format!("datetime(tdd.LoggingTime_Fmt) <= datetime('{}')", end_date.format("%Y-%m-%d %H:%M:%S")),
     ];
 
     if let Some(serial) = filters.serial_number {
