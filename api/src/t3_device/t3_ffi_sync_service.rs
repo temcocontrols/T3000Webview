@@ -234,6 +234,11 @@ pub unsafe fn load_t3000_function() -> bool {
 
 // Safe wrapper to call BacnetWebView_HandleWebViewMsg
 fn call_handle_webview_msg(action: i32, buffer: &mut [u8]) -> Result<i32, String> {
+    // Acquire the global FFI serialization lock (shared with HTTP endpoint and trendlog refresh).
+    // This prevents concurrent C++ calls which crash the non-reentrant T3000 FFI.
+    let _guard = crate::t3_device::t3_ffi_api_service::ffi_call_lock()
+        .lock()
+        .unwrap_or_else(|p| p.into_inner());
     unsafe {
         if !load_t3000_function() {
             return Err(
@@ -256,6 +261,11 @@ fn call_handle_webview_msg(action: i32, buffer: &mut [u8]) -> Result<i32, String
 
 // Safe wrapper to call GetDeviceBasicSettings (new function)
 fn call_get_device_basic_settings(panel_id: i32, buffer: &mut [u8]) -> Result<i32, String> {
+    // Share the same global lock used by all HandleWebViewMsg entry points.
+    // These FFI functions are also non-reentrant in T3000.exe.
+    let _guard = crate::t3_device::t3_ffi_api_service::ffi_call_lock()
+        .lock()
+        .unwrap_or_else(|p| p.into_inner());
     unsafe {
         if !load_t3000_function() {
             return Err("T3000 functions not loaded".to_string());
@@ -277,6 +287,11 @@ fn call_get_device_basic_settings(panel_id: i32, buffer: &mut [u8]) -> Result<i3
 
 // Safe wrapper to call GetDeviceNetworkConfig (new function)
 fn call_get_device_network_config(panel_id: i32, buffer: &mut [u8]) -> Result<i32, String> {
+    // Share the same global lock used by all HandleWebViewMsg entry points.
+    // These FFI functions are also non-reentrant in T3000.exe.
+    let _guard = crate::t3_device::t3_ffi_api_service::ffi_call_lock()
+        .lock()
+        .unwrap_or_else(|p| p.into_inner());
     unsafe {
         if !load_t3000_function() {
             return Err("T3000 functions not loaded".to_string());

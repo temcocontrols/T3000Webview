@@ -14,8 +14,8 @@ use axum::{
     Router,
 };
 use serde_json::Value as JsonValue;
-use std::sync::OnceLock;
-use tokio::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
 use crate::error::Error;
 use crate::logger::ServiceLogger;
 use crate::app_state::T3AppState;
@@ -27,8 +27,18 @@ type BacnetWebViewHandleWebViewMsgFn = unsafe extern "C" fn(action: i32, msg: *m
 // Global function pointer
 static mut BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN: Option<BacnetWebViewHandleWebViewMsgFn> = None;
 static mut T3000_LOADED: bool = false;
+static T3000_LOADED_AT: OnceLock<Instant> = OnceLock::new();
 
-fn ffi_call_lock() -> &'static Mutex<()> {
+fn action17_warmup_active() -> bool {
+    if let Some(loaded_at) = T3000_LOADED_AT.get() {
+        return loaded_at.elapsed() < Duration::from_secs(4);
+    }
+    false
+}
+
+/// Global FFI serialization lock — shared across ALL FFI call sites (HTTP, sync service, trendlog refresh).
+/// Uses std::sync::Mutex so it works in both async and spawn_blocking contexts.
+pub fn ffi_call_lock() -> &'static Mutex<()> {
     static FFI_CALL_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
     FFI_CALL_LOCK.get_or_init(|| Mutex::new(()))
 }
@@ -76,6 +86,7 @@ impl T3000FfiApiService {
                         if !func_ptr.is_null() {
                             BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN = Some(std::mem::transmute(func_ptr));
                             T3000_LOADED = true;
+                            let _ = T3000_LOADED_AT.set(Instant::now());
                             return true;
                         } else {
                             api_logger.error("❌ API Service - BacnetWebView_HandleWebViewMsg not found in T3000.exe");
@@ -92,7 +103,6 @@ impl T3000FfiApiService {
     /// Simple FFI call - just pass the message to C++
     pub async fn call_ffi(&self, message: &str) -> Result<String, Error> {
         let mut api_logger = ServiceLogger::api().unwrap_or_else(|_| ServiceLogger::new("fallback_api").unwrap());
-        let _guard = ffi_call_lock().lock().await;
 
         // Parse the JSON to extract the action number
         api_logger.info(&format!("🔍 Parsing message JSON: {}", message));
@@ -128,94 +138,99 @@ impl T3000FfiApiService {
         };
 
         api_logger.info(&format!("📡 FFI Call - Final Action: {}, Calling C++ now...", action));
+        let max_buffer_size = self.max_buffer_size;
+        let message_owned = message.to_string();
 
-        unsafe {
-            if !Self::load_t3000_function() {
-                return Err(Error::ServerError("T3000 FFI functions not loaded".to_string()));
-            }
+        // Run heavy FFI work on blocking pool so request handling threads stay responsive.
+        let ffi_result = tokio::task::spawn_blocking(move || {
+            let _guard = ffi_call_lock().lock().unwrap_or_else(|p| p.into_inner());
 
-            if let Some(func) = BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN {
-                // Allocate buffer large enough for both input and output
-                let mut buffer: Vec<u8> = vec![0; self.max_buffer_size];
-                let input_bytes = message.as_bytes();
-
-                if input_bytes.len() >= self.max_buffer_size {
-                    return Err(Error::ServerError("Input message too large for buffer".to_string()));
+            unsafe {
+                if !Self::load_t3000_function() {
+                    return Err(Error::ServerError("T3000 FFI functions not loaded".to_string()));
                 }
 
-                // Copy input message into buffer
-                buffer[..input_bytes.len()].copy_from_slice(input_bytes);
-                buffer[input_bytes.len()] = 0;  // Null terminate
+                // Guard first-load startup window: C++ can assert on early Action 17 calls
+                // right after DLL/reload. Fail fast so frontend retries instead of crashing T3000.exe.
+                if action == 17 && action17_warmup_active() {
+                    let warmup = serde_json::json!({
+                        "error": "T3000 initialization in progress, please retry shortly",
+                        "code": "T3000_WARMUP"
+                    })
+                    .to_string();
+                    return Ok((-1, warmup.len(), warmup));
+                }
 
-                // Call FFI - buffer contains input, will be modified to contain output
-                let result = func(
-                    action,
-                    buffer.as_mut_ptr() as *mut c_char,
-                    buffer.len() as i32
-                );
+                if let Some(func) = BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN {
+                    // Allocate buffer large enough for both input and output
+                    let mut buffer: Vec<u8> = vec![0; max_buffer_size];
+                    let input_bytes = message_owned.as_bytes();
 
-                match result {
-                    code if code >= 0 => {
-                        // Non-negative codes (0, 1, 2, etc.) are success or "no data" states
-                        // Extract response from buffer
-                        let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
-                        let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
+                    if input_bytes.len() >= max_buffer_size {
+                        return Err(Error::ServerError("Input message too large for buffer".to_string()));
+                    }
 
-                        if code == 0 {
-                            api_logger.info(&format!("✅ FFI Success - {} bytes", null_pos));
-                        } else {
-                            // Positive codes often mean "no new data" for trendlog/polling operations
-                            api_logger.info(&format!("ℹ️  FFI returned code {} (no new data/empty result) - {} bytes", code, null_pos));
+                    // Copy input message into buffer
+                    buffer[..input_bytes.len()].copy_from_slice(input_bytes);
+                    buffer[input_bytes.len()] = 0; // Null terminate
+
+                    // Call FFI - buffer contains input, will be modified to contain output
+                    let result = func(
+                        action,
+                        buffer.as_mut_ptr() as *mut c_char,
+                        buffer.len() as i32,
+                    );
+
+                    match result {
+                        code if code >= 0 => {
+                            // Non-negative codes (0, 1, 2, etc.) are success or "no data" states
+                            // Extract response from buffer
+                            let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
+                            let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
+                            Ok((code, null_pos, response))
                         }
-
-                        // Parse and log response action if JSON
-                        if let Ok(response_json) = serde_json::from_str::<serde_json::Value>(&response) {
-                            let response_action = response_json.get("action")
-                                .and_then(|a| a.as_str())
-                                .unwrap_or("UNKNOWN");
-                            api_logger.info(&format!("🔍 C++ Response Action: {}", response_action));
-
-                            // Only log full response for code 0 (actual success), not for "no data" codes
-                            if code == 0 {
-                                api_logger.info(&format!("📦 C++ Response: {}", serde_json::to_string_pretty(&response_json).unwrap_or_default()));
+                        -2 => Err(Error::ServerError("MFC application not initialized".to_string())),
+                        -1 => {
+                            // C++ returned -1, but buffer may contain error JSON (e.g., device offline)
+                            let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
+                            let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
+                            if !response.is_empty() && (response.starts_with('{') || response.starts_with('[')) {
+                                Ok((-1, null_pos, response))
+                            } else {
+                                Err(Error::ServerError("FFI call returned error code: -1".to_string()))
                             }
                         }
-
-                        // Return response even if buffer is empty (frontend can handle empty responses)
-                        Ok(response)
+                        code => Err(Error::ServerError(format!("FFI call returned error code: {}", code))),
                     }
-                    -2 => {
-                        let error_msg = "MFC application not initialized".to_string();
-                        api_logger.error(&format!("❌ {}", error_msg));
-                        Err(Error::ServerError(error_msg))
-                    }
-                    -1 => {
-                        // C++ returned -1, but buffer may contain error JSON (e.g., device offline)
-                        // Read buffer content to get actual error message
-                        let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
-                        let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-
-                        // If buffer has JSON content, return it (allows frontend to parse error)
-                        if !response.is_empty() && (response.starts_with('{') || response.starts_with('[')) {
-                            api_logger.info(&format!("⚠️  FFI returned -1 with JSON response: {}", response));
-                            Ok(response)  // Return the JSON error response
-                        } else {
-                            let error_msg = format!("FFI call returned error code: -1");
-                            api_logger.error(&format!("❌ {}", error_msg));
-                            Err(Error::ServerError(error_msg))
-                        }
-                    }
-                    code => {
-                        // Only negative codes < -2 are treated as hard errors
-                        let error_msg = format!("FFI call returned error code: {}", code);
-                        api_logger.error(&format!("❌ {}", error_msg));
-                        Err(Error::ServerError(error_msg))
-                    }
+                } else {
+                    Err(Error::ServerError("FFI function not loaded".to_string()))
                 }
-            } else {
-                Err(Error::ServerError("FFI function not loaded".to_string()))
+            }
+        })
+        .await
+        .map_err(|e| Error::ServerError(format!("FFI blocking task join error: {}", e)))?;
+
+        let (code, null_pos, response) = ffi_result?;
+        if code == 0 {
+            api_logger.info(&format!("✅ FFI Success - {} bytes", null_pos));
+        } else if code > 0 {
+            api_logger.info(&format!("ℹ️  FFI returned code {} (no new data/empty result) - {} bytes", code, null_pos));
+        } else {
+            api_logger.info(&format!("⚠️  FFI returned -1 with JSON response: {}", response));
+        }
+
+        if let Ok(response_json) = serde_json::from_str::<serde_json::Value>(&response) {
+            let response_action = response_json.get("action")
+                .and_then(|a| a.as_str())
+                .unwrap_or("UNKNOWN");
+            api_logger.info(&format!("🔍 C++ Response Action: {}", response_action));
+
+            if code == 0 {
+                api_logger.info(&format!("📦 C++ Response: {}", serde_json::to_string_pretty(&response_json).unwrap_or_default()));
             }
         }
+
+        Ok(response)
     }
 }
 

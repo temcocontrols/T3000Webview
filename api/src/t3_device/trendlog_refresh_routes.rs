@@ -231,6 +231,21 @@ async fn mirror_trendlogs_to_mssql(
 ) -> Result<i32, String> {
     let mut mirrored_count = 0;
 
+    // Fallback from payload-level panel fields; avoid extra DB lookups in handler future.
+    let panel_id_fallback = items
+        .iter()
+        .find_map(|it| {
+            it.get("panelId")
+                .or_else(|| it.get("panel_id"))
+                .or_else(|| it.get("pid"))
+                .and_then(|v| v.as_i64())
+                .map(|v| v as i32)
+                .filter(|v| *v > 0)
+        })
+        .unwrap_or(0);
+
+    let mut mirror_errors: Vec<String> = Vec::new();
+
     for item in items {
         let trendlog_id = item
             .get("trendlogId")
@@ -242,11 +257,25 @@ async fn mirror_trendlogs_to_mssql(
             continue;
         };
 
-        let panel_id = item
+        let panel_id_from_item = item
             .get("panelId")
             .or_else(|| item.get("panel_id"))
+            .or_else(|| item.get("pid"))
             .and_then(|v| v.as_i64())
             .unwrap_or(0) as i32;
+        let panel_id = if panel_id_from_item > 0 {
+            panel_id_from_item
+        } else {
+            panel_id_fallback
+        };
+
+        if panel_id <= 0 {
+            mirror_errors.push(format!(
+                "trendlog={} rejected: invalid panel_id (item={}, fallback={})",
+                trendlog_id, panel_id_from_item, panel_id_fallback
+            ));
+            continue;
+        }
 
         let trendlog_label = get_string_value(item, "trendlogLabel", "trendlog_label");
         let interval_seconds = item
@@ -256,7 +285,7 @@ async fn mirror_trendlogs_to_mssql(
             .map(|v| v as i32);
         let status = get_string_value(item, "status", "status");
 
-        crate::database_management::mssql_queries::upsert_trendlog(
+        if let Err(e) = crate::database_management::mssql_queries::upsert_trendlog(
             pool,
             serial,
             panel_id,
@@ -265,16 +294,38 @@ async fn mirror_trendlogs_to_mssql(
             interval_seconds,
             status.as_deref(),
         )
-        .await?;
+        .await
+        {
+            mirror_errors.push(format!(
+                "trendlog={} upsert_trendlog failed (serial={}, panel={}): {}",
+                trendlog_id, serial, panel_id, e
+            ));
+            continue;
+        }
 
         // Keep MAIN inputs in sync: clear then upsert current set.
-        let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
-        conn.execute(
+        let mut conn = match pool.get().await {
+            Ok(c) => c,
+            Err(e) => {
+                mirror_errors.push(format!(
+                    "trendlog={} pool get failed before input clear: {}",
+                    trendlog_id, e
+                ));
+                continue;
+            }
+        };
+        if let Err(e) = conn.execute(
             "DELETE FROM TRENDLOG_INPUTS WHERE SerialNumber = @P1 AND PanelId = @P2 AND Trendlog_ID = @P3 AND (view_type = 'MAIN' OR view_type IS NULL)",
             &[&serial, &panel_id, &trendlog_id],
         )
         .await
-        .map_err(|e| format!("TRENDLOG_INPUTS clear failed: {}", e))?;
+        {
+            mirror_errors.push(format!(
+                "trendlog={} TRENDLOG_INPUTS clear failed (serial={}, panel={}): {}",
+                trendlog_id, serial, panel_id, e
+            ));
+            continue;
+        }
 
         let raw_inputs = item.get("inputs");
         let inputs_vec: Vec<Value> = if let Some(arr) = raw_inputs.and_then(|v| v.as_array()) {
@@ -320,7 +371,7 @@ async fn mirror_trendlogs_to_mssql(
                 .map(|s| s.to_string())
                 .unwrap_or(fallback_label);
 
-            crate::database_management::mssql_queries::upsert_trendlog_input(
+            if let Err(e) = crate::database_management::mssql_queries::upsert_trendlog_input(
                 pool,
                 serial,
                 panel_id,
@@ -333,10 +384,28 @@ async fn mirror_trendlogs_to_mssql(
                 None,
                 1,
             )
-            .await?;
+            .await
+            {
+                mirror_errors.push(format!(
+                    "trendlog={} input upsert failed (pt={}, pn={}, serial={}, panel={}): {}",
+                    trendlog_id, point_type, pn, serial, panel_id, e
+                ));
+                break;
+            }
         }
 
         mirrored_count += 1;
+    }
+
+    if !mirror_errors.is_empty() {
+        let preview = mirror_errors.iter().take(6).cloned().collect::<Vec<_>>().join(" | ");
+        return Err(format!(
+            "MSSQL mirror partial failure: mirrored={}, total={}, errors={} [{}]",
+            mirrored_count,
+            items.len(),
+            mirror_errors.len(),
+            preview
+        ));
     }
 
     Ok(mirrored_count)
@@ -575,21 +644,21 @@ async fn call_refresh_ffi(action: i32, refresh_json: Value) -> Result<String, St
     let input_str = refresh_json.to_string();
     info!("📤 Sending to C++ (Action {}): {}", action, input_str);
 
-    tokio::task::spawn_blocking(|| {
+    tokio::task::spawn_blocking(move || {
+        use crate::t3_device::t3_ffi_sync_service::BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN;
+
+        const BUFFER_SIZE: usize = 1048576;
+        // Acquire the global FFI lock before touching C++ — same lock used by call_ffi and call_handle_webview_msg.
+        let _guard = crate::t3_device::t3_ffi_api_service::ffi_call_lock()
+            .lock()
+            .unwrap_or_else(|p| p.into_inner());
+
         unsafe {
             if !load_t3000_function() {
                 return Err("T3000 functions not loaded".to_string());
             }
         }
-        Ok(())
-    }).await
-    .map_err(|e| format!("Failed to check T3000 functions: {}", e))?
-    .map_err(|e| e)?;
 
-    tokio::task::spawn_blocking(move || {
-        use crate::t3_device::t3_ffi_sync_service::BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN;
-
-        const BUFFER_SIZE: usize = 1048576;
         let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
         let input_bytes = input_str.as_bytes();
 
