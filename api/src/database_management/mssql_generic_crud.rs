@@ -584,9 +584,16 @@ fn result_sets_to_json(
     for result_set in result_sets {
         for row in result_set {
             let mut obj = serde_json::Map::new();
-            for (i, col_name) in columns.iter().enumerate() {
+            // Use runtime row metadata length to avoid indexing past available
+            // columns if INFORMATION_SCHEMA returns a different column set.
+            let row_column_count = row.columns().len();
+            for i in 0..row_column_count {
+                let col_name = columns
+                    .get(i)
+                    .cloned()
+                    .unwrap_or_else(|| row.columns()[i].name().to_string());
                 let val = extract_column_value(row, i);
-                obj.insert(col_name.clone(), val);
+                obj.insert(col_name, val);
             }
             data.push(Value::Object(obj));
         }

@@ -1526,18 +1526,37 @@ async fn get_trendlogs_by_device(
     Path(device_id): Path<i32>,
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<Value>, StatusCode> {
+    let panel_param = params.get("panel_id").cloned();
+    eprintln!(
+        "[trendlogs] start device_id={} panel_id={:?} mssql_active={}",
+        device_id,
+        panel_param,
+        state.mssql_pool.is_some()
+    );
+
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
         use crate::database_management::mssql_generic_crud;
         let mut trendlogs = mssql_generic_crud::select_by_device(pool, "TRENDLOGS", device_id)
             .await
             .map_err(|e| { eprintln!("MSSQL get trendlogs error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        eprintln!(
+            "[trendlogs] mssql rows device_id={} rows_before_filter={}",
+            device_id,
+            trendlogs.len()
+        );
         // Optional: filter by panel_id query parameter
         if let Some(panel_id_str) = params.get("panel_id") {
             if let Ok(panel_id) = panel_id_str.parse::<i64>() {
                 trendlogs.retain(|t| t.get("PanelId").and_then(|v| v.as_i64()) == Some(panel_id));
             }
         }
+        eprintln!(
+            "[trendlogs] mssql success device_id={} panel_id={:?} rows_after_filter={}",
+            device_id,
+            panel_param,
+            trendlogs.len()
+        );
         return Ok(Json(json!({
             "trendlogs": trendlogs,
             "count": trendlogs.len(),
@@ -1551,6 +1570,11 @@ async fn get_trendlogs_by_device(
 
     match T3TrendlogService::get_trendlogs_by_device(&*db, device_id).await {
         Ok(mut trendlogs) => {
+            eprintln!(
+                "[trendlogs] sqlite rows device_id={} rows_before_filter={}",
+                device_id,
+                trendlogs.len()
+            );
             // Optional: filter by panel_id query parameter
             if let Some(panel_id_str) = params.get("panel_id") {
                 if let Ok(panel_id) = panel_id_str.parse::<i32>() {
@@ -1595,7 +1619,15 @@ async fn get_trendlogs_by_device(
                 "message": "Trendlogs retrieved successfully"
             })))
         },
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+        Err(e) => {
+            eprintln!(
+                "[trendlogs] sqlite error device_id={} panel_id={:?} error={}",
+                device_id,
+                panel_param,
+                e
+            );
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 
