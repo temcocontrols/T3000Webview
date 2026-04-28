@@ -260,32 +260,35 @@ async fn get_table_data(
     State(state): State<T3AppState>,
     Query(params): Query<QueryParams>,
 ) -> Result<Json<QueryResult>, StatusCode> {
-    // ── MSSQL branch ──
+    let table_name = params.table.clone().unwrap_or_else(|| "DEVICES".to_string());
+    let sqlite_first_table = matches!(table_name.as_str(), "TRENDLOGS" | "TRENDLOG_INPUTS");
+
+    // ── MSSQL branch (non-trendlog tables stay MSSQL-first) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
-        let table_name = params.table.unwrap_or_else(|| "DEVICES".to_string());
-        let page = params.page.unwrap_or(1);
-        let per_page = params.per_page.unwrap_or(10);
-        let data = if let Some(search) = &params.search {
-            mssql_generic_crud::search_rows(pool, &table_name, search, page, per_page)
-                .await
-                .map_err(|e| { eprintln!("MSSQL search error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?
-        } else {
-            mssql_generic_crud::select_all(pool, &table_name, page, per_page)
-                .await
-                .map_err(|e| { eprintln!("MSSQL select error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?
-        };
-        let data_len = data.len();
-        return Ok(Json(QueryResult {
-            data,
-            message: format!("Retrieved {} records from {}", data_len, table_name),
-        }));
+        if !sqlite_first_table {
+            use crate::database_management::mssql_generic_crud;
+            let page = params.page.unwrap_or(1);
+            let per_page = params.per_page.unwrap_or(10);
+            let data = if let Some(search) = &params.search {
+                mssql_generic_crud::search_rows(pool, &table_name, search, page, per_page)
+                    .await
+                    .map_err(|e| { eprintln!("MSSQL search error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?
+            } else {
+                mssql_generic_crud::select_all(pool, &table_name, page, per_page)
+                    .await
+                    .map_err(|e| { eprintln!("MSSQL select error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?
+            };
+            let data_len = data.len();
+            return Ok(Json(QueryResult {
+                data,
+                message: format!("Retrieved {} records from {}", data_len, table_name),
+            }));
+        }
     }
 
-    // ── SeaORM branch ──
+    // ── SeaORM branch (TRENDLOGS/TRENDLOG_INPUTS are SQLite-first) ──
     let db = get_t3_device_conn!(state);
     let backend = db.get_database_backend();
-    let table_name = params.table.unwrap_or_else(|| "DEVICES".to_string());
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(10);
     let offset = (page - 1) * per_page;
@@ -474,21 +477,25 @@ async fn get_device_table_data(
     State(state): State<T3AppState>,
     Path((serial, table)): Path<(String, String)>,
 ) -> Result<Json<QueryResult>, StatusCode> {
-    // ── MSSQL branch ──
+    let sqlite_first_table = matches!(table.as_str(), "TRENDLOGS" | "TRENDLOG_INPUTS");
+
+    // ── MSSQL branch (non-trendlog tables stay MSSQL-first) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
-        let serial_number: i32 = serial.parse().map_err(|_| StatusCode::BAD_REQUEST)?;
-        let data = mssql_generic_crud::select_by_device(pool, &table, serial_number)
-            .await
-            .map_err(|e| { eprintln!("MSSQL device table error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        let data_len = data.len();
-        return Ok(Json(QueryResult {
-            data,
-            message: format!("Retrieved {} records from {} for device {}", data_len, table, serial),
-        }));
+        if !sqlite_first_table {
+            use crate::database_management::mssql_generic_crud;
+            let serial_number: i32 = serial.parse().map_err(|_| StatusCode::BAD_REQUEST)?;
+            let data = mssql_generic_crud::select_by_device(pool, &table, serial_number)
+                .await
+                .map_err(|e| { eprintln!("MSSQL device table error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+            let data_len = data.len();
+            return Ok(Json(QueryResult {
+                data,
+                message: format!("Retrieved {} records from {} for device {}", data_len, table, serial),
+            }));
+        }
     }
 
-    // ── SeaORM branch ──
+    // ── SeaORM branch (TRENDLOGS/TRENDLOG_INPUTS are SQLite-first) ──
     let db = get_t3_device_conn!(state);
     let backend = db.get_database_backend();
 
@@ -1534,38 +1541,7 @@ async fn get_trendlogs_by_device(
         state.mssql_pool.is_some()
     );
 
-    // ── MSSQL branch ──
-    if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
-        let mut trendlogs = mssql_generic_crud::select_by_device(pool, "TRENDLOGS", device_id)
-            .await
-            .map_err(|e| { eprintln!("MSSQL get trendlogs error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        eprintln!(
-            "[trendlogs] mssql rows device_id={} rows_before_filter={}",
-            device_id,
-            trendlogs.len()
-        );
-        // Optional: filter by panel_id query parameter
-        if let Some(panel_id_str) = params.get("panel_id") {
-            if let Ok(panel_id) = panel_id_str.parse::<i64>() {
-                trendlogs.retain(|t| t.get("PanelId").and_then(|v| v.as_i64()) == Some(panel_id));
-            }
-        }
-        eprintln!(
-            "[trendlogs] mssql success device_id={} panel_id={:?} rows_after_filter={}",
-            device_id,
-            panel_param,
-            trendlogs.len()
-        );
-        return Ok(Json(json!({
-            "trendlogs": trendlogs,
-            "count": trendlogs.len(),
-            "device_id": device_id,
-            "message": "Trendlogs retrieved successfully"
-        })));
-    }
-
-    // ── SeaORM branch ──
+    // ── SQLite-first branch ──
     let db = get_t3_device_conn!(state);
 
     match T3TrendlogService::get_trendlogs_by_device(&*db, device_id).await {
@@ -1626,6 +1602,40 @@ async fn get_trendlogs_by_device(
                 panel_param,
                 e
             );
+
+            // ── MSSQL fallback branch ──
+            if let Some(pool) = &state.mssql_pool {
+                use crate::database_management::mssql_generic_crud;
+                let mut trendlogs = mssql_generic_crud::select_by_device(pool, "TRENDLOGS", device_id)
+                    .await
+                    .map_err(|err| { eprintln!("MSSQL get trendlogs fallback error: {}", err); StatusCode::INTERNAL_SERVER_ERROR })?;
+                eprintln!(
+                    "[trendlogs] mssql fallback rows device_id={} rows_before_filter={}",
+                    device_id,
+                    trendlogs.len()
+                );
+
+                if let Some(panel_id_str) = params.get("panel_id") {
+                    if let Ok(panel_id) = panel_id_str.parse::<i64>() {
+                        trendlogs.retain(|t| t.get("PanelId").and_then(|v| v.as_i64()) == Some(panel_id));
+                    }
+                }
+
+                eprintln!(
+                    "[trendlogs] mssql fallback success device_id={} panel_id={:?} rows_after_filter={}",
+                    device_id,
+                    panel_param,
+                    trendlogs.len()
+                );
+
+                return Ok(Json(json!({
+                    "trendlogs": trendlogs,
+                    "count": trendlogs.len(),
+                    "device_id": device_id,
+                    "message": "Trendlogs retrieved successfully"
+                })));
+            }
+
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
@@ -1635,25 +1645,7 @@ async fn get_trendlog_stats(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
-    if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
-        let trendlogs = mssql_generic_crud::select_by_device(pool, "TRENDLOGS", device_id)
-            .await
-            .map_err(|e| { eprintln!("MSSQL trendlog stats error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        let count = mssql_generic_crud::count_by_device(pool, "TRENDLOGS", device_id)
-            .await
-            .map_err(|e| { eprintln!("MSSQL trendlog count error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return Ok(Json(json!({
-            "data": {
-                "total_trendlogs": count,
-                "trendlogs": trendlogs,
-            },
-            "message": "Trendlog statistics retrieved successfully"
-        })));
-    }
-
-    // ── SeaORM branch ──
+    // ── SQLite-first branch ──
     let db = get_t3_device_conn!(state);
 
     match T3TrendlogService::get_trendlog_stats_by_device(&*db, device_id).await {
@@ -1661,7 +1653,29 @@ async fn get_trendlog_stats(
             "data": stats,
             "message": "Trendlog statistics retrieved successfully"
         }))),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+        Err(e) => {
+            eprintln!("[trendlog_stats] sqlite error device_id={} error={}", device_id, e);
+
+            // ── MSSQL fallback branch ──
+            if let Some(pool) = &state.mssql_pool {
+                use crate::database_management::mssql_generic_crud;
+                let trendlogs = mssql_generic_crud::select_by_device(pool, "TRENDLOGS", device_id)
+                    .await
+                    .map_err(|err| { eprintln!("MSSQL trendlog stats fallback error: {}", err); StatusCode::INTERNAL_SERVER_ERROR })?;
+                let count = mssql_generic_crud::count_by_device(pool, "TRENDLOGS", device_id)
+                    .await
+                    .map_err(|err| { eprintln!("MSSQL trendlog count fallback error: {}", err); StatusCode::INTERNAL_SERVER_ERROR })?;
+                return Ok(Json(json!({
+                    "data": {
+                        "total_trendlogs": count,
+                        "trendlogs": trendlogs,
+                    },
+                    "message": "Trendlog statistics retrieved successfully"
+                })));
+            }
+
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 
