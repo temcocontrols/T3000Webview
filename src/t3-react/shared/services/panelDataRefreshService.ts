@@ -92,6 +92,21 @@ export class PanelDataRefreshService {
         response = await transport.refreshDeviceRecords(serialNumber, entryType);
       }
 
+      // C++ can occasionally return transient serial/panel mismatch even with correct payload.
+      // Refresh panel list and retry once before failing.
+      if (response?.success === false) {
+        const errMsg = String(response?.data?.error || response?.error || response?.message || '');
+        if (errMsg.toLowerCase().includes('serial number does not match the panel')) {
+          LogUtil.Warn('[PanelDataRefreshService] Serial/panel mismatch from C++; refreshing panel list and retrying once...');
+          await transport.getDeviceList();
+          if (index !== undefined) {
+            response = await transport.refreshDeviceRecords(serialNumber, entryType, index, index);
+          } else {
+            response = await transport.refreshDeviceRecords(serialNumber, entryType);
+          }
+        }
+      }
+
       /* COMMENTED OUT - Action 15 implementation (disabled in C++ by default)
       console.log(`[PanelDataRefreshService] Calling Action 15 (LOGGING_DATA) for ${type} (entryType=${entryType}${index !== undefined ? `, index=${index}` : ''})`);
 
@@ -108,6 +123,12 @@ export class PanelDataRefreshService {
       // Check if response has data
       if (!response || !response.data) {
         throw new Error('No data received from device');
+      }
+
+      // If C++ reports an error (e.g. serial/panel mismatch), do not treat it as "no items".
+      if (response.success === false) {
+        const errorFromCpp = response.data?.error || response.error || response.message || 'Device refresh failed';
+        throw new Error(String(errorFromCpp));
       }
 
       // Debug: Log the response structure

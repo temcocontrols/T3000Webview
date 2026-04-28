@@ -575,21 +575,21 @@ async fn call_refresh_ffi(action: i32, refresh_json: Value) -> Result<String, St
     let input_str = refresh_json.to_string();
     info!("📤 Sending to C++ (Action {}): {}", action, input_str);
 
-    tokio::task::spawn_blocking(|| {
+    tokio::task::spawn_blocking(move || {
+        use crate::t3_device::t3_ffi_sync_service::BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN;
+
+        const BUFFER_SIZE: usize = 1048576;
+        // Acquire the global FFI lock before touching C++ — same lock used by call_ffi and call_handle_webview_msg.
+        let _guard = crate::t3_device::t3_ffi_api_service::ffi_call_lock()
+            .lock()
+            .unwrap_or_else(|p| p.into_inner());
+
         unsafe {
             if !load_t3000_function() {
                 return Err("T3000 functions not loaded".to_string());
             }
         }
-        Ok(())
-    }).await
-    .map_err(|e| format!("Failed to check T3000 functions: {}", e))?
-    .map_err(|e| e)?;
 
-    tokio::task::spawn_blocking(move || {
-        use crate::t3_device::t3_ffi_sync_service::BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN;
-
-        const BUFFER_SIZE: usize = 1048576;
         let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
         let input_bytes = input_str.as_bytes();
 

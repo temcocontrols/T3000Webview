@@ -80,6 +80,8 @@ export const TrendLogsPage: React.FC = () => {
   const [autoRefreshed, setAutoRefreshed] = useState(false);
   const [dbChecked, setDbChecked] = useState(false);
   const deviceRefreshedRef = useRef<number | null>(null);
+  const autoRefreshInProgressRef = useRef(false);
+  const fetchRequestIdRef = useRef(0);
   const [selectedMonitor, setSelectedMonitor] = useState<TrendLogData | null>(null);
   const [monitorInputs, setMonitorInputs] = useState<TrendLogInput[]>([]);
   const [loadingInputs, setLoadingInputs] = useState(false);
@@ -87,6 +89,8 @@ export const TrendLogsPage: React.FC = () => {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const selectedSerial = selectedDevice?.serialNumber;
+  const selectedPanelId = selectedDevice?.panelId;
 
   // Helper function to get row ID for a trendlog
   const getRowIdForItem = useCallback((item: TrendLogData) => {
@@ -284,7 +288,9 @@ export const TrendLogsPage: React.FC = () => {
 
   // Fetch trendlogs for selected device
   const fetchTrendLogs = useCallback(async () => {
-    if (!selectedDevice) {
+    const requestId = ++fetchRequestIdRef.current;
+
+    if (!selectedSerial) {
       setTrendLogs([]);
       setSelectedMonitor(null);
       setMonitorInputs([]);
@@ -295,11 +301,33 @@ export const TrendLogsPage: React.FC = () => {
     setError(null);
 
     try {
-      let url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/trendlogs`;
-      if (selectedDevice.panelId) {
-        url += `?panel_id=${selectedDevice.panelId}`;
+      let url = `${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/trendlogs`;
+      if (selectedPanelId) {
+        url += `?panel_id=${selectedPanelId}`;
       }
-      const response = await fetch(url);
+      let response: Response | null = null;
+      let lastFetchErr: any = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          response = await fetch(url);
+          break;
+        } catch (fetchErr) {
+          lastFetchErr = fetchErr;
+          if (attempt === 0) {
+            // brief backoff for transient transport resets while refresh is in progress
+            await new Promise((resolve) => setTimeout(resolve, 200));
+          }
+        }
+      }
+
+      if (!response) {
+        throw lastFetchErr || new Error('Failed to fetch trendlogs');
+      }
+
+      // Ignore stale responses from previous device/refresh cycles.
+      if (requestId !== fetchRequestIdRef.current) {
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(`Failed to fetch trendlogs: ${response.statusText}`);
@@ -348,14 +376,20 @@ export const TrendLogsPage: React.FC = () => {
         }
       }
     } catch (err) {
+      if (requestId !== fetchRequestIdRef.current) {
+        return;
+      }
       const errorMessage = err instanceof Error ? err.message : 'Failed to load trendlogs';
       setError(errorMessage);
       console.error('Error fetching trendlogs:', err);
     } finally {
+      if (requestId !== fetchRequestIdRef.current) {
+        return;
+      }
       setLoading(false);
       setDbChecked(true);
     }
-  }, [selectedDevice]);
+  }, [selectedPanelId, selectedSerial]);
 
   // Internal function to load inputs with deduplication
   const loadTrendlogInputsInternal = async (trendlog: TrendLogData) => {
@@ -433,7 +467,7 @@ export const TrendLogsPage: React.FC = () => {
 
   // Load inputs for a specific trendlog
   const loadTrendlogInputs = useCallback(async (trendlog: TrendLogData) => {
-    if (!selectedDevice || !trendlog.trendlogId) {
+    if (!selectedSerial || !trendlog.trendlogId) {
       console.log('⚠️ [TrendLogsPage] Missing device or trendlog ID');
       setSelectedMonitor(trendlog);
       setMonitorInputs([]);
@@ -443,7 +477,7 @@ export const TrendLogsPage: React.FC = () => {
     console.log('📡 [TrendLogsPage] Loading inputs for trendlog:', trendlog.trendlogId);
     setSelectedMonitor(trendlog);
     await loadTrendlogInputsInternal(trendlog);
-  }, [selectedDevice]);
+  }, [selectedSerial]);
 
   useEffect(() => {
     fetchTrendLogs();
@@ -457,14 +491,16 @@ export const TrendLogsPage: React.FC = () => {
 
   // Auto-refresh once per device - ONLY after initial DB fetch completes
   useEffect(() => {
-    if (!dbChecked || loading || !selectedDevice || autoRefreshed) return;
-    if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
+    if (!dbChecked || loading || !selectedSerial || autoRefreshed) return;
+    if (deviceRefreshedRef.current === selectedSerial) return;
+    if (autoRefreshInProgressRef.current) return;
 
     const checkAndRefresh = async () => {
-      deviceRefreshedRef.current = selectedDevice.serialNumber;
+      autoRefreshInProgressRef.current = true;
+      deviceRefreshedRef.current = selectedSerial;
 
       try {
-        const serial = selectedDevice.serialNumber;
+        const serial = selectedSerial;
         // Pre-refresh inputs/outputs/variables so label resolution uses current names
         console.log('[TrendLogsPage] Pre-refreshing inputs/outputs/variables for label resolution...');
         await PanelDataRefreshService.refreshAllInputs(serial);
@@ -478,11 +514,13 @@ export const TrendLogsPage: React.FC = () => {
       } catch (error) {
         console.error('[TrendLogsPage] Auto-refresh failed:', error);
         setAutoRefreshed(true);
+      } finally {
+        autoRefreshInProgressRef.current = false;
       }
     };
 
     checkAndRefresh();
-  }, [dbChecked, loading, selectedDevice, autoRefreshed, fetchTrendLogs]);
+  }, [autoRefreshed, dbChecked, fetchTrendLogs, loading, selectedSerial]);
 
   // Refresh all trendlogs from device (Trigger #2: Manual "Refresh All" button)
   const handleRefreshFromDevice = async () => {
