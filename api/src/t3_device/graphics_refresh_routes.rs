@@ -1,4 +1,4 @@
-// Graphics Refresh API Routes
+﻿// Graphics Refresh API Routes
 // Provides RESTful endpoints for refreshing graphics data using GET_WEBVIEW_LIST action
 
 use axum::{
@@ -74,11 +74,15 @@ pub async fn get_graphics(
     info!("GET: Retrieving graphics - Serial: {}", serial);
 
     // Get database connection from state
-    let db_connection = match &state.t3_device_conn {
-        Some(conn) => conn.lock().await.clone(),
-        None => {
-            error!("❌ T3000 device database unavailable");
-            return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+    let db_connection = if let Some(conn) = &state.t3_device_conn {
+        conn.lock().await.clone()
+    } else {
+        match crate::db_connection::establish_t3_device_connection().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("❌ T3000 local device database unavailable: {}", e);
+                return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+            }
         }
     };
 
@@ -123,11 +127,15 @@ pub async fn refresh_graphics(
     }
 
     // Get database connection from state
-    let db_connection = match &state.t3_device_conn {
-        Some(conn) => conn.lock().await.clone(),
-        None => {
-            error!("❌ T3000 device database unavailable");
-            return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+    let db_connection = if let Some(conn) = &state.t3_device_conn {
+        conn.lock().await.clone()
+    } else {
+        match crate::db_connection::establish_t3_device_connection().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("❌ T3000 local device database unavailable: {}", e);
+                return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+            }
         }
     };
 
@@ -247,11 +255,15 @@ pub async fn save_refreshed_graphics(
     info!("SAVE_REFRESHED: Saving {} refreshed graphics - Serial: {}", payload.items.len(), serial);
 
     // Get database connection from state
-    let db_connection = match &state.t3_device_conn {
-        Some(conn) => conn.lock().await.clone(),
-        None => {
-            error!("❌ T3000 device database unavailable");
-            return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+    let db_connection = if let Some(conn) = &state.t3_device_conn {
+        conn.lock().await.clone()
+    } else {
+        match crate::db_connection::establish_t3_device_connection().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("❌ T3000 local device database unavailable: {}", e);
+                return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+            }
         }
     };
 
@@ -402,11 +414,15 @@ pub async fn load_and_save_graphics(
     );
 
     // Get database connection from state
-    let db_connection = match &state.t3_device_conn {
-        Some(conn) => conn.lock().await.clone(),
-        None => {
-            error!("❌ T3000 device database unavailable");
-            return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+    let db_connection = if let Some(conn) = &state.t3_device_conn {
+        conn.lock().await.clone()
+    } else {
+        match crate::db_connection::establish_t3_device_connection().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("❌ T3000 local device database unavailable: {}", e);
+                return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+            }
         }
     };
 

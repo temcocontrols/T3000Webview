@@ -57,11 +57,15 @@ pub async fn batch_save_holidays(
 ) -> Result<Json<BatchSaveResponse>, (StatusCode, String)> {
     info!("BATCH_SAVE: Updating {} holidays for serial: {}", payload.holidays.len(), serial);
 
-    let db_connection = match &state.t3_device_conn {
-        Some(conn) => conn.lock().await.clone(),
-        None => {
-            error!("❌ T3000 device database unavailable");
-            return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+    let db_connection = if let Some(conn) = &state.t3_device_conn {
+        conn.lock().await.clone()
+    } else {
+        match crate::db_connection::establish_t3_device_connection().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("❌ T3000 local device database unavailable: {}", e);
+                return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+            }
         }
     };
 

@@ -1,4 +1,4 @@
-// Input Update API Routes
+﻿// Input Update API Routes
 // Provides RESTful endpoints for updating input point data using UPDATE_WEBVIEW_LIST action
 
 use axum::{
@@ -73,14 +73,15 @@ pub async fn update_input_full(
     info!("UPDATE_WEBVIEW_LIST: Updating full input record - Serial: {}, Index: {}", serial, index);
 
     // Get database connection from state
-    let db_connection = match &state.t3_device_conn {
-        Some(conn) => conn.lock().await.clone(),
-        None => {
-            if let Ok(mut logger) = ServiceLogger::api_inputs() {
-                logger.error("❌ T3000 device database unavailable");
+    let db_connection = if let Some(conn) = &state.t3_device_conn {
+        conn.lock().await.clone()
+    } else {
+        match crate::db_connection::establish_t3_device_connection().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("❌ T3000 local device database unavailable: {}", e);
+                return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
-            error!("❌ T3000 device database unavailable");
-            return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
         }
     };
 
@@ -243,14 +244,15 @@ pub async fn update_input_device_only(
     info!("DEVICE_ONLY: Updating input in device - Serial: {}, Index: {}", serial, index);
 
     // Get database connection from state
-    let db_connection = match &state.t3_device_conn {
-        Some(conn) => conn.lock().await.clone(),
-        None => {
-            if let Ok(mut logger) = ServiceLogger::api_inputs() {
-                logger.error("❌ T3000 device database unavailable");
+    let db_connection = if let Some(conn) = &state.t3_device_conn {
+        conn.lock().await.clone()
+    } else {
+        match crate::db_connection::establish_t3_device_connection().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("❌ T3000 local device database unavailable: {}", e);
+                return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
-            error!("❌ T3000 device database unavailable");
-            return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
         }
     };
 
@@ -374,14 +376,15 @@ pub async fn update_input_database_only(
     }
 
     // Get database connection from state
-    let db_connection = match &state.t3_device_conn {
-        Some(conn) => conn.lock().await.clone(),
-        None => {
-            if let Ok(mut logger) = ServiceLogger::database_inputs() {
-                logger.error("❌ T3000 device database unavailable");
+    let db_connection = if let Some(conn) = &state.t3_device_conn {
+        conn.lock().await.clone()
+    } else {
+        match crate::db_connection::establish_t3_device_connection().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("❌ T3000 local device database unavailable: {}", e);
+                return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
-            error!("❌ T3000 device database unavailable");
-            return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
         }
     };
 
@@ -617,11 +620,15 @@ pub async fn get_input_by_serial_index(
     info!("GET input - Serial: {}, Index: {}", serial, index);
 
     // Get database connection
-    let db_connection = match &state.t3_device_conn {
-        Some(conn) => conn.lock().await.clone(),
-        None => {
-            error!("❌ T3000 device database unavailable");
-            return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+    let db_connection = if let Some(conn) = &state.t3_device_conn {
+        conn.lock().await.clone()
+    } else {
+        match crate::db_connection::establish_t3_device_connection().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("❌ T3000 local device database unavailable: {}", e);
+                return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+            }
         }
     };
 
