@@ -1784,6 +1784,22 @@ impl T3000MainService {
                     {
                         sync_logger.error(&format!("❌ Trend log insertion failed - Serial: {}, Error: {}, Total entries: {}",
                             serial_number, e, total_trend_points));
+                    } else {
+                        // Insert DATA_SYNC_METADATA so the dashboard "Records Today" counts trendlog details
+                        if let Err(e) = Self::insert_data_sync_metadata(
+                            &writer,
+                            &local_db,
+                            "TRENDLOG_DETAIL",
+                            &serial_number.to_string(),
+                            Some(device_with_points.device_info.panel_id),
+                            total_trend_points as i32,
+                            true,
+                            None,
+                        )
+                        .await
+                        {
+                            sync_logger.error(&format!("❌ Failed to insert TRENDLOG_DETAIL sync metadata: {}", e));
+                        }
                     }
                 }
 
