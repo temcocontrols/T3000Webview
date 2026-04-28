@@ -619,7 +619,8 @@ pub async fn ensure_event_log_table(db: &sea_orm::DatabaseConnection) {
 /// to MSSQL when the pool is active so they don't bloat local SQLite.
 /// Low-volume system/config categories always stay in local SQLite.
 fn is_high_volume_category(cat: &str) -> bool {
-    matches!(cat, "SYNC_CYCLE" | "SAMPLING" | "FFI_POLL" | "DEVICE_SYNC" | "TREND_LOG")
+    matches!(cat, "SYNC_CYCLE" | "SAMPLING" | "FFI_POLL" | "DEVICE_SYNC" | "TREND_LOG"
+        | "TD_READ" | "TD_WRITE" | "TD_INPUTS" | "TD_FFI" | "TD_SYNC")
 }
 
 /// Write one entry to T3_APP_LOG.

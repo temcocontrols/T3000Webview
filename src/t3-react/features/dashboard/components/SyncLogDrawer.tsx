@@ -144,7 +144,12 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
             />
           }
         >
-          Activity Log
+          <div className={styles.titleRow}>
+            <span className={styles.titleText}>Activity Log</span>
+            <span className={styles.titleCount}>
+              {loading ? 'Loading...' : `${total.toLocaleString()} entries`}
+            </span>
+          </div>
         </DrawerHeaderTitle>
       </DrawerHeader>
 
@@ -215,7 +220,7 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
         </div>
 
         <div className={styles.stats}>
-          <Text size={200} className={styles.statsText}>
+          <Text size={300} className={styles.statsText}>
             {total} total entries
             {search && ` • ${visibleEntries.length} matching "${search}"`}
           </Text>

@@ -47,3 +47,16 @@ pub fn get_t3000_database_path() -> PathBuf {
 pub fn get_t3000_log_path() -> PathBuf {
     get_t3000_runtime_path().join("T3WebLog")
 }
+
+// ── Activity Log Category Constants ──────────────────────────────────────────
+
+/// Trendlog read operation (SQLite or MSSQL)
+pub const CAT_TD_READ: &str = "TD_READ";
+/// Trendlog write / upsert operation
+pub const CAT_TD_WRITE: &str = "TD_WRITE";
+/// TRENDLOG_INPUTS table operations
+pub const CAT_TD_INPUTS: &str = "TD_INPUTS";
+/// FFI poll delivering trendlog data points
+pub const CAT_TD_FFI: &str = "TD_FFI";
+/// Sync cycle for trendlog data
+pub const CAT_TD_SYNC: &str = "TD_SYNC";
