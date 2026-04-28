@@ -166,26 +166,16 @@ pub async fn save_refreshed_trendlogs(
 ) -> Result<Json<SaveResponse>, (StatusCode, String)> {
     info!("Saving {} refreshed trendlog(s) to database - Serial: {}", payload.items.len(), serial);
 
-    // When Center DB (SQL Server) is configured but currently unreachable, the process
-    // has already fallen back to local SQLite for t3_device_conn. Writing here would
-    // silently store data only in local SQLite while the user believes it went to the
-    // center DB, causing data divergence across PCs. Block the save and tell the caller.
-    if state.server_db_enabled && !state.server_db_connected {
-        warn!("⚠️ Refusing save-refreshed for serial={}: Center DB configured but unreachable — data would be lost on server side", serial);
-        return Err((
-            StatusCode::SERVICE_UNAVAILABLE,
-            "Center DB (SQL Server) is configured but currently unreachable. \
-             Data cannot be saved — it would only land in local SQLite and \
-             never reach the shared center database. \
-             Please check your SQL Server connection.".to_string(),
-        ));
-    }
-
     let db_connection = match &state.t3_device_conn {
         Some(conn) => conn.lock().await.clone(),
         None => {
-            error!("❌ T3000 device database unavailable");
-            return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+            match crate::db_connection::establish_t3_device_connection().await {
+                Ok(conn) => conn,
+                Err(_) => {
+                    error!("❌ T3000 local device database unavailable");
+                    return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+                }
+            }
         }
     };
 
@@ -197,13 +187,159 @@ pub async fn save_refreshed_trendlogs(
         }
     };
 
-    info!("✅ Saved {} trendlog(s) to database", saved_count);
+    // Center DB mode: also mirror these two metadata/config tables.
+    let mut message = format!("Saved {} trendlog(s) to local SQLite", saved_count);
+    if state.server_db_enabled {
+        if let Some(pool) = state.mssql_pool.as_ref() {
+            match mirror_trendlogs_to_mssql(pool, serial, &payload.items).await {
+                Ok(mirrored_count) => {
+                    message = format!(
+                        "Saved {} trendlog(s) to local SQLite and mirrored {} to Center DB",
+                        saved_count, mirrored_count
+                    );
+                }
+                Err(e) => {
+                    warn!("⚠️ Center DB mirror for TRENDLOGS/TRENDLOG_INPUTS failed: {}", e);
+                    message = format!(
+                        "Saved {} trendlog(s) to local SQLite; Center DB mirror failed: {}",
+                        saved_count, e
+                    );
+                }
+            }
+        } else {
+            warn!("⚠️ Center DB enabled but MSSQL pool unavailable; kept local SQLite save only");
+            message = format!(
+                "Saved {} trendlog(s) to local SQLite; Center DB currently unavailable",
+                saved_count
+            );
+        }
+    }
+
+    info!("✅ {}", message);
     Ok(Json(SaveResponse {
         success: true,
-        message: format!("Saved {} trendlog(s) to database", saved_count),
+        message,
         saved_count,
         timestamp: chrono::Utc::now().to_rfc3339(),
     }))
+}
+
+async fn mirror_trendlogs_to_mssql(
+    pool: &crate::database_management::mssql_queries::MssqlPool,
+    serial: i32,
+    items: &[Value],
+) -> Result<i32, String> {
+    let mut mirrored_count = 0;
+
+    for item in items {
+        let trendlog_id = item
+            .get("trendlogId")
+            .or_else(|| item.get("trendlog_id"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        let Some(trendlog_id) = trendlog_id else {
+            continue;
+        };
+
+        let panel_id = item
+            .get("panelId")
+            .or_else(|| item.get("panel_id"))
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0) as i32;
+
+        let trendlog_label = get_string_value(item, "trendlogLabel", "trendlog_label");
+        let interval_seconds = item
+            .get("intervalSeconds")
+            .or_else(|| item.get("interval_seconds"))
+            .and_then(|v| v.as_i64())
+            .map(|v| v as i32);
+        let status = get_string_value(item, "status", "status");
+
+        crate::database_management::mssql_queries::upsert_trendlog(
+            pool,
+            serial,
+            panel_id,
+            &trendlog_id,
+            trendlog_label.as_deref(),
+            interval_seconds,
+            status.as_deref(),
+        )
+        .await?;
+
+        // Keep MAIN inputs in sync: clear then upsert current set.
+        let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
+        conn.execute(
+            "DELETE FROM TRENDLOG_INPUTS WHERE SerialNumber = @P1 AND PanelId = @P2 AND Trendlog_ID = @P3 AND (view_type = 'MAIN' OR view_type IS NULL)",
+            &[&serial, &panel_id, &trendlog_id],
+        )
+        .await
+        .map_err(|e| format!("TRENDLOG_INPUTS clear failed: {}", e))?;
+
+        let raw_inputs = item.get("inputs");
+        let inputs_vec: Vec<Value> = if let Some(arr) = raw_inputs.and_then(|v| v.as_array()) {
+            arr.clone()
+        } else if let Some(obj) = raw_inputs.and_then(|v| v.as_object()) {
+            let mut pairs: Vec<(usize, Value)> = obj
+                .iter()
+                .filter_map(|(k, v)| k.parse::<usize>().ok().map(|i| (i, v.clone())))
+                .collect();
+            pairs.sort_by_key(|(i, _)| *i);
+            pairs.into_iter().map(|(_, v)| v).collect()
+        } else {
+            Vec::new()
+        };
+
+        for input_val in &inputs_vec {
+            let pt = input_val.get("point_type").and_then(|v| v.as_i64()).unwrap_or(0);
+            let pn = input_val.get("point_number").and_then(|v| v.as_i64()).unwrap_or(0);
+            if pt <= 0 {
+                continue;
+            }
+
+            let point_type = match pt {
+                1 => "OUTPUT",
+                2 => "INPUT",
+                3 => "VARIABLE",
+                _ => "UNKNOWN",
+            };
+
+            let fallback_label = format!(
+                "{}_{}",
+                match pt {
+                    1 => "OUT",
+                    2 => "IN",
+                    3 => "VAR",
+                    _ => "UNK",
+                },
+                pn
+            );
+            let point_label = input_val
+                .get("point_label")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+                .unwrap_or(fallback_label);
+
+            crate::database_management::mssql_queries::upsert_trendlog_input(
+                pool,
+                serial,
+                panel_id,
+                &trendlog_id,
+                point_type,
+                &pn.to_string(),
+                Some(point_label.as_str()),
+                Some("ACTIVE"),
+                "MAIN",
+                None,
+                1,
+            )
+            .await?;
+        }
+
+        mirrored_count += 1;
+    }
+
+    Ok(mirrored_count)
 }
 
 /// Extract a string value from JSON, handling both string and integer values

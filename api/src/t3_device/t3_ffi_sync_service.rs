@@ -1234,6 +1234,25 @@ impl T3000MainService {
         // Strict policy: when Shared DB mode is enabled, do not continue if
         // resolved write target is local SQLite. Skip this cycle; service keeps running.
         let server_cfg = crate::ini_config::read_server_db_config_auto();
+
+        // Standalone mode: center DB is disabled — backend interval sync is skipped entirely.
+        // Only realtime writes (from device push) are active in this mode.
+        if !server_cfg.enabled {
+            let reason = "Standalone mode — backend interval sync disabled; only realtime writes are active";
+            sync_logger.info(&format!("⏭️  {}", reason));
+            crate::database_management::sync_health::write_app_log(
+                &local_db,
+                "info",
+                "SYNC_CYCLE",
+                Some("ffi_sync"),
+                None,
+                reason,
+                Some("policy=standalone_skip"),
+            )
+            .await;
+            return Ok(());
+        }
+
         if server_cfg.enabled {
             if matches!(
                 &writer,

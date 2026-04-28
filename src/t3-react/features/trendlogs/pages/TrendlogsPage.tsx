@@ -467,11 +467,9 @@ export const TrendLogsPage: React.FC = () => {
         const serial = selectedDevice.serialNumber;
         // Pre-refresh inputs/outputs/variables so label resolution uses current names
         console.log('[TrendLogsPage] Pre-refreshing inputs/outputs/variables for label resolution...');
-        await Promise.all([
-          PanelDataRefreshService.refreshAllInputs(serial),
-          PanelDataRefreshService.refreshAllOutputs(serial),
-          PanelDataRefreshService.refreshAllVariables(serial),
-        ]);
+        await PanelDataRefreshService.refreshAllInputs(serial);
+        await PanelDataRefreshService.refreshAllOutputs(serial);
+        await PanelDataRefreshService.refreshAllVariables(serial);
         console.log('[TrendLogsPage] Auto-refreshing from device...');
         const refreshResponse = await TrendlogRefreshApi.refreshAllFromDevice(serial);
         console.log('[TrendLogsPage] Refresh response:', refreshResponse);
@@ -495,11 +493,9 @@ export const TrendLogsPage: React.FC = () => {
       const serial = selectedDevice.serialNumber;
       // Pre-refresh inputs/outputs/variables so label resolution uses current names
       console.log('[TrendLogsPage] Pre-refreshing inputs/outputs/variables for label resolution...');
-      await Promise.all([
-        PanelDataRefreshService.refreshAllInputs(serial),
-        PanelDataRefreshService.refreshAllOutputs(serial),
-        PanelDataRefreshService.refreshAllVariables(serial),
-      ]);
+      await PanelDataRefreshService.refreshAllInputs(serial);
+      await PanelDataRefreshService.refreshAllOutputs(serial);
+      await PanelDataRefreshService.refreshAllVariables(serial);
       console.log('[TrendLogsPage] Refreshing all trendlogs from device...');
       const refreshResponse = await TrendlogRefreshApi.refreshAllFromDevice(serial);
       console.log('[TrendLogsPage] Refresh response:', refreshResponse);

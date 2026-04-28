@@ -2577,21 +2577,26 @@ async fn save_realtime_trendlog_data(
     } else {
         eprintln!("📤 Realtime trendlog save target: LOCAL SQLite");
     }
-    let db = match state.t3_device_conn.as_ref() {
-        Some(conn) => conn.lock().await,
+    let db_connection = match state.t3_device_conn.as_ref() {
+        Some(conn) => conn.lock().await.clone(),
         None => {
-            eprintln!("⚠️  T3000 device database unavailable");
-            return Err((
-                StatusCode::SERVICE_UNAVAILABLE,
-                Json(json!({
-                    "success": false,
-                    "error": "T3000 device database unavailable"
-                })),
-            ));
+            match crate::db_connection::establish_t3_device_connection().await {
+                Ok(conn) => conn,
+                Err(_) => {
+                    eprintln!("⚠️  T3000 local device database unavailable");
+                    return Err((
+                        StatusCode::SERVICE_UNAVAILABLE,
+                        Json(json!({
+                            "success": false,
+                            "error": "T3000 device database unavailable"
+                        })),
+                    ));
+                }
+            }
         }
     };
 
-    match T3TrendlogDataService::save_realtime_data(&*db, payload).await {
+    match T3TrendlogDataService::save_realtime_data(&db_connection, payload).await {
         Ok(saved_data) => Ok(Json(json!({
             "data": saved_data,
             "message": "Realtime trendlog data saved successfully"
@@ -2691,21 +2696,26 @@ async fn save_realtime_trendlog_batch(
             LogLevel::Info,
         );
     }
-    let db = match state.t3_device_conn.as_ref() {
-        Some(conn) => conn.lock().await,
+    let db_connection = match state.t3_device_conn.as_ref() {
+        Some(conn) => conn.lock().await.clone(),
         None => {
-            eprintln!("⚠️  T3000 device database unavailable");
-            return Err((
-                StatusCode::SERVICE_UNAVAILABLE,
-                Json(json!({
-                    "success": false,
-                    "error": "T3000 device database unavailable"
-                })),
-            ));
+            match crate::db_connection::establish_t3_device_connection().await {
+                Ok(conn) => conn,
+                Err(_) => {
+                    eprintln!("⚠️  T3000 local device database unavailable");
+                    return Err((
+                        StatusCode::SERVICE_UNAVAILABLE,
+                        Json(json!({
+                            "success": false,
+                            "error": "T3000 device database unavailable"
+                        })),
+                    ));
+                }
+            }
         }
     };
 
-    match T3TrendlogDataService::save_realtime_batch(&*db, payload).await {
+    match T3TrendlogDataService::save_realtime_batch(&db_connection, payload).await {
         Ok(rows_affected) => {
             let success_info = format!(
                 "✅ [Routes] Realtime batch save successful - {} rows affected",
