@@ -67,3 +67,10 @@ Trendlog new pages (react version)
 ## 2026-04-14
 
 Setting pages
+
+
+## 2026-04-28
+
+Integrate the T3000 documentation with the F1 Help System.
+
+"Can we connect this to our help, F1 function key system.  We could do a new help system in fact"
