@@ -486,16 +486,7 @@ pub struct ConfigHistoryEntry {
     pub changed_at: String,
 }
 
-/// Get current Sampling Interval configuration
-async fn get_ffi_sync_interval(
-    State(state): State<T3AppState>,
-) -> Result<Json<FfiSyncIntervalResponse>> {
-    let db = match &state.local_config_conn {
-        Some(conn) => &*conn.lock().await,
-        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
-    };
-
-    // Get current interval from APPLICATION_CONFIG
+pub async fn get_sync_interval_secs(db: &DatabaseConnection) -> Result<u32> {
     let config = ApplicationConfigService::get_config(
         db,
         "ffi.sync_interval_secs",
@@ -507,21 +498,33 @@ async fn get_ffi_sync_interval(
 
     let interval_secs = match config {
         Some(cfg) => {
-            // Try to parse the config_value which is stored as JSON string
-            // It could be a number or a string depending on when it was saved
+            // Value may be stored as JSON number or string.
             if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(&cfg.config_value) {
                 match json_val {
-                    serde_json::Value::Number(n) => n.as_u64().unwrap_or(300),
-                    serde_json::Value::String(s) => s.parse::<u64>().unwrap_or(300),
-                    _ => 300
+                    serde_json::Value::Number(n) => n.as_u64().unwrap_or(1800),
+                    serde_json::Value::String(s) => s.parse::<u64>().unwrap_or(1800),
+                    _ => 1800,
                 }
             } else {
-                // Fallback: try direct string parse
-                cfg.config_value.parse::<u64>().unwrap_or(300)
+                cfg.config_value.parse::<u64>().unwrap_or(1800)
             }
-        },
-        None => 300, // Default to 5 minutes
+        }
+        None => 1800,
     };
+
+    Ok(interval_secs.clamp(60, 86400) as u32)
+}
+
+/// Get current Sampling Interval configuration
+async fn get_ffi_sync_interval(
+    State(state): State<T3AppState>,
+) -> Result<Json<FfiSyncIntervalResponse>> {
+    let db = match &state.local_config_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
+
+    let interval_secs = u64::from(get_sync_interval_secs(db).await?);
 
     // TODO: Get last sync time from T3000MainService status
     let last_sync = None;

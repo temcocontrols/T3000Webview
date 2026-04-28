@@ -13,6 +13,16 @@
 use super::mssql_queries::MssqlPool;
 use serde_json::{json, Value};
 
+fn point_type_aliases(raw: &str) -> Vec<&'static str> {
+    match raw.trim().to_ascii_uppercase().as_str() {
+        "INPUT" | "IN" => vec!["INPUT", "IN"],
+        "OUTPUT" | "OUT" => vec!["OUTPUT", "OUT"],
+        "VARIABLE" | "VAR" => vec!["VARIABLE", "VAR"],
+        "MONITOR" | "MON" => vec!["MONITOR", "MON"],
+        _ => vec!["INPUT", "IN", "OUTPUT", "OUT", "VARIABLE", "VAR", "MONITOR", "MON"],
+    }
+}
+
 // ============================================================================
 // Trendlog History — SELECT from TRENDLOG_DATA + TRENDLOG_DATA_DETAIL
 // ============================================================================
@@ -45,9 +55,13 @@ pub async fn get_trendlog_history(
     );
 
     // Filter by trendlog_id when provided.
-    // Frontend commonly passes "0" to mean "all points" for chart history,
-    // so skip PointId filtering for that sentinel value.
-    if !trendlog_id.is_empty() && trendlog_id != "0" {
+    // Skip when:
+    //   - trendlog_id is empty or "0" (frontend sentinel for "all points")
+    //   - specific_points are provided (they already fully identify the rows;
+    //     applying PointId = trendlog_id would conflict since actual PointIds
+    //     are e.g. "VAR1", "IN1", not the numeric trendlog slot "1")
+    let has_specific_points = specific_points.map(|sp| !sp.is_empty()).unwrap_or(false);
+    if !trendlog_id.is_empty() && trendlog_id != "0" && !has_specific_points {
         sql.push_str(&format!(
             " AND p.PointId = '{}'",
             trendlog_id.replace('\'', "''")
@@ -65,9 +79,10 @@ pub async fn get_trendlog_history(
         if !types.is_empty() {
             let escaped: Vec<String> = types
                 .iter()
-                .map(|t| format!("'{}'", t.replace('\'', "''")))
+                .flat_map(|t| point_type_aliases(t))
+                .map(|t| format!("'{}'", t))
                 .collect();
-            sql.push_str(&format!(" AND p.PointType IN ({})", escaped.join(",")));
+            sql.push_str(&format!(" AND UPPER(p.PointType) IN ({})", escaped.join(",")));
         }
     }
 
@@ -77,12 +92,16 @@ pub async fn get_trendlog_history(
             let conditions: Vec<String> = points
                 .iter()
                 .map(|p| {
+                    let type_sql = point_type_aliases(&p.point_type)
+                        .into_iter()
+                        .map(|t| format!("'{}'", t))
+                        .collect::<Vec<_>>()
+                        .join(",");
                     format!(
-                        "(p.PointId = '{}' AND p.PointType = '{}' AND p.PointIndex = {} AND p.PanelId = {})",
-                        p.point_id.replace('\'', "''"),
-                        p.point_type.replace('\'', "''"),
-                        p.point_index,
+                        "(p.PanelId = {} AND UPPER(p.PointType) IN ({}) AND p.PointIndex = {})",
                         p.panel_id,
+                        type_sql,
+                        p.point_index,
                     )
                 })
                 .collect();

@@ -1,4 +1,4 @@
-// Users Update API Routes
+﻿// Users Update API Routes
 // Provides RESTful endpoints for updating user data using UPDATE_WEBVIEW_LIST action
 
 use axum::{
@@ -57,9 +57,13 @@ pub async fn get_users_by_serial(
     State(state): State<T3AppState>,
     Path(serial): Path<i32>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    let db = match &state.t3_device_conn {
-        Some(conn) => conn.lock().await.clone(),
-        None => return Err((StatusCode::SERVICE_UNAVAILABLE, "Database unavailable".to_string())),
+    let db = if let Some(conn) = &state.t3_device_conn {
+        conn.lock().await.clone()
+    } else {
+        match crate::db_connection::establish_t3_device_connection().await {
+            Ok(conn) => conn,
+            Err(e) => return Err((StatusCode::SERVICE_UNAVAILABLE, format!("Database unavailable: {}", e))),
+        }
     };
 
     let records = users::Entity::find()
@@ -103,11 +107,15 @@ pub async fn update_user_full(
     info!("UPDATE_WEBVIEW_LIST: Updating full user record - Serial: {}, Index: {}", serial, index);
 
     // Get database connection from state
-    let db_connection = match &state.t3_device_conn {
-        Some(conn) => conn.lock().await.clone(),
-        None => {
-            error!("❌ T3000 device database unavailable");
-            return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+    let db_connection = if let Some(conn) = &state.t3_device_conn {
+        conn.lock().await.clone()
+    } else {
+        match crate::db_connection::establish_t3_device_connection().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("❌ T3000 local device database unavailable: {}", e);
+                return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+            }
         }
     };
 

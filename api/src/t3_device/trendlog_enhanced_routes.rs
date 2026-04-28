@@ -12,16 +12,29 @@ use crate::error::AppError;
 use crate::t3_device::trendlog_ffi_service::{TrendLogFFIService, ViewSelection, TrendLogInfo};
 // use serde_json::json;  // Unused - commented out with FFI test endpoints
 
+struct LocalDbConn(sea_orm::DatabaseConnection);
+
+impl std::ops::Deref for LocalDbConn {
+    type Target = sea_orm::DatabaseConnection;
+    fn deref(&self) -> &sea_orm::DatabaseConnection { &self.0 }
+}
+
 // Helper macro to get T3000 device database connection
 macro_rules! get_t3_device_conn {
-    ($state:expr) => {
-        match $state.t3_device_conn.as_ref() {
-            Some(conn) => conn.lock().await,
+    ($state:expr) => {{
+        let _conn = match $state.t3_device_conn.as_ref() {
+            Some(conn) => conn.lock().await.clone(),
             None => {
-                return Err(AppError::InternalError("T3000 device database unavailable".to_string()));
+                match crate::db_connection::establish_t3_device_connection().await {
+                    Ok(c) => c,
+                    Err(_) => {
+                        return Err(AppError::InternalError("T3000 device database unavailable".to_string()));
+                    }
+                }
             }
-        }
-    };
+        };
+        LocalDbConn(_conn)
+    }};
 }
 
 // Request/Response types for view selection API

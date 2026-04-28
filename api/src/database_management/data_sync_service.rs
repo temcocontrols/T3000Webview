@@ -127,45 +127,37 @@ impl DataSyncMetadataService {
 
         let result = active_model.insert(db).await?;
 
-        // Cleanup old records (keep latest 10)
-        Self::cleanup_old_records(
-            db,
-            &request.serial_number,
-            &request.data_type,
-            10,
-        )
-        .await?;
+        // Cleanup old records: delete anything older than 2 days so today's
+        // rows are never removed (the dashboard sums all rows since midnight).
+        Self::cleanup_old_records(db, &request.serial_number, &request.data_type).await?;
 
         Ok(SyncStatusResponse::from(result))
     }
 
-    /// Delete old sync records, keeping only the latest N records per device/data_type
+    /// Delete sync metadata rows older than 2 days (keeps today + yesterday intact).
     async fn cleanup_old_records(
         db: &DatabaseConnection,
         serial_number: &str,
         data_type: &str,
-        keep_count: usize,
     ) -> Result<()> {
-        // Get IDs of records to keep (latest N)
-        let records_to_keep = data_sync_metadata::Entity::find()
+        use chrono::{Local, Datelike, TimeZone};
+        let today_start = {
+            let now = Local::now();
+            Local
+                .with_ymd_and_hms(now.year(), now.month(), now.day(), 0, 0, 0)
+                .single()
+                .map(|d| d.timestamp())
+                .unwrap_or_else(|| chrono::Utc::now().timestamp() - 86400)
+        };
+        // Keep today + yesterday; delete everything older.
+        let cutoff = today_start - 86400; // 2 days ago midnight
+
+        data_sync_metadata::Entity::delete_many()
             .filter(data_sync_metadata::Column::SerialNumber.eq(serial_number))
             .filter(data_sync_metadata::Column::DataType.eq(data_type))
-            .order_by_desc(data_sync_metadata::Column::SyncTime)
-            .limit(keep_count as u64)
-            .all(db)
+            .filter(data_sync_metadata::Column::SyncTime.lt(cutoff))
+            .exec(db)
             .await?;
-
-        if records_to_keep.len() >= keep_count {
-            let ids_to_keep: Vec<i32> = records_to_keep.iter().map(|r| r.id).collect();
-
-            // Delete records not in the keep list
-            data_sync_metadata::Entity::delete_many()
-                .filter(data_sync_metadata::Column::SerialNumber.eq(serial_number))
-                .filter(data_sync_metadata::Column::DataType.eq(data_type))
-                .filter(data_sync_metadata::Column::Id.is_not_in(ids_to_keep))
-                .exec(db)
-                .await?;
-        }
 
         Ok(())
     }

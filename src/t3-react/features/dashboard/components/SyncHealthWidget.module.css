@@ -173,3 +173,168 @@
   color: #0078d4;
   flex-shrink: 0;
 }
+
+.intervalEditRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.intervalEditButton {
+  min-width: auto;
+}
+
+.intervalPresetRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.intervalCustomRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.intervalCustomInput {
+  width: 76px;
+  border: 1px solid #c8c6c4;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 12px;
+  color: #323130;
+  background: #ffffff;
+}
+
+.intervalCustomInput:focus {
+  outline: 2px solid #0078d4;
+  outline-offset: 1px;
+  border-color: #0078d4;
+}
+
+.intervalActionRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Interval chip (header, view mode) ── */
+.intervalChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  background: #f0f6ff;
+  border: 1px solid #c7dff7;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.intervalChip:hover {
+  background: #e0edfb;
+  border-color: #0078d4;
+}
+
+.intervalChipActive {
+  background: #0078d4;
+  border-color: #0078d4;
+}
+
+.intervalChipActive:hover {
+  background: #106ebe;
+  border-color: #106ebe;
+}
+
+.intervalChipLabel {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #8ab4e8;
+  line-height: 1;
+}
+
+.intervalChipActive .intervalChipLabel {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.intervalChipValue {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0078d4;
+  line-height: 1;
+}
+
+.intervalChipActive .intervalChipValue {
+  color: #ffffff;
+}
+
+.intervalChipEdit {
+  font-size: 11px;
+  color: #8ab4e8;
+  opacity: 0.8;
+}
+
+/* ── Interval editor bar (between header and stats row) ── */
+.intervalBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f0f6ff;
+  border: 1px solid #c7dff7;
+  border-radius: 6px;
+}
+
+.intervalBarIcon {
+  font-size: 14px;
+  color: #0078d4;
+  flex-shrink: 0;
+}
+
+.intervalBarLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #0078d4;
+  margin-right: 2px;
+  white-space: nowrap;
+}
+
+.intervalBarInput {
+  width: 68px;
+  padding: 3px 6px;
+  font-size: 12px;
+  font-family: inherit;
+  border: 1px solid #c7dff7;
+  border-radius: 4px;
+  color: #323130;
+  background: #ffffff;
+}
+
+.intervalBarInput:focus {
+  outline: 2px solid #0078d4;
+  outline-offset: 1px;
+  border-color: #0078d4;
+}
+
+.intervalBarMinLabel {
+  font-size: 11px;
+  color: #605e5c;
+  white-space: nowrap;
+}
+
+.intervalBarDivider {
+  width: 1px;
+  height: 20px;
+  background: #c7dff7;
+  flex-shrink: 0;
+  margin: 0 2px;
+}

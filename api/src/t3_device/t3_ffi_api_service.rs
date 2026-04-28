@@ -14,6 +14,8 @@ use axum::{
     Router,
 };
 use serde_json::Value as JsonValue;
+use std::sync::OnceLock;
+use tokio::sync::Mutex;
 use crate::error::Error;
 use crate::logger::ServiceLogger;
 use crate::app_state::T3AppState;
@@ -25,6 +27,11 @@ type BacnetWebViewHandleWebViewMsgFn = unsafe extern "C" fn(action: i32, msg: *m
 // Global function pointer
 static mut BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN: Option<BacnetWebViewHandleWebViewMsgFn> = None;
 static mut T3000_LOADED: bool = false;
+
+fn ffi_call_lock() -> &'static Mutex<()> {
+    static FFI_CALL_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    FFI_CALL_LOCK.get_or_init(|| Mutex::new(()))
+}
 
 /// Simple FFI API Service - middleware only
 pub struct T3000FfiApiService {
@@ -85,6 +92,7 @@ impl T3000FfiApiService {
     /// Simple FFI call - just pass the message to C++
     pub async fn call_ffi(&self, message: &str) -> Result<String, Error> {
         let mut api_logger = ServiceLogger::api().unwrap_or_else(|_| ServiceLogger::new("fallback_api").unwrap());
+        let _guard = ffi_call_lock().lock().await;
 
         // Parse the JSON to extract the action number
         api_logger.info(&format!("🔍 Parsing message JSON: {}", message));
