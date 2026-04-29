@@ -752,7 +752,7 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, he
                   )}
                   <span className={s.metaSep}>·</span>
                   <span>{backendLabel(effectiveCenterBackendType(health))}</span>
-                  {selfEntry?.table_count != null && (
+                  {typeof selfEntry?.table_count === 'number' && selfEntry.table_count > 0 && (
                     <><span className={s.metaSep}>·</span><span>{selfEntry.table_count} tables</span></>
                   )}
                 </div>

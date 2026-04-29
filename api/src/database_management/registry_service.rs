@@ -115,6 +115,11 @@ async fn upsert_self_entry(
 
     let ip = get_local_ip();
     let now = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
+    let backend = if state.mssql_pool.is_some() {
+        "mssql".to_string()
+    } else {
+        "sqlite".to_string()
+    };
 
     // Try to find existing entry by hostname (not IP, which may change with DHCP)
     let existing = server_client_registry::Entity::find()
@@ -130,6 +135,8 @@ async fn upsert_self_entry(
         active.last_seen = Set(now);
         active.role = Set(state.server_db_role.clone());
         active.is_self = Set(1);
+        active.db_backend = Set(Some(backend.clone()));
+        active.table_count = Set(None);
         active.update(db).await?;
     } else {
         // Insert new
@@ -141,7 +148,7 @@ async fn upsert_self_entry(
             is_self: Set(1),
             status: Set("online".to_string()),
             last_seen: Set(now.clone()),
-            db_backend: Set(Some("sqlite".to_string())),
+            db_backend: Set(Some(backend)),
             table_count: Set(None),
             version: Set(None),
             created_at: Set(Some(now)),
@@ -231,7 +238,15 @@ async fn receive_heartbeat(
 
     // MSSQL path
     if let Some(ref pool) = state.mssql_pool {
-        mssql_upsert_entry(pool, &req.hostname, &req.ip_address, &role, 0, req.version.as_deref())
+            mssql_upsert_entry(
+                pool,
+                &req.hostname,
+                &req.ip_address,
+                &role,
+                0,
+                "sqlite",
+                req.version.as_deref(),
+            )
             .await
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
         return Ok(Json(serde_json::json!({
@@ -396,7 +411,12 @@ async fn mssql_upsert_self(pool: &MssqlPool, state: &T3AppState) -> Result<(), S
         .map(|h| h.to_string_lossy().to_string())
         .unwrap_or_else(|_| "unknown".to_string());
     let ip = get_local_ip();
-    mssql_upsert_entry(pool, &hostname, &ip, &state.server_db_role, 1, None).await
+    let backend = if state.mssql_pool.is_some() {
+        "mssql"
+    } else {
+        "sqlite"
+    };
+    mssql_upsert_entry(pool, &hostname, &ip, &state.server_db_role, 1, backend, None).await
 }
 
 /// Upsert a registry entry by hostname (MERGE).
@@ -406,6 +426,7 @@ async fn mssql_upsert_entry(
     ip_address: &str,
     role: &str,
     is_self: i32,
+    db_backend: &str,
     version: Option<&str>,
 ) -> Result<(), String> {
     let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
@@ -417,11 +438,11 @@ async fn mssql_upsert_entry(
          ON target.hostname = source.hostname \
          WHEN MATCHED THEN UPDATE SET \
            ip_address = @P2, role = @P3, is_self = @P4, status = N'online', \
-           last_seen = GETDATE(), version = @P5 \
+                     last_seen = GETDATE(), db_backend = @P5, table_count = NULL, version = @P6 \
          WHEN NOT MATCHED THEN INSERT \
-           (hostname, ip_address, role, is_self, status, last_seen, version, created_at) \
-         VALUES (@P1, @P2, @P3, @P4, N'online', GETDATE(), @P5, GETDATE());",
-        &[&hostname, &ip_address, &role, &is_self, &ver],
+                     (hostname, ip_address, role, is_self, status, last_seen, db_backend, table_count, version, created_at) \
+                 VALUES (@P1, @P2, @P3, @P4, N'online', GETDATE(), @P5, NULL, @P6, GETDATE());",
+                &[&hostname, &ip_address, &role, &is_self, &db_backend, &ver],
     )
     .await
     .map_err(|e| format!("MSSQL registry upsert failed: {}", e))?;

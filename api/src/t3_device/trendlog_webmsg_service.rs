@@ -170,11 +170,20 @@ impl TrendlogWebMsgService {
             .and_then(|v| v.as_array())
             .and_then(|arr| {
                 arr.iter().find(|panel| {
-                    panel
+                    let serial_match = panel
+                        .get("serial_number")
+                        .and_then(|v| v.as_i64())
+                        .map(|n| n as i32 == device_id)
+                        .unwrap_or(false);
+
+                    // Backward-compat fallback for older payload shapes.
+                    let panel_match = panel
                         .get("panel_number")
                         .and_then(|v| v.as_i64())
                         .map(|n| n as i32 == device_id)
-                        .unwrap_or(false)
+                        .unwrap_or(false);
+
+                    serial_match || panel_match
                 })
             });
 
