@@ -20,7 +20,6 @@ import {
 import {
   ServerRegular,
   DesktopRegular,
-  PlugConnectedRegular,
   ArrowClockwiseRegular,
   CheckmarkCircleRegular,
   ErrorCircleRegular,
@@ -241,6 +240,116 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     '&:hover': { opacity: 1 },
+  },
+
+  /* ── DB Test Panel ── */
+  /* ── DB Test Row (compact single-line) ── */
+  dbTestRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '7px 12px',
+    marginTop: '8px',
+    border: '1px solid #edebe9',
+    borderRadius: '6px',
+    backgroundColor: '#fafafa',
+    fontSize: '12px',
+    minWidth: 0,
+  },
+  dbBackendChip: {
+    fontSize: '11px',
+    fontWeight: 600,
+    padding: '1px 7px',
+    borderRadius: '3px',
+    backgroundColor: '#eff6fc',
+    color: '#0f6cbd',
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: '#c7dff7',
+    borderRightWidth: '1px',
+    borderRightStyle: 'solid',
+    borderRightColor: '#c7dff7',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#c7dff7',
+    borderLeftWidth: '1px',
+    borderLeftStyle: 'solid',
+    borderLeftColor: '#c7dff7',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
+  },
+  dbInfoSep: {
+    color: '#c8c6c4',
+    fontSize: '11px',
+  },
+  dbInfoText: {
+    fontSize: '11.5px',
+    color: '#605e5c',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  dbInfoGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    flex: 1,
+    minWidth: 0,
+    overflow: 'hidden',
+  },
+  dbBarTrack: {
+    width: '120px',
+    height: '8px',
+    borderRadius: '4px',
+    backgroundColor: '#edebe9',
+    overflow: 'hidden',
+    flexShrink: 0,
+  },
+  dbBarFill: {
+    height: '100%',
+    borderRadius: '4px',
+  },
+  dbStatusOk: {
+    color: '#107c10',
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
+  dbStatusText: {
+    color: '#605e5c',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
+  dbStatusError: {
+    color: '#d13438',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    flex: 1,
+    minWidth: 0,
+  },
+  dbStatusMs: {
+    color: '#605e5c',
+    fontFamily: 'monospace',
+    fontSize: '11.5px',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
+  dbQualityBadge: {
+    fontSize: '11px',
+    fontWeight: 600,
+    padding: '1px 7px',
+    borderRadius: '3px',
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderRightWidth: '1px',
+    borderRightStyle: 'solid',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderLeftWidth: '1px',
+    borderLeftStyle: 'solid',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
   },
 
   /* ── Tree (client list / server row) ── */
@@ -466,9 +575,28 @@ function effectiveCenterBackendType(health: SyncHealthData): string {
 }
 
 // ---------------------------------------------------------------------------
-// TestResult sub-type
+// Types
 // ---------------------------------------------------------------------------
 interface TestResult { ok: boolean; msg: string }
+
+interface DbTestState {
+  phase: 'testing' | 'done';
+  ok?: boolean;
+  latencyMs?: number | null;
+  errorMsg?: string;
+  backendLabel?: string;
+  host?: string;
+  port?: number | null;
+  dbName?: string;
+}
+
+function latencyQuality(ms: number): { label: string; color: string; fill: number } {
+  if (ms <= 20)  return { label: 'Excellent', color: '#107c10', fill: 100 };
+  if (ms <= 60)  return { label: 'Good',      color: '#107c10', fill: 80  };
+  if (ms <= 150) return { label: 'OK',        color: '#c19c00', fill: 65  };
+  if (ms <= 400) return { label: 'Slow',      color: '#d47800', fill: 45  };
+  return               { label: 'Very Slow', color: '#d13438', fill: 25  };
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -490,7 +618,7 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, he
 
   // Per-button test state
   const [testingDb, setTestingDb] = useState(false);
-  const [dbResult, setDbResult] = useState<TestResult | null>(null);
+  const [dbTest, setDbTest] = useState<DbTestState | null>(null);
   const [testingPing, setTestingPing] = useState(false);
   const [pingResult, setPingResult] = useState<TestResult | null>(null);
   const [refreshingClients, setRefreshingClients] = useState(false);
@@ -521,7 +649,7 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, he
 
   const scheduleDbDismiss = () => {
     if (dbTimer.current) clearTimeout(dbTimer.current);
-    dbTimer.current = setTimeout(() => setDbResult(null), 10_000);
+    dbTimer.current = setTimeout(() => setDbTest(null), 12_000);
   };
   const schedulePingDismiss = () => {
     if (pingTimer.current) clearTimeout(pingTimer.current);
@@ -554,14 +682,21 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, he
   const handleTestDb = async () => {
     if (!health) return;
     setTestingDb(true);
-    setDbResult(null);
+    const effectiveBackend = effectiveCenterBackendType(health);
+    const bl = backendLabel(effectiveBackend);
+    const host = health.centerDbHost ?? undefined;
+    const port = health.centerDbPort ?? null;
+    const dbName = health.centerDbDatabaseName ?? undefined;
+    setDbTest({ phase: 'testing', backendLabel: bl, host, port, dbName });
     try {
       const backend = health.backendType as any;
       const needsHostAndDb = backend === 'mssql' || backend === 'postgres' || backend === 'mysql';
       if (needsHostAndDb && (!health.centerDbHost || !health.centerDbDatabaseName)) {
-        setDbResult({
+        setDbTest({
+          phase: 'done',
           ok: false,
-          msg: `Database config is incomplete (${backend.toUpperCase()}). Please set host and database name in Database Configuration.`,
+          errorMsg: `Database config is incomplete (${effectiveBackend.toUpperCase()}). Please set host and database name in Database Configuration.`,
+          backendLabel: bl, host, port, dbName,
         });
         return;
       }
@@ -571,14 +706,15 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, he
         host: health.centerDbHost ?? undefined,
         database_name: health.centerDbDatabaseName ?? undefined,
       });
-      setDbResult({
+      setDbTest({
+        phase: 'done',
         ok: r.success,
-        msg: r.success
-          ? `${backendLabel(health.backendType)} connected${r.latency_ms != null ? ` (${r.latency_ms}ms)` : ''}`
-          : (r.error ?? r.message ?? 'Connection failed'),
+        latencyMs: r.latency_ms ?? null,
+        errorMsg: r.success ? undefined : (r.error ?? r.message ?? 'Connection failed'),
+        backendLabel: bl, host, port, dbName,
       });
     } catch (e) {
-      setDbResult({ ok: false, msg: e instanceof Error ? e.message : 'Test failed' });
+      setDbTest({ phase: 'done', ok: false, errorMsg: e instanceof Error ? e.message : 'Test failed', backendLabel: bl, host, port, dbName });
     } finally {
       setTestingDb(false);
       scheduleDbDismiss();
@@ -621,7 +757,7 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, he
   const loading = healthLoading || registryLoading;
   const error = !health ? healthError : null;
 
-  // ── Helper: result strip ──
+  // ── Helper: result strip (ping) ──
   const ResultStrip = ({ result, onDismiss }: { result: TestResult; onDismiss: () => void }) => (
     <div className={mergeClasses(s.resultStrip, result.ok ? s.resultStripOk : s.resultStripFail)}>
       {result.ok
@@ -633,6 +769,114 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, he
       </button>
     </div>
   );
+
+  // ── DB Test Panel ──
+  const DbTestPanel = () => {
+    if (!dbTest) return null;
+    const { phase, ok, latencyMs, errorMsg, backendLabel: bl, host, port, dbName } = dbTest;
+
+    let fillPct = 0;
+    let fillColor = '#edebe9';
+    let qualityLabel = '';
+    let qualityBorderColor = '#edebe9';
+
+    if (phase === 'done') {
+      if (ok) {
+        if (latencyMs != null && latencyMs > 0) {
+          const q = latencyQuality(latencyMs);
+          fillPct = q.fill;
+          fillColor = q.color;
+          qualityLabel = q.label;
+          qualityBorderColor = q.color + '55';
+        } else {
+          fillPct = 80;
+          fillColor = '#107c10';
+          qualityLabel = 'Connected';
+          qualityBorderColor = '#107c1055';
+        }
+      } else {
+        fillPct = 100;
+        fillColor = '#d13438';
+      }
+    }
+
+    return (
+      <div className={s.dbTestRow}>
+        {/* Left: backend chip + host + db name */}
+        <div className={s.dbInfoGroup}>
+          {bl && <span className={s.dbBackendChip}>{bl}</span>}
+          {host && (
+            <><span className={s.dbInfoSep}>·</span><span className={s.dbInfoText}>{host}{port != null ? `:${port}` : ''}</span></>
+          )}
+          {dbName && (
+            <><span className={s.dbInfoSep}>·</span><span className={s.dbInfoText}>{dbName}</span></>
+          )}
+          {!host && !dbName && (
+            <span className={s.dbInfoText}>Local database</span>
+          )}
+        </div>
+
+        {/* Bar */}
+        <div className={s.dbBarTrack}>
+          <div
+            className={s.dbBarFill}
+            style={{
+              width: phase === 'testing' ? '55%' : `${fillPct}%`,
+              backgroundColor: phase === 'testing' ? '#c8c6c4' : fillColor,
+              transition: phase === 'done' ? 'width 0.5s ease, background-color 0.3s ease' : 'none',
+              opacity: phase === 'testing' ? 0.5 : 1,
+            }}
+          />
+        </div>
+
+        {/* Status */}
+        {phase === 'testing' ? (
+          <>
+            <Spinner size="extra-tiny" />
+            <span className={s.dbStatusText}>Testing…</span>
+          </>
+        ) : ok ? (
+          <>
+            <CheckmarkCircleRegular style={{ fontSize: '13px', color: '#107c10', flexShrink: 0 }} />
+            <span className={s.dbStatusOk}>Connected</span>
+            {latencyMs != null && latencyMs > 0 && (
+              <><span className={s.dbInfoSep}>·</span><span className={s.dbStatusMs}>{latencyMs} ms</span></>
+            )}
+            {qualityLabel && (
+              <span
+                className={s.dbQualityBadge}
+                style={{
+                  color: fillColor,
+                  borderTopColor: fillColor + '55',
+                  borderRightColor: fillColor + '55',
+                  borderBottomColor: fillColor + '55',
+                  borderLeftColor: fillColor + '55',
+                  backgroundColor: fillColor + '11',
+                }}
+              >
+                {qualityLabel}
+              </span>
+            )}
+          </>
+        ) : (
+          <>
+            <ErrorCircleRegular style={{ fontSize: '13px', color: '#d13438', flexShrink: 0 }} />
+            <span className={s.dbStatusError}>{errorMsg ?? 'Connection failed'}</span>
+          </>
+        )}
+
+        {/* Dismiss */}
+        <button
+          className={s.resultStripDismiss}
+          onClick={() => { setDbTest(null); if (dbTimer.current) clearTimeout(dbTimer.current); }}
+          title="Dismiss"
+          style={{ marginLeft: 'auto', flexShrink: 0 }}
+        >
+          <DismissRegular style={{ fontSize: '12px' }} />
+        </button>
+      </div>
+    );
+  };
 
   // ── Devices strip (common to all scenarios) ──
   const DevicesStrip = () => (
@@ -704,8 +948,8 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, he
         </div>
       )}
 
-      {/* Center DB / sampling banners + test result */}
-      {!loading && (health || dbResult || pingResult) && (
+      {/* Center DB / sampling banners */}
+      {!loading && (health || pingResult) && (
         <div className={s.bannerStack}>
           {health && health.centerDbEnabled && !health.centerDbConnected && (
             <div className={isCenterDbWarn ? s.warnRow : s.pauseRow}>
@@ -719,9 +963,6 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, he
               <strong>Sampling paused.</strong>&nbsp;
               {health.pausedReason ?? 'Shared DB unreachable — no data is being written until the connection is restored.'}
             </div>
-          )}
-          {dbResult && (
-            <ResultStrip result={dbResult} onDismiss={() => { setDbResult(null); }} />
           )}
           {pingResult && (
             <ResultStrip result={pingResult} onDismiss={() => { setPingResult(null); }} />
@@ -779,6 +1020,9 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, he
                 </Button>
               </div>
             </div>
+
+            {/* DB test panel */}
+            <DbTestPanel />
 
             {/* Client tree */}
             {clients.length > 0 ? (
@@ -867,6 +1111,9 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, he
               </div>
             </div>
 
+            {/* DB test panel */}
+            <DbTestPanel />
+
             {/* Server row */}
             <div className={s.tree}>
               <div className={s.treeRow}>
@@ -919,6 +1166,9 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, he
                 </Button>
               </div>
             </div>
+
+            {/* DB test panel */}
+            <DbTestPanel />
 
           </>
         )}

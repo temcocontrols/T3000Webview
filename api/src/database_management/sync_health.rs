@@ -58,6 +58,8 @@ pub struct SyncHealthResponse {
     pub writes_blocked: bool,
     /// Center DB host from the active backend config.
     pub center_db_host: Option<String>,
+    /// Center DB port from the active backend config.
+    pub center_db_port: Option<i32>,
     /// Center DB database name from the active backend config.
     pub center_db_database_name: Option<String>,
     /// Whether schema initialization is a valid next action.
@@ -542,6 +544,7 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         runtime_backend_type,
         writes_blocked,
         center_db_host: server_status.host,
+        center_db_port: server_status.port,
         center_db_database_name: server_status.database_name,
         can_init_schema: server_status.can_init_schema,
         hostname,
