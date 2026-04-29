@@ -243,6 +243,12 @@
   color: #605e5c;
 }
 
+.chartSubtitle {
+  font-size: 10px;
+  color: #8a8886;
+  margin-top: 1px;
+}
+
 .chartHeaderLegend {
   display: flex;
   align-items: center;

@@ -55,6 +55,13 @@ interface TrendLogsProps {
   isStandalone?: boolean;
 }
 
+const ACTIVITY_SERIES_NAMES = ['Total Samples', 'Active Points', 'Devices Reporting'] as const;
+
+const formatBucketTime = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+};
+
 export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<echarts.ECharts | null>(null);
@@ -153,16 +160,17 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
           .map((r) => ({
             ...r,
             ts: new Date(r.logging_time_fmt).getTime(),
-            num: Number.parseFloat(r.value),
           }))
-          .filter((r) => Number.isFinite(r.ts) && Number.isFinite(r.num));
+          .filter((r) => Number.isFinite(r.ts));
 
         const nowTs = Date.now();
         const oneHourAgo = nowTs - 60 * 60 * 1000;
         const activeWindowAgo = nowTs - 2 * 60 * 60 * 1000;
+        const bucketMs = 15 * 60 * 1000;
 
-        const pointMap = new Map<string, { count: number; lastTs: number; serial: number; panel: number; pts: [number, number][]; name: string }>();
+        const pointMap = new Map<string, { count: number; lastTs: number; serial: number; panel: number; name: string }>();
         const deviceMap = new Map<number, { panel: number; records: number; points: Set<string>; lastTs: number }>();
+        const bucketMap = new Map<number, { sampleCount: number; pointKeys: Set<string>; devices: Set<number> }>();
         let lastSampleTs: number | null = null;
         let recordsLastHour = 0;
 
@@ -177,13 +185,22 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
             lastTs: 0,
             serial: rec.serial_number,
             panel: rec.panel_id,
-            pts: [],
             name: pointName,
           };
           p.count += 1;
           if (rec.ts > p.lastTs) p.lastTs = rec.ts;
-          p.pts.push([rec.ts, rec.num]);
           pointMap.set(pointKey, p);
+
+          const bucketStart = Math.floor(rec.ts / bucketMs) * bucketMs;
+          const bucket = bucketMap.get(bucketStart) ?? {
+            sampleCount: 0,
+            pointKeys: new Set<string>(),
+            devices: new Set<number>(),
+          };
+          bucket.sampleCount += 1;
+          bucket.pointKeys.add(pointKey);
+          bucket.devices.add(rec.serial_number);
+          bucketMap.set(bucketStart, bucket);
 
           const d = deviceMap.get(rec.serial_number) ?? {
             panel: rec.panel_id,
@@ -248,28 +265,62 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
           return;
         }
 
-        const topSeries = Array.from(pointMap.values())
-          .sort((a, b) => b.count - a.count)
-          .slice(0, 3);
-        const nextLegendItems = topSeries.map((s) => s.name);
+        const activityBuckets: Array<{ ts: number; sampleCount: number; activePoints: number; devicesReporting: number }> = [];
+        for (let bucketTs = Math.floor(start.getTime() / bucketMs) * bucketMs; bucketTs <= now.getTime(); bucketTs += bucketMs) {
+          const bucket = bucketMap.get(bucketTs);
+          activityBuckets.push({
+            ts: bucketTs,
+            sampleCount: bucket?.sampleCount ?? 0,
+            activePoints: bucket?.pointKeys.size ?? 0,
+            devicesReporting: bucket?.devices.size ?? 0,
+          });
+        }
+
+        const nextLegendItems = [...ACTIVITY_SERIES_NAMES];
         setChartLegendItems(nextLegendItems);
+        let nextLegendEnabledMap: Record<string, boolean> = {};
         setLegendEnabledMap((prev) => {
           const next: Record<string, boolean> = {};
           for (const name of nextLegendItems) {
             next[name] = prev[name] ?? true;
           }
+          nextLegendEnabledMap = next;
           return next;
         });
 
-        const series: echarts.SeriesOption[] = topSeries.map((s, i) => ({
-          name: s.name,
-          type: 'line' as const,
-          data: s.pts.sort((a, b) => a[0] - b[0]),
-          smooth: true,
-          lineStyle: { width: 2, color: CHART_COLORS[i % CHART_COLORS.length] },
-          itemStyle: { color: CHART_COLORS[i % CHART_COLORS.length] },
-          showSymbol: false,
-        }));
+        const series: echarts.SeriesOption[] = [
+          {
+            name: 'Total Samples',
+            type: 'bar' as const,
+            yAxisIndex: 0,
+            barMaxWidth: 10,
+            itemStyle: { color: CHART_COLORS[0], borderRadius: [4, 4, 0, 0] },
+            emphasis: { focus: 'series' },
+            data: activityBuckets.map((bucket) => [bucket.ts, bucket.sampleCount]),
+          },
+          {
+            name: 'Active Points',
+            type: 'line' as const,
+            yAxisIndex: 0,
+            smooth: true,
+            showSymbol: false,
+            lineStyle: { width: 2, color: CHART_COLORS[1] },
+            itemStyle: { color: CHART_COLORS[1] },
+            emphasis: { focus: 'series' },
+            data: activityBuckets.map((bucket) => [bucket.ts, bucket.activePoints]),
+          },
+          {
+            name: 'Devices Reporting',
+            type: 'line' as const,
+            yAxisIndex: 0,
+            smooth: true,
+            showSymbol: false,
+            lineStyle: { width: 2, color: CHART_COLORS[2] },
+            itemStyle: { color: CHART_COLORS[2] },
+            emphasis: { focus: 'series' },
+            data: activityBuckets.map((bucket) => [bucket.ts, bucket.devicesReporting]),
+          },
+        ];
 
         if (!chartRef.current || disposed) return;
 
@@ -292,17 +343,29 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
             borderColor: '#d6d6d6',
             borderWidth: 1,
             extraCssText: 'box-shadow: 0 4px 14px rgba(0,0,0,0.12);',
-            valueFormatter: (value) => `${formatCompactNumber(Number(value ?? 0))}`,
+            formatter: (params) => {
+              const items = Array.isArray(params) ? params : [params];
+              const axisValue = Array.isArray(items[0]?.value)
+                ? Number(items[0]?.value[0] ?? 0)
+                : Number(items[0]?.value ?? 0);
+              const lines = items.map((item) => {
+                const value = Array.isArray(item.value) ? Number(item.value[1] ?? 0) : Number(item.value ?? 0);
+                return `${item.marker} ${item.seriesName}: <strong>${formatCompactNumber(value)}</strong>`;
+              });
+              return [`<strong>${formatBucketTime(axisValue)}</strong>`, ...lines].join('<br/>');
+            },
           },
           legend: {
             show: false,
             selectedMode: true,
-            selected: Object.fromEntries(chartLegendItems.map((name) => [name, legendEnabledMap[name] ?? true])),
+            selected: Object.fromEntries(nextLegendItems.map((name) => [name, nextLegendEnabledMap[name] ?? true])),
           },
           grid: { left: 56, right: 14, top: 16, bottom: 46, containLabel: false },
           xAxis: {
             type: 'time',
             boundaryGap: false,
+            min: start.getTime(),
+            max: now.getTime(),
             axisTick: { show: false },
             axisLine: { lineStyle: { color: '#d4d4d8' } },
             splitLine: {
@@ -312,7 +375,6 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
             axisLabel: {
               fontSize: 10,
               color: '#71717a',
-              interval: 0,
               hideOverlap: false,
               showMinLabel: true,
               showMaxLabel: true,
@@ -321,9 +383,14 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
                 return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
               },
             },
-          },
+          } as echarts.XAXisComponentOption,
           yAxis: {
             type: 'value',
+            name: 'Activity',
+            min: 0,
+            max: (value: { max: number }) => Math.max(1, Number(value.max ?? 0)),
+            minInterval: 1,
+            nameTextStyle: { fontSize: 10, color: '#71717a' },
             axisTick: { show: false },
             axisLine: { show: false },
             axisLabel: {
@@ -334,7 +401,7 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
             splitLine: {
               lineStyle: { type: 'solid', color: '#e4e4e7', width: 1 },
             },
-          },
+          } as echarts.YAXisComponentOption,
           series,
         };
 
@@ -532,10 +599,13 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
       <div className={styles.chartRow}>
         <div className={styles.chartHeader}>
           <div className={styles.chartHeaderMain}>
-            <div className={styles.chartTitle}>Trend Value Timeline</div>
+            <div>
+              <div className={styles.chartTitle}>Sampling Activity Over Time</div>
+              <div className={styles.chartSubtitle}>15-minute buckets over the last 24 hours</div>
+            </div>
             <Tooltip
               relationship="description"
-              content="Shows top 3 trend points by record count over the last 24 hours. X-axis is time and Y-axis is raw value (compact units like k, M)."
+              content="Shows sampling activity in 15-minute buckets for the last 24 hours. Bars are total samples written; lines show how many points and devices reported in each bucket."
             >
               <button className={styles.chartInfoButton} aria-label="About trend chart">
                 <InfoRegular fontSize={12} />
