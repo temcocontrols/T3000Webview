@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TrendLog X-Axis Final Mockup (Solution 3)</title>
+  <style>
+    :root {
+      --bg: #f4f7f6;
+      --panel: #ffffff;
+      --ink: #1f2a37;
+      --muted: #607084;
+      --accent: #0f766e;
+      --line: #d7e0e8;
+      --ok: #16a34a;
+      --warn: #dc2626;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 90% -10%, #d7f0ea 0%, transparent 40%),
+        radial-gradient(circle at 0% 100%, #e8f0ff 0%, transparent 30%),
+        var(--bg);
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+      padding: 16px;
+    }
+
+    h1 {
+      font-size: 22px;
+      margin: 0 0 6px;
+      letter-spacing: 0.2px;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    @media (max-width: 900px) {
+      .controls {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      margin-bottom: 6px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    select, input, button {
+      width: 100%;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      padding: 0 10px;
+      font-size: 14px;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button:hover { filter: brightness(0.96); }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 8px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .pill {
+      border: 1px solid var(--line);
+      background: #f8fafc;
+      border-radius: 999px;
+      padding: 4px 10px;
+    }
+
+    .pill strong {
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    canvas {
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: linear-gradient(180deg, #ffffff, #fcfdff);
+    }
+
+    .legend {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .legend span::before {
+      content: "";
+      display: inline-block;
+      width: 14px;
+      height: 2px;
+      margin-right: 6px;
+      vertical-align: middle;
+      transform: translateY(-1px);
+    }
+
+    .l-grid::before { background: #dbe4ee; }
+    .l-axis::before { background: #334155; }
+    .l-right::before { background: var(--ok); }
+    .l-now::before {
+      background: repeating-linear-gradient(
+        90deg,
+        var(--warn),
+        var(--warn) 4px,
+        transparent 4px,
+        transparent 8px
+      );
+    }
+
+    .notes {
+      margin: 0;
+      padding-left: 18px;
+      color: #3f4d5d;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <h1>TrendLog X-Axis Final Mockup</h1>
+      <p class="sub">Solution 3 hybrid rounding visualization for production alignment checks.</p>
+    </section>
+
+    <section class="card">
+      <div class="controls">
+        <div>
+          <label for="timebase">Timebase</label>
+          <select id="timebase">
+            <option value="5m">5m</option>
+            <option value="10m">10m</option>
+            <option value="30m">30m</option>
+            <option value="1h">1h</option>
+            <option value="4h">4h</option>
+            <option value="12h">12h</option>
+            <option value="1d">1d</option>
+            <option value="4d">4d</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="nowInput">Effective Now</label>
+          <input id="nowInput" type="datetime-local" />
+        </div>
+
+        <div>
+          <label for="offsetInput">Offset Minutes</label>
+          <input id="offsetInput" type="number" value="0" step="1" />
+        </div>
+
+        <div>
+          <label>&nbsp;</label>
+          <button id="applyBtn" type="button">Apply</button>
+        </div>
+      </div>
+
+      <div class="meta" id="meta"></div>
+    </section>
+
+    <section class="card">
+      <canvas id="chart" width="1000" height="320" aria-label="X-axis mock chart"></canvas>
+      <div class="legend">
+        <span class="l-grid">Grid</span>
+        <span class="l-axis">Axis/Ticks</span>
+        <span class="l-right">Rounded Right Edge</span>
+        <span class="l-now">Exact Now Line</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <ul class="notes">
+        <li>Under 1 hour (5m, 10m, 30m): right edge rounds up to next minute ending in 0 or 5.</li>
+        <li>1 hour and above (1h, 4h, 12h, 1d, 4d): right edge rounds up to next full hour.</li>
+        <li>Left edge equals right edge minus the selected window duration.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script>
+    const windowsMin = {
+      '5m': 5,
+      '10m': 10,
+      '30m': 30,
+      '1h': 60,
+      '4h': 240,
+      '12h': 720,
+      '1d': 1440,
+      '4d': 5760
+    }
+
+    const stepsMin = {
+      '5m': 1,
+      '10m': 1,
+      '30m': 5,
+      '1h': 10,
+      '4h': 30,
+      '12h': 60,
+      '1d': 120,
+      '4d': 720
+    }
+
+    function roundRightEdge(nowMs, tb) {
+      const d = new Date(nowMs)
+      if (tb === '5m' || tb === '10m' || tb === '30m') {
+        const m = d.getMinutes()
+        const s = d.getSeconds()
+        const ms = d.getMilliseconds()
+        const mod = m % 5
+        let add = mod === 0 ? 0 : (5 - mod)
+        if (add === 0 && (s > 0 || ms > 0)) add = 5
+        d.setMinutes(m + add, 0, 0)
+        return d.getTime()
+      }
+      const mm = d.getMinutes()
+      const ss = d.getSeconds()
+      const mss = d.getMilliseconds()
+      if (mm === 0 && ss === 0 && mss === 0) return d.getTime()
+      d.setHours(d.getHours() + 1, 0, 0, 0)
+      return d.getTime()
+    }
+
+    function fmtDate(ms) {
+      const d = new Date(ms)
+      const pad = n => String(n).padStart(2, '0')
+      return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes())
+    }
+
+    function fmtTick(ms, withDate) {
+      const d = new Date(ms)
+      const pad = n => String(n).padStart(2, '0')
+      const hm = pad(d.getHours()) + ':' + pad(d.getMinutes())
+      if (!withDate) return hm
+      return pad(d.getMonth() + 1) + '/' + pad(d.getDate()) + ' ' + hm
+    }
+
+    function setNowInput() {
+      const now = new Date()
+      now.setSeconds(0, 0)
+      const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+      document.getElementById('nowInput').value = local.toISOString().slice(0, 16)
+    }
+
+    function draw() {
+      const tb = document.getElementById('timebase').value
+      const nowInput = document.getElementById('nowInput').value
+      const offsetMin = Number(document.getElementById('offsetInput').value || 0)
+
+      const nowBase = nowInput ? new Date(nowInput).getTime() : Date.now()
+      const nowMs = nowBase + offsetMin * 60000
+      const right = roundRightEdge(nowMs, tb)
+      const left = right - windowsMin[tb] * 60000
+      const step = stepsMin[tb] * 60000
+
+      const canvas = document.getElementById('chart')
+      const ctx = canvas.getContext('2d')
+      const w = canvas.width
+      const h = canvas.height
+      const pad = { left: 60, right: 30, top: 24, bottom: 56 }
+      const innerW = w - pad.left - pad.right
+      const innerH = h - pad.top - pad.bottom
+
+      ctx.clearRect(0, 0, w, h)
+
+      ctx.strokeStyle = '#dbe4ee'
+      ctx.lineWidth = 1
+      for (let i = 0; i <= 4; i++) {
+        const y = pad.top + (innerH * i) / 4
+        ctx.beginPath()
+        ctx.moveTo(pad.left, y)
+        ctx.lineTo(w - pad.right, y)
+        ctx.stroke()
+      }
+
+      function xOf(ms) {
+        return pad.left + ((ms - left) / (right - left)) * innerW
+      }
+
+      const ticks = [left]
+      const firstClean = Math.ceil(left / step) * step
+      const minGap = step * 0.25
+      for (let t = firstClean; t <= right; t += step) {
+        if (Math.abs(t - left) > minGap) ticks.push(t)
+      }
+
+      ctx.strokeStyle = '#334155'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(pad.left, pad.top + innerH)
+      ctx.lineTo(w - pad.right, pad.top + innerH)
+      ctx.stroke()
+
+      ctx.font = '12px Segoe UI, Arial, sans-serif'
+      ctx.fillStyle = '#334155'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'top'
+
+      ticks.forEach((t, i) => {
+        const x = xOf(t)
+        ctx.strokeStyle = '#334155'
+        ctx.beginPath()
+        ctx.moveTo(x, pad.top + innerH)
+        ctx.lineTo(x, pad.top + innerH + 6)
+        ctx.stroke()
+
+        const withDate = i === 0
+        const label = fmtTick(t, withDate)
+        ctx.fillStyle = t === right ? '#16a34a' : '#334155'
+        ctx.fillText(label, x, pad.top + innerH + 8)
+      })
+
+      const nowX = xOf(nowMs)
+      if (nowX >= pad.left && nowX <= w - pad.right) {
+        ctx.setLineDash([5, 5])
+        ctx.strokeStyle = '#dc2626'
+        ctx.lineWidth = 1.5
+        ctx.beginPath()
+        ctx.moveTo(nowX, pad.top)
+        ctx.lineTo(nowX, pad.top + innerH)
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
+
+      const meta = document.getElementById('meta')
+      meta.innerHTML = [
+        ['Timebase', tb],
+        ['Effective Now', fmtDate(nowMs)],
+        ['Rounded Right Edge', fmtDate(right)],
+        ['Left Edge', fmtDate(left)],
+        ['Step', stepsMin[tb] + ' minute(s)'],
+        ['Window', windowsMin[tb] + ' minute(s)']
+      ].map(([k, v]) => '<span class="pill"><strong>' + k + ':</strong> ' + v + '</span>').join('')
+    }
+
+    document.getElementById('applyBtn').addEventListener('click', draw)
+    document.getElementById('timebase').addEventListener('change', draw)
+    setNowInput()
+    draw()
+  </script>
+</body>
+</html>
