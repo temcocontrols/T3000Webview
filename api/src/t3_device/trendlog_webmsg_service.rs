@@ -2,6 +2,9 @@
 // ======================================================
 
 use std::collections::HashMap;
+use std::sync::OnceLock;
+use std::time::{Duration, Instant};
+use tokio::sync::RwLock;
 use serde::{Deserialize, Serialize};
 use crate::error::Error;
 use crate::t3_device::t3_ffi_api_service::T3000FfiApiService;
@@ -44,6 +47,28 @@ pub struct DeviceOnlineStatus {
 }
 
 const PANEL_ONLINE_THRESHOLD_SECONDS: i64 = 120;
+const STATUS_FFI_STARTUP_GUARD_SECS: u64 = 90;
+const STATUS_PANELS_CACHE_TTL_SECS: u64 = 5;
+
+#[derive(Clone)]
+struct CachedPanels {
+    fetched_at: Instant,
+    payload: serde_json::Value,
+}
+
+fn service_start_instant() -> &'static Instant {
+    static START: OnceLock<Instant> = OnceLock::new();
+    START.get_or_init(Instant::now)
+}
+
+fn status_ffi_guard_ready() -> bool {
+    service_start_instant().elapsed() >= Duration::from_secs(STATUS_FFI_STARTUP_GUARD_SECS)
+}
+
+fn panels_cache() -> &'static RwLock<Option<CachedPanels>> {
+    static CACHE: OnceLock<RwLock<Option<CachedPanels>>> = OnceLock::new();
+    CACHE.get_or_init(|| RwLock::new(None))
+}
 
 impl TrendlogWebMsgService {
     pub fn new() -> Self {
@@ -90,14 +115,55 @@ impl TrendlogWebMsgService {
 
     /// Check if a device is online via GET_PANELS_LIST (action 4) and online_time freshness.
     pub async fn get_device_online_status(&self, device_id: i32) -> Result<DeviceOnlineStatus, Error> {
-        let message = serde_json::json!({
-            "action": 4,  // GET_PANELS_LIST
-            "msgId": format!("device_status_{}", device_id)
-        });
+        // Guard startup: GET_PANELS_LIST can hit C++ vectors before they are
+        // populated by OnInitialUpdate, causing "vector subscript out of range".
+        if !status_ffi_guard_ready() {
+            return Ok(DeviceOnlineStatus {
+                online: false,
+                online_time: None,
+                age_seconds: None,
+                threshold_seconds: PANEL_ONLINE_THRESHOLD_SECONDS,
+            });
+        }
 
-        let response = self.ffi_service.call_ffi(&message.to_string()).await?;
-        let json_response = serde_json::from_str::<serde_json::Value>(&response)
-            .map_err(|e| Error::ServerError(format!("JSON parse error: {}", e)))?;
+        let json_response = {
+            let cache_read = panels_cache().read().await;
+            if let Some(cached) = cache_read.as_ref() {
+                if cached.fetched_at.elapsed() < Duration::from_secs(STATUS_PANELS_CACHE_TTL_SECS) {
+                    cached.payload.clone()
+                } else {
+                    drop(cache_read);
+                    let message = serde_json::json!({
+                        "action": 4,  // GET_PANELS_LIST
+                        "msgId": format!("device_status_{}", device_id)
+                    });
+                    let response = self.ffi_service.call_ffi(&message.to_string()).await?;
+                    let parsed = serde_json::from_str::<serde_json::Value>(&response)
+                        .map_err(|e| Error::ServerError(format!("JSON parse error: {}", e)))?;
+                    let mut cache_write = panels_cache().write().await;
+                    *cache_write = Some(CachedPanels {
+                        fetched_at: Instant::now(),
+                        payload: parsed.clone(),
+                    });
+                    parsed
+                }
+            } else {
+                drop(cache_read);
+                let message = serde_json::json!({
+                    "action": 4,  // GET_PANELS_LIST
+                    "msgId": format!("device_status_{}", device_id)
+                });
+                let response = self.ffi_service.call_ffi(&message.to_string()).await?;
+                let parsed = serde_json::from_str::<serde_json::Value>(&response)
+                    .map_err(|e| Error::ServerError(format!("JSON parse error: {}", e)))?;
+                let mut cache_write = panels_cache().write().await;
+                *cache_write = Some(CachedPanels {
+                    fetched_at: Instant::now(),
+                    payload: parsed.clone(),
+                });
+                parsed
+            }
+        };
 
         let maybe_panel = json_response
             .get("data")

@@ -36,6 +36,15 @@ fn action17_warmup_active() -> bool {
     false
 }
 
+fn action4_warmup_active() -> bool {
+    if let Some(loaded_at) = T3000_LOADED_AT.get() {
+        // GET_PANELS_LIST may touch C++ vectors before OnInitialUpdate has
+        // fully populated per-panel caches.
+        return loaded_at.elapsed() < Duration::from_secs(90);
+    }
+    false
+}
+
 /// Global FFI serialization lock — shared across ALL FFI call sites (HTTP, sync service, trendlog refresh).
 /// Uses std::sync::Mutex so it works in both async and spawn_blocking contexts.
 pub fn ffi_call_lock() -> &'static Mutex<()> {
@@ -156,6 +165,17 @@ impl T3000FfiApiService {
                     let warmup = serde_json::json!({
                         "error": "T3000 initialization in progress, please retry shortly",
                         "code": "T3000_WARMUP"
+                    })
+                    .to_string();
+                    return Ok((-1, warmup.len(), warmup));
+                }
+
+                // Guard startup window: GET_PANELS_LIST has been observed to
+                // hit vector assertions in T3000.exe when called too early.
+                if action == 4 && action4_warmup_active() {
+                    let warmup = serde_json::json!({
+                        "error": "T3000 panel data still initializing, retry shortly",
+                        "code": "T3000_PANELS_WARMUP"
                     })
                     .to_string();
                     return Ok((-1, warmup.len(), warmup));
