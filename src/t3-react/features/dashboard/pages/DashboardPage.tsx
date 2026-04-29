@@ -475,6 +475,7 @@ export const DashboardPage: React.FC = () => {
   const [syncLogOpen, setSyncLogOpen] = useState(false);
   const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null);
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
+  const [trendRefreshKey, setTrendRefreshKey] = useState(0);
   const [iniConfig, setIniConfig] = useState<IniConfig | null>(null);
   // Track whether we're in "fast poll" mode (after a mode change, waiting for restart)
   const [fastPolling, setFastPolling] = useState(false);
@@ -731,7 +732,7 @@ export const DashboardPage: React.FC = () => {
         <div className={mergeClasses(s.section, s.trendSection)}>
           <div className={s.sectionHeader}>
             <div className={s.sectionTitleRow}>
-              <h3 className={s.sectionTitle}>Trend Logs — Last 24 Hours</h3>
+              <h3 className={s.sectionTitle} style={{ flex: 'none' }}>Trend Logs — Last 24 Hours</h3>
               <Tooltip
                 relationship="description"
                 content="Shows the last 24h trend history. Use View All for detailed point-level diagnostics and filtering."
@@ -741,15 +742,24 @@ export const DashboardPage: React.FC = () => {
                 </button>
               </Tooltip>
             </div>
-            <button
-              className={s.viewAll}
-              onClick={() => { window.location.hash = '#/t3000/trendlogs'; }}
-            >
-              View All <ChevronRightRegular style={{ fontSize: '12px' }} />
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={<ArrowClockwiseRegular />}
+                onClick={() => setTrendRefreshKey((v) => v + 1)}
+                title="Refresh trend logs"
+              />
+              <button
+                className={s.viewAll}
+                onClick={() => { window.location.hash = '#/t3000/trendlogs'; }}
+              >
+                View All <ChevronRightRegular style={{ fontSize: '12px' }} />
+              </button>
+            </div>
           </div>
           <div className={s.trendlogWrapper}>
-            <TrendLogs isStandalone={appMode === 'standalone'} />
+            <TrendLogs key={trendRefreshKey} isStandalone={appMode === 'standalone'} />
           </div>
         </div>
 
@@ -781,15 +791,13 @@ export const DashboardPage: React.FC = () => {
                   <span className={mergeClasses(s.summaryTag, s.summaryTagTotal)}>{activitySummary.total} total</span>
                 </div>
               )}
-              <Tooltip relationship="description" content="Refresh monitoring activity now">
-                <button
-                  className={s.refreshIconButton}
-                  aria-label="Refresh monitoring"
-                  onClick={() => setActivityRefreshKey((v) => v + 1)}
-                >
-                  <ArrowClockwiseRegular style={{ fontSize: '13px' }} />
-                </button>
-              </Tooltip>
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={<ArrowClockwiseRegular />}
+                onClick={() => setActivityRefreshKey((v) => v + 1)}
+                title="Refresh monitoring"
+              />
             </div>
           </div>
           <div className={s.monitoringColContent}>
