@@ -357,7 +357,7 @@ pub struct T3000MainConfig {
 impl Default for T3000MainConfig {
     fn default() -> Self {
         Self {
-            sync_interval_secs: 900, // 15 minutes (matches database default)
+            sync_interval_secs: 300, // Unified default: 5 minutes (matching config_api.rs)
             timeout_seconds: 30,     // 30 seconds FFI timeout
             retry_attempts: 3,
             auto_start: true,

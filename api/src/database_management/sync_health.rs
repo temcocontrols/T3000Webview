@@ -505,9 +505,9 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
     let sync_interval_secs = if let Some(db) = get_local_log_db_conn(&state).await {
         crate::database_management::config_api::get_sync_interval_secs(&db)
             .await
-            .unwrap_or(1800)
+            .unwrap_or(300)
     } else {
-        1800
+        300
     };
 
     let total_elapsed_ms = total_started.elapsed().as_millis() as u64;

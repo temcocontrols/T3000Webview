@@ -63,19 +63,20 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
   const [refreshing, setRefreshing] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [editingInterval, setEditingInterval] = useState(false);
-  const [intervalPreset, setIntervalPreset] = useState<'1min' | '5min' | '15min' | 'custom'>('custom');
-  const [customMinutes, setCustomMinutes] = useState(30);
+  const [intervalPreset, setIntervalPreset] = useState<'30s' | '1min' | '5min' | '15min' | 'custom'>('custom');
+  const [customMinutes, setCustomMinutes] = useState(5);
   const [savingInterval, setSavingInterval] = useState(false);
   const [intervalResult, setIntervalResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   useEffect(() => {
     if (!data || editingInterval) return;
-    const minutes = Math.max(1, Math.round((data.syncIntervalSecs ?? 1800) / 60));
-    if (minutes === 1) setIntervalPreset('1min');
-    else if (minutes === 5) setIntervalPreset('5min');
-    else if (minutes === 15) setIntervalPreset('15min');
+    const secs = data.syncIntervalSecs ?? 300;
+    if (secs === 30) setIntervalPreset('30s');
+    else if (Math.round(secs / 60) === 1) setIntervalPreset('1min');
+    else if (Math.round(secs / 60) === 5) setIntervalPreset('5min');
+    else if (Math.round(secs / 60) === 15) setIntervalPreset('15min');
     else setIntervalPreset('custom');
-    setCustomMinutes(minutes);
+    setCustomMinutes(Math.max(1, Math.round(secs / 60)));
   }, [data, editingInterval]);
 
   const handleRefresh = async () => {
@@ -111,12 +112,13 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
 
   const startIntervalEdit = () => {
     if (!data) return;
-    const minutes = Math.max(1, Math.round((data.syncIntervalSecs ?? 1800) / 60));
-    if (minutes === 1) setIntervalPreset('1min');
-    else if (minutes === 5) setIntervalPreset('5min');
-    else if (minutes === 15) setIntervalPreset('15min');
+    const secs = data.syncIntervalSecs ?? 300;
+    if (secs === 30) setIntervalPreset('30s');
+    else if (Math.round(secs / 60) === 1) setIntervalPreset('1min');
+    else if (Math.round(secs / 60) === 5) setIntervalPreset('5min');
+    else if (Math.round(secs / 60) === 15) setIntervalPreset('15min');
     else setIntervalPreset('custom');
-    setCustomMinutes(minutes);
+    setCustomMinutes(Math.max(1, Math.round(secs / 60)));
     setIntervalResult(null);
     setEditingInterval(true);
   };
@@ -126,23 +128,26 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
     setIntervalResult(null);
   };
 
-  const selectedMinutes = intervalPreset === '1min'
-    ? 1
-    : intervalPreset === '5min'
-      ? 5
-      : intervalPreset === '15min'
-        ? 15
-        : customMinutes;
+  const selectedMinutes = intervalPreset === '30s'
+    ? 1  // unused for 30s preset, targetSecs handled separately
+    : intervalPreset === '1min'
+      ? 1
+      : intervalPreset === '5min'
+        ? 5
+        : intervalPreset === '15min'
+          ? 15
+          : customMinutes;
 
   const boundedMinutes = Math.min(1440, Math.max(1, selectedMinutes));
 
   const handleSaveInterval = async () => {
-    const targetSecs = boundedMinutes * 60;
+    const targetSecs = intervalPreset === '30s' ? 30 : boundedMinutes * 60;
+    const displayLabel = targetSecs < 60 ? `${targetSecs}s` : `${boundedMinutes} min`;
     setSavingInterval(true);
     setIntervalResult(null);
     try {
       await updateSyncInterval(targetSecs);
-      setIntervalResult({ ok: true, msg: `Interval updated to ${boundedMinutes} min. Effective on next cycle.` });
+      setIntervalResult({ ok: true, msg: `Interval updated to ${displayLabel}. Effective on next cycle.` });
       setEditingInterval(false);
       await onRefresh();
     } catch (e) {
@@ -228,7 +233,9 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
           >
             <span className={styles.intervalChipLabel}>Sync</span>
             <span className={styles.intervalChipValue}>
-              {Math.max(1, Math.round((data.syncIntervalSecs ?? 1800) / 60))} min
+              {(data.syncIntervalSecs ?? 300) < 60
+                ? `${data.syncIntervalSecs}s`
+                : `${Math.round((data.syncIntervalSecs ?? 300) / 60)} min`}
             </span>
             {!editingInterval && <EditRegular className={styles.intervalChipEdit} />}
           </button>
@@ -280,6 +287,7 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
         <div className={styles.intervalBar}>
           <ArrowClockwiseRegular className={styles.intervalBarIcon} />
           <span className={styles.intervalBarLabel}>Set interval</span>
+          <Button size="small" appearance={intervalPreset === '30s' ? 'primary' : 'outline'} onClick={() => setIntervalPreset('30s')}>30s</Button>
           <Button size="small" appearance={intervalPreset === '1min' ? 'primary' : 'outline'} onClick={() => setIntervalPreset('1min')}>1 min</Button>
           <Button size="small" appearance={intervalPreset === '5min' ? 'primary' : 'outline'} onClick={() => setIntervalPreset('5min')}>5 min</Button>
           <Button size="small" appearance={intervalPreset === '15min' ? 'primary' : 'outline'} onClick={() => setIntervalPreset('15min')}>15 min</Button>
