@@ -361,7 +361,7 @@ const useStyles = makeStyles({
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
     display: 'flex',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     gap: '4px',
   },
   kpiDetailMono: {
@@ -378,7 +378,7 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
   },
   statusDot: {
-    display: 'inline-block',
+    display: 'block',
     width: '7px',
     height: '7px',
     borderRadius: '50%',
@@ -469,7 +469,7 @@ export const DashboardPage: React.FC = () => {
   const { devices, deviceStatuses } = useDeviceTreeStore();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [syncHealth, setSyncHealth] = useState<SyncHealthData | null>(null);
-  const [alarmCount, setAlarmCount] = useState(0);
+  const [alarmCount, setAlarmCount] = useState<number | null>(null);
   const [healthLoading, setHealthLoading] = useState(true);
   const [healthError, setHealthError] = useState<string | null>(null);
   const [syncLogOpen, setSyncLogOpen] = useState(false);
@@ -535,8 +535,8 @@ export const DashboardPage: React.FC = () => {
         const d = await alarmsResp.value.json();
         setAlarmCount(typeof d?.total === 'number' ? d.total : Array.isArray(d) ? d.length : 0);
       } else {
-        // Avoid displaying stale alarm totals when the alarms endpoint fails.
-        setAlarmCount(0);
+        // Show unavailable instead of a potentially misleading zero.
+        setAlarmCount(null);
       }
     } finally {
       setHealthLoading(false);
@@ -697,11 +697,18 @@ export const DashboardPage: React.FC = () => {
               {/* Alarms */}
               <div className={s.kpiCard}>
                 <span className={s.kpiLabel}>Alarms</span>
-                <span className={mergeClasses(s.kpiValue, alarmCount > 0 ? s.kpiValueRed : s.kpiValueGreen)}>
-                  {alarmCount}
+                <span className={mergeClasses(
+                  s.kpiValue,
+                  alarmCount == null ? '' : alarmCount > 0 ? s.kpiValueRed : s.kpiValueGreen,
+                )}>
+                  {alarmCount ?? '—'}
                 </span>
                 <span className={s.kpiDetail}>
-                  {alarmCount === 0 ? 'All systems normal' : 'Requires attention'}
+                  {alarmCount == null
+                    ? 'Alarm data unavailable'
+                    : alarmCount === 0
+                      ? 'All systems normal'
+                      : 'Requires attention'}
                 </span>
               </div>
 
