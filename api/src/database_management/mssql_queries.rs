@@ -801,6 +801,82 @@ pub async fn query_app_log(
     Ok(rows)
 }
 
+/// Count rows in MSSQL T3_APP_LOG with optional level/category filters.
+pub async fn count_app_log(
+    pool: &MssqlPool,
+    level_filter: Option<&str>,
+    category_filter: Option<&str>,
+) -> Result<i64, String> {
+    let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
+
+    let mut where_parts: Vec<String> = Vec::new();
+    if let Some(lvl) = level_filter {
+        where_parts.push(format!("level = '{}'", lvl.replace('\'', "''")));
+    }
+    if let Some(cat) = category_filter {
+        where_parts.push(format!("category = '{}'", cat.replace('\'', "''")));
+    }
+    let where_sql = if where_parts.is_empty() {
+        String::new()
+    } else {
+        format!(" WHERE {}", where_parts.join(" AND "))
+    };
+
+    let sql = format!(
+        "IF OBJECT_ID('T3_APP_LOG', 'U') IS NOT NULL \
+         SELECT COUNT(*) AS cnt FROM T3_APP_LOG{}",
+        where_sql
+    );
+
+    let result = conn
+        .query(&sql, &[])
+        .await
+        .map_err(|e| format!("T3_APP_LOG COUNT failed: {}", e))?;
+
+    let row = result
+        .into_row()
+        .await
+        .map_err(|e| format!("T3_APP_LOG COUNT row fetch failed: {}", e))?;
+
+    Ok(row.and_then(|r| r.get::<i64, _>("cnt")).unwrap_or(0))
+}
+
+/// Return distinct category values from MSSQL T3_APP_LOG.
+pub async fn query_app_log_categories(
+    pool: &MssqlPool,
+) -> Result<Vec<String>, String> {
+    let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
+
+    let sql = "IF OBJECT_ID('T3_APP_LOG', 'U') IS NOT NULL \
+               SELECT DISTINCT category FROM T3_APP_LOG \
+               WHERE category IS NOT NULL AND category <> ''";
+
+    let result = conn
+        .query(sql, &[])
+        .await
+        .map_err(|e| format!("T3_APP_LOG DISTINCT category failed: {}", e))?;
+
+    let result_sets = result
+        .into_results()
+        .await
+        .map_err(|e| format!("T3_APP_LOG DISTINCT category row fetch failed: {}", e))?;
+
+    let mut cats = Vec::new();
+    for result_set in result_sets {
+        for row in result_set {
+            if let Some(cat) = clean_cpp_string(row.get::<&str, _>(0)) {
+                if !cat.is_empty() {
+                    cats.push(cat);
+                }
+            }
+        }
+    }
+
+    cats.sort();
+    cats.dedup();
+    Ok(cats)
+}
+
 // ============================================================================
 // Schema Init — execute the embedded MSSQL SQL script
 // ============================================================================
