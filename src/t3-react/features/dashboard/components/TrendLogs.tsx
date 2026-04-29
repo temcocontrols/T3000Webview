@@ -4,8 +4,22 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Spinner, Tooltip } from '@fluentui/react-components';
-import { ChevronDownRegular, ErrorCircleRegular, InfoRegular } from '@fluentui/react-icons';
+import {
+  Button,
+  Drawer,
+  DrawerBody,
+  DrawerHeader,
+  DrawerHeaderTitle,
+  Spinner,
+  Tooltip,
+} from '@fluentui/react-components';
+import {
+  ChevronDownRegular,
+  DismissRegular,
+  ErrorCircleRegular,
+  InfoRegular,
+  ListRegular,
+} from '@fluentui/react-icons';
 import * as echarts from 'echarts';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './TrendLogs.module.css';
@@ -81,6 +95,7 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
   const [chartLegendItems, setChartLegendItems] = useState<string[]>([]);
   const [legendEnabledMap, setLegendEnabledMap] = useState<Record<string, boolean>>({});
   const [issuesExpanded, setIssuesExpanded] = useState(false);
+  const [stalledDrawerOpen, setStalledDrawerOpen] = useState(false);
 
   const formatAge = (timestamp: number | null): string => {
     if (!timestamp) return 'N/A';
@@ -227,8 +242,7 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
             lastSampleTime: new Date(p.lastTs).toLocaleTimeString(),
             expectedInterval: '30s', // Placeholder - could be inferred from data pattern
           }))
-          .sort((a, b) => b.lastSampleTs - a.lastSampleTs)
-          .slice(0, 10);
+          .sort((a, b) => b.lastSampleTs - a.lastSampleTs);
 
         const devices = Array.from(deviceMap.entries())
           .map(([serial, d]) => ({
@@ -438,15 +452,17 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
   ];
 
   const formatSampleRate = (rate: number): string => {
-    if (rate === 0) return 'N/A';
+    if (rate === 0) return '0/min';
     return `${Math.round(rate)} rec/min`;
   };
 
   const getSampleRateTrend = (): string => {
-    if (summary.recordsLastHourRate <= 0) return '—';
+    if (summary.recordsLastHourRate <= 0) return 'No samples';
     // Simplified trend - in real implementation would compare to longer period
     return summary.recordsLastHourRate > 30 ? '✓' : '↓';
   };
+
+  const previewStalledPoints = summary.stalledPoints.slice(0, 4);
 
   const toggleSeriesVisibility = (seriesName: string) => {
     chartInstanceRef.current?.dispatchAction({
@@ -486,12 +502,12 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
         {/* Card 2: Sample Rate */}
         <div className={styles.healthCard}>
           <div className={styles.healthTitle}>Sample Rate</div>
-          <div className={`${styles.healthValue}`} style={{ color: summary.recordsLastHourRate > 30 ? '#107c10' : '#ffb900' }}>
+          <div className={`${styles.healthValue}`} style={{ color: summary.recordsLastHourRate > 30 ? '#107c10' : summary.recordsLastHourRate > 0 ? '#ffb900' : '#a4262c' }}>
             {formatSampleRate(summary.recordsLastHourRate)} {getSampleRateTrend()}
           </div>
           <div className={styles.healthSub}>
-            <strong>Last Hour:</strong> {summary.recordsLastHourRate > 0 ? `${Math.round(summary.recordsLastHourRate)}/min` : 'N/A'}<br />
-            <strong>Trend:</strong> {summary.recordsLastHourRate > 30 ? '✓ Normal' : '↓ Slowing'}
+            <strong>Last Hour:</strong> {summary.recordsLastHourRate > 0 ? `${Math.round(summary.recordsLastHourRate)}/min` : '0/min'}<br />
+            <strong>Trend:</strong> {summary.recordsLastHourRate > 30 ? '✓ Normal' : summary.recordsLastHourRate > 0 ? '↓ Slowing' : 'No samples in last hour'}
           </div>
         </div>
 
@@ -542,13 +558,25 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
           >
             <span className={styles.issuesIconBadge} aria-hidden="true">!</span>
             <span className={styles.issuesTitle}>Stalled Points ({summary.stalledPoints.length})</span>
+            <Button
+              size="small"
+              appearance="subtle"
+              icon={<ListRegular />}
+              className={styles.issuesViewAllButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                setStalledDrawerOpen(true);
+              }}
+            >
+              View all
+            </Button>
             <ChevronDownRegular className={`${styles.expandIcon} ${issuesExpanded ? styles.expandIconOpen : ''}`} />
           </div>
 
           {issuesExpanded && (
             <div className={styles.issuesContent}>
               <div className={styles.issuesGrid}>
-                {summary.stalledPoints.map((point) => (
+                {previewStalledPoints.map((point) => (
                   <div key={point.pointKey} className={styles.issueItem}>
                     <div className={styles.issuePoint}>
                       {point.pointName} | SN-{point.serial}, Panel-{point.panel}
@@ -566,6 +594,11 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
                   </div>
                 ))}
               </div>
+              {summary.stalledPoints.length > 4 && (
+                <div className={styles.issuesPreviewNote}>
+                  Showing first 4 stalled points. Use <strong>View all</strong> for full list.
+                </div>
+              )}
               <div className={styles.diagnosticsBox}>
                 <div className={styles.diagnosticsTitle}>Next Steps</div>
                 <div className={styles.diagnosticsText}>
@@ -631,6 +664,53 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
         </div>
         <div ref={chartRef} className={`${styles.chartArea} ${loading || error ? styles.chartHidden : ''}`} />
       </div>
+
+      <Drawer
+        type="overlay"
+        position="end"
+        size="medium"
+        open={stalledDrawerOpen}
+        onOpenChange={(_, data) => {
+          if (!data.open) setStalledDrawerOpen(false);
+        }}
+      >
+        <DrawerHeader>
+          <DrawerHeaderTitle
+            action={
+              <Button
+                appearance="subtle"
+                aria-label="Close"
+                icon={<DismissRegular />}
+                onClick={() => setStalledDrawerOpen(false)}
+              />
+            }
+          >
+            <div className={styles.stalledDrawerTitle}>All Stalled Points ({summary.stalledPoints.length})</div>
+          </DrawerHeaderTitle>
+        </DrawerHeader>
+        <DrawerBody>
+          <div className={styles.stalledDrawerList}>
+            {summary.stalledPoints.map((point) => (
+              <div key={`drawer-${point.pointKey}`} className={styles.issueItem}>
+                <div className={styles.issuePoint}>{point.pointName} | SN-{point.serial}, Panel-{point.panel}</div>
+                <div className={styles.issueDetail}>
+                  <div>⏱️ <strong>Last sample:</strong> {formatAge(point.lastSampleTs)} ({new Date(point.lastSampleTs).toLocaleTimeString()})</div>
+                  <div>📊 <strong>Expected:</strong> every {point.expectedInterval}</div>
+                  <div style={{ color: '#be123c' }}>
+                    <strong>Status:</strong> No data since {new Date(point.lastSampleTs).toLocaleTimeString()}
+                  </div>
+                  <div className={styles.issueFix}>
+                    💡 Check if point enabled in config + verify device connectivity
+                  </div>
+                </div>
+              </div>
+            ))}
+            {summary.stalledPoints.length === 0 && (
+              <div className={styles.stalledDrawerEmpty}>No stalled points.</div>
+            )}
+          </div>
+        </DrawerBody>
+      </Drawer>
     </div>
   );
 };
