@@ -5,7 +5,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Spinner, Tooltip } from '@fluentui/react-components';
-import { ErrorCircleRegular, InfoRegular } from '@fluentui/react-icons';
+import { ChevronDownRegular, ErrorCircleRegular, InfoRegular } from '@fluentui/react-icons';
 import * as echarts from 'echarts';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './TrendLogs.module.css';
@@ -29,13 +29,26 @@ interface DeviceSummary {
   lastSampleTs: number;
 }
 
+interface StalledPoint {
+  pointKey: string;
+  pointName: string;
+  serial: number;
+  panel: number;
+  lastSampleTs: number;
+  lastSampleTime: string;
+  expectedInterval: string;
+}
+
 interface TrendSummary {
   trackedPoints: number;
   sampledPoints: number;
   totalRecords: number;
   recordsLastHour: number;
+  recordsLastHourRate: number;
+  avgRecordsLastHour: number;
   lastSampleTs: number | null;
   devices: DeviceSummary[];
+  stalledPoints: StalledPoint[];
 }
 
 interface TrendLogsProps {
@@ -52,10 +65,15 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
     sampledPoints: 0,
     totalRecords: 0,
     recordsLastHour: 0,
+    recordsLastHourRate: 0,
+    avgRecordsLastHour: 0,
     lastSampleTs: null,
     devices: [],
+    stalledPoints: [],
   });
   const [chartLegendItems, setChartLegendItems] = useState<string[]>([]);
+  const [legendEnabledMap, setLegendEnabledMap] = useState<Record<string, boolean>>({});
+  const [issuesExpanded, setIssuesExpanded] = useState(false);
 
   const formatAge = (timestamp: number | null): string => {
     if (!timestamp) return 'N/A';
@@ -181,6 +199,20 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
 
         const trackedPoints = pointMap.size;
         const sampledPoints = Array.from(pointMap.values()).filter((p) => p.lastTs >= activeWindowAgo).length;
+        const stalledPointsList: StalledPoint[] = Array.from(pointMap.values())
+          .filter((p) => p.lastTs < activeWindowAgo)
+          .map((p) => ({
+            pointKey: `${p.serial}:${p.name}`,
+            pointName: p.name,
+            serial: p.serial,
+            panel: p.panel,
+            lastSampleTs: p.lastTs,
+            lastSampleTime: new Date(p.lastTs).toLocaleTimeString(),
+            expectedInterval: '30s', // Placeholder - could be inferred from data pattern
+          }))
+          .sort((a, b) => b.lastSampleTs - a.lastSampleTs)
+          .slice(0, 10);
+
         const devices = Array.from(deviceMap.entries())
           .map(([serial, d]) => ({
             serial,
@@ -192,13 +224,20 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
           .sort((a, b) => b.records - a.records)
           .slice(0, 5);
 
+        // Calculate sample rate (records per minute last hour)
+        const recordsLastHourRate = recordsLastHour > 0 ? Math.round((recordsLastHour / 60) * 10) / 10 : 0;
+        const avgRecordsLastHour = recordsLastHour > 0 ? Math.round((recordsLastHour / 60) * 10) / 10 : 0;
+
         setSummary({
           trackedPoints,
           sampledPoints,
           totalRecords: parsed.length,
           recordsLastHour,
+          recordsLastHourRate,
+          avgRecordsLastHour,
           lastSampleTs,
           devices,
+          stalledPoints: stalledPointsList,
         });
 
         if (parsed.length === 0) {
@@ -212,7 +251,15 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
         const topSeries = Array.from(pointMap.values())
           .sort((a, b) => b.count - a.count)
           .slice(0, 3);
-        setChartLegendItems(topSeries.map((s) => s.name));
+        const nextLegendItems = topSeries.map((s) => s.name);
+        setChartLegendItems(nextLegendItems);
+        setLegendEnabledMap((prev) => {
+          const next: Record<string, boolean> = {};
+          for (const name of nextLegendItems) {
+            next[name] = prev[name] ?? true;
+          }
+          return next;
+        });
 
         const series: echarts.SeriesOption[] = topSeries.map((s, i) => ({
           name: s.name,
@@ -249,6 +296,8 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
           },
           legend: {
             show: false,
+            selectedMode: true,
+            selected: Object.fromEntries(chartLegendItems.map((name) => [name, legendEnabledMap[name] ?? true])),
           },
           grid: { left: 56, right: 14, top: 16, bottom: 46, containLabel: false },
           xAxis: {
@@ -312,6 +361,7 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
   }, []);
 
   const samplingStalled = summary.trackedPoints > 0 && summary.sampledPoints === 0;
+  const topDevice = summary.devices[0];
   const legendDotClasses = [
     styles.chartLegendDot0,
     styles.chartLegendDot1,
@@ -320,33 +370,147 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
     styles.chartLegendDot4,
   ];
 
+  const formatSampleRate = (rate: number): string => {
+    if (rate === 0) return 'N/A';
+    return `${Math.round(rate)} rec/min`;
+  };
+
+  const getSampleRateTrend = (): string => {
+    if (summary.recordsLastHourRate <= 0) return '—';
+    // Simplified trend - in real implementation would compare to longer period
+    return summary.recordsLastHourRate > 30 ? '✓' : '↓';
+  };
+
+  const toggleSeriesVisibility = (seriesName: string) => {
+    chartInstanceRef.current?.dispatchAction({
+      type: 'legendToggleSelect',
+      name: seriesName,
+    });
+
+    setLegendEnabledMap((prev) => ({
+      ...prev,
+      [seriesName]: !(prev[seriesName] ?? true),
+    }));
+  };
+
   return (
     <div className={styles.container}>
+      {/* Health Cards Grid - 4 columns */}
       <div className={styles.healthStrip}>
+        {/* Card 1: Sampling Health */}
         <div className={styles.healthCard}>
           <div className={styles.healthTitle}>Sampling Health</div>
           <div className={`${styles.healthValue} ${samplingStalled ? styles.stateBad : styles.stateGood}`}>
-            {samplingStalled ? 'Stalled' : 'Active'}
+            {samplingStalled ? (
+              <>
+                Stalled <span className={styles.healthStatusBadge} aria-hidden="true">!</span>
+              </>
+            ) : (
+              'Active ✓'
+            )}
           </div>
           <div className={styles.healthSub}>
-            {summary.trackedPoints} tracked, {summary.sampledPoints} active in last 2h
+            <strong>{summary.trackedPoints}</strong> tracked<br />
+            <strong>{summary.sampledPoints}</strong> active (2h)
+            {summary.stalledPoints.length > 0 && <><br /><strong style={{ color: '#a4262c' }}>{summary.stalledPoints.length}</strong> stalled</>}
           </div>
         </div>
 
+        {/* Card 2: Sample Rate */}
+        <div className={styles.healthCard}>
+          <div className={styles.healthTitle}>Sample Rate</div>
+          <div className={`${styles.healthValue}`} style={{ color: summary.recordsLastHourRate > 30 ? '#107c10' : '#ffb900' }}>
+            {formatSampleRate(summary.recordsLastHourRate)} {getSampleRateTrend()}
+          </div>
+          <div className={styles.healthSub}>
+            <strong>Last Hour:</strong> {summary.recordsLastHourRate > 0 ? `${Math.round(summary.recordsLastHourRate)}/min` : 'N/A'}<br />
+            <strong>Trend:</strong> {summary.recordsLastHourRate > 30 ? '✓ Normal' : '↓ Slowing'}
+          </div>
+        </div>
+
+        {/* Card 3: Last Sample Age */}
         <div className={styles.healthCard}>
           <div className={styles.healthTitle}>Last Sample Age</div>
-          <div className={styles.healthValue}>{formatAge(summary.lastSampleTs)}</div>
+          <div className={`${styles.healthValue} ${summary.lastSampleTs && Date.now() - summary.lastSampleTs < 60000 ? styles.stateGood : styles.stateBad}`}>
+            {formatAge(summary.lastSampleTs)}
+          </div>
           <div className={styles.healthSub}>
-            Most recent: {summary.lastSampleTs ? new Date(summary.lastSampleTs).toLocaleTimeString() : 'N/A'}
+            <strong>Most Recent:</strong><br />
+            {summary.lastSampleTs ? new Date(summary.lastSampleTs).toLocaleTimeString() : 'N/A'}
           </div>
         </div>
 
+        {/* Card 4: Top Device */}
         <div className={styles.healthCard}>
-          <div className={styles.healthTitle}>Suggested Action</div>
-          <div className={styles.healthAction}>Check trendlog selection + sync cycle</div>
-          <div className={styles.healthSub}>Open View All for detailed point-level diagnostics.</div>
+          <div className={styles.healthTitle}>Top Device</div>
+          <div className={styles.healthValue}>
+            {topDevice ? `SN-${topDevice.serial}` : 'N/A'}
+          </div>
+          <div className={styles.healthSub}>
+            {topDevice ? (
+              <>
+                <strong>{topDevice.records}</strong> records<br />
+                <strong>Panel:</strong> {topDevice.panel}<br />
+                <strong>Last:</strong> {formatAge(topDevice.lastSampleTs)}
+              </>
+            ) : 'No data'}
+          </div>
         </div>
       </div>
+
+      {/* Issues Section - Expandable */}
+      {summary.stalledPoints.length > 0 && (
+        <div className={styles.issuesSection}>
+          <div
+            className={styles.issuesHeader}
+            onClick={() => setIssuesExpanded(!issuesExpanded)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setIssuesExpanded(!issuesExpanded);
+              }
+            }}
+          >
+            <span className={styles.issuesIconBadge} aria-hidden="true">!</span>
+            <span className={styles.issuesTitle}>Stalled Points ({summary.stalledPoints.length})</span>
+            <ChevronDownRegular className={`${styles.expandIcon} ${issuesExpanded ? styles.expandIconOpen : ''}`} />
+          </div>
+
+          {issuesExpanded && (
+            <div className={styles.issuesContent}>
+              <div className={styles.issuesGrid}>
+                {summary.stalledPoints.map((point) => (
+                  <div key={point.pointKey} className={styles.issueItem}>
+                    <div className={styles.issuePoint}>
+                      {point.pointName} | SN-{point.serial}, Panel-{point.panel}
+                    </div>
+                    <div className={styles.issueDetail}>
+                      <div>⏱️ <strong>Last sample:</strong> {formatAge(point.lastSampleTs)} ({new Date(point.lastSampleTs).toLocaleTimeString()})</div>
+                      <div>📊 <strong>Expected:</strong> every {point.expectedInterval}</div>
+                      <div style={{ color: '#be123c' }}>
+                        <strong>Status:</strong> No data since {new Date(point.lastSampleTs).toLocaleTimeString()}
+                      </div>
+                      <div className={styles.issueFix}>
+                        💡 Check if point enabled in config + verify device connectivity
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className={styles.diagnosticsBox}>
+                <div className={styles.diagnosticsTitle}>Next Steps</div>
+                <div className={styles.diagnosticsText}>
+                  1. Check trendlog configuration<br />
+                  2. Verify sync interval<br />
+                  3. Confirm device(s) are online
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {loading && (
         <div className={styles.loading}>
@@ -380,12 +544,18 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
           </div>
           <div className={styles.chartHeaderLegend}>
             {chartLegendItems.map((label, idx) => (
-              <span key={label} className={styles.chartLegendItem}>
+              <button
+                key={label}
+                type="button"
+                className={`${styles.chartLegendItem} ${legendEnabledMap[label] === false ? styles.chartLegendItemDisabled : ''}`}
+                onClick={() => toggleSeriesVisibility(label)}
+                title={legendEnabledMap[label] === false ? 'Click to enable series' : 'Click to disable series'}
+              >
                 <span
                   className={`${styles.chartLegendDot} ${legendDotClasses[idx % legendDotClasses.length]}`}
                 />
                 {label}
-              </span>
+              </button>
             ))}
           </div>
         </div>
