@@ -1776,10 +1776,15 @@
       clearTimeout(loadingDelayTimer.value)
       loadingDelayTimer.value = null
     }
-    // Only show overlay if loading takes longer than 300ms
+    // Only show overlay if loading takes longer than 300ms AND the chart has no rendered data.
+    // Suppressing the overlay when data is already on screen prevents the 1-2s blank flash
+    // that happens on timebase/zoom changes while historical data is re-fetching.
     loadingDelayTimer.value = setTimeout(() => {
       if (isLoading.value) {
-        showLoadingOverlay.value = true
+        const hasRenderedData = dataSeries.value.some(s => s.data && s.data.length > 0)
+        if (!hasRenderedData) {
+          showLoadingOverlay.value = true
+        }
       }
     }, loadingDelayDuration)
   }
@@ -3176,18 +3181,19 @@
         isRealTime.value = false
       }
       if (typeof state.timeOffset === 'number') {
-        // FIX: Only restore negative offsets (user scrolled into the past).
-        // A positive timeOffset shifts the chart window into the future, which
-        // causes the chart to appear blank on page load because all existing
-        // data points fall outside the visible time range. This happens when a
-        // stale offset (e.g. +90 min) is persisted from a previous navigation
-        // session and then restored before fresh data arrives.
-        if (state.timeOffset <= 0) {
-          timeOffset.value = state.timeOffset
-        } else {
-          LogUtil.Info('📦 TrendLogChart: Ignoring stale positive timeOffset from localStorage', { storedOffset: state.timeOffset })
-          timeOffset.value = 0
+        // Production safety: never restore persisted preset-mode timeOffset.
+        // Stale offsets (e.g. -23040 min) can move the visible window to old
+        // dates while live/history APIs return current points, making the chart
+        // appear permanently blank even though data exists.
+        // Keep startup in live window; users can navigate history intentionally
+        // via left/right after the chart is loaded.
+        if (state.timeBase && state.timeBase !== 'custom' && state.timeOffset !== 0) {
+          LogUtil.Info('📦 TrendLogChart: Resetting persisted preset timeOffset on load', {
+            storedOffset: state.timeOffset,
+            restoredAs: 0
+          })
         }
+        timeOffset.value = 0
       }
       LogUtil.Info('📦 TrendLogChart: View state restored from localStorage', { ...state, appliedTimeOffset: timeOffset.value })
     } catch (_e) { /* Malformed state ignore */ }
@@ -3318,7 +3324,10 @@
   const shouldShowLoading = computed(() => {
     const noDataYet = analogSeriesList.value.length === 0 && digitalSeriesList.value.length === 0
     const noConfirmedError = !showLoadingTimeout.value && !hasConnectionError.value
-    const result = isLoading.value || (noDataYet && noConfirmedError)
+    // Never show the global spinner when the chart already has rendered data (timebase/zoom refetch).
+    // Only show it on the very first load when there are truly no series yet.
+    const hasAnyRenderedData = dataSeries.value.some(s => s.data && s.data.length > 0)
+    const result = (isLoading.value && !hasAnyRenderedData) || (noDataYet && noConfirmedError)
 
     LogUtil.Debug('🔍 shouldShowLoading:', result, {
       isLoading: isLoading.value,
@@ -6369,7 +6378,12 @@
         T3000DataExists: !!T3000_Data.value,
         propsItemData: !!props.itemData
       })
-      dataSeries.value = []
+      // Preserve existing chart data if config is temporarily unavailable.
+      // This avoids permanent blank charts during transient initialization races.
+      const hasExistingData = dataSeries.value.some(s => s.data && s.data.length > 0)
+      if (!hasExistingData) {
+        dataSeries.value = []
+      }
       return
     }
 
@@ -6499,8 +6513,7 @@
       LogUtil.Warn('= TLChart: Keeping loading state - data might still be loading')
       // Keep loading state instead of showing error immediately
       // hasConnectionError.value = true // Removed - let it keep loading
-      // Clear any existing data when connection error occurs
-      dataSeries.value = []
+      // Do not clear existing plotted data on transient initialization failures.
     }
   }
 
@@ -8724,8 +8737,11 @@
 
       } catch (error) {
         LogUtil.Error('= TLChart: Error in data initialization:', error)
-        hasConnectionError.value = true
-        dataSeries.value = []
+        const hasExistingData = dataSeries.value.some(s => s.data && s.data.length > 0)
+        hasConnectionError.value = !hasExistingData
+        if (!hasExistingData) {
+          dataSeries.value = []
+        }
       }
     } else {
       LogUtil.Info('📊 Empty State Configuration:', {
@@ -8737,8 +8753,11 @@
         panelsDataLength: T3000_Data.value.panelsData?.length || 0,
         dataType: 'NO_DATA_AVAILABLE'
       })
-      hasConnectionError.value = true
-      dataSeries.value = []
+      const hasExistingData = dataSeries.value.some(s => s.data && s.data.length > 0)
+      hasConnectionError.value = !hasExistingData
+      if (!hasExistingData) {
+        dataSeries.value = []
+      }
       stopLoading()
     }  // If no data series available, chart will remain empty (no mock data generation)
     if (dataSeries.value.length === 0) {
@@ -10981,14 +11000,20 @@
 
       } catch (error) {
         LogUtil.Error('= TLChart: Error in historical data initialization:', error)
-        hasConnectionError.value = true
-        dataSeries.value = []
+        const hasExistingData = dataSeries.value.some(s => s.data && s.data.length > 0)
+        hasConnectionError.value = !hasExistingData
+        if (!hasExistingData) {
+          dataSeries.value = []
+        }
         stopLoading()
       }
     } else {
       LogUtil.Info('📊 No monitor configuration available for historical data')
-      hasConnectionError.value = true
-      dataSeries.value = []
+      const hasExistingData = dataSeries.value.some(s => s.data && s.data.length > 0)
+      hasConnectionError.value = !hasExistingData
+      if (!hasExistingData) {
+        dataSeries.value = []
+      }
       stopLoading()
     }
   }
