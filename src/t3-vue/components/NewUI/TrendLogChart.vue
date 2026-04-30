@@ -2825,9 +2825,9 @@
       '30m': { stepMinutes: 5,   unit: 'minute' },  // 5 min step  → 7 ticks for 30 min window
       '1h':  { stepMinutes: 5,   unit: 'minute' },  // 5 min step  → 13 ticks for 1 h window
       '4h':  { stepMinutes: 15,  unit: 'minute' },  // 15 min step → 17 ticks for 4 h window
-      '12h': { stepMinutes: 60,  unit: 'hour'   },  // 1 h step    → 13 ticks for 12 h window
-      '1d':  { stepMinutes: 120, unit: 'hour'   },  // 2 h step    → 13 ticks for 1 day window
-      '4d':  { stepMinutes: 720, unit: 'hour'   },  // 12 h step   → 9 ticks for 4 day window
+      '12h': { stepMinutes: 60,  unit: 'minute' },  // 1 h step    → 13 ticks for 12 h window
+      '1d':  { stepMinutes: 60,  unit: 'minute' },  // 1 h step    → 25 ticks for 1 day window
+      '4d':  { stepMinutes: 360, unit: 'minute' },  // 6 h step    → ~17 ticks for 4 day window
     }
 
     return configs[timeBase] || { stepMinutes: 10, unit: 'minute' }
@@ -2842,7 +2842,13 @@
   // X-axis tick formatter to always show time + date (multi-line) for first tick
   // All timebases: First tick shows time on top line, date on bottom line for better visibility
   const formatXAxisTick = (value: any, index: number, ticks: any[]) => {
+    if (timeBase.value === '1d' || timeBase.value === '4d') {
+      // Suppress built-in labels — forceDenseTimeLabels plugin draws them from xScale.ticks.
+      // Reserve two-line height on first tick so axis zone matches short-range modes.
+      return index === 0 ? [' ', ' '] : ' '
+    }
     const date = new Date(value)
+    const isOneDayRange = timeBase.value === '1d'
     const isLargerThanOneDay = (() => {
       if (timeBase.value === '4d') return true
       if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
@@ -2859,6 +2865,9 @@
       const day = date.getDate().toString().padStart(2, '0')
       const hours = date.getHours().toString().padStart(2, '0')
       const minutes = date.getMinutes().toString().padStart(2, '0')
+      if (isOneDayRange) {
+        return [hours, `${year}-${month}-${day}`]
+      }
       return [`${hours}:${minutes}`, `${year}-${month}-${day}`] // Array for multi-line
     }
 
@@ -2866,12 +2875,20 @@
     const formatTimeOnly = () => {
       const hours = date.getHours().toString().padStart(2, '0')
       const minutes = date.getMinutes().toString().padStart(2, '0')
+      if (isOneDayRange) {
+        return hours
+      }
       return `${hours}:${minutes}`
     }
 
     const isFirstTick = index === 0
 
-    // For ranges larger than 1 day, always show time-only labels.
+    // 4d: show date only on the first tick; all others stay time-only.
+    if (timeBase.value === '4d') {
+      return isFirstTick ? formatDateTimeMultiLine() : formatTimeOnly()
+    }
+
+    // For ranges larger than 1 day (except 4d special handling above), show time-only labels.
     if (isLargerThanOneDay) {
       return formatTimeOnly()
     }
@@ -4060,6 +4077,59 @@
           })
         },
       },
+      {
+        id: 'forceDenseTimeLabels',
+        afterDraw: (chart: any) => {
+          if (timeBase.value !== '1d' && timeBase.value !== '4d') return
+          const xScale = chart?.scales?.x
+          if (!xScale || !xScale.ticks?.length) return
+
+          const ctx = chart.ctx
+          ctx.save()
+          ctx.fillStyle = '#595959'
+          ctx.font = '11px Inter, Helvetica, Arial, sans-serif'
+          ctx.textBaseline = 'top'
+
+          const labelY = xScale.top + 8
+          const dateY = xScale.top + 22
+
+          // Iterate the ACTUAL tick array so labels are drawn at exactly the same
+          // pixels Chart.js uses for gridlines — no independent startMs/stepMs drift.
+          const ticks: any[] = xScale.ticks
+          ticks.forEach((tick: any, i: number) => {
+            const value = tick.value ?? tick
+            const px = xScale.getPixelForValue(value)
+            if (px < xScale.left - 1 || px > xScale.right + 1) return
+
+            const d = new Date(value)
+            const hh = d.getHours().toString().padStart(2, '0')
+            const mm = d.getMinutes().toString().padStart(2, '0')
+            const label = mm === '00' ? `${hh}:00` : `${hh}:${mm}`
+
+            if (i === ticks.length - 1) {
+              ctx.textAlign = 'right'
+            } else if (px - xScale.left < 20) {
+              ctx.textAlign = 'left'
+            } else {
+              ctx.textAlign = 'center'
+            }
+            ctx.fillText(label, px, labelY)
+
+            // Date row: only the first tick
+            if (i === 0) {
+              const savedAlign = ctx.textAlign
+              ctx.textAlign = px - xScale.left < 20 ? 'left' : 'center'
+              const yr = d.getFullYear()
+              const mo = (d.getMonth() + 1).toString().padStart(2, '0')
+              const day = d.getDate().toString().padStart(2, '0')
+              ctx.fillText(`${yr}-${mo}-${day}`, px, dateY)
+              ctx.textAlign = savedAlign
+            }
+          })
+
+          ctx.restore()
+        },
+      },
     ],
     options: {
       responsive: true,
@@ -4446,7 +4516,7 @@
             // maxTicks = window / step + 1 (Solution 3 aligned)
             const maxTicksConfigs = {
               '5m': 7, '10m': 12, '30m': 8, '1h': 14,
-              '4h': 18, '12h': 14, '1d': 14, '4d': 10
+              '4h': 18, '12h': 14, '1d': 26, '4d': 10
             }
             maxTicks = maxTicksConfigs[timeBase.value] || 8
           }
@@ -4488,16 +4558,19 @@
               includeBounds: false // We control bounds manually via afterBuildTicks
             },
             afterBuildTicks: (scale: any) => {
-              // Calculate stepMs correctly:
-              // - Standard timebases (5md): tickConfig.stepMinutes is always in minutes
-              // - Custom with unit='hour': getCustomTickConfig returns stepSize in HOURS, not minutes
+              // Always read fresh config — closure must not cache stale stepMinutes
+              const freshConfig = timeBase.value === 'custom' ? tickConfig : getXAxisTickConfig(timeBase.value)
               let stepMs: number
-              if (timeBase.value === 'custom') {
-                stepMs = tickConfig.unit === 'hour'
-                  ? tickConfig.stepMinutes * 60 * 60 * 1000  // stepMinutes holds hours for custom hour-based ranges
-                  : tickConfig.stepMinutes * 60 * 1000        // stepMinutes holds minutes for custom minute-based ranges
+              if (timeBase.value === '1d') {
+                stepMs = 60 * 60 * 1000
+              } else if (timeBase.value === '4d') {
+                stepMs = 6 * 60 * 60 * 1000
+              } else if (timeBase.value === 'custom') {
+                stepMs = freshConfig.unit === 'hour'
+                  ? freshConfig.stepMinutes * 60 * 60 * 1000
+                  : freshConfig.stepMinutes * 60 * 1000
               } else {
-                stepMs = tickConfig.stepMinutes * 60 * 1000  // all standard timebases store minutes
+                stepMs = freshConfig.stepMinutes * 60 * 1000
               }
 
               const startMs = scale.min
@@ -4506,10 +4579,9 @@
               // First tick = actual start time (e.g. 17:18:32)
               const customTicks: Array<{value: number}> = [{ value: startMs }]
 
-              // For 1d/4d, anchor ticks to the exact window start so first/last
-              // visual segments have equal width (e.g. 13->15->...->13).
-              // For other ranges, keep global clean-boundary alignment.
-              const firstCleanMs = (timeBase.value === '1d' || timeBase.value === '4d')
+              // 1d keeps the anchored-start layout, but 4d should stay on stable
+              // clean 6-hour boundaries so live scrolling does not visually drift.
+              const firstCleanMs = (timeBase.value === '1d')
                 ? (startMs + stepMs)
                 : (Math.ceil(startMs / stepMs) * stepMs)
 
@@ -5186,7 +5258,7 @@
       displayFormat = getDisplayFormat(timeBase.value)
       const maxTicksConfigs = {
         '5m': 6, '10m': 6, '30m': 7, '1h': 7,
-        '4h': 9, '12h': 13, '1d': 13, '4d': 13
+        '4h': 9, '12h': 13, '1d': 26, '4d': 13
       }
       maxTicks = maxTicksConfigs[timeBase.value] || 7
     }
@@ -5437,35 +5509,37 @@
               includeBounds: false // Controlled manually via afterBuildTicks
             },
             afterBuildTicks: (scale: any) => {
-              // Mirror the analog chart's afterBuildTicks so the digital x-axis
-              // always starts its labels from the exact window start (scale.min).
-              // Without this, unit='hour' (12h+) snaps to whole-hour boundaries and
-              // the bounds-tick gets squeezed off when scale.min is just before a boundary.
+              // Always read fresh config — do NOT use closed-over tickConfig
+              const freshConfig = timeBase.value === 'custom' ? tickConfig : getXAxisTickConfig(timeBase.value)
               let stepMs: number
               if (timeBase.value === 'custom') {
-                stepMs = tickConfig.unit === 'hour'
-                  ? tickConfig.stepMinutes * 60 * 60 * 1000
-                  : tickConfig.stepMinutes * 60 * 1000
+                stepMs = freshConfig.unit === 'hour'
+                  ? freshConfig.stepMinutes * 60 * 60 * 1000
+                  : freshConfig.stepMinutes * 60 * 1000
               } else {
-                stepMs = tickConfig.stepMinutes * 60 * 1000
+                stepMs = freshConfig.stepMinutes * 60 * 1000
               }
 
               const startMs = scale.min
               const endMs = scale.max
 
-              // First tick = exact window start so the first label is always visible
-              const customTicks: Array<{value: number}> = [{ value: startMs }]
-
-              // First clean step boundary after the window start
+              // Use epoch-aligned clean boundaries (e.g. 19:00, 20:00, 21:00…)
               const firstCleanMs = Math.ceil(startMs / stepMs) * stepMs
-
-              // Skip clean boundary if it would crowd the start label (< 25% of step away)
               const minGapMs = stepMs * 0.25
+              const customTicks: Array<{value: number}> = []
+
+              // Only add window-start tick when it is far enough from the first clean tick
+              if (firstCleanMs - startMs > minGapMs) {
+                customTicks.push({ value: startMs })
+              }
 
               for (let t = firstCleanMs; t <= endMs; t += stepMs) {
-                if (Math.abs(t - startMs) > minGapMs) {
-                  customTicks.push({ value: t })
-                }
+                customTicks.push({ value: t })
+              }
+
+              const lastTickValue = customTicks[customTicks.length - 1]?.value
+              if (lastTickValue == null || Math.abs(lastTickValue - endMs) > 1000) {
+                customTicks.push({ value: endMs })
               }
 
               scale.ticks = customTicks
@@ -9698,7 +9772,7 @@
         // Keep runtime updates aligned with create-time Solution-3 configs.
         const maxTicksConfigs = {
           '5m': 7, '10m': 12, '30m': 8, '1h': 14,
-          '4h': 18, '12h': 14, '1d': 14, '4d': 10
+          '4h': 18, '12h': 14, '1d': 26, '4d': 10
         }
         maxTicks = maxTicksConfigs[timeBase.value] || 8
       }
@@ -9716,7 +9790,7 @@
 
       xScale.ticks = {
         ...xScale.ticks,
-        maxTicksLimit: maxTicks,
+        maxTicksLimit: (timeBase.value === '1d' || timeBase.value === '4d') ? 200 : maxTicks,
         align: 'inner',
         maxRotation: 0,
         minRotation: 0,
@@ -9726,21 +9800,25 @@
       }
 
       xScale.afterBuildTicks = (scale: any) => {
-        // Rebuild ticks from exact window start + clean boundaries to avoid
-        // Chart.js fallback spacing (e.g. 09:13, 09:26) on >=1h ranges.
+        // Always read fresh config — closure must not cache stale stepMinutes
+        const freshConfig = timeBase.value === 'custom' ? tickConfig : getXAxisTickConfig(timeBase.value)
         let stepMs: number
-        if (timeBase.value === 'custom') {
-          stepMs = tickConfig.unit === 'hour'
-            ? tickConfig.stepMinutes * 60 * 60 * 1000
-            : tickConfig.stepMinutes * 60 * 1000
+        if (timeBase.value === '1d') {
+          stepMs = 60 * 60 * 1000
+        } else if (timeBase.value === '4d') {
+          stepMs = 6 * 60 * 60 * 1000
+        } else if (timeBase.value === 'custom') {
+          stepMs = freshConfig.unit === 'hour'
+            ? freshConfig.stepMinutes * 60 * 60 * 1000
+            : freshConfig.stepMinutes * 60 * 1000
         } else {
-          stepMs = tickConfig.stepMinutes * 60 * 1000
+          stepMs = freshConfig.stepMinutes * 60 * 1000
         }
 
         const startMs = scale.min
         const endMs = scale.max
         const customTicks: Array<{ value: number }> = [{ value: startMs }]
-        const firstCleanMs = (timeBase.value === '1d' || timeBase.value === '4d')
+        const firstCleanMs = (timeBase.value === '1d')
           ? (startMs + stepMs)
           : (Math.ceil(startMs / stepMs) * stepMs)
         const minGapMs = stepMs * 0.25
@@ -9848,6 +9926,19 @@
     // 'none' mode bypasses animations but triggers all scale callbacks including
     // afterDataLimits where y-axes read analogXWindow to filter visible points.
     LogUtil.Debug('📊 Using update("none") to trigger afterDataLimits for y-axis rescale')
+    if (timeBase.value === '1d') {
+      const xOpts = (analogChartInstance.options.scales?.x as any)
+      if (xOpts?.ticks) {
+        xOpts.ticks.autoSkip = false
+        xOpts.ticks.maxTicksLimit = 200
+      }
+    }
+
+    // Keep bottom spacing consistent across all timebases (same as short-interval modes)
+    if (analogChartInstance.options.layout?.padding) {
+      ;(analogChartInstance.options.layout.padding as any).bottom = 0
+    }
+
     analogChartInstance.update('none') // No animation but full scale recalculation
   }
 
