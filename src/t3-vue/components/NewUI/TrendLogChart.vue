@@ -4579,10 +4579,9 @@
               // First tick = actual start time (e.g. 17:18:32)
               const customTicks: Array<{value: number}> = [{ value: startMs }]
 
-              // For 1d/4d, anchor ticks to the exact window start so first/last
-              // visual segments have equal width (e.g. 13->15->...->13).
-              // For other ranges, keep global clean-boundary alignment.
-              const firstCleanMs = (timeBase.value === '1d' || timeBase.value === '4d')
+              // 1d keeps the anchored-start layout, but 4d should stay on stable
+              // clean 6-hour boundaries so live scrolling does not visually drift.
+              const firstCleanMs = (timeBase.value === '1d')
                 ? (startMs + stepMs)
                 : (Math.ceil(startMs / stepMs) * stepMs)
 
@@ -9819,7 +9818,7 @@
         const startMs = scale.min
         const endMs = scale.max
         const customTicks: Array<{ value: number }> = [{ value: startMs }]
-        const firstCleanMs = (timeBase.value === '1d' || timeBase.value === '4d')
+        const firstCleanMs = (timeBase.value === '1d')
           ? (startMs + stepMs)
           : (Math.ceil(startMs / stepMs) * stepMs)
         const minGapMs = stepMs * 0.25
@@ -9941,37 +9940,6 @@
     }
 
     analogChartInstance.update('none') // No animation but full scale recalculation
-
-    // Hard override for 1d: force exact hourly x ticks on the live scale.
-    // This bypasses any internal tick auto-selection that may still collapse to 2-hour spacing.
-    if (timeBase.value === '1d' && analogChartInstance.scales?.x) {
-      const liveX = analogChartInstance.scales.x as any
-      const startMs = Number(liveX.min)
-      const endMs = Number(liveX.max)
-      const stepMs = 60 * 60 * 1000
-      const ticks: Array<{ value: number }> = []
-
-      const firstHour = Math.ceil(startMs / stepMs) * stepMs
-      if (firstHour - startMs > stepMs * 0.25) {
-        ticks.push({ value: startMs })
-      }
-
-      for (let t = firstHour; t <= endMs; t += stepMs) {
-        ticks.push({ value: t })
-      }
-
-      const lastTick = ticks[ticks.length - 1]?.value
-      if (lastTick == null || Math.abs(lastTick - endMs) > 1000) {
-        ticks.push({ value: endMs })
-      }
-
-      if (liveX.options?.ticks) {
-        liveX.options.ticks.autoSkip = false
-        liveX.options.ticks.maxTicksLimit = 200
-      }
-      liveX.ticks = ticks
-      analogChartInstance.render()
-    }
   }
 
   const updateDigitalCharts = async () => {
