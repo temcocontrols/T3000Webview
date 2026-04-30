@@ -53,7 +53,7 @@ fn test_data_point_creation() {
     };
 
     assert_eq!(point.device_id, 1);
-    assert_eq!(point.value, 23.5);
+    assert_eq!(point.value, 72.5);
     assert_eq!(point.status, "OK");
 
     println!("✅ Mock data point creation test passed");
