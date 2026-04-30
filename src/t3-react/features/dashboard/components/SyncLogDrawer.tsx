@@ -41,6 +41,7 @@ type LevelFilter = 'all' | EventLevel;
 
 export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
   const [entries, setEntries] = useState<SyncEventEntry[]>([]);
+  const [allCategories, setAllCategories] = useState<string[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
@@ -69,6 +70,7 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
       console.log('[SyncLogDrawer] got entries:', data.total);
       setEntries(data.entries);
       setTotal(data.total);
+      setAllCategories(Array.isArray(data.categories) ? data.categories : []);
     } catch (err) {
       console.error('[SyncLogDrawer] fetch error:', err);
       setLoadError(err instanceof Error ? err.message : 'Failed to load activity log');
@@ -84,7 +86,10 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
     }
   }, [open, levelFilter, categoryFilter, load]);
 
-  const refresh = () => load(page, levelFilter, categoryFilter);
+  const refresh = () => {
+    setPage(0);
+    load(0, levelFilter, categoryFilter);
+  };
 
   const exportCsv = () => {
     const header = 'Time,Level,Category,Source,Device,Host,Message';
@@ -120,7 +125,7 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
       )
     : entries;
 
-          const knownCategories = Array.from(new Set(entries.map((e) => e.category).filter(Boolean))).sort();
+  const knownCategories = allCategories;
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
@@ -144,7 +149,12 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
             />
           }
         >
-          Activity Log
+          <div className={styles.titleRow}>
+            <span className={styles.titleText}>Activity Log</span>
+            <span className={styles.titleCount}>
+              {loading ? 'Loading...' : `${total.toLocaleString()} entries`}
+            </span>
+          </div>
         </DrawerHeaderTitle>
       </DrawerHeader>
 
@@ -215,7 +225,7 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
         </div>
 
         <div className={styles.stats}>
-          <Text size={200} className={styles.statsText}>
+          <Text size={300} className={styles.statsText}>
             {total} total entries
             {search && ` • ${visibleEntries.length} matching "${search}"`}
           </Text>

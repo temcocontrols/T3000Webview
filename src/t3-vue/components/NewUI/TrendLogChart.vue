@@ -517,7 +517,7 @@
     </div>
 
     <!-- Custom Date Range Modal -->
-    <a-modal v-model:visible="customDateModalVisible" title="X Axis" :width="320" centered @ok="applyCustomDateRange"
+    <a-modal v-model:open="customDateModalVisible" title="X Axis" :width="320" centered @ok="applyCustomDateRange"
              @cancel="cancelCustomDateRange">
       <div class="custom-date-modal">
         <!-- Start Time Row -->
@@ -572,7 +572,7 @@
     </a-modal>
 
     <!-- Trendlog Configuration Modal -->
-    <a-modal v-model:visible="showDatabaseConfig" title="Trendlog Configuration" :width="620"
+    <a-modal v-model:open="showDatabaseConfig" title="Trendlog Configuration" :width="620"
              class="database-modal-compact">
       <a-space direction="vertical" size="small" style="width: 100%">
 
@@ -943,7 +943,7 @@
       </div>
     </a-modal> -->
     <!-- Right Drawer for Item Selection -->
-    <a-drawer v-model:visible="showItemSelector" title="Select Items to Track" placement="right" width="400"
+    <a-drawer v-model:open="showItemSelector" title="Select Items to Track" placement="right" width="400"
               :closable="true" :mask-closable="true" class="item-selector-drawer">
       <template #title>
         <div class="drawer-title">
@@ -1776,10 +1776,15 @@
       clearTimeout(loadingDelayTimer.value)
       loadingDelayTimer.value = null
     }
-    // Only show overlay if loading takes longer than 300ms
+    // Only show overlay if loading takes longer than 300ms AND the chart has no rendered data.
+    // Suppressing the overlay when data is already on screen prevents the 1-2s blank flash
+    // that happens on timebase/zoom changes while historical data is re-fetching.
     loadingDelayTimer.value = setTimeout(() => {
       if (isLoading.value) {
-        showLoadingOverlay.value = true
+        const hasRenderedData = dataSeries.value.some(s => s.data && s.data.length > 0)
+        if (!hasRenderedData) {
+          showLoadingOverlay.value = true
+        }
       }
     }, loadingDelayDuration)
   }
@@ -1921,6 +1926,7 @@
 
     // Generate and filter series configuration - only include items with valid T3000 device data
     const validSeries: SeriesConfig[] = []
+    const panelsDataReady = (T3000_Data.value.panelsData?.length || 0) > 0
 
     // Resolve main panel ID for items where panel=0 (means "this panel" in MON config)
     const mainPanelIdForSeries = route.query.panel_id
@@ -1958,7 +1964,7 @@
 
       if (!description) {
         // Device not found yet — log and skip (will be picked up on regenerate)
-        if (index < 5) {
+        if (panelsDataReady && index < 5) {
           LogUtil.Debug('⚠️ generateDataSeries: filtered (device not found)', {
             index, rawPanelId, panelId, pointType, pointNumber,
             category: pointTypeInfo.category,
@@ -2028,13 +2034,22 @@
       validSeries.push(newSeries)
     }
 
-    LogUtil.Info('📊 TrendLogChart: Generated series with filtering', {
+    const generatedSeriesSummary = {
       totalInputItems: actualItemCount,
       validSeriesCount: validSeries.length,
       filteredOut: actualItemCount - validSeries.length,
       seriesNames: validSeries.map(s => s.name),
-      expectedSingleSeries: actualItemCount === 1 ? 'Should be 1 series' : `Should be ${actualItemCount} series`
-    })
+      expectedSingleSeries: actualItemCount === 1 ? 'Should be 1 series' : `Should be ${actualItemCount} series`,
+      panelsDataReady
+    }
+
+    // During startup, generateDataSeries can run before panelsData is available.
+    // Downgrade that transient "0 valid" state to debug to reduce noise.
+    if (!panelsDataReady && validSeries.length === 0) {
+      LogUtil.Debug('📊 TrendLogChart: Generated series with filtering (startup warmup)', generatedSeriesSummary)
+    } else {
+      LogUtil.Info('📊 TrendLogChart: Generated series with filtering', generatedSeriesSummary)
+    }
 
     return validSeries
   }
@@ -2802,20 +2817,20 @@
     return hours * 60 * 60
   }
 
-  // Get x-axis tick configuration based on timebase
+  // Get x-axis tick configuration based on timebase (Solution 3 aligned)
   const getXAxisTickConfig = (timeBase: string) => {
     const configs = {
-      '5m': { stepMinutes: 1, unit: 'minute' },     // Every 1 minute (6 ticks = 5 divisions)
-      '10m': { stepMinutes: 2, unit: 'minute' },    // Every 2 minutes (6 ticks = 5 divisions)
-      '30m': { stepMinutes: 5, unit: 'minute' },    // Every 5 minutes (7 ticks = 6 divisions)
-      '1h': { stepMinutes: 15, unit: 'minute' },    // Every 15 minutes (5 ticks = 4 divisions) - IMPROVED
-      '4h': { stepMinutes: 60, unit: 'minute' },    // Every 1 hour (5 ticks = 4 divisions) - IMPROVED
-      '12h': { stepMinutes: 120, unit: 'hour' },    // Every 2 hours (7 ticks = 6 divisions) - IMPROVED
-      '1d': { stepMinutes: 240, unit: 'hour' },     // Every 4 hours (7 ticks = 6 divisions) - IMPROVED
-      '4d': { stepMinutes: 960, unit: 'hour' }      // Every 16 hours (7 ticks = 6 divisions) - IMPROVED
+      '5m':  { stepMinutes: 1,   unit: 'minute' },  // 1 min step  → 6 ticks for 5 min window
+      '10m': { stepMinutes: 1,   unit: 'minute' },  // 1 min step  → 11 ticks for 10 min window
+      '30m': { stepMinutes: 5,   unit: 'minute' },  // 5 min step  → 7 ticks for 30 min window
+      '1h':  { stepMinutes: 5,   unit: 'minute' },  // 5 min step  → 13 ticks for 1 h window
+      '4h':  { stepMinutes: 15,  unit: 'minute' },  // 15 min step → 17 ticks for 4 h window
+      '12h': { stepMinutes: 60,  unit: 'hour'   },  // 1 h step    → 13 ticks for 12 h window
+      '1d':  { stepMinutes: 120, unit: 'hour'   },  // 2 h step    → 13 ticks for 1 day window
+      '4d':  { stepMinutes: 720, unit: 'hour'   },  // 12 h step   → 9 ticks for 4 day window
     }
 
-    return configs[timeBase] || { stepMinutes: 15, unit: 'minute' }
+    return configs[timeBase] || { stepMinutes: 10, unit: 'minute' }
   }
 
   // Get proper display format based on time range
@@ -2828,6 +2843,14 @@
   // All timebases: First tick shows time on top line, date on bottom line for better visibility
   const formatXAxisTick = (value: any, index: number, ticks: any[]) => {
     const date = new Date(value)
+    const isLargerThanOneDay = (() => {
+      if (timeBase.value === '4d') return true
+      if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
+        const spanMs = customEndDate.value.valueOf() - customStartDate.value.valueOf()
+        return spanMs > 24 * 60 * 60 * 1000
+      }
+      return false
+    })()
 
     // Helper function to format multi-line: time on top, date below
     const formatDateTimeMultiLine = () => {
@@ -2847,6 +2870,11 @@
     }
 
     const isFirstTick = index === 0
+
+    // For ranges larger than 1 day, always show time-only labels.
+    if (isLargerThanOneDay) {
+      return formatTimeOnly()
+    }
 
     // First tick: show time + date (multi-line). All others: show time only.
     if (isFirstTick) {
@@ -2931,6 +2959,7 @@
   // Total real (non-null) data points across all visible analog series in current time window
   const analogTotalPointsInView = ref<number>(-1) // -1 = not yet calculated
   let realtimeInterval: NodeJS.Timeout | null = null
+  let realtimeIntervalMs = 0
 
   // 🆔 Unique instance ID to track and prevent duplicate intervals across HMR reloads
   const instanceId = Math.random().toString(36).substring(7)
@@ -3163,18 +3192,19 @@
         isRealTime.value = false
       }
       if (typeof state.timeOffset === 'number') {
-        // FIX: Only restore negative offsets (user scrolled into the past).
-        // A positive timeOffset shifts the chart window into the future, which
-        // causes the chart to appear blank on page load because all existing
-        // data points fall outside the visible time range. This happens when a
-        // stale offset (e.g. +90 min) is persisted from a previous navigation
-        // session and then restored before fresh data arrives.
-        if (state.timeOffset <= 0) {
-          timeOffset.value = state.timeOffset
-        } else {
-          LogUtil.Info('📦 TrendLogChart: Ignoring stale positive timeOffset from localStorage', { storedOffset: state.timeOffset })
-          timeOffset.value = 0
+        // Production safety: never restore persisted preset-mode timeOffset.
+        // Stale offsets (e.g. -23040 min) can move the visible window to old
+        // dates while live/history APIs return current points, making the chart
+        // appear permanently blank even though data exists.
+        // Keep startup in live window; users can navigate history intentionally
+        // via left/right after the chart is loaded.
+        if (state.timeBase && state.timeBase !== 'custom' && state.timeOffset !== 0) {
+          LogUtil.Info('📦 TrendLogChart: Resetting persisted preset timeOffset on load', {
+            storedOffset: state.timeOffset,
+            restoredAs: 0
+          })
         }
+        timeOffset.value = 0
       }
       LogUtil.Info('📦 TrendLogChart: View state restored from localStorage', { ...state, appliedTimeOffset: timeOffset.value })
     } catch (_e) { /* Malformed state ignore */ }
@@ -3305,7 +3335,10 @@
   const shouldShowLoading = computed(() => {
     const noDataYet = analogSeriesList.value.length === 0 && digitalSeriesList.value.length === 0
     const noConfirmedError = !showLoadingTimeout.value && !hasConnectionError.value
-    const result = isLoading.value || (noDataYet && noConfirmedError)
+    // Never show the global spinner when the chart already has rendered data (timebase/zoom refetch).
+    // Only show it on the very first load when there are truly no series yet.
+    const hasAnyRenderedData = dataSeries.value.some(s => s.data && s.data.length > 0)
+    const result = (isLoading.value && !hasAnyRenderedData) || (noDataYet && noConfirmedError)
 
     LogUtil.Debug('🔍 shouldShowLoading:', result, {
       isLoading: isLoading.value,
@@ -4410,11 +4443,12 @@
           } else {
             tickConfig = getXAxisTickConfig(timeBase.value)
             displayFormat = getDisplayFormat(timeBase.value)
+            // maxTicks = window / step + 1 (Solution 3 aligned)
             const maxTicksConfigs = {
-              '5m': 6, '10m': 6, '30m': 7, '1h': 7,
-              '4h': 9, '12h': 13, '1d': 13, '4d': 13
+              '5m': 7, '10m': 12, '30m': 8, '1h': 14,
+              '4h': 18, '12h': 14, '1d': 14, '4d': 10
             }
-            maxTicks = maxTicksConfigs[timeBase.value] || 7
+            maxTicks = maxTicksConfigs[timeBase.value] || 8
           }
 
           return {
@@ -5511,7 +5545,39 @@
   // Time navigation tracking
   const timeOffset = ref(0) // Offset in minutes from current time
 
-  // Add helper to get current time window with proper alignment (simplified)
+  /**
+   * Solution 3: compute the rounded-up right edge for the X-axis.
+   * - Under 1h (5m / 10m / 30m): round up to the next minute ending in 0 or 5.
+   * - 1h and above: round up to the next full :00 hour.
+   * - If nowMs is already exactly on a boundary the boundary itself is returned
+   *   ONLY when there is no sub-minute remainder; otherwise advance to the next boundary.
+   */
+  const computeRightEdge = (nowMs: number, tb: string): number => {
+    const UNDER_HOUR = ['5m', '10m', '30m']
+    const d = new Date(nowMs)
+    if (UNDER_HOUR.includes(tb)) {
+      // Round up to next minute ending in 0 or 5
+      const minutes = d.getMinutes()
+      const seconds = d.getSeconds()
+      const ms = d.getMilliseconds()
+      const mod = minutes % 5
+      let addMin = mod === 0 ? 0 : (5 - mod)
+      // If already on a 0/5 boundary but sub-minute time exists, advance to next boundary
+      if (addMin === 0 && (seconds > 0 || ms > 0)) addMin = 5
+      d.setMinutes(minutes + addMin, 0, 0)
+      return d.getTime()
+    } else {
+      // Round up to next full :00 hour
+      const minutes = d.getMinutes()
+      const seconds = d.getSeconds()
+      const ms = d.getMilliseconds()
+      if (minutes === 0 && seconds === 0 && ms === 0) return d.getTime()
+      d.setHours(d.getHours() + 1, 0, 0, 0)
+      return d.getTime()
+    }
+  }
+
+  // Add helper to get current time window with proper alignment (Solution 3)
   const getCurrentTimeWindow = () => {
     // For custom date range, use the exact start/end times selected by user
     if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
@@ -5534,23 +5600,17 @@
       }
     }
 
-    // For standard timebases, calculate based on current time and offset
-    const now = new Date()
-    // Align current time to exact minute
-    const currentMinute = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), 0, 0)
-
-    // Apply time offset for navigation
-    const offsetTime = new Date(currentMinute.getTime() + timeOffset.value * 60 * 1000)
-
-    // Add 1 minute to max time to provide space for current data points
-    const maxTime = new Date(offsetTime.getTime() + 60 * 1000) // +1 minute buffer
+    // Solution 3: right edge = current time rounded forward to the nearest clean boundary.
+    // timeOffset shifts the "effective now" for historical navigation.
+    const nowMs = Date.now() + timeOffset.value * 60 * 1000
+    const maxTime = computeRightEdge(nowMs, timeBase.value)
 
     const rangeMinutes = getTimeRangeMinutes(timeBase.value)
-    const startTime = new Date(maxTime.getTime() - rangeMinutes * 60 * 1000)
+    const minTime = maxTime - rangeMinutes * 60 * 1000
 
     return {
-      min: startTime.getTime(),
-      max: maxTime.getTime()
+      min: minTime,
+      max: maxTime
     }
   }
 
@@ -6329,7 +6389,12 @@
         T3000DataExists: !!T3000_Data.value,
         propsItemData: !!props.itemData
       })
-      dataSeries.value = []
+      // Preserve existing chart data if config is temporarily unavailable.
+      // This avoids permanent blank charts during transient initialization races.
+      const hasExistingData = dataSeries.value.some(s => s.data && s.data.length > 0)
+      if (!hasExistingData) {
+        dataSeries.value = []
+      }
       return
     }
 
@@ -6459,8 +6524,7 @@
       LogUtil.Warn('= TLChart: Keeping loading state - data might still be loading')
       // Keep loading state instead of showing error immediately
       // hasConnectionError.value = true // Removed - let it keep loading
-      // Clear any existing data when connection error occurs
-      dataSeries.value = []
+      // Do not clear existing plotted data on transient initialization failures.
     }
   }
 
@@ -8684,8 +8748,11 @@
 
       } catch (error) {
         LogUtil.Error('= TLChart: Error in data initialization:', error)
-        hasConnectionError.value = true
-        dataSeries.value = []
+        const hasExistingData = dataSeries.value.some(s => s.data && s.data.length > 0)
+        hasConnectionError.value = !hasExistingData
+        if (!hasExistingData) {
+          dataSeries.value = []
+        }
       }
     } else {
       LogUtil.Info('📊 Empty State Configuration:', {
@@ -8697,8 +8764,11 @@
         panelsDataLength: T3000_Data.value.panelsData?.length || 0,
         dataType: 'NO_DATA_AVAILABLE'
       })
-      hasConnectionError.value = true
-      dataSeries.value = []
+      const hasExistingData = dataSeries.value.some(s => s.data && s.data.length > 0)
+      hasConnectionError.value = !hasExistingData
+      if (!hasExistingData) {
+        dataSeries.value = []
+      }
       stopLoading()
     }  // If no data series available, chart will remain empty (no mock data generation)
     if (dataSeries.value.length === 0) {
@@ -9615,11 +9685,12 @@
       } else {
         tickConfig = getXAxisTickConfig(timeBase.value)
         displayFormat = getDisplayFormat(timeBase.value)
+        // Keep runtime updates aligned with create-time Solution-3 configs.
         const maxTicksConfigs = {
-          '5m': 6, '10m': 6, '30m': 7, '1h': 5,
-          '4h': 5, '12h': 7, '1d': 7, '4d': 7
+          '5m': 7, '10m': 12, '30m': 8, '1h': 14,
+          '4h': 18, '12h': 14, '1d': 14, '4d': 10
         }
-        maxTicks = maxTicksConfigs[timeBase.value] || 7
+        maxTicks = maxTicksConfigs[timeBase.value] || 8
       }
 
       xScale.time = {
@@ -9638,8 +9709,36 @@
         maxTicksLimit: maxTicks,
         maxRotation: 0,
         minRotation: 0,
+        autoSkip: false,
         callback: formatXAxisTick,
-        includeBounds: true
+        includeBounds: false
+      }
+
+      xScale.afterBuildTicks = (scale: any) => {
+        // Rebuild ticks from exact window start + clean boundaries to avoid
+        // Chart.js fallback spacing (e.g. 09:13, 09:26) on >=1h ranges.
+        let stepMs: number
+        if (timeBase.value === 'custom') {
+          stepMs = tickConfig.unit === 'hour'
+            ? tickConfig.stepMinutes * 60 * 60 * 1000
+            : tickConfig.stepMinutes * 60 * 1000
+        } else {
+          stepMs = tickConfig.stepMinutes * 60 * 1000
+        }
+
+        const startMs = scale.min
+        const endMs = scale.max
+        const customTicks: Array<{ value: number }> = [{ value: startMs }]
+        const firstCleanMs = Math.ceil(startMs / stepMs) * stepMs
+        const minGapMs = stepMs * 0.25
+
+        for (let t = firstCleanMs; t <= endMs; t += stepMs) {
+          if (Math.abs(t - startMs) > minGapMs) {
+            customTicks.push({ value: t })
+          }
+        }
+
+        scale.ticks = customTicks
       }
 
       xScale.grid = {
@@ -10912,14 +11011,20 @@
 
       } catch (error) {
         LogUtil.Error('= TLChart: Error in historical data initialization:', error)
-        hasConnectionError.value = true
-        dataSeries.value = []
+        const hasExistingData = dataSeries.value.some(s => s.data && s.data.length > 0)
+        hasConnectionError.value = !hasExistingData
+        if (!hasExistingData) {
+          dataSeries.value = []
+        }
         stopLoading()
       }
     } else {
       LogUtil.Info('📊 No monitor configuration available for historical data')
-      hasConnectionError.value = true
-      dataSeries.value = []
+      const hasExistingData = dataSeries.value.some(s => s.data && s.data.length > 0)
+      hasConnectionError.value = !hasExistingData
+      if (!hasExistingData) {
+        dataSeries.value = []
+      }
       stopLoading()
     }
   }
@@ -10968,17 +11073,27 @@
   const startRealTimeUpdates = () => {
     LogUtil.Info('🔥 startRealTimeUpdates CALLED - Current interval ID:', realtimeInterval)
 
-    if (realtimeInterval) {
-      LogUtil.Info('⚠️ Clearing existing interval:', realtimeInterval)
-      clearInterval(realtimeInterval)
-      realtimeInterval = null
-    }
-
     // Use monitor config data interval if available, otherwise fallback to default
     const monitorConfigData = monitorConfig.value
     const dataIntervalFromConfig = monitorConfigData?.dataIntervalMs
     const dataIntervalFromComputed = updateInterval.value
     const dataInterval = dataIntervalFromConfig || dataIntervalFromComputed
+
+    // Avoid restart churn when callers invoke startRealTimeUpdates repeatedly
+    // with the same effective interval during initialization.
+    if (realtimeInterval && realtimeIntervalMs === dataInterval) {
+      LogUtil.Debug('⏭️ startRealTimeUpdates skipped - existing interval already matches requested cadence', {
+        intervalMs: dataInterval,
+        intervalId: realtimeInterval
+      })
+      return
+    }
+
+    if (realtimeInterval) {
+      LogUtil.Info('⚠️ Clearing existing interval:', realtimeInterval)
+      clearInterval(realtimeInterval)
+      realtimeInterval = null
+    }
 
     LogUtil.Info(
       `📡 startRealTimeUpdates: polling interval = ${dataInterval} ms (${dataInterval / 1000}s)` +
@@ -10991,6 +11106,7 @@
     addRealtimeDataPoint()
 
     realtimeInterval = setInterval(addRealtimeDataPoint, dataInterval)
+    realtimeIntervalMs = dataInterval
     LogUtil.Info('✅Interval created - ID:', realtimeInterval, '- fires every', dataInterval / 1000, 'seconds')
   }
 
@@ -11000,6 +11116,7 @@
       clearInterval(realtimeInterval)
       realtimeInterval = null
     }
+    realtimeIntervalMs = 0
   }
 
   // Dropdown Menu Handlers

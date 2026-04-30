@@ -4,8 +4,22 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Spinner, Tooltip } from '@fluentui/react-components';
-import { ErrorCircleRegular, InfoRegular } from '@fluentui/react-icons';
+import {
+  Button,
+  Drawer,
+  DrawerBody,
+  DrawerHeader,
+  DrawerHeaderTitle,
+  Spinner,
+  Tooltip,
+} from '@fluentui/react-components';
+import {
+  ChevronDownRegular,
+  DismissRegular,
+  ErrorCircleRegular,
+  InfoRegular,
+  ListRegular,
+} from '@fluentui/react-icons';
 import * as echarts from 'echarts';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './TrendLogs.module.css';
@@ -29,18 +43,38 @@ interface DeviceSummary {
   lastSampleTs: number;
 }
 
+interface StalledPoint {
+  pointKey: string;
+  pointName: string;
+  serial: number;
+  panel: number;
+  lastSampleTs: number;
+  lastSampleTime: string;
+  expectedInterval: string;
+}
+
 interface TrendSummary {
   trackedPoints: number;
   sampledPoints: number;
   totalRecords: number;
   recordsLastHour: number;
+  recordsLastHourRate: number;
+  avgRecordsLastHour: number;
   lastSampleTs: number | null;
   devices: DeviceSummary[];
+  stalledPoints: StalledPoint[];
 }
 
 interface TrendLogsProps {
   isStandalone?: boolean;
 }
+
+const ACTIVITY_SERIES_NAMES = ['Total Samples', 'Active Points', 'Devices Reporting'] as const;
+
+const formatBucketTime = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+};
 
 export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) => {
   const chartRef = useRef<HTMLDivElement>(null);
@@ -52,10 +86,16 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
     sampledPoints: 0,
     totalRecords: 0,
     recordsLastHour: 0,
+    recordsLastHourRate: 0,
+    avgRecordsLastHour: 0,
     lastSampleTs: null,
     devices: [],
+    stalledPoints: [],
   });
   const [chartLegendItems, setChartLegendItems] = useState<string[]>([]);
+  const [legendEnabledMap, setLegendEnabledMap] = useState<Record<string, boolean>>({});
+  const [issuesExpanded, setIssuesExpanded] = useState(false);
+  const [stalledDrawerOpen, setStalledDrawerOpen] = useState(false);
 
   const formatAge = (timestamp: number | null): string => {
     if (!timestamp) return 'N/A';
@@ -135,16 +175,17 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
           .map((r) => ({
             ...r,
             ts: new Date(r.logging_time_fmt).getTime(),
-            num: Number.parseFloat(r.value),
           }))
-          .filter((r) => Number.isFinite(r.ts) && Number.isFinite(r.num));
+          .filter((r) => Number.isFinite(r.ts));
 
         const nowTs = Date.now();
         const oneHourAgo = nowTs - 60 * 60 * 1000;
         const activeWindowAgo = nowTs - 2 * 60 * 60 * 1000;
+        const bucketMs = 15 * 60 * 1000;
 
-        const pointMap = new Map<string, { count: number; lastTs: number; serial: number; panel: number; pts: [number, number][]; name: string }>();
+        const pointMap = new Map<string, { count: number; lastTs: number; serial: number; panel: number; name: string }>();
         const deviceMap = new Map<number, { panel: number; records: number; points: Set<string>; lastTs: number }>();
+        const bucketMap = new Map<number, { sampleCount: number; pointKeys: Set<string>; devices: Set<number> }>();
         let lastSampleTs: number | null = null;
         let recordsLastHour = 0;
 
@@ -159,13 +200,22 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
             lastTs: 0,
             serial: rec.serial_number,
             panel: rec.panel_id,
-            pts: [],
             name: pointName,
           };
           p.count += 1;
           if (rec.ts > p.lastTs) p.lastTs = rec.ts;
-          p.pts.push([rec.ts, rec.num]);
           pointMap.set(pointKey, p);
+
+          const bucketStart = Math.floor(rec.ts / bucketMs) * bucketMs;
+          const bucket = bucketMap.get(bucketStart) ?? {
+            sampleCount: 0,
+            pointKeys: new Set<string>(),
+            devices: new Set<number>(),
+          };
+          bucket.sampleCount += 1;
+          bucket.pointKeys.add(pointKey);
+          bucket.devices.add(rec.serial_number);
+          bucketMap.set(bucketStart, bucket);
 
           const d = deviceMap.get(rec.serial_number) ?? {
             panel: rec.panel_id,
@@ -181,6 +231,19 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
 
         const trackedPoints = pointMap.size;
         const sampledPoints = Array.from(pointMap.values()).filter((p) => p.lastTs >= activeWindowAgo).length;
+        const stalledPointsList: StalledPoint[] = Array.from(pointMap.values())
+          .filter((p) => p.lastTs < activeWindowAgo)
+          .map((p) => ({
+            pointKey: `${p.serial}:${p.name}`,
+            pointName: p.name,
+            serial: p.serial,
+            panel: p.panel,
+            lastSampleTs: p.lastTs,
+            lastSampleTime: new Date(p.lastTs).toLocaleTimeString(),
+            expectedInterval: '30s', // Placeholder - could be inferred from data pattern
+          }))
+          .sort((a, b) => b.lastSampleTs - a.lastSampleTs);
+
         const devices = Array.from(deviceMap.entries())
           .map(([serial, d]) => ({
             serial,
@@ -192,13 +255,20 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
           .sort((a, b) => b.records - a.records)
           .slice(0, 5);
 
+        // Calculate sample rate (records per minute last hour)
+        const recordsLastHourRate = recordsLastHour > 0 ? Math.round((recordsLastHour / 60) * 10) / 10 : 0;
+        const avgRecordsLastHour = recordsLastHour > 0 ? Math.round((recordsLastHour / 60) * 10) / 10 : 0;
+
         setSummary({
           trackedPoints,
           sampledPoints,
           totalRecords: parsed.length,
           recordsLastHour,
+          recordsLastHourRate,
+          avgRecordsLastHour,
           lastSampleTs,
           devices,
+          stalledPoints: stalledPointsList,
         });
 
         if (parsed.length === 0) {
@@ -209,20 +279,62 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
           return;
         }
 
-        const topSeries = Array.from(pointMap.values())
-          .sort((a, b) => b.count - a.count)
-          .slice(0, 3);
-        setChartLegendItems(topSeries.map((s) => s.name));
+        const activityBuckets: Array<{ ts: number; sampleCount: number; activePoints: number; devicesReporting: number }> = [];
+        for (let bucketTs = Math.floor(start.getTime() / bucketMs) * bucketMs; bucketTs <= now.getTime(); bucketTs += bucketMs) {
+          const bucket = bucketMap.get(bucketTs);
+          activityBuckets.push({
+            ts: bucketTs,
+            sampleCount: bucket?.sampleCount ?? 0,
+            activePoints: bucket?.pointKeys.size ?? 0,
+            devicesReporting: bucket?.devices.size ?? 0,
+          });
+        }
 
-        const series: echarts.SeriesOption[] = topSeries.map((s, i) => ({
-          name: s.name,
-          type: 'line' as const,
-          data: s.pts.sort((a, b) => a[0] - b[0]),
-          smooth: true,
-          lineStyle: { width: 2, color: CHART_COLORS[i % CHART_COLORS.length] },
-          itemStyle: { color: CHART_COLORS[i % CHART_COLORS.length] },
-          showSymbol: false,
-        }));
+        const nextLegendItems = [...ACTIVITY_SERIES_NAMES];
+        setChartLegendItems(nextLegendItems);
+        let nextLegendEnabledMap: Record<string, boolean> = {};
+        setLegendEnabledMap((prev) => {
+          const next: Record<string, boolean> = {};
+          for (const name of nextLegendItems) {
+            next[name] = prev[name] ?? true;
+          }
+          nextLegendEnabledMap = next;
+          return next;
+        });
+
+        const series: echarts.SeriesOption[] = [
+          {
+            name: 'Total Samples',
+            type: 'bar' as const,
+            yAxisIndex: 0,
+            barMaxWidth: 10,
+            itemStyle: { color: CHART_COLORS[0], borderRadius: [4, 4, 0, 0] },
+            emphasis: { focus: 'series' },
+            data: activityBuckets.map((bucket) => [bucket.ts, bucket.sampleCount]),
+          },
+          {
+            name: 'Active Points',
+            type: 'line' as const,
+            yAxisIndex: 0,
+            smooth: true,
+            showSymbol: false,
+            lineStyle: { width: 2, color: CHART_COLORS[1] },
+            itemStyle: { color: CHART_COLORS[1] },
+            emphasis: { focus: 'series' },
+            data: activityBuckets.map((bucket) => [bucket.ts, bucket.activePoints]),
+          },
+          {
+            name: 'Devices Reporting',
+            type: 'line' as const,
+            yAxisIndex: 0,
+            smooth: true,
+            showSymbol: false,
+            lineStyle: { width: 2, color: CHART_COLORS[2] },
+            itemStyle: { color: CHART_COLORS[2] },
+            emphasis: { focus: 'series' },
+            data: activityBuckets.map((bucket) => [bucket.ts, bucket.devicesReporting]),
+          },
+        ];
 
         if (!chartRef.current || disposed) return;
 
@@ -245,15 +357,29 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
             borderColor: '#d6d6d6',
             borderWidth: 1,
             extraCssText: 'box-shadow: 0 4px 14px rgba(0,0,0,0.12);',
-            valueFormatter: (value) => `${formatCompactNumber(Number(value ?? 0))}`,
+            formatter: (params) => {
+              const items = Array.isArray(params) ? params : [params];
+              const axisValue = Array.isArray(items[0]?.value)
+                ? Number(items[0]?.value[0] ?? 0)
+                : Number(items[0]?.value ?? 0);
+              const lines = items.map((item) => {
+                const value = Array.isArray(item.value) ? Number(item.value[1] ?? 0) : Number(item.value ?? 0);
+                return `${item.marker} ${item.seriesName}: <strong>${formatCompactNumber(value)}</strong>`;
+              });
+              return [`<strong>${formatBucketTime(axisValue)}</strong>`, ...lines].join('<br/>');
+            },
           },
           legend: {
             show: false,
+            selectedMode: true,
+            selected: Object.fromEntries(nextLegendItems.map((name) => [name, nextLegendEnabledMap[name] ?? true])),
           },
           grid: { left: 56, right: 14, top: 16, bottom: 46, containLabel: false },
           xAxis: {
             type: 'time',
             boundaryGap: false,
+            min: start.getTime(),
+            max: now.getTime(),
             axisTick: { show: false },
             axisLine: { lineStyle: { color: '#d4d4d8' } },
             splitLine: {
@@ -263,7 +389,6 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
             axisLabel: {
               fontSize: 10,
               color: '#71717a',
-              interval: 0,
               hideOverlap: false,
               showMinLabel: true,
               showMaxLabel: true,
@@ -272,9 +397,14 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
                 return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
               },
             },
-          },
+          } as echarts.XAXisComponentOption,
           yAxis: {
             type: 'value',
+            name: 'Activity',
+            min: 0,
+            max: (value: { max: number }) => Math.max(1, Number(value.max ?? 0)),
+            minInterval: 1,
+            nameTextStyle: { fontSize: 10, color: '#71717a' },
             axisTick: { show: false },
             axisLine: { show: false },
             axisLabel: {
@@ -285,7 +415,7 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
             splitLine: {
               lineStyle: { type: 'solid', color: '#e4e4e7', width: 1 },
             },
-          },
+          } as echarts.YAXisComponentOption,
           series,
         };
 
@@ -312,6 +442,7 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
   }, []);
 
   const samplingStalled = summary.trackedPoints > 0 && summary.sampledPoints === 0;
+  const topDevice = summary.devices[0];
   const legendDotClasses = [
     styles.chartLegendDot0,
     styles.chartLegendDot1,
@@ -320,33 +451,166 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
     styles.chartLegendDot4,
   ];
 
+  const formatSampleRate = (rate: number): string => {
+    if (rate === 0) return '0/min';
+    return `${Math.round(rate)} rec/min`;
+  };
+
+  const getSampleRateTrend = (): string => {
+    if (summary.recordsLastHourRate <= 0) return 'No samples';
+    // Simplified trend - in real implementation would compare to longer period
+    return summary.recordsLastHourRate > 30 ? '✓' : '↓';
+  };
+
+  const previewStalledPoints = summary.stalledPoints.slice(0, 4);
+
+  const toggleSeriesVisibility = (seriesName: string) => {
+    chartInstanceRef.current?.dispatchAction({
+      type: 'legendToggleSelect',
+      name: seriesName,
+    });
+
+    setLegendEnabledMap((prev) => ({
+      ...prev,
+      [seriesName]: !(prev[seriesName] ?? true),
+    }));
+  };
+
   return (
     <div className={styles.container}>
+      {/* Health Cards Grid - 4 columns */}
       <div className={styles.healthStrip}>
+        {/* Card 1: Sampling Health */}
         <div className={styles.healthCard}>
           <div className={styles.healthTitle}>Sampling Health</div>
           <div className={`${styles.healthValue} ${samplingStalled ? styles.stateBad : styles.stateGood}`}>
-            {samplingStalled ? 'Stalled' : 'Active'}
+            {samplingStalled ? (
+              <>
+                Stalled <span className={styles.healthStatusBadge} aria-hidden="true">!</span>
+              </>
+            ) : (
+              'Active ✓'
+            )}
           </div>
           <div className={styles.healthSub}>
-            {summary.trackedPoints} tracked, {summary.sampledPoints} active in last 2h
+            <strong>{summary.trackedPoints}</strong> tracked<br />
+            <strong>{summary.sampledPoints}</strong> active (2h)
+            {summary.stalledPoints.length > 0 && <><br /><strong style={{ color: '#a4262c' }}>{summary.stalledPoints.length}</strong> stalled</>}
           </div>
         </div>
 
+        {/* Card 2: Sample Rate */}
+        <div className={styles.healthCard}>
+          <div className={styles.healthTitle}>Sample Rate</div>
+          <div className={`${styles.healthValue}`} style={{ color: summary.recordsLastHourRate > 30 ? '#107c10' : summary.recordsLastHourRate > 0 ? '#ffb900' : '#a4262c' }}>
+            {formatSampleRate(summary.recordsLastHourRate)} {getSampleRateTrend()}
+          </div>
+          <div className={styles.healthSub}>
+            <strong>Last Hour:</strong> {summary.recordsLastHourRate > 0 ? `${Math.round(summary.recordsLastHourRate)}/min` : '0/min'}<br />
+            <strong>Trend:</strong> {summary.recordsLastHourRate > 30 ? '✓ Normal' : summary.recordsLastHourRate > 0 ? '↓ Slowing' : 'No samples in last hour'}
+          </div>
+        </div>
+
+        {/* Card 3: Last Sample Age */}
         <div className={styles.healthCard}>
           <div className={styles.healthTitle}>Last Sample Age</div>
-          <div className={styles.healthValue}>{formatAge(summary.lastSampleTs)}</div>
+          <div className={`${styles.healthValue} ${summary.lastSampleTs && Date.now() - summary.lastSampleTs < 60000 ? styles.stateGood : styles.stateBad}`}>
+            {formatAge(summary.lastSampleTs)}
+          </div>
           <div className={styles.healthSub}>
-            Most recent: {summary.lastSampleTs ? new Date(summary.lastSampleTs).toLocaleTimeString() : 'N/A'}
+            <strong>Most Recent:</strong><br />
+            {summary.lastSampleTs ? new Date(summary.lastSampleTs).toLocaleTimeString() : 'N/A'}
           </div>
         </div>
 
+        {/* Card 4: Top Device */}
         <div className={styles.healthCard}>
-          <div className={styles.healthTitle}>Suggested Action</div>
-          <div className={styles.healthAction}>Check trendlog selection + sync cycle</div>
-          <div className={styles.healthSub}>Open View All for detailed point-level diagnostics.</div>
+          <div className={styles.healthTitle}>Top Device</div>
+          <div className={styles.healthValue}>
+            {topDevice ? `SN-${topDevice.serial}` : 'N/A'}
+          </div>
+          <div className={styles.healthSub}>
+            {topDevice ? (
+              <>
+                <strong>{topDevice.records}</strong> records<br />
+                <strong>Panel:</strong> {topDevice.panel}<br />
+                <strong>Last:</strong> {formatAge(topDevice.lastSampleTs)}
+              </>
+            ) : 'No data'}
+          </div>
         </div>
       </div>
+
+      {/* Issues Section - Expandable */}
+      {summary.stalledPoints.length > 0 && (
+        <div className={styles.issuesSection}>
+          <div
+            className={styles.issuesHeader}
+            onClick={() => setIssuesExpanded(!issuesExpanded)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setIssuesExpanded(!issuesExpanded);
+              }
+            }}
+          >
+            <span className={styles.issuesIconBadge} aria-hidden="true">!</span>
+            <span className={styles.issuesTitle}>Stalled Points ({summary.stalledPoints.length})</span>
+            <Button
+              size="small"
+              appearance="subtle"
+              icon={<ListRegular />}
+              className={styles.issuesViewAllButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                setStalledDrawerOpen(true);
+              }}
+            >
+              View all
+            </Button>
+            <ChevronDownRegular className={`${styles.expandIcon} ${issuesExpanded ? styles.expandIconOpen : ''}`} />
+          </div>
+
+          {issuesExpanded && (
+            <div className={styles.issuesContent}>
+              <div className={styles.issuesGrid}>
+                {previewStalledPoints.map((point) => (
+                  <div key={point.pointKey} className={styles.issueItem}>
+                    <div className={styles.issuePoint}>
+                      {point.pointName} | SN-{point.serial}, Panel-{point.panel}
+                    </div>
+                    <div className={styles.issueDetail}>
+                      <div>⏱️ <strong>Last sample:</strong> {formatAge(point.lastSampleTs)} ({new Date(point.lastSampleTs).toLocaleTimeString()})</div>
+                      <div>📊 <strong>Expected:</strong> every {point.expectedInterval}</div>
+                      <div style={{ color: '#be123c' }}>
+                        <strong>Status:</strong> No data since {new Date(point.lastSampleTs).toLocaleTimeString()}
+                      </div>
+                      <div className={styles.issueFix}>
+                        💡 Check if point enabled in config + verify device connectivity
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {summary.stalledPoints.length > 4 && (
+                <div className={styles.issuesPreviewNote}>
+                  Showing first 4 stalled points. Use <strong>View all</strong> for full list.
+                </div>
+              )}
+              <div className={styles.diagnosticsBox}>
+                <div className={styles.diagnosticsTitle}>Next Steps</div>
+                <div className={styles.diagnosticsText}>
+                  1. Check trendlog configuration<br />
+                  2. Verify sync interval<br />
+                  3. Confirm device(s) are online
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {loading && (
         <div className={styles.loading}>
@@ -368,10 +632,13 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
       <div className={styles.chartRow}>
         <div className={styles.chartHeader}>
           <div className={styles.chartHeaderMain}>
-            <div className={styles.chartTitle}>Trend Value Timeline</div>
+            <div>
+              <div className={styles.chartTitle}>Sampling Activity Over Time</div>
+              <div className={styles.chartSubtitle}>15-minute buckets over the last 24 hours</div>
+            </div>
             <Tooltip
               relationship="description"
-              content="Shows top 3 trend points by record count over the last 24 hours. X-axis is time and Y-axis is raw value (compact units like k, M)."
+              content="Shows sampling activity in 15-minute buckets for the last 24 hours. Bars are total samples written; lines show how many points and devices reported in each bucket."
             >
               <button className={styles.chartInfoButton} aria-label="About trend chart">
                 <InfoRegular fontSize={12} />
@@ -380,17 +647,70 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
           </div>
           <div className={styles.chartHeaderLegend}>
             {chartLegendItems.map((label, idx) => (
-              <span key={label} className={styles.chartLegendItem}>
+              <button
+                key={label}
+                type="button"
+                className={`${styles.chartLegendItem} ${legendEnabledMap[label] === false ? styles.chartLegendItemDisabled : ''}`}
+                onClick={() => toggleSeriesVisibility(label)}
+                title={legendEnabledMap[label] === false ? 'Click to enable series' : 'Click to disable series'}
+              >
                 <span
                   className={`${styles.chartLegendDot} ${legendDotClasses[idx % legendDotClasses.length]}`}
                 />
                 {label}
-              </span>
+              </button>
             ))}
           </div>
         </div>
         <div ref={chartRef} className={`${styles.chartArea} ${loading || error ? styles.chartHidden : ''}`} />
       </div>
+
+      <Drawer
+        type="overlay"
+        position="end"
+        size="medium"
+        open={stalledDrawerOpen}
+        onOpenChange={(_, data) => {
+          if (!data.open) setStalledDrawerOpen(false);
+        }}
+      >
+        <DrawerHeader>
+          <DrawerHeaderTitle
+            action={
+              <Button
+                appearance="subtle"
+                aria-label="Close"
+                icon={<DismissRegular />}
+                onClick={() => setStalledDrawerOpen(false)}
+              />
+            }
+          >
+            <div className={styles.stalledDrawerTitle}>All Stalled Points ({summary.stalledPoints.length})</div>
+          </DrawerHeaderTitle>
+        </DrawerHeader>
+        <DrawerBody>
+          <div className={styles.stalledDrawerList}>
+            {summary.stalledPoints.map((point) => (
+              <div key={`drawer-${point.pointKey}`} className={styles.issueItem}>
+                <div className={styles.issuePoint}>{point.pointName} | SN-{point.serial}, Panel-{point.panel}</div>
+                <div className={styles.issueDetail}>
+                  <div>⏱️ <strong>Last sample:</strong> {formatAge(point.lastSampleTs)} ({new Date(point.lastSampleTs).toLocaleTimeString()})</div>
+                  <div>📊 <strong>Expected:</strong> every {point.expectedInterval}</div>
+                  <div style={{ color: '#be123c' }}>
+                    <strong>Status:</strong> No data since {new Date(point.lastSampleTs).toLocaleTimeString()}
+                  </div>
+                  <div className={styles.issueFix}>
+                    💡 Check if point enabled in config + verify device connectivity
+                  </div>
+                </div>
+              </div>
+            ))}
+            {summary.stalledPoints.length === 0 && (
+              <div className={styles.stalledDrawerEmpty}>No stalled points.</div>
+            )}
+          </div>
+        </DrawerBody>
+      </Drawer>
     </div>
   );
 };

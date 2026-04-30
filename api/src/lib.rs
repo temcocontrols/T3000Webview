@@ -127,7 +127,7 @@ async fn load_ffi_sync_interval_from_db() -> Result<u64, Box<dyn std::error::Err
             Ok(interval)
         }
         None => {
-            // Config not found, insert default value
+            // Config not found, insert unified default: 300 seconds (5 minutes)
             let default_config = application_settings::ActiveModel {
                 config_key: Set("ffi.sync_interval_secs".to_string()),
                 config_value: Set("300".to_string()),
@@ -148,7 +148,7 @@ async fn load_ffi_sync_interval_from_db() -> Result<u64, Box<dyn std::error::Err
                 .exec(&db)
                 .await?;
 
-            Ok(300) // Return default
+            Ok(300) // Return unified default
         }
     }
 }

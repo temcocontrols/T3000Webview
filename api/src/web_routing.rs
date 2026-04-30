@@ -58,6 +58,8 @@ pub struct ServerDbStatus {
     pub hostname: String,
     /// Configured center DB host, if any.
     pub host: Option<String>,
+    /// Configured center DB port, if any.
+    pub port: Option<i32>,
     /// Configured center DB database name, if any.
     pub database_name: Option<String>,
 }
@@ -305,6 +307,7 @@ pub async fn resolve_server_db_status(state: &T3AppState) -> ServerDbStatus {
         .unwrap_or_else(|| "unknown".to_string());
 
     let host = active_config.as_ref().and_then(|cfg| cfg.host.clone());
+    let port = active_config.as_ref().and_then(|cfg| cfg.port);
     let database_name = active_config.as_ref().and_then(|cfg| cfg.database_name.clone());
 
     let (server_connected, center_db_status, center_db_message, can_init_schema) = if state.server_db_enabled {
@@ -347,6 +350,7 @@ pub async fn resolve_server_db_status(state: &T3AppState) -> ServerDbStatus {
         local_config_available: state.local_config_conn.is_some(),
         hostname,
         host,
+        port,
         database_name,
     }
 }

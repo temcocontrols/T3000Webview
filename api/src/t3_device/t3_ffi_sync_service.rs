@@ -357,7 +357,7 @@ pub struct T3000MainConfig {
 impl Default for T3000MainConfig {
     fn default() -> Self {
         Self {
-            sync_interval_secs: 900, // 15 minutes (matches database default)
+            sync_interval_secs: 300, // Unified default: 5 minutes (matching config_api.rs)
             timeout_seconds: 30,     // 30 seconds FFI timeout
             retry_attempts: 3,
             auto_start: true,
@@ -1219,7 +1219,7 @@ impl T3000MainService {
         crate::database_management::sync_health::write_app_log(
             &local_db,
             "info",
-            "SYNC_CYCLE",
+            crate::constants::CAT_TD_SYNC,
             Some("ffi_sync"),
             None,
             "Starting FFI sync cycle",
@@ -1258,7 +1258,7 @@ impl T3000MainService {
             crate::database_management::sync_health::write_app_log(
                 &local_db,
                 "info",
-                "SYNC_CYCLE",
+                crate::constants::CAT_TD_SYNC,
                 Some("ffi_sync"),
                 None,
                 reason,
@@ -1279,7 +1279,7 @@ impl T3000MainService {
                 crate::database_management::sync_health::write_app_log(
                     &local_db,
                     "warn",
-                    "SYNC_CYCLE",
+                    crate::constants::CAT_TD_SYNC,
                     Some("ffi_sync"),
                     None,
                     reason,
@@ -1332,7 +1332,7 @@ impl T3000MainService {
                 crate::database_management::sync_health::write_app_log(
                     &local_db,
                     "warn",
-                    "SYNC_CYCLE",
+                    crate::constants::CAT_TD_SYNC,
                     Some("ffi_sync"),
                     None,
                     "No devices found in GET_PANELS_LIST; sync cycle skipped",
@@ -1445,7 +1445,7 @@ impl T3000MainService {
                         crate::database_management::sync_health::write_app_log(
                             &local_db,
                             "warn",
-                            "SYNC_CYCLE",
+                            crate::constants::CAT_TD_SYNC,
                             Some("ffi_sync"),
                             None,
                             "No devices found after forced rediscovery; sync cycle skipped",

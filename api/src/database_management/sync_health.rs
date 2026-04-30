@@ -22,6 +22,7 @@ use axum::{
 use chrono::{Datelike, Local, TimeZone, Utc};
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
@@ -57,6 +58,8 @@ pub struct SyncHealthResponse {
     pub writes_blocked: bool,
     /// Center DB host from the active backend config.
     pub center_db_host: Option<String>,
+    /// Center DB port from the active backend config.
+    pub center_db_port: Option<i32>,
     /// Center DB database name from the active backend config.
     pub center_db_database_name: Option<String>,
     /// Whether schema initialization is a valid next action.
@@ -502,9 +505,9 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
     let sync_interval_secs = if let Some(db) = get_local_log_db_conn(&state).await {
         crate::database_management::config_api::get_sync_interval_secs(&db)
             .await
-            .unwrap_or(1800)
+            .unwrap_or(300)
     } else {
-        1800
+        300
     };
 
     let total_elapsed_ms = total_started.elapsed().as_millis() as u64;
@@ -541,6 +544,7 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         runtime_backend_type,
         writes_blocked,
         center_db_host: server_status.host,
+        center_db_port: server_status.port,
         center_db_database_name: server_status.database_name,
         can_init_schema: server_status.can_init_schema,
         hostname,
@@ -619,7 +623,8 @@ pub async fn ensure_event_log_table(db: &sea_orm::DatabaseConnection) {
 /// to MSSQL when the pool is active so they don't bloat local SQLite.
 /// Low-volume system/config categories always stay in local SQLite.
 fn is_high_volume_category(cat: &str) -> bool {
-    matches!(cat, "SYNC_CYCLE" | "SAMPLING" | "FFI_POLL" | "DEVICE_SYNC" | "TREND_LOG")
+    matches!(cat, "SYNC_CYCLE" | "SAMPLING" | "FFI_POLL" | "DEVICE_SYNC" | "TREND_LOG"
+        | "TD_READ" | "TD_WRITE" | "TD_INPUTS" | "TD_FFI" | "TD_SYNC")
 }
 
 /// Write one entry to T3_APP_LOG.
@@ -827,6 +832,53 @@ async fn query_sqlite_log_raw(
         .collect()
 }
 
+async fn count_sqlite_log_raw(
+    db: &sea_orm::DatabaseConnection,
+    level_filter: Option<&str>,
+    cat_filter: Option<&str>,
+) -> i64 {
+    let level_sql = match level_filter {
+        Some("error") => " AND level = 'error'",
+        Some("warn") => " AND level = 'warn'",
+        Some("info") => " AND level = 'info'",
+        _ => "",
+    };
+    let cat_sql = match cat_filter {
+        Some(c) if !c.is_empty() => format!(" AND category = '{}'", c.replace('\'', "''")),
+        _ => String::new(),
+    };
+
+    let count_sql = format!(
+        "SELECT COUNT(*) AS cnt FROM T3_APP_LOG WHERE 1=1{}{}",
+        level_sql, cat_sql
+    );
+
+    db.query_one(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        count_sql,
+    ))
+    .await
+    .ok()
+    .flatten()
+    .and_then(|r| r.try_get::<i64>("", "cnt").ok())
+    .unwrap_or(0)
+}
+
+async fn query_sqlite_log_categories(db: &sea_orm::DatabaseConnection) -> Vec<String> {
+    let sql = "SELECT DISTINCT category FROM T3_APP_LOG WHERE category IS NOT NULL AND category <> '' ORDER BY category ASC";
+    let rows = db
+        .query_all(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            sql.to_string(),
+        ))
+        .await
+        .unwrap_or_default();
+
+    rows.into_iter()
+        .filter_map(|r| r.try_get::<String>("", "category").ok())
+        .collect()
+}
+
 async fn get_event_log(
     State(state): State<T3AppState>,
     Query(q): Query<EventLogQuery>,
@@ -855,11 +907,14 @@ async fn get_event_log(
         .unwrap_or_default();
 
         // Fetch from local SQLite
-        let sqlite_rows = if let Some(db) = get_local_log_db_conn(&state).await {
+        let (sqlite_rows, sqlite_categories) = if let Some(db) = get_local_log_db_conn(&state).await {
             ensure_app_log_table(&db).await;
-            query_sqlite_log_raw(&db, level_filter, cat_filter, fetch_count).await
+            (
+                query_sqlite_log_raw(&db, level_filter, cat_filter, fetch_count).await,
+                query_sqlite_log_categories(&db).await,
+            )
         } else {
-            Vec::new()
+            (Vec::new(), Vec::new())
         };
 
         // Merge and sort descending by ts_unix
@@ -872,6 +927,17 @@ async fn get_event_log(
 
         let total = all_rows.len() as i64;
 
+        let mut category_set: BTreeSet<String> = BTreeSet::new();
+        category_set.extend(sqlite_categories.into_iter());
+        for (_, row) in &all_rows {
+            if let Some(cat) = row["category"].as_str() {
+                if !cat.is_empty() {
+                    category_set.insert(cat.to_string());
+                }
+            }
+        }
+        let categories: Vec<String> = category_set.into_iter().collect();
+
         let entries: Vec<AppLogEntry> = all_rows
             .into_iter()
             .skip(offset)
@@ -882,6 +948,7 @@ async fn get_event_log(
         return Ok(Json(serde_json::json!({
             "entries": entries,
             "total":   total,
+            "categories": categories,
             "page":    q.page,
             "limit":   limit,
         })));
@@ -915,11 +982,6 @@ async fn get_event_log(
         level_sql, cat_sql, limit, offset
     );
 
-    let count_sql = format!(
-        "SELECT COUNT(*) AS cnt FROM T3_APP_LOG WHERE 1=1{}{}",
-        level_sql, cat_sql
-    );
-
     let rows = db
         .query_all(sea_orm::Statement::from_string(
             sea_orm::DatabaseBackend::Sqlite,
@@ -928,16 +990,8 @@ async fn get_event_log(
         .await
         .unwrap_or_default();
 
-    let total: i64 = db
-        .query_one(sea_orm::Statement::from_string(
-            sea_orm::DatabaseBackend::Sqlite,
-            count_sql,
-        ))
-        .await
-        .ok()
-        .flatten()
-        .and_then(|r| r.try_get::<i64>("", "cnt").ok())
-        .unwrap_or(0);
+    let total = count_sqlite_log_raw(&db, level_filter, cat_filter).await;
+    let categories = query_sqlite_log_categories(&db).await;
 
     let entries: Vec<AppLogEntry> = rows
         .into_iter()
@@ -959,6 +1013,7 @@ async fn get_event_log(
     Ok(Json(serde_json::json!({
         "entries": entries,
         "total": total,
+        "categories": categories,
         "page": q.page,
         "limit": limit,
     })))

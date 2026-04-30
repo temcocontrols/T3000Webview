@@ -712,12 +712,11 @@ struct TrendlogQueryRequest {
 
 /// Query trendlog data across multiple SQLite partition files and main database.
 ///
-/// NOTE: This endpoint always uses local SQLite — partition-based queries are a
-/// SQLite-specific feature (ATTACH DATABASE across .db files). Server databases
-/// (PostgreSQL, MySQL, MSSQL) manage trendlog data in a single table and do not
-/// need multi-partition querying.
+/// Routing:
+///   • MSSQL pool active (center-DB mode) → query MSSQL directly
+///   • No pool (standalone)               → query local SQLite / partitions
 async fn query_trendlog_across_partitions(
-    State(_app_state): State<T3AppState>,
+    State(app_state): State<T3AppState>,
     Json(request): Json<TrendlogQueryRequest>,
 ) -> Result<Json<Vec<super::partition_query_service::TrendlogDataRecord>>> {
     use super::partition_query_service::{query_trendlog_data, TrendlogFilters};
@@ -730,7 +729,27 @@ async fn query_trendlog_across_partitions(
     let end_date = NaiveDateTime::parse_from_str(&request.end_date, "%Y-%m-%dT%H:%M:%S")
         .map_err(|e| crate::error::Error::ValidationError(format!("Invalid end_date format: {}", e)))?;
 
-    // Build filters
+    // Center-DB (MSSQL) mode: go straight to MSSQL — SQLite is empty in this mode
+    if let Some(pool) = &app_state.mssql_pool {
+        let start_str = start_date.format("%Y-%m-%d %H:%M:%S").to_string();
+        let end_str   = end_date.format("%Y-%m-%d %H:%M:%S").to_string();
+        match super::mssql_trendlog_service::query_trendlog_for_dashboard(
+            pool,
+            &start_str,
+            &end_str,
+            request.serial_number,
+            request.panel_id,
+        )
+        .await
+        {
+            Ok(results) => return Ok(Json(results)),
+            Err(e) => {
+                eprintln!("[trendlog/query] MSSQL query failed, falling back to SQLite: {}", e);
+            }
+        }
+    }
+
+    // Standalone mode (or MSSQL failed): query local SQLite / partitions
     let filters = TrendlogFilters {
         serial_number: request.serial_number,
         panel_id: request.panel_id,
@@ -738,9 +757,7 @@ async fn query_trendlog_across_partitions(
         point_type: request.point_type,
     };
 
-    // Query across all partitions
     let results = query_trendlog_data(start_date, end_date, filters).await?;
-
     Ok(Json(results))
 }
 

@@ -487,6 +487,11 @@ pub struct ConfigHistoryEntry {
 }
 
 pub async fn get_sync_interval_secs(db: &DatabaseConnection) -> Result<u32> {
+    // Unified default: 300 seconds (5 minutes)
+    const DEFAULT_INTERVAL: u64 = 300;
+    const MIN_INTERVAL: u64 = 10;        // 10 seconds minimum
+    const MAX_INTERVAL: u64 = 86400;     // 24 hours
+
     let config = ApplicationConfigService::get_config(
         db,
         "ffi.sync_interval_secs",
@@ -501,18 +506,18 @@ pub async fn get_sync_interval_secs(db: &DatabaseConnection) -> Result<u32> {
             // Value may be stored as JSON number or string.
             if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(&cfg.config_value) {
                 match json_val {
-                    serde_json::Value::Number(n) => n.as_u64().unwrap_or(1800),
-                    serde_json::Value::String(s) => s.parse::<u64>().unwrap_or(1800),
-                    _ => 1800,
+                    serde_json::Value::Number(n) => n.as_u64().unwrap_or(DEFAULT_INTERVAL),
+                    serde_json::Value::String(s) => s.parse::<u64>().unwrap_or(DEFAULT_INTERVAL),
+                    _ => DEFAULT_INTERVAL,
                 }
             } else {
-                cfg.config_value.parse::<u64>().unwrap_or(1800)
+                cfg.config_value.parse::<u64>().unwrap_or(DEFAULT_INTERVAL)
             }
         }
-        None => 1800,
+        None => DEFAULT_INTERVAL,
     };
 
-    Ok(interval_secs.clamp(60, 86400) as u32)
+    Ok(interval_secs.clamp(MIN_INTERVAL, MAX_INTERVAL) as u32)
 }
 
 /// Get current Sampling Interval configuration
@@ -545,17 +550,17 @@ async fn update_ffi_sync_interval(
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
 
-    // Validate interval range (1 minute to 365 days)
-    const MIN_INTERVAL: u64 = 60;          // 1 minute
-    const MAX_INTERVAL: u64 = 31536000;    // 365 days
+    // Validate interval range (10 seconds to 24 hours)
+    const MIN_INTERVAL: u64 = 10;      // 10 seconds minimum
+    const MAX_INTERVAL: u64 = 86400;   // 24 hours
 
     if request.interval_secs < MIN_INTERVAL || request.interval_secs > MAX_INTERVAL {
         return Err(crate::error::Error::ValidationError(
-            format!("Interval must be between {} and {} seconds (1 minute to 365 days)", MIN_INTERVAL, MAX_INTERVAL)
+            format!("Interval must be between {} and {} seconds (10 seconds to 24 hours)", MIN_INTERVAL, MAX_INTERVAL)
         ));
     }
 
-    // Get old value for history
+    // Get old value for history and Activity Log
     let old_config = ApplicationConfigService::get_config(
         db,
         "ffi.sync_interval_secs",
@@ -566,6 +571,10 @@ async fn update_ffi_sync_interval(
     .await?;
 
     let old_value = old_config.as_ref().map(|c| c.config_value.clone());
+    let old_secs = old_value
+        .as_ref()
+        .and_then(|v| v.parse::<u64>().ok())
+        .unwrap_or(300);
 
     // Update configuration - store as number, not string
     let new_value = serde_json::Value::Number(serde_json::Number::from(request.interval_secs));
@@ -587,8 +596,8 @@ async fn update_ffi_sync_interval(
         config_key: Set("ffi.sync_interval_secs".to_string()),
         old_value: Set(old_value),
         new_value: Set(request.interval_secs.to_string()), // History table uses TEXT, so keep as string
-        changed_by: Set(request.changed_by.or(Some("api".to_string()))),
-        change_reason: Set(request.change_reason),
+        changed_by: Set(request.changed_by.clone().or(Some("api".to_string()))),
+        change_reason: Set(request.change_reason.clone()),
         changed_at: Set(chrono::Utc::now().naive_utc()),
     };
 
@@ -596,6 +605,27 @@ async fn update_ffi_sync_interval(
         .exec(db)
         .await
         .map_err(|e| crate::error::Error::DatabaseError(format!("Failed to log config change: {}", e)))?;
+
+    // Also write to Activity Log (DB_CONFIG category) for operator visibility
+    let activity_msg = "Sync interval updated";
+    let activity_details = Some(format!(
+        "{}s ({} min) → {}s ({} min), effective on next sync cycle",
+        old_secs,
+        old_secs / 60,
+        request.interval_secs,
+        request.interval_secs / 60
+    ));
+
+    crate::database_management::sync_health::write_app_log(
+        db,
+        "info",
+        "DB_CONFIG",
+        Some("config_api"),
+        None,
+        activity_msg,
+        activity_details.as_deref(),
+    )
+    .await;
 
     Ok(Json(FfiSyncIntervalResponse {
         interval_secs: request.interval_secs,
@@ -688,7 +718,7 @@ async fn update_rediscover_interval(
         ));
     }
 
-    // Get old value for history
+    // Get old value for history and Activity Log
     let old_config = ApplicationConfigService::get_config(
         db,
         "rediscover.interval_secs",
@@ -699,6 +729,10 @@ async fn update_rediscover_interval(
     .await?;
 
     let old_value = old_config.as_ref().map(|c| c.config_value.clone());
+    let old_secs = old_value
+        .as_ref()
+        .and_then(|v| v.parse::<u64>().ok())
+        .unwrap_or(3600);
 
     // Update configuration - store as number, not string
     let new_value = serde_json::Value::Number(serde_json::Number::from(request.interval_secs));
@@ -720,8 +754,8 @@ async fn update_rediscover_interval(
         config_key: Set("rediscover.interval_secs".to_string()),
         old_value: Set(old_value),
         new_value: Set(request.interval_secs.to_string()),
-        changed_by: Set(request.changed_by.or(Some("api".to_string()))),
-        change_reason: Set(request.change_reason),
+        changed_by: Set(request.changed_by.clone().or(Some("api".to_string()))),
+        change_reason: Set(request.change_reason.clone()),
         changed_at: Set(chrono::Utc::now().naive_utc()),
     };
 
@@ -729,6 +763,27 @@ async fn update_rediscover_interval(
         .exec(db)
         .await
         .map_err(|e| crate::error::Error::DatabaseError(format!("Failed to log config change: {}", e)))?;
+
+    // Also write to Activity Log (DB_CONFIG category) for operator visibility
+    let activity_msg = "Rediscover interval updated";
+    let activity_details = Some(format!(
+        "{}s ({} hours) → {}s ({} hours), effective on next rediscover cycle",
+        old_secs,
+        old_secs / 3600,
+        request.interval_secs,
+        request.interval_secs / 3600
+    ));
+
+    crate::database_management::sync_health::write_app_log(
+        db,
+        "info",
+        "DB_CONFIG",
+        Some("config_api"),
+        None,
+        activity_msg,
+        activity_details.as_deref(),
+    )
+    .await;
 
     Ok(Json(RediscoverIntervalResponse {
         interval_secs: request.interval_secs,

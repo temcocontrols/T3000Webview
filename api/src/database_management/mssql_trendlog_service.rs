@@ -737,6 +737,90 @@ pub async fn cleanup_old_data(
 }
 
 // ============================================================================
+// ============================================================================
+// Dashboard Widget Query — all devices, time-range only
+// ============================================================================
+
+/// Query MSSQL trendlog data for the dashboard 24h widget (across all devices).
+/// Returns records in the same shape as `partition_query_service::TrendlogDataRecord`
+/// so the endpoint can return a unified type regardless of SQLite vs MSSQL source.
+pub async fn query_trendlog_for_dashboard(
+    pool: &MssqlPool,
+    start_date: &str,       // "YYYY-MM-DD HH:MM:SS"
+    end_date: &str,         // "YYYY-MM-DD HH:MM:SS"
+    serial_number: Option<i32>,
+    panel_id: Option<i32>,
+) -> Result<Vec<crate::database_management::partition_query_service::TrendlogDataRecord>, String> {
+    use crate::database_management::partition_query_service::TrendlogDataRecord;
+
+    let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
+
+    // Dates are pre-validated NaiveDateTime strings — safe to inline.
+    let start_esc = start_date.replace('\'', "''");
+    let end_esc   = end_date.replace('\'', "''");
+
+    let mut sql = format!(
+        "SELECT TOP 10000 \
+            p.SerialNumber, p.PanelId, p.PointId, p.PointIndex, p.PointType, \
+            d.Value, d.LoggingTime_Fmt, \
+            p.Digital_Analog, p.Range_Field, p.Units \
+         FROM TRENDLOG_DATA_DETAIL d \
+         INNER JOIN TRENDLOG_DATA p ON d.ParentId = p.id \
+         WHERE d.LoggingTime_Fmt >= '{}' AND d.LoggingTime_Fmt <= '{}'",
+        start_esc, end_esc
+    );
+
+    if let Some(sn) = serial_number {
+        sql.push_str(&format!(" AND p.SerialNumber = {}", sn));
+    }
+    if let Some(pid) = panel_id {
+        sql.push_str(&format!(" AND p.PanelId = {}", pid));
+    }
+    sql.push_str(" ORDER BY d.LoggingTime_Fmt ASC");
+
+    let result = conn
+        .query(&sql, &[])
+        .await
+        .map_err(|e| format!("MSSQL trendlog dashboard query failed: {}", e))?;
+
+    let rows = result
+        .into_results()
+        .await
+        .map_err(|e| format!("MSSQL result fetch failed: {}", e))?;
+
+    let mut records = Vec::new();
+    for result_set in &rows {
+        for row in result_set {
+            let sn: i32       = row.get::<i32, _>("SerialNumber").unwrap_or(0);
+            let pid: i32      = row.get::<i32, _>("PanelId").unwrap_or(0);
+            let point_id      = row.get::<&str, _>("PointId").unwrap_or("").to_string();
+            let point_index   = row.get::<i32, _>("PointIndex").unwrap_or(0);
+            let point_type    = row.get::<&str, _>("PointType").unwrap_or("").to_string();
+            let value         = row.get::<&str, _>("Value").unwrap_or("0").to_string();
+            let log_time      = row.get::<&str, _>("LoggingTime_Fmt").unwrap_or("").to_string();
+            let digital_analog = row.try_get::<&str, _>("Digital_Analog").ok().flatten().map(|s| s.to_string());
+            let range_field    = row.try_get::<&str, _>("Range_Field").ok().flatten().map(|s| s.to_string());
+            let units          = row.try_get::<&str, _>("Units").ok().flatten().map(|s| s.to_string());
+
+            records.push(TrendlogDataRecord {
+                serial_number: sn,
+                panel_id: pid,
+                point_id,
+                point_index,
+                point_type,
+                value,
+                logging_time_fmt: log_time,
+                digital_analog,
+                range_field,
+                units,
+            });
+        }
+    }
+
+    Ok(records)
+}
+
+// ============================================================================
 // Data Types used by the service
 // ============================================================================
 

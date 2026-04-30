@@ -26,6 +26,7 @@ export interface SyncHealthData {
   runtimeBackendType: string;
   writesBlocked: boolean;
   centerDbHost: string | null;
+  centerDbPort: number | null;
   centerDbDatabaseName: string | null;
   canInitSchema: boolean;
   hostname: string;
