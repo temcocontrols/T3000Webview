@@ -2808,8 +2808,8 @@
       '5m':  { stepMinutes: 1,   unit: 'minute' },  // 1 min step  → 6 ticks for 5 min window
       '10m': { stepMinutes: 1,   unit: 'minute' },  // 1 min step  → 11 ticks for 10 min window
       '30m': { stepMinutes: 5,   unit: 'minute' },  // 5 min step  → 7 ticks for 30 min window
-      '1h':  { stepMinutes: 10,  unit: 'minute' },  // 10 min step → 7 ticks for 1 h window
-      '4h':  { stepMinutes: 30,  unit: 'minute' },  // 30 min step → 9 ticks for 4 h window
+      '1h':  { stepMinutes: 5,   unit: 'minute' },  // 5 min step  → 13 ticks for 1 h window
+      '4h':  { stepMinutes: 15,  unit: 'minute' },  // 15 min step → 17 ticks for 4 h window
       '12h': { stepMinutes: 60,  unit: 'hour'   },  // 1 h step    → 13 ticks for 12 h window
       '1d':  { stepMinutes: 120, unit: 'hour'   },  // 2 h step    → 13 ticks for 1 day window
       '4d':  { stepMinutes: 720, unit: 'hour'   },  // 12 h step   → 9 ticks for 4 day window
@@ -4425,8 +4425,8 @@
             displayFormat = getDisplayFormat(timeBase.value)
             // maxTicks = window / step + 1 (Solution 3 aligned)
             const maxTicksConfigs = {
-              '5m': 7, '10m': 12, '30m': 8, '1h': 8,
-              '4h': 10, '12h': 14, '1d': 14, '4d': 10
+              '5m': 7, '10m': 12, '30m': 8, '1h': 14,
+              '4h': 18, '12h': 14, '1d': 14, '4d': 10
             }
             maxTicks = maxTicksConfigs[timeBase.value] || 8
           }
@@ -9657,8 +9657,8 @@
         displayFormat = getDisplayFormat(timeBase.value)
         // Keep runtime updates aligned with create-time Solution-3 configs.
         const maxTicksConfigs = {
-          '5m': 7, '10m': 12, '30m': 8, '1h': 8,
-          '4h': 10, '12h': 14, '1d': 14, '4d': 10
+          '5m': 7, '10m': 12, '30m': 8, '1h': 14,
+          '4h': 18, '12h': 14, '1d': 14, '4d': 10
         }
         maxTicks = maxTicksConfigs[timeBase.value] || 8
       }
