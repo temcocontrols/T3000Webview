@@ -517,7 +517,7 @@
     </div>
 
     <!-- Custom Date Range Modal -->
-    <a-modal v-model:visible="customDateModalVisible" title="X Axis" :width="320" centered @ok="applyCustomDateRange"
+    <a-modal v-model:open="customDateModalVisible" title="X Axis" :width="320" centered @ok="applyCustomDateRange"
              @cancel="cancelCustomDateRange">
       <div class="custom-date-modal">
         <!-- Start Time Row -->
@@ -572,7 +572,7 @@
     </a-modal>
 
     <!-- Trendlog Configuration Modal -->
-    <a-modal v-model:visible="showDatabaseConfig" title="Trendlog Configuration" :width="620"
+    <a-modal v-model:open="showDatabaseConfig" title="Trendlog Configuration" :width="620"
              class="database-modal-compact">
       <a-space direction="vertical" size="small" style="width: 100%">
 
@@ -943,7 +943,7 @@
       </div>
     </a-modal> -->
     <!-- Right Drawer for Item Selection -->
-    <a-drawer v-model:visible="showItemSelector" title="Select Items to Track" placement="right" width="400"
+    <a-drawer v-model:open="showItemSelector" title="Select Items to Track" placement="right" width="400"
               :closable="true" :mask-closable="true" class="item-selector-drawer">
       <template #title>
         <div class="drawer-title">
@@ -1926,6 +1926,7 @@
 
     // Generate and filter series configuration - only include items with valid T3000 device data
     const validSeries: SeriesConfig[] = []
+    const panelsDataReady = (T3000_Data.value.panelsData?.length || 0) > 0
 
     // Resolve main panel ID for items where panel=0 (means "this panel" in MON config)
     const mainPanelIdForSeries = route.query.panel_id
@@ -1963,7 +1964,7 @@
 
       if (!description) {
         // Device not found yet — log and skip (will be picked up on regenerate)
-        if (index < 5) {
+        if (panelsDataReady && index < 5) {
           LogUtil.Debug('⚠️ generateDataSeries: filtered (device not found)', {
             index, rawPanelId, panelId, pointType, pointNumber,
             category: pointTypeInfo.category,
@@ -2033,13 +2034,22 @@
       validSeries.push(newSeries)
     }
 
-    LogUtil.Info('📊 TrendLogChart: Generated series with filtering', {
+    const generatedSeriesSummary = {
       totalInputItems: actualItemCount,
       validSeriesCount: validSeries.length,
       filteredOut: actualItemCount - validSeries.length,
       seriesNames: validSeries.map(s => s.name),
-      expectedSingleSeries: actualItemCount === 1 ? 'Should be 1 series' : `Should be ${actualItemCount} series`
-    })
+      expectedSingleSeries: actualItemCount === 1 ? 'Should be 1 series' : `Should be ${actualItemCount} series`,
+      panelsDataReady
+    }
+
+    // During startup, generateDataSeries can run before panelsData is available.
+    // Downgrade that transient "0 valid" state to debug to reduce noise.
+    if (!panelsDataReady && validSeries.length === 0) {
+      LogUtil.Debug('📊 TrendLogChart: Generated series with filtering (startup warmup)', generatedSeriesSummary)
+    } else {
+      LogUtil.Info('📊 TrendLogChart: Generated series with filtering', generatedSeriesSummary)
+    }
 
     return validSeries
   }
@@ -2949,6 +2959,7 @@
   // Total real (non-null) data points across all visible analog series in current time window
   const analogTotalPointsInView = ref<number>(-1) // -1 = not yet calculated
   let realtimeInterval: NodeJS.Timeout | null = null
+  let realtimeIntervalMs = 0
 
   // 🆔 Unique instance ID to track and prevent duplicate intervals across HMR reloads
   const instanceId = Math.random().toString(36).substring(7)
@@ -11062,17 +11073,27 @@
   const startRealTimeUpdates = () => {
     LogUtil.Info('🔥 startRealTimeUpdates CALLED - Current interval ID:', realtimeInterval)
 
-    if (realtimeInterval) {
-      LogUtil.Info('⚠️ Clearing existing interval:', realtimeInterval)
-      clearInterval(realtimeInterval)
-      realtimeInterval = null
-    }
-
     // Use monitor config data interval if available, otherwise fallback to default
     const monitorConfigData = monitorConfig.value
     const dataIntervalFromConfig = monitorConfigData?.dataIntervalMs
     const dataIntervalFromComputed = updateInterval.value
     const dataInterval = dataIntervalFromConfig || dataIntervalFromComputed
+
+    // Avoid restart churn when callers invoke startRealTimeUpdates repeatedly
+    // with the same effective interval during initialization.
+    if (realtimeInterval && realtimeIntervalMs === dataInterval) {
+      LogUtil.Debug('⏭️ startRealTimeUpdates skipped - existing interval already matches requested cadence', {
+        intervalMs: dataInterval,
+        intervalId: realtimeInterval
+      })
+      return
+    }
+
+    if (realtimeInterval) {
+      LogUtil.Info('⚠️ Clearing existing interval:', realtimeInterval)
+      clearInterval(realtimeInterval)
+      realtimeInterval = null
+    }
 
     LogUtil.Info(
       `📡 startRealTimeUpdates: polling interval = ${dataInterval} ms (${dataInterval / 1000}s)` +
@@ -11085,6 +11106,7 @@
     addRealtimeDataPoint()
 
     realtimeInterval = setInterval(addRealtimeDataPoint, dataInterval)
+    realtimeIntervalMs = dataInterval
     LogUtil.Info('✅Interval created - ID:', realtimeInterval, '- fires every', dataInterval / 1000, 'seconds')
   }
 
@@ -11094,6 +11116,7 @@
       clearInterval(realtimeInterval)
       realtimeInterval = null
     }
+    realtimeIntervalMs = 0
   }
 
   // Dropdown Menu Handlers
