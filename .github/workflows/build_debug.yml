@@ -21,7 +21,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: webview-ui
-          path: dist/spa/*
+          path: dist/**
 
   build_api:
     name: Build API
