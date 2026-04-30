@@ -4479,6 +4479,7 @@
                 size: 11,
                 family: 'Inter, Helvetica, Arial, sans-serif'
               },
+              align: 'inner' as const,
               maxRotation: 0,
               minRotation: 0,
               maxTicksLimit: maxTicks,
@@ -4505,8 +4506,12 @@
               // First tick = actual start time (e.g. 17:18:32)
               const customTicks: Array<{value: number}> = [{ value: startMs }]
 
-              // First clean boundary: e.g. ceil(17:18:32 / 5min) * 5min = 17:20:00
-              const firstCleanMs = Math.ceil(startMs / stepMs) * stepMs
+              // For 1d/4d, anchor ticks to the exact window start so first/last
+              // visual segments have equal width (e.g. 13->15->...->13).
+              // For other ranges, keep global clean-boundary alignment.
+              const firstCleanMs = (timeBase.value === '1d' || timeBase.value === '4d')
+                ? (startMs + stepMs)
+                : (Math.ceil(startMs / stepMs) * stepMs)
 
               // Skip the clean boundary only if it falls too close to the start label
               // Use 25% of the step as the minimum gap (proportional, not a fixed 30s)
@@ -4516,6 +4521,11 @@
                 if (Math.abs(t - startMs) > minGapMs) {
                   customTicks.push({ value: t })
                 }
+              }
+
+              const lastTickValue = customTicks[customTicks.length - 1]?.value
+              if (lastTickValue == null || Math.abs(lastTickValue - endMs) > 1000) {
+                customTicks.push({ value: endMs })
               }
 
               scale.ticks = customTicks
@@ -9707,6 +9717,7 @@
       xScale.ticks = {
         ...xScale.ticks,
         maxTicksLimit: maxTicks,
+        align: 'inner',
         maxRotation: 0,
         minRotation: 0,
         autoSkip: false,
@@ -9729,13 +9740,20 @@
         const startMs = scale.min
         const endMs = scale.max
         const customTicks: Array<{ value: number }> = [{ value: startMs }]
-        const firstCleanMs = Math.ceil(startMs / stepMs) * stepMs
+        const firstCleanMs = (timeBase.value === '1d' || timeBase.value === '4d')
+          ? (startMs + stepMs)
+          : (Math.ceil(startMs / stepMs) * stepMs)
         const minGapMs = stepMs * 0.25
 
         for (let t = firstCleanMs; t <= endMs; t += stepMs) {
           if (Math.abs(t - startMs) > minGapMs) {
             customTicks.push({ value: t })
           }
+        }
+
+        const lastTickValue = customTicks[customTicks.length - 1]?.value
+        if (lastTickValue == null || Math.abs(lastTickValue - endMs) > 1000) {
+          customTicks.push({ value: endMs })
         }
 
         scale.ticks = customTicks

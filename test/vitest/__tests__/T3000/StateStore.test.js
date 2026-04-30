@@ -74,7 +74,8 @@ describe('StateStore', () => {
       expect(stateStore.appState.value.itemsCount).toBe(2);
 
       stateStore.removeItem(0);
-      expect(stateStore.appState.value.itemsCount).toBe(1);
+      // itemsCount is the ID sequence counter (max assigned ID), not array length.
+      expect(stateStore.appState.value.itemsCount).toBe(2);
       expect(stateStore.appState.value.items[0].id).toBe(2);
     });
 
