@@ -16,7 +16,7 @@
     "dev": "concurrently \"npm run api-dev\" \"npm run client-dev\"",
     "deploy:t3000": "node scripts/deploy-to-t3000.bat",
     "deploy:t3000:build": "npm run build:webview && npm run deploy:t3000",
-    "copy-manifest": "node -e \"const fs=require('fs'); const pkg=require('./package.json'); fs.writeFileSync('./dist/spa/version.json', JSON.stringify({version: pkg.version, buildTime: Date.now()}))\"",
+    "copy-manifest": "node -e \"const fs=require('fs'); const pkg=require('./package.json'); fs.writeFileSync('./dist/version.json', JSON.stringify({version: pkg.version, buildTime: Date.now()}))\"",
     "test": "echo \"See package.json => scripts for available tests.\" && exit 0",
     "test:unit:ui": "vitest --ui",
     "test:unit": "vitest",

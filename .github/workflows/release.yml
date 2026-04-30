@@ -24,7 +24,7 @@ jobs:
         uses: Roslovets-Inc/zip-npm-files@v1
         with:
           files: ./*
-          cwd: "dist/spa/"
+          cwd: "dist/"
       - name: Upload release asset
         uses: actions/upload-release-asset@v1
         env:
