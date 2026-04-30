@@ -2827,7 +2827,7 @@
       '4h':  { stepMinutes: 15,  unit: 'minute' },  // 15 min step → 17 ticks for 4 h window
       '12h': { stepMinutes: 60,  unit: 'minute' },  // 1 h step    → 13 ticks for 12 h window
       '1d':  { stepMinutes: 60,  unit: 'minute' },  // 1 h step    → 25 ticks for 1 day window
-      '4d':  { stepMinutes: 720, unit: 'minute' },  // 12 h step   → 9 ticks for 4 day window
+      '4d':  { stepMinutes: 360, unit: 'minute' },  // 6 h step    → ~17 ticks for 4 day window
     }
 
     return configs[timeBase] || { stepMinutes: 10, unit: 'minute' }
@@ -2842,9 +2842,9 @@
   // X-axis tick formatter to always show time + date (multi-line) for first tick
   // All timebases: First tick shows time on top line, date on bottom line for better visibility
   const formatXAxisTick = (value: any, index: number, ticks: any[]) => {
-    if (timeBase.value === '1d') {
-      // Match short-range layout pattern: first tick reserves 2 lines, others 1 line.
-      // Built-in text stays blank; forceDenseTimeLabels draws the visible 1d labels.
+    if (timeBase.value === '1d' || timeBase.value === '4d') {
+      // Suppress built-in labels — forceDenseTimeLabels plugin draws them from xScale.ticks.
+      // Reserve two-line height on first tick so axis zone matches short-range modes.
       return index === 0 ? [' ', ' '] : ' '
     }
     const date = new Date(value)
@@ -4080,13 +4080,9 @@
       {
         id: 'forceDenseTimeLabels',
         afterDraw: (chart: any) => {
-          if (timeBase.value !== '1d') return
+          if (timeBase.value !== '1d' && timeBase.value !== '4d') return
           const xScale = chart?.scales?.x
-          if (!xScale) return
-
-          const stepMs = 60 * 60 * 1000 // 1 hour for 1d
-          const startMs = Math.ceil(Number(xScale.min) / stepMs) * stepMs
-          const endMs = Number(xScale.max)
+          if (!xScale || !xScale.ticks?.length) return
 
           const ctx = chart.ctx
           ctx.save()
@@ -4094,36 +4090,33 @@
           ctx.font = '11px Inter, Helvetica, Arial, sans-serif'
           ctx.textBaseline = 'top'
 
-          // xScale.top == chart.chartArea.bottom (where x-axis zone starts).
-          // xScale.bottom is the canvas bottom edge — do NOT draw there, it may be off-screen.
-          // Chart.js shrinks the axis zone to ~20px when built-in labels are suppressed,
-          // so we draw time label at +6 and date on the SAME row as a prefix for the first tick.
           const labelY = xScale.top + 8
           const dateY = xScale.top + 22
-          let drawIndex = 0
-          for (let t = startMs; t <= endMs + 1000; t += stepMs) {
-            const px = xScale.getPixelForValue(t)
-            if (px < xScale.left - 1 || px > xScale.right + 1) continue
 
-            const d = new Date(t)
+          // Iterate the ACTUAL tick array so labels are drawn at exactly the same
+          // pixels Chart.js uses for gridlines — no independent startMs/stepMs drift.
+          const ticks: any[] = xScale.ticks
+          ticks.forEach((tick: any, i: number) => {
+            const value = tick.value ?? tick
+            const px = xScale.getPixelForValue(value)
+            if (px < xScale.left - 1 || px > xScale.right + 1) return
+
+            const d = new Date(value)
             const hh = d.getHours().toString().padStart(2, '0')
-            const label = `${hh}:00`
+            const mm = d.getMinutes().toString().padStart(2, '0')
+            const label = mm === '00' ? `${hh}:00` : `${hh}:${mm}`
 
-            // Always center labels on their tick mark for consistent alignment.
-            // Last tick: right-align so it doesn't overflow past the axis edge.
-            if (Math.abs(t - endMs) <= 1000) {
+            if (i === ticks.length - 1) {
               ctx.textAlign = 'right'
             } else if (px - xScale.left < 20) {
-              // Very close to left edge — left-align to avoid clipping behind y-axis
               ctx.textAlign = 'left'
             } else {
               ctx.textAlign = 'center'
             }
             ctx.fillText(label, px, labelY)
 
-            // Show date below only for the first visible 1d tick
-            const showDate = drawIndex === 0
-            if (showDate) {
+            // Date row: only the first tick
+            if (i === 0) {
               const savedAlign = ctx.textAlign
               ctx.textAlign = px - xScale.left < 20 ? 'left' : 'center'
               const yr = d.getFullYear()
@@ -4132,9 +4125,7 @@
               ctx.fillText(`${yr}-${mo}-${day}`, px, dateY)
               ctx.textAlign = savedAlign
             }
-
-            drawIndex++
-          }
+          })
 
           ctx.restore()
         },
@@ -4573,7 +4564,7 @@
               if (timeBase.value === '1d') {
                 stepMs = 60 * 60 * 1000
               } else if (timeBase.value === '4d') {
-                stepMs = 12 * 60 * 60 * 1000
+                stepMs = 6 * 60 * 60 * 1000
               } else if (timeBase.value === 'custom') {
                 stepMs = freshConfig.unit === 'hour'
                   ? freshConfig.stepMinutes * 60 * 60 * 1000
@@ -9816,7 +9807,7 @@
         if (timeBase.value === '1d') {
           stepMs = 60 * 60 * 1000
         } else if (timeBase.value === '4d') {
-          stepMs = 12 * 60 * 60 * 1000
+          stepMs = 6 * 60 * 60 * 1000
         } else if (timeBase.value === 'custom') {
           stepMs = freshConfig.unit === 'hour'
             ? freshConfig.stepMinutes * 60 * 60 * 1000
