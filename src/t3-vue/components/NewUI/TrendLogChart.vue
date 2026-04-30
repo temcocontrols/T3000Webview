@@ -2802,20 +2802,20 @@
     return hours * 60 * 60
   }
 
-  // Get x-axis tick configuration based on timebase
+  // Get x-axis tick configuration based on timebase (Solution 3 aligned)
   const getXAxisTickConfig = (timeBase: string) => {
     const configs = {
-      '5m': { stepMinutes: 1, unit: 'minute' },     // Every 1 minute (6 ticks = 5 divisions)
-      '10m': { stepMinutes: 2, unit: 'minute' },    // Every 2 minutes (6 ticks = 5 divisions)
-      '30m': { stepMinutes: 5, unit: 'minute' },    // Every 5 minutes (7 ticks = 6 divisions)
-      '1h': { stepMinutes: 15, unit: 'minute' },    // Every 15 minutes (5 ticks = 4 divisions) - IMPROVED
-      '4h': { stepMinutes: 60, unit: 'minute' },    // Every 1 hour (5 ticks = 4 divisions) - IMPROVED
-      '12h': { stepMinutes: 120, unit: 'hour' },    // Every 2 hours (7 ticks = 6 divisions) - IMPROVED
-      '1d': { stepMinutes: 240, unit: 'hour' },     // Every 4 hours (7 ticks = 6 divisions) - IMPROVED
-      '4d': { stepMinutes: 960, unit: 'hour' }      // Every 16 hours (7 ticks = 6 divisions) - IMPROVED
+      '5m':  { stepMinutes: 1,   unit: 'minute' },  // 1 min step  → 6 ticks for 5 min window
+      '10m': { stepMinutes: 1,   unit: 'minute' },  // 1 min step  → 11 ticks for 10 min window
+      '30m': { stepMinutes: 5,   unit: 'minute' },  // 5 min step  → 7 ticks for 30 min window
+      '1h':  { stepMinutes: 10,  unit: 'minute' },  // 10 min step → 7 ticks for 1 h window
+      '4h':  { stepMinutes: 30,  unit: 'minute' },  // 30 min step → 9 ticks for 4 h window
+      '12h': { stepMinutes: 60,  unit: 'hour'   },  // 1 h step    → 13 ticks for 12 h window
+      '1d':  { stepMinutes: 120, unit: 'hour'   },  // 2 h step    → 13 ticks for 1 day window
+      '4d':  { stepMinutes: 720, unit: 'hour'   },  // 12 h step   → 9 ticks for 4 day window
     }
 
-    return configs[timeBase] || { stepMinutes: 15, unit: 'minute' }
+    return configs[timeBase] || { stepMinutes: 10, unit: 'minute' }
   }
 
   // Get proper display format based on time range
@@ -2828,6 +2828,14 @@
   // All timebases: First tick shows time on top line, date on bottom line for better visibility
   const formatXAxisTick = (value: any, index: number, ticks: any[]) => {
     const date = new Date(value)
+    const isLargerThanOneDay = (() => {
+      if (timeBase.value === '4d') return true
+      if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
+        const spanMs = customEndDate.value.valueOf() - customStartDate.value.valueOf()
+        return spanMs > 24 * 60 * 60 * 1000
+      }
+      return false
+    })()
 
     // Helper function to format multi-line: time on top, date below
     const formatDateTimeMultiLine = () => {
@@ -2847,6 +2855,11 @@
     }
 
     const isFirstTick = index === 0
+
+    // For ranges larger than 1 day, always show time-only labels.
+    if (isLargerThanOneDay) {
+      return formatTimeOnly()
+    }
 
     // First tick: show time + date (multi-line). All others: show time only.
     if (isFirstTick) {
@@ -4410,11 +4423,12 @@
           } else {
             tickConfig = getXAxisTickConfig(timeBase.value)
             displayFormat = getDisplayFormat(timeBase.value)
+            // maxTicks = window / step + 1 (Solution 3 aligned)
             const maxTicksConfigs = {
-              '5m': 6, '10m': 6, '30m': 7, '1h': 7,
-              '4h': 9, '12h': 13, '1d': 13, '4d': 13
+              '5m': 7, '10m': 12, '30m': 8, '1h': 8,
+              '4h': 10, '12h': 14, '1d': 14, '4d': 10
             }
-            maxTicks = maxTicksConfigs[timeBase.value] || 7
+            maxTicks = maxTicksConfigs[timeBase.value] || 8
           }
 
           return {
@@ -5511,7 +5525,39 @@
   // Time navigation tracking
   const timeOffset = ref(0) // Offset in minutes from current time
 
-  // Add helper to get current time window with proper alignment (simplified)
+  /**
+   * Solution 3: compute the rounded-up right edge for the X-axis.
+   * - Under 1h (5m / 10m / 30m): round up to the next minute ending in 0 or 5.
+   * - 1h and above: round up to the next full :00 hour.
+   * - If nowMs is already exactly on a boundary the boundary itself is returned
+   *   ONLY when there is no sub-minute remainder; otherwise advance to the next boundary.
+   */
+  const computeRightEdge = (nowMs: number, tb: string): number => {
+    const UNDER_HOUR = ['5m', '10m', '30m']
+    const d = new Date(nowMs)
+    if (UNDER_HOUR.includes(tb)) {
+      // Round up to next minute ending in 0 or 5
+      const minutes = d.getMinutes()
+      const seconds = d.getSeconds()
+      const ms = d.getMilliseconds()
+      const mod = minutes % 5
+      let addMin = mod === 0 ? 0 : (5 - mod)
+      // If already on a 0/5 boundary but sub-minute time exists, advance to next boundary
+      if (addMin === 0 && (seconds > 0 || ms > 0)) addMin = 5
+      d.setMinutes(minutes + addMin, 0, 0)
+      return d.getTime()
+    } else {
+      // Round up to next full :00 hour
+      const minutes = d.getMinutes()
+      const seconds = d.getSeconds()
+      const ms = d.getMilliseconds()
+      if (minutes === 0 && seconds === 0 && ms === 0) return d.getTime()
+      d.setHours(d.getHours() + 1, 0, 0, 0)
+      return d.getTime()
+    }
+  }
+
+  // Add helper to get current time window with proper alignment (Solution 3)
   const getCurrentTimeWindow = () => {
     // For custom date range, use the exact start/end times selected by user
     if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
@@ -5534,23 +5580,17 @@
       }
     }
 
-    // For standard timebases, calculate based on current time and offset
-    const now = new Date()
-    // Align current time to exact minute
-    const currentMinute = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), 0, 0)
-
-    // Apply time offset for navigation
-    const offsetTime = new Date(currentMinute.getTime() + timeOffset.value * 60 * 1000)
-
-    // Add 1 minute to max time to provide space for current data points
-    const maxTime = new Date(offsetTime.getTime() + 60 * 1000) // +1 minute buffer
+    // Solution 3: right edge = current time rounded forward to the nearest clean boundary.
+    // timeOffset shifts the "effective now" for historical navigation.
+    const nowMs = Date.now() + timeOffset.value * 60 * 1000
+    const maxTime = computeRightEdge(nowMs, timeBase.value)
 
     const rangeMinutes = getTimeRangeMinutes(timeBase.value)
-    const startTime = new Date(maxTime.getTime() - rangeMinutes * 60 * 1000)
+    const minTime = maxTime - rangeMinutes * 60 * 1000
 
     return {
-      min: startTime.getTime(),
-      max: maxTime.getTime()
+      min: minTime,
+      max: maxTime
     }
   }
 
@@ -9615,11 +9655,12 @@
       } else {
         tickConfig = getXAxisTickConfig(timeBase.value)
         displayFormat = getDisplayFormat(timeBase.value)
+        // Keep runtime updates aligned with create-time Solution-3 configs.
         const maxTicksConfigs = {
-          '5m': 6, '10m': 6, '30m': 7, '1h': 5,
-          '4h': 5, '12h': 7, '1d': 7, '4d': 7
+          '5m': 7, '10m': 12, '30m': 8, '1h': 8,
+          '4h': 10, '12h': 14, '1d': 14, '4d': 10
         }
-        maxTicks = maxTicksConfigs[timeBase.value] || 7
+        maxTicks = maxTicksConfigs[timeBase.value] || 8
       }
 
       xScale.time = {
@@ -9638,8 +9679,36 @@
         maxTicksLimit: maxTicks,
         maxRotation: 0,
         minRotation: 0,
+        autoSkip: false,
         callback: formatXAxisTick,
-        includeBounds: true
+        includeBounds: false
+      }
+
+      xScale.afterBuildTicks = (scale: any) => {
+        // Rebuild ticks from exact window start + clean boundaries to avoid
+        // Chart.js fallback spacing (e.g. 09:13, 09:26) on >=1h ranges.
+        let stepMs: number
+        if (timeBase.value === 'custom') {
+          stepMs = tickConfig.unit === 'hour'
+            ? tickConfig.stepMinutes * 60 * 60 * 1000
+            : tickConfig.stepMinutes * 60 * 1000
+        } else {
+          stepMs = tickConfig.stepMinutes * 60 * 1000
+        }
+
+        const startMs = scale.min
+        const endMs = scale.max
+        const customTicks: Array<{ value: number }> = [{ value: startMs }]
+        const firstCleanMs = Math.ceil(startMs / stepMs) * stepMs
+        const minGapMs = stepMs * 0.25
+
+        for (let t = firstCleanMs; t <= endMs; t += stepMs) {
+          if (Math.abs(t - startMs) > minGapMs) {
+            customTicks.push({ value: t })
+          }
+        }
+
+        scale.ticks = customTicks
       }
 
       xScale.grid = {
