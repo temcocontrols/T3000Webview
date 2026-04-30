@@ -2842,8 +2842,10 @@
   // X-axis tick formatter to always show time + date (multi-line) for first tick
   // All timebases: First tick shows time on top line, date on bottom line for better visibility
   const formatXAxisTick = (value: any, index: number, ticks: any[]) => {
-    if (timeBase.value === '1d' || timeBase.value === '4d') {
-      return ''
+    if (timeBase.value === '1d') {
+      // Match short-range layout pattern: first tick reserves 2 lines, others 1 line.
+      // Built-in text stays blank; forceDenseTimeLabels draws the visible 1d labels.
+      return index === 0 ? [' ', ' '] : ' '
     }
     const date = new Date(value)
     const isOneDayRange = timeBase.value === '1d'
@@ -2881,7 +2883,12 @@
 
     const isFirstTick = index === 0
 
-    // For ranges larger than 1 day, always show time-only labels.
+    // 4d: show date only on the first tick; all others stay time-only.
+    if (timeBase.value === '4d') {
+      return isFirstTick ? formatDateTimeMultiLine() : formatTimeOnly()
+    }
+
+    // For ranges larger than 1 day (except 4d special handling above), show time-only labels.
     if (isLargerThanOneDay) {
       return formatTimeOnly()
     }
@@ -4073,11 +4080,11 @@
       {
         id: 'forceDenseTimeLabels',
         afterDraw: (chart: any) => {
-          if (!(timeBase.value === '1d' || timeBase.value === '4d')) return
+          if (timeBase.value !== '1d') return
           const xScale = chart?.scales?.x
           if (!xScale) return
 
-          const stepMs = timeBase.value === '1d' ? 60 * 60 * 1000 : 12 * 60 * 60 * 1000
+          const stepMs = 60 * 60 * 1000 // 1 hour for 1d
           const startMs = Math.ceil(Number(xScale.min) / stepMs) * stepMs
           const endMs = Number(xScale.max)
 
@@ -4091,8 +4098,8 @@
           // xScale.bottom is the canvas bottom edge — do NOT draw there, it may be off-screen.
           // Chart.js shrinks the axis zone to ~20px when built-in labels are suppressed,
           // so we draw time label at +6 and date on the SAME row as a prefix for the first tick.
-          const labelY = xScale.top + 6
-          const dateY = xScale.top + 20
+          const labelY = xScale.top + 8
+          const dateY = xScale.top + 22
           let drawIndex = 0
           for (let t = startMs; t <= endMs + 1000; t += stepMs) {
             const px = xScale.getPixelForValue(t)
@@ -4102,19 +4109,28 @@
             const hh = d.getHours().toString().padStart(2, '0')
             const label = `${hh}:00`
 
-            if (drawIndex === 0) {
+            // Always center labels on their tick mark for consistent alignment.
+            // Last tick: right-align so it doesn't overflow past the axis edge.
+            if (Math.abs(t - endMs) <= 1000) {
+              ctx.textAlign = 'right'
+            } else if (px - xScale.left < 20) {
+              // Very close to left edge — left-align to avoid clipping behind y-axis
               ctx.textAlign = 'left'
-              ctx.fillText(label, px, labelY)
+            } else {
+              ctx.textAlign = 'center'
+            }
+            ctx.fillText(label, px, labelY)
+
+            // Show date below only for the first visible 1d tick
+            const showDate = drawIndex === 0
+            if (showDate) {
+              const savedAlign = ctx.textAlign
+              ctx.textAlign = px - xScale.left < 20 ? 'left' : 'center'
               const yr = d.getFullYear()
               const mo = (d.getMonth() + 1).toString().padStart(2, '0')
               const day = d.getDate().toString().padStart(2, '0')
               ctx.fillText(`${yr}-${mo}-${day}`, px, dateY)
-            } else if (Math.abs(t - endMs) <= 1000) {
-              ctx.textAlign = 'right'
-              ctx.fillText(label, px, labelY)
-            } else {
-              ctx.textAlign = 'center'
-              ctx.fillText(label, px, labelY)
+              ctx.textAlign = savedAlign
             }
 
             drawIndex++
@@ -4144,7 +4160,7 @@
           left: 0,
           right: 10,
           top: 0,
-          bottom: 20  // extra space for custom date row drawn by forceDenseTimeLabels plugin
+          bottom: 0
         }
       },
       interaction: {
@@ -5293,7 +5309,7 @@
             left: 0,
             right: 10,
             top: 0,
-            bottom: 20  // extra space for custom date row drawn by forceDenseTimeLabels plugin
+            bottom: 0
           }
         },
         interaction: {
@@ -9920,13 +9936,19 @@
     // 'none' mode bypasses animations but triggers all scale callbacks including
     // afterDataLimits where y-axes read analogXWindow to filter visible points.
     LogUtil.Debug('📊 Using update("none") to trigger afterDataLimits for y-axis rescale')
-    if (timeBase.value === '1d' || timeBase.value === '4d') {
+    if (timeBase.value === '1d') {
       const xOpts = (analogChartInstance.options.scales?.x as any)
       if (xOpts?.ticks) {
         xOpts.ticks.autoSkip = false
         xOpts.ticks.maxTicksLimit = 200
       }
     }
+
+    // Keep bottom spacing consistent across all timebases (same as short-interval modes)
+    if (analogChartInstance.options.layout?.padding) {
+      ;(analogChartInstance.options.layout.padding as any).bottom = 0
+    }
+
     analogChartInstance.update('none') // No animation but full scale recalculation
 
     // Hard override for 1d: force exact hourly x ticks on the live scale.
