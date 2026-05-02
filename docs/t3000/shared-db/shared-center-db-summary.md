@@ -101,77 +101,70 @@ Data flows from field devices into the Server PC, then into the shared SQL datab
 
 **Phase 1** is done once on the PC that will host SQL Server. **Phase 2** is done on every T3000 PC — choose Server role on the host PC, Client role on all others.
 
-<table>
+<div style="padding:16px 0;">
+
+<table style="width:100%; border-collapse:collapse; border:none; background:none; margin:0; padding:0;">
 <tr>
-<th>Phase 1 — Host PC only (~30 min, done once)</th>
-<th>Phase 2 — Each T3000 PC (~5 min each)</th>
+<th style="width:50%; border:none; background:none; text-align:left; padding:4px 8px; margin:0;">Phase 1 — Host PC only (~30 min)</th>
+<th style="width:50%; border:none; background:none; text-align:left; padding:4px 8px; margin:0;">Phase 2 — Each T3000 PC (~5 min)</th>
 </tr>
 <tr>
-<td valign="top">
+<td valign="top" style="border:none; padding:4px 8px; margin:0;">
 <pre>
-[Download SQL Server Express]
-          |
-          v
-[Run Installer]
-  - named instance: SQLEXPRESS
-  - note the install path
-          |
-          v
-[Enable TCP/IP]
-  SQL Server Config Manager
-  -> Protocols for SQLEXPRESS
-  -> TCP/IP -> Enabled
-  -> Port: 1433
-          |
-          v
-[Open Firewall Port 1433]
-  Windows Defender Firewall
-  -> Inbound Rule -> TCP 1433
-          |
-          v
-[Create SQL Login]
-  SSMS or T-SQL
-  -> SQL auth login (e.g. sa)
-  -> Mixed Mode enabled
-          |
-          v
-[SQL Server Ready]
+[Download SQL Server]     [Run Installer]
+SQL2022-SSEI-Expr.exe     Instance: SQLEXPRESS
+From microsoft.com        Mixed Mode Auth
+      |                        |
+      +--------+--------+------+
+               |
+[Enable TCP/IP]           [Configure Firewall]
+Config Manager            Windows Defender
+Protocols -> TCP/IP       Allow Inbound TCP 1433
+Port: 1433                All profiles
+      |                        |
+      +--------+--------+------+
+               |
+[Create SQL Login]        [Start Services]
+Login: sa or custom       SQL Server: Running
+Auth: SQL authenticated   SQL Browser: Running
+Password: strong (8+)     Verify port 1433 open
+      |                        |
+      +--------+--------+------+
+               |
+      [SQL Server Ready]
 </pre>
 </td>
-<td valign="top">
+<td valign="top" style="border:none; padding:4px 8px; margin:0;">
 <pre>
-[Open T3000 Dashboard]
-  localhost:3003
-          |
-          v
-[Click Shared DB card]
-  -> Connect to Shared DB
-          |
-          v
-[Enable Server Database]
-  toggle ON
-          |
-          v
-[Select Role]
-  SERVER  -> host PC only
-  CLIENT  -> all other PCs
-          |
-          v
-[Enter Connection Settings]
-  Host/IP, Port, Instance
-  DB name, Username, Password
-          |
-          v
-[Test Connection]  ->  [Init Schema]
-  auth OK               create tables
-          |
-          v
-[Save + Restart T3000]
-  Shared DB Active
+[Open Dashboard]          [Click Shared DB]
+Start T3000 app           Status: Standalone
+localhost:3003            -> Connect to Shared DB
+      |                        |
+      +--------+--------+------+
+               |
+[Enable Server Database]  [Select Role]
+Toggle: OFF -> ON         SERVER: host PC only
+Unlocks Shared DB config  CLIENT: all other PCs
+      |                        |
+      +--------+--------+------+
+               |
+[Enter SQL Connection]    [Test Connection]
+Host: 192.168.1.100       Click Test Connection
+Port: 1433                Should show: "Auth OK"
+Instance: SQLEXPRESS      Then: Init Schema (179 stmts)
+DB: T3000
+User/Pass: sa credentials
+      |                        |
+      +--------+--------+------+
+               |
+[Save & Restart T3000]
+Dashboard shows: Shared DB Active
 </pre>
 </td>
 </tr>
 </table>
+
+</div>
 
 ---
 
