@@ -129,73 +129,73 @@ All PCs share one database. One view across the building.
 <tr>
 <td valign="top" style="border:none; padding:4px 8px; margin:0;">
 <pre>
-+----------------------------------------------------+
-| [1] Download SQL Server   [2] Run Installer        |
-| SQL2022-SSEI-Expr.exe     Instance: SQLEXPRESS     |
-| From microsoft.com        Mixed Mode Auth          |
-+----------------------------------------------------+
-              |                         |
-              +------------+------------+
-                           |
-
-+----------------------------------------------------+
-| [3] Enable TCP/IP         [4] Configure Firewall   |
-| Config Manager            Windows Defender         |
-| Protocols -> TCP/IP       Allow Inbound TCP 1433   |
-| Port: 1433                All profiles             |
-+----------------------------------------------------+
-              |                         |
-              +------------+------------+
-                           |
-
-+----------------------------------------------------+
-| [5] Create SQL Login      [6] Start Services       |
-| Login: sa or custom       SQL Server: Running      |
-| Auth: SQL authenticated   SQL Browser: Running     |
-| Password: strong (8+)     Verify port 1433 open    |
-+----------------------------------------------------+
-                           |
-
-+----------------------------------------------------+
-| [7] SQL Server Ready                               |
-|     Host ready for all client PCs                 |
-+----------------------------------------------------+
++----------------------+     +----------------------+
+| [1] Download SQL Svr |---->| [2] Run Installer    |
+|  SQL2022-SSEI-Expr   |     |  Instance:SQLEXPRESS |
+|  microsoft.com       |     |  Mixed Mode Auth     |
++----------+-----------+     +-----------+----------+
+           |                             |
+           v                             v
++----------------------+     +----------------------+
+| [3] Enable TCP/IP    |---->| [4] Config Firewall  |
+|  Config Manager      |     |  Windows Defender    |
+|  Protocols->TCP/IP   |     |  Allow TCP 1433      |
+|  Port: 1433          |     |  All profiles        |
++----------+-----------+     +-----------+----------+
+           |                             |
+           v                             v
++----------------------+     +----------------------+
+| [5] Create SQL Login |---->| [6] Start Services   |
+|  Login: sa or custom |     |  SQL Server: Running |
+|  Auth: SQL auth      |     |  SQL Browser:Running |
+|  Password:strong(8+) |     |  Verify port 1433    |
+|                      |     |                      |
++----------+-----------+     +-----------+----------+
+           |                             |
+           +--------------+--------------+
+                          |
+                          v
+              +----------------------+
+              | [7] SQL Server Ready |
+              |  Host ready for all  |
+              |  client PCs          |
+              +----------------------+
 </pre>
 </td>
 <td valign="top" style="border:none; padding:4px 8px; margin:0;">
 <pre>
-+----------------------------------------------------+
-| [1] Open Dashboard        [2] Click Shared DB      |
-| Start T3000 app           Status: Standalone       |
-| localhost:3003            -> Connect to Shared DB  |
-+----------------------------------------------------+
-              |                         |
-              +------------+------------+
-                           |
-
-+----------------------------------------------------+
-| [3] Enable Server Database [4] Select Role         |
-| Toggle: OFF -> ON         SERVER: host PC only     |
-| Unlocks Shared DB config  CLIENT: all other PCs    |
-+----------------------------------------------------+
-              |                         |
-              +------------+------------+
-                           |
-
-+----------------------------------------------------+
-| [5] Enter SQL Connection  [6] Test Connection      |
-| Host: 192.168.1.100       Click Test Connection    |
-| Port: 1433                Should show: Auth OK     |
-| Instance: SQLEXPRESS      Init Schema (179 stmts)  |
-| DB: T3000                                         |
-| User/Pass: sa credentials                         |
-+----------------------------------------------------+
-                           |
-
-+----------------------------------------------------+
-| [7] Save & Restart T3000                           |
-|     Dashboard shows: Shared DB Active             |
-+----------------------------------------------------+
++----------------------+     +----------------------+
+| [1] Open Dashboard   |---->| [2] Click Shared DB  |
+|  Start T3000 app     |     |  Status: Standalone  |
+|  localhost:3003      |     |  Connect to SharedDB |
++----------+-----------+     +-----------+----------+
+           |                             |
+           v                             v
++----------------------+     +----------------------+
+| [3] Enable Shared DB |---->| [4] Select Role      |
+|  Toggle: OFF -> ON   |     |  SERVER:host PC only |
+|  Unlocks Shared DB   |     |  CLIENT: other PCs   |
+|                      |     |                      |
++----------+-----------+     +-----------+----------+
+           |                             |
+           v                             v
++----------------------+     +----------------------+
+| [5] Enter SQL Conn   |---->| [6] Test Connection  |
+|  Host:192.168.1.100  |     |  Click Test Conn     |
+|  Port: 1433          |     |  Should show:Auth OK |
+|  Instance:SQLEXPRESS |     |  Schema: 179 stmts   |
+|  DB: T3000           |     |                      |
++----------+-----------+     +-----------+----------+
+           |                             |
+           +--------------+--------------+
+                          |
+                          v
+              +----------------------+
+              | [7] Save & Restart   |
+              |  T3000               |
+              |  Dashboard: Shared   |
+              |  DB Active           |
+              +----------------------+
 </pre>
 </td>
 </tr>
