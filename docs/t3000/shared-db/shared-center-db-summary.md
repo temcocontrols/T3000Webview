@@ -11,7 +11,12 @@ Use this page to understand what Shared Center DB is and whether you need it. If
 
 ## 1. What Is It?
 
-By default each T3000 PC works in isolation. Shared Center DB connects them all to one SQL Server database so every PC sees the same data.
+**Summary:** Shared Center DB changes T3000 from isolated PCs to one shared system. Instead of each PC keeping separate data, all PCs connect to one central SQL Server database so users see the same building view.
+
+**How to read this figure:**
+1. **Before (left):** each PC is standalone with its own local SQLite data.
+2. **After (right):** one host PC runs SQL Server and all other PCs connect as clients.
+3. **Dashboard panel:** users monitor shared network status, DB sync health, and trend activity from one place.
 
 <div style="padding:16px 0;">
 
@@ -73,7 +78,13 @@ All PCs share one database. One view across the building.
 
 ## 2. How It Works
 
-Data flows from field devices into the Server PC, then into the shared SQL database. Clients read from the same database.
+**Summary:** Field data is collected by the Server PC, written to the Center DB, then read by all Client PCs. This keeps dashboards and trends consistent across the team.
+
+**Runtime flow (simple):**
+1. Field devices publish values and events.
+2. Server PC collects data and writes shared/trend data to the center SQL DB.
+3. Client PCs read shared/trend data from the center SQL DB and show the same status and trends.
+4. Local SQLite keeps core local runtime info (not trendlog storage).
 
 ```
   [Field Devices]          [Server PC - PC-A]        [SQL Server]
@@ -92,14 +103,20 @@ Data flows from field devices into the Server PC, then into the shared SQL datab
                   Read shared trends and device data over LAN.
 ```
 
-- **Server PC** — writes to center SQL DB and also keeps a local SQLite copy
-- **Client PCs** — read from center SQL DB, keep local SQLite for offline use
+- **Server PC** — writes shared/trend data to the center SQL DB; local SQLite keeps core local runtime info only
+- **Client PCs** — read shared/trend data from the center SQL DB; local SQLite keeps core local runtime info for offline continuity
 
 ---
 
 ## 3. Setup — Two Phases
 
-**Phase 1** is done once on the PC that will host SQL Server. **Phase 2** is done on every T3000 PC — choose Server role on the host PC, Client role on all others.
+**Summary:** This setup gives your team one shared view of the building. Users on any T3000 PC can see the same trends, device data, and connection status in real time.
+
+**How to use this section:**
+1. Do **Phase 1** once on the main PC that will host SQL Server.
+2. Do **Phase 2** on every T3000 PC:
+      - Host PC = **Server** role
+      - All other PCs = **Client** role
 
 <div style="padding:16px 0;">
 
