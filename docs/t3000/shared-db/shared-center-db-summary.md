@@ -87,20 +87,21 @@ All PCs share one database. One view across the building.
 4. Local SQLite keeps core local runtime info (not trendlog storage).
 
 ```
-  [Field Devices]          [Server PC - PC-A]        [SQL Server]
-  +------------+           +----------------+         +----------+
-  | Sensors    |--collect->| T3000 collects |--write->| Center   |
-  | BACnet     |           | and writes     |         | DB:T3000 |
-  | Modbus     |           +----------------+         +----+-----+
-  +------------+                                           |
-                                                           |
-                                    +----------------------+
-                                    |
-                  +--------+  +--------+  +--------+
-                  | PC-B   |  | PC-C   |  | PC-D   |
-                  | client |  | client |  | client |
-                  +--------+  +--------+  +--------+
-                  Read shared trends and device data over LAN.
+  [Field Devices]                      [Server PC - PC-A]                     [SQL Server]
+  +---------------+                    +------------------+                   +----------+
+  | Sensors       |                    | T3000 collects   |                   | Center   |
+  | BACnet/Modbus |------collect------>| and writes data  |------write------->| DB:T3000 |
+  +---------------+                    +------------------+                   +-----+----+
+                                                                                    |
+                                                          +-------------------------+-------------------------+
+                                                          |                         |                         |
+                                                        read                      read                      read
+                                                          |                         |                         |
+                                                          v                         v                         v
+                                                     +--------+               +--------+               +--------+
+                                                     | PC-B   |               | PC-C   |               | PC-D   |
+                                                     | client |               | client |               | client |
+                                                     +--------+               +--------+               +--------+
 ```
 
 - **Server PC** — writes shared/trend data to the center SQL DB; local SQLite keeps core local runtime info only
@@ -128,54 +129,73 @@ All PCs share one database. One view across the building.
 <tr>
 <td valign="top" style="border:none; padding:4px 8px; margin:0;">
 <pre>
-[Download SQL Server]     [Run Installer]
-SQL2022-SSEI-Expr.exe     Instance: SQLEXPRESS
-From microsoft.com        Mixed Mode Auth
-      |                        |
-      +--------+--------+------+
-               |
-[Enable TCP/IP]           [Configure Firewall]
-Config Manager            Windows Defender
-Protocols -> TCP/IP       Allow Inbound TCP 1433
-Port: 1433                All profiles
-      |                        |
-      +--------+--------+------+
-               |
-[Create SQL Login]        [Start Services]
-Login: sa or custom       SQL Server: Running
-Auth: SQL authenticated   SQL Browser: Running
-Password: strong (8+)     Verify port 1433 open
-      |                        |
-      +--------+--------+------+
-               |
-      [SQL Server Ready]
++----------------------------------------------------+
+| [1] Download SQL Server   [2] Run Installer        |
+| SQL2022-SSEI-Expr.exe     Instance: SQLEXPRESS     |
+| From microsoft.com        Mixed Mode Auth          |
++----------------------------------------------------+
+              |                         |
+              +------------+------------+
+                           |
+
++----------------------------------------------------+
+| [3] Enable TCP/IP         [4] Configure Firewall   |
+| Config Manager            Windows Defender         |
+| Protocols -> TCP/IP       Allow Inbound TCP 1433   |
+| Port: 1433                All profiles             |
++----------------------------------------------------+
+              |                         |
+              +------------+------------+
+                           |
+
++----------------------------------------------------+
+| [5] Create SQL Login      [6] Start Services       |
+| Login: sa or custom       SQL Server: Running      |
+| Auth: SQL authenticated   SQL Browser: Running     |
+| Password: strong (8+)     Verify port 1433 open    |
++----------------------------------------------------+
+                           |
+
++----------------------------------------------------+
+| [7] SQL Server Ready                               |
+|     Host ready for all client PCs                 |
++----------------------------------------------------+
 </pre>
 </td>
 <td valign="top" style="border:none; padding:4px 8px; margin:0;">
 <pre>
-[Open Dashboard]          [Click Shared DB]
-Start T3000 app           Status: Standalone
-localhost:3003            -> Connect to Shared DB
-      |                        |
-      +--------+--------+------+
-               |
-[Enable Server Database]  [Select Role]
-Toggle: OFF -> ON         SERVER: host PC only
-Unlocks Shared DB config  CLIENT: all other PCs
-      |                        |
-      +--------+--------+------+
-               |
-[Enter SQL Connection]    [Test Connection]
-Host: 192.168.1.100       Click Test Connection
-Port: 1433                Should show: "Auth OK"
-Instance: SQLEXPRESS      Then: Init Schema (179 stmts)
-DB: T3000
-User/Pass: sa credentials
-      |                        |
-      +--------+--------+------+
-               |
-[Save & Restart T3000]
-Dashboard shows: Shared DB Active
++----------------------------------------------------+
+| [1] Open Dashboard        [2] Click Shared DB      |
+| Start T3000 app           Status: Standalone       |
+| localhost:3003            -> Connect to Shared DB  |
++----------------------------------------------------+
+              |                         |
+              +------------+------------+
+                           |
+
++----------------------------------------------------+
+| [3] Enable Server Database [4] Select Role         |
+| Toggle: OFF -> ON         SERVER: host PC only     |
+| Unlocks Shared DB config  CLIENT: all other PCs    |
++----------------------------------------------------+
+              |                         |
+              +------------+------------+
+                           |
+
++----------------------------------------------------+
+| [5] Enter SQL Connection  [6] Test Connection      |
+| Host: 192.168.1.100       Click Test Connection    |
+| Port: 1433                Should show: Auth OK     |
+| Instance: SQLEXPRESS      Init Schema (179 stmts)  |
+| DB: T3000                                         |
+| User/Pass: sa credentials                         |
++----------------------------------------------------+
+                           |
+
++----------------------------------------------------+
+| [7] Save & Restart T3000                           |
+|     Dashboard shows: Shared DB Active             |
++----------------------------------------------------+
 </pre>
 </td>
 </tr>
@@ -189,8 +209,8 @@ Dashboard shows: Shared DB Active
 
 | Role | Choose when | What it does |
 |---|---|---|
-| **Server** | This PC hosts SQL Server | Writes to center DB + local SQLite |
-| **Client** | Any other PC on the LAN | Reads from center DB, keeps local SQLite |
+| **Server** | This PC hosts SQL Server | Writes shared/trend data to center DB; local SQLite stores core local runtime info only |
+| **Client** | Any other PC on the LAN | Reads shared/trend data from center DB; local SQLite stores core local runtime info only |
 
 One Server. All other PCs are Clients.
 
