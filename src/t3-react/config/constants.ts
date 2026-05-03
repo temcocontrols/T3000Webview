@@ -30,6 +30,10 @@ export const DOCS_CONFIG = {
   // Example: https://github.com/temcocontrols/T3000Webview/blob/main/docs/analysis/LEFT_PANEL_ANALYSIS.md
   githubUrl: 'https://github.com/temcocontrols/T3000Webview/blob/main/docs',
 
+  // Raw GitHub base URL for runtime markdown fetch fallback.
+  // Example: https://raw.githubusercontent.com/temcocontrols/T3000Webview/main/docs/analysis/LEFT_PANEL_ANALYSIS.md
+  githubRawUrl: 'https://raw.githubusercontent.com/temcocontrols/T3000Webview/main/docs',
+
   // Local path for development
   localPath: '/docs',
 } as const;

@@ -11,7 +11,28 @@ interface MarkdownResult {
   error: Error | null;
 }
 
-function rewriteRelativeImagePaths(markdown: string, path: string): string {
+interface ResolvedDocPaths {
+  markdownPath: string;
+  assetBaseUrl: string;
+}
+
+function buildDocPaths(path: string): { local: ResolvedDocPaths; githubRaw: ResolvedDocPaths } {
+  const normalized = path.startsWith('legacy/') ? path.replace('legacy/', '') : path;
+  const markdownPath = normalized.toLowerCase().endsWith('.md') ? normalized : `${normalized}.md`;
+
+  return {
+    local: {
+      markdownPath: `${DOCS_CONFIG.baseUrl}/${markdownPath}`,
+      assetBaseUrl: DOCS_CONFIG.baseUrl,
+    },
+    githubRaw: {
+      markdownPath: `${DOCS_CONFIG.githubRawUrl}/${markdownPath}`,
+      assetBaseUrl: DOCS_CONFIG.githubRawUrl,
+    },
+  };
+}
+
+function rewriteRelativeImagePaths(markdown: string, path: string, assetBaseUrl: string): string {
   const pathWithoutExt = path.replace(/\.md$/i, '');
   const lastSlash = pathWithoutExt.lastIndexOf('/');
   const baseDir = lastSlash >= 0 ? pathWithoutExt.slice(0, lastSlash) : '';
@@ -37,7 +58,7 @@ function rewriteRelativeImagePaths(markdown: string, path: string): string {
 
     const normalizedBase = baseDir.replace(/^\/+/, '').replace(/\/+$/, '');
     const normalizedUrl = url.replace(/^\.+\//, '').replace(/^\/+/, '');
-    const absolute = `${DOCS_CONFIG.baseUrl}/${normalizedBase}/${normalizedUrl}`.replace(/\/+/g, '/');
+    const absolute = `${assetBaseUrl}/${normalizedBase}/${normalizedUrl}`.replace(/([^:]\/)\/+/g, '$1');
     return `![${alt}](${absolute})`;
   });
 }
@@ -55,29 +76,22 @@ export function useMarkdownContent(path: string): MarkdownResult {
       setError(null);
 
       try {
-        // Determine the path based on whether it's legacy or t3000
-        let mdPath: string;
+        const { local, githubRaw } = buildDocPaths(path);
+        let response = await fetch(local.markdownPath);
+        let assetBaseUrl = local.assetBaseUrl;
 
-        if (path.startsWith('legacy/')) {
-          // Legacy docs are in /docs folder with their full path structure
-          mdPath = `${DOCS_CONFIG.baseUrl}/${path.replace('legacy/', '')}`;
-        } else if (path.startsWith('t3000/')) {
-          // T3000 docs are in /docs/t3000
-          mdPath = `${DOCS_CONFIG.baseUrl}/${path}.md`;
-        } else {
-          // Fallback for any other paths
-          mdPath = `${DOCS_CONFIG.baseUrl}/${path}.md`;
+        // Fallback for deployed environments where /docs may not be packaged.
+        if (!response.ok) {
+          response = await fetch(githubRaw.markdownPath);
+          assetBaseUrl = githubRaw.assetBaseUrl;
         }
-
-        // Fetch the markdown file
-        const response = await fetch(mdPath);
 
         if (!response.ok) {
           throw new Error(`Failed to load documentation: ${response.statusText}`);
         }
 
         const text = await response.text();
-        const normalizedText = rewriteRelativeImagePaths(text, path);
+        const normalizedText = rewriteRelativeImagePaths(text, path, assetBaseUrl);
 
         if (isMounted) {
           setContent(normalizedText);
