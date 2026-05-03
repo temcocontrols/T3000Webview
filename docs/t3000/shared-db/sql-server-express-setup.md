@@ -1,4 +1,4 @@
-ï»¿# SQL Server Express 2022 Setup for T3000 (Detailed Step-by-Step)
+# SQL Server Express 2022 Setup for T3000 (Detailed Step-by-Step)
 
 <!-- USER-GUIDE -->
 
@@ -238,7 +238,7 @@ Verification checklist:
 Use the **mssql** extension in VS Code to confirm SQL Server is reachable before continuing.
 
 1. Open **VS Code** and install the **mssql** extension if not already installed (search `mssql` in the Extensions panel).
-2. Press `Ctrl+Shift+P` â†’ type **MS SQL: Add Connection** â†’ press Enter.
+2. Press `Ctrl+Shift+P` ¡ú type **MS SQL: Add Connection** ¡ú press Enter.
 3. Enter the server name: `localhost\SQLEXPRESS`.
 4. Choose **SQL Login**, enter username `sa` and the password you set in Step 7.
 5. Click **Connect**.

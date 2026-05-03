@@ -1,8 +1,8 @@
-# Shared Center DB — Overview
+﻿# Shared Center DB —Overview
 
 <!-- USER-GUIDE -->
 
-Use this page to understand what Shared Center DB is and whether you need it. If you manage multiple T3000 PCs and want them to share trend logs and device data across the network — this is the feature for you.
+Use this page to understand what Shared Center DB is and whether you need it. If you manage multiple T3000 PCs and want them to share trend logs and device data across the network —this is the feature for you.
 
 - Full SQL Server install steps: [SQL Server Express Setup](./sql-server-express-setup.md)
 - Full T3000 UI walkthrough: [T3000 Center DB Configuration](./t3000-center-db-config.md)
@@ -104,12 +104,12 @@ All PCs share one database. One view across the building.
                                                      +--------+               +--------+               +--------+
 ```
 
-- **Server PC** — writes shared/trend data to the center SQL DB; local SQLite keeps core local runtime info only
-- **Client PCs** — read shared/trend data from the center SQL DB; local SQLite keeps core local runtime info for offline continuity
+- **Server PC** —writes shared/trend data to the center SQL DB; local SQLite keeps core local runtime info only
+- **Client PCs** —read shared/trend data from the center SQL DB; local SQLite keeps core local runtime info for offline continuity
 
 ---
 
-## 3. Setup — Two Phases
+## 3. Setup —Two Phases
 
 **Summary:** This setup gives your team one shared view of the building. Users on any T3000 PC can see the same trends, device data, and connection status in real time.
 
@@ -123,8 +123,8 @@ All PCs share one database. One view across the building.
 
 <table style="width:100%; border-collapse:collapse; border:none; background:none; margin:0; padding:0;">
 <tr>
-<th style="width:50%; border:none; background:none; text-align:left; padding:4px 8px; margin:0;">Phase 1 — Host PC only (~30 min)</th>
-<th style="width:50%; border:none; background:none; text-align:left; padding:4px 8px; margin:0;">Phase 2 — Each T3000 PC (~5 min)</th>
+<th style="width:50%; border:none; background:none; text-align:left; padding:4px 8px; margin:0;">Phase 1 —Host PC only (~30 min)</th>
+<th style="width:50%; border:none; background:none; text-align:left; padding:4px 8px; margin:0;">Phase 2 —Each T3000 PC (~5 min)</th>
 </tr>
 <tr>
 <td valign="top" style="border:none; padding:4px 8px; margin:0;">
@@ -167,7 +167,7 @@ All PCs share one database. One view across the building.
 +----------------------+     +----------------------+
 | [1] Open Dashboard   |---->| [2] Click Shared DB  |
 |  Start T3000 app     |     |  Status: Standalone  |
-|  localhost:3003      |     |  Connect to SharedDB |
+|  localhost:9103      |     |  Connect to SharedDB |
 +----------+-----------+     +-----------+----------+
            |                             |
            v                             v
@@ -192,7 +192,6 @@ All PCs share one database. One view across the building.
                           v
               +----------------------+
               | [7] Save & Restart   |
-              |  T3000               |
               |  Dashboard: Shared   |
               |  DB Active           |
               +----------------------+
@@ -218,7 +217,7 @@ One Server. All other PCs are Clients.
 
 ## 5. What Success Looks Like
 
-After saving the configuration and restarting T3000, open the Dashboard at `localhost:3003`. You should see:
+After saving the configuration and restarting T3000, open the Dashboard at `localhost:9103`. You should see:
 
 ```
   +--------------------------------------------------+
