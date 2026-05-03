@@ -31,10 +31,7 @@ export function useDocNavigation(initialPath: string = 't3000/quick-start/overvi
     setCurrentPath(pathFromUrl);
 
     // Auto-expand the section containing the current page
-    if (
-      pathFromUrl.includes('shared-db/sql-server-express-setup') ||
-      pathFromUrl.includes('shared-db/t3000-center-db-config')
-    ) {
+    if (pathFromUrl.includes('shared-db/')) {
       setExpandedSections(prev => {
         const next = new Set(prev);
         next.add('Shared DB');

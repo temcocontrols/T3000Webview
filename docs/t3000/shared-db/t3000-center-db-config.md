@@ -1,4 +1,4 @@
-# T3000 Center DB Configuration
+﻿# T3000 Center DB Configuration
 
 <!-- USER-GUIDE -->
 
@@ -12,7 +12,7 @@ Before starting, make sure SQL Server Express is installed and TCP/IP is enabled
 
 Open the T3000 Building Automation System desktop application.
 
-Before configuring the shared database, make sure T3000 is up to date. Click **Help → Check for Updates** in the menu bar and install any available update. The Shared DB feature requires the latest version to work correctly.
+Before configuring the shared database, make sure T3000 is up to date. Click **Help — Check for Updates** in the menu bar and install any available update. The Shared DB feature requires the latest version to work correctly.
 
 ![Step 1 — T3000 desktop application](images/t3000/01.png)
 
@@ -22,8 +22,8 @@ Before configuring the shared database, make sure T3000 is up to date. Click **H
 
 In the T3000 webview, click **Dashboard** in the top navigation bar. You can also open the Dashboard directly in a browser:
 
-- **On this PC:** [http://localhost:3003/#/t3000/dashboard](http://localhost:3003/#/t3000/dashboard)
-- **From another PC on the same network:** `http://<this-PC-IP>:3003/#/t3000/dashboard` (e.g. `http://192.168.1.22:3003/#/t3000/dashboard`)
+- **On this PC:** [http://localhost:9103/#/t3000/dashboard](http://localhost:9103/#/t3000/dashboard)
+- **From another PC on the same network:** `http://<this-PC-IP>:9103/#/t3000/dashboard` (e.g. `http://192.168.1.22:9103/#/t3000/dashboard`)
 
 You will see two mode cards:
 
@@ -38,7 +38,7 @@ The **Shared DB** card shows *Not configured. Click to connect to a shared SQL S
 
 ## Step 3: Click "Connect to Shared DB"
 
-After clicking the Shared DB card, a **Connect to Shared DB →** button appears. Click it to open the Database Configuration page.
+After clicking the Shared DB card, a **Connect to Shared DB** button appears. Click it to open the Database Configuration page.
 
 ![Step 3 — Connect to Shared DB button](images/t3000/03.png)
 
@@ -155,7 +155,7 @@ All T3000 tables have been created on the SQL Server database. The server is now
 Return to the Dashboard. The **Shared DB** card now shows:
 
 > *Shared DB (Server) saved — restart T3000 to activate.*
-> **Database Configuration →**
+> **Database Configuration**
 
 Close and reopen T3000 to apply the new configuration.
 
@@ -226,7 +226,7 @@ If you run into issues, first check that SQL Server Express is correctly install
 | Scan LAN finds no instances | SQL Server Browser service not running | Start the **SQL Server Browser** service on the target machine |
 | Instance shows "TCP port check only" | SQL Browser not running, instance name unknown | Start SQL Server Browser, or enter the instance name manually in the connection fields |
 | Dashboard still shows Standalone after save | T3000 not restarted after saving | Close and reopen T3000 to apply the new configuration |
-| T3000 feature missing or not working | Running an older version of T3000 | Click **Help → Check for Updates** and install the latest version |
+| T3000 feature missing or not working | Running an older version of T3000 | Click **Help — Check for Updates** and install the latest version |
 
 ---
 
@@ -236,20 +236,20 @@ The following table shows the complete setup flow at a glance:
 
 | Step | Action | Result |
 |---|---|---|
-| 1 | Open T3000, click **Help → Check for Updates** | T3000 is on the latest version |
-| 2 | Open Dashboard in browser (`localhost:3003` or `ip:3003`) | Dashboard visible |
-| 3 | Click **Shared DB** card → **Connect to Shared DB →** | Opens Database Configuration page |
+| 1 | Open T3000, click **Help — Check for Updates** | T3000 is on the latest version |
+| 2 | Open Dashboard in browser (`localhost:9103` or `<this-PC-IP>:9103`) | Dashboard visible |
+| 3 | Click **Shared DB** card — **Connect to Shared DB** | Opens Database Configuration page |
 | 4 | Review Database Configuration page | Currently in Standalone mode |
 | 5 | Enable **Server Database**, select **Server** role, select **Microsoft SQL Server** | Server DB enabled |
 | 6 | Fill in Host / IP, Port, Instance Name, Database, Username, Password | Connection fields ready |
-| 7 | Click **Scan LAN** → click **Use** next to target instance → click **Save Configuration** | Configuration saved |
+| 7 | Click **Scan LAN** — click **Use** next to target instance — click **Save Configuration** | Configuration saved |
 | 8 | Click **Test Connection** | Authentication OK (database may not exist yet — that's normal) |
 | 9 | Click **Init Schema** | Schema creation starts |
 | 10 | Wait for success banner: *179 statements executed* | All T3000 tables created on SQL Server |
-| 11 | Return to Dashboard, see restart prompt → close and reopen T3000 | T3000 restarts with new config |
+| 11 | Return to Dashboard, see restart prompt — close and reopen T3000 | T3000 restarts with new config |
 | 12 | Dashboard shows **Shared DB · Active · Connected** | Server is live and receiving data |
 | 13 | Check **Sync & Database Health** and **Trend Logs** sections | Data flowing into SQL Server |
 
-> For Client PC setup, repeat Steps 1–7 on each client PC, selecting **Client** role in Step 5. No Init Schema is needed on client PCs.
+> For Client PC setup, repeat Steps 1-13 on each client PC, selecting **Client** role in Step 5. No Init Schema is needed on client PCs.
 
 
