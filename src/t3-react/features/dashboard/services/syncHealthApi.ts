@@ -116,3 +116,38 @@ export async function updateSyncInterval(secs: number): Promise<void> {
     throw new Error(`config/ffi-sync-interval: HTTP ${res.status}`);
   }
 }
+
+// ── Server sync metrics (client mode only) ────────────────────────────────────
+// Fetches the server PC's actual sync activity by proxying through
+// GET /api/sync/server-health on the local backend.
+
+export interface ServerSyncMetrics {
+  ok: boolean;
+  devicesSyncedToday: number;
+  recordsToday: RecordsToday;
+  lastSyncAgo: string | null;
+  lastSyncTime: string | null;
+  serverHostname: string | null;
+  error?: string;
+}
+
+export async function getServerSyncMetrics(): Promise<ServerSyncMetrics> {
+  const res = await fetch(`${API_BASE_URL}/api/sync/server-health`);
+  if (!res.ok) throw new Error(`sync/server-health: HTTP ${res.status}`);
+  const data = await res.json();
+  return {
+    ok:                 data.ok ?? false,
+    devicesSyncedToday: data.devicesSyncedToday ?? 0,
+    recordsToday: {
+      total:     data.recordsToday?.total     ?? 0,
+      inputs:    data.recordsToday?.inputs    ?? 0,
+      outputs:   data.recordsToday?.outputs   ?? 0,
+      variables: data.recordsToday?.variables ?? 0,
+      trendlogs: data.recordsToday?.trendlogs ?? 0,
+    },
+    lastSyncAgo:     data.lastSyncAgo     ?? null,
+    lastSyncTime:    data.lastSyncTime    ?? null,
+    serverHostname:  data.serverHostname  ?? null,
+    error:           data.error,
+  };
+}

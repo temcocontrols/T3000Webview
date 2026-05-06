@@ -25,6 +25,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::RwLock;
 use tracing::{debug, warn};
 
@@ -1107,6 +1108,103 @@ pub fn sync_health_routes() -> Router<T3AppState> {
     Router::new()
         .route("/api/sync/health", get(get_sync_health))
         .route("/api/sync/health/ping", get(ping_center_db))
+        .route("/api/sync/server-health", get(get_server_sync_metrics))
         .route("/api/sync/event-log", get(get_event_log))
         .route("/api/sync/event-log", post(post_event))
+}
+
+// ============================================================================
+// GET /api/sync/server-health
+// Proxies to the server PC's /api/sync/health endpoint using a raw TCP
+// connection (no extra dependencies required).  Only meaningful in client mode.
+// Returns a small subset: devicesSyncedToday, recordsToday, lastSyncAgo,
+// lastSyncTime, serverHostname.
+// ============================================================================
+async fn get_server_sync_metrics(
+    State(state): State<T3AppState>,
+) -> Json<serde_json::Value> {
+    if !state.server_db_enabled || state.server_db_role != "client" {
+        return Json(serde_json::json!({
+            "ok": false,
+            "error": "Not in client mode"
+        }));
+    }
+
+    // Get the configured server host (SQL Server host == server PC IP)
+    let server_ip = if let Some(ref local_conn) = state.local_config_conn {
+        let db = local_conn.lock().await;
+        crate::database_management::db_backend_config::load_active_config(&*db)
+            .await
+            .ok()
+            .and_then(|cfg| cfg.host)
+    } else {
+        None
+    };
+
+    let Some(server_ip) = server_ip else {
+        return Json(serde_json::json!({
+            "ok": false,
+            "error": "Server IP not configured"
+        }));
+    };
+
+    match fetch_server_health_raw(&server_ip, 9103).await {
+        Ok(body) => {
+            // Extract only the fields we need.
+            // /api/sync/health serialises with rename_all = "camelCase", so
+            // index with camelCase keys here.
+            Json(serde_json::json!({
+                "ok": true,
+                "devicesSyncedToday": body["devicesSyncedToday"],
+                "recordsToday": {
+                    "total":     body["recordsToday"]["total"],
+                    "inputs":    body["recordsToday"]["inputs"],
+                    "outputs":   body["recordsToday"]["outputs"],
+                    "variables": body["recordsToday"]["variables"],
+                    "trendlogs": body["recordsToday"]["trendlogs"],
+                },
+                "lastSyncAgo":  body["lastSyncAgo"],
+                "lastSyncTime": body["lastSyncTime"],
+                "serverHostname": body["hostname"],
+            }))
+        }
+        Err(e) => Json(serde_json::json!({ "ok": false, "error": e })),
+    }
+}
+
+/// Raw HTTP/1.1 GET over a plain TCP stream — no TLS, no extra crates.
+async fn fetch_server_health_raw(host: &str, port: u16) -> std::result::Result<serde_json::Value, String> {
+    let addr = format!("{}:{}", host, port);
+
+    let mut stream = tokio::time::timeout(
+        Duration::from_secs(5),
+        tokio::net::TcpStream::connect(&addr),
+    )
+    .await
+    .map_err(|_| format!("Connect to {} timed out", addr))?
+    .map_err(|e| format!("TCP connect error: {}", e))?;
+
+    let request = format!(
+        "GET /api/sync/health HTTP/1.1\r\nHost: {}\r\nConnection: close\r\nAccept: application/json\r\n\r\n",
+        host
+    );
+    stream
+        .write_all(request.as_bytes())
+        .await
+        .map_err(|e| format!("Write error: {}", e))?;
+
+    let mut buf = Vec::new();
+    tokio::time::timeout(Duration::from_secs(5), stream.read_to_end(&mut buf))
+        .await
+        .map_err(|_| "Read timed out".to_string())?
+        .map_err(|e| format!("Read error: {}", e))?;
+
+    let raw = String::from_utf8_lossy(&buf);
+    // HTTP response: headers\r\n\r\nbody
+    let body = raw
+        .find("\r\n\r\n")
+        .map(|i| &raw[i + 4..])
+        .ok_or_else(|| "No HTTP body in response".to_string())?;
+
+    serde_json::from_str(body.trim()).map_err(|e| format!("JSON parse error: {}", e))
 }

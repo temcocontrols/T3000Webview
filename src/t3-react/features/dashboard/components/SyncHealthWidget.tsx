@@ -27,7 +27,7 @@ import {
   ErrorCircleRegular,
   EditRegular,
 } from '@fluentui/react-icons';
-import { SyncHealthData, updateSyncInterval } from '../services/syncHealthApi';
+import { SyncHealthData, ServerSyncMetrics, updateSyncInterval } from '../services/syncHealthApi';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './SyncHealthWidget.module.css';
 
@@ -38,6 +38,8 @@ interface Props {
   error: string | null;
   onRefresh: () => Promise<void>;
   isStandalone?: boolean;
+  isClient?: boolean;
+  serverMetrics?: ServerSyncMetrics;
 }
 
 function centerDbStatusLabel(status?: string, connected?: boolean) {
@@ -58,7 +60,7 @@ function centerDbStatusLabel(status?: string, connected?: boolean) {
   }
 }
 
-export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, error, onRefresh, isStandalone = false }) => {
+export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, error, onRefresh, isStandalone = false, isClient = false, serverMetrics }) => {
   const [testing, setTesting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -339,10 +341,14 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
             <span className={styles.statLabel}>{isStandalone ? 'Last Poll' : 'Last Sync'}</span>
           </div>
           <span className={`${styles.statValue} ${metricsBlocked ? styles.statValueWarn : ''}`}>
-            {isStandalone ? '—' : (data.lastSyncAgo ?? 'Never')}
+            {isStandalone ? '—' : isClient && serverMetrics?.ok ? (serverMetrics.lastSyncAgo ?? 'Never') : (data.lastSyncAgo ?? 'Never')}
           </span>
           {isStandalone ? (
             <span className={styles.statSub}>No sync in standalone</span>
+          ) : isClient && serverMetrics?.ok && serverMetrics.lastSyncTime ? (
+            <Tooltip content={serverMetrics.lastSyncTime} relationship="label">
+              <span className={styles.statSub}>{serverMetrics.lastSyncTime}</span>
+            </Tooltip>
           ) : metricsBlocked ? (
             <span className={`${styles.statSub} ${styles.statSubWarn}`}>
               Blocked: values may be stale
@@ -360,10 +366,10 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
             <span className={styles.statLabel}>Devices Today</span>
           </div>
           <span className={`${styles.statValue} ${metricsBlocked ? styles.statValueWarn : ''}`}>
-            {isStandalone ? '—' : data.devicesSyncedToday}
+            {isStandalone ? '—' : isClient ? (serverMetrics?.ok ? serverMetrics.devicesSyncedToday : '—') : data.devicesSyncedToday}
           </span>
           <span className={`${styles.statSub} ${metricsBlocked ? styles.statSubWarn : ''}`}>
-            {isStandalone ? 'N/A in standalone' : metricsBlocked ? 'stale count' : 'synced'}
+            {isStandalone ? 'N/A in standalone' : isClient ? (serverMetrics?.ok ? 'synced on server' : 'Synced by server') : metricsBlocked ? 'stale count' : 'synced'}
           </span>
         </div>
 
@@ -372,14 +378,23 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
             <ListRegular className={styles.statIcon} />
             <span className={styles.statLabel}>Records Today</span>
           </div>
-          <span className={`${styles.statValue} ${metricsBlocked ? styles.statValueWarn : ''}`}>
-            {isStandalone ? '—' : data.recordsToday.total.toLocaleString()}
-          </span>
-          <span className={`${styles.statSub} ${metricsBlocked ? styles.statSubWarn : ''}`}>
-            {isStandalone
-              ? 'N/A in standalone'
-              : `${data.recordsToday.inputs}in · ${data.recordsToday.outputs}out · ${data.recordsToday.variables}var`}
-          </span>
+          {(() => {
+            const rec = isClient && serverMetrics?.ok ? serverMetrics.recordsToday : null;
+            return (
+              <>
+                <span className={`${styles.statValue} ${metricsBlocked ? styles.statValueWarn : ''}`}>
+                  {isStandalone ? '—' : isClient ? (rec ? rec.total.toLocaleString() : '—') : data.recordsToday.total.toLocaleString()}
+                </span>
+                <span className={`${styles.statSub} ${metricsBlocked ? styles.statSubWarn : ''}`}>
+                  {isStandalone
+                    ? 'N/A in standalone'
+                    : isClient
+                    ? (rec ? `${rec.inputs}in · ${rec.outputs}out · ${rec.variables}var · synced on server` : 'Synced by server')
+                    : `${data.recordsToday.inputs}in · ${data.recordsToday.outputs}out · ${data.recordsToday.variables}var`}
+                </span>
+              </>
+            );
+          })()}
         </div>
 
         <div className={styles.statCard}>

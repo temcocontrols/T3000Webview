@@ -25,7 +25,7 @@ import {
   InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
-import { getSyncHealth, SyncHealthData } from '../services/syncHealthApi';
+import { getSyncHealth, getServerSyncMetrics, SyncHealthData, ServerSyncMetrics } from '../services/syncHealthApi';
 import { API_BASE_URL } from '../../../config/constants';
 import { getIniConfig, IniConfig } from '../../database/services/databaseConfigApi';
 import { SyncHealthWidget } from '../components/SyncHealthWidget';
@@ -477,6 +477,7 @@ export const DashboardPage: React.FC = () => {
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [trendRefreshKey, setTrendRefreshKey] = useState(0);
   const [iniConfig, setIniConfig] = useState<IniConfig | null>(null);
+  const [serverMetrics, setServerMetrics] = useState<ServerSyncMetrics | null>(null);
   // Track whether we're in "fast poll" mode (after a mode change, waiting for restart)
   const [fastPolling, setFastPolling] = useState(false);
 
@@ -528,6 +529,12 @@ export const DashboardPage: React.FC = () => {
       if (health.status === 'fulfilled') {
         setSyncHealth(health.value);
         setHealthError(null);
+        // In client mode, also fetch server's actual sync counts
+        if (health.value.role === 'client') {
+          getServerSyncMetrics().then(setServerMetrics).catch(() => setServerMetrics(null));
+        } else {
+          setServerMetrics(null);
+        }
       } else {
         setHealthError(health.reason instanceof Error ? health.reason.message : 'Failed to load sync health');
       }
@@ -657,32 +664,52 @@ export const DashboardPage: React.FC = () => {
               )}
 
               {/* Last Poll (standalone) / Last Sync (server/client) */}
-              <div className={s.kpiCard}>
-                <span className={s.kpiLabel}>{appMode === 'standalone' ? 'Last Poll' : 'Last Sync'}</span>
-                <Tooltip content={appMode === 'standalone' ? 'No background sync in standalone mode' : (syncHealth?.lastSyncTime ?? 'No data recorded')} relationship="description">
-                  <span className={s.kpiValueMd}>{appMode === 'standalone' ? '—' : (syncHealth?.lastSyncAgo ?? '—')}</span>
-                </Tooltip>
-                <span className={s.kpiDetail}>
-                  {appMode === 'standalone'
-                    ? 'No sync in standalone mode'
-                    : `${syncHealth?.devicesSyncedToday ?? 0} device${syncHealth?.devicesSyncedToday !== 1 ? 's' : ''} today`}
-                </span>
-              </div>
+              {(() => {
+                const syncAgo = appMode === 'client' && serverMetrics?.ok
+                  ? (serverMetrics.lastSyncAgo ?? '—')
+                  : (syncHealth?.lastSyncAgo ?? '—');
+                const syncTime = appMode === 'client' && serverMetrics?.ok
+                  ? (serverMetrics.lastSyncTime ?? 'No data')
+                  : (syncHealth?.lastSyncTime ?? 'No data recorded');
+                const devCount = appMode === 'client' && serverMetrics?.ok
+                  ? serverMetrics.devicesSyncedToday
+                  : (syncHealth?.devicesSyncedToday ?? 0);
+                return (
+                  <div className={s.kpiCard}>
+                    <span className={s.kpiLabel}>{appMode === 'standalone' ? 'Last Poll' : 'Last Sync'}</span>
+                    <Tooltip content={appMode === 'standalone' ? 'No background sync in standalone mode' : syncTime} relationship="description">
+                      <span className={s.kpiValueMd}>{appMode === 'standalone' ? '—' : syncAgo}</span>
+                    </Tooltip>
+                    <span className={s.kpiDetail}>
+                      {appMode === 'standalone'
+                        ? 'No sync in standalone mode'
+                        : `${devCount} device${devCount !== 1 ? 's' : ''} today`}
+                    </span>
+                  </div>
+                );
+              })()}
 
               {/* Records Today */}
-              <div className={s.kpiCard}>
-                <span className={s.kpiLabel}>Records Today</span>
-                <span className={s.kpiValue}>
-                  {appMode === 'standalone' ? '—' : (syncHealth?.recordsToday.total.toLocaleString() ?? '—')}
-                </span>
-                <span className={s.kpiDetail}>
-                  {appMode === 'standalone'
-                    ? 'N/A in standalone mode'
-                    : (syncHealth
-                      ? `${syncHealth.recordsToday.inputs}in · ${syncHealth.recordsToday.outputs}out · ${syncHealth.recordsToday.variables}var`
-                      : '—')}
-                </span>
-              </div>
+              {(() => {
+                const rec = appMode === 'client' && serverMetrics?.ok
+                  ? serverMetrics.recordsToday
+                  : syncHealth?.recordsToday;
+                return (
+                  <div className={s.kpiCard}>
+                    <span className={s.kpiLabel}>Records Today</span>
+                    <span className={s.kpiValue}>
+                      {appMode === 'standalone' ? '—' : (rec?.total.toLocaleString() ?? '—')}
+                    </span>
+                    <span className={s.kpiDetail}>
+                      {appMode === 'standalone'
+                        ? 'N/A in standalone mode'
+                        : (rec
+                          ? `${rec.inputs}in · ${rec.outputs}out · ${rec.variables}var`
+                          : '—')}
+                    </span>
+                  </div>
+                );
+              })()}
 
               {/* DB Size */}
               <div className={s.kpiCard}>
@@ -730,6 +757,8 @@ export const DashboardPage: React.FC = () => {
               error={healthError}
               onRefresh={fetchHealth}
               isStandalone={appMode === 'standalone'}
+              isClient={appMode === 'client'}
+              serverMetrics={serverMetrics ?? undefined}
             />
           </div>
         </div>
