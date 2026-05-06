@@ -87,6 +87,9 @@ pub async fn get_trendlog_history(
     }
 
     // Specific points filter
+    // Match by PointId (string, e.g. "IN1") + PointType + PanelId.
+    // Avoid PointIndex because C++ stores it 0-based (index=0 for IN1) while
+    // the frontend requests 1-based (pointNumber+1=1 for IN1), causing a mismatch.
     if let Some(points) = specific_points {
         if !points.is_empty() {
             let conditions: Vec<String> = points
@@ -98,10 +101,10 @@ pub async fn get_trendlog_history(
                         .collect::<Vec<_>>()
                         .join(",");
                     format!(
-                        "(p.PanelId = {} AND UPPER(p.PointType) IN ({}) AND p.PointIndex = {})",
+                        "(p.PanelId = {} AND UPPER(p.PointType) IN ({}) AND p.PointId = '{}')",
                         p.panel_id,
                         type_sql,
-                        p.point_index,
+                        p.point_id.replace('\'', "''"),
                     )
                 })
                 .collect();
@@ -158,6 +161,7 @@ pub async fn get_trendlog_history(
 
             data.push(json!({
                 "time": row.get::<&str, _>("LoggingTime_Fmt").unwrap_or(""),
+                "timestamp": row.get::<&str, _>("LoggingTime_Fmt").unwrap_or(""),
                 "value": scaled_value,
                 "point_id": row.get::<&str, _>("PointId").unwrap_or(""),
                 "point_type": point_type,
@@ -177,6 +181,7 @@ pub async fn get_trendlog_history(
         "device_id": serial_number,
         "panel_id": panel_id,
         "data": data,
+        "total_records": data.len(),
         "count": data.len(),
         "message": if specific_points_count > 0 {
             format!("Trendlog history data retrieved successfully (filtered for {} specific points)", specific_points_count)

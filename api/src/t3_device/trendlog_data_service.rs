@@ -243,12 +243,14 @@ impl T3TrendlogDataService {
                 );
                 let _ = write_structured_log_with_level("T3_Webview_API", &filter_info, LogLevel::Info);
 
+                // Match by PointId + PointType + PanelId only.
+                // Exclude PointIndex: C++ stores it 0-based (IN1 → index=0) but the
+                // frontend sends 1-based (pointNumber+1=1), causing a systematic mismatch.
                 let mut point_conditions = Vec::new();
                 for point in specific_points {
-                    point_conditions.push("(p.PointId = ? AND p.PointType = ? AND p.PointIndex = ? AND p.PanelId = ?)");
+                    point_conditions.push("(p.PointId = ? AND p.PointType = ? AND p.PanelId = ?)");
                     params.push(point.point_id.clone().into());
                     params.push(point.point_type.clone().into());
-                    params.push(point.point_index.into());
                     params.push(point.panel_id.into());
                 }
 
@@ -382,6 +384,7 @@ impl T3TrendlogDataService {
 
             serde_json::json!({
                 "time": data.logging_time_fmt,
+                "timestamp": data.logging_time_fmt,
                 "value": scaled_value,
                 "point_id": data.point_id,
                 "point_type": data.point_type,
@@ -452,6 +455,7 @@ impl T3TrendlogDataService {
             "panel_id": request.panel_id,
             "trendlog_id": request.trendlog_id,
             "data": formatted_data,
+            "total_records": formatted_data.len(),
             "count": formatted_data.len(),
             "message": message,
             "filtering": {
