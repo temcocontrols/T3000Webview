@@ -426,6 +426,29 @@ const useStyles = makeStyles({
     fontSize: '12px',
     fontStyle: 'italic',
   },
+  treeThisPcBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '0 5px',
+    fontSize: '10px',
+    fontWeight: 600,
+    color: '#0f6cbd',
+    backgroundColor: '#e8f1fb',
+    borderRadius: '3px',
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: '#c7dff7',
+    borderRightWidth: '1px',
+    borderRightStyle: 'solid',
+    borderRightColor: '#c7dff7',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#c7dff7',
+    borderLeftWidth: '1px',
+    borderLeftStyle: 'solid',
+    borderLeftColor: '#c7dff7',
+    flexShrink: 0,
+  },
 
   /* ── Devices strip ── */
   devicesStrip: {
@@ -1069,23 +1092,30 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, he
 
         {/* ══════════════════════════════════════════════════════════
             SCENARIO B — Client
+            Server is always the root hub at top; all clients
+            (including this PC) appear as tree branches below.
         ══════════════════════════════════════════════════════════ */}
         {!loading && health && role === 'client' && (
           <>
-            {/* This PC card */}
-            <div className={s.pcCard}>
-              <DesktopRegular className={s.pcCardIcon} />
+            {/* Server card (root hub) */}
+            <div className={mergeClasses(s.pcCard, s.pcCardServer)}>
+              <ServerRegular className={mergeClasses(s.pcCardIcon, s.pcCardIconServer)} />
               <div className={s.pcCardInfo}>
                 <div className={s.pcCardTitle}>
-                  Client (This PC)
+                  Server
+                  {health.centerDbConnected
+                    ? <Badge appearance="filled" color="success" size="small">● Connected</Badge>
+                    : <Badge appearance="filled" color="danger" size="small">● Disconnected</Badge>}
                 </div>
                 <div className={s.pcCardMeta}>
-                  <span>{selfEntry?.hostname ?? health.hostname ?? '—'}</span>
-                  {selfEntry?.ip_address && (
-                    <><span className={s.metaSep}>·</span><span>{selfEntry.ip_address}</span></>
-                  )}
+                  <span>{serverEntry?.hostname ?? '—'}</span>
                   {serverEntry?.ip_address && (
-                    <><span className={s.metaSep}>·</span><span>Server: {serverEntry.ip_address}</span></>
+                    <><span className={s.metaSep}>·</span><span>{serverEntry.ip_address}</span></>
+                  )}
+                  <span className={s.metaSep}>·</span>
+                  <span>{backendLabel(effectiveCenterBackendType(health))}</span>
+                  {health.lastSyncAgo && (
+                    <><span className={s.metaSep}>·</span><span>Last sync: {health.lastSyncAgo}</span></>
                   )}
                 </div>
               </div>
@@ -1114,23 +1144,54 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, he
             {/* DB test panel */}
             <DbTestPanel />
 
-            {/* Server row */}
-            <div className={s.tree}>
-              <div className={s.treeRow}>
-                <span className={s.treeConnector}>└──</span>
-                <ServerRegular className={s.treeIcon} />
-                <span className={s.treeHostname}>{serverEntry?.hostname ?? '—'}</span>
-                <span className={s.treeIp}>{serverEntry?.ip_address ?? '—'}</span>
-                <span className={s.treeStatus}>
-                  {health.centerDbConnected
-                    ? <><span className={s.treeDotOnline} />{centerDbStatusLabel(health.centerDbStatus, health.centerDbConnected)}</>
-                    : <><span className={s.treeDotOffline} />{centerDbStatusLabel(health.centerDbStatus, health.centerDbConnected)}</>}
-                </span>
-                {health.lastSyncAgo && (
-                  <span className={s.treeMeta}>Last sync: {health.lastSyncAgo}</span>
-                )}
-              </div>
-            </div>
+            {/* All client PCs: this PC first, then peer clients */}
+            {(() => {
+              const allClients = [
+                ...(selfEntry ? [selfEntry] : []),
+                ...clients,
+              ];
+              return allClients.length > 0 ? (
+                <div className={s.tree}>
+                  {allClients.map((entry, i) => {
+                    const isSelf = entry.is_self;
+                    const ps = clientPingState[entry.id];
+                    return (
+                      <div key={entry.id} className={s.treeRow}>
+                        <span className={s.treeConnector}>{i < allClients.length - 1 ? '├──' : '└──'}</span>
+                        <DesktopRegular className={s.treeIcon} />
+                        <span className={s.treeHostname}>{entry.hostname}</span>
+                        {isSelf && <span className={s.treeThisPcBadge}>This PC</span>}
+                        <span className={s.treeIp}>{entry.ip_address}</span>
+                        <span className={s.treeStatus}>
+                          <span className={entry.status === 'online' ? s.treeDotOnline : s.treeDotOffline} />
+                          {entry.status === 'online' ? 'Online' : 'Offline'}
+                        </span>
+                        <span className={s.treeMeta}>Last: {formatLastSeen(entry.last_seen)}</span>
+                        {!isSelf && (
+                          <>
+                            <Button
+                              size="small"
+                              appearance="subtle"
+                              icon={ps?.testing ? <Spinner size="extra-tiny" /> : <NetworkCheckRegular />}
+                              onClick={() => handlePingClient(entry)}
+                              disabled={ps?.testing}
+                              className={s.treeRowPushRight}
+                            >
+                              Test
+                            </Button>
+                            {ps && !ps.testing && ps.ok !== null && (
+                              <span className={ps.ok ? s.clientPingBadgeOk : s.clientPingBadgeFail}>
+                                {ps.msg}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null;
+            })()}
           </>
         )}
 
