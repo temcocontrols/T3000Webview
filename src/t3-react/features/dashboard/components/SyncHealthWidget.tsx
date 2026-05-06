@@ -339,9 +339,11 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
             <span className={styles.statLabel}>{isStandalone ? 'Last Poll' : 'Last Sync'}</span>
           </div>
           <span className={`${styles.statValue} ${metricsBlocked ? styles.statValueWarn : ''}`}>
-            {data.lastSyncAgo ?? 'Never'}
+            {isStandalone ? '—' : (data.lastSyncAgo ?? 'Never')}
           </span>
-          {metricsBlocked ? (
+          {isStandalone ? (
+            <span className={styles.statSub}>No sync in standalone</span>
+          ) : metricsBlocked ? (
             <span className={`${styles.statSub} ${styles.statSubWarn}`}>
               Blocked: values may be stale
             </span>
@@ -357,9 +359,11 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
             <DesktopRegular className={styles.statIcon} />
             <span className={styles.statLabel}>Devices Today</span>
           </div>
-          <span className={`${styles.statValue} ${metricsBlocked ? styles.statValueWarn : ''}`}>{data.devicesSyncedToday}</span>
+          <span className={`${styles.statValue} ${metricsBlocked ? styles.statValueWarn : ''}`}>
+            {isStandalone ? '—' : data.devicesSyncedToday}
+          </span>
           <span className={`${styles.statSub} ${metricsBlocked ? styles.statSubWarn : ''}`}>
-            {metricsBlocked ? 'stale count' : isStandalone ? 'polled' : 'synced'}
+            {isStandalone ? 'N/A in standalone' : metricsBlocked ? 'stale count' : 'synced'}
           </span>
         </div>
 
@@ -369,10 +373,12 @@ export const SyncHealthWidget: React.FC<Props> = ({ onViewLog, data, loading, er
             <span className={styles.statLabel}>Records Today</span>
           </div>
           <span className={`${styles.statValue} ${metricsBlocked ? styles.statValueWarn : ''}`}>
-            {data.recordsToday.total.toLocaleString()}
+            {isStandalone ? '—' : data.recordsToday.total.toLocaleString()}
           </span>
           <span className={`${styles.statSub} ${metricsBlocked ? styles.statSubWarn : ''}`}>
-            {data.recordsToday.inputs}in · {data.recordsToday.outputs}out · {data.recordsToday.variables}var
+            {isStandalone
+              ? 'N/A in standalone'
+              : `${data.recordsToday.inputs}in · ${data.recordsToday.outputs}out · ${data.recordsToday.variables}var`}
           </span>
         </div>
 
