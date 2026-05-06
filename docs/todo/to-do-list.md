@@ -76,3 +76,7 @@ Integrate the T3000 documentation with the F1 Help System.
 Tool: Dr explain
 
 "Can we connect this to our help, F1 function key system.  We could do a new help system in fact"
+
+
+## 2026-05-05
+Running progs on the win pc
