@@ -635,15 +635,12 @@ export const DashboardPage: React.FC = () => {
               {/* Shared DB (server/client) OR Realtime Poll (standalone) */}
               {appMode === 'standalone' ? (
                 <div className={s.kpiCard}>
-                  <span className={s.kpiLabel}>Realtime Poll</span>
-                  <span className={mergeClasses(
-                    s.kpiValueMd,
-                    syncHealth?.samplingPaused ? s.kpiValueRed : s.kpiValueGreen,
-                  )}>
-                    {syncHealth ? (syncHealth.samplingPaused ? 'Paused' : 'Active') : '—'}
+                  <span className={s.kpiLabel}>Background Sync</span>
+                  <span className={s.kpiValueMd}>
+                    N/A
                   </span>
                   <span className={s.kpiDetail}>
-                    {syncHealth?.samplingPaused ? (syncHealth.pausedReason ?? 'Paused') : 'FFI polling running'}
+                    Disabled in standalone mode
                   </span>
                 </div>
               ) : (
@@ -662,12 +659,12 @@ export const DashboardPage: React.FC = () => {
               {/* Last Poll (standalone) / Last Sync (server/client) */}
               <div className={s.kpiCard}>
                 <span className={s.kpiLabel}>{appMode === 'standalone' ? 'Last Poll' : 'Last Sync'}</span>
-                <Tooltip content={syncHealth?.lastSyncTime ?? 'No data recorded'} relationship="description">
-                  <span className={s.kpiValueMd}>{syncHealth?.lastSyncAgo ?? '—'}</span>
+                <Tooltip content={appMode === 'standalone' ? 'No background sync in standalone mode' : (syncHealth?.lastSyncTime ?? 'No data recorded')} relationship="description">
+                  <span className={s.kpiValueMd}>{appMode === 'standalone' ? '—' : (syncHealth?.lastSyncAgo ?? '—')}</span>
                 </Tooltip>
                 <span className={s.kpiDetail}>
                   {appMode === 'standalone'
-                    ? `${syncHealth?.devicesSyncedToday ?? 0} device${syncHealth?.devicesSyncedToday !== 1 ? 's' : ''} polled`
+                    ? 'No sync in standalone mode'
                     : `${syncHealth?.devicesSyncedToday ?? 0} device${syncHealth?.devicesSyncedToday !== 1 ? 's' : ''} today`}
                 </span>
               </div>
@@ -676,12 +673,14 @@ export const DashboardPage: React.FC = () => {
               <div className={s.kpiCard}>
                 <span className={s.kpiLabel}>Records Today</span>
                 <span className={s.kpiValue}>
-                  {syncHealth?.recordsToday.total.toLocaleString() ?? '—'}
+                  {appMode === 'standalone' ? '—' : (syncHealth?.recordsToday.total.toLocaleString() ?? '—')}
                 </span>
                 <span className={s.kpiDetail}>
-                  {syncHealth
-                    ? `${syncHealth.recordsToday.inputs}in · ${syncHealth.recordsToday.outputs}out · ${syncHealth.recordsToday.variables}var`
-                    : '—'}
+                  {appMode === 'standalone'
+                    ? 'N/A in standalone mode'
+                    : (syncHealth
+                      ? `${syncHealth.recordsToday.inputs}in · ${syncHealth.recordsToday.outputs}out · ${syncHealth.recordsToday.variables}var`
+                      : '—')}
                 </span>
               </div>
 
