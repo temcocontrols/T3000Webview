@@ -65,9 +65,14 @@ interface TrendSummary {
   stalledPoints: StalledPoint[];
 }
 
+export interface TrendDeviceOption {
+  serial: number;
+  panel: number;
+}
+
 interface TrendLogsProps {
   isStandalone?: boolean;
-  onVerify?: (serial: number, panel: number) => void;
+  onVerify?: (serial: number, panel: number, devices: TrendDeviceOption[]) => void;
 }
 
 const ACTIVITY_SERIES_NAMES = ['Total Samples', 'Active Points', 'Devices Reporting'] as const;
@@ -273,7 +278,7 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false, onVe
         });
 
         if (onVerify && devices.length > 0) {
-          onVerify(devices[0].serial, devices[0].panel);
+          onVerify(devices[0].serial, devices[0].panel, devices.map(d => ({ serial: d.serial, panel: d.panel })));
         }
 
         if (parsed.length === 0) {

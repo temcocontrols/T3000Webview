@@ -31,7 +31,7 @@ import { API_BASE_URL } from '../../../config/constants';
 import { getIniConfig, IniConfig } from '../../database/services/databaseConfigApi';
 import { SyncHealthWidget } from '../components/SyncHealthWidget';
 import { SyncLogDrawer } from '../components/SyncLogDrawer';
-import { TrendLogs } from '../components/TrendLogs';
+import { TrendLogs, TrendDeviceOption } from '../components/TrendLogs';
 import { TrendlogVerifyDrawer } from '../../trendlogs/components/TrendlogVerifyDrawer';
 import { RecentActivity, ActivitySummary } from '../components/RecentActivity';
 import { NetworkTopologyWidget } from '../components/NetworkTopologyWidget';
@@ -481,6 +481,7 @@ export const DashboardPage: React.FC = () => {
   const [verifyDrawerOpen, setVerifyDrawerOpen] = useState(false);
   const [verifySerial, setVerifySerial] = useState<number | null>(null);
   const [verifyPanel, setVerifyPanel] = useState<number | null>(null);
+  const [verifyDevices, setVerifyDevices] = useState<TrendDeviceOption[]>([]);
   const [iniConfig, setIniConfig] = useState<IniConfig | null>(null);
   const [serverMetrics, setServerMetrics] = useState<ServerSyncMetrics | null>(null);
   // Track whether we're in "fast poll" mode (after a mode change, waiting for restart)
@@ -812,7 +813,7 @@ export const DashboardPage: React.FC = () => {
             <TrendLogs
               key={trendRefreshKey}
               isStandalone={appMode === 'standalone'}
-              onVerify={(serial, panel) => { setVerifySerial(serial); setVerifyPanel(panel); }}
+              onVerify={(serial, panel, devs) => { setVerifySerial(serial); setVerifyPanel(panel); setVerifyDevices(devs); }}
             />
           </div>
         </div>
@@ -823,6 +824,7 @@ export const DashboardPage: React.FC = () => {
             onClose={() => setVerifyDrawerOpen(false)}
             serialNumber={verifySerial}
             panelId={verifyPanel ?? 1}
+            devices={verifyDevices}
           />
         )}
 

@@ -1,6 +1,5 @@
 .drawer {
-  width: 860px;
-  max-width: 98vw;
+  width: min(1180px, 95vw);
 }
 
 /* ── Header ────────────────────────────────────── */
@@ -44,6 +43,13 @@
   height: 28px;
   font-size: 12px;
   min-width: 130px;
+}
+
+.deviceSelect {
+  height: 28px;
+  font-size: 12px;
+  min-width: 180px;
+  margin-top: 2px;
 }
 
 /* ── Body ───────────────────────────────────────── */

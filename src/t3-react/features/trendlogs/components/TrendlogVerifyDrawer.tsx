@@ -31,11 +31,17 @@ import styles from './TrendlogVerifyDrawer.module.css';
 // Types
 // ─────────────────────────────────────────────
 
+interface DeviceOption {
+  serial: number;
+  panel: number;
+}
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   serialNumber: number;
   panelId: number;
+  devices?: DeviceOption[];    // list of available devices for selection
   trendlogId?: string;         // optional: when absent, queries all data for device/panel
   trendlogLabel?: string;
   intervalSeconds?: number; // sampling interval — used for expected-count math
@@ -136,8 +142,9 @@ function Sparkline({ data, width = 200, height = 40 }: { data: { t: number; v: n
 export const TrendlogVerifyDrawer: React.FC<Props> = ({
   isOpen,
   onClose,
-  serialNumber,
-  panelId,
+  serialNumber: initialSerial,
+  panelId: initialPanel,
+  devices,
   trendlogId,
   trendlogLabel,
   intervalSeconds,
@@ -148,6 +155,15 @@ export const TrendlogVerifyDrawer: React.FC<Props> = ({
   const [rawRecords, setRawRecords] = useState<RawRecord[]>([]);
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
   const [fetchedAt, setFetchedAt] = useState<Date | null>(null);
+  const [activeSerial, setActiveSerial] = useState<number>(initialSerial);
+  const [activePanel, setActivePanel] = useState<number>(initialPanel);
+
+  // Sync if parent changes the default
+  useEffect(() => { setActiveSerial(initialSerial); }, [initialSerial]);
+  useEffect(() => { setActivePanel(initialPanel); }, [initialPanel]);
+
+  const serialNumber = activeSerial;
+  const panelId = activePanel;
 
   // ── Fetch history data ──────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -330,11 +346,31 @@ export const TrendlogVerifyDrawer: React.FC<Props> = ({
           <DataBarVerticalRegular className={styles.headerIcon} />
           <div>
             <Text weight="semibold" size={400}>Verify Trendlog Data</Text>
-            <Text size={200} className={styles.headerSub}>
-              {trendlogId
-                ? (trendlogLabel ? `${trendlogId} · ${trendlogLabel}` : trendlogId) + ` · SN:${serialNumber} / Panel:${panelId}`
-                : `All points · SN:${serialNumber} / Panel:${panelId}`}
-            </Text>
+            {devices && devices.length > 1 ? (
+              <Select
+                value={`${activeSerial}:${activePanel}`}
+                onChange={(_, d) => {
+                  const [s, p] = d.value.split(':').map(Number);
+                  setActiveSerial(s);
+                  setActivePanel(p);
+                  setRawRecords([]);
+                  setSelectedPointId(null);
+                }}
+                className={styles.deviceSelect}
+              >
+                {devices.map(dev => (
+                  <option key={`${dev.serial}:${dev.panel}`} value={`${dev.serial}:${dev.panel}`}>
+                    SN-{dev.serial} / Panel:{dev.panel}
+                  </option>
+                ))}
+              </Select>
+            ) : (
+              <Text size={200} className={styles.headerSub}>
+                {trendlogId
+                  ? (trendlogLabel ? `${trendlogId} · ${trendlogLabel}` : trendlogId) + ` · SN:${serialNumber} / Panel:${panelId}`
+                  : `All points · SN:${serialNumber} / Panel:${panelId}`}
+              </Text>
+            )}
           </div>
         </div>
         <div className={styles.headerRight}>
