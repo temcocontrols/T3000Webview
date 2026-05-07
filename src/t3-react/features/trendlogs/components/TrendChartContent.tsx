@@ -784,7 +784,9 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       return;
     }
 
-    if (series.length === 0) {
+    // Use ref to avoid stale closure — seriesRef is updated synchronously in initializeSeries
+    const currentSeries = seriesRef.current;
+    if (currentSeries.length === 0) {
       console.warn('⚠️ TrendChartContent: No series initialized yet');
       return;
     }
@@ -846,7 +848,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         end_time: formatLocalTime(new Date(endTime)),
         limit: 10000,
         point_types: ['INPUT', 'OUTPUT', 'VARIABLE', 'MONITOR'],
-        specific_points: series.map((s) => ({
+        specific_points: currentSeries.map((s) => ({
           point_id: s.pointId,
           point_type: s.pointType,
           point_index: s.pointIndex, // Already 1-based from monitor config
@@ -863,8 +865,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         dataPoints: response.data.length,
       });
 
-      // 🆕 Process and MERGE data into series (don't replace)
-      const updatedSeries = [...series];
+      // Process and MERGE data into series (don't replace)
+      const updatedSeries = [...seriesRef.current]; // Use ref for latest state
       response.data.forEach((point) => {
         const seriesIndex = updatedSeries.findIndex(
           (s) => s.pointId === point.point_id && s.pointType === point.point_type
@@ -901,7 +903,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     } finally {
       setLoading(false);
     }
-  }, [serialNumber, panelId, trendlogId, timeBase, series, getExistingDataTimeRange, timeOffset, formatLocalTime]);
+  }, [serialNumber, panelId, trendlogId, timeBase, getExistingDataTimeRange, timeOffset, formatLocalTime]);
 
   /**
    * Initialize series from monitor configuration (enhanced with itemData support)
@@ -960,18 +962,28 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
         // Now create series using the cached data
         const generatedSeries: TrendSeries[] = props.monitorInputs.map((input, index) => {
-          const pointTypeStr = input.pointType === 'IN' ? 'INPUT' :
-                              input.pointType === 'OUT' ? 'OUTPUT' :
-                              input.pointType === 'VAR' ? 'VARIABLE' : 'INPUT';
-          const pointPrefix = input.pointType;
-          const pointIndex = parseInt(input.pointIndex, 10);
-          const pointId = `${pointPrefix}${pointIndex}`;
+          // TRENDLOG_INPUTS.Point_Type is stored as "INPUT"/"OUTPUT"/"VARIABLE" (full name)
+          // but may also arrive as legacy short form "IN"/"OUT"/"VAR" — handle both
+          const rawType = input.pointType || '';
+          const pointTypeStr: 'INPUT' | 'OUTPUT' | 'VARIABLE' =
+            (rawType === 'INPUT' || rawType === 'IN') ? 'INPUT' :
+            (rawType === 'OUTPUT' || rawType === 'OUT') ? 'OUTPUT' :
+            (rawType === 'VARIABLE' || rawType === 'VAR') ? 'VARIABLE' : 'INPUT';
+          // Derive the short prefix used in PointId ("IN1", "OUT1", "VAR1")
+          const pointPrefix = pointTypeStr === 'INPUT' ? 'IN' : pointTypeStr === 'OUTPUT' ? 'OUT' : 'VAR';
 
-          // Look up digital_analog from cached data
+          // TRENDLOG_INPUTS.Point_Index is 0-based (from C++ point_number).
+          // TRENDLOG_DATA.PointId is 1-based (e.g., "IN1" for C++ index 0).
+          // → rawIndex is used for cache lookup; pointId uses rawIndex+1
+          const rawIndex = parseInt(input.pointIndex, 10);   // 0-based
+          const pointIndex = rawIndex + 1;                   // 1-based, matches TRENDLOG_DATA.PointId
+          const pointId = `${pointPrefix}${pointIndex}`;     // e.g., "IN1", "OUT2", "VAR3"
+
+          // Look up digital_analog from cached data (INPUTS table InputIndex is also 0-based)
           let digitalAnalog: 'Digital' | 'Analog' = 'Analog'; // Default
           const points = pointsCache[pointTypeStr] || [];
           const point = points.find((p: any) =>
-            parseInt(p.inputIndex || p.outputIndex || p.variableIndex || '0', 10) === pointIndex
+            parseInt(p.inputIndex || p.outputIndex || p.variableIndex || '0', 10) === rawIndex
           );
 
           if (point && point.digitalAnalog !== undefined && point.digitalAnalog !== null) {
@@ -995,6 +1007,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           };
         });
 
+        seriesRef.current = generatedSeries; // Update ref synchronously before setState
         setSeries(generatedSeries);
         console.log('✅ TrendChartContent: Series initialized from monitorInputs', {
           count: generatedSeries.length,
@@ -1049,6 +1062,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           });
         }
 
+        seriesRef.current = generatedSeries; // Update ref synchronously before setState
         setSeries(generatedSeries);
         console.log('TrendChartContent: Series initialized from itemData', {
           count: generatedSeries.length,
