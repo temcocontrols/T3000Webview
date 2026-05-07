@@ -1,0 +1,295 @@
+.drawer {
+  width: 860px;
+  max-width: 98vw;
+}
+
+/* ── Header ────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid #edebe9;
+  background: #fafafa;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.headerIcon {
+  font-size: 22px;
+  color: #0078d4;
+  flex-shrink: 0;
+}
+
+.headerSub {
+  display: block;
+  color: #605e5c;
+  margin-top: 1px;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.rangeSelect {
+  height: 28px;
+  font-size: 12px;
+  min-width: 130px;
+}
+
+/* ── Body ───────────────────────────────────────── */
+.body {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Overview row ───────────────────────────────── */
+.overviewRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #edebe9;
+  background: #ffffff;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.overviewCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 14px;
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  background: #fafafa;
+  min-width: 80px;
+}
+
+.cardGreen {
+  border-color: #107c10;
+  background: #f1faf1;
+}
+
+.cardYellow {
+  border-color: #f7a800;
+  background: #fffbf0;
+}
+
+.cardRed {
+  border-color: #d13438;
+  background: #fef6f6;
+}
+
+.overviewLabel {
+  color: #605e5c;
+  margin-top: 2px;
+}
+
+.fetchedAt {
+  margin-left: auto;
+  color: #a19f9d;
+}
+
+/* ── Main two-column layout ─────────────────────── */
+.mainLayout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Left: points table ─────────────────────────── */
+.tablePanel {
+  flex: 0 0 480px;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+  border-right: 1px solid #edebe9;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f5f5f5;
+}
+
+.tablePanel::-webkit-scrollbar { width: 5px; height: 5px; }
+.tablePanel::-webkit-scrollbar-track { background: #f5f5f5; }
+.tablePanel::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #d6e4f7;
+  color: #2c4c7c;
+  font-weight: 600;
+  font-size: 11px;
+  padding: 0 10px;
+  height: 32px;
+  border-bottom: 2px solid #b8cce4;
+  border-right: 1px solid #b8cce4;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.th:last-child { border-right: none; }
+
+.tr {
+  cursor: pointer;
+  border-bottom: 1px solid #f3f2f1;
+  transition: background 0.08s;
+}
+
+.tr:hover { background: #f3f2f1; }
+
+.trSelected { background: #e6f2ff !important; }
+
+.td {
+  padding: 0 10px;
+  height: 30px;
+  border-right: 1px solid #f3f2f1;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.td:last-child { border-right: none; }
+
+.tdNum {
+  padding: 0 10px;
+  height: 30px;
+  border-right: 1px solid #f3f2f1;
+  text-align: right;
+  vertical-align: middle;
+}
+
+.pointCell {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ── Right: detail panel ────────────────────────── */
+.detailPanel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f5f5f5;
+  gap: 14px;
+}
+
+.detailHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #edebe9;
+}
+
+/* ── Sparkline ──────────────────────────────────── */
+.sparklineBox {
+  background: #fafafa;
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  padding: 10px 12px 6px;
+}
+
+.sparklineSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.sparklineEmpty {
+  font-size: 11px;
+  color: #a19f9d;
+}
+
+.sparklineAxis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+/* ── Health summary ─────────────────────────────── */
+.healthBox {
+  background: #fafafa;
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  padding: 12px;
+}
+
+.healthTitle {
+  display: block;
+  margin-bottom: 10px;
+  color: #323130;
+}
+
+.healthGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+.healthItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ── Status icons ───────────────────────────────── */
+.iconActive  { color: #107c10; font-size: 13px; }
+.iconStalled { color: #f7a800; font-size: 13px; }
+.iconNodata  { color: #d13438; font-size: 13px; }
+
+/* ── Number colours ─────────────────────────────── */
+.numGreen { color: #107c10; }
+.numRed   { color: #d13438; }
+
+/* ── Utility ────────────────────────────────────── */
+.muted { color: #605e5c; }
+
+.center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.errorBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #fef6f6;
+  border-bottom: 1px solid #f3d5d5;
+  flex-shrink: 0;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.rotating { animation: rotate 1s linear infinite; }

@@ -23,6 +23,7 @@ import {
   CheckmarkCircleRegular,
   DismissCircleRegular,
   InfoRegular,
+  DataBarVerticalRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { getSyncHealth, getServerSyncMetrics, SyncHealthData, ServerSyncMetrics } from '../services/syncHealthApi';
@@ -31,6 +32,7 @@ import { getIniConfig, IniConfig } from '../../database/services/databaseConfigA
 import { SyncHealthWidget } from '../components/SyncHealthWidget';
 import { SyncLogDrawer } from '../components/SyncLogDrawer';
 import { TrendLogs } from '../components/TrendLogs';
+import { TrendlogVerifyDrawer } from '../../trendlogs/components/TrendlogVerifyDrawer';
 import { RecentActivity, ActivitySummary } from '../components/RecentActivity';
 import { NetworkTopologyWidget } from '../components/NetworkTopologyWidget';
 import { ModeBanner } from '../components/ModeBanner';
@@ -476,6 +478,9 @@ export const DashboardPage: React.FC = () => {
   const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null);
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [trendRefreshKey, setTrendRefreshKey] = useState(0);
+  const [verifyDrawerOpen, setVerifyDrawerOpen] = useState(false);
+  const [verifySerial, setVerifySerial] = useState<number | null>(null);
+  const [verifyPanel, setVerifyPanel] = useState<number | null>(null);
   const [iniConfig, setIniConfig] = useState<IniConfig | null>(null);
   const [serverMetrics, setServerMetrics] = useState<ServerSyncMetrics | null>(null);
   // Track whether we're in "fast poll" mode (after a mode change, waiting for restart)
@@ -785,6 +790,16 @@ export const DashboardPage: React.FC = () => {
                 onClick={() => setTrendRefreshKey((v) => v + 1)}
                 title="Refresh trend logs"
               />
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={<DataBarVerticalRegular />}
+                onClick={() => setVerifyDrawerOpen(true)}
+                disabled={verifySerial === null}
+                title={verifySerial !== null ? 'Verify trendlog data' : 'Loading device data…'}
+              >
+                Verify Data
+              </Button>
               <button
                 className={s.viewAll}
                 onClick={() => { window.location.hash = '#/t3000/trendlogs'; }}
@@ -794,9 +809,22 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
           <div className={s.trendlogWrapper}>
-            <TrendLogs key={trendRefreshKey} isStandalone={appMode === 'standalone'} />
+            <TrendLogs
+              key={trendRefreshKey}
+              isStandalone={appMode === 'standalone'}
+              onVerify={(serial, panel) => { setVerifySerial(serial); setVerifyPanel(panel); }}
+            />
           </div>
         </div>
+
+        {verifySerial !== null && (
+          <TrendlogVerifyDrawer
+            isOpen={verifyDrawerOpen}
+            onClose={() => setVerifyDrawerOpen(false)}
+            serialNumber={verifySerial}
+            panelId={verifyPanel ?? 1}
+          />
+        )}
 
         {/* ── Monitoring ── */}
         <div className={s.section}>

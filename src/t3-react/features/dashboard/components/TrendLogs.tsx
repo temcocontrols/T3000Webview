@@ -67,6 +67,7 @@ interface TrendSummary {
 
 interface TrendLogsProps {
   isStandalone?: boolean;
+  onVerify?: (serial: number, panel: number) => void;
 }
 
 const ACTIVITY_SERIES_NAMES = ['Total Samples', 'Active Points', 'Devices Reporting'] as const;
@@ -76,7 +77,7 @@ const formatBucketTime = (timestamp: number): string => {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 };
 
-export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) => {
+export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false, onVerify }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<echarts.ECharts | null>(null);
   const [loading, setLoading] = useState(true);
@@ -270,6 +271,10 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
           devices,
           stalledPoints: stalledPointsList,
         });
+
+        if (onVerify && devices.length > 0) {
+          onVerify(devices[0].serial, devices[0].panel);
+        }
 
         if (parsed.length === 0) {
           disposeChart();
