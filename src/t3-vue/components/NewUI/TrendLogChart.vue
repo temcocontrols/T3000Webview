@@ -7541,6 +7541,9 @@
       })
 
       // Fetch all panels in parallel; offline panels return [] (do not throw)
+      // Track whether the primary panel's API call actually failed (network error / null response)
+      // vs returned empty data (no recordings yet) — only the former is a connection error.
+      let primaryPanelApiFailed = false
       const perPanelData = await Promise.all(
         Array.from(panelGroups.entries()).map(async ([pid, points]) => {
           const panelSN = getSnForHistoryPanel(pid)
@@ -7556,6 +7559,8 @@
           try {
             const resp = await trendlogAPI.getTrendlogHistory(req)
             if (!resp || (resp as any)?.error) {
+              // API returned null or an error object — this is a real failure
+              if (pid === currentPanelId) primaryPanelApiFailed = true
               LogUtil.Warn(`⚠️ History fetch failed for panel ${pid}`, (resp as any)?.error || 'null response')
               return [] as any[]
             }
@@ -7563,6 +7568,8 @@
             // Tag each item with its panel_id (TrendlogDataPoint lacks this field)
             return items.map(item => ({ ...item, panel_id: pid }))
           } catch (err) {
+            // Network / fetch exception — real failure
+            if (pid === currentPanelId) primaryPanelApiFailed = true
             LogUtil.Warn(`⚠️ History fetch error for panel ${pid}`, err)
             return [] as any[]
           }
@@ -7570,8 +7577,10 @@
       )
       const historyData = perPanelData.flat()
 
-      // Only treat as connection error if the primary panel itself returned nothing
-      if (historyData.length === 0 && panelGroups.size === 1 && panelGroups.has(currentPanelId)) {
+      // Only treat as a connection error when the primary panel API actually failed
+      // (null response, network error, or server error). An empty-but-successful response
+      // just means no recordings exist yet — fall through to the graceful no-data handler.
+      if (primaryPanelApiFailed && historyData.length === 0) {
         hasConnectionError.value = true
         throw new Error('Failed to fetch historical data - primary panel returned no data')
       }
