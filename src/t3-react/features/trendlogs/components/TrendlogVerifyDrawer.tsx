@@ -14,7 +14,6 @@ import {
   Badge,
   Spinner,
   Text,
-  Select,
   Menu,
   MenuTrigger,
   MenuPopover,
@@ -507,30 +506,50 @@ export const TrendlogVerifyDrawer: React.FC<Props> = ({
               </Menu>
             );
           })()}
-          <Select
-            value={timeRange}
-            onChange={(_, d) => setTimeRange(d.value as TimeRange)}
-            className={styles.rangeSelect}
-          >
-            <option value="1h">Last 1 hour</option>
-            <option value="6h">Last 6 hours</option>
-            <option value="24h">Last 24 hours</option>
-            <option value="3d">Last 3 days</option>
-            <option value="7d">Last 7 days</option>
-            <option value="14d">Last 14 days</option>
-            <option value="30d">Last 30 days</option>
-            <option value="all">All data</option>
-          </Select>
-          <Button
-            appearance="subtle"
-            size="small"
-            icon={<ArrowSyncRegular className={loading ? styles.rotating : undefined} />}
+          {(() => {
+            const RANGE_OPTIONS: { value: TimeRange; label: string }[] = [
+              { value: '1h',  label: 'Last 1 hour' },
+              { value: '6h',  label: 'Last 6 hours' },
+              { value: '24h', label: 'Last 24 hours' },
+              { value: '3d',  label: 'Last 3 days' },
+              { value: '7d',  label: 'Last 7 days' },
+              { value: '14d', label: 'Last 14 days' },
+              { value: '30d', label: 'Last 30 days' },
+              { value: 'all', label: 'All data' },
+            ];
+            const current = RANGE_OPTIONS.find(o => o.value === timeRange)?.label ?? timeRange;
+            return (
+              <Menu>
+                <MenuTrigger disableButtonEnhancement>
+                  <button className={styles.rangeMenuBtn}>
+                    <span className={styles.rangeMenuLabel}>{current}</span>
+                    <ChevronDownRegular className={styles.rangeMenuChevron} />
+                  </button>
+                </MenuTrigger>
+                <MenuPopover>
+                  <MenuList>
+                    {RANGE_OPTIONS.map(o => (
+                      <MenuItem
+                        key={o.value}
+                        className={`${styles.rangeMenuItem} ${timeRange === o.value ? styles.rangeMenuItemActive : ''}`}
+                        onClick={() => setTimeRange(o.value)}
+                      >
+                        {o.label}
+                      </MenuItem>
+                    ))}
+                  </MenuList>
+                </MenuPopover>
+              </Menu>
+            );
+          })()}
+          <button
+            className={styles.refreshBtn}
             onClick={fetchData}
             disabled={loading}
-            className={styles.refreshBtn}
           >
+            <ArrowSyncRegular className={`${styles.refreshIcon} ${loading ? styles.rotating : ''}`} />
             Refresh
-          </Button>
+          </button>
           <Button appearance="subtle" icon={<Dismiss24Regular />} onClick={onClose} />
         </div>
       </div>

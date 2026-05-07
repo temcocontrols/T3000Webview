@@ -51,14 +51,69 @@
   flex-shrink: 0;
 }
 
-.rangeSelect {
+.rangeMenuBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 7px 0 9px;
+  border: 1px solid #d1d1d1;
+  border-radius: 4px;
+  background: #ffffff;
+  cursor: pointer;
   height: 26px;
-  font-size: 11px;
-  min-width: 120px;
+  min-width: 110px;
+  transition: border-color 0.1s, background 0.1s;
 }
 
+.rangeMenuBtn:hover {
+  border-color: #b3b0ad;
+  background: #f5f5f5;
+}
+
+.rangeMenuLabel {
+  font-size: 11px;
+  color: #323130;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.rangeMenuChevron {
+  font-size: 10px;
+  color: #605e5c;
+  flex-shrink: 0;
+}
+
+.rangeMenuItem {
+  font-size: 12px;
+}
+
+.rangeMenuItemActive {
+  font-weight: 600;
+  color: #0078d4;
+}
+
+/* ── Refresh button ──────────────────────────── */
 .refreshBtn {
-  font-size: 11px !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  height: 26px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #323130;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.refreshBtn:hover:not(:disabled) { background: #f0f0f0; }
+.refreshBtn:disabled { color: #a19f9d; cursor: not-allowed; }
+
+.refreshIcon {
+  font-size: 13px;
+  color: inherit;
 }
 
 .deviceSelect {
