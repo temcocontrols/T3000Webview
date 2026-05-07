@@ -47,6 +47,7 @@ export interface TrendSeries {
   digitalAnalog: 'Analog' | 'Digital';
   visible?: boolean;
   prefix?: string; // NEW: Category prefix (IN, OUT, VAR, etc.) - from Vue update
+  panelId?: number; // Panel ID for multi-panel support
 }
 
 interface TrendChartProps {
@@ -54,6 +55,7 @@ interface TrendChartProps {
   timeBase: '5m' | '10m' | '30m' | '1h' | '4h' | '12h' | '1d' | '4d';
   showGrid?: boolean;
   chartType?: 'analog' | 'digital'; // New prop to distinguish chart types
+  timeOffset?: number; // Minutes offset from current time (0 = live, negative = past)
   onTimeRangeChange?: (startTime: number, endTime: number) => void;
   onChartReady?: (instance: echarts.ECharts) => void;
 }
@@ -83,6 +85,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
   timeBase,
   showGrid = true,
   chartType = 'analog', // Default to analog for backward compatibility
+  timeOffset = 0,
   onTimeRangeChange,
   onChartReady,
 }) => {
@@ -209,8 +212,8 @@ export const TrendChart: React.FC<TrendChartProps> = ({
       animation: false,
     }));
 
-    // Calculate time range
-    const now = Date.now();
+    // Calculate time range (adjusted by timeOffset for historical navigation)
+    const now = Date.now() + timeOffset * 60 * 1000;
     const startTime = now - (timeConfig.totalMinutes * 60 * 1000);
 
     // Configure chart - Match Chart.js styling
