@@ -286,7 +286,17 @@ export const TrendlogVerifyDrawer: React.FC<Props> = ({
       }
     }
 
-    return Array.from(map.values()).sort((a, b) => a.pointId.localeCompare(b.pointId));
+    return Array.from(map.values()).sort((a, b) => {
+      // Natural / numeric sort: extract trailing number so IN2 < IN10
+      const parse = (id: string) => {
+        const m = id.match(/^([A-Za-z_]+)(\d+)$/);
+        return m ? { prefix: m[1], num: parseInt(m[2], 10) } : { prefix: id, num: 0 };
+      };
+      const pa = parse(a.pointId);
+      const pb = parse(b.pointId);
+      const pc = pa.prefix.localeCompare(pb.prefix);
+      return pc !== 0 ? pc : pa.num - pb.num;
+    });
   }, [rawRecords]);
 
   // Auto-select first point
@@ -346,25 +356,7 @@ export const TrendlogVerifyDrawer: React.FC<Props> = ({
           <DataBarVerticalRegular className={styles.headerIcon} />
           <div>
             <Text weight="semibold" size={400}>Verify Trendlog Data</Text>
-            {devices && devices.length > 1 ? (
-              <Select
-                value={`${activeSerial}:${activePanel}`}
-                onChange={(_, d) => {
-                  const [s, p] = d.value.split(':').map(Number);
-                  setActiveSerial(s);
-                  setActivePanel(p);
-                  setRawRecords([]);
-                  setSelectedPointId(null);
-                }}
-                className={styles.deviceSelect}
-              >
-                {devices.map(dev => (
-                  <option key={`${dev.serial}:${dev.panel}`} value={`${dev.serial}:${dev.panel}`}>
-                    SN-{dev.serial} / Panel:{dev.panel}
-                  </option>
-                ))}
-              </Select>
-            ) : (
+            {(!devices || devices.length <= 1) && (
               <Text size={200} className={styles.headerSub}>
                 {trendlogId
                   ? (trendlogLabel ? `${trendlogId} · ${trendlogLabel}` : trendlogId) + ` · SN:${serialNumber} / Panel:${panelId}`
@@ -374,6 +366,25 @@ export const TrendlogVerifyDrawer: React.FC<Props> = ({
           </div>
         </div>
         <div className={styles.headerRight}>
+          {devices && devices.length > 1 && (
+            <Select
+              value={`${activeSerial}:${activePanel}`}
+              onChange={(_, d) => {
+                const [s, p] = d.value.split(':').map(Number);
+                setActiveSerial(s);
+                setActivePanel(p);
+                setRawRecords([]);
+                setSelectedPointId(null);
+              }}
+              className={styles.deviceSelect}
+            >
+              {devices.map(dev => (
+                <option key={`${dev.serial}:${dev.panel}`} value={`${dev.serial}:${dev.panel}`}>
+                  SN-{dev.serial} / Panel:{dev.panel}
+                </option>
+              ))}
+            </Select>
+          )}
           <Select
             value={timeRange}
             onChange={(_, d) => setTimeRange(d.value as TimeRange)}

@@ -1,5 +1,15 @@
 .drawer {
   width: min(1180px, 95vw);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Force the Fluent DrawerBody to take the full panel width */
+.drawer :global(.fui-DrawerBody) {
+  padding: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* ── Header ────────────────────────────────────── */
@@ -12,6 +22,8 @@
   background: #fafafa;
   flex-shrink: 0;
   gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .headerLeft {
@@ -54,11 +66,13 @@
 
 /* ── Body ───────────────────────────────────────── */
 .body {
-  padding: 0;
+  padding: 0 !important;
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ── Overview row ───────────────────────────────── */
@@ -71,6 +85,8 @@
   background: #ffffff;
   flex-shrink: 0;
   flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .overviewCard {
