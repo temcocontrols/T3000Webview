@@ -92,6 +92,16 @@ function fmtTime(iso: string | null): string {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+// Smart value formatter: keeps integers clean, rounds decimals appropriately
+function fmtVal(v: number): string {
+  if (!isFinite(v)) return '—';
+  if (Number.isInteger(v)) return v.toLocaleString();
+  if (Math.abs(v) >= 1000) return v.toLocaleString(undefined, { maximumFractionDigits: 1 });
+  if (Math.abs(v) >= 1)    return v.toFixed(2);
+  if (Math.abs(v) >= 0.001) return v.toFixed(4);
+  return v.toPrecision(3);
+}
+
 function timeRangeMs(range: TimeRange): number | null {
   const map: Record<string, number> = {
     '1h':  3_600_000,
@@ -106,7 +116,8 @@ function timeRangeMs(range: TimeRange): number | null {
 }
 
 function toIso(d: Date): string {
-  return d.toISOString().replace('T', ' ').slice(0, 19);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
 function expectedCount(intervalSec: number | undefined, rangeMs: number): number {
@@ -206,6 +217,10 @@ function PointChart({ data, height = 160 }: { data: { t: number; v: number }[]; 
       <line x1={padL} x2={W - padR} y1={H - padB} y2={H - padB} stroke="#c8c6c4" strokeWidth="1" />
       {/* Line */}
       <polyline points={pts} fill="none" stroke="#0078d4" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* Dot markers — show individual points when data is sparse enough */}
+      {data.length <= 150 && data.map((d, i) => (
+        <circle key={i} cx={cx(d.t).toFixed(1)} cy={cy(d.v).toFixed(1)} r="2.5" fill="#0078d4" opacity="0.6" />
+      ))}
       {/* Tooltip */}
       {tooltip && (
         <>
@@ -256,10 +271,36 @@ export const TrendlogVerifyDrawer: React.FC<Props> = ({
   const [fetchedAt, setFetchedAt] = useState<Date | null>(null);
   const [activeSerial, setActiveSerial] = useState<number>(initialSerial);
   const [activePanel, setActivePanel] = useState<number>(initialPanel);
+  // Offset (ms) = serverLocalTime - clientLocalTime. Applied when building query dates
+  // so that clients in different timezones send the correct window to the server.
+  const [serverOffsetMs, setServerOffsetMs] = useState<number>(0);
 
   // Sync if parent changes the default
   useEffect(() => { setActiveSerial(initialSerial); }, [initialSerial]);
   useEffect(() => { setActivePanel(initialPanel); }, [initialPanel]);
+
+  // Fetch server time once on mount to detect timezone mismatch
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/server/time`)
+      .then(r => r.json())
+      .then((d: { server_time: string; utc_offset_seconds: number }) => {
+        const serverNow = new Date(d.server_time).getTime(); // parsed as local (no tz suffix)
+        const clientNow = Date.now();
+        // server_time has no tz info so JS parses it as local — we need UTC equivalent
+        const serverUtc = clientNow - d.utc_offset_seconds * 1000 + new Date().getTimezoneOffset() * -60000;
+        // Actually: compute offset as difference between server's local epoch and client's local epoch
+        // server_time string is server-local; interpret via utc_offset to get true UTC
+        const serverUtcMs = serverNow - new Date().getTimezoneOffset() * 60000 + d.utc_offset_seconds * 1000;
+        const diff = serverUtcMs - clientNow;
+        // Only apply if meaningful (> 1 minute difference)
+        if (Math.abs(diff) > 60_000) {
+          setServerOffsetMs(diff);
+          console.info(`[TrendlogVerify] Server timezone offset vs client: ${Math.round(diff / 60000)} min`);
+        }
+        void serverUtc; // suppress unused warning
+      })
+      .catch(() => { /* ignore — fall back to client local time */ });
+  }, []);
 
   const serialNumber = activeSerial;
   const panelId = activePanel;
@@ -270,7 +311,8 @@ export const TrendlogVerifyDrawer: React.FC<Props> = ({
     setLoading(true);
     setError(null);
 
-    const now = new Date();
+    // Use server-adjusted "now" so the query window aligns with server local time
+    const now = new Date(Date.now() + serverOffsetMs);
     const rangeMs = timeRangeMs(timeRange);
     const start = rangeMs !== null ? new Date(now.getTime() - rangeMs) : new Date(0);
 
@@ -301,7 +343,10 @@ export const TrendlogVerifyDrawer: React.FC<Props> = ({
           units: r.units || '',
         }));
       } else {
-        const fmt = (d: Date) => d.toISOString().slice(0, 19);
+        const fmt = (d: Date) => {
+          const pad = (n: number) => String(n).padStart(2, '0');
+          return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        };
         const res = await fetch(`${API_BASE_URL}/api/database/trendlog/query`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -330,7 +375,7 @@ export const TrendlogVerifyDrawer: React.FC<Props> = ({
     } finally {
       setLoading(false);
     }
-  }, [serialNumber, panelId, trendlogId, timeRange]);
+  }, [serialNumber, panelId, trendlogId, timeRange, serverOffsetMs]);
 
   useEffect(() => {
     if (isOpen) fetchData();
@@ -686,7 +731,7 @@ export const TrendlogVerifyDrawer: React.FC<Props> = ({
 
                       {/* Chart with axes + tooltip */}
                       <div className={styles.chartBox}>
-                        <PointChart data={selectedStat.values} height={160} />
+                        <PointChart data={selectedStat.values} height={180} />
                       </div>
 
                       {/* Health summary */}
@@ -729,6 +774,70 @@ export const TrendlogVerifyDrawer: React.FC<Props> = ({
                           </div>
                         </div>
                       </div>
+
+                      {/* ── Raw data log table ── */}
+                      <div className={styles.dataLogBox}>
+                        <div className={styles.dataLogHeader}>
+                          <Text weight="semibold" size={200}>Logged Values</Text>
+                          <Text size={100} className={styles.muted}>
+                            {selectedStat.values.length.toLocaleString()} records
+                            {selectedStat.values.length > 200 ? ' · showing latest 200' : ''}
+                          </Text>
+                        </div>
+                        <div className={styles.dataLogScroll}>
+                          <table className={styles.dataLogTable}>
+                            <thead>
+                              <tr>
+                                <th className={styles.dataLogThIdx}>#</th>
+                                <th className={styles.dataLogTh}>Time</th>
+                                <th className={styles.dataLogThRight}>Value</th>
+                                <th className={styles.dataLogThGap}>Gap</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(() => {
+                                const sorted = [...selectedStat.values].reverse(); // newest first
+                                return sorted.slice(0, 200).map((rec, idx) => {
+                                  const prev = sorted[idx + 1];
+                                  const gapMin = prev ? (rec.t - prev.t) / 60_000 : null;
+                                  const isLargeGap = gapMin !== null && intervalSeconds
+                                    ? gapMin > (intervalSeconds / 60) * 2.5
+                                    : false;
+                                  const rowNum = selectedStat.values.length - idx;
+                                  return (
+                                    <tr
+                                      key={rec.t}
+                                      className={`${styles.dataLogTr} ${isLargeGap ? styles.dataLogTrGap : ''}`}
+                                    >
+                                      <td className={styles.dataLogTdNum}>{rowNum}</td>
+                                      <td className={styles.dataLogTd}>
+                                        {new Date(rec.t).toLocaleString([], {
+                                          month: 'short', day: 'numeric',
+                                          hour: '2-digit', minute: '2-digit', second: '2-digit',
+                                        })}
+                                      </td>
+                                      <td className={styles.dataLogTdNum}>
+                                        <span className={styles.dataLogValue}>{fmtVal(rec.v)}</span>
+                                        {selectedStat.units && (
+                                          <span className={styles.dataLogUnit}> {selectedStat.units}</span>
+                                        )}
+                                      </td>
+                                      <td className={styles.dataLogTd}>
+                                        {gapMin !== null ? (
+                                          <span className={isLargeGap ? styles.numRed : styles.muted}>
+                                            {gapMin < 1 ? '<1m' : `${Math.round(gapMin)}m`}
+                                          </span>
+                                        ) : '—'}
+                                      </td>
+                                    </tr>
+                                  );
+                                });
+                              })()}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
                     </>
                   ) : (
                     <div className={styles.center}>

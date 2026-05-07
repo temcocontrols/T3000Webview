@@ -520,3 +520,107 @@
 }
 
 .rotating { animation: rotate 1s linear infinite; }
+
+/* ── Data log table ─────────────────────────────── */
+.dataLogBox {
+  background: #fafafa;
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 260px;
+}
+
+.dataLogHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px 6px;
+  border-bottom: 1px solid #edebe9;
+  flex-shrink: 0;
+  background: #f3f8fe;
+}
+
+.dataLogScroll {
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f5f5f5;
+}
+
+.dataLogScroll::-webkit-scrollbar { width: 5px; }
+.dataLogScroll::-webkit-scrollbar-track { background: #f5f5f5; }
+.dataLogScroll::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+
+.dataLogTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.dataLogTh {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #edf3fb;
+  color: #2c4c7c;
+  font-weight: 600;
+  font-size: 11px;
+  padding: 4px 9px;
+  border-bottom: 1px solid #c8d8ef;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dataLogThIdx {
+  composes: dataLogTh;
+  width: 38px;
+}
+
+.dataLogThRight {
+  composes: dataLogTh;
+  text-align: right;
+}
+
+.dataLogThGap {
+  composes: dataLogTh;
+  width: 52px;
+}
+
+.dataLogTr {
+  border-bottom: 1px solid #f3f2f1;
+  transition: background 0.06s;
+}
+
+.dataLogTr:hover { background: #eef4fb; }
+
+.dataLogTrGap { background: #fff8e1; }
+.dataLogTrGap:hover { background: #fff0c0; }
+
+.dataLogTd {
+  padding: 3px 9px;
+  color: #323130;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.dataLogTdNum {
+  padding: 3px 9px;
+  text-align: right;
+  color: #323130;
+  vertical-align: middle;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dataLogValue {
+  font-weight: 600;
+  color: #0050a0;
+}
+
+.dataLogUnit {
+  font-size: 10px;
+  color: #8a8886;
+}

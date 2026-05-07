@@ -3,6 +3,7 @@ use std::{env, error::Error};
 use axum::{
     http::StatusCode,
     routing::{get, get_service},
+    Json,
     Router,
 };
 
@@ -21,6 +22,17 @@ use crate::{
 
 use super::modbus_register::routes::modbus_register_routes;
 use super::user::routes::user_routes;
+
+/// Returns the server's current local time as an ISO-8601 string (no timezone suffix).
+/// The frontend uses this to align query windows with the server's clock, regardless
+/// of whether the client is in a different timezone.
+async fn server_time_handler() -> Json<serde_json::Value> {
+    let now = chrono::Local::now();
+    Json(serde_json::json!({
+        "server_time": now.format("%Y-%m-%dT%H:%M:%S").to_string(),
+        "utc_offset_seconds": now.offset().local_minus_utc(),
+    }))
+}
 
 fn routes_static() -> Router {
     Router::new().nest_service(
@@ -105,6 +117,8 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         .merge(crate::database_management::sync_health::sync_health_routes())
         // Developer Tools routes
         .nest("/api/develop", crate::t3_develop::create_develop_routes())
+        // Server local-time endpoint (for client timezone alignment)
+        .route("/api/server/time", get(server_time_handler))
         // Real-time trend data routes - TEMPORARILY DISABLED
         // .nest("/api", crate::t3_device::trend_routes::trend_data_routes())
         .with_state(app_state)
