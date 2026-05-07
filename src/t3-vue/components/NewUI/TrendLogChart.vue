@@ -9481,10 +9481,17 @@
       //    a period (no null entries, just a big timestamp jump).
       // ──────────────────────────────────────────────────────────────────────
 
-      // Compute median sample interval from first 30 consecutive real-point pairs
+      // ── Recording-interval basis for gap threshold ────────────────────────
+      // Priority 1: use the trendlog recording interval from props (minute_interval_time
+      //   + second_interval_time). This is exact and avoids false breaks from jitter.
+      // Priority 2: compute median from first 30 consecutive real-point pairs
+      //   when no valid config is present (legacy / unknown devices).
+      const configuredIntervalMs = getInternalIntervalSeconds() > 0
+        ? getInternalIntervalSeconds() * 1000
+        : null
       const realOnly = sortedAll.filter(p => p.value !== null && p.value !== undefined && !isNaN(Number(p.value)))
       let medianIntervalMs = 5 * 60 * 1000 // default 5 min if not enough data
-      if (realOnly.length >= 2) {
+      if (!configuredIntervalMs && realOnly.length >= 2) {
         const deltas: number[] = []
         const pairCount = Math.min(30, realOnly.length - 1)
         for (let k = 0; k < pairCount; k++) {
@@ -9493,8 +9500,9 @@
         deltas.sort((a, b) => a - b)
         medianIntervalMs = deltas[Math.floor(deltas.length / 2)]
       }
-      // Break when gap > 3× median interval, but never below 2 minutes
-      const gapThresholdMs = Math.max(medianIntervalMs * 3, 2 * 60 * 1000)
+      const effectiveIntervalMs = configuredIntervalMs ?? medianIntervalMs
+      // Break when gap > 3× the recording interval, but never below 2 minutes
+      const gapThresholdMs = Math.max(effectiveIntervalMs * 3, 2 * 60 * 1000)
 
       const MAX_NULL_RUN = 5
       const dataWithGaps: Array<{ x: number; y: number | null }> = []
@@ -9616,9 +9624,13 @@
       // 2. Time-gap break: consecutive real points far apart (> 3× recording
       //    interval, min 2 min) break the line — handles device-offline gaps
       //    where no null entries exist, just a large timestamp jump.
+      // Use same interval priority as analog: trendlog recording interval > median-from-data
+      const configuredIntervalMsD = getInternalIntervalSeconds() > 0
+        ? getInternalIntervalSeconds() * 1000
+        : null
       const realOnlyD = sortedAllD.filter((p: any) => p.value !== null && p.value !== undefined && !isNaN(Number(p.value)))
       let medianIntervalMsD = 5 * 60 * 1000 // default 5 min
-      if (realOnlyD.length >= 2) {
+      if (!configuredIntervalMsD && realOnlyD.length >= 2) {
         const deltasD: number[] = []
         const pairCountD = Math.min(30, realOnlyD.length - 1)
         for (let k = 0; k < pairCountD; k++) {
@@ -9627,7 +9639,8 @@
         deltasD.sort((a: number, b: number) => a - b)
         medianIntervalMsD = deltasD[Math.floor(deltasD.length / 2)]
       }
-      const gapThresholdMsD = Math.max(medianIntervalMsD * 3, 2 * 60 * 1000)
+      const effectiveIntervalMsD = configuredIntervalMsD ?? medianIntervalMsD
+      const gapThresholdMsD = Math.max(effectiveIntervalMsD * 3, 2 * 60 * 1000)
 
       const MAX_NULL_RUN_D = 5
       const dataWithGapsD: Array<{ x: number; y: number | null; control?: number }> = []
