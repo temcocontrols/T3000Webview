@@ -4,8 +4,8 @@
 
 Use this page to understand what Shared Center DB is and whether you need it. If you manage multiple T3000 PCs and want them to share trend logs and device data across the network — this is the feature for you.
 
-- Full SQL Server install steps: [SQL Server Express Setup](./sql-server-express-setup.md)
-- Full T3000 UI walkthrough: [T3000 Center DB Configuration](./t3000-center-db-config.md)
+- Full SQL Server install steps: [SQL Server Express Setup](https://github.com/temcocontrols/T3000Webview/blob/main/docs/t3000/shared-db/sql-server-express-setup.md)
+- Full T3000 UI walkthrough: [T3000 Center DB Configuration](https://github.com/temcocontrols/T3000Webview/blob/main/docs/t3000/shared-db/t3000-center-db-config.md)
 
 ---
 
@@ -250,5 +250,5 @@ After saving the configuration and restarting T3000, open the Dashboard at `loca
 
 ## 7. Next Steps
 
-- **Set up SQL Server on the host PC:** [SQL Server Express Setup](./sql-server-express-setup.md)
-- **Configure T3000 UI on each PC:** [T3000 Center DB Configuration](./t3000-center-db-config.md)
+- **Set up SQL Server on the host PC:** [SQL Server Express Setup](https://github.com/temcocontrols/T3000Webview/blob/main/docs/t3000/shared-db/sql-server-express-setup.md)
+- **Configure T3000 UI on each PC:** [T3000 Center DB Configuration](https://github.com/temcocontrols/T3000Webview/blob/main/docs/t3000/shared-db/t3000-center-db-config.md)

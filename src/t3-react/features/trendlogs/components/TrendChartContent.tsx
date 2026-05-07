@@ -53,6 +53,7 @@ import {
   ErrorCircleRegular,
   ChevronRightRegular,
   ChevronDownFilled,
+  ArrowClockwiseRegular,
 } from '@fluentui/react-icons';
 import { TrendChart, TrendSeries } from './TrendChart';
 import { TrendChartApiService, TrendDataRequest, SpecificPoint } from '../services/trendChartApi';
@@ -609,6 +610,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const [currentView, setCurrentView] = useState<1 | 2 | 3>(1);
   const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set());
   const [dataSource, setDataSource] = useState<'realtime' | 'api' | 'loading' | 'error'>('loading');
+  const [timeOffset, setTimeOffset] = useState(0); // minutes from now (0 = live, negative = past)
 
   // Refs
   const realtimeIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -617,6 +619,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const historyAbortControllerRef = useRef<AbortController | null>(null);
   const hasLoadedInitialDataRef = useRef<boolean>(false);
   const chartInstanceRef = useRef<any>(null);
+  const seriesRef = useRef<TrendSeries[]>([]);
+  const timeBaseRef = useRef<TimeBase>('5m');
 
   /**
    * Computed: Visible analog series (Vue pattern)
@@ -650,6 +654,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     [series]
   );
 
+  // Keep refs in sync with state (for stale-closure-free interval callbacks)
+  useEffect(() => { seriesRef.current = series; }, [series]);
+  useEffect(() => { timeBaseRef.current = timeBase; }, [timeBase]);
+
   /**
    * Helper: Toggle series expansion
    */
@@ -671,6 +679,80 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const getPrefixTag = useCallback((pointType: string, prefix?: string): string => {
     // Use prefix if available (from series data), otherwise fall back to pointType
     return prefix || pointType || 'N/A';
+  }, []);
+
+  /**
+   * Helper: Format Date to local time string for API (backend stores in local time)
+   */
+  const formatLocalTime = useCallback((date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }, []);
+
+  /**
+   * Helper: Get time range in minutes for a given TimeBase
+   */
+  const getTimeRangeMinutes = useCallback((tb: TimeBase): number => {
+    const map: Record<TimeBase, number> = {
+      '5m': 5, '10m': 10, '30m': 30, '1h': 60,
+      '4h': 240, '12h': 720, '1d': 1440, '4d': 5760,
+    };
+    return map[tb];
+  }, []);
+
+  /**
+   * Restore live mode - reset timeOffset and enable realtime
+   */
+  const restoreLiveMode = useCallback(() => {
+    setTimeOffset(0);
+    setIsRealtime(true);
+  }, []);
+
+  /**
+   * Scroll time window left (backward in time).
+   * If in live mode, exits live mode first then scrolls.
+   */
+  const moveTimeLeft = useCallback(() => {
+    if (isRealtime) {
+      setIsRealtime(false);
+      if (realtimeIntervalRef.current) {
+        clearInterval(realtimeIntervalRef.current);
+        realtimeIntervalRef.current = null;
+      }
+    }
+    const shiftMinutes = getTimeRangeMinutes(timeBase);
+    setTimeOffset(prev => prev - shiftMinutes);
+  }, [timeBase, isRealtime, getTimeRangeMinutes]);
+
+  /**
+   * Scroll time window right (forward in time, capped at live/0)
+   */
+  const moveTimeRight = useCallback(() => {
+    if (isRealtime) return;
+    const shiftMinutes = getTimeRangeMinutes(timeBase);
+    const newOffset = Math.min(0, timeOffset + shiftMinutes);
+    if (newOffset === 0) {
+      restoreLiveMode();
+      return;
+    }
+    setTimeOffset(newOffset);
+  }, [timeBase, isRealtime, timeOffset, getTimeRangeMinutes, restoreLiveMode]);
+
+  /**
+   * Get last known value for a series (shown in series panel items)
+   */
+  const getLastValue = useCallback((s: TrendSeries): string => {
+    if (!s.data || s.data.length === 0) return '\u2013';
+    const lastVal = s.data[s.data.length - 1].value;
+    if (s.digitalAnalog === 'Digital') {
+      return lastVal > 0.5 ? 'ON (1)' : 'OFF (0)';
+    }
+    return `${lastVal.toFixed(2)}${s.unit ? ' ' + s.unit : ''}`;
   }, []);
 
   /**
@@ -696,13 +778,15 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   /**
    * Load historical data from database (enhanced with Vue flow logic)
    */
-  const loadHistoricalData = useCallback(async () => {
+  const loadHistoricalData = useCallback(async (forceReload = false) => {
     if (!serialNumber || !panelId) {
       console.warn('⚠️ TrendChartContent: Missing serialNumber or panelId');
       return;
     }
 
-    if (series.length === 0) {
+    // Use ref to avoid stale closure — seriesRef is updated synchronously in initializeSeries
+    const currentSeries = seriesRef.current;
+    if (currentSeries.length === 0) {
       console.warn('⚠️ TrendChartContent: No series initialized yet');
       return;
     }
@@ -710,8 +794,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     setLoading(true);
 
     try {
-      // Calculate time range based on timeBase
-      const now = Date.now();
+      // Calculate time range based on timeBase (adjusted by timeOffset for historical navigation)
+      const now = Date.now() + timeOffset * 60 * 1000;
       const timeRanges: Record<TimeBase, number> = {
         '5m': 5 * 60 * 1000,
         '10m': 10 * 60 * 1000,
@@ -727,8 +811,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       let startTime = now - timeRangeMs;
       let endTime = now;
 
-      // 🆕 SMART LOADING: Check if we already have data in this time range
-      const existingRange = getExistingDataTimeRange();
+      // 🆕 SMART LOADING: Check if we already have data in this time range (skip when force reload)
+      const existingRange = forceReload ? null : getExistingDataTimeRange();
       if (existingRange) {
         console.log('📊 TrendChartContent: Existing data detected - optimizing load range', {
           requestedRange: {
@@ -755,32 +839,20 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         }
       }
 
-      // Format timestamps for API - use UTC to match backend storage (Vue pattern)
-      const formatUTCDateTime = (timestamp: number) => {
-        const date = new Date(timestamp);
-        const year = date.getUTCFullYear();
-        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(date.getUTCDate()).padStart(2, '0');
-        const hours = String(date.getUTCHours()).padStart(2, '0');
-        const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-        const seconds = String(date.getUTCSeconds()).padStart(2, '0');
-        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-      };
-
-      // Build request
+      // Build request (use local time to match backend storage)
       const request: TrendDataRequest = {
         serial_number: serialNumber,
         panel_id: panelId,
         trendlog_id: trendlogId,
-        start_time: formatUTCDateTime(startTime),
-        end_time: formatUTCDateTime(endTime),
+        start_time: formatLocalTime(new Date(startTime)),
+        end_time: formatLocalTime(new Date(endTime)),
         limit: 10000,
         point_types: ['INPUT', 'OUTPUT', 'VARIABLE', 'MONITOR'],
-        specific_points: series.map((s) => ({
+        specific_points: currentSeries.map((s) => ({
           point_id: s.pointId,
           point_type: s.pointType,
           point_index: s.pointIndex, // Already 1-based from monitor config
-          panel_id: panelId,
+          panel_id: s.panelId || panelId, // Use series-specific panelId for multi-panel support
         })),
       };
 
@@ -793,8 +865,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         dataPoints: response.data.length,
       });
 
-      // 🆕 Process and MERGE data into series (don't replace)
-      const updatedSeries = [...series];
+      // Process and MERGE data into series (don't replace)
+      const updatedSeries = [...seriesRef.current]; // Use ref for latest state
       response.data.forEach((point) => {
         const seriesIndex = updatedSeries.findIndex(
           (s) => s.pointId === point.point_id && s.pointType === point.point_type
@@ -831,7 +903,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     } finally {
       setLoading(false);
     }
-  }, [serialNumber, panelId, trendlogId, timeBase, series, getExistingDataTimeRange]);
+  }, [serialNumber, panelId, trendlogId, timeBase, getExistingDataTimeRange, timeOffset, formatLocalTime]);
 
   /**
    * Initialize series from monitor configuration (enhanced with itemData support)
@@ -890,18 +962,28 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
         // Now create series using the cached data
         const generatedSeries: TrendSeries[] = props.monitorInputs.map((input, index) => {
-          const pointTypeStr = input.pointType === 'IN' ? 'INPUT' :
-                              input.pointType === 'OUT' ? 'OUTPUT' :
-                              input.pointType === 'VAR' ? 'VARIABLE' : 'INPUT';
-          const pointPrefix = input.pointType;
-          const pointIndex = parseInt(input.pointIndex, 10);
-          const pointId = `${pointPrefix}${pointIndex}`;
+          // TRENDLOG_INPUTS.Point_Type is stored as "INPUT"/"OUTPUT"/"VARIABLE" (full name)
+          // but may also arrive as legacy short form "IN"/"OUT"/"VAR" — handle both
+          const rawType = input.pointType || '';
+          const pointTypeStr: 'INPUT' | 'OUTPUT' | 'VARIABLE' =
+            (rawType === 'INPUT' || rawType === 'IN') ? 'INPUT' :
+            (rawType === 'OUTPUT' || rawType === 'OUT') ? 'OUTPUT' :
+            (rawType === 'VARIABLE' || rawType === 'VAR') ? 'VARIABLE' : 'INPUT';
+          // Derive the short prefix used in PointId ("IN1", "OUT1", "VAR1")
+          const pointPrefix = pointTypeStr === 'INPUT' ? 'IN' : pointTypeStr === 'OUTPUT' ? 'OUT' : 'VAR';
 
-          // Look up digital_analog from cached data
+          // TRENDLOG_INPUTS.Point_Index is 0-based (from C++ point_number).
+          // TRENDLOG_DATA.PointId is 1-based (e.g., "IN1" for C++ index 0).
+          // → rawIndex is used for cache lookup; pointId uses rawIndex+1
+          const rawIndex = parseInt(input.pointIndex, 10);   // 0-based
+          const pointIndex = rawIndex + 1;                   // 1-based, matches TRENDLOG_DATA.PointId
+          const pointId = `${pointPrefix}${pointIndex}`;     // e.g., "IN1", "OUT2", "VAR3"
+
+          // Look up digital_analog from cached data (INPUTS table InputIndex is also 0-based)
           let digitalAnalog: 'Digital' | 'Analog' = 'Analog'; // Default
           const points = pointsCache[pointTypeStr] || [];
           const point = points.find((p: any) =>
-            parseInt(p.inputIndex || p.outputIndex || p.variableIndex || '0', 10) === pointIndex
+            parseInt(p.inputIndex || p.outputIndex || p.variableIndex || '0', 10) === rawIndex
           );
 
           if (point && point.digitalAnalog !== undefined && point.digitalAnalog !== null) {
@@ -925,6 +1007,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           };
         });
 
+        seriesRef.current = generatedSeries; // Update ref synchronously before setState
         setSeries(generatedSeries);
         console.log('✅ TrendChartContent: Series initialized from monitorInputs', {
           count: generatedSeries.length,
@@ -979,6 +1062,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           });
         }
 
+        seriesRef.current = generatedSeries; // Update ref synchronously before setState
         setSeries(generatedSeries);
         console.log('TrendChartContent: Series initialized from itemData', {
           count: generatedSeries.length,
@@ -1039,68 +1123,83 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   }, [serialNumber, panelId, props.itemData]);
 
   /**
-   * Handle realtime updates (enhanced with Vue flow)
+   * Poll latest data from history API (replaces broken realtime endpoint)
+   * Uses refs to avoid stale closure issues in setInterval callbacks
    */
-  const updateRealtimeData = useCallback(async () => {
-    if (!isRealtime || !serialNumber || !panelId || series.length === 0) return;
+  const pollRealtimeData = useCallback(async () => {
+    const currentSeries = seriesRef.current;
+    if (!serialNumber || !panelId || currentSeries.length === 0) return;
 
     try {
-      const points: SpecificPoint[] = series.map((s) => ({
-        point_id: s.pointId,
-        point_type: s.pointType,
-        point_index: s.pointIndex,
+      const now = Date.now();
+      const currentTimeBase = timeBaseRef.current;
+      const timeRangeMs: Record<TimeBase, number> = {
+        '5m': 5 * 60 * 1000, '10m': 10 * 60 * 1000, '30m': 30 * 60 * 1000,
+        '1h': 60 * 60 * 1000, '4h': 4 * 60 * 60 * 1000, '12h': 12 * 60 * 60 * 1000,
+        '1d': 24 * 60 * 60 * 1000, '4d': 4 * 24 * 60 * 60 * 1000,
+      };
+      const startMs = now - timeRangeMs[currentTimeBase];
+
+      const fmt = (date: Date) => {
+        const y = date.getFullYear(), mo = String(date.getMonth() + 1).padStart(2, '0'),
+          d = String(date.getDate()).padStart(2, '0'), h = String(date.getHours()).padStart(2, '0'),
+          mi = String(date.getMinutes()).padStart(2, '0'), s = String(date.getSeconds()).padStart(2, '0');
+        return `${y}-${mo}-${d} ${h}:${mi}:${s}`;
+      };
+
+      const request: TrendDataRequest = {
+        serial_number: serialNumber,
         panel_id: panelId,
-      }));
+        trendlog_id: trendlogId,
+        start_time: fmt(new Date(startMs)),
+        end_time: fmt(new Date(now)),
+        limit: 500,
+        point_types: ['INPUT', 'OUTPUT', 'VARIABLE', 'MONITOR'],
+        specific_points: currentSeries.map((s) => ({
+          point_id: s.pointId,
+          point_type: s.pointType,
+          point_index: s.pointIndex,
+          panel_id: s.panelId || panelId,
+        })),
+      };
 
-      const newData = await TrendChartApiService.getRealtimeData(serialNumber, panelId, points);
+      const response = await TrendChartApiService.getTrendHistory(request);
 
-      if (newData.length > 0) {
-        const updatedSeries = [...series];
-        newData.forEach((point) => {
-          const seriesIndex = updatedSeries.findIndex(
-            (s) => s.pointId === point.point_id && s.pointType === point.point_type
-          );
-          if (seriesIndex !== -1) {
-            const timestamp = new Date(point.timestamp).getTime();
-
-            // Deduplication: check if timestamp already exists
-            const exists = updatedSeries[seriesIndex].data.some((d) => d.timestamp === timestamp);
-            if (!exists) {
-              updatedSeries[seriesIndex].data.push({
-                timestamp,
-                value: point.value,
-              });
-            }
-
-            // Keep only data within time range
-            const timeRanges: Record<TimeBase, number> = {
-              '5m': 5 * 60 * 1000,
-              '10m': 10 * 60 * 1000,
-              '30m': 30 * 60 * 1000,
-              '1h': 60 * 60 * 1000,
-              '4h': 4 * 60 * 60 * 1000,
-              '12h': 12 * 60 * 60 * 1000,
-              '1d': 24 * 60 * 60 * 1000,
-              '4d': 4 * 24 * 60 * 60 * 1000,
-            };
-            const cutoffTime = Date.now() - timeRanges[timeBase];
-            updatedSeries[seriesIndex].data = updatedSeries[seriesIndex].data.filter(
-              (d) => d.timestamp >= cutoffTime
+      if (response.data.length > 0) {
+        setSeries(prev => {
+          const updated = prev.map(s => ({ ...s, data: [...s.data] }));
+          response.data.forEach(point => {
+            const idx = updated.findIndex(
+              s => s.pointId === point.point_id && s.pointType === point.point_type
             );
-
-            // Sort after adding new data
-            updatedSeries[seriesIndex].data.sort((a, b) => a.timestamp - b.timestamp);
-          }
+            if (idx !== -1) {
+              const timestamp = new Date(point.timestamp).getTime();
+              const exists = updated[idx].data.some(d => d.timestamp === timestamp);
+              if (!exists) {
+                updated[idx].data.push({ timestamp, value: point.value });
+                updated[idx].data.sort((a, b) => a.timestamp - b.timestamp);
+                if (timestamp > lastDataTimestampRef.current) {
+                  lastDataTimestampRef.current = timestamp;
+                }
+              }
+            }
+          });
+          return updated;
         });
-
-        setSeries(updatedSeries);
-        setDataSource('realtime'); // Track that data came from real-time updates
+        setDataSource('realtime');
       }
     } catch (error) {
-      console.error('TrendChartContent: Realtime update failed', error);
+      console.error('TrendChartContent: Realtime poll failed', error);
       setDataSource('error');
     }
-  }, [isRealtime, serialNumber, panelId, series, timeBase]);
+  }, [serialNumber, panelId, trendlogId]);
+
+  /**
+   * Manual refresh: force full reload of historical data
+   */
+  const manualRefresh = useCallback(async () => {
+    await loadHistoricalData(true);
+  }, [loadHistoricalData]);
 
   /**
    * Handle visibility change - backfill missing data
@@ -1216,7 +1315,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           // Ensure real-time updates are active
           if (!realtimeIntervalRef.current) {
             console.log('🔄 TrendChartContent: Starting real-time updates');
-            realtimeIntervalRef.current = setInterval(updateRealtimeData, 5000);
+            realtimeIntervalRef.current = setInterval(pollRealtimeData, 5000);
           }
         } else {
           // Auto Scroll OFF: Load historical data only
@@ -1276,7 +1375,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       if (!realtimeIntervalRef.current) {
         console.log('▶️ TrendChartContent: Starting real-time updates interval');
         realtimeIntervalRef.current = setInterval(() => {
-          updateRealtimeData();
+          pollRealtimeData();
         }, 5000);
       }
     } else {
@@ -1382,6 +1481,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   }, [timeBase]);
 
   const resetTimeBase = useCallback(() => {
+    setTimeOffset(0);
+    setIsRealtime(true);
     setTimeBase('5m');
   }, []);
 
@@ -1494,18 +1595,20 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         <Button
           appearance="subtle"
           icon={<ArrowLeftRegular fontSize={16} />}
-          onClick={() => console.log('Move time left')}
-          disabled={isRealtime || loading}
+          onClick={moveTimeLeft}
+          disabled={loading}
           size="small"
           style={{ minWidth: '20px', padding: '2px', width: '20px' }}
+          title="Scroll Left (←)"
         />
         <Button
           appearance="subtle"
           icon={<ArrowRightRegular fontSize={16} />}
-          onClick={() => console.log('Move time right')}
+          onClick={moveTimeRight}
           disabled={isRealtime || loading}
           size="small"
           style={{ minWidth: '20px', padding: '2px', width: '20px' }}
+          title="Scroll Right (→)"
         />
       </div>
 
@@ -1515,9 +1618,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           appearance="subtle"
           icon={<ArrowUpRegular fontSize={16} />}
           onClick={zoomIn}
-          disabled={loading}
+          disabled={loading || timeBaseOrder.indexOf(timeBase) === 0}
           size="small"
           style={{ fontSize: '11px', padding: '2px 6px', fontWeight: 'normal' }}
+          title="Zoom In (↑)"
         >
           Zoom In
         </Button>
@@ -1525,9 +1629,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           appearance="subtle"
           icon={<ArrowDownRegular fontSize={16} />}
           onClick={zoomOut}
-          disabled={loading}
+          disabled={loading || timeBaseOrder.indexOf(timeBase) === timeBaseOrder.length - 1}
           size="small"
           style={{ fontSize: '11px', padding: '2px 6px', fontWeight: 'normal' }}
+          title="Zoom Out (↓)"
         >
           Zoom Out
         </Button>
@@ -1595,14 +1700,19 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
       {/* Status Tags */}
       <div className={styles.statusTags}>
-        <div className={`${styles.statusTag} ${isRealtime ? styles.statusTagLive : styles.statusTagHistorical}`}>
+        <div
+          className={`${styles.statusTag} ${isRealtime ? styles.statusTagLive : styles.statusTagHistorical}`}
+          onClick={!isRealtime ? restoreLiveMode : undefined}
+          style={{ cursor: !isRealtime ? 'pointer' : 'default' }}
+          title={!isRealtime ? 'Click to restore live mode' : ''}
+        >
           {isRealtime ? (
             <>
               <span className={styles.liveIndicator}>●</span>
               {`Live-${new Date().toLocaleTimeString('en-US', { hour12: false })}`}
             </>
           ) : (
-            'Historical'
+            'Historical — click to restore live'
           )}
         </div>
         <div className={`${styles.statusTag} ${styles.statusTagTimeBase}`}>
@@ -1674,6 +1784,9 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     zoomIn,
     zoomOut,
     resetTimeBase,
+    moveTimeLeft,
+    moveTimeRight,
+    restoreLiveMode,
     exportToPNG,
     exportToCSV,
     exportToJSON,
@@ -1726,6 +1839,15 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                       Error
                     </Badge>
                   )}
+                  <Button
+                    appearance="subtle"
+                    icon={<ArrowClockwiseRegular />}
+                    size="small"
+                    onClick={manualRefresh}
+                    disabled={loading}
+                    title="Manual Refresh"
+                    style={{ minWidth: '24px', width: '24px', height: '24px', padding: 0 }}
+                  />
                 </div>
               </div>
 
@@ -1834,6 +1956,9 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                               <Text className={styles.seriesItemUnit}>
                                 {s.unit || 'N/A'}
                               </Text>
+                              <Text size={100} style={{ color: tokens.colorNeutralForeground2, fontWeight: 600, marginLeft: '4px' }}>
+                                {getLastValue(s)}
+                              </Text>
                             </div>
                           </div>
                         </div>
@@ -1890,6 +2015,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
               timeBase={timeBase}
               showGrid={showGrid}
               chartType="analog"
+              timeOffset={timeOffset}
               onChartReady={(instance) => { chartInstanceRef.current = instance; }}
             />
           </div>
@@ -1936,6 +2062,15 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                         Error
                       </Badge>
                     )}
+                    <Button
+                      appearance="subtle"
+                      icon={<ArrowClockwiseRegular />}
+                      size="small"
+                      onClick={manualRefresh}
+                      disabled={loading}
+                      title="Manual Refresh"
+                      style={{ minWidth: '24px', width: '24px', height: '24px', padding: 0 }}
+                    />
                   </div>
                 )}
               </div>
@@ -2048,6 +2183,9 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                               <Text className={styles.seriesItemUnit}>
                                 {s.unit || 'ON/OFF'}
                               </Text>
+                              <Text size={100} style={{ color: tokens.colorNeutralForeground2, fontWeight: 600, marginLeft: '4px' }}>
+                                {getLastValue(s)}
+                              </Text>
                             </div>
                           </div>
                         </div>
@@ -2094,6 +2232,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                   timeBase={timeBase}
                   showGrid={showGrid}
                   chartType="digital"
+                  timeOffset={timeOffset}
                 />
               </div>
             ))}

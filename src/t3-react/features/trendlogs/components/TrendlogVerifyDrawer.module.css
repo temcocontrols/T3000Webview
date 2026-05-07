@@ -1,0 +1,626 @@
+.drawer {
+  width: min(1180px, 95vw);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Force the Fluent DrawerBody to take the full panel width */
+.drawer :global(.fui-DrawerBody) {
+  padding: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* ── Header ────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid #edebe9;
+  background: #fafafa;
+  flex-shrink: 0;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.headerIcon {
+  font-size: 22px;
+  color: #0078d4;
+  flex-shrink: 0;
+}
+
+.headerSub {
+  display: block;
+  color: #605e5c;
+  margin-top: 1px;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.rangeMenuBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 7px 0 9px;
+  border: 1px solid #d1d1d1;
+  border-radius: 4px;
+  background: #ffffff;
+  cursor: pointer;
+  height: 26px;
+  min-width: 110px;
+  transition: border-color 0.1s, background 0.1s;
+}
+
+.rangeMenuBtn:hover {
+  border-color: #b3b0ad;
+  background: #f5f5f5;
+}
+
+.rangeMenuLabel {
+  font-size: 11px;
+  color: #323130;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.rangeMenuChevron {
+  font-size: 10px;
+  color: #605e5c;
+  flex-shrink: 0;
+}
+
+.rangeMenuItem {
+  font-size: 12px;
+}
+
+.rangeMenuItemActive {
+  font-weight: 600;
+  color: #0078d4;
+}
+
+/* ── Refresh button ──────────────────────────── */
+.refreshBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  height: 26px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #323130;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.refreshBtn:hover:not(:disabled) { background: #f0f0f0; }
+.refreshBtn:disabled { color: #a19f9d; cursor: not-allowed; }
+
+.refreshIcon {
+  font-size: 13px;
+  color: inherit;
+}
+
+.deviceSelect {
+  height: 28px;
+  font-size: 12px;
+  min-width: 180px;
+  margin-top: 2px;
+}
+
+/* ── Device menu button ──────────────────────── */
+.deviceMenuBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 10px;
+  border: 1px solid #d1d1d1;
+  border-radius: 4px;
+  background: #ffffff;
+  cursor: pointer;
+  min-width: 260px;
+  max-width: 340px;
+  height: 32px;
+  text-align: left;
+  transition: border-color 0.1s, background 0.1s;
+}
+
+.deviceMenuBtn:hover {
+  border-color: #b3b0ad;
+  background: #f5f5f5;
+}
+
+.deviceMenuLabel {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.deviceMenuName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #323130;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+}
+
+.deviceMenuSub {
+  font-size: 11px;
+  color: #8a8886;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.deviceMenuChevron {
+  font-size: 12px;
+  color: #605e5c;
+  flex-shrink: 0;
+}
+
+/* ── Device menu item ───────────────────────── */
+.deviceMenuItem {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 2px 0;
+}
+
+.deviceMenuItemName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #323130;
+}
+
+.deviceMenuItemSub {
+  font-size: 11px;
+  color: #8a8886;
+}
+
+/* ── Combined stats + filter bar ─────────────────── */
+.statsBar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 16px;
+  border-bottom: 1px solid #edebe9;
+  background: #f8f8f8;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+  height: 44px;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.statsDivider {
+  width: 1px;
+  height: 24px;
+  background: #d1d1d1;
+  margin: 0 12px;
+  flex-shrink: 0;
+}
+
+.statsCards {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.filterBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 12px;
+  border-radius: 14px;
+  border: 1px solid #d1d1d1;
+  background: #ffffff;
+  color: #323130;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.filterBtn:hover { background: #f3f2f1; border-color: #b3b0ad; }
+
+.filterBtnActive {
+  background: #0078d4;
+  border-color: #0078d4;
+  color: #ffffff;
+}
+
+.filterBtnActive:hover { background: #106ebe; border-color: #106ebe; }
+
+.filterCount {
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(0,0,0,0.12);
+  border-radius: 8px;
+  padding: 0 5px;
+  min-width: 16px;
+  text-align: center;
+}
+
+.filterBtnActive .filterCount { background: rgba(255,255,255,0.25); }
+
+/* ── Chart ──────────────────────────────────────── */
+.chartBox {
+  background: #fafafa;
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  padding: 8px 6px 4px;
+  overflow: hidden;
+}
+
+.chartSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+  cursor: crosshair;
+}
+
+/* ── Body ───────────────────────────────────────── */
+.body {
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.overviewCard {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: transparent;
+  white-space: nowrap;
+}
+
+.cardGreen {
+  color: #107c10;
+}
+
+.cardYellow {
+  color: #c77f00;
+}
+
+.cardRed {
+  color: #d13438;
+}
+
+.overviewLabel {
+  color: #605e5c;
+  margin-top: 2px;
+}
+
+.fetchedAt {
+  margin-left: auto;
+  color: #a19f9d;
+}
+
+/* ── Main two-column layout ─────────────────────── */
+.mainLayout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Left: points table ─────────────────────────── */
+.tablePanel {
+  flex: 0 0 480px;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+  border-right: 1px solid #edebe9;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f5f5f5;
+}
+
+.tablePanel::-webkit-scrollbar { width: 5px; height: 5px; }
+.tablePanel::-webkit-scrollbar-track { background: #f5f5f5; }
+.tablePanel::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #d6e4f7;
+  color: #2c4c7c;
+  font-weight: 600;
+  font-size: 11px;
+  padding: 0 10px;
+  height: 32px;
+  border-bottom: 2px solid #b8cce4;
+  border-right: 1px solid #b8cce4;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.th:last-child { border-right: none; }
+
+.tr {
+  cursor: pointer;
+  border-bottom: 1px solid #f3f2f1;
+  transition: background 0.08s;
+}
+
+.tr:hover { background: #f3f2f1; }
+
+.trSelected { background: #e6f2ff !important; }
+
+.td {
+  padding: 0 10px;
+  height: 30px;
+  border-right: 1px solid #f3f2f1;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.td:last-child { border-right: none; }
+
+.tdNum {
+  padding: 0 10px;
+  height: 30px;
+  border-right: 1px solid #f3f2f1;
+  text-align: right;
+  vertical-align: middle;
+}
+
+.pointCell {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ── Right: detail panel ────────────────────────── */
+.detailPanel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f5f5f5;
+  gap: 14px;
+}
+
+.detailHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #edebe9;
+}
+
+/* ── Sparkline ──────────────────────────────────── */
+.sparklineBox {
+  background: #fafafa;
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  padding: 10px 12px 6px;
+}
+
+.sparklineSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.sparklineEmpty {
+  font-size: 11px;
+  color: #a19f9d;
+}
+
+.sparklineAxis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+/* ── Health summary ─────────────────────────────── */
+.healthBox {
+  background: #fafafa;
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  padding: 12px;
+}
+
+.healthTitle {
+  display: block;
+  margin-bottom: 10px;
+  color: #323130;
+}
+
+.healthGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+.healthItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ── Status icons ───────────────────────────────── */
+.iconActive  { color: #107c10; font-size: 13px; }
+.iconStalled { color: #f7a800; font-size: 13px; }
+.iconNodata  { color: #d13438; font-size: 13px; }
+
+/* ── Number colours ─────────────────────────────── */
+.numGreen { color: #107c10; }
+.numRed   { color: #d13438; }
+
+/* ── Utility ────────────────────────────────────── */
+.muted { color: #605e5c; }
+
+.center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.errorBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #fef6f6;
+  border-bottom: 1px solid #f3d5d5;
+  flex-shrink: 0;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.rotating { animation: rotate 1s linear infinite; }
+
+/* ── Data log table ─────────────────────────────── */
+.dataLogBox {
+  background: #fafafa;
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 260px;
+}
+
+.dataLogHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px 6px;
+  border-bottom: 1px solid #edebe9;
+  flex-shrink: 0;
+  background: #f3f8fe;
+}
+
+.dataLogScroll {
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f5f5f5;
+}
+
+.dataLogScroll::-webkit-scrollbar { width: 5px; }
+.dataLogScroll::-webkit-scrollbar-track { background: #f5f5f5; }
+.dataLogScroll::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+
+.dataLogTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.dataLogTh {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #edf3fb;
+  color: #2c4c7c;
+  font-weight: 600;
+  font-size: 11px;
+  padding: 4px 9px;
+  border-bottom: 1px solid #c8d8ef;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dataLogThIdx {
+  composes: dataLogTh;
+  width: 38px;
+}
+
+.dataLogThRight {
+  composes: dataLogTh;
+  text-align: right;
+}
+
+.dataLogThGap {
+  composes: dataLogTh;
+  width: 52px;
+}
+
+.dataLogTr {
+  border-bottom: 1px solid #f3f2f1;
+  transition: background 0.06s;
+}
+
+.dataLogTr:hover { background: #eef4fb; }
+
+.dataLogTrGap { background: #fff8e1; }
+.dataLogTrGap:hover { background: #fff0c0; }
+
+.dataLogTd {
+  padding: 3px 9px;
+  color: #323130;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.dataLogTdNum {
+  padding: 3px 9px;
+  text-align: right;
+  color: #323130;
+  vertical-align: middle;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dataLogValue {
+  font-weight: 600;
+  color: #0050a0;
+}
+
+.dataLogUnit {
+  font-size: 10px;
+  color: #8a8886;
+}

@@ -194,10 +194,22 @@ async fn get_registry(
         })));
     }
 
+    // Compute local hostname once — used to tag is_self at query time.
+    // is_self must NOT rely on the stored DB value because multiple PCs all write
+    // is_self=1 for themselves into the same shared table, causing every row to
+    // appear as is_self=true when read by any other PC.
+    let local_hostname = hostname::get()
+        .map(|h| h.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+
     // MSSQL path
     if let Some(ref pool) = state.mssql_pool {
-        let entries = mssql_get_all_entries(pool).await
+        let mut entries = mssql_get_all_entries(pool).await
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+        // Recompute is_self from local hostname (ignore stored value)
+        for e in &mut entries {
+            e.is_self = e.hostname.to_lowercase() == local_hostname;
+        }
         return Ok(Json(serde_json::json!({
             "success": true,
             "entries": entries,
@@ -216,7 +228,12 @@ async fn get_registry(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let entries: Vec<RegistryEntry> = rows.into_iter().map(model_to_entry).collect();
+    let entries: Vec<RegistryEntry> = rows.into_iter().map(|row| {
+        let mut entry = model_to_entry(row);
+        // Recompute is_self from local hostname (ignore stored value)
+        entry.is_self = entry.hostname.to_lowercase() == local_hostname;
+        entry
+    }).collect();
 
     Ok(Json(serde_json::json!({
         "success": true,

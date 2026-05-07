@@ -121,16 +121,20 @@ export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
   }
 
   if (error) {
-    const errorPath = path.startsWith('legacy/')
-      ? `${DOCS_CONFIG.baseUrl}/${path.replace('legacy/', '')}`
-      : `${DOCS_CONFIG.baseUrl}/${path}.md`;
+    const normalized = path.startsWith('legacy/') ? path.replace('legacy/', '') : path;
+    const markdownPath = normalized.toLowerCase().endsWith('.md') ? normalized : `${normalized}.md`;
+    const localPath = `${DOCS_CONFIG.baseUrl}/${markdownPath}`;
+    const githubPath = `${DOCS_CONFIG.githubRawUrl}/${markdownPath}`;
 
     return (
       <div className={styles.error}>
         <Text weight="semibold" size={500}>Error loading documentation</Text>
         <Text size={300}>{error.message}</Text>
         <Text size={200} className={styles.errorHint}>
-          Make sure the markdown file exists at: {errorPath}
+          Tried local: {localPath}
+        </Text>
+        <Text size={200} className={styles.errorHint}>
+          Tried GitHub fallback: {githubPath}
         </Text>
       </div>
     );

@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
+import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import {
   Button,
   Drawer,
@@ -65,8 +66,15 @@ interface TrendSummary {
   stalledPoints: StalledPoint[];
 }
 
+export interface TrendDeviceOption {
+  serial: number;
+  panel: number;
+  name?: string;
+}
+
 interface TrendLogsProps {
   isStandalone?: boolean;
+  onVerify?: (serial: number, panel: number, devices: TrendDeviceOption[]) => void;
 }
 
 const ACTIVITY_SERIES_NAMES = ['Total Samples', 'Active Points', 'Devices Reporting'] as const;
@@ -76,7 +84,8 @@ const formatBucketTime = (timestamp: number): string => {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 };
 
-export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) => {
+export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false, onVerify }) => {
+  const allDevices = useDeviceTreeStore((s) => s.devices);
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<echarts.ECharts | null>(null);
   const [loading, setLoading] = useState(true);
@@ -270,6 +279,23 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false }) =>
           devices,
           stalledPoints: stalledPointsList,
         });
+
+        if (onVerify) {
+          // Use ALL devices from the store, not just those with recent trendlog data
+          const allDeviceOptions = allDevices.length > 0
+            ? allDevices.map(dev => ({
+                serial: dev.serialNumber,
+                panel: dev.panelId ?? 1,
+                name: dev.nameShowOnTree,
+              }))
+            : devices.map(d => {
+                const info = allDevices.find(dev => dev.serialNumber === d.serial);
+                return { serial: d.serial, panel: d.panel, name: info?.nameShowOnTree };
+              });
+          const firstSerial = devices.length > 0 ? devices[0].serial : allDeviceOptions[0]?.serial ?? 0;
+          const firstPanel  = devices.length > 0 ? devices[0].panel  : allDeviceOptions[0]?.panel  ?? 1;
+          onVerify(firstSerial, firstPanel, allDeviceOptions);
+        }
 
         if (parsed.length === 0) {
           disposeChart();

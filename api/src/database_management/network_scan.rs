@@ -152,46 +152,58 @@ fn scan_tcp_1433(timeout_ms: u64) -> Vec<DiscoveredInstance> {
     // e.g. a host with both 1433 (some other service) and 1432 (SQL Server) is reported correctly.
     const SQL_PORTS: &[u16] = &[1433, 1432, 1434];
 
-    // One thread per host; probe ALL ports inside that thread and return every hit
-    let handles: Vec<_> = scan_targets
+    // Cap concurrent threads to avoid Windows OOM (code 8) when multiple subnets exist.
+    // 64 threads × 200 ms timeout ≈ ~1 s total for a /24 subnet.
+    const MAX_CONCURRENT: usize = 64;
+
+    // Collect all host targets first
+    let all_targets: Vec<(String, HashSet<String>)> = scan_targets
         .into_iter()
         .flat_map(|prefix| {
             let local_set = local_set.clone();
-            (1..=254).map(move |i| {
+            (1u8..=254).map(move |i| {
                 let host = format!("{}{}", prefix, i);
-                let skip = local_set.clone();
-                std::thread::spawn(move || -> Vec<DiscoveredInstance> {
-                    if skip.contains(&host) {
-                        return Vec::new();
-                    }
-                    let mut found = Vec::new();
-                    for &port in SQL_PORTS {
-                        let addr: SocketAddr = match format!("{}:{}", host, port).parse() {
-                            Ok(a) => a,
-                            Err(_) => continue,
-                        };
-                        if TcpStream::connect_timeout(&addr, per_host_timeout).is_ok() {
-                            // No instance name guessed from port number — could be anything.
-                            // UDP Browser discovery (Phase 2/3) will fill in the real
-                            // instance name and version when the Browser service is running.
-                            found.push(DiscoveredInstance {
-                                host: host.clone(),
-                                instance: None,
-                                port: Some(port),
-                                version: None,
-                            });
-                        }
-                    }
-                    found
-                })
+                (host, local_set.clone())
             })
         })
         .collect();
 
+    // Process in fixed-size batches to bound peak thread count
     let mut results = Vec::new();
-    for h in handles {
-        if let Ok(found) = h.join() {
-            results.extend(found);
+    for chunk in all_targets.chunks(MAX_CONCURRENT) {
+        let handles: Vec<_> = chunk.iter().map(|(host, skip)| {
+            let host = host.clone();
+            let skip = skip.clone();
+            std::thread::spawn(move || -> Vec<DiscoveredInstance> {
+                if skip.contains(&host) {
+                    return Vec::new();
+                }
+                let mut found = Vec::new();
+                for &port in SQL_PORTS {
+                    let addr: SocketAddr = match format!("{}:{}", host, port).parse() {
+                        Ok(a) => a,
+                        Err(_) => continue,
+                    };
+                    if TcpStream::connect_timeout(&addr, per_host_timeout).is_ok() {
+                        // No instance name guessed from port number — could be anything.
+                        // UDP Browser discovery (Phase 2/3) will fill in the real
+                        // instance name and version when the Browser service is running.
+                        found.push(DiscoveredInstance {
+                            host: host.clone(),
+                            instance: None,
+                            port: Some(port),
+                            version: None,
+                        });
+                    }
+                }
+                found
+            })
+        }).collect();
+
+        for h in handles {
+            if let Ok(found) = h.join() {
+                results.extend(found);
+            }
         }
     }
     results

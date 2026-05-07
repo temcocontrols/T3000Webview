@@ -23,14 +23,16 @@ import {
   CheckmarkCircleRegular,
   DismissCircleRegular,
   InfoRegular,
+  DataBarVerticalRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
-import { getSyncHealth, SyncHealthData } from '../services/syncHealthApi';
+import { getSyncHealth, getServerSyncMetrics, SyncHealthData, ServerSyncMetrics } from '../services/syncHealthApi';
 import { API_BASE_URL } from '../../../config/constants';
 import { getIniConfig, IniConfig } from '../../database/services/databaseConfigApi';
 import { SyncHealthWidget } from '../components/SyncHealthWidget';
 import { SyncLogDrawer } from '../components/SyncLogDrawer';
-import { TrendLogs } from '../components/TrendLogs';
+import { TrendLogs, TrendDeviceOption } from '../components/TrendLogs';
+import { TrendlogVerifyDrawer } from '../../trendlogs/components/TrendlogVerifyDrawer';
 import { RecentActivity, ActivitySummary } from '../components/RecentActivity';
 import { NetworkTopologyWidget } from '../components/NetworkTopologyWidget';
 import { ModeBanner } from '../components/ModeBanner';
@@ -188,6 +190,14 @@ const useStyles = makeStyles({
     gap: '6px',
     flex: 1,
     minWidth: 0,
+  },
+  sectionTitleStatic: {
+    flex: 'none',
+  },
+  sectionHeaderActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
   },
   sectionInfoButton: {
     border: 'none',
@@ -476,7 +486,12 @@ export const DashboardPage: React.FC = () => {
   const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null);
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [trendRefreshKey, setTrendRefreshKey] = useState(0);
+  const [verifyDrawerOpen, setVerifyDrawerOpen] = useState(false);
+  const [verifySerial, setVerifySerial] = useState<number | null>(null);
+  const [verifyPanel, setVerifyPanel] = useState<number | null>(null);
+  const [verifyDevices, setVerifyDevices] = useState<TrendDeviceOption[]>([]);
   const [iniConfig, setIniConfig] = useState<IniConfig | null>(null);
+  const [serverMetrics, setServerMetrics] = useState<ServerSyncMetrics | null>(null);
   // Track whether we're in "fast poll" mode (after a mode change, waiting for restart)
   const [fastPolling, setFastPolling] = useState(false);
 
@@ -528,6 +543,12 @@ export const DashboardPage: React.FC = () => {
       if (health.status === 'fulfilled') {
         setSyncHealth(health.value);
         setHealthError(null);
+        // In client mode, also fetch server's actual sync counts
+        if (health.value.role === 'client') {
+          getServerSyncMetrics().then(setServerMetrics).catch(() => setServerMetrics(null));
+        } else {
+          setServerMetrics(null);
+        }
       } else {
         setHealthError(health.reason instanceof Error ? health.reason.message : 'Failed to load sync health');
       }
@@ -635,15 +656,12 @@ export const DashboardPage: React.FC = () => {
               {/* Shared DB (server/client) OR Realtime Poll (standalone) */}
               {appMode === 'standalone' ? (
                 <div className={s.kpiCard}>
-                  <span className={s.kpiLabel}>Realtime Poll</span>
-                  <span className={mergeClasses(
-                    s.kpiValueMd,
-                    syncHealth?.samplingPaused ? s.kpiValueRed : s.kpiValueGreen,
-                  )}>
-                    {syncHealth ? (syncHealth.samplingPaused ? 'Paused' : 'Active') : '—'}
+                  <span className={s.kpiLabel}>Background Sync</span>
+                  <span className={s.kpiValueMd}>
+                    N/A
                   </span>
                   <span className={s.kpiDetail}>
-                    {syncHealth?.samplingPaused ? (syncHealth.pausedReason ?? 'Paused') : 'FFI polling running'}
+                    Disabled in standalone mode
                   </span>
                 </div>
               ) : (
@@ -660,30 +678,52 @@ export const DashboardPage: React.FC = () => {
               )}
 
               {/* Last Poll (standalone) / Last Sync (server/client) */}
-              <div className={s.kpiCard}>
-                <span className={s.kpiLabel}>{appMode === 'standalone' ? 'Last Poll' : 'Last Sync'}</span>
-                <Tooltip content={syncHealth?.lastSyncTime ?? 'No data recorded'} relationship="description">
-                  <span className={s.kpiValueMd}>{syncHealth?.lastSyncAgo ?? '—'}</span>
-                </Tooltip>
-                <span className={s.kpiDetail}>
-                  {appMode === 'standalone'
-                    ? `${syncHealth?.devicesSyncedToday ?? 0} device${syncHealth?.devicesSyncedToday !== 1 ? 's' : ''} polled`
-                    : `${syncHealth?.devicesSyncedToday ?? 0} device${syncHealth?.devicesSyncedToday !== 1 ? 's' : ''} today`}
-                </span>
-              </div>
+              {(() => {
+                const syncAgo = appMode === 'client' && serverMetrics?.ok
+                  ? (serverMetrics.lastSyncAgo ?? '—')
+                  : (syncHealth?.lastSyncAgo ?? '—');
+                const syncTime = appMode === 'client' && serverMetrics?.ok
+                  ? (serverMetrics.lastSyncTime ?? 'No data')
+                  : (syncHealth?.lastSyncTime ?? 'No data recorded');
+                const devCount = appMode === 'client' && serverMetrics?.ok
+                  ? serverMetrics.devicesSyncedToday
+                  : (syncHealth?.devicesSyncedToday ?? 0);
+                return (
+                  <div className={s.kpiCard}>
+                    <span className={s.kpiLabel}>{appMode === 'standalone' ? 'Last Poll' : 'Last Sync'}</span>
+                    <Tooltip content={appMode === 'standalone' ? 'No background sync in standalone mode' : syncTime} relationship="description">
+                      <span className={s.kpiValueMd}>{appMode === 'standalone' ? '—' : syncAgo}</span>
+                    </Tooltip>
+                    <span className={s.kpiDetail}>
+                      {appMode === 'standalone'
+                        ? 'No sync in standalone mode'
+                        : `${devCount} device${devCount !== 1 ? 's' : ''} today`}
+                    </span>
+                  </div>
+                );
+              })()}
 
               {/* Records Today */}
-              <div className={s.kpiCard}>
-                <span className={s.kpiLabel}>Records Today</span>
-                <span className={s.kpiValue}>
-                  {syncHealth?.recordsToday.total.toLocaleString() ?? '—'}
-                </span>
-                <span className={s.kpiDetail}>
-                  {syncHealth
-                    ? `${syncHealth.recordsToday.inputs}in · ${syncHealth.recordsToday.outputs}out · ${syncHealth.recordsToday.variables}var`
-                    : '—'}
-                </span>
-              </div>
+              {(() => {
+                const rec = appMode === 'client' && serverMetrics?.ok
+                  ? serverMetrics.recordsToday
+                  : syncHealth?.recordsToday;
+                return (
+                  <div className={s.kpiCard}>
+                    <span className={s.kpiLabel}>Records Today</span>
+                    <span className={s.kpiValue}>
+                      {appMode === 'standalone' ? '—' : (rec?.total.toLocaleString() ?? '—')}
+                    </span>
+                    <span className={s.kpiDetail}>
+                      {appMode === 'standalone'
+                        ? 'N/A in standalone mode'
+                        : (rec
+                          ? `${rec.inputs}in · ${rec.outputs}out · ${rec.variables}var`
+                          : '—')}
+                    </span>
+                  </div>
+                );
+              })()}
 
               {/* DB Size */}
               <div className={s.kpiCard}>
@@ -731,6 +771,8 @@ export const DashboardPage: React.FC = () => {
               error={healthError}
               onRefresh={fetchHealth}
               isStandalone={appMode === 'standalone'}
+              isClient={appMode === 'client'}
+              serverMetrics={serverMetrics ?? undefined}
             />
           </div>
         </div>
@@ -739,7 +781,7 @@ export const DashboardPage: React.FC = () => {
         <div className={mergeClasses(s.section, s.trendSection)}>
           <div className={s.sectionHeader}>
             <div className={s.sectionTitleRow}>
-              <h3 className={s.sectionTitle} style={{ flex: 'none' }}>Trend Logs — Last 24 Hours</h3>
+              <h3 className={mergeClasses(s.sectionTitle, s.sectionTitleStatic)}>Trend Logs — Last 24 Hours</h3>
               <Tooltip
                 relationship="description"
                 content="Shows the last 24h trend history. Use View All for detailed point-level diagnostics and filtering."
@@ -749,7 +791,7 @@ export const DashboardPage: React.FC = () => {
                 </button>
               </Tooltip>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div className={s.sectionHeaderActions}>
               <Button
                 size="small"
                 appearance="subtle"
@@ -757,6 +799,16 @@ export const DashboardPage: React.FC = () => {
                 onClick={() => setTrendRefreshKey((v) => v + 1)}
                 title="Refresh trend logs"
               />
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={<DataBarVerticalRegular />}
+                onClick={() => setVerifyDrawerOpen(true)}
+                disabled={verifySerial === null}
+                title={verifySerial !== null ? 'Verify trendlog data' : 'Loading device data…'}
+              >
+                Verify Data
+              </Button>
               <button
                 className={s.viewAll}
                 onClick={() => { window.location.hash = '#/t3000/trendlogs'; }}
@@ -766,9 +818,23 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
           <div className={s.trendlogWrapper}>
-            <TrendLogs key={trendRefreshKey} isStandalone={appMode === 'standalone'} />
+            <TrendLogs
+              key={trendRefreshKey}
+              isStandalone={appMode === 'standalone'}
+              onVerify={(serial, panel, devs) => { setVerifySerial(serial); setVerifyPanel(panel); setVerifyDevices(devs); }}
+            />
           </div>
         </div>
+
+        {verifySerial !== null && (
+          <TrendlogVerifyDrawer
+            isOpen={verifyDrawerOpen}
+            onClose={() => setVerifyDrawerOpen(false)}
+            serialNumber={verifySerial}
+            panelId={verifyPanel ?? 1}
+            devices={verifyDevices}
+          />
+        )}
 
         {/* ── Monitoring ── */}
         <div className={s.section}>

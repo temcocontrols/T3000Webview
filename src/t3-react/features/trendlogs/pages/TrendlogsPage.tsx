@@ -30,12 +30,14 @@ import {
   ArrowSortRegular,
   ChartMultipleRegular,
   InfoRegular,
+  DataBarVerticalRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { TrendlogRefreshApi } from '../services/trendlogRefreshApi';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import { API_BASE_URL } from '../../../config/constants';
 import { TrendChartDrawer } from '../components/TrendChartDrawer';
+import { TrendlogVerifyDrawer } from '../components/TrendlogVerifyDrawer';
 import styles from './TrendLogsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
@@ -99,6 +101,7 @@ export const TrendLogsPage: React.FC = () => {
 
   // Chart drawer state
   const [chartDrawerOpen, setChartDrawerOpen] = useState(false);
+  const [verifyDrawerOpen, setVerifyDrawerOpen] = useState(false);
   const [chartParams, setChartParams] = useState<{
     serialNumber?: number;
     panelId?: number;
@@ -874,6 +877,17 @@ export const TrendLogsPage: React.FC = () => {
 
                   <div className={styles.toolbarSeparator} role="separator" />
 
+                  {/* Verify Data Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={() => setVerifyDrawerOpen(true)}
+                    disabled={!selectedDevice}
+                    title="Verify trendlog data records"
+                  >
+                    <DataBarVerticalRegular />
+                    Verify Data
+                  </button>
+
                   {/* Info Button with Tooltip */}
                   <Tooltip
                     content={`Showing trend log monitors for ${selectedDevice.nameShowOnTree || selectedDevice.productName} (SN: ${selectedDevice.serialNumber}). This table displays all configured trendlog/monitor data collection points. Click the refresh icon next to each trendlog to sync from the device.`}
@@ -1027,6 +1041,19 @@ export const TrendLogsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Trendlog Verify Drawer */}
+      {selectedDevice && selectedMonitor && (
+        <TrendlogVerifyDrawer
+          isOpen={verifyDrawerOpen}
+          onClose={() => setVerifyDrawerOpen(false)}
+          serialNumber={selectedDevice.serialNumber}
+          panelId={selectedDevice.panelId || 1}
+          trendlogId={selectedMonitor.trendlogId || selectedMonitor.trendlogIndex || '0'}
+          trendlogLabel={selectedMonitor.trendlogLabel}
+          intervalSeconds={selectedMonitor.intervalSeconds}
+        />
+      )}
 
       {/* Trend Chart Drawer */}
       <TrendChartDrawer

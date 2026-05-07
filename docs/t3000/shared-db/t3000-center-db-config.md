@@ -4,7 +4,7 @@
 
 Use this guide to configure a shared central SQL Server database in T3000. This allows multiple T3000 PCs on the same network to share trend logs and device data through one central Microsoft SQL Server instance.
 
-Before starting, make sure SQL Server Express is installed and TCP/IP is enabled. See the [SQL Server Express Setup guide](./sql-server-express-setup.md) if needed.
+Before starting, make sure SQL Server Express is installed and TCP/IP is enabled. See the [SQL Server Express Setup guide](https://github.com/temcocontrols/T3000Webview/blob/main/docs/t3000/shared-db/sql-server-express-setup.md) if needed.
 
 ---
 
@@ -208,7 +208,7 @@ Scroll down on the Dashboard to see:
 
 ## Troubleshooting
 
-If you run into issues, first check that SQL Server Express is correctly installed and configured — most connection problems start there. See the **[SQL Server Express Setup guide](./sql-server-express-setup.md)** for the full installation and configuration walkthrough, including how to:
+If you run into issues, first check that SQL Server Express is correctly installed and configured — most connection problems start there. See the **[SQL Server Express Setup guide](https://github.com/temcocontrols/T3000Webview/blob/main/docs/t3000/shared-db/sql-server-express-setup.md)** for the full installation and configuration walkthrough, including how to:
 
 - Enable TCP/IP in SQL Server Configuration Manager
 - Set a static port (1433 or 1432)
@@ -220,7 +220,7 @@ If you run into issues, first check that SQL Server Express is correctly install
 |---|---|---|
 | Connection timeout | SQL Server service stopped or unreachable | Start the SQL Server service; verify network connectivity and firewall rules |
 | Login failed | Wrong username or password | Check SQL login credentials; confirm **SQL Server Authentication** is enabled (not Windows-only) |
-| Cannot connect remotely | Windows Firewall blocking the port | Allow TCP 1432 or 1433 inbound — see [SQL Server Express Setup](./sql-server-express-setup.md) |
+| Cannot connect remotely | Windows Firewall blocking the port | Allow TCP 1432 or 1433 inbound — see [SQL Server Express Setup](https://github.com/temcocontrols/T3000Webview/blob/main/docs/t3000/shared-db/sql-server-express-setup.md) |
 | Database does not exist | First-time setup, database not yet created | Run **Init Schema** after Test Connection shows "authentication OK" |
 | Schema init error | Insufficient permissions on the SQL login | Ensure the SQL login has `CREATE DATABASE` and `CREATE TABLE` rights |
 | Scan LAN finds no instances | SQL Server Browser service not running | Start the **SQL Server Browser** service on the target machine |
