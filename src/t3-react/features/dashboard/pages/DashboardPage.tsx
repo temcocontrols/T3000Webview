@@ -191,6 +191,14 @@ const useStyles = makeStyles({
     flex: 1,
     minWidth: 0,
   },
+  sectionTitleStatic: {
+    flex: 'none',
+  },
+  sectionHeaderActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
   sectionInfoButton: {
     border: 'none',
     background: 'transparent',
@@ -773,7 +781,7 @@ export const DashboardPage: React.FC = () => {
         <div className={mergeClasses(s.section, s.trendSection)}>
           <div className={s.sectionHeader}>
             <div className={s.sectionTitleRow}>
-              <h3 className={s.sectionTitle} style={{ flex: 'none' }}>Trend Logs — Last 24 Hours</h3>
+              <h3 className={mergeClasses(s.sectionTitle, s.sectionTitleStatic)}>Trend Logs — Last 24 Hours</h3>
               <Tooltip
                 relationship="description"
                 content="Shows the last 24h trend history. Use View All for detailed point-level diagnostics and filtering."
@@ -783,7 +791,7 @@ export const DashboardPage: React.FC = () => {
                 </button>
               </Tooltip>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div className={s.sectionHeaderActions}>
               <Button
                 size="small"
                 appearance="subtle"

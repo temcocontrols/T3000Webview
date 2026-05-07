@@ -52,9 +52,13 @@
 }
 
 .rangeSelect {
-  height: 28px;
-  font-size: 12px;
-  min-width: 130px;
+  height: 26px;
+  font-size: 11px;
+  min-width: 120px;
+}
+
+.refreshBtn {
+  font-size: 11px !important;
 }
 
 .deviceSelect {
@@ -62,6 +66,169 @@
   font-size: 12px;
   min-width: 180px;
   margin-top: 2px;
+}
+
+/* ── Device menu button ──────────────────────── */
+.deviceMenuBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 10px;
+  border: 1px solid #d1d1d1;
+  border-radius: 4px;
+  background: #ffffff;
+  cursor: pointer;
+  min-width: 260px;
+  max-width: 340px;
+  height: 32px;
+  text-align: left;
+  transition: border-color 0.1s, background 0.1s;
+}
+
+.deviceMenuBtn:hover {
+  border-color: #b3b0ad;
+  background: #f5f5f5;
+}
+
+.deviceMenuLabel {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.deviceMenuName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #323130;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+}
+
+.deviceMenuSub {
+  font-size: 11px;
+  color: #8a8886;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.deviceMenuChevron {
+  font-size: 12px;
+  color: #605e5c;
+  flex-shrink: 0;
+}
+
+/* ── Device menu item ───────────────────────── */
+.deviceMenuItem {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 2px 0;
+}
+
+.deviceMenuItemName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #323130;
+}
+
+.deviceMenuItemSub {
+  font-size: 11px;
+  color: #8a8886;
+}
+
+/* ── Combined stats + filter bar ─────────────────── */
+.statsBar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 16px;
+  border-bottom: 1px solid #edebe9;
+  background: #f8f8f8;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+  height: 44px;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.statsDivider {
+  width: 1px;
+  height: 24px;
+  background: #d1d1d1;
+  margin: 0 12px;
+  flex-shrink: 0;
+}
+
+.statsCards {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.filterBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 12px;
+  border-radius: 14px;
+  border: 1px solid #d1d1d1;
+  background: #ffffff;
+  color: #323130;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.filterBtn:hover { background: #f3f2f1; border-color: #b3b0ad; }
+
+.filterBtnActive {
+  background: #0078d4;
+  border-color: #0078d4;
+  color: #ffffff;
+}
+
+.filterBtnActive:hover { background: #106ebe; border-color: #106ebe; }
+
+.filterCount {
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(0,0,0,0.12);
+  border-radius: 8px;
+  padding: 0 5px;
+  min-width: 16px;
+  text-align: center;
+}
+
+.filterBtnActive .filterCount { background: rgba(255,255,255,0.25); }
+
+/* ── Chart ──────────────────────────────────────── */
+.chartBox {
+  background: #fafafa;
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  padding: 8px 6px 4px;
+  overflow: hidden;
+}
+
+.chartSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+  cursor: crosshair;
 }
 
 /* ── Body ───────────────────────────────────────── */
@@ -75,44 +242,27 @@
   box-sizing: border-box;
 }
 
-/* ── Overview row ───────────────────────────────── */
-.overviewRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-bottom: 1px solid #edebe9;
-  background: #ffffff;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-  width: 100%;
-  box-sizing: border-box;
-}
-
 .overviewCard {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 6px 14px;
-  border: 1px solid #edebe9;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 4px;
+  padding: 4px 10px;
   border-radius: 4px;
-  background: #fafafa;
-  min-width: 80px;
+  background: transparent;
+  white-space: nowrap;
 }
 
 .cardGreen {
-  border-color: #107c10;
-  background: #f1faf1;
+  color: #107c10;
 }
 
 .cardYellow {
-  border-color: #f7a800;
-  background: #fffbf0;
+  color: #c77f00;
 }
 
 .cardRed {
-  border-color: #d13438;
-  background: #fef6f6;
+  color: #d13438;
 }
 
 .overviewLabel {
