@@ -651,7 +651,7 @@ export const TrendlogVerifyDrawer: React.FC<Props> = ({
         {/* ── Loading / Error ── */}
         {loading && (
           <div className={styles.center}>
-            <Spinner size="medium" label="Loading records…" />
+            <Spinner size="tiny" label="Loading records…" />
           </div>
         )}
         {!loading && error && (
