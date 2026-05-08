@@ -13,7 +13,7 @@ import {
   Spinner,
   Badge,
 } from '@fluentui/react-components';
-import { ArrowSyncRegular, SaveRegular } from '@fluentui/react-icons';
+import { ArrowClockwiseRegular, SaveRegular, ErrorCircleRegular } from '@fluentui/react-icons';
 import { API_BASE_URL } from '../../../config/constants';
 
 const SETTINGS_URL = `${API_BASE_URL}/api/logs/settings`;
@@ -103,7 +103,7 @@ export const LogSettingsTab: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '12px', gap: '12px' }}>
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <Button appearance="subtle" icon={<ArrowSyncRegular />} onClick={load} disabled={loading} size="small">
+        <Button appearance="subtle" icon={<ArrowClockwiseRegular style={{ fontSize: '13px' }} />} onClick={load} disabled={loading} size="small">
           Reload
         </Button>
         <Button
@@ -129,10 +129,27 @@ export const LogSettingsTab: React.FC = () => {
           <Text size={200}>Loading settings...</Text>
         </div>
       ) : error ? (
-        <div style={{ padding: '24px 16px', textAlign: 'center', color: '#a4262c' }}>
-          <Text size={200} style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Failed to load log settings</Text>
-          <Text size={200} style={{ color: '#605e5c', display: 'block', marginBottom: '12px' }}>{error}</Text>
-          <Button size="small" appearance="subtle" icon={<ArrowSyncRegular />} onClick={load}>Retry</Button>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '8px 12px',
+          margin: '0',
+          backgroundColor: '#fde7e9',
+          borderBottom: '1px solid #f1a3a8',
+          flexShrink: 0,
+        }}>
+          <ErrorCircleRegular style={{ fontSize: '14px', color: '#a4262c', flexShrink: 0 }} />
+          <Text size={200} style={{ color: '#a4262c', flex: 1 }}>{error}</Text>
+          <Button
+            size="small"
+            appearance="subtle"
+            icon={<ArrowClockwiseRegular style={{ fontSize: '12px' }} />}
+            onClick={load}
+            style={{ flexShrink: 0 }}
+          >
+            Retry
+          </Button>
         </div>
       ) : (
         <div style={{ overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
