@@ -43,18 +43,23 @@ export const LogSettingsTab: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await fetch(SETTINGS_URL);
       if (response.ok) {
         const data: LogCategoryConfig[] = await response.json();
         setSettings(data);
         setDirty(false);
+      } else {
+        setError(`Server returned ${response.status}`);
       }
-    } catch (error) {
-      console.error('Failed to load log settings:', error);
+    } catch (err) {
+      console.error('Failed to load log settings:', err);
+      setError('Could not reach the T3000 service — is it running?');
     } finally {
       setLoading(false);
     }
@@ -92,7 +97,7 @@ export const LogSettingsTab: React.FC = () => {
     group,
     label: GROUP_LABELS[group] ?? group,
     items: settings.filter(s => s.group === group),
-  }));
+  })).filter(g => g.items.length > 0);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '12px', gap: '12px' }}>
@@ -122,6 +127,12 @@ export const LogSettingsTab: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', flex: 1 }}>
           <Spinner size="small" />
           <Text size={200}>Loading settings...</Text>
+        </div>
+      ) : error ? (
+        <div style={{ padding: '24px 16px', textAlign: 'center', color: '#a4262c' }}>
+          <Text size={200} style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Failed to load log settings</Text>
+          <Text size={200} style={{ color: '#605e5c', display: 'block', marginBottom: '12px' }}>{error}</Text>
+          <Button size="small" appearance="subtle" icon={<ArrowSyncRegular />} onClick={load}>Retry</Button>
         </div>
       ) : (
         <div style={{ overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
