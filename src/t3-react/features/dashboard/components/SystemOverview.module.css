@@ -136,3 +136,86 @@
 .link:hover {
   text-decoration: underline;
 }
+
+/* ── Devices card header row ── */
+.cardLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.detailsLink {
+  font-size: 11px;
+  color: #0078d4;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  line-height: 1;
+}
+
+.detailsLink:hover {
+  text-decoration: underline;
+}
+
+/* ── Device Details tooltip content ── */
+.devTooltip {
+  min-width: 300px;
+  padding: 4px 0;
+}
+
+.devTooltipTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: #323130;
+  padding: 0 0 6px 0;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #edebe9;
+}
+
+.devRow {
+  display: grid;
+  grid-template-columns: 14px 1fr auto auto;
+  align-items: center;
+  column-gap: 8px;
+  padding: 3px 0;
+}
+
+.devDotOnline {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #107c10;
+  flex-shrink: 0;
+}
+
+.devDotOffline {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #8a8886;
+  flex-shrink: 0;
+}
+
+.devName {
+  font-size: 12px;
+  color: #323130;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.devSn {
+  font-size: 11px;
+  color: #605e5c;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.devPanel {
+  font-size: 11px;
+  color: #605e5c;
+  white-space: nowrap;
+  text-align: right;
+}

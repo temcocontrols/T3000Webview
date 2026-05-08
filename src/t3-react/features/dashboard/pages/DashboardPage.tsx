@@ -9,7 +9,8 @@
  *   - Real API data throughout
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   makeStyles,
   mergeClasses,
@@ -401,6 +402,93 @@ const useStyles = makeStyles({
     backgroundColor: '#a19f9d',
   },
 
+  /* ── Devices details popover ── */
+  kpiLabelRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  kpiCardRelative: {
+    position: 'relative',
+  },
+  detailsLink: {
+    fontSize: '11px',
+    color: '#0078d4',
+    cursor: 'pointer',
+    lineHeight: '1',
+    '&:hover': {
+      textDecoration: 'underline',
+    },
+  },
+  devPopover: {
+    position: 'fixed',
+    zIndex: 9999,
+    width: '340px',
+    backgroundColor: '#fafafa',
+    border: '1px solid #d0d0d0',
+    borderRadius: '6px',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+    overflow: 'hidden',
+  },
+  devPopoverHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '8px 12px',
+    backgroundColor: '#e8e8e8',
+    borderBottom: '1px solid #d0d0d0',
+  },
+  devPopoverTitle: {
+    fontSize: '12px',
+    fontWeight: 700,
+    color: '#323130',
+    letterSpacing: '0.1px',
+  },
+  devPopoverBadge: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#323130',
+    backgroundColor: '#c8c6c4',
+    borderRadius: '10px',
+    padding: '1px 7px',
+  },
+  devList: {
+    padding: '4px 0',
+  },
+  devRow: {
+    display: 'grid',
+    gridTemplateColumns: '12px 1fr 90px 36px',
+    alignItems: 'center',
+    columnGap: '10px',
+    padding: '5px 12px',
+    borderBottom: '1px solid #edebe9',
+    '&:last-child': {
+      borderBottomWidth: 0,
+    },
+  },
+  devName: {
+    fontSize: '12.5px',
+    color: '#1b1b1b',
+    fontWeight: 700,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  devSn: {
+    fontSize: '11px',
+    color: '#605e5c',
+    whiteSpace: 'nowrap',
+    fontFamily: 'monospace',
+    textAlign: 'left',
+  },
+  devPanel: {
+    fontSize: '11px',
+    color: '#605e5c',
+    whiteSpace: 'nowrap',
+    fontFamily: 'monospace',
+    textAlign: 'left',
+  },
+
   /* ── Wrappers ── */
   loadingBar: {
     display: 'flex',
@@ -483,6 +571,9 @@ export const DashboardPage: React.FC = () => {
   const [healthLoading, setHealthLoading] = useState(true);
   const [healthError, setHealthError] = useState<string | null>(null);
   const [syncLogOpen, setSyncLogOpen] = useState(false);
+  const [devPopoverOpen, setDevPopoverOpen] = useState(false);
+  const [devPopoverPos, setDevPopoverPos] = useState<{ top: number; left: number } | null>(null);
+  const detailsAnchorRef = useRef<HTMLSpanElement>(null);
   const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null);
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [trendRefreshKey, setTrendRefreshKey] = useState(0);
@@ -642,8 +733,21 @@ export const DashboardPage: React.FC = () => {
             <div className={s.kpiRow}>
 
               {/* Devices */}
-              <div className={s.kpiCard}>
-                <span className={s.kpiLabel}>Devices</span>
+              <div className={mergeClasses(s.kpiCard, s.kpiCardRelative)}>
+                <div className={s.kpiLabelRow}>
+                  <span className={s.kpiLabel}>Devices</span>
+                  <span
+                    ref={detailsAnchorRef}
+                    className={s.detailsLink}
+                    onMouseEnter={() => {
+                      const rect = detailsAnchorRef.current?.getBoundingClientRect();
+                      if (rect) setDevPopoverPos({ top: rect.bottom + 6, left: rect.right });
+                      setDevPopoverOpen(true);
+                    }}
+                  >
+                    Details
+                  </span>
+                </div>
                 <span className={s.kpiValue}>{devices.length}</span>
                 <span className={s.kpiDetail}>
                   <span
@@ -652,6 +756,38 @@ export const DashboardPage: React.FC = () => {
                   {onlineCount} online{offlineCount > 0 ? ` · ${offlineCount} offline` : ''}
                 </span>
               </div>
+              {devPopoverOpen && devPopoverPos && createPortal(
+                <div
+                  className={s.devPopover}
+                  ref={(el) => {
+                    if (el) {
+                      el.style.top = `${devPopoverPos.top}px`;
+                      el.style.left = `${devPopoverPos.left - 340}px`;
+                    }
+                  }}
+                  onMouseEnter={() => setDevPopoverOpen(true)}
+                  onMouseLeave={() => setDevPopoverOpen(false)}
+                >
+                  <div className={s.devPopoverHeader}>
+                    <span className={s.devPopoverTitle}>Device Details</span>
+                    <span className={s.devPopoverBadge}>{devices.length}</span>
+                  </div>
+                  <div className={s.devList}>
+                    {devices.map((dev) => {
+                      const isOnline = deviceStatuses.get(dev.serialNumber) === 'online';
+                      return (
+                        <div key={`${dev.serialNumber}-${dev.panelId}`} className={s.devRow}>
+                          <span className={mergeClasses(s.statusDot, isOnline ? s.statusDotGreen : s.statusDotMuted)} />
+                          <span className={s.devName}>{dev.nameShowOnTree || dev.productName || `SN-${dev.serialNumber}`}</span>
+                          <span className={s.devSn}>SN-{dev.serialNumber}</span>
+                          <span className={s.devPanel}>P{dev.panelId ?? 1}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>,
+                document.body
+              )}
 
               {/* Shared DB (server/client) OR Realtime Poll (standalone) */}
               {appMode === 'standalone' ? (
