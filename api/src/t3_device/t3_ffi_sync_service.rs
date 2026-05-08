@@ -78,6 +78,8 @@ static mut GET_DEVICE_NETWORK_CONFIG_FN: Option<GetDeviceNetworkConfigFn> = None
 static mut T3000_LOADED: bool = false;
 static FFI_STARTUP_AT: OnceCell<Instant> = OnceCell::new();
 const FFI_MIN_STARTUP_DELAY_SECS: u64 = 30;
+/// Guards one-time T3000.exe load result write to Activity Log
+static T3000_LOAD_LOGGED: AtomicBool = AtomicBool::new(false);
 
 // Load the BacnetWebView_HandleWebViewMsg function from the current executable (T3000.exe)
 pub unsafe fn load_t3000_function() -> bool {
@@ -708,6 +710,7 @@ impl T3000MainService {
 
                 // Log if sync interval changed
                 if current_sync_interval != config.sync_interval_secs {
+                    let old_interval = config.sync_interval_secs;
                     task_logger.info(&format!(
                         "🔄 Sync interval updated: {}s ({} min) → {}s ({} min)",
                         config.sync_interval_secs,
@@ -716,6 +719,17 @@ impl T3000MainService {
                         current_sync_interval / 60
                     ));
                     config.sync_interval_secs = current_sync_interval;
+                    // Activity Log: interval change
+                    let new_interval = current_sync_interval;
+                    tokio::spawn(async move {
+                        if let Ok(db) = establish_t3_device_connection().await.map_err(|e| e.to_string()) {
+                            crate::database_management::sync_health::write_app_log(
+                                &db, "info", "SYNC_CYCLE", Some("ffi_sync"), None,
+                                &format!("Sync interval changed: {}s -> {}s", old_interval, new_interval),
+                                None,
+                            ).await;
+                        }
+                    });
                 }
 
                 // Update rediscover interval in state
@@ -1318,14 +1332,53 @@ impl T3000MainService {
                 Ok(p) => p,
                 Err(e) => {
                     sync_logger.error(&format!("GET_PANELS_LIST FFI failed: {} -- skipping cycle, will retry next cycle", e));
+                    // Activity Log: T3000.exe load status (once) + timeout event
+                    if T3000_LOAD_LOGGED.compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed).is_ok() {
+                        let (load_msg, load_level) = unsafe {
+                            if BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN.is_some() {
+                                ("T3000.exe loaded — BacnetWebView_HandleWebViewMsg found", "info")
+                            } else {
+                                ("T3000.exe loaded but BacnetWebView_HandleWebViewMsg not found — FFI calls will fail", "error")
+                            }
+                        };
+                        crate::database_management::sync_health::write_app_log(
+                            &local_db, load_level, "SERVER_EVENT", Some("ffi_sync"), None, load_msg, None,
+                        ).await;
+                    }
+                    crate::database_management::sync_health::write_app_log(
+                        &local_db, "warn", "SYNC_CYCLE", Some("ffi_sync"), None,
+                        "GET_PANELS_LIST timed out — sync cycle skipped, will retry next cycle",
+                        Some("action=4"),
+                    ).await;
                     return Ok(());
                 }
             };
 
+            // Activity Log: T3000.exe load status (once) + device list found
+            if T3000_LOAD_LOGGED.compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed).is_ok() {
+                let (load_msg, load_level) = unsafe {
+                    if BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN.is_some() {
+                        ("T3000.exe loaded — BacnetWebView_HandleWebViewMsg found", "info")
+                    } else {
+                        ("T3000.exe loaded but BacnetWebView_HandleWebViewMsg not found — FFI calls will fail", "error")
+                    }
+                };
+                crate::database_management::sync_health::write_app_log(
+                    &local_db, load_level, "SERVER_EVENT", Some("ffi_sync"), None, load_msg, None,
+                ).await;
+            }
             sync_logger.info(&format!(
                 "📋 Found {} devices via GET_PANELS_LIST",
                 panels.len()
             ));
+            {
+                let sn_list = panels.iter().map(|p| p.serial_number.to_string()).collect::<Vec<_>>().join(", ");
+                crate::database_management::sync_health::write_app_log(
+                    &local_db, "info", "SYNC_CYCLE", Some("ffi_sync"), None,
+                    &format!("GET_PANELS_LIST: {} device(s) found (SN: {})", panels.len(), sn_list),
+                    None,
+                ).await;
+            }
 
             if panels.is_empty() {
                 sync_logger.warn("⚠️ No devices found in GET_PANELS_LIST - skipping sync cycle");
@@ -1436,6 +1489,11 @@ impl T3000MainService {
                         Ok(p) => p,
                         Err(e) => {
                             sync_logger.error(&format!("❌ Forced rediscovery GET_PANELS_LIST failed: {} — skipping cycle, will retry next cycle", e));
+                            crate::database_management::sync_health::write_app_log(
+                                &local_db, "warn", "SYNC_CYCLE", Some("ffi_sync"), None,
+                                "GET_PANELS_LIST failed (forced rediscovery) — sync cycle skipped, will retry",
+                                Some("action=4"),
+                            ).await;
                             return Ok(());
                         }
                     };
@@ -1543,6 +1601,8 @@ impl T3000MainService {
         let mut successful_devices = 0;
         let mut failed_devices = 0;
         let mut skipped_devices = 0;
+        // Track SNs that returned serial=0 (C++ issue) for cycle summary Activity Log
+        let mut serial_zero_sns: Vec<String> = Vec::new();
 
         for (device_index, panel_info) in panels.iter().enumerate() {
             let device_start_time = std::time::Instant::now();
@@ -1577,7 +1637,12 @@ impl T3000MainService {
                         panel_info.serial_number, e
                     ));
                     failed_devices += 1;
-
+                    crate::database_management::sync_health::write_app_log(
+                        &local_db, "error", "DEVICE_SYNC", Some("ffi_sync"),
+                        Some(&panel_info.serial_number.to_string()),
+                        &format!("SN-{} Panel#{}: FFI call failed — {}", panel_info.serial_number, panel_info.panel_number, e),
+                        None,
+                    ).await;
                     // Log device failure and continue to next device (Option A: Skip on error)
                     sync_logger.info(&format!(
                         "⏭️  Skipping device {} due to FFI error, continuing with next device",
@@ -1596,7 +1661,12 @@ impl T3000MainService {
                         panel_info.serial_number, e
                     ));
                     failed_devices += 1;
-
+                    crate::database_management::sync_health::write_app_log(
+                        &local_db, "error", "DEVICE_SYNC", Some("ffi_sync"),
+                        Some(&panel_info.serial_number.to_string()),
+                        &format!("SN-{} Panel#{}: JSON parse failed — {}", panel_info.serial_number, panel_info.panel_number, e),
+                        None,
+                    ).await;
                     // Log parse failure and continue to next device
                     sync_logger.info(&format!(
                         "⏭️  Skipping device {} due to parse error, continuing with next device",
@@ -1655,6 +1725,7 @@ impl T3000MainService {
                         device_with_points.device_info.panel_id
                     ));
                     skipped_devices += 1;
+                    serial_zero_sns.push(format!("SN-{} Panel#{}", panel_info.serial_number, panel_info.panel_number));
                     continue;
                 }
 
@@ -1865,6 +1936,27 @@ impl T3000MainService {
             "💾 Sync cycle complete — {} successful, {} failed, {} skipped",
             successful_devices, failed_devices, skipped_devices
         ));
+        // Activity Log: cycle summary
+        if total_devices > 0 {
+            if successful_devices == 0 {
+                let detail = if !serial_zero_sns.is_empty() {
+                    format!("serial=0 devices: {}", serial_zero_sns.join(", "))
+                } else {
+                    format!("failed={} skipped={}", failed_devices, skipped_devices)
+                };
+                crate::database_management::sync_health::write_app_log(
+                    &local_db, "error", "SYNC_CYCLE", Some("ffi_sync"), None,
+                    &format!("Cycle done: 0/{} devices synced — all returned serial=0 (C++ fix required)", total_devices),
+                    Some(&detail),
+                ).await;
+            } else {
+                crate::database_management::sync_health::write_app_log(
+                    &local_db, "info", "SYNC_CYCLE", Some("ffi_sync"), None,
+                    &format!("Cycle done: {}/{} devices synced", successful_devices, total_devices),
+                    Some(&format!("skipped={} failed={}", skipped_devices, failed_devices)),
+                ).await;
+            }
+        }
 
         // Validation and replication apply only to the SQLite/SeaORM path.
         // MSSQL direct path already wrote straight to center DB — no replication needed.
