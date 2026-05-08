@@ -50,15 +50,33 @@ const LEVEL_COLORS: Record<string, 'danger' | 'warning' | 'informative' | 'subtl
   DEBUG: 'subtle',
 };
 
-export const ActivityLogTab: React.FC = () => {
+interface ActivityLogTabProps {
+  externalCategoryFilter?: string;
+  onCategoryFilterChange?: (cat: string) => void;
+}
+
+export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
+  externalCategoryFilter,
+  onCategoryFilterChange,
+}) => {
   const [data, setData] = useState<EventLogResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [limit] = useState(50);
   const [levelFilter, setLevelFilter] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
+  const [internalCategoryFilter, setInternalCategoryFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [expanded, setExpanded] = useState<number | null>(null);
+
+  // If parent controls category filter, use that; else use internal
+  const categoryFilter = externalCategoryFilter !== undefined ? externalCategoryFilter : internalCategoryFilter;
+  const setCategoryFilter = (val: string) => {
+    if (onCategoryFilterChange) {
+      onCategoryFilterChange(val);
+    } else {
+      setInternalCategoryFilter(val);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);

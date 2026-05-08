@@ -166,27 +166,32 @@ const useStyles = makeStyles({
   },
 
   topStrip: {
-    display: 'grid',
-    gridTemplateColumns: '1.45fr 1fr',
-    gap: '0',
-    margin: '10px 16px 8px',
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: '6px',
-    overflow: 'hidden',
-    backgroundColor: tokens.colorNeutralBackground1,
+    display: 'flex',
+    flexDirection: 'column',
+    margin: '6px 12px 0',
+    gap: '8px',
     flexShrink: 0,
   },
   topStripHidden: {
     display: 'none',
   },
+
+  /* row 1 — latest activity */
   latestPanel: {
     backgroundColor: '#f3f8ff',
-    borderRight: `1px solid #d0e4f7`,
-    padding: '10px 12px',
+    border: '1px solid #d0e4f7',
+    borderRadius: '4px',
+    padding: '9px 14px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px',
-    minHeight: '84px',
+    gap: '4px',
+  },
+
+  summaryPanel: {
+    border: '1px solid #e1dfdd',
+    borderRadius: '4px',
+    backgroundColor: '#ffffff',
+    overflow: 'hidden',
   },
   latestHeader: {
     display: 'flex',
@@ -197,7 +202,7 @@ const useStyles = makeStyles({
   latestTitle: {
     fontSize: '11px',
     fontWeight: 700,
-    letterSpacing: '0.2px',
+    letterSpacing: '0.3px',
     color: tokens.colorBrandForeground1,
     textTransform: 'uppercase',
   },
@@ -206,7 +211,7 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground3,
   },
   latestMessage: {
-    fontSize: '12px',
+    fontSize: '12.5px',
     fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     whiteSpace: 'nowrap',
@@ -221,31 +226,36 @@ const useStyles = makeStyles({
     fontSize: '11px',
     color: tokens.colorNeutralForeground3,
   },
+
+  /* row 2 — compact inline stats bar */
   summaryGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    backgroundColor: tokens.colorNeutralBackground2,
+    display: 'flex',
+    alignItems: 'center',
+    padding: '7px 12px',
+    gap: '10px',
+    backgroundColor: '#f8f8f8',
+  },
+  summaryStats: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    flexShrink: 0,
   },
   statCell: {
-    padding: '9px 10px',
-    borderLeft: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
     display: 'flex',
-    flexDirection: 'column',
-    gap: '2px',
-    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '6px',
+    whiteSpace: 'nowrap',
   },
   statLabel: {
-    fontSize: '10.5px',
-    color: tokens.colorNeutralForeground4,
-    textTransform: 'uppercase',
-    letterSpacing: '0.25px',
+    fontSize: '11.5px',
+    color: '#8a8886',
+    fontWeight: 400,
   },
   statValue: {
-    fontSize: '19px',
+    fontSize: '14px',
     fontWeight: 700,
-    color: tokens.colorNeutralForeground1,
-    lineHeight: '1.05',
+    color: '#323130',
   },
   statValueError: {
     color: tokens.colorPaletteRedForeground1,
@@ -255,17 +265,100 @@ const useStyles = makeStyles({
   },
   statHint: {
     fontSize: '11px',
-    color: tokens.colorNeutralForeground3,
+    color: '#605e5c',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  vDivider: {
+    width: '1px',
+    height: '14px',
+    backgroundColor: '#d2d0ce',
+    flexShrink: 0,
+  },
+
+  /* filter inline with stats */
+  catsRow: {
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
+    overflowX: 'auto',
+    minWidth: 0,
+    flex: 1,
   },
-  stripToggle: {
+  catsLabel: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#8a8886',
+    flexShrink: 0,
+    marginRight: '2px',
+  },
+  chip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    paddingTop: '3px',
+    paddingBottom: '3px',
+    paddingLeft: '8px',
+    paddingRight: '8px',
+    borderRadius: '12px',
+    borderTopWidth: '1px',
+    borderRightWidth: '1px',
+    borderBottomWidth: '1px',
+    borderLeftWidth: '1px',
+    borderTopStyle: 'solid',
+    borderRightStyle: 'solid',
+    borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid',
+    borderTopColor: '#edebe9',
+    borderRightColor: '#edebe9',
+    borderBottomColor: '#edebe9',
+    borderLeftColor: '#edebe9',
+    fontSize: '11px',
+    fontWeight: 500,
+    color: '#323130',
+    backgroundColor: '#ffffff',
+    cursor: 'pointer',
+    userSelect: 'none',
+    transition: 'border-color 0.12s, background 0.12s, color 0.12s',
+    '&:hover': {
+      borderTopColor: '#0078d4',
+      borderRightColor: '#0078d4',
+      borderBottomColor: '#0078d4',
+      borderLeftColor: '#0078d4',
+      color: '#0078d4',
+    },
+  },
+  chipActive: {
+    borderTopColor: '#0f6cbd',
+    borderRightColor: '#0f6cbd',
+    borderBottomColor: '#0f6cbd',
+    borderLeftColor: '#0f6cbd',
+    backgroundColor: '#0f6cbd',
+    color: '#ffffff',
+    '&:hover': {
+      borderTopColor: '#0078d4',
+      borderRightColor: '#0078d4',
+      borderBottomColor: '#0078d4',
+      borderLeftColor: '#0078d4',
+      backgroundColor: '#0078d4',
+      color: '#ffffff',
+    },
+  },
+  chipCount: {
+    fontSize: '10px',
+    fontWeight: 700,
+    opacity: 0.8,
+  },
+  summaryActions: {
     display: 'flex',
     alignItems: 'center',
+    marginLeft: 'auto',
+  },
+  showSummaryRow: {
+    display: 'flex',
     justifyContent: 'flex-end',
-    padding: '0 16px 2px',
-    flexShrink: 0,
+    padding: '2px 12px 0',
   },
 
   /* ---- drawer body ---- */
@@ -315,6 +408,8 @@ export const LogsPage: React.FC = () => {
   });
   const [sparkErrors, setSparkErrors] = useState<number[]>(Array(SPARK_BARS).fill(0));
   const [sparkWarns, setSparkWarns]   = useState<number[]>(Array(SPARK_BARS).fill(0));
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState('');
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
   const entriesRef = useRef<AppLogEntry[]>([]);
 
   const loadTopSummary = useCallback(async () => {
@@ -329,9 +424,11 @@ export const LogsPage: React.FC = () => {
       const categories = new Set<string>();
       let errorCount = 0;
       let warnCount = 0;
+      const catCounts: Record<string, number> = {};
 
       for (const entry of entries) {
         categories.add(entry.category);
+        catCounts[entry.category] = (catCounts[entry.category] ?? 0) + 1;
         if (entry.level === 'ERROR') errorCount += 1;
         if (entry.level === 'WARN') warnCount += 1;
       }
@@ -346,6 +443,7 @@ export const LogsPage: React.FC = () => {
       });
       setSparkErrors(buildSparkValues(entries, 'ERROR'));
       setSparkWarns(buildSparkValues(entries, 'WARN'));
+      setCategoryCounts(catCounts);
     } catch (err) {
       console.error('Failed to load logs summary:', err);
     }
@@ -399,19 +497,8 @@ export const LogsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className={s.stripToggle}>
-        <Button
-          size="small"
-          appearance="subtle"
-          icon={summaryVisible ? <ChevronUpRegular /> : <ChevronDownRegular />}
-          iconPosition="after"
-          onClick={() => setSummaryVisible(v => !v)}
-        >
-          {summaryVisible ? 'Hide summary' : 'Show summary'}
-        </Button>
-      </div>
-
       <div className={mergeClasses(s.topStrip, !summaryVisible && s.topStripHidden)}>
+        {/* Row 1 — Latest Activity */}
         <div className={s.latestPanel}>
           <div className={s.latestHeader}>
             <span className={s.latestTitle}>Latest Activity</span>
@@ -430,33 +517,84 @@ export const LogsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className={s.summaryGrid}>
-          <div className={s.statCell}>
-            <span className={s.statLabel}>Total Records</span>
-            <span className={s.statValue}>{summary.total.toLocaleString()}</span>
-            <span className={s.statHint}>all pages</span>
-          </div>
-          <div className={s.statCell}>
-            <span className={s.statLabel}>Categories Active</span>
-            <span className={s.statValue}>{summary.categoryCount}</span>
-            <span className={s.statHint}>seen recently</span>
-          </div>
-          <div className={s.statCell}>
-            <span className={s.statLabel}>Errors</span>
-            <span className={mergeClasses(s.statValue, s.statValueError)}>{summary.errorCount}</span>
-            <span className={s.statHint}>
-              last 80 &nbsp;<Sparkline values={sparkErrors} color="#a4262c" />
-            </span>
-          </div>
-          <div className={s.statCell}>
-            <span className={s.statLabel}>Warnings</span>
-            <span className={mergeClasses(s.statValue, s.statValueWarn)}>{summary.warnCount}</span>
-            <span className={s.statHint}>
-              last 80 &nbsp;<Sparkline values={sparkWarns} color="#8a6100" />
-            </span>
+        {/* Row 2 — compact stats bar */}
+        <div className={s.summaryPanel}>
+          <div className={s.summaryGrid}>
+            <div className={s.summaryStats}>
+              <div className={s.statCell}>
+                <span className={s.statLabel}>Total</span>
+                <span className={s.statValue}>{summary.total.toLocaleString()}</span>
+              </div>
+              <span className={s.vDivider} />
+              <div className={s.statCell}>
+                <span className={s.statLabel}>Errors</span>
+                <span className={mergeClasses(s.statValue, s.statValueError)}>{summary.errorCount}</span>
+                <span className={s.statHint}><Sparkline values={sparkErrors} color="#a4262c" /></span>
+              </div>
+              <span className={s.vDivider} />
+              <div className={s.statCell}>
+                <span className={s.statLabel}>Warnings</span>
+                <span className={mergeClasses(s.statValue, s.statValueWarn)}>{summary.warnCount}</span>
+                <span className={s.statHint}><Sparkline values={sparkWarns} color="#8a6100" /></span>
+              </div>
+              <span className={s.vDivider} />
+              <div className={s.statCell}>
+                <span className={s.statLabel}>Categories</span>
+                <span className={s.statValue}>{summary.categoryCount}</span>
+              </div>
+            </div>
+
+            <span className={s.vDivider} />
+
+            <div className={s.catsRow}>
+              <span className={s.catsLabel}>Filter:</span>
+              <span
+                className={mergeClasses(s.chip, activeCategoryFilter === '' && s.chipActive)}
+                onClick={() => setActiveCategoryFilter('')}
+              >
+                All
+              </span>
+              {Object.entries(categoryCounts)
+                .sort((a, b) => b[1] - a[1])
+                .map(([cat, count]) => (
+                  <span
+                    key={cat}
+                    className={mergeClasses(s.chip, activeCategoryFilter === cat && s.chipActive)}
+                    onClick={() => setActiveCategoryFilter(prev => prev === cat ? '' : cat)}
+                  >
+                    {cat} <span className={s.chipCount}>{count}</span>
+                  </span>
+                ))}
+            </div>
+
+            <div className={s.summaryActions}>
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={<ChevronUpRegular />}
+                iconPosition="after"
+                onClick={() => setSummaryVisible(false)}
+              >
+                Hide
+              </Button>
+            </div>
           </div>
         </div>
       </div>
+
+      {!summaryVisible && (
+        <div className={s.showSummaryRow}>
+          <Button
+            size="small"
+            appearance="subtle"
+            icon={<ChevronDownRegular />}
+            iconPosition="after"
+            onClick={() => setSummaryVisible(true)}
+          >
+            Show summary
+          </Button>
+        </div>
+      )}
 
       {/* Settings drawer */}
       <Drawer
@@ -508,7 +646,10 @@ export const LogsPage: React.FC = () => {
             <FileLogsTab />
           </>
         ) : (
-          <ActivityLogTab />
+          <ActivityLogTab
+            externalCategoryFilter={activeCategoryFilter}
+            onCategoryFilterChange={setActiveCategoryFilter}
+          />
         )}
       </div>
     </div>
