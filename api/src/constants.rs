@@ -49,14 +49,47 @@ pub fn get_t3000_log_path() -> PathBuf {
 }
 
 // ── Activity Log Category Constants ──────────────────────────────────────────
+//
+// Group A — Always written to local SQLite (low-frequency, system/operator):
+//   STARTUP | AUTH | CONFIG | MAINTENANCE
+//
+// Group B — MSSQL preferred, SQLite fallback (high-frequency, operational):
+//   POLL | DEVICE | TRENDLOG
+//
+// Group C — Optional debug categories, off by default (very high volume):
+//   API_REQ | WEBSOCKET | FFI_CALL
 
-/// Trendlog read operation (SQLite or MSSQL)
-pub const CAT_TD_READ: &str = "TD_READ";
-/// Trendlog write / upsert operation
-pub const CAT_TD_WRITE: &str = "TD_WRITE";
-/// TRENDLOG_INPUTS table operations
-pub const CAT_TD_INPUTS: &str = "TD_INPUTS";
-/// FFI poll delivering trendlog data points
-pub const CAT_TD_FFI: &str = "TD_FFI";
-/// Sync cycle for trendlog data
-pub const CAT_TD_SYNC: &str = "TD_SYNC";
+/// Service lifecycle: DLL load, server init, DB connect, sampling state changes
+pub const CAT_STARTUP: &str = "STARTUP";
+/// Authentication events: login, logout, session (placeholder — no accounts yet)
+pub const CAT_AUTH: &str = "AUTH";
+/// Operator-initiated config changes: sync interval, rediscover interval, settings
+pub const CAT_CONFIG: &str = "CONFIG";
+/// DB maintenance: migration run/warn, partition created/skipped, DB size warnings
+pub const CAT_MAINTENANCE: &str = "MAINTENANCE";
+
+/// Device poll cycle: device count, ok/fail totals, GET_PANELS_LIST, policy skips
+pub const CAT_POLL: &str = "POLL";
+/// Per-device sync result: points written, FFI error, JSON parse error, serial=0 skip
+pub const CAT_DEVICE: &str = "DEVICE";
+/// Trendlog config sync summary and data write results
+pub const CAT_TRENDLOG: &str = "TRENDLOG";
+
+/// HTTP API requests (off by default — high volume, debug use only)
+pub const CAT_API_REQ: &str = "API_REQ";
+/// WebSocket connect/disconnect/message type (off by default)
+pub const CAT_WEBSOCKET: &str = "WEBSOCKET";
+/// Raw C++ FFI calls: action + response size (off by default — very high volume)
+pub const CAT_FFI_CALL: &str = "FFI_CALL";
+
+// ── Legacy aliases kept for backwards compatibility ───────────────────────────
+#[deprecated(note = "Use CAT_POLL instead")]
+pub const CAT_TD_SYNC: &str = "POLL";
+#[deprecated(note = "Use CAT_DEVICE instead")]
+pub const CAT_TD_READ: &str = "DEVICE";
+#[deprecated(note = "Use CAT_TRENDLOG instead")]
+pub const CAT_TD_WRITE: &str = "TRENDLOG";
+#[deprecated(note = "Use CAT_TRENDLOG instead")]
+pub const CAT_TD_INPUTS: &str = "TRENDLOG";
+#[deprecated(note = "Use CAT_TRENDLOG instead")]
+pub const CAT_TD_FFI: &str = "TRENDLOG";

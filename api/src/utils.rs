@@ -817,7 +817,7 @@ pub async fn run_migrations_if_pending() -> Result<(), Box<dyn std::error::Error
                     if let Ok(db) = crate::db_connection::establish_t3_device_connection().await {
                         crate::database_management::sync_health::ensure_app_log_table(&db).await;
                         crate::database_management::sync_health::write_app_log(
-                            &db, "info", "DB_CONFIG", Some("migration"), None,
+                            &db, "info", "MAINTENANCE", Some("migration"), None,
                             "DB migrations applied successfully", None,
                         ).await;
                     }
@@ -830,7 +830,7 @@ pub async fn run_migrations_if_pending() -> Result<(), Box<dyn std::error::Error
                     if let Ok(db) = crate::db_connection::establish_t3_device_connection().await {
                         crate::database_management::sync_health::ensure_app_log_table(&db).await;
                         crate::database_management::sync_health::write_app_log(
-                            &db, "warn", "DB_CONFIG", Some("migration"), None,
+                            &db, "warn", "MAINTENANCE", Some("migration"), None,
                             &format!("DB migration warning: {} — system continues without this migration", e),
                             None,
                         ).await;

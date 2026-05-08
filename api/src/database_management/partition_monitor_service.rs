@@ -533,7 +533,7 @@ async fn migrate_single_period(
         logger.info("ℹ️ Partition creation skipped - no data for this period");
         // Activity Log: partition skipped
         crate::database_management::sync_health::write_app_log(
-            db, "info", "DB_CONFIG", Some("partition_monitor"), None,
+            db, "info", "MAINTENANCE", Some("partition_monitor"), None,
             &format!("Partition {} skipped — no data found for this period", partition_id),
             None,
         ).await;
@@ -647,7 +647,7 @@ async fn migrate_single_period(
         migrated_count, partition_size_mb));
     // Activity Log: partition created
     crate::database_management::sync_health::write_app_log(
-        db, "info", "DB_CONFIG", Some("partition_monitor"), None,
+        db, "info", "MAINTENANCE", Some("partition_monitor"), None,
         &format!("Partition {} created — {} records migrated ({} MB)", partition_id, migrated_count, partition_size_mb),
         None,
     ).await;
@@ -794,7 +794,7 @@ async fn check_and_partition_by_size() -> Result<bool> {
             // Activity Log: DB nearing limit
             if let Ok(db) = crate::db_connection::establish_t3_device_connection().await.map_err(|e| e.to_string()) {
                 crate::database_management::sync_health::write_app_log(
-                    &db, "warn", "DB_CONFIG", Some("db_size_monitor"), None,
+                    &db, "warn", "MAINTENANCE", Some("db_size_monitor"), None,
                     &format!("DB at {}% capacity ({} MB / {} MB) — auto-partition triggers at 100%", percentage, file_size_mb, max_file_size_mb),
                     None,
                 ).await;

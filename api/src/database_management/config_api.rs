@@ -619,7 +619,7 @@ async fn update_ffi_sync_interval(
     crate::database_management::sync_health::write_app_log(
         db,
         "info",
-        "DB_CONFIG",
+        "CONFIG",
         Some("config_api"),
         None,
         activity_msg,
@@ -777,7 +777,7 @@ async fn update_rediscover_interval(
     crate::database_management::sync_health::write_app_log(
         db,
         "info",
-        "DB_CONFIG",
+        "CONFIG",
         Some("config_api"),
         None,
         activity_msg,
