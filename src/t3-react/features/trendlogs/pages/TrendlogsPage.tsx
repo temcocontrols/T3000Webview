@@ -38,7 +38,7 @@ import { PanelDataRefreshService } from '../../../shared/services/panelDataRefre
 import { API_BASE_URL } from '../../../config/constants';
 import { TrendChartDrawer } from '../components/TrendChartDrawer';
 import { TrendlogVerifyDrawer } from '../components/TrendlogVerifyDrawer';
-import styles from './TrendLogsPage.module.css';
+import styles from './TrendlogsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 
@@ -766,7 +766,7 @@ export const TrendLogsPage: React.FC = () => {
     }),
     createTableColumn<TrendLogData>({
       columnId: 'autoManual',
-      renderHeaderCell: () => <span style={{ whiteSpace: 'nowrap' }}>Auto/Manual</span>,
+      renderHeaderCell: () => <div className={styles.noWrapHeader}>Auto/Manual</div>,
       renderCell: (item) => {
         const val = (item.autoManual || '').toUpperCase();
         const isAuto = val === 'AUTO' || val === '1';
