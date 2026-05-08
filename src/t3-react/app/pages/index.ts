@@ -21,7 +21,7 @@ export { default as SchedulesPage } from '../../features/schedules/pages/Schedul
 export { HolidaysPage } from '../../features/schedules/pages/HolidaysPage';
 
 // Monitoring
-export { TrendLogsPage } from '../../features/trendlogs/pages/TrendLogsPage';
+export { TrendLogsPage } from '../../features/trendlogs/pages/TrendlogsPage';
 export { TrendChartPage } from '../../features/trendlogs/pages/TrendChartPage';
 export { default as AlarmsPage } from '../../features/alarms/pages/AlarmsPage';
 

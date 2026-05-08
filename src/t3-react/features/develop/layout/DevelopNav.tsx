@@ -10,7 +10,6 @@ import {
   FolderOpenRegular,
   DatabaseRegular,
   PlugConnectedRegular,
-  DocumentTextRegular,
   ChevronDoubleLeftRegular,
   ChevronDoubleRightRegular,
 } from '@fluentui/react-icons';
@@ -41,12 +40,6 @@ const navItems: NavItem[] = [
     label: 'Transport Message',
     icon: PlugConnectedRegular,
     path: '/t3000/develop/transport',
-  },
-  {
-    id: 'logs',
-    label: 'T3000 Logs',
-    icon: DocumentTextRegular,
-    path: '/t3000/develop/logs',
   },
 ];
 

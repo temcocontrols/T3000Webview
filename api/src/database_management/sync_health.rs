@@ -622,10 +622,17 @@ pub async fn ensure_event_log_table(db: &sea_orm::DatabaseConnection) {
 /// Returns `true` for categories that are written at high frequency by the
 /// FFI backend sync loop (one row per cycle / per device).  These should go
 /// to MSSQL when the pool is active so they don't bloat local SQLite.
-/// Low-volume system/config categories always stay in local SQLite.
+///
+/// Group B (high-volume, operational): POLL | DEVICE | TRENDLOG
+/// Group A (low-volume, system/config): STARTUP | AUTH | CONFIG | MAINTENANCE → always SQLite
 fn is_high_volume_category(cat: &str) -> bool {
-    matches!(cat, "SYNC_CYCLE" | "SAMPLING" | "FFI_POLL" | "DEVICE_SYNC" | "TREND_LOG"
-        | "TD_READ" | "TD_WRITE" | "TD_INPUTS" | "TD_FFI" | "TD_SYNC")
+    matches!(cat,
+        // New category names (Group B)
+        "POLL" | "DEVICE" | "TRENDLOG" |
+        // Legacy names kept for backwards compatibility
+        "SYNC_CYCLE" | "SAMPLING" | "FFI_POLL" | "DEVICE_SYNC" | "TREND_LOG"
+        | "TD_READ" | "TD_WRITE" | "TD_INPUTS" | "TD_FFI" | "TD_SYNC"
+    )
 }
 
 /// Write one entry to T3_APP_LOG.
@@ -749,14 +756,14 @@ pub async fn write_app_log(
         .await;
 }
 
-/// Legacy shim: write with category=SYNC_CYCLE, source=ffi_sync
+/// Legacy shim: write with category=POLL, source=ffi_sync
 pub async fn write_sync_event(
     db: &sea_orm::DatabaseConnection,
     level: &str,
     device_serial: Option<&str>,
     message: &str,
 ) {
-    write_app_log(db, level, "SYNC_CYCLE", Some("ffi_sync"), device_serial, message, None).await;
+    write_app_log(db, level, "POLL", Some("ffi_sync"), device_serial, message, None).await;
 }
 
 // ============================================================================
@@ -1031,7 +1038,7 @@ async fn post_event(
     if let Some(db) = get_local_log_db_conn(&state).await {
         ensure_app_log_table(&db).await;
         let level = body.level.as_ref().map(|l| l.as_str()).unwrap_or("info");
-        let category = body.category.as_deref().unwrap_or("SYNC_CYCLE");
+        let category = body.category.as_deref().unwrap_or("POLL");
         write_app_log(
             &db,
             level,
@@ -1101,6 +1108,135 @@ async fn ping_center_db() -> impl axum::response::IntoResponse {
 }
 
 // ============================================================================
+// GET /api/logs/settings  |  PUT /api/logs/settings
+// Read/write per-category log config from APPLICATION_CONFIG
+// Keys: log.category.<CATEGORY>.enabled / detail_mode / min_level
+// ============================================================================
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LogCategoryConfig {
+    pub category: String,
+    pub display_name: String,
+    pub description: String,
+    pub group: String,         // "system" | "operational" | "debug"
+    pub enabled: bool,
+    pub detail_mode: String,   // "SUMMARY" | "FULL"
+    pub min_level: String,     // "INFO" | "WARN" | "ERROR" | "DEBUG"
+    pub target: String,        // "sqlite" | "mssql" | "both"
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateLogSettingsRequest {
+    pub settings: Vec<LogCategoryConfig>,
+}
+
+fn default_log_settings() -> Vec<LogCategoryConfig> {
+    vec![
+        LogCategoryConfig { category: "STARTUP".into(),     display_name: "Service Startup".into(),  description: "DLL load, server init, DB connect, sampling state changes".into(), group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into() },
+        LogCategoryConfig { category: "AUTH".into(),        display_name: "Authentication".into(),    description: "Login, logout, session events".into(),                            group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into() },
+        LogCategoryConfig { category: "CONFIG".into(),      display_name: "Config Changes".into(),    description: "Operator settings: sync interval, rediscover interval".into(),    group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into() },
+        LogCategoryConfig { category: "MAINTENANCE".into(), display_name: "DB Maintenance".into(),    description: "Migration, partition creation, DB size warnings".into(),           group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into() },
+        LogCategoryConfig { category: "POLL".into(),        display_name: "Device Poll".into(),       description: "Sync cycle: device count, ok/fail totals, policy skips".into(),   group: "operational".into(), enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "mssql".into() },
+        LogCategoryConfig { category: "DEVICE".into(),      display_name: "Device Sync".into(),       description: "Per-device: points written, FFI errors, serial=0 skips".into(),   group: "operational".into(), enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "mssql".into() },
+        LogCategoryConfig { category: "TRENDLOG".into(),    display_name: "Trendlog".into(),          description: "Trendlog config sync and data write summary".into(),               group: "operational".into(), enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "mssql".into() },
+        LogCategoryConfig { category: "API_REQ".into(),     display_name: "API Requests".into(),      description: "HTTP endpoint calls — enable for debugging only".into(),           group: "debug".into(),       enabled: false, detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into() },
+        LogCategoryConfig { category: "WEBSOCKET".into(),   display_name: "WebSocket".into(),         description: "WS connect/disconnect, message types".into(),                      group: "debug".into(),       enabled: false, detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into() },
+        LogCategoryConfig { category: "FFI_CALL".into(),    display_name: "C++ FFI Calls".into(),     description: "Raw C++ request/response — very high volume".into(),               group: "debug".into(),       enabled: false, detail_mode: "FULL".into(),    min_level: "DEBUG".into(), target: "sqlite".into() },
+    ]
+}
+
+async fn get_log_settings(
+    State(state): State<T3AppState>,
+) -> Result<Json<Vec<LogCategoryConfig>>> {
+    let db = match get_local_log_db_conn(&state).await {
+        Some(d) => d,
+        None => return Ok(Json(default_log_settings())),
+    };
+
+    let defaults = default_log_settings();
+    let mut result = Vec::with_capacity(defaults.len());
+
+    for mut cfg in defaults {
+        // Try to load overrides from APPLICATION_CONFIG
+        let prefix = format!("log.category.{}", cfg.category);
+
+        let enabled_key = format!("{}.enabled", prefix);
+        let detail_key  = format!("{}.detail_mode", prefix);
+        let level_key   = format!("{}.min_level", prefix);
+
+        let load_val = |key: String| {
+            let db = db.clone();
+            async move {
+                let sql = format!(
+                    "SELECT config_value FROM APPLICATION_CONFIG WHERE config_key = '{}' LIMIT 1",
+                    key.replace('\'', "''")
+                );
+                db.query_one(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, sql))
+                    .await
+                    .ok()
+                    .flatten()
+                    .and_then(|r| r.try_get::<String>("", "config_value").ok())
+            }
+        };
+
+        if let Some(v) = load_val(enabled_key).await {
+            cfg.enabled = v.trim() == "true" || v.trim() == "1";
+        }
+        if let Some(v) = load_val(detail_key).await {
+            cfg.detail_mode = v;
+        }
+        if let Some(v) = load_val(level_key).await {
+            cfg.min_level = v;
+        }
+
+        result.push(cfg);
+    }
+
+    Ok(Json(result))
+}
+
+async fn put_log_settings(
+    State(state): State<T3AppState>,
+    Json(body): Json<UpdateLogSettingsRequest>,
+) -> Result<Json<serde_json::Value>> {
+    let db = match get_local_log_db_conn(&state).await {
+        Some(d) => d,
+        None => return Ok(Json(serde_json::json!({ "ok": false, "error": "DB unavailable" }))),
+    };
+
+    let now = chrono::Utc::now().naive_utc().to_string();
+
+    for cfg in &body.settings {
+        let cat = cfg.category.replace('\'', "''");
+        let prefix = format!("log.category.{}", cat);
+
+        let upsert = |key: String, value: String| {
+            let db = db.clone();
+            let ts = now.clone();
+            async move {
+                let sql = format!(
+                    "INSERT INTO APPLICATION_CONFIG (config_key, config_value, updated_at) \
+                     VALUES ('{key}', '{val}', '{ts}') \
+                     ON CONFLICT(config_key) DO UPDATE SET config_value = excluded.config_value, updated_at = excluded.updated_at",
+                    key = key.replace('\'', "''"),
+                    val = value.replace('\'', "''"),
+                    ts = ts,
+                );
+                let _ = db.execute(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, sql)).await;
+            }
+        };
+
+        upsert(format!("{}.enabled", prefix),     cfg.enabled.to_string()).await;
+        upsert(format!("{}.detail_mode", prefix),  cfg.detail_mode.clone()).await;
+        upsert(format!("{}.min_level", prefix),    cfg.min_level.clone()).await;
+    }
+
+    Ok(Json(serde_json::json!({ "ok": true })))
+}
+
+// ============================================================================
 // Router
 // ============================================================================
 
@@ -1111,6 +1247,8 @@ pub fn sync_health_routes() -> Router<T3AppState> {
         .route("/api/sync/server-health", get(get_server_sync_metrics))
         .route("/api/sync/event-log", get(get_event_log))
         .route("/api/sync/event-log", post(post_event))
+        .route("/api/logs/settings", get(get_log_settings))
+        .route("/api/logs/settings", axum::routing::put(put_log_settings))
 }
 
 // ============================================================================

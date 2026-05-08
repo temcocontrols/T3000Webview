@@ -99,7 +99,7 @@ const DocumentationPage = lazy(() => import('../../features/documentation/pages/
 const FileBrowserPage = lazy(() => import('../../features/develop/pages/FileBrowserPage'));
 const DatabaseViewerPage = lazy(() => import('../../features/develop/pages/DatabaseViewerPage'));
 const TransportTesterPage = lazy(() => import('../../features/develop/pages/TransportTesterPage'));
-const SystemLogsPage = lazy(() => import('../../features/develop/pages/SystemLogsPage'));
+const LogsPage = lazy(() => import('../../features/logs/pages/LogsPage'));
 
 /**
  * Route configuration with metadata
@@ -315,7 +315,7 @@ export const t3000Routes: T3000Route[] = [
   },
   {
     path: '/t3000/develop/logs',
-    element: SystemLogsPage,
+    element: LogsPage,
     title: 'T3000 Logs',
   },
 ];

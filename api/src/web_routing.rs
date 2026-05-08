@@ -331,6 +331,33 @@ pub async fn resolve_server_db_status(state: &T3AppState) -> ServerDbStatus {
         configured_backend.clone()
     };
 
+    // ── Auto-resume sampling after startup failure ─────────────────────────────
+    // If sampling was paused at startup because center DB was unreachable, but the
+    // live probe above just confirmed it is now reachable, rebuild the MSSQL pool
+    // and clear the sampling pause so sync cycles resume automatically.
+    if server_connected
+        && state.server_db_role == "server"
+        && crate::app_state::is_sampling_paused()
+        && crate::server_db_writer::get_server_mssql_pool().is_none()
+    {
+        if let Some(cfg) = active_config.as_ref() {
+            if matches!(cfg.backend_type, BackendType::Mssql) {
+                if let Ok(tib) = db_backend_config::build_mssql_config(cfg) {
+                    match crate::database_management::mssql_queries::create_mssql_pool(tib, 5).await {
+                        Ok(pool) => {
+                            crate::server_db_writer::set_reconnect_mssql_pool(pool);
+                            crate::app_state::set_sampling_active();
+                            info!("Center DB reconnected at runtime — MSSQL pool restored, sampling resumed");
+                        }
+                        Err(e) => {
+                            warn!("Center DB probe succeeded but pool creation failed: {}", e);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // Writes are blocked whenever center DB mode is enabled but the live probe
     // shows the center DB is unreachable — regardless of which backend type is
     // configured (MSSQL pool may still exist from startup but be non-functional).
@@ -346,7 +373,9 @@ pub async fn resolve_server_db_status(state: &T3AppState) -> ServerDbStatus {
         runtime_backend,
         writes_blocked,
         can_init_schema,
-        mssql_pool_active: state.mssql_pool.is_some(),
+        // Also reflect a runtime-reconnected pool (created after startup failure).
+        mssql_pool_active: state.mssql_pool.is_some()
+            || crate::server_db_writer::get_server_mssql_pool().is_some(),
         local_config_available: state.local_config_conn.is_some(),
         hostname,
         host,

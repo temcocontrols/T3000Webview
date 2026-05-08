@@ -131,8 +131,8 @@ const DatabaseViewerPage = React.lazy(() =>
 const TransportTesterPage = React.lazy(() =>
   import('../features/develop/pages/TransportTesterPage').then((m) => ({ default: m.TransportTesterPage }))
 );
-const SystemLogsPage = React.lazy(() =>
-  import('../features/develop/pages/SystemLogsPage').then((m) => ({ default: m.SystemLogsPage }))
+const LogsPage = React.lazy(() =>
+  import('../features/logs/pages/LogsPage').then((m) => ({ default: m.LogsPage }))
 );
 const SyncConfigurationPage = React.lazy(() =>
   import('../features/develop/pages/SyncConfigurationPage').then((m) => ({ default: m.SyncConfigurationPage }))
@@ -458,15 +458,16 @@ export const App: React.FC = () => {
                       </React.Suspense>
                     }
                   />
-                  <Route
-                    path="logs"
-                    element={
-                      <React.Suspense fallback={<div>Loading...</div>}>
-                        <SystemLogsPage />
-                      </React.Suspense>
-                    }
-                  />
                 </Route>
+                {/* Logs - no left sidebar */}
+                <Route
+                  path="logs"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <LogsPage />
+                    </React.Suspense>
+                  }
+                />
               </Route>
 
               {/* Fallback route */}

@@ -132,7 +132,32 @@ export const SystemOverview: React.FC = () => {
       <div className={styles.overview}>
       <div className={styles.card}>
         <div className={styles.cardContent}>
-          <div className={styles.cardLabel}>DEVICES</div>
+          <div className={styles.cardLabelRow}>
+            <div className={styles.cardLabel}>DEVICES</div>
+            <Tooltip
+              content={
+                <div className={styles.devTooltip}>
+                  <div className={styles.devTooltipTitle}>Device Details</div>
+                  {devices.map((dev) => {
+                    const isOnline = deviceStatuses.get(dev.serialNumber) === 'online';
+                    return (
+                      <div key={`${dev.serialNumber}-${dev.panelId}`} className={styles.devRow}>
+                        <span className={isOnline ? styles.devDotOnline : styles.devDotOffline} />
+                        <span className={styles.devName}>{dev.nameShowOnTree || dev.productName || `SN-${dev.serialNumber}`}</span>
+                        <span className={styles.devSn}>SN-{dev.serialNumber}</span>
+                        <span className={styles.devPanel}>P{dev.panelId ?? 1}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              }
+              relationship="description"
+              positioning="above-end"
+              withArrow
+            >
+              <span className={styles.detailsLink}>Details</span>
+            </Tooltip>
+          </div>
           <div className={styles.cardValue}>{devices.length}</div>
           <div className={styles.cardDetail}>
             {onlineCount} online • {offlineCount} offline
