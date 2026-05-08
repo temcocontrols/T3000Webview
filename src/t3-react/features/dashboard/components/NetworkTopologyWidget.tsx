@@ -736,6 +736,11 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, he
         errorMsg: r.success ? undefined : (r.error ?? r.message ?? 'Connection failed'),
         backendLabel: bl, host, port, dbName,
       });
+      // If the test succeeded, refresh health so the Connected/Disconnected badge
+      // updates to reflect the actual current connection state.
+      if (r.success) {
+        onRefreshOverview().catch(() => {/* silent */});
+      }
     } catch (e) {
       setDbTest({ phase: 'done', ok: false, errorMsg: e instanceof Error ? e.message : 'Test failed', backendLabel: bl, host, port, dbName });
     } finally {
