@@ -152,7 +152,7 @@ export const SystemOverview: React.FC = () => {
                 </div>
               }
               relationship="description"
-              positioning="below-end"
+              positioning="above-end"
               withArrow
             >
               <span className={styles.detailsLink}>Details</span>

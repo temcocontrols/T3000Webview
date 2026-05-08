@@ -574,6 +574,7 @@ export const DashboardPage: React.FC = () => {
   const [devPopoverOpen, setDevPopoverOpen] = useState(false);
   const [devPopoverPos, setDevPopoverPos] = useState<{ top: number; left: number } | null>(null);
   const detailsAnchorRef = useRef<HTMLSpanElement>(null);
+  const devPopoverCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null);
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [trendRefreshKey, setTrendRefreshKey] = useState(0);
@@ -740,9 +741,13 @@ export const DashboardPage: React.FC = () => {
                     ref={detailsAnchorRef}
                     className={s.detailsLink}
                     onMouseEnter={() => {
+                      if (devPopoverCloseTimer.current) clearTimeout(devPopoverCloseTimer.current);
                       const rect = detailsAnchorRef.current?.getBoundingClientRect();
-                      if (rect) setDevPopoverPos({ top: rect.bottom + 6, left: rect.right });
+                      if (rect) setDevPopoverPos({ top: rect.top - 6, left: rect.right });
                       setDevPopoverOpen(true);
+                    }}
+                    onMouseLeave={() => {
+                      devPopoverCloseTimer.current = setTimeout(() => setDevPopoverOpen(false), 150);
                     }}
                   >
                     Details
@@ -761,11 +766,16 @@ export const DashboardPage: React.FC = () => {
                   className={s.devPopover}
                   ref={(el) => {
                     if (el) {
-                      el.style.top = `${devPopoverPos.top}px`;
-                      el.style.left = `${devPopoverPos.left - 340}px`;
+                      el.style.top = 'auto';
+                      el.style.right = 'auto';
+                      el.style.bottom = `${window.innerHeight - devPopoverPos.top}px`;
+                      el.style.left = `${devPopoverPos.left}px`;
                     }
                   }}
-                  onMouseEnter={() => setDevPopoverOpen(true)}
+                  onMouseEnter={() => {
+                    if (devPopoverCloseTimer.current) clearTimeout(devPopoverCloseTimer.current);
+                    setDevPopoverOpen(true);
+                  }}
                   onMouseLeave={() => setDevPopoverOpen(false)}
                 >
                   <div className={s.devPopoverHeader}>
@@ -773,7 +783,7 @@ export const DashboardPage: React.FC = () => {
                     <span className={s.devPopoverBadge}>{devices.length}</span>
                   </div>
                   <div className={s.devList}>
-                    {devices.map((dev) => {
+                    {[...devices].sort((a, b) => a.serialNumber - b.serialNumber).map((dev) => {
                       const isOnline = deviceStatuses.get(dev.serialNumber) === 'online';
                       return (
                         <div key={`${dev.serialNumber}-${dev.panelId}`} className={s.devRow}>
