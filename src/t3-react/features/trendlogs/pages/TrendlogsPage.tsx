@@ -766,7 +766,7 @@ export const TrendLogsPage: React.FC = () => {
     }),
     createTableColumn<TrendLogData>({
       columnId: 'autoManual',
-      renderHeaderCell: () => <span>Auto/Manual</span>,
+      renderHeaderCell: () => <span style={{ whiteSpace: 'nowrap' }}>Auto/Manual</span>,
       renderCell: (item) => {
         const val = (item.autoManual || '').toUpperCase();
         const isAuto = val === 'AUTO' || val === '1';

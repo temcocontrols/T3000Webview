@@ -675,78 +675,80 @@
 
 /*
  * Percentage-based column widths (total = 100%)
- * Column order: trendlogId, trendlogLabel, intervalSeconds, bufferSize,
+ * Column order: [select], trendlogId, trendlogLabel, intervalSeconds, bufferSize,
  *               dataSizeKb, autoManual, status, actions
+ * nth-child(1) = radio select column (auto-inserted by selectionMode="single")
  */
 
-/* 1. Trendlog ID - 8% */
-.container :global(.fui-DataGridHeaderCell):nth-child(1),
-.container :global(.fui-DataGridCell):nth-child(1) {
+/* 2. Trendlog ID - 8% */
+.container :global(.fui-DataGridHeaderCell):nth-child(2),
+.container :global(.fui-DataGridCell):nth-child(2) {
   width: 8%;
   min-width: 65px;
   flex: 0 0 8%;
 }
-/* 2. Label - 18% */
-.container :global(.fui-DataGridHeaderCell):nth-child(2),
-.container :global(.fui-DataGridCell):nth-child(2) {
+/* 3. Label - 18% */
+.container :global(.fui-DataGridHeaderCell):nth-child(3),
+.container :global(.fui-DataGridCell):nth-child(3) {
   width: 18%;
   min-width: 120px;
   flex: 0 0 18%;
 }
-/* 3. Interval - 10% */
-.container :global(.fui-DataGridHeaderCell):nth-child(3),
-.container :global(.fui-DataGridCell):nth-child(3) {
+/* 4. Interval - 10% */
+.container :global(.fui-DataGridHeaderCell):nth-child(4),
+.container :global(.fui-DataGridCell):nth-child(4) {
   width: 10%;
   min-width: 80px;
   flex: 0 0 10%;
 }
-/* 4. Buffer Size - 9% */
-.container :global(.fui-DataGridHeaderCell):nth-child(4),
-.container :global(.fui-DataGridCell):nth-child(4) {
-  width: 9%;
-  min-width: 65px;
-  flex: 0 0 9%;
-}
-/* 5. Data Size - 9% */
+/* 5. Buffer Size - 9% */
 .container :global(.fui-DataGridHeaderCell):nth-child(5),
 .container :global(.fui-DataGridCell):nth-child(5) {
   width: 9%;
   min-width: 65px;
   flex: 0 0 9%;
 }
-/* 6. Auto/Manual - 8% (centered badge) */
+/* 6. Data Size - 9% */
 .container :global(.fui-DataGridHeaderCell):nth-child(6),
 .container :global(.fui-DataGridCell):nth-child(6) {
-  width: 8%;
+  width: 9%;
   min-width: 65px;
-  flex: 0 0 8%;
-  justify-content: center;
-  text-align: center;
+  flex: 0 0 9%;
 }
-/* 7. Status - 7% (centered badge) */
+/* 7. Auto/Manual - 10% (centered badge) */
 .container :global(.fui-DataGridHeaderCell):nth-child(7),
 .container :global(.fui-DataGridCell):nth-child(7) {
-  width: 7%;
-  min-width: 55px;
-  flex: 0 0 7%;
+  width: 10%;
+  min-width: 90px;
+  flex: 0 0 10%;
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
+}
+/* 8. Status - 6% (centered badge) */
+.container :global(.fui-DataGridHeaderCell):nth-child(8),
+.container :global(.fui-DataGridCell):nth-child(8) {
+  width: 6%;
+  min-width: 50px;
+  flex: 0 0 6%;
   justify-content: center;
   text-align: center;
 }
-/* 8. Actions - fills remaining space, no text wrap */
-.container :global(.fui-DataGridHeaderCell):nth-child(8),
-.container :global(.fui-DataGridCell):nth-child(8) {
+/* 9. Actions - fills remaining space, no text wrap */
+.container :global(.fui-DataGridHeaderCell):nth-child(9),
+.container :global(.fui-DataGridCell):nth-child(9) {
   flex: 1 0 8%;
   min-width: 120px;
 }
-.container :global(.fui-DataGridCell):nth-child(8) :global(.fui-Button) {
+.container :global(.fui-DataGridCell):nth-child(9) :global(.fui-Button) {
   white-space: nowrap;
 }
 
 /* Center TableCellLayout in Auto/Manual and Status columns */
-.container :global(.fui-DataGridHeaderCell):nth-child(6) :global(.fui-TableCellLayout),
 .container :global(.fui-DataGridHeaderCell):nth-child(7) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridCell):nth-child(6) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout) {
+.container :global(.fui-DataGridHeaderCell):nth-child(8) :global(.fui-TableCellLayout),
+.container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout),
+.container :global(.fui-DataGridCell):nth-child(8) :global(.fui-TableCellLayout) {
   justify-content: center;
   text-align: center;
   width: 100%;
