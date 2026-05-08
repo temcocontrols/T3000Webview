@@ -124,7 +124,7 @@ export const LogSettingsTab: React.FC = () => {
       </div>
 
       {loading ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', flex: '0 0 auto', paddingTop: '4px' }}>
           <Spinner size="small" />
           <Text size={200}>Loading settings...</Text>
         </div>

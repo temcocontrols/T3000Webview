@@ -357,8 +357,40 @@ const useStyles = makeStyles({
   },
   showSummaryRow: {
     display: 'flex',
-    justifyContent: 'flex-end',
-    padding: '2px 12px 0',
+    alignItems: 'center',
+    gap: '8px',
+    margin: '6px 12px 0',
+    padding: '6px 10px',
+    border: '1px solid #d7e5f7',
+    borderRadius: '4px',
+    backgroundColor: '#f5f9ff',
+  },
+  showSummaryInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flex: 1,
+    minWidth: 0,
+  },
+  showSummaryInfoLabel: {
+    fontSize: '11px',
+    color: '#0f6cbd',
+    fontWeight: 600,
+    textTransform: 'uppercase',
+    whiteSpace: 'nowrap',
+  },
+  showSummaryInfoText: {
+    fontSize: '12px',
+    color: '#323130',
+    fontWeight: 500,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  showSummaryInfoMeta: {
+    fontSize: '11px',
+    color: '#605e5c',
+    whiteSpace: 'nowrap',
   },
 
   /* ---- drawer body ---- */
@@ -584,6 +616,25 @@ export const LogsPage: React.FC = () => {
 
       {!summaryVisible && (
         <div className={s.showSummaryRow}>
+          <div className={s.showSummaryInfo}>
+            <span className={s.showSummaryInfoLabel}>Latest</span>
+            <Badge
+              size="small"
+              color={
+                latestLog?.level === 'ERROR'
+                  ? 'danger'
+                  : latestLog?.level === 'WARN'
+                    ? 'warning'
+                    : 'informative'
+              }
+            >
+              {latestLog?.level || 'INFO'}
+            </Badge>
+            <span className={s.showSummaryInfoText}>
+              {latestLog?.message || 'No recent activity yet'}
+            </span>
+            <span className={s.showSummaryInfoMeta}>{latestLog?.category || 'N/A'}</span>
+          </div>
           <Button
             size="small"
             appearance="subtle"
