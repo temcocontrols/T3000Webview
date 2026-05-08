@@ -14,6 +14,17 @@ use tokio::sync::Mutex;
 /// Global server DB state for the FFI sync service.
 static SERVER_DB: OnceCell<ServerDbWriter> = OnceCell::new();
 
+/// Runtime-reconnected MSSQL pool — set after a startup failure when the center DB
+/// becomes reachable later (e.g. SQL Server was starting up when the service started).
+/// Only the first successful set takes effect; subsequent calls are no-ops.
+static RECONNECT_POOL: OnceCell<crate::database_management::mssql_queries::MssqlPool> = OnceCell::new();
+
+/// Store a runtime-reconnected MSSQL pool.
+/// Call this from the health-check path after a probe confirms the center DB is reachable.
+pub fn set_reconnect_mssql_pool(pool: crate::database_management::mssql_queries::MssqlPool) {
+    let _ = RECONNECT_POOL.set(pool);
+}
+
 /// Holds the server DB connection and configuration for dual-write.
 pub struct ServerDbWriter {
     /// SeaORM connection to the server DB (PG/MySQL). None if MSSQL.
@@ -72,14 +83,18 @@ pub fn get_server_conn() -> Option<&'static Arc<Mutex<DatabaseConnection>>> {
 /// Get the server MSSQL pool if the server backend is MSSQL **and** this PC is the server role.
 /// Only the server-role PC should write FFI data directly to the MSSQL center DB.
 /// Client-role PCs write to local SQLite instead.
+///
+/// Checks the startup-initialized pool first; falls back to the runtime-reconnect pool
+/// (set when the center DB was unreachable at startup but became available later).
 pub fn get_server_mssql_pool() -> Option<&'static crate::database_management::mssql_queries::MssqlPool> {
-    SERVER_DB.get().and_then(|w| {
-        if w.enabled && w.role == "server" {
-            w.mssql_pool.as_ref()
-        } else {
-            None
-        }
-    })
+    // Primary: startup-initialized pool
+    if let Some(pool) = SERVER_DB.get().and_then(|w| {
+        if w.enabled && w.role == "server" { w.mssql_pool.as_ref() } else { None }
+    }) {
+        return Some(pool);
+    }
+    // Fallback: runtime-reconnect pool (populated after late reconnect)
+    RECONNECT_POOL.get()
 }
 
 /// Helper: Execute a dual-write to server DB for a SeaORM insert.
