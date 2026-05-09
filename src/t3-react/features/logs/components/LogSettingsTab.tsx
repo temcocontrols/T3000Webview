@@ -391,7 +391,7 @@ const useStyles = makeStyles({
     scrollbarWidth: 'thin',
     scrollbarColor: '#c8c6c4 transparent',
     '&::-webkit-scrollbar': {
-      width: '6px',
+      width: '4px',
     },
     '&::-webkit-scrollbar-thumb': {
       backgroundColor: '#c8c6c4',

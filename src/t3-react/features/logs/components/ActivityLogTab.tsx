@@ -83,6 +83,18 @@ const useStyles = makeStyles({
     overflow: 'auto',
     border: '1px solid #edebe9',
     borderRadius: '4px',
+    scrollbarWidth: 'thin',
+    scrollbarColor: '#c8c6c4 transparent',
+    '&::-webkit-scrollbar': {
+      width: '4px',
+    },
+    '&::-webkit-scrollbar-thumb': {
+      backgroundColor: '#c8c6c4',
+      borderRadius: '2px',
+    },
+    '&::-webkit-scrollbar-track': {
+      backgroundColor: 'transparent',
+    },
   },
   loadingState: {
     display: 'flex',

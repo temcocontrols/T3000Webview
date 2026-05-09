@@ -686,6 +686,8 @@ fn canonical_category(category: &str) -> String {
         "SYNC_CYCLE" | "SAMPLING" | "FFI_POLL" => "POLL".to_string(),
         "DEVICE_SYNC" => "DEVICE".to_string(),
         "TREND_LOG" | "TD_READ" | "TD_WRITE" | "TD_INPUTS" | "TD_FFI" | "TD_SYNC" => "TRENDLOG".to_string(),
+        "DB_CONFIG" => "CONFIG".to_string(),
+        "SERVER_EVENT" => "STARTUP".to_string(),
         other => other.to_string(),
     }
 }
