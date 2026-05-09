@@ -9,12 +9,10 @@ import {
   makeStyles,
   Text,
   Button,
-  Switch,
-  Select,
   Spinner,
   Badge,
 } from '@fluentui/react-components';
-import { ArrowClockwiseRegular, SaveRegular, ErrorCircleRegular } from '@fluentui/react-icons';
+import { ArrowClockwiseRegular, SaveRegular, ErrorCircleRegular, InfoRegular } from '@fluentui/react-icons';
 import { API_BASE_URL } from '../../../config/constants';
 
 const SETTINGS_URL = `${API_BASE_URL}/api/logs/settings`;
@@ -182,6 +180,36 @@ const GROUP_LABELS: Record<string, string> = {
 
 const GROUP_ORDER = ['system', 'operational', 'debug'];
 
+type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
+
+interface LevelSelection {
+  DEBUG: boolean;
+  INFO: boolean;
+  WARN: boolean;
+  ERROR: boolean;
+}
+
+const LEVEL_ORDER: LogLevel[] = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
+
+const levelSelectionFromMinLevel = (minLevel: string): LevelSelection => {
+  const startIndex = Math.max(0, LEVEL_ORDER.indexOf(minLevel as LogLevel));
+  return {
+    DEBUG: startIndex <= 0,
+    INFO: startIndex <= 1,
+    WARN: startIndex <= 2,
+    ERROR: true,
+  };
+};
+
+const minLevelFromSelection = (selection: LevelSelection): LogLevel | null => {
+  for (const level of LEVEL_ORDER) {
+    if (selection[level]) {
+      return level;
+    }
+  }
+  return null;
+};
+
 const useStyles = makeStyles({
   root: {
     display: 'flex',
@@ -190,16 +218,101 @@ const useStyles = makeStyles({
     padding: '12px',
     gap: '12px',
   },
+  topSection: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 2,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    backgroundColor: '#ffffff',
+  },
   toolbar: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
     flexWrap: 'wrap',
   },
-  toolbarNote: {
+  infoBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '8px 12px',
+    margin: '0',
+    backgroundColor: '#f3f9fd',
+    border: '1px solid #c7e0f4',
+    borderLeft: '3px solid #0078d4',
+    flexShrink: 0,
+  },
+  infoIcon: { fontSize: '14px', color: '#005a9e', flexShrink: 0 },
+  infoText: { color: '#004578', flex: 1 },
+  globalPolicyBar: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    padding: '10px 12px',
+    background: '#faf9f8',
+    border: '1px solid #edebe9',
+  },
+  globalPolicyTitle: {
+    color: '#323130',
+  },
+  globalRows: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+  },
+  globalRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    flexWrap: 'wrap',
+  },
+  globalRowLabel: {
+    width: '72px',
+    flexShrink: 0,
     color: '#605e5c',
-    marginLeft: 'auto',
-    maxWidth: '520px',
+  },
+  globalLabel: {
+    color: '#605e5c',
+    marginRight: '4px',
+  },
+  detailPill: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '86px',
+    height: '30px',
+    padding: '0 12px',
+    border: '1px solid #c8c6c4',
+    background: '#ffffff',
+    color: '#323130',
+    cursor: 'pointer',
+    userSelect: 'none',
+  },
+  detailPillActive: {
+    background: '#e5f1fb',
+    borderColor: '#0078d4',
+    color: '#004578',
+    fontWeight: 600,
+  },
+  levelChecksWrap: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    flexWrap: 'wrap',
+  },
+  levelAllOption: {
+    fontWeight: 600,
+    paddingRight: '6px',
+    borderRight: '1px solid #d2d0ce',
+    marginRight: '2px',
+  },
+  detailHint: {
+    color: '#8a8886',
+  },
+  levelHint: {
+    color: '#8a8886',
   },
   validationBar: {
     display: 'flex',
@@ -247,18 +360,40 @@ const useStyles = makeStyles({
     color: '#323130',
   },
   groupList: {
-    display: 'flex',
-    flexDirection: 'column',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
     gap: '6px',
   },
   settingRow: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
+    gap: '6px',
     padding: '10px 12px',
     background: '#faf9f8',
     borderRadius: '4px',
     border: '1px solid #edebe9',
+  },
+  categoryLabel: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '8px',
+    cursor: 'pointer',
+    userSelect: 'none',
+  },
+  categoryCheckbox: {
+    width: '16px',
+    height: '16px',
+    minWidth: '16px',
+    marginTop: '2px',
+    margin: 0,
+    accentColor: '#0078d4',
+    cursor: 'pointer',
+  },
+  categoryText: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    minWidth: 0,
   },
   rowTop: {
     display: 'flex',
@@ -297,12 +432,6 @@ const useStyles = makeStyles({
     color: '#a19f9d',
   },
   switchCell: { margin: 0, flexShrink: 0 },
-  detailSelect: {
-    minWidth: '132px',
-  },
-  levelSelect: {
-    minWidth: '116px',
-  },
   sinkCheckbox: {
     display: 'flex',
     alignItems: 'center',
@@ -355,9 +484,16 @@ const useStyles = makeStyles({
     marginTop: '2px',
   },
   '@media (max-width: 920px)': {
-    toolbarNote: {
-      marginLeft: 0,
-      maxWidth: '100%',
+    globalRow: {
+      alignItems: 'flex-start',
+      flexDirection: 'column',
+      gap: '6px',
+    },
+    globalRowLabel: {
+      width: '100%',
+    },
+    groupList: {
+      gridTemplateColumns: '1fr',
     },
     rowTop: {
       flexWrap: 'wrap',
@@ -382,6 +518,12 @@ const useStyles = makeStyles({
 export const LogSettingsTab: React.FC = () => {
   const s = useStyles();
   const [settings, setSettings] = useState<LogCategoryConfig[]>([]);
+  const [globalDetailMode, setGlobalDetailMode] = useState('SUMMARY');
+  const [globalLevelSelection, setGlobalLevelSelection] = useState<LevelSelection>(
+    levelSelectionFromMinLevel('INFO')
+  );
+  const [globalSinkDb, setGlobalSinkDb] = useState(true);
+  const [globalSinkFile, setGlobalSinkFile] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -396,11 +538,22 @@ export const LogSettingsTab: React.FC = () => {
       const response = await fetch(SETTINGS_URL);
       if (response.ok) {
         const data: LogCategoryConfig[] = await response.json();
-        setSettings(data.map(normalizeLoadedConfig));
+        const normalized = data.map(normalizeLoadedConfig);
+        setSettings(normalized);
+        if (normalized.length > 0) {
+          setGlobalDetailMode(normalized[0].detailMode);
+          setGlobalLevelSelection(levelSelectionFromMinLevel(normalized[0].minLevel));
+          setGlobalSinkDb(normalized[0].sinkDb);
+          setGlobalSinkFile(normalized[0].sinkFile);
+        }
         setDirty(false);
         setOfflineMode(false);
       } else {
         setSettings(DEFAULT_SETTINGS);
+        setGlobalDetailMode(DEFAULT_SETTINGS[0].detailMode);
+        setGlobalLevelSelection(levelSelectionFromMinLevel(DEFAULT_SETTINGS[0].minLevel));
+        setGlobalSinkDb(DEFAULT_SETTINGS[0].sinkDb);
+        setGlobalSinkFile(DEFAULT_SETTINGS[0].sinkFile);
         setDirty(false);
         setOfflineMode(true);
         setError(`Server returned ${response.status}. Showing local defaults (read-only).`);
@@ -408,6 +561,10 @@ export const LogSettingsTab: React.FC = () => {
     } catch (err) {
       console.error('Failed to load log settings:', err);
       setSettings(DEFAULT_SETTINGS);
+      setGlobalDetailMode(DEFAULT_SETTINGS[0].detailMode);
+      setGlobalLevelSelection(levelSelectionFromMinLevel(DEFAULT_SETTINGS[0].minLevel));
+      setGlobalSinkDb(DEFAULT_SETTINGS[0].sinkDb);
+      setGlobalSinkFile(DEFAULT_SETTINGS[0].sinkFile);
       setDirty(false);
       setOfflineMode(true);
       setError('Could not reach the T3000 service — showing local defaults (read-only).');
@@ -422,6 +579,42 @@ export const LogSettingsTab: React.FC = () => {
     setSettings(prev => prev.map(s => s.category === category ? { ...s, ...patch } : s));
     setDirty(true);
     setSaved(false);
+  };
+
+  const applyGlobalPolicy = (patch: Pick<LogCategoryConfig, 'detailMode' | 'minLevel' | 'sinkDb' | 'sinkFile'> | Partial<Pick<LogCategoryConfig, 'detailMode' | 'minLevel' | 'sinkDb' | 'sinkFile'>>) => {
+    setSettings(prev => prev.map(item => ({ ...item, ...patch })));
+    setDirty(true);
+    setSaved(false);
+  };
+
+  const updateGlobalLevel = (level: LogLevel, checked: boolean) => {
+    setGlobalLevelSelection(prev => {
+      const next = { ...prev, [level]: checked };
+      const nextMinLevel = minLevelFromSelection(next);
+      if (nextMinLevel) {
+        applyGlobalPolicy({ minLevel: nextMinLevel });
+      } else {
+        setDirty(true);
+        setSaved(false);
+      }
+      return next;
+    });
+  };
+
+  const setAllLevels = (checked: boolean) => {
+    const nextSelection: LevelSelection = {
+      DEBUG: checked,
+      INFO: checked,
+      WARN: checked,
+      ERROR: checked,
+    };
+    setGlobalLevelSelection(nextSelection);
+    if (checked) {
+      applyGlobalPolicy({ minLevel: 'DEBUG' });
+    } else {
+      setDirty(true);
+      setSaved(false);
+    }
   };
 
   const save = async () => {
@@ -450,40 +643,151 @@ export const LogSettingsTab: React.FC = () => {
     items: settings.filter(s => s.group === group),
   })).filter(g => g.items.length > 0);
 
-  const hasInvalidSinkSelection = settings.some(s => s.enabled && !s.sinkDb && !s.sinkFile);
+  const hasInvalidSinkSelection = settings.some(s => s.enabled) && !globalSinkDb && !globalSinkFile;
+  const hasInvalidLevelSelection = settings.some(s => s.enabled) && !Object.values(globalLevelSelection).some(Boolean);
+  const areAllLevelsSelected = Object.values(globalLevelSelection).every(Boolean);
 
   return (
     <div className={s.root}>
-      {/* Toolbar */}
-      <div className={s.toolbar}>
-        <Button appearance="subtle" icon={<ArrowClockwiseRegular />} onClick={load} disabled={loading} size="small">
-          Reload
-        </Button>
-        <Button
-          appearance={dirty ? 'primary' : 'subtle'}
-          icon={saving ? <Spinner size="tiny" /> : <SaveRegular />}
-          onClick={save}
-          disabled={saving || !dirty || offlineMode || hasInvalidSinkSelection}
-          size="small"
-        >
-          Save Changes
-        </Button>
-        {saved && (
-          <Badge appearance="filled" color="success" size="small">Saved</Badge>
-        )}
-        <Text size={200} className={s.toolbarNote}>
-          ERROR logs are always written to DB. Changes apply on next log write.
-        </Text>
-      </div>
+      <div className={s.topSection}>
+        {/* Toolbar */}
+        <div className={s.toolbar}>
+          <Button appearance="subtle" icon={<ArrowClockwiseRegular />} onClick={load} disabled={loading} size="small">
+            Reload
+          </Button>
+          <Button
+            appearance={dirty ? 'primary' : 'subtle'}
+            icon={saving ? <Spinner size="tiny" /> : <SaveRegular />}
+            onClick={save}
+            disabled={saving || !dirty || offlineMode || hasInvalidSinkSelection || hasInvalidLevelSelection}
+            size="small"
+          >
+            Save Changes
+          </Button>
+          {saved && (
+            <Badge appearance="filled" color="success" size="small">Saved</Badge>
+          )}
+        </div>
 
-      {hasInvalidSinkSelection && !loading && (
-        <div className={s.validationBar}>
-          <ErrorCircleRegular className={s.validationIcon} />
-          <Text size={200} className={s.validationText}>
-            Enabled categories must select at least one sink target (DB or File).
+        <div className={s.infoBar}>
+          <InfoRegular className={s.infoIcon} />
+          <Text size={200} className={s.infoText}>
+            ERROR logs are always written to DB. Changes apply on next log write.
           </Text>
         </div>
-      )}
+
+        <div className={s.globalPolicyBar}>
+          <Text size={300} weight="semibold" className={s.globalPolicyTitle}>Global Log Policy (applies to all categories)</Text>
+          <div className={s.globalRows}>
+            <div className={s.globalRow}>
+              <Text size={200} className={s.globalRowLabel}>Detail</Text>
+              <label className={`${s.detailPill} ${globalDetailMode === 'SUMMARY' ? s.detailPillActive : ''}`}>
+                <input
+                  type="radio"
+                  name="global-detail-mode"
+                  checked={globalDetailMode === 'SUMMARY'}
+                  onChange={() => {
+                    setGlobalDetailMode('SUMMARY');
+                    applyGlobalPolicy({ detailMode: 'SUMMARY' });
+                  }}
+                  disabled={offlineMode}
+                  hidden
+                />
+                SUMMARY
+              </label>
+              <label className={`${s.detailPill} ${globalDetailMode === 'FULL' ? s.detailPillActive : ''}`}>
+                <input
+                  type="radio"
+                  name="global-detail-mode"
+                  checked={globalDetailMode === 'FULL'}
+                  onChange={() => {
+                    setGlobalDetailMode('FULL');
+                    applyGlobalPolicy({ detailMode: 'FULL' });
+                  }}
+                  disabled={offlineMode}
+                  hidden
+                />
+                FULL
+              </label>
+              <Text size={100} className={s.detailHint}>SUMMARY = compact totals, FULL = every event line.</Text>
+            </div>
+
+            <div className={s.globalRow}>
+              <Text size={200} className={s.globalRowLabel}>Levels</Text>
+              <div className={s.levelChecksWrap}>
+                <label className={`${s.sinkCheckbox} ${s.levelAllOption} ${offlineMode ? s.sinkCheckboxDisabled : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={areAllLevelsSelected}
+                    onChange={e => setAllLevels(e.target.checked)}
+                    disabled={offlineMode}
+                  />
+                  All
+                </label>
+                {LEVEL_ORDER.map(level => (
+                  <label key={level} className={`${s.sinkCheckbox} ${offlineMode ? s.sinkCheckboxDisabled : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={globalLevelSelection[level]}
+                      onChange={e => updateGlobalLevel(level, e.target.checked)}
+                      disabled={offlineMode}
+                    />
+                    {level}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className={s.globalRow}>
+              <Text size={200} className={s.globalRowLabel}>Sinks</Text>
+              <label className={`${s.sinkCheckbox} ${offlineMode ? s.sinkCheckboxDisabled : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={globalSinkDb}
+                  onChange={e => {
+                    setGlobalSinkDb(e.target.checked);
+                    applyGlobalPolicy({ sinkDb: e.target.checked });
+                  }}
+                  disabled={offlineMode}
+                />
+                DB
+              </label>
+
+              <label className={`${s.sinkCheckbox} ${offlineMode ? s.sinkCheckboxDisabled : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={globalSinkFile}
+                  onChange={e => {
+                    setGlobalSinkFile(e.target.checked);
+                    applyGlobalPolicy({ sinkFile: e.target.checked });
+                  }}
+                  disabled={offlineMode}
+                />
+                File
+              </label>
+            </div>
+          </div>
+          <Text size={100} className={s.levelHint}>Levels are cumulative. Selecting DEBUG includes INFO, WARN, and ERROR logs.</Text>
+        </div>
+
+        {hasInvalidSinkSelection && !loading && (
+          <div className={s.validationBar}>
+            <ErrorCircleRegular className={s.validationIcon} />
+            <Text size={200} className={s.validationText}>
+              Select at least one global sink target (DB or File) when any category is enabled.
+            </Text>
+          </div>
+        )}
+
+        {hasInvalidLevelSelection && !loading && (
+          <div className={s.validationBar}>
+            <ErrorCircleRegular className={s.validationIcon} />
+            <Text size={200} className={s.validationText}>
+              Select at least one log level when any category is enabled.
+            </Text>
+          </div>
+        )}
+      </div>
 
       {loading ? (
         <div className={s.loadingRow}>
@@ -517,74 +821,20 @@ export const LogSettingsTab: React.FC = () => {
               <div className={s.groupList}>
                 {items.map(cfg => (
                   <div key={cfg.category} className={s.settingRow}>
-                    <div className={s.rowTop}>
-                      <div className={s.titleCell}>
-                        <Switch
-                          checked={cfg.enabled}
-                          onChange={(_, data) => update(cfg.category, { enabled: data.checked })}
-                          className={s.switchCell}
-                        />
-                        <div className={s.titleText}>
-                          <Text size={200} weight="semibold">{cfg.displayName}</Text>
-                          <Text size={100} className={s.categoryCode}>{cfg.category}</Text>
-                        </div>
+                    <label className={s.categoryLabel}>
+                      <input
+                        type="checkbox"
+                        checked={cfg.enabled}
+                        onChange={e => update(cfg.category, { enabled: e.target.checked })}
+                        disabled={offlineMode}
+                        className={s.categoryCheckbox}
+                      />
+                      <div className={s.categoryText}>
+                        <Text size={200} weight="semibold">{cfg.displayName}</Text>
+                        <Text size={100} className={s.categoryCode}>{cfg.category}</Text>
+                        <Text size={100} className={s.descriptionCell}>{cfg.description}</Text>
                       </div>
-
-                      <div className={s.controlsWrap}>
-                        <Select
-                          value={cfg.detailMode}
-                          onChange={(_, data) => update(cfg.category, { detailMode: data.value })}
-                          size="small"
-                          disabled={!cfg.enabled}
-                          className={s.detailSelect}
-                        >
-                          <option value="SUMMARY">SUMMARY</option>
-                          <option value="FULL">FULL</option>
-                        </Select>
-
-                        <Select
-                          value={cfg.minLevel}
-                          onChange={(_, data) => update(cfg.category, { minLevel: data.value })}
-                          size="small"
-                          disabled={!cfg.enabled}
-                          className={s.levelSelect}
-                        >
-                          <option value="DEBUG">DEBUG</option>
-                          <option value="INFO">INFO</option>
-                          <option value="WARN">WARN</option>
-                          <option value="ERROR">ERROR</option>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className={s.rowBottom}>
-                      <Text size={100} className={s.descriptionCell}>{cfg.description}</Text>
-
-                      <div className={s.sinksWrap}>
-                        <label className={`${s.sinkCheckbox} ${!cfg.enabled ? s.sinkCheckboxDisabled : ''}`}>
-                          <input
-                            type="checkbox"
-                            checked={cfg.sinkDb}
-                            onChange={e => update(cfg.category, { sinkDb: e.target.checked })}
-                            disabled={!cfg.enabled}
-                          />
-                          <span className={s.sinkLabel}>
-                            <span>DB</span>
-                            {cfg.target === 'mssql' && <span className={s.sinkHint}>auto-center</span>}
-                          </span>
-                        </label>
-
-                        <label className={`${s.sinkCheckbox} ${!cfg.enabled ? s.sinkCheckboxDisabled : ''}`}>
-                          <input
-                            type="checkbox"
-                            checked={cfg.sinkFile}
-                            onChange={e => update(cfg.category, { sinkFile: e.target.checked })}
-                            disabled={!cfg.enabled}
-                          />
-                          File
-                        </label>
-                      </div>
-                    </div>
+                    </label>
                   </div>
                 ))}
               </div>
