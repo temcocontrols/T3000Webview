@@ -13,7 +13,6 @@ import {
   Select,
   Spinner,
   Badge,
-  Checkbox,
 } from '@fluentui/react-components';
 import { ArrowClockwiseRegular, SaveRegular, ErrorCircleRegular } from '@fluentui/react-icons';
 import { API_BASE_URL } from '../../../config/constants';
@@ -263,9 +262,9 @@ const useStyles = makeStyles({
   },
   rowTop: {
     display: 'flex',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    gap: '12px',
+    gap: '8px',
   },
   rowBottom: {
     display: 'flex',
@@ -274,24 +273,30 @@ const useStyles = makeStyles({
     gap: '12px',
   },
   titleCell: {
-    minWidth: '180px',
-    maxWidth: '260px',
-    flex: '0 1 auto',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flex: 1,
+    minWidth: 0,
+  },
+  titleText: {
+    display: 'flex',
+    flexDirection: 'column',
+    minWidth: 0,
   },
   controlsWrap: {
     display: 'flex',
     alignItems: 'center',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     justifyContent: 'flex-end',
-    gap: '8px',
-    flex: 1,
-    minWidth: '280px',
+    gap: '6px',
+    flexShrink: 0,
   },
   categoryCode: {
     display: 'block',
     color: '#a19f9d',
   },
-  switchCell: { margin: 0 },
+  switchCell: { margin: 0, flexShrink: 0 },
   detailSelect: {
     minWidth: '132px',
   },
@@ -299,7 +304,30 @@ const useStyles = makeStyles({
     minWidth: '116px',
   },
   sinkCheckbox: {
-    minWidth: '72px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    cursor: 'pointer',
+    userSelect: 'none',
+    opacity: 1,
+    '& input[type="checkbox"]': {
+      width: '14px',
+      height: '14px',
+      minWidth: '14px',
+      margin: 0,
+      cursor: 'pointer',
+      accentColor: '#0078d4',
+    },
+    '&.disabled': {
+      opacity: 0.5,
+      cursor: 'not-allowed',
+      '& input[type="checkbox"]': { cursor: 'not-allowed' },
+    },
+  },
+  sinkCheckboxDisabled: {
+    opacity: 0.5,
+    cursor: 'not-allowed',
+    '& input[type="checkbox"]': { cursor: 'not-allowed' },
   },
   descriptionCell: {
     color: '#605e5c',
@@ -332,18 +360,12 @@ const useStyles = makeStyles({
       maxWidth: '100%',
     },
     rowTop: {
-      flexDirection: 'column',
-      alignItems: 'stretch',
-      gap: '8px',
-    },
-    titleCell: {
-      minWidth: 'unset',
-      maxWidth: '100%',
+      flexWrap: 'wrap',
+      gap: '6px',
     },
     controlsWrap: {
       justifyContent: 'flex-start',
-      minWidth: 'unset',
-      width: '100%',
+      flexWrap: 'wrap',
     },
     rowBottom: {
       flexDirection: 'column',
@@ -497,17 +519,18 @@ export const LogSettingsTab: React.FC = () => {
                   <div key={cfg.category} className={s.settingRow}>
                     <div className={s.rowTop}>
                       <div className={s.titleCell}>
-                        <Text size={200} weight="semibold">{cfg.displayName}</Text>
-                        <Text size={100} className={s.categoryCode}>{cfg.category}</Text>
-                      </div>
-
-                      <div className={s.controlsWrap}>
                         <Switch
                           checked={cfg.enabled}
                           onChange={(_, data) => update(cfg.category, { enabled: data.checked })}
                           className={s.switchCell}
                         />
+                        <div className={s.titleText}>
+                          <Text size={200} weight="semibold">{cfg.displayName}</Text>
+                          <Text size={100} className={s.categoryCode}>{cfg.category}</Text>
+                        </div>
+                      </div>
 
+                      <div className={s.controlsWrap}>
                         <Select
                           value={cfg.detailMode}
                           onChange={(_, data) => update(cfg.category, { detailMode: data.value })}
@@ -538,26 +561,28 @@ export const LogSettingsTab: React.FC = () => {
                       <Text size={100} className={s.descriptionCell}>{cfg.description}</Text>
 
                       <div className={s.sinksWrap}>
-                        <Checkbox
-                          checked={cfg.sinkDb}
-                          onChange={(_, data) => update(cfg.category, { sinkDb: data.checked })}
-                          label={
-                            <span className={s.sinkLabel}>
-                              <span>DB</span>
-                              {cfg.target === 'mssql' && <span className={s.sinkHint}>auto-center</span>}
-                            </span>
-                          }
-                          disabled={!cfg.enabled}
-                          className={s.sinkCheckbox}
-                        />
+                        <label className={`${s.sinkCheckbox} ${!cfg.enabled ? s.sinkCheckboxDisabled : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={cfg.sinkDb}
+                            onChange={e => update(cfg.category, { sinkDb: e.target.checked })}
+                            disabled={!cfg.enabled}
+                          />
+                          <span className={s.sinkLabel}>
+                            <span>DB</span>
+                            {cfg.target === 'mssql' && <span className={s.sinkHint}>auto-center</span>}
+                          </span>
+                        </label>
 
-                        <Checkbox
-                          checked={cfg.sinkFile}
-                          onChange={(_, data) => update(cfg.category, { sinkFile: data.checked })}
-                          label="File"
-                          disabled={!cfg.enabled}
-                          className={s.sinkCheckbox}
-                        />
+                        <label className={`${s.sinkCheckbox} ${!cfg.enabled ? s.sinkCheckboxDisabled : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={cfg.sinkFile}
+                            onChange={e => update(cfg.category, { sinkFile: e.target.checked })}
+                            disabled={!cfg.enabled}
+                          />
+                          File
+                        </label>
                       </div>
                     </div>
                   </div>
