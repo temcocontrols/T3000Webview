@@ -6,12 +6,14 @@
 
 import React, { useState, useEffect } from 'react';
 import {
+  makeStyles,
   Text,
   Button,
   Switch,
   Select,
   Spinner,
   Badge,
+  Checkbox,
 } from '@fluentui/react-components';
 import { ArrowClockwiseRegular, SaveRegular, ErrorCircleRegular } from '@fluentui/react-icons';
 import { API_BASE_URL } from '../../../config/constants';
@@ -27,7 +29,151 @@ interface LogCategoryConfig {
   detailMode: string;
   minLevel: string;
   target: string;
+  sinkDb: boolean;
+  sinkFile: boolean;
 }
+
+const DEFAULT_SETTINGS: LogCategoryConfig[] = [
+  {
+    category: 'STARTUP',
+    displayName: 'Service Startup',
+    description: 'DLL load, server init, DB connect, sampling state changes',
+    group: 'system',
+    enabled: true,
+    detailMode: 'SUMMARY',
+    minLevel: 'INFO',
+    target: 'sqlite',
+    sinkDb: true,
+    sinkFile: false,
+  },
+  {
+    category: 'AUTH',
+    displayName: 'Authentication',
+    description: 'Login, logout, session events',
+    group: 'system',
+    enabled: true,
+    detailMode: 'SUMMARY',
+    minLevel: 'INFO',
+    target: 'sqlite',
+    sinkDb: true,
+    sinkFile: false,
+  },
+  {
+    category: 'CONFIG',
+    displayName: 'Config Changes',
+    description: 'Operator settings: sync interval, rediscover interval',
+    group: 'system',
+    enabled: true,
+    detailMode: 'SUMMARY',
+    minLevel: 'INFO',
+    target: 'sqlite',
+    sinkDb: true,
+    sinkFile: false,
+  },
+  {
+    category: 'MAINTENANCE',
+    displayName: 'DB Maintenance',
+    description: 'Migration, partition creation, DB size warnings',
+    group: 'system',
+    enabled: true,
+    detailMode: 'SUMMARY',
+    minLevel: 'INFO',
+    target: 'sqlite',
+    sinkDb: true,
+    sinkFile: false,
+  },
+  {
+    category: 'POLL',
+    displayName: 'Device Poll',
+    description: 'Sync cycle: device count, ok/fail totals, policy skips',
+    group: 'operational',
+    enabled: true,
+    detailMode: 'SUMMARY',
+    minLevel: 'INFO',
+    target: 'mssql',
+    sinkDb: true,
+    sinkFile: false,
+  },
+  {
+    category: 'DEVICE',
+    displayName: 'Device Sync',
+    description: 'Per-device: points written, FFI errors, serial=0 skips',
+    group: 'operational',
+    enabled: true,
+    detailMode: 'SUMMARY',
+    minLevel: 'INFO',
+    target: 'mssql',
+    sinkDb: true,
+    sinkFile: false,
+  },
+  {
+    category: 'TRENDLOG',
+    displayName: 'Trendlog',
+    description: 'Trendlog config sync and data write summary',
+    group: 'operational',
+    enabled: true,
+    detailMode: 'SUMMARY',
+    minLevel: 'INFO',
+    target: 'mssql',
+    sinkDb: true,
+    sinkFile: false,
+  },
+  {
+    category: 'API_REQ',
+    displayName: 'API Requests',
+    description: 'HTTP endpoint calls - enable for debugging only',
+    group: 'debug',
+    enabled: false,
+    detailMode: 'SUMMARY',
+    minLevel: 'INFO',
+    target: 'sqlite',
+    sinkDb: true,
+    sinkFile: false,
+  },
+  {
+    category: 'WEBSOCKET',
+    displayName: 'WebSocket',
+    description: 'WS connect/disconnect, message types',
+    group: 'debug',
+    enabled: false,
+    detailMode: 'SUMMARY',
+    minLevel: 'INFO',
+    target: 'sqlite',
+    sinkDb: true,
+    sinkFile: false,
+  },
+  {
+    category: 'FFI_CALL',
+    displayName: 'C++ FFI Calls',
+    description: 'Raw C++ request/response - very high volume',
+    group: 'debug',
+    enabled: false,
+    detailMode: 'FULL',
+    minLevel: 'DEBUG',
+    target: 'sqlite',
+    sinkDb: true,
+    sinkFile: false,
+  },
+  {
+    category: 'MESSAGE_ACTION',
+    displayName: 'Message Action',
+    description: 'Message action processing and command dispatch details',
+    group: 'debug',
+    enabled: false,
+    detailMode: 'FULL',
+    minLevel: 'DEBUG',
+    target: 'sqlite',
+    sinkDb: true,
+    sinkFile: false,
+  },
+];
+
+const normalizeLoadedConfig = (cfg: LogCategoryConfig): LogCategoryConfig => ({
+  ...cfg,
+  sinkDb: cfg.sinkDb ?? true,
+  sinkFile: cfg.sinkFile ?? false,
+  target: cfg.target ?? 'sqlite',
+});
 
 const GROUP_LABELS: Record<string, string> = {
   system: 'System Events',
@@ -37,13 +183,112 @@ const GROUP_LABELS: Record<string, string> = {
 
 const GROUP_ORDER = ['system', 'operational', 'debug'];
 
+const useStyles = makeStyles({
+  root: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    padding: '12px',
+    gap: '12px',
+  },
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  toolbarNote: {
+    color: '#605e5c',
+    marginLeft: 'auto',
+  },
+  validationBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '6px 10px',
+    margin: '0',
+    backgroundColor: '#fff4ce',
+    borderBottom: '1px solid #f7d58c',
+    flexShrink: 0,
+  },
+  validationIcon: { fontSize: '14px', color: '#8a6100', flexShrink: 0 },
+  validationText: { color: '#8a6100', flex: 1 },
+  loadingRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    justifyContent: 'flex-start',
+    flex: '0 0 auto',
+    paddingTop: '4px',
+  },
+  errorBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '8px 12px',
+    margin: '0',
+    backgroundColor: '#fde7e9',
+    borderBottom: '1px solid #f1a3a8',
+    flexShrink: 0,
+  },
+  errorIcon: { fontSize: '14px', color: '#a4262c', flexShrink: 0 },
+  errorText: { color: '#a4262c', flex: 1 },
+  retryButton: { flexShrink: 0 },
+  groupsWrap: {
+    overflow: 'auto',
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+  },
+  groupTitle: {
+    display: 'block',
+    marginBottom: '8px',
+    color: '#323130',
+  },
+  groupList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+  },
+  settingRow: {
+    display: 'grid',
+    gridTemplateColumns: '140px 44px 1fr 118px 108px 74px 74px',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '10px 12px',
+    background: '#faf9f8',
+    borderRadius: '4px',
+    border: '1px solid #edebe9',
+  },
+  titleCell: {},
+  categoryCode: {
+    display: 'block',
+    color: '#a19f9d',
+  },
+  switchCell: { margin: 0 },
+  descriptionCell: { color: '#605e5c' },
+  sinkLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  sinkHint: {
+    color: '#8a8886',
+    fontSize: '10px',
+    display: 'block',
+    marginTop: '2px',
+  },
+});
+
 export const LogSettingsTab: React.FC = () => {
+  const s = useStyles();
   const [settings, setSettings] = useState<LogCategoryConfig[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [offlineMode, setOfflineMode] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -52,14 +297,21 @@ export const LogSettingsTab: React.FC = () => {
       const response = await fetch(SETTINGS_URL);
       if (response.ok) {
         const data: LogCategoryConfig[] = await response.json();
-        setSettings(data);
+        setSettings(data.map(normalizeLoadedConfig));
         setDirty(false);
+        setOfflineMode(false);
       } else {
-        setError(`Server returned ${response.status}`);
+        setSettings(DEFAULT_SETTINGS);
+        setDirty(false);
+        setOfflineMode(true);
+        setError(`Server returned ${response.status}. Showing local defaults (read-only).`);
       }
     } catch (err) {
       console.error('Failed to load log settings:', err);
-      setError('Could not reach the T3000 service — is it running?');
+      setSettings(DEFAULT_SETTINGS);
+      setDirty(false);
+      setOfflineMode(true);
+      setError('Could not reach the T3000 service — showing local defaults (read-only).');
     } finally {
       setLoading(false);
     }
@@ -99,18 +351,20 @@ export const LogSettingsTab: React.FC = () => {
     items: settings.filter(s => s.group === group),
   })).filter(g => g.items.length > 0);
 
+  const hasInvalidSinkSelection = settings.some(s => s.enabled && !s.sinkDb && !s.sinkFile);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '12px', gap: '12px' }}>
+    <div className={s.root}>
       {/* Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <Button appearance="subtle" icon={<ArrowClockwiseRegular style={{ fontSize: '13px' }} />} onClick={load} disabled={loading} size="small">
+      <div className={s.toolbar}>
+        <Button appearance="subtle" icon={<ArrowClockwiseRegular />} onClick={load} disabled={loading} size="small">
           Reload
         </Button>
         <Button
           appearance={dirty ? 'primary' : 'subtle'}
           icon={saving ? <Spinner size="tiny" /> : <SaveRegular />}
           onClick={save}
-          disabled={saving || !dirty}
+          disabled={saving || !dirty || offlineMode || hasInvalidSinkSelection}
           size="small"
         >
           Save Changes
@@ -118,70 +372,64 @@ export const LogSettingsTab: React.FC = () => {
         {saved && (
           <Badge appearance="filled" color="success" size="small">Saved</Badge>
         )}
-        <Text size={200} style={{ color: '#605e5c', marginLeft: 'auto' }}>
-          Changes take effect on next log write (no restart required)
+        <Text size={200} className={s.toolbarNote}>
+          ERROR logs are always written to DB. Changes apply on next log write.
         </Text>
       </div>
 
+      {hasInvalidSinkSelection && !loading && (
+        <div className={s.validationBar}>
+          <ErrorCircleRegular className={s.validationIcon} />
+          <Text size={200} className={s.validationText}>
+            Enabled categories must select at least one sink target (DB or File).
+          </Text>
+        </div>
+      )}
+
       {loading ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', flex: '0 0 auto', paddingTop: '4px' }}>
+        <div className={s.loadingRow}>
           <Spinner size="small" />
           <Text size={200}>Loading settings...</Text>
         </div>
-      ) : error ? (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: '8px 12px',
-          margin: '0',
-          backgroundColor: '#fde7e9',
-          borderBottom: '1px solid #f1a3a8',
-          flexShrink: 0,
-        }}>
-          <ErrorCircleRegular style={{ fontSize: '14px', color: '#a4262c', flexShrink: 0 }} />
-          <Text size={200} style={{ color: '#a4262c', flex: 1 }}>{error}</Text>
-          <Button
-            size="small"
-            appearance="subtle"
-            icon={<ArrowClockwiseRegular style={{ fontSize: '12px' }} />}
-            onClick={load}
-            style={{ flexShrink: 0 }}
-          >
-            Retry
-          </Button>
-        </div>
       ) : (
-        <div style={{ overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <>
+          {error && (
+            <div className={s.errorBar}>
+              <ErrorCircleRegular className={s.errorIcon} />
+              <Text size={200} className={s.errorText}>{error}</Text>
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={<ArrowClockwiseRegular />}
+                onClick={load}
+                className={s.retryButton}
+              >
+                Retry
+              </Button>
+            </div>
+          )}
+
+          <div className={s.groupsWrap}>
           {grouped.map(({ group, label, items }) => (
             <div key={group}>
-              <Text size={300} weight="semibold" style={{ display: 'block', marginBottom: '8px', color: '#323130' }}>
+              <Text size={300} weight="semibold" className={s.groupTitle}>
                 {label}
               </Text>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <div className={s.groupList}>
                 {items.map(cfg => (
-                  <div key={cfg.category} style={{
-                    display: 'grid',
-                    gridTemplateColumns: '120px 36px 1fr 130px 110px 80px',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '8px 12px',
-                    background: '#faf9f8',
-                    borderRadius: '4px',
-                    border: '1px solid #edebe9',
-                  }}>
-                    <div>
+                  <div key={cfg.category} className={s.settingRow}>
+                    <div className={s.titleCell}>
                       <Text size={200} weight="semibold">{cfg.displayName}</Text>
-                      <Text size={100} style={{ display: 'block', color: '#a19f9d' }}>{cfg.category}</Text>
+                      <Text size={100} className={s.categoryCode}>{cfg.category}</Text>
                     </div>
 
                     <Switch
                       checked={cfg.enabled}
                       onChange={(_, data) => update(cfg.category, { enabled: data.checked })}
-                      style={{ margin: 0 }}
+                      className={s.switchCell}
                     />
 
-                    <Text size={100} style={{ color: '#605e5c' }}>{cfg.description}</Text>
+                    <Text size={100} className={s.descriptionCell}>{cfg.description}</Text>
 
                     <Select
                       value={cfg.detailMode}
@@ -205,20 +453,31 @@ export const LogSettingsTab: React.FC = () => {
                       <option value="ERROR">ERROR</option>
                     </Select>
 
-                    <Badge
-                      appearance="outline"
-                      color={cfg.target === 'mssql' ? 'warning' : 'informative'}
-                      size="small"
-                      style={{ justifySelf: 'center' }}
-                    >
-                      {cfg.target}
-                    </Badge>
+                    <Checkbox
+                      checked={cfg.sinkDb}
+                      onChange={(_, data) => update(cfg.category, { sinkDb: data.checked })}
+                      label={
+                        <span className={s.sinkLabel}>
+                          <span>DB</span>
+                          {cfg.target === 'mssql' && <span className={s.sinkHint}>auto-center</span>}
+                        </span>
+                      }
+                      disabled={!cfg.enabled}
+                    />
+
+                    <Checkbox
+                      checked={cfg.sinkFile}
+                      onChange={(_, data) => update(cfg.category, { sinkFile: data.checked })}
+                      label="File"
+                      disabled={!cfg.enabled}
+                    />
                   </div>
                 ))}
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

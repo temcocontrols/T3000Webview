@@ -6,6 +6,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
+  makeStyles,
+  mergeClasses,
   Text,
   Button,
   Input,
@@ -26,9 +28,11 @@ const ACTIVITY_LOG_URL = `${API_BASE_URL}/api/sync/event-log`;
 
 interface AppLogEntry {
   id: number;
-  logged_at: string;
+  ts?: string;
+  logged_at?: string;
   level: string;
   category: string;
+  sink?: string | null;
   source: string | null;
   device_serial: string | null;
   message: string;
@@ -50,6 +54,73 @@ const LEVEL_COLORS: Record<string, 'danger' | 'warning' | 'informative' | 'subtl
   DEBUG: 'subtle',
 };
 
+const SINK_COLORS: Record<string, 'danger' | 'warning' | 'informative' | 'subtle'> = {
+  SQLITE: 'informative',
+  MSSQL: 'warning',
+  FILE: 'subtle',
+};
+
+const useStyles = makeStyles({
+  root: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    gap: '8px',
+    padding: '12px',
+  },
+  toolbar: {
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  levelSelect: { minWidth: '100px' },
+  categorySelect: { minWidth: '130px' },
+  searchInput: { flex: 1, minWidth: '200px' },
+  totalText: { color: '#605e5c', whiteSpace: 'nowrap' },
+  tableWrapper: {
+    flex: 1,
+    overflow: 'auto',
+    border: '1px solid #edebe9',
+    borderRadius: '4px',
+  },
+  loadingState: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '200px',
+    gap: '8px',
+  },
+  table: { width: '100%' },
+  thTime: { width: '160px', fontSize: '12px' },
+  thLevel: { width: '70px', fontSize: '12px' },
+  thCategory: { width: '110px', fontSize: '12px' },
+  thSink: { width: '90px', fontSize: '12px' },
+  thSource: { width: '110px', fontSize: '12px' },
+  thMessage: { fontSize: '12px' },
+  emptyCell: { textAlign: 'center', padding: '24px', color: '#605e5c' },
+  rowClickable: { cursor: 'pointer' },
+  timeCell: { fontSize: '11px', color: '#605e5c', whiteSpace: 'nowrap' },
+  badgeText: { fontSize: '10px' },
+  categoryCell: { fontSize: '11px' },
+  sourceCell: { fontSize: '11px', color: '#605e5c' },
+  messageCell: { fontSize: '12px' },
+  detailsCell: { padding: '4px 8px 8px 24px' },
+  detailsPre: {
+    margin: 0,
+    fontSize: '11px',
+    color: '#605e5c',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+  },
+  pagination: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    justifyContent: 'center',
+  },
+});
+
 interface ActivityLogTabProps {
   externalCategoryFilter?: string;
   onCategoryFilterChange?: (cat: string) => void;
@@ -59,6 +130,7 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
   externalCategoryFilter,
   onCategoryFilterChange,
 }) => {
+  const s = useStyles();
   const [data, setData] = useState<EventLogResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
@@ -120,14 +192,14 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '8px', padding: '12px' }}>
+    <div className={s.root}>
       {/* Toolbar */}
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className={s.toolbar}>
         <Select
           value={levelFilter}
           onChange={(_, data) => setLevelFilter(data.value)}
           size="small"
-          style={{ minWidth: '100px' }}
+          className={s.levelSelect}
         >
           <option value="">All Levels</option>
           <option value="ERROR">ERROR</option>
@@ -140,7 +212,7 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
           value={categoryFilter}
           onChange={(_, data) => setCategoryFilter(data.value)}
           size="small"
-          style={{ minWidth: '130px' }}
+          className={s.categorySelect}
         >
           <option value="">All Categories</option>
           {(data?.categories ?? []).map(cat => (
@@ -153,7 +225,7 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
           value={searchQuery}
           onChange={(_, d) => setSearchQuery(d.value)}
           size="small"
-          style={{ flex: 1, minWidth: '200px' }}
+          className={s.searchInput}
         />
 
         <Button
@@ -167,34 +239,35 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
         </Button>
 
         {data && (
-          <Text size={200} style={{ color: '#605e5c', whiteSpace: 'nowrap' }}>
+          <Text size={200} className={s.totalText}>
             {data.total.toLocaleString()} total
           </Text>
         )}
       </div>
 
       {/* Table */}
-      <div style={{ flex: 1, overflow: 'auto', border: '1px solid #edebe9', borderRadius: '4px' }}>
+      <div className={s.tableWrapper}>
         {loading && !data ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', gap: '8px' }}>
+          <div className={s.loadingState}>
             <Spinner size="tiny" />
             <Text size={200}>Loading...</Text>
           </div>
         ) : (
-          <Table size="small" style={{ width: '100%' }}>
+          <Table size="small" className={s.table}>
             <TableHeader>
               <TableRow>
-                <TableHeaderCell style={{ width: '160px', fontSize: '12px' }}>Time</TableHeaderCell>
-                <TableHeaderCell style={{ width: '70px', fontSize: '12px' }}>Level</TableHeaderCell>
-                <TableHeaderCell style={{ width: '110px', fontSize: '12px' }}>Category</TableHeaderCell>
-                <TableHeaderCell style={{ width: '110px', fontSize: '12px' }}>Source</TableHeaderCell>
-                <TableHeaderCell style={{ fontSize: '12px' }}>Message</TableHeaderCell>
+                <TableHeaderCell className={s.thTime}>Time</TableHeaderCell>
+                <TableHeaderCell className={s.thLevel}>Level</TableHeaderCell>
+                <TableHeaderCell className={s.thCategory}>Category</TableHeaderCell>
+                <TableHeaderCell className={s.thSink}>Sink</TableHeaderCell>
+                <TableHeaderCell className={s.thSource}>Source</TableHeaderCell>
+                <TableHeaderCell className={s.thMessage}>Message</TableHeaderCell>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredEntries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} style={{ textAlign: 'center', padding: '24px', color: '#605e5c' }}>
+                  <TableCell colSpan={6} className={s.emptyCell}>
                     <Text size={200}>No entries</Text>
                   </TableCell>
                 </TableRow>
@@ -202,30 +275,40 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
                 filteredEntries.map((entry) => (
                   <React.Fragment key={entry.id}>
                     <TableRow
-                      style={{ cursor: entry.details ? 'pointer' : 'default' }}
+                      className={mergeClasses(entry.details && s.rowClickable)}
                       onClick={() => entry.details && setExpanded(expanded === entry.id ? null : entry.id)}
                     >
-                      <TableCell style={{ fontSize: '11px', color: '#605e5c', whiteSpace: 'nowrap' }}>
-                        {formatTime(entry.logged_at)}
+                      <TableCell className={s.timeCell}>
+                        {formatTime(entry.logged_at ?? entry.ts ?? '')}
                       </TableCell>
                       <TableCell>
                         <Badge
                           appearance="filled"
                           color={LEVEL_COLORS[entry.level] ?? 'informative'}
                           size="small"
-                          style={{ fontSize: '10px' }}
+                          className={s.badgeText}
                         >
                           {entry.level}
                         </Badge>
                       </TableCell>
-                      <TableCell style={{ fontSize: '11px' }}>{entry.category}</TableCell>
-                      <TableCell style={{ fontSize: '11px', color: '#605e5c' }}>{entry.source ?? ''}</TableCell>
-                      <TableCell style={{ fontSize: '12px' }}>{entry.message}</TableCell>
+                      <TableCell className={s.categoryCell}>{entry.category}</TableCell>
+                      <TableCell>
+                        <Badge
+                          appearance="tint"
+                          color={SINK_COLORS[(entry.sink ?? 'SQLITE').toUpperCase()] ?? 'subtle'}
+                          size="small"
+                          className={s.badgeText}
+                        >
+                          {(entry.sink ?? 'SQLITE').toUpperCase()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className={s.sourceCell}>{entry.source ?? ''}</TableCell>
+                      <TableCell className={s.messageCell}>{entry.message}</TableCell>
                     </TableRow>
                     {expanded === entry.id && entry.details && (
                       <TableRow>
-                        <TableCell colSpan={5} style={{ padding: '4px 8px 8px 24px' }}>
-                          <pre style={{ margin: 0, fontSize: '11px', color: '#605e5c', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                        <TableCell colSpan={6} className={s.detailsCell}>
+                          <pre className={s.detailsPre}>
                             {entry.details}
                           </pre>
                         </TableCell>
@@ -241,7 +324,7 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+        <div className={s.pagination}>
           <Button
             appearance="subtle"
             icon={<ChevronLeftRegular />}
