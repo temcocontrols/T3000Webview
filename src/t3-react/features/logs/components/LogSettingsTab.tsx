@@ -267,7 +267,7 @@ const useStyles = makeStyles({
   globalRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
+    gap: '14px',
     flexWrap: 'wrap',
   },
   globalRowLabel: {
@@ -301,7 +301,8 @@ const useStyles = makeStyles({
   levelChecksWrap: {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
+    gap: '18px',
+    rowGap: '0',
     flexWrap: 'wrap',
   },
   policyCheckLabel: {
@@ -343,6 +344,7 @@ const useStyles = makeStyles({
   },
   detailHint: {
     color: '#8a8886',
+    marginLeft: '10px',
   },
   levelHint: {
     color: '#8a8886',
@@ -386,6 +388,18 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     gap: '16px',
+    scrollbarWidth: 'thin',
+    scrollbarColor: '#c8c6c4 transparent',
+    '&::-webkit-scrollbar': {
+      width: '6px',
+    },
+    '&::-webkit-scrollbar-thumb': {
+      backgroundColor: '#c8c6c4',
+      borderRadius: '6px',
+    },
+    '&::-webkit-scrollbar-track': {
+      backgroundColor: 'transparent',
+    },
   },
   groupTitle: {
     display: 'block',
