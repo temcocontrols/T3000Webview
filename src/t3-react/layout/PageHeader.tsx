@@ -10,17 +10,10 @@
  */
 
 import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbButton,
-  BreadcrumbDivider,
   makeStyles,
-  Divider,
-  Text,
 } from '@fluentui/react-components';
-import { ChevronRight20Regular } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../features/devices/store/deviceTreeStore';
 import { SyncStatusBar } from '../shared/components/SyncStatusBar';
 import { InputRefreshApi } from '../features/inputs/services/inputRefreshApi';
@@ -81,6 +74,12 @@ const useStyles = makeStyles({
     marginLeft: '16px',
     borderLeft: '1px solid #d1d1d1',
   },
+  pageActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginLeft: 'auto',
+  },
 });
 
 interface PageHeaderProps {
@@ -127,16 +126,14 @@ const routeToBreadcrumb: Record<string, { label: string; segments?: string[] }> 
   '/t3000/develop/logs': { label: 'T3000 Logs', segments: ['Developer', 'T3000 Logs'] },
 };
 
-export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => {
+export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig: _syncConfig }) => {
   const styles = useStyles();
   const location = useLocation();
-  const navigate = useNavigate();
   const { selectedDevice } = useDeviceTreeStore();
 
   // Get breadcrumb info from route
   const breadcrumbInfo = routeToBreadcrumb[location.pathname];
   const pageTitle = title || breadcrumbInfo?.label || 'T3000';
-  const segments = breadcrumbInfo?.segments || ['T3000'];
 
   // Determine if current page should show sync status
   const dataTypeByRoute: Record<string, string> = {
@@ -147,14 +144,6 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => 
   };
   const dataType = dataTypeByRoute[location.pathname];
   const shouldShowSync = !!dataType && !!selectedDevice;
-
-  const handleBreadcrumbClick = (index: number) => {
-    if (index === 0) {
-      // Home - go to dashboard
-      navigate('/t3000/dashboard');
-    }
-    // Could add more navigation logic for intermediate segments if needed
-  };
 
   const handleRefreshFromDevice = async () => {
     if (!selectedDevice || !dataType) return;
@@ -201,7 +190,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => 
 
       </div>
       {/* Slot for page-specific actions (filled via React portal) */}
-      <div id="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }} />
+      <div id="page-header-actions" className={styles.pageActions} />
       {shouldShowSync && (
         <div className={styles.syncSection}>
           <SyncStatusBar

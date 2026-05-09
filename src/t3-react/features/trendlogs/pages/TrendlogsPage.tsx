@@ -25,9 +25,6 @@ import {
   ArrowSyncRegular,
   SearchRegular,
   ErrorCircleRegular,
-  ArrowSortUpRegular,
-  ArrowSortDownRegular,
-  ArrowSortRegular,
   ChartMultipleRegular,
   InfoRegular,
   DataBarVerticalRegular,
@@ -88,8 +85,6 @@ export const TrendLogsPage: React.FC = () => {
   const [monitorInputs, setMonitorInputs] = useState<TrendLogInput[]>([]);
   const [loadingInputs, setLoadingInputs] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const selectedSerial = selectedDevice?.serialNumber;
   const selectedPanelId = selectedDevice?.panelId;
@@ -625,15 +620,6 @@ export const TrendLogsPage: React.FC = () => {
     setSearchQuery(e.target.value);
   };
 
-  const handleSort = (columnId: string) => {
-    if (sortColumn === columnId) {
-      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
-    } else {
-      setSortColumn(columnId);
-      setSortDirection('ascending');
-    }
-  };
-
   // Display all 12 trendlog slots (matching T3000 desktop), merge actual data
   const displayTrendLogs = React.useMemo(() => {
     const totalSlots = 12;
@@ -922,7 +908,7 @@ export const TrendLogsPage: React.FC = () => {
                 {/* No Device Selected */}
                 {!selectedDevice && !loading && (
                   <div className={styles.noData}>
-                    <div style={{ textAlign: 'center' }}>
+                    <div className={styles.centerText}>
                       <Text size={400} weight="semibold">No device selected</Text>
                       <br />
                       <Text size={200}>Please select a device from the tree to view trendlogs</Text>

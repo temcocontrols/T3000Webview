@@ -195,10 +195,12 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
+    flexWrap: 'wrap',
   },
   toolbarNote: {
     color: '#605e5c',
     marginLeft: 'auto',
+    maxWidth: '520px',
   },
   validationBar: {
     display: 'flex',
@@ -251,22 +253,68 @@ const useStyles = makeStyles({
     gap: '6px',
   },
   settingRow: {
-    display: 'grid',
-    gridTemplateColumns: '140px 44px 1fr 118px 108px 74px 74px',
-    alignItems: 'center',
-    gap: '12px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
     padding: '10px 12px',
     background: '#faf9f8',
     borderRadius: '4px',
     border: '1px solid #edebe9',
   },
-  titleCell: {},
+  rowTop: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: '12px',
+  },
+  rowBottom: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '12px',
+  },
+  titleCell: {
+    minWidth: '180px',
+    maxWidth: '260px',
+    flex: '0 1 auto',
+  },
+  controlsWrap: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    gap: '8px',
+    flex: 1,
+    minWidth: '280px',
+  },
   categoryCode: {
     display: 'block',
     color: '#a19f9d',
   },
   switchCell: { margin: 0 },
-  descriptionCell: { color: '#605e5c' },
+  detailSelect: {
+    minWidth: '132px',
+  },
+  levelSelect: {
+    minWidth: '116px',
+  },
+  sinkCheckbox: {
+    minWidth: '72px',
+  },
+  descriptionCell: {
+    color: '#605e5c',
+    lineHeight: '1.35',
+    flex: 1,
+    minWidth: '180px',
+  },
+  sinksWrap: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    minWidth: '170px',
+  },
   sinkLabel: {
     display: 'flex',
     alignItems: 'center',
@@ -277,6 +325,35 @@ const useStyles = makeStyles({
     fontSize: '10px',
     display: 'block',
     marginTop: '2px',
+  },
+  '@media (max-width: 920px)': {
+    toolbarNote: {
+      marginLeft: 0,
+      maxWidth: '100%',
+    },
+    rowTop: {
+      flexDirection: 'column',
+      alignItems: 'stretch',
+      gap: '8px',
+    },
+    titleCell: {
+      minWidth: 'unset',
+      maxWidth: '100%',
+    },
+    controlsWrap: {
+      justifyContent: 'flex-start',
+      minWidth: 'unset',
+      width: '100%',
+    },
+    rowBottom: {
+      flexDirection: 'column',
+      alignItems: 'stretch',
+      gap: '8px',
+    },
+    sinksWrap: {
+      justifyContent: 'flex-start',
+      minWidth: 'unset',
+    },
   },
 });
 
@@ -418,59 +495,71 @@ export const LogSettingsTab: React.FC = () => {
               <div className={s.groupList}>
                 {items.map(cfg => (
                   <div key={cfg.category} className={s.settingRow}>
-                    <div className={s.titleCell}>
-                      <Text size={200} weight="semibold">{cfg.displayName}</Text>
-                      <Text size={100} className={s.categoryCode}>{cfg.category}</Text>
+                    <div className={s.rowTop}>
+                      <div className={s.titleCell}>
+                        <Text size={200} weight="semibold">{cfg.displayName}</Text>
+                        <Text size={100} className={s.categoryCode}>{cfg.category}</Text>
+                      </div>
+
+                      <div className={s.controlsWrap}>
+                        <Switch
+                          checked={cfg.enabled}
+                          onChange={(_, data) => update(cfg.category, { enabled: data.checked })}
+                          className={s.switchCell}
+                        />
+
+                        <Select
+                          value={cfg.detailMode}
+                          onChange={(_, data) => update(cfg.category, { detailMode: data.value })}
+                          size="small"
+                          disabled={!cfg.enabled}
+                          className={s.detailSelect}
+                        >
+                          <option value="SUMMARY">SUMMARY</option>
+                          <option value="FULL">FULL</option>
+                        </Select>
+
+                        <Select
+                          value={cfg.minLevel}
+                          onChange={(_, data) => update(cfg.category, { minLevel: data.value })}
+                          size="small"
+                          disabled={!cfg.enabled}
+                          className={s.levelSelect}
+                        >
+                          <option value="DEBUG">DEBUG</option>
+                          <option value="INFO">INFO</option>
+                          <option value="WARN">WARN</option>
+                          <option value="ERROR">ERROR</option>
+                        </Select>
+                      </div>
                     </div>
 
-                    <Switch
-                      checked={cfg.enabled}
-                      onChange={(_, data) => update(cfg.category, { enabled: data.checked })}
-                      className={s.switchCell}
-                    />
+                    <div className={s.rowBottom}>
+                      <Text size={100} className={s.descriptionCell}>{cfg.description}</Text>
 
-                    <Text size={100} className={s.descriptionCell}>{cfg.description}</Text>
+                      <div className={s.sinksWrap}>
+                        <Checkbox
+                          checked={cfg.sinkDb}
+                          onChange={(_, data) => update(cfg.category, { sinkDb: data.checked })}
+                          label={
+                            <span className={s.sinkLabel}>
+                              <span>DB</span>
+                              {cfg.target === 'mssql' && <span className={s.sinkHint}>auto-center</span>}
+                            </span>
+                          }
+                          disabled={!cfg.enabled}
+                          className={s.sinkCheckbox}
+                        />
 
-                    <Select
-                      value={cfg.detailMode}
-                      onChange={(_, data) => update(cfg.category, { detailMode: data.value })}
-                      size="small"
-                      disabled={!cfg.enabled}
-                    >
-                      <option value="SUMMARY">SUMMARY</option>
-                      <option value="FULL">FULL</option>
-                    </Select>
-
-                    <Select
-                      value={cfg.minLevel}
-                      onChange={(_, data) => update(cfg.category, { minLevel: data.value })}
-                      size="small"
-                      disabled={!cfg.enabled}
-                    >
-                      <option value="DEBUG">DEBUG</option>
-                      <option value="INFO">INFO</option>
-                      <option value="WARN">WARN</option>
-                      <option value="ERROR">ERROR</option>
-                    </Select>
-
-                    <Checkbox
-                      checked={cfg.sinkDb}
-                      onChange={(_, data) => update(cfg.category, { sinkDb: data.checked })}
-                      label={
-                        <span className={s.sinkLabel}>
-                          <span>DB</span>
-                          {cfg.target === 'mssql' && <span className={s.sinkHint}>auto-center</span>}
-                        </span>
-                      }
-                      disabled={!cfg.enabled}
-                    />
-
-                    <Checkbox
-                      checked={cfg.sinkFile}
-                      onChange={(_, data) => update(cfg.category, { sinkFile: data.checked })}
-                      label="File"
-                      disabled={!cfg.enabled}
-                    />
+                        <Checkbox
+                          checked={cfg.sinkFile}
+                          onChange={(_, data) => update(cfg.category, { sinkFile: data.checked })}
+                          label="File"
+                          disabled={!cfg.enabled}
+                          className={s.sinkCheckbox}
+                        />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
