@@ -788,6 +788,7 @@ pub async fn query_app_log(
                 "ts_fmt":        ts_fmt,
                 "level":         level,
                 "category":      category,
+                "sink":          "MSSQL",
                 "source":        source,
                 "hostname":      hostname,
                 "role":          serde_json::Value::Null,

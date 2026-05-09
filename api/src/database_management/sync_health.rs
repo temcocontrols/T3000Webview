@@ -22,7 +22,7 @@ use axum::{
 use chrono::{Datelike, Local, TimeZone, Utc};
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -31,6 +31,7 @@ use tracing::{debug, warn};
 
 use crate::app_state::T3AppState;
 use crate::error::Result;
+use crate::logger::{write_structured_log_with_level, LogLevel as FileLogLevel};
 
 // ============================================================================
 // Sync Health Response
@@ -89,7 +90,7 @@ pub struct SyncHealthResponse {
     pub devices_synced_today: i64,
 
     /// Scope of /api/sync/event-log storage.
-    /// Current behavior is local SQLite regardless of center DB mode.
+    /// Can be "local" or "hybrid" depending on center DB runtime state.
     pub event_log_scope: String,
     /// Human-readable note explaining event-log storage behavior.
     pub event_log_note: String,
@@ -163,6 +164,7 @@ pub struct AppLogEntry {
     pub ts_unix: i64,
     pub level: EventLevel,
     pub category: String,
+    pub sink: Option<String>,
     pub source: Option<String>,
     pub hostname: Option<String>,
     pub role: Option<String>,
@@ -534,6 +536,18 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         );
     }
 
+    let (event_log_scope, event_log_note) = if server_status.mssql_pool_active {
+        (
+            "hybrid".to_string(),
+            "Activity Log can include local SQLite rows and center MSSQL rows.".to_string(),
+        )
+    } else {
+        (
+            "local".to_string(),
+            "Activity Log entries are stored locally on this PC. DB sink falls back to local SQLite when center DB is unavailable.".to_string(),
+        )
+    };
+
     let response = SyncHealthResponse {
         role,
         center_db_enabled: server_status.enabled,
@@ -557,8 +571,8 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         db_folder_path,
         db_file_path,
         devices_synced_today,
-        event_log_scope: "local".to_string(),
-        event_log_note: "Activity Log entries are stored on this PC, not in center DB.".to_string(),
+        event_log_scope,
+        event_log_note,
         sampling_paused: crate::app_state::is_sampling_paused(),
         paused_reason: crate::app_state::get_pause_reason(),
         sync_interval_secs,
@@ -635,6 +649,122 @@ fn is_high_volume_category(cat: &str) -> bool {
     )
 }
 
+#[derive(Debug, Clone)]
+struct RuntimeLogPolicy {
+    enabled: bool,
+    detail_mode: String,
+    min_level: String,
+    sink_db: bool,
+    sink_file: bool,
+}
+
+fn normalize_level_upper(level: &str) -> String {
+    match level.trim().to_ascii_uppercase().as_str() {
+        "ERROR" | "ERR" => "ERROR".to_string(),
+        "WARN" | "WARNING" => "WARN".to_string(),
+        "DEBUG" => "DEBUG".to_string(),
+        _ => "INFO".to_string(),
+    }
+}
+
+fn level_rank(level_upper: &str) -> i32 {
+    match level_upper {
+        "DEBUG" => 10,
+        "INFO" => 20,
+        "WARN" => 30,
+        "ERROR" => 40,
+        _ => 20,
+    }
+}
+
+fn level_meets_min(level_upper: &str, min_level: &str) -> bool {
+    level_rank(level_upper) >= level_rank(&normalize_level_upper(min_level))
+}
+
+fn canonical_category(category: &str) -> String {
+    match category.trim().to_ascii_uppercase().as_str() {
+        "SYNC_CYCLE" | "SAMPLING" | "FFI_POLL" => "POLL".to_string(),
+        "DEVICE_SYNC" => "DEVICE".to_string(),
+        "TREND_LOG" | "TD_READ" | "TD_WRITE" | "TD_INPUTS" | "TD_FFI" | "TD_SYNC" => "TRENDLOG".to_string(),
+        other => other.to_string(),
+    }
+}
+
+fn file_log_base_for_category(category: &str) -> &'static str {
+    match category {
+        "API_REQ" => "T3_Webview_API",
+        "WEBSOCKET" => "T3_Webview_Socket",
+        "FFI_CALL" | "MESSAGE_ACTION" | "POLL" | "DEVICE" | "TRENDLOG" => "T3_Webview_FFI",
+        "MAINTENANCE" => "T3_Webview_Database",
+        _ => "T3_Webview_Initialize",
+    }
+}
+
+fn parse_bool_config(v: &str) -> bool {
+    matches!(v.trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on")
+}
+
+async fn load_runtime_log_policy(
+    db: &sea_orm::DatabaseConnection,
+    category: &str,
+) -> RuntimeLogPolicy {
+    let normalized_category = canonical_category(category);
+
+    let mut base_cfg = default_log_settings()
+        .into_iter()
+        .find(|c| c.category == normalized_category)
+        .unwrap_or(LogCategoryConfig {
+            category: normalized_category,
+            display_name: "Custom Category".into(),
+            description: "Runtime category (default policy)".into(),
+            group: "debug".into(),
+            enabled: true,
+            detail_mode: "SUMMARY".into(),
+            min_level: "INFO".into(),
+            target: "sqlite".into(),
+            sink_db: true,
+            sink_file: false,
+        });
+
+    let key_prefix = format!("log.category.{}.", base_cfg.category.replace('\'', "''"));
+    let sql = format!(
+        "SELECT config_key, config_value FROM APPLICATION_CONFIG WHERE config_key LIKE '{}'",
+        format!("{}%", key_prefix)
+    );
+
+    let rows = db
+        .query_all(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            sql,
+        ))
+        .await
+        .unwrap_or_default();
+
+    for row in rows {
+        let key: String = row.try_get("", "config_key").unwrap_or_default();
+        let val: String = row.try_get("", "config_value").unwrap_or_default();
+        if key.ends_with(".enabled") {
+            base_cfg.enabled = parse_bool_config(&val);
+        } else if key.ends_with(".detail_mode") {
+            base_cfg.detail_mode = val;
+        } else if key.ends_with(".min_level") {
+            base_cfg.min_level = val;
+        } else if key.ends_with(".sink_db") {
+            base_cfg.sink_db = parse_bool_config(&val);
+        } else if key.ends_with(".sink_file") {
+            base_cfg.sink_file = parse_bool_config(&val);
+        }
+    }
+
+    RuntimeLogPolicy {
+        enabled: base_cfg.enabled,
+        detail_mode: base_cfg.detail_mode,
+        min_level: base_cfg.min_level,
+        sink_db: base_cfg.sink_db,
+        sink_file: base_cfg.sink_file,
+    }
+}
+
 /// Write one entry to T3_APP_LOG.
 ///
 /// Routing:
@@ -654,6 +784,32 @@ pub async fn write_app_log(
     message: &str,
     details: Option<&str>,
 ) {
+    let canonical_cat = canonical_category(category);
+    let level_upper = normalize_level_upper(level);
+    let level_lc = level_upper.to_ascii_lowercase();
+    let is_error = level_upper == "ERROR";
+
+    let policy = load_runtime_log_policy(db, &canonical_cat).await;
+
+    // For non-error logs, honor category enable/min-level policy.
+    if !is_error {
+        if !policy.enabled {
+            return;
+        }
+        if !level_meets_min(&level_upper, &policy.min_level) {
+            return;
+        }
+    }
+
+    // Safety invariant: ERROR logs always go to DB.
+    let sink_db = is_error || policy.sink_db;
+    let sink_file = policy.sink_file;
+
+    // Nothing to do if both sinks are disabled for non-error logs.
+    if !sink_db && !sink_file {
+        return;
+    }
+
     let now = Local::now();
     let ts_unix = now.timestamp();
     let ts_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
@@ -662,14 +818,16 @@ pub async fn write_app_log(
         .map(|h| h.to_string_lossy().into_owned())
         .unwrap_or_else(|_| "unknown".into());
 
-    // High-volume sync categories: route to MSSQL when pool is active.
-    if is_high_volume_category(category) {
+    let mut wrote_mssql = false;
+
+    // DB sink: high-volume categories route to MSSQL when pool is active.
+    if sink_db && is_high_volume_category(&canonical_cat) {
         if let Some(pool) = crate::server_db_writer::get_server_mssql_pool() {
             // Fire-and-forget: clone what we need across the spawn boundary.
             let ts_unix_c = ts_unix;
             let ts_fmt_c = ts_fmt.clone();
-            let level_c = level.to_string();
-            let category_c = category.to_string();
+            let level_c = level_lc.clone();
+            let category_c = canonical_cat.clone();
             let source_c = source.map(|s| s.to_string());
             let hostname_c = hostname_val.clone();
             let device_serial_c = device_serial.map(|s| s.to_string());
@@ -691,30 +849,57 @@ pub async fn write_app_log(
                 )
                 .await;
             });
-
-            // Skip local SQLite write — MSSQL is the primary for high-volume logs.
-            return;
+            wrote_mssql = true;
         }
-        // MSSQL pool unavailable → fall through to local SQLite so the
-        // Activity Log still shows what was attempted and why it landed locally.
+        // MSSQL unavailable falls through to SQLite when DB sink is enabled.
     }
 
-    // ── Local SQLite write (system/config logs always; sync logs as fallback) ──
+    // Local file sink (independent of DB sink).
+    if sink_file {
+        let base_filename = file_log_base_for_category(&canonical_cat);
+        let mut file_message = format!("[{}] {}", canonical_cat, message);
+        if let Some(src) = source {
+            file_message.push_str(&format!(" | source={}", src));
+        }
+        if let Some(serial) = device_serial {
+            file_message.push_str(&format!(" | serial={}", serial));
+        }
+        if policy.detail_mode.eq_ignore_ascii_case("FULL") {
+            if let Some(d) = details {
+                file_message.push_str(&format!(" | details={}", d));
+            }
+        }
+
+        let file_level = match level_upper.as_str() {
+            "ERROR" => FileLogLevel::Error,
+            "WARN" => FileLogLevel::Warn,
+            _ => FileLogLevel::Info,
+        };
+        let _ = write_structured_log_with_level(base_filename, &file_message, file_level);
+    }
+
+    // ── Local SQLite write (DB sink path; or fallback when MSSQL not available) ──
+    if !sink_db || wrote_mssql {
+        return;
+    }
 
     // When this is a sync-category log but MSSQL was unreachable, annotate the
     // details field so the Activity Log clearly shows what failed and where it
     // was saved, e.g.:
     //   "Starting FFI sync cycle" → details: "[center DB unreachable — saved to local] sync_interval_secs=300"
     let fallback_detail_storage: String;
-    let effective_details: Option<&str> = if is_high_volume_category(category) {
+    let detailed_allowed = policy.detail_mode.eq_ignore_ascii_case("FULL") || is_error;
+    let mut selected_details = if detailed_allowed { details } else { None };
+
+    let effective_details: Option<&str> = if is_high_volume_category(&canonical_cat) {
         // We only reach here when the MSSQL pool was NOT available.
-        fallback_detail_storage = match details {
+        fallback_detail_storage = match selected_details {
             Some(d) => format!("[center DB unreachable — saved to local] {}", d),
             None    => "[center DB unreachable — saved to local]".to_string(),
         };
         Some(fallback_detail_storage.as_str())
     } else {
-        details
+        selected_details.take()
     };
 
     let esc = |s: &str| s.replace('\'', "''");
@@ -729,8 +914,8 @@ pub async fn write_app_log(
          VALUES ({}, '{}', '{}', '{}', {}, '{}', {}, '{}', {})",
         ts_unix,
         esc(&ts_fmt),
-        esc(level),
-        esc(category),
+        esc(&level_lc),
+        esc(&canonical_cat),
         opt_str(source),
         esc(&hostname_val),
         opt_str(device_serial),
@@ -778,6 +963,7 @@ fn json_to_log_entry(v: &serde_json::Value) -> AppLogEntry {
         ts:            v["ts_fmt"].as_str().unwrap_or("").to_string(),
         level:         EventLevel::from_str(v["level"].as_str().unwrap_or("info")),
         category:      v["category"].as_str().unwrap_or("SERVER_EVENT").to_string(),
+        sink:          v["sink"].as_str().map(|s| s.to_string()),
         source:        v["source"].as_str().map(|s| s.to_string()),
         hostname:      v["hostname"].as_str().map(|s| s.to_string()),
         role:          v["role"].as_str().map(|s| s.to_string()),
@@ -829,6 +1015,7 @@ async fn query_sqlite_log_raw(
                 "ts_fmt":        r.try_get::<String>("", "ts_fmt").unwrap_or_default(),
                 "level":         r.try_get::<String>("", "level").unwrap_or_else(|_| "info".into()),
                 "category":      r.try_get::<String>("", "category").unwrap_or_else(|_| "SERVER_EVENT".into()),
+                "sink":          "SQLITE",
                 "source":        r.try_get::<Option<String>>("", "source").ok().flatten(),
                 "hostname":      r.try_get::<Option<String>>("", "hostname").ok().flatten(),
                 "role":          r.try_get::<Option<String>>("", "role").ok().flatten(),
@@ -1009,6 +1196,7 @@ async fn get_event_log(
             ts:           r.try_get("", "ts_fmt").unwrap_or_default(),
             level:        EventLevel::from_str(&r.try_get::<String>("", "level").unwrap_or_default()),
             category:     r.try_get("", "category").unwrap_or_else(|_| "SERVER_EVENT".into()),
+            sink:         Some("SQLITE".to_string()),
             source:       r.try_get::<Option<String>>("", "source").ok().flatten(),
             hostname:     r.try_get::<Option<String>>("", "hostname").ok().flatten(),
             role:         r.try_get::<Option<String>>("", "role").ok().flatten(),
@@ -1110,7 +1298,7 @@ async fn ping_center_db() -> impl axum::response::IntoResponse {
 // ============================================================================
 // GET /api/logs/settings  |  PUT /api/logs/settings
 // Read/write per-category log config from APPLICATION_CONFIG
-// Keys: log.category.<CATEGORY>.enabled / detail_mode / min_level
+// Keys: log.category.<CATEGORY>.enabled / detail_mode / min_level / sink_db / sink_file
 // ============================================================================
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -1124,26 +1312,42 @@ pub struct LogCategoryConfig {
     pub detail_mode: String,   // "SUMMARY" | "FULL"
     pub min_level: String,     // "INFO" | "WARN" | "ERROR" | "DEBUG"
     pub target: String,        // "sqlite" | "mssql" | "both"
+    pub sink_db: bool,
+    pub sink_file: bool,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateLogSettingsRequest {
-    pub settings: Vec<LogCategoryConfig>,
+    pub settings: Vec<UpdateLogCategoryConfig>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateLogCategoryConfig {
+    pub category: String,
+    pub enabled: bool,
+    pub detail_mode: String,
+    pub min_level: String,
+    #[serde(default)]
+    pub sink_db: Option<bool>,
+    #[serde(default)]
+    pub sink_file: Option<bool>,
 }
 
 fn default_log_settings() -> Vec<LogCategoryConfig> {
     vec![
-        LogCategoryConfig { category: "STARTUP".into(),     display_name: "Service Startup".into(),  description: "DLL load, server init, DB connect, sampling state changes".into(), group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into() },
-        LogCategoryConfig { category: "AUTH".into(),        display_name: "Authentication".into(),    description: "Login, logout, session events".into(),                            group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into() },
-        LogCategoryConfig { category: "CONFIG".into(),      display_name: "Config Changes".into(),    description: "Operator settings: sync interval, rediscover interval".into(),    group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into() },
-        LogCategoryConfig { category: "MAINTENANCE".into(), display_name: "DB Maintenance".into(),    description: "Migration, partition creation, DB size warnings".into(),           group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into() },
-        LogCategoryConfig { category: "POLL".into(),        display_name: "Device Poll".into(),       description: "Sync cycle: device count, ok/fail totals, policy skips".into(),   group: "operational".into(), enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "mssql".into() },
-        LogCategoryConfig { category: "DEVICE".into(),      display_name: "Device Sync".into(),       description: "Per-device: points written, FFI errors, serial=0 skips".into(),   group: "operational".into(), enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "mssql".into() },
-        LogCategoryConfig { category: "TRENDLOG".into(),    display_name: "Trendlog".into(),          description: "Trendlog config sync and data write summary".into(),               group: "operational".into(), enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "mssql".into() },
-        LogCategoryConfig { category: "API_REQ".into(),     display_name: "API Requests".into(),      description: "HTTP endpoint calls — enable for debugging only".into(),           group: "debug".into(),       enabled: false, detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into() },
-        LogCategoryConfig { category: "WEBSOCKET".into(),   display_name: "WebSocket".into(),         description: "WS connect/disconnect, message types".into(),                      group: "debug".into(),       enabled: false, detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into() },
-        LogCategoryConfig { category: "FFI_CALL".into(),    display_name: "C++ FFI Calls".into(),     description: "Raw C++ request/response — very high volume".into(),               group: "debug".into(),       enabled: false, detail_mode: "FULL".into(),    min_level: "DEBUG".into(), target: "sqlite".into() },
+        LogCategoryConfig { category: "STARTUP".into(),     display_name: "Service Startup".into(),  description: "DLL load, server init, DB connect, sampling state changes".into(), group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
+        LogCategoryConfig { category: "AUTH".into(),        display_name: "Authentication".into(),    description: "Login, logout, session events".into(),                            group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
+        LogCategoryConfig { category: "CONFIG".into(),      display_name: "Config Changes".into(),    description: "Operator settings: sync interval, rediscover interval".into(),    group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
+        LogCategoryConfig { category: "MAINTENANCE".into(), display_name: "DB Maintenance".into(),    description: "Migration, partition creation, DB size warnings".into(),           group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
+        LogCategoryConfig { category: "POLL".into(),        display_name: "Device Poll".into(),       description: "Sync cycle: device count, ok/fail totals, policy skips".into(),   group: "operational".into(), enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "mssql".into(),  sink_db: true,  sink_file: false },
+        LogCategoryConfig { category: "DEVICE".into(),      display_name: "Device Sync".into(),       description: "Per-device: points written, FFI errors, serial=0 skips".into(),   group: "operational".into(), enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "mssql".into(),  sink_db: true,  sink_file: false },
+        LogCategoryConfig { category: "TRENDLOG".into(),    display_name: "Trendlog".into(),          description: "Trendlog config sync and data write summary".into(),               group: "operational".into(), enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "mssql".into(),  sink_db: true,  sink_file: false },
+        LogCategoryConfig { category: "API_REQ".into(),     display_name: "API Requests".into(),      description: "HTTP endpoint calls — enable for debugging only".into(),           group: "debug".into(),       enabled: false, detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
+        LogCategoryConfig { category: "WEBSOCKET".into(),   display_name: "WebSocket".into(),         description: "WS connect/disconnect, message types".into(),                      group: "debug".into(),       enabled: false, detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
+        LogCategoryConfig { category: "FFI_CALL".into(),    display_name: "C++ FFI Calls".into(),     description: "Raw C++ request/response — very high volume".into(),               group: "debug".into(),       enabled: false, detail_mode: "FULL".into(),    min_level: "DEBUG".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
+        LogCategoryConfig { category: "MESSAGE_ACTION".into(), display_name: "Message Action".into(), description: "Message action processing and command dispatch details".into(),      group: "debug".into(),       enabled: false, detail_mode: "FULL".into(),    min_level: "DEBUG".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
     ]
 }
 
@@ -1165,6 +1369,8 @@ async fn get_log_settings(
         let enabled_key = format!("{}.enabled", prefix);
         let detail_key  = format!("{}.detail_mode", prefix);
         let level_key   = format!("{}.min_level", prefix);
+        let sink_db_key = format!("{}.sink_db", prefix);
+        let sink_file_key = format!("{}.sink_file", prefix);
 
         let load_val = |key: String| {
             let db = db.clone();
@@ -1190,6 +1396,12 @@ async fn get_log_settings(
         if let Some(v) = load_val(level_key).await {
             cfg.min_level = v;
         }
+        if let Some(v) = load_val(sink_db_key).await {
+            cfg.sink_db = parse_bool_config(&v);
+        }
+        if let Some(v) = load_val(sink_file_key).await {
+            cfg.sink_file = parse_bool_config(&v);
+        }
 
         result.push(cfg);
     }
@@ -1207,30 +1419,45 @@ async fn put_log_settings(
     };
 
     let now = chrono::Utc::now().naive_utc().to_string();
+    let default_sink_by_category: HashMap<String, (bool, bool)> = default_log_settings()
+        .into_iter()
+        .map(|cfg| (cfg.category, (cfg.sink_db, cfg.sink_file)))
+        .collect();
 
     for cfg in &body.settings {
-        let cat = cfg.category.replace('\'', "''");
+        let canonical_cat = canonical_category(&cfg.category);
+        let cat = canonical_cat.replace('\'', "''");
         let prefix = format!("log.category.{}", cat);
 
-        let upsert = |key: String, value: String| {
-            let db = db.clone();
-            let ts = now.clone();
-            async move {
-                let sql = format!(
-                    "INSERT INTO APPLICATION_CONFIG (config_key, config_value, updated_at) \
-                     VALUES ('{key}', '{val}', '{ts}') \
-                     ON CONFLICT(config_key) DO UPDATE SET config_value = excluded.config_value, updated_at = excluded.updated_at",
-                    key = key.replace('\'', "''"),
-                    val = value.replace('\'', "''"),
-                    ts = ts,
-                );
-                let _ = db.execute(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, sql)).await;
-            }
-        };
+        let (default_sink_db, default_sink_file) = default_sink_by_category
+            .get(&canonical_cat)
+            .copied()
+            .unwrap_or((true, false));
+        let sink_db = cfg.sink_db.unwrap_or(default_sink_db);
+        let sink_file = cfg.sink_file.unwrap_or(default_sink_file);
 
-        upsert(format!("{}.enabled", prefix),     cfg.enabled.to_string()).await;
-        upsert(format!("{}.detail_mode", prefix),  cfg.detail_mode.clone()).await;
-        upsert(format!("{}.min_level", prefix),    cfg.min_level.clone()).await;
+        let updates = [
+            (format!("{}.enabled", prefix), cfg.enabled.to_string()),
+            (format!("{}.detail_mode", prefix), cfg.detail_mode.clone()),
+            (format!("{}.min_level", prefix), cfg.min_level.clone()),
+            (format!("{}.sink_db", prefix), sink_db.to_string()),
+            (format!("{}.sink_file", prefix), sink_file.to_string()),
+        ];
+
+        for (key, value) in updates {
+            let sql = format!(
+                "INSERT INTO APPLICATION_CONFIG (config_key, config_value, updated_at) \
+                 VALUES ('{key}', '{val}', '{ts}') \
+                 ON CONFLICT(config_key) DO UPDATE SET config_value = excluded.config_value, updated_at = excluded.updated_at",
+                key = key.replace('\'', "''"),
+                val = value.replace('\'', "''"),
+                ts = now.as_str(),
+            );
+
+            db.execute(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, sql))
+                .await
+                .map_err(|e| crate::error::Error::DbError(format!("Failed to save log setting '{}': {}", key, e)))?;
+        }
     }
 
     Ok(Json(serde_json::json!({ "ok": true })))
