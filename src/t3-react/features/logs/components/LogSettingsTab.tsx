@@ -256,6 +256,8 @@ const useStyles = makeStyles({
   },
   globalPolicyTitle: {
     color: '#323130',
+    fontSize: '12px',
+    lineHeight: '18px',
   },
   globalRows: {
     display: 'flex',
@@ -272,6 +274,7 @@ const useStyles = makeStyles({
     width: '72px',
     flexShrink: 0,
     color: '#605e5c',
+    fontWeight: 600,
   },
   globalLabel: {
     color: '#605e5c',
@@ -280,21 +283,20 @@ const useStyles = makeStyles({
   detailPill: {
     display: 'inline-flex',
     alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: '86px',
-    height: '30px',
-    padding: '0 12px',
-    border: '1px solid #c8c6c4',
-    background: '#ffffff',
+    gap: '6px',
+    minWidth: 'unset',
+    height: 'auto',
+    padding: 0,
+    border: 'none',
+    borderRadius: 0,
+    background: 'transparent',
     color: '#323130',
     cursor: 'pointer',
     userSelect: 'none',
   },
   detailPillActive: {
-    background: '#e5f1fb',
-    borderColor: '#0078d4',
-    color: '#004578',
-    fontWeight: 600,
+    color: '#323130',
+    fontWeight: 400,
   },
   levelChecksWrap: {
     display: 'flex',
@@ -302,11 +304,42 @@ const useStyles = makeStyles({
     gap: '10px',
     flexWrap: 'wrap',
   },
-  levelAllOption: {
-    fontWeight: 600,
-    paddingRight: '6px',
-    borderRight: '1px solid #d2d0ce',
-    marginRight: '2px',
+  policyCheckLabel: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    height: 'auto',
+    padding: 0,
+    border: 'none',
+    borderRadius: 0,
+    background: 'transparent',
+    color: '#323130',
+    cursor: 'pointer',
+    userSelect: 'none',
+  },
+  policyCheckActive: {
+    color: '#323130',
+    fontWeight: 400,
+  },
+  policyCheckDisabled: {
+    opacity: 0.5,
+    cursor: 'not-allowed',
+  },
+  policyCheckInput: {
+    width: '14px',
+    height: '14px',
+    minWidth: '14px',
+    margin: 0,
+    cursor: 'pointer',
+    accentColor: '#0078d4',
+  },
+  detailRadioInput: {
+    width: '14px',
+    height: '14px',
+    minWidth: '14px',
+    margin: 0,
+    cursor: 'pointer',
+    accentColor: '#0078d4',
   },
   detailHint: {
     color: '#8a8886',
@@ -358,6 +391,8 @@ const useStyles = makeStyles({
     display: 'block',
     marginBottom: '8px',
     color: '#323130',
+    fontSize: '12px',
+    lineHeight: '18px',
   },
   groupList: {
     display: 'grid',
@@ -372,6 +407,10 @@ const useStyles = makeStyles({
     background: '#faf9f8',
     borderRadius: '4px',
     border: '1px solid #edebe9',
+  },
+  settingRowActive: {
+    background: '#f3f9fd',
+    borderColor: '#c7e0f4',
   },
   categoryLabel: {
     display: 'flex',
@@ -677,7 +716,7 @@ export const LogSettingsTab: React.FC = () => {
         </div>
 
         <div className={s.globalPolicyBar}>
-          <Text size={300} weight="semibold" className={s.globalPolicyTitle}>Global Log Policy (applies to all categories)</Text>
+          <Text size={400} weight="semibold" className={s.globalPolicyTitle}>Default Logging Settings</Text>
           <div className={s.globalRows}>
             <div className={s.globalRow}>
               <Text size={200} className={s.globalRowLabel}>Detail</Text>
@@ -691,9 +730,9 @@ export const LogSettingsTab: React.FC = () => {
                     applyGlobalPolicy({ detailMode: 'SUMMARY' });
                   }}
                   disabled={offlineMode}
-                  hidden
+                  className={s.detailRadioInput}
                 />
-                SUMMARY
+                Summary
               </label>
               <label className={`${s.detailPill} ${globalDetailMode === 'FULL' ? s.detailPillActive : ''}`}>
                 <input
@@ -705,34 +744,39 @@ export const LogSettingsTab: React.FC = () => {
                     applyGlobalPolicy({ detailMode: 'FULL' });
                   }}
                   disabled={offlineMode}
-                  hidden
+                  className={s.detailRadioInput}
                 />
-                FULL
+                Full
               </label>
-              <Text size={100} className={s.detailHint}>SUMMARY = compact totals, FULL = every event line.</Text>
+              <Text size={100} className={s.detailHint}>Summary = compact totals, Full = every event line.</Text>
             </div>
 
             <div className={s.globalRow}>
               <Text size={200} className={s.globalRowLabel}>Levels</Text>
               <div className={s.levelChecksWrap}>
-                <label className={`${s.sinkCheckbox} ${s.levelAllOption} ${offlineMode ? s.sinkCheckboxDisabled : ''}`}>
+                <label className={`${s.policyCheckLabel} ${areAllLevelsSelected ? s.policyCheckActive : ''} ${offlineMode ? s.policyCheckDisabled : ''}`}>
                   <input
                     type="checkbox"
                     checked={areAllLevelsSelected}
                     onChange={e => setAllLevels(e.target.checked)}
                     disabled={offlineMode}
+                    className={s.policyCheckInput}
                   />
                   All
                 </label>
                 {LEVEL_ORDER.map(level => (
-                  <label key={level} className={`${s.sinkCheckbox} ${offlineMode ? s.sinkCheckboxDisabled : ''}`}>
+                  <label
+                    key={level}
+                    className={`${s.policyCheckLabel} ${globalLevelSelection[level] ? s.policyCheckActive : ''} ${offlineMode ? s.policyCheckDisabled : ''}`}
+                  >
                     <input
                       type="checkbox"
                       checked={globalLevelSelection[level]}
                       onChange={e => updateGlobalLevel(level, e.target.checked)}
                       disabled={offlineMode}
+                      className={s.policyCheckInput}
                     />
-                    {level}
+                    {level.charAt(0) + level.slice(1).toLowerCase()}
                   </label>
                 ))}
               </div>
@@ -740,7 +784,7 @@ export const LogSettingsTab: React.FC = () => {
 
             <div className={s.globalRow}>
               <Text size={200} className={s.globalRowLabel}>Sinks</Text>
-              <label className={`${s.sinkCheckbox} ${offlineMode ? s.sinkCheckboxDisabled : ''}`}>
+              <label className={`${s.policyCheckLabel} ${globalSinkDb ? s.policyCheckActive : ''} ${offlineMode ? s.policyCheckDisabled : ''}`}>
                 <input
                   type="checkbox"
                   checked={globalSinkDb}
@@ -749,11 +793,12 @@ export const LogSettingsTab: React.FC = () => {
                     applyGlobalPolicy({ sinkDb: e.target.checked });
                   }}
                   disabled={offlineMode}
+                  className={s.policyCheckInput}
                 />
-                DB
+                Db
               </label>
 
-              <label className={`${s.sinkCheckbox} ${offlineMode ? s.sinkCheckboxDisabled : ''}`}>
+              <label className={`${s.policyCheckLabel} ${globalSinkFile ? s.policyCheckActive : ''} ${offlineMode ? s.policyCheckDisabled : ''}`}>
                 <input
                   type="checkbox"
                   checked={globalSinkFile}
@@ -762,12 +807,13 @@ export const LogSettingsTab: React.FC = () => {
                     applyGlobalPolicy({ sinkFile: e.target.checked });
                   }}
                   disabled={offlineMode}
+                  className={s.policyCheckInput}
                 />
                 File
               </label>
             </div>
           </div>
-          <Text size={100} className={s.levelHint}>Levels are cumulative. Selecting DEBUG includes INFO, WARN, and ERROR logs.</Text>
+          <Text size={100} className={s.levelHint}>Levels are cumulative. Selecting Debug includes Info, Warn, and Error logs.</Text>
         </div>
 
         {hasInvalidSinkSelection && !loading && (
@@ -815,12 +861,12 @@ export const LogSettingsTab: React.FC = () => {
           <div className={s.groupsWrap}>
           {grouped.map(({ group, label, items }) => (
             <div key={group}>
-              <Text size={300} weight="semibold" className={s.groupTitle}>
+              <Text size={400} weight="semibold" className={s.groupTitle}>
                 {label}
               </Text>
               <div className={s.groupList}>
                 {items.map(cfg => (
-                  <div key={cfg.category} className={s.settingRow}>
+                  <div key={cfg.category} className={`${s.settingRow} ${cfg.enabled ? s.settingRowActive : ''}`}>
                     <label className={s.categoryLabel}>
                       <input
                         type="checkbox"

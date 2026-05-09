@@ -1445,18 +1445,55 @@ async fn put_log_settings(
         ];
 
         for (key, value) in updates {
-            let sql = format!(
-                "INSERT INTO APPLICATION_CONFIG (config_key, config_value, updated_at) \
-                 VALUES ('{key}', '{val}', '{ts}') \
-                 ON CONFLICT(config_key) DO UPDATE SET config_value = excluded.config_value, updated_at = excluded.updated_at",
-                key = key.replace('\'', "''"),
-                val = value.replace('\'', "''"),
-                ts = now.as_str(),
+            let key_sql = key.replace('\'', "''");
+            let val_sql = value.replace('\'', "''");
+            let ts_sql = now.replace('\'', "''");
+
+            // Some deployments do not enforce a UNIQUE constraint on config_key,
+            // so ON CONFLICT(config_key) fails. Use update-first, insert-if-missing.
+            let update_sql = format!(
+                "UPDATE APPLICATION_CONFIG \
+                 SET config_value = '{val}', updated_at = '{ts}' \
+                 WHERE config_key = '{key}'",
+                key = key_sql,
+                val = val_sql,
+                ts = ts_sql,
             );
 
-            db.execute(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, sql))
+            let update_result = db
+                .execute(sea_orm::Statement::from_string(
+                    sea_orm::DatabaseBackend::Sqlite,
+                    update_sql,
+                ))
                 .await
-                .map_err(|e| crate::error::Error::DbError(format!("Failed to save log setting '{}': {}", key, e)))?;
+                .map_err(|e| {
+                    crate::error::Error::DbError(format!(
+                        "Failed to update log setting '{}': {}",
+                        key, e
+                    ))
+                })?;
+
+            if update_result.rows_affected() == 0 {
+                let insert_sql = format!(
+                    "INSERT INTO APPLICATION_CONFIG (config_key, config_value, updated_at) \
+                     VALUES ('{key}', '{val}', '{ts}')",
+                    key = key_sql,
+                    val = val_sql,
+                    ts = ts_sql,
+                );
+
+                db.execute(sea_orm::Statement::from_string(
+                    sea_orm::DatabaseBackend::Sqlite,
+                    insert_sql,
+                ))
+                .await
+                .map_err(|e| {
+                    crate::error::Error::DbError(format!(
+                        "Failed to insert log setting '{}': {}",
+                        key, e
+                    ))
+                })?;
+            }
         }
     }
 
