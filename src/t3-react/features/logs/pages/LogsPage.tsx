@@ -152,12 +152,12 @@ const useStyles = makeStyles({
   drawerHeaderTitle: {
     fontSize: '12px',
     fontWeight: 600,
-    lineHeight: '18px',
+    lineHeight: '16px',
   },
   drawerHeaderTitleText: {
     fontSize: '12px',
     fontWeight: 600,
-    lineHeight: '18px',
+    lineHeight: '16px',
   },
   drawerCloseButton: {
     minWidth: '24px',

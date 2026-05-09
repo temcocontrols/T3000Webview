@@ -98,7 +98,7 @@ import { MenuAction } from '@common/react/types/menu';
 import { toolbarConfig } from '@t3-react/config/toolbarConfig';
 import { useAuthStore } from '@t3-react/store';
 import { t3000Routes } from '@t3-react/app/router/routes';
-import { ThemeSelector } from '@t3-react/theme';
+import { ThemeSelector, useTheme } from '@t3-react/theme';
 import { devVersion } from '@common/vue/T3000/Hvac/Data/T3Data';
 import { useFileMenu } from '@t3-react/shared/hooks/useFileMenu';
 import { useToolsMenu } from '@t3-react/shared/hooks/useToolsMenu';
@@ -193,31 +193,6 @@ const useStyles = makeStyles({
   menuItemWide: {
     minWidth: '300px',
   },
-  menuItemCompact: {
-    fontSize: 'var(--t3-font-size-small)',
-    padding: '8px 16px',
-    minHeight: '32px',
-  },
-  menuItemContent: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    gap: '24px',
-  },
-  versionLabel: {
-    fontSize: '12px',
-    color: 'var(--t3-color-header-text)',
-    marginRight: '8px',
-  },
-  toolbarButtonCompact: {
-    color: 'var(--t3-color-header-text)',
-    fontSize: '11px',
-    fontWeight: '400',
-    padding: '1px 4px',
-    minHeight: '24px',
-    minWidth: 'auto',
-  },
 });
 
 interface HeaderProps {
@@ -230,6 +205,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const { theme } = useTheme();
   const { selectedDevice, getDeviceById } = useDeviceData();
 
   // File menu handlers
@@ -652,9 +628,20 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
                         item.disabled
                       }
                       icon={IconComponent ? <IconComponent /> : undefined}
-                      className={`${menu.id === 'tools' ? styles.menuItemWide : ''} ${styles.menuItemCompact}`.trim()}
+                      className={menu.id === 'tools' ? styles.menuItemWide : undefined}
+                      style={{
+                        fontSize: 'var(--t3-font-size-small)', // 12px for dropdown items
+                        padding: '8px 16px',
+                        minHeight: '32px',
+                      }}
                     >
-                      <div className={styles.menuItemContent}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        width: '100%',
+                        gap: '24px'
+                      }}>
                         <span>{item.label}</span>
                         {item.shortcut && (
                           <span className={styles.menuShortcut}>
@@ -672,7 +659,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
 
         {/* Theme Selector and User Avatar on right side of menu bar */}
         <div className={styles.menuBarRight}>
-          <span className={styles.versionLabel}>
+          <span style={{ fontSize: '12px', color: 'var(--t3-color-header-text)', marginRight: '8px' }}>
             {devVersion.value}
           </span>
           <ThemeSelector appearance="subtle" size="small" />
@@ -693,13 +680,21 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
                 <MenuList>
                   <MenuItem
                     icon={<PersonRegular />}
-                    className={styles.menuItemCompact}
+                    style={{
+                      fontSize: 'var(--t3-font-size-small)',
+                      padding: '8px 16px',
+                      minHeight: '32px',
+                    }}
                   >
                     Profile
                   </MenuItem>
                   <MenuItem
                     icon={<SettingsRegular />}
-                    className={styles.menuItemCompact}
+                    style={{
+                      fontSize: 'var(--t3-font-size-small)',
+                      padding: '8px 16px',
+                      minHeight: '32px',
+                    }}
                   >
                     Settings
                   </MenuItem>
@@ -707,7 +702,11 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
                   <MenuItem
                     icon={<SignOutRegular />}
                     onClick={handleLogout}
-                    className={styles.menuItemCompact}
+                    style={{
+                      fontSize: 'var(--t3-font-size-small)',
+                      padding: '8px 16px',
+                      minHeight: '32px',
+                    }}
                   >
                     Logout
                   </MenuItem>
@@ -744,7 +743,15 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
                   disabled={item.disabled}
                   onClick={() => handleToolbarClick(item)}
                   title={item.tooltip || item.label}
-                  className={`${isActive ? styles.activeToolbarButton : ''} ${styles.toolbarButtonCompact}`.trim()}
+                  className={isActive ? styles.activeToolbarButton : ''}
+                  style={{
+                    color: theme.colors.text,
+                    fontSize: '11px', // Smaller font
+                    fontWeight: '400', // Thinner/normal weight
+                    padding: '1px 4px', // Even smaller padding
+                    minHeight: '24px', // Smaller height
+                    minWidth: 'auto', // Remove minimum width
+                  }}
                 >
                   {item.label}
                 </ToolbarButton>
