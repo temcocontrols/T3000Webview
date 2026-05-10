@@ -1028,6 +1028,7 @@ async fn query_sqlite_log_raw(
         Some("error") => " AND level = 'error'",
         Some("warn")  => " AND level = 'warn'",
         Some("info")  => " AND level = 'info'",
+        Some("debug") => " AND level = 'debug'",
         _ => "",
     };
     let cat_sql = sqlite_category_filter_sql(cat_filter);
@@ -1076,6 +1077,7 @@ async fn count_sqlite_log_raw(
         Some("error") => " AND level = 'error'",
         Some("warn") => " AND level = 'warn'",
         Some("info") => " AND level = 'info'",
+        Some("debug") => " AND level = 'debug'",
         _ => "",
     };
     let cat_sql = sqlite_category_filter_sql(cat_filter);
@@ -1120,7 +1122,17 @@ async fn get_event_log(
     // Fetch enough rows from each source to satisfy the requested page.
     let fetch_count = (offset + limit) as u32;
 
-    let level_filter = q.level.as_deref().filter(|s| !s.is_empty());
+    let level_filter = q
+        .level
+        .as_deref()
+        .map(|s| s.trim().to_ascii_lowercase())
+        .and_then(|s| match s.as_str() {
+            "error" | "err" => Some("error"),
+            "warn" | "warning" => Some("warn"),
+            "info" => Some("info"),
+            "debug" => Some("debug"),
+            _ => None,
+        });
     let cat_filter   = q.category.as_deref().filter(|s| !s.is_empty());
 
     // ── When MSSQL pool is active: merge rows from both stores ────────────────
@@ -1201,6 +1213,7 @@ async fn get_event_log(
         Some("error") => " AND level = 'error'",
         Some("warn")  => " AND level = 'warn'",
         Some("info")  => " AND level = 'info'",
+        Some("debug") => " AND level = 'debug'",
         _ => "",
     };
     let cat_sql = sqlite_category_filter_sql(cat_filter);

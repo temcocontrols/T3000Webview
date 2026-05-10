@@ -45,6 +45,17 @@ fn category_filter_variants(category: &str) -> Vec<String> {
     }
 }
 
+fn normalize_level_filter(level: Option<&str>) -> Option<&'static str> {
+    let lowered = level?.trim().to_ascii_lowercase();
+    match lowered.as_str() {
+        "error" | "err" => Some("error"),
+        "warn" | "warning" => Some("warn"),
+        "info" => Some("info"),
+        "debug" => Some("debug"),
+        _ => None,
+    }
+}
+
 /// Build a bb8 connection pool for SQL Server.
 ///
 /// Uses the tiberius Config already built by `db_backend_config::build_mssql_config()`.
@@ -758,8 +769,8 @@ pub async fn query_app_log(
     let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
 
     let mut where_parts: Vec<String> = Vec::new();
-    if let Some(lvl) = level_filter {
-        where_parts.push(format!("level = '{}'", lvl.replace('\'', "''")));
+    if let Some(lvl) = normalize_level_filter(level_filter) {
+        where_parts.push(format!("level = '{}'", lvl));
     }
     if let Some(cat) = category_filter {
         let variants = category_filter_variants(cat);
@@ -842,8 +853,8 @@ pub async fn count_app_log(
     let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
 
     let mut where_parts: Vec<String> = Vec::new();
-    if let Some(lvl) = level_filter {
-        where_parts.push(format!("level = '{}'", lvl.replace('\'', "''")));
+    if let Some(lvl) = normalize_level_filter(level_filter) {
+        where_parts.push(format!("level = '{}'", lvl));
     }
     if let Some(cat) = category_filter {
         let variants = category_filter_variants(cat);
