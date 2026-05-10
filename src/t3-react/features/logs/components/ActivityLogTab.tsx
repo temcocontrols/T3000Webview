@@ -115,18 +115,25 @@ const useStyles = makeStyles({
   thMessage: { fontSize: '12px' },
   emptyCell: { textAlign: 'center', padding: '24px', color: '#605e5c' },
   rowClickable: { cursor: 'pointer' },
+  detailsRowClickable: { cursor: 'pointer' },
   timeCell: { fontSize: '11px', color: '#605e5c', whiteSpace: 'nowrap' },
   badgeText: { fontSize: '10px' },
   categoryCell: { fontSize: '11px' },
   sourceCell: { fontSize: '11px', color: '#605e5c' },
   messageCell: { fontSize: '12px' },
-  detailsCell: { padding: '4px 8px 8px 24px' },
+  detailsCell: { padding: '0', backgroundColor: '#f8fbff' },
   detailsPre: {
     margin: 0,
+    width: '100%',
+    boxSizing: 'border-box',
+    marginTop: '6px',
+    marginBottom: '6px',
+    padding: '10px 12px',
     fontSize: '11px',
-    color: '#605e5c',
+    color: '#323130',
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
+    backgroundColor: '#eef6ff',
   },
   pagination: {
     display: 'flex',
@@ -206,6 +213,11 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
     } catch {
       return ts;
     }
+  };
+
+  const toggleExpanded = (entry: AppLogEntry) => {
+    if (!entry.details) return;
+    setExpanded(current => (current === entry.id ? null : entry.id));
   };
 
   return (
@@ -292,8 +304,8 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
                 filteredEntries.map((entry) => (
                   <React.Fragment key={entry.id}>
                     <TableRow
-                      className={mergeClasses(entry.details && s.rowClickable)}
-                      onClick={() => entry.details && setExpanded(expanded === entry.id ? null : entry.id)}
+                      className={mergeClasses(Boolean(entry.details) && s.rowClickable)}
+                      onClick={() => toggleExpanded(entry)}
                     >
                       <TableCell className={s.timeCell}>
                         {formatTime(entry.logged_at ?? entry.ts ?? '')}
@@ -323,7 +335,10 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
                       <TableCell className={s.messageCell}>{entry.message}</TableCell>
                     </TableRow>
                     {expanded === entry.id && entry.details && (
-                      <TableRow>
+                      <TableRow
+                        className={mergeClasses(Boolean(entry.details) && s.detailsRowClickable)}
+                        onClick={() => toggleExpanded(entry)}
+                      >
                         <TableCell colSpan={6} className={s.detailsCell}>
                           <pre className={s.detailsPre}>
                             {entry.details}
