@@ -36,6 +36,7 @@ import { LogSettingsTab } from '../components/LogSettingsTab';
 import { API_BASE_URL } from '../../../config/constants';
 
 const ACTIVITY_LOG_URL = `${API_BASE_URL}/api/sync/event-log`;
+const LOG_SETTINGS_URL = `${API_BASE_URL}/api/logs/settings`;
 
 interface AppLogEntry {
   id: number;
@@ -49,6 +50,11 @@ interface AppLogEntry {
 interface EventLogResponse {
   entries: AppLogEntry[];
   total: number;
+  categories?: string[];
+}
+
+interface LogSettingsCategory {
+  category: string;
 }
 
 const normalizeLevel = (level: string | null | undefined) =>
@@ -458,6 +464,7 @@ export const LogsPage: React.FC = () => {
   const [sparkErrors, setSparkErrors] = useState<number[]>(Array(SPARK_BARS).fill(0));
   const [sparkWarns, setSparkWarns]   = useState<number[]>(Array(SPARK_BARS).fill(0));
   const [activeCategoryFilter, setActiveCategoryFilter] = useState('');
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
   const entriesRef = useRef<AppLogEntry[]>([]);
 
@@ -473,27 +480,65 @@ export const LogsPage: React.FC = () => {
       const categories = new Set<string>();
       let errorCount = 0;
       let warnCount = 0;
-      const catCounts: Record<string, number> = {};
 
       for (const entry of entries) {
         categories.add(entry.category);
-        catCounts[entry.category] = (catCounts[entry.category] ?? 0) + 1;
         const level = normalizeLevel(entry.level);
         if (level === 'ERROR') errorCount += 1;
         if (level === 'WARN') warnCount += 1;
       }
 
+      let categoryList = (json.categories ?? []).length
+        ? [...(json.categories ?? [])].sort((a, b) => a.localeCompare(b))
+        : [...categories].sort((a, b) => a.localeCompare(b));
+
+      try {
+        const settingsResponse = await fetch(LOG_SETTINGS_URL);
+        if (settingsResponse.ok) {
+          const settingsJson: LogSettingsCategory[] = await settingsResponse.json();
+          const settingsCategories = (settingsJson ?? [])
+            .map(item => (item.category ?? '').trim())
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b));
+          if (settingsCategories.length > 0) {
+            categoryList = settingsCategories;
+          }
+        }
+      } catch {
+        // Keep event-log derived categories as fallback.
+      }
+
+      const categoryTotals = await Promise.all(
+        categoryList.map(async (cat) => {
+          try {
+            const countParams = new URLSearchParams({
+              page: '0',
+              limit: '1',
+              category: cat,
+            });
+            const countResponse = await fetch(`${ACTIVITY_LOG_URL}?${countParams.toString()}`);
+            if (!countResponse.ok) return [cat, 0] as const;
+            const countJson: EventLogResponse = await countResponse.json();
+            return [cat, Number(countJson.total) || 0] as const;
+          } catch {
+            return [cat, 0] as const;
+          }
+        })
+      );
+      const categoryCountMap = Object.fromEntries(categoryTotals);
+
       setLatestLog(entries[0] ?? null);
+      setAvailableCategories(categoryList);
+      setCategoryCounts(categoryCountMap);
       setSummary({
         total: json.total ?? 0,
         errorCount,
         warnCount,
-        categoryCount: categories.size,
+        categoryCount: categoryList.length,
         lastUpdated: new Date().toLocaleTimeString(),
       });
       setSparkErrors(buildSparkValues(entries, 'ERROR'));
       setSparkWarns(buildSparkValues(entries, 'WARN'));
-      setCategoryCounts(catCounts);
     } catch (err) {
       console.error('Failed to load logs summary:', err);
     }
@@ -605,15 +650,13 @@ export const LogsPage: React.FC = () => {
               >
                 All
               </span>
-              {Object.entries(categoryCounts)
-                .sort((a, b) => b[1] - a[1])
-                .map(([cat, count]) => (
+              {availableCategories.map((cat) => (
                   <span
                     key={cat}
                     className={mergeClasses(s.chip, activeCategoryFilter === cat && s.chipActive)}
                     onClick={() => setActiveCategoryFilter(prev => prev === cat ? '' : cat)}
                   >
-                    {cat} <span className={s.chipCount}>{count}</span>
+                    {cat} <span className={s.chipCount}>{categoryCounts[cat] ?? 0}</span>
                   </span>
                 ))}
             </div>
@@ -713,6 +756,7 @@ export const LogsPage: React.FC = () => {
           <ActivityLogTab
             externalCategoryFilter={activeCategoryFilter}
             onCategoryFilterChange={setActiveCategoryFilter}
+            categoryOptions={availableCategories}
           />
         )}
       </div>

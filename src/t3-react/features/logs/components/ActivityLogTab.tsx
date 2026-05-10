@@ -139,11 +139,13 @@ const useStyles = makeStyles({
 interface ActivityLogTabProps {
   externalCategoryFilter?: string;
   onCategoryFilterChange?: (cat: string) => void;
+  categoryOptions?: string[];
 }
 
 export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
   externalCategoryFilter,
   onCategoryFilterChange,
+  categoryOptions,
 }) => {
   const s = useStyles();
   const [data, setData] = useState<EventLogResponse | null>(null);
@@ -230,7 +232,7 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
           className={s.categorySelect}
         >
           <option value="">All Categories</option>
-          {(data?.categories ?? []).map(cat => (
+          {(categoryOptions ?? data?.categories ?? []).map(cat => (
             <option key={cat} value={cat}>{cat}</option>
           ))}
         </Select>

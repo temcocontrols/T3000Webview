@@ -20,6 +20,31 @@ use serde_json::{json, Value};
 /// Type alias for a bb8-managed tiberius connection pool.
 pub type MssqlPool = Pool<ConnectionManager>;
 
+fn category_filter_variants(category: &str) -> Vec<String> {
+    let upper = category.trim().to_ascii_uppercase();
+    match upper.as_str() {
+        "CONFIG" | "DB_CONFIG" => vec!["CONFIG".to_string(), "DB_CONFIG".to_string()],
+        "STARTUP" | "SERVER_EVENT" => vec!["STARTUP".to_string(), "SERVER_EVENT".to_string()],
+        "POLL" | "SYNC_CYCLE" | "SAMPLING" | "FFI_POLL" => vec![
+            "POLL".to_string(),
+            "SYNC_CYCLE".to_string(),
+            "SAMPLING".to_string(),
+            "FFI_POLL".to_string(),
+        ],
+        "DEVICE" | "DEVICE_SYNC" => vec!["DEVICE".to_string(), "DEVICE_SYNC".to_string()],
+        "TRENDLOG" | "TREND_LOG" | "TD_READ" | "TD_WRITE" | "TD_INPUTS" | "TD_FFI" | "TD_SYNC" => vec![
+            "TRENDLOG".to_string(),
+            "TREND_LOG".to_string(),
+            "TD_READ".to_string(),
+            "TD_WRITE".to_string(),
+            "TD_INPUTS".to_string(),
+            "TD_FFI".to_string(),
+            "TD_SYNC".to_string(),
+        ],
+        _ => vec![upper],
+    }
+}
+
 /// Build a bb8 connection pool for SQL Server.
 ///
 /// Uses the tiberius Config already built by `db_backend_config::build_mssql_config()`.
@@ -737,7 +762,13 @@ pub async fn query_app_log(
         where_parts.push(format!("level = '{}'", lvl.replace('\'', "''")));
     }
     if let Some(cat) = category_filter {
-        where_parts.push(format!("category = '{}'", cat.replace('\'', "''")));
+        let variants = category_filter_variants(cat);
+        let in_list = variants
+            .iter()
+            .map(|v| format!("'{}'", v.replace('\'', "''")))
+            .collect::<Vec<_>>()
+            .join(", ");
+        where_parts.push(format!("category IN ({})", in_list));
     }
     let where_sql = if where_parts.is_empty() {
         String::new()
@@ -815,7 +846,13 @@ pub async fn count_app_log(
         where_parts.push(format!("level = '{}'", lvl.replace('\'', "''")));
     }
     if let Some(cat) = category_filter {
-        where_parts.push(format!("category = '{}'", cat.replace('\'', "''")));
+        let variants = category_filter_variants(cat);
+        let in_list = variants
+            .iter()
+            .map(|v| format!("'{}'", v.replace('\'', "''")))
+            .collect::<Vec<_>>()
+            .join(", ");
+        where_parts.push(format!("category IN ({})", in_list));
     }
     let where_sql = if where_parts.is_empty() {
         String::new()

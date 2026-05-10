@@ -692,6 +692,47 @@ fn canonical_category(category: &str) -> String {
     }
 }
 
+fn category_filter_variants(category: &str) -> Vec<String> {
+    let upper = category.trim().to_ascii_uppercase();
+    let canonical = canonical_category(&upper);
+    match canonical.as_str() {
+        "CONFIG" => vec!["CONFIG".to_string(), "DB_CONFIG".to_string()],
+        "STARTUP" => vec!["STARTUP".to_string(), "SERVER_EVENT".to_string()],
+        "POLL" => vec![
+            "POLL".to_string(),
+            "SYNC_CYCLE".to_string(),
+            "SAMPLING".to_string(),
+            "FFI_POLL".to_string(),
+        ],
+        "DEVICE" => vec!["DEVICE".to_string(), "DEVICE_SYNC".to_string()],
+        "TRENDLOG" => vec![
+            "TRENDLOG".to_string(),
+            "TREND_LOG".to_string(),
+            "TD_READ".to_string(),
+            "TD_WRITE".to_string(),
+            "TD_INPUTS".to_string(),
+            "TD_FFI".to_string(),
+            "TD_SYNC".to_string(),
+        ],
+        _ => vec![canonical],
+    }
+}
+
+fn sqlite_category_filter_sql(cat_filter: Option<&str>) -> String {
+    match cat_filter {
+        Some(c) if !c.is_empty() => {
+            let variants = category_filter_variants(c);
+            let quoted = variants
+                .iter()
+                .map(|v| format!("'{}'", v.replace('\'', "''")))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!(" AND category IN ({})", quoted)
+        }
+        _ => String::new(),
+    }
+}
+
 fn file_log_base_for_category(category: &str) -> &'static str {
     match category {
         "API_REQ" => "T3_Webview_API",
@@ -989,10 +1030,7 @@ async fn query_sqlite_log_raw(
         Some("info")  => " AND level = 'info'",
         _ => "",
     };
-    let cat_sql = match cat_filter {
-        Some(c) if !c.is_empty() => format!(" AND category = '{}'", c.replace('\'', "''")),
-        _ => String::new(),
-    };
+    let cat_sql = sqlite_category_filter_sql(cat_filter);
     let sql = format!(
         "SELECT id, ts_unix, ts_fmt, level, category, source, hostname, role, \
                 device_serial, message, details \
@@ -1040,10 +1078,7 @@ async fn count_sqlite_log_raw(
         Some("info") => " AND level = 'info'",
         _ => "",
     };
-    let cat_sql = match cat_filter {
-        Some(c) if !c.is_empty() => format!(" AND category = '{}'", c.replace('\'', "''")),
-        _ => String::new(),
-    };
+    let cat_sql = sqlite_category_filter_sql(cat_filter);
 
     let count_sql = format!(
         "SELECT COUNT(*) AS cnt FROM T3_APP_LOG WHERE 1=1{}{}",
@@ -1125,11 +1160,12 @@ async fn get_event_log(
         let total = all_rows.len() as i64;
 
         let mut category_set: BTreeSet<String> = BTreeSet::new();
+        category_set.extend(default_log_settings().into_iter().map(|c| c.category));
         category_set.extend(sqlite_categories.into_iter());
         for (_, row) in &all_rows {
             if let Some(cat) = row["category"].as_str() {
                 if !cat.is_empty() {
-                    category_set.insert(cat.to_string());
+                    category_set.insert(canonical_category(cat));
                 }
             }
         }
@@ -1167,10 +1203,7 @@ async fn get_event_log(
         Some("info")  => " AND level = 'info'",
         _ => "",
     };
-    let cat_sql = match cat_filter {
-        Some(c) if !c.is_empty() => format!(" AND category = '{}'", c.replace('\'', "''")),
-        _ => String::new(),
-    };
+    let cat_sql = sqlite_category_filter_sql(cat_filter);
 
     let sql = format!(
         "SELECT id, ts_unix, ts_fmt, level, category, source, hostname, role, device_serial, message, details \
@@ -1188,7 +1221,15 @@ async fn get_event_log(
         .unwrap_or_default();
 
     let total = count_sqlite_log_raw(&db, level_filter, cat_filter).await;
-    let categories = query_sqlite_log_categories(&db).await;
+    let mut category_set: BTreeSet<String> = BTreeSet::new();
+    category_set.extend(default_log_settings().into_iter().map(|c| c.category));
+    category_set.extend(
+        query_sqlite_log_categories(&db)
+            .await
+            .into_iter()
+            .map(|c| canonical_category(&c)),
+    );
+    let categories: Vec<String> = category_set.into_iter().collect();
 
     let entries: Vec<AppLogEntry> = rows
         .into_iter()
