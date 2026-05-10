@@ -54,6 +54,9 @@ const LEVEL_COLORS: Record<string, 'danger' | 'warning' | 'informative' | 'subtl
   DEBUG: 'subtle',
 };
 
+const normalizeLevel = (level: string | null | undefined) =>
+  (level ?? '').trim().toUpperCase();
+
 const SINK_COLORS: Record<string, 'danger' | 'warning' | 'informative' | 'subtle'> = {
   SQLITE: 'informative',
   MSSQL: 'warning',
@@ -296,7 +299,7 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
                       <TableCell>
                         <Badge
                           appearance="filled"
-                          color={LEVEL_COLORS[entry.level] ?? 'informative'}
+                          color={LEVEL_COLORS[normalizeLevel(entry.level)] ?? 'informative'}
                           size="small"
                           className={s.badgeText}
                         >

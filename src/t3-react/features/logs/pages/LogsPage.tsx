@@ -51,9 +51,25 @@ interface EventLogResponse {
   total: number;
 }
 
+const normalizeLevel = (level: string | null | undefined) =>
+  (level ?? '').trim().toUpperCase();
+
+const levelBadgeColor = (level: string | null | undefined): 'danger' | 'warning' | 'informative' | 'subtle' => {
+  switch (normalizeLevel(level)) {
+    case 'ERROR':
+      return 'danger';
+    case 'WARN':
+      return 'warning';
+    case 'DEBUG':
+      return 'subtle';
+    default:
+      return 'informative';
+  }
+};
+
 // ---------- Sparkline ----------
 // Renders a tiny 10-bar SVG chart from a number[] of values 0..max
-const SPARK_W = 64;
+const SPARK_W = 36;
 const SPARK_H = 20;
 const SPARK_BARS = 10;
 
@@ -68,7 +84,8 @@ function Sparkline({ values, color }: { values: number[]; color: string }) {
   return (
     <svg width={SPARK_W} height={SPARK_H} className={ss.svg}>
       {values.map((v, i) => {
-        const h = Math.max(2, Math.round((v / max) * SPARK_H));
+        const h = v <= 0 ? 0 : Math.max(2, Math.round((v / max) * SPARK_H));
+        if (h === 0) return null;
         return (
           <rect
             key={i}
@@ -95,7 +112,7 @@ function buildSparkValues(entries: AppLogEntry[], level: string): number[] {
   const range = tMax - tMin || 1;
   const buckets: number[] = Array(SPARK_BARS).fill(0);
   for (const entry of entries) {
-    if (entry.level !== level) continue;
+    if (normalizeLevel(entry.level) !== level) continue;
     const t = new Date(entry.logged_at).getTime();
     const idx = Math.min(SPARK_BARS - 1, Math.floor(((t - tMin) / range) * SPARK_BARS));
     buckets[idx] += 1;
@@ -461,8 +478,9 @@ export const LogsPage: React.FC = () => {
       for (const entry of entries) {
         categories.add(entry.category);
         catCounts[entry.category] = (catCounts[entry.category] ?? 0) + 1;
-        if (entry.level === 'ERROR') errorCount += 1;
-        if (entry.level === 'WARN') warnCount += 1;
+        const level = normalizeLevel(entry.level);
+        if (level === 'ERROR') errorCount += 1;
+        if (level === 'WARN') warnCount += 1;
       }
 
       setLatestLog(entries[0] ?? null);
@@ -540,7 +558,7 @@ export const LogsPage: React.FC = () => {
             {latestLog?.message || 'No recent activity yet'}
           </span>
           <div className={s.latestMeta}>
-            <Badge size="small" color={latestLog?.level === 'ERROR' ? 'danger' : latestLog?.level === 'WARN' ? 'warning' : 'informative'}>
+            <Badge size="small" color={levelBadgeColor(latestLog?.level)}>
               {latestLog?.level || 'INFO'}
             </Badge>
             <span>{latestLog?.category || 'N/A'}</span>
@@ -561,13 +579,14 @@ export const LogsPage: React.FC = () => {
               <div className={s.statCell}>
                 <span className={s.statLabel}>Errors</span>
                 <span className={mergeClasses(s.statValue, s.statValueError)}>{summary.errorCount}</span>
-                <span className={s.statHint}><Sparkline values={sparkErrors} color="#a4262c" /></span>
+                {summary.errorCount > 0 && (
+                  <span className={s.statHint}><Sparkline values={sparkErrors} color="#a4262c" /></span>
+                )}
               </div>
               <span className={s.vDivider} />
               <div className={s.statCell}>
                 <span className={s.statLabel}>Warnings</span>
                 <span className={mergeClasses(s.statValue, s.statValueWarn)}>{summary.warnCount}</span>
-                <span className={s.statHint}><Sparkline values={sparkWarns} color="#8a6100" /></span>
               </div>
               <span className={s.vDivider} />
               <div className={s.statCell}>
@@ -620,13 +639,7 @@ export const LogsPage: React.FC = () => {
             <span className={s.showSummaryInfoLabel}>Latest</span>
             <Badge
               size="small"
-              color={
-                latestLog?.level === 'ERROR'
-                  ? 'danger'
-                  : latestLog?.level === 'WARN'
-                    ? 'warning'
-                    : 'informative'
-              }
+              color={levelBadgeColor(latestLog?.level)}
             >
               {latestLog?.level || 'INFO'}
             </Badge>
