@@ -882,12 +882,31 @@ pub async fn count_app_log(
         .await
         .map_err(|e| format!("T3_APP_LOG COUNT failed: {}", e))?;
 
-    let row = result
-        .into_row()
+    // Use into_results() (not into_row()) to fully drain ALL result sets produced
+    // by the IF ... SELECT batch. into_row() only reads the first result set and
+    // leaves any trailing done-tokens unconsumed; when the bb8 connection is
+    // returned to the pool, tiberius 0.12.x panics on the unread data, which
+    // silently drops the HTTP connection (0 B response on the client).
+    let result_sets = result
+        .into_results()
         .await
         .map_err(|e| format!("T3_APP_LOG COUNT row fetch failed: {}", e))?;
 
-    Ok(row.and_then(|r| r.get::<i64, _>("cnt")).unwrap_or(0))
+    // COUNT(*) returns INT (i32) in SQL Server, not BIGINT, so try i32 first.
+    let mut total: i64 = 0;
+    'outer: for result_set in result_sets {
+        for row in result_set {
+            if let Some(v) = row.get::<i32, _>(0) {
+                total = v as i64;
+                break 'outer;
+            }
+            if let Some(v) = row.get::<i64, _>(0) {
+                total = v;
+                break 'outer;
+            }
+        }
+    }
+    Ok(total)
 }
 
 /// Return distinct category values from MSSQL T3_APP_LOG.
@@ -973,7 +992,10 @@ pub async fn query_app_log_category_counts(
     for result_set in result_sets {
         for row in result_set {
             if let Some(category) = clean_cpp_string(row.get::<&str, _>(0)) {
-                let count = row.get::<i64, _>(1).unwrap_or(0);
+                // COUNT(*) returns INT (i32) in SQL Server; try i32 first, then i64.
+                let count = row.get::<i32, _>(1).map(|v| v as i64)
+                    .or_else(|| row.get::<i64, _>(1))
+                    .unwrap_or(0);
                 rows.push((category, count));
             }
         }
