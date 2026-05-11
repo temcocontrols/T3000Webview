@@ -93,59 +93,6 @@ const levelBadgeColor = (level: string | null | undefined): 'danger' | 'warning'
   }
 };
 
-// ---------- Sparkline ----------
-// Renders a tiny 10-bar SVG chart from a number[] of values 0..max
-const SPARK_W = 36;
-const SPARK_H = 20;
-const SPARK_BARS = 10;
-
-const useSparkStyles = makeStyles({
-  svg: { display: 'block', flexShrink: 0 },
-});
-
-function Sparkline({ values, color }: { values: number[]; color: string }) {
-  const ss = useSparkStyles();
-  const max = Math.max(...values, 1);
-  const barW = (SPARK_W - (SPARK_BARS - 1)) / SPARK_BARS;
-  return (
-    <svg width={SPARK_W} height={SPARK_H} className={ss.svg}>
-      {values.map((v, i) => {
-        const h = v <= 0 ? 0 : Math.max(2, Math.round((v / max) * SPARK_H));
-        if (h === 0) return null;
-        return (
-          <rect
-            key={i}
-            x={i * (barW + 1)}
-            y={SPARK_H - h}
-            width={barW}
-            height={h}
-            rx={1}
-            fill={color}
-            opacity={0.75}
-          />
-        );
-      })}
-    </svg>
-  );
-}
-
-/** Bucket entries into SPARK_BARS time slots by logged_at */
-function buildSparkValues(entries: AppLogEntry[], level: string): number[] {
-  if (!entries.length) return Array(SPARK_BARS).fill(0);
-  const times = entries.map(e => new Date(e.logged_at).getTime()).filter(Boolean);
-  const tMin = Math.min(...times);
-  const tMax = Math.max(...times);
-  const range = tMax - tMin || 1;
-  const buckets: number[] = Array(SPARK_BARS).fill(0);
-  for (const entry of entries) {
-    if (normalizeLevel(entry.level) !== level) continue;
-    const t = new Date(entry.logged_at).getTime();
-    const idx = Math.min(SPARK_BARS - 1, Math.floor(((t - tMin) / range) * SPARK_BARS));
-    buckets[idx] += 1;
-  }
-  return buckets;
-}
-
 const useStyles = makeStyles({
   page: {
     display: 'flex',
@@ -306,13 +253,6 @@ const useStyles = makeStyles({
   statValueWarn: {
     color: tokens.colorPaletteMarigoldForeground1,
   },
-  statHint: {
-    fontSize: '11px',
-    color: '#605e5c',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-  },
   vDivider: {
     width: '1px',
     height: '14px',
@@ -324,8 +264,9 @@ const useStyles = makeStyles({
   catsRow: {
     display: 'flex',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: '6px',
-    overflowX: 'auto',
+    rowGap: '5px',
     minWidth: 0,
     flex: 1,
   },
@@ -482,8 +423,6 @@ export const LogsPage: React.FC = () => {
     categoryCount: 0,
     lastUpdated: '--:--:--',
   });
-  const [sparkErrors, setSparkErrors] = useState<number[]>(Array(SPARK_BARS).fill(0));
-  const [sparkWarns, setSparkWarns]   = useState<number[]>(Array(SPARK_BARS).fill(0));
   const [activeCategoryFilter, setActiveCategoryFilter] = useState('');
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
@@ -524,8 +463,6 @@ export const LogsPage: React.FC = () => {
         categoryCount: categoryList.length,
         lastUpdated: new Date().toLocaleTimeString(),
       });
-      setSparkErrors(buildSparkValues(entries, 'ERROR'));
-      setSparkWarns(buildSparkValues(entries, 'WARN'));
     } catch (err) {
       console.error('Failed to load logs summary:', err);
     }
@@ -616,9 +553,6 @@ export const LogsPage: React.FC = () => {
               <div className={s.statCell}>
                 <span className={s.statLabel}>Errors</span>
                 <span className={mergeClasses(s.statValue, s.statValueError)}>{summary.errorCount}</span>
-                {summary.errorCount > 0 && (
-                  <span className={s.statHint}><Sparkline values={sparkErrors} color="#a4262c" /></span>
-                )}
               </div>
               <span className={s.vDivider} />
               <div className={s.statCell}>
