@@ -1150,15 +1150,28 @@ async fn get_event_log(
         .await
         .unwrap_or_default();
 
+        let mssql_total = crate::database_management::mssql_queries::count_app_log(
+            pool,
+            level_filter,
+            cat_filter,
+        )
+        .await
+        .unwrap_or(0);
+
+        let mssql_categories = crate::database_management::mssql_queries::query_app_log_categories(pool)
+            .await
+            .unwrap_or_default();
+
         // Fetch from local SQLite
-        let (sqlite_rows, sqlite_categories) = if let Some(db) = get_local_log_db_conn(&state).await {
+        let (sqlite_rows, sqlite_total, sqlite_categories) = if let Some(db) = get_local_log_db_conn(&state).await {
             ensure_app_log_table(&db).await;
             (
                 query_sqlite_log_raw(&db, level_filter, cat_filter, fetch_count).await,
+                count_sqlite_log_raw(&db, level_filter, cat_filter).await,
                 query_sqlite_log_categories(&db).await,
             )
         } else {
-            (Vec::new(), Vec::new())
+            (Vec::new(), 0, Vec::new())
         };
 
         // Merge and sort descending by ts_unix
@@ -1169,18 +1182,12 @@ async fn get_event_log(
             .collect();
         all_rows.sort_unstable_by(|a, b| b.0.cmp(&a.0));
 
-        let total = all_rows.len() as i64;
+        let total = mssql_total + sqlite_total;
 
         let mut category_set: BTreeSet<String> = BTreeSet::new();
         category_set.extend(default_log_settings().into_iter().map(|c| c.category));
-        category_set.extend(sqlite_categories.into_iter());
-        for (_, row) in &all_rows {
-            if let Some(cat) = row["category"].as_str() {
-                if !cat.is_empty() {
-                    category_set.insert(canonical_category(cat));
-                }
-            }
-        }
+        category_set.extend(sqlite_categories.into_iter().map(|c| canonical_category(&c)));
+        category_set.extend(mssql_categories.into_iter().map(|c| canonical_category(&c)));
         let categories: Vec<String> = category_set.into_iter().collect();
 
         let entries: Vec<AppLogEntry> = all_rows
