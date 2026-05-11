@@ -592,7 +592,8 @@ export const LogsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className={mergeClasses(s.topStrip, !summaryVisible && s.topStripHidden)}>
+      {!showFiles && (
+        <div className={mergeClasses(s.topStrip, !summaryVisible && s.topStripHidden)}>
         {/* Row 1 — Latest Activity */}
         <div className={s.latestPanel}>
           <div className={s.latestHeader}>
@@ -674,9 +675,10 @@ export const LogsPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      )}
 
-      {!summaryVisible && (
+      {!showFiles && !summaryVisible && (
         <div className={s.showSummaryRow}>
           <div className={s.showSummaryInfo}>
             <span className={s.showSummaryInfoLabel}>Latest</span>
@@ -736,22 +738,23 @@ export const LogsPage: React.FC = () => {
       {/* Main content */}
       <div className={s.content}>
         {showFiles ? (
-          <>
-            <div className={s.backBar}>
-              <Button
-                size="small"
-                appearance="subtle"
-                icon={<ArrowLeftRegular />}
-                onClick={handleBackToActivity}
-              >
-                Back to Activity Log
-              </Button>
-              <Text size={200} style={{ color: '#605e5c' }}>
-                — Raw text files written by the T3000 service process (T3WebLog)
-              </Text>
-            </div>
-            <FileLogsTab />
-          </>
+          <FileLogsTab
+            headerPrefix={(
+              <>
+                <Button
+                  size="small"
+                  appearance="subtle"
+                  icon={<ArrowLeftRegular />}
+                  onClick={handleBackToActivity}
+                >
+                  Back to Activity Log
+                </Button>
+                <Text size={200} style={{ color: '#605e5c', marginRight: '8px' }}>
+                  — Raw text files written by the T3000 service process (T3WebLog)
+                </Text>
+              </>
+            )}
+          />
         ) : (
           <ActivityLogTab
             externalCategoryFilter={activeCategoryFilter}
