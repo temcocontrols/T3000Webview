@@ -618,7 +618,6 @@ export const TrendChart: React.FC<TrendChartProps> = ({
             type: 'time',
             min: startTime,
             max: now,
-            offset: true,
             ticks: {
               color: '#595959',
               font: { family: 'Inter, Helvetica, Arial, sans-serif', size: 11 },
@@ -655,6 +654,9 @@ export const TrendChart: React.FC<TrendChartProps> = ({
               display: showGrid,
               color: '#e0e0e0',
             },
+            border: {
+              display: false,
+            },
           } as any : {
             type: 'piecewise' as any,
             min: layout.virtualMin,
@@ -666,6 +668,9 @@ export const TrendChart: React.FC<TrendChartProps> = ({
               display: showGrid,
               lineWidth: 1,
               drawTicks: false,
+            },
+            border: {
+              display: false,
             },
             ticks: {
               display: true,
