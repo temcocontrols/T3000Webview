@@ -926,6 +926,62 @@ pub async fn query_app_log_categories(
     Ok(cats)
 }
 
+/// Return grouped category counts from MSSQL T3_APP_LOG with optional filters.
+pub async fn query_app_log_category_counts(
+    pool: &MssqlPool,
+    level_filter: Option<&str>,
+    category_filter: Option<&str>,
+) -> Result<Vec<(String, i64)>, String> {
+    let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
+
+    let mut where_parts: Vec<String> = Vec::new();
+    if let Some(lvl) = normalize_level_filter(level_filter) {
+        where_parts.push(format!("level = '{}'", lvl));
+    }
+    if let Some(cat) = category_filter {
+        let variants = category_filter_variants(cat);
+        let in_list = variants
+            .iter()
+            .map(|v| format!("'{}'", v.replace('\'', "''")))
+            .collect::<Vec<_>>()
+            .join(", ");
+        where_parts.push(format!("category IN ({})", in_list));
+    }
+    let where_sql = if where_parts.is_empty() {
+        String::new()
+    } else {
+        format!(" WHERE {}", where_parts.join(" AND "))
+    };
+
+    let sql = format!(
+        "IF OBJECT_ID('T3_APP_LOG', 'U') IS NOT NULL \
+         SELECT category, COUNT(*) AS cnt FROM T3_APP_LOG{} GROUP BY category",
+        where_sql
+    );
+
+    let result = conn
+        .query(&sql, &[])
+        .await
+        .map_err(|e| format!("T3_APP_LOG grouped COUNT failed: {}", e))?;
+
+    let result_sets = result
+        .into_results()
+        .await
+        .map_err(|e| format!("T3_APP_LOG grouped COUNT row fetch failed: {}", e))?;
+
+    let mut rows: Vec<(String, i64)> = Vec::new();
+    for result_set in result_sets {
+        for row in result_set {
+            if let Some(category) = clean_cpp_string(row.get::<&str, _>(0)) {
+                let count = row.get::<i64, _>(1).unwrap_or(0);
+                rows.push((category, count));
+            }
+        }
+    }
+
+    Ok(rows)
+}
+
 // ============================================================================
 // Schema Init — execute the embedded MSSQL SQL script
 // ============================================================================

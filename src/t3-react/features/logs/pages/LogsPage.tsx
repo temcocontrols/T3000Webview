@@ -36,8 +36,29 @@ import { LogSettingsTab } from '../components/LogSettingsTab';
 import { API_BASE_URL } from '../../../config/constants';
 
 const ACTIVITY_LOG_URL = `${API_BASE_URL}/api/sync/event-log`;
-const LOG_SETTINGS_URL = `${API_BASE_URL}/api/logs/settings`;
 
+const eventLogRequestCache = new Map<string, Promise<EventLogResponse>>();
+
+async function fetchEventLogOnce(url: string): Promise<EventLogResponse> {
+  const cached = eventLogRequestCache.get(url);
+  if (cached) {
+    return cached;
+  }
+
+  const request = fetch(url)
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`event-log: HTTP ${response.status}`);
+      }
+      return response.json() as Promise<EventLogResponse>;
+    })
+    .finally(() => {
+      eventLogRequestCache.delete(url);
+    });
+
+  eventLogRequestCache.set(url, request);
+  return request;
+}
 interface AppLogEntry {
   id: number;
   logged_at: string;
@@ -51,10 +72,9 @@ interface EventLogResponse {
   entries: AppLogEntry[];
   total: number;
   categories?: string[];
-}
-
-interface LogSettingsCategory {
-  category: string;
+  categoryCounts?: Record<string, number>;
+  page: number;
+  limit: number;
 }
 
 const normalizeLevel = (level: string | null | undefined) =>
@@ -453,6 +473,7 @@ export const LogsPage: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
   const [summaryVisible, setSummaryVisible] = useState(true);
+  const [logData, setLogData] = useState<EventLogResponse | null>(null);
   const [latestLog, setLatestLog] = useState<AppLogEntry | null>(null);
   const [summary, setSummary] = useState({
     total: 0,
@@ -470,62 +491,28 @@ export const LogsPage: React.FC = () => {
 
   const loadTopSummary = useCallback(async () => {
     try {
-      const params = new URLSearchParams({ page: '0', limit: '80' });
-      const response = await fetch(`${ACTIVITY_LOG_URL}?${params.toString()}`);
-      if (!response.ok) return;
-
-      const json: EventLogResponse = await response.json();
+      const params = new URLSearchParams({ page: '0', limit: '5000' });
+      const json: EventLogResponse = await fetchEventLogOnce(`${ACTIVITY_LOG_URL}?${params.toString()}`);
       const entries = json.entries ?? [];
+      setLogData(json);
       entriesRef.current = entries;
-      const categories = new Set<string>();
       let errorCount = 0;
       let warnCount = 0;
 
       for (const entry of entries) {
-        categories.add(entry.category);
         const level = normalizeLevel(entry.level);
         if (level === 'ERROR') errorCount += 1;
         if (level === 'WARN') warnCount += 1;
       }
 
-      let categoryList = (json.categories ?? []).length
+      const categoryList = (json.categories ?? []).length
         ? [...(json.categories ?? [])].sort((a, b) => a.localeCompare(b))
-        : [...categories].sort((a, b) => a.localeCompare(b));
+        : [];
 
-      try {
-        const settingsResponse = await fetch(LOG_SETTINGS_URL);
-        if (settingsResponse.ok) {
-          const settingsJson: LogSettingsCategory[] = await settingsResponse.json();
-          const settingsCategories = (settingsJson ?? [])
-            .map(item => (item.category ?? '').trim())
-            .filter(Boolean)
-            .sort((a, b) => a.localeCompare(b));
-          if (settingsCategories.length > 0) {
-            categoryList = settingsCategories;
-          }
-        }
-      } catch {
-        // Keep event-log derived categories as fallback.
+      const categoryCountMap: Record<string, number> = { ...(json.categoryCounts ?? {}) };
+      for (const cat of categoryList) {
+        categoryCountMap[cat] = Number(categoryCountMap[cat] ?? 0);
       }
-
-      const categoryTotals = await Promise.all(
-        categoryList.map(async (cat) => {
-          try {
-            const countParams = new URLSearchParams({
-              page: '0',
-              limit: '1',
-              category: cat,
-            });
-            const countResponse = await fetch(`${ACTIVITY_LOG_URL}?${countParams.toString()}`);
-            if (!countResponse.ok) return [cat, 0] as const;
-            const countJson: EventLogResponse = await countResponse.json();
-            return [cat, Number(countJson.total) || 0] as const;
-          } catch {
-            return [cat, 0] as const;
-          }
-        })
-      );
-      const categoryCountMap = Object.fromEntries(categoryTotals);
 
       setLatestLog(entries[0] ?? null);
       setAvailableCategories(categoryList);
@@ -556,6 +543,10 @@ export const LogsPage: React.FC = () => {
 
   const handleBackToActivity = () => {
     setShowFiles(false);
+  };
+
+  const handleRefreshLogs = () => {
+    loadTopSummary();
   };
 
   return (
@@ -760,6 +751,9 @@ export const LogsPage: React.FC = () => {
             externalCategoryFilter={activeCategoryFilter}
             onCategoryFilterChange={setActiveCategoryFilter}
             categoryOptions={availableCategories}
+            sharedData={logData ?? undefined}
+            sharedDataMode
+            onRefresh={handleRefreshLogs}
           />
         )}
       </div>

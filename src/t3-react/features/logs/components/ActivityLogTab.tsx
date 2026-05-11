@@ -43,6 +43,7 @@ interface EventLogResponse {
   entries: AppLogEntry[];
   total: number;
   categories: string[];
+  categoryCounts?: Record<string, number>;
   page: number;
   limit: number;
 }
@@ -147,12 +148,18 @@ interface ActivityLogTabProps {
   externalCategoryFilter?: string;
   onCategoryFilterChange?: (cat: string) => void;
   categoryOptions?: string[];
+  sharedData?: EventLogResponse;
+  sharedDataMode?: boolean;
+  onRefresh?: () => void;
 }
 
 export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
   externalCategoryFilter,
   onCategoryFilterChange,
   categoryOptions,
+  sharedData,
+  sharedDataMode = false,
+  onRefresh,
 }) => {
   const s = useStyles();
   const [data, setData] = useState<EventLogResponse | null>(null);
@@ -175,6 +182,17 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
   };
 
   const load = useCallback(async () => {
+    if (sharedDataMode) {
+      if (sharedData) {
+        setData(sharedData);
+      }
+      return;
+    }
+
+    if (sharedData) {
+      setData(sharedData);
+      return;
+    }
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -195,7 +213,20 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
     }
   }, [page, limit, levelFilter, categoryFilter]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (sharedDataMode) {
+      if (sharedData) {
+        setData(sharedData);
+      }
+      return;
+    }
+
+    if (sharedData) {
+      setData(sharedData);
+      return;
+    }
+    load();
+  }, [load, sharedData, sharedDataMode]);
 
   // Reset page when filters change
   useEffect(() => { setPage(0); }, [levelFilter, categoryFilter]);
@@ -260,7 +291,7 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
         <Button
           appearance="subtle"
           icon={<ArrowSyncRegular />}
-          onClick={load}
+          onClick={sharedDataMode ? onRefresh : (sharedData ? onRefresh : load)}
           disabled={loading}
           size="small"
         >

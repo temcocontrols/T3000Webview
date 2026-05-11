@@ -17,6 +17,29 @@ import { API_BASE_URL } from '../../../config/constants';
 
 const SETTINGS_URL = `${API_BASE_URL}/api/logs/settings`;
 
+const settingsRequestCache = new Map<string, Promise<LogCategoryConfig[]>>();
+
+async function fetchSettingsOnce(url: string): Promise<LogCategoryConfig[]> {
+  const cached = settingsRequestCache.get(url);
+  if (cached) {
+    return cached;
+  }
+
+  const request = fetch(url)
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`logs/settings: HTTP ${response.status}`);
+      }
+      return response.json() as Promise<LogCategoryConfig[]>;
+    })
+    .finally(() => {
+      settingsRequestCache.delete(url);
+    });
+
+  settingsRequestCache.set(url, request);
+  return request;
+}
+
 interface LogCategoryConfig {
   category: string;
   displayName: string;
@@ -588,29 +611,17 @@ export const LogSettingsTab: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(SETTINGS_URL);
-      if (response.ok) {
-        const data: LogCategoryConfig[] = await response.json();
-        const normalized = data.map(normalizeLoadedConfig);
-        setSettings(normalized);
-        if (normalized.length > 0) {
-          setGlobalDetailMode(normalized[0].detailMode);
-          setGlobalLevelSelection(levelSelectionFromMinLevel(normalized[0].minLevel));
-          setGlobalSinkDb(normalized[0].sinkDb);
-          setGlobalSinkFile(normalized[0].sinkFile);
-        }
-        setDirty(false);
-        setOfflineMode(false);
-      } else {
-        setSettings(DEFAULT_SETTINGS);
-        setGlobalDetailMode(DEFAULT_SETTINGS[0].detailMode);
-        setGlobalLevelSelection(levelSelectionFromMinLevel(DEFAULT_SETTINGS[0].minLevel));
-        setGlobalSinkDb(DEFAULT_SETTINGS[0].sinkDb);
-        setGlobalSinkFile(DEFAULT_SETTINGS[0].sinkFile);
-        setDirty(false);
-        setOfflineMode(true);
-        setError(`Server returned ${response.status}. Showing local defaults (read-only).`);
+      const data: LogCategoryConfig[] = await fetchSettingsOnce(SETTINGS_URL);
+      const normalized = data.map(normalizeLoadedConfig);
+      setSettings(normalized);
+      if (normalized.length > 0) {
+        setGlobalDetailMode(normalized[0].detailMode);
+        setGlobalLevelSelection(levelSelectionFromMinLevel(normalized[0].minLevel));
+        setGlobalSinkDb(normalized[0].sinkDb);
+        setGlobalSinkFile(normalized[0].sinkFile);
       }
+      setDirty(false);
+      setOfflineMode(false);
     } catch (err) {
       console.error('Failed to load log settings:', err);
       setSettings(DEFAULT_SETTINGS);
