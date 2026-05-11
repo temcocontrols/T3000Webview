@@ -567,6 +567,7 @@ export interface TrendChartContentProps {
   monitorInputs?: any[]; // Monitor inputs for the selected trendlog
   isDrawerMode?: boolean;
   onToolbarRender?: (toolbar: React.ReactNode) => void;
+  onBack?: () => void;
 }
 
 type TimeBase = '5m' | '10m' | '30m' | '1h' | '4h' | '12h' | '1d' | '4d' | 'custom';
@@ -2056,11 +2057,25 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       )}
 
       {loading && <Spinner size="tiny" />}
+
+      {/* Back button — pinned to far right */}
+      {props.onBack && (
+        <Button
+          appearance="subtle"
+          icon={<ArrowLeftRegular fontSize={16} />}
+          onClick={props.onBack}
+          size="small"
+          style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: 'normal' }}
+        >
+          Back
+        </Button>
+      )}
     </div>
   ), [
     timeBase, currentView, isRealtime, loading, lastSyncTime, dbStatus, hasTrackedItems,
     zoomIn, zoomOut, resetTimeBase, moveTimeLeft, moveTimeRight, restoreLiveMode,
     exportToPNG, exportToCSV, exportToJSON, openItemSelector, getTimeRangeMinutes,
+    props.onBack,
   ]);
 
   // Call onToolbarRender when in drawer mode
@@ -2078,6 +2093,13 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
   return (
     <div className={styles.container}>
+
+      {/* 鈹€鈹€ TOP CONTROLS TOOLBAR (full-page mode only) 鈹€鈹€ */}
+      {!isDrawerMode && (
+        <div className={styles.topControlsBar}>
+          {toolbar}
+        </div>
+      )}
 
       {/* 鈹€鈹€ VIEW 2 / 3 EMPTY STATE 鈹€鈹€ */}
       {currentView !== 1 && !hasTrackedItems && (

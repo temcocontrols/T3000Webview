@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   DataGrid,
   DataGridHeader,
@@ -33,7 +34,6 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { TrendlogRefreshApi } from '../services/trendlogRefreshApi';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import { API_BASE_URL } from '../../../config/constants';
-import { TrendChartDrawer } from '../components/TrendChartDrawer';
 import { TrendlogVerifyDrawer } from '../components/TrendlogVerifyDrawer';
 import styles from './TrendlogsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
@@ -94,17 +94,8 @@ export const TrendLogsPage: React.FC = () => {
     return `${item.serialNumber}-${item.trendlogId || item.trendlogIndex}-${item._uniqueIndex}`;
   }, []);
 
-  // Chart drawer state
-  const [chartDrawerOpen, setChartDrawerOpen] = useState(false);
+  const navigate = useNavigate();
   const [verifyDrawerOpen, setVerifyDrawerOpen] = useState(false);
-  const [chartParams, setChartParams] = useState<{
-    serialNumber?: number;
-    panelId?: number;
-    trendlogId?: string;
-    monitorId?: string;
-    itemData?: any; // Complete monitor configuration data (Vue pattern)
-    monitorInputs?: any[]; // Monitor inputs for the selected trendlog
-  }>({});
 
   // Internal function to load inputs with deduplication
   const loadTrendlogInputsInternal = async (trendlog: TrendLogData) => {
@@ -207,15 +198,16 @@ export const TrendLogsPage: React.FC = () => {
         );
 
       if (alreadyLoaded) {
-        setChartParams({
-          serialNumber: selectedDevice.serialNumber,
-          panelId: selectedDevice.panelId || 1,
-          trendlogId: trendlog.trendlogId || '0',
-          monitorId: monitorIndex,
-          itemData: buildItemData(monitorInputs),
-          monitorInputs,
+        navigate('/t3000/trends/chart', {
+          state: {
+            serialNumber: selectedDevice.serialNumber,
+            panelId: selectedDevice.panelId || 1,
+            trendlogId: trendlog.trendlogId || '0',
+            monitorId: monitorIndex,
+            itemData: buildItemData(monitorInputs),
+            monitorInputs,
+          },
         });
-        setChartDrawerOpen(true);
         return;
       }
 
@@ -248,26 +240,28 @@ export const TrendLogsPage: React.FC = () => {
           }));
         }
 
-        setChartParams({
-          serialNumber: selectedDevice.serialNumber,
-          panelId: selectedDevice.panelId || 1,
-          trendlogId: trendlog.trendlogId || '0',
-          monitorId: monitorIndex,
-          itemData: buildItemData(freshInputs),
-          monitorInputs: freshInputs,
+        navigate('/t3000/trends/chart', {
+          state: {
+            serialNumber: selectedDevice.serialNumber,
+            panelId: selectedDevice.panelId || 1,
+            trendlogId: trendlog.trendlogId || '0',
+            monitorId: monitorIndex,
+            itemData: buildItemData(freshInputs),
+            monitorInputs: freshInputs,
+          },
         });
-        setChartDrawerOpen(true);
       } catch (error) {
         console.error('❌ [TrendLogsPage] Failed to load inputs for chart:', error);
-        setChartParams({
-          serialNumber: selectedDevice.serialNumber,
-          panelId: selectedDevice.panelId || 1,
-          trendlogId: trendlog.trendlogId || '0',
-          monitorId: monitorIndex,
-          itemData: buildItemData([]),
-          monitorInputs,
+        navigate('/t3000/trends/chart', {
+          state: {
+            serialNumber: selectedDevice.serialNumber,
+            panelId: selectedDevice.panelId || 1,
+            trendlogId: trendlog.trendlogId || '0',
+            monitorId: monitorIndex,
+            itemData: buildItemData([]),
+            monitorInputs,
+          },
         });
-        setChartDrawerOpen(true);
       }
     },
     [selectedDevice, monitorInputs, loadTrendlogInputsInternal]
@@ -984,17 +978,7 @@ export const TrendLogsPage: React.FC = () => {
         />
       )}
 
-      {/* Trend Chart Drawer */}
-      <TrendChartDrawer
-        isOpen={chartDrawerOpen}
-        onClose={() => setChartDrawerOpen(false)}
-        serialNumber={chartParams.serialNumber}
-        panelId={chartParams.panelId}
-        trendlogId={chartParams.trendlogId}
-        monitorId={chartParams.monitorId}
-        itemData={chartParams.itemData}
-        monitorInputs={chartParams.monitorInputs}
-      />
+
     </div>
   );
 };
