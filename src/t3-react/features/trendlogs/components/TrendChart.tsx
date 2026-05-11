@@ -59,7 +59,7 @@ interface TrendChartProps {
   onChartReady?: (instance: any) => void;
 }
 
-type ChartPoint = ScatterDataPoint | null;
+type ChartPoint = ScatterDataPoint;
 type ChartInstanceLike = Chart<'line', ChartPoint[], unknown> & {
   getDataURL?: (options?: { type?: 'png' | 'jpeg'; pixelRatio?: number; backgroundColor?: string }) => string;
 };
@@ -324,11 +324,12 @@ const buildSeriesPoints = (
 
   sorted.forEach((point) => {
     if (!isFiniteNumber(point.value)) {
-      points.push(null);
+      points.push({ x: point.timestamp, y: Number.NaN });
       return;
     }
     if (lastRealX !== null && (point.timestamp - lastRealX) > gapThresholdMs) {
-      points.push(null);
+      const splitX = lastRealX + Math.floor((point.timestamp - lastRealX) / 2);
+      points.push({ x: splitX, y: Number.NaN });
     }
     points.push({ x: point.timestamp, y: mapY(point.value) });
     lastRealX = point.timestamp;
@@ -339,10 +340,12 @@ const buildSeriesPoints = (
 
 const buildPointRadius = (points: ChartPoint[]) => {
   return points.map((point, index) => {
-    if (!point) return 0;
-    const prevIsNull = index === 0 || points[index - 1] == null;
-    const nextIsNull = index === points.length - 1 || points[index + 1] == null;
-    return prevIsNull && nextIsNull ? 4 : 0;
+    const currentIsGap = !Number.isFinite(point?.y);
+    if (currentIsGap) return 0;
+
+    const prevIsGap = index === 0 || !Number.isFinite(points[index - 1]?.y);
+    const nextIsGap = index === points.length - 1 || !Number.isFinite(points[index + 1]?.y);
+    return prevIsGap && nextIsGap ? 4 : 0;
   });
 };
 
@@ -358,7 +361,15 @@ const formatTimestamp = (timestamp: number, timeBase: string) => {
   return `${month}-${day} ${hours}:${minutes}`;
 };
 
-const computeSharedYAxisWidth = (bands: YBandInfo[]) => {
+const formatDateISO = (timestamp: number) => {
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const computeSharedYAxisWidth = (bands: YBandInfo[], digitalSeries: TrendSeries[]) => {
   let maxChars = 4;
   bands.forEach((band) => {
     [band.realMin, band.realMax].forEach((value) => {
@@ -370,7 +381,22 @@ const computeSharedYAxisWidth = (bands: YBandInfo[]) => {
       maxChars = Math.max(maxChars, label.length);
     });
   });
-  return Math.min(68, Math.max(50, 38 + (maxChars - 4) * 6));
+
+  let maxUnitChars = 0;
+  bands.forEach((band) => {
+    const unit = (band.unit || '').trim();
+    if (unit && unit !== 'N/A' && unit.toLowerCase() !== 'unused' && unit.toLowerCase() !== 'dimensionless') {
+      maxUnitChars = Math.max(maxUnitChars, unit.length);
+    }
+  });
+  digitalSeries.forEach((series) => {
+    const [offState, onState] = getDigitalStatesForYAxis(series.unit);
+    maxUnitChars = Math.max(maxUnitChars, offState.length, onState.length);
+  });
+
+  const numericWidth = Math.min(96, Math.max(64, 46 + (maxChars - 4) * 6));
+  const unitLaneWidth = maxUnitChars > 0 ? Math.min(66, Math.max(36, 16 + maxUnitChars * 4)) : 0;
+  return Math.min(176, numericWidth + unitLaneWidth + 16);
 };
 
 const formatAxisValue = (value: number, layout: YBandLayout, digitalSeries: TrendSeries[]) => {
@@ -535,6 +561,11 @@ export const TrendChart: React.FC<TrendChartProps> = ({
         maintainAspectRatio: false,
         animation: false,
         normalized: true,
+        layout: {
+          padding: {
+            bottom: 20,
+          },
+        },
         interaction: {
           mode: 'index',
           intersect: false,
@@ -586,13 +617,22 @@ export const TrendChart: React.FC<TrendChartProps> = ({
             type: 'time',
             min: startTime,
             max: now,
+            offset: true,
             ticks: {
               color: '#595959',
               font: { family: 'Inter, Helvetica, Arial, sans-serif', size: 11 },
-              callback: (value) => formatTimestamp(Number(value), timeBase),
+              callback: (value: any, index: number) => {
+                const timestamp = Number(value);
+                const timeLabel = formatTimestamp(timestamp, timeBase);
+                if (index === 0) {
+                  return [timeLabel, formatDateISO(timestamp)];
+                }
+                return timeLabel;
+              },
               maxRotation: 0,
-              autoSkip: true,
-              maxTicksLimit: timeConfig.divisions,
+              autoSkip: false,
+              padding: 8,
+              maxTicksLimit: timeConfig.divisions + 1,
             },
             grid: {
               display: showGrid,
@@ -634,6 +674,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
               autoSkip: false,
               maxTicksLimit: 200,
               align: 'end',
+              mirror: true,
               callback: (value: any) => formatAxisValue(Number(value), layout, digitalSeries),
             },
           } as any,
@@ -662,7 +703,84 @@ export const TrendChart: React.FC<TrendChartProps> = ({
           afterLayout: (chart: any) => {
             const yScale = chart?.scales?.y;
             if (!yScale) return;
-            yScale.width = computeSharedYAxisWidth(layout.analogBands);
+            yScale.width = computeSharedYAxisWidth(layout.analogBands, digitalSeries);
+          },
+        },
+        {
+          id: 'yAxisTitleBackground',
+          beforeDraw: (chart: any) => {
+            const ctx = chart.ctx;
+            const yScale = chart?.scales?.y;
+            if (!ctx || !yScale || layout.analogBands.length === 0) return;
+
+            const PILL_H = 15;
+            const PAD_X = 4;
+            const BAR_W = 5;
+            const BAR_GAP = 2;
+            const BAR_PAD_L = 3;
+            const RADIUS = 3;
+            const axisX = yScale.left + PILL_H / 2 + 3;
+            const analogOffset = layout.analogOffset;
+
+            ctx.save();
+            ctx.font = 'bold 9px Inter, sans-serif';
+
+            layout.analogBands.forEach((band, index) => {
+              const unit = (band.unit || '').trim();
+              const lowerUnit = unit.toLowerCase();
+              if (!unit || unit === 'N/A' || lowerUnit === 'unused' || lowerUnit === 'dimensionless') {
+                return;
+              }
+
+              const topPx = yScale.getPixelForValue(analogOffset + (index + 1) * BAND_SIZE);
+              const bottomPx = yScale.getPixelForValue(analogOffset + index * BAND_SIZE);
+              const centerY = (topPx + bottomPx) / 2;
+              const textWidth = ctx.measureText(unit).width;
+              const barsWidth = Math.max(0, band.colors.length * (BAR_W + BAR_GAP) - BAR_GAP);
+              const pillWidth = PAD_X + textWidth + BAR_PAD_L + barsWidth + PAD_X;
+
+              ctx.save();
+              ctx.translate(axisX, centerY);
+              ctx.rotate(-Math.PI / 2);
+
+              const px = -pillWidth / 2;
+              const py = -PILL_H / 2;
+              ctx.fillStyle = '#f0f0f0';
+              ctx.beginPath();
+              if (typeof ctx.roundRect === 'function') {
+                ctx.roundRect(px, py, pillWidth, PILL_H, RADIUS);
+              } else {
+                ctx.rect(px, py, pillWidth, PILL_H);
+              }
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+              ctx.lineWidth = 0.5;
+              ctx.stroke();
+
+              ctx.save();
+              ctx.beginPath();
+              if (typeof ctx.roundRect === 'function') {
+                ctx.roundRect(px, py, pillWidth, PILL_H, RADIUS);
+              } else {
+                ctx.rect(px, py, pillWidth, PILL_H);
+              }
+              ctx.clip();
+
+              ctx.textBaseline = 'middle';
+              ctx.textAlign = 'left';
+              ctx.fillStyle = band.colors[0] || '#444444';
+              ctx.fillText(unit, px + PAD_X, 0);
+
+              band.colors.forEach((color, colorIndex) => {
+                ctx.fillStyle = color;
+                ctx.fillRect(px + PAD_X + textWidth + BAR_PAD_L + colorIndex * (BAR_W + BAR_GAP), py + 2, BAR_W, PILL_H - 4);
+              });
+
+              ctx.restore();
+              ctx.restore();
+            });
+
+            ctx.restore();
           },
         },
         {
