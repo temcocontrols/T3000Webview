@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Trend Chart Content
  *
  * Shared content component used by both:
@@ -32,10 +32,19 @@ import {
   MenuPopover,
   MenuList,
   MenuItem,
+  MenuDivider,
   Button,
   Tooltip,
   Tag,
   Badge,
+  Dialog,
+  DialogSurface,
+  DialogTitle,
+  DialogBody,
+  DialogContent,
+  DialogActions,
+  Checkbox,
+  Input,
 } from '@fluentui/react-components';
 import {
   ArrowDownloadRegular,
@@ -54,9 +63,13 @@ import {
   ChevronRightRegular,
   ChevronDownFilled,
   ArrowClockwiseRegular,
+  KeyboardRegular,
+  WarningRegular,
+  CheckmarkRegular,
+  DismissRegular,
 } from '@fluentui/react-icons';
 import { TrendChart, TrendSeries } from './TrendChart';
-import { TrendChartApiService, TrendDataRequest, SpecificPoint } from '../services/trendChartApi';
+import { TrendChartApiService, TrendDataRequest } from '../services/trendChartApi';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
 
@@ -556,7 +569,12 @@ export interface TrendChartContentProps {
   onToolbarRender?: (toolbar: React.ReactNode) => void;
 }
 
-type TimeBase = '5m' | '10m' | '30m' | '1h' | '4h' | '12h' | '1d' | '4d';
+type TimeBase = '5m' | '10m' | '30m' | '1h' | '4h' | '12h' | '1d' | '4d' | 'custom';
+const PRESET_TIMEBASES: TimeBase[] = ['5m', '10m', '30m', '1h', '4h', '12h', '1d', '4d'];
+const TIMEBASE_LABELS: Record<string, string> = {
+  '5m': '5 minutes', '10m': '10 minutes', '30m': '30 minutes', '1h': '1 hour',
+  '4h': '4 hours', '12h': '12 hours', '1d': '1 day', '4d': '4 days', 'custom': 'Custom',
+};
 
 // Color palette - Cyan at position 20 per user requirement
 const CHART_COLORS = [
@@ -601,18 +619,41 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   // monitorId may be used in future for multi-monitor support
   // const monitorId = props.monitorId || '0';
 
-  // State
+  // ── State ──────────────────────────────────────────────────────────────
   const [series, setSeries] = useState<TrendSeries[]>([]);
   const [timeBase, setTimeBase] = useState<TimeBase>('5m');
   const [showGrid] = useState(true);
   const [isRealtime, setIsRealtime] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
   const [currentView, setCurrentView] = useState<1 | 2 | 3>(1);
   const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set());
   const [dataSource, setDataSource] = useState<'realtime' | 'api' | 'loading' | 'error'>('loading');
   const [timeOffset, setTimeOffset] = useState(0); // minutes from now (0 = live, negative = past)
+  const [lastSyncTime, setLastSyncTime] = useState<string>('');
 
-  // Refs
+  // Custom date range
+  const [showCustomDateModal, setShowCustomDateModal] = useState(false);
+  const [customStartInput, setCustomStartInput] = useState('');
+  const [customEndInput, setCustomEndInput] = useState('');
+  const [customRangeMs, setCustomRangeMs] = useState<{ start: number; end: number } | null>(null);
+
+  // View 2 & 3 tracking
+  const [viewTrackedKeys, setViewTrackedKeys] = useState<{ 2: string[]; 3: string[] }>({ 2: [], 3: [] });
+  const [showItemSelector, setShowItemSelector] = useState(false);
+  const [selectorDraftKeys, setSelectorDraftKeys] = useState<string[]>([]);
+
+  // Keyboard shortcuts
+  const [keyboardEnabled, setKeyboardEnabled] = useState(false);
+  const [selectedItemIndex, setSelectedItemIndex] = useState<number>(-1);
+
+  // Config modal
+  const [showConfigModal, setShowConfigModal] = useState(false);
+
+  // DB status
+  const [dbStatus, setDbStatus] = useState<{ visible: boolean; severity: 'error' | 'warn'; title: string; message: string } | null>(null);
+
+  // ── Refs ───────────────────────────────────────────────────────────────
   const realtimeIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastDataTimestampRef = useRef<number>(0);
   const timebaseChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -621,6 +662,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const chartInstanceRef = useRef<any>(null);
   const seriesRef = useRef<TrendSeries[]>([]);
   const timeBaseRef = useRef<TimeBase>('5m');
+  const loadingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const dbStatusPollRef = useRef<NodeJS.Timeout | null>(null);
 
   /**
    * Computed: Visible analog series (Vue pattern)
@@ -657,6 +700,38 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   // Keep refs in sync with state (for stale-closure-free interval callbacks)
   useEffect(() => { seriesRef.current = series; }, [series]);
   useEffect(() => { timeBaseRef.current = timeBase; }, [timeBase]);
+
+  /**
+   * Computed: Series displayed in current view (filtered for View 2 & 3)
+   */
+  const displayedSeries = useMemo(() => {
+    if (currentView === 1) return series;
+    const tracked = viewTrackedKeys[currentView as 2 | 3];
+    return series.filter((s) => tracked.includes(`${s.pointId}-${s.pointIndex}`));
+  }, [series, currentView, viewTrackedKeys]);
+
+  /**
+   * Computed: Has any tracked items for View 2 or 3
+   */
+  const hasTrackedItems = useMemo(() => {
+    if (currentView === 1) return true;
+    return viewTrackedKeys[currentView as 2 | 3].length > 0;
+  }, [currentView, viewTrackedKeys]);
+
+  /**
+   * Computed: Distinct units across all series (for By Unit dropdown)
+   */
+  const distinctUnits = useMemo((): Map<string, { count: number; allEnabled: boolean }> => {
+    const map = new Map<string, { count: number; allEnabled: boolean }>();
+    series.forEach((s) => {
+      const unit = s.unit || 'N/A';
+      if (!map.has(unit)) map.set(unit, { count: 0, allEnabled: true });
+      const entry = map.get(unit)!;
+      entry.count += 1;
+      if (!s.visible) entry.allEnabled = false;
+    });
+    return map;
+  }, [series]);
 
   /**
    * Helper: Toggle series expansion
@@ -700,7 +775,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const getTimeRangeMinutes = useCallback((tb: TimeBase): number => {
     const map: Record<TimeBase, number> = {
       '5m': 5, '10m': 10, '30m': 30, '1h': 60,
-      '4h': 240, '12h': 720, '1d': 1440, '4d': 5760,
+      '4h': 240, '12h': 720, '1d': 1440, '4d': 5760, 'custom': 0,
     };
     return map[tb];
   }, []);
@@ -711,6 +786,75 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const restoreLiveMode = useCallback(() => {
     setTimeOffset(0);
     setIsRealtime(true);
+    setCustomRangeMs(null);
+  }, []);
+
+  /**
+   * Toggle series visibility by unit
+   */
+  const toggleByUnit = useCallback((unit: string) => {
+    setSeries((prev) => {
+      const unitSeries = prev.filter((s) => (s.unit || 'N/A') === unit);
+      const allEnabled = unitSeries.every((s) => s.visible);
+      return prev.map((s) => (s.unit || 'N/A') === unit ? { ...s, visible: !allEnabled } : s);
+    });
+  }, []);
+
+  /**
+   * View 2 & 3 tracking handlers
+   */
+  const openItemSelector = useCallback(() => {
+    setSelectorDraftKeys(viewTrackedKeys[currentView as 2 | 3]);
+    setShowItemSelector(true);
+  }, [currentView, viewTrackedKeys]);
+
+  const applyItemSelection = useCallback(() => {
+    setViewTrackedKeys((prev) => ({ ...prev, [currentView]: selectorDraftKeys }));
+    setShowItemSelector(false);
+  }, [currentView, selectorDraftKeys]);
+
+  const removeFromTracking = useCallback((key: string) => {
+    setViewTrackedKeys((prev) => ({
+      ...prev,
+      [currentView]: (prev[currentView as 2 | 3] || []).filter((k) => k !== key),
+    }));
+  }, [currentView]);
+
+  /**
+   * Custom date range handlers
+   */
+  const applyCustomDateRange = useCallback(() => {
+    if (!customStartInput || !customEndInput) return;
+    const start = new Date(customStartInput).getTime();
+    const end = new Date(customEndInput).getTime();
+    if (isNaN(start) || isNaN(end) || end <= start) return;
+    setCustomRangeMs({ start, end });
+    setTimeBase('custom');
+    setIsRealtime(false);
+    setShowCustomDateModal(false);
+  }, [customStartInput, customEndInput]);
+
+  const setQuickRange = useCallback((preset: 'today' | 'yesterday' | 'thisWeek' | 'lastWeek') => {
+    const now = new Date();
+    let start: Date, end: Date;
+    if (preset === 'today') {
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      end = new Date(start.getTime() + 86400000 - 1);
+    } else if (preset === 'yesterday') {
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      end = new Date(start.getTime() + 86400000 - 1);
+    } else if (preset === 'thisWeek') {
+      const day = now.getDay();
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
+      end = new Date(now);
+    } else {
+      const day = now.getDay();
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day - 7);
+      end = new Date(start.getTime() + 7 * 86400000 - 1);
+    }
+    const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    setCustomStartInput(fmt(start));
+    setCustomEndInput(fmt(end));
   }, []);
 
   /**
@@ -780,14 +924,14 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
    */
   const loadHistoricalData = useCallback(async (forceReload = false) => {
     if (!serialNumber || !panelId) {
-      console.warn('⚠️ TrendChartContent: Missing serialNumber or panelId');
+      console.warn('鈿狅笍 TrendChartContent: Missing serialNumber or panelId');
       return;
     }
 
-    // Use ref to avoid stale closure — seriesRef is updated synchronously in initializeSeries
+    // Use ref to avoid stale closure 鈥?seriesRef is updated synchronously in initializeSeries
     const currentSeries = seriesRef.current;
     if (currentSeries.length === 0) {
-      console.warn('⚠️ TrendChartContent: No series initialized yet');
+      console.warn('鈿狅笍 TrendChartContent: No series initialized yet');
       return;
     }
 
@@ -805,16 +949,17 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         '12h': 12 * 60 * 60 * 1000,
         '1d': 24 * 60 * 60 * 1000,
         '4d': 4 * 24 * 60 * 60 * 1000,
+        'custom': customRangeMs ?? 60 * 60 * 1000,
       };
 
       const timeRangeMs = timeRanges[timeBase];
       let startTime = now - timeRangeMs;
       let endTime = now;
 
-      // 🆕 SMART LOADING: Check if we already have data in this time range (skip when force reload)
+      // 馃啎 SMART LOADING: Check if we already have data in this time range (skip when force reload)
       const existingRange = forceReload ? null : getExistingDataTimeRange();
       if (existingRange) {
-        console.log('📊 TrendChartContent: Existing data detected - optimizing load range', {
+        console.log('馃搳 TrendChartContent: Existing data detected - optimizing load range', {
           requestedRange: {
             start: new Date(startTime).toISOString(),
             end: new Date(endTime).toISOString(),
@@ -828,7 +973,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         // Only load data BEFORE the earliest existing point (historical gap)
         if (startTime < existingRange.earliest) {
           endTime = existingRange.earliest - 1000; // 1 second before earliest
-          console.log('🔍 TrendChartContent: Loading historical gap BEFORE existing data', {
+          console.log('馃攳 TrendChartContent: Loading historical gap BEFORE existing data', {
             gapStart: new Date(startTime).toISOString(),
             gapEnd: new Date(endTime).toISOString(),
           });
@@ -856,7 +1001,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         })),
       };
 
-      console.log('📥 TrendChartContent: Fetching historical data', request);
+      console.log('馃摜 TrendChartContent: Fetching historical data', request);
 
       const response = await TrendChartApiService.getTrendHistory(request);
 
@@ -914,7 +1059,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     try {
       // Priority 1: Use monitorInputs if provided (from TrendLogs page selection)
       if (props.monitorInputs && props.monitorInputs.length > 0) {
-        console.log('✅ TrendChartContent: Initializing series from monitorInputs', {
+        console.log('鉁?TrendChartContent: Initializing series from monitorInputs', {
           inputCount: props.monitorInputs.length,
           sampleInput: props.monitorInputs[0],
           serialNumber,
@@ -939,7 +1084,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                            'variable-points';
             const pointUrl = `${API_BASE_URL}/api/t3_device/devices/${serialNumber}/${endpoint}`;
 
-            console.log(`📡 Fetching ${pointTypeStr} points from:`, pointUrl);
+            console.log(`馃摗 Fetching ${pointTypeStr} points from:`, pointUrl);
             const response = await fetch(pointUrl);
 
             if (response.ok) {
@@ -948,22 +1093,22 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                               pointTypeStr === 'OUTPUT' ? 'output_points' :
                               'variable_points';
               pointsCache[pointTypeStr] = data[pointsKey] || [];
-              console.log(`✅ Fetched ${pointsCache[pointTypeStr].length} ${pointTypeStr} points`);
+              console.log(`鉁?Fetched ${pointsCache[pointTypeStr].length} ${pointTypeStr} points`);
             } else {
-              console.error(`❌ Failed to fetch ${pointTypeStr} points:`, response.status);
+              console.error(`鉂?Failed to fetch ${pointTypeStr} points:`, response.status);
               pointsCache[pointTypeStr] = [];
             }
           });
 
           await Promise.all(fetchPromises);
         } catch (err) {
-          console.error('❌ Error fetching point data:', err);
+          console.error('鉂?Error fetching point data:', err);
         }
 
         // Now create series using the cached data
         const generatedSeries: TrendSeries[] = props.monitorInputs.map((input, index) => {
           // TRENDLOG_INPUTS.Point_Type is stored as "INPUT"/"OUTPUT"/"VARIABLE" (full name)
-          // but may also arrive as legacy short form "IN"/"OUT"/"VAR" — handle both
+          // but may also arrive as legacy short form "IN"/"OUT"/"VAR" 鈥?handle both
           const rawType = input.pointType || '';
           const pointTypeStr: 'INPUT' | 'OUTPUT' | 'VARIABLE' =
             (rawType === 'INPUT' || rawType === 'IN') ? 'INPUT' :
@@ -974,7 +1119,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
           // TRENDLOG_INPUTS.Point_Index is 0-based (from C++ point_number).
           // TRENDLOG_DATA.PointId is 1-based (e.g., "IN1" for C++ index 0).
-          // → rawIndex is used for cache lookup; pointId uses rawIndex+1
+          // 鈫?rawIndex is used for cache lookup; pointId uses rawIndex+1
           const rawIndex = parseInt(input.pointIndex, 10);   // 0-based
           const pointIndex = rawIndex + 1;                   // 1-based, matches TRENDLOG_DATA.PointId
           const pointId = `${pointPrefix}${pointIndex}`;     // e.g., "IN1", "OUT2", "VAR3"
@@ -989,9 +1134,9 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           if (point && point.digitalAnalog !== undefined && point.digitalAnalog !== null) {
             const rawValue = point.digitalAnalog;
             digitalAnalog = (rawValue === '0' || rawValue === 0) ? 'Digital' : 'Analog';
-            console.log(`✅ [${pointId}] Classified as ${digitalAnalog} (raw: ${rawValue})`);
+            console.log(`鉁?[${pointId}] Classified as ${digitalAnalog} (raw: ${rawValue})`);
           } else {
-            console.warn(`⚠️ [${pointId}] No digitalAnalog field, defaulting to Analog`);
+            console.warn(`鈿狅笍 [${pointId}] No digitalAnalog field, defaulting to Analog`);
           }
 
           return {
@@ -1009,7 +1154,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
         seriesRef.current = generatedSeries; // Update ref synchronously before setState
         setSeries(generatedSeries);
-        console.log('✅ TrendChartContent: Series initialized from monitorInputs', {
+        console.log('鉁?TrendChartContent: Series initialized from monitorInputs', {
           count: generatedSeries.length,
           serialNumber,
           panelId,
@@ -1073,7 +1218,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       }
 
       // Fallback: Create sample series if no itemData
-      console.log('⚠️ TrendChartContent: No itemData available, using sample series');
+      console.log('鈿狅笍 TrendChartContent: No itemData available, using sample series');
       const sampleSeries: TrendSeries[] = [
         {
           name: 'IN1',
@@ -1082,7 +1227,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           pointIndex: 1, // 1-based
           data: [],
           color: CHART_COLORS[0],
-          unit: '°C',
+          unit: '掳C',
           digitalAnalog: 'Analog',
           visible: true,
         },
@@ -1093,7 +1238,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           pointIndex: 2,
           data: [],
           color: CHART_COLORS[1],
-          unit: '°C',
+          unit: '掳C',
           digitalAnalog: 'Analog',
           visible: true,
         },
@@ -1136,7 +1281,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       const timeRangeMs: Record<TimeBase, number> = {
         '5m': 5 * 60 * 1000, '10m': 10 * 60 * 1000, '30m': 30 * 60 * 1000,
         '1h': 60 * 60 * 1000, '4h': 4 * 60 * 60 * 1000, '12h': 12 * 60 * 60 * 1000,
-        '1d': 24 * 60 * 60 * 1000, '4d': 4 * 24 * 60 * 60 * 1000,
+        '1d': 24 * 60 * 60 * 1000, '4d': 4 * 24 * 60 * 60 * 1000, 'custom': 60 * 60 * 1000,
       };
       const startMs = now - timeRangeMs[currentTimeBase];
 
@@ -1186,6 +1331,11 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           });
           return updated;
         });
+        // Track last sync time accurately
+        const now = new Date();
+        setLastSyncTime(
+          `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`
+        );
         setDataSource('realtime');
       }
     } catch (error) {
@@ -1211,7 +1361,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         const gapSeconds = Math.floor((now - lastDataTimestampRef.current) / 1000);
 
         if (gapSeconds >= 10) {
-          console.log('🔄 TrendChartContent: Backfilling data gap', {
+          console.log('馃攧 TrendChartContent: Backfilling data gap', {
             gapSeconds,
             lastTimestamp: new Date(lastDataTimestampRef.current).toISOString(),
           });
@@ -1232,7 +1382,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
    */
   useEffect(() => {
     const initializeData = async () => {
-      console.log('🚀 TrendChartContent: Starting initialization sequence');
+      console.log('馃殌 TrendChartContent: Starting initialization sequence');
 
       // Step 1: Initialize series from monitor config (Vue: regenerateDataSeries)
       await initializeSeries();
@@ -1262,26 +1412,26 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   useEffect(() => {
     // Skip if series not initialized yet
     if (series.length === 0) {
-      console.log('⚠️ TrendChartContent: No series yet, skipping timebase effect');
+      console.log('鈿狅笍 TrendChartContent: No series yet, skipping timebase effect');
       return;
     }
 
     // Skip if this is the first load and we haven't loaded initial data yet
     if (!hasLoadedInitialDataRef.current) {
-      console.log('⚠️ TrendChartContent: Initial data not loaded yet, skipping timebase effect');
+      console.log('鈿狅笍 TrendChartContent: Initial data not loaded yet, skipping timebase effect');
       return;
     }
 
     // Cancel previous pending timebase change
     if (timebaseChangeTimeoutRef.current) {
       clearTimeout(timebaseChangeTimeoutRef.current);
-      console.log('⏸️ TrendChartContent: Cancelled pending timebase change');
+      console.log('鈴革笍 TrendChartContent: Cancelled pending timebase change');
     }
 
     // Abort any ongoing history API request
     if (historyAbortControllerRef.current) {
       historyAbortControllerRef.current.abort();
-      console.log('🛑 TrendChartContent: Aborted previous history API request');
+      console.log('馃洃 TrendChartContent: Aborted previous history API request');
     }
 
     // Debounce: wait 300ms before executing
@@ -1309,17 +1459,17 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         // Load data based on Auto Scroll state
         if (isRealtime) {
           // Auto Scroll ON: Load real-time + historical data
-          console.log('📊 TrendChartContent: Auto Scroll ON - Loading historical + starting real-time');
+          console.log('馃搳 TrendChartContent: Auto Scroll ON - Loading historical + starting real-time');
           await loadHistoricalData();
 
           // Ensure real-time updates are active
           if (!realtimeIntervalRef.current) {
-            console.log('🔄 TrendChartContent: Starting real-time updates');
+            console.log('馃攧 TrendChartContent: Starting real-time updates');
             realtimeIntervalRef.current = setInterval(pollRealtimeData, 5000);
           }
         } else {
           // Auto Scroll OFF: Load historical data only
-          console.log('📚 TrendChartContent: Auto Scroll OFF - Loading historical only');
+          console.log('馃摎 TrendChartContent: Auto Scroll OFF - Loading historical only');
 
           // Stop real-time updates
           if (realtimeIntervalRef.current) {
@@ -1338,7 +1488,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       } catch (error: any) {
         // Check if error is due to abort
         if (error.name === 'AbortError') {
-          console.log('⏹️ TrendChartContent: History request aborted (newer request started)');
+          console.log('鈴癸笍 TrendChartContent: History request aborted (newer request started)');
           return;
         }
 
@@ -1364,16 +1514,16 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   useEffect(() => {
     // Only manage interval after initial load is complete
     if (!hasLoadedInitialDataRef.current) {
-      console.log('⏸️ TrendChartContent: Skipping Auto Scroll effect - not initialized yet');
+      console.log('鈴革笍 TrendChartContent: Skipping Auto Scroll effect - not initialized yet');
       return;
     }
 
-    console.log('🔄 TrendChartContent: Auto Scroll state changed', { isRealtime });
+    console.log('馃攧 TrendChartContent: Auto Scroll state changed', { isRealtime });
 
     if (isRealtime) {
       // Start real-time updates
       if (!realtimeIntervalRef.current) {
-        console.log('▶️ TrendChartContent: Starting real-time updates interval');
+        console.log('鈻讹笍 TrendChartContent: Starting real-time updates interval');
         realtimeIntervalRef.current = setInterval(() => {
           pollRealtimeData();
         }, 5000);
@@ -1381,7 +1531,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     } else {
       // Stop real-time updates
       if (realtimeIntervalRef.current) {
-        console.log('⏸️ TrendChartContent: Stopping real-time updates interval');
+        console.log('鈴革笍 TrendChartContent: Stopping real-time updates interval');
         clearInterval(realtimeIntervalRef.current);
         realtimeIntervalRef.current = null;
       }
@@ -1395,6 +1545,127 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       }
     };
   }, [isRealtime]); // Only depend on isRealtime, not updateRealtimeData
+
+  /**
+   * 30-second loading timeout 鈥?shows timeout empty state
+   */
+  useEffect(() => {
+    if (loading) {
+      setLoadingTimedOut(false);
+      loadingTimerRef.current = setTimeout(() => setLoadingTimedOut(true), 30000);
+    } else {
+      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
+    }
+    return () => { if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current); };
+  }, [loading]);
+
+  /**
+   * DB Status polling 鈥?every 10 seconds
+   */
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/sync/health`);
+        if (!res.ok) {
+          setDbStatus({ visible: true, severity: 'error', title: 'Center DB Unreachable', message: `HTTP ${res.status}` });
+          return;
+        }
+        const json = await res.json().catch(() => null);
+        if (json && json.center_db_status && json.center_db_status !== 'ok') {
+          const s = json.center_db_status;
+          const sev: 'error' | 'warn' = s === 'server_unreachable' || s === 'db_missing' ? 'error' : 'warn';
+          const msgs: Record<string, string> = {
+            server_unreachable: 'Cannot reach the Center DB server.',
+            db_missing: 'Center DB file is missing.',
+            schema_missing: 'Center DB schema is incomplete.',
+            misconfigured_backend: 'Backend misconfigured for Center DB.',
+          };
+          setDbStatus({ visible: true, severity: sev, title: 'Center DB Issue', message: msgs[s] || s });
+        } else {
+          setDbStatus(null);
+        }
+      } catch {
+        // network error 鈥?not necessarily a DB issue, ignore silently
+      }
+    };
+    poll();
+    dbStatusPollRef.current = setInterval(poll, 10000);
+    return () => { if (dbStatusPollRef.current) clearInterval(dbStatusPollRef.current); };
+  }, []);
+
+  /**
+   * Keyboard shortcuts
+   */
+  useEffect(() => {
+    if (!keyboardEnabled) return;
+    const KEYS: string[] = ['1','2','3','4','5','6','7','8','9','a','b','c','d','e'];
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return;
+      const key = e.key.toLowerCase();
+      const idx = KEYS.indexOf(key);
+      if (idx !== -1) {
+        e.preventDefault();
+        setSeries(prev => {
+          const updated = [...prev];
+          if (idx < updated.length) updated[idx] = { ...updated[idx], visible: !updated[idx].visible };
+          return updated;
+        });
+        // lastKeyboardAction intentionally not tracked (display-only feature removed)
+      } else if (e.key === 'ArrowLeft') { e.preventDefault(); moveTimeLeft(); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); moveTimeRight(); }
+      else if (e.key === 'ArrowUp' && !e.ctrlKey) { e.preventDefault(); zoomIn(); }
+      else if (e.key === 'ArrowDown' && !e.ctrlKey) { e.preventDefault(); zoomOut(); }
+      else if (e.key === 'ArrowUp' && e.ctrlKey) {
+        e.preventDefault();
+        setSelectedItemIndex(prev => Math.max(0, prev - 1));
+      } else if (e.key === 'ArrowDown' && e.ctrlKey) {
+        e.preventDefault();
+        setSeries(prev => { setSelectedItemIndex(i => Math.min(prev.length - 1, i + 1)); return prev; });
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        setSeries(prev => {
+          if (selectedItemIndex < 0 || selectedItemIndex >= prev.length) return prev;
+          const updated = [...prev];
+          updated[selectedItemIndex] = { ...updated[selectedItemIndex], visible: !updated[selectedItemIndex].visible };
+          return updated;
+        });
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setKeyboardEnabled(false);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [keyboardEnabled, moveTimeLeft, moveTimeRight, zoomIn, zoomOut, selectedItemIndex]);
+
+  /**
+   * Persist & restore state to localStorage
+   */
+  const localStorageKey = useMemo(() =>
+    serialNumber ? `trendlog_view_state_${serialNumber}_${trendlogId}` : null,
+    [serialNumber, trendlogId]);
+
+  useEffect(() => {
+    if (!localStorageKey) return;
+    try {
+      const saved = localStorage.getItem(localStorageKey);
+      if (saved) {
+        const s = JSON.parse(saved);
+        if (s.timeBase) setTimeBase(s.timeBase);
+        if (typeof s.timeOffset === 'number') setTimeOffset(s.timeOffset);
+        if (s.customRangeMs) setCustomRangeMs(s.customRangeMs);
+        if (s.viewTrackedKeys) setViewTrackedKeys(s.viewTrackedKeys);
+      }
+    } catch { /* ignore */ }
+  }, [localStorageKey]);
+
+  useEffect(() => {
+    if (!localStorageKey) return;
+    try {
+      localStorage.setItem(localStorageKey, JSON.stringify({ timeBase, timeOffset, customRangeMs, viewTrackedKeys }));
+    } catch { /* ignore */ }
+  }, [localStorageKey, timeBase, timeOffset, customRangeMs, viewTrackedKeys]);
 
   /**
    * Toggle series visibility
@@ -1467,23 +1738,22 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const timeBaseOrder: TimeBase[] = ['5m', '10m', '30m', '1h', '4h', '12h', '1d', '4d'];
 
   const zoomIn = useCallback(() => {
+    if (timeBase === 'custom') return;
     const currentIndex = timeBaseOrder.indexOf(timeBase);
-    if (currentIndex > 0) {
-      setTimeBase(timeBaseOrder[currentIndex - 1]);
-    }
+    if (currentIndex > 0) setTimeBase(timeBaseOrder[currentIndex - 1]);
   }, [timeBase]);
 
   const zoomOut = useCallback(() => {
+    if (timeBase === 'custom') return;
     const currentIndex = timeBaseOrder.indexOf(timeBase);
-    if (currentIndex < timeBaseOrder.length - 1) {
-      setTimeBase(timeBaseOrder[currentIndex + 1]);
-    }
+    if (currentIndex < timeBaseOrder.length - 1) setTimeBase(timeBaseOrder[currentIndex + 1]);
   }, [timeBase]);
 
   const resetTimeBase = useCallback(() => {
     setTimeOffset(0);
     setIsRealtime(true);
     setTimeBase('5m');
+    setCustomRangeMs(null);
   }, []);
 
   /**
@@ -1572,7 +1842,20 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         <Dropdown
           value={timeBase}
           selectedOptions={[timeBase]}
-          onOptionSelect={(_, data) => setTimeBase(data.optionValue as TimeBase)}
+          onOptionSelect={(_, data) => {
+            const val = data.optionValue as TimeBase;
+            if (val === 'custom') {
+              // pre-fill with current window
+              const now = new Date();
+              const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+              const rangeMs = getTimeRangeMinutes(timeBase === 'custom' ? '5m' : timeBase) * 60000;
+              setCustomStartInput(fmt(new Date(now.getTime() - rangeMs)));
+              setCustomEndInput(fmt(now));
+              setShowCustomDateModal(true);
+            } else {
+              setTimeBase(val);
+            }
+          }}
           size="small"
           className={styles.timeBaseDropdown}
           style={{ fontSize: '11px', minWidth: '100px', fontWeight: 'normal' }}
@@ -1585,6 +1868,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           <Option value="12h" style={{ fontSize: '11px' }}>12 hours</Option>
           <Option value="1d" style={{ fontSize: '11px' }}>1 day</Option>
           <Option value="4d" style={{ fontSize: '11px' }}>4 days</Option>
+          <Option value="custom" style={{ fontSize: '11px', borderTop: '1px solid #eee' }}>Custom Define...</Option>
         </Dropdown>
       </div>
 
@@ -1599,7 +1883,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           disabled={loading}
           size="small"
           style={{ minWidth: '20px', padding: '2px', width: '20px' }}
-          title="Scroll Left (←)"
+          title="Scroll Left (鈫?"
         />
         <Button
           appearance="subtle"
@@ -1608,7 +1892,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           disabled={isRealtime || loading}
           size="small"
           style={{ minWidth: '20px', padding: '2px', width: '20px' }}
-          title="Scroll Right (→)"
+          title="Scroll Right (鈫?"
         />
       </div>
 
@@ -1618,10 +1902,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           appearance="subtle"
           icon={<ArrowUpRegular fontSize={16} />}
           onClick={zoomIn}
-          disabled={loading || timeBaseOrder.indexOf(timeBase) === 0}
+          disabled={loading || timeBase === 'custom' || timeBaseOrder.indexOf(timeBase) === 0}
           size="small"
           style={{ fontSize: '11px', padding: '2px 6px', fontWeight: 'normal' }}
-          title="Zoom In (↑)"
+          title="Zoom In (鈫?"
         >
           Zoom In
         </Button>
@@ -1629,10 +1913,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           appearance="subtle"
           icon={<ArrowDownRegular fontSize={16} />}
           onClick={zoomOut}
-          disabled={loading || timeBaseOrder.indexOf(timeBase) === timeBaseOrder.length - 1}
+          disabled={loading || timeBase === 'custom' || timeBaseOrder.indexOf(timeBase) === timeBaseOrder.length - 1}
           size="small"
           style={{ fontSize: '11px', padding: '2px 6px', fontWeight: 'normal' }}
-          title="Zoom Out (↓)"
+          title="Zoom Out (鈫?"
         >
           Zoom Out
         </Button>
@@ -1683,11 +1967,11 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         >
           View 3
         </Button>
-        {currentView !== 1 && (
+        {currentView !== 1 && hasTrackedItems && (
           <Button
             appearance="subtle"
             icon={<SettingsRegular />}
-            onClick={() => console.log('Reconfigure tracked items')}
+            onClick={openItemSelector}
             disabled={loading}
             size="small"
             title="Reconfigure tracked items"
@@ -1708,22 +1992,15 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         >
           {isRealtime ? (
             <>
-              <span className={styles.liveIndicator}>●</span>
-              {`Live-${new Date().toLocaleTimeString('en-US', { hour12: false })}`}
+              <span className={styles.liveIndicator}>&#9679;</span>
+              {lastSyncTime ? `Live-${lastSyncTime}` : 'Live'}
             </>
           ) : (
-            'Historical — click to restore live'
+            'Historical - click to restore live'
           )}
         </div>
         <div className={`${styles.statusTag} ${styles.statusTagTimeBase}`}>
-          {timeBase === '5m' ? '5 minutes' :
-           timeBase === '10m' ? '10 minutes' :
-           timeBase === '30m' ? '30 minutes' :
-           timeBase === '1h' ? '1 hour' :
-           timeBase === '4h' ? '4 hours' :
-           timeBase === '12h' ? '12 hours' :
-           timeBase === '1d' ? '1 day' :
-           timeBase === '4d' ? '4 days' : timeBase}
+          {TIMEBASE_LABELS[timeBase] || timeBase}
         </div>
       </div>
 
@@ -1734,7 +2011,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         <Button
           appearance="subtle"
           icon={<DatabaseRegular />}
-          onClick={() => console.log('Config - Not yet implemented')}
+          onClick={() => setShowConfigModal(true)}
           disabled={loading}
           size="small"
           style={{ fontSize: '11px', padding: '4px 8px', fontWeight: 'normal' }}
@@ -1774,22 +2051,48 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         </Menu>
       </div>
 
+      {/* DB Status Badge */}
+      {dbStatus?.visible && (
+        <Tooltip
+          content={
+            <div style={{ maxWidth: 280 }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>{dbStatus.title}</div>
+              <div style={{ fontSize: '12px' }}>{dbStatus.message}</div>
+              <div style={{ fontSize: '11px', color: '#aaa', marginTop: 6 }}>
+                Local logging continues. Restore Center DB connectivity to resume sync.
+              </div>
+            </div>
+          }
+          relationship="description"
+          positioning="below-end"
+        >
+          <div style={{
+            marginLeft: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '3px',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            fontSize: '11px',
+            fontWeight: 700,
+            cursor: 'default',
+            border: '1px solid',
+            backgroundColor: dbStatus.severity === 'error' ? '#fff1f0' : '#fffbe6',
+            borderColor: dbStatus.severity === 'error' ? '#ffa39e' : '#ffe58f',
+            color: dbStatus.severity === 'error' ? '#cf1322' : '#d46b08',
+          }}>
+            <WarningRegular fontSize={13} />
+            DB
+          </div>
+        </Tooltip>
+      )}
+
       {loading && <Spinner size="tiny" />}
     </div>
   ), [
-    timeBase,
-    currentView,
-    isRealtime,
-    loading,
-    zoomIn,
-    zoomOut,
-    resetTimeBase,
-    moveTimeLeft,
-    moveTimeRight,
-    restoreLiveMode,
-    exportToPNG,
-    exportToCSV,
-    exportToJSON,
+    timeBase, currentView, isRealtime, loading, lastSyncTime, dbStatus, hasTrackedItems,
+    zoomIn, zoomOut, resetTimeBase, moveTimeLeft, moveTimeRight, restoreLiveMode,
+    exportToPNG, exportToCSV, exportToJSON, openItemSelector, getTimeRangeMinutes,
   ]);
 
   // Call onToolbarRender when in drawer mode
@@ -1807,449 +2110,512 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
   return (
     <div className={styles.container}>
-      {/* ANALOG AREA (Top Section) */}
-      {visibleAnalogSeries.length > 0 && (
-        <div className={styles.analogArea}>
-          {/* Analog Left Panel - Series List */}
-          <div className={styles.leftPanel}>
-            <div className={styles.seriesPanelHeader}>
-              {/* Header Line 1: Title + Count + Data Source */}
-              <div className={styles.headerLine}>
-                <Text size={200} weight="semibold">
-                  {props.itemData?.title || 'Trend Monitor'} ({visibleAnalogSeries.length}/{analogSeries.length})
-                </Text>
-                <div className={styles.dataSourceIndicator}>
-                  {dataSource === 'loading' && (
-                    <Badge appearance="tint" color="informative" size="small">
-                      Loading...
-                    </Badge>
-                  )}
-                  {dataSource === 'realtime' && (
-                    <Badge appearance="filled" color="success" size="small" icon={<FlashRegular />}>
-                      Live
-                    </Badge>
-                  )}
-                  {dataSource === 'api' && (
-                    <Badge appearance="filled" color="informative" size="small" icon={<HistoryRegular />}>
-                      Historical
-                    </Badge>
-                  )}
-                  {dataSource === 'error' && (
-                    <Badge appearance="filled" color="danger" size="small" icon={<ErrorCircleRegular />}>
-                      Error
-                    </Badge>
-                  )}
-                  <Button
-                    appearance="subtle"
-                    icon={<ArrowClockwiseRegular />}
-                    size="small"
-                    onClick={manualRefresh}
-                    disabled={loading}
-                    title="Manual Refresh"
-                    style={{ minWidth: '24px', width: '24px', height: '24px', padding: 0 }}
-                  />
-                </div>
-              </div>
 
-              {/* Header Line 2: All Dropdown + By Type Dropdown + Auto Scroll Toggle */}
-              <div className={styles.headerControls}>
-                <div className={styles.leftControls}>
-                  {/* All Dropdown */}
-                  <Menu>
-                    <MenuTrigger disableButtonEnhancement>
-                      <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after">
-                        All
-                      </Button>
-                    </MenuTrigger>
-                    <MenuPopover>
-                      <MenuList>
-                        <MenuItem onClick={handleEnableAll} disabled={seriesCounts.allEnabled}>
-                          Enable All
-                        </MenuItem>
-                        <MenuItem onClick={handleDisableAll} disabled={seriesCounts.allDisabled}>
-                          Disable All
-                        </MenuItem>
-                      </MenuList>
-                    </MenuPopover>
-                  </Menu>
-
-                  {/* By Type Dropdown */}
-                  <Menu>
-                    <MenuTrigger disableButtonEnhancement>
-                      <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after">
-                        By Type
-                      </Button>
-                    </MenuTrigger>
-                    <MenuPopover>
-                      <MenuList>
-                        <MenuItem
-                          onClick={() => toggleByAnalogDigital('Analog')}
-                          disabled={seriesCounts.analog === 0}
-                        >
-                          {seriesCounts.analogEnabled ? 'Disable' : 'Enable'} Analog ({seriesCounts.analog})
-                        </MenuItem>
-                        <MenuItem
-                          onClick={() => toggleByAnalogDigital('Digital')}
-                          disabled={seriesCounts.digital === 0}
-                        >
-                          {seriesCounts.digitalEnabled ? 'Disable' : 'Enable'} Digital ({seriesCounts.digital})
-                        </MenuItem>
-                        <MenuItem
-                          onClick={() => toggleByPointType('INPUT')}
-                          disabled={seriesCounts.input === 0}
-                        >
-                          {seriesCounts.inputEnabled ? 'Disable' : 'Enable'} Input ({seriesCounts.input})
-                        </MenuItem>
-                        <MenuItem
-                          onClick={() => toggleByPointType('OUTPUT')}
-                          disabled={seriesCounts.output === 0}
-                        >
-                          {seriesCounts.outputEnabled ? 'Disable' : 'Enable'} Output ({seriesCounts.output})
-                        </MenuItem>
-                        <MenuItem
-                          onClick={() => toggleByPointType('VARIABLE')}
-                          disabled={seriesCounts.variable === 0}
-                        >
-                          {seriesCounts.variableEnabled ? 'Disable' : 'Enable'} Variable ({seriesCounts.variable})
-                        </MenuItem>
-                      </MenuList>
-                    </MenuPopover>
-                  </Menu>
-                </div>
-
-                {/* Auto Scroll Toggle */}
-                <div className={styles.autoScrollToggle}>
-                  <Text size={100}>Auto Scroll:</Text>
-                  <Switch checked={isRealtime} onChange={(_, data) => setIsRealtime(data.checked)} />
-                </div>
-              </div>
-            </div>
-
-            {/* Analog Series List */}
-            <div className={styles.seriesPanel}>
-              {analogSeries.map((s, index) => {
-                const seriesKey = `${s.pointId}-${s.pointIndex}`;
-                const isExpanded = expandedSeries.has(seriesKey);
-
-                return (
-                  <React.Fragment key={seriesKey}>
-                    <div className={`${styles.seriesItem} ${isExpanded ? styles.seriesItemExpanded : ''}`}>
-                      {/* @ts-expect-error CSS custom property for dynamic color */}
-                      <div
-                        className={styles.colorIndicator}
-                        style={{ '--series-color': s.color } as React.CSSProperties}
-                        onClick={() => toggleSeriesVisibility(index)}
-                      />
-
-                      <Tooltip content={s.name} relationship="label">
-                        <div className={styles.seriesItemContent} onClick={() => toggleSeriesVisibility(index)}>
-                          <div className={styles.seriesItemInfo}>
-                            <Text className={styles.seriesItemName}>
-                              {s.name}
-                            </Text>
-                            <div className={styles.seriesItemMeta}>
-                              {(s.prefix || s.pointType) && (
-                                <Tag size="extra-small" appearance="outline">
-                                  {getPrefixTag(s.pointType, s.prefix)}
-                                </Tag>
-                              )}
-                              <Text className={styles.seriesItemUnit}>
-                                {s.unit || 'N/A'}
-                              </Text>
-                              <Text size={100} style={{ color: tokens.colorNeutralForeground2, fontWeight: 600, marginLeft: '4px' }}>
-                                {getLastValue(s)}
-                              </Text>
-                            </div>
-                          </div>
-                        </div>
-                      </Tooltip>
-
-                      <Button
-                        appearance="subtle"
-                        icon={isExpanded ? <ChevronDownFilled /> : <ChevronRightRegular />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleSeriesExpand(seriesKey);
-                        }}
-                        className={styles.expandButton}
-                        size="small"
-                      />
-                    </div>
-
-                    {isExpanded && (
-                      <div className={styles.seriesDetails}>
-                        <div className={styles.seriesStats}>
-                          <Text size={100}>
-                            <strong>Last:</strong> {s.data && s.data.length > 0
-                              ? `${s.data[s.data.length - 1].value.toFixed(2)} ${s.unit || ''}`
-                              : 'N/A'}
-                          </Text>
-                          <Text size={100}>
-                            <strong>Avg:</strong> {s.data && s.data.length > 0
-                              ? `${(s.data.reduce((sum, p) => sum + p.value, 0) / s.data.length).toFixed(2)} ${s.unit || ''}`
-                              : 'N/A'}
-                          </Text>
-                          <Text size={100}>
-                            <strong>Min:</strong> {s.data && s.data.length > 0
-                              ? `${Math.min(...s.data.map(p => p.value)).toFixed(2)} ${s.unit || ''}`
-                              : 'N/A'}
-                          </Text>
-                          <Text size={100}>
-                            <strong>Max:</strong> {s.data && s.data.length > 0
-                              ? `${Math.max(...s.data.map(p => p.value)).toFixed(2)} ${s.unit || ''}`
-                              : 'N/A'}
-                          </Text>
-                        </div>
-                      </div>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Analog Right Panel - Chart */}
-          <div className={styles.rightPanel}>
-            <TrendChart
-              series={visibleAnalogSeries}
-              timeBase={timeBase}
-              showGrid={showGrid}
-              chartType="analog"
-              timeOffset={timeOffset}
-              onChartReady={(instance) => { chartInstanceRef.current = instance; }}
-            />
-          </div>
+      {/* 鈹€鈹€ VIEW 2 / 3 EMPTY STATE 鈹€鈹€ */}
+      {currentView !== 1 && !hasTrackedItems && (
+        <div className={styles.emptyStateCenter}>
+          <div style={{ fontSize: 40 }}>&#128202;</div>
+          <Text size={500} weight="semibold">
+            {currentView === 2 ? 'Custom View 2' : 'Custom View 3'}
+          </Text>
+          <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+            Select items to track to start monitoring specific data points.
+          </Text>
+          <Button appearance="primary" onClick={openItemSelector}>
+            Select Items to Track
+          </Button>
         </div>
       )}
 
-      {/* RESIZABLE DIVIDER */}
-      {visibleAnalogSeries.length > 0 && visibleDigitalSeries.length > 0 && (
-        <div className={styles.resizableDivider}>
-          <div className={styles.dividerGrip} />
-        </div>
-      )}
+      {(currentView === 1 || hasTrackedItems) && (() => {
+        // Derive filtered lists for this view
+        const viewAnalog = displayedSeries.filter((s) => s.digitalAnalog === 'Analog');
+        const viewDigital = displayedSeries.filter((s) => s.digitalAnalog === 'Digital');
+        const visAnalog = viewAnalog.filter((s) => s.visible !== false);
+        const visDigital = viewDigital.filter((s) => s.visible !== false);
 
-      {/* DIGITAL AREA (Bottom Section) */}
-      {visibleDigitalSeries.length > 0 && (
-        <div className={styles.digitalArea}>
-          {/* Digital Left Panel - Series List */}
-          <div className={styles.digitalLeftPanel}>
-            <div className={styles.seriesPanelHeader}>
-              {/* Header Line 1: Title + Count + Data Source (only show if no analog area) */}
-              <div className={styles.headerLine}>
-                <Text size={200} weight="semibold">
-                  {analogSeries.length === 0 && (props.itemData?.title || 'Trend Monitor')} Digital ({visibleDigitalSeries.length}/{digitalSeries.length})
-                </Text>
-                {analogSeries.length === 0 && (
-                  <div className={styles.dataSourceIndicator}>
-                    {dataSource === 'loading' && (
-                      <Badge appearance="tint" color="informative" size="small">
-                        Loading...
-                      </Badge>
-                    )}
-                    {dataSource === 'realtime' && (
-                      <Badge appearance="filled" color="success" size="small" icon={<FlashRegular />}>
-                        Live
-                      </Badge>
-                    )}
-                    {dataSource === 'api' && (
-                      <Badge appearance="filled" color="informative" size="small" icon={<HistoryRegular />}>
-                        Historical
-                      </Badge>
-                    )}
-                    {dataSource === 'error' && (
-                      <Badge appearance="filled" color="danger" size="small" icon={<ErrorCircleRegular />}>
-                        Error
-                      </Badge>
-                    )}
-                    <Button
-                      appearance="subtle"
-                      icon={<ArrowClockwiseRegular />}
-                      size="small"
-                      onClick={manualRefresh}
-                      disabled={loading}
-                      title="Manual Refresh"
-                      style={{ minWidth: '24px', width: '24px', height: '24px', padding: 0 }}
-                    />
-                  </div>
+        // Series panel toolbar (shared helper)
+        const renderSeriesToolbar = () => (
+          <div className={styles.seriesPanelHeader}>
+            {/* Header Line 1 */}
+            <div className={styles.headerLine}>
+              <Text size={200} weight="semibold">
+                {props.itemData?.title || 'Trend Monitor'} ({visAnalog.length + visDigital.length}/{displayedSeries.length})
+              </Text>
+              <div className={styles.dataSourceIndicator}>
+                {dataSource === 'loading' && <Badge appearance="tint" color="informative" size="small">Loading...</Badge>}
+                {dataSource === 'realtime' && <Badge appearance="filled" color="success" size="small" icon={<FlashRegular />}>Live</Badge>}
+                {dataSource === 'api' && <Badge appearance="filled" color="informative" size="small" icon={<HistoryRegular />}>Historical</Badge>}
+                {dataSource === 'error' && <Badge appearance="filled" color="danger" size="small" icon={<ErrorCircleRegular />}>Error</Badge>}
+                <Button appearance="subtle" icon={<ArrowClockwiseRegular />} size="small" onClick={manualRefresh}
+                  disabled={loading} title="Manual Refresh"
+                  style={{ minWidth: '24px', width: '24px', height: '24px', padding: 0 }} />
+              </div>
+            </div>
+
+            {/* Header Line 2: All + By Type + By Unit + Auto Scroll */}
+            <div className={styles.headerControls}>
+              <div className={styles.leftControls}>
+                {/* All Dropdown */}
+                <Menu>
+                  <MenuTrigger disableButtonEnhancement>
+                    <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after">All</Button>
+                  </MenuTrigger>
+                  <MenuPopover>
+                    <MenuList>
+                      <MenuItem onClick={handleEnableAll} disabled={seriesCounts.allEnabled}>Enable All</MenuItem>
+                      <MenuItem onClick={handleDisableAll} disabled={seriesCounts.allDisabled}>Disable All</MenuItem>
+                    </MenuList>
+                  </MenuPopover>
+                </Menu>
+
+                {/* By Type Dropdown */}
+                <Menu>
+                  <MenuTrigger disableButtonEnhancement>
+                    <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after">By Type</Button>
+                  </MenuTrigger>
+                  <MenuPopover>
+                    <MenuList>
+                      <MenuItem onClick={() => toggleByAnalogDigital('Analog')} disabled={seriesCounts.analog === 0}>
+                        {seriesCounts.analogEnabled ? 'Disable' : 'Enable'} Analog ({seriesCounts.analog})
+                      </MenuItem>
+                      <MenuItem onClick={() => toggleByAnalogDigital('Digital')} disabled={seriesCounts.digital === 0}>
+                        {seriesCounts.digitalEnabled ? 'Disable' : 'Enable'} Digital ({seriesCounts.digital})
+                      </MenuItem>
+                      <MenuDivider />
+                      <MenuItem onClick={() => toggleByPointType('INPUT')} disabled={seriesCounts.input === 0}>
+                        {seriesCounts.inputEnabled ? 'Disable' : 'Enable'} Input ({seriesCounts.input})
+                      </MenuItem>
+                      <MenuItem onClick={() => toggleByPointType('OUTPUT')} disabled={seriesCounts.output === 0}>
+                        {seriesCounts.outputEnabled ? 'Disable' : 'Enable'} Output ({seriesCounts.output})
+                      </MenuItem>
+                      <MenuItem onClick={() => toggleByPointType('VARIABLE')} disabled={seriesCounts.variable === 0}>
+                        {seriesCounts.variableEnabled ? 'Disable' : 'Enable'} Variable ({seriesCounts.variable})
+                      </MenuItem>
+                    </MenuList>
+                  </MenuPopover>
+                </Menu>
+
+                {/* By Unit Dropdown */}
+                {distinctUnits.size > 0 && (
+                  <Menu>
+                    <MenuTrigger disableButtonEnhancement>
+                      <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after">By Unit</Button>
+                    </MenuTrigger>
+                    <MenuPopover>
+                      <MenuList>
+                        {Array.from(distinctUnits.entries()).map(([unit, info]) => (
+                          <MenuItem key={unit} onClick={() => toggleByUnit(unit)}>
+                            {info.allEnabled ? 'Disable' : 'Enable'} {unit} ({info.count})
+                          </MenuItem>
+                        ))}
+                      </MenuList>
+                    </MenuPopover>
+                  </Menu>
                 )}
               </div>
 
-              {/* Header Line 2: All Dropdown + By Type Dropdown + Auto Scroll Toggle (only if no analog area) */}
-              {analogSeries.length === 0 && (
-                <div className={styles.headerControls}>
-                  <div className={styles.leftControls}>
-                    {/* All Dropdown */}
-                    <Menu>
-                      <MenuTrigger disableButtonEnhancement>
-                        <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after">
-                          All
-                        </Button>
-                      </MenuTrigger>
-                      <MenuPopover>
-                        <MenuList>
-                          <MenuItem onClick={handleEnableAll} disabled={seriesCounts.allEnabled}>
-                            Enable All
-                          </MenuItem>
-                          <MenuItem onClick={handleDisableAll} disabled={seriesCounts.allDisabled}>
-                            Disable All
-                          </MenuItem>
-                        </MenuList>
-                      </MenuPopover>
-                    </Menu>
+              {/* Auto Scroll Toggle */}
+              <div className={styles.autoScrollToggle}>
+                <Text size={100}>Auto Scroll:</Text>
+                <Switch checked={isRealtime} onChange={(_, data) => setIsRealtime(data.checked)} />
+              </div>
+            </div>
+          </div>
+        );
 
-                    {/* By Type Dropdown */}
-                    <Menu>
-                      <MenuTrigger disableButtonEnhancement>
-                        <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after">
-                          By Type
-                        </Button>
-                      </MenuTrigger>
-                      <MenuPopover>
-                        <MenuList>
-                          <MenuItem
-                            onClick={() => toggleByAnalogDigital('Analog')}
-                            disabled={seriesCounts.analog === 0}
-                          >
-                            {seriesCounts.analogEnabled ? 'Disable' : 'Enable'} Analog ({seriesCounts.analog})
-                          </MenuItem>
-                          <MenuItem
-                            onClick={() => toggleByAnalogDigital('Digital')}
-                            disabled={seriesCounts.digital === 0}
-                          >
-                            {seriesCounts.digitalEnabled ? 'Disable' : 'Enable'} Digital ({seriesCounts.digital})
-                          </MenuItem>
-                          <MenuItem
-                            onClick={() => toggleByPointType('INPUT')}
-                            disabled={seriesCounts.input === 0}
-                          >
-                            {seriesCounts.inputEnabled ? 'Disable' : 'Enable'} Input ({seriesCounts.input})
-                          </MenuItem>
-                          <MenuItem
-                            onClick={() => toggleByPointType('OUTPUT')}
-                            disabled={seriesCounts.output === 0}
-                          >
-                            {seriesCounts.outputEnabled ? 'Disable' : 'Enable'} Output ({seriesCounts.output})
-                          </MenuItem>
-                          <MenuItem
-                            onClick={() => toggleByPointType('VARIABLE')}
-                            disabled={seriesCounts.variable === 0}
-                          >
-                            {seriesCounts.variableEnabled ? 'Disable' : 'Enable'} Variable ({seriesCounts.variable})
-                          </MenuItem>
-                        </MenuList>
-                      </MenuPopover>
-                    </Menu>
+        // Keyboard shortcut key for a series index
+        const KBKEYS = ['1','2','3','4','5','6','7','8','9','a','b','c','d','e'];
+        const getKbKey = (index: number) => keyboardEnabled && index < KBKEYS.length ? KBKEYS[index] : null;
+
+        // Render a series item
+        const renderSeriesItem = (s: TrendSeries, globalIndex: number) => {
+          const seriesKey = `${s.pointId}-${s.pointIndex}`;
+          const isExpanded = expandedSeries.has(seriesKey);
+          const kbKey = getKbKey(globalIndex);
+          const isKeySelected = keyboardEnabled && selectedItemIndex === globalIndex;
+
+          return (
+            <React.Fragment key={seriesKey}>
+              <div
+                className={`${styles.seriesItem} ${isExpanded ? styles.seriesItemExpanded : ''}`}
+                style={isKeySelected ? { backgroundColor: tokens.colorBrandBackground2 } : undefined}
+              >
+                {/* Delete overlay for View 2 & 3 */}
+                {currentView !== 1 && (
+                  <Button
+                    appearance="subtle"
+                    icon={<DismissRegular fontSize={12} />}
+                    onClick={(e) => { e.stopPropagation(); removeFromTracking(seriesKey); }}
+                    size="small"
+                    style={{ position: 'absolute', top: 4, right: 28, minWidth: '20px', width: '20px', height: '20px', padding: 0, zIndex: 2 }}
+                    title="Remove from tracking"
+                  />
+                )}
+
+                {/* Color Indicator with keyboard badge */}
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  {/* @ts-expect-error CSS custom property */}
+                  <div
+                    className={styles.colorIndicator}
+                    style={({ '--series-color': s.visible ? s.color : '#d9d9d9' } as React.CSSProperties)}
+                    onClick={() => toggleSeriesVisibility(globalIndex)}
+                  />
+                  {kbKey && (
+                    <div className={styles.keyboardBadge}>{kbKey.toUpperCase()}</div>
+                  )}
+                </div>
+
+                <Tooltip content={s.name} relationship="label">
+                  <div className={styles.seriesItemContent} onClick={() => toggleSeriesVisibility(globalIndex)}>
+                    <div className={styles.seriesItemInfo}>
+                      <Text className={styles.seriesItemName} style={{ opacity: s.visible === false ? 0.4 : 1 }}>
+                        {s.name}
+                      </Text>
+                      <div className={styles.seriesItemMeta}>
+                        {(s.prefix || s.pointType) && (
+                          <Tag size="extra-small" appearance="outline">{getPrefixTag(s.pointType, s.prefix)}</Tag>
+                        )}
+                        <Text className={styles.seriesItemUnit}>{s.unit || 'N/A'}</Text>
+                        <Text size={100} style={{ color: tokens.colorNeutralForeground2, fontWeight: 600, marginLeft: '4px' }}>
+                          {getLastValue(s)}
+                        </Text>
+                      </div>
+                    </div>
                   </div>
+                </Tooltip>
 
-                  {/* Auto Scroll Toggle */}
-                  <div className={styles.autoScrollToggle}>
-                    <Text size={100}>Auto Scroll:</Text>
-                    <Switch checked={isRealtime} onChange={(_, data) => setIsRealtime(data.checked)} />
+                <Button
+                  appearance="subtle"
+                  icon={isExpanded ? <ChevronDownFilled /> : <ChevronRightRegular />}
+                  onClick={(e) => { e.stopPropagation(); toggleSeriesExpand(seriesKey); }}
+                  className={styles.expandButton}
+                  size="small"
+                />
+              </div>
+
+              {isExpanded && (
+                <div className={styles.seriesDetails}>
+                  <div className={styles.seriesStats}>
+                    {s.digitalAnalog === 'Analog' ? (
+                      <>
+                        <Text size={100}><strong>Last:</strong> {s.data && s.data.length > 0 ? `${s.data[s.data.length - 1].value.toFixed(2)} ${s.unit || ''}` : 'N/A'}</Text>
+                        <Text size={100}><strong>Avg:</strong> {s.data && s.data.length > 0 ? `${(s.data.reduce((sum, p) => sum + p.value, 0) / s.data.length).toFixed(2)} ${s.unit || ''}` : 'N/A'}</Text>
+                        <Text size={100}><strong>Min:</strong> {s.data && s.data.length > 0 ? `${Math.min(...s.data.map(p => p.value)).toFixed(2)} ${s.unit || ''}` : 'N/A'}</Text>
+                        <Text size={100}><strong>Max:</strong> {s.data && s.data.length > 0 ? `${Math.max(...s.data.map(p => p.value)).toFixed(2)} ${s.unit || ''}` : 'N/A'}</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text size={100}><strong>Last:</strong> {s.data && s.data.length > 0 ? (s.data[s.data.length - 1].value === 1 ? 'ON' : 'OFF') : 'N/A'}</Text>
+                        <Text size={100}><strong>Points:</strong> {s.data?.length || 0}</Text>
+                        <Text size={100}><strong>ON count:</strong> {s.data?.filter(p => p.value === 1).length || 0}</Text>
+                        <Text size={100}><strong>OFF count:</strong> {s.data?.filter(p => p.value === 0).length || 0}</Text>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
-            </div>
+            </React.Fragment>
+          );
+        };
 
-            {/* Digital Series List */}
-            <div className={styles.seriesPanel}>
-              {digitalSeries.map((s, index) => {
-                const seriesKey = `digital-${s.pointId}-${s.pointIndex}`;
-                const isExpanded = expandedSeries.has(seriesKey);
-                const actualIndex = analogSeries.length + index;
-
-                return (
-                  <React.Fragment key={seriesKey}>
-                    <div className={`${styles.seriesItem} ${isExpanded ? styles.seriesItemExpanded : ''}`}>
-                      {/* @ts-expect-error CSS custom property for dynamic color */}
-                      <div
-                        className={styles.colorIndicator}
-                        style={{ '--series-color': s.color } as React.CSSProperties}
-                        onClick={() => toggleSeriesVisibility(actualIndex)}
-                      />
-
-                      <Tooltip content={s.name} relationship="label">
-                        <div className={styles.seriesItemContent} onClick={() => toggleSeriesVisibility(actualIndex)}>
-                          <div className={styles.seriesItemInfo}>
-                            <Text className={styles.seriesItemName}>
-                              {s.name}
+        return (
+          <>
+            {/* ANALOG AREA */}
+            {(visAnalog.length > 0 || (viewAnalog.length === 0 && viewDigital.length === 0)) && viewAnalog.length > 0 && (
+              <div className={styles.analogArea}>
+                <div className={styles.leftPanel}>
+                  {renderSeriesToolbar()}
+                  {/* Series list: loading/timeout/error empty states */}
+                  <div className={styles.seriesPanel}>
+                    {viewAnalog.length === 0 && series.length === 0 && (
+                      <div className={styles.emptyState} style={{ padding: '24px 12px', textAlign: 'center' }}>
+                        {loading && !loadingTimedOut ? (
+                          <>
+                            <Spinner size="small" />
+                            <Text size={200} block style={{ marginTop: 8 }}>Loading T3000 device data...</Text>
+                            <Text size={100} block style={{ color: tokens.colorNeutralForeground3, marginTop: 4 }}>
+                              Connecting to your T3000 devices to retrieve trend data.
                             </Text>
-                            <div className={styles.seriesItemMeta}>
-                              {(s.prefix || s.pointType) && (
-                                <Tag size="extra-small" appearance="outline">
-                                  {getPrefixTag(s.pointType, s.prefix)}
-                                </Tag>
-                              )}
-                              <Text className={styles.seriesItemUnit}>
-                                {s.unit || 'ON/OFF'}
-                              </Text>
-                              <Text size={100} style={{ color: tokens.colorNeutralForeground2, fontWeight: 600, marginLeft: '4px' }}>
-                                {getLastValue(s)}
-                              </Text>
-                            </div>
-                          </div>
-                        </div>
-                      </Tooltip>
-
-                      <Button
-                        appearance="subtle"
-                        icon={isExpanded ? <ChevronDownFilled /> : <ChevronRightRegular />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleSeriesExpand(seriesKey);
-                        }}
-                        className={styles.expandButton}
-                        size="small"
-                      />
-                    </div>
-
-                    {isExpanded && (
-                      <div className={styles.seriesDetails}>
-                        <div className={styles.seriesStats}>
-                          <Text size={100}>
-                            <strong>Last:</strong> {s.data && s.data.length > 0
-                              ? (s.data[s.data.length - 1].value === 1 ? 'ON' : 'OFF')
-                              : 'N/A'}
-                          </Text>
-                          <Text size={100}>
-                            <strong>Points:</strong> {s.data?.length || 0}
-                          </Text>
-                        </div>
+                          </>
+                        ) : loadingTimedOut ? (
+                          <>
+                            <div style={{ fontSize: 20 }}>&#9200;</div>
+                            <Text size={200} block style={{ marginTop: 8 }}>Loading Timeout</Text>
+                            <Text size={100} block style={{ color: tokens.colorNeutralForeground3, marginTop: 4 }}>
+                              Loading took too long (&gt;30s). The system may be busy.
+                            </Text>
+                            <Button appearance="primary" size="small" icon={<ArrowClockwiseRegular />}
+                              onClick={manualRefresh} disabled={loading} style={{ marginTop: 12 }}>
+                              Refresh Data
+                            </Button>
+                          </>
+                        ) : dataSource === 'error' ? (
+                          <>
+                            <ErrorCircleRegular fontSize={24} style={{ color: tokens.colorPaletteRedForeground1 }} />
+                            <Text size={200} block style={{ marginTop: 8 }}>Data Connection Error</Text>
+                            <Text size={100} block style={{ color: tokens.colorNeutralForeground3, marginTop: 4 }}>
+                              Unable to load real-time or historical data.
+                            </Text>
+                            <Button appearance="primary" size="small" icon={<ArrowClockwiseRegular />}
+                              onClick={manualRefresh} disabled={loading} style={{ marginTop: 12 }}>
+                              Refresh Data
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <div style={{ fontSize: 20 }}>&#9200;</div>
+                            <Text size={200} block style={{ marginTop: 8 }}>No Data Available</Text>
+                            <Text size={100} block style={{ color: tokens.colorNeutralForeground3, marginTop: 4 }}>
+                              Configure monitor points to see data series.
+                            </Text>
+                          </>
+                        )}
                       </div>
                     )}
-                  </React.Fragment>
+                    {viewAnalog.map((s, i) => renderSeriesItem(s, i))}
+                  </div>
+                </div>
+                <div className={styles.rightPanel}>
+                  <TrendChart series={visAnalog} timeBase={timeBase === 'custom' ? '1h' : timeBase} showGrid={showGrid}
+                    chartType="analog" timeOffset={timeOffset}
+                    onChartReady={(instance) => { chartInstanceRef.current = instance; }} />
+                </div>
+              </div>
+            )}
+
+            {/* RESIZABLE DIVIDER */}
+            {visAnalog.length > 0 && visDigital.length > 0 && (
+              <div className={styles.resizableDivider}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  const startY = e.clientY;
+                  const container = (e.currentTarget as HTMLElement).parentElement!;
+                  const analogEl = container.querySelector('[data-area="analog"]') as HTMLElement;
+                  const startH = analogEl ? analogEl.offsetHeight : 0;
+                  const onMove = (me: MouseEvent) => {
+                    const delta = me.clientY - startY;
+                    if (analogEl) analogEl.style.height = `${Math.max(100, startH + delta)}px`;
+                  };
+                  const onUp = () => {
+                    window.removeEventListener('mousemove', onMove);
+                    window.removeEventListener('mouseup', onUp);
+                  };
+                  window.addEventListener('mousemove', onMove);
+                  window.addEventListener('mouseup', onUp);
+                }}
+              >
+                <div className={styles.dividerGrip} />
+              </div>
+            )}
+
+            {/* DIGITAL AREA */}
+            {viewDigital.length > 0 && (
+              <div className={styles.digitalArea}>
+                <div className={styles.digitalLeftPanel}>
+                  {viewAnalog.length === 0 && renderSeriesToolbar()}
+                  {viewAnalog.length > 0 && (
+                    <div className={styles.seriesPanelHeader}>
+                      <Text size={200} weight="semibold">
+                        Digital ({visDigital.length}/{viewDigital.length})
+                      </Text>
+                    </div>
+                  )}
+                  <div className={styles.seriesPanel}>
+                    {viewDigital.map((s, i) => renderSeriesItem(s, viewAnalog.length + i))}
+                  </div>
+                </div>
+                <div className={styles.digitalRightPanel}>
+                  {visDigital.map((ds) => (
+                    <div key={ds.name} className={styles.channelChart}>
+                      <TrendChart series={[ds]} timeBase={timeBase === 'custom' ? '1h' : timeBase} showGrid={showGrid}
+                        chartType="digital" timeOffset={timeOffset} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Generic empty state when no series at all */}
+            {viewAnalog.length === 0 && viewDigital.length === 0 && (
+              <div className={styles.emptyStateCenter}>
+                {loading && !loadingTimedOut ? (
+                  <>
+                    <Spinner size="medium" />
+                    <Text size={400} weight="semibold" style={{ marginTop: 16 }}>Loading T3000 device data...</Text>
+                    <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+                      Connecting to your T3000 devices to retrieve trend data鈥?                    </Text>
+                  </>
+                ) : loadingTimedOut ? (
+                  <>
+                    <div style={{ fontSize: 32 }}>&#9200;</div>
+                    <Text size={400} weight="semibold" style={{ marginTop: 12 }}>Loading Timeout</Text>
+                    <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+                      Loading took too long (&gt;30s). The system may be busy or experiencing connection issues.
+                    </Text>
+                    <Button appearance="primary" icon={<ArrowClockwiseRegular />} onClick={manualRefresh} disabled={loading} style={{ marginTop: 16 }}>
+                      Refresh Data
+                    </Button>
+                  </>
+                ) : dataSource === 'error' ? (
+                  <>
+                    <ErrorCircleRegular fontSize={32} style={{ color: tokens.colorPaletteRedForeground1 }} />
+                    <Text size={400} weight="semibold" style={{ marginTop: 12 }}>Data Connection Error</Text>
+                    <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+                      Unable to load real-time or historical data. Check system connections.
+                    </Text>
+                    <Button appearance="primary" icon={<ArrowClockwiseRegular />} onClick={manualRefresh} disabled={loading} style={{ marginTop: 16 }}>
+                      Refresh Data
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Text size={500} weight="semibold">No Data Available</Text>
+                    <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+                      Please select a device and monitor configuration.
+                    </Text>
+                  </>
+                )}
+              </div>
+            )}
+          </>
+        );
+      })()}
+
+      {/* 鈹€鈹€ CUSTOM DATE RANGE MODAL 鈹€鈹€ */}
+      <Dialog open={showCustomDateModal} onOpenChange={(_, d) => setShowCustomDateModal(d.open)}>
+        <DialogSurface style={{ maxWidth: 360 }}>
+          <DialogTitle>Custom Time Range</DialogTitle>
+          <DialogBody>
+            <DialogContent>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <Text size={200} weight="semibold" block style={{ marginBottom: 4 }}>Start</Text>
+                  <Input type="datetime-local" value={customStartInput}
+                    onChange={(_, d) => setCustomStartInput(d.value)} style={{ width: '100%' }} />
+                </div>
+                <div>
+                  <Text size={200} weight="semibold" block style={{ marginBottom: 4 }}>End</Text>
+                  <Input type="datetime-local" value={customEndInput}
+                    onChange={(_, d) => setCustomEndInput(d.value)} style={{ width: '100%' }} />
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <Button size="small" onClick={() => setQuickRange('today')}>Today</Button>
+                  <Button size="small" onClick={() => setQuickRange('yesterday')}>Yesterday</Button>
+                  <Button size="small" onClick={() => setQuickRange('thisWeek')}>This Week</Button>
+                  <Button size="small" onClick={() => setQuickRange('lastWeek')}>Last Week</Button>
+                </div>
+                {customStartInput && customEndInput && (
+                  <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                    {new Date(customStartInput).toLocaleString()} 鈫?{new Date(customEndInput).toLocaleString()}
+                  </Text>
+                )}
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setShowCustomDateModal(false)}>Cancel</Button>
+              <Button appearance="primary" onClick={applyCustomDateRange}
+                disabled={!customStartInput || !customEndInput}>Apply</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      {/* 鈹€鈹€ CONFIG MODAL 鈹€鈹€ */}
+      <Dialog open={showConfigModal} onOpenChange={(_, d) => setShowConfigModal(d.open)}>
+        <DialogSurface style={{ maxWidth: 500 }}>
+          <DialogTitle>Trendlog Configuration</DialogTitle>
+          <DialogBody>
+            <DialogContent>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                {/* Keyboard Shortcuts */}
+                <div style={{ border: `1px solid ${tokens.colorNeutralStroke1}`, borderRadius: 6, padding: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <Text weight="semibold" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <KeyboardRegular /> Keyboard Shortcuts
+                    </Text>
+                    <Switch checked={keyboardEnabled} onChange={(_, d) => setKeyboardEnabled(d.checked)}
+                      label={keyboardEnabled ? 'Enabled' : 'Disabled'} />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontSize: 12 }}>
+                    {[
+                      ['1-9, A-E', 'Toggle series 1-14'],
+                      ['<- ->', 'Scroll time left/right'],
+                      ['Up Down', 'Zoom in/out'],
+                      ['Ctrl+Up/Down', 'Navigate series list'],
+                      ['Enter', 'Toggle selected series'],
+                      ['Esc', 'Toggle keyboard mode'],
+                    ].map(([key, desc]) => (
+                      <React.Fragment key={key}>
+                        <Text size={100}><kbd style={{ background: '#f0f0f0', padding: '1px 5px', borderRadius: 3, border: '1px solid #ccc' }}>{key}</kbd></Text>
+                        <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>{desc}</Text>
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="primary" onClick={() => setShowConfigModal(false)}>Close</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      {/* 鈹€鈹€ ITEM SELECTOR DIALOG (View 2 & 3) 鈹€鈹€ */}
+      <Dialog open={showItemSelector} onOpenChange={(_, d) => setShowItemSelector(d.open)}>
+        <DialogSurface style={{ maxWidth: 460, maxHeight: '80vh' }}>
+          <DialogTitle>
+            Select Items for View {currentView}
+            <Text size={200} style={{ marginLeft: 8, color: tokens.colorNeutralForeground3 }}>
+              ({selectorDraftKeys.length}/{series.length} selected)
+            </Text>
+          </DialogTitle>
+          <DialogBody>
+            <DialogContent style={{ overflowY: 'auto', maxHeight: 380 }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <Button size="small" onClick={() => setSelectorDraftKeys(series.map(s => `${s.pointId}-${s.pointIndex}`))}>
+                  <CheckmarkRegular /> Select All
+                </Button>
+                <Button size="small" onClick={() => setSelectorDraftKeys([])}>
+                  <DismissRegular /> Unselect All
+                </Button>
+              </div>
+              {series.map((s) => {
+                const key = `${s.pointId}-${s.pointIndex}`;
+                const checked = selectorDraftKeys.includes(key);
+                return (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0',
+                    borderBottom: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                    <Checkbox checked={checked}
+                      onChange={(_, d) => setSelectorDraftKeys(prev =>
+                        d.checked ? [...prev, key] : prev.filter(k => k !== key)
+                      )} />
+                    <div style={{ width: 14, height: 14, borderRadius: 3, backgroundColor: s.color, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <Text size={200} weight="semibold" block style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {s.name}
+                      </Text>
+                      <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                        {s.pointType} 路 {s.digitalAnalog} 路 {s.unit || 'N/A'}
+                        {s.data.length > 0 ? ` 路 ${s.data.length} pts` : ' 路 No Data'}
+                      </Text>
+                    </div>
+                    <Tag size="extra-small" appearance="outline">{s.digitalAnalog === 'Digital' ? 'Digital' : 'Analog'}</Tag>
+                  </div>
                 );
               })}
-            </div>
-          </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setShowItemSelector(false)}>Cancel</Button>
+              <Button appearance="primary" onClick={applyItemSelection}>Apply Selection</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
 
-          {/* Digital Right Panel - Oscilloscope */}
-          <div className={styles.digitalRightPanel}>
-            {visibleDigitalSeries.map((digitalSeries) => (
-              <div key={digitalSeries.name} className={styles.channelChart}>
-                <TrendChart
-                  series={[digitalSeries]}
-                  timeBase={timeBase}
-                  showGrid={showGrid}
-                  chartType="digital"
-                  timeOffset={timeOffset}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Empty State */}
-      {series.length === 0 && (
-        <div className={styles.emptyStateCenter}>
-          <Text size={500} weight="semibold">No Data Available</Text>
-          <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
-            Please select a device and monitor configuration.
-          </Text>
-        </div>
-      )}
     </div>
   );
 };
-
