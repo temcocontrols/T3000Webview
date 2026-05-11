@@ -1796,23 +1796,11 @@ async fn get_trendlog_by_index(
     State(state): State<T3AppState>,
     Path((device_id, trendlog_index)): Path<(i32, String)>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
-    if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
-        let all = mssql_generic_crud::select_by_device(pool, "TRENDLOGS", device_id)
-            .await
-            .map_err(|e| { eprintln!("MSSQL get trendlog error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        let found = all.into_iter().find(|t| {
-            t.get("Trendlog_ID").and_then(|v| v.as_str()) == Some(&trendlog_index)
-                || t.get("trendlog_id").and_then(|v| v.as_str()) == Some(&trendlog_index)
-        });
-        return match found {
-            Some(trendlog) => Ok(Json(json!({ "trendlog": trendlog, "message": "Trendlog found" }))),
-            None => Err(StatusCode::NOT_FOUND),
-        };
-    }
+    // NOTE: MSSQL branch intentionally removed — querying T3000's internal SQL Server
+    // via Tiberius crashes T3000 under concurrent access. Trendlog metadata is already
+    // synced to SQLite via FFI Action 17 refresh, so SQLite is always correct and safe.
 
-    // ── SeaORM branch ──
+    // ── SeaORM / SQLite branch ──
     let db = get_t3_device_conn!(state);
 
     match T3TrendlogService::get_trendlog_by_index(&*db, device_id, trendlog_index).await {
@@ -1830,33 +1818,10 @@ async fn update_trendlog(
     Path((device_id, trendlog_index)): Path<(i32, String)>,
     Json(payload): Json<UpdateTrendlogRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
-    if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
-        // Find trendlog by device + trendlog_index to get its id
-        let all = mssql_generic_crud::select_by_device(pool, "TRENDLOGS", device_id)
-            .await
-            .map_err(|e| { eprintln!("MSSQL update trendlog error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        let found = all.iter().find(|t| {
-            t.get("Trendlog_ID").and_then(|v| v.as_str()) == Some(&trendlog_index)
-                || t.get("trendlog_id").and_then(|v| v.as_str()) == Some(&trendlog_index)
-        });
-        let row_id = match found {
-            Some(t) => t.get("id").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
-            None => return Err(StatusCode::NOT_FOUND),
-        };
-        let json_payload = serde_json::to_value(&payload)
-            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        mssql_generic_crud::update_row(pool, "TRENDLOGS", row_id, &json_payload)
-            .await
-            .map_err(|e| { eprintln!("MSSQL update trendlog error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return Ok(Json(json!({
-            "trendlog": json_payload,
-            "message": "Trendlog updated successfully"
-        })));
-    }
+    // NOTE: MSSQL branch removed — same reason as get_trendlog_by_index.
+    // Use FFI to update live device data; SQLite stores the synced copy.
 
-    // ── SeaORM branch ──
+    // ── SeaORM / SQLite branch ──
     let db = get_t3_device_conn!(state);
 
     match T3TrendlogService::update_trendlog(&*db, device_id, trendlog_index, payload).await {
@@ -1873,32 +1838,9 @@ async fn delete_trendlog(
     State(state): State<T3AppState>,
     Path((device_id, trendlog_index)): Path<(i32, String)>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
-    if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
-        // Find trendlog by device + trendlog_index to get its id
-        let all = mssql_generic_crud::select_by_device(pool, "TRENDLOGS", device_id)
-            .await
-            .map_err(|e| { eprintln!("MSSQL delete trendlog error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        let found = all.iter().find(|t| {
-            t.get("Trendlog_ID").and_then(|v| v.as_str()) == Some(&trendlog_index)
-                || t.get("trendlog_id").and_then(|v| v.as_str()) == Some(&trendlog_index)
-        });
-        let row_id = match found {
-            Some(t) => t.get("id").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
-            None => return Err(StatusCode::NOT_FOUND),
-        };
-        let rows = mssql_generic_crud::delete_row(pool, "TRENDLOGS", row_id)
-            .await
-            .map_err(|e| { eprintln!("MSSQL delete trendlog error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return if rows > 0 {
-            Ok(Json(json!({ "message": "Trendlog deleted successfully" })))
-        } else {
-            Err(StatusCode::NOT_FOUND)
-        };
-    }
+    // NOTE: MSSQL branch removed — same reason as get_trendlog_by_index.
 
-    // ── SeaORM branch ──
+    // ── SeaORM / SQLite branch ──
     let db = get_t3_device_conn!(state);
 
     match T3TrendlogService::delete_trendlog(&*db, device_id, trendlog_index).await {

@@ -106,156 +106,173 @@ export const TrendLogsPage: React.FC = () => {
     monitorInputs?: any[]; // Monitor inputs for the selected trendlog
   }>({});
 
+  // Internal function to load inputs with deduplication
+  const loadTrendlogInputsInternal = async (trendlog: TrendLogData) => {
+    if (!selectedDevice || !trendlog.trendlogId) {
+      setMonitorInputs([]);
+      return;
+    }
+
+    setLoadingInputs(true);
+    try {
+      const fallbackUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/TRENDLOG_INPUTS`;
+      const fallbackResponse = await fetch(fallbackUrl);
+
+      if (fallbackResponse.ok) {
+        const inputsData = await fallbackResponse.json();
+
+        const trendlogInputs = (inputsData.data || []).filter(
+          (input: any) => {
+            const trendlogMatch = input.trendlogId === trendlog.trendlogId || input.Trendlog_ID === trendlog.trendlogId;
+            const viewMatch = input.viewType === 'MAIN' || input.view_type === 'MAIN' ||
+                             input.viewType === 'VIEW' || input.view_type === 'VIEW' ||
+                             !input.viewType;
+            return trendlogMatch && viewMatch;
+          }
+        );
+
+        // Remove duplicates
+        const uniqueInputsMap = new Map<string, any>();
+        trendlogInputs.forEach((input: any) => {
+          const pointType = input.Point_Type || input.pointType;
+          const pointIndex = input.Point_Index || input.pointIndex;
+          const key = `${pointType}-${pointIndex}`;
+
+          if (!uniqueInputsMap.has(key)) {
+            uniqueInputsMap.set(key, input);
+          } else {
+            const existing = uniqueInputsMap.get(key);
+            const existingViewType = existing.view_type || existing.viewType;
+            const currentViewType = input.view_type || input.viewType;
+
+            if (currentViewType === 'MAIN' && existingViewType !== 'MAIN') {
+              uniqueInputsMap.set(key, input);
+            }
+          }
+        });
+
+        const uniqueInputs = Array.from(uniqueInputsMap.values());
+
+        const formattedInputs: TrendLogInput[] = uniqueInputs.map((input: any) => ({
+          id: input.id,
+          serialNumber: input.SerialNumber || input.serialNumber,
+          panelId: input.PanelId || input.panelId,
+          trendlogId: input.Trendlog_ID || input.trendlogId,
+          pointType: input.Point_Type || input.pointType,
+          pointIndex: input.Point_Index || input.pointIndex,
+          pointPanel: input.Point_Panel || input.pointPanel,
+          pointLabel: input.Point_Label || input.pointLabel,
+          status: input.Status || input.status,
+          viewType: input.view_type || input.viewType,
+          viewNumber: input.view_number || input.viewNumber,
+          isSelected: input.is_selected || input.isSelected,
+        }));
+
+        setMonitorInputs(formattedInputs);
+      } else {
+        setMonitorInputs([]);
+      }
+    } catch (error) {
+      console.error('❌ [TrendLogsPage] Error loading inputs:', error);
+      setMonitorInputs([]);
+    } finally {
+      setLoadingInputs(false);
+    }
+  };
+
   // Handle opening trend chart drawer - construct itemData from trendlog info
   const handleViewChart = useCallback(
     async (trendlog: TrendLogData) => {
       if (!selectedDevice) return;
 
-      console.log('📊 [TrendLogsPage] Opening chart drawer - Fetching trendlog config:', {
-        serialNumber: selectedDevice.serialNumber,
-        panelId: selectedDevice.panelId,
-        trendlogId: trendlog.trendlogId,
-        monitorIndex: trendlog.trendlogIndex,
+      const monitorIndex = trendlog.trendlogIndex || '0';
+      // Label is already available in the row data — no extra API call needed
+      const title = trendlog.trendlogLabel || `Monitor ${monitorIndex}`;
+
+      const buildItemData = (inputs: any[]) => ({
+        title,
+        t3Entry: {
+          id: `MON${monitorIndex}`,
+          pid: selectedDevice.panelId || 1,
+          label: title,
+          command: `${selectedDevice.panelId || 1}MON${monitorIndex}`,
+        },
       });
 
-      const monitorIndex = trendlog.trendlogIndex || '0';
+      // If this trendlog's inputs are already loaded in page state, open immediately
+      const alreadyLoaded =
+        monitorInputs.length > 0 &&
+        monitorInputs.some(
+          (m) => m.trendlogId === trendlog.trendlogId || m.trendlogId === trendlog.trendlogIndex
+        );
 
-      try {
-        // Step 1: Fetch trendlog info
-        const trendlogUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/trendlogs/${trendlog.trendlogId}`;
-        console.log('📡 [TrendLogsPage] Fetching trendlog from:', trendlogUrl);
-
-        const trendlogResponse = await fetch(trendlogUrl);
-        if (!trendlogResponse.ok) {
-          throw new Error(`Failed to fetch trendlog: ${trendlogResponse.statusText}`);
-        }
-
-        const trendlogData = await trendlogResponse.json();
-        console.log('✅ [TrendLogsPage] Trendlog received:', trendlogData);
-
-        // Step 2: Fetch TRENDLOG_INPUTS using the generic table endpoint
-        const inputsUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/TRENDLOG_INPUTS`;
-        console.log('📡 [TrendLogsPage] Fetching TRENDLOG_INPUTS from:', inputsUrl);
-
-        const inputsResponse = await fetch(inputsUrl);
-
-        let inputItems: any[] = [];
-        let rangeItems: any[] = [];
-
-        if (inputsResponse.ok) {
-          const inputsData = await inputsResponse.json();
-          console.log('✅ [TrendLogsPage] Raw inputs data received:', inputsData);
-
-          // Filter inputs for this specific trendlog and transform to expected format
-          if (inputsData.data && Array.isArray(inputsData.data)) {
-            const trendlogInputs = inputsData.data.filter(
-              (input: any) => input.trendlogId === trendlog.trendlogId || input.Trendlog_ID === trendlog.trendlogId
-            );
-
-            console.log('✅ [TrendLogsPage] Filtered inputs for this trendlog:', trendlogInputs);
-
-            if (trendlogInputs.length > 0) {
-              inputItems = trendlogInputs.map((input: any) => ({
-                panel: input.pointPanel || input.point_panel ? parseInt(input.pointPanel || input.point_panel) : selectedDevice.panelId,
-                point_number: parseInt(input.pointIndex || input.point_index || '1') - 1, // Convert 1-based to 0-based
-                point_type: (input.pointType || input.point_type) === 'INPUT' ? 0 : (input.pointType || input.point_type) === 'OUTPUT' ? 1 : 2,
-                network: 0,
-                sub_panel: 0,
-              }));
-
-              // Fetch actual digital_analog and units from point endpoints
-              const pointTypeMap: Record<number, string> = { 0: 'input-points', 1: 'output-points', 2: 'variable-points' };
-              const pointKeyMap: Record<number, string> = { 0: 'input_points', 1: 'output_points', 2: 'variable_points' };
-              const pointsCache: Record<number, any[]> = {};
-
-              // Fetch each unique point type once
-              const neededTypes = [...new Set(inputItems.map((item: any) => item.point_type as number))];
-              await Promise.all(neededTypes.map(async (pt) => {
-                try {
-                  const endpoint = pointTypeMap[pt];
-                  const resp = await fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/${endpoint}`);
-                  if (resp.ok) {
-                    const data = await resp.json();
-                    pointsCache[pt] = data[pointKeyMap[pt]] || [];
-                  }
-                } catch { /* ignore fetch errors */ }
-              }));
-
-              rangeItems = inputItems.map((item: any) => {
-                const points = pointsCache[item.point_type] || [];
-                const pointNumber = item.point_number; // 0-based
-                const point = points.find((p: any) => {
-                  const idx = parseInt(p.inputIndex || p.outputIndex || p.variableIndex || '0', 10);
-                  return idx === pointNumber + 1; // point data uses 1-based
-                });
-                const rawDA = point?.digitalAnalog ?? point?.digital_analog;
-                return {
-                  digital_analog: (rawDA === '1' || rawDA === 1) ? 1 : 0,
-                  units: point?.units || point?.unit || '',
-                };
-              });
-            }
-          }
-        } else {
-          console.warn('⚠️ [TrendLogsPage] Failed to fetch inputs:', inputsResponse.status, inputsResponse.statusText);
-        }
-
-        // Step 3: Construct itemData
-        const itemData = {
-          title: trendlogData?.trendlog?.trendlogLabel || trendlog.trendlogLabel || `Monitor ${monitorIndex}`,
-          t3Entry: {
-            id: `MON${monitorIndex}`,
-            pid: selectedDevice.panelId || 1,
-            label: trendlogData?.trendlog?.trendlogLabel || trendlog.trendlogLabel || `MON${monitorIndex}`,
-            command: `${selectedDevice.panelId || 1}MON${monitorIndex}`,
-            input: inputItems.length > 0 ? inputItems : undefined,
-            range: rangeItems.length > 0 ? rangeItems : undefined,
-          },
-        };
-
-        console.log('✅ [TrendLogsPage] Opening drawer with itemData:', {
-          title: itemData.title,
-          hasInputConfig: inputItems.length > 0,
-          inputCount: inputItems.length,
-          rangeCount: rangeItems.length,
-        });
-
-        // Step 4: Open drawer
+      if (alreadyLoaded) {
         setChartParams({
           serialNumber: selectedDevice.serialNumber,
           panelId: selectedDevice.panelId || 1,
           trendlogId: trendlog.trendlogId || '0',
           monitorId: monitorIndex,
-          itemData,
-          monitorInputs: monitorInputs, // Pass the loaded monitor inputs
+          itemData: buildItemData(monitorInputs),
+          monitorInputs,
+        });
+        setChartDrawerOpen(true);
+        return;
+      }
+
+      // Inputs not yet loaded — fetch TRENDLOG_INPUTS only (never touch /trendlogs/MON*)
+      try {
+        await loadTrendlogInputsInternal(trendlog);
+
+        // Read fresh inputs inline since state update won't be visible yet
+        const inputsUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/TRENDLOG_INPUTS`;
+        const inputsResponse = await fetch(inputsUrl);
+        let freshInputs: typeof monitorInputs = [];
+        if (inputsResponse.ok) {
+          const inputsData = await inputsResponse.json();
+          const filtered = (inputsData.data || []).filter(
+            (input: any) => input.trendlogId === trendlog.trendlogId || input.Trendlog_ID === trendlog.trendlogId
+          );
+          freshInputs = filtered.map((input: any) => ({
+            id: input.id,
+            serialNumber: input.SerialNumber || input.serialNumber,
+            panelId: input.PanelId || input.panelId,
+            trendlogId: input.Trendlog_ID || input.trendlogId,
+            pointType: input.Point_Type || input.pointType,
+            pointIndex: input.Point_Index || input.pointIndex,
+            pointPanel: input.Point_Panel || input.pointPanel,
+            pointLabel: input.Point_Label || input.pointLabel,
+            status: input.Status || input.status,
+            viewType: input.view_type || input.viewType,
+            viewNumber: input.view_number || input.viewNumber,
+            isSelected: input.is_selected || input.isSelected,
+          }));
+        }
+
+        setChartParams({
+          serialNumber: selectedDevice.serialNumber,
+          panelId: selectedDevice.panelId || 1,
+          trendlogId: trendlog.trendlogId || '0',
+          monitorId: monitorIndex,
+          itemData: buildItemData(freshInputs),
+          monitorInputs: freshInputs,
         });
         setChartDrawerOpen(true);
       } catch (error) {
-        console.error('❌ [TrendLogsPage] Failed to fetch trendlog config:', error);
-        // Fallback: Open drawer with basic structure (will show sample data)
-        const itemData = {
-          title: trendlog.trendlogLabel || `Monitor ${monitorIndex}`,
-          t3Entry: {
-            id: `MON${monitorIndex}`,
-            pid: selectedDevice.panelId || 1,
-            label: trendlog.trendlogLabel || `MON${monitorIndex}`,
-            command: `${selectedDevice.panelId || 1}MON${monitorIndex}`,
-          },
-        };
-
+        console.error('❌ [TrendLogsPage] Failed to load inputs for chart:', error);
         setChartParams({
           serialNumber: selectedDevice.serialNumber,
           panelId: selectedDevice.panelId || 1,
           trendlogId: trendlog.trendlogId || '0',
           monitorId: monitorIndex,
-          itemData,
-          monitorInputs: monitorInputs, // Pass the loaded monitor inputs
+          itemData: buildItemData([]),
+          monitorInputs,
         });
         setChartDrawerOpen(true);
       }
     },
-    [selectedDevice, monitorInputs]
-  );  // Debug log to verify new component is loading
+    [selectedDevice, monitorInputs, loadTrendlogInputsInternal]
+  );
+  // Debug log to verify new component is loading
   useEffect(() => {
     console.log('🔍 [TrendLogsPage] NEW DataGrid version loaded!', {
       selectedDevice: selectedDevice?.serialNumber,
@@ -388,80 +405,6 @@ export const TrendLogsPage: React.FC = () => {
       setDbChecked(true);
     }
   }, [selectedPanelId, selectedSerial]);
-
-  // Internal function to load inputs with deduplication
-  const loadTrendlogInputsInternal = async (trendlog: TrendLogData) => {
-    if (!selectedDevice || !trendlog.trendlogId) {
-      setMonitorInputs([]);
-      return;
-    }
-
-    setLoadingInputs(true);
-    try {
-      const fallbackUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/TRENDLOG_INPUTS`;
-      const fallbackResponse = await fetch(fallbackUrl);
-
-      if (fallbackResponse.ok) {
-        const inputsData = await fallbackResponse.json();
-
-        const trendlogInputs = (inputsData.data || []).filter(
-          (input: any) => {
-            const trendlogMatch = input.trendlogId === trendlog.trendlogId || input.Trendlog_ID === trendlog.trendlogId;
-            const viewMatch = input.viewType === 'MAIN' || input.view_type === 'MAIN' ||
-                             input.viewType === 'VIEW' || input.view_type === 'VIEW' ||
-                             !input.viewType;
-            return trendlogMatch && viewMatch;
-          }
-        );
-
-        // Remove duplicates
-        const uniqueInputsMap = new Map<string, any>();
-        trendlogInputs.forEach((input: any) => {
-          const pointType = input.Point_Type || input.pointType;
-          const pointIndex = input.Point_Index || input.pointIndex;
-          const key = `${pointType}-${pointIndex}`;
-
-          if (!uniqueInputsMap.has(key)) {
-            uniqueInputsMap.set(key, input);
-          } else {
-            const existing = uniqueInputsMap.get(key);
-            const existingViewType = existing.view_type || existing.viewType;
-            const currentViewType = input.view_type || input.viewType;
-
-            if (currentViewType === 'MAIN' && existingViewType !== 'MAIN') {
-              uniqueInputsMap.set(key, input);
-            }
-          }
-        });
-
-        const uniqueInputs = Array.from(uniqueInputsMap.values());
-
-        const formattedInputs: TrendLogInput[] = uniqueInputs.map((input: any) => ({
-          id: input.id,
-          serialNumber: input.SerialNumber || input.serialNumber,
-          panelId: input.PanelId || input.panelId,
-          trendlogId: input.Trendlog_ID || input.trendlogId,
-          pointType: input.Point_Type || input.pointType,
-          pointIndex: input.Point_Index || input.pointIndex,
-          pointPanel: input.Point_Panel || input.pointPanel,
-          pointLabel: input.Point_Label || input.pointLabel,
-          status: input.Status || input.status,
-          viewType: input.view_type || input.viewType,
-          viewNumber: input.view_number || input.viewNumber,
-          isSelected: input.is_selected || input.isSelected,
-        }));
-
-        setMonitorInputs(formattedInputs);
-      } else {
-        setMonitorInputs([]);
-      }
-    } catch (error) {
-      console.error('❌ [TrendLogsPage] Error loading inputs:', error);
-      setMonitorInputs([]);
-    } finally {
-      setLoadingInputs(false);
-    }
-  };
 
   // Load inputs for a specific trendlog
   const loadTrendlogInputs = useCallback(async (trendlog: TrendLogData) => {

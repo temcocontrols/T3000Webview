@@ -570,7 +570,6 @@ export interface TrendChartContentProps {
 }
 
 type TimeBase = '5m' | '10m' | '30m' | '1h' | '4h' | '12h' | '1d' | '4d' | 'custom';
-const PRESET_TIMEBASES: TimeBase[] = ['5m', '10m', '30m', '1h', '4h', '12h', '1d', '4d'];
 const TIMEBASE_LABELS: Record<string, string> = {
   '5m': '5 minutes', '10m': '10 minutes', '30m': '30 minutes', '1h': '1 hour',
   '4h': '4 hours', '12h': '12 hours', '1d': '1 day', '4d': '4 days', 'custom': 'Custom',
@@ -664,38 +663,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const timeBaseRef = useRef<TimeBase>('5m');
   const loadingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const dbStatusPollRef = useRef<NodeJS.Timeout | null>(null);
-
-  /**
-   * Computed: Visible analog series (Vue pattern)
-   */
-  const visibleAnalogSeries = useMemo(
-    () => series.filter((s) => s.digitalAnalog === 'Analog' && s.visible !== false),
-    [series]
-  );
-
-  /**
-   * Computed: Visible digital series (Vue pattern)
-   */
-  const visibleDigitalSeries = useMemo(
-    () => series.filter((s) => s.digitalAnalog === 'Digital' && s.visible !== false),
-    [series]
-  );
-
-  /**
-   * Computed: All analog series (for counts and rendering)
-   */
-  const analogSeries = useMemo(
-    () => series.filter((s) => s.digitalAnalog === 'Analog'),
-    [series]
-  );
-
-  /**
-   * Computed: All digital series (for counts and rendering)
-   */
-  const digitalSeries = useMemo(
-    () => series.filter((s) => s.digitalAnalog === 'Digital'),
-    [series]
-  );
 
   // Keep refs in sync with state (for stale-closure-free interval callbacks)
   useEffect(() => { seriesRef.current = series; }, [series]);
@@ -940,6 +907,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     try {
       // Calculate time range based on timeBase (adjusted by timeOffset for historical navigation)
       const now = Date.now() + timeOffset * 60 * 1000;
+      const customDurationMs = customRangeMs ? customRangeMs.end - customRangeMs.start : 60 * 60 * 1000;
       const timeRanges: Record<TimeBase, number> = {
         '5m': 5 * 60 * 1000,
         '10m': 10 * 60 * 1000,
@@ -949,7 +917,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         '12h': 12 * 60 * 60 * 1000,
         '1d': 24 * 60 * 60 * 1000,
         '4d': 4 * 24 * 60 * 60 * 1000,
-        'custom': customRangeMs ?? 60 * 60 * 1000,
+        'custom': customDurationMs,
       };
 
       const timeRangeMs = timeRanges[timeBase];
@@ -1594,6 +1562,30 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   }, []);
 
   /**
+   * Zoom controls
+   */
+  const timeBaseOrder: TimeBase[] = ['5m', '10m', '30m', '1h', '4h', '12h', '1d', '4d'];
+
+  const zoomIn = useCallback(() => {
+    if (timeBase === 'custom') return;
+    const currentIndex = timeBaseOrder.indexOf(timeBase);
+    if (currentIndex > 0) setTimeBase(timeBaseOrder[currentIndex - 1]);
+  }, [timeBase]);
+
+  const zoomOut = useCallback(() => {
+    if (timeBase === 'custom') return;
+    const currentIndex = timeBaseOrder.indexOf(timeBase);
+    if (currentIndex < timeBaseOrder.length - 1) setTimeBase(timeBaseOrder[currentIndex + 1]);
+  }, [timeBase]);
+
+  const resetTimeBase = useCallback(() => {
+    setTimeOffset(0);
+    setIsRealtime(true);
+    setTimeBase('5m');
+    setCustomRangeMs(null);
+  }, []);
+
+  /**
    * Keyboard shortcuts
    */
   useEffect(() => {
@@ -1731,30 +1723,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       variableEnabled: series.filter((s) => s.pointType === 'VARIABLE').every((s) => s.visible),
     };
   }, [series]);
-
-  /**
-   * Zoom controls
-   */
-  const timeBaseOrder: TimeBase[] = ['5m', '10m', '30m', '1h', '4h', '12h', '1d', '4d'];
-
-  const zoomIn = useCallback(() => {
-    if (timeBase === 'custom') return;
-    const currentIndex = timeBaseOrder.indexOf(timeBase);
-    if (currentIndex > 0) setTimeBase(timeBaseOrder[currentIndex - 1]);
-  }, [timeBase]);
-
-  const zoomOut = useCallback(() => {
-    if (timeBase === 'custom') return;
-    const currentIndex = timeBaseOrder.indexOf(timeBase);
-    if (currentIndex < timeBaseOrder.length - 1) setTimeBase(timeBaseOrder[currentIndex + 1]);
-  }, [timeBase]);
-
-  const resetTimeBase = useCallback(() => {
-    setTimeOffset(0);
-    setIsRealtime(true);
-    setTimeBase('5m');
-    setCustomRangeMs(null);
-  }, []);
 
   /**
    * Export chart as PNG
