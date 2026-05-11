@@ -36,7 +36,6 @@ import {
   Button,
   Tooltip,
   Tag,
-  Badge,
   Dialog,
   DialogSurface,
   DialogTitle,
@@ -57,8 +56,6 @@ import {
   ArrowLeftRegular,
   ArrowRightRegular,
   SettingsRegular,
-  FlashRegular,
-  HistoryRegular,
   ErrorCircleRegular,
   ChevronRightRegular,
   ChevronDownFilled,
@@ -68,7 +65,7 @@ import {
   CheckmarkRegular,
   DismissRegular,
 } from '@fluentui/react-icons';
-import { TrendChart, TrendSeries } from './TrendChart';
+import { TrendChart, TrendSeries } from './TrendChart.tsx';
 import { TrendChartApiService, TrendDataRequest } from '../services/trendChartApi';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
@@ -83,7 +80,7 @@ const useStyles = makeStyles({
     overflow: 'hidden',
   },
   topControlsBar: {
-    padding: '8px 12px',
+    padding: '4px 8px',
     backgroundColor: tokens.colorNeutralBackground2,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     flexShrink: 0,
@@ -109,7 +106,7 @@ const useStyles = makeStyles({
     borderRadius: '4px',
   },
   leftPanel: {
-    width: 'clamp(210px, 23vw, 330px)',
+    width: 'clamp(180px, 20vw, 280px)',
     backgroundColor: '#fafafa',
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: '0px',
@@ -167,7 +164,7 @@ const useStyles = makeStyles({
     overflow: 'hidden',
   },
   digitalLeftPanel: {
-    width: 'clamp(210px, 23vw, 330px)',
+    width: 'clamp(180px, 20vw, 280px)',
     backgroundColor: '#fafafa',
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: '0px',
@@ -190,7 +187,7 @@ const useStyles = makeStyles({
     overflowX: 'hidden',
   },
   seriesPanelHeader: {
-    padding: '4px',
+    padding: '2px 4px',
     backgroundColor: 'transparent',
     display: 'flex',
     flexDirection: 'column',
@@ -417,10 +414,10 @@ const useStyles = makeStyles({
   toolbar: {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
-    padding: '8px 2px',
+    gap: '8px',
+    padding: '2px 2px',
     flexWrap: 'wrap',
-    minHeight: '40px',
+    minHeight: '30px',
   },
   chartContainer: {
     flex: 1,
@@ -471,7 +468,7 @@ const useStyles = makeStyles({
     gap: '6px',
     paddingLeft: '8px',
     borderLeft: `3px solid ${tokens.colorBrandBackground}`,
-    height: '16px',
+    height: '14px',
   },
   timeBaseDropdown: {
     border: 'none',
@@ -490,7 +487,7 @@ const useStyles = makeStyles({
   },
   divider: {
     width: '1px',
-    height: '24px',
+    height: '18px',
     backgroundColor: tokens.colorNeutralStroke1,
     flexShrink: 0,
   },
@@ -622,7 +619,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   // ── State ──────────────────────────────────────────────────────────────
   const [series, setSeries] = useState<TrendSeries[]>([]);
   const [timeBase, setTimeBase] = useState<TimeBase>('5m');
-  const [showGrid] = useState(true);
+  const [showGrid, setShowGrid] = useState(true);
   const [isRealtime, setIsRealtime] = useState(true);
   const [loading, setLoading] = useState(false);
   const [loadingTimedOut, setLoadingTimedOut] = useState(false);
@@ -720,8 +717,13 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
    * Helper: Get prefix tag for series (updated from Vue)
    */
   const getPrefixTag = useCallback((pointType: string, prefix?: string): string => {
-    // Use prefix if available (from series data), otherwise fall back to pointType
-    return prefix || pointType || 'N/A';
+    // Match Vue chips: IN / OUT / VAR labels.
+    if (prefix) return prefix;
+    const pt = (pointType || '').toUpperCase();
+    if (pt === 'INPUT') return 'IN';
+    if (pt === 'OUTPUT') return 'OUT';
+    if (pt === 'VARIABLE') return 'VAR';
+    return pointType || 'N/A';
   }, []);
 
   /**
@@ -986,6 +988,34 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           (s) => s.pointId === point.point_id && s.pointType === point.point_type
         );
         if (seriesIndex !== -1) {
+          const unitFromHistory = String(
+            point.unit ?? point.units ?? point.range_field ?? point.range ?? ''
+          ).trim();
+
+          const currentUnit = String(updatedSeries[seriesIndex].unit || '').trim();
+          const shouldReplaceUnit =
+            !currentUnit || currentUnit === 'N/A' || currentUnit.toLowerCase() === 'unused';
+          if (shouldReplaceUnit && unitFromHistory) {
+            updatedSeries[seriesIndex].unit = unitFromHistory;
+          }
+
+          const rawDa = point.digitalAnalog ?? point.digital_analog;
+          if (typeof rawDa === 'string') {
+            const lower = rawDa.toLowerCase();
+            if (lower.includes('digital') || lower === '0') {
+              updatedSeries[seriesIndex].digitalAnalog = 'Digital';
+            } else if (lower.includes('analog') || lower === '1') {
+              updatedSeries[seriesIndex].digitalAnalog = 'Analog';
+            }
+          } else if (typeof rawDa === 'number') {
+            updatedSeries[seriesIndex].digitalAnalog = rawDa === 0 ? 'Digital' : 'Analog';
+          }
+
+          // Off/On-like unit labels imply digital state mapping.
+          if (unitFromHistory.includes('/')) {
+            updatedSeries[seriesIndex].digitalAnalog = 'Digital';
+          }
+
           const timestamp = new Date(point.timestamp).getTime();
 
           // Check if this timestamp already exists (deduplication)
@@ -1093,31 +1123,50 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           const pointIndex = rawIndex + 1;                   // 1-based, matches TRENDLOG_DATA.PointId
           const pointId = `${pointPrefix}${pointIndex}`;     // e.g., "IN1", "OUT2", "VAR3"
 
-          // Look up digital_analog from cached data (INPUTS table InputIndex is also 0-based)
+          // Look up point metadata from cached data (InputIndex/OutputIndex/VariableIndex are 0-based)
           let digitalAnalog: 'Digital' | 'Analog' = 'Analog'; // Default
           const points = pointsCache[pointTypeStr] || [];
-          const point = points.find((p: any) =>
-            parseInt(p.inputIndex || p.outputIndex || p.variableIndex || '0', 10) === rawIndex
-          );
+          const point = points.find((p: any) => {
+            const pointRawIndex = p.index ?? p.inputIndex ?? p.outputIndex ?? p.variableIndex ?? p.pointIndex ?? 0;
+            return parseInt(pointRawIndex, 10) === rawIndex;
+          });
 
-          if (point && point.digitalAnalog !== undefined && point.digitalAnalog !== null) {
-            const rawValue = point.digitalAnalog;
-            digitalAnalog = (rawValue === '0' || rawValue === 0) ? 'Digital' : 'Analog';
-            console.log(`鉁?[${pointId}] Classified as ${digitalAnalog} (raw: ${rawValue})`);
-          } else {
-            console.warn(`鈿狅笍 [${pointId}] No digitalAnalog field, defaulting to Analog`);
+          const unitRaw = (point?.units ?? point?.unit ?? point?.rangeLabel ?? point?.range_field ?? '') as string;
+          const resolvedUnit = String(unitRaw || '').trim();
+
+          if (point) {
+            const rawValue = point.digitalAnalog ?? point.digital_analog;
+            if (typeof rawValue === 'string') {
+              const lower = rawValue.toLowerCase();
+              if (lower.includes('digital') || lower === '0') digitalAnalog = 'Digital';
+              else if (lower.includes('analog') || lower === '1') digitalAnalog = 'Analog';
+            } else if (typeof rawValue === 'number') {
+              digitalAnalog = rawValue === 0 ? 'Digital' : 'Analog';
+            }
+
+            // Vue-compatible fallback: ranges like Off/On are digital states.
+            if (resolvedUnit.includes('/')) {
+              digitalAnalog = 'Digital';
+            }
+
+            console.log(`鉁?[${pointId}] Metadata mapped`, {
+              digitalAnalog,
+              rawDigitalAnalog: rawValue,
+              resolvedUnit,
+            });
           }
 
           return {
-            name: input.pointLabel || pointId,
+            name: input.pointLabel || point?.label || point?.fullLabel || pointId,
             pointId,
             pointType: pointTypeStr,
             pointIndex: pointIndex,
             data: [],
             color: CHART_COLORS[index % CHART_COLORS.length],
-            unit: '', // Will be fetched from API later
+            unit: resolvedUnit,
             digitalAnalog,
             visible: true,
+            prefix: pointPrefix,
           };
         });
 
@@ -1160,8 +1209,20 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           const pointPrefix = pointType === 0 ? 'IN' : pointType === 1 ? 'OUT' : 'VAR';
           const pointId = `${pointPrefix}${pointNumber + 1}`;
 
-          // Determine if analog or digital based on range
-          const digitalAnalog = rangeItem.digital_analog === 0 ? 'Analog' : 'Digital';
+          // Determine analog/digital from range metadata (same heuristics as monitorInputs path)
+          const rangeUnit = String(rangeItem.units || rangeItem.unit || '').trim();
+          const rawDa = rangeItem.digital_analog ?? rangeItem.digitalAnalog;
+          let digitalAnalog: 'Analog' | 'Digital' = 'Analog';
+          if (typeof rawDa === 'string') {
+            const lower = rawDa.toLowerCase();
+            if (lower.includes('digital') || lower === '0') digitalAnalog = 'Digital';
+            else if (lower.includes('analog') || lower === '1') digitalAnalog = 'Analog';
+          } else if (typeof rawDa === 'number') {
+            digitalAnalog = rawDa === 0 ? 'Digital' : 'Analog';
+          }
+          if (rangeUnit.includes('/')) {
+            digitalAnalog = 'Digital';
+          }
 
           generatedSeries.push({
             name: pointId,
@@ -1170,9 +1231,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             pointIndex: pointNumber + 1, // Convert to 1-based for API
             data: [],
             color: CHART_COLORS[index % CHART_COLORS.length],
-            unit: rangeItem.units || '',
+            unit: rangeUnit,
             digitalAnalog: digitalAnalog as 'Analog' | 'Digital',
             visible: true,
+            prefix: pointPrefix,
           });
         }
 
@@ -1234,7 +1296,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     } catch (error) {
       console.error('TrendChartContent: Failed to initialize series', error);
     }
-  }, [serialNumber, panelId, props.itemData]);
+  }, [serialNumber, panelId, props.itemData, props.monitorInputs]);
 
   /**
    * Poll latest data from history API (replaces broken realtime endpoint)
@@ -1319,6 +1381,11 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const manualRefresh = useCallback(async () => {
     await loadHistoricalData(true);
   }, [loadHistoricalData]);
+
+  const openDatabaseConfigPage = useCallback(() => {
+    // Keep behavior simple and aligned with app routing from chart page.
+    window.location.hash = '#/t3000/database-config';
+  }, []);
 
   /**
    * Handle visibility change - backfill missing data
@@ -1734,7 +1801,17 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       console.warn('Chart instance not available for PNG export');
       return;
     }
-    const dataUrl = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' });
+    const dataUrl = typeof chart.getDataURL === 'function'
+      ? chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' })
+      : typeof chart.toBase64Image === 'function'
+        ? chart.toBase64Image('image/png', 1)
+        : chart.canvas?.toDataURL?.('image/png');
+
+    if (!dataUrl) {
+      console.warn('Chart instance does not support PNG export');
+      return;
+    }
+
     const link = document.createElement('a');
     link.href = dataUrl;
     link.download = `trend-chart-${trendlogId}-${new Date().toISOString().slice(0, 10)}.png`;
@@ -2127,22 +2204,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         // Series panel toolbar (shared helper)
         const renderSeriesToolbar = () => (
           <div className={styles.seriesPanelHeader}>
-            {/* Header Line 1 */}
-            <div className={styles.headerLine}>
-              <Text size={200} weight="semibold">
-                {props.itemData?.title || 'Trend Monitor'} ({visAnalog.length + visDigital.length}/{displayedSeries.length})
-              </Text>
-              <div className={styles.dataSourceIndicator}>
-                {dataSource === 'loading' && <Badge appearance="tint" color="informative" size="small">Loading...</Badge>}
-                {dataSource === 'realtime' && <Badge appearance="filled" color="success" size="small" icon={<FlashRegular />}>Live</Badge>}
-                {dataSource === 'api' && <Badge appearance="filled" color="informative" size="small" icon={<HistoryRegular />}>Historical</Badge>}
-                {dataSource === 'error' && <Badge appearance="filled" color="danger" size="small" icon={<ErrorCircleRegular />}>Error</Badge>}
-                <Button appearance="subtle" icon={<ArrowClockwiseRegular />} size="small" onClick={manualRefresh}
-                  disabled={loading} title="Manual Refresh"
-                  style={{ minWidth: '24px', width: '24px', height: '24px', padding: 0 }} />
-              </div>
-            </div>
-
             {/* Header Line 2: All + By Type + By Unit */}
             <div className={styles.headerControls}>
               <div className={styles.leftControls}>
@@ -2240,7 +2301,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
                 {/* Color Indicator with keyboard badge */}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
-                  {/* @ts-expect-error CSS custom property */}
                   <div
                     className={styles.colorIndicator}
                     style={({ '--series-color': s.visible ? s.color : '#d9d9d9' } as React.CSSProperties)}
@@ -2358,19 +2418,19 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                         )}
                       </div>
                     )}
-                    {viewAnalog.map((s, i) => renderSeriesItem(s, i))}
+                    {displayedSeries.map((s, i) => renderSeriesItem(s, i))}
                   </div>
                 </div>
                 <div className={styles.rightPanel}>
-                  <TrendChart series={visAnalog} timeBase={timeBase === 'custom' ? '1h' : timeBase} showGrid={showGrid}
+                  <TrendChart series={[...visAnalog, ...visDigital]} timeBase={timeBase === 'custom' ? '1h' : timeBase} showGrid={showGrid}
                     chartType="analog" timeOffset={timeOffset}
-                    onChartReady={(instance) => { chartInstanceRef.current = instance; }} />
+                    onChartReady={(instance: any) => { chartInstanceRef.current = instance; }} />
                 </div>
               </div>
             )}
 
             {/* RESIZABLE DIVIDER */}
-            {visAnalog.length > 0 && visDigital.length > 0 && (
+            {false && visAnalog.length > 0 && visDigital.length > 0 && (
               <div className={styles.resizableDivider}
                 onMouseDown={(e) => {
                   e.preventDefault();
@@ -2395,7 +2455,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             )}
 
             {/* DIGITAL AREA */}
-            {viewDigital.length > 0 && (
+            {viewDigital.length > 0 && viewAnalog.length === 0 && (
               <div className={styles.digitalArea}>
                 <div className={styles.digitalLeftPanel}>
                   {viewAnalog.length === 0 && renderSeriesToolbar()}
@@ -2514,6 +2574,17 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             <DialogContent>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
+                {/* Chart Display (Vue-aligned core controls) */}
+                <div style={{ border: `1px solid ${tokens.colorNeutralStroke1}`, borderRadius: 6, padding: 12 }}>
+                  <Text weight="semibold" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <SettingsRegular /> Chart Display
+                  </Text>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text size={200}>Show Grid</Text>
+                    <Switch checked={showGrid} onChange={(_, d) => setShowGrid(d.checked)} />
+                  </div>
+                </div>
+
                 {/* Keyboard Shortcuts */}
                 <div style={{ border: `1px solid ${tokens.colorNeutralStroke1}`, borderRadius: 6, padding: 12 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -2538,6 +2609,17 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                       </React.Fragment>
                     ))}
                   </div>
+                </div>
+
+                {/* Database Configuration shortcut */}
+                <div style={{ border: `1px solid ${tokens.colorNeutralStroke1}`, borderRadius: 6, padding: 12 }}>
+                  <Text weight="semibold" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <DatabaseRegular /> Database Configuration
+                  </Text>
+                  <Text size={100} style={{ color: tokens.colorNeutralForeground3, display: 'block', marginBottom: 8 }}>
+                    Open full database settings for backup, retention, and cleanup options.
+                  </Text>
+                  <Button size="small" onClick={openDatabaseConfigPage}>Open Database Config</Button>
                 </div>
 
               </div>

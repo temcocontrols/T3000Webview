@@ -36,6 +36,11 @@ export interface TrendDataPoint {
   timestamp: string;
   value: number;
   unit?: string;
+  units?: string;
+  range_field?: string;
+  range?: string;
+  digital_analog?: string | number;
+  digitalAnalog?: string | number;
 }
 
 export class TrendChartApiService {
