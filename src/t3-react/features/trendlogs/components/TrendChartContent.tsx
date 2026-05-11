@@ -2143,7 +2143,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
               </div>
             </div>
 
-            {/* Header Line 2: All + By Type + By Unit + Auto Scroll */}
+            {/* Header Line 2: All + By Type + By Unit */}
             <div className={styles.headerControls}>
               <div className={styles.leftControls}>
                 {/* All Dropdown */}
@@ -2205,11 +2205,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                 )}
               </div>
 
-              {/* Auto Scroll Toggle */}
-              <div className={styles.autoScrollToggle}>
-                <Text size={100}>Auto Scroll:</Text>
-                <Switch checked={isRealtime} onChange={(_, data) => setIsRealtime(data.checked)} />
-              </div>
             </div>
           </div>
         );
