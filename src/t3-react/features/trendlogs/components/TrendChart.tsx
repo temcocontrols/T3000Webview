@@ -394,9 +394,9 @@ const computeSharedYAxisWidth = (bands: YBandInfo[], digitalSeries: TrendSeries[
     maxUnitChars = Math.max(maxUnitChars, offState.length, onState.length);
   });
 
-  const numericWidth = Math.min(96, Math.max(64, 46 + (maxChars - 4) * 6));
-  const unitLaneWidth = maxUnitChars > 0 ? Math.min(66, Math.max(36, 16 + maxUnitChars * 4)) : 0;
-  return Math.min(176, numericWidth + unitLaneWidth + 16);
+  const numericWidth = Math.min(116, Math.max(76, 54 + (maxChars - 4) * 6));
+  const unitLaneWidth = maxUnitChars > 0 ? Math.min(96, Math.max(52, 28 + maxUnitChars * 5)) : 0;
+  return Math.min(252, numericWidth + unitLaneWidth + 42);
 };
 
 const formatAxisValue = (value: number, layout: YBandLayout, digitalSeries: TrendSeries[]) => {
@@ -563,6 +563,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
         normalized: true,
         layout: {
           padding: {
+            left: 28,
             bottom: 20,
           },
         },
@@ -670,11 +671,11 @@ export const TrendChart: React.FC<TrendChartProps> = ({
               display: true,
               color: (context: any) => axisTickColor(Number(context.tick?.value ?? 0), layout, digitalSeries),
               font: { size: 9, family: 'Inter, Helvetica, Arial, sans-serif' },
-              padding: 2,
+              padding: 8,
               autoSkip: false,
               maxTicksLimit: 200,
               align: 'end',
-              mirror: true,
+              mirror: false,
               callback: (value: any) => formatAxisValue(Number(value), layout, digitalSeries),
             },
           } as any,
@@ -719,7 +720,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
             const BAR_GAP = 2;
             const BAR_PAD_L = 3;
             const RADIUS = 3;
-            const axisX = yScale.left + PILL_H / 2 + 3;
+            const axisX = yScale.left + PILL_H / 2 - 14;
             const analogOffset = layout.analogOffset;
 
             ctx.save();
