@@ -477,9 +477,13 @@ async fn get_device_table_data(
     State(state): State<T3AppState>,
     Path((serial, table)): Path<(String, String)>,
 ) -> Result<Json<QueryResult>, StatusCode> {
+    // TRENDLOGS and TRENDLOG_INPUTS are always tried from local SQLite first.
+    // On local/standalone PCs, SQLite has all the data.
+    // On server/client PCs with MSSQL, SQLite may be empty while MSSQL has the data,
+    // so we fall back to MSSQL when SQLite returns 0 rows.
     let sqlite_first_table = matches!(table.as_str(), "TRENDLOGS" | "TRENDLOG_INPUTS");
 
-    // ── MSSQL branch (non-trendlog tables stay MSSQL-first) ──
+    // ── MSSQL branch (non-SQLite-first tables) ──
     if let Some(pool) = &state.mssql_pool {
         if !sqlite_first_table {
             use crate::database_management::mssql_generic_crud;
@@ -495,7 +499,7 @@ async fn get_device_table_data(
         }
     }
 
-    // ── SeaORM branch (TRENDLOGS/TRENDLOG_INPUTS are SQLite-first) ──
+    // ── SeaORM branch (SQLite-first) ──
     let db = get_t3_device_conn!(state);
     let backend = db.get_database_backend();
 
@@ -546,6 +550,27 @@ async fn get_device_table_data(
     }
 
     let data_len = data.len();
+
+    // ── MSSQL fallback for SQLite-first tables (e.g. TRENDLOG_INPUTS) ──
+    // On server/client PCs the local SQLite may be empty while MSSQL holds the data.
+    // Only fall back when SQLite returned nothing and a pool is active.
+    if data_len == 0 && sqlite_first_table {
+        if let Some(pool) = &state.mssql_pool {
+            use crate::database_management::mssql_generic_crud;
+            if let Ok(serial_number) = serial.parse::<i32>() {
+                if let Ok(mssql_data) = mssql_generic_crud::select_by_device(pool, &table, serial_number).await {
+                    if !mssql_data.is_empty() {
+                        let mssql_len = mssql_data.len();
+                        return Ok(Json(QueryResult {
+                            data: mssql_data,
+                            message: format!("Retrieved {} records from {} for device {} (MSSQL fallback)", mssql_len, table, serial),
+                        }));
+                    }
+                }
+            }
+        }
+    }
+
     Ok(Json(QueryResult {
         data,
         message: format!("Retrieved {} records from {} for device {}", data_len, table, serial),
