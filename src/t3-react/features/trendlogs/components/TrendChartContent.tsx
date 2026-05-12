@@ -340,8 +340,8 @@ const useStyles = makeStyles({
   },
   seriesNumber: {
     position: 'absolute',
-    top: '-7px',
-    left: '0px',
+    top: '2px',
+    left: '2px',
     backgroundColor: '#888e86',
     color: 'white',
     fontSize: '8px',
@@ -349,10 +349,11 @@ const useStyles = makeStyles({
     padding: '1px 3px',
     borderRadius: '2px',
     minWidth: '10px',
-    lineHeight: '1.2',
+    lineHeight: '1.4',
     textAlign: 'center',
-    zIndex: 1,
     boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+    zIndex: 1,
+    pointerEvents: 'none',
   },
   keyboardBadge: {
     position: 'absolute',
@@ -3066,6 +3067,9 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                 className={mergeClasses(styles.seriesItem, isExpanded ? styles.seriesItemExpanded : undefined, isKeySelected ? styles.selectedSeriesItem : undefined)}
                 onClick={() => toggleSeriesVisibility(globalIndex)}
               >
+                {/* Sequential number badge — absolute top-left of card, no stopPropagation */}
+                <div className={styles.seriesNumber}>{globalIndex + 1}</div>
+
                 {/* Delete overlay for View 2 & 3 */}
                 {currentView !== 1 && (
                   <Button
@@ -3078,9 +3082,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                   />
                 )}
 
-                {/* Toggle switch — contains absolute number badge (like Vue keyboard-shortcut-badge) */}
+                {/* Toggle switch — with keyboard badge inside (absolute), matches Vue series-toggle-indicator */}
                 <div className={styles.colorIndicatorWrap} onClick={(e) => e.stopPropagation()}>
-                  <div className={styles.seriesNumber}>{globalIndex + 1}</div>
                   <div
                     className={mergeClasses(styles.colorIndicator, getColorClass(s.color, s.visible === false))}
                     onClick={() => toggleSeriesVisibility(globalIndex)}
