@@ -791,13 +791,24 @@ const useStyles = makeStyles({
   },
   removeTrackingButton: {
     position: 'absolute',
-    top: '4px',
-    right: '28px',
-    minWidth: '20px',
-    width: '20px',
-    height: '20px',
+    top: 0,
+    right: 0,
+    width: '14px',
+    height: '14px',
+    minWidth: '14px',
     padding: 0,
     zIndex: 2,
+    backgroundColor: '#ff4d4f',
+    color: 'white',
+    border: 'none',
+    borderRadius: '0 4px 0 12px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    fontSize: '9px',
+    lineHeight: 1,
+    ':hover': { backgroundColor: '#ff7875' },
   },
   colorIndicatorWrap: {
     position: 'relative',
@@ -3264,14 +3275,15 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
                 {/* Delete overlay for View 2 & 3 */}
                 {currentView !== 1 && (
-                  <Button
-                    appearance="subtle"
-                    icon={<DismissRegular fontSize={12} />}
-                    onClick={(e) => { e.stopPropagation(); removeFromTracking(seriesKey); }}
-                    size="small"
+                  <span
                     className={styles.removeTrackingButton}
+                    onClick={(e) => { e.stopPropagation(); removeFromTracking(seriesKey); }}
                     title="Remove from tracking"
-                  />
+                    role="button"
+                    aria-label="Remove from tracking"
+                  >
+                    ×
+                  </span>
                 )}
 
                 {/* Toggle switch — color indicator */}
