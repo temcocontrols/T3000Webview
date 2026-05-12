@@ -420,6 +420,47 @@ const formatXAxisTickLabel = (timestamp: number, index: number, timeBase: TrendC
   return timeOnly;
 };
 
+const formatHoverTimeLabel = (timestamp: number) => {
+  const date = new Date(timestamp);
+  const hh = date.getHours().toString().padStart(2, '0');
+  const mm = date.getMinutes().toString().padStart(2, '0');
+  const ss = date.getSeconds().toString().padStart(2, '0');
+  return `${hh}:${mm}:${ss}`;
+};
+
+/** Vue-parity: compute x-axis right edge.
+ * Under-hour timebases (5m/10m/30m): next minute ending in 0 or 5.
+ * Hourly+ timebases (1h/4h/12h/1d/4d): next full :00 hour.
+ */
+const computeRightEdge = (nowMs: number, timeBase: TrendChartProps['timeBase']): number => {
+  const UNDER_HOUR = ['5m', '10m', '30m'];
+  const d = new Date(nowMs);
+  if (UNDER_HOUR.includes(timeBase)) {
+    const minutes = d.getMinutes();
+    const seconds = d.getSeconds();
+    const ms = d.getMilliseconds();
+    const mod = minutes % 5;
+    let addMin = mod === 0 ? 0 : (5 - mod);
+    if (addMin === 0 && (seconds > 0 || ms > 0)) addMin = 5;
+    d.setMinutes(minutes + addMin, 0, 0);
+    return d.getTime();
+  } else {
+    // Round up to next full :00 hour
+    const minutes = d.getMinutes();
+    const seconds = d.getSeconds();
+    const ms = d.getMilliseconds();
+    if (minutes === 0 && seconds === 0 && ms === 0) return d.getTime();
+    d.setHours(d.getHours() + 1, 0, 0, 0);
+    return d.getTime();
+  }
+};
+
+const clearHoverArtifacts = () => {
+  document.querySelectorAll('.chartjs-multi-tooltip-react').forEach((el) => el.remove());
+  document.querySelectorAll('.chartjs-crosshair-react').forEach((el) => el.remove());
+  document.querySelectorAll('.chartjs-timelabel-react').forEach((el) => el.remove());
+};
+
 const buildXAxisTicks = (startTime: number, endTime: number, timeBase: TrendChartProps['timeBase']) => {
   const tickConfig = X_AXIS_TICK_CONFIGS[timeBase];
   const stepMs = tickConfig.stepMinutes * 60 * 1000;
@@ -578,7 +619,8 @@ export const TrendChart: React.FC<TrendChartProps> = ({
 
     const timeConfig = TIME_CONFIGS[timeBase];
     const now = Date.now() + timeOffset * 60 * 1000;
-    const startTime = now - timeConfig.totalMinutes * 60 * 1000;
+    const xAxisEndTime = computeRightEdge(now, timeBase);
+    const startTime = xAxisEndTime - timeConfig.totalMinutes * 60 * 1000;
 
     const cacheKey = [
       ...analogSeries.map((item) => `A:${item.name}:${getSeriesUnitKey(item)}`),
@@ -592,18 +634,18 @@ export const TrendChart: React.FC<TrendChartProps> = ({
 
     const hasWindowData = [...analogSeries, ...digitalSeries].some((item) =>
       item.data.some((point) =>
-        isFiniteNumber(point.value) && point.timestamp >= startTime && point.timestamp <= now,
+        isFiniteNumber(point.value) && point.timestamp >= startTime && point.timestamp <= xAxisEndTime,
       ),
     );
 
     const analogSeriesInWindow = analogSeries.map((item) => ({
       ...item,
-      data: item.data.filter((point) => point.timestamp >= startTime && point.timestamp <= now),
+      data: item.data.filter((point) => point.timestamp >= startTime && point.timestamp <= xAxisEndTime),
     }));
 
     const digitalSeriesInWindow = digitalSeries.map((item) => ({
       ...item,
-      data: item.data.filter((point) => point.timestamp >= startTime && point.timestamp <= now),
+      data: item.data.filter((point) => point.timestamp >= startTime && point.timestamp <= xAxisEndTime),
     }));
 
     const liveLayout = buildYAxisLayout(analogSeriesInWindow, digitalSeriesInWindow);
@@ -614,7 +656,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
     }
 
     const gapThresholdMs = 2 * 60 * 1000;
-    const xAxisTicks = buildXAxisTicks(startTime, now, timeBase);
+    const xAxisTicks = buildXAxisTicks(startTime, xAxisEndTime, timeBase);
 
     const datasets: ChartDataset<'line', ChartPoint[]>[] = [];
     analogSeries.forEach((seriesItem, index) => {
@@ -681,46 +723,167 @@ export const TrendChart: React.FC<TrendChartProps> = ({
         interaction: {
           mode: 'index',
           intersect: false,
+          axis: 'x',
         },
         plugins: {
           legend: { display: false },
           tooltip: {
-            enabled: true,
-            backgroundColor: '#ffffff',
-            borderColor: '#d9d9d9',
-            borderWidth: 1,
-            titleColor: '#000000',
-            bodyColor: '#595959',
-            titleFont: { family: 'Inter, Helvetica, Arial, sans-serif', size: 11, weight: '600' },
-            bodyFont: { family: 'Inter, Helvetica, Arial, sans-serif', size: 11 },
-            padding: 8,
-            callbacks: {
-              title: (items: TooltipItem<'line'>[]) => {
-                const first = items[0];
-                if (!first?.parsed?.x) return '';
-                return formatTimestamp(Number(first.parsed.x), timeBase);
-              },
-              label: (context: TooltipItem<'line'>) => {
-                const seriesInfo = series.find((item) => item.name === context.dataset.label);
-                const virtualY = Number(context.parsed.y);
-                if (!seriesInfo || !Number.isFinite(virtualY)) return '';
+            enabled: false,
+            external: (context: any) => {
+              const { chart, tooltip } = context;
+              clearHoverArtifacts();
 
+              if (!tooltip || tooltip.opacity === 0) {
+                return;
+              }
+
+              const xScale = chart?.scales?.x;
+              if (!xScale) {
+                return;
+              }
+
+              const rect = chart.canvas.getBoundingClientRect();
+              const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+              const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+
+              const caretCanvasX = tooltip.caretX ?? (chart.chartArea.left + chart.chartArea.right) / 2;
+              const caretTimestamp = xScale.getValueForPixel?.(caretCanvasX) ?? 0;
+              const visibleMin = xScale.min ?? -Infinity;
+              const visibleMax = xScale.max ?? Infinity;
+
+              const chartWidth = chart.chartArea.right - chart.chartArea.left;
+              const maxXDistPx = Math.max(chartWidth * 0.04, 30);
+
+              const points: Array<{ dataset: any; element: any; parsedX: number; parsedY: number }> = [];
+
+              chart.data.datasets.forEach((dataset: any, datasetIndex: number) => {
+                if (!dataset?.data?.length) return;
+                const meta = chart.getDatasetMeta(datasetIndex);
+                if (meta?.hidden) return;
+
+                let bestIndex = -1;
+                let bestDt = Infinity;
+
+                dataset.data.forEach((d: any, i: number) => {
+                  if (!d || !Number.isFinite(d.y)) return;
+                  const ts = typeof d.x === 'number' ? d.x : +new Date(d.x);
+                  if (ts < visibleMin || ts > visibleMax) return;
+                  const dt = Math.abs(ts - caretTimestamp);
+                  if (dt < bestDt) {
+                    bestDt = dt;
+                    bestIndex = i;
+                  }
+                });
+
+                if (bestIndex === -1) return;
+                const element = meta?.data?.[bestIndex];
+                if (!element) return;
+                if (Math.abs(element.x - caretCanvasX) > maxXDistPx) return;
+
+                const d = dataset.data[bestIndex];
+                const parsedX = typeof d.x === 'number' ? d.x : +new Date(d.x);
+                points.push({ dataset, element, parsedX, parsedY: d.y });
+              });
+
+              if (points.length === 0) {
+                return;
+              }
+
+              const snapPoint = points.reduce((best, point) => (
+                Math.abs(point.parsedX - caretTimestamp) < Math.abs(best.parsedX - caretTimestamp) ? point : best
+              ));
+              const snapX = snapPoint.element.x;
+
+              const crosshair = document.createElement('div');
+              crosshair.className = 'chartjs-crosshair-react';
+              crosshair.style.position = 'absolute';
+              crosshair.style.left = `${rect.left + scrollX + snapX}px`;
+              crosshair.style.top = `${rect.top + scrollY + chart.chartArea.top}px`;
+              crosshair.style.width = '0px';
+              crosshair.style.height = `${chart.chartArea.bottom - chart.chartArea.top}px`;
+              crosshair.style.borderLeft = '2px dashed #999';
+              crosshair.style.pointerEvents = 'none';
+              crosshair.style.zIndex = '999';
+              document.body.appendChild(crosshair);
+
+              const hoverTimestamp = xScale.getValueForPixel?.(caretCanvasX) ?? points[0].parsedX;
+              const chartTopVP = rect.top + chart.chartArea.top;
+              const chartBottomVP = rect.top + chart.chartArea.bottom;
+              const visibleTop = Math.max(chartTopVP, 0);
+              const visibleBottom = Math.min(chartBottomVP, window.innerHeight);
+              const labelY = visibleTop + 4;
+
+              const timeLabel = document.createElement('div');
+              timeLabel.className = 'chartjs-timelabel-react';
+              timeLabel.style.position = 'fixed';
+              timeLabel.style.left = `${rect.left + snapX - 32}px`;
+              timeLabel.style.top = `${labelY < visibleBottom - 20 ? labelY : visibleBottom - 20}px`;
+              timeLabel.style.pointerEvents = 'none';
+              timeLabel.style.zIndex = '10001';
+              timeLabel.innerHTML = `<div style="background:#fff;color:#000;border:1px solid #ff4d4f;border-radius:3px;padding:2px 6px;font-size:10px;font-weight:500;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.1);">${formatHoverTimeLabel(Number(hoverTimestamp))}</div>`;
+              document.body.appendChild(timeLabel);
+
+              const sorted = [...points].sort((left, right) => left.element.y - right.element.y);
+              const occupied: Array<{ top: number; bottom: number }> = [];
+              const tooltipHeight = 24;
+              const minSpacing = 4;
+              const canvasRight = rect.left + scrollX + chart.chartArea.right;
+              const canvasBottom = rect.top + scrollY + chart.chartArea.bottom;
+
+              sorted.forEach((point) => {
+                const seriesInfo = series.find((item) => item.name === point.dataset.label);
+                if (!seriesInfo || !Number.isFinite(point.parsedY)) return;
+
+                let valueText = '';
                 if (seriesInfo.digitalAnalog === 'Digital') {
                   const states = getDigitalStatesForYAxis(seriesInfo.unit);
-                  const label = virtualY % DIGITAL_BAND_SIZE < (DBS_HIGH + DBS_LOW) / 2 ? states[1] : states[0];
-                  return `${seriesInfo.name}: ${label}`;
+                  const withinBand = point.parsedY - Math.floor(point.parsedY / DIGITAL_BAND_SIZE) * DIGITAL_BAND_SIZE;
+                  valueText = withinBand < (DBS_HIGH + DBS_LOW) / 2 ? `: ${states[1]}` : `: ${states[0]}`;
+                } else {
+                  const band = layout.analogBandBySeries.get(seriesInfo.name);
+                  if (!band) return;
+                  const realRange = Math.max(band.realMax - band.realMin, 0.0001);
+                  const realValue = band.realMin + ((point.parsedY - band.virtualBase - BAND_MARGIN) / (BAND_SIZE - 2 * BAND_MARGIN)) * realRange;
+                  const snapped = Math.round(realValue / band.step) * band.step;
+                  const decimals = band.step < 1 ? Math.max(1, Math.ceil(-Math.log10(band.step))) : 0;
+                  const display = decimals > 0 ? snapped.toFixed(decimals) : Math.round(snapped).toString();
+                  const unit = !band.unit || band.unit === 'N/A' || band.unit === 'Unused' ? '' : ` ${band.unit}`;
+                  valueText = `: ${display}${unit}`;
                 }
 
-                const band = layout.analogBandBySeries.get(seriesInfo.name);
-                if (!band) return `${seriesInfo.name}: ${virtualY.toFixed(2)}`;
-                const realRange = Math.max(band.realMax - band.realMin, 0.0001);
-                const realValue = band.realMin + ((virtualY - band.virtualBase - BAND_MARGIN) / (BAND_SIZE - 2 * BAND_MARGIN)) * realRange;
-                const snapped = Math.round(realValue / band.step) * band.step;
-                const decimals = band.step < 1 ? Math.max(1, Math.ceil(-Math.log10(band.step))) : 0;
-                const display = decimals > 0 ? snapped.toFixed(decimals) : Math.round(snapped).toString();
-                const unit = band.unit === 'N/A' ? '' : ` ${band.unit}`;
-                return `${seriesInfo.name}: ${display}${unit}`;
-              },
+                const lineColor = typeof point.dataset.borderColor === 'string' ? point.dataset.borderColor : '#333333';
+                const tip = document.createElement('div');
+                tip.className = 'chartjs-multi-tooltip-react';
+                tip.style.position = 'absolute';
+                tip.style.pointerEvents = 'none';
+                tip.style.zIndex = '1000';
+                tip.innerHTML = `<div style="background:#f5f5f5;border:1px solid ${lineColor}44;border-radius:4px;padding:3px 6px;font-size:9px;font-weight:500;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.15);"><span style="color:${lineColor}">${seriesInfo.name}</span><span style="color:#333">${valueText}</span></div>`;
+
+                const pointX = rect.left + scrollX + snapX;
+                const pointY = rect.top + scrollY + point.element.y;
+                const flipLeft = pointX + 10 + 160 > canvasRight;
+
+                let top = Math.min(pointY - 12, canvasBottom - tooltipHeight);
+                let moved = true;
+                while (moved) {
+                  moved = false;
+                  for (const slot of occupied) {
+                    if (top < slot.bottom && top + tooltipHeight > slot.top) {
+                      top = slot.bottom + minSpacing;
+                      moved = true;
+                      break;
+                    }
+                  }
+                }
+
+                top = Math.min(top, canvasBottom - tooltipHeight);
+                occupied.push({ top, bottom: top + tooltipHeight });
+
+                tip.style.left = flipLeft ? `${pointX - 10}px` : `${pointX + 10}px`;
+                if (flipLeft) tip.style.transform = 'translateX(-100%)';
+                tip.style.top = `${top}px`;
+                document.body.appendChild(tip);
+              });
             },
           },
         },
@@ -728,7 +891,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
           x: {
             type: 'time',
             min: startTime,
-            max: now,
+            max: xAxisEndTime,
             time: {
               unit: X_AXIS_TICK_CONFIGS[timeBase].unit,
               stepSize: X_AXIS_TICK_CONFIGS[timeBase].stepMinutes,
@@ -740,9 +903,24 @@ export const TrendChart: React.FC<TrendChartProps> = ({
             ticks: {
               color: '#595959',
               font: { family: 'Inter, Helvetica, Arial, sans-serif', size: 11 },
-              callback: (value: any, index: number) => {
+              callback: (value: any, index: number, ticks: any[]) => {
                 const timestamp = Number(value);
-                return formatXAxisTickLabel(timestamp, index, timeBase);
+                const label = formatXAxisTickLabel(timestamp, index, timeBase);
+                if (timeBase === '1d' || timeBase === '4d') {
+                  return label;
+                }
+
+                if (index > 0) {
+                  const prevTickValue = Number(ticks[index - 1]?.value ?? ticks[index - 1]);
+                  if (Number.isFinite(prevTickValue)) {
+                    const prevLabel = formatXAxisTickLabel(prevTickValue, index - 1, timeBase);
+                    if (typeof label === 'string' && typeof prevLabel === 'string' && label === prevLabel) {
+                      return '';
+                    }
+                  }
+                }
+
+                return label;
               },
               align: 'inner',
               maxRotation: 0,
@@ -1032,7 +1210,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
     onChartReady?.(chart);
 
     if (onTimeRangeChange) {
-      onTimeRangeChange(startTime, now);
+      onTimeRangeChange(startTime, xAxisEndTime);
     }
 
     const handleResize = () => {
@@ -1042,6 +1220,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      clearHoverArtifacts();
       chart.destroy();
       if (chartInstanceRef.current === chart) {
         chartInstanceRef.current = null;
@@ -1051,6 +1230,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
 
   useEffect(() => {
     return () => {
+      clearHoverArtifacts();
       chartInstanceRef.current?.destroy();
       chartInstanceRef.current = null;
     };
