@@ -339,18 +339,20 @@ const useStyles = makeStyles({
     color: 'var(--series-color)',
   },
   seriesNumber: {
-    width: '18px',
-    height: '18px',
-    borderRadius: '50%',
-    backgroundColor: '#e0e0e0',
-    color: '#595959',
-    fontSize: '10px',
-    fontWeight: '600',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    lineHeight: '1',
+    position: 'absolute',
+    top: '-7px',
+    left: '0px',
+    backgroundColor: '#888e86',
+    color: 'white',
+    fontSize: '8px',
+    fontWeight: 'bold',
+    padding: '1px 3px',
+    borderRadius: '2px',
+    minWidth: '10px',
+    lineHeight: '1.2',
+    textAlign: 'center',
+    zIndex: 1,
+    boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
   },
   keyboardBadge: {
     position: 'absolute',
@@ -439,12 +441,12 @@ const useStyles = makeStyles({
     lineHeight: '1.2',
     whiteSpace: 'nowrap',
   },
-  // Grey filled chip — mirrors Vue q-chip color="grey-4"
+  // Grey filled chip — mirrors Vue q-chip color="grey-4" = #e0e0e0, text-color="grey-8" = #616161
   typeChip: {
     display: 'inline-flex',
     alignItems: 'center',
-    backgroundColor: '#bdbdbd',
-    color: '#424242',
+    backgroundColor: '#e0e0e0',
+    color: '#616161',
     fontSize: '8px',
     fontWeight: '600',
     padding: '1px 4px',
@@ -453,13 +455,17 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
   },
   expandButton: {
-    minWidth: '24px',
-    width: '24px',
-    height: '24px',
+    minWidth: '16px',
+    width: '20px',
+    height: '20px',
     padding: '0',
     flexShrink: 0,
+    color: '#8c8c8c',
+    border: 'none',
+    background: 'transparent',
     ':hover': {
-      backgroundColor: tokens.colorNeutralBackground1Pressed,
+      color: '#262626',
+      background: 'rgba(0,0,0,0.05)',
     },
   },
   seriesDetails: {
@@ -3072,11 +3078,9 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                   />
                 )}
 
-                {/* Series number badge */}
-                <div className={styles.seriesNumber}>{globalIndex + 1}</div>
-
-                {/* Toggle switch with optional keyboard badge */}
+                {/* Toggle switch — contains absolute number badge (like Vue keyboard-shortcut-badge) */}
                 <div className={styles.colorIndicatorWrap} onClick={(e) => e.stopPropagation()}>
+                  <div className={styles.seriesNumber}>{globalIndex + 1}</div>
                   <div
                     className={mergeClasses(styles.colorIndicator, getColorClass(s.color, s.visible === false))}
                     onClick={() => toggleSeriesVisibility(globalIndex)}
@@ -3115,7 +3119,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                       <div className={styles.seriesControlsCol}>
                         <Button
                           appearance="subtle"
-                          icon={isExpanded ? <ChevronDownFilled /> : <ChevronRightRegular />}
+                          icon={isExpanded ? <ChevronDownFilled fontSize={11} /> : <ChevronRightRegular fontSize={11} />}
                           onClick={(e) => { e.stopPropagation(); toggleSeriesExpand(seriesKey); }}
                           className={styles.expandButton}
                           size="small"
