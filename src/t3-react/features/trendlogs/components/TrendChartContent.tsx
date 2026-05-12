@@ -59,6 +59,7 @@ import {
   SettingsRegular,
   ErrorCircleRegular,
   ChevronRightRegular,
+  ChevronLeftRegular,
   ChevronDownFilled,
   ArrowClockwiseRegular,
   KeyboardRegular,
@@ -105,6 +106,7 @@ const useStyles = makeStyles({
     backgroundColor: '#f5f5f5',
     border: `1px solid ${tokens.colorNeutralStroke1}`,
     borderRadius: '4px',
+    position: 'relative',
   },
   leftPanel: {
     width: 'clamp(180px, 20vw, 280px)',
@@ -208,11 +210,65 @@ const useStyles = makeStyles({
     flexShrink: 0,
     marginBottom: '8px',
   },
+  seriesPanelHeaderRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  collapseBtn: {
+    minWidth: '20px',
+    width: '20px',
+    height: '20px',
+    padding: '0',
+    border: '1px solid #d9d9d9',
+    borderRadius: '3px',
+    backgroundColor: '#fff',
+    color: '#595959',
+    ':hover': {
+      backgroundColor: '#e6e6e6',
+      color: '#262626',
+    },
+  },
+  leftPanelCollapsed: {
+    width: '0 !important' as '0',
+    minWidth: '0 !important' as '0',
+    overflow: 'hidden',
+    padding: '0',
+    border: 'none',
+  },
+  expandTab: {
+    position: 'absolute',
+    left: '0',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    zIndex: 10,
+    width: '16px',
+    height: '40px',
+    backgroundColor: '#f0f0f0',
+    border: '1px solid #d9d9d9',
+    borderLeft: 'none',
+    borderRadius: '0 4px 4px 0',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    color: '#595959',
+    ':hover': {
+      backgroundColor: '#e0e0e0',
+      color: '#262626',
+    },
+  },
   filterBarBtn: {
     fontSize: '11px',
     paddingLeft: '6px',
     paddingRight: '6px',
     minHeight: '26px',
+  },
+  filterMenuItem: {
+    fontSize: '11px',
+    minHeight: '26px',
+    paddingTop: '2px',
+    paddingBottom: '2px',
   },
   seriesPanelToolbar: {
     padding: '4px',
@@ -1151,6 +1207,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
   // Keyboard shortcuts
   const [keyboardEnabled, setKeyboardEnabled] = useState(false);
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [selectedItemIndex, setSelectedItemIndex] = useState<number>(-1);
 
   // Config modal
@@ -3007,7 +3064,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         // Series panel toolbar (shared helper)
         const renderSeriesToolbar = () => (
           <div className={styles.seriesPanelHeader}>
-            {/* Header Line 2: All + By Type + By Unit */}
+            {/* Header Line: All + By Type + By Unit + Collapse button */}
             <div className={styles.headerControls}>
               <div className={styles.leftControls}>
                 {/* All Dropdown */}
@@ -3017,8 +3074,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                   </MenuTrigger>
                   <MenuPopover>
                     <MenuList>
-                      <MenuItem onClick={handleEnableAll} disabled={seriesCounts.allEnabled}>Enable All</MenuItem>
-                      <MenuItem onClick={handleDisableAll} disabled={seriesCounts.allDisabled}>Disable All</MenuItem>
+                      <MenuItem className={styles.filterMenuItem} onClick={handleEnableAll} disabled={seriesCounts.allEnabled}>Enable All</MenuItem>
+                      <MenuItem className={styles.filterMenuItem} onClick={handleDisableAll} disabled={seriesCounts.allDisabled}>Disable All</MenuItem>
                     </MenuList>
                   </MenuPopover>
                 </Menu>
@@ -3030,20 +3087,20 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                   </MenuTrigger>
                   <MenuPopover>
                     <MenuList>
-                      <MenuItem onClick={() => toggleByAnalogDigital('Analog')} disabled={seriesCounts.analog === 0}>
+                      <MenuItem className={styles.filterMenuItem} onClick={() => toggleByAnalogDigital('Analog')} disabled={seriesCounts.analog === 0}>
                         {seriesCounts.analogEnabled ? 'Disable' : 'Enable'} Analog ({seriesCounts.analog})
                       </MenuItem>
-                      <MenuItem onClick={() => toggleByAnalogDigital('Digital')} disabled={seriesCounts.digital === 0}>
+                      <MenuItem className={styles.filterMenuItem} onClick={() => toggleByAnalogDigital('Digital')} disabled={seriesCounts.digital === 0}>
                         {seriesCounts.digitalEnabled ? 'Disable' : 'Enable'} Digital ({seriesCounts.digital})
                       </MenuItem>
                       <MenuDivider />
-                      <MenuItem onClick={() => toggleByPointType('INPUT')} disabled={seriesCounts.input === 0}>
+                      <MenuItem className={styles.filterMenuItem} onClick={() => toggleByPointType('INPUT')} disabled={seriesCounts.input === 0}>
                         {seriesCounts.inputEnabled ? 'Disable' : 'Enable'} Input ({seriesCounts.input})
                       </MenuItem>
-                      <MenuItem onClick={() => toggleByPointType('OUTPUT')} disabled={seriesCounts.output === 0}>
+                      <MenuItem className={styles.filterMenuItem} onClick={() => toggleByPointType('OUTPUT')} disabled={seriesCounts.output === 0}>
                         {seriesCounts.outputEnabled ? 'Disable' : 'Enable'} Output ({seriesCounts.output})
                       </MenuItem>
-                      <MenuItem onClick={() => toggleByPointType('VARIABLE')} disabled={seriesCounts.variable === 0}>
+                      <MenuItem className={styles.filterMenuItem} onClick={() => toggleByPointType('VARIABLE')} disabled={seriesCounts.variable === 0}>
                         {seriesCounts.variableEnabled ? 'Disable' : 'Enable'} Variable ({seriesCounts.variable})
                       </MenuItem>
                     </MenuList>
@@ -3059,7 +3116,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                     <MenuPopover>
                       <MenuList>
                         {Array.from(distinctUnits.entries()).map(([unit, info]) => (
-                          <MenuItem key={unit} onClick={() => toggleByUnit(unit)}>
+                          <MenuItem key={unit} className={styles.filterMenuItem} onClick={() => toggleByUnit(unit)}>
                             {info.allEnabled ? 'Disable' : 'Enable'} {unit} ({info.count})
                           </MenuItem>
                         ))}
@@ -3067,6 +3124,16 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                     </MenuPopover>
                   </Menu>
                 )}
+                {/* Collapse button — right-aligned after By Unit */}
+                <Button
+                  size="small"
+                  appearance="subtle"
+                  icon={<ChevronLeftRegular fontSize={12} />}
+                  className={styles.collapseBtn}
+                  onClick={() => setLeftPanelCollapsed(true)}
+                  title="Hide panel"
+                  style={{ marginLeft: 'auto' }}
+                />
               </div>
 
             </div>
@@ -3186,7 +3253,13 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             {/* ANALOG AREA */}
             {(visAnalog.length > 0 || (viewAnalog.length === 0 && viewDigital.length === 0)) && viewAnalog.length > 0 && (
               <div className={styles.analogArea}>
-                <div className={styles.leftPanel}>
+                {/* Expand tab — only visible when panel is collapsed */}
+                {leftPanelCollapsed && (
+                  <div className={styles.expandTab} onClick={() => setLeftPanelCollapsed(false)} title="Show panel">
+                    <ChevronRightRegular fontSize={10} />
+                  </div>
+                )}
+                <div className={mergeClasses(styles.leftPanel, leftPanelCollapsed ? styles.leftPanelCollapsed : undefined)}>
                   {renderSeriesToolbar()}
                   {/* Series list: loading/timeout/error empty states */}
                   <div className={styles.seriesPanel}>
@@ -3278,7 +3351,13 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             {/* DIGITAL AREA */}
             {viewDigital.length > 0 && viewAnalog.length === 0 && (
               <div className={styles.digitalArea}>
-                <div className={styles.digitalLeftPanel}>
+                {/* Expand tab — only visible when panel is collapsed */}
+                {leftPanelCollapsed && (
+                  <div className={styles.expandTab} onClick={() => setLeftPanelCollapsed(false)} title="Show panel">
+                    <ChevronRightRegular fontSize={10} />
+                  </div>
+                )}
+                <div className={mergeClasses(styles.digitalLeftPanel, leftPanelCollapsed ? styles.leftPanelCollapsed : undefined)}>
                   {viewAnalog.length === 0 && renderSeriesToolbar()}
                   {viewAnalog.length > 0 && (
                     <div className={styles.seriesPanelHeader}>
