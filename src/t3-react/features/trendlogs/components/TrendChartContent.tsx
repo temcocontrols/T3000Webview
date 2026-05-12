@@ -188,12 +188,21 @@ const useStyles = makeStyles({
     overflowX: 'hidden',
   },
   seriesPanelHeader: {
-    padding: '2px 4px',
-    backgroundColor: 'transparent',
+    padding: '6px 8px',
+    backgroundColor: '#f8f9fa',
+    border: '1px solid #e8e8e8',
+    borderRadius: '4px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
+    gap: '4px',
     flexShrink: 0,
+    marginBottom: '8px',
+  },
+  filterBarBtn: {
+    fontSize: '11px',
+    paddingLeft: '6px',
+    paddingRight: '6px',
+    minHeight: '26px',
   },
   seriesPanelToolbar: {
     padding: '4px',
@@ -246,21 +255,36 @@ const useStyles = makeStyles({
   seriesItem: {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
-    padding: '10px 12px',
-    backgroundColor: 'transparent',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    gap: '2px',
+    padding: '6px 2px 6px 8px',
+    backgroundColor: '#ffffff',
+    border: '1px solid #e8e8e8',
+    borderRadius: '4px',
+    marginBottom: '4px',
     fontSize: '12px',
     cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
     position: 'relative',
-    minHeight: '48px',
+    overflow: 'hidden',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
     ':hover': {
-      backgroundColor: tokens.colorNeutralBackground1Hover,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
     },
-    ':last-child': {
-      borderBottom: 'none',
-    },
+  },
+  digitalSectionDivider: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '4px 8px',
+    backgroundColor: '#f0f0f0',
+    borderTop: '1px solid #d9d9d9',
+    borderBottom: '1px solid #d9d9d9',
+    fontSize: '10px',
+    fontWeight: '600',
+    color: '#595959',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    marginBottom: '2px',
   },
   seriesItemExpanded: {
     backgroundColor: tokens.colorNeutralBackground1Hover,
@@ -282,26 +306,51 @@ const useStyles = makeStyles({
     },
   },
   colorIndicator: {
-    width: '20px',
-    height: '20px',
-    borderRadius: tokens.borderRadiusMedium,
+    width: '24px',
+    height: '16px',
+    borderRadius: '10px',
     flexShrink: 0,
-    border: `2px solid ${tokens.colorNeutralStroke1}`,
     cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    transition: 'all 0.3s ease',
     position: 'relative',
-    boxShadow: tokens.shadow4,
-    backgroundColor: 'var(--series-color)',
-    ':hover': {
-      transform: 'scale(1.1)',
-      boxShadow: tokens.shadow8,
-    },
+    border: '2px solid transparent',
+    display: 'flex',
+    alignItems: 'center',
+    padding: '1px',
+    boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)',
+  },
+  toggleInner: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '50%',
+    backgroundColor: 'white',
+    transition: 'all 0.3s ease',
+    transform: 'translateX(0)',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+    flexShrink: 0,
+  },
+  toggleInnerActive: {
+    transform: 'translateX(8px)',
   },
   digitalSeriesLabel: {
     fontSize: '11px',
     fontWeight: tokens.fontWeightBold,
     marginBottom: '4px',
     color: 'var(--series-color)',
+  },
+  seriesNumber: {
+    width: '18px',
+    height: '18px',
+    borderRadius: '50%',
+    backgroundColor: '#e0e0e0',
+    color: '#595959',
+    fontSize: '10px',
+    fontWeight: '600',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    lineHeight: '1',
   },
   keyboardBadge: {
     position: 'absolute',
@@ -321,38 +370,87 @@ const useStyles = makeStyles({
     border: `2px solid ${tokens.colorNeutralBackground1}`,
     boxShadow: tokens.shadow4,
   },
+  // seriesInfo: flex:1 column, mirrors Vue .series-info
   seriesItemContent: {
     flex: 1,
     minWidth: 0,
-    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    padding: '2px 2px',
+    borderRadius: '4px',
+  },
+  // series-name-line: space-between, mirrors Vue .series-name-line
+  seriesItemInfo: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    justifyContent: 'space-between',
+    width: '100%',
+    minHeight: '24px',
+    gap: '4px',
   },
-  seriesItemInfo: {
-    flex: 1,
+  // name col: flex-shrink, overflow hidden
+  seriesItemName: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
     minWidth: 0,
     overflow: 'hidden',
-  },
-  seriesItemName: {
-    display: 'block',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
+    flexShrink: 1,
     fontWeight: tokens.fontWeightSemibold,
     fontSize: '12px',
+    color: '#262626',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
   },
+  // Right group: grid 40px 40px auto — mirrors Vue .series-right-group
   seriesItemMeta: {
+    display: 'grid',
+    gridTemplateColumns: '40px 40px auto',
+    alignItems: 'center',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
+  seriesChipCol: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    marginTop: '4px',
-    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    whiteSpace: 'nowrap',
+  },
+  seriesTagsCol: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    whiteSpace: 'nowrap',
+  },
+  seriesControlsCol: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flexShrink: 0,
   },
   seriesItemUnit: {
-    color: tokens.colorNeutralForeground3,
-    fontSize: '11px',
+    fontSize: '9px',
     fontWeight: tokens.fontWeightMedium,
+    backgroundColor: 'rgba(0,0,0,0.04)',
+    padding: '1px 3px',
+    borderRadius: '2px',
+    border: '1px solid rgba(0,0,0,0.06)',
+    lineHeight: '1.2',
+    whiteSpace: 'nowrap',
+  },
+  // Grey filled chip — mirrors Vue q-chip color="grey-4"
+  typeChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    backgroundColor: '#bdbdbd',
+    color: '#424242',
+    fontSize: '8px',
+    fontWeight: '600',
+    padding: '1px 4px',
+    borderRadius: '3px',
+    lineHeight: '1.2',
+    whiteSpace: 'nowrap',
   },
   expandButton: {
     minWidth: '24px',
@@ -812,6 +910,32 @@ const useStyles = makeStyles({
   color24: { backgroundColor: '#B22222' },
   colorHidden: { backgroundColor: '#d9d9d9' },
   colorFallback: { backgroundColor: '#999999' },
+  unitColor0: { color: '#FF0000' },
+  unitColor1: { color: '#0000FF' },
+  unitColor2: { color: '#00AA00' },
+  unitColor3: { color: '#FF8000' },
+  unitColor4: { color: '#AA00AA' },
+  unitColor5: { color: '#CC6600' },
+  unitColor6: { color: '#AA0000' },
+  unitColor7: { color: '#0066AA' },
+  unitColor8: { color: '#AA6600' },
+  unitColor9: { color: '#6600AA' },
+  unitColor10: { color: '#006600' },
+  unitColor11: { color: '#FF6600' },
+  unitColor12: { color: '#0000AA' },
+  unitColor13: { color: '#FF00FF' },
+  unitColor14: { color: '#008080' },
+  unitColor15: { color: '#800080' },
+  unitColor16: { color: '#808000' },
+  unitColor17: { color: '#FF1493' },
+  unitColor18: { color: '#4B0082' },
+  unitColor19: { color: '#DC143C' },
+  unitColor20: { color: '#00AAAA' },
+  unitColor21: { color: '#00CED1' },
+  unitColor22: { color: '#8B4513' },
+  unitColor23: { color: '#2F4F4F' },
+  unitColor24: { color: '#B22222' },
+  unitColorFallback: { color: '#595959' },
 });
 
 export interface TrendChartContentProps {
@@ -927,6 +1051,37 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       case '#2F4F4F': return styles.color23;
       case '#B22222': return styles.color24;
       default: return styles.colorFallback;
+    }
+  }, [styles]);
+
+  const getUnitColorClass = useCallback((color: string) => {
+    switch ((color || '').toUpperCase()) {
+      case '#FF0000': return styles.unitColor0;
+      case '#0000FF': return styles.unitColor1;
+      case '#00AA00': return styles.unitColor2;
+      case '#FF8000': return styles.unitColor3;
+      case '#AA00AA': return styles.unitColor4;
+      case '#CC6600': return styles.unitColor5;
+      case '#AA0000': return styles.unitColor6;
+      case '#0066AA': return styles.unitColor7;
+      case '#AA6600': return styles.unitColor8;
+      case '#6600AA': return styles.unitColor9;
+      case '#006600': return styles.unitColor10;
+      case '#FF6600': return styles.unitColor11;
+      case '#0000AA': return styles.unitColor12;
+      case '#FF00FF': return styles.unitColor13;
+      case '#008080': return styles.unitColor14;
+      case '#800080': return styles.unitColor15;
+      case '#808000': return styles.unitColor16;
+      case '#FF1493': return styles.unitColor17;
+      case '#4B0082': return styles.unitColor18;
+      case '#DC143C': return styles.unitColor19;
+      case '#00AAAA': return styles.unitColor20;
+      case '#00CED1': return styles.unitColor21;
+      case '#8B4513': return styles.unitColor22;
+      case '#2F4F4F': return styles.unitColor23;
+      case '#B22222': return styles.unitColor24;
+      default: return styles.unitColorFallback;
     }
   }, [styles]);
 
@@ -1205,18 +1360,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     }
     setTimeOffset(newOffset);
   }, [timeBase, isRealtime, timeOffset, getTimeRangeMinutes, restoreLiveMode]);
-
-  /**
-   * Get last known value for a series (shown in series panel items)
-   */
-  const getLastValue = useCallback((s: TrendSeries): string => {
-    if (!s.data || s.data.length === 0) return '\u2013';
-    const lastVal = s.data[s.data.length - 1].value;
-    if (s.digitalAnalog === 'Digital') {
-      return lastVal > 0.5 ? 'ON (1)' : 'OFF (0)';
-    }
-    return `${lastVal.toFixed(2)}${s.unit ? ' ' + s.unit : ''}`;
-  }, []);
 
   /**
    * Helper: Get existing data time range to optimize loading
@@ -2840,7 +2983,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                 {/* All Dropdown */}
                 <Menu>
                   <MenuTrigger disableButtonEnhancement>
-                    <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after">All</Button>
+                    <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after" className={styles.filterBarBtn}>All</Button>
                   </MenuTrigger>
                   <MenuPopover>
                     <MenuList>
@@ -2853,7 +2996,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                 {/* By Type Dropdown */}
                 <Menu>
                   <MenuTrigger disableButtonEnhancement>
-                    <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after">By Type</Button>
+                    <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after" className={styles.filterBarBtn}>By Type</Button>
                   </MenuTrigger>
                   <MenuPopover>
                     <MenuList>
@@ -2915,6 +3058,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             <React.Fragment key={seriesKey}>
               <div
                 className={mergeClasses(styles.seriesItem, isExpanded ? styles.seriesItemExpanded : undefined, isKeySelected ? styles.selectedSeriesItem : undefined)}
+                onClick={() => toggleSeriesVisibility(globalIndex)}
               >
                 {/* Delete overlay for View 2 & 3 */}
                 {currentView !== 1 && (
@@ -2928,43 +3072,58 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                   />
                 )}
 
-                {/* Color Indicator with keyboard badge */}
-                <div className={styles.colorIndicatorWrap}>
+                {/* Series number badge */}
+                <div className={styles.seriesNumber}>{globalIndex + 1}</div>
+
+                {/* Toggle switch with optional keyboard badge */}
+                <div className={styles.colorIndicatorWrap} onClick={(e) => e.stopPropagation()}>
                   <div
                     className={mergeClasses(styles.colorIndicator, getColorClass(s.color, s.visible === false))}
                     onClick={() => toggleSeriesVisibility(globalIndex)}
-                  />
+                  >
+                    <div className={mergeClasses(styles.toggleInner, s.visible !== false ? styles.toggleInnerActive : undefined)} />
+                  </div>
                   {kbKey && (
                     <div className={styles.keyboardBadge}>{kbKey.toUpperCase()}</div>
                   )}
                 </div>
 
-                <Tooltip content={s.name} relationship="label">
-                  <div className={styles.seriesItemContent} onClick={() => toggleSeriesVisibility(globalIndex)}>
-                    <div className={styles.seriesItemInfo}>
-                      <Text className={mergeClasses(styles.seriesItemName, s.visible === false ? styles.seriesNameHidden : undefined)}>
+                {/* series-info: flex column wrapping series-name-line */}
+                <div className={styles.seriesItemContent}>
+                  {/* series-name-line: space-between row */}
+                  <div className={styles.seriesItemInfo}>
+                    {/* series-name-col */}
+                    <Tooltip content={s.name} relationship="label">
+                      <span className={mergeClasses(styles.seriesItemName, s.visible === false ? styles.seriesNameHidden : undefined)}>
                         {s.name}
-                      </Text>
-                      <div className={styles.seriesItemMeta}>
+                      </span>
+                    </Tooltip>
+
+                    {/* series-right-group: grid 40px 40px auto */}
+                    <div className={styles.seriesItemMeta}>
+                      {/* chip col — 40px */}
+                      <div className={styles.seriesChipCol}>
                         {(s.prefix || s.pointType) && (
-                          <Tag size="extra-small" appearance="outline">{getPrefixTag(s.pointType, s.prefix)}</Tag>
+                          <span className={styles.typeChip}>{getPrefixTag(s.pointType, s.prefix)}</span>
                         )}
-                        <Text className={styles.seriesItemUnit}>{s.unit || 'N/A'}</Text>
-                        <Text size={100} className={styles.seriesMetaValue}>
-                          {getLastValue(s)}
-                        </Text>
+                      </div>
+                      {/* unit col — 40px */}
+                      <div className={styles.seriesTagsCol}>
+                        <span className={mergeClasses(styles.seriesItemUnit, getUnitColorClass(s.color))}>{s.unit || 'N/A'}</span>
+                      </div>
+                      {/* expand col — auto */}
+                      <div className={styles.seriesControlsCol}>
+                        <Button
+                          appearance="subtle"
+                          icon={isExpanded ? <ChevronDownFilled /> : <ChevronRightRegular />}
+                          onClick={(e) => { e.stopPropagation(); toggleSeriesExpand(seriesKey); }}
+                          className={styles.expandButton}
+                          size="small"
+                        />
                       </div>
                     </div>
                   </div>
-                </Tooltip>
-
-                <Button
-                  appearance="subtle"
-                  icon={isExpanded ? <ChevronDownFilled /> : <ChevronRightRegular />}
-                  onClick={(e) => { e.stopPropagation(); toggleSeriesExpand(seriesKey); }}
-                  className={styles.expandButton}
-                  size="small"
-                />
+                </div>
               </div>
 
               {isExpanded && (
@@ -3046,7 +3205,11 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                         )}
                       </div>
                     )}
-                    {displayedSeries.map((s, i) => renderSeriesItem(s, i))}
+                    {viewAnalog.map((s, i) => renderSeriesItem(s, i))}
+                    {viewAnalog.length > 0 && viewDigital.length > 0 && (
+                      <div className={styles.digitalSectionDivider}>Digital</div>
+                    )}
+                    {viewDigital.map((s, i) => renderSeriesItem(s, viewAnalog.length + i))}
                   </div>
                 </div>
                 <div className={styles.rightPanel}>
