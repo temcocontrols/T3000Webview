@@ -82,6 +82,28 @@ const TIME_CONFIGS = {
   '4d': { divisions: 16, totalMinutes: 5760 },
 } as const;
 
+const X_AXIS_TICK_CONFIGS = {
+  '5m': { stepMinutes: 1, unit: 'minute' },
+  '10m': { stepMinutes: 1, unit: 'minute' },
+  '30m': { stepMinutes: 5, unit: 'minute' },
+  '1h': { stepMinutes: 5, unit: 'minute' },
+  '4h': { stepMinutes: 15, unit: 'minute' },
+  '12h': { stepMinutes: 60, unit: 'hour' },
+  '1d': { stepMinutes: 60, unit: 'hour' },
+  '4d': { stepMinutes: 360, unit: 'hour' },
+} as const;
+
+const X_AXIS_MAX_TICKS = {
+  '5m': 7,
+  '10m': 12,
+  '30m': 8,
+  '1h': 14,
+  '4h': 18,
+  '12h': 14,
+  '1d': 26,
+  '4d': 10,
+} as const;
+
 const BAND_SIZE = 100;
 const BAND_MARGIN = 8;
 const DIGITAL_GAP = 50;
@@ -369,6 +391,27 @@ const formatDateISO = (timestamp: number) => {
   return `${year}-${month}-${day}`;
 };
 
+const buildXAxisTicks = (startTime: number, endTime: number, timeBase: TrendChartProps['timeBase']) => {
+  const tickConfig = X_AXIS_TICK_CONFIGS[timeBase];
+  const stepMs = tickConfig.stepMinutes * 60 * 1000;
+  const minGapMs = stepMs * 0.25;
+  const ticks: Array<{ value: number }> = [{ value: startTime }];
+  const firstCleanMs = Math.ceil(startTime / stepMs) * stepMs;
+
+  for (let tickTime = firstCleanMs; tickTime <= endTime; tickTime += stepMs) {
+    if (Math.abs(tickTime - startTime) > minGapMs) {
+      ticks.push({ value: tickTime });
+    }
+  }
+
+  const lastTickValue = ticks[ticks.length - 1]?.value;
+  if (lastTickValue == null || Math.abs(lastTickValue - endTime) > 1000) {
+    ticks.push({ value: endTime });
+  }
+
+  return ticks;
+};
+
 const computeSharedYAxisWidth = (bands: YBandInfo[], digitalSeries: TrendSeries[]) => {
   let maxChars = 4;
   bands.forEach((band) => {
@@ -504,6 +547,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
     const startTime = now - timeConfig.totalMinutes * 60 * 1000;
     const layout = buildYAxisLayout(analogSeries, digitalSeries);
     const gapThresholdMs = 2 * 60 * 1000;
+    const xAxisTicks = buildXAxisTicks(startTime, now, timeBase);
 
     const datasets: ChartDataset<'line', ChartPoint[]>[] = [];
     analogSeries.forEach((seriesItem, index) => {
@@ -618,6 +662,14 @@ export const TrendChart: React.FC<TrendChartProps> = ({
             type: 'time',
             min: startTime,
             max: now,
+            time: {
+              unit: X_AXIS_TICK_CONFIGS[timeBase].unit,
+              stepSize: X_AXIS_TICK_CONFIGS[timeBase].stepMinutes,
+              minUnit: 'second',
+            },
+            afterBuildTicks: (scale: any) => {
+              scale.ticks = xAxisTicks;
+            },
             ticks: {
               color: '#595959',
               font: { family: 'Inter, Helvetica, Arial, sans-serif', size: 11 },
@@ -629,14 +681,19 @@ export const TrendChart: React.FC<TrendChartProps> = ({
                 }
                 return timeLabel;
               },
+              align: 'inner',
               maxRotation: 0,
+              minRotation: 0,
               autoSkip: false,
               padding: 8,
-              maxTicksLimit: timeConfig.divisions + 1,
+              includeBounds: false,
+              maxTicksLimit: X_AXIS_MAX_TICKS[timeBase],
             },
             grid: {
               display: showGrid,
               color: '#e0e0e0',
+              lineWidth: 1,
+              drawTicks: true,
             },
             border: {
               color: '#e0e0e0',
