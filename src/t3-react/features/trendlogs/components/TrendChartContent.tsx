@@ -45,6 +45,13 @@ import {
   DialogActions,
   Checkbox,
   Input,
+  OverlayDrawer,
+  DrawerHeader,
+  DrawerHeaderTitle,
+  DrawerBody,
+  DrawerFooter,
+  RadioGroup,
+  Radio,
 } from '@fluentui/react-components';
 import {
   ArrowDownloadRegular,
@@ -62,10 +69,11 @@ import {
   ChevronLeftRegular,
   ChevronDownFilled,
   ArrowClockwiseRegular,
-  KeyboardRegular,
   WarningRegular,
   CheckmarkRegular,
   DismissRegular,
+  ClockRegular,
+  DeleteRegular,
 } from '@fluentui/react-icons';
 import { TrendChart, TrendSeries } from './TrendChart.tsx';
 import { TrendChartApiService, TrendDataRequest } from '../services/trendChartApi';
@@ -871,6 +879,14 @@ const useStyles = makeStyles({
     borderRadius: '6px',
     padding: '12px',
   },
+  radioGroupWrap: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '4px',
+  },
+  cleanupUnit: {
+    minWidth: '80px',
+  },
   gridTwoCol: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
@@ -1184,7 +1200,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   // ── State ──────────────────────────────────────────────────────────────
   const [series, setSeries] = useState<TrendSeries[]>([]);
   const [timeBase, setTimeBase] = useState<TimeBase>('5m');
-  const [showGrid, setShowGrid] = useState(true);
+  const [showGrid] = useState(true);
   const [isRealtime, setIsRealtime] = useState(true);
   const [loading, setLoading] = useState(false);
   const [loadingTimedOut, setLoadingTimedOut] = useState(false);
@@ -2246,11 +2262,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       setDbActionBusy(null);
     }
   }, [loadDatabaseFiles]);
-
-  const openDatabaseConfigPage = useCallback(() => {
-    // Keep behavior simple and aligned with app routing from chart page.
-    window.location.hash = '#/t3000/database-config';
-  }, []);
 
   /**
    * Handle visibility change - backfill missing data
@@ -3466,338 +3477,356 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         </DialogSurface>
       </Dialog>
 
-      {/* 鈹€鈹€ CONFIG MODAL 鈹€鈹€ */}
-      <Dialog open={showConfigModal} onOpenChange={(_, d) => setShowConfigModal(d.open)}>
-        <DialogSurface className={styles.dialogSurfaceConfig}>
-          <DialogTitle>Trendlog Configuration</DialogTitle>
-          <DialogBody>
-            <DialogContent>
-              <div className={styles.stackCol16}>
+      {/* ─── CONFIG DRAWER ─── */}
+      <OverlayDrawer
+        open={showConfigModal}
+        onOpenChange={(_, d) => setShowConfigModal(d.open)}
+        position="end"
+        size="medium"
+      >
+        <DrawerHeader style={{ padding: '8px 16px', minHeight: 'unset' }}>
+          <DrawerHeaderTitle
+            style={{ fontSize: '12px', fontWeight: 600 }}
+            action={
+              <Button
+                appearance="subtle"
+                icon={<DismissRegular />}
+                onClick={() => setShowConfigModal(false)}
+              />
+            }
+          >
+            Trendlog Configuration
+          </DrawerHeaderTitle>
+        </DrawerHeader>
+        <DrawerBody style={{ overflowY: 'auto', overflowX: 'hidden', padding: '12px 16px' }}>
+          <div className={styles.stackCol16}>
 
-                {/* Chart Display (Vue-aligned core controls) */}
-                <div className={styles.sectionCard}>
-                  <Text weight="semibold" className={styles.rowBetween}>
-                    <SettingsRegular /> Chart Display
-                  </Text>
-                  <div className={styles.rowBetween}>
-                    <Text size={200}>Show Grid</Text>
-                    <Switch checked={showGrid} onChange={(_, d) => setShowGrid(d.checked)} />
-                  </div>
+            {/* Sampling Interval */}
+            <div className={styles.sectionCard}>
+              <div className={styles.rowBetween}>
+                <Text weight="semibold" className={styles.rowWrap6}>
+                  <ClockRegular style={{ color: '#52c41a' }} /> Sampling Interval
+                </Text>
+                <Text size={100} className={styles.textMuted}>How often should data be collected?</Text>
+              </div>
+              <RadioGroup
+                layout="horizontal"
+                className={styles.radioGroupWrap}
+                value={ffiIntervalPreset}
+                onChange={(_, d) => {
+                  const preset = d.value as typeof ffiIntervalPreset;
+                  setFfiIntervalPreset(preset);
+                  const nextSecs = preset === 'custom' ? Math.max(1, ffiCustomMinutes) * 60
+                    : ({ '15min': 900, '20min': 1200, '30min': 1800, '60min': 3600 } as Record<string, number>)[preset];
+                  if (nextSecs !== undefined) setFfiSyncIntervalSecs(nextSecs);
+                  checkFfiSyncWarning(nextSecs ?? ffiSyncIntervalSecs);
+                }}
+              >
+                <Radio value="15min" label="15 min" />
+                <Radio value="20min" label="20 min" />
+                <Radio value="30min" label="30 min" />
+                <Radio value="60min" label="60 min" />
+                <Radio value="custom" label="Custom" />
+              </RadioGroup>
+              {ffiIntervalPreset === 'custom' && (
+                <div className={mergeClasses(styles.rowWrap6, styles.mt8)}>
+                  <Text size={100}>Every:</Text>
+                  <Input
+                    type="number" min={1} max={59}
+                    value={String(ffiCustomMinutes)}
+                    onChange={(_, d) => {
+                      const val = Math.max(1, Math.min(59, Number(d.value) || 1));
+                      setFfiCustomMinutes(val);
+                      const secs = val * 60;
+                      setFfiSyncIntervalSecs(secs);
+                      checkFfiSyncWarning(secs);
+                    }}
+                    className={styles.inputSmall}
+                  />
+                  <Text size={100}>minutes</Text>
                 </div>
+              )}
+              {!!ffiSyncWarning && <Text size={100} className={styles.warningText}>{ffiSyncWarning}</Text>}
+            </div>
 
-                <div className={styles.sectionCard}>
-                  <Text weight="semibold" className={styles.rowBetween}>
-                    <ArrowClockwiseRegular /> Sampling and Rediscover Interval
-                  </Text>
-                  <div className={styles.stackCol10}>
-                    <div>
-                      <Text size={100} className={styles.fieldLabelWide}>Sampling Interval</Text>
+            {/* Refresh and Rediscover Interval */}
+            <div className={styles.sectionCard}>
+              <div className={styles.rowBetween}>
+                <Text weight="semibold" className={styles.rowWrap6}>
+                  <ArrowClockwiseRegular style={{ color: '#fa8c16' }} /> Refresh and Rediscover Interval
+                </Text>
+                <Text size={100} className={styles.textMuted}>How often should system check for new BACnet objects?</Text>
+              </div>
+              <RadioGroup
+                layout="horizontal"
+                className={styles.radioGroupWrap}
+                value={rediscoverIntervalPreset}
+                onChange={(_, d) => {
+                  const preset = d.value as typeof rediscoverIntervalPreset;
+                  setRediscoverIntervalPreset(preset);
+                  const nextSecs = preset === 'custom' ? Math.max(1, rediscoverCustomHours) * 3600
+                    : ({ '1hour': 3600, '2hours': 7200, '4hours': 14400, '8hours': 28800 } as Record<string, number>)[preset];
+                  if (nextSecs !== undefined) setRediscoverIntervalSecs(nextSecs);
+                  checkRediscoverWarning(nextSecs ?? rediscoverIntervalSecs);
+                }}
+              >
+                <Radio value="1hour" label="1 hour" />
+                <Radio value="2hours" label="2 hours" />
+                <Radio value="4hours" label="4 hours" />
+                <Radio value="8hours" label="8 hours" />
+                <Radio value="custom" label="Custom" />
+              </RadioGroup>
+              {rediscoverIntervalPreset === 'custom' && (
+                <div className={mergeClasses(styles.rowWrap6, styles.mt8)}>
+                  <Text size={100}>Every:</Text>
+                  <Input
+                    type="number" min={1} max={168}
+                    value={String(rediscoverCustomHours)}
+                    onChange={(_, d) => {
+                      const val = Math.max(1, Math.min(168, Number(d.value) || 1));
+                      setRediscoverCustomHours(val);
+                      const secs = val * 3600;
+                      setRediscoverIntervalSecs(secs);
+                      checkRediscoverWarning(secs);
+                    }}
+                    className={styles.inputSmall}
+                  />
+                  <Text size={100}>hours</Text>
+                </div>
+              )}
+              {!!rediscoverWarning && <Text size={100} className={styles.warningText}>{rediscoverWarning}</Text>}
+            </div>
+
+            {/* Database Status */}
+            <div className={styles.sectionCard}>
+              <div className={styles.rowBetween}>
+                <Text weight="semibold" className={styles.rowWrap6}>
+                  <DatabaseRegular style={{ color: '#1890ff' }} /> Database Status
+                </Text>
+                <Text size={100} className={styles.textMuted}>
+                  {dbFiles.find((f) => f.is_active)?.name ?? ''}
+                </Text>
+              </div>
+              {(dbConfigLoading || dbFilesLoading || syncConfigLoading) && (
+                <div className={styles.loadingRow}>
+                  <Spinner size="tiny" />
+                  <Text size={100}>Loading...</Text>
+                </div>
+              )}
+            </div>
+
+            {/* Data Splitting Strategy */}
+            <div className={styles.sectionCard}>
+              <div className={styles.rowBetween}>
+                <Text weight="semibold" className={styles.rowWrap6}>
+                  <SettingsRegular style={{ color: '#fa8c16' }} /> Data Splitting Strategy
+                </Text>
+                <Button
+                  size="small"
+                  icon={<ArrowClockwiseRegular />}
+                  onClick={() => { loadDatabaseConfig(); loadDatabaseFiles(); }}
+                  disabled={dbConfigLoading || dbFilesLoading}
+                >
+                  Refresh
+                </Button>
+              </div>
+              <Text size={100} className={styles.fieldLabel}>Split new data by:</Text>
+              <RadioGroup
+                layout="horizontal"
+                className={styles.radioGroupWrap}
+                value={dbConfig.strategy}
+                onChange={(_, d) => setDbConfig((prev) => ({ ...prev, strategy: d.value as DatabasePartitionConfig['strategy'] }))}
+              >
+                <Radio value="Daily" label="Daily" />
+                <Radio value="Weekly" label="Weekly" />
+                <Radio value="Monthly" label="Monthly" />
+                <Radio value="Quarterly" label="Quarterly" />
+                <Radio value="Custom" label="Custom Days" />
+                <Radio value="CustomMonths" label="Custom Months" />
+              </RadioGroup>
+              {dbConfig.strategy === 'Custom' && (
+                <div className={mergeClasses(styles.rowWrap6, styles.mt8)}>
+                  <Text size={100}>Every:</Text>
+                  <Input
+                    type="number" min={1} max={365}
+                    value={String(dbConfig.custom_days ?? 30)}
+                    onChange={(_, d) => {
+                      const parsed = Number(d.value);
+                      setDbConfig((prev) => ({ ...prev, custom_days: Number.isFinite(parsed) ? parsed : 1 }));
+                    }}
+                    className={styles.inputSmall}
+                  />
+                  <Text size={100}>days</Text>
+                </div>
+              )}
+              {dbConfig.strategy === 'CustomMonths' && (
+                <div className={mergeClasses(styles.rowWrap6, styles.mt8)}>
+                  <Text size={100}>Every:</Text>
+                  <Input
+                    type="number" min={1} max={12}
+                    value={String(dbConfig.custom_months ?? 2)}
+                    onChange={(_, d) => {
+                      const parsed = Number(d.value);
+                      setDbConfig((prev) => ({ ...prev, custom_months: Number.isFinite(parsed) ? parsed : 1 }));
+                    }}
+                    className={styles.inputSmall}
+                  />
+                  <Text size={100}>months</Text>
+                </div>
+              )}
+              <Text size={100} className={mergeClasses(styles.textMuted, styles.mt8)}>
+                Current: {(
+                  dbConfig.strategy === 'Daily' ? 'One file per day' :
+                  dbConfig.strategy === 'Weekly' ? 'One file per week' :
+                  dbConfig.strategy === 'Monthly' ? 'One file per month' :
+                  dbConfig.strategy === 'Quarterly' ? 'One file per quarter (3 months)' :
+                  dbConfig.strategy === 'CustomMonths' ? `One file every ${dbConfig.custom_months} months` :
+                  dbConfig.strategy === 'Custom' ? `One file every ${dbConfig.custom_days} days` :
+                  'One file every 5 minutes'
+                )}
+              </Text>
+              {!!dbConfigMessage && (
+                <Text size={100} className={styles.successText}>{dbConfigMessage}</Text>
+              )}
+            </div>
+
+            {/* Database Files */}
+            <div className={styles.sectionCard}>
+              <div className={styles.rowBetween}>
+                <Text weight="semibold" className={styles.rowWrap6}>
+                  <DatabaseRegular style={{ color: '#1890ff' }} /> Database Files ({dbFiles.length})
+                </Text>
+                <Button
+                  size="small"
+                  appearance="primary"
+                  icon={<DeleteRegular />}
+                  onClick={cleanupAllDatabaseFiles}
+                  disabled={!!dbActionBusy || dbConfigLoading}
+                >
+                  Clean All
+                </Button>
+              </div>
+              <div className={styles.filesList}>
+                {dbFiles.length === 0 && !dbFilesLoading && (
+                  <Text size={100} className={styles.textMuted}>No partition files found.</Text>
+                )}
+                {dbFiles.map((file) => (
+                  <div key={file.id} className={styles.fileRow}>
+                    <div className={styles.minWidthZero}>
                       <div className={styles.rowWrap6}>
-                        {(['15min', '20min', '30min', '60min', 'custom'] as const).map((preset) => (
-                          <Button
-                            key={preset}
-                            size="small"
-                            appearance={ffiIntervalPreset === preset ? 'primary' : 'secondary'}
-                            onClick={() => {
-                              setFfiIntervalPreset(preset);
-                              const nextSecs = preset === 'custom' ? Math.max(1, ffiCustomMinutes) * 60 :
-                                ({ '15min': 900, '20min': 1200, '30min': 1800, '60min': 3600 }[preset]);
-                              setFfiSyncIntervalSecs(nextSecs);
-                              checkFfiSyncWarning(nextSecs);
-                            }}
-                          >
-                            {preset === 'custom' ? 'Custom' : preset.replace('min', ' min')}
-                          </Button>
-                        ))}
-                        {ffiIntervalPreset === 'custom' && (
-                          <>
-                            <Text size={100}>Every</Text>
-                            <Input
-                              type="number"
-                              min={1}
-                              max={59}
-                              value={String(ffiCustomMinutes)}
-                              onChange={(_, d) => {
-                                const val = Math.max(1, Math.min(59, Number(d.value) || 1));
-                                setFfiCustomMinutes(val);
-                                const secs = val * 60;
-                                setFfiSyncIntervalSecs(secs);
-                                checkFfiSyncWarning(secs);
-                              }}
-                              className={styles.inputSmall}
-                            />
-                            <Text size={100}>minutes</Text>
-                          </>
+                        <Text size={100} weight="semibold" className={styles.ellipsisText}>{file.name}</Text>
+                        {file.is_active && (
+                          <Tag size="small" appearance="filled" style={{ background: '#52c41a', color: '#fff', fontSize: '9px', padding: '1px 4px' }}>ACTIVE</Tag>
                         )}
                       </div>
-                      {!!ffiSyncWarning && (
-                        <Text size={100} className={styles.warningText}>
-                          {ffiSyncWarning}
-                        </Text>
-                      )}
                     </div>
-
-                    <div>
-                      <Text size={100} className={styles.fieldLabelWide}>Refresh and Rediscover Interval</Text>
-                      <div className={styles.rowWrap6}>
-                        {(['1hour', '2hours', '4hours', '8hours', 'custom'] as const).map((preset) => (
-                          <Button
-                            key={preset}
-                            size="small"
-                            appearance={rediscoverIntervalPreset === preset ? 'primary' : 'secondary'}
-                            onClick={() => {
-                              setRediscoverIntervalPreset(preset);
-                              const nextSecs = preset === 'custom' ? Math.max(1, rediscoverCustomHours) * 3600 :
-                                ({ '1hour': 3600, '2hours': 7200, '4hours': 14400, '8hours': 28800 }[preset]);
-                              setRediscoverIntervalSecs(nextSecs);
-                              checkRediscoverWarning(nextSecs);
-                            }}
-                          >
-                            {preset === 'custom' ? 'Custom' : preset.replace('hour', ' hour').replace('hours', ' hours')}
-                          </Button>
-                        ))}
-                        {rediscoverIntervalPreset === 'custom' && (
-                          <>
-                            <Text size={100}>Every</Text>
-                            <Input
-                              type="number"
-                              min={1}
-                              max={168}
-                              value={String(rediscoverCustomHours)}
-                              onChange={(_, d) => {
-                                const val = Math.max(1, Math.min(168, Number(d.value) || 1));
-                                setRediscoverCustomHours(val);
-                                const secs = val * 3600;
-                                setRediscoverIntervalSecs(secs);
-                                checkRediscoverWarning(secs);
-                              }}
-                              className={styles.inputSmall}
-                            />
-                            <Text size={100}>hours</Text>
-                          </>
-                        )}
-                      </div>
-                      {!!rediscoverWarning && (
-                        <Text size={100} className={styles.warningText}>
-                          {rediscoverWarning}
-                        </Text>
-                      )}
-                    </div>
-                  </div>
-                  <div className={mergeClasses(styles.rowWrap8, styles.mt8)}>
-                    <Button size="small" appearance="primary" onClick={saveSyncConfig} disabled={syncConfigSaving || syncConfigLoading}>
-                      {syncConfigSaving ? 'Saving...' : 'Save Intervals'}
-                    </Button>
-                    <Text size={100} className={styles.textMuted}>
-                      Current: sampling {Math.round(ffiSyncIntervalSecs / 60)} min, rediscover {Math.round(rediscoverIntervalSecs / 3600)} hr
-                    </Text>
-                  </div>
-                </div>
-
-                <div className={styles.sectionCard}>
-                  <div className={styles.rowBetween}>
-                    <Text weight="semibold" className={styles.rowWrap6}>
-                      <DatabaseRegular /> Database Strategy
-                    </Text>
                     <Button
                       size="small"
-                      icon={<ArrowClockwiseRegular />}
-                      onClick={() => {
-                        loadDatabaseConfig();
-                        loadDatabaseFiles();
-                      }}
-                      disabled={dbConfigLoading || dbFilesLoading}
-                    >
-                      Refresh
-                    </Button>
+                      appearance="subtle"
+                      icon={<DeleteRegular />}
+                      disabled={file.is_active || !!dbActionBusy}
+                      onClick={() => deleteDatabaseFile(file.id)}
+                    />
                   </div>
-
-                  <div className={styles.gridTwoCol}>
-                    <div>
-                      <Text size={100} className={styles.fieldLabel}>Partition Strategy</Text>
-                      <Dropdown
-                        value={dbConfig.strategy}
-                        selectedOptions={[dbConfig.strategy]}
-                        onOptionSelect={(_, d) => {
-                          if (d.optionValue) {
-                            setDbConfig((prev) => ({ ...prev, strategy: d.optionValue as DatabasePartitionConfig['strategy'] }));
-                          }
-                        }}
-                      >
-                        <Option value="FiveMinutes">5 Minutes</Option>
-                        <Option value="Daily">Daily</Option>
-                        <Option value="Weekly">Weekly</Option>
-                        <Option value="Monthly">Monthly</Option>
-                        <Option value="Quarterly">Quarterly</Option>
-                        <Option value="Custom">Custom Days</Option>
-                        <Option value="CustomMonths">Custom Months</Option>
-                      </Dropdown>
-                    </div>
-                    <div>
-                      <Text size={100} className={styles.fieldLabel}>Retention Unit</Text>
-                      <Dropdown
-                        value={dbConfig.retention_unit}
-                        selectedOptions={[dbConfig.retention_unit]}
-                        onOptionSelect={(_, d) => {
-                          if (d.optionValue) {
-                            setDbConfig((prev) => ({ ...prev, retention_unit: d.optionValue as DatabasePartitionConfig['retention_unit'] }));
-                          }
-                        }}
-                      >
-                        <Option value="Days">Days</Option>
-                        <Option value="Weeks">Weeks</Option>
-                        <Option value="Months">Months</Option>
-                      </Dropdown>
-                    </div>
-                    <div>
-                      <Text size={100} className={styles.fieldLabel}>Retention Value</Text>
-                      <Input
-                        type="number"
-                        min={1}
-                        value={String(dbConfig.retention_value ?? 30)}
-                        onChange={(_, d) => {
-                          const parsed = Number(d.value);
-                          setDbConfig((prev) => ({ ...prev, retention_value: Number.isFinite(parsed) ? parsed : 1 }));
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <Text size={100} className={styles.fieldLabel}>Custom Days</Text>
-                      <Input
-                        type="number"
-                        min={1}
-                        value={String(dbConfig.custom_days ?? 30)}
-                        onChange={(_, d) => {
-                          const parsed = Number(d.value);
-                          setDbConfig((prev) => ({ ...prev, custom_days: Number.isFinite(parsed) ? parsed : 1 }));
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <Text size={100} className={styles.fieldLabel}>Custom Months</Text>
-                      <Input
-                        type="number"
-                        min={1}
-                        value={String(dbConfig.custom_months ?? 2)}
-                        onChange={(_, d) => {
-                          const parsed = Number(d.value);
-                          setDbConfig((prev) => ({ ...prev, custom_months: Number.isFinite(parsed) ? parsed : 1 }));
-                        }}
-                      />
-                    </div>
-                    <div className={styles.rowEnd}>
-                      <Switch
-                        checked={dbConfig.auto_cleanup_enabled}
-                        onChange={(_, d) => setDbConfig((prev) => ({ ...prev, auto_cleanup_enabled: d.checked }))}
-                        label="Auto Cleanup"
-                      />
-                    </div>
-                  </div>
-
-                  <div className={styles.rowWrap8}>
-                    <Button appearance="primary" onClick={saveDatabaseConfig} disabled={dbConfigSaving || dbConfigLoading}>
-                      {dbConfigSaving ? 'Saving...' : 'Save Config'}
-                    </Button>
-                    <Button onClick={cleanupOldDatabaseFiles} disabled={!!dbActionBusy || dbConfigLoading}>
-                      Cleanup Old
-                    </Button>
-                    <Button onClick={cleanupAllDatabaseFiles} disabled={!!dbActionBusy || dbConfigLoading}>
-                      Cleanup All
-                    </Button>
-                    <Button onClick={optimizeDatabase} disabled={!!dbActionBusy || dbConfigLoading}>
-                      Optimize
-                    </Button>
-                  </div>
-
-                  {(dbConfigLoading || dbFilesLoading || syncConfigLoading) && (
-                    <div className={styles.loadingRow}>
-                      <Spinner size="tiny" />
-                      <Text size={100}>Loading database settings...</Text>
-                    </div>
-                  )}
-                  {!!dbConfigMessage && (
-                    <Text size={100} className={styles.successText}>
-                      {dbConfigMessage}
-                    </Text>
-                  )}
-                </div>
-
-                <div className={styles.sectionCard}>
-                  <Text weight="semibold" className={styles.rowBetween}>
-                    <DatabaseRegular /> Database Files
-                  </Text>
-                  <div className={styles.filesList}>
-                    {dbFiles.length === 0 && !dbFilesLoading && (
-                      <Text size={100} className={styles.textMuted}>No partition files found.</Text>
-                    )}
-                    {dbFiles.map((file) => (
-                      <div key={file.id} className={styles.fileRow}>
-                        <div className={styles.minWidthZero}>
-                          <Text size={100} weight="semibold" block className={styles.ellipsisText}>
-                            {file.name}
-                          </Text>
-                          <Text size={100} className={styles.textMuted}>
-                            {file.size} · {file.records} rec · {file.age_days} days
-                          </Text>
-                        </div>
-                        <Button
-                          size="small"
-                          appearance="secondary"
-                          disabled={file.is_active || !!dbActionBusy}
-                          onClick={() => deleteDatabaseFile(file.id)}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Keyboard Shortcuts */}
-                <div className={styles.sectionCard}>
-                  <div className={styles.rowBetween}>
-                    <Text weight="semibold" className={styles.rowWrap6}>
-                      <KeyboardRegular /> Keyboard Shortcuts
-                    </Text>
-                    <Switch checked={keyboardEnabled} onChange={(_, d) => setKeyboardEnabled(d.checked)}
-                      label={keyboardEnabled ? 'Enabled' : 'Disabled'} />
-                  </div>
-                  <div className={styles.shortcutsGrid}>
-                    {[
-                      ['1-9, A-E', 'Toggle series 1-14'],
-                      ['<- ->', 'Scroll time left/right'],
-                      ['Up Down', 'Zoom in/out'],
-                      ['Ctrl+Up/Down', 'Navigate series list'],
-                      ['Enter', 'Toggle selected series'],
-                      ['Esc', 'Toggle keyboard mode'],
-                    ].map(([key, desc]) => (
-                      <React.Fragment key={key}>
-                        <Text size={100}><kbd className={styles.keycap}>{key}</kbd></Text>
-                        <Text size={100} className={styles.textMuted}>{desc}</Text>
-                      </React.Fragment>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Database Configuration shortcut */}
-                <div className={styles.sectionCard}>
-                  <Text weight="semibold" className={styles.rowBetween}>
-                    <DatabaseRegular /> Database Configuration
-                  </Text>
-                  <Text size={100} className={styles.textMuted}>
-                    Open the dedicated database page for backup and advanced maintenance operations.
-                  </Text>
-                  <Button size="small" onClick={openDatabaseConfigPage}>Open Database Config</Button>
-                </div>
-
+                ))}
               </div>
-            </DialogContent>
-            <DialogActions>
-              <Button appearance="primary" onClick={() => setShowConfigModal(false)}>Close</Button>
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
+            </div>
+
+            {/* Cleanup Management */}
+            <div className={styles.sectionCard}>
+              <Text weight="semibold" className={styles.rowWrap6} style={{ marginBottom: '8px' }}>
+                <DeleteRegular style={{ color: '#ff4d4f' }} /> Cleanup Management
+              </Text>
+              <div className={styles.rowWrap6}>
+                <Text size={100} className={styles.textMuted} style={{ whiteSpace: 'nowrap' }}>Auto cleanup files older than:</Text>
+                <Input
+                  type="number" min={1} max={365}
+                  value={String(dbConfig.retention_value ?? 30)}
+                  onChange={(_, d) => {
+                    const parsed = Number(d.value);
+                    setDbConfig((prev) => ({ ...prev, retention_value: Number.isFinite(parsed) ? parsed : 1 }));
+                  }}
+                  className={styles.inputSmall}
+                />
+                <Dropdown
+                  className={styles.cleanupUnit}
+                  value={dbConfig.retention_unit}
+                  selectedOptions={[dbConfig.retention_unit]}
+                  onOptionSelect={(_, d) => {
+                    if (d.optionValue) setDbConfig((prev) => ({ ...prev, retention_unit: d.optionValue as DatabasePartitionConfig['retention_unit'] }));
+                  }}
+                >
+                  <Option value="Days">Days</Option>
+                  <Option value="Weeks">Weeks</Option>
+                  <Option value="Months">Months</Option>
+                </Dropdown>
+              </div>
+              <div className={mergeClasses(styles.rowWrap6, styles.mt8)}>
+                <Button
+                  size="small"
+                  appearance="primary"
+                  icon={<DeleteRegular />}
+                  onClick={cleanupOldDatabaseFiles}
+                  disabled={!!dbActionBusy || dbConfigLoading}
+                >
+                  Clean up now
+                </Button>
+                <Button
+                  size="small"
+                  icon={<SettingsRegular />}
+                  onClick={optimizeDatabase}
+                  disabled={!!dbActionBusy || dbConfigLoading}
+                >
+                  Optimize
+                </Button>
+              </div>
+            </div>
+
+            {/* Keyboard Shortcuts */}
+            <div className={styles.sectionCard}>
+              <div className={styles.rowBetween}>
+                <Text weight="semibold">Keyboard Shortcuts</Text>
+                <Switch
+                  checked={keyboardEnabled}
+                  onChange={(_, d) => setKeyboardEnabled(d.checked)}
+                  label={keyboardEnabled ? 'Enabled' : 'Disabled'}
+                />
+              </div>
+              <div className={styles.shortcutsGrid}>
+                {[
+                  ['← / →', 'Scroll time left/right'],
+                  ['↑ / ↓', 'Zoom in/out'],
+                  ['1-9, A-E', 'Toggle series visibility'],
+                  ['Ctrl + ↑ / ↓', 'Navigate series list'],
+                  ['Enter', 'Toggle selected item'],
+                  ['ESC', 'Toggle item shortcuts on/off'],
+                ].map(([key, desc]) => (
+                  <React.Fragment key={key}>
+                    <Text size={100}><kbd className={styles.keycap}>{key}</kbd></Text>
+                    <Text size={100} className={styles.textMuted}>{desc}</Text>
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        </DrawerBody>
+        <DrawerFooter style={{ padding: '8px 16px', borderTop: `1px solid ${tokens.colorNeutralStroke1}` }}>
+          <Button size="small" onClick={() => setShowConfigModal(false)}>Cancel</Button>
+          <Button
+            size="small"
+            appearance="primary"
+            disabled={dbConfigSaving || syncConfigSaving}
+            onClick={async () => {
+              await saveSyncConfig();
+              await saveDatabaseConfig();
+              setShowConfigModal(false);
+            }}
+          >
+            {(dbConfigSaving || syncConfigSaving) ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DrawerFooter>
+      </OverlayDrawer>
 
       {/* 鈹€鈹€ ITEM SELECTOR DIALOG (View 2 & 3) 鈹€鈹€ */}
       <Dialog open={showItemSelector} onOpenChange={(_, d) => setShowItemSelector(d.open)}>
