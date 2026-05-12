@@ -891,6 +891,8 @@ const useStyles = makeStyles({
   },
   cleanupUnit: {
     minWidth: '80px',
+    fontSize: '11px',
+    '& .fui-Dropdown__button': { fontSize: '11px' },
   },
   gridTwoCol: {
     display: 'grid',
@@ -910,6 +912,8 @@ const useStyles = makeStyles({
   },
   inputSmall: {
     width: '80px',
+    fontSize: '11px',
+    '& input': { fontSize: '11px' },
   },
   rowEnd: {
     display: 'flex',
@@ -3074,7 +3078,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           <Text size={300} className={styles.textMuted}>
             Select items to track to start monitoring specific data points.
           </Text>
-          <Button appearance="primary" onClick={openItemSelector}>
+          <Button appearance="primary" onClick={openItemSelector} style={{ fontWeight: 400 }}>
             Select Items to Track
           </Button>
         </div>
@@ -3767,8 +3771,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                   <Option value="Weeks">Weeks</Option>
                   <Option value="Months">Months</Option>
                 </Dropdown>
-              </div>
-              <div className={mergeClasses(styles.rowWrap6, styles.mt8)}>
                 <Button
                   size="small"
                   appearance="primary"
