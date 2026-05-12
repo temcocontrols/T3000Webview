@@ -26,6 +26,7 @@ import {
   Text,
   Spinner,
   makeStyles,
+  mergeClasses,
   tokens,
   Menu,
   MenuTrigger,
@@ -553,6 +554,264 @@ const useStyles = makeStyles({
       backgroundColor: '#0078d4',
     },
   },
+  clickableCursor: {
+    cursor: 'pointer',
+  },
+  dbTooltipContent: {
+    maxWidth: '280px',
+  },
+  dbTooltipTitle: {
+    fontWeight: 600,
+    marginBottom: '4px',
+  },
+  dbTooltipMessage: {
+    fontSize: '12px',
+  },
+  dbTooltipHint: {
+    fontSize: '11px',
+    color: '#aaa',
+    marginTop: '6px',
+  },
+  dbBadge: {
+    marginLeft: 'auto',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '3px',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: 700,
+    cursor: 'default',
+    border: '1px solid',
+  },
+  dbBadgeError: {
+    backgroundColor: '#fff1f0',
+    border: '1px solid #ffa39e',
+    color: '#cf1322',
+  },
+  dbBadgeWarn: {
+    backgroundColor: '#fffbe6',
+    border: '1px solid #ffe58f',
+    color: '#d46b08',
+  },
+  selectedSeriesItem: {
+    backgroundColor: tokens.colorBrandBackground2,
+  },
+  removeTrackingButton: {
+    position: 'absolute',
+    top: '4px',
+    right: '28px',
+    minWidth: '20px',
+    width: '20px',
+    height: '20px',
+    padding: 0,
+    zIndex: 2,
+  },
+  colorIndicatorWrap: {
+    position: 'relative',
+    flexShrink: 0,
+  },
+  seriesNameHidden: {
+    opacity: 0.4,
+  },
+  seriesMetaValue: {
+    color: tokens.colorNeutralForeground2,
+    fontWeight: 600,
+    marginLeft: '4px',
+  },
+  emptyStateCompact: {
+    padding: '24px 12px',
+    textAlign: 'center',
+  },
+  iconLarge: {
+    fontSize: '40px',
+  },
+  iconMedium: {
+    fontSize: '32px',
+  },
+  iconSmall: {
+    fontSize: '20px',
+  },
+  mt4: { marginTop: '4px' },
+  mt8: { marginTop: '8px' },
+  mt12: { marginTop: '12px' },
+  mt16: { marginTop: '16px' },
+  textMuted: {
+    color: tokens.colorNeutralForeground3,
+  },
+  dialogSurfaceSmall: {
+    maxWidth: '360px',
+  },
+  dialogSurfaceConfig: {
+    maxWidth: '760px',
+  },
+  dialogSurfaceSelector: {
+    maxWidth: '460px',
+    maxHeight: '80vh',
+  },
+  stackCol12: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  stackCol16: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+  },
+  stackCol10: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+  },
+  rowWrap6: {
+    display: 'flex',
+    gap: '6px',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  rowWrap8: {
+    display: 'flex',
+    gap: '8px',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  rowBetween: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '8px',
+  },
+  sectionCard: {
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: '6px',
+    padding: '12px',
+  },
+  gridTwoCol: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '10px',
+  },
+  fieldLabel: {
+    display: 'block',
+    marginBottom: '4px',
+  },
+  fieldLabelWide: {
+    display: 'block',
+    marginBottom: '6px',
+  },
+  inputFull: {
+    width: '100%',
+  },
+  inputSmall: {
+    width: '80px',
+  },
+  rowEnd: {
+    display: 'flex',
+    alignItems: 'end',
+  },
+  loadingRow: {
+    marginTop: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  successText: {
+    display: 'block',
+    marginTop: '8px',
+    color: tokens.colorStatusSuccessForeground1,
+  },
+  warningText: {
+    color: tokens.colorStatusWarningForeground1,
+    display: 'block',
+    marginTop: '6px',
+  },
+  filesList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    maxHeight: '190px',
+    overflowY: 'auto',
+  },
+  fileRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '8px',
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: '4px',
+    padding: '6px 8px',
+    alignItems: 'center',
+  },
+  minWidthZero: {
+    minWidth: 0,
+  },
+  ellipsisText: {
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  shortcutsGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '4px 16px',
+    fontSize: '12px',
+  },
+  keycap: {
+    background: '#f0f0f0',
+    padding: '1px 5px',
+    borderRadius: '3px',
+    border: '1px solid #ccc',
+  },
+  selectorContent: {
+    overflowY: 'auto',
+    maxHeight: '380px',
+  },
+  selectorHeader: {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '12px',
+  },
+  selectorRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '6px 0',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  selectorColor: {
+    width: '14px',
+    height: '14px',
+    borderRadius: '3px',
+    flexShrink: 0,
+    backgroundColor: 'var(--series-color)',
+  },
+  color0: { backgroundColor: '#FF0000' },
+  color1: { backgroundColor: '#0000FF' },
+  color2: { backgroundColor: '#00AA00' },
+  color3: { backgroundColor: '#FF8000' },
+  color4: { backgroundColor: '#AA00AA' },
+  color5: { backgroundColor: '#CC6600' },
+  color6: { backgroundColor: '#AA0000' },
+  color7: { backgroundColor: '#0066AA' },
+  color8: { backgroundColor: '#AA6600' },
+  color9: { backgroundColor: '#6600AA' },
+  color10: { backgroundColor: '#006600' },
+  color11: { backgroundColor: '#FF6600' },
+  color12: { backgroundColor: '#0000AA' },
+  color13: { backgroundColor: '#FF00FF' },
+  color14: { backgroundColor: '#008080' },
+  color15: { backgroundColor: '#800080' },
+  color16: { backgroundColor: '#808000' },
+  color17: { backgroundColor: '#FF1493' },
+  color18: { backgroundColor: '#4B0082' },
+  color19: { backgroundColor: '#DC143C' },
+  color20: { backgroundColor: '#00AAAA' },
+  color21: { backgroundColor: '#00CED1' },
+  color22: { backgroundColor: '#8B4513' },
+  color23: { backgroundColor: '#2F4F4F' },
+  color24: { backgroundColor: '#B22222' },
+  colorHidden: { backgroundColor: '#d9d9d9' },
+  colorFallback: { backgroundColor: '#999999' },
 });
 
 export interface TrendChartContentProps {
@@ -572,6 +831,36 @@ const TIMEBASE_LABELS: Record<string, string> = {
   '5m': '5 minutes', '10m': '10 minutes', '30m': '30 minutes', '1h': '1 hour',
   '4h': '4 hours', '12h': '12 hours', '1d': '1 day', '4d': '4 days', 'custom': 'Custom',
 };
+
+interface DatabasePartitionConfig {
+  id?: number;
+  strategy: 'FiveMinutes' | 'Daily' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Custom' | 'CustomMonths';
+  custom_days?: number | null;
+  custom_months?: number | null;
+  auto_cleanup_enabled: boolean;
+  retention_value: number;
+  retention_unit: 'Days' | 'Weeks' | 'Months';
+  is_active: boolean;
+}
+
+interface DatabaseFileInfo {
+  id: number;
+  name: string;
+  size: string;
+  records: number;
+  start_date?: string | null;
+  end_date?: string | null;
+  is_active: boolean;
+  is_archived: boolean;
+  partition_identifier?: string | null;
+  age_days: number;
+}
+
+interface CleanupResult {
+  files_deleted?: number;
+  space_saved?: string;
+  message?: string;
+}
 
 // Color palette - Cyan at position 20 per user requirement
 const CHART_COLORS = [
@@ -605,6 +894,41 @@ const CHART_COLORS = [
 export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const styles = useStyles();
   const { selectedDevice } = useDeviceTreeStore();
+
+  const getColorClass = useCallback((color: string, hidden = false) => {
+    if (hidden) {
+      return styles.colorHidden;
+    }
+
+    switch ((color || '').toUpperCase()) {
+      case '#FF0000': return styles.color0;
+      case '#0000FF': return styles.color1;
+      case '#00AA00': return styles.color2;
+      case '#FF8000': return styles.color3;
+      case '#AA00AA': return styles.color4;
+      case '#CC6600': return styles.color5;
+      case '#AA0000': return styles.color6;
+      case '#0066AA': return styles.color7;
+      case '#AA6600': return styles.color8;
+      case '#6600AA': return styles.color9;
+      case '#006600': return styles.color10;
+      case '#FF6600': return styles.color11;
+      case '#0000AA': return styles.color12;
+      case '#FF00FF': return styles.color13;
+      case '#008080': return styles.color14;
+      case '#800080': return styles.color15;
+      case '#808000': return styles.color16;
+      case '#FF1493': return styles.color17;
+      case '#4B0082': return styles.color18;
+      case '#DC143C': return styles.color19;
+      case '#00AAAA': return styles.color20;
+      case '#00CED1': return styles.color21;
+      case '#8B4513': return styles.color22;
+      case '#2F4F4F': return styles.color23;
+      case '#B22222': return styles.color24;
+      default: return styles.colorFallback;
+    }
+  }, [styles]);
 
   // Use props or selected device
   const serialNumber = props.serialNumber || selectedDevice?.serialNumber;
@@ -646,6 +970,31 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
   // Config modal
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [dbConfigLoading, setDbConfigLoading] = useState(false);
+  const [dbConfigSaving, setDbConfigSaving] = useState(false);
+  const [dbConfigMessage, setDbConfigMessage] = useState<string | null>(null);
+  const [syncConfigLoading, setSyncConfigLoading] = useState(false);
+  const [syncConfigSaving, setSyncConfigSaving] = useState(false);
+  const [ffiSyncIntervalSecs, setFfiSyncIntervalSecs] = useState(900);
+  const [rediscoverIntervalSecs, setRediscoverIntervalSecs] = useState(3600);
+  const [ffiIntervalPreset, setFfiIntervalPreset] = useState<'15min' | '20min' | '30min' | '60min' | 'custom'>('15min');
+  const [ffiCustomMinutes, setFfiCustomMinutes] = useState(15);
+  const [ffiSyncWarning, setFfiSyncWarning] = useState<string | null>(null);
+  const [rediscoverIntervalPreset, setRediscoverIntervalPreset] = useState<'1hour' | '2hours' | '4hours' | '8hours' | 'custom'>('1hour');
+  const [rediscoverCustomHours, setRediscoverCustomHours] = useState(1);
+  const [rediscoverWarning, setRediscoverWarning] = useState<string | null>(null);
+  const [dbFilesLoading, setDbFilesLoading] = useState(false);
+  const [dbConfig, setDbConfig] = useState<DatabasePartitionConfig>({
+    strategy: 'Monthly',
+    custom_days: 30,
+    custom_months: 2,
+    auto_cleanup_enabled: true,
+    retention_value: 30,
+    retention_unit: 'Days',
+    is_active: true,
+  });
+  const [dbFiles, setDbFiles] = useState<DatabaseFileInfo[]>([]);
+  const [dbActionBusy, setDbActionBusy] = useState<string | null>(null);
 
   // DB status
   const [dbStatus, setDbStatus] = useState<{ visible: boolean; severity: 'error' | 'warn'; title: string; message: string } | null>(null);
@@ -1382,6 +1731,292 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     await loadHistoricalData(true);
   }, [loadHistoricalData]);
 
+  const getFfiIntervalSecs = useCallback(() => {
+    const presetValues: Record<string, number> = {
+      '15min': 900,
+      '20min': 1200,
+      '30min': 1800,
+      '60min': 3600,
+    };
+
+    if (ffiIntervalPreset !== 'custom') {
+      return presetValues[ffiIntervalPreset] || 900;
+    }
+
+    return Math.max(1, ffiCustomMinutes) * 60;
+  }, [ffiIntervalPreset, ffiCustomMinutes]);
+
+  const getRediscoverIntervalSecs = useCallback(() => {
+    const presetValues: Record<string, number> = {
+      '1hour': 3600,
+      '2hours': 7200,
+      '4hours': 14400,
+      '8hours': 28800,
+    };
+
+    if (rediscoverIntervalPreset !== 'custom') {
+      return presetValues[rediscoverIntervalPreset] || 3600;
+    }
+
+    return Math.max(1, rediscoverCustomHours) * 3600;
+  }, [rediscoverIntervalPreset, rediscoverCustomHours]);
+
+  const checkFfiSyncWarning = useCallback((secs: number) => {
+    if (secs < 300) {
+      setFfiSyncWarning('Warning: Frequent syncs (< 5 min) may impact performance');
+      return;
+    }
+    if (secs > 3600) {
+      setFfiSyncWarning('Warning: Long intervals (> 1 hour) may delay data updates');
+      return;
+    }
+    setFfiSyncWarning(null);
+  }, []);
+
+  const checkRediscoverWarning = useCallback((secs: number) => {
+    if (secs < 3600) {
+      setRediscoverWarning('Warning: Minimum interval is 1 hour');
+      return;
+    }
+    if (secs > 86400) {
+      setRediscoverWarning('Warning: Long intervals (> 24 hours) may delay discovery of new devices');
+      return;
+    }
+    setRediscoverWarning(null);
+  }, []);
+
+  const loadSyncConfig = useCallback(async () => {
+    setSyncConfigLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/config/all`);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      const ffiSecs = parseInt(data['ffi.sync_interval_secs'] || '900', 10);
+      const rediscoverSecs = parseInt(data['rediscover.interval_secs'] || '3600', 10);
+
+      setFfiSyncIntervalSecs(ffiSecs);
+      setRediscoverIntervalSecs(rediscoverSecs);
+
+      const ffiPresets: Record<number, '15min' | '20min' | '30min' | '60min'> = {
+        900: '15min',
+        1200: '20min',
+        1800: '30min',
+        3600: '60min',
+      };
+      const ffiPreset = ffiPresets[ffiSecs];
+      if (ffiPreset) {
+        setFfiIntervalPreset(ffiPreset);
+        setFfiCustomMinutes(Math.max(1, Math.floor(ffiSecs / 60)));
+      } else {
+        setFfiIntervalPreset('custom');
+        setFfiCustomMinutes(Math.max(1, Math.floor(ffiSecs / 60)));
+      }
+
+      const rediscoverPresets: Record<number, '1hour' | '2hours' | '4hours' | '8hours'> = {
+        3600: '1hour',
+        7200: '2hours',
+        14400: '4hours',
+        28800: '8hours',
+      };
+      const rediscoverPreset = rediscoverPresets[rediscoverSecs];
+      if (rediscoverPreset) {
+        setRediscoverIntervalPreset(rediscoverPreset);
+        setRediscoverCustomHours(Math.max(1, Math.floor(rediscoverSecs / 3600)));
+      } else {
+        setRediscoverIntervalPreset('custom');
+        setRediscoverCustomHours(Math.max(1, Math.floor(rediscoverSecs / 3600)));
+      }
+
+      checkFfiSyncWarning(ffiSecs);
+      checkRediscoverWarning(rediscoverSecs);
+    } catch (error) {
+      console.error('TrendChartContent: Failed to load sync config', error);
+      setDbConfigMessage('Failed to load sync/rediscover intervals.');
+    } finally {
+      setSyncConfigLoading(false);
+    }
+  }, [checkFfiSyncWarning, checkRediscoverWarning]);
+
+  const saveSyncConfig = useCallback(async () => {
+    setSyncConfigSaving(true);
+    setDbConfigMessage(null);
+    try {
+      const ffiSecs = getFfiIntervalSecs();
+      const rediscoverSecs = getRediscoverIntervalSecs();
+
+      const updates = [
+        { key: 'ffi.sync_interval_secs', value: String(ffiSecs) },
+        { key: 'rediscover.interval_secs', value: String(rediscoverSecs) },
+      ];
+
+      for (const update of updates) {
+        const res = await fetch(`${API_BASE_URL}/api/config/${update.key}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: update.value }),
+        });
+        if (!res.ok) {
+          throw new Error(`Failed saving ${update.key}, HTTP ${res.status}`);
+        }
+      }
+
+      setFfiSyncIntervalSecs(ffiSecs);
+      setRediscoverIntervalSecs(rediscoverSecs);
+      checkFfiSyncWarning(ffiSecs);
+      checkRediscoverWarning(rediscoverSecs);
+      setDbConfigMessage('Sync and rediscover intervals saved.');
+    } catch (error) {
+      console.error('TrendChartContent: Failed to save sync config', error);
+      setDbConfigMessage('Failed to save sync/rediscover intervals.');
+    } finally {
+      setSyncConfigSaving(false);
+    }
+  }, [getFfiIntervalSecs, getRediscoverIntervalSecs, checkFfiSyncWarning, checkRediscoverWarning]);
+
+  const loadDatabaseConfig = useCallback(async () => {
+    setDbConfigLoading(true);
+    setDbConfigMessage(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/database/config`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setDbConfig((prev) => ({
+        ...prev,
+        ...json,
+      }));
+    } catch (error) {
+      console.error('TrendChartContent: Failed to load database config', error);
+      setDbConfigMessage('Failed to load database configuration.');
+    } finally {
+      setDbConfigLoading(false);
+    }
+  }, []);
+
+  const loadDatabaseFiles = useCallback(async () => {
+    setDbFilesLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/database/files`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setDbFiles(Array.isArray(json) ? json : []);
+    } catch (error) {
+      console.error('TrendChartContent: Failed to load database files', error);
+      setDbConfigMessage('Failed to load database files.');
+      setDbFiles([]);
+    } finally {
+      setDbFilesLoading(false);
+    }
+  }, []);
+
+  const saveDatabaseConfig = useCallback(async () => {
+    setDbConfigSaving(true);
+    setDbConfigMessage(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/database/config`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dbConfig),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setDbConfig((prev) => ({ ...prev, ...json }));
+
+      const applyRes = await fetch(`${API_BASE_URL}/api/database/partition/apply`, {
+        method: 'POST',
+      });
+      if (!applyRes.ok) {
+        throw new Error(`Apply strategy failed, HTTP ${applyRes.status}`);
+      }
+
+      setDbConfigMessage('Configuration saved and partitioning applied.');
+      await loadDatabaseFiles();
+    } catch (error) {
+      console.error('TrendChartContent: Failed to save database config', error);
+      setDbConfigMessage('Failed to save database configuration.');
+    } finally {
+      setDbConfigSaving(false);
+    }
+  }, [dbConfig, loadDatabaseFiles]);
+
+  const cleanupOldDatabaseFiles = useCallback(async () => {
+    setDbActionBusy('cleanup-old');
+    setDbConfigMessage(null);
+    try {
+      const unit = (dbConfig.retention_unit || 'Days').toLowerCase();
+      const value = Math.max(1, Number(dbConfig.retention_value) || 30);
+      const retentionDays = unit === 'weeks' ? value * 7 : unit === 'months' ? value * 30 : value;
+      const res = await fetch(`${API_BASE_URL}/api/database/cleanup/old?retention_days=${retentionDays}`, {
+        method: 'POST',
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const result: CleanupResult = await res.json();
+      setDbConfigMessage(result?.message || 'Old files cleanup completed.');
+      await loadDatabaseFiles();
+    } catch (error) {
+      console.error('TrendChartContent: Failed to cleanup old files', error);
+      setDbConfigMessage('Failed to cleanup old files.');
+    } finally {
+      setDbActionBusy(null);
+    }
+  }, [dbConfig.retention_unit, dbConfig.retention_value, loadDatabaseFiles]);
+
+  const cleanupAllDatabaseFiles = useCallback(async () => {
+    setDbActionBusy('cleanup-all');
+    setDbConfigMessage(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/database/cleanup/all`, { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const result: CleanupResult = await res.json();
+      setDbConfigMessage(result?.message || 'All inactive files cleaned up.');
+      await loadDatabaseFiles();
+    } catch (error) {
+      console.error('TrendChartContent: Failed to cleanup all files', error);
+      setDbConfigMessage('Failed to cleanup all files.');
+    } finally {
+      setDbActionBusy(null);
+    }
+  }, [loadDatabaseFiles]);
+
+  const deleteDatabaseFile = useCallback(async (fileId: number) => {
+    setDbActionBusy(`delete-${fileId}`);
+    setDbConfigMessage(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/database/files/${fileId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (json?.success === false) {
+        setDbConfigMessage(json?.message || 'Cannot delete this database file.');
+      } else {
+        setDbConfigMessage('Database file deleted.');
+      }
+      await loadDatabaseFiles();
+    } catch (error) {
+      console.error('TrendChartContent: Failed to delete file', error);
+      setDbConfigMessage('Failed to delete database file.');
+    } finally {
+      setDbActionBusy(null);
+    }
+  }, [loadDatabaseFiles]);
+
+  const optimizeDatabase = useCallback(async () => {
+    setDbActionBusy('optimize');
+    setDbConfigMessage(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/database/optimize`, { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setDbConfigMessage(json?.message || 'Database optimize request completed.');
+      await loadDatabaseFiles();
+    } catch (error) {
+      console.error('TrendChartContent: Failed to optimize database', error);
+      setDbConfigMessage('Failed to optimize database.');
+    } finally {
+      setDbActionBusy(null);
+    }
+  }, [loadDatabaseFiles]);
+
   const openDatabaseConfigPage = useCallback(() => {
     // Keep behavior simple and aligned with app routing from chart page.
     window.location.hash = '#/t3000/database-config';
@@ -1441,6 +2076,16 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
     initializeData();
   }, []); // Empty deps - run only once on mount
+
+  useEffect(() => {
+    if (!showConfigModal) {
+      return;
+    }
+
+    loadSyncConfig();
+    loadDatabaseConfig();
+    loadDatabaseFiles();
+  }, [showConfigModal, loadSyncConfig, loadDatabaseConfig, loadDatabaseFiles]);
 
   /**
    * Watch timeBase changes with debouncing (Vue flow pattern)
@@ -2031,9 +2676,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       {/* Status Tags */}
       <div className={styles.statusTags}>
         <div
-          className={`${styles.statusTag} ${isRealtime ? styles.statusTagLive : styles.statusTagHistorical}`}
+          className={mergeClasses(styles.statusTag, isRealtime ? styles.statusTagLive : styles.statusTagHistorical, !isRealtime ? styles.clickableCursor : undefined)}
           onClick={!isRealtime ? restoreLiveMode : undefined}
-          style={{ cursor: !isRealtime ? 'pointer' : 'default' }}
           title={!isRealtime ? 'Click to restore live mode' : ''}
         >
           {isRealtime ? (
@@ -2101,10 +2745,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       {dbStatus?.visible && (
         <Tooltip
           content={
-            <div style={{ maxWidth: 280 }}>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>{dbStatus.title}</div>
-              <div style={{ fontSize: '12px' }}>{dbStatus.message}</div>
-              <div style={{ fontSize: '11px', color: '#aaa', marginTop: 6 }}>
+            <div className={styles.dbTooltipContent}>
+              <div className={styles.dbTooltipTitle}>{dbStatus.title}</div>
+              <div className={styles.dbTooltipMessage}>{dbStatus.message}</div>
+              <div className={styles.dbTooltipHint}>
                 Local logging continues. Restore Center DB connectivity to resume sync.
               </div>
             </div>
@@ -2112,21 +2756,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           relationship="description"
           positioning="below-end"
         >
-          <div style={{
-            marginLeft: 'auto',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '3px',
-            padding: '2px 6px',
-            borderRadius: '4px',
-            fontSize: '11px',
-            fontWeight: 700,
-            cursor: 'default',
-            border: '1px solid',
-            backgroundColor: dbStatus.severity === 'error' ? '#fff1f0' : '#fffbe6',
-            borderColor: dbStatus.severity === 'error' ? '#ffa39e' : '#ffe58f',
-            color: dbStatus.severity === 'error' ? '#cf1322' : '#d46b08',
-          }}>
+          <div className={mergeClasses(styles.dbBadge, dbStatus.severity === 'error' ? styles.dbBadgeError : styles.dbBadgeWarn)}>
             <WarningRegular fontSize={13} />
             DB
           </div>
@@ -2181,11 +2811,11 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       {/* 鈹€鈹€ VIEW 2 / 3 EMPTY STATE 鈹€鈹€ */}
       {currentView !== 1 && !hasTrackedItems && (
         <div className={styles.emptyStateCenter}>
-          <div style={{ fontSize: 40 }}>&#128202;</div>
+          <div className={styles.iconLarge}>&#128202;</div>
           <Text size={500} weight="semibold">
             {currentView === 2 ? 'Custom View 2' : 'Custom View 3'}
           </Text>
-          <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+          <Text size={300} className={styles.textMuted}>
             Select items to track to start monitoring specific data points.
           </Text>
           <Button appearance="primary" onClick={openItemSelector}>
@@ -2284,8 +2914,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           return (
             <React.Fragment key={seriesKey}>
               <div
-                className={`${styles.seriesItem} ${isExpanded ? styles.seriesItemExpanded : ''}`}
-                style={isKeySelected ? { backgroundColor: tokens.colorBrandBackground2 } : undefined}
+                className={mergeClasses(styles.seriesItem, isExpanded ? styles.seriesItemExpanded : undefined, isKeySelected ? styles.selectedSeriesItem : undefined)}
               >
                 {/* Delete overlay for View 2 & 3 */}
                 {currentView !== 1 && (
@@ -2294,16 +2923,15 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                     icon={<DismissRegular fontSize={12} />}
                     onClick={(e) => { e.stopPropagation(); removeFromTracking(seriesKey); }}
                     size="small"
-                    style={{ position: 'absolute', top: 4, right: 28, minWidth: '20px', width: '20px', height: '20px', padding: 0, zIndex: 2 }}
+                    className={styles.removeTrackingButton}
                     title="Remove from tracking"
                   />
                 )}
 
                 {/* Color Indicator with keyboard badge */}
-                <div style={{ position: 'relative', flexShrink: 0 }}>
+                <div className={styles.colorIndicatorWrap}>
                   <div
-                    className={styles.colorIndicator}
-                    style={({ '--series-color': s.visible ? s.color : '#d9d9d9' } as React.CSSProperties)}
+                    className={mergeClasses(styles.colorIndicator, getColorClass(s.color, s.visible === false))}
                     onClick={() => toggleSeriesVisibility(globalIndex)}
                   />
                   {kbKey && (
@@ -2314,7 +2942,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                 <Tooltip content={s.name} relationship="label">
                   <div className={styles.seriesItemContent} onClick={() => toggleSeriesVisibility(globalIndex)}>
                     <div className={styles.seriesItemInfo}>
-                      <Text className={styles.seriesItemName} style={{ opacity: s.visible === false ? 0.4 : 1 }}>
+                      <Text className={mergeClasses(styles.seriesItemName, s.visible === false ? styles.seriesNameHidden : undefined)}>
                         {s.name}
                       </Text>
                       <div className={styles.seriesItemMeta}>
@@ -2322,7 +2950,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                           <Tag size="extra-small" appearance="outline">{getPrefixTag(s.pointType, s.prefix)}</Tag>
                         )}
                         <Text className={styles.seriesItemUnit}>{s.unit || 'N/A'}</Text>
-                        <Text size={100} style={{ color: tokens.colorNeutralForeground2, fontWeight: 600, marginLeft: '4px' }}>
+                        <Text size={100} className={styles.seriesMetaValue}>
                           {getLastValue(s)}
                         </Text>
                       </div>
@@ -2374,44 +3002,44 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                   {/* Series list: loading/timeout/error empty states */}
                   <div className={styles.seriesPanel}>
                     {viewAnalog.length === 0 && series.length === 0 && (
-                      <div className={styles.emptyState} style={{ padding: '24px 12px', textAlign: 'center' }}>
+                      <div className={mergeClasses(styles.emptyState, styles.emptyStateCompact)}>
                         {loading && !loadingTimedOut ? (
                           <>
                             <Spinner size="small" />
-                            <Text size={200} block style={{ marginTop: 8 }}>Loading T3000 device data...</Text>
-                            <Text size={100} block style={{ color: tokens.colorNeutralForeground3, marginTop: 4 }}>
+                            <Text size={200} block className={styles.mt8}>Loading T3000 device data...</Text>
+                            <Text size={100} block className={mergeClasses(styles.textMuted, styles.mt4)}>
                               Connecting to your T3000 devices to retrieve trend data.
                             </Text>
                           </>
                         ) : loadingTimedOut ? (
                           <>
-                            <div style={{ fontSize: 20 }}>&#9200;</div>
-                            <Text size={200} block style={{ marginTop: 8 }}>Loading Timeout</Text>
-                            <Text size={100} block style={{ color: tokens.colorNeutralForeground3, marginTop: 4 }}>
+                            <div className={styles.iconSmall}>&#9200;</div>
+                            <Text size={200} block className={styles.mt8}>Loading Timeout</Text>
+                            <Text size={100} block className={mergeClasses(styles.textMuted, styles.mt4)}>
                               Loading took too long (&gt;30s). The system may be busy.
                             </Text>
                             <Button appearance="primary" size="small" icon={<ArrowClockwiseRegular />}
-                              onClick={manualRefresh} disabled={loading} style={{ marginTop: 12 }}>
+                              onClick={manualRefresh} disabled={loading} className={styles.mt12}>
                               Refresh Data
                             </Button>
                           </>
                         ) : dataSource === 'error' ? (
                           <>
-                            <ErrorCircleRegular fontSize={24} style={{ color: tokens.colorPaletteRedForeground1 }} />
-                            <Text size={200} block style={{ marginTop: 8 }}>Data Connection Error</Text>
-                            <Text size={100} block style={{ color: tokens.colorNeutralForeground3, marginTop: 4 }}>
+                            <ErrorCircleRegular fontSize={24} />
+                            <Text size={200} block className={styles.mt8}>Data Connection Error</Text>
+                            <Text size={100} block className={mergeClasses(styles.textMuted, styles.mt4)}>
                               Unable to load real-time or historical data.
                             </Text>
                             <Button appearance="primary" size="small" icon={<ArrowClockwiseRegular />}
-                              onClick={manualRefresh} disabled={loading} style={{ marginTop: 12 }}>
+                              onClick={manualRefresh} disabled={loading} className={styles.mt12}>
                               Refresh Data
                             </Button>
                           </>
                         ) : (
                           <>
-                            <div style={{ fontSize: 20 }}>&#9200;</div>
-                            <Text size={200} block style={{ marginTop: 8 }}>No Data Available</Text>
-                            <Text size={100} block style={{ color: tokens.colorNeutralForeground3, marginTop: 4 }}>
+                            <div className={styles.iconSmall}>&#9200;</div>
+                            <Text size={200} block className={styles.mt8}>No Data Available</Text>
+                            <Text size={100} block className={mergeClasses(styles.textMuted, styles.mt4)}>
                               Configure monitor points to see data series.
                             </Text>
                           </>
@@ -2487,36 +3115,36 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                 {loading && !loadingTimedOut ? (
                   <>
                     <Spinner size="medium" />
-                    <Text size={400} weight="semibold" style={{ marginTop: 16 }}>Loading T3000 device data...</Text>
-                    <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+                    <Text size={400} weight="semibold" className={styles.mt16}>Loading T3000 device data...</Text>
+                    <Text size={300} className={styles.textMuted}>
                       Connecting to your T3000 devices to retrieve trend data鈥?                    </Text>
                   </>
                 ) : loadingTimedOut ? (
                   <>
-                    <div style={{ fontSize: 32 }}>&#9200;</div>
-                    <Text size={400} weight="semibold" style={{ marginTop: 12 }}>Loading Timeout</Text>
-                    <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+                    <div className={styles.iconMedium}>&#9200;</div>
+                    <Text size={400} weight="semibold" className={styles.mt12}>Loading Timeout</Text>
+                    <Text size={300} className={styles.textMuted}>
                       Loading took too long (&gt;30s). The system may be busy or experiencing connection issues.
                     </Text>
-                    <Button appearance="primary" icon={<ArrowClockwiseRegular />} onClick={manualRefresh} disabled={loading} style={{ marginTop: 16 }}>
+                    <Button appearance="primary" icon={<ArrowClockwiseRegular />} onClick={manualRefresh} disabled={loading} className={styles.mt16}>
                       Refresh Data
                     </Button>
                   </>
                 ) : dataSource === 'error' ? (
                   <>
-                    <ErrorCircleRegular fontSize={32} style={{ color: tokens.colorPaletteRedForeground1 }} />
-                    <Text size={400} weight="semibold" style={{ marginTop: 12 }}>Data Connection Error</Text>
-                    <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+                    <ErrorCircleRegular fontSize={32} />
+                    <Text size={400} weight="semibold" className={styles.mt12}>Data Connection Error</Text>
+                    <Text size={300} className={styles.textMuted}>
                       Unable to load real-time or historical data. Check system connections.
                     </Text>
-                    <Button appearance="primary" icon={<ArrowClockwiseRegular />} onClick={manualRefresh} disabled={loading} style={{ marginTop: 16 }}>
+                    <Button appearance="primary" icon={<ArrowClockwiseRegular />} onClick={manualRefresh} disabled={loading} className={styles.mt16}>
                       Refresh Data
                     </Button>
                   </>
                 ) : (
                   <>
                     <Text size={500} weight="semibold">No Data Available</Text>
-                    <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+                    <Text size={300} className={styles.textMuted}>
                       Please select a device and monitor configuration.
                     </Text>
                   </>
@@ -2529,29 +3157,29 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
       {/* 鈹€鈹€ CUSTOM DATE RANGE MODAL 鈹€鈹€ */}
       <Dialog open={showCustomDateModal} onOpenChange={(_, d) => setShowCustomDateModal(d.open)}>
-        <DialogSurface style={{ maxWidth: 360 }}>
+        <DialogSurface className={styles.dialogSurfaceSmall}>
           <DialogTitle>Custom Time Range</DialogTitle>
           <DialogBody>
             <DialogContent>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className={styles.stackCol12}>
                 <div>
-                  <Text size={200} weight="semibold" block style={{ marginBottom: 4 }}>Start</Text>
+                  <Text size={200} weight="semibold" block className={styles.fieldLabel}>Start</Text>
                   <Input type="datetime-local" value={customStartInput}
-                    onChange={(_, d) => setCustomStartInput(d.value)} style={{ width: '100%' }} />
+                    onChange={(_, d) => setCustomStartInput(d.value)} className={styles.inputFull} />
                 </div>
                 <div>
-                  <Text size={200} weight="semibold" block style={{ marginBottom: 4 }}>End</Text>
+                  <Text size={200} weight="semibold" block className={styles.fieldLabel}>End</Text>
                   <Input type="datetime-local" value={customEndInput}
-                    onChange={(_, d) => setCustomEndInput(d.value)} style={{ width: '100%' }} />
+                    onChange={(_, d) => setCustomEndInput(d.value)} className={styles.inputFull} />
                 </div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <div className={styles.rowWrap6}>
                   <Button size="small" onClick={() => setQuickRange('today')}>Today</Button>
                   <Button size="small" onClick={() => setQuickRange('yesterday')}>Yesterday</Button>
                   <Button size="small" onClick={() => setQuickRange('thisWeek')}>This Week</Button>
                   <Button size="small" onClick={() => setQuickRange('lastWeek')}>Last Week</Button>
                 </div>
                 {customStartInput && customEndInput && (
-                  <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                  <Text size={100} className={styles.textMuted}>
                     {new Date(customStartInput).toLocaleString()} 鈫?{new Date(customEndInput).toLocaleString()}
                   </Text>
                 )}
@@ -2568,33 +3196,301 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
       {/* 鈹€鈹€ CONFIG MODAL 鈹€鈹€ */}
       <Dialog open={showConfigModal} onOpenChange={(_, d) => setShowConfigModal(d.open)}>
-        <DialogSurface style={{ maxWidth: 500 }}>
+        <DialogSurface className={styles.dialogSurfaceConfig}>
           <DialogTitle>Trendlog Configuration</DialogTitle>
           <DialogBody>
             <DialogContent>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className={styles.stackCol16}>
 
                 {/* Chart Display (Vue-aligned core controls) */}
-                <div style={{ border: `1px solid ${tokens.colorNeutralStroke1}`, borderRadius: 6, padding: 12 }}>
-                  <Text weight="semibold" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <div className={styles.sectionCard}>
+                  <Text weight="semibold" className={styles.rowBetween}>
                     <SettingsRegular /> Chart Display
                   </Text>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div className={styles.rowBetween}>
                     <Text size={200}>Show Grid</Text>
                     <Switch checked={showGrid} onChange={(_, d) => setShowGrid(d.checked)} />
                   </div>
                 </div>
 
+                <div className={styles.sectionCard}>
+                  <Text weight="semibold" className={styles.rowBetween}>
+                    <ArrowClockwiseRegular /> Sampling and Rediscover Interval
+                  </Text>
+                  <div className={styles.stackCol10}>
+                    <div>
+                      <Text size={100} className={styles.fieldLabelWide}>Sampling Interval</Text>
+                      <div className={styles.rowWrap6}>
+                        {(['15min', '20min', '30min', '60min', 'custom'] as const).map((preset) => (
+                          <Button
+                            key={preset}
+                            size="small"
+                            appearance={ffiIntervalPreset === preset ? 'primary' : 'secondary'}
+                            onClick={() => {
+                              setFfiIntervalPreset(preset);
+                              const nextSecs = preset === 'custom' ? Math.max(1, ffiCustomMinutes) * 60 :
+                                ({ '15min': 900, '20min': 1200, '30min': 1800, '60min': 3600 }[preset]);
+                              setFfiSyncIntervalSecs(nextSecs);
+                              checkFfiSyncWarning(nextSecs);
+                            }}
+                          >
+                            {preset === 'custom' ? 'Custom' : preset.replace('min', ' min')}
+                          </Button>
+                        ))}
+                        {ffiIntervalPreset === 'custom' && (
+                          <>
+                            <Text size={100}>Every</Text>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={59}
+                              value={String(ffiCustomMinutes)}
+                              onChange={(_, d) => {
+                                const val = Math.max(1, Math.min(59, Number(d.value) || 1));
+                                setFfiCustomMinutes(val);
+                                const secs = val * 60;
+                                setFfiSyncIntervalSecs(secs);
+                                checkFfiSyncWarning(secs);
+                              }}
+                              className={styles.inputSmall}
+                            />
+                            <Text size={100}>minutes</Text>
+                          </>
+                        )}
+                      </div>
+                      {!!ffiSyncWarning && (
+                        <Text size={100} className={styles.warningText}>
+                          {ffiSyncWarning}
+                        </Text>
+                      )}
+                    </div>
+
+                    <div>
+                      <Text size={100} className={styles.fieldLabelWide}>Refresh and Rediscover Interval</Text>
+                      <div className={styles.rowWrap6}>
+                        {(['1hour', '2hours', '4hours', '8hours', 'custom'] as const).map((preset) => (
+                          <Button
+                            key={preset}
+                            size="small"
+                            appearance={rediscoverIntervalPreset === preset ? 'primary' : 'secondary'}
+                            onClick={() => {
+                              setRediscoverIntervalPreset(preset);
+                              const nextSecs = preset === 'custom' ? Math.max(1, rediscoverCustomHours) * 3600 :
+                                ({ '1hour': 3600, '2hours': 7200, '4hours': 14400, '8hours': 28800 }[preset]);
+                              setRediscoverIntervalSecs(nextSecs);
+                              checkRediscoverWarning(nextSecs);
+                            }}
+                          >
+                            {preset === 'custom' ? 'Custom' : preset.replace('hour', ' hour').replace('hours', ' hours')}
+                          </Button>
+                        ))}
+                        {rediscoverIntervalPreset === 'custom' && (
+                          <>
+                            <Text size={100}>Every</Text>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={168}
+                              value={String(rediscoverCustomHours)}
+                              onChange={(_, d) => {
+                                const val = Math.max(1, Math.min(168, Number(d.value) || 1));
+                                setRediscoverCustomHours(val);
+                                const secs = val * 3600;
+                                setRediscoverIntervalSecs(secs);
+                                checkRediscoverWarning(secs);
+                              }}
+                              className={styles.inputSmall}
+                            />
+                            <Text size={100}>hours</Text>
+                          </>
+                        )}
+                      </div>
+                      {!!rediscoverWarning && (
+                        <Text size={100} className={styles.warningText}>
+                          {rediscoverWarning}
+                        </Text>
+                      )}
+                    </div>
+                  </div>
+                  <div className={mergeClasses(styles.rowWrap8, styles.mt8)}>
+                    <Button size="small" appearance="primary" onClick={saveSyncConfig} disabled={syncConfigSaving || syncConfigLoading}>
+                      {syncConfigSaving ? 'Saving...' : 'Save Intervals'}
+                    </Button>
+                    <Text size={100} className={styles.textMuted}>
+                      Current: sampling {Math.round(ffiSyncIntervalSecs / 60)} min, rediscover {Math.round(rediscoverIntervalSecs / 3600)} hr
+                    </Text>
+                  </div>
+                </div>
+
+                <div className={styles.sectionCard}>
+                  <div className={styles.rowBetween}>
+                    <Text weight="semibold" className={styles.rowWrap6}>
+                      <DatabaseRegular /> Database Strategy
+                    </Text>
+                    <Button
+                      size="small"
+                      icon={<ArrowClockwiseRegular />}
+                      onClick={() => {
+                        loadDatabaseConfig();
+                        loadDatabaseFiles();
+                      }}
+                      disabled={dbConfigLoading || dbFilesLoading}
+                    >
+                      Refresh
+                    </Button>
+                  </div>
+
+                  <div className={styles.gridTwoCol}>
+                    <div>
+                      <Text size={100} className={styles.fieldLabel}>Partition Strategy</Text>
+                      <Dropdown
+                        value={dbConfig.strategy}
+                        selectedOptions={[dbConfig.strategy]}
+                        onOptionSelect={(_, d) => {
+                          if (d.optionValue) {
+                            setDbConfig((prev) => ({ ...prev, strategy: d.optionValue as DatabasePartitionConfig['strategy'] }));
+                          }
+                        }}
+                      >
+                        <Option value="FiveMinutes">5 Minutes</Option>
+                        <Option value="Daily">Daily</Option>
+                        <Option value="Weekly">Weekly</Option>
+                        <Option value="Monthly">Monthly</Option>
+                        <Option value="Quarterly">Quarterly</Option>
+                        <Option value="Custom">Custom Days</Option>
+                        <Option value="CustomMonths">Custom Months</Option>
+                      </Dropdown>
+                    </div>
+                    <div>
+                      <Text size={100} className={styles.fieldLabel}>Retention Unit</Text>
+                      <Dropdown
+                        value={dbConfig.retention_unit}
+                        selectedOptions={[dbConfig.retention_unit]}
+                        onOptionSelect={(_, d) => {
+                          if (d.optionValue) {
+                            setDbConfig((prev) => ({ ...prev, retention_unit: d.optionValue as DatabasePartitionConfig['retention_unit'] }));
+                          }
+                        }}
+                      >
+                        <Option value="Days">Days</Option>
+                        <Option value="Weeks">Weeks</Option>
+                        <Option value="Months">Months</Option>
+                      </Dropdown>
+                    </div>
+                    <div>
+                      <Text size={100} className={styles.fieldLabel}>Retention Value</Text>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={String(dbConfig.retention_value ?? 30)}
+                        onChange={(_, d) => {
+                          const parsed = Number(d.value);
+                          setDbConfig((prev) => ({ ...prev, retention_value: Number.isFinite(parsed) ? parsed : 1 }));
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <Text size={100} className={styles.fieldLabel}>Custom Days</Text>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={String(dbConfig.custom_days ?? 30)}
+                        onChange={(_, d) => {
+                          const parsed = Number(d.value);
+                          setDbConfig((prev) => ({ ...prev, custom_days: Number.isFinite(parsed) ? parsed : 1 }));
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <Text size={100} className={styles.fieldLabel}>Custom Months</Text>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={String(dbConfig.custom_months ?? 2)}
+                        onChange={(_, d) => {
+                          const parsed = Number(d.value);
+                          setDbConfig((prev) => ({ ...prev, custom_months: Number.isFinite(parsed) ? parsed : 1 }));
+                        }}
+                      />
+                    </div>
+                    <div className={styles.rowEnd}>
+                      <Switch
+                        checked={dbConfig.auto_cleanup_enabled}
+                        onChange={(_, d) => setDbConfig((prev) => ({ ...prev, auto_cleanup_enabled: d.checked }))}
+                        label="Auto Cleanup"
+                      />
+                    </div>
+                  </div>
+
+                  <div className={styles.rowWrap8}>
+                    <Button appearance="primary" onClick={saveDatabaseConfig} disabled={dbConfigSaving || dbConfigLoading}>
+                      {dbConfigSaving ? 'Saving...' : 'Save Config'}
+                    </Button>
+                    <Button onClick={cleanupOldDatabaseFiles} disabled={!!dbActionBusy || dbConfigLoading}>
+                      Cleanup Old
+                    </Button>
+                    <Button onClick={cleanupAllDatabaseFiles} disabled={!!dbActionBusy || dbConfigLoading}>
+                      Cleanup All
+                    </Button>
+                    <Button onClick={optimizeDatabase} disabled={!!dbActionBusy || dbConfigLoading}>
+                      Optimize
+                    </Button>
+                  </div>
+
+                  {(dbConfigLoading || dbFilesLoading || syncConfigLoading) && (
+                    <div className={styles.loadingRow}>
+                      <Spinner size="tiny" />
+                      <Text size={100}>Loading database settings...</Text>
+                    </div>
+                  )}
+                  {!!dbConfigMessage && (
+                    <Text size={100} className={styles.successText}>
+                      {dbConfigMessage}
+                    </Text>
+                  )}
+                </div>
+
+                <div className={styles.sectionCard}>
+                  <Text weight="semibold" className={styles.rowBetween}>
+                    <DatabaseRegular /> Database Files
+                  </Text>
+                  <div className={styles.filesList}>
+                    {dbFiles.length === 0 && !dbFilesLoading && (
+                      <Text size={100} className={styles.textMuted}>No partition files found.</Text>
+                    )}
+                    {dbFiles.map((file) => (
+                      <div key={file.id} className={styles.fileRow}>
+                        <div className={styles.minWidthZero}>
+                          <Text size={100} weight="semibold" block className={styles.ellipsisText}>
+                            {file.name}
+                          </Text>
+                          <Text size={100} className={styles.textMuted}>
+                            {file.size} · {file.records} rec · {file.age_days} days
+                          </Text>
+                        </div>
+                        <Button
+                          size="small"
+                          appearance="secondary"
+                          disabled={file.is_active || !!dbActionBusy}
+                          onClick={() => deleteDatabaseFile(file.id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Keyboard Shortcuts */}
-                <div style={{ border: `1px solid ${tokens.colorNeutralStroke1}`, borderRadius: 6, padding: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <Text weight="semibold" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div className={styles.sectionCard}>
+                  <div className={styles.rowBetween}>
+                    <Text weight="semibold" className={styles.rowWrap6}>
                       <KeyboardRegular /> Keyboard Shortcuts
                     </Text>
                     <Switch checked={keyboardEnabled} onChange={(_, d) => setKeyboardEnabled(d.checked)}
                       label={keyboardEnabled ? 'Enabled' : 'Disabled'} />
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontSize: 12 }}>
+                  <div className={styles.shortcutsGrid}>
                     {[
                       ['1-9, A-E', 'Toggle series 1-14'],
                       ['<- ->', 'Scroll time left/right'],
@@ -2604,20 +3500,20 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                       ['Esc', 'Toggle keyboard mode'],
                     ].map(([key, desc]) => (
                       <React.Fragment key={key}>
-                        <Text size={100}><kbd style={{ background: '#f0f0f0', padding: '1px 5px', borderRadius: 3, border: '1px solid #ccc' }}>{key}</kbd></Text>
-                        <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>{desc}</Text>
+                        <Text size={100}><kbd className={styles.keycap}>{key}</kbd></Text>
+                        <Text size={100} className={styles.textMuted}>{desc}</Text>
                       </React.Fragment>
                     ))}
                   </div>
                 </div>
 
                 {/* Database Configuration shortcut */}
-                <div style={{ border: `1px solid ${tokens.colorNeutralStroke1}`, borderRadius: 6, padding: 12 }}>
-                  <Text weight="semibold" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <div className={styles.sectionCard}>
+                  <Text weight="semibold" className={styles.rowBetween}>
                     <DatabaseRegular /> Database Configuration
                   </Text>
-                  <Text size={100} style={{ color: tokens.colorNeutralForeground3, display: 'block', marginBottom: 8 }}>
-                    Open full database settings for backup, retention, and cleanup options.
+                  <Text size={100} className={styles.textMuted}>
+                    Open the dedicated database page for backup and advanced maintenance operations.
                   </Text>
                   <Button size="small" onClick={openDatabaseConfigPage}>Open Database Config</Button>
                 </div>
@@ -2633,16 +3529,16 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
       {/* 鈹€鈹€ ITEM SELECTOR DIALOG (View 2 & 3) 鈹€鈹€ */}
       <Dialog open={showItemSelector} onOpenChange={(_, d) => setShowItemSelector(d.open)}>
-        <DialogSurface style={{ maxWidth: 460, maxHeight: '80vh' }}>
+        <DialogSurface className={styles.dialogSurfaceSelector}>
           <DialogTitle>
             Select Items for View {currentView}
-            <Text size={200} style={{ marginLeft: 8, color: tokens.colorNeutralForeground3 }}>
+            <Text size={200} className={styles.textMuted}>
               ({selectorDraftKeys.length}/{series.length} selected)
             </Text>
           </DialogTitle>
           <DialogBody>
-            <DialogContent style={{ overflowY: 'auto', maxHeight: 380 }}>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            <DialogContent className={styles.selectorContent}>
+              <div className={styles.selectorHeader}>
                 <Button size="small" onClick={() => setSelectorDraftKeys(series.map(s => `${s.pointId}-${s.pointIndex}`))}>
                   <CheckmarkRegular /> Select All
                 </Button>
@@ -2654,18 +3550,17 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                 const key = `${s.pointId}-${s.pointIndex}`;
                 const checked = selectorDraftKeys.includes(key);
                 return (
-                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0',
-                    borderBottom: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                  <div key={key} className={styles.selectorRow}>
                     <Checkbox checked={checked}
                       onChange={(_, d) => setSelectorDraftKeys(prev =>
                         d.checked ? [...prev, key] : prev.filter(k => k !== key)
                       )} />
-                    <div style={{ width: 14, height: 14, borderRadius: 3, backgroundColor: s.color, flexShrink: 0 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <Text size={200} weight="semibold" block style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div className={mergeClasses(styles.selectorColor, getColorClass(s.color, false))} />
+                    <div className={mergeClasses(styles.minWidthZero, styles.seriesItemInfo)}>
+                      <Text size={200} weight="semibold" block className={styles.ellipsisText}>
                         {s.name}
                       </Text>
-                      <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                      <Text size={100} className={styles.textMuted}>
                         {s.pointType} 路 {s.digitalAnalog} 路 {s.unit || 'N/A'}
                         {s.data.length > 0 ? ` 路 ${s.data.length} pts` : ' 路 No Data'}
                       </Text>
