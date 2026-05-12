@@ -76,6 +76,18 @@
   color: #107c10;
 }
 
+.stateWarn {
+  color: #ffb900;
+}
+
+.stalledCount {
+  color: #a4262c;
+}
+
+.statusCritical {
+  color: #be123c;
+}
+
 /* Issues Section Styles */
 .issuesSection {
   border: 1px solid #fda4af;
@@ -91,6 +103,7 @@
   gap: 8px;
   padding: 8px 12px;
   cursor: pointer;
+  -webkit-user-select: none;
   user-select: none;
   transition: background 0.2s;
 }
@@ -395,6 +408,11 @@
   padding: 12px 16px;
   font-size: 13px;
   color: #d13438;
+}
+
+.errorIcon {
+  font-size: 14px;
+  flex-shrink: 0;
 }
 
 @media (max-width: 1200px) {

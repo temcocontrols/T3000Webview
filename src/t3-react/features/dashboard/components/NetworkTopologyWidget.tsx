@@ -308,6 +308,37 @@ const useStyles = makeStyles({
   dbBarFill: {
     height: '100%',
     borderRadius: '4px',
+    transition: 'width 0.5s ease, background-color 0.3s ease',
+  },
+  dbBarFillTesting: {
+    width: '55%',
+    backgroundColor: '#c8c6c4',
+    opacity: 0.5,
+    transition: 'none',
+  },
+  dbBarFillExcellent: {
+    width: '100%',
+    backgroundColor: '#107c10',
+  },
+  dbBarFillGood: {
+    width: '80%',
+    backgroundColor: '#107c10',
+  },
+  dbBarFillOk: {
+    width: '65%',
+    backgroundColor: '#c19c00',
+  },
+  dbBarFillSlow: {
+    width: '45%',
+    backgroundColor: '#d47800',
+  },
+  dbBarFillVerySlow: {
+    width: '25%',
+    backgroundColor: '#d13438',
+  },
+  dbBarFillError: {
+    width: '100%',
+    backgroundColor: '#d13438',
   },
   dbStatusOk: {
     color: '#107c10',
@@ -350,6 +381,63 @@ const useStyles = makeStyles({
     borderLeftStyle: 'solid',
     flexShrink: 0,
     whiteSpace: 'nowrap',
+  },
+  dbQualityExcellent: {
+    color: '#107c10',
+    borderTopColor: '#107c1055',
+    borderRightColor: '#107c1055',
+    borderBottomColor: '#107c1055',
+    borderLeftColor: '#107c1055',
+    backgroundColor: '#107c1011',
+  },
+  dbQualityGood: {
+    color: '#107c10',
+    borderTopColor: '#107c1055',
+    borderRightColor: '#107c1055',
+    borderBottomColor: '#107c1055',
+    borderLeftColor: '#107c1055',
+    backgroundColor: '#107c1011',
+  },
+  dbQualityOk: {
+    color: '#c19c00',
+    borderTopColor: '#c19c0055',
+    borderRightColor: '#c19c0055',
+    borderBottomColor: '#c19c0055',
+    borderLeftColor: '#c19c0055',
+    backgroundColor: '#c19c0011',
+  },
+  dbQualitySlow: {
+    color: '#d47800',
+    borderTopColor: '#d4780055',
+    borderRightColor: '#d4780055',
+    borderBottomColor: '#d4780055',
+    borderLeftColor: '#d4780055',
+    backgroundColor: '#d4780011',
+  },
+  dbQualityVerySlow: {
+    color: '#d13438',
+    borderTopColor: '#d1343855',
+    borderRightColor: '#d1343855',
+    borderBottomColor: '#d1343855',
+    borderLeftColor: '#d1343855',
+    backgroundColor: '#d1343811',
+  },
+  iconStatusOk: {
+    fontSize: '13px',
+    color: '#107c10',
+    flexShrink: 0,
+  },
+  iconStatusError: {
+    fontSize: '13px',
+    color: '#d13438',
+    flexShrink: 0,
+  },
+  dismissAligned: {
+    marginLeft: 'auto',
+    flexShrink: 0,
+  },
+  dismissIcon: {
+    fontSize: '12px',
   },
 
   /* ── Tree (client list / server row) ── */
@@ -470,6 +558,10 @@ const useStyles = makeStyles({
     gap: '5px',
     fontSize: '12px',
     color: '#323130',
+  },
+  deviceStripDbIcon: {
+    fontSize: '13px',
+    color: '#605e5c',
   },
   dotOnline: {
     width: '7px',
@@ -803,29 +895,37 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, he
     if (!dbTest) return null;
     const { phase, ok, latencyMs, errorMsg, backendLabel: bl, host, port, dbName } = dbTest;
 
-    let fillPct = 0;
-    let fillColor = '#edebe9';
     let qualityLabel = '';
-    let qualityBorderColor = '#edebe9';
+    let fillClass = s.dbBarFillError;
+    let qualityClass: string | undefined;
 
     if (phase === 'done') {
       if (ok) {
         if (latencyMs != null && latencyMs > 0) {
           const q = latencyQuality(latencyMs);
-          fillPct = q.fill;
-          fillColor = q.color;
           qualityLabel = q.label;
-          qualityBorderColor = q.color + '55';
+          fillClass =
+            q.label === 'Excellent' ? s.dbBarFillExcellent :
+            q.label === 'Good' ? s.dbBarFillGood :
+            q.label === 'OK' ? s.dbBarFillOk :
+            q.label === 'Slow' ? s.dbBarFillSlow :
+            s.dbBarFillVerySlow;
+          qualityClass =
+            q.label === 'Excellent' ? s.dbQualityExcellent :
+            q.label === 'Good' ? s.dbQualityGood :
+            q.label === 'OK' ? s.dbQualityOk :
+            q.label === 'Slow' ? s.dbQualitySlow :
+            s.dbQualityVerySlow;
         } else {
-          fillPct = 80;
-          fillColor = '#107c10';
+          fillClass = s.dbBarFillGood;
           qualityLabel = 'Connected';
-          qualityBorderColor = '#107c1055';
+          qualityClass = s.dbQualityGood;
         }
       } else {
-        fillPct = 100;
-        fillColor = '#d13438';
+        fillClass = s.dbBarFillError;
       }
+    } else {
+      fillClass = s.dbBarFillTesting;
     }
 
     return (
@@ -846,15 +946,7 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, he
 
         {/* Bar */}
         <div className={s.dbBarTrack}>
-          <div
-            className={s.dbBarFill}
-            style={{
-              width: phase === 'testing' ? '55%' : `${fillPct}%`,
-              backgroundColor: phase === 'testing' ? '#c8c6c4' : fillColor,
-              transition: phase === 'done' ? 'width 0.5s ease, background-color 0.3s ease' : 'none',
-              opacity: phase === 'testing' ? 0.5 : 1,
-            }}
-          />
+          <div className={mergeClasses(s.dbBarFill, fillClass)} />
         </div>
 
         {/* Status */}
@@ -865,42 +957,31 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, he
           </>
         ) : ok ? (
           <>
-            <CheckmarkCircleRegular style={{ fontSize: '13px', color: '#107c10', flexShrink: 0 }} />
+            <CheckmarkCircleRegular className={s.iconStatusOk} />
             <span className={s.dbStatusOk}>Connected</span>
             {latencyMs != null && latencyMs > 0 && (
               <><span className={s.dbInfoSep}>·</span><span className={s.dbStatusMs}>{latencyMs} ms</span></>
             )}
             {qualityLabel && (
-              <span
-                className={s.dbQualityBadge}
-                style={{
-                  color: fillColor,
-                  borderTopColor: fillColor + '55',
-                  borderRightColor: fillColor + '55',
-                  borderBottomColor: fillColor + '55',
-                  borderLeftColor: fillColor + '55',
-                  backgroundColor: fillColor + '11',
-                }}
-              >
+              <span className={mergeClasses(s.dbQualityBadge, qualityClass)}>
                 {qualityLabel}
               </span>
             )}
           </>
         ) : (
           <>
-            <ErrorCircleRegular style={{ fontSize: '13px', color: '#d13438', flexShrink: 0 }} />
+            <ErrorCircleRegular className={s.iconStatusError} />
             <span className={s.dbStatusError}>{errorMsg ?? 'Connection failed'}</span>
           </>
         )}
 
         {/* Dismiss */}
         <button
-          className={s.resultStripDismiss}
+          className={mergeClasses(s.resultStripDismiss, s.dismissAligned)}
           onClick={() => { setDbTest(null); if (dbTimer.current) clearTimeout(dbTimer.current); }}
           title="Dismiss"
-          style={{ marginLeft: 'auto', flexShrink: 0 }}
         >
-          <DismissRegular style={{ fontSize: '12px' }} />
+          <DismissRegular className={s.dismissIcon} />
         </button>
       </div>
     );
@@ -911,7 +992,7 @@ export const NetworkTopologyWidget: React.FC<Props> = ({ currentTime, health, he
     <div className={s.devicesStrip}>
       <span className={s.deviceStripLabel}>T3000 Field Devices</span>
       <span className={s.deviceStripItem}>
-        <DatabaseRegular style={{ fontSize: '13px', color: '#605e5c' }} />
+        <DatabaseRegular className={s.deviceStripDbIcon} />
         {devices.length} device{devices.length !== 1 ? 's' : ''}
       </span>
       <span className={s.deviceStripItem}>

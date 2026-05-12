@@ -521,14 +521,16 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false, onVe
           <div className={styles.healthSub}>
             <strong>{summary.trackedPoints}</strong> tracked<br />
             <strong>{summary.sampledPoints}</strong> active (2h)
-            {summary.stalledPoints.length > 0 && <><br /><strong style={{ color: '#a4262c' }}>{summary.stalledPoints.length}</strong> stalled</>}
+            {summary.stalledPoints.length > 0 && <><br /><strong className={styles.stalledCount}>{summary.stalledPoints.length}</strong> stalled</>}
           </div>
         </div>
 
         {/* Card 2: Sample Rate */}
         <div className={styles.healthCard}>
           <div className={styles.healthTitle}>Sample Rate</div>
-          <div className={`${styles.healthValue}`} style={{ color: summary.recordsLastHourRate > 30 ? '#107c10' : summary.recordsLastHourRate > 0 ? '#ffb900' : '#a4262c' }}>
+          <div
+            className={`${styles.healthValue} ${summary.recordsLastHourRate > 30 ? styles.stateGood : summary.recordsLastHourRate > 0 ? styles.stateWarn : styles.stateBad}`}
+          >
             {formatSampleRate(summary.recordsLastHourRate)} {getSampleRateTrend()}
           </div>
           <div className={styles.healthSub}>
@@ -610,7 +612,7 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false, onVe
                     <div className={styles.issueDetail}>
                       <div>⏱️ <strong>Last sample:</strong> {formatAge(point.lastSampleTs)} ({new Date(point.lastSampleTs).toLocaleTimeString()})</div>
                       <div>📊 <strong>Expected:</strong> every {point.expectedInterval}</div>
-                      <div style={{ color: '#be123c' }}>
+                      <div className={styles.statusCritical}>
                         <strong>Status:</strong> No data since {new Date(point.lastSampleTs).toLocaleTimeString()}
                       </div>
                       <div className={styles.issueFix}>
@@ -646,7 +648,7 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false, onVe
       )}
       {error && !loading && (
         <div className={styles.error}>
-          <ErrorCircleRegular style={{ fontSize: '14px', flexShrink: 0 }} />
+          <ErrorCircleRegular className={styles.errorIcon} />
           <span>
             {isStandalone && error === 'No trendlog data in the last 24 hours'
               ? 'No trend log data yet. Enable trend log points in the Trend Logs tab to start recording.'
@@ -722,7 +724,7 @@ export const TrendLogs: React.FC<TrendLogsProps> = ({ isStandalone = false, onVe
                 <div className={styles.issueDetail}>
                   <div>⏱️ <strong>Last sample:</strong> {formatAge(point.lastSampleTs)} ({new Date(point.lastSampleTs).toLocaleTimeString()})</div>
                   <div>📊 <strong>Expected:</strong> every {point.expectedInterval}</div>
-                  <div style={{ color: '#be123c' }}>
+                  <div className={styles.statusCritical}>
                     <strong>Status:</strong> No data since {new Date(point.lastSampleTs).toLocaleTimeString()}
                   </div>
                   <div className={styles.issueFix}>

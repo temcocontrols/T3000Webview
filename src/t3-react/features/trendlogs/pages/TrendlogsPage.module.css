@@ -227,6 +227,10 @@
   padding-top: 48px;
 }
 
+.centerText {
+  text-align: center;
+}
+
 /* Loading Bar - Info Bar Style */
 .loadingBar {
   display: flex;

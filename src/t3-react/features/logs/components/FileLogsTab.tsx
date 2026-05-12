@@ -65,7 +65,11 @@ interface DateFolder {
   displayDate: string;
 }
 
-export const FileLogsTab: React.FC = () => {
+interface FileLogsTabProps {
+  headerPrefix?: React.ReactNode;
+}
+
+export const FileLogsTab: React.FC<FileLogsTabProps> = ({ headerPrefix }) => {
   const [loading, setLoading] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -238,11 +242,14 @@ export const FileLogsTab: React.FC = () => {
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <ClipboardTextLtrRegular style={{ fontSize: '18px', marginRight: '4px' }} />
-          <Text size={400} weight="semibold">File Logs</Text>
-          <Tag appearance="filled" color="informative" size="extra-small" shape="square" style={{ fontSize: '11px', padding: '2px 6px' }}>
-            {logFiles.length} files • {formatSize(totalSize)}
-          </Tag>
+          <div className={styles.headerTitleGroup}>
+            <ClipboardTextLtrRegular style={{ fontSize: '18px', marginRight: '4px' }} />
+            <Text size={400} weight="semibold">File Logs</Text>
+            <Tag appearance="filled" color="informative" size="extra-small" shape="square" style={{ fontSize: '11px', padding: '2px 6px' }}>
+              {logFiles.length} files • {formatSize(totalSize)}
+            </Tag>
+          </div>
+          {headerPrefix}
         </div>
         <div className={styles.headerActions}>
           <Text size={200}>Auto</Text>

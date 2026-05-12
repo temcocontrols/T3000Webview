@@ -362,14 +362,7 @@ export const App: React.FC = () => {
                     </React.Suspense>
                   }
                 />
-                <Route
-                  path="trends/chart"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <TrendChartPage />
-                    </React.Suspense>
-                  }
-                />
+
                 <Route
                   path="tstat10-simulator"
                   element={
@@ -382,8 +375,16 @@ export const App: React.FC = () => {
                 {/* Develop Routes - Special layout with left navigation */}
               </Route>
 
-              {/* HVAC Designer & Documentation - Minimal layout with just top menu bar */}
+              {/* HVAC Designer, Documentation & Trend Chart - Minimal layout with just top menu bar */}
               <Route path="/t3000" element={<MinimalLayout />}>
+                <Route
+                  path="trends/chart"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <TrendChartPage />
+                    </React.Suspense>
+                  }
+                />
                 <Route
                   path="hvac-designer/:graphicId?"
                   element={

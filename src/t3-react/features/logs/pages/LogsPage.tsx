@@ -37,6 +37,28 @@ import { API_BASE_URL } from '../../../config/constants';
 
 const ACTIVITY_LOG_URL = `${API_BASE_URL}/api/sync/event-log`;
 
+const eventLogRequestCache = new Map<string, Promise<EventLogResponse>>();
+
+async function fetchEventLogOnce(url: string): Promise<EventLogResponse> {
+  const cached = eventLogRequestCache.get(url);
+  if (cached) {
+    return cached;
+  }
+
+  const request = fetch(url)
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`event-log: HTTP ${response.status}`);
+      }
+      return response.json() as Promise<EventLogResponse>;
+    })
+    .finally(() => {
+      eventLogRequestCache.delete(url);
+    });
+
+  eventLogRequestCache.set(url, request);
+  return request;
+}
 interface AppLogEntry {
   id: number;
   logged_at: string;
@@ -49,59 +71,27 @@ interface AppLogEntry {
 interface EventLogResponse {
   entries: AppLogEntry[];
   total: number;
+  categories?: string[];
+  categoryCounts?: Record<string, number>;
+  page: number;
+  limit: number;
 }
 
-// ---------- Sparkline ----------
-// Renders a tiny 10-bar SVG chart from a number[] of values 0..max
-const SPARK_W = 64;
-const SPARK_H = 20;
-const SPARK_BARS = 10;
+const normalizeLevel = (level: string | null | undefined) =>
+  (level ?? '').trim().toUpperCase();
 
-const useSparkStyles = makeStyles({
-  svg: { display: 'block', flexShrink: 0 },
-});
-
-function Sparkline({ values, color }: { values: number[]; color: string }) {
-  const ss = useSparkStyles();
-  const max = Math.max(...values, 1);
-  const barW = (SPARK_W - (SPARK_BARS - 1)) / SPARK_BARS;
-  return (
-    <svg width={SPARK_W} height={SPARK_H} className={ss.svg}>
-      {values.map((v, i) => {
-        const h = Math.max(2, Math.round((v / max) * SPARK_H));
-        return (
-          <rect
-            key={i}
-            x={i * (barW + 1)}
-            y={SPARK_H - h}
-            width={barW}
-            height={h}
-            rx={1}
-            fill={color}
-            opacity={0.75}
-          />
-        );
-      })}
-    </svg>
-  );
-}
-
-/** Bucket entries into SPARK_BARS time slots by logged_at */
-function buildSparkValues(entries: AppLogEntry[], level: string): number[] {
-  if (!entries.length) return Array(SPARK_BARS).fill(0);
-  const times = entries.map(e => new Date(e.logged_at).getTime()).filter(Boolean);
-  const tMin = Math.min(...times);
-  const tMax = Math.max(...times);
-  const range = tMax - tMin || 1;
-  const buckets: number[] = Array(SPARK_BARS).fill(0);
-  for (const entry of entries) {
-    if (entry.level !== level) continue;
-    const t = new Date(entry.logged_at).getTime();
-    const idx = Math.min(SPARK_BARS - 1, Math.floor(((t - tMin) / range) * SPARK_BARS));
-    buckets[idx] += 1;
+const levelBadgeColor = (level: string | null | undefined): 'danger' | 'warning' | 'informative' | 'subtle' => {
+  switch (normalizeLevel(level)) {
+    case 'ERROR':
+      return 'danger';
+    case 'WARN':
+      return 'warning';
+    case 'DEBUG':
+      return 'subtle';
+    default:
+      return 'informative';
   }
-  return buckets;
-}
+};
 
 const useStyles = makeStyles({
   page: {
@@ -263,13 +253,6 @@ const useStyles = makeStyles({
   statValueWarn: {
     color: tokens.colorPaletteMarigoldForeground1,
   },
-  statHint: {
-    fontSize: '11px',
-    color: '#605e5c',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-  },
   vDivider: {
     width: '1px',
     height: '14px',
@@ -281,8 +264,9 @@ const useStyles = makeStyles({
   catsRow: {
     display: 'flex',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: '6px',
-    overflowX: 'auto',
+    rowGap: '5px',
     minWidth: 0,
     flex: 1,
   },
@@ -430,6 +414,7 @@ export const LogsPage: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
   const [summaryVisible, setSummaryVisible] = useState(true);
+  const [logData, setLogData] = useState<EventLogResponse | null>(null);
   const [latestLog, setLatestLog] = useState<AppLogEntry | null>(null);
   const [summary, setSummary] = useState({
     total: 0,
@@ -438,44 +423,46 @@ export const LogsPage: React.FC = () => {
     categoryCount: 0,
     lastUpdated: '--:--:--',
   });
-  const [sparkErrors, setSparkErrors] = useState<number[]>(Array(SPARK_BARS).fill(0));
-  const [sparkWarns, setSparkWarns]   = useState<number[]>(Array(SPARK_BARS).fill(0));
   const [activeCategoryFilter, setActiveCategoryFilter] = useState('');
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
   const entriesRef = useRef<AppLogEntry[]>([]);
 
   const loadTopSummary = useCallback(async () => {
     try {
-      const params = new URLSearchParams({ page: '0', limit: '80' });
-      const response = await fetch(`${ACTIVITY_LOG_URL}?${params.toString()}`);
-      if (!response.ok) return;
-
-      const json: EventLogResponse = await response.json();
+      const params = new URLSearchParams({ page: '0', limit: '5000' });
+      const json: EventLogResponse = await fetchEventLogOnce(`${ACTIVITY_LOG_URL}?${params.toString()}`);
       const entries = json.entries ?? [];
+      setLogData(json);
       entriesRef.current = entries;
-      const categories = new Set<string>();
       let errorCount = 0;
       let warnCount = 0;
-      const catCounts: Record<string, number> = {};
 
       for (const entry of entries) {
-        categories.add(entry.category);
-        catCounts[entry.category] = (catCounts[entry.category] ?? 0) + 1;
-        if (entry.level === 'ERROR') errorCount += 1;
-        if (entry.level === 'WARN') warnCount += 1;
+        const level = normalizeLevel(entry.level);
+        if (level === 'ERROR') errorCount += 1;
+        if (level === 'WARN') warnCount += 1;
+      }
+
+      const categoryList = (json.categories ?? []).length
+        ? [...(json.categories ?? [])].sort((a, b) => a.localeCompare(b))
+        : [];
+
+      const categoryCountMap: Record<string, number> = { ...(json.categoryCounts ?? {}) };
+      for (const cat of categoryList) {
+        categoryCountMap[cat] = Number(categoryCountMap[cat] ?? 0);
       }
 
       setLatestLog(entries[0] ?? null);
+      setAvailableCategories(categoryList);
+      setCategoryCounts(categoryCountMap);
       setSummary({
         total: json.total ?? 0,
         errorCount,
         warnCount,
-        categoryCount: categories.size,
+        categoryCount: categoryList.length,
         lastUpdated: new Date().toLocaleTimeString(),
       });
-      setSparkErrors(buildSparkValues(entries, 'ERROR'));
-      setSparkWarns(buildSparkValues(entries, 'WARN'));
-      setCategoryCounts(catCounts);
     } catch (err) {
       console.error('Failed to load logs summary:', err);
     }
@@ -493,6 +480,10 @@ export const LogsPage: React.FC = () => {
 
   const handleBackToActivity = () => {
     setShowFiles(false);
+  };
+
+  const handleRefreshLogs = () => {
+    loadTopSummary();
   };
 
   return (
@@ -529,7 +520,8 @@ export const LogsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className={mergeClasses(s.topStrip, !summaryVisible && s.topStripHidden)}>
+      {!showFiles && (
+        <div className={mergeClasses(s.topStrip, !summaryVisible && s.topStripHidden)}>
         {/* Row 1 — Latest Activity */}
         <div className={s.latestPanel}>
           <div className={s.latestHeader}>
@@ -540,7 +532,7 @@ export const LogsPage: React.FC = () => {
             {latestLog?.message || 'No recent activity yet'}
           </span>
           <div className={s.latestMeta}>
-            <Badge size="small" color={latestLog?.level === 'ERROR' ? 'danger' : latestLog?.level === 'WARN' ? 'warning' : 'informative'}>
+            <Badge size="small" color={levelBadgeColor(latestLog?.level)}>
               {latestLog?.level || 'INFO'}
             </Badge>
             <span>{latestLog?.category || 'N/A'}</span>
@@ -561,13 +553,11 @@ export const LogsPage: React.FC = () => {
               <div className={s.statCell}>
                 <span className={s.statLabel}>Errors</span>
                 <span className={mergeClasses(s.statValue, s.statValueError)}>{summary.errorCount}</span>
-                <span className={s.statHint}><Sparkline values={sparkErrors} color="#a4262c" /></span>
               </div>
               <span className={s.vDivider} />
               <div className={s.statCell}>
                 <span className={s.statLabel}>Warnings</span>
                 <span className={mergeClasses(s.statValue, s.statValueWarn)}>{summary.warnCount}</span>
-                <span className={s.statHint}><Sparkline values={sparkWarns} color="#8a6100" /></span>
               </div>
               <span className={s.vDivider} />
               <div className={s.statCell}>
@@ -586,15 +576,13 @@ export const LogsPage: React.FC = () => {
               >
                 All
               </span>
-              {Object.entries(categoryCounts)
-                .sort((a, b) => b[1] - a[1])
-                .map(([cat, count]) => (
+              {availableCategories.map((cat) => (
                   <span
                     key={cat}
                     className={mergeClasses(s.chip, activeCategoryFilter === cat && s.chipActive)}
                     onClick={() => setActiveCategoryFilter(prev => prev === cat ? '' : cat)}
                   >
-                    {cat} <span className={s.chipCount}>{count}</span>
+                    {cat} <span className={s.chipCount}>{categoryCounts[cat] ?? 0}</span>
                   </span>
                 ))}
             </div>
@@ -612,21 +600,16 @@ export const LogsPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      )}
 
-      {!summaryVisible && (
+      {!showFiles && !summaryVisible && (
         <div className={s.showSummaryRow}>
           <div className={s.showSummaryInfo}>
             <span className={s.showSummaryInfoLabel}>Latest</span>
             <Badge
               size="small"
-              color={
-                latestLog?.level === 'ERROR'
-                  ? 'danger'
-                  : latestLog?.level === 'WARN'
-                    ? 'warning'
-                    : 'informative'
-              }
+              color={levelBadgeColor(latestLog?.level)}
             >
               {latestLog?.level || 'INFO'}
             </Badge>
@@ -680,26 +663,31 @@ export const LogsPage: React.FC = () => {
       {/* Main content */}
       <div className={s.content}>
         {showFiles ? (
-          <>
-            <div className={s.backBar}>
-              <Button
-                size="small"
-                appearance="subtle"
-                icon={<ArrowLeftRegular />}
-                onClick={handleBackToActivity}
-              >
-                Back to Activity Log
-              </Button>
-              <Text size={200} style={{ color: '#605e5c' }}>
-                — Raw text files written by the T3000 service process (T3WebLog)
-              </Text>
-            </div>
-            <FileLogsTab />
-          </>
+          <FileLogsTab
+            headerPrefix={(
+              <>
+                <Button
+                  size="small"
+                  appearance="subtle"
+                  icon={<ArrowLeftRegular />}
+                  onClick={handleBackToActivity}
+                >
+                  Back to Activity Log
+                </Button>
+                <Text size={200} style={{ color: '#605e5c', marginRight: '8px' }}>
+                  — Raw text files written by the T3000 service process (T3WebLog)
+                </Text>
+              </>
+            )}
+          />
         ) : (
           <ActivityLogTab
             externalCategoryFilter={activeCategoryFilter}
             onCategoryFilterChange={setActiveCategoryFilter}
+            categoryOptions={availableCategories}
+            sharedData={logData ?? undefined}
+            sharedDataMode
+            onRefresh={handleRefreshLogs}
           />
         )}
       </div>

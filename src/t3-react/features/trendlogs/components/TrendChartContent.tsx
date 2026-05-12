@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Trend Chart Content
  *
  * Shared content component used by both:
@@ -26,16 +26,32 @@ import {
   Text,
   Spinner,
   makeStyles,
+  mergeClasses,
   tokens,
   Menu,
   MenuTrigger,
   MenuPopover,
   MenuList,
   MenuItem,
+  MenuDivider,
   Button,
   Tooltip,
   Tag,
-  Badge,
+  Dialog,
+  DialogSurface,
+  DialogTitle,
+  DialogBody,
+  DialogContent,
+  DialogActions,
+  Checkbox,
+  Input,
+  OverlayDrawer,
+  DrawerHeader,
+  DrawerHeaderTitle,
+  DrawerBody,
+  DrawerFooter,
+  RadioGroup,
+  Radio,
 } from '@fluentui/react-components';
 import {
   ArrowDownloadRegular,
@@ -48,15 +64,20 @@ import {
   ArrowLeftRegular,
   ArrowRightRegular,
   SettingsRegular,
-  FlashRegular,
-  HistoryRegular,
   ErrorCircleRegular,
   ChevronRightRegular,
+  ChevronLeftRegular,
   ChevronDownFilled,
   ArrowClockwiseRegular,
+  WarningRegular,
+  // CheckmarkRegular removed - no longer used
+  DismissRegular,
+  ClockRegular,
+  DeleteRegular,
+  DataTrendingRegular,
 } from '@fluentui/react-icons';
-import { TrendChart, TrendSeries } from './TrendChart';
-import { TrendChartApiService, TrendDataRequest, SpecificPoint } from '../services/trendChartApi';
+import { TrendChart, TrendSeries } from './TrendChart.tsx';
+import { TrendChartApiService, TrendDataRequest } from '../services/trendChartApi';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
 
@@ -70,7 +91,7 @@ const useStyles = makeStyles({
     overflow: 'hidden',
   },
   topControlsBar: {
-    padding: '8px 12px',
+    padding: '4px 8px',
     backgroundColor: tokens.colorNeutralBackground2,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     flexShrink: 0,
@@ -94,9 +115,10 @@ const useStyles = makeStyles({
     backgroundColor: '#f5f5f5',
     border: `1px solid ${tokens.colorNeutralStroke1}`,
     borderRadius: '4px',
+    position: 'relative',
   },
   leftPanel: {
-    width: 'clamp(210px, 23vw, 330px)',
+    width: 'clamp(180px, 20vw, 280px)',
     backgroundColor: '#fafafa',
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: '0px',
@@ -117,6 +139,11 @@ const useStyles = makeStyles({
     minWidth: '200px',
     overflowY: 'auto',
     overflowX: 'hidden',
+    scrollbarWidth: 'thin',
+    scrollbarColor: '#d0d0d0 transparent',
+    '::-webkit-scrollbar': { width: '4px' },
+    '::-webkit-scrollbar-track': { background: 'transparent' },
+    '::-webkit-scrollbar-thumb': { background: '#d0d0d0', borderRadius: '2px' },
   },
   // RESIZABLE DIVIDER
   resizableDivider: {
@@ -154,7 +181,7 @@ const useStyles = makeStyles({
     overflow: 'hidden',
   },
   digitalLeftPanel: {
-    width: 'clamp(210px, 23vw, 330px)',
+    width: 'clamp(180px, 20vw, 280px)',
     backgroundColor: '#fafafa',
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: '0px',
@@ -175,14 +202,82 @@ const useStyles = makeStyles({
     minWidth: '200px',
     overflowY: 'auto',
     overflowX: 'hidden',
+    scrollbarWidth: 'thin',
+    scrollbarColor: '#d0d0d0 transparent',
+    '::-webkit-scrollbar': { width: '4px' },
+    '::-webkit-scrollbar-track': { background: 'transparent' },
+    '::-webkit-scrollbar-thumb': { background: '#d0d0d0', borderRadius: '2px' },
   },
   seriesPanelHeader: {
-    padding: '4px',
-    backgroundColor: 'transparent',
+    padding: '6px 8px',
+    backgroundColor: '#f8f9fa',
+    border: '1px solid #e8e8e8',
+    borderRadius: '4px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
+    gap: '4px',
     flexShrink: 0,
+    marginBottom: '8px',
+  },
+  seriesPanelHeaderRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  collapseBtn: {
+    minWidth: '20px',
+    width: '20px',
+    height: '20px',
+    padding: '0',
+    border: '1px solid #d9d9d9',
+    borderRadius: '3px',
+    backgroundColor: '#fff',
+    color: '#595959',
+    ':hover': {
+      backgroundColor: '#e6e6e6',
+      color: '#262626',
+    },
+  },
+  leftPanelCollapsed: {
+    width: '0 !important' as '0',
+    minWidth: '0 !important' as '0',
+    overflow: 'hidden',
+    padding: '0',
+    border: 'none',
+  },
+  expandTab: {
+    position: 'absolute',
+    left: '0',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    zIndex: 10,
+    width: '16px',
+    height: '40px',
+    backgroundColor: '#f0f0f0',
+    border: '1px solid #d9d9d9',
+    borderLeft: 'none',
+    borderRadius: '0 4px 4px 0',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    color: '#595959',
+    ':hover': {
+      backgroundColor: '#e0e0e0',
+      color: '#262626',
+    },
+  },
+  filterBarBtn: {
+    fontSize: '11px',
+    paddingLeft: '6px',
+    paddingRight: '6px',
+    minHeight: '26px',
+  },
+  filterMenuItem: {
+    fontSize: '11px',
+    minHeight: '26px',
+    paddingTop: '2px',
+    paddingBottom: '2px',
   },
   seriesPanelToolbar: {
     padding: '4px',
@@ -231,25 +326,52 @@ const useStyles = makeStyles({
     minHeight: 0,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderTop: 'none',
+    scrollbarWidth: 'thin',
+    scrollbarColor: '#d0d0d0 transparent',
+    '::-webkit-scrollbar': {
+      width: '4px',
+    },
+    '::-webkit-scrollbar-track': {
+      background: 'transparent',
+    },
+    '::-webkit-scrollbar-thumb': {
+      background: '#d0d0d0',
+      borderRadius: '2px',
+    },
   },
   seriesItem: {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
-    padding: '10px 12px',
-    backgroundColor: 'transparent',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    gap: '2px',
+    padding: '6px 2px 6px 8px',
+    backgroundColor: '#ffffff',
+    border: '1px solid #e8e8e8',
+    borderRadius: '4px',
+    marginBottom: '4px',
     fontSize: '12px',
     cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
     position: 'relative',
-    minHeight: '48px',
+    overflow: 'hidden',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
     ':hover': {
-      backgroundColor: tokens.colorNeutralBackground1Hover,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
     },
-    ':last-child': {
-      borderBottom: 'none',
-    },
+  },
+  digitalSectionDivider: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '4px 8px',
+    backgroundColor: '#f0f0f0',
+    borderTop: '1px solid #d9d9d9',
+    borderBottom: '1px solid #d9d9d9',
+    fontSize: '10px',
+    fontWeight: '600',
+    color: '#595959',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    marginBottom: '2px',
   },
   seriesItemExpanded: {
     backgroundColor: tokens.colorNeutralBackground1Hover,
@@ -271,26 +393,54 @@ const useStyles = makeStyles({
     },
   },
   colorIndicator: {
-    width: '20px',
-    height: '20px',
-    borderRadius: tokens.borderRadiusMedium,
+    width: '24px',
+    height: '16px',
+    borderRadius: '10px',
     flexShrink: 0,
-    border: `2px solid ${tokens.colorNeutralStroke1}`,
     cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    transition: 'all 0.3s ease',
     position: 'relative',
-    boxShadow: tokens.shadow4,
-    backgroundColor: 'var(--series-color)',
-    ':hover': {
-      transform: 'scale(1.1)',
-      boxShadow: tokens.shadow8,
-    },
+    border: '2px solid transparent',
+    display: 'flex',
+    alignItems: 'center',
+    padding: '1px',
+    boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)',
+  },
+  toggleInner: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '50%',
+    backgroundColor: 'white',
+    transition: 'all 0.3s ease',
+    transform: 'translateX(0)',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+    flexShrink: 0,
+  },
+  toggleInnerActive: {
+    transform: 'translateX(8px)',
   },
   digitalSeriesLabel: {
     fontSize: '11px',
     fontWeight: tokens.fontWeightBold,
     marginBottom: '4px',
     color: 'var(--series-color)',
+  },
+  seriesNumber: {
+    position: 'absolute',
+    top: '2px',
+    left: '2px',
+    backgroundColor: '#b8bbb8',
+    color: 'white',
+    fontSize: '8px',
+    fontWeight: 'bold',
+    padding: '1px 3px',
+    borderRadius: '2px',
+    minWidth: '10px',
+    lineHeight: '1.4',
+    textAlign: 'center',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+    zIndex: 1,
+    pointerEvents: 'none',
   },
   keyboardBadge: {
     position: 'absolute',
@@ -310,47 +460,100 @@ const useStyles = makeStyles({
     border: `2px solid ${tokens.colorNeutralBackground1}`,
     boxShadow: tokens.shadow4,
   },
+  // seriesInfo: flex:1 column, mirrors Vue .series-info
   seriesItemContent: {
     flex: 1,
     minWidth: 0,
-    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    padding: '2px 2px',
+    borderRadius: '4px',
+  },
+  // series-name-line: space-between, mirrors Vue .series-name-line
+  seriesItemInfo: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    justifyContent: 'space-between',
+    width: '100%',
+    minHeight: '24px',
+    gap: '4px',
   },
-  seriesItemInfo: {
-    flex: 1,
+  // name col: flex-shrink, overflow hidden
+  seriesItemName: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
     minWidth: 0,
     overflow: 'hidden',
-  },
-  seriesItemName: {
-    display: 'block',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
+    flexShrink: 1,
     fontWeight: tokens.fontWeightSemibold,
     fontSize: '12px',
+    color: '#262626',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
   },
+  // Right group: grid 40px 40px auto — mirrors Vue .series-right-group
   seriesItemMeta: {
+    display: 'grid',
+    gridTemplateColumns: '40px 40px auto',
+    alignItems: 'center',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
+  seriesChipCol: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    marginTop: '4px',
-    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    whiteSpace: 'nowrap',
+  },
+  seriesTagsCol: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    whiteSpace: 'nowrap',
+  },
+  seriesControlsCol: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flexShrink: 0,
   },
   seriesItemUnit: {
-    color: tokens.colorNeutralForeground3,
-    fontSize: '11px',
+    fontSize: '9px',
     fontWeight: tokens.fontWeightMedium,
+    backgroundColor: 'rgba(0,0,0,0.04)',
+    padding: '1px 3px',
+    borderRadius: '2px',
+    border: '1px solid rgba(0,0,0,0.06)',
+    lineHeight: '1.2',
+    whiteSpace: 'nowrap',
+  },
+  // Grey filled chip — mirrors Vue q-chip color="grey-4" = #e0e0e0, text-color="grey-8" = #616161
+  typeChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    backgroundColor: '#e0e0e0',
+    color: '#616161',
+    fontSize: '8px',
+    fontWeight: '600',
+    padding: '1px 4px',
+    borderRadius: '3px',
+    lineHeight: '1.2',
+    whiteSpace: 'nowrap',
   },
   expandButton: {
-    minWidth: '24px',
-    width: '24px',
-    height: '24px',
+    minWidth: '16px',
+    width: '20px',
+    height: '20px',
     padding: '0',
     flexShrink: 0,
+    color: '#8c8c8c',
+    border: 'none',
+    background: 'transparent',
     ':hover': {
-      backgroundColor: tokens.colorNeutralBackground1Pressed,
+      color: '#262626',
+      background: 'rgba(0,0,0,0.05)',
     },
   },
   seriesDetails: {
@@ -404,10 +607,10 @@ const useStyles = makeStyles({
   toolbar: {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
-    padding: '8px 2px',
+    gap: '8px',
+    padding: '2px 2px',
     flexWrap: 'wrap',
-    minHeight: '40px',
+    minHeight: '30px',
   },
   chartContainer: {
     flex: 1,
@@ -458,7 +661,7 @@ const useStyles = makeStyles({
     gap: '6px',
     paddingLeft: '8px',
     borderLeft: `3px solid ${tokens.colorBrandBackground}`,
-    height: '16px',
+    height: '14px',
   },
   timeBaseDropdown: {
     border: 'none',
@@ -477,7 +680,7 @@ const useStyles = makeStyles({
   },
   divider: {
     width: '1px',
-    height: '24px',
+    height: '18px',
     backgroundColor: tokens.colorNeutralStroke1,
     flexShrink: 0,
   },
@@ -543,6 +746,395 @@ const useStyles = makeStyles({
       backgroundColor: '#0078d4',
     },
   },
+  clickableCursor: {
+    cursor: 'pointer',
+  },
+  dbTooltipContent: {
+    maxWidth: '280px',
+  },
+  dbTooltipTitle: {
+    fontWeight: 600,
+    marginBottom: '4px',
+  },
+  dbTooltipMessage: {
+    fontSize: '12px',
+  },
+  dbTooltipHint: {
+    fontSize: '11px',
+    color: '#aaa',
+    marginTop: '6px',
+  },
+  dbBadge: {
+    marginLeft: 'auto',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '3px',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: 700,
+    cursor: 'default',
+    border: '1px solid',
+  },
+  dbBadgeError: {
+    backgroundColor: '#fff1f0',
+    border: '1px solid #ffa39e',
+    color: '#cf1322',
+  },
+  dbBadgeWarn: {
+    backgroundColor: '#fffbe6',
+    border: '1px solid #ffe58f',
+    color: '#d46b08',
+  },
+  selectedSeriesItem: {
+    backgroundColor: tokens.colorBrandBackground2,
+  },
+  removeTrackingButton: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: '14px',
+    height: '14px',
+    minWidth: '14px',
+    padding: 0,
+    zIndex: 2,
+    backgroundColor: '#ff4d4f',
+    color: 'white',
+    border: 'none',
+    borderRadius: '0 4px 0 12px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    fontSize: '9px',
+    lineHeight: 1,
+    ':hover': { backgroundColor: '#ff7875' },
+  },
+  colorIndicatorWrap: {
+    position: 'relative',
+    flexShrink: 0,
+    marginLeft: '6px',
+  },
+  seriesNameHidden: {
+    opacity: 0.4,
+  },
+  seriesMetaValue: {
+    color: tokens.colorNeutralForeground2,
+    fontWeight: 600,
+    marginLeft: '4px',
+  },
+  emptyStateCompact: {
+    padding: '24px 12px',
+    textAlign: 'center',
+  },
+  iconLarge: {
+    fontSize: '40px',
+  },
+  iconMedium: {
+    fontSize: '32px',
+  },
+  iconSmall: {
+    fontSize: '20px',
+  },
+  mt4: { marginTop: '4px' },
+  mt8: { marginTop: '8px' },
+  mt12: { marginTop: '12px' },
+  mt16: { marginTop: '16px' },
+  textMuted: {
+    color: tokens.colorNeutralForeground3,
+  },
+  dialogSurfaceSmall: {
+    maxWidth: '360px',
+  },
+  dialogSurfaceConfig: {
+    maxWidth: '760px',
+  },
+  dialogSurfaceSelector: {
+    maxWidth: '460px',
+    maxHeight: '80vh',
+  },
+  stackCol12: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  stackCol16: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+  },
+  stackCol10: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+  },
+  rowWrap6: {
+    display: 'flex',
+    gap: '6px',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  rowWrap8: {
+    display: 'flex',
+    gap: '8px',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  rowBetween: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '4px',
+  },
+  sectionCard: {
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: '6px',
+    padding: '8px 10px',
+  },
+  radioGroupWrap: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '4px',
+  },
+  drawerRadioGroup: {
+    '& .fui-Radio__label': {
+      fontSize: '11px',
+    },
+  },
+  cleanupUnit: {
+    minWidth: '80px',
+    fontSize: '11px',
+    '& .fui-Dropdown__button': { fontSize: '11px' },
+  },
+  gridTwoCol: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '10px',
+  },
+  fieldLabel: {
+    display: 'block',
+    marginBottom: '4px',
+  },
+  fieldLabelWide: {
+    display: 'block',
+    marginBottom: '6px',
+  },
+  inputFull: {
+    width: '100%',
+  },
+  inputSmall: {
+    width: '80px',
+    fontSize: '11px',
+    '& input': { fontSize: '11px' },
+  },
+  rowEnd: {
+    display: 'flex',
+    alignItems: 'end',
+  },
+  loadingRow: {
+    marginTop: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  successText: {
+    display: 'block',
+    marginTop: '8px',
+    color: tokens.colorStatusSuccessForeground1,
+  },
+  warningText: {
+    color: tokens.colorStatusWarningForeground1,
+    display: 'block',
+    marginTop: '6px',
+  },
+  filesList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    maxHeight: '190px',
+    overflowY: 'auto',
+  },
+  fileRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '8px',
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: '4px',
+    padding: '6px 8px',
+    alignItems: 'center',
+  },
+  minWidthZero: {
+    minWidth: 0,
+  },
+  ellipsisText: {
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  shortcutsGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '6px 12px',
+    fontSize: '11px',
+    marginTop: '6px',
+  },
+  shortcutCell: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  smallSwitch: {
+    transform: 'scale(0.72)',
+    transformOrigin: 'right center',
+  },
+  keycap: {
+    background: '#f0f0f0',
+    padding: '1px 5px',
+    borderRadius: '3px',
+    border: '1px solid #ccc',
+  },
+  selectorContent: {
+    overflowY: 'auto',
+    flex: 1,
+    padding: '0',
+  },
+  selectorHeader: {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '12px',
+  },
+  selectorRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '10px 14px',
+    marginBottom: '6px',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderLeft: '3px solid transparent',
+    cursor: 'pointer',
+    ':hover': { backgroundColor: tokens.colorNeutralBackground2 },
+  },
+  selectorRowSelected: {
+    backgroundColor: tokens.colorBrandBackground2,
+  },
+  selectorRowAnalog: {
+    borderLeftColor: tokens.colorBrandBackground,
+  },
+  selectorRowDigital: {
+    borderLeftColor: '#52c41a',
+  },
+  selectorDot: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '50%',
+    flexShrink: 0,
+    backgroundColor: 'var(--dot-color, #999)',
+  },
+  selectorItemDetails: {
+    flex: 1,
+    minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  selectorMainInfo: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '6px',
+  },
+  selectorMeta: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  selectorTypeBadge: {
+    fontSize: '10px',
+    fontWeight: 600,
+    padding: '1px 4px',
+    borderRadius: '3px',
+    textTransform: 'uppercase' as const,
+  },
+  selectorTypeBadgeAnalog: {
+    color: tokens.colorBrandBackground,
+    backgroundColor: tokens.colorBrandBackground2,
+  },
+  selectorTypeBadgeDigital: {
+    color: '#389e0d',
+    backgroundColor: '#f6ffed',
+  },
+  selectorStatusBadge: {
+    fontSize: '10px',
+    padding: '1px 5px',
+    borderRadius: '10px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    color: tokens.colorNeutralForeground3,
+    flexShrink: 0,
+  },
+  selectorFooter: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 14px',
+    borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
+    gap: '8px',
+  },
+  selectorFooterActions: {
+    display: 'flex',
+    gap: '8px',
+  },
+  color0: { backgroundColor: '#FF0000' },
+  color1: { backgroundColor: '#0000FF' },
+  color2: { backgroundColor: '#00AA00' },
+  color3: { backgroundColor: '#FF8000' },
+  color4: { backgroundColor: '#AA00AA' },
+  color5: { backgroundColor: '#CC6600' },
+  color6: { backgroundColor: '#AA0000' },
+  color7: { backgroundColor: '#0066AA' },
+  color8: { backgroundColor: '#AA6600' },
+  color9: { backgroundColor: '#6600AA' },
+  color10: { backgroundColor: '#006600' },
+  color11: { backgroundColor: '#FF6600' },
+  color12: { backgroundColor: '#0000AA' },
+  color13: { backgroundColor: '#FF00FF' },
+  color14: { backgroundColor: '#008080' },
+  color15: { backgroundColor: '#800080' },
+  color16: { backgroundColor: '#808000' },
+  color17: { backgroundColor: '#FF1493' },
+  color18: { backgroundColor: '#4B0082' },
+  color19: { backgroundColor: '#DC143C' },
+  color20: { backgroundColor: '#00AAAA' },
+  color21: { backgroundColor: '#00CED1' },
+  color22: { backgroundColor: '#8B4513' },
+  color23: { backgroundColor: '#2F4F4F' },
+  color24: { backgroundColor: '#B22222' },
+  colorHidden: { backgroundColor: '#d9d9d9' },
+  colorFallback: { backgroundColor: '#999999' },
+  unitColor0: { color: '#FF0000' },
+  unitColor1: { color: '#0000FF' },
+  unitColor2: { color: '#00AA00' },
+  unitColor3: { color: '#FF8000' },
+  unitColor4: { color: '#AA00AA' },
+  unitColor5: { color: '#CC6600' },
+  unitColor6: { color: '#AA0000' },
+  unitColor7: { color: '#0066AA' },
+  unitColor8: { color: '#AA6600' },
+  unitColor9: { color: '#6600AA' },
+  unitColor10: { color: '#006600' },
+  unitColor11: { color: '#FF6600' },
+  unitColor12: { color: '#0000AA' },
+  unitColor13: { color: '#FF00FF' },
+  unitColor14: { color: '#008080' },
+  unitColor15: { color: '#800080' },
+  unitColor16: { color: '#808000' },
+  unitColor17: { color: '#FF1493' },
+  unitColor18: { color: '#4B0082' },
+  unitColor19: { color: '#DC143C' },
+  unitColor20: { color: '#00AAAA' },
+  unitColor21: { color: '#00CED1' },
+  unitColor22: { color: '#8B4513' },
+  unitColor23: { color: '#2F4F4F' },
+  unitColor24: { color: '#B22222' },
+  unitColorFallback: { color: '#595959' },
 });
 
 export interface TrendChartContentProps {
@@ -554,9 +1146,44 @@ export interface TrendChartContentProps {
   monitorInputs?: any[]; // Monitor inputs for the selected trendlog
   isDrawerMode?: boolean;
   onToolbarRender?: (toolbar: React.ReactNode) => void;
+  onBack?: () => void;
 }
 
-type TimeBase = '5m' | '10m' | '30m' | '1h' | '4h' | '12h' | '1d' | '4d';
+type TimeBase = '5m' | '10m' | '30m' | '1h' | '4h' | '12h' | '1d' | '4d' | 'custom';
+const TIMEBASE_LABELS: Record<string, string> = {
+  '5m': '5 minutes', '10m': '10 minutes', '30m': '30 minutes', '1h': '1 hour',
+  '4h': '4 hours', '12h': '12 hours', '1d': '1 day', '4d': '4 days', 'custom': 'Custom',
+};
+
+interface DatabasePartitionConfig {
+  id?: number;
+  strategy: 'FiveMinutes' | 'Daily' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Custom' | 'CustomMonths';
+  custom_days?: number | null;
+  custom_months?: number | null;
+  auto_cleanup_enabled: boolean;
+  retention_value: number;
+  retention_unit: 'Days' | 'Weeks' | 'Months';
+  is_active: boolean;
+}
+
+interface DatabaseFileInfo {
+  id: number;
+  name: string;
+  size: string;
+  records: number;
+  start_date?: string | null;
+  end_date?: string | null;
+  is_active: boolean;
+  is_archived: boolean;
+  partition_identifier?: string | null;
+  age_days: number;
+}
+
+interface CleanupResult {
+  files_deleted?: number;
+  space_saved?: string;
+  message?: string;
+}
 
 // Color palette - Cyan at position 20 per user requirement
 const CHART_COLORS = [
@@ -591,6 +1218,72 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const styles = useStyles();
   const { selectedDevice } = useDeviceTreeStore();
 
+  const getColorClass = useCallback((color: string, hidden = false) => {
+    if (hidden) {
+      return styles.colorHidden;
+    }
+
+    switch ((color || '').toUpperCase()) {
+      case '#FF0000': return styles.color0;
+      case '#0000FF': return styles.color1;
+      case '#00AA00': return styles.color2;
+      case '#FF8000': return styles.color3;
+      case '#AA00AA': return styles.color4;
+      case '#CC6600': return styles.color5;
+      case '#AA0000': return styles.color6;
+      case '#0066AA': return styles.color7;
+      case '#AA6600': return styles.color8;
+      case '#6600AA': return styles.color9;
+      case '#006600': return styles.color10;
+      case '#FF6600': return styles.color11;
+      case '#0000AA': return styles.color12;
+      case '#FF00FF': return styles.color13;
+      case '#008080': return styles.color14;
+      case '#800080': return styles.color15;
+      case '#808000': return styles.color16;
+      case '#FF1493': return styles.color17;
+      case '#4B0082': return styles.color18;
+      case '#DC143C': return styles.color19;
+      case '#00AAAA': return styles.color20;
+      case '#00CED1': return styles.color21;
+      case '#8B4513': return styles.color22;
+      case '#2F4F4F': return styles.color23;
+      case '#B22222': return styles.color24;
+      default: return styles.colorFallback;
+    }
+  }, [styles]);
+
+  const getUnitColorClass = useCallback((color: string) => {
+    switch ((color || '').toUpperCase()) {
+      case '#FF0000': return styles.unitColor0;
+      case '#0000FF': return styles.unitColor1;
+      case '#00AA00': return styles.unitColor2;
+      case '#FF8000': return styles.unitColor3;
+      case '#AA00AA': return styles.unitColor4;
+      case '#CC6600': return styles.unitColor5;
+      case '#AA0000': return styles.unitColor6;
+      case '#0066AA': return styles.unitColor7;
+      case '#AA6600': return styles.unitColor8;
+      case '#6600AA': return styles.unitColor9;
+      case '#006600': return styles.unitColor10;
+      case '#FF6600': return styles.unitColor11;
+      case '#0000AA': return styles.unitColor12;
+      case '#FF00FF': return styles.unitColor13;
+      case '#008080': return styles.unitColor14;
+      case '#800080': return styles.unitColor15;
+      case '#808000': return styles.unitColor16;
+      case '#FF1493': return styles.unitColor17;
+      case '#4B0082': return styles.unitColor18;
+      case '#DC143C': return styles.unitColor19;
+      case '#00AAAA': return styles.unitColor20;
+      case '#00CED1': return styles.unitColor21;
+      case '#8B4513': return styles.unitColor22;
+      case '#2F4F4F': return styles.unitColor23;
+      case '#B22222': return styles.unitColor24;
+      default: return styles.unitColorFallback;
+    }
+  }, [styles]);
+
   // Use props or selected device
   const serialNumber = props.serialNumber || selectedDevice?.serialNumber;
   const panelId = props.panelId || selectedDevice?.panelId || 1;
@@ -601,18 +1294,67 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   // monitorId may be used in future for multi-monitor support
   // const monitorId = props.monitorId || '0';
 
-  // State
+  // ── State ──────────────────────────────────────────────────────────────
   const [series, setSeries] = useState<TrendSeries[]>([]);
   const [timeBase, setTimeBase] = useState<TimeBase>('5m');
   const [showGrid] = useState(true);
   const [isRealtime, setIsRealtime] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
   const [currentView, setCurrentView] = useState<1 | 2 | 3>(1);
   const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set());
   const [dataSource, setDataSource] = useState<'realtime' | 'api' | 'loading' | 'error'>('loading');
   const [timeOffset, setTimeOffset] = useState(0); // minutes from now (0 = live, negative = past)
+  const [lastSyncTime, setLastSyncTime] = useState<string>('');
 
-  // Refs
+  // Custom date range
+  const [showCustomDateModal, setShowCustomDateModal] = useState(false);
+  const [customStartInput, setCustomStartInput] = useState('');
+  const [customEndInput, setCustomEndInput] = useState('');
+  const [customRangeMs, setCustomRangeMs] = useState<{ start: number; end: number } | null>(null);
+
+  // View 2 & 3 tracking
+  const [viewTrackedKeys, setViewTrackedKeys] = useState<{ 2: string[]; 3: string[] }>({ 2: [], 3: [] });
+  const [showItemSelector, setShowItemSelector] = useState(false);
+  const [selectorOriginalKeys, setSelectorOriginalKeys] = useState<string[]>([]);
+
+  // Keyboard shortcuts
+  const [keyboardEnabled, setKeyboardEnabled] = useState(true);
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  const [selectedItemIndex, setSelectedItemIndex] = useState<number>(-1);
+
+  // Config modal
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [dbConfigLoading, setDbConfigLoading] = useState(false);
+  const [dbConfigSaving, setDbConfigSaving] = useState(false);
+  const [dbConfigMessage, setDbConfigMessage] = useState<string | null>(null);
+  const [syncConfigLoading, setSyncConfigLoading] = useState(false);
+  const [syncConfigSaving, setSyncConfigSaving] = useState(false);
+  const [ffiSyncIntervalSecs, setFfiSyncIntervalSecs] = useState(900);
+  const [rediscoverIntervalSecs, setRediscoverIntervalSecs] = useState(3600);
+  const [ffiIntervalPreset, setFfiIntervalPreset] = useState<'15min' | '20min' | '30min' | '60min' | 'custom'>('15min');
+  const [ffiCustomMinutes, setFfiCustomMinutes] = useState(15);
+  const [ffiSyncWarning, setFfiSyncWarning] = useState<string | null>(null);
+  const [rediscoverIntervalPreset, setRediscoverIntervalPreset] = useState<'1hour' | '2hours' | '4hours' | '8hours' | 'custom'>('1hour');
+  const [rediscoverCustomHours, setRediscoverCustomHours] = useState(1);
+  const [rediscoverWarning, setRediscoverWarning] = useState<string | null>(null);
+  const [dbFilesLoading, setDbFilesLoading] = useState(false);
+  const [dbConfig, setDbConfig] = useState<DatabasePartitionConfig>({
+    strategy: 'Monthly',
+    custom_days: 30,
+    custom_months: 2,
+    auto_cleanup_enabled: true,
+    retention_value: 30,
+    retention_unit: 'Days',
+    is_active: true,
+  });
+  const [dbFiles, setDbFiles] = useState<DatabaseFileInfo[]>([]);
+  const [dbActionBusy, setDbActionBusy] = useState<string | null>(null);
+
+  // DB status
+  const [dbStatus, setDbStatus] = useState<{ visible: boolean; severity: 'error' | 'warn'; title: string; message: string } | null>(null);
+
+  // ── Refs ───────────────────────────────────────────────────────────────
   const realtimeIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastDataTimestampRef = useRef<number>(0);
   const timebaseChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -621,42 +1363,44 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const chartInstanceRef = useRef<any>(null);
   const seriesRef = useRef<TrendSeries[]>([]);
   const timeBaseRef = useRef<TimeBase>('5m');
-
-  /**
-   * Computed: Visible analog series (Vue pattern)
-   */
-  const visibleAnalogSeries = useMemo(
-    () => series.filter((s) => s.digitalAnalog === 'Analog' && s.visible !== false),
-    [series]
-  );
-
-  /**
-   * Computed: Visible digital series (Vue pattern)
-   */
-  const visibleDigitalSeries = useMemo(
-    () => series.filter((s) => s.digitalAnalog === 'Digital' && s.visible !== false),
-    [series]
-  );
-
-  /**
-   * Computed: All analog series (for counts and rendering)
-   */
-  const analogSeries = useMemo(
-    () => series.filter((s) => s.digitalAnalog === 'Analog'),
-    [series]
-  );
-
-  /**
-   * Computed: All digital series (for counts and rendering)
-   */
-  const digitalSeries = useMemo(
-    () => series.filter((s) => s.digitalAnalog === 'Digital'),
-    [series]
-  );
+  const loadingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const dbStatusPollRef = useRef<NodeJS.Timeout | null>(null);
 
   // Keep refs in sync with state (for stale-closure-free interval callbacks)
   useEffect(() => { seriesRef.current = series; }, [series]);
   useEffect(() => { timeBaseRef.current = timeBase; }, [timeBase]);
+
+  /**
+   * Computed: Series displayed in current view (filtered for View 2 & 3)
+   */
+  const displayedSeries = useMemo(() => {
+    if (currentView === 1) return series;
+    const tracked = viewTrackedKeys[currentView as 2 | 3];
+    return series.filter((s) => tracked.includes(`${s.pointId}-${s.pointIndex}`));
+  }, [series, currentView, viewTrackedKeys]);
+
+  /**
+   * Computed: Has any tracked items for View 2 or 3
+   */
+  const hasTrackedItems = useMemo(() => {
+    if (currentView === 1) return true;
+    return (viewTrackedKeys[currentView as 2 | 3] ?? []).length > 0;
+  }, [currentView, viewTrackedKeys]);
+
+  /**
+   * Computed: Distinct units across all series (for By Unit dropdown)
+   */
+  const distinctUnits = useMemo((): Map<string, { count: number; allEnabled: boolean }> => {
+    const map = new Map<string, { count: number; allEnabled: boolean }>();
+    series.forEach((s) => {
+      const unit = s.unit || 'N/A';
+      if (!map.has(unit)) map.set(unit, { count: 0, allEnabled: true });
+      const entry = map.get(unit)!;
+      entry.count += 1;
+      if (!s.visible) entry.allEnabled = false;
+    });
+    return map;
+  }, [series]);
 
   /**
    * Helper: Toggle series expansion
@@ -677,8 +1421,13 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
    * Helper: Get prefix tag for series (updated from Vue)
    */
   const getPrefixTag = useCallback((pointType: string, prefix?: string): string => {
-    // Use prefix if available (from series data), otherwise fall back to pointType
-    return prefix || pointType || 'N/A';
+    // Match Vue chips: IN / OUT / VAR labels.
+    if (prefix) return prefix;
+    const pt = (pointType || '').toUpperCase();
+    if (pt === 'INPUT') return 'IN';
+    if (pt === 'OUTPUT') return 'OUT';
+    if (pt === 'VARIABLE') return 'VAR';
+    return pointType || 'N/A';
   }, []);
 
   /**
@@ -700,7 +1449,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const getTimeRangeMinutes = useCallback((tb: TimeBase): number => {
     const map: Record<TimeBase, number> = {
       '5m': 5, '10m': 10, '30m': 30, '1h': 60,
-      '4h': 240, '12h': 720, '1d': 1440, '4d': 5760,
+      '4h': 240, '12h': 720, '1d': 1440, '4d': 5760, 'custom': 0,
     };
     return map[tb];
   }, []);
@@ -711,6 +1460,71 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const restoreLiveMode = useCallback(() => {
     setTimeOffset(0);
     setIsRealtime(true);
+    setCustomRangeMs(null);
+  }, []);
+
+  /**
+   * Toggle series visibility by unit
+   */
+  const toggleByUnit = useCallback((unit: string) => {
+    setSeries((prev) => {
+      const unitSeries = prev.filter((s) => (s.unit || 'N/A') === unit);
+      const allEnabled = unitSeries.every((s) => s.visible);
+      return prev.map((s) => (s.unit || 'N/A') === unit ? { ...s, visible: !allEnabled } : s);
+    });
+  }, []);
+
+  /**
+   * View 2 & 3 tracking handlers
+   */
+  const openItemSelector = useCallback(() => {
+    // Save original keys so Cancel can revert
+    setSelectorOriginalKeys(viewTrackedKeys[currentView as 2 | 3] ?? []);
+    setShowItemSelector(true);
+  }, [currentView, viewTrackedKeys]);
+
+  const removeFromTracking = useCallback((key: string) => {
+    setViewTrackedKeys((prev) => ({
+      ...prev,
+      [currentView]: (prev[currentView as 2 | 3] || []).filter((k) => k !== key),
+    }));
+  }, [currentView]);
+
+  /**
+   * Custom date range handlers
+   */
+  const applyCustomDateRange = useCallback(() => {
+    if (!customStartInput || !customEndInput) return;
+    const start = new Date(customStartInput).getTime();
+    const end = new Date(customEndInput).getTime();
+    if (isNaN(start) || isNaN(end) || end <= start) return;
+    setCustomRangeMs({ start, end });
+    setTimeBase('custom');
+    setIsRealtime(false);
+    setShowCustomDateModal(false);
+  }, [customStartInput, customEndInput]);
+
+  const setQuickRange = useCallback((preset: 'today' | 'yesterday' | 'thisWeek' | 'lastWeek') => {
+    const now = new Date();
+    let start: Date, end: Date;
+    if (preset === 'today') {
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      end = new Date(start.getTime() + 86400000 - 1);
+    } else if (preset === 'yesterday') {
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      end = new Date(start.getTime() + 86400000 - 1);
+    } else if (preset === 'thisWeek') {
+      const day = now.getDay();
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
+      end = new Date(now);
+    } else {
+      const day = now.getDay();
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day - 7);
+      end = new Date(start.getTime() + 7 * 86400000 - 1);
+    }
+    const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    setCustomStartInput(fmt(start));
+    setCustomEndInput(fmt(end));
   }, []);
 
   /**
@@ -744,18 +1558,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   }, [timeBase, isRealtime, timeOffset, getTimeRangeMinutes, restoreLiveMode]);
 
   /**
-   * Get last known value for a series (shown in series panel items)
-   */
-  const getLastValue = useCallback((s: TrendSeries): string => {
-    if (!s.data || s.data.length === 0) return '\u2013';
-    const lastVal = s.data[s.data.length - 1].value;
-    if (s.digitalAnalog === 'Digital') {
-      return lastVal > 0.5 ? 'ON (1)' : 'OFF (0)';
-    }
-    return `${lastVal.toFixed(2)}${s.unit ? ' ' + s.unit : ''}`;
-  }, []);
-
-  /**
    * Helper: Get existing data time range to optimize loading
    */
   const getExistingDataTimeRange = useCallback(() => {
@@ -780,14 +1582,14 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
    */
   const loadHistoricalData = useCallback(async (forceReload = false) => {
     if (!serialNumber || !panelId) {
-      console.warn('⚠️ TrendChartContent: Missing serialNumber or panelId');
+      console.warn('鈿狅笍 TrendChartContent: Missing serialNumber or panelId');
       return;
     }
 
-    // Use ref to avoid stale closure — seriesRef is updated synchronously in initializeSeries
+    // Use ref to avoid stale closure 鈥?seriesRef is updated synchronously in initializeSeries
     const currentSeries = seriesRef.current;
     if (currentSeries.length === 0) {
-      console.warn('⚠️ TrendChartContent: No series initialized yet');
+      console.warn('鈿狅笍 TrendChartContent: No series initialized yet');
       return;
     }
 
@@ -796,6 +1598,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     try {
       // Calculate time range based on timeBase (adjusted by timeOffset for historical navigation)
       const now = Date.now() + timeOffset * 60 * 1000;
+      const customDurationMs = customRangeMs ? customRangeMs.end - customRangeMs.start : 60 * 60 * 1000;
       const timeRanges: Record<TimeBase, number> = {
         '5m': 5 * 60 * 1000,
         '10m': 10 * 60 * 1000,
@@ -805,16 +1608,17 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         '12h': 12 * 60 * 60 * 1000,
         '1d': 24 * 60 * 60 * 1000,
         '4d': 4 * 24 * 60 * 60 * 1000,
+        'custom': customDurationMs,
       };
 
       const timeRangeMs = timeRanges[timeBase];
       let startTime = now - timeRangeMs;
       let endTime = now;
 
-      // 🆕 SMART LOADING: Check if we already have data in this time range (skip when force reload)
+      // 馃啎 SMART LOADING: Check if we already have data in this time range (skip when force reload)
       const existingRange = forceReload ? null : getExistingDataTimeRange();
       if (existingRange) {
-        console.log('📊 TrendChartContent: Existing data detected - optimizing load range', {
+        console.log('馃搳 TrendChartContent: Existing data detected - optimizing load range', {
           requestedRange: {
             start: new Date(startTime).toISOString(),
             end: new Date(endTime).toISOString(),
@@ -828,7 +1632,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         // Only load data BEFORE the earliest existing point (historical gap)
         if (startTime < existingRange.earliest) {
           endTime = existingRange.earliest - 1000; // 1 second before earliest
-          console.log('🔍 TrendChartContent: Loading historical gap BEFORE existing data', {
+          console.log('馃攳 TrendChartContent: Loading historical gap BEFORE existing data', {
             gapStart: new Date(startTime).toISOString(),
             gapEnd: new Date(endTime).toISOString(),
           });
@@ -856,7 +1660,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         })),
       };
 
-      console.log('📥 TrendChartContent: Fetching historical data', request);
+      console.log('馃摜 TrendChartContent: Fetching historical data', request);
 
       const response = await TrendChartApiService.getTrendHistory(request);
 
@@ -872,6 +1676,34 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           (s) => s.pointId === point.point_id && s.pointType === point.point_type
         );
         if (seriesIndex !== -1) {
+          const unitFromHistory = String(
+            point.unit ?? point.units ?? point.range_field ?? point.range ?? ''
+          ).trim();
+
+          const currentUnit = String(updatedSeries[seriesIndex].unit || '').trim();
+          const shouldReplaceUnit =
+            !currentUnit || currentUnit === 'N/A' || currentUnit.toLowerCase() === 'unused';
+          if (shouldReplaceUnit && unitFromHistory) {
+            updatedSeries[seriesIndex].unit = unitFromHistory;
+          }
+
+          const rawDa = point.digitalAnalog ?? point.digital_analog;
+          if (typeof rawDa === 'string') {
+            const lower = rawDa.toLowerCase();
+            if (lower.includes('digital') || lower === '0') {
+              updatedSeries[seriesIndex].digitalAnalog = 'Digital';
+            } else if (lower.includes('analog') || lower === '1') {
+              updatedSeries[seriesIndex].digitalAnalog = 'Analog';
+            }
+          } else if (typeof rawDa === 'number') {
+            updatedSeries[seriesIndex].digitalAnalog = rawDa === 0 ? 'Digital' : 'Analog';
+          }
+
+          // Off/On-like unit labels imply digital state mapping.
+          if (unitFromHistory.includes('/')) {
+            updatedSeries[seriesIndex].digitalAnalog = 'Digital';
+          }
+
           const timestamp = new Date(point.timestamp).getTime();
 
           // Check if this timestamp already exists (deduplication)
@@ -905,6 +1737,20 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     }
   }, [serialNumber, panelId, trendlogId, timeBase, getExistingDataTimeRange, timeOffset, formatLocalTime]);
 
+  const applyItemSelection = useCallback(() => {
+    setShowItemSelector(false);
+    const tracked = viewTrackedKeys[currentView as 2 | 3] ?? [];
+    if (tracked.length > 0) {
+      loadHistoricalData(true);
+    }
+  }, [currentView, viewTrackedKeys, loadHistoricalData]);
+
+  const cancelItemSelection = useCallback(() => {
+    // Revert live changes back to what was tracked when the drawer opened
+    setViewTrackedKeys((prev) => ({ ...prev, [currentView]: selectorOriginalKeys }));
+    setShowItemSelector(false);
+  }, [currentView, selectorOriginalKeys]);
+
   /**
    * Initialize series from monitor configuration (enhanced with itemData support)
    */
@@ -914,7 +1760,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     try {
       // Priority 1: Use monitorInputs if provided (from TrendLogs page selection)
       if (props.monitorInputs && props.monitorInputs.length > 0) {
-        console.log('✅ TrendChartContent: Initializing series from monitorInputs', {
+        console.log('鉁?TrendChartContent: Initializing series from monitorInputs', {
           inputCount: props.monitorInputs.length,
           sampleInput: props.monitorInputs[0],
           serialNumber,
@@ -939,7 +1785,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                            'variable-points';
             const pointUrl = `${API_BASE_URL}/api/t3_device/devices/${serialNumber}/${endpoint}`;
 
-            console.log(`📡 Fetching ${pointTypeStr} points from:`, pointUrl);
+            console.log(`馃摗 Fetching ${pointTypeStr} points from:`, pointUrl);
             const response = await fetch(pointUrl);
 
             if (response.ok) {
@@ -948,22 +1794,22 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                               pointTypeStr === 'OUTPUT' ? 'output_points' :
                               'variable_points';
               pointsCache[pointTypeStr] = data[pointsKey] || [];
-              console.log(`✅ Fetched ${pointsCache[pointTypeStr].length} ${pointTypeStr} points`);
+              console.log(`鉁?Fetched ${pointsCache[pointTypeStr].length} ${pointTypeStr} points`);
             } else {
-              console.error(`❌ Failed to fetch ${pointTypeStr} points:`, response.status);
+              console.error(`鉂?Failed to fetch ${pointTypeStr} points:`, response.status);
               pointsCache[pointTypeStr] = [];
             }
           });
 
           await Promise.all(fetchPromises);
         } catch (err) {
-          console.error('❌ Error fetching point data:', err);
+          console.error('鉂?Error fetching point data:', err);
         }
 
         // Now create series using the cached data
         const generatedSeries: TrendSeries[] = props.monitorInputs.map((input, index) => {
           // TRENDLOG_INPUTS.Point_Type is stored as "INPUT"/"OUTPUT"/"VARIABLE" (full name)
-          // but may also arrive as legacy short form "IN"/"OUT"/"VAR" — handle both
+          // but may also arrive as legacy short form "IN"/"OUT"/"VAR" 鈥?handle both
           const rawType = input.pointType || '';
           const pointTypeStr: 'INPUT' | 'OUTPUT' | 'VARIABLE' =
             (rawType === 'INPUT' || rawType === 'IN') ? 'INPUT' :
@@ -974,42 +1820,61 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
           // TRENDLOG_INPUTS.Point_Index is 0-based (from C++ point_number).
           // TRENDLOG_DATA.PointId is 1-based (e.g., "IN1" for C++ index 0).
-          // → rawIndex is used for cache lookup; pointId uses rawIndex+1
+          // 鈫?rawIndex is used for cache lookup; pointId uses rawIndex+1
           const rawIndex = parseInt(input.pointIndex, 10);   // 0-based
           const pointIndex = rawIndex + 1;                   // 1-based, matches TRENDLOG_DATA.PointId
           const pointId = `${pointPrefix}${pointIndex}`;     // e.g., "IN1", "OUT2", "VAR3"
 
-          // Look up digital_analog from cached data (INPUTS table InputIndex is also 0-based)
+          // Look up point metadata from cached data (InputIndex/OutputIndex/VariableIndex are 0-based)
           let digitalAnalog: 'Digital' | 'Analog' = 'Analog'; // Default
           const points = pointsCache[pointTypeStr] || [];
-          const point = points.find((p: any) =>
-            parseInt(p.inputIndex || p.outputIndex || p.variableIndex || '0', 10) === rawIndex
-          );
+          const point = points.find((p: any) => {
+            const pointRawIndex = p.index ?? p.inputIndex ?? p.outputIndex ?? p.variableIndex ?? p.pointIndex ?? 0;
+            return parseInt(pointRawIndex, 10) === rawIndex;
+          });
 
-          if (point && point.digitalAnalog !== undefined && point.digitalAnalog !== null) {
-            const rawValue = point.digitalAnalog;
-            digitalAnalog = (rawValue === '0' || rawValue === 0) ? 'Digital' : 'Analog';
-            console.log(`✅ [${pointId}] Classified as ${digitalAnalog} (raw: ${rawValue})`);
-          } else {
-            console.warn(`⚠️ [${pointId}] No digitalAnalog field, defaulting to Analog`);
+          const unitRaw = (point?.units ?? point?.unit ?? point?.rangeLabel ?? point?.range_field ?? '') as string;
+          const resolvedUnit = String(unitRaw || '').trim();
+
+          if (point) {
+            const rawValue = point.digitalAnalog ?? point.digital_analog;
+            if (typeof rawValue === 'string') {
+              const lower = rawValue.toLowerCase();
+              if (lower.includes('digital') || lower === '0') digitalAnalog = 'Digital';
+              else if (lower.includes('analog') || lower === '1') digitalAnalog = 'Analog';
+            } else if (typeof rawValue === 'number') {
+              digitalAnalog = rawValue === 0 ? 'Digital' : 'Analog';
+            }
+
+            // Vue-compatible fallback: ranges like Off/On are digital states.
+            if (resolvedUnit.includes('/')) {
+              digitalAnalog = 'Digital';
+            }
+
+            console.log(`鉁?[${pointId}] Metadata mapped`, {
+              digitalAnalog,
+              rawDigitalAnalog: rawValue,
+              resolvedUnit,
+            });
           }
 
           return {
-            name: input.pointLabel || pointId,
+            name: input.pointLabel || point?.label || point?.fullLabel || pointId,
             pointId,
             pointType: pointTypeStr,
             pointIndex: pointIndex,
             data: [],
             color: CHART_COLORS[index % CHART_COLORS.length],
-            unit: '', // Will be fetched from API later
+            unit: resolvedUnit,
             digitalAnalog,
             visible: true,
+            prefix: pointPrefix,
           };
         });
 
         seriesRef.current = generatedSeries; // Update ref synchronously before setState
         setSeries(generatedSeries);
-        console.log('✅ TrendChartContent: Series initialized from monitorInputs', {
+        console.log('鉁?TrendChartContent: Series initialized from monitorInputs', {
           count: generatedSeries.length,
           serialNumber,
           panelId,
@@ -1046,8 +1911,20 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           const pointPrefix = pointType === 0 ? 'IN' : pointType === 1 ? 'OUT' : 'VAR';
           const pointId = `${pointPrefix}${pointNumber + 1}`;
 
-          // Determine if analog or digital based on range
-          const digitalAnalog = rangeItem.digital_analog === 0 ? 'Analog' : 'Digital';
+          // Determine analog/digital from range metadata (same heuristics as monitorInputs path)
+          const rangeUnit = String(rangeItem.units || rangeItem.unit || '').trim();
+          const rawDa = rangeItem.digital_analog ?? rangeItem.digitalAnalog;
+          let digitalAnalog: 'Analog' | 'Digital' = 'Analog';
+          if (typeof rawDa === 'string') {
+            const lower = rawDa.toLowerCase();
+            if (lower.includes('digital') || lower === '0') digitalAnalog = 'Digital';
+            else if (lower.includes('analog') || lower === '1') digitalAnalog = 'Analog';
+          } else if (typeof rawDa === 'number') {
+            digitalAnalog = rawDa === 0 ? 'Digital' : 'Analog';
+          }
+          if (rangeUnit.includes('/')) {
+            digitalAnalog = 'Digital';
+          }
 
           generatedSeries.push({
             name: pointId,
@@ -1056,9 +1933,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             pointIndex: pointNumber + 1, // Convert to 1-based for API
             data: [],
             color: CHART_COLORS[index % CHART_COLORS.length],
-            unit: rangeItem.units || '',
+            unit: rangeUnit,
             digitalAnalog: digitalAnalog as 'Analog' | 'Digital',
             visible: true,
+            prefix: pointPrefix,
           });
         }
 
@@ -1073,7 +1951,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       }
 
       // Fallback: Create sample series if no itemData
-      console.log('⚠️ TrendChartContent: No itemData available, using sample series');
+      console.log('鈿狅笍 TrendChartContent: No itemData available, using sample series');
       const sampleSeries: TrendSeries[] = [
         {
           name: 'IN1',
@@ -1082,7 +1960,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           pointIndex: 1, // 1-based
           data: [],
           color: CHART_COLORS[0],
-          unit: '°C',
+          unit: '掳C',
           digitalAnalog: 'Analog',
           visible: true,
         },
@@ -1093,7 +1971,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           pointIndex: 2,
           data: [],
           color: CHART_COLORS[1],
-          unit: '°C',
+          unit: '掳C',
           digitalAnalog: 'Analog',
           visible: true,
         },
@@ -1120,7 +1998,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     } catch (error) {
       console.error('TrendChartContent: Failed to initialize series', error);
     }
-  }, [serialNumber, panelId, props.itemData]);
+  }, [serialNumber, panelId, props.itemData, props.monitorInputs]);
 
   /**
    * Poll latest data from history API (replaces broken realtime endpoint)
@@ -1136,7 +2014,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       const timeRangeMs: Record<TimeBase, number> = {
         '5m': 5 * 60 * 1000, '10m': 10 * 60 * 1000, '30m': 30 * 60 * 1000,
         '1h': 60 * 60 * 1000, '4h': 4 * 60 * 60 * 1000, '12h': 12 * 60 * 60 * 1000,
-        '1d': 24 * 60 * 60 * 1000, '4d': 4 * 24 * 60 * 60 * 1000,
+        '1d': 24 * 60 * 60 * 1000, '4d': 4 * 24 * 60 * 60 * 1000, 'custom': 60 * 60 * 1000,
       };
       const startMs = now - timeRangeMs[currentTimeBase];
 
@@ -1186,6 +2064,11 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           });
           return updated;
         });
+        // Track last sync time accurately
+        const now = new Date();
+        setLastSyncTime(
+          `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`
+        );
         setDataSource('realtime');
       }
     } catch (error) {
@@ -1201,6 +2084,292 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     await loadHistoricalData(true);
   }, [loadHistoricalData]);
 
+  const getFfiIntervalSecs = useCallback(() => {
+    const presetValues: Record<string, number> = {
+      '15min': 900,
+      '20min': 1200,
+      '30min': 1800,
+      '60min': 3600,
+    };
+
+    if (ffiIntervalPreset !== 'custom') {
+      return presetValues[ffiIntervalPreset] || 900;
+    }
+
+    return Math.max(1, ffiCustomMinutes) * 60;
+  }, [ffiIntervalPreset, ffiCustomMinutes]);
+
+  const getRediscoverIntervalSecs = useCallback(() => {
+    const presetValues: Record<string, number> = {
+      '1hour': 3600,
+      '2hours': 7200,
+      '4hours': 14400,
+      '8hours': 28800,
+    };
+
+    if (rediscoverIntervalPreset !== 'custom') {
+      return presetValues[rediscoverIntervalPreset] || 3600;
+    }
+
+    return Math.max(1, rediscoverCustomHours) * 3600;
+  }, [rediscoverIntervalPreset, rediscoverCustomHours]);
+
+  const checkFfiSyncWarning = useCallback((secs: number) => {
+    if (secs < 300) {
+      setFfiSyncWarning('Warning: Frequent syncs (< 5 min) may impact performance');
+      return;
+    }
+    if (secs > 3600) {
+      setFfiSyncWarning('Warning: Long intervals (> 1 hour) may delay data updates');
+      return;
+    }
+    setFfiSyncWarning(null);
+  }, []);
+
+  const checkRediscoverWarning = useCallback((secs: number) => {
+    if (secs < 3600) {
+      setRediscoverWarning('Warning: Minimum interval is 1 hour');
+      return;
+    }
+    if (secs > 86400) {
+      setRediscoverWarning('Warning: Long intervals (> 24 hours) may delay discovery of new devices');
+      return;
+    }
+    setRediscoverWarning(null);
+  }, []);
+
+  const loadSyncConfig = useCallback(async () => {
+    setSyncConfigLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/config/all`);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      const ffiSecs = parseInt(data['ffi.sync_interval_secs'] || '900', 10);
+      const rediscoverSecs = parseInt(data['rediscover.interval_secs'] || '3600', 10);
+
+      setFfiSyncIntervalSecs(ffiSecs);
+      setRediscoverIntervalSecs(rediscoverSecs);
+
+      const ffiPresets: Record<number, '15min' | '20min' | '30min' | '60min'> = {
+        900: '15min',
+        1200: '20min',
+        1800: '30min',
+        3600: '60min',
+      };
+      const ffiPreset = ffiPresets[ffiSecs];
+      if (ffiPreset) {
+        setFfiIntervalPreset(ffiPreset);
+        setFfiCustomMinutes(Math.max(1, Math.floor(ffiSecs / 60)));
+      } else {
+        setFfiIntervalPreset('custom');
+        setFfiCustomMinutes(Math.max(1, Math.floor(ffiSecs / 60)));
+      }
+
+      const rediscoverPresets: Record<number, '1hour' | '2hours' | '4hours' | '8hours'> = {
+        3600: '1hour',
+        7200: '2hours',
+        14400: '4hours',
+        28800: '8hours',
+      };
+      const rediscoverPreset = rediscoverPresets[rediscoverSecs];
+      if (rediscoverPreset) {
+        setRediscoverIntervalPreset(rediscoverPreset);
+        setRediscoverCustomHours(Math.max(1, Math.floor(rediscoverSecs / 3600)));
+      } else {
+        setRediscoverIntervalPreset('custom');
+        setRediscoverCustomHours(Math.max(1, Math.floor(rediscoverSecs / 3600)));
+      }
+
+      checkFfiSyncWarning(ffiSecs);
+      checkRediscoverWarning(rediscoverSecs);
+    } catch (error) {
+      console.error('TrendChartContent: Failed to load sync config', error);
+      setDbConfigMessage('Failed to load sync/rediscover intervals.');
+    } finally {
+      setSyncConfigLoading(false);
+    }
+  }, [checkFfiSyncWarning, checkRediscoverWarning]);
+
+  const saveSyncConfig = useCallback(async () => {
+    setSyncConfigSaving(true);
+    setDbConfigMessage(null);
+    try {
+      const ffiSecs = getFfiIntervalSecs();
+      const rediscoverSecs = getRediscoverIntervalSecs();
+
+      const updates = [
+        { key: 'ffi.sync_interval_secs', value: String(ffiSecs) },
+        { key: 'rediscover.interval_secs', value: String(rediscoverSecs) },
+      ];
+
+      for (const update of updates) {
+        const res = await fetch(`${API_BASE_URL}/api/config/${update.key}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: update.value }),
+        });
+        if (!res.ok) {
+          throw new Error(`Failed saving ${update.key}, HTTP ${res.status}`);
+        }
+      }
+
+      setFfiSyncIntervalSecs(ffiSecs);
+      setRediscoverIntervalSecs(rediscoverSecs);
+      checkFfiSyncWarning(ffiSecs);
+      checkRediscoverWarning(rediscoverSecs);
+      setDbConfigMessage('Sync and rediscover intervals saved.');
+    } catch (error) {
+      console.error('TrendChartContent: Failed to save sync config', error);
+      setDbConfigMessage('Failed to save sync/rediscover intervals.');
+    } finally {
+      setSyncConfigSaving(false);
+    }
+  }, [getFfiIntervalSecs, getRediscoverIntervalSecs, checkFfiSyncWarning, checkRediscoverWarning]);
+
+  const loadDatabaseConfig = useCallback(async () => {
+    setDbConfigLoading(true);
+    setDbConfigMessage(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/database/config`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setDbConfig((prev) => ({
+        ...prev,
+        ...json,
+      }));
+    } catch (error) {
+      console.error('TrendChartContent: Failed to load database config', error);
+      setDbConfigMessage('Failed to load database configuration.');
+    } finally {
+      setDbConfigLoading(false);
+    }
+  }, []);
+
+  const loadDatabaseFiles = useCallback(async () => {
+    setDbFilesLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/database/files`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setDbFiles(Array.isArray(json) ? json : []);
+    } catch (error) {
+      console.error('TrendChartContent: Failed to load database files', error);
+      setDbConfigMessage('Failed to load database files.');
+      setDbFiles([]);
+    } finally {
+      setDbFilesLoading(false);
+    }
+  }, []);
+
+  const saveDatabaseConfig = useCallback(async () => {
+    setDbConfigSaving(true);
+    setDbConfigMessage(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/database/config`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dbConfig),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setDbConfig((prev) => ({ ...prev, ...json }));
+
+      const applyRes = await fetch(`${API_BASE_URL}/api/database/partition/apply`, {
+        method: 'POST',
+      });
+      if (!applyRes.ok) {
+        throw new Error(`Apply strategy failed, HTTP ${applyRes.status}`);
+      }
+
+      setDbConfigMessage('Configuration saved and partitioning applied.');
+      await loadDatabaseFiles();
+    } catch (error) {
+      console.error('TrendChartContent: Failed to save database config', error);
+      setDbConfigMessage('Failed to save database configuration.');
+    } finally {
+      setDbConfigSaving(false);
+    }
+  }, [dbConfig, loadDatabaseFiles]);
+
+  const cleanupOldDatabaseFiles = useCallback(async () => {
+    setDbActionBusy('cleanup-old');
+    setDbConfigMessage(null);
+    try {
+      const unit = (dbConfig.retention_unit || 'Days').toLowerCase();
+      const value = Math.max(1, Number(dbConfig.retention_value) || 30);
+      const retentionDays = unit === 'weeks' ? value * 7 : unit === 'months' ? value * 30 : value;
+      const res = await fetch(`${API_BASE_URL}/api/database/cleanup/old?retention_days=${retentionDays}`, {
+        method: 'POST',
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const result: CleanupResult = await res.json();
+      setDbConfigMessage(result?.message || 'Old files cleanup completed.');
+      await loadDatabaseFiles();
+    } catch (error) {
+      console.error('TrendChartContent: Failed to cleanup old files', error);
+      setDbConfigMessage('Failed to cleanup old files.');
+    } finally {
+      setDbActionBusy(null);
+    }
+  }, [dbConfig.retention_unit, dbConfig.retention_value, loadDatabaseFiles]);
+
+  const cleanupAllDatabaseFiles = useCallback(async () => {
+    setDbActionBusy('cleanup-all');
+    setDbConfigMessage(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/database/cleanup/all`, { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const result: CleanupResult = await res.json();
+      setDbConfigMessage(result?.message || 'All inactive files cleaned up.');
+      await loadDatabaseFiles();
+    } catch (error) {
+      console.error('TrendChartContent: Failed to cleanup all files', error);
+      setDbConfigMessage('Failed to cleanup all files.');
+    } finally {
+      setDbActionBusy(null);
+    }
+  }, [loadDatabaseFiles]);
+
+  const deleteDatabaseFile = useCallback(async (fileId: number) => {
+    setDbActionBusy(`delete-${fileId}`);
+    setDbConfigMessage(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/database/files/${fileId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (json?.success === false) {
+        setDbConfigMessage(json?.message || 'Cannot delete this database file.');
+      } else {
+        setDbConfigMessage('Database file deleted.');
+      }
+      await loadDatabaseFiles();
+    } catch (error) {
+      console.error('TrendChartContent: Failed to delete file', error);
+      setDbConfigMessage('Failed to delete database file.');
+    } finally {
+      setDbActionBusy(null);
+    }
+  }, [loadDatabaseFiles]);
+
+  const optimizeDatabase = useCallback(async () => {
+    setDbActionBusy('optimize');
+    setDbConfigMessage(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/database/optimize`, { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setDbConfigMessage(json?.message || 'Database optimize request completed.');
+      await loadDatabaseFiles();
+    } catch (error) {
+      console.error('TrendChartContent: Failed to optimize database', error);
+      setDbConfigMessage('Failed to optimize database.');
+    } finally {
+      setDbActionBusy(null);
+    }
+  }, [loadDatabaseFiles]);
+
   /**
    * Handle visibility change - backfill missing data
    */
@@ -1211,7 +2380,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         const gapSeconds = Math.floor((now - lastDataTimestampRef.current) / 1000);
 
         if (gapSeconds >= 10) {
-          console.log('🔄 TrendChartContent: Backfilling data gap', {
+          console.log('馃攧 TrendChartContent: Backfilling data gap', {
             gapSeconds,
             lastTimestamp: new Date(lastDataTimestampRef.current).toISOString(),
           });
@@ -1232,7 +2401,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
    */
   useEffect(() => {
     const initializeData = async () => {
-      console.log('🚀 TrendChartContent: Starting initialization sequence');
+      console.log('馃殌 TrendChartContent: Starting initialization sequence');
 
       // Step 1: Initialize series from monitor config (Vue: regenerateDataSeries)
       await initializeSeries();
@@ -1256,32 +2425,42 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     initializeData();
   }, []); // Empty deps - run only once on mount
 
+  useEffect(() => {
+    if (!showConfigModal) {
+      return;
+    }
+
+    loadSyncConfig();
+    loadDatabaseConfig();
+    loadDatabaseFiles();
+  }, [showConfigModal, loadSyncConfig, loadDatabaseConfig, loadDatabaseFiles]);
+
   /**
    * Watch timeBase changes with debouncing (Vue flow pattern)
    */
   useEffect(() => {
     // Skip if series not initialized yet
     if (series.length === 0) {
-      console.log('⚠️ TrendChartContent: No series yet, skipping timebase effect');
+      console.log('鈿狅笍 TrendChartContent: No series yet, skipping timebase effect');
       return;
     }
 
     // Skip if this is the first load and we haven't loaded initial data yet
     if (!hasLoadedInitialDataRef.current) {
-      console.log('⚠️ TrendChartContent: Initial data not loaded yet, skipping timebase effect');
+      console.log('鈿狅笍 TrendChartContent: Initial data not loaded yet, skipping timebase effect');
       return;
     }
 
     // Cancel previous pending timebase change
     if (timebaseChangeTimeoutRef.current) {
       clearTimeout(timebaseChangeTimeoutRef.current);
-      console.log('⏸️ TrendChartContent: Cancelled pending timebase change');
+      console.log('鈴革笍 TrendChartContent: Cancelled pending timebase change');
     }
 
     // Abort any ongoing history API request
     if (historyAbortControllerRef.current) {
       historyAbortControllerRef.current.abort();
-      console.log('🛑 TrendChartContent: Aborted previous history API request');
+      console.log('馃洃 TrendChartContent: Aborted previous history API request');
     }
 
     // Debounce: wait 300ms before executing
@@ -1309,17 +2488,17 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         // Load data based on Auto Scroll state
         if (isRealtime) {
           // Auto Scroll ON: Load real-time + historical data
-          console.log('📊 TrendChartContent: Auto Scroll ON - Loading historical + starting real-time');
+          console.log('馃搳 TrendChartContent: Auto Scroll ON - Loading historical + starting real-time');
           await loadHistoricalData();
 
           // Ensure real-time updates are active
           if (!realtimeIntervalRef.current) {
-            console.log('🔄 TrendChartContent: Starting real-time updates');
+            console.log('馃攧 TrendChartContent: Starting real-time updates');
             realtimeIntervalRef.current = setInterval(pollRealtimeData, 5000);
           }
         } else {
           // Auto Scroll OFF: Load historical data only
-          console.log('📚 TrendChartContent: Auto Scroll OFF - Loading historical only');
+          console.log('馃摎 TrendChartContent: Auto Scroll OFF - Loading historical only');
 
           // Stop real-time updates
           if (realtimeIntervalRef.current) {
@@ -1338,7 +2517,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       } catch (error: any) {
         // Check if error is due to abort
         if (error.name === 'AbortError') {
-          console.log('⏹️ TrendChartContent: History request aborted (newer request started)');
+          console.log('鈴癸笍 TrendChartContent: History request aborted (newer request started)');
           return;
         }
 
@@ -1364,16 +2543,16 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   useEffect(() => {
     // Only manage interval after initial load is complete
     if (!hasLoadedInitialDataRef.current) {
-      console.log('⏸️ TrendChartContent: Skipping Auto Scroll effect - not initialized yet');
+      console.log('鈴革笍 TrendChartContent: Skipping Auto Scroll effect - not initialized yet');
       return;
     }
 
-    console.log('🔄 TrendChartContent: Auto Scroll state changed', { isRealtime });
+    console.log('馃攧 TrendChartContent: Auto Scroll state changed', { isRealtime });
 
     if (isRealtime) {
       // Start real-time updates
       if (!realtimeIntervalRef.current) {
-        console.log('▶️ TrendChartContent: Starting real-time updates interval');
+        console.log('鈻讹笍 TrendChartContent: Starting real-time updates interval');
         realtimeIntervalRef.current = setInterval(() => {
           pollRealtimeData();
         }, 5000);
@@ -1381,7 +2560,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     } else {
       // Stop real-time updates
       if (realtimeIntervalRef.current) {
-        console.log('⏸️ TrendChartContent: Stopping real-time updates interval');
+        console.log('鈴革笍 TrendChartContent: Stopping real-time updates interval');
         clearInterval(realtimeIntervalRef.current);
         realtimeIntervalRef.current = null;
       }
@@ -1397,12 +2576,171 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   }, [isRealtime]); // Only depend on isRealtime, not updateRealtimeData
 
   /**
+   * 30-second loading timeout 鈥?shows timeout empty state
+   */
+  useEffect(() => {
+    if (loading) {
+      setLoadingTimedOut(false);
+      loadingTimerRef.current = setTimeout(() => setLoadingTimedOut(true), 30000);
+    } else {
+      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
+    }
+    return () => { if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current); };
+  }, [loading]);
+
+  /**
+   * DB Status polling 鈥?every 10 seconds
+   */
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/sync/health`);
+        if (!res.ok) {
+          setDbStatus({ visible: true, severity: 'error', title: 'Center DB Unreachable', message: `HTTP ${res.status}` });
+          return;
+        }
+        const json = await res.json().catch(() => null);
+        if (json && json.center_db_status && json.center_db_status !== 'ok') {
+          const s = json.center_db_status;
+          const sev: 'error' | 'warn' = s === 'server_unreachable' || s === 'db_missing' ? 'error' : 'warn';
+          const msgs: Record<string, string> = {
+            server_unreachable: 'Cannot reach the Center DB server.',
+            db_missing: 'Center DB file is missing.',
+            schema_missing: 'Center DB schema is incomplete.',
+            misconfigured_backend: 'Backend misconfigured for Center DB.',
+          };
+          setDbStatus({ visible: true, severity: sev, title: 'Center DB Issue', message: msgs[s] || s });
+        } else {
+          setDbStatus(null);
+        }
+      } catch {
+        // network error 鈥?not necessarily a DB issue, ignore silently
+      }
+    };
+    poll();
+    dbStatusPollRef.current = setInterval(poll, 10000);
+    return () => { if (dbStatusPollRef.current) clearInterval(dbStatusPollRef.current); };
+  }, []);
+
+  /**
+   * Zoom controls
+   */
+  const timeBaseOrder: TimeBase[] = ['5m', '10m', '30m', '1h', '4h', '12h', '1d', '4d'];
+
+  const zoomIn = useCallback(() => {
+    if (timeBase === 'custom') return;
+    const currentIndex = timeBaseOrder.indexOf(timeBase);
+    if (currentIndex > 0) setTimeBase(timeBaseOrder[currentIndex - 1]);
+  }, [timeBase]);
+
+  const zoomOut = useCallback(() => {
+    if (timeBase === 'custom') return;
+    const currentIndex = timeBaseOrder.indexOf(timeBase);
+    if (currentIndex < timeBaseOrder.length - 1) setTimeBase(timeBaseOrder[currentIndex + 1]);
+  }, [timeBase]);
+
+  const resetTimeBase = useCallback(() => {
+    setTimeOffset(0);
+    setIsRealtime(true);
+    setTimeBase('5m');
+    setCustomRangeMs(null);
+  }, []);
+
+  /**
+   * Keyboard shortcuts
+   */
+  useEffect(() => {
+    if (!keyboardEnabled) return;
+    const KEYS: string[] = ['1','2','3','4','5','6','7','8','9','a','b','c','d','e'];
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return;
+      const key = e.key.toLowerCase();
+      const idx = KEYS.indexOf(key);
+      if (idx !== -1) {
+        e.preventDefault();
+        // displayedSeries is ordered analog-first then digital, matching the left panel
+        setSeries(prev => {
+          const s = displayedSeries[idx];
+          if (!s) return prev;
+          const key = `${s.pointId}-${s.pointIndex}`;
+          const masterIdx = prev.findIndex(ms => `${ms.pointId}-${ms.pointIndex}` === key);
+          if (masterIdx === -1 || !prev[masterIdx].data || prev[masterIdx].data.length === 0) return prev;
+          const updated = [...prev];
+          updated[masterIdx] = { ...updated[masterIdx], visible: !updated[masterIdx].visible };
+          return updated;
+        });
+        // lastKeyboardAction intentionally not tracked (display-only feature removed)
+      } else if (e.key === 'ArrowLeft') { e.preventDefault(); moveTimeLeft(); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); moveTimeRight(); }
+      else if (e.key === 'ArrowUp' && !e.ctrlKey) { e.preventDefault(); zoomIn(); }
+      else if (e.key === 'ArrowDown' && !e.ctrlKey) { e.preventDefault(); zoomOut(); }
+      else if (e.key === 'ArrowUp' && e.ctrlKey) {
+        e.preventDefault();
+        setSelectedItemIndex(prev => Math.max(0, prev - 1));
+      } else if (e.key === 'ArrowDown' && e.ctrlKey) {
+        e.preventDefault();
+        setSeries(prev => { setSelectedItemIndex(i => Math.min(prev.length - 1, i + 1)); return prev; });
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        setSeries(prev => {
+          const s = displayedSeries[selectedItemIndex];
+          if (!s) return prev;
+          const key = `${s.pointId}-${s.pointIndex}`;
+          const masterIdx = prev.findIndex(ms => `${ms.pointId}-${ms.pointIndex}` === key);
+          if (masterIdx === -1 || !prev[masterIdx].data || prev[masterIdx].data.length === 0) return prev;
+          const updated = [...prev];
+          updated[masterIdx] = { ...updated[masterIdx], visible: !updated[masterIdx].visible };
+          return updated;
+        });
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setKeyboardEnabled(false);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [keyboardEnabled, moveTimeLeft, moveTimeRight, zoomIn, zoomOut, selectedItemIndex, displayedSeries]);
+
+  /**
+   * Persist & restore state to localStorage
+   */
+  const localStorageKey = useMemo(() =>
+    serialNumber ? `trendlog_view_state_${serialNumber}_${trendlogId}` : null,
+    [serialNumber, trendlogId]);
+
+  useEffect(() => {
+    if (!localStorageKey) return;
+    try {
+      const saved = localStorage.getItem(localStorageKey);
+      if (saved) {
+        const s = JSON.parse(saved);
+        if (s.timeBase) setTimeBase(s.timeBase);
+        if (typeof s.timeOffset === 'number') setTimeOffset(s.timeOffset);
+        if (s.customRangeMs) setCustomRangeMs(s.customRangeMs);
+        if (s.viewTrackedKeys) setViewTrackedKeys(s.viewTrackedKeys);
+      }
+    } catch { /* ignore */ }
+  }, [localStorageKey]);
+
+  useEffect(() => {
+    if (!localStorageKey) return;
+    try {
+      localStorage.setItem(localStorageKey, JSON.stringify({ timeBase, timeOffset, customRangeMs, viewTrackedKeys }));
+    } catch { /* ignore */ }
+  }, [localStorageKey, timeBase, timeOffset, customRangeMs, viewTrackedKeys]);
+
+  /**
    * Toggle series visibility
    */
-  const toggleSeriesVisibility = useCallback((index: number, forceValue?: boolean) => {
+  const toggleSeriesVisibility = useCallback((key: string, forceValue?: boolean) => {
     setSeries((prev) => {
+      const idx = prev.findIndex((s) => `${s.pointId}-${s.pointIndex}` === key);
+      if (idx === -1) return prev;
+      // Match Vue: skip empty series (no data loaded yet)
+      if (!prev[idx].data || prev[idx].data.length === 0) return prev;
       const updated = [...prev];
-      updated[index].visible = forceValue !== undefined ? forceValue : !updated[index].visible;
+      updated[idx] = { ...updated[idx], visible: forceValue !== undefined ? forceValue : !updated[idx].visible };
       return updated;
     });
   }, []);
@@ -1462,31 +2800,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   }, [series]);
 
   /**
-   * Zoom controls
-   */
-  const timeBaseOrder: TimeBase[] = ['5m', '10m', '30m', '1h', '4h', '12h', '1d', '4d'];
-
-  const zoomIn = useCallback(() => {
-    const currentIndex = timeBaseOrder.indexOf(timeBase);
-    if (currentIndex > 0) {
-      setTimeBase(timeBaseOrder[currentIndex - 1]);
-    }
-  }, [timeBase]);
-
-  const zoomOut = useCallback(() => {
-    const currentIndex = timeBaseOrder.indexOf(timeBase);
-    if (currentIndex < timeBaseOrder.length - 1) {
-      setTimeBase(timeBaseOrder[currentIndex + 1]);
-    }
-  }, [timeBase]);
-
-  const resetTimeBase = useCallback(() => {
-    setTimeOffset(0);
-    setIsRealtime(true);
-    setTimeBase('5m');
-  }, []);
-
-  /**
    * Export chart as PNG
    */
   const exportToPNG = useCallback(() => {
@@ -1495,7 +2808,34 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       console.warn('Chart instance not available for PNG export');
       return;
     }
-    const dataUrl = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' });
+
+    // Get the raw canvas from the chart instance
+    const sourceCanvas: HTMLCanvasElement | undefined =
+      chart.canvas ??                          // Chart.js
+      chart.getDom?.()?.querySelector('canvas'); // ECharts fallback
+
+    let dataUrl: string | undefined;
+
+    if (typeof chart.getDataURL === 'function') {
+      // ECharts native — supports backgroundColor directly
+      dataUrl = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' });
+    } else if (sourceCanvas) {
+      // Chart.js: composite onto a white canvas so the background is never transparent/dark
+      const offscreen = document.createElement('canvas');
+      offscreen.width = sourceCanvas.width;
+      offscreen.height = sourceCanvas.height;
+      const ctx = offscreen.getContext('2d')!;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, offscreen.width, offscreen.height);
+      ctx.drawImage(sourceCanvas, 0, 0);
+      dataUrl = offscreen.toDataURL('image/png');
+    }
+
+    if (!dataUrl) {
+      console.warn('Chart instance does not support PNG export');
+      return;
+    }
+
     const link = document.createElement('a');
     link.href = dataUrl;
     link.download = `trend-chart-${trendlogId}-${new Date().toISOString().slice(0, 10)}.png`;
@@ -1572,7 +2912,20 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         <Dropdown
           value={timeBase}
           selectedOptions={[timeBase]}
-          onOptionSelect={(_, data) => setTimeBase(data.optionValue as TimeBase)}
+          onOptionSelect={(_, data) => {
+            const val = data.optionValue as TimeBase;
+            if (val === 'custom') {
+              // pre-fill with current window
+              const now = new Date();
+              const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+              const rangeMs = getTimeRangeMinutes(timeBase === 'custom' ? '5m' : timeBase) * 60000;
+              setCustomStartInput(fmt(new Date(now.getTime() - rangeMs)));
+              setCustomEndInput(fmt(now));
+              setShowCustomDateModal(true);
+            } else {
+              setTimeBase(val);
+            }
+          }}
           size="small"
           className={styles.timeBaseDropdown}
           style={{ fontSize: '11px', minWidth: '100px', fontWeight: 'normal' }}
@@ -1585,6 +2938,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           <Option value="12h" style={{ fontSize: '11px' }}>12 hours</Option>
           <Option value="1d" style={{ fontSize: '11px' }}>1 day</Option>
           <Option value="4d" style={{ fontSize: '11px' }}>4 days</Option>
+          <Option value="custom" style={{ fontSize: '11px', borderTop: '1px solid #eee' }}>Custom Define...</Option>
         </Dropdown>
       </div>
 
@@ -1599,7 +2953,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           disabled={loading}
           size="small"
           style={{ minWidth: '20px', padding: '2px', width: '20px' }}
-          title="Scroll Left (←)"
+          title="Scroll Left (鈫?"
         />
         <Button
           appearance="subtle"
@@ -1608,7 +2962,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           disabled={isRealtime || loading}
           size="small"
           style={{ minWidth: '20px', padding: '2px', width: '20px' }}
-          title="Scroll Right (→)"
+          title="Scroll Right (鈫?"
         />
       </div>
 
@@ -1618,10 +2972,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           appearance="subtle"
           icon={<ArrowUpRegular fontSize={16} />}
           onClick={zoomIn}
-          disabled={loading || timeBaseOrder.indexOf(timeBase) === 0}
+          disabled={loading || timeBase === 'custom' || timeBaseOrder.indexOf(timeBase) === 0}
           size="small"
           style={{ fontSize: '11px', padding: '2px 6px', fontWeight: 'normal' }}
-          title="Zoom In (↑)"
+          title="Zoom In (鈫?"
         >
           Zoom In
         </Button>
@@ -1629,10 +2983,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           appearance="subtle"
           icon={<ArrowDownRegular fontSize={16} />}
           onClick={zoomOut}
-          disabled={loading || timeBaseOrder.indexOf(timeBase) === timeBaseOrder.length - 1}
+          disabled={loading || timeBase === 'custom' || timeBaseOrder.indexOf(timeBase) === timeBaseOrder.length - 1}
           size="small"
           style={{ fontSize: '11px', padding: '2px 6px', fontWeight: 'normal' }}
-          title="Zoom Out (↓)"
+          title="Zoom Out (鈫?"
         >
           Zoom Out
         </Button>
@@ -1683,11 +3037,11 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         >
           View 3
         </Button>
-        {currentView !== 1 && (
+        {currentView !== 1 && hasTrackedItems && (
           <Button
             appearance="subtle"
             icon={<SettingsRegular />}
-            onClick={() => console.log('Reconfigure tracked items')}
+            onClick={openItemSelector}
             disabled={loading}
             size="small"
             title="Reconfigure tracked items"
@@ -1701,29 +3055,21 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       {/* Status Tags */}
       <div className={styles.statusTags}>
         <div
-          className={`${styles.statusTag} ${isRealtime ? styles.statusTagLive : styles.statusTagHistorical}`}
+          className={mergeClasses(styles.statusTag, isRealtime ? styles.statusTagLive : styles.statusTagHistorical, !isRealtime ? styles.clickableCursor : undefined)}
           onClick={!isRealtime ? restoreLiveMode : undefined}
-          style={{ cursor: !isRealtime ? 'pointer' : 'default' }}
           title={!isRealtime ? 'Click to restore live mode' : ''}
         >
           {isRealtime ? (
             <>
-              <span className={styles.liveIndicator}>●</span>
-              {`Live-${new Date().toLocaleTimeString('en-US', { hour12: false })}`}
+              <span className={styles.liveIndicator}>&#9679;</span>
+              {lastSyncTime ? `Live-${lastSyncTime}` : 'Live'}
             </>
           ) : (
-            'Historical — click to restore live'
+            'Historical - click to restore live'
           )}
         </div>
         <div className={`${styles.statusTag} ${styles.statusTagTimeBase}`}>
-          {timeBase === '5m' ? '5 minutes' :
-           timeBase === '10m' ? '10 minutes' :
-           timeBase === '30m' ? '30 minutes' :
-           timeBase === '1h' ? '1 hour' :
-           timeBase === '4h' ? '4 hours' :
-           timeBase === '12h' ? '12 hours' :
-           timeBase === '1d' ? '1 day' :
-           timeBase === '4d' ? '4 days' : timeBase}
+          {TIMEBASE_LABELS[timeBase] || timeBase}
         </div>
       </div>
 
@@ -1734,7 +3080,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         <Button
           appearance="subtle"
           icon={<DatabaseRegular />}
-          onClick={() => console.log('Config - Not yet implemented')}
+          onClick={() => setShowConfigModal(true)}
           disabled={loading}
           size="small"
           style={{ fontSize: '11px', padding: '4px 8px', fontWeight: 'normal' }}
@@ -1774,22 +3120,48 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         </Menu>
       </div>
 
+      {/* DB Status Badge */}
+      {dbStatus?.visible && (
+        <Tooltip
+          content={
+            <div className={styles.dbTooltipContent}>
+              <div className={styles.dbTooltipTitle}>{dbStatus.title}</div>
+              <div className={styles.dbTooltipMessage}>{dbStatus.message}</div>
+              <div className={styles.dbTooltipHint}>
+                Local logging continues. Restore Center DB connectivity to resume sync.
+              </div>
+            </div>
+          }
+          relationship="description"
+          positioning="below-end"
+        >
+          <div className={mergeClasses(styles.dbBadge, dbStatus.severity === 'error' ? styles.dbBadgeError : styles.dbBadgeWarn)}>
+            <WarningRegular fontSize={13} />
+            DB
+          </div>
+        </Tooltip>
+      )}
+
       {loading && <Spinner size="tiny" />}
+
+      {/* Back button — pinned to far right */}
+      {props.onBack && (
+        <Button
+          appearance="subtle"
+          icon={<ArrowLeftRegular fontSize={16} />}
+          onClick={props.onBack}
+          size="small"
+          style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: 'normal' }}
+        >
+          Back
+        </Button>
+      )}
     </div>
   ), [
-    timeBase,
-    currentView,
-    isRealtime,
-    loading,
-    zoomIn,
-    zoomOut,
-    resetTimeBase,
-    moveTimeLeft,
-    moveTimeRight,
-    restoreLiveMode,
-    exportToPNG,
-    exportToCSV,
-    exportToJSON,
+    timeBase, currentView, isRealtime, loading, lastSyncTime, dbStatus, hasTrackedItems,
+    zoomIn, zoomOut, resetTimeBase, moveTimeLeft, moveTimeRight, restoreLiveMode,
+    exportToPNG, exportToCSV, exportToJSON, openItemSelector, getTimeRangeMinutes,
+    props.onBack,
   ]);
 
   // Call onToolbarRender when in drawer mode
@@ -1807,449 +3179,885 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
   return (
     <div className={styles.container}>
-      {/* ANALOG AREA (Top Section) */}
-      {visibleAnalogSeries.length > 0 && (
-        <div className={styles.analogArea}>
-          {/* Analog Left Panel - Series List */}
-          <div className={styles.leftPanel}>
-            <div className={styles.seriesPanelHeader}>
-              {/* Header Line 1: Title + Count + Data Source */}
-              <div className={styles.headerLine}>
-                <Text size={200} weight="semibold">
-                  {props.itemData?.title || 'Trend Monitor'} ({visibleAnalogSeries.length}/{analogSeries.length})
-                </Text>
-                <div className={styles.dataSourceIndicator}>
-                  {dataSource === 'loading' && (
-                    <Badge appearance="tint" color="informative" size="small">
-                      Loading...
-                    </Badge>
-                  )}
-                  {dataSource === 'realtime' && (
-                    <Badge appearance="filled" color="success" size="small" icon={<FlashRegular />}>
-                      Live
-                    </Badge>
-                  )}
-                  {dataSource === 'api' && (
-                    <Badge appearance="filled" color="informative" size="small" icon={<HistoryRegular />}>
-                      Historical
-                    </Badge>
-                  )}
-                  {dataSource === 'error' && (
-                    <Badge appearance="filled" color="danger" size="small" icon={<ErrorCircleRegular />}>
-                      Error
-                    </Badge>
-                  )}
-                  <Button
-                    appearance="subtle"
-                    icon={<ArrowClockwiseRegular />}
-                    size="small"
-                    onClick={manualRefresh}
-                    disabled={loading}
-                    title="Manual Refresh"
-                    style={{ minWidth: '24px', width: '24px', height: '24px', padding: 0 }}
-                  />
-                </div>
-              </div>
 
-              {/* Header Line 2: All Dropdown + By Type Dropdown + Auto Scroll Toggle */}
-              <div className={styles.headerControls}>
-                <div className={styles.leftControls}>
-                  {/* All Dropdown */}
+      {/* 鈹€鈹€ TOP CONTROLS TOOLBAR (full-page mode only) 鈹€鈹€ */}
+      {!isDrawerMode && (
+        <div className={styles.topControlsBar}>
+          {toolbar}
+        </div>
+      )}
+
+      {/* 鈹€鈹€ VIEW 2 / 3 EMPTY STATE 鈹€鈹€ */}
+      {currentView !== 1 && !hasTrackedItems && (
+        <div className={styles.emptyStateCenter}>
+          <DataTrendingRegular fontSize={48} color={tokens.colorBrandBackground} />
+          <Text size={500} weight="semibold">
+            {currentView === 2 ? 'Custom View 2' : 'Custom View 3'}
+          </Text>
+          <Text size={300} className={styles.textMuted}>
+            Select items to track to start monitoring specific data points.
+          </Text>
+          <Button appearance="primary" onClick={openItemSelector} style={{ fontWeight: 400 }}>
+            Select Items to Track
+          </Button>
+        </div>
+      )}
+
+      {(currentView === 1 || hasTrackedItems) && (() => {
+        // Derive filtered lists for this view
+        const viewAnalog = displayedSeries.filter((s) => s.digitalAnalog === 'Analog');
+        const viewDigital = displayedSeries.filter((s) => s.digitalAnalog === 'Digital');
+        const visAnalog = viewAnalog.filter((s) => s.visible !== false);
+        const visDigital = viewDigital.filter((s) => s.visible !== false);
+
+        // Series panel toolbar (shared helper)
+        const renderSeriesToolbar = () => (
+          <div className={styles.seriesPanelHeader}>
+            {/* Header Line: All + By Type + By Unit + Collapse button */}
+            <div className={styles.headerControls}>
+              <div className={styles.leftControls}>
+                {/* All Dropdown */}
+                <Menu>
+                  <MenuTrigger disableButtonEnhancement>
+                    <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after" className={styles.filterBarBtn}>All</Button>
+                  </MenuTrigger>
+                  <MenuPopover>
+                    <MenuList>
+                      <MenuItem className={styles.filterMenuItem} onClick={handleEnableAll} disabled={seriesCounts.allEnabled}>Enable All</MenuItem>
+                      <MenuItem className={styles.filterMenuItem} onClick={handleDisableAll} disabled={seriesCounts.allDisabled}>Disable All</MenuItem>
+                    </MenuList>
+                  </MenuPopover>
+                </Menu>
+
+                {/* By Type Dropdown */}
+                <Menu>
+                  <MenuTrigger disableButtonEnhancement>
+                    <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after" className={styles.filterBarBtn}>By Type</Button>
+                  </MenuTrigger>
+                  <MenuPopover>
+                    <MenuList>
+                      <MenuItem className={styles.filterMenuItem} onClick={() => toggleByAnalogDigital('Analog')} disabled={seriesCounts.analog === 0}>
+                        {seriesCounts.analogEnabled ? 'Disable' : 'Enable'} Analog ({seriesCounts.analog})
+                      </MenuItem>
+                      <MenuItem className={styles.filterMenuItem} onClick={() => toggleByAnalogDigital('Digital')} disabled={seriesCounts.digital === 0}>
+                        {seriesCounts.digitalEnabled ? 'Disable' : 'Enable'} Digital ({seriesCounts.digital})
+                      </MenuItem>
+                      <MenuDivider />
+                      <MenuItem className={styles.filterMenuItem} onClick={() => toggleByPointType('INPUT')} disabled={seriesCounts.input === 0}>
+                        {seriesCounts.inputEnabled ? 'Disable' : 'Enable'} Input ({seriesCounts.input})
+                      </MenuItem>
+                      <MenuItem className={styles.filterMenuItem} onClick={() => toggleByPointType('OUTPUT')} disabled={seriesCounts.output === 0}>
+                        {seriesCounts.outputEnabled ? 'Disable' : 'Enable'} Output ({seriesCounts.output})
+                      </MenuItem>
+                      <MenuItem className={styles.filterMenuItem} onClick={() => toggleByPointType('VARIABLE')} disabled={seriesCounts.variable === 0}>
+                        {seriesCounts.variableEnabled ? 'Disable' : 'Enable'} Variable ({seriesCounts.variable})
+                      </MenuItem>
+                    </MenuList>
+                  </MenuPopover>
+                </Menu>
+
+                {/* By Unit Dropdown */}
+                {distinctUnits.size > 0 && (
                   <Menu>
                     <MenuTrigger disableButtonEnhancement>
-                      <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after">
-                        All
-                      </Button>
+                      <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after">By Unit</Button>
                     </MenuTrigger>
                     <MenuPopover>
                       <MenuList>
-                        <MenuItem onClick={handleEnableAll} disabled={seriesCounts.allEnabled}>
-                          Enable All
-                        </MenuItem>
-                        <MenuItem onClick={handleDisableAll} disabled={seriesCounts.allDisabled}>
-                          Disable All
-                        </MenuItem>
+                        {Array.from(distinctUnits.entries()).map(([unit, info]) => (
+                          <MenuItem key={unit} className={styles.filterMenuItem} onClick={() => toggleByUnit(unit)}>
+                            {info.allEnabled ? 'Disable' : 'Enable'} {unit} ({info.count})
+                          </MenuItem>
+                        ))}
                       </MenuList>
                     </MenuPopover>
                   </Menu>
-
-                  {/* By Type Dropdown */}
-                  <Menu>
-                    <MenuTrigger disableButtonEnhancement>
-                      <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after">
-                        By Type
-                      </Button>
-                    </MenuTrigger>
-                    <MenuPopover>
-                      <MenuList>
-                        <MenuItem
-                          onClick={() => toggleByAnalogDigital('Analog')}
-                          disabled={seriesCounts.analog === 0}
-                        >
-                          {seriesCounts.analogEnabled ? 'Disable' : 'Enable'} Analog ({seriesCounts.analog})
-                        </MenuItem>
-                        <MenuItem
-                          onClick={() => toggleByAnalogDigital('Digital')}
-                          disabled={seriesCounts.digital === 0}
-                        >
-                          {seriesCounts.digitalEnabled ? 'Disable' : 'Enable'} Digital ({seriesCounts.digital})
-                        </MenuItem>
-                        <MenuItem
-                          onClick={() => toggleByPointType('INPUT')}
-                          disabled={seriesCounts.input === 0}
-                        >
-                          {seriesCounts.inputEnabled ? 'Disable' : 'Enable'} Input ({seriesCounts.input})
-                        </MenuItem>
-                        <MenuItem
-                          onClick={() => toggleByPointType('OUTPUT')}
-                          disabled={seriesCounts.output === 0}
-                        >
-                          {seriesCounts.outputEnabled ? 'Disable' : 'Enable'} Output ({seriesCounts.output})
-                        </MenuItem>
-                        <MenuItem
-                          onClick={() => toggleByPointType('VARIABLE')}
-                          disabled={seriesCounts.variable === 0}
-                        >
-                          {seriesCounts.variableEnabled ? 'Disable' : 'Enable'} Variable ({seriesCounts.variable})
-                        </MenuItem>
-                      </MenuList>
-                    </MenuPopover>
-                  </Menu>
-                </div>
-
-                {/* Auto Scroll Toggle */}
-                <div className={styles.autoScrollToggle}>
-                  <Text size={100}>Auto Scroll:</Text>
-                  <Switch checked={isRealtime} onChange={(_, data) => setIsRealtime(data.checked)} />
-                </div>
+                )}
+                {/* Collapse button — right-aligned after By Unit */}
+                <Button
+                  size="small"
+                  appearance="subtle"
+                  icon={<ChevronLeftRegular fontSize={12} />}
+                  className={styles.collapseBtn}
+                  onClick={() => setLeftPanelCollapsed(true)}
+                  title="Hide panel"
+                  style={{ marginLeft: 'auto' }}
+                />
               </div>
+
             </div>
+          </div>
+        );
 
-            {/* Analog Series List */}
-            <div className={styles.seriesPanel}>
-              {analogSeries.map((s, index) => {
-                const seriesKey = `${s.pointId}-${s.pointIndex}`;
-                const isExpanded = expandedSeries.has(seriesKey);
+        // Render a series item
+        const renderSeriesItem = (s: TrendSeries, globalIndex: number) => {
+          const seriesKey = `${s.pointId}-${s.pointIndex}`;
+          const isExpanded = expandedSeries.has(seriesKey);
+          const isKeySelected = keyboardEnabled && selectedItemIndex === globalIndex;
 
-                return (
-                  <React.Fragment key={seriesKey}>
-                    <div className={`${styles.seriesItem} ${isExpanded ? styles.seriesItemExpanded : ''}`}>
-                      {/* @ts-expect-error CSS custom property for dynamic color */}
-                      <div
-                        className={styles.colorIndicator}
-                        style={{ '--series-color': s.color } as React.CSSProperties}
-                        onClick={() => toggleSeriesVisibility(index)}
-                      />
+          return (
+            <React.Fragment key={seriesKey}>
+              <div
+                className={mergeClasses(styles.seriesItem, isExpanded ? styles.seriesItemExpanded : undefined, isKeySelected ? styles.selectedSeriesItem : undefined)}
+                onClick={() => toggleSeriesVisibility(seriesKey)}
+              >
+                {/* Sequential number badge — only visible when keyboard shortcuts enabled */}
+                {keyboardEnabled && <div className={styles.seriesNumber}>{globalIndex + 1}</div>}
 
-                      <Tooltip content={s.name} relationship="label">
-                        <div className={styles.seriesItemContent} onClick={() => toggleSeriesVisibility(index)}>
-                          <div className={styles.seriesItemInfo}>
-                            <Text className={styles.seriesItemName}>
-                              {s.name}
-                            </Text>
-                            <div className={styles.seriesItemMeta}>
-                              {(s.prefix || s.pointType) && (
-                                <Tag size="extra-small" appearance="outline">
-                                  {getPrefixTag(s.pointType, s.prefix)}
-                                </Tag>
-                              )}
-                              <Text className={styles.seriesItemUnit}>
-                                {s.unit || 'N/A'}
-                              </Text>
-                              <Text size={100} style={{ color: tokens.colorNeutralForeground2, fontWeight: 600, marginLeft: '4px' }}>
-                                {getLastValue(s)}
-                              </Text>
-                            </div>
-                          </div>
-                        </div>
-                      </Tooltip>
+                {/* Delete overlay for View 2 & 3 */}
+                {currentView !== 1 && (
+                  <span
+                    className={styles.removeTrackingButton}
+                    onClick={(e) => { e.stopPropagation(); removeFromTracking(seriesKey); }}
+                    title="Remove from tracking"
+                    role="button"
+                    aria-label="Remove from tracking"
+                  >
+                    ×
+                  </span>
+                )}
 
-                      <Button
-                        appearance="subtle"
-                        icon={isExpanded ? <ChevronDownFilled /> : <ChevronRightRegular />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleSeriesExpand(seriesKey);
-                        }}
-                        className={styles.expandButton}
-                        size="small"
-                      />
-                    </div>
+                {/* Toggle switch — color indicator */}
+                <div className={styles.colorIndicatorWrap} onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className={mergeClasses(styles.colorIndicator, getColorClass(s.color, s.visible === false))}
+                    onClick={() => toggleSeriesVisibility(seriesKey)}
+                  >
+                    <div className={mergeClasses(styles.toggleInner, s.visible !== false ? styles.toggleInnerActive : undefined)} />
+                  </div>
+                </div>
 
-                    {isExpanded && (
-                      <div className={styles.seriesDetails}>
-                        <div className={styles.seriesStats}>
-                          <Text size={100}>
-                            <strong>Last:</strong> {s.data && s.data.length > 0
-                              ? `${s.data[s.data.length - 1].value.toFixed(2)} ${s.unit || ''}`
-                              : 'N/A'}
-                          </Text>
-                          <Text size={100}>
-                            <strong>Avg:</strong> {s.data && s.data.length > 0
-                              ? `${(s.data.reduce((sum, p) => sum + p.value, 0) / s.data.length).toFixed(2)} ${s.unit || ''}`
-                              : 'N/A'}
-                          </Text>
-                          <Text size={100}>
-                            <strong>Min:</strong> {s.data && s.data.length > 0
-                              ? `${Math.min(...s.data.map(p => p.value)).toFixed(2)} ${s.unit || ''}`
-                              : 'N/A'}
-                          </Text>
-                          <Text size={100}>
-                            <strong>Max:</strong> {s.data && s.data.length > 0
-                              ? `${Math.max(...s.data.map(p => p.value)).toFixed(2)} ${s.unit || ''}`
-                              : 'N/A'}
-                          </Text>
-                        </div>
+                {/* series-info: flex column wrapping series-name-line */}
+                <div className={styles.seriesItemContent}>
+                  {/* series-name-line: space-between row */}
+                  <div className={styles.seriesItemInfo}>
+                    {/* series-name-col */}
+                    <Tooltip content={s.name} relationship="label">
+                      <span className={mergeClasses(styles.seriesItemName, s.visible === false ? styles.seriesNameHidden : undefined)}>
+                        {s.name}
+                      </span>
+                    </Tooltip>
+
+                    {/* series-right-group: grid 40px 40px auto */}
+                    <div className={styles.seriesItemMeta}>
+                      {/* chip col — 40px */}
+                      <div className={styles.seriesChipCol}>
+                        {(s.prefix || s.pointType) && (
+                          <span className={styles.typeChip}>{getPrefixTag(s.pointType, s.prefix)}</span>
+                        )}
                       </div>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </div>
-          </div>
+                      {/* unit col — 40px */}
+                      <div className={styles.seriesTagsCol}>
+                        <span className={mergeClasses(styles.seriesItemUnit, getUnitColorClass(s.color))}>{s.unit || 'N/A'}</span>
+                      </div>
+                      {/* expand col — auto */}
+                      <div className={styles.seriesControlsCol}>
+                        <Button
+                          appearance="subtle"
+                          icon={isExpanded ? <ChevronDownFilled fontSize={11} /> : <ChevronRightRegular fontSize={11} />}
+                          onClick={(e) => { e.stopPropagation(); toggleSeriesExpand(seriesKey); }}
+                          className={styles.expandButton}
+                          size="small"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-          {/* Analog Right Panel - Chart */}
-          <div className={styles.rightPanel}>
-            <TrendChart
-              series={visibleAnalogSeries}
-              timeBase={timeBase}
-              showGrid={showGrid}
-              chartType="analog"
-              timeOffset={timeOffset}
-              onChartReady={(instance) => { chartInstanceRef.current = instance; }}
-            />
-          </div>
-        </div>
-      )}
+              {isExpanded && (
+                <div className={styles.seriesDetails}>
+                  <div className={styles.seriesStats}>
+                    {s.digitalAnalog === 'Analog' ? (
+                      <>
+                        <Text size={100}><strong>Last:</strong> {s.data && s.data.length > 0 ? `${s.data[s.data.length - 1].value.toFixed(2)} ${s.unit || ''}` : 'N/A'}</Text>
+                        <Text size={100}><strong>Avg:</strong> {s.data && s.data.length > 0 ? `${(s.data.reduce((sum, p) => sum + p.value, 0) / s.data.length).toFixed(2)} ${s.unit || ''}` : 'N/A'}</Text>
+                        <Text size={100}><strong>Min:</strong> {s.data && s.data.length > 0 ? `${Math.min(...s.data.map(p => p.value)).toFixed(2)} ${s.unit || ''}` : 'N/A'}</Text>
+                        <Text size={100}><strong>Max:</strong> {s.data && s.data.length > 0 ? `${Math.max(...s.data.map(p => p.value)).toFixed(2)} ${s.unit || ''}` : 'N/A'}</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text size={100}><strong>Last:</strong> {s.data && s.data.length > 0 ? (s.data[s.data.length - 1].value === 1 ? 'ON' : 'OFF') : 'N/A'}</Text>
+                        <Text size={100}><strong>Points:</strong> {s.data?.length || 0}</Text>
+                        <Text size={100}><strong>ON count:</strong> {s.data?.filter(p => p.value === 1).length || 0}</Text>
+                        <Text size={100}><strong>OFF count:</strong> {s.data?.filter(p => p.value === 0).length || 0}</Text>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </React.Fragment>
+          );
+        };
 
-      {/* RESIZABLE DIVIDER */}
-      {visibleAnalogSeries.length > 0 && visibleDigitalSeries.length > 0 && (
-        <div className={styles.resizableDivider}>
-          <div className={styles.dividerGrip} />
-        </div>
-      )}
-
-      {/* DIGITAL AREA (Bottom Section) */}
-      {visibleDigitalSeries.length > 0 && (
-        <div className={styles.digitalArea}>
-          {/* Digital Left Panel - Series List */}
-          <div className={styles.digitalLeftPanel}>
-            <div className={styles.seriesPanelHeader}>
-              {/* Header Line 1: Title + Count + Data Source (only show if no analog area) */}
-              <div className={styles.headerLine}>
-                <Text size={200} weight="semibold">
-                  {analogSeries.length === 0 && (props.itemData?.title || 'Trend Monitor')} Digital ({visibleDigitalSeries.length}/{digitalSeries.length})
-                </Text>
-                {analogSeries.length === 0 && (
-                  <div className={styles.dataSourceIndicator}>
-                    {dataSource === 'loading' && (
-                      <Badge appearance="tint" color="informative" size="small">
-                        Loading...
-                      </Badge>
-                    )}
-                    {dataSource === 'realtime' && (
-                      <Badge appearance="filled" color="success" size="small" icon={<FlashRegular />}>
-                        Live
-                      </Badge>
-                    )}
-                    {dataSource === 'api' && (
-                      <Badge appearance="filled" color="informative" size="small" icon={<HistoryRegular />}>
-                        Historical
-                      </Badge>
-                    )}
-                    {dataSource === 'error' && (
-                      <Badge appearance="filled" color="danger" size="small" icon={<ErrorCircleRegular />}>
-                        Error
-                      </Badge>
-                    )}
-                    <Button
-                      appearance="subtle"
-                      icon={<ArrowClockwiseRegular />}
-                      size="small"
-                      onClick={manualRefresh}
-                      disabled={loading}
-                      title="Manual Refresh"
-                      style={{ minWidth: '24px', width: '24px', height: '24px', padding: 0 }}
-                    />
+        return (
+          <>
+            {/* ANALOG AREA */}
+            {(visAnalog.length > 0 || (viewAnalog.length === 0 && viewDigital.length === 0)) && viewAnalog.length > 0 && (
+              <div className={styles.analogArea}>
+                {/* Expand tab — only visible when panel is collapsed */}
+                {leftPanelCollapsed && (
+                  <div className={styles.expandTab} onClick={() => setLeftPanelCollapsed(false)} title="Show panel">
+                    <ChevronRightRegular fontSize={10} />
                   </div>
                 )}
+                <div className={mergeClasses(styles.leftPanel, leftPanelCollapsed ? styles.leftPanelCollapsed : undefined)}>
+                  {renderSeriesToolbar()}
+                  {/* Series list: loading/timeout/error empty states */}
+                  <div className={styles.seriesPanel}>
+                    {viewAnalog.length === 0 && series.length === 0 && (
+                      <div className={mergeClasses(styles.emptyState, styles.emptyStateCompact)}>
+                        {loading && !loadingTimedOut ? (
+                          <>
+                            <Spinner size="small" />
+                            <Text size={200} block className={styles.mt8}>Loading T3000 device data...</Text>
+                            <Text size={100} block className={mergeClasses(styles.textMuted, styles.mt4)}>
+                              Connecting to your T3000 devices to retrieve trend data.
+                            </Text>
+                          </>
+                        ) : loadingTimedOut ? (
+                          <>
+                            <div className={styles.iconSmall}>&#9200;</div>
+                            <Text size={200} block className={styles.mt8}>Loading Timeout</Text>
+                            <Text size={100} block className={mergeClasses(styles.textMuted, styles.mt4)}>
+                              Loading took too long (&gt;30s). The system may be busy.
+                            </Text>
+                            <Button appearance="primary" size="small" icon={<ArrowClockwiseRegular />}
+                              onClick={manualRefresh} disabled={loading} className={styles.mt12}>
+                              Refresh Data
+                            </Button>
+                          </>
+                        ) : dataSource === 'error' ? (
+                          <>
+                            <ErrorCircleRegular fontSize={24} />
+                            <Text size={200} block className={styles.mt8}>Data Connection Error</Text>
+                            <Text size={100} block className={mergeClasses(styles.textMuted, styles.mt4)}>
+                              Unable to load real-time or historical data.
+                            </Text>
+                            <Button appearance="primary" size="small" icon={<ArrowClockwiseRegular />}
+                              onClick={manualRefresh} disabled={loading} className={styles.mt12}>
+                              Refresh Data
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <div className={styles.iconSmall}>&#9200;</div>
+                            <Text size={200} block className={styles.mt8}>No Data Available</Text>
+                            <Text size={100} block className={mergeClasses(styles.textMuted, styles.mt4)}>
+                              Configure monitor points to see data series.
+                            </Text>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    {viewAnalog.map((s, i) => renderSeriesItem(s, i))}
+                    {viewAnalog.length > 0 && viewDigital.length > 0 && (
+                      <div className={styles.digitalSectionDivider}>Digital</div>
+                    )}
+                    {viewDigital.map((s, i) => renderSeriesItem(s, viewAnalog.length + i))}
+                  </div>
+                </div>
+                <div className={styles.rightPanel}>
+                  <TrendChart series={[...visAnalog, ...visDigital]} timeBase={timeBase === 'custom' ? '1h' : timeBase} showGrid={showGrid}
+                    chartType="analog" timeOffset={timeOffset}
+                    onChartReady={(instance: any) => { chartInstanceRef.current = instance; }} />
+                </div>
               </div>
+            )}
 
-              {/* Header Line 2: All Dropdown + By Type Dropdown + Auto Scroll Toggle (only if no analog area) */}
-              {analogSeries.length === 0 && (
-                <div className={styles.headerControls}>
-                  <div className={styles.leftControls}>
-                    {/* All Dropdown */}
-                    <Menu>
-                      <MenuTrigger disableButtonEnhancement>
-                        <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after">
-                          All
-                        </Button>
-                      </MenuTrigger>
-                      <MenuPopover>
-                        <MenuList>
-                          <MenuItem onClick={handleEnableAll} disabled={seriesCounts.allEnabled}>
-                            Enable All
-                          </MenuItem>
-                          <MenuItem onClick={handleDisableAll} disabled={seriesCounts.allDisabled}>
-                            Disable All
-                          </MenuItem>
-                        </MenuList>
-                      </MenuPopover>
-                    </Menu>
+            {/* RESIZABLE DIVIDER */}
+            {false && visAnalog.length > 0 && visDigital.length > 0 && (
+              <div className={styles.resizableDivider}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  const startY = e.clientY;
+                  const container = (e.currentTarget as HTMLElement).parentElement!;
+                  const analogEl = container.querySelector('[data-area="analog"]') as HTMLElement;
+                  const startH = analogEl ? analogEl.offsetHeight : 0;
+                  const onMove = (me: MouseEvent) => {
+                    const delta = me.clientY - startY;
+                    if (analogEl) analogEl.style.height = `${Math.max(100, startH + delta)}px`;
+                  };
+                  const onUp = () => {
+                    window.removeEventListener('mousemove', onMove);
+                    window.removeEventListener('mouseup', onUp);
+                  };
+                  window.addEventListener('mousemove', onMove);
+                  window.addEventListener('mouseup', onUp);
+                }}
+              >
+                <div className={styles.dividerGrip} />
+              </div>
+            )}
 
-                    {/* By Type Dropdown */}
-                    <Menu>
-                      <MenuTrigger disableButtonEnhancement>
-                        <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after">
-                          By Type
-                        </Button>
-                      </MenuTrigger>
-                      <MenuPopover>
-                        <MenuList>
-                          <MenuItem
-                            onClick={() => toggleByAnalogDigital('Analog')}
-                            disabled={seriesCounts.analog === 0}
-                          >
-                            {seriesCounts.analogEnabled ? 'Disable' : 'Enable'} Analog ({seriesCounts.analog})
-                          </MenuItem>
-                          <MenuItem
-                            onClick={() => toggleByAnalogDigital('Digital')}
-                            disabled={seriesCounts.digital === 0}
-                          >
-                            {seriesCounts.digitalEnabled ? 'Disable' : 'Enable'} Digital ({seriesCounts.digital})
-                          </MenuItem>
-                          <MenuItem
-                            onClick={() => toggleByPointType('INPUT')}
-                            disabled={seriesCounts.input === 0}
-                          >
-                            {seriesCounts.inputEnabled ? 'Disable' : 'Enable'} Input ({seriesCounts.input})
-                          </MenuItem>
-                          <MenuItem
-                            onClick={() => toggleByPointType('OUTPUT')}
-                            disabled={seriesCounts.output === 0}
-                          >
-                            {seriesCounts.outputEnabled ? 'Disable' : 'Enable'} Output ({seriesCounts.output})
-                          </MenuItem>
-                          <MenuItem
-                            onClick={() => toggleByPointType('VARIABLE')}
-                            disabled={seriesCounts.variable === 0}
-                          >
-                            {seriesCounts.variableEnabled ? 'Disable' : 'Enable'} Variable ({seriesCounts.variable})
-                          </MenuItem>
-                        </MenuList>
-                      </MenuPopover>
-                    </Menu>
+            {/* DIGITAL AREA */}
+            {viewDigital.length > 0 && viewAnalog.length === 0 && (
+              <div className={styles.digitalArea}>
+                {/* Expand tab — only visible when panel is collapsed */}
+                {leftPanelCollapsed && (
+                  <div className={styles.expandTab} onClick={() => setLeftPanelCollapsed(false)} title="Show panel">
+                    <ChevronRightRegular fontSize={10} />
                   </div>
-
-                  {/* Auto Scroll Toggle */}
-                  <div className={styles.autoScrollToggle}>
-                    <Text size={100}>Auto Scroll:</Text>
-                    <Switch checked={isRealtime} onChange={(_, data) => setIsRealtime(data.checked)} />
+                )}
+                <div className={mergeClasses(styles.digitalLeftPanel, leftPanelCollapsed ? styles.leftPanelCollapsed : undefined)}>
+                  {viewAnalog.length === 0 && renderSeriesToolbar()}
+                  {viewAnalog.length > 0 && (
+                    <div className={styles.seriesPanelHeader}>
+                      <Text size={200} weight="semibold">
+                        Digital ({visDigital.length}/{viewDigital.length})
+                      </Text>
+                    </div>
+                  )}
+                  <div className={styles.seriesPanel}>
+                    {viewDigital.map((s, i) => renderSeriesItem(s, viewAnalog.length + i))}
                   </div>
+                </div>
+                <div className={styles.digitalRightPanel}>
+                  {visDigital.map((ds) => (
+                    <div key={ds.name} className={styles.channelChart}>
+                      <TrendChart series={[ds]} timeBase={timeBase === 'custom' ? '1h' : timeBase} showGrid={showGrid}
+                        chartType="digital" timeOffset={timeOffset} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Generic empty state when no series at all */}
+            {viewAnalog.length === 0 && viewDigital.length === 0 && (
+              <div className={styles.emptyStateCenter}>
+                {loading && !loadingTimedOut ? (
+                  <>
+                    <Spinner size="medium" />
+                    <Text size={400} weight="semibold" className={styles.mt16}>Loading T3000 device data...</Text>
+                    <Text size={300} className={styles.textMuted}>
+                      Connecting to your T3000 devices to retrieve trend data鈥?                    </Text>
+                  </>
+                ) : loadingTimedOut ? (
+                  <>
+                    <div className={styles.iconMedium}>&#9200;</div>
+                    <Text size={400} weight="semibold" className={styles.mt12}>Loading Timeout</Text>
+                    <Text size={300} className={styles.textMuted}>
+                      Loading took too long (&gt;30s). The system may be busy or experiencing connection issues.
+                    </Text>
+                    <Button appearance="primary" icon={<ArrowClockwiseRegular />} onClick={manualRefresh} disabled={loading} className={styles.mt16}>
+                      Refresh Data
+                    </Button>
+                  </>
+                ) : dataSource === 'error' ? (
+                  <>
+                    <ErrorCircleRegular fontSize={32} />
+                    <Text size={400} weight="semibold" className={styles.mt12}>Data Connection Error</Text>
+                    <Text size={300} className={styles.textMuted}>
+                      Unable to load real-time or historical data. Check system connections.
+                    </Text>
+                    <Button appearance="primary" icon={<ArrowClockwiseRegular />} onClick={manualRefresh} disabled={loading} className={styles.mt16}>
+                      Refresh Data
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Text size={500} weight="semibold">No Data Available</Text>
+                    <Text size={300} className={styles.textMuted}>
+                      Please select a device and monitor configuration.
+                    </Text>
+                  </>
+                )}
+              </div>
+            )}
+          </>
+        );
+      })()}
+
+      {/* 鈹€鈹€ CUSTOM DATE RANGE MODAL 鈹€鈹€ */}
+      <Dialog open={showCustomDateModal} onOpenChange={(_, d) => setShowCustomDateModal(d.open)}>
+        <DialogSurface className={styles.dialogSurfaceSmall}>
+          <DialogTitle>Custom Time Range</DialogTitle>
+          <DialogBody>
+            <DialogContent>
+              <div className={styles.stackCol12}>
+                <div>
+                  <Text size={200} weight="semibold" block className={styles.fieldLabel}>Start</Text>
+                  <Input type="datetime-local" value={customStartInput}
+                    onChange={(_, d) => setCustomStartInput(d.value)} className={styles.inputFull} />
+                </div>
+                <div>
+                  <Text size={200} weight="semibold" block className={styles.fieldLabel}>End</Text>
+                  <Input type="datetime-local" value={customEndInput}
+                    onChange={(_, d) => setCustomEndInput(d.value)} className={styles.inputFull} />
+                </div>
+                <div className={styles.rowWrap6}>
+                  <Button size="small" onClick={() => setQuickRange('today')}>Today</Button>
+                  <Button size="small" onClick={() => setQuickRange('yesterday')}>Yesterday</Button>
+                  <Button size="small" onClick={() => setQuickRange('thisWeek')}>This Week</Button>
+                  <Button size="small" onClick={() => setQuickRange('lastWeek')}>Last Week</Button>
+                </div>
+                {customStartInput && customEndInput && (
+                  <Text size={100} className={styles.textMuted}>
+                    {new Date(customStartInput).toLocaleString()} 鈫?{new Date(customEndInput).toLocaleString()}
+                  </Text>
+                )}
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setShowCustomDateModal(false)}>Cancel</Button>
+              <Button appearance="primary" onClick={applyCustomDateRange}
+                disabled={!customStartInput || !customEndInput}>Apply</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      {/* ─── CONFIG DRAWER ─── */}
+      <OverlayDrawer
+        open={showConfigModal}
+        onOpenChange={(_, d) => setShowConfigModal(d.open)}
+        position="end"
+        size="medium"
+      >
+        <DrawerHeader style={{ padding: '8px 16px', minHeight: 'unset' }}>
+          <DrawerHeaderTitle
+            heading={{ as: 'h3', style: { fontSize: '13px', fontWeight: 600, margin: 0 } }}
+            action={
+              <Button
+                appearance="subtle"
+                icon={<DismissRegular />}
+                onClick={() => setShowConfigModal(false)}
+              />
+            }
+          >
+            Trendlog Configuration
+          </DrawerHeaderTitle>
+        </DrawerHeader>
+        <DrawerBody style={{ overflowY: 'auto', overflowX: 'hidden', padding: '10px 14px' }}>
+          <div className={styles.stackCol10}>
+
+            {/* Sampling Interval */}
+            <div className={styles.sectionCard}>
+              <div className={styles.rowBetween}>
+                <Text weight="semibold" size={200} className={styles.rowWrap6}>
+                  <ClockRegular style={{ color: '#52c41a' }} /> Sampling Interval
+                </Text>
+                <Text size={100} className={styles.textMuted}>How often should data be collected?</Text>
+              </div>
+              <RadioGroup
+                layout="horizontal"
+                className={mergeClasses(styles.radioGroupWrap, styles.drawerRadioGroup)}
+                value={ffiIntervalPreset}
+                onChange={(_, d) => {
+                  const preset = d.value as typeof ffiIntervalPreset;
+                  setFfiIntervalPreset(preset);
+                  const nextSecs = preset === 'custom' ? Math.max(1, ffiCustomMinutes) * 60
+                    : ({ '15min': 900, '20min': 1200, '30min': 1800, '60min': 3600 } as Record<string, number>)[preset];
+                  if (nextSecs !== undefined) setFfiSyncIntervalSecs(nextSecs);
+                  checkFfiSyncWarning(nextSecs ?? ffiSyncIntervalSecs);
+                }}
+              >
+                <Radio value="15min" label="15 min" />
+                <Radio value="20min" label="20 min" />
+                <Radio value="30min" label="30 min" />
+                <Radio value="60min" label="60 min" />
+                <Radio value="custom" label="Custom" />
+              </RadioGroup>
+              {ffiIntervalPreset === 'custom' && (
+                <div className={mergeClasses(styles.rowWrap6, styles.mt8)}>
+                  <Text size={100}>Every:</Text>
+                  <Input
+                    type="number" min={1} max={59}
+                    value={String(ffiCustomMinutes)}
+                    onChange={(_, d) => {
+                      const val = Math.max(1, Math.min(59, Number(d.value) || 1));
+                      setFfiCustomMinutes(val);
+                      const secs = val * 60;
+                      setFfiSyncIntervalSecs(secs);
+                      checkFfiSyncWarning(secs);
+                    }}
+                    className={styles.inputSmall}
+                  />
+                  <Text size={100}>minutes</Text>
+                </div>
+              )}
+              {!!ffiSyncWarning && <Text size={100} className={styles.warningText}>{ffiSyncWarning}</Text>}
+            </div>
+
+            {/* Refresh and Rediscover Interval */}
+            <div className={styles.sectionCard}>
+              <div className={styles.rowBetween}>
+                <Text weight="semibold" size={200} className={styles.rowWrap6}>
+                  <ArrowClockwiseRegular style={{ color: '#fa8c16' }} /> Refresh and Rediscover Interval
+                </Text>
+                <Text size={100} className={styles.textMuted}>How often should system check for new BACnet objects?</Text>
+              </div>
+              <RadioGroup
+                layout="horizontal"
+                className={mergeClasses(styles.radioGroupWrap, styles.drawerRadioGroup)}
+                value={rediscoverIntervalPreset}
+                onChange={(_, d) => {
+                  const preset = d.value as typeof rediscoverIntervalPreset;
+                  setRediscoverIntervalPreset(preset);
+                  const nextSecs = preset === 'custom' ? Math.max(1, rediscoverCustomHours) * 3600
+                    : ({ '1hour': 3600, '2hours': 7200, '4hours': 14400, '8hours': 28800 } as Record<string, number>)[preset];
+                  if (nextSecs !== undefined) setRediscoverIntervalSecs(nextSecs);
+                  checkRediscoverWarning(nextSecs ?? rediscoverIntervalSecs);
+                }}
+              >
+                <Radio value="1hour" label="1 hour" />
+                <Radio value="2hours" label="2 hours" />
+                <Radio value="4hours" label="4 hours" />
+                <Radio value="8hours" label="8 hours" />
+                <Radio value="custom" label="Custom" />
+              </RadioGroup>
+              {rediscoverIntervalPreset === 'custom' && (
+                <div className={mergeClasses(styles.rowWrap6, styles.mt8)}>
+                  <Text size={100}>Every:</Text>
+                  <Input
+                    type="number" min={1} max={168}
+                    value={String(rediscoverCustomHours)}
+                    onChange={(_, d) => {
+                      const val = Math.max(1, Math.min(168, Number(d.value) || 1));
+                      setRediscoverCustomHours(val);
+                      const secs = val * 3600;
+                      setRediscoverIntervalSecs(secs);
+                      checkRediscoverWarning(secs);
+                    }}
+                    className={styles.inputSmall}
+                  />
+                  <Text size={100}>hours</Text>
+                </div>
+              )}
+              {!!rediscoverWarning && <Text size={100} className={styles.warningText}>{rediscoverWarning}</Text>}
+            </div>
+
+            {/* Database Status */}
+            <div className={styles.sectionCard}>
+              <div className={styles.rowBetween}>
+                <Text weight="semibold" size={200} className={styles.rowWrap6}>
+                  <DatabaseRegular style={{ color: '#1890ff' }} /> Database Status
+                </Text>
+                <Text size={100} className={styles.textMuted}>
+                  {dbFiles.find((f) => f.is_active)?.name ?? ''}
+                </Text>
+              </div>
+              {(dbConfigLoading || dbFilesLoading || syncConfigLoading) && (
+                <div className={styles.loadingRow}>
+                  <Spinner size="tiny" />
+                  <Text size={100}>Loading...</Text>
                 </div>
               )}
             </div>
 
-            {/* Digital Series List */}
-            <div className={styles.seriesPanel}>
-              {digitalSeries.map((s, index) => {
-                const seriesKey = `digital-${s.pointId}-${s.pointIndex}`;
-                const isExpanded = expandedSeries.has(seriesKey);
-                const actualIndex = analogSeries.length + index;
-
-                return (
-                  <React.Fragment key={seriesKey}>
-                    <div className={`${styles.seriesItem} ${isExpanded ? styles.seriesItemExpanded : ''}`}>
-                      {/* @ts-expect-error CSS custom property for dynamic color */}
-                      <div
-                        className={styles.colorIndicator}
-                        style={{ '--series-color': s.color } as React.CSSProperties}
-                        onClick={() => toggleSeriesVisibility(actualIndex)}
-                      />
-
-                      <Tooltip content={s.name} relationship="label">
-                        <div className={styles.seriesItemContent} onClick={() => toggleSeriesVisibility(actualIndex)}>
-                          <div className={styles.seriesItemInfo}>
-                            <Text className={styles.seriesItemName}>
-                              {s.name}
-                            </Text>
-                            <div className={styles.seriesItemMeta}>
-                              {(s.prefix || s.pointType) && (
-                                <Tag size="extra-small" appearance="outline">
-                                  {getPrefixTag(s.pointType, s.prefix)}
-                                </Tag>
-                              )}
-                              <Text className={styles.seriesItemUnit}>
-                                {s.unit || 'ON/OFF'}
-                              </Text>
-                              <Text size={100} style={{ color: tokens.colorNeutralForeground2, fontWeight: 600, marginLeft: '4px' }}>
-                                {getLastValue(s)}
-                              </Text>
-                            </div>
-                          </div>
-                        </div>
-                      </Tooltip>
-
-                      <Button
-                        appearance="subtle"
-                        icon={isExpanded ? <ChevronDownFilled /> : <ChevronRightRegular />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleSeriesExpand(seriesKey);
-                        }}
-                        className={styles.expandButton}
-                        size="small"
-                      />
-                    </div>
-
-                    {isExpanded && (
-                      <div className={styles.seriesDetails}>
-                        <div className={styles.seriesStats}>
-                          <Text size={100}>
-                            <strong>Last:</strong> {s.data && s.data.length > 0
-                              ? (s.data[s.data.length - 1].value === 1 ? 'ON' : 'OFF')
-                              : 'N/A'}
-                          </Text>
-                          <Text size={100}>
-                            <strong>Points:</strong> {s.data?.length || 0}
-                          </Text>
-                        </div>
-                      </div>
-                    )}
-                  </React.Fragment>
-                );
-              })}
+            {/* Data Splitting Strategy */}
+            <div className={styles.sectionCard}>
+              <div className={styles.rowBetween}>
+                <Text weight="semibold" size={200} className={styles.rowWrap6}>
+                  <SettingsRegular style={{ color: '#fa8c16' }} /> Data Splitting Strategy
+                </Text>
+                <Button
+                  size="small"
+                  icon={<ArrowClockwiseRegular />}
+                  onClick={() => { loadDatabaseConfig(); loadDatabaseFiles(); }}
+                  disabled={dbConfigLoading || dbFilesLoading}
+                >
+                  Refresh
+                </Button>
+              </div>
+              <Text size={100} className={styles.fieldLabel}>Split new data by:</Text>
+              <RadioGroup
+                layout="horizontal"
+                className={mergeClasses(styles.radioGroupWrap, styles.drawerRadioGroup)}
+                value={dbConfig.strategy}
+                onChange={(_, d) => setDbConfig((prev) => ({ ...prev, strategy: d.value as DatabasePartitionConfig['strategy'] }))}
+              >
+                <Radio value="Daily" label="Daily" />
+                <Radio value="Weekly" label="Weekly" />
+                <Radio value="Monthly" label="Monthly" />
+                <Radio value="Quarterly" label="Quarterly" />
+                <Radio value="Custom" label="Custom Days" />
+                <Radio value="CustomMonths" label="Custom Months" />
+              </RadioGroup>
+              {dbConfig.strategy === 'Custom' && (
+                <div className={mergeClasses(styles.rowWrap6, styles.mt8)}>
+                  <Text size={100}>Every:</Text>
+                  <Input
+                    type="number" min={1} max={365}
+                    value={String(dbConfig.custom_days ?? 30)}
+                    onChange={(_, d) => {
+                      const parsed = Number(d.value);
+                      setDbConfig((prev) => ({ ...prev, custom_days: Number.isFinite(parsed) ? parsed : 1 }));
+                    }}
+                    className={styles.inputSmall}
+                  />
+                  <Text size={100}>days</Text>
+                </div>
+              )}
+              {dbConfig.strategy === 'CustomMonths' && (
+                <div className={mergeClasses(styles.rowWrap6, styles.mt8)}>
+                  <Text size={100}>Every:</Text>
+                  <Input
+                    type="number" min={1} max={12}
+                    value={String(dbConfig.custom_months ?? 2)}
+                    onChange={(_, d) => {
+                      const parsed = Number(d.value);
+                      setDbConfig((prev) => ({ ...prev, custom_months: Number.isFinite(parsed) ? parsed : 1 }));
+                    }}
+                    className={styles.inputSmall}
+                  />
+                  <Text size={100}>months</Text>
+                </div>
+              )}
+              <Text size={100} className={mergeClasses(styles.textMuted, styles.mt8)}>
+                Current: {(
+                  dbConfig.strategy === 'Daily' ? 'One file per day' :
+                  dbConfig.strategy === 'Weekly' ? 'One file per week' :
+                  dbConfig.strategy === 'Monthly' ? 'One file per month' :
+                  dbConfig.strategy === 'Quarterly' ? 'One file per quarter (3 months)' :
+                  dbConfig.strategy === 'CustomMonths' ? `One file every ${dbConfig.custom_months} months` :
+                  dbConfig.strategy === 'Custom' ? `One file every ${dbConfig.custom_days} days` :
+                  'One file every 5 minutes'
+                )}
+              </Text>
+              {!!dbConfigMessage && (
+                <Text size={100} className={styles.successText}>{dbConfigMessage}</Text>
+              )}
             </div>
-          </div>
 
-          {/* Digital Right Panel - Oscilloscope */}
-          <div className={styles.digitalRightPanel}>
-            {visibleDigitalSeries.map((digitalSeries) => (
-              <div key={digitalSeries.name} className={styles.channelChart}>
-                <TrendChart
-                  series={[digitalSeries]}
-                  timeBase={timeBase}
-                  showGrid={showGrid}
-                  chartType="digital"
-                  timeOffset={timeOffset}
+            {/* Database Files */}
+            <div className={styles.sectionCard}>
+              <div className={styles.rowBetween}>
+                <Text weight="semibold" size={200} className={styles.rowWrap6}>
+                  <DatabaseRegular style={{ color: '#1890ff' }} /> Database Files ({dbFiles.length})
+                </Text>
+                <Button
+                  size="small"
+                  appearance="primary"
+                  icon={<DeleteRegular />}
+                  onClick={cleanupAllDatabaseFiles}
+                  disabled={!!dbActionBusy || dbConfigLoading}
+                >
+                  Clean All
+                </Button>
+              </div>
+              <div className={styles.filesList}>
+                {dbFiles.length === 0 && !dbFilesLoading && (
+                  <Text size={100} className={styles.textMuted}>No partition files found.</Text>
+                )}
+                {dbFiles.map((file) => (
+                  <div key={file.id} className={styles.fileRow}>
+                    <div className={styles.minWidthZero}>
+                      <div className={styles.rowWrap6}>
+                        <Text size={100} weight="semibold" className={styles.ellipsisText}>{file.name}</Text>
+                        {file.is_active && (
+                          <Tag size="small" appearance="filled" style={{ background: '#52c41a', color: '#fff', fontSize: '9px', padding: '1px 4px' }}>ACTIVE</Tag>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      size="small"
+                      appearance="subtle"
+                      icon={<DeleteRegular />}
+                      disabled={file.is_active || !!dbActionBusy}
+                      onClick={() => deleteDatabaseFile(file.id)}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Cleanup Management */}
+            <div className={styles.sectionCard}>
+              <Text weight="semibold" size={200} className={styles.rowWrap6} style={{ marginBottom: '6px' }}>
+                <DeleteRegular style={{ color: '#ff4d4f' }} /> Cleanup Management
+              </Text>
+              <div className={styles.rowWrap6}>
+                <Text size={100} className={styles.textMuted} style={{ whiteSpace: 'nowrap' }}>Auto cleanup files older than:</Text>
+                <Input
+                  type="number" min={1} max={365}
+                  value={String(dbConfig.retention_value ?? 30)}
+                  onChange={(_, d) => {
+                    const parsed = Number(d.value);
+                    setDbConfig((prev) => ({ ...prev, retention_value: Number.isFinite(parsed) ? parsed : 1 }));
+                  }}
+                  className={styles.inputSmall}
+                />
+                <Dropdown
+                  className={styles.cleanupUnit}
+                  value={dbConfig.retention_unit}
+                  selectedOptions={[dbConfig.retention_unit]}
+                  onOptionSelect={(_, d) => {
+                    if (d.optionValue) setDbConfig((prev) => ({ ...prev, retention_unit: d.optionValue as DatabasePartitionConfig['retention_unit'] }));
+                  }}
+                >
+                  <Option value="Days">Days</Option>
+                  <Option value="Weeks">Weeks</Option>
+                  <Option value="Months">Months</Option>
+                </Dropdown>
+                <Button
+                  size="small"
+                  appearance="primary"
+                  icon={<DeleteRegular />}
+                  onClick={cleanupOldDatabaseFiles}
+                  disabled={!!dbActionBusy || dbConfigLoading}
+                >
+                  Clean up now
+                </Button>
+                <Button
+                  size="small"
+                  icon={<SettingsRegular />}
+                  onClick={optimizeDatabase}
+                  disabled={!!dbActionBusy || dbConfigLoading}
+                >
+                  Optimize
+                </Button>
+              </div>
+            </div>
+
+            {/* Keyboard Shortcuts */}
+            <div className={styles.sectionCard}>
+              <div className={styles.rowBetween}>
+                <Text weight="semibold" size={200}>Keyboard Shortcuts</Text>
+                <Switch
+                  checked={keyboardEnabled}
+                  onChange={(_, d) => setKeyboardEnabled(d.checked)}
+                  className={styles.smallSwitch}
                 />
               </div>
-            ))}
+              <div className={styles.shortcutsGrid}>
+                {[
+                  ['← / →', 'Scroll time left/right'],
+                  ['↑ / ↓', 'Zoom in/out'],
+                  ['1-9, A-E', 'Toggle series visibility'],
+                  ['Ctrl + ↑ / ↓', 'Navigate series list'],
+                  ['Enter', 'Toggle selected item'],
+                  ['ESC', 'Toggle item shortcuts on/off'],
+                ].map(([key, desc]) => (
+                  <div key={key} className={styles.shortcutCell}>
+                    <kbd className={styles.keycap}>{key}</kbd>
+                    <Text size={100} className={styles.textMuted}>: {desc}</Text>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        </DrawerBody>
+        <DrawerFooter style={{ padding: '8px 16px', borderTop: `1px solid ${tokens.colorNeutralStroke1}` }}>
+          <Button size="small" onClick={() => setShowConfigModal(false)}>Cancel</Button>
+          <Button
+            size="small"
+            appearance="primary"
+            disabled={dbConfigSaving || syncConfigSaving}
+            onClick={async () => {
+              await saveSyncConfig();
+              await saveDatabaseConfig();
+              setShowConfigModal(false);
+            }}
+          >
+            {(dbConfigSaving || syncConfigSaving) ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DrawerFooter>
+      </OverlayDrawer>
+
+      {/* ── ITEM SELECTOR DRAWER (View 2 & 3) ── */}
+      <OverlayDrawer
+        open={showItemSelector}
+        onOpenChange={(_, d) => setShowItemSelector(d.open)}
+        position="end"
+        size="small"
+      >
+        <DrawerHeader style={{ padding: '10px 14px', minHeight: 'unset' }}>
+          <DrawerHeaderTitle
+            heading={{ as: 'h3', style: { fontSize: '13px', fontWeight: 600 } }}
+            action={
+              <Button
+                appearance="subtle"
+                icon={<DismissRegular />}
+                onClick={cancelItemSelection}
+              />
+            }
+          >
+            Select Items for View {currentView}
+            <Text size={100} className={styles.textMuted} style={{ marginLeft: '6px' }}>
+              ({(viewTrackedKeys[currentView as 2 | 3] ?? []).length}/{series.length} selected)
+            </Text>
+          </DrawerHeaderTitle>
+        </DrawerHeader>
+        <DrawerBody style={{ padding: 0, overflowY: 'auto', overflowX: 'hidden' }}>
+          {series.map((s) => {
+            const key = `${s.pointId}-${s.pointIndex}`;
+            const currentTracked = viewTrackedKeys[currentView as 2 | 3] ?? [];
+            const checked = currentTracked.includes(key);
+            const isAnalog = s.digitalAnalog !== 'Digital';
+            const pts = s.data.length;
+            return (
+              <div
+                key={key}
+                className={mergeClasses(
+                  styles.selectorRow,
+                  isAnalog ? styles.selectorRowAnalog : styles.selectorRowDigital,
+                  checked ? styles.selectorRowSelected : undefined
+                )}
+                onClick={() => setViewTrackedKeys(prev => {
+                  const cur = prev[currentView as 2 | 3] ?? [];
+                  return { ...prev, [currentView]: cur.includes(key) ? cur.filter(k => k !== key) : [...cur, key] };
+                })}
+              >
+                <Checkbox
+                  checked={checked}
+                  onChange={(_, d) => setViewTrackedKeys(prev => {
+                    const cur = prev[currentView as 2 | 3] ?? [];
+                    return { ...prev, [currentView]: d.checked ? [...cur, key] : cur.filter(k => k !== key) };
+                  })}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <div
+                  className={styles.selectorDot}
+                  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+                  {...{ style: { '--dot-color': s.color } as React.CSSProperties }}
+                />
+                <div className={styles.selectorItemDetails}>
+                  <div className={styles.selectorMainInfo}>
+                    <Text size={200} weight="semibold">{s.name}</Text>
+                    {s.unit && <Text size={100} className={styles.textMuted}>{s.unit}</Text>}
+                  </div>
+                  <div className={styles.selectorMeta}>
+                    <span className={mergeClasses(
+                      styles.selectorTypeBadge,
+                      isAnalog ? styles.selectorTypeBadgeAnalog : styles.selectorTypeBadgeDigital
+                    )}>
+                      {isAnalog ? 'analog' : 'digital'}
+                    </span>
+                    <Text size={100} className={styles.textMuted}>
+                      {s.pointType} · {s.name}
+                    </Text>
+                  </div>
+                </div>
+                <span className={styles.selectorStatusBadge}>
+                  {pts > 0 ? `${pts} pts` : 'No Data'}
+                </span>
+              </div>
+            );
+          })}
+        </DrawerBody>
+        <div className={styles.selectorFooter}>
+          <Button
+            size="small"
+            appearance={(viewTrackedKeys[currentView as 2 | 3] ?? []).length === series.length ? 'outline' : 'primary'}
+            onClick={() => setViewTrackedKeys(prev => ({
+              ...prev,
+              [currentView]: (prev[currentView as 2 | 3] ?? []).length === series.length
+                ? []
+                : series.map(s => `${s.pointId}-${s.pointIndex}`)
+            }))}
+          >
+            {(viewTrackedKeys[currentView as 2 | 3] ?? []).length === series.length ? 'Unselect All' : 'Select All'}
+          </Button>
+          <div className={styles.selectorFooterActions}>
+            <Button size="small" appearance="subtle" onClick={cancelItemSelection}>Cancel</Button>
+            <Button size="small" appearance="primary" onClick={applyItemSelection}>Apply Selection</Button>
           </div>
         </div>
-      )}
+      </OverlayDrawer>
 
-      {/* Empty State */}
-      {series.length === 0 && (
-        <div className={styles.emptyStateCenter}>
-          <Text size={500} weight="semibold">No Data Available</Text>
-          <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
-            Please select a device and monitor configuration.
-          </Text>
-        </div>
-      )}
     </div>
   );
 };
-

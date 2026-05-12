@@ -20,6 +20,42 @@ use serde_json::{json, Value};
 /// Type alias for a bb8-managed tiberius connection pool.
 pub type MssqlPool = Pool<ConnectionManager>;
 
+fn category_filter_variants(category: &str) -> Vec<String> {
+    let upper = category.trim().to_ascii_uppercase();
+    match upper.as_str() {
+        "CONFIG" | "DB_CONFIG" => vec!["CONFIG".to_string(), "DB_CONFIG".to_string()],
+        "STARTUP" | "SERVER_EVENT" => vec!["STARTUP".to_string(), "SERVER_EVENT".to_string()],
+        "POLL" | "SYNC_CYCLE" | "SAMPLING" | "FFI_POLL" => vec![
+            "POLL".to_string(),
+            "SYNC_CYCLE".to_string(),
+            "SAMPLING".to_string(),
+            "FFI_POLL".to_string(),
+        ],
+        "DEVICE" | "DEVICE_SYNC" => vec!["DEVICE".to_string(), "DEVICE_SYNC".to_string()],
+        "TRENDLOG" | "TREND_LOG" | "TD_READ" | "TD_WRITE" | "TD_INPUTS" | "TD_FFI" | "TD_SYNC" => vec![
+            "TRENDLOG".to_string(),
+            "TREND_LOG".to_string(),
+            "TD_READ".to_string(),
+            "TD_WRITE".to_string(),
+            "TD_INPUTS".to_string(),
+            "TD_FFI".to_string(),
+            "TD_SYNC".to_string(),
+        ],
+        _ => vec![upper],
+    }
+}
+
+fn normalize_level_filter(level: Option<&str>) -> Option<&'static str> {
+    let lowered = level?.trim().to_ascii_lowercase();
+    match lowered.as_str() {
+        "error" | "err" => Some("error"),
+        "warn" | "warning" => Some("warn"),
+        "info" => Some("info"),
+        "debug" => Some("debug"),
+        _ => None,
+    }
+}
+
 /// Build a bb8 connection pool for SQL Server.
 ///
 /// Uses the tiberius Config already built by `db_backend_config::build_mssql_config()`.
@@ -733,11 +769,17 @@ pub async fn query_app_log(
     let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
 
     let mut where_parts: Vec<String> = Vec::new();
-    if let Some(lvl) = level_filter {
-        where_parts.push(format!("level = '{}'", lvl.replace('\'', "''")));
+    if let Some(lvl) = normalize_level_filter(level_filter) {
+        where_parts.push(format!("level = '{}'", lvl));
     }
     if let Some(cat) = category_filter {
-        where_parts.push(format!("category = '{}'", cat.replace('\'', "''")));
+        let variants = category_filter_variants(cat);
+        let in_list = variants
+            .iter()
+            .map(|v| format!("'{}'", v.replace('\'', "''")))
+            .collect::<Vec<_>>()
+            .join(", ");
+        where_parts.push(format!("category IN ({})", in_list));
     }
     let where_sql = if where_parts.is_empty() {
         String::new()
@@ -788,6 +830,7 @@ pub async fn query_app_log(
                 "ts_fmt":        ts_fmt,
                 "level":         level,
                 "category":      category,
+                "sink":          "MSSQL",
                 "source":        source,
                 "hostname":      hostname,
                 "role":          serde_json::Value::Null,
@@ -810,11 +853,17 @@ pub async fn count_app_log(
     let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
 
     let mut where_parts: Vec<String> = Vec::new();
-    if let Some(lvl) = level_filter {
-        where_parts.push(format!("level = '{}'", lvl.replace('\'', "''")));
+    if let Some(lvl) = normalize_level_filter(level_filter) {
+        where_parts.push(format!("level = '{}'", lvl));
     }
     if let Some(cat) = category_filter {
-        where_parts.push(format!("category = '{}'", cat.replace('\'', "''")));
+        let variants = category_filter_variants(cat);
+        let in_list = variants
+            .iter()
+            .map(|v| format!("'{}'", v.replace('\'', "''")))
+            .collect::<Vec<_>>()
+            .join(", ");
+        where_parts.push(format!("category IN ({})", in_list));
     }
     let where_sql = if where_parts.is_empty() {
         String::new()
@@ -833,12 +882,31 @@ pub async fn count_app_log(
         .await
         .map_err(|e| format!("T3_APP_LOG COUNT failed: {}", e))?;
 
-    let row = result
-        .into_row()
+    // Use into_results() (not into_row()) to fully drain ALL result sets produced
+    // by the IF ... SELECT batch. into_row() only reads the first result set and
+    // leaves any trailing done-tokens unconsumed; when the bb8 connection is
+    // returned to the pool, tiberius 0.12.x panics on the unread data, which
+    // silently drops the HTTP connection (0 B response on the client).
+    let result_sets = result
+        .into_results()
         .await
         .map_err(|e| format!("T3_APP_LOG COUNT row fetch failed: {}", e))?;
 
-    Ok(row.and_then(|r| r.get::<i64, _>("cnt")).unwrap_or(0))
+    // COUNT(*) returns INT (i32) in SQL Server, not BIGINT, so try i32 first.
+    let mut total: i64 = 0;
+    'outer: for result_set in result_sets {
+        for row in result_set {
+            if let Some(v) = row.get::<i32, _>(0) {
+                total = v as i64;
+                break 'outer;
+            }
+            if let Some(v) = row.get::<i64, _>(0) {
+                total = v;
+                break 'outer;
+            }
+        }
+    }
+    Ok(total)
 }
 
 /// Return distinct category values from MSSQL T3_APP_LOG.
@@ -875,6 +943,65 @@ pub async fn query_app_log_categories(
     cats.sort();
     cats.dedup();
     Ok(cats)
+}
+
+/// Return grouped category counts from MSSQL T3_APP_LOG with optional filters.
+pub async fn query_app_log_category_counts(
+    pool: &MssqlPool,
+    level_filter: Option<&str>,
+    category_filter: Option<&str>,
+) -> Result<Vec<(String, i64)>, String> {
+    let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
+
+    let mut where_parts: Vec<String> = Vec::new();
+    if let Some(lvl) = normalize_level_filter(level_filter) {
+        where_parts.push(format!("level = '{}'", lvl));
+    }
+    if let Some(cat) = category_filter {
+        let variants = category_filter_variants(cat);
+        let in_list = variants
+            .iter()
+            .map(|v| format!("'{}'", v.replace('\'', "''")))
+            .collect::<Vec<_>>()
+            .join(", ");
+        where_parts.push(format!("category IN ({})", in_list));
+    }
+    let where_sql = if where_parts.is_empty() {
+        String::new()
+    } else {
+        format!(" WHERE {}", where_parts.join(" AND "))
+    };
+
+    let sql = format!(
+        "IF OBJECT_ID('T3_APP_LOG', 'U') IS NOT NULL \
+         SELECT category, COUNT(*) AS cnt FROM T3_APP_LOG{} GROUP BY category",
+        where_sql
+    );
+
+    let result = conn
+        .query(&sql, &[])
+        .await
+        .map_err(|e| format!("T3_APP_LOG grouped COUNT failed: {}", e))?;
+
+    let result_sets = result
+        .into_results()
+        .await
+        .map_err(|e| format!("T3_APP_LOG grouped COUNT row fetch failed: {}", e))?;
+
+    let mut rows: Vec<(String, i64)> = Vec::new();
+    for result_set in result_sets {
+        for row in result_set {
+            if let Some(category) = clean_cpp_string(row.get::<&str, _>(0)) {
+                // COUNT(*) returns INT (i32) in SQL Server; try i32 first, then i64.
+                let count = row.get::<i32, _>(1).map(|v| v as i64)
+                    .or_else(|| row.get::<i64, _>(1))
+                    .unwrap_or(0);
+                rows.push((category, count));
+            }
+        }
+    }
+
+    Ok(rows)
 }
 
 // ============================================================================
