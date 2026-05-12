@@ -70,10 +70,11 @@ import {
   ChevronDownFilled,
   ArrowClockwiseRegular,
   WarningRegular,
-  CheckmarkRegular,
+  // CheckmarkRegular removed - no longer used
   DismissRegular,
   ClockRegular,
   DeleteRegular,
+  DataTrendingRegular,
 } from '@fluentui/react-icons';
 import { TrendChart, TrendSeries } from './TrendChart.tsx';
 import { TrendChartApiService, TrendDataRequest } from '../services/trendChartApi';
@@ -983,7 +984,8 @@ const useStyles = makeStyles({
   },
   selectorContent: {
     overflowY: 'auto',
-    maxHeight: '380px',
+    flex: 1,
+    padding: '0',
   },
   selectorHeader: {
     display: 'flex',
@@ -994,15 +996,80 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
-    padding: '6px 0',
+    padding: '10px 14px',
+    marginBottom: '6px',
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderLeft: '3px solid transparent',
+    cursor: 'pointer',
+    ':hover': { backgroundColor: tokens.colorNeutralBackground2 },
   },
-  selectorColor: {
-    width: '14px',
-    height: '14px',
-    borderRadius: '3px',
+  selectorRowSelected: {
+    backgroundColor: tokens.colorBrandBackground2,
+  },
+  selectorRowAnalog: {
+    borderLeftColor: tokens.colorBrandBackground,
+  },
+  selectorRowDigital: {
+    borderLeftColor: '#52c41a',
+  },
+  selectorDot: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '50%',
     flexShrink: 0,
-    backgroundColor: 'var(--series-color)',
+    backgroundColor: 'var(--dot-color, #999)',
+  },
+  selectorItemDetails: {
+    flex: 1,
+    minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  selectorMainInfo: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '6px',
+  },
+  selectorMeta: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  selectorTypeBadge: {
+    fontSize: '10px',
+    fontWeight: 600,
+    padding: '1px 4px',
+    borderRadius: '3px',
+    textTransform: 'uppercase' as const,
+  },
+  selectorTypeBadgeAnalog: {
+    color: tokens.colorBrandBackground,
+    backgroundColor: tokens.colorBrandBackground2,
+  },
+  selectorTypeBadgeDigital: {
+    color: '#389e0d',
+    backgroundColor: '#f6ffed',
+  },
+  selectorStatusBadge: {
+    fontSize: '10px',
+    padding: '1px 5px',
+    borderRadius: '10px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    color: tokens.colorNeutralForeground3,
+    flexShrink: 0,
+  },
+  selectorFooter: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 14px',
+    borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
+    gap: '8px',
+  },
+  selectorFooterActions: {
+    display: 'flex',
+    gap: '8px',
   },
   color0: { backgroundColor: '#FF0000' },
   color1: { backgroundColor: '#0000FF' },
@@ -1238,7 +1305,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   // View 2 & 3 tracking
   const [viewTrackedKeys, setViewTrackedKeys] = useState<{ 2: string[]; 3: string[] }>({ 2: [], 3: [] });
   const [showItemSelector, setShowItemSelector] = useState(false);
-  const [selectorDraftKeys, setSelectorDraftKeys] = useState<string[]>([]);
+  const [selectorOriginalKeys, setSelectorOriginalKeys] = useState<string[]>([]);
 
   // Keyboard shortcuts
   const [keyboardEnabled, setKeyboardEnabled] = useState(true);
@@ -1306,7 +1373,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
    */
   const hasTrackedItems = useMemo(() => {
     if (currentView === 1) return true;
-    return viewTrackedKeys[currentView as 2 | 3].length > 0;
+    return (viewTrackedKeys[currentView as 2 | 3] ?? []).length > 0;
   }, [currentView, viewTrackedKeys]);
 
   /**
@@ -1400,14 +1467,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
    * View 2 & 3 tracking handlers
    */
   const openItemSelector = useCallback(() => {
-    setSelectorDraftKeys(viewTrackedKeys[currentView as 2 | 3]);
+    // Save original keys so Cancel can revert
+    setSelectorOriginalKeys(viewTrackedKeys[currentView as 2 | 3] ?? []);
     setShowItemSelector(true);
   }, [currentView, viewTrackedKeys]);
-
-  const applyItemSelection = useCallback(() => {
-    setViewTrackedKeys((prev) => ({ ...prev, [currentView]: selectorDraftKeys }));
-    setShowItemSelector(false);
-  }, [currentView, selectorDraftKeys]);
 
   const removeFromTracking = useCallback((key: string) => {
     setViewTrackedKeys((prev) => ({
@@ -1662,6 +1725,20 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       setLoading(false);
     }
   }, [serialNumber, panelId, trendlogId, timeBase, getExistingDataTimeRange, timeOffset, formatLocalTime]);
+
+  const applyItemSelection = useCallback(() => {
+    setShowItemSelector(false);
+    const tracked = viewTrackedKeys[currentView as 2 | 3] ?? [];
+    if (tracked.length > 0) {
+      loadHistoricalData(true);
+    }
+  }, [currentView, viewTrackedKeys, loadHistoricalData]);
+
+  const cancelItemSelection = useCallback(() => {
+    // Revert live changes back to what was tracked when the drawer opened
+    setViewTrackedKeys((prev) => ({ ...prev, [currentView]: selectorOriginalKeys }));
+    setShowItemSelector(false);
+  }, [currentView, selectorOriginalKeys]);
 
   /**
    * Initialize series from monitor configuration (enhanced with itemData support)
@@ -3071,7 +3148,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       {/* 鈹€鈹€ VIEW 2 / 3 EMPTY STATE 鈹€鈹€ */}
       {currentView !== 1 && !hasTrackedItems && (
         <div className={styles.emptyStateCenter}>
-          <div className={styles.iconLarge}>&#128202;</div>
+          <DataTrendingRegular fontSize={48} color={tokens.colorBrandBackground} />
           <Text size={500} weight="semibold">
             {currentView === 2 ? 'Custom View 2' : 'Custom View 3'}
           </Text>
@@ -3837,56 +3914,106 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         </DrawerFooter>
       </OverlayDrawer>
 
-      {/* 鈹€鈹€ ITEM SELECTOR DIALOG (View 2 & 3) 鈹€鈹€ */}
-      <Dialog open={showItemSelector} onOpenChange={(_, d) => setShowItemSelector(d.open)}>
-        <DialogSurface className={styles.dialogSurfaceSelector}>
-          <DialogTitle>
+      {/* ── ITEM SELECTOR DRAWER (View 2 & 3) ── */}
+      <OverlayDrawer
+        open={showItemSelector}
+        onOpenChange={(_, d) => setShowItemSelector(d.open)}
+        position="end"
+        size="small"
+      >
+        <DrawerHeader style={{ padding: '10px 14px', minHeight: 'unset' }}>
+          <DrawerHeaderTitle
+            heading={{ as: 'h3', style: { fontSize: '13px', fontWeight: 600 } }}
+            action={
+              <Button
+                appearance="subtle"
+                icon={<DismissRegular />}
+                onClick={cancelItemSelection}
+              />
+            }
+          >
             Select Items for View {currentView}
-            <Text size={200} className={styles.textMuted}>
-              ({selectorDraftKeys.length}/{series.length} selected)
+            <Text size={100} className={styles.textMuted} style={{ marginLeft: '6px' }}>
+              ({(viewTrackedKeys[currentView as 2 | 3] ?? []).length}/{series.length} selected)
             </Text>
-          </DialogTitle>
-          <DialogBody>
-            <DialogContent className={styles.selectorContent}>
-              <div className={styles.selectorHeader}>
-                <Button size="small" onClick={() => setSelectorDraftKeys(series.map(s => `${s.pointId}-${s.pointIndex}`))}>
-                  <CheckmarkRegular /> Select All
-                </Button>
-                <Button size="small" onClick={() => setSelectorDraftKeys([])}>
-                  <DismissRegular /> Unselect All
-                </Button>
-              </div>
-              {series.map((s) => {
-                const key = `${s.pointId}-${s.pointIndex}`;
-                const checked = selectorDraftKeys.includes(key);
-                return (
-                  <div key={key} className={styles.selectorRow}>
-                    <Checkbox checked={checked}
-                      onChange={(_, d) => setSelectorDraftKeys(prev =>
-                        d.checked ? [...prev, key] : prev.filter(k => k !== key)
-                      )} />
-                    <div className={mergeClasses(styles.selectorColor, getColorClass(s.color, false))} />
-                    <div className={mergeClasses(styles.minWidthZero, styles.seriesItemInfo)}>
-                      <Text size={200} weight="semibold" block className={styles.ellipsisText}>
-                        {s.name}
-                      </Text>
-                      <Text size={100} className={styles.textMuted}>
-                        {s.pointType} 路 {s.digitalAnalog} 路 {s.unit || 'N/A'}
-                        {s.data.length > 0 ? ` 路 ${s.data.length} pts` : ' 路 No Data'}
-                      </Text>
-                    </div>
-                    <Tag size="extra-small" appearance="outline">{s.digitalAnalog === 'Digital' ? 'Digital' : 'Analog'}</Tag>
+          </DrawerHeaderTitle>
+        </DrawerHeader>
+        <DrawerBody style={{ padding: 0, overflowY: 'auto', overflowX: 'hidden' }}>
+          {series.map((s) => {
+            const key = `${s.pointId}-${s.pointIndex}`;
+            const currentTracked = viewTrackedKeys[currentView as 2 | 3] ?? [];
+            const checked = currentTracked.includes(key);
+            const isAnalog = s.digitalAnalog !== 'Digital';
+            const pts = s.data.length;
+            return (
+              <div
+                key={key}
+                className={mergeClasses(
+                  styles.selectorRow,
+                  isAnalog ? styles.selectorRowAnalog : styles.selectorRowDigital,
+                  checked ? styles.selectorRowSelected : undefined
+                )}
+                onClick={() => setViewTrackedKeys(prev => {
+                  const cur = prev[currentView as 2 | 3] ?? [];
+                  return { ...prev, [currentView]: cur.includes(key) ? cur.filter(k => k !== key) : [...cur, key] };
+                })}
+              >
+                <Checkbox
+                  checked={checked}
+                  onChange={(_, d) => setViewTrackedKeys(prev => {
+                    const cur = prev[currentView as 2 | 3] ?? [];
+                    return { ...prev, [currentView]: d.checked ? [...cur, key] : cur.filter(k => k !== key) };
+                  })}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <div
+                  className={styles.selectorDot}
+                  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+                  {...{ style: { '--dot-color': s.color } as React.CSSProperties }}
+                />
+                <div className={styles.selectorItemDetails}>
+                  <div className={styles.selectorMainInfo}>
+                    <Text size={200} weight="semibold">{s.name}</Text>
+                    {s.unit && <Text size={100} className={styles.textMuted}>{s.unit}</Text>}
                   </div>
-                );
-              })}
-            </DialogContent>
-            <DialogActions>
-              <Button appearance="secondary" onClick={() => setShowItemSelector(false)}>Cancel</Button>
-              <Button appearance="primary" onClick={applyItemSelection}>Apply Selection</Button>
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
+                  <div className={styles.selectorMeta}>
+                    <span className={mergeClasses(
+                      styles.selectorTypeBadge,
+                      isAnalog ? styles.selectorTypeBadgeAnalog : styles.selectorTypeBadgeDigital
+                    )}>
+                      {isAnalog ? 'analog' : 'digital'}
+                    </span>
+                    <Text size={100} className={styles.textMuted}>
+                      {s.pointType} · {s.name}
+                    </Text>
+                  </div>
+                </div>
+                <span className={styles.selectorStatusBadge}>
+                  {pts > 0 ? `${pts} pts` : 'No Data'}
+                </span>
+              </div>
+            );
+          })}
+        </DrawerBody>
+        <div className={styles.selectorFooter}>
+          <Button
+            size="small"
+            appearance={(viewTrackedKeys[currentView as 2 | 3] ?? []).length === series.length ? 'outline' : 'primary'}
+            onClick={() => setViewTrackedKeys(prev => ({
+              ...prev,
+              [currentView]: (prev[currentView as 2 | 3] ?? []).length === series.length
+                ? []
+                : series.map(s => `${s.pointId}-${s.pointIndex}`)
+            }))}
+          >
+            {(viewTrackedKeys[currentView as 2 | 3] ?? []).length === series.length ? 'Unselect All' : 'Select All'}
+          </Button>
+          <div className={styles.selectorFooterActions}>
+            <Button size="small" appearance="subtle" onClick={cancelItemSelection}>Cancel</Button>
+            <Button size="small" appearance="primary" onClick={applyItemSelection}>Apply Selection</Button>
+          </div>
+        </div>
+      </OverlayDrawer>
 
     </div>
   );
