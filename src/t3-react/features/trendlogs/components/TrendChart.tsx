@@ -391,6 +391,24 @@ const formatDateISO = (timestamp: number) => {
   return `${year}-${month}-${day}`;
 };
 
+const formatXAxisTimeOnly = (timestamp: number, timeBase: TrendChartProps['timeBase']) => {
+  const date = new Date(timestamp);
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  if (timeBase === '1d') {
+    return hours;
+  }
+  return `${hours}:${minutes}`;
+};
+
+const formatXAxisTickLabel = (timestamp: number, index: number, timeBase: TrendChartProps['timeBase']) => {
+  const timeOnly = formatXAxisTimeOnly(timestamp, timeBase);
+  if (index === 0) {
+    return [timeOnly, formatDateISO(timestamp)];
+  }
+  return timeOnly;
+};
+
 const buildXAxisTicks = (startTime: number, endTime: number, timeBase: TrendChartProps['timeBase']) => {
   const tickConfig = X_AXIS_TICK_CONFIGS[timeBase];
   const stepMs = tickConfig.stepMinutes * 60 * 1000;
@@ -406,7 +424,11 @@ const buildXAxisTicks = (startTime: number, endTime: number, timeBase: TrendChar
 
   const lastTickValue = ticks[ticks.length - 1]?.value;
   if (lastTickValue == null || Math.abs(lastTickValue - endTime) > 1000) {
-    ticks.push({ value: endTime });
+    if (lastTickValue != null && formatXAxisTimeOnly(lastTickValue, timeBase) === formatXAxisTimeOnly(endTime, timeBase)) {
+      ticks[ticks.length - 1] = { value: endTime };
+    } else {
+      ticks.push({ value: endTime });
+    }
   }
 
   return ticks;
@@ -675,11 +697,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
               font: { family: 'Inter, Helvetica, Arial, sans-serif', size: 11 },
               callback: (value: any, index: number) => {
                 const timestamp = Number(value);
-                const timeLabel = formatTimestamp(timestamp, timeBase);
-                if (index === 0) {
-                  return [timeLabel, formatDateISO(timestamp)];
-                }
-                return timeLabel;
+                return formatXAxisTickLabel(timestamp, index, timeBase);
               },
               align: 'inner',
               maxRotation: 0,
@@ -883,6 +901,24 @@ export const TrendChart: React.FC<TrendChartProps> = ({
               ctx.lineTo(area.right, py);
               ctx.stroke();
             }
+            ctx.restore();
+          },
+        },
+        {
+          id: 'firstVerticalGridline',
+          beforeDatasetsDraw: (chart: any) => {
+            const ctx = chart.ctx;
+            const area = chart.chartArea;
+            const xScale = chart.scales?.x;
+            if (!ctx || !area || !xScale) return;
+            const x = xScale.left;
+            ctx.save();
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x, area.top);
+            ctx.lineTo(x, area.bottom);
+            ctx.stroke();
             ctx.restore();
           },
         },
