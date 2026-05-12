@@ -872,17 +872,22 @@ const useStyles = makeStyles({
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '8px',
+    marginBottom: '4px',
   },
   sectionCard: {
     border: `1px solid ${tokens.colorNeutralStroke1}`,
     borderRadius: '6px',
-    padding: '12px',
+    padding: '8px 10px',
   },
   radioGroupWrap: {
     display: 'flex',
     flexWrap: 'wrap',
     gap: '4px',
+  },
+  drawerRadioGroup: {
+    '& .fui-Radio__label': {
+      fontSize: '11px',
+    },
   },
   cleanupUnit: {
     minWidth: '80px',
@@ -953,8 +958,14 @@ const useStyles = makeStyles({
   shortcutsGrid: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
-    gap: '4px 16px',
-    fontSize: '12px',
+    gap: '6px 12px',
+    fontSize: '11px',
+    marginTop: '6px',
+  },
+  shortcutCell: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
   },
   keycap: {
     background: '#f0f0f0',
@@ -3486,7 +3497,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       >
         <DrawerHeader style={{ padding: '8px 16px', minHeight: 'unset' }}>
           <DrawerHeaderTitle
-            style={{ fontSize: '12px', fontWeight: 600 }}
+            heading={{ as: 'h3', style: { fontSize: '13px', fontWeight: 600, margin: 0 } }}
             action={
               <Button
                 appearance="subtle"
@@ -3498,20 +3509,20 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             Trendlog Configuration
           </DrawerHeaderTitle>
         </DrawerHeader>
-        <DrawerBody style={{ overflowY: 'auto', overflowX: 'hidden', padding: '12px 16px' }}>
-          <div className={styles.stackCol16}>
+        <DrawerBody style={{ overflowY: 'auto', overflowX: 'hidden', padding: '10px 14px' }}>
+          <div className={styles.stackCol10}>
 
             {/* Sampling Interval */}
             <div className={styles.sectionCard}>
               <div className={styles.rowBetween}>
-                <Text weight="semibold" className={styles.rowWrap6}>
+                <Text weight="semibold" size={200} className={styles.rowWrap6}>
                   <ClockRegular style={{ color: '#52c41a' }} /> Sampling Interval
                 </Text>
                 <Text size={100} className={styles.textMuted}>How often should data be collected?</Text>
               </div>
               <RadioGroup
                 layout="horizontal"
-                className={styles.radioGroupWrap}
+                className={mergeClasses(styles.radioGroupWrap, styles.drawerRadioGroup)}
                 value={ffiIntervalPreset}
                 onChange={(_, d) => {
                   const preset = d.value as typeof ffiIntervalPreset;
@@ -3552,14 +3563,14 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             {/* Refresh and Rediscover Interval */}
             <div className={styles.sectionCard}>
               <div className={styles.rowBetween}>
-                <Text weight="semibold" className={styles.rowWrap6}>
+                <Text weight="semibold" size={200} className={styles.rowWrap6}>
                   <ArrowClockwiseRegular style={{ color: '#fa8c16' }} /> Refresh and Rediscover Interval
                 </Text>
                 <Text size={100} className={styles.textMuted}>How often should system check for new BACnet objects?</Text>
               </div>
               <RadioGroup
                 layout="horizontal"
-                className={styles.radioGroupWrap}
+                className={mergeClasses(styles.radioGroupWrap, styles.drawerRadioGroup)}
                 value={rediscoverIntervalPreset}
                 onChange={(_, d) => {
                   const preset = d.value as typeof rediscoverIntervalPreset;
@@ -3600,7 +3611,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             {/* Database Status */}
             <div className={styles.sectionCard}>
               <div className={styles.rowBetween}>
-                <Text weight="semibold" className={styles.rowWrap6}>
+                <Text weight="semibold" size={200} className={styles.rowWrap6}>
                   <DatabaseRegular style={{ color: '#1890ff' }} /> Database Status
                 </Text>
                 <Text size={100} className={styles.textMuted}>
@@ -3618,7 +3629,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             {/* Data Splitting Strategy */}
             <div className={styles.sectionCard}>
               <div className={styles.rowBetween}>
-                <Text weight="semibold" className={styles.rowWrap6}>
+                <Text weight="semibold" size={200} className={styles.rowWrap6}>
                   <SettingsRegular style={{ color: '#fa8c16' }} /> Data Splitting Strategy
                 </Text>
                 <Button
@@ -3633,7 +3644,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
               <Text size={100} className={styles.fieldLabel}>Split new data by:</Text>
               <RadioGroup
                 layout="horizontal"
-                className={styles.radioGroupWrap}
+                className={mergeClasses(styles.radioGroupWrap, styles.drawerRadioGroup)}
                 value={dbConfig.strategy}
                 onChange={(_, d) => setDbConfig((prev) => ({ ...prev, strategy: d.value as DatabasePartitionConfig['strategy'] }))}
               >
@@ -3693,7 +3704,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             {/* Database Files */}
             <div className={styles.sectionCard}>
               <div className={styles.rowBetween}>
-                <Text weight="semibold" className={styles.rowWrap6}>
+                <Text weight="semibold" size={200} className={styles.rowWrap6}>
                   <DatabaseRegular style={{ color: '#1890ff' }} /> Database Files ({dbFiles.length})
                 </Text>
                 <Button
@@ -3734,7 +3745,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
             {/* Cleanup Management */}
             <div className={styles.sectionCard}>
-              <Text weight="semibold" className={styles.rowWrap6} style={{ marginBottom: '8px' }}>
+              <Text weight="semibold" size={200} className={styles.rowWrap6} style={{ marginBottom: '6px' }}>
                 <DeleteRegular style={{ color: '#ff4d4f' }} /> Cleanup Management
               </Text>
               <div className={styles.rowWrap6}>
@@ -3785,11 +3796,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             {/* Keyboard Shortcuts */}
             <div className={styles.sectionCard}>
               <div className={styles.rowBetween}>
-                <Text weight="semibold">Keyboard Shortcuts</Text>
+                <Text weight="semibold" size={200}>Keyboard Shortcuts</Text>
                 <Switch
                   checked={keyboardEnabled}
                   onChange={(_, d) => setKeyboardEnabled(d.checked)}
-                  label={keyboardEnabled ? 'Enabled' : 'Disabled'}
                 />
               </div>
               <div className={styles.shortcutsGrid}>
@@ -3801,10 +3811,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                   ['Enter', 'Toggle selected item'],
                   ['ESC', 'Toggle item shortcuts on/off'],
                 ].map(([key, desc]) => (
-                  <React.Fragment key={key}>
-                    <Text size={100}><kbd className={styles.keycap}>{key}</kbd></Text>
-                    <Text size={100} className={styles.textMuted}>{desc}</Text>
-                  </React.Fragment>
+                  <div key={key} className={styles.shortcutCell}>
+                    <kbd className={styles.keycap}>{key}</kbd>
+                    <Text size={100} className={styles.textMuted}>: {desc}</Text>
+                  </div>
                 ))}
               </div>
             </div>
