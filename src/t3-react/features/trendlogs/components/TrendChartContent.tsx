@@ -967,6 +967,10 @@ const useStyles = makeStyles({
     alignItems: 'center',
     gap: '4px',
   },
+  smallSwitch: {
+    transform: 'scale(0.72)',
+    transformOrigin: 'right center',
+  },
   keycap: {
     background: '#f0f0f0',
     padding: '1px 5px',
@@ -1233,7 +1237,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const [selectorDraftKeys, setSelectorDraftKeys] = useState<string[]>([]);
 
   // Keyboard shortcuts
-  const [keyboardEnabled, setKeyboardEnabled] = useState(false);
+  const [keyboardEnabled, setKeyboardEnabled] = useState(true);
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [selectedItemIndex, setSelectedItemIndex] = useState<number>(-1);
 
@@ -3162,15 +3166,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           </div>
         );
 
-        // Keyboard shortcut key for a series index
-        const KBKEYS = ['1','2','3','4','5','6','7','8','9','a','b','c','d','e'];
-        const getKbKey = (index: number) => keyboardEnabled && index < KBKEYS.length ? KBKEYS[index] : null;
-
         // Render a series item
         const renderSeriesItem = (s: TrendSeries, globalIndex: number) => {
           const seriesKey = `${s.pointId}-${s.pointIndex}`;
           const isExpanded = expandedSeries.has(seriesKey);
-          const kbKey = getKbKey(globalIndex);
           const isKeySelected = keyboardEnabled && selectedItemIndex === globalIndex;
 
           return (
@@ -3179,8 +3178,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                 className={mergeClasses(styles.seriesItem, isExpanded ? styles.seriesItemExpanded : undefined, isKeySelected ? styles.selectedSeriesItem : undefined)}
                 onClick={() => toggleSeriesVisibility(globalIndex)}
               >
-                {/* Sequential number badge — absolute top-left of card, no stopPropagation */}
-                <div className={styles.seriesNumber}>{globalIndex + 1}</div>
+                {/* Sequential number badge — only visible when keyboard shortcuts enabled */}
+                {keyboardEnabled && <div className={styles.seriesNumber}>{globalIndex + 1}</div>}
 
                 {/* Delete overlay for View 2 & 3 */}
                 {currentView !== 1 && (
@@ -3194,7 +3193,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                   />
                 )}
 
-                {/* Toggle switch — with keyboard badge inside (absolute), matches Vue series-toggle-indicator */}
+                {/* Toggle switch — color indicator */}
                 <div className={styles.colorIndicatorWrap} onClick={(e) => e.stopPropagation()}>
                   <div
                     className={mergeClasses(styles.colorIndicator, getColorClass(s.color, s.visible === false))}
@@ -3202,9 +3201,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                   >
                     <div className={mergeClasses(styles.toggleInner, s.visible !== false ? styles.toggleInnerActive : undefined)} />
                   </div>
-                  {kbKey && (
-                    <div className={styles.keyboardBadge}>{kbKey.toUpperCase()}</div>
-                  )}
                 </div>
 
                 {/* series-info: flex column wrapping series-name-line */}
@@ -3800,6 +3796,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                 <Switch
                   checked={keyboardEnabled}
                   onChange={(_, d) => setKeyboardEnabled(d.checked)}
+                  className={styles.smallSwitch}
                 />
               </div>
               <div className={styles.shortcutsGrid}>
