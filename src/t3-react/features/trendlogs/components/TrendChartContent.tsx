@@ -2659,9 +2659,15 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       const idx = KEYS.indexOf(key);
       if (idx !== -1) {
         e.preventDefault();
+        // displayedSeries is ordered analog-first then digital, matching the left panel
         setSeries(prev => {
+          const s = displayedSeries[idx];
+          if (!s) return prev;
+          const key = `${s.pointId}-${s.pointIndex}`;
+          const masterIdx = prev.findIndex(ms => `${ms.pointId}-${ms.pointIndex}` === key);
+          if (masterIdx === -1 || !prev[masterIdx].data || prev[masterIdx].data.length === 0) return prev;
           const updated = [...prev];
-          if (idx < updated.length) updated[idx] = { ...updated[idx], visible: !updated[idx].visible };
+          updated[masterIdx] = { ...updated[masterIdx], visible: !updated[masterIdx].visible };
           return updated;
         });
         // lastKeyboardAction intentionally not tracked (display-only feature removed)
@@ -2678,9 +2684,13 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       } else if (e.key === 'Enter') {
         e.preventDefault();
         setSeries(prev => {
-          if (selectedItemIndex < 0 || selectedItemIndex >= prev.length) return prev;
+          const s = displayedSeries[selectedItemIndex];
+          if (!s) return prev;
+          const key = `${s.pointId}-${s.pointIndex}`;
+          const masterIdx = prev.findIndex(ms => `${ms.pointId}-${ms.pointIndex}` === key);
+          if (masterIdx === -1 || !prev[masterIdx].data || prev[masterIdx].data.length === 0) return prev;
           const updated = [...prev];
-          updated[selectedItemIndex] = { ...updated[selectedItemIndex], visible: !updated[selectedItemIndex].visible };
+          updated[masterIdx] = { ...updated[masterIdx], visible: !updated[masterIdx].visible };
           return updated;
         });
       } else if (e.key === 'Escape') {
@@ -2690,7 +2700,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [keyboardEnabled, moveTimeLeft, moveTimeRight, zoomIn, zoomOut, selectedItemIndex]);
+  }, [keyboardEnabled, moveTimeLeft, moveTimeRight, zoomIn, zoomOut, selectedItemIndex, displayedSeries]);
 
   /**
    * Persist & restore state to localStorage
@@ -2723,10 +2733,14 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   /**
    * Toggle series visibility
    */
-  const toggleSeriesVisibility = useCallback((index: number, forceValue?: boolean) => {
+  const toggleSeriesVisibility = useCallback((key: string, forceValue?: boolean) => {
     setSeries((prev) => {
+      const idx = prev.findIndex((s) => `${s.pointId}-${s.pointIndex}` === key);
+      if (idx === -1) return prev;
+      // Match Vue: skip empty series (no data loaded yet)
+      if (!prev[idx].data || prev[idx].data.length === 0) return prev;
       const updated = [...prev];
-      updated[index].visible = forceValue !== undefined ? forceValue : !updated[index].visible;
+      updated[idx] = { ...updated[idx], visible: forceValue !== undefined ? forceValue : !updated[idx].visible };
       return updated;
     });
   }, []);
@@ -2794,11 +2808,28 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       console.warn('Chart instance not available for PNG export');
       return;
     }
-    const dataUrl = typeof chart.getDataURL === 'function'
-      ? chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' })
-      : typeof chart.toBase64Image === 'function'
-        ? chart.toBase64Image('image/png', 1)
-        : chart.canvas?.toDataURL?.('image/png');
+
+    // Get the raw canvas from the chart instance
+    const sourceCanvas: HTMLCanvasElement | undefined =
+      chart.canvas ??                          // Chart.js
+      chart.getDom?.()?.querySelector('canvas'); // ECharts fallback
+
+    let dataUrl: string | undefined;
+
+    if (typeof chart.getDataURL === 'function') {
+      // ECharts native — supports backgroundColor directly
+      dataUrl = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' });
+    } else if (sourceCanvas) {
+      // Chart.js: composite onto a white canvas so the background is never transparent/dark
+      const offscreen = document.createElement('canvas');
+      offscreen.width = sourceCanvas.width;
+      offscreen.height = sourceCanvas.height;
+      const ctx = offscreen.getContext('2d')!;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, offscreen.width, offscreen.height);
+      ctx.drawImage(sourceCanvas, 0, 0);
+      dataUrl = offscreen.toDataURL('image/png');
+    }
 
     if (!dataUrl) {
       console.warn('Chart instance does not support PNG export');
@@ -3268,7 +3299,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             <React.Fragment key={seriesKey}>
               <div
                 className={mergeClasses(styles.seriesItem, isExpanded ? styles.seriesItemExpanded : undefined, isKeySelected ? styles.selectedSeriesItem : undefined)}
-                onClick={() => toggleSeriesVisibility(globalIndex)}
+                onClick={() => toggleSeriesVisibility(seriesKey)}
               >
                 {/* Sequential number badge — only visible when keyboard shortcuts enabled */}
                 {keyboardEnabled && <div className={styles.seriesNumber}>{globalIndex + 1}</div>}
@@ -3290,7 +3321,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                 <div className={styles.colorIndicatorWrap} onClick={(e) => e.stopPropagation()}>
                   <div
                     className={mergeClasses(styles.colorIndicator, getColorClass(s.color, s.visible === false))}
-                    onClick={() => toggleSeriesVisibility(globalIndex)}
+                    onClick={() => toggleSeriesVisibility(seriesKey)}
                   >
                     <div className={mergeClasses(styles.toggleInner, s.visible !== false ? styles.toggleInnerActive : undefined)} />
                   </div>
