@@ -128,6 +128,11 @@ const useStyles = makeStyles({
     minWidth: '200px',
     overflowY: 'auto',
     overflowX: 'hidden',
+    scrollbarWidth: 'thin',
+    scrollbarColor: '#d0d0d0 transparent',
+    '::-webkit-scrollbar': { width: '4px' },
+    '::-webkit-scrollbar-track': { background: 'transparent' },
+    '::-webkit-scrollbar-thumb': { background: '#d0d0d0', borderRadius: '2px' },
   },
   // RESIZABLE DIVIDER
   resizableDivider: {
@@ -186,6 +191,11 @@ const useStyles = makeStyles({
     minWidth: '200px',
     overflowY: 'auto',
     overflowX: 'hidden',
+    scrollbarWidth: 'thin',
+    scrollbarColor: '#d0d0d0 transparent',
+    '::-webkit-scrollbar': { width: '4px' },
+    '::-webkit-scrollbar-track': { background: 'transparent' },
+    '::-webkit-scrollbar-thumb': { background: '#d0d0d0', borderRadius: '2px' },
   },
   seriesPanelHeader: {
     padding: '6px 8px',
@@ -251,6 +261,18 @@ const useStyles = makeStyles({
     minHeight: 0,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderTop: 'none',
+    scrollbarWidth: 'thin',
+    scrollbarColor: '#d0d0d0 transparent',
+    '::-webkit-scrollbar': {
+      width: '4px',
+    },
+    '::-webkit-scrollbar-track': {
+      background: 'transparent',
+    },
+    '::-webkit-scrollbar-thumb': {
+      background: '#d0d0d0',
+      borderRadius: '2px',
+    },
   },
   seriesItem: {
     display: 'flex',
@@ -342,7 +364,7 @@ const useStyles = makeStyles({
     position: 'absolute',
     top: '2px',
     left: '2px',
-    backgroundColor: '#888e86',
+    backgroundColor: '#b8bbb8',
     color: 'white',
     fontSize: '8px',
     fontWeight: 'bold',
@@ -715,6 +737,7 @@ const useStyles = makeStyles({
   colorIndicatorWrap: {
     position: 'relative',
     flexShrink: 0,
+    marginLeft: '6px',
   },
   seriesNameHidden: {
     opacity: 0.4,
