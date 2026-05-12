@@ -88,9 +88,9 @@ const X_AXIS_TICK_CONFIGS = {
   '30m': { stepMinutes: 5, unit: 'minute' },
   '1h': { stepMinutes: 5, unit: 'minute' },
   '4h': { stepMinutes: 15, unit: 'minute' },
-  '12h': { stepMinutes: 60, unit: 'hour' },
-  '1d': { stepMinutes: 60, unit: 'hour' },
-  '4d': { stepMinutes: 360, unit: 'hour' },
+  '12h': { stepMinutes: 60, unit: 'minute' },
+  '1d': { stepMinutes: 60, unit: 'minute' },
+  '4d': { stepMinutes: 360, unit: 'minute' },
 } as const;
 
 const X_AXIS_MAX_TICKS = {
@@ -100,8 +100,8 @@ const X_AXIS_MAX_TICKS = {
   '1h': 14,
   '4h': 18,
   '12h': 14,
-  '1d': 26,
-  '4d': 10,
+  '1d': 200,
+  '4d': 200,
 } as const;
 
 const BAND_SIZE = 100;
@@ -401,7 +401,18 @@ const formatXAxisTimeOnly = (timestamp: number, timeBase: TrendChartProps['timeB
   return `${hours}:${minutes}`;
 };
 
+const formatXAxisDenseLabel = (timestamp: number) => {
+  const date = new Date(timestamp);
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return minutes === '00' ? `${hours}:00` : `${hours}:${minutes}`;
+};
+
 const formatXAxisTickLabel = (timestamp: number, index: number, timeBase: TrendChartProps['timeBase']) => {
+  if (timeBase === '1d' || timeBase === '4d') {
+    return index === 0 ? [' ', ' '] : ' ';
+  }
+
   const timeOnly = formatXAxisTimeOnly(timestamp, timeBase);
   if (index === 0) {
     return [timeOnly, formatDateISO(timestamp)];
@@ -414,7 +425,9 @@ const buildXAxisTicks = (startTime: number, endTime: number, timeBase: TrendChar
   const stepMs = tickConfig.stepMinutes * 60 * 1000;
   const minGapMs = stepMs * 0.25;
   const ticks: Array<{ value: number }> = [{ value: startTime }];
-  const firstCleanMs = Math.ceil(startTime / stepMs) * stepMs;
+  const firstCleanMs = timeBase === '1d'
+    ? startTime + stepMs
+    : Math.ceil(startTime / stepMs) * stepMs;
 
   for (let tickTime = firstCleanMs; tickTime <= endTime; tickTime += stepMs) {
     if (Math.abs(tickTime - startTime) > minGapMs) {
@@ -424,11 +437,7 @@ const buildXAxisTicks = (startTime: number, endTime: number, timeBase: TrendChar
 
   const lastTickValue = ticks[ticks.length - 1]?.value;
   if (lastTickValue == null || Math.abs(lastTickValue - endTime) > 1000) {
-    if (lastTickValue != null && formatXAxisTimeOnly(lastTickValue, timeBase) === formatXAxisTimeOnly(endTime, timeBase)) {
-      ticks[ticks.length - 1] = { value: endTime };
-    } else {
-      ticks.push({ value: endTime });
-    }
+    ticks.push({ value: endTime });
   }
 
   return ticks;
@@ -556,10 +565,13 @@ export const TrendChart: React.FC<TrendChartProps> = ({
   const styles = useStyles();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartInstanceRef = useRef<ChartInstanceLike | null>(null);
+  const yLayoutCacheRef = useRef<YBandLayout | null>(null);
+  const yLayoutCacheKeyRef = useRef<string>('');
 
   const analogSeries = useMemo(() => series.filter((item) => item.digitalAnalog === 'Analog' && item.visible !== false), [series]);
   const digitalSeries = useMemo(() => series.filter((item) => item.digitalAnalog === 'Digital' && item.visible !== false), [series]);
   const isDigitalOscilloscope = chartType === 'digital' && series.length === 1 && series[0]?.digitalAnalog === 'Digital';
+  const useDenseTimeLabels = timeBase === '1d' || timeBase === '4d';
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -567,7 +579,40 @@ export const TrendChart: React.FC<TrendChartProps> = ({
     const timeConfig = TIME_CONFIGS[timeBase];
     const now = Date.now() + timeOffset * 60 * 1000;
     const startTime = now - timeConfig.totalMinutes * 60 * 1000;
-    const layout = buildYAxisLayout(analogSeries, digitalSeries);
+
+    const cacheKey = [
+      ...analogSeries.map((item) => `A:${item.name}:${getSeriesUnitKey(item)}`),
+      ...digitalSeries.map((item) => `D:${item.name}:${(item.unit || '').trim()}`),
+    ].sort().join('|');
+
+    if (yLayoutCacheKeyRef.current !== cacheKey) {
+      yLayoutCacheKeyRef.current = cacheKey;
+      yLayoutCacheRef.current = null;
+    }
+
+    const hasWindowData = [...analogSeries, ...digitalSeries].some((item) =>
+      item.data.some((point) =>
+        isFiniteNumber(point.value) && point.timestamp >= startTime && point.timestamp <= now,
+      ),
+    );
+
+    const analogSeriesInWindow = analogSeries.map((item) => ({
+      ...item,
+      data: item.data.filter((point) => point.timestamp >= startTime && point.timestamp <= now),
+    }));
+
+    const digitalSeriesInWindow = digitalSeries.map((item) => ({
+      ...item,
+      data: item.data.filter((point) => point.timestamp >= startTime && point.timestamp <= now),
+    }));
+
+    const liveLayout = buildYAxisLayout(analogSeriesInWindow, digitalSeriesInWindow);
+    const layout = hasWindowData || !yLayoutCacheRef.current ? liveLayout : yLayoutCacheRef.current;
+
+    if (hasWindowData) {
+      yLayoutCacheRef.current = liveLayout;
+    }
+
     const gapThresholdMs = 2 * 60 * 1000;
     const xAxisTicks = buildXAxisTicks(startTime, now, timeBase);
 
@@ -762,6 +807,57 @@ export const TrendChart: React.FC<TrendChartProps> = ({
         },
       },
       plugins: isDigitalOscilloscope ? [] : [
+        {
+          id: 'forceDenseTimeLabels',
+          afterDraw: (chart: any) => {
+            if (!useDenseTimeLabels) return;
+            const xScale = chart?.scales?.x;
+            if (!xScale || !xScale.ticks?.length) return;
+
+            const ctx = chart.ctx;
+            if (!ctx) return;
+
+            ctx.save();
+            ctx.fillStyle = '#595959';
+            ctx.font = '11px Inter, Helvetica, Arial, sans-serif';
+            ctx.textBaseline = 'top';
+
+            const labelY = xScale.top + 8;
+            const dateY = xScale.top + 22;
+            const ticks: any[] = xScale.ticks;
+
+            ticks.forEach((tick: any, index: number) => {
+              const value = tick.value ?? tick;
+              const px = xScale.getPixelForValue(value);
+              if (px < xScale.left - 1 || px > xScale.right + 1) return;
+
+              const date = new Date(value);
+              const label = formatXAxisDenseLabel(value);
+
+              if (index === ticks.length - 1) {
+                ctx.textAlign = 'right';
+              } else if (px - xScale.left < 20) {
+                ctx.textAlign = 'left';
+              } else {
+                ctx.textAlign = 'center';
+              }
+
+              ctx.fillText(label, px, labelY);
+
+              if (index === 0) {
+                const savedAlign = ctx.textAlign;
+                ctx.textAlign = px - xScale.left < 20 ? 'left' : 'center';
+                const year = date.getFullYear();
+                const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                const day = date.getDate().toString().padStart(2, '0');
+                ctx.fillText(`${year}-${month}-${day}`, px, dateY);
+                ctx.textAlign = savedAlign;
+              }
+            });
+
+            ctx.restore();
+          },
+        },
         {
           id: 'yScaleHooks',
           afterDataLimits: (_chart: any, args: any) => {
