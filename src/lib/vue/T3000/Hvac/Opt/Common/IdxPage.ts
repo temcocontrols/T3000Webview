@@ -85,12 +85,16 @@ class IdxPage {
 
   // Control zoom actions for the app
   zoomAction(action: string = "in", val: number = null) {
+    const currentZoom = Number(this.zoom.value) || 100;
+
     if (action === "out") {
-      this.zoom.value -= 10;
+      this.zoom.value = Math.max(10, Math.round(currentZoom / 1.2));
     } else if (action === "set") {
-      this.zoom.value = val;
+      const nextZoom = Number(val);
+      if (!Number.isFinite(nextZoom)) return;
+      this.zoom.value = Math.min(400, Math.max(10, nextZoom));
     } else {
-      this.zoom.value += 10;
+      this.zoom.value = Math.min(400, Math.round(currentZoom * 1.2));
     }
 
     LogUtil.Debug('= Idx zoomAction', this.zoom.value);
@@ -173,7 +177,7 @@ class IdxPage {
       // Disable wheel zooming when locked
       if (locked.value) return true;
 
-      // Allow panzoom to handle the wheel event
+      // Allow normal wheel zoom when unlocked.
       return false;
     }
 
@@ -229,60 +233,71 @@ class IdxPage {
       const viewportWidth = viewport.value?.clientWidth || 800;
       const viewportHeight = viewport.value?.clientHeight || 600;
 
-      // Calculate visible area in document coordinates
-      const visibleLeft = -transform.x / transform.scale;
-      const visibleRight = visibleLeft + viewportWidth / transform.scale;
-      const visibleTop = -transform.y / transform.scale;
-      const visibleBottom = visibleTop + viewportHeight / transform.scale;
+      // Guard against restoring at an unusable very high zoom level.
+      if ((transform.scale || 1) > 2.5) {
+        LogUtil.Warn('⚠️ Saved viewport zoom is too high - will auto-fit');
+        transform = null;
+      }
 
-      // Check if ANY item is visible with this transform
-      const anyItemVisible = items.some(item => {
-        const itemX = item.translate[0];
-        const itemY = item.translate[1];
-        const itemWidth = item.width || 100;
-        const itemHeight = item.height || 100;
+      if (transform) {
+        // Calculate visible area in document coordinates
+        const visibleLeft = -transform.x / transform.scale;
+        const visibleRight = visibleLeft + viewportWidth / transform.scale;
+        const visibleTop = -transform.y / transform.scale;
+        const visibleBottom = visibleTop + viewportHeight / transform.scale;
 
-        // Check if item overlaps with visible area
-        return !(itemX + itemWidth < visibleLeft ||
-                 itemX > visibleRight ||
-                 itemY + itemHeight < visibleTop ||
-                 itemY > visibleBottom);
-      });
+        // Check if ANY item is visible with this transform
+        const anyItemVisible = items.some(item => {
+          const itemX = item.translate[0];
+          const itemY = item.translate[1];
+          const itemWidth = item.width || 100;
+          const itemHeight = item.height || 100;
 
-      if (!anyItemVisible) {
-        LogUtil.Warn('⚠️ Saved viewport position shows NO items - will auto-center');
-        transform = null; // Clear bad transform, will auto-center below
+          // Check if item overlaps with visible area
+          return !(itemX + itemWidth < visibleLeft ||
+                   itemX > visibleRight ||
+                   itemY + itemHeight < visibleTop ||
+                   itemY > visibleBottom);
+        });
+
+        if (!anyItemVisible) {
+          LogUtil.Warn('⚠️ Saved viewport position shows NO items - will auto-fit');
+          transform = null; // Clear bad transform, will auto-center below
+        }
       }
     }
 
     // Priority 3: Auto-center if NO valid saved position or saved position is bad
     if (!transform && appState.value.items && appState.value.items.length > 0) {
       const items = appState.value.items;
-      const xs = items.map(item => item.translate[0]);
-      const ys = items.map(item => item.translate[1]);
-      const minX = Math.min(...xs);
-      const maxX = Math.max(...xs);
-      const minY = Math.min(...ys);
-      const maxY = Math.max(...ys);
+      const minX = Math.min(...items.map(item => item.translate[0]));
+      const minY = Math.min(...items.map(item => item.translate[1]));
+      const maxX = Math.max(...items.map(item => item.translate[0] + (item.width || 100)));
+      const maxY = Math.max(...items.map(item => item.translate[1] + (item.height || 100)));
       const centerX = (minX + maxX) / 2;
       const centerY = (minY + maxY) / 2;
 
       // Get viewport dimensions
       const viewportWidth = viewport.value?.clientWidth || 800;
       const viewportHeight = viewport.value?.clientHeight || 600;
+      const contentWidth = Math.max(1, maxX - minX);
+      const contentHeight = Math.max(1, maxY - minY);
+      const fitScaleX = (viewportWidth * 0.85) / contentWidth;
+      const fitScaleY = (viewportHeight * 0.85) / contentHeight;
+      const fitScale = Math.max(0.2, Math.min(1.2, fitScaleX, fitScaleY));
 
       transform = {
-        x: viewportWidth / 2 - centerX,
-        y: viewportHeight / 2 - centerY,
-        scale: 0.7  // Zoom out to show all items
+        x: viewportWidth / 2 - (centerX * fitScale),
+        y: viewportHeight / 2 - (centerY * fitScale),
+        scale: fitScale,
       };
 
-      LogUtil.Debug('🎯 Auto-centering viewport on items:', transform);
+      LogUtil.Debug('🎯 Auto-fitting viewport on items:', transform);
     }
 
     if (transform && panzoomInstance) {
       isRestoringPanzoom = true;
-      panzoomInstance.zoomAbs(transform.x, transform.y, transform.scale);
+      panzoomInstance.zoomAbs(0, 0, transform.scale);
       panzoomInstance.moveTo(transform.x, transform.y);
       // Allow a small delay for transform events to settle
       setTimeout(() => {
@@ -307,14 +322,18 @@ class IdxPage {
       set(newValue) {
         if (!newValue) return;
 
-        const scale = newValue / 100;
-        const x = appState.value.viewportTransform.x;
-        const y = appState.value.viewportTransform.y;
+        const numericValue = Number(newValue);
+        if (!Number.isFinite(numericValue)) return;
+
+        const scale = Math.min(4, Math.max(0.1, numericValue / 100));
+        const wrapper = viewport.value?.parentElement;
+        const centerX = (wrapper?.clientWidth ?? viewport.value?.clientWidth ?? 800) / 2;
+        const centerY = (wrapper?.clientHeight ?? viewport.value?.clientHeight ?? 600) / 2;
 
         appState.value.viewportTransform.scale = scale;
 
         if (panzoomInstance) {
-          panzoomInstance.zoomAbs(x, y, scale);
+          panzoomInstance.zoomAbs(centerX, centerY, scale);
         }
       },
     });
