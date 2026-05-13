@@ -8103,7 +8103,17 @@
       }
 
       // Convert GET_ENTRIES response to RealtimeDataRequest format
-      const realtimeDataPoints: RealtimeDataRequest[] = currentDeviceItems.map(item => {
+      // IMPORTANT: do NOT write fallback zeros to DB. Skip rows when source value is missing/invalid.
+      const toFiniteNumber = (raw: any): number | null => {
+        if (raw === null || raw === undefined || raw === '') return null
+        const n = Number(raw)
+        return Number.isFinite(n) ? n : null
+      }
+
+      const skippedFallbackItems: Array<{ point_id: string; panel_id: number; reason: string; digital_analog: any; raw_value: any; raw_control: any }> = []
+      let zeroValuesFromDevice = 0
+
+      const realtimeDataPoints: RealtimeDataRequest[] = currentDeviceItems.reduce((acc: RealtimeDataRequest[], item) => {
         // Enhanced debugging for point type determination
         const pointId = item.id || 'UNKNOWN'
         const pointType = getCorrectPointTypeFromId(pointId, item.point_type)
@@ -8135,13 +8145,30 @@
         })
         */
 
-        // 🎯 CRITICAL FIX: Use correct value field based on digital_analog
-        // Digital outputs (digital_analog=0): use 'control' field
-        // Analog outputs (digital_analog=1): use 'value' field
-        // This must match the display logic to ensure database consistency
-        const valueToStore = item.digital_analog === 1
-          ? (item.value || 0)      // Analog: use 'value' field
-          : (item.control || 0);   // Digital: use 'control' field (per Str_out_point struct)
+        // Select source field based on digital_analog without fallback-to-zero behavior.
+        // analog(1) => value, digital(0) => control. Unknown => try value first, then control.
+        const digitalAnalog = item.digital_analog
+        const selectedField = digitalAnalog === 1
+          ? 'value'
+          : (digitalAnalog === 0 ? 'control' : (item.value !== undefined && item.value !== null ? 'value' : 'control'))
+        const selectedRaw = selectedField === 'value' ? item.value : item.control
+        const parsedValue = toFiniteNumber(selectedRaw)
+
+        if (parsedValue === null) {
+          skippedFallbackItems.push({
+            point_id: pointId,
+            panel_id: item.pid || currentPanelId,
+            reason: `missing_or_invalid_${selectedField}`,
+            digital_analog: digitalAnalog,
+            raw_value: item.value,
+            raw_control: item.control
+          })
+          return acc
+        }
+
+        if (parsedValue === 0) {
+          zeroValuesFromDevice += 1
+        }
 
         // 🔍 DEBUG: Log value selection for digital outputs
         if (item.digital_analog === 0 && pointId.startsWith('OUT')) {
@@ -8149,27 +8176,45 @@
             digital_analog: item.digital_analog,
             control: item.control,
             value: item.value,
-            valueToStore,
+            selectedField,
+            parsedValue,
             auto_manual: item.auto_manual
           })
         }
 
-        return {
+        acc.push({
           serial_number: getSerialForPanelInSave(item.pid || currentPanelId),
           panel_id: item.pid || currentPanelId,
           point_id: pointId,
           point_index: pointIndex,
           point_type: pointType,
-          value: String(valueToStore), // Store correct field based on digital_analog
+          value: String(parsedValue),
           // Optional fields - with enhanced logic
-          range_field: item.range ? String(item.range) : undefined,
-          digital_analog: item.digital_analog ? String(item.digital_analog) : undefined,
+          range_field: item.range !== undefined && item.range !== null ? String(item.range) : undefined,
+          digital_analog: item.digital_analog !== undefined && item.digital_analog !== null ? String(item.digital_analog) : undefined,
           units: units,
           // Enhanced source tracking
           data_source: 'REALTIME',
           created_by: 'FRONTEND',
           sync_interval: syncInterval // Use user-configured interval
-        }
+        })
+
+        return acc
+      }, [])
+
+      if (skippedFallbackItems.length > 0) {
+        LogUtil.Warn('⚠️ Skipping realtime points with missing/invalid source values (fallback zeros not written)', {
+          skippedCount: skippedFallbackItems.length,
+          totalCandidateItems: currentDeviceItems.length,
+          sampleSkipped: skippedFallbackItems.slice(0, 5)
+        })
+      }
+
+      LogUtil.Info('📏 Realtime payload quality for DB write', {
+        totalCandidateItems: currentDeviceItems.length,
+        acceptedPoints: realtimeDataPoints.length,
+        skippedFallbackItems: skippedFallbackItems.length,
+        zeroValuesFromDevice
       })
 
       // Store batch to database with detailed logging

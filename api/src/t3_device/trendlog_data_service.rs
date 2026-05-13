@@ -584,15 +584,27 @@ impl T3TrendlogDataService {
         let parent_ids = Self::cache().batch_get_or_create_parents(db, parent_keys).await?;
 
         // Step 2: Create detail records for batch insert
+        // ⚠️ VALIDATION: Skip points with missing/invalid values (fallback zeros not written)
         let detail_records: Vec<trendlog_data_detail::ActiveModel> = data_points.iter()
             .zip(parent_ids.iter())
-            .map(|(dp, &parent_id)| {
-                trendlog_data_detail::ActiveModel {
+            .filter_map(|(dp, &parent_id)| {
+                // Skip only if value is completely empty (frontend already filtered fallback zeros via toFiniteNumber)
+                if dp.value.is_empty() {
+                    let _ = write_structured_log_with_level(
+                        "T3_Webview_API",
+                        &format!("⏭️ SKIPPING data point with fallback/empty value - Point: {}, Type: {}",
+                            dp.point_id, dp.point_type),
+                        LogLevel::Warn
+                    );
+                    return None; // Skip this point
+                }
+
+                Some(trendlog_data_detail::ActiveModel {
                     parent_id: Set(parent_id),
                     value: Set(dp.value.clone()),
                     logging_time_fmt: Set(logging_time_fmt.clone()),
                     ..Default::default()
-                }
+                })
             })
             .collect();
 

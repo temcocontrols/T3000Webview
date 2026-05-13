@@ -2279,6 +2279,15 @@ impl T3000MainService {
         for (input_index, point) in device_data.input_points.iter().enumerate() {
             let units = Self::derive_units_from_range(point.range);
 
+            // ⚠️ VALIDATION: Skip points with zero value but invalid status (fallback zeros)
+            if point.value == 0.0 && point.status == 0 {
+                sync_logger.warn(&format!(
+                    "⏭️ SKIPPING INPUT fallback zero - Serial: {}, Index: {}, Status: {}",
+                    serial_number, point.index, point.status
+                ));
+                continue; // Skip this point - don't write fallback zero to DB
+            }
+
             // Step 1: Get or create parent record (with caching)
             let parent_key = ParentKey {
                 serial_number,
@@ -2325,7 +2334,7 @@ impl T3000MainService {
                 ..Default::default()
             };
 
-            sync_logger.info(&format!("📊 Inserting INPUT trend detail {}/{} - Serial: {}, ParentID: {}, Index: {}, Value: {}, Status: {}",
+            sync_logger.info(&format!("📊 ✅ Inserting REAL INPUT detail {}/{} - Serial: {}, ParentID: {}, Index: {}, Value: {}, Status: {}",
                 input_index + 1, device_data.input_points.len(),
                 serial_number, parent_id, point.index, point.value, point.status));
 
@@ -2360,6 +2369,15 @@ impl T3000MainService {
 
         for (output_index, point) in device_data.output_points.iter().enumerate() {
             let units = Self::derive_units_from_range(point.range);
+
+            // ⚠️ VALIDATION: Skip points with zero value but invalid status (fallback zeros)
+            if point.value == 0.0 && point.status == 0 {
+                sync_logger.warn(&format!(
+                    "⏭️ SKIPPING OUTPUT fallback zero - Serial: {}, Index: {}, Status: {}",
+                    serial_number, point.index, point.status
+                ));
+                continue; // Skip this point - don't write fallback zero to DB
+            }
 
             // Step 1: Get or create parent record (with caching)
             let parent_key = ParentKey {
@@ -2442,6 +2460,15 @@ impl T3000MainService {
 
         for (variable_index, point) in device_data.variable_points.iter().enumerate() {
             let units = Self::derive_units_from_range(point.range);
+
+            // ⚠️ VALIDATION: Skip points with zero value but invalid status (fallback zeros)
+            if point.value == 0.0 && point.status == 0 {
+                sync_logger.warn(&format!(
+                    "⏭️ SKIPPING VARIABLE fallback zero - Serial: {}, Index: {}, Status: {}",
+                    serial_number, point.index, point.status
+                ));
+                continue; // Skip this point - don't write fallback zero to DB
+            }
 
             // Step 1: Get or create parent record (with caching)
             let parent_key = ParentKey {
@@ -3433,7 +3460,9 @@ impl T3000MainService {
             value: point_json
                 .get("value")
                 .and_then(|v| v.as_f64())
-                .unwrap_or(0.0),
+                .ok_or_else(|| AppError::ValidationError(
+                    "Point missing/invalid 'value' field - SKIPPING (fallback zero not written)".to_string()
+                ))?,
             pid: point_json.get("pid").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
             units: point_json
                 .get("unit")
