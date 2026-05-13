@@ -112,13 +112,8 @@ export const TrendPolicyPage: React.FC = () => {
         const merged = settled.flat();
         if (!cancelled) {
           setAllPoints(merged);
-          setSelectedPointKeys(prev => {
-            const next = new Set<string>();
-            merged.forEach(p => {
-              if (prev.has(p.key)) next.add(p.key);
-            });
-            return next;
-          });
+          // Default behavior: when points are loaded, All points is selected and all rows are checked.
+          setSelectedPointKeys(new Set(merged.map(p => p.key)));
         }
       } finally {
         if (!cancelled) setLoadingPoints(false);
@@ -368,6 +363,14 @@ export const TrendPolicyPage: React.FC = () => {
                     );
                   })}
                 </div>
+                <button
+                  type="button"
+                  className={styles.clearSelectionBtn}
+                  onClick={() => setSelectedPointKeys(new Set())}
+                  disabled={selectedPointKeys.size === 0}
+                >
+                  Clear selection
+                </button>
                 <div className={styles.typeSearchWrap}>
                   <input
                     className={styles.typeSearchInput}

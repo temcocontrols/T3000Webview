@@ -17,11 +17,11 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 12px;
-  min-height: 40px;
-  margin: 10px 12px 0;
-  background: #f3f3f3;
-  border: 1px solid #dddcdb;
+  padding: 0 14px;
+  min-height: 52px;
+  margin: 6px 10px 0;
+  background: rgb(240, 246, 255);
+  border: 1px solid #c9defa;
   border-radius: 6px;
   flex-shrink: 0;
   box-shadow: none;
@@ -67,21 +67,22 @@
 .summaryChip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border: 1px solid #dddcdb;
-  border-radius: 3px;
-  background: #ffffff;
-  font-size: 11px;
+  gap: 5px;
+  min-height: 24px;
+  padding: 0 2px;
+  font-size: 12px;
 }
 
 .chipLabel {
-  color: #605e5c;
+  color: #55606d;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .chipValue {
-  font-weight: 600;
-  color: #242424;
+  color: #0f6cbd;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 /* ── Two-panel main area ── */
@@ -89,7 +90,7 @@
   display: grid;
   grid-template-columns: 280px 1fr;
   gap: 12px;
-  padding: 12px;
+  padding: 8px 10px 8px 9px;
   min-height: 0;
   flex: 1;
   overflow: hidden;
@@ -289,6 +290,27 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+.clearSelectionBtn {
+  margin-left: 8px;
+  height: 28px;
+  padding: 0 2px;
+  border: none;
+  background: transparent;
+  color: #0f6cbd;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.clearSelectionBtn:hover:not(:disabled) {
+  color: #0d5ba4;
+}
+
+.clearSelectionBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .typeSearchWrap {
