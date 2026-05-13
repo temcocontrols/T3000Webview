@@ -48,6 +48,7 @@ export const TrendPolicyPage: React.FC = () => {
 
   const [applyTagInput, setApplyTagInput] = useState('');
   const [filterTagInput, setFilterTagInput] = useState('');
+  const [pointSearch, setPointSearch] = useState('');
   const [filterTags, setFilterTags] = useState<string[]>([]);
   const [pointTags, setPointTags] = useState<Record<string, string[]>>({});
 
@@ -133,6 +134,13 @@ export const TrendPolicyPage: React.FC = () => {
   const visiblePoints = useMemo(() => {
     let pts = activeTypeTab === 'all' ? allPoints : allPoints.filter(p => p.type === activeTypeTab);
 
+    const q = pointSearch.trim().toLowerCase();
+    if (q) {
+      pts = pts.filter(p =>
+        p.pointLabel.toLowerCase().includes(q) || p.fullLabel.toLowerCase().includes(q)
+      );
+    }
+
     if (primaryTab !== 'points') {
       if (tagStateFilter === 'tagged') {
         pts = pts.filter(p => (pointTags[p.key] ?? []).length > 0);
@@ -149,12 +157,7 @@ export const TrendPolicyPage: React.FC = () => {
     }
 
     return pts;
-  }, [allPoints, activeTypeTab, filterTags, pointTags, primaryTab, tagStateFilter]);
-
-  const selectedVisibleCount = useMemo(
-    () => visiblePoints.filter(p => selectedPointKeys.has(p.key)).length,
-    [visiblePoints, selectedPointKeys]
-  );
+  }, [allPoints, activeTypeTab, pointSearch, filterTags, pointTags, primaryTab, tagStateFilter]);
 
   const countByType = useMemo(() => ({
     input: allPoints.filter(p => p.type === 'input').length,
@@ -188,15 +191,13 @@ export const TrendPolicyPage: React.FC = () => {
     });
   };
 
-  const handleSelectAllVisible = (checked: boolean) => {
-    setSelectedPointKeys(prev => {
-      const next = new Set(prev);
-      visiblePoints.forEach(p => {
-        if (checked) next.add(p.key);
-        else next.delete(p.key);
-      });
-      return next;
-    });
+  const handleTypeChipClick = (tab: TabType) => {
+    setActiveTypeTab(tab);
+    if (tab === 'all') {
+      setSelectedPointKeys(new Set(allPoints.map(p => p.key)));
+      return;
+    }
+    setSelectedPointKeys(new Set(allPoints.filter(p => p.type === tab).map(p => p.key)));
   };
 
   const addTagFilter = () => {
@@ -253,8 +254,6 @@ export const TrendPolicyPage: React.FC = () => {
   );
 
   const allDevicesSelected = devices.length > 0 && selectedDeviceSerials.size === devices.length;
-  const allVisibleSelected = visiblePoints.length > 0 && selectedVisibleCount === visiblePoints.length;
-
   return (
     <div className={styles.page}>
       {/* ── Top toolbar ── */}
@@ -349,31 +348,45 @@ export const TrendPolicyPage: React.FC = () => {
           <div className={styles.secondaryBar}>
             {primaryTab === 'points' && (
               <div className={styles.typeFilterBar}>
-                <label className={`${styles.selectAllLabel} ${styles.selectAllLabelLeading}`}>
+                <div className={styles.typeTabs}>
+                  {([
+                    { key: 'all', label: 'All points', count: allPoints.length },
+                    { key: 'input', label: 'Inputs', count: countByType.input },
+                    { key: 'output', label: 'Outputs', count: countByType.output },
+                    { key: 'variable', label: 'Variables', count: countByType.variable },
+                  ] as Array<{ key: TabType; label: string; count: number }>).map(item => {
+                    const active = activeTypeTab === item.key;
+                    return (
+                      <button
+                        key={item.key}
+                        className={`${styles.typeTab} ${active ? styles.typeTabActive : ''}`}
+                        onClick={() => handleTypeChipClick(item.key)}
+                      >
+                        {item.label}
+                        {item.count > 0 && <span className={styles.tabCount}>{item.count}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className={styles.typeSearchWrap}>
                   <input
-                    type="checkbox"
-                    className={styles.nativeCheck}
-                    aria-label="Select all visible points"
-                    checked={allVisibleSelected}
-                    onChange={e => handleSelectAllVisible(e.target.checked)}
+                    className={styles.typeSearchInput}
+                    value={pointSearch}
+                    onChange={e => setPointSearch(e.target.value)}
+                    placeholder="Search label / full label"
+                    aria-label="Search by label or full label"
                   />
-                  Select All
-                </label>
-                <div className={styles.tabBarDivider} />
-                {(['all', 'input', 'output', 'variable'] as TabType[]).map(tab => {
-                  const label = tab === 'all' ? 'All Types' : tab === 'input' ? 'Inputs' : tab === 'output' ? 'Outputs' : 'Variables';
-                  const count = tab === 'all' ? allPoints.length : countByType[tab];
-                  return (
+                  {pointSearch.length > 0 && (
                     <button
-                      key={tab}
-                      className={`${styles.tab} ${activeTypeTab === tab ? styles.tabActive : ''}`}
-                      onClick={() => setActiveTypeTab(tab)}
+                      type="button"
+                      className={styles.typeSearchClear}
+                      onClick={() => setPointSearch('')}
+                      aria-label="Clear search"
                     >
-                      {label}
-                      {count > 0 && <span className={styles.tabCount}>{count}</span>}
+                      ×
                     </button>
-                  );
-                })}
+                  )}
+                </div>
               </div>
             )}
 
