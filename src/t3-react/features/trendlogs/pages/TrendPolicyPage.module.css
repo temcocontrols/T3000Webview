@@ -2,6 +2,8 @@
    TrendPolicyPage — full redesign
    ══════════════════════════════════════════════════════════ */
 
+
+
 /* ── Page shell ── */
 .page {
   display: flex;
@@ -155,11 +157,25 @@
   overflow-y: auto;
   overflow-x: hidden;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #c0bebe transparent;
 }
 
-.panelBody::-webkit-scrollbar { width: 4px; }
-.panelBody::-webkit-scrollbar-thumb { background: #c8c6c4; border-radius: 3px; }
-.panelBody::-webkit-scrollbar-track { background: transparent; }
+.panelBody::-webkit-scrollbar {
+  width: 4px;
+}
+.panelBody::-webkit-scrollbar-thumb {
+  background: #c0bebe;
+  border-radius: 2px;
+}
+.panelBody::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+
 
 /* ── Device list item ── */
 .deviceItem {
@@ -419,11 +435,11 @@
   overflow: auto;
   min-height: 0;
   flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: #c0bebe transparent;
 }
 
-.pointsWrap::-webkit-scrollbar { width: 4px; height: 4px; }
-.pointsWrap::-webkit-scrollbar-thumb { background: #c8c6c4; border-radius: 3px; }
-.pointsWrap::-webkit-scrollbar-track { background: transparent; }
+
 
 /* ── Points table ── */
 .pointTable {
