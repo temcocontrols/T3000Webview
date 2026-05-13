@@ -154,12 +154,14 @@
 /* ── Left panel body ── */
 .panelBody {
   padding: 6px 8px;
-  overflow-y: scroll;
+  overflow-y: auto;
   overflow-x: hidden;
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #c0bebe transparent;
 }
 
 .panelBody::-webkit-scrollbar {
@@ -538,18 +540,8 @@
   overflow: auto;
   min-height: 0;
   flex: 1;
-}
-
-.pointsWrap::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-.pointsWrap::-webkit-scrollbar-thumb {
-  background: #c0bebe;
-  border-radius: 2px;
-}
-.pointsWrap::-webkit-scrollbar-track {
-  background: transparent;
+  scrollbar-width: thin;
+  scrollbar-color: #c0bebe transparent;
 }
 
 
