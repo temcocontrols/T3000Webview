@@ -55,7 +55,6 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowDownloadRegular,
-  ArrowResetRegular,
   ChevronDownRegular,
   DatabaseRegular,
   ImageRegular,
@@ -122,7 +121,7 @@ const useStyles = makeStyles({
     backgroundColor: '#fafafa',
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: '0px',
-    overflowY: 'auto',
+    overflowY: 'hidden',
     overflowX: 'hidden',
     flexShrink: 0,
     display: 'flex',
@@ -185,7 +184,7 @@ const useStyles = makeStyles({
     backgroundColor: '#fafafa',
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: '0px',
-    overflowY: 'auto',
+    overflowY: 'hidden',
     overflowX: 'hidden',
     flexShrink: 0,
     display: 'flex',
@@ -354,6 +353,7 @@ const useStyles = makeStyles({
     position: 'relative',
     overflow: 'hidden',
     boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+    flexShrink: 0,
     ':hover': {
       boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
     },
@@ -372,6 +372,7 @@ const useStyles = makeStyles({
     letterSpacing: '0.5px',
     textTransform: 'uppercase',
     marginBottom: '2px',
+    flexShrink: 0,
   },
   seriesItemExpanded: {
     backgroundColor: tokens.colorNeutralBackground1Hover,
@@ -2001,81 +2002,99 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   }, [serialNumber, panelId, props.itemData, props.monitorInputs]);
 
   /**
-   * Poll latest data from history API (replaces broken realtime endpoint)
-   * Uses refs to avoid stale closure issues in setInterval callbacks
+   * Poll live data from T3000 controller via FFI action=15 (LOGGING_DATA).
+   * Mirrors Vue's addRealtimeDataPoint → sendPeriodicBatchRequest flow.
+   * Matches items by item.id === series.pointId and item.pid === series.panelId,
+   * then pushes { timestamp, value } directly to the chart — no DB read.
    */
   const pollRealtimeData = useCallback(async () => {
     const currentSeries = seriesRef.current;
     if (!serialNumber || !panelId || currentSeries.length === 0) return;
 
     try {
-      const now = Date.now();
-      const currentTimeBase = timeBaseRef.current;
-      const timeRangeMs: Record<TimeBase, number> = {
-        '5m': 5 * 60 * 1000, '10m': 10 * 60 * 1000, '30m': 30 * 60 * 1000,
-        '1h': 60 * 60 * 1000, '4h': 4 * 60 * 60 * 1000, '12h': 12 * 60 * 60 * 1000,
-        '1d': 24 * 60 * 60 * 1000, '4d': 4 * 24 * 60 * 60 * 1000, 'custom': 60 * 60 * 1000,
-      };
-      const startMs = now - timeRangeMs[currentTimeBase];
+      // Collect all unique panelIds that have active series (mirrors Vue's monitoredPanelIds)
+      const panelIds = [...new Set(currentSeries.map(s => s.panelId ?? panelId).filter(Boolean))] as number[];
 
-      const fmt = (date: Date) => {
-        const y = date.getFullYear(), mo = String(date.getMonth() + 1).padStart(2, '0'),
-          d = String(date.getDate()).padStart(2, '0'), h = String(date.getHours()).padStart(2, '0'),
-          mi = String(date.getMinutes()).padStart(2, '0'), s = String(date.getSeconds()).padStart(2, '0');
-        return `${y}-${mo}-${d} ${h}:${mi}:${s}`;
-      };
+      // Call FFI action=15 for each panel in parallel (same as Vue)
+      const allItems: any[] = [];
+      await Promise.all(
+        panelIds.map(async (pid) => {
+          const items = await TrendChartApiService.callFfiLoggingData(pid, serialNumber);
+          allItems.push(...items);
+        })
+      );
 
-      const request: TrendDataRequest = {
-        serial_number: serialNumber,
-        panel_id: panelId,
-        trendlog_id: trendlogId,
-        start_time: fmt(new Date(startMs)),
-        end_time: fmt(new Date(now)),
-        limit: 500,
-        point_types: ['INPUT', 'OUTPUT', 'VARIABLE', 'MONITOR'],
-        specific_points: currentSeries.map((s) => ({
-          point_id: s.pointId,
-          point_type: s.pointType,
-          point_index: s.pointIndex,
-          panel_id: s.panelId || panelId,
-        })),
-      };
+      if (allItems.length === 0) return;
 
-      const response = await TrendChartApiService.getTrendHistory(request);
+      const timestamp = Date.now();
 
-      if (response.data.length > 0) {
-        setSeries(prev => {
-          const updated = prev.map(s => ({ ...s, data: [...s.data] }));
-          response.data.forEach(point => {
-            const idx = updated.findIndex(
-              s => s.pointId === point.point_id && s.pointType === point.point_type
-            );
-            if (idx !== -1) {
-              const timestamp = new Date(point.timestamp).getTime();
-              const exists = updated[idx].data.some(d => d.timestamp === timestamp);
-              if (!exists) {
-                updated[idx].data.push({ timestamp, value: point.value });
-                updated[idx].data.sort((a, b) => a.timestamp - b.timestamp);
-                if (timestamp > lastDataTimestampRef.current) {
-                  lastDataTimestampRef.current = timestamp;
-                }
-              }
+      // Build batch-save payloads while updating chart (mirrors Vue's storeRealtimeDataToDatabase)
+      const batchPoints: import('../services/trendChartApi').RealtimeDataPoint[] = [];
+
+      setSeries(prev => {
+        const updated = prev.map(s => ({ ...s, data: [...s.data] }));
+        let matched = 0;
+
+        updated.forEach(s => {
+          // Match by id (pointId, e.g. "IN1") and pid (panelId) — same as Vue
+          const item = allItems.find(
+            it => it.id === s.pointId && it.pid === (s.panelId ?? panelId)
+          );
+          if (!item) return;
+
+          // Value selection: analog → item.value, digital → item.control (0/1)
+          // Mirrors Vue: digital_analog===1 → value, else → control
+          const isAnalog = s.digitalAnalog === 'Analog'
+            ? true
+            : (item.digital_analog === 1);
+          const rawValue: number = isAnalog ? Number(item.value ?? 0) : Number(item.control ?? 0);
+
+          // Avoid duplicate timestamps (same second)
+          if (!s.data.some(d => d.timestamp === timestamp)) {
+            s.data.push({ timestamp, value: rawValue });
+            if (timestamp > lastDataTimestampRef.current) {
+              lastDataTimestampRef.current = timestamp;
             }
+            matched++;
+          }
+
+          // Queue for batch save (mirrors Vue's storeRealtimeDataToDatabase filtering)
+          batchPoints.push({
+            serial_number: serialNumber!,
+            panel_id: s.panelId ?? panelId!,
+            point_id: s.pointId,
+            point_index: s.pointIndex,
+            point_type: s.pointType,
+            value: String(rawValue),
+            digital_analog: String(item.digital_analog ?? (isAnalog ? 1 : 0)),
+            units: s.unit,
+            range_field: item.range != null ? String(item.range) : undefined,
+            data_source: 'REALTIME',
+            created_by: 'FRONTEND',
           });
-          return updated;
         });
-        // Track last sync time accurately
-        const now = new Date();
-        setLastSyncTime(
-          `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`
-        );
-        setDataSource('realtime');
+
+        if (matched === 0) return prev; // no change — avoid re-render
+        return updated;
+      });
+
+      // Fire-and-forget batch save (Vue pattern: non-blocking, chart never waits for it)
+      if (batchPoints.length > 0) {
+        TrendChartApiService.saveRealtimeBatch(batchPoints).catch(err => {
+          console.warn('TrendChartContent: Background batch save failed (non-critical)', err);
+        });
       }
+
+      const now = new Date();
+      setLastSyncTime(
+        `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`
+      );
+      setDataSource('realtime');
     } catch (error) {
-      console.error('TrendChartContent: Realtime poll failed', error);
+      console.error('TrendChartContent: Realtime FFI poll failed', error);
       setDataSource('error');
     }
-  }, [serialNumber, panelId, trendlogId]);
+  }, [serialNumber, panelId]);
 
   /**
    * Manual refresh: force full reload of historical data
@@ -2400,8 +2419,23 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
    * This mimics Vue's onMounted behavior - runs only once when component mounts
    */
   useEffect(() => {
+    /**
+     * Calculate poll interval from monitor config (mirrors Vue calculateT3000Interval).
+     * Uses props.itemData?.t3Entry fields: hour_interval_time, minute_interval_time, second_interval_time.
+     * Falls back to 15 s minimum.
+     */
+    const calcPollIntervalMs = (): number => {
+      const entry = props.itemData?.t3Entry;
+      if (!entry) return 15000;
+      const totalSecs =
+        (Number(entry.hour_interval_time) || 0) * 3600 +
+        (Number(entry.minute_interval_time) || 0) * 60 +
+        (Number(entry.second_interval_time) || 0);
+      return totalSecs > 0 ? Math.max(totalSecs * 1000, 15000) : 15000;
+    };
+
     const initializeData = async () => {
-      console.log('馃殌 TrendChartContent: Starting initialization sequence');
+      console.log('🚀 TrendChartContent: Starting initialization sequence');
 
       // Step 1: Initialize series from monitor config (Vue: regenerateDataSeries)
       await initializeSeries();
@@ -2419,10 +2453,26 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       // Step 3: Mark as initialized
       hasLoadedInitialDataRef.current = true;
 
+      // Step 4: Start realtime polling interval (Vue: startRealTimeUpdates)
+      // Mirrors Vue's addRealtimeDataPoint interval — polls history API for new points
+      if (!realtimeIntervalRef.current) {
+        const intervalMs = calcPollIntervalMs();
+        console.log(`📡 TrendChartContent: Starting realtime poll every ${intervalMs / 1000}s`);
+        realtimeIntervalRef.current = setInterval(pollRealtimeData, intervalMs);
+      }
+
       console.log('TrendChartContent: Initialization completed');
     };
 
     initializeData();
+
+    // Cleanup interval on unmount
+    return () => {
+      if (realtimeIntervalRef.current) {
+        clearInterval(realtimeIntervalRef.current);
+        realtimeIntervalRef.current = null;
+      }
+    };
   }, []); // Empty deps - run only once on mount
 
   useEffect(() => {
@@ -2493,8 +2543,15 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
           // Ensure real-time updates are active
           if (!realtimeIntervalRef.current) {
-            console.log('馃攧 TrendChartContent: Starting real-time updates');
-            realtimeIntervalRef.current = setInterval(pollRealtimeData, 5000);
+            const entry = props.itemData?.t3Entry;
+            const totalSecs = entry
+              ? (Number(entry.hour_interval_time) || 0) * 3600
+                + (Number(entry.minute_interval_time) || 0) * 60
+                + (Number(entry.second_interval_time) || 0)
+              : 0;
+            const intervalMs = totalSecs > 0 ? Math.max(totalSecs * 1000, 15000) : 15000;
+            console.log(`📡 TrendChartContent: Starting real-time updates every ${intervalMs / 1000}s`);
+            realtimeIntervalRef.current = setInterval(pollRealtimeData, intervalMs);
           }
         } else {
           // Auto Scroll OFF: Load historical data only
@@ -2659,9 +2716,13 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       const idx = KEYS.indexOf(key);
       if (idx !== -1) {
         e.preventDefault();
-        // displayedSeries is ordered analog-first then digital, matching the left panel
+        // Sort analog-first then digital, matching Vue keyboardItemMappings
+        const analogFirst = [
+          ...displayedSeries.filter(s => s.digitalAnalog === 'Analog'),
+          ...displayedSeries.filter(s => s.digitalAnalog === 'Digital'),
+        ];
         setSeries(prev => {
-          const s = displayedSeries[idx];
+          const s = analogFirst[idx];
           if (!s) return prev;
           const key = `${s.pointId}-${s.pointIndex}`;
           const masterIdx = prev.findIndex(ms => `${ms.pointId}-${ms.pointIndex}` === key);
@@ -2684,7 +2745,11 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       } else if (e.key === 'Enter') {
         e.preventDefault();
         setSeries(prev => {
-          const s = displayedSeries[selectedItemIndex];
+          const analogFirst = [
+            ...displayedSeries.filter(s => s.digitalAnalog === 'Analog'),
+            ...displayedSeries.filter(s => s.digitalAnalog === 'Digital'),
+          ];
+          const s = analogFirst[selectedItemIndex];
           if (!s) return prev;
           const key = `${s.pointId}-${s.pointIndex}`;
           const masterIdx = prev.findIndex(ms => `${ms.pointId}-${ms.pointIndex}` === key);
@@ -2996,7 +3061,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       <div className={styles.controlGroup}>
         <Button
           appearance="subtle"
-          icon={<ArrowResetRegular fontSize={16} />}
+          icon={<ArrowClockwiseRegular fontSize={16} />}
           onClick={resetTimeBase}
           disabled={loading}
           size="small"
@@ -3302,7 +3367,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                 onClick={() => toggleSeriesVisibility(seriesKey)}
               >
                 {/* Sequential number badge — only visible when keyboard shortcuts enabled */}
-                {keyboardEnabled && <div className={styles.seriesNumber}>{globalIndex + 1}</div>}
+                {keyboardEnabled && <div className={styles.seriesNumber}>{globalIndex < 9 ? globalIndex + 1 : String.fromCharCode(65 + (globalIndex - 9))}</div>}
 
                 {/* Delete overlay for View 2 & 3 */}
                 {currentView !== 1 && (
@@ -3572,7 +3637,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       {/* 鈹€鈹€ CUSTOM DATE RANGE MODAL 鈹€鈹€ */}
       <Dialog open={showCustomDateModal} onOpenChange={(_, d) => setShowCustomDateModal(d.open)}>
         <DialogSurface className={styles.dialogSurfaceSmall}>
-          <DialogTitle>Custom Time Range</DialogTitle>
+          <DialogTitle as="h2" style={{ fontSize: '15px', fontWeight: 600 }}>Custom Time Range</DialogTitle>
           <DialogBody>
             <DialogContent>
               <div className={styles.stackCol12}>
@@ -3594,14 +3659,14 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                 </div>
                 {customStartInput && customEndInput && (
                   <Text size={100} className={styles.textMuted}>
-                    {new Date(customStartInput).toLocaleString()} 鈫?{new Date(customEndInput).toLocaleString()}
+                    {new Date(customStartInput).toLocaleString()} &rarr; {new Date(customEndInput).toLocaleString()}
                   </Text>
                 )}
               </div>
             </DialogContent>
             <DialogActions>
-              <Button appearance="secondary" onClick={() => setShowCustomDateModal(false)}>Cancel</Button>
-              <Button appearance="primary" onClick={applyCustomDateRange}
+              <Button size="medium" appearance="secondary" style={{ fontSize: '14px', fontWeight: 'normal' }} onClick={() => setShowCustomDateModal(false)}>Cancel</Button>
+              <Button size="medium" appearance="primary" style={{ fontSize: '14px', fontWeight: 'normal' }} onClick={applyCustomDateRange}
                 disabled={!customStartInput || !customEndInput}>Apply</Button>
             </DialogActions>
           </DialogBody>
