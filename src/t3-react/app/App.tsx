@@ -46,6 +46,9 @@ const HolidaysPage = React.lazy(() =>
 const TrendLogsPage = React.lazy(() =>
   import('../features/trendlogs/pages/TrendLogsPage').then((m) => ({ default: m.TrendLogsPage }))
 );
+const TrendPolicyPage = React.lazy(() =>
+  import('../features/trendlogs/pages/TrendPolicyPage').then((m) => ({ default: m.TrendPolicyPage }))
+);
 const AlarmsPage = React.lazy(() =>
   import('../features/alarms/pages/AlarmsPage')
 );
@@ -271,6 +274,14 @@ export const App: React.FC = () => {
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <TrendLogsPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="trend-policy"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <TrendPolicyPage />
                     </React.Suspense>
                   }
                 />

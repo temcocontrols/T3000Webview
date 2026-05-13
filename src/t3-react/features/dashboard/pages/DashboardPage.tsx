@@ -957,6 +957,12 @@ export const DashboardPage: React.FC = () => {
               </Button>
               <button
                 className={s.viewAll}
+                onClick={() => { window.location.hash = '#/t3000/trend-policy'; }}
+              >
+                Trend Policy <ChevronRightRegular style={{ fontSize: '12px' }} />
+              </button>
+              <button
+                className={s.viewAll}
                 onClick={() => { window.location.hash = '#/t3000/trendlogs'; }}
               >
                 View All <ChevronRightRegular style={{ fontSize: '12px' }} />

@@ -106,6 +106,7 @@ const routeToBreadcrumb: Record<string, { label: string; segments?: string[] }> 
   '/t3000/schedules': { label: 'Schedules', segments: ['Schedules'] },
   '/t3000/holidays': { label: 'Holidays', segments: ['Holidays'] },
   '/t3000/trendlogs': { label: 'Trend Logs', segments: ['Trend Logs'] },
+  '/t3000/trend-policy': { label: 'Unified Trend Logging', segments: ['Trend Logs', 'Unified Trend Logging'] },
   '/t3000/trends/chart': { label: 'Trend Chart', segments: ['Trend Logs', 'Chart'] },
   '/t3000/alarms': { label: 'Alarms', segments: ['Alarms'] },
   '/t3000/array': { label: 'Array', segments: ['Array'] },
