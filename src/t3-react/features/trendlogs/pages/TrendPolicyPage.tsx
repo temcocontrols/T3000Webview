@@ -6,7 +6,7 @@ import styles from './TrendPolicyPage.module.css';
 
 type PointType = 'input' | 'output' | 'variable';
 type TabType = 'all' | PointType;
-type PrimaryTab = 'all' | 'points' | 'tags';
+type PrimaryTab = 'points' | 'tags';
 type TagStateFilter = 'all' | 'tagged' | 'untagged';
 
 interface UnifiedPoint {
@@ -38,7 +38,7 @@ export const TrendPolicyPage: React.FC = () => {
   const { devices, fetchDevices } = useDeviceTreeStore();
 
   const [selectedDeviceSerials, setSelectedDeviceSerials] = useState<Set<number>>(new Set());
-  const [primaryTab, setPrimaryTab] = useState<PrimaryTab>('all');
+  const [primaryTab, setPrimaryTab] = useState<PrimaryTab>('points');
   const [activeTypeTab, setActiveTypeTab] = useState<TabType>('all');
   const [tagStateFilter, setTagStateFilter] = useState<TagStateFilter>('all');
 
@@ -265,10 +265,10 @@ export const TrendPolicyPage: React.FC = () => {
             <span className={styles.chipValue}>{selectedDevices.length}/{devices.length}</span>
           </span>
           <span className={styles.summaryChip}>
-            <span className={styles.chipLabel}>Total points</span>
+            <span className={styles.chipLabel}>Visible</span>
             <span className={styles.chipValue}>{visiblePoints.length}</span>
           </span>
-          <span className={`${styles.summaryChip} ${styles.summaryChipSelected}`}>
+          <span className={styles.summaryChip}>
             <span className={styles.chipLabel}>Selected</span>
             <span className={styles.chipValue}>{selectedPointKeys.size}</span>
           </span>
@@ -332,9 +332,8 @@ export const TrendPolicyPage: React.FC = () => {
 
           <div className={styles.primaryTabBar}>
             {([
-              { key: 'all', label: 'All', count: allPoints.length },
-              { key: 'points', label: 'Points', count: allPoints.length },
-              { key: 'tags', label: 'Tags', count: taggedPointsCount },
+              { key: 'points', label: 'By Points', count: allPoints.length },
+              { key: 'tags', label: 'By Tags', count: taggedPointsCount },
             ] as Array<{ key: PrimaryTab; label: string; count: number }>).map(tab => (
               <button
                 key={tab.key}
@@ -348,7 +347,7 @@ export const TrendPolicyPage: React.FC = () => {
           </div>
 
           <div className={styles.secondaryBar}>
-            {(primaryTab === 'all' || primaryTab === 'points') && (
+            {primaryTab === 'points' && (
               <div className={styles.typeFilterBar}>
                 <label className={`${styles.selectAllLabel} ${styles.selectAllLabelLeading}`}>
                   <input
@@ -378,7 +377,7 @@ export const TrendPolicyPage: React.FC = () => {
               </div>
             )}
 
-            {(primaryTab === 'all' || primaryTab === 'tags') && (
+            {primaryTab === 'tags' && (
               <div className={styles.tagWorkspace}>
                 <div className={styles.tagHint}>
                   <TagRegular style={{ fontSize: '12px' }} />
