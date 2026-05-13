@@ -213,14 +213,55 @@
   margin-top: 2px;
 }
 
-/* ── Tab bar ── */
-.tabBar {
+/* ── Right panel primary tabs ── */
+.primaryTabBar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e1e4e8;
+  background: #f6f8fa;
+  min-height: 42px;
+  flex-shrink: 0;
+}
+
+.primaryTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  color: #4b5563;
+  cursor: pointer;
+}
+
+.primaryTab:hover {
+  background: #edf2f7;
+  color: #1f2937;
+}
+
+.primaryTabActive {
+  background: #ffffff;
+  color: #0f6cbd;
+  border-color: #cfd8e3;
+  font-weight: 600;
+}
+
+/* ── Secondary controls container ── */
+.secondaryBar {
+  border-bottom: 1px solid #e1e4e8;
+  background: #fbfcfe;
+  flex-shrink: 0;
+}
+
+.typeFilterBar {
   display: flex;
   align-items: center;
   padding: 0 12px;
-  border-bottom: 1px solid #e1e4e8;
-  background: #f6f8fa;
-  flex-shrink: 0;
   gap: 0;
   min-height: 36px;
 }
@@ -242,7 +283,7 @@
   align-items: center;
   gap: 5px;
   padding: 0 12px;
-  height: 36px;
+  height: 34px;
   border: none;
   background: transparent;
   font-size: 12px;
@@ -284,57 +325,64 @@
   color: #0f6cbd;
 }
 
-/* ── Tag toolbar ── */
-.tagToolbar {
+/* ── Tags workspace ── */
+.tagWorkspace {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  border-bottom: 1px solid #e1e4e8;
-  background: #fafbfc;
-  flex-shrink: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px 10px;
 }
 
-.tagModeToggle {
+.tagHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #475467;
+}
+
+.tagControlsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.inlineControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.controlLabel {
+  font-size: 11px;
+  color: #667085;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+}
+
+.segmentedControl {
   display: inline-flex;
   border: 1px solid #d0d7de;
   border-radius: 6px;
   overflow: hidden;
-  flex-shrink: 0;
 }
 
-.tagModeBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
+.segmentBtn {
   border: none;
-  background: transparent;
+  background: #ffffff;
+  padding: 4px 10px;
   font-size: 11px;
-  font-weight: 500;
-  color: #656d76;
+  color: #475467;
   cursor: pointer;
-  transition: background 0.1s, color 0.1s;
-  white-space: nowrap;
 }
 
-.tagModeBtn + .tagModeBtn {
+.segmentBtn + .segmentBtn {
   border-left: 1px solid #d0d7de;
 }
 
-.tagModeBtn:hover {
-  background: #eaeef2;
-  color: #24292f;
-}
-
-.tagModeBtnActive {
+.segmentBtnActive {
   background: #0f6cbd;
-  color: #ffffff;
-}
-
-.tagModeBtnActive:hover {
-  background: #0d5ba4;
   color: #ffffff;
 }
 
@@ -356,6 +404,9 @@
 }
 
 .tagActionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   height: 26px;
   padding: 0 10px;
   border: 1px solid #d0d7de;
@@ -377,6 +428,13 @@
 .tagActionBtn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.filterSummaryRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
 }
 
 .filterChips {
@@ -430,6 +488,34 @@
   text-decoration: underline;
 }
 
+.knownTags {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.knownTagBtn {
+  border: 1px solid #d0d7de;
+  background: #ffffff;
+  color: #344054;
+  border-radius: 10px;
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.knownTagBtn:hover {
+  border-color: #0f6cbd;
+  color: #0f6cbd;
+}
+
+.helperText {
+  font-size: 11px;
+  color: #98a2b3;
+}
+
 /* ── Points table wrapper ── */
 .pointsWrap {
   overflow: auto;
@@ -446,6 +532,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
+  table-layout: fixed;
 }
 
 .pointTable th {
@@ -473,6 +560,14 @@
   width: 28px;
 }
 
+.colCheck { width: 34px; }
+.colType { width: 84px; }
+.colPoint { width: 88px; }
+.colLabel { width: 160px; }
+.colFullLabel { width: auto; }
+.colDevice { width: 130px; }
+.colTags { width: 210px; }
+
 .rowSelected {
   background: #f0f7ff;
 }
@@ -488,12 +583,12 @@
 /* ── Type badge ── */
 .typeTag {
   display: inline-block;
-  padding: 1px 7px;
-  border-radius: 10px;
-  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 9px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.15px;
 }
 
 .typeTag_input  { background: #dafbe1; color: #116329; border: 1px solid #a2d9b1; }
@@ -512,12 +607,18 @@
   font-family: monospace;
 }
 
+.truncateText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ── Per-point tags cell ── */
 .pointTagsCell {
   display: flex;
   flex-wrap: wrap;
   gap: 3px;
-  min-width: 60px;
+  min-width: 120px;
 }
 
 .pointTagChip {
@@ -530,6 +631,11 @@
   background: #f0e6ff;
   font-size: 10px;
   color: #5a1e99;
+}
+
+.noTags {
+  font-size: 11px;
+  color: #98a2b3;
 }
 
 /* ── Empty state ── */
@@ -545,5 +651,10 @@
   .main {
     grid-template-columns: 1fr;
     grid-template-rows: 280px 1fr;
+  }
+
+  .colDevice,
+  .colTags {
+    width: 150px;
   }
 }

@@ -6,6 +6,8 @@ import styles from './TrendPolicyPage.module.css';
 
 type PointType = 'input' | 'output' | 'variable';
 type TabType = 'all' | PointType;
+type PrimaryTab = 'all' | 'points' | 'tags';
+type TagStateFilter = 'all' | 'tagged' | 'untagged';
 
 interface UnifiedPoint {
   key: string;
@@ -13,7 +15,8 @@ interface UnifiedPoint {
   panel: number;
   type: PointType;
   index: string;
-  label: string;
+  pointLabel: string;
+  fullLabel: string;
 }
 
 const pointTypeEndpoint: Record<PointType, string> = {
@@ -35,16 +38,18 @@ export const TrendPolicyPage: React.FC = () => {
   const { devices, fetchDevices } = useDeviceTreeStore();
 
   const [selectedDeviceSerials, setSelectedDeviceSerials] = useState<Set<number>>(new Set());
-  const [activeTab, setActiveTab] = useState<TabType>('all');
+  const [primaryTab, setPrimaryTab] = useState<PrimaryTab>('all');
+  const [activeTypeTab, setActiveTypeTab] = useState<TabType>('all');
+  const [tagStateFilter, setTagStateFilter] = useState<TagStateFilter>('all');
 
   const [allPoints, setAllPoints] = useState<UnifiedPoint[]>([]);
   const [selectedPointKeys, setSelectedPointKeys] = useState<Set<string>>(new Set());
   const [loadingPoints, setLoadingPoints] = useState(false);
 
-  const [tagInput, setTagInput] = useState('');
+  const [applyTagInput, setApplyTagInput] = useState('');
+  const [filterTagInput, setFilterTagInput] = useState('');
   const [filterTags, setFilterTags] = useState<string[]>([]);
   const [pointTags, setPointTags] = useState<Record<string, string[]>>({});
-  const [tagMode, setTagMode] = useState<'filter' | 'apply'>('apply');
 
   useEffect(() => {
     if (devices.length === 0) {
@@ -82,8 +87,8 @@ export const TrendPolicyPage: React.FC = () => {
                   return (rows as any[]).map((row, idx) => {
                     const index =
                       row.inputIndex ?? row.outputIndex ?? row.variableIndex ?? row.index ?? row.number ?? idx + 1;
-                    const label =
-                      row.fullLabel ?? row.label ?? row.description ?? row.name ?? `${labelizeType(type)} ${index}`;
+                    const pointLabel = row.label ?? row.name ?? `${labelizeType(type)} ${index}`;
+                    const fullLabel = row.fullLabel ?? row.description ?? pointLabel;
                     const panel = row.panelId ?? dev.panelId ?? 1;
                     const key = `${dev.serialNumber}:${type}:${index}`;
                     return {
@@ -92,7 +97,8 @@ export const TrendPolicyPage: React.FC = () => {
                       panel,
                       type,
                       index: String(index),
-                      label: String(label),
+                      pointLabel: String(pointLabel),
+                      fullLabel: String(fullLabel),
                     } as UnifiedPoint;
                   });
                 })
@@ -125,15 +131,25 @@ export const TrendPolicyPage: React.FC = () => {
   }, [selectedDevices]);
 
   const visiblePoints = useMemo(() => {
-    let pts = activeTab === 'all' ? allPoints : allPoints.filter(p => p.type === activeTab);
-    if (filterTags.length > 0) {
-      pts = pts.filter(p => {
-        const tags = pointTags[p.key] ?? [];
-        return filterTags.every(tag => tags.includes(tag));
-      });
+    let pts = activeTypeTab === 'all' ? allPoints : allPoints.filter(p => p.type === activeTypeTab);
+
+    if (primaryTab !== 'points') {
+      if (tagStateFilter === 'tagged') {
+        pts = pts.filter(p => (pointTags[p.key] ?? []).length > 0);
+      } else if (tagStateFilter === 'untagged') {
+        pts = pts.filter(p => (pointTags[p.key] ?? []).length === 0);
+      }
+
+      if (filterTags.length > 0) {
+        pts = pts.filter(p => {
+          const tags = pointTags[p.key] ?? [];
+          return filterTags.every(tag => tags.includes(tag));
+        });
+      }
     }
+
     return pts;
-  }, [allPoints, activeTab, filterTags, pointTags]);
+  }, [allPoints, activeTypeTab, filterTags, pointTags, primaryTab, tagStateFilter]);
 
   const selectedVisibleCount = useMemo(
     () => visiblePoints.filter(p => selectedPointKeys.has(p.key)).length,
@@ -184,14 +200,14 @@ export const TrendPolicyPage: React.FC = () => {
   };
 
   const addTagFilter = () => {
-    const tag = tagInput.trim().toLowerCase();
+    const tag = filterTagInput.trim().toLowerCase();
     if (!tag) return;
     setFilterTags(prev => (prev.includes(tag) ? prev : [...prev, tag]));
-    setTagInput('');
+    setFilterTagInput('');
   };
 
   const applyTagToSelected = () => {
-    const tag = tagInput.trim().toLowerCase();
+    const tag = applyTagInput.trim().toLowerCase();
     if (!tag) return;
 
     setPointTags(prev => {
@@ -202,7 +218,7 @@ export const TrendPolicyPage: React.FC = () => {
       });
       return next;
     });
-    setTagInput('');
+    setApplyTagInput('');
   };
 
   const removeFilterTag = (tag: string) => {
@@ -213,12 +229,28 @@ export const TrendPolicyPage: React.FC = () => {
     setPointTags(prev => ({ ...prev, [key]: (prev[key] ?? []).filter(t => t !== tag) }));
   };
 
-  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleApplyTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      if (tagMode === 'filter') addTagFilter();
-      else applyTagToSelected();
+      applyTagToSelected();
     }
   };
+
+  const handleFilterTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      addTagFilter();
+    }
+  };
+
+  const allKnownTags = useMemo(() => {
+    const tags = new Set<string>();
+    Object.values(pointTags).forEach(list => list.forEach(tag => tags.add(tag)));
+    return Array.from(tags).sort((a, b) => a.localeCompare(b));
+  }, [pointTags]);
+
+  const taggedPointsCount = useMemo(
+    () => allPoints.filter(p => (pointTags[p.key] ?? []).length > 0).length,
+    [allPoints, pointTags]
+  );
 
   const allDevicesSelected = devices.length > 0 && selectedDeviceSerials.size === devices.length;
   const allVisibleSelected = visiblePoints.length > 0 && selectedVisibleCount === visiblePoints.length;
@@ -298,90 +330,143 @@ export const TrendPolicyPage: React.FC = () => {
         {/* ── Right: Point Selection ── */}
         <section className={styles.rightPanel}>
 
-          {/* Tab bar */}
-          <div className={styles.tabBar}>
-            <label className={`${styles.selectAllLabel} ${styles.selectAllLabelLeading}`}>
-              <input
-                type="checkbox"
-                className={styles.nativeCheck}
-                aria-label="Select all visible points"
-                checked={allVisibleSelected}
-                onChange={e => handleSelectAllVisible(e.target.checked)}
-              />
-              All
-            </label>
-            <div className={styles.tabBarDivider} />
-            {(['all', 'input', 'output', 'variable'] as TabType[]).map(tab => {
-              const label = tab === 'all' ? `All Types` : tab === 'input' ? `Inputs` : tab === 'output' ? `Outputs` : `Variables`;
-              const count = tab === 'all' ? allPoints.length : countByType[tab];
-              return (
-                <button
-                  key={tab}
-                  className={`${styles.tab} ${activeTab === tab ? styles.tabActive : ''}`}
-                  onClick={() => setActiveTab(tab)}
-                >
-                  {label}
-                  {count > 0 && <span className={styles.tabCount}>{count}</span>}
-                </button>
-              );
-            })}
+          <div className={styles.primaryTabBar}>
+            {([
+              { key: 'all', label: 'All', count: allPoints.length },
+              { key: 'points', label: 'Points', count: allPoints.length },
+              { key: 'tags', label: 'Tags', count: taggedPointsCount },
+            ] as Array<{ key: PrimaryTab; label: string; count: number }>).map(tab => (
+              <button
+                key={tab.key}
+                className={`${styles.primaryTab} ${primaryTab === tab.key ? styles.primaryTabActive : ''}`}
+                onClick={() => setPrimaryTab(tab.key)}
+              >
+                {tab.label}
+                <span className={styles.tabCount}>{tab.count}</span>
+              </button>
+            ))}
           </div>
 
-          {/* Tag toolbar */}
-          <div className={styles.tagToolbar}>
-            <div className={styles.tagModeToggle}>
-              <button
-                className={`${styles.tagModeBtn} ${tagMode === 'apply' ? styles.tagModeBtnActive : ''}`}
-                onClick={() => setTagMode('apply')}
-              >
-                <TagRegular style={{ fontSize: '12px' }} /> Tag Selected
-              </button>
-              <button
-                className={`${styles.tagModeBtn} ${tagMode === 'filter' ? styles.tagModeBtnActive : ''}`}
-                onClick={() => setTagMode('filter')}
-              >
-                <FilterRegular style={{ fontSize: '12px' }} /> Filter by Tag
-              </button>
-            </div>
-            <input
-              className={styles.tagInput}
-              value={tagInput}
-              onChange={e => setTagInput(e.target.value)}
-              onKeyDown={handleTagKeyDown}
-              placeholder={tagMode === 'apply' ? 'tag name, press Enter…' : 'filter tag, press Enter…'}
-            />
-            {tagMode === 'apply' ? (
-              <button
-                className={styles.tagActionBtn}
-                onClick={applyTagToSelected}
-                disabled={selectedPointKeys.size === 0 || !tagInput.trim()}
-                title={selectedPointKeys.size === 0 ? 'Select points first' : `Apply tag to ${selectedPointKeys.size} selected point(s)`}
-              >
-                Apply to {selectedPointKeys.size} point{selectedPointKeys.size !== 1 ? 's' : ''}
-              </button>
-            ) : (
-              <button
-                className={styles.tagActionBtn}
-                onClick={addTagFilter}
-                disabled={!tagInput.trim()}
-              >
-                Add Filter
-              </button>
-            )}
-            {filterTags.length > 0 && (
-              <div className={styles.filterChips}>
-                <span className={styles.filterChipsLabel}>Filters:</span>
-                {filterTags.map(tag => (
-                  <span key={tag} className={styles.filterChip}>
-                    {tag}
+          <div className={styles.secondaryBar}>
+            {(primaryTab === 'all' || primaryTab === 'points') && (
+              <div className={styles.typeFilterBar}>
+                <label className={`${styles.selectAllLabel} ${styles.selectAllLabelLeading}`}>
+                  <input
+                    type="checkbox"
+                    className={styles.nativeCheck}
+                    aria-label="Select all visible points"
+                    checked={allVisibleSelected}
+                    onChange={e => handleSelectAllVisible(e.target.checked)}
+                  />
+                  Select All
+                </label>
+                <div className={styles.tabBarDivider} />
+                {(['all', 'input', 'output', 'variable'] as TabType[]).map(tab => {
+                  const label = tab === 'all' ? 'All Types' : tab === 'input' ? 'Inputs' : tab === 'output' ? 'Outputs' : 'Variables';
+                  const count = tab === 'all' ? allPoints.length : countByType[tab];
+                  return (
                     <button
-                      className={styles.chipRemove}
-                      aria-label={`Remove filter ${tag}`}
-                      onClick={() => removeFilterTag(tag)}
-                    >×</button>
-                  </span>
-                ))}
-                <button className={styles.clearFilters} onClick={() => setFilterTags([])}>Clear all</button>
+                      key={tab}
+                      className={`${styles.tab} ${activeTypeTab === tab ? styles.tabActive : ''}`}
+                      onClick={() => setActiveTypeTab(tab)}
+                    >
+                      {label}
+                      {count > 0 && <span className={styles.tabCount}>{count}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {(primaryTab === 'all' || primaryTab === 'tags') && (
+              <div className={styles.tagWorkspace}>
+                <div className={styles.tagHint}>
+                  <TagRegular style={{ fontSize: '12px' }} />
+                  Select point rows, then apply tags. Use filter tags to narrow the grid.
+                </div>
+
+                <div className={styles.tagControlsRow}>
+                  <div className={styles.inlineControl}>
+                    <span className={styles.controlLabel}>Apply Tag</span>
+                    <input
+                      className={styles.tagInput}
+                      value={applyTagInput}
+                      onChange={e => setApplyTagInput(e.target.value)}
+                      onKeyDown={handleApplyTagKeyDown}
+                      placeholder="e.g. critical"
+                    />
+                    <button
+                      className={styles.tagActionBtn}
+                      onClick={applyTagToSelected}
+                      disabled={selectedPointKeys.size === 0 || !applyTagInput.trim()}
+                    >
+                      Apply to {selectedPointKeys.size}
+                    </button>
+                  </div>
+
+                  <div className={styles.inlineControl}>
+                    <span className={styles.controlLabel}>Filter Tag</span>
+                    <input
+                      className={styles.tagInput}
+                      value={filterTagInput}
+                      onChange={e => setFilterTagInput(e.target.value)}
+                      onKeyDown={handleFilterTagKeyDown}
+                      placeholder="tag to filter"
+                    />
+                    <button className={styles.tagActionBtn} onClick={addTagFilter} disabled={!filterTagInput.trim()}>
+                      <FilterRegular style={{ fontSize: '12px' }} /> Add
+                    </button>
+                  </div>
+
+                  <div className={styles.inlineControl}>
+                    <span className={styles.controlLabel}>Tag State</span>
+                    <div className={styles.segmentedControl}>
+                      {(['all', 'tagged', 'untagged'] as TagStateFilter[]).map(state => (
+                        <button
+                          key={state}
+                          className={`${styles.segmentBtn} ${tagStateFilter === state ? styles.segmentBtnActive : ''}`}
+                          onClick={() => setTagStateFilter(state)}
+                        >
+                          {state === 'all' ? 'All' : state === 'tagged' ? 'Tagged' : 'Untagged'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className={styles.filterSummaryRow}>
+                  {filterTags.length > 0 ? (
+                    <div className={styles.filterChips}>
+                      <span className={styles.filterChipsLabel}>Active Filters:</span>
+                      {filterTags.map(tag => (
+                        <span key={tag} className={styles.filterChip}>
+                          {tag}
+                          <button
+                            className={styles.chipRemove}
+                            aria-label={`Remove filter ${tag}`}
+                            onClick={() => removeFilterTag(tag)}
+                          >×</button>
+                        </span>
+                      ))}
+                      <button className={styles.clearFilters} onClick={() => setFilterTags([])}>Clear all</button>
+                    </div>
+                  ) : (
+                    <span className={styles.helperText}>No tag filters active</span>
+                  )}
+
+                  <div className={styles.knownTags}>
+                    <span className={styles.filterChipsLabel}>Known Tags:</span>
+                    {allKnownTags.length > 0 ? allKnownTags.map(tag => (
+                      <button
+                        key={tag}
+                        className={styles.knownTagBtn}
+                        onClick={() => setFilterTags(prev => (prev.includes(tag) ? prev : [...prev, tag]))}
+                      >
+                        {tag}
+                      </button>
+                    )) : <span className={styles.helperText}>No tags yet</span>}
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -396,12 +481,22 @@ export const TrendPolicyPage: React.FC = () => {
               <div className={styles.empty}>No points match the current filters.</div>
             ) : (
               <table className={styles.pointTable}>
+                <colgroup>
+                  <col className={styles.colCheck} />
+                  <col className={styles.colType} />
+                  <col className={styles.colPoint} />
+                  <col className={styles.colLabel} />
+                  <col className={styles.colFullLabel} />
+                  <col className={styles.colDevice} />
+                  <col className={styles.colTags} />
+                </colgroup>
                 <thead>
                   <tr>
                     <th className={styles.checkCol} />
                     <th>Type</th>
                     <th>Point</th>
                     <th>Label</th>
+                    <th>Full Label</th>
                     <th>Device</th>
                     <th>Tags</th>
                   </tr>
@@ -426,20 +521,25 @@ export const TrendPolicyPage: React.FC = () => {
                           </span>
                         </td>
                         <td className={styles.monoCell}>{p.type.charAt(0).toUpperCase()}{p.index}</td>
-                        <td>{p.label}</td>
+                        <td className={styles.truncateText} title={p.pointLabel}>{p.pointLabel}</td>
+                        <td className={styles.truncateText} title={p.fullLabel}>{p.fullLabel}</td>
                         <td className={styles.deviceCell}>SN-{p.serial}</td>
                         <td>
                           <div className={styles.pointTagsCell}>
-                            {tags.map(tag => (
-                              <span key={tag} className={styles.pointTagChip}>
-                                {tag}
-                                <button
-                                  className={styles.chipRemove}
-                                  aria-label={`Remove tag ${tag}`}
-                                  onClick={() => removePointTag(p.key, tag)}
-                                >×</button>
-                              </span>
-                            ))}
+                            {tags.length === 0 ? (
+                              <span className={styles.noTags}>No tags</span>
+                            ) : (
+                              tags.map(tag => (
+                                <span key={tag} className={styles.pointTagChip}>
+                                  {tag}
+                                  <button
+                                    className={styles.chipRemove}
+                                    aria-label={`Remove tag ${tag}`}
+                                    onClick={() => removePointTag(p.key, tag)}
+                                  >×</button>
+                                </span>
+                              ))
+                            )}
                           </div>
                         </td>
                       </tr>
