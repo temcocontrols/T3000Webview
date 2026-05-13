@@ -1,5 +1,8 @@
 using T3Net.Data;
 using T3Net.Hubs;
+using T3Net.Services.Device;
+using T3Net.Services.Mode;
+using T3Net.Workers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +24,17 @@ builder.Services.AddCors(options =>
 
 // Dapper connection factory — injected into controllers / services
 builder.Services.AddSingleton<IDbConnectionFactory, SqliteConnectionFactory>();
+builder.Services.AddSingleton<IRuntimeStateRepository, RuntimeStateRepository>();
+
+// Runtime mode and provider routing scaffolds
+builder.Services.AddSingleton<IModeService, ModeService>();
+builder.Services.AddSingleton<NativeBacnetProvider>();
+builder.Services.AddSingleton<LegacyFfiProvider>();
+builder.Services.AddSingleton<IDeviceProvider, DeviceProviderRouter>();
+
+// Background workers
+builder.Services.AddHostedService<PollingWorker>();
+builder.Services.AddHostedService<HealthWorker>();
 
 // ── App ───────────────────────────────────────────────────────────────────────
 var app = builder.Build();
