@@ -407,6 +407,7 @@ const useStyles = makeStyles({
     fontSize: '12px',
     color: '#323130',
   },
+
 });
 
 export const LogsPage: React.FC = () => {
@@ -427,6 +428,26 @@ export const LogsPage: React.FC = () => {
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
   const entriesRef = useRef<AppLogEntry[]>([]);
+
+  useEffect(() => {
+    const styleId = 'logs-page-drawer-size-override';
+    let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
+
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+
+    styleEl.textContent = '.fce6y3m{--fui-Drawer--size:820px !important;}';
+
+    return () => {
+      const existing = document.getElementById(styleId);
+      if (existing) {
+        existing.remove();
+      }
+    };
+  }, []);
 
   const loadTopSummary = useCallback(async () => {
     try {
@@ -634,7 +655,8 @@ export const LogsPage: React.FC = () => {
       <Drawer
         type="overlay"
         position="end"
-        size="medium"
+        size="large"
+        root={{ style: { '--fui-Drawer--size': '820px' } }}
         open={showSettings}
         onOpenChange={(_, { open }) => setShowSettings(open)}
       >

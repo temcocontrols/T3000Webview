@@ -30,6 +30,7 @@ use tokio::sync::RwLock;
 use tracing::{debug, warn};
 
 use crate::app_state::T3AppState;
+use crate::constants::ACTIVITY_LOG_CATEGORY_DEFS;
 use crate::error::Result;
 use crate::logger::{write_structured_log_with_level, LogLevel as FileLogLevel};
 
@@ -678,7 +679,22 @@ fn level_rank(level_upper: &str) -> i32 {
 }
 
 fn level_meets_min(level_upper: &str, min_level: &str) -> bool {
-    level_rank(level_upper) >= level_rank(&normalize_level_upper(min_level))
+    let raw = min_level.trim().to_ascii_uppercase();
+
+    if raw == "ALL" {
+        return true;
+    }
+
+    if raw.contains(',') {
+        let allowed: std::collections::BTreeSet<String> = raw
+            .split(',')
+            .map(|level| normalize_level_upper(level))
+            .collect();
+        return allowed.contains(level_upper);
+    }
+
+    let normalized = normalize_level_upper(&raw);
+    level_rank(level_upper) >= level_rank(&normalized)
 }
 
 fn canonical_category(category: &str) -> String {
@@ -737,7 +753,11 @@ fn file_log_base_for_category(category: &str) -> &'static str {
     match category {
         "API_REQ" => "T3_Webview_API",
         "WEBSOCKET" => "T3_Webview_Socket",
-        "FFI_CALL" | "MESSAGE_ACTION" | "POLL" | "DEVICE" | "TRENDLOG" => "T3_Webview_FFI",
+        "FFI_CALL" => "T3_Webview_FFI",
+        "MESSAGE_ACTION" => "T3_Webview_MsgAction",
+        "POLL" => "T3_Webview_Poll",
+        "DEVICE" => "T3_Webview_Device",
+        "TRENDLOG" => "T3_Webview_Trendlog",
         "MAINTENANCE" => "T3_Webview_Database",
         _ => "T3_Webview_Initialize",
     }
@@ -1465,19 +1485,21 @@ pub struct UpdateLogCategoryConfig {
 }
 
 fn default_log_settings() -> Vec<LogCategoryConfig> {
-    vec![
-        LogCategoryConfig { category: "STARTUP".into(),     display_name: "Service Startup".into(),  description: "DLL load, server init, DB connect, sampling state changes".into(), group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "AUTH".into(),        display_name: "Authentication".into(),    description: "Login, logout, session events".into(),                            group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "CONFIG".into(),      display_name: "Config Changes".into(),    description: "Operator settings: sync interval, rediscover interval".into(),    group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "MAINTENANCE".into(), display_name: "DB Maintenance".into(),    description: "Migration, partition creation, DB size warnings".into(),           group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "POLL".into(),        display_name: "Device Poll".into(),       description: "Sync cycle: device count, ok/fail totals, policy skips".into(),   group: "operational".into(), enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "mssql".into(),  sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "DEVICE".into(),      display_name: "Device Sync".into(),       description: "Per-device: points written, FFI errors, serial=0 skips".into(),   group: "operational".into(), enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "mssql".into(),  sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "TRENDLOG".into(),    display_name: "Trendlog".into(),          description: "Trendlog config sync and data write summary".into(),               group: "operational".into(), enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "mssql".into(),  sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "API_REQ".into(),     display_name: "API Requests".into(),      description: "HTTP endpoint calls — enable for debugging only".into(),           group: "debug".into(),       enabled: false, detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "WEBSOCKET".into(),   display_name: "WebSocket".into(),         description: "WS connect/disconnect, message types".into(),                      group: "debug".into(),       enabled: false, detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "FFI_CALL".into(),    display_name: "C++ FFI Calls".into(),     description: "Raw C++ request/response — very high volume".into(),               group: "debug".into(),       enabled: false, detail_mode: "FULL".into(),    min_level: "DEBUG".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "MESSAGE_ACTION".into(), display_name: "Message Action".into(), description: "Message action processing and command dispatch details".into(),      group: "debug".into(),       enabled: false, detail_mode: "FULL".into(),    min_level: "DEBUG".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
-    ]
+    ACTIVITY_LOG_CATEGORY_DEFS
+        .iter()
+        .map(|def| LogCategoryConfig {
+            category: def.category.into(),
+            display_name: def.display_name.into(),
+            description: def.description.into(),
+            group: def.group.into(),
+            enabled: def.enabled,
+            detail_mode: def.detail_mode.into(),
+            min_level: def.min_level.into(),
+            target: def.target.into(),
+            sink_db: def.sink_db,
+            sink_file: def.sink_file,
+        })
+        .collect()
 }
 
 async fn get_log_settings(

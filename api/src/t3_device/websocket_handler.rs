@@ -16,6 +16,7 @@ use tracing::debug;
 
 use crate::app_state::AppState;
 use crate::t3_device::t3_ffi_sync_service;
+use crate::database_management::sync_health::write_app_log;
 
 /// WebSocket upgrade handler - converts HTTP connection to WebSocket
 pub async fn websocket_handler(
@@ -30,13 +31,18 @@ pub async fn websocket_handler(
 }
 
 /// Handle individual WebSocket connection
-async fn handle_websocket(socket: WebSocket, _state: Arc<AppState>) {
+async fn handle_websocket(socket: WebSocket, state: Arc<AppState>) {
     use crate::logger::ServiceLogger;
     let mut ws_logger = ServiceLogger::socket().unwrap_or_else(|_| ServiceLogger::new("fallback_socket").unwrap());
 
     let (mut sender, mut receiver) = socket.split();
 
     ws_logger.info("WebSocket connection established");
+    {
+        let db = state.conn.lock().await;
+        write_app_log(&*db, "info", "WEBSOCKET", Some("websocket_handler"), None,
+            "WebSocket client connected", None).await;
+    }
 
     // Send welcome message
     let welcome_msg = json!({
@@ -100,6 +106,11 @@ async fn handle_websocket(socket: WebSocket, _state: Arc<AppState>) {
     }
 
     ws_logger.info("WebSocket connection closed");
+    {
+        let db = state.conn.lock().await;
+        write_app_log(&*db, "info", "WEBSOCKET", Some("websocket_handler"), None,
+            "WebSocket client disconnected", None).await;
+    }
 }
 
 /// Create receiver for logging data updates

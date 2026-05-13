@@ -1,5 +1,6 @@
 
 import HvConstant from "../Data/Constant/HvConstant"
+import { logFrontendEvent } from "../../../shared/core/logging/frontendLogger"
 
 /**
  * Utility class for conditional logging with different severity levels.
@@ -135,31 +136,19 @@ class LogUtil {
   }
 
   /**
-   * Send log to backend file logging system
-   * Always sends since fileLogging is hardcoded to true
+   * Send log to the centralized backend logger.
+   * Category policy still decides whether the event is written to DB, file, or both.
    */
-  private static async LogToBackend(level: 'debug' | 'info' | 'error', message: string, ...params: any[]): Promise<void> {
+  private static async LogToBackend(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...params: any[]): Promise<void> {
     if (!this.enableFileLogging) return;
 
-    try {
-      await fetch('http://localhost:9103/api/log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          level,
-          category: 'Frontend_HVAC',
-          message: typeof message === 'string' ? message : JSON.stringify(message),
-          params: params.length > 0 ? params : undefined,
-          timestamp: new Date().toISOString()
-        })
-      });
-    } catch (error) {
-      // Silent fail - don't break app if logging fails
-      // Only log to console in dev mode
-      if (import.meta.env.DEV) {
-        console.warn('Failed to send log to backend:', error);
-      }
-    }
+    await logFrontendEvent({
+      level,
+      category: 'MESSAGE_ACTION',
+      source: 'frontend_hvac',
+      message: typeof message === 'string' ? message : JSON.stringify(message),
+      params: params.length > 0 ? params : undefined,
+    });
   }
 
   /**
@@ -216,7 +205,7 @@ class LogUtil {
     }
 
     // File logging (async, non-blocking)
-    this.LogToBackend('info', message, ...additionalParams);
+    this.LogToBackend('warn', message, ...additionalParams);
   }
 
   /**

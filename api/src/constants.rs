@@ -48,6 +48,20 @@ pub fn get_t3000_log_path() -> PathBuf {
     get_t3000_runtime_path().join("T3WebLog")
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct ActivityLogCategoryDef {
+    pub category: &'static str,
+    pub display_name: &'static str,
+    pub description: &'static str,
+    pub group: &'static str,
+    pub enabled: bool,
+    pub detail_mode: &'static str,
+    pub min_level: &'static str,
+    pub target: &'static str,
+    pub sink_db: bool,
+    pub sink_file: bool,
+}
+
 // ── Activity Log Category Constants ──────────────────────────────────────────
 //
 // Group A — Always written to local SQLite (low-frequency, system/operator):
@@ -57,7 +71,7 @@ pub fn get_t3000_log_path() -> PathBuf {
 //   POLL | DEVICE | TRENDLOG
 //
 // Group C — Optional debug categories, off by default (very high volume):
-//   API_REQ | WEBSOCKET | FFI_CALL
+//   API_REQ | WEBSOCKET | FFI_CALL | MESSAGE_ACTION
 
 /// Service lifecycle: DLL load, server init, DB connect, sampling state changes
 pub const CAT_STARTUP: &str = "STARTUP";
@@ -81,6 +95,143 @@ pub const CAT_API_REQ: &str = "API_REQ";
 pub const CAT_WEBSOCKET: &str = "WEBSOCKET";
 /// Raw C++ FFI calls: action + response size (off by default — very high volume)
 pub const CAT_FFI_CALL: &str = "FFI_CALL";
+/// Message action processing details (off by default — high volume debug use only)
+pub const CAT_MESSAGE_ACTION: &str = "MESSAGE_ACTION";
+
+pub const ACTIVITY_LOG_CATEGORY_DEFS: &[ActivityLogCategoryDef] = &[
+    ActivityLogCategoryDef {
+        category: CAT_STARTUP,
+        display_name: "Service Startup",
+        description: "DLL load, server init, DB connect, sampling state changes",
+        group: "system",
+        enabled: true,
+        detail_mode: "SUMMARY",
+        min_level: "INFO",
+        target: "sqlite",
+        sink_db: true,
+        sink_file: false,
+    },
+    ActivityLogCategoryDef {
+        category: CAT_AUTH,
+        display_name: "Authentication",
+        description: "Login, logout, session events",
+        group: "system",
+        enabled: true,
+        detail_mode: "SUMMARY",
+        min_level: "INFO",
+        target: "sqlite",
+        sink_db: true,
+        sink_file: false,
+    },
+    ActivityLogCategoryDef {
+        category: CAT_CONFIG,
+        display_name: "Config Changes",
+        description: "Operator settings: sync interval, rediscover interval",
+        group: "system",
+        enabled: true,
+        detail_mode: "SUMMARY",
+        min_level: "INFO",
+        target: "sqlite",
+        sink_db: true,
+        sink_file: false,
+    },
+    ActivityLogCategoryDef {
+        category: CAT_MAINTENANCE,
+        display_name: "DB Maintenance",
+        description: "Migration, partition creation, DB size warnings",
+        group: "system",
+        enabled: true,
+        detail_mode: "SUMMARY",
+        min_level: "INFO",
+        target: "sqlite",
+        sink_db: true,
+        sink_file: false,
+    },
+    ActivityLogCategoryDef {
+        category: CAT_POLL,
+        display_name: "Device Poll",
+        description: "Sync cycle: device count, ok/fail totals, policy skips",
+        group: "operational",
+        enabled: true,
+        detail_mode: "SUMMARY",
+        min_level: "INFO",
+        target: "mssql",
+        sink_db: true,
+        sink_file: false,
+    },
+    ActivityLogCategoryDef {
+        category: CAT_DEVICE,
+        display_name: "Device Sync",
+        description: "Per-device: points written, FFI errors, serial=0 skips",
+        group: "operational",
+        enabled: true,
+        detail_mode: "SUMMARY",
+        min_level: "INFO",
+        target: "mssql",
+        sink_db: true,
+        sink_file: false,
+    },
+    ActivityLogCategoryDef {
+        category: CAT_TRENDLOG,
+        display_name: "Trendlog",
+        description: "Trendlog config sync and data write summary",
+        group: "operational",
+        enabled: true,
+        detail_mode: "SUMMARY",
+        min_level: "INFO",
+        target: "mssql",
+        sink_db: true,
+        sink_file: false,
+    },
+    ActivityLogCategoryDef {
+        category: CAT_API_REQ,
+        display_name: "API Requests",
+        description: "HTTP endpoint calls - enable for debugging only",
+        group: "debug",
+        enabled: false,
+        detail_mode: "SUMMARY",
+        min_level: "INFO",
+        target: "sqlite",
+        sink_db: false,
+        sink_file: true,
+    },
+    ActivityLogCategoryDef {
+        category: CAT_WEBSOCKET,
+        display_name: "WebSocket",
+        description: "WS connect/disconnect, message types",
+        group: "debug",
+        enabled: false,
+        detail_mode: "SUMMARY",
+        min_level: "INFO",
+        target: "sqlite",
+        sink_db: false,
+        sink_file: true,
+    },
+    ActivityLogCategoryDef {
+        category: CAT_FFI_CALL,
+        display_name: "C++ FFI Calls",
+        description: "Raw C++ request/response - very high volume",
+        group: "debug",
+        enabled: false,
+        detail_mode: "FULL",
+        min_level: "DEBUG",
+        target: "sqlite",
+        sink_db: false,
+        sink_file: true,
+    },
+    ActivityLogCategoryDef {
+        category: CAT_MESSAGE_ACTION,
+        display_name: "Message Action",
+        description: "Message action processing and command dispatch details",
+        group: "debug",
+        enabled: false,
+        detail_mode: "FULL",
+        min_level: "DEBUG",
+        target: "sqlite",
+        sink_db: false,
+        sink_file: true,
+    },
+];
 
 // ── Legacy aliases kept for backwards compatibility ───────────────────────────
 #[deprecated(note = "Use CAT_POLL instead")]
