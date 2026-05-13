@@ -1,247 +1,533 @@
+/* ══════════════════════════════════════════════════════════
+   TrendPolicyPage — full redesign
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Page shell ── */
 .page {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #f5f5f5;
+  overflow: hidden;
 }
 
+/* ── Top toolbar bar ── */
 .topBar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 14px;
-  border-bottom: 1px solid #edebe9;
-  background: #ffffff;
+  gap: 10px;
+  padding: 0 12px;
+  min-height: 40px;
+  margin: 10px 12px 0;
+  background: #f3f3f3;
+  border: 1px solid #dddcdb;
+  border-radius: 6px;
+  flex-shrink: 0;
+  box-shadow: none;
 }
 
 .backBtn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  border: 1px solid #d1d1d1;
-  border-radius: 4px;
-  background: #fafafa;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: transparent;
   cursor: pointer;
   font-size: 12px;
-  color: #323130;
+  font-weight: 400;
+  color: #0f6cbd;
   white-space: nowrap;
   flex-shrink: 0;
+  text-decoration: none;
 }
 
 .backBtn:hover {
-  background: #f3f2f1;
-  border-color: #8a8886;
+  color: #0d5ba4;
+  text-decoration: underline;
+  background: transparent;
+}
+
+.topBarDivider {
+  width: 1px;
+  height: 18px;
+  background: #dddcdb;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .summaryChips {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .summaryChip {
-  padding: 4px 10px;
-  border: 1px solid #d1d1d1;
-  border-radius: 14px;
-  background: #fafafa;
-  font-size: 12px;
-  color: #323130;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid #dddcdb;
+  border-radius: 3px;
+  background: #ffffff;
+  font-size: 11px;
 }
 
+.chipLabel {
+  color: #605e5c;
+}
+
+.chipValue {
+  font-weight: 600;
+  color: #242424;
+}
+
+/* ── Two-panel main area ── */
 .main {
   display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 10px;
-  padding: 10px;
+  grid-template-columns: 280px 1fr;
+  gap: 12px;
+  padding: 12px;
   min-height: 0;
   flex: 1;
+  overflow: hidden;
 }
 
+/* ── Shared panel styles ── */
 .leftPanel,
 .rightPanel {
   background: #ffffff;
-  border: 1px solid #edebe9;
-  border-radius: 4px;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
   min-height: 0;
-}
-
-.leftPanel {
   display: flex;
   flex-direction: column;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  overflow: hidden;
 }
 
+/* ── Panel header ── */
 .panelHeader {
-  padding: 10px 12px;
-  border-bottom: 1px solid #edebe9;
-  font-weight: 600;
-  color: #323130;
+  padding: 0 12px;
+  min-height: 36px;
+  border-bottom: 1px solid #e1e4e8;
+  background: #f6f8fa;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
+  border-radius: 8px 8px 0 0;
 }
 
+.panelTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: #24292f;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+/* ── Select-all label in header ── */
+.selectAllLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #0f6cbd;
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ── Native checkbox reset ── */
+.nativeCheck {
+  margin: 0;
+  cursor: pointer;
+  accent-color: #0f6cbd;
+  width: 14px;
+  height: 14px;
+}
+
+/* ── Left panel body ── */
 .panelBody {
-  padding: 8px;
-  overflow: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #c8c6c4 transparent;
+  padding: 6px 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
 }
 
-.panelBody::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
+.panelBody::-webkit-scrollbar { width: 4px; }
+.panelBody::-webkit-scrollbar-thumb { background: #c8c6c4; border-radius: 3px; }
+.panelBody::-webkit-scrollbar-track { background: transparent; }
 
-.panelBody::-webkit-scrollbar-thumb {
-  background: #c8c6c4;
-  border-radius: 3px;
-}
-
-.panelBody::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.selectAllRow {
-  margin-bottom: 8px;
-}
-
+/* ── Device list item ── */
 .deviceItem {
   display: grid;
-  grid-template-columns: 18px 1fr;
+  grid-template-columns: 16px 1fr;
   gap: 8px;
   align-items: start;
-  padding: 8px;
+  padding: 7px 8px;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
+  transition: background 0.1s;
 }
 
 .deviceItem:hover {
-  background: #f3f2f1;
-  border-color: #e1dfdd;
+  background: #f6f8fa;
+  border-color: #d0d7de;
 }
 
 .deviceItemSelected {
-  background: #e1dfdd;
-  border-color: #201f1e;
+  background: #dff0ff;
+  border-color: #79c0ff;
 }
 
 .deviceName {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: #201f1e;
-  line-height: 1.2;
+  color: #24292f;
+  line-height: 1.3;
 }
 
 .deviceSub {
-  font-size: 12px;
-  color: #8a8886;
-  margin-top: 3px;
+  font-size: 11px;
+  color: #656d76;
+  margin-top: 2px;
 }
 
-.rightPanel {
+/* ── Tab bar ── */
+.tabBar {
   display: flex;
-  flex-direction: column;
-}
-
-.controls {
-  padding: 10px 12px;
-  border-bottom: 1px solid #edebe9;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
   align-items: center;
+  padding: 0 12px;
+  border-bottom: 1px solid #e1e4e8;
+  background: #f6f8fa;
+  flex-shrink: 0;
+  gap: 0;
+  min-height: 36px;
 }
 
-.controlGroup {
+.selectAllLabelLeading {
+  margin-right: 8px;
+}
+
+.tabBarDivider {
+  width: 1px;
+  height: 18px;
+  background: #d0d7de;
+  margin: 0 10px;
+  flex-shrink: 0;
+}
+
+.tab {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
+  padding: 0 12px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  color: #656d76;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.1s, border-color 0.1s;
+  white-space: nowrap;
 }
 
-.tagRow {
-  padding: 10px 12px;
-  border-bottom: 1px solid #edebe9;
+.tab:hover {
+  color: #0f6cbd;
+  background: #eaeef2;
+}
+
+.tabActive {
+  color: #0f6cbd;
+  border-bottom-color: #0f6cbd;
+  font-weight: 600;
+}
+
+.tabCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 4px;
+  background: #eaeef2;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #656d76;
+}
+
+.tabActive .tabCount {
+  background: #cce0f5;
+  color: #0f6cbd;
+}
+
+/* ── Tag toolbar ── */
+.tagToolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  padding: 7px 12px;
+  border-bottom: 1px solid #e1e4e8;
+  background: #fafbfc;
+  flex-shrink: 0;
+}
+
+.tagModeToggle {
+  display: inline-flex;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.tagModeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 500;
+  color: #656d76;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  white-space: nowrap;
+}
+
+.tagModeBtn + .tagModeBtn {
+  border-left: 1px solid #d0d7de;
+}
+
+.tagModeBtn:hover {
+  background: #eaeef2;
+  color: #24292f;
+}
+
+.tagModeBtnActive {
+  background: #0f6cbd;
+  color: #ffffff;
+}
+
+.tagModeBtnActive:hover {
+  background: #0d5ba4;
+  color: #ffffff;
 }
 
 .tagInput {
-  width: 180px;
-  height: 28px;
-  border: 1px solid #d1d1d1;
-  border-radius: 4px;
+  height: 26px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
   padding: 0 8px;
   font-size: 12px;
+  background: #ffffff;
+  color: #24292f;
+  width: 160px;
+  outline: none;
 }
 
-.tagChip {
-  padding: 3px 8px;
-  border: 1px solid #c7e0f4;
-  border-radius: 12px;
-  background: #f3f9fd;
-  color: #004578;
-  font-size: 12px;
+.tagInput:focus {
+  border-color: #0f6cbd;
+  box-shadow: 0 0 0 2px rgba(15, 108, 189, 0.15);
 }
 
+.tagActionBtn {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #f6f8fa;
+  font-size: 11px;
+  font-weight: 500;
+  color: #24292f;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.tagActionBtn:hover:not(:disabled) {
+  background: #eaeef2;
+  border-color: #9198a1;
+}
+
+.tagActionBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.filterChips {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.filterChipsLabel {
+  font-size: 11px;
+  color: #656d76;
+  margin-right: 2px;
+}
+
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border: 1px solid #79c0ff;
+  border-radius: 10px;
+  background: #dff0ff;
+  font-size: 11px;
+  color: #0550ae;
+  font-weight: 500;
+}
+
+.chipRemove {
+  border: none;
+  background: none;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  color: #0550ae;
+  opacity: 0.6;
+}
+
+.chipRemove:hover {
+  opacity: 1;
+}
+
+.clearFilters {
+  border: none;
+  background: none;
+  font-size: 11px;
+  color: #cf222e;
+  cursor: pointer;
+  padding: 0 3px;
+  text-decoration: underline;
+}
+
+/* ── Points table wrapper ── */
 .pointsWrap {
-  padding: 8px;
   overflow: auto;
   min-height: 0;
   flex: 1;
-  scrollbar-width: thin;
-  scrollbar-color: #c8c6c4 transparent;
 }
 
-.pointsWrap::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
+.pointsWrap::-webkit-scrollbar { width: 4px; height: 4px; }
+.pointsWrap::-webkit-scrollbar-thumb { background: #c8c6c4; border-radius: 3px; }
+.pointsWrap::-webkit-scrollbar-track { background: transparent; }
 
-.pointsWrap::-webkit-scrollbar-thumb {
-  background: #c8c6c4;
-  border-radius: 3px;
-}
-
-.pointsWrap::-webkit-scrollbar-track {
-  background: transparent;
-}
-
+/* ── Points table ── */
 .pointTable {
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
 }
 
-.pointTable th,
-.pointTable td {
-  border-bottom: 1px solid #edebe9;
-  padding: 7px 6px;
-  text-align: left;
-}
-
 .pointTable th {
   position: sticky;
   top: 0;
-  background: #fafafa;
+  background: #f6f8fa;
+  border-bottom: 1px solid #d0d7de;
+  padding: 6px 8px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: #656d76;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
   z-index: 1;
 }
 
-.checkCol {
-  width: 26px;
+.pointTable td {
+  border-bottom: 1px solid #eaeef2;
+  padding: 6px 8px;
+  vertical-align: middle;
 }
 
+.checkCol {
+  width: 28px;
+}
+
+.rowSelected {
+  background: #f0f7ff;
+}
+
+.pointTable tbody tr:hover {
+  background: #f6f8fa;
+}
+
+.rowSelected:hover {
+  background: #e8f2ff;
+}
+
+/* ── Type badge ── */
+.typeTag {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.typeTag_input  { background: #dafbe1; color: #116329; border: 1px solid #a2d9b1; }
+.typeTag_output { background: #fff1e5; color: #953800; border: 1px solid #f8c89e; }
+.typeTag_variable { background: #f0e6ff; color: #5a1e99; border: 1px solid #d2b4f7; }
+
+.monoCell {
+  font-family: monospace;
+  color: #656d76;
+  font-size: 11px;
+}
+
+.deviceCell {
+  color: #656d76;
+  font-size: 11px;
+  font-family: monospace;
+}
+
+/* ── Per-point tags cell ── */
+.pointTagsCell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  min-width: 60px;
+}
+
+.pointTagChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 5px;
+  border: 1px solid #d2b4f7;
+  border-radius: 8px;
+  background: #f0e6ff;
+  font-size: 10px;
+  color: #5a1e99;
+}
+
+/* ── Empty state ── */
 .empty {
   color: #8a8886;
-  padding: 14px;
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 13px;
 }
 
-@media (max-width: 1024px) {
+/* ── Responsive ── */
+@media (max-width: 900px) {
   .main {
     grid-template-columns: 1fr;
+    grid-template-rows: 280px 1fr;
   }
 }
