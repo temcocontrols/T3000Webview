@@ -265,10 +265,10 @@ export const TrendPolicyPage: React.FC = () => {
             <span className={styles.chipValue}>{selectedDevices.length}/{devices.length}</span>
           </span>
           <span className={styles.summaryChip}>
-            <span className={styles.chipLabel}>Visible</span>
+            <span className={styles.chipLabel}>Total points</span>
             <span className={styles.chipValue}>{visiblePoints.length}</span>
           </span>
-          <span className={styles.summaryChip}>
+          <span className={`${styles.summaryChip} ${styles.summaryChipSelected}`}>
             <span className={styles.chipLabel}>Selected</span>
             <span className={styles.chipValue}>{selectedPointKeys.size}</span>
           </span>

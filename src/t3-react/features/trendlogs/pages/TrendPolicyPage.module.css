@@ -75,6 +75,11 @@
   font-size: 11px;
 }
 
+.summaryChipSelected {
+  min-width: 104px;
+  justify-content: center;
+}
+
 .chipLabel {
   color: #605e5c;
 }
@@ -82,6 +87,11 @@
 .chipValue {
   font-weight: 600;
   color: #242424;
+}
+
+.summaryChipSelected .chipValue {
+  color: #0f6cbd;
+  font-size: 12px;
 }
 
 /* ── Two-panel main area ── */
@@ -160,8 +170,6 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  scrollbar-width: thin;
-  scrollbar-color: #c0bebe transparent;
 }
 
 .panelBody::-webkit-scrollbar {
@@ -521,8 +529,6 @@
   overflow: auto;
   min-height: 0;
   flex: 1;
-  scrollbar-width: thin;
-  scrollbar-color: #c0bebe transparent;
 }
 
 
