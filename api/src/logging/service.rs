@@ -5,6 +5,10 @@ use super::policy::{canonical_category, level_meets_min, load_runtime_log_policy
 use super::sinks::{is_high_volume_category, spawn_mssql_sink, write_file_sink, write_sqlite_sink};
 use super::types::{LogContext, LogEvent, LogLevel};
 
+/// Global kill switch — set to true to completely disable all logging (DB + file).
+/// Useful while the logging feature is not fully tested.
+const LOGGING_ENABLED: bool = false;
+
 pub struct LoggingService;
 
 impl LoggingService {
@@ -13,6 +17,7 @@ impl LoggingService {
     }
 
     pub async fn emit(&self, db: &DatabaseConnection, event: LogEvent) {
+        if !LOGGING_ENABLED { return; }
         let canonical_cat = canonical_category(&event.category);
         let level_upper = normalize_level_upper(event.level.as_upper());
         let level_lc = level_upper.to_ascii_lowercase();

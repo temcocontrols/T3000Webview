@@ -14,7 +14,9 @@
       <a-flex wrap="wrap" gap="small" class="controls-main-flex">
         <!-- Time Base Control -->
         <a-flex align="center" gap="small" class="control-group">
-          <a-typography-text class="control-label" style="font-size: 11px;">Time Base:</a-typography-text>
+          <a-tooltip :title="devVersion" placement="bottomLeft">
+            <a-typography-text class="control-label" style="font-size: 11px; cursor: default;">Time Base:</a-typography-text>
+          </a-tooltip>
           <a-dropdown placement="bottomRight">
             <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
               <span>{{ getTimeBaseLabel() }}</span>
@@ -5930,39 +5932,90 @@
       ...(response.data.variables || [])
     ]
 
-    // Match each monitor input item with corresponding point from panel data
-    monitorConfigData.inputItems.forEach((inputItem: any, index: number) => {
-      const rangeValue = monitorConfigData.ranges[index] || 0
+    // Match values to chart series identity (panel + id) to avoid index-shift bugs.
+    // If no series exist yet, fall back to monitor input order.
+    const seriesToResolve = dataSeries.value.length > 0
+      ? dataSeries.value.map((series, index) => {
+        const matchingInput = monitorConfigData.inputItems?.find((inputItem: any) => {
+          const expectedDeviceId = generateDeviceId(inputItem.point_type, inputItem.point_number)
+          const expectedPanelId = inputItem.panel === 0
+            ? (monitorConfigData.pid || (route.query.panel_id ? parseInt(route.query.panel_id as string) : 0))
+            : inputItem.panel
+          return expectedDeviceId === series.id && Number(expectedPanelId) === Number(series.panelId)
+        })
 
-      // Find matching point by panel, point_number, and point_type
+        const rangeValue = matchingInput
+          ? (monitorConfigData.ranges?.[monitorConfigData.inputItems.indexOf(matchingInput)] || 0)
+          : (series.unitCode || 0)
+
+        return {
+          index,
+          expectedDeviceId: series.id,
+          expectedPanelId: series.panelId,
+          expectedIndex0: series.pointNumber,
+          expectedIndex1: (series.pointNumber ?? 0) + 1,
+          rangeValue
+        }
+      })
+      : (monitorConfigData.inputItems || []).map((inputItem: any, index: number) => {
+        const expectedDeviceId = generateDeviceId(inputItem.point_type, inputItem.point_number)
+        const expectedPanelId = inputItem.panel === 0
+          ? (monitorConfigData.pid || (route.query.panel_id ? parseInt(route.query.panel_id as string) : 0))
+          : inputItem.panel
+
+        return {
+          index,
+          expectedDeviceId,
+          expectedPanelId,
+          expectedIndex0: Number(inputItem.point_number),
+          expectedIndex1: Number(inputItem.point_number) + 1,
+          rangeValue: monitorConfigData.ranges?.[index] || 0
+        }
+      })
+
+    const normalizePanelId = (value: any): number => {
+      const n = Number(value)
+      return Number.isFinite(n) ? n : -1
+    }
+
+    seriesToResolve.forEach((target) => {
+      const expectedPanelIdNum = normalizePanelId(target.expectedPanelId)
+      const expectedDeviceId = String(target.expectedDeviceId || '').toUpperCase()
+
+      // Prefer ID match; keep index fallback for compatibility with responses lacking IDs.
       const matchingPoint = allPoints.find((point: any) => {
-        const pointPanel = point.panel || point.pid
-        const pointIndex = point.index
-        // point_type: 1=INPUT, 2=OUTPUT, 3=VARIABLE
-        const expectedIndex = inputItem.point_number
+        const pointPanel = normalizePanelId(point.panel ?? point.pid)
+        const pointId = String(point.id || '').toUpperCase()
+        const pointIndex = Number(point.index)
 
-        return pointPanel === inputItem.panel && pointIndex === expectedIndex
+        if (pointPanel !== expectedPanelIdNum) return false
+        if (pointId && expectedDeviceId) return pointId === expectedDeviceId
+
+        return pointIndex === target.expectedIndex0 || pointIndex === target.expectedIndex1
       })
 
       if (matchingPoint) {
-        const processedValue = processDeviceValue(matchingPoint, rangeValue)
+        const processedValue = processDeviceValue(matchingPoint, target.rangeValue)
         results.push([{
           timestamp: Date.now(),
           value: processedValue.value
         }])
 
-        LogUtil.Info(`Matched point ${index}:`, {
-          inputItem,
-          matchingPoint: { index: matchingPoint.index, value: matchingPoint.value, label: matchingPoint.label }
+        LogUtil.Info(`Matched point ${target.index}:`, {
+          expectedDeviceId,
+          expectedPanelId: target.expectedPanelId,
+          matchingPoint: { id: matchingPoint.id, index: matchingPoint.index, value: matchingPoint.value, label: matchingPoint.label }
         })
       } else {
-        // Default data point for unmatched items
         results.push([{
           timestamp: Date.now(),
           value: 0
         }])
 
-        LogUtil.Warn(`⚠️ No matching point for item ${index}`, { inputItem })
+        LogUtil.Warn(`⚠️ No matching point for item ${target.index}`, {
+          expectedDeviceId,
+          expectedPanelId: target.expectedPanelId
+        })
       }
     })
 
@@ -8341,6 +8394,12 @@
       LogUtil.Debug('🔎 First series FULL object:', dataSeries.value[0])
     }
 
+    const normalizeId = (value: any): string => String(value ?? '').trim().toUpperCase()
+    const normalizePanelId = (value: any): number => {
+      const n = Number(value)
+      return Number.isFinite(n) ? n : -1
+    }
+
     // 🚀 OPTIMIZED APPROACH: Loop through dataSeries (14 max) instead of validDataItems (328)
     dataSeries.value.forEach((series, seriesIndex) => {
       // 🔧 DEFENSIVE FIX: Reconstruct id and panelId from itemType if missing
@@ -8390,10 +8449,30 @@
         return
       }
 
-      // Direct lookup: Find matching item by id and panelId
+      // Direct lookup: Find matching item by normalized identity (id + panelId)
+      const seriesId = normalizeId(series.id)
+      const seriesPanelId = normalizePanelId(series.panelId)
+
       const matchedItem = validDataItems.find(item =>
-        item.id === series.id && item.pid === series.panelId
+        normalizeId(item.id) === seriesId && normalizePanelId(item.pid) === seriesPanelId
       )
+      // Fallback: type/index on same panel (handles occasional malformed/missing id in payload)
+      || validDataItems.find(item => {
+        const samePanel = normalizePanelId(item.pid) === seriesPanelId
+        if (!samePanel) return false
+
+        const itemType = Number(item.type)
+        const itemIndex = Number(item.index)
+        const seriesPointType = Number(series.pointType)
+        const seriesPointNumber = Number(series.pointNumber)
+
+        const typeMatches = Number.isFinite(itemType) && Number.isFinite(seriesPointType) && itemType === seriesPointType
+        const indexMatches = Number.isFinite(itemIndex) && Number.isFinite(seriesPointNumber) && (
+          itemIndex === seriesPointNumber || itemIndex === (seriesPointNumber + 1)
+        )
+
+        return typeMatches && indexMatches
+      })
 
       if (!matchedItem) {
         LogUtil.Debug(`No match for series ${series.name}:`, {
@@ -8418,13 +8497,17 @@
       // digital_analog: 0=digital, 1=analog
       // For digital (digital_analog=0): use 'control' field (0=off, 1=on)
       // For analog (digital_analog=1): use 'value' field (int32_t)
+      const digitalAnalogRaw = Number(matchedItem.digital_analog)
+      const isAnalogPoint = digitalAnalogRaw === BAC_UNITS_ANALOG ||
+        (Number.isNaN(digitalAnalogRaw) && series.unitType === 'analog')
+
       let actualValue;
-      if (matchedItem.digital_analog === 1) {
+      if (isAnalogPoint) {
         // Analog: use 'value' field
         actualValue = matchedItem.value;
       } else {
         // Digital: use 'control' field (per Str_out_point struct)
-        actualValue = matchedItem.control;
+        actualValue = matchedItem.control ?? matchedItem.value;
 
         // 🔍 DEBUG: Log for digital outputs
         if (matchedItem.id && matchedItem.id.startsWith('OUT')) {
@@ -8438,17 +8521,18 @@
         }
       }
 
-      const rawValue = actualValue || 0
+      const rawValue = Number(actualValue)
+      const safeRawValue = Number.isFinite(rawValue) ? rawValue : 0
       // 🎯 CRITICAL: Don't scale digital values - control field is already 0 or 1
       // Only scale analog values (which are multiplied by 1000 in database)
-      const scaledValue = matchedItem.digital_analog === 0 ? rawValue : scaleValueIfNeeded(rawValue)
+      const scaledValue = isAnalogPoint ? scaleValueIfNeeded(safeRawValue) : safeRawValue
 
       // 📊 VALUE PRECISION LOGGING: Track how scaling affects small variations
-      if (rawValue >= 1000) {
+      if (safeRawValue >= 1000) {
         LogUtil.Info(`🔍 Value Scaling Analysis for ${series.name}`, {
-          rawValue,
+          rawValue: safeRawValue,
           scaledValue,
-          precisionLoss: rawValue - (scaledValue * 1000),
+          precisionLoss: safeRawValue - (scaledValue * 1000),
           seriesName: series.name,
           note: 'Large values scaled down - check for precision loss'
         })
@@ -11863,6 +11947,24 @@
   const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[] => {
     LogUtil.Debug('= TLChart DataFlow: Converting API data to chart series format')
 
+    const mapPrefixToPointType = (prefix?: string): string => {
+      if (prefix === 'IN') return 'INPUT'
+      if (prefix === 'OUT') return 'OUTPUT'
+      if (prefix === 'VAR') return 'VARIABLE'
+      if (prefix === 'HOL') return 'MONITOR'
+      return ''
+    }
+
+    const parseSeriesIdentityFromItemType = (itemType?: string): { panelId?: number; pointId?: string } => {
+      if (!itemType) return {}
+      const match = itemType.match(/^(\d+)([A-Z]+)(\d+)$/)
+      if (!match) return {}
+      return {
+        panelId: parseInt(match[1], 10),
+        pointId: `${match[2]}${match[3]}`
+      }
+    }
+
     // Store original series for name preservation and MAINTAIN ORIGINAL SEQUENCE
     const originalSeries = dataSeries.value || []
     LogUtil.Debug('= TLChart DataFlow: Preserving original 14-item series order:', {
@@ -11870,11 +11972,12 @@
       preservingSequence: originalSeries.length > 0
     })
 
-    // Group data points by point_id and point_type
+    // Group data points by panel_id + point_type + point_id
     const groupedData = new Map<string, any[]>()
 
     apiData.forEach(point => {
-      const key = `${point.point_type}_${point.point_id}`
+      const pointPanelId = point.panel_id ?? point.pid ?? 'unknown'
+      const key = `${pointPanelId}_${point.point_type}_${point.point_id}`
       if (!groupedData.has(key)) {
         groupedData.set(key, [])
       }
@@ -11896,15 +11999,32 @@
 
     // Process in original series order to maintain sequence
     originalSeries.forEach((originalSeries, index) => {
+      const parsedIdentity = parseSeriesIdentityFromItemType(originalSeries.itemType)
+      const seriesPanelId = originalSeries.panelId ?? parsedIdentity.panelId
+      const seriesPointId = originalSeries.id ?? parsedIdentity.pointId
+      const seriesPointType = originalSeries.pointType
+        ? mapPointTypeFromNumber(originalSeries.pointType)
+        : mapPrefixToPointType(originalSeries.prefix)
+
       // Find matching API data for this original series
       let matchingApiData: any[] | undefined = undefined
       let matchedKey: string | undefined = undefined
+
+      // Strategy 0: exact identity match by panel + point_type + point_id
+      if (seriesPanelId !== undefined && seriesPointId && seriesPointType) {
+        const exactKey = `${seriesPanelId}_${seriesPointType}_${seriesPointId}`
+        const exactMatch = groupedData.get(exactKey)
+        if (exactMatch) {
+          matchingApiData = exactMatch
+          matchedKey = exactKey
+        }
+      }
 
       // Try different matching strategies
       groupedData.forEach((apiPoints, apiKey) => {
         if (matchingApiData) return // Already found a match
 
-        const [apiPointType, apiPointId] = apiKey.split('_')
+        const [_apiPanelId, apiPointType, apiPointId] = apiKey.split('_')
 
         // Strategy 1: Match by itemType containing point ID
         if (originalSeries.itemType && originalSeries.itemType.includes(apiPointId)) {
@@ -11958,7 +12078,12 @@
           itemType: originalSeries.itemType,
           prefix: originalSeries.prefix,
           // PRESERVE ORIGINAL DESCRIPTION - no time range labels
-          description: originalSeries.description
+          description: originalSeries.description,
+          pointType: originalSeries.pointType,
+          pointNumber: originalSeries.pointNumber,
+          panelId: originalSeries.panelId,
+          id: originalSeries.id,
+          key: originalSeries.key
         }
 
         series.push(seriesConfig)
@@ -11981,6 +12106,11 @@
           itemType: originalSeries.itemType,
           prefix: originalSeries.prefix,
           description: originalSeries.description,
+          pointType: originalSeries.pointType,
+          pointNumber: originalSeries.pointNumber,
+          panelId: originalSeries.panelId,
+          id: originalSeries.id,
+          key: originalSeries.key,
           isEmpty: true // Mark as empty for UI handling
         }
 
@@ -13159,16 +13289,6 @@
               inputCount: monFromAction0.input?.length ?? 0
             })
             freshMonitorData.value = monFromAction0
-            console.log(
-              '%c[SETTINGS] ✅ RECEIVED FROM C++ (Action 0 - Monitor Config)',
-              'background:#0064c8;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px;'
-            )
-            console.log('[SETTINGS] Panel ID        :', urlPanelId)
-            console.log('[SETTINGS] Trendlog ID     :', urlTrendlogId)
-            console.log('[SETTINGS] Monitor ID      :', monFromAction0.id)
-            console.log('[SETTINGS] Monitor Index   :', monFromAction0.index)
-            console.log('[SETTINGS] Input channels  :', monFromAction0.input?.length ?? 0)
-            console.log('[SETTINGS] Full data       :', JSON.parse(JSON.stringify(monFromAction0)))
 
             // 🆕 FIX: Build monitorConfig.value directly from Action 0 data
             // getMonitorConfigFromT3000Data() relies on t3000DataManager which often isn't ready yet,
@@ -13203,21 +13323,47 @@
               }
             }
 
-            // Fallback: if URL matching found nothing, use all MON inputs directly
-            if (builtInputItems.length === 0 && monInputs.length > 0) {
-              LogUtil.Warn('⚠️ STEP 0: URL input matching failed, using all MON inputs as fallback')
-              for (let mi = 0; mi < monInputs.length; mi++) {
-                const inp = monInputs[mi]
-                if (inp && inp.panel !== undefined && inp.point_number !== undefined) {
-                  builtInputItems.push({
-                    panel: inp.panel,
-                    point_number: inp.point_number,
-                    index: mi,
-                    point_type: inp.point_type,
-                    network: inp.network,
-                    sub_panel: inp.sub_panel
-                  })
-                  builtRanges.push((monFromAction0.range && monFromAction0.range[mi]) || 0)
+            // Fallback priority when Action 0 MON input mapping does not match URL configuration:
+            // 1) Prefer URL inputs (user-opened trendlog selection) to avoid wrong point_number remap
+            // 2) Only use raw MON inputs when URL has no input definition at all
+            if (builtInputItems.length === 0) {
+              if (urlInputItems.length > 0) {
+                LogUtil.Warn('⚠️ STEP 0: URL↔MON input matching failed, using URL inputs as fallback to preserve intended point_number mapping', {
+                  urlInputCount: urlInputItems.length,
+                  monInputCount: monInputs.length,
+                  monitorId: monFromAction0.id,
+                  monitorIndex: monFromAction0.index
+                })
+
+                for (let ui = 0; ui < urlInputItems.length; ui++) {
+                  const urlItem = urlInputItems[ui]
+                  if (urlItem && urlItem.point_type > 0) {
+                    builtInputItems.push({
+                      panel: urlItem.panel,
+                      point_number: urlItem.point_number,
+                      index: ui,
+                      point_type: urlItem.point_type,
+                      network: urlItem.network || 0,
+                      sub_panel: urlItem.sub_panel || 0
+                    })
+                    builtRanges.push(urlRangeItems[ui] || 0)
+                  }
+                }
+              } else if (monInputs.length > 0) {
+                LogUtil.Warn('⚠️ STEP 0: URL has no input definition, using all MON inputs as fallback')
+                for (let mi = 0; mi < monInputs.length; mi++) {
+                  const inp = monInputs[mi]
+                  if (inp && inp.panel !== undefined && inp.point_number !== undefined) {
+                    builtInputItems.push({
+                      panel: inp.panel,
+                      point_number: inp.point_number,
+                      index: mi,
+                      point_type: inp.point_type,
+                      network: inp.network,
+                      sub_panel: inp.sub_panel
+                    })
+                    builtRanges.push((monFromAction0.range && monFromAction0.range[mi]) || 0)
+                  }
                 }
               }
             }
@@ -13565,22 +13711,11 @@
         return
       }
 
-      console.log(
-        '%c[SETTINGS] 💾 SAVING TO C++ — Database Config',
-        'background:#52c41a;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px;'
-      )
-      console.log('[SETTINGS] Strategy        :', databaseConfig.value.strategy)
-      console.log('[SETTINGS] Custom days     :', databaseConfig.value.custom_days)
-      console.log('[SETTINGS] Custom months   :', databaseConfig.value.custom_months)
-      console.log('[SETTINGS] Auto cleanup    :', databaseConfig.value.auto_cleanup_enabled)
-      console.log('[SETTINGS] Retention       :', databaseConfig.value.retention_value, databaseConfig.value.retention_unit)
-      console.log('[SETTINGS] Full payload    :', JSON.parse(JSON.stringify(databaseConfig.value)))
       LogUtil.Info('Saving Trendlog Configuration...', databaseConfig.value)
 
       // Save configuration via API
       const savedConfig = await databaseService.config.updateConfig(databaseConfig.value)
       databaseConfig.value = savedConfig
-      console.log('[SETTINGS] ✅ Database config saved — response:', JSON.parse(JSON.stringify(savedConfig)))
 
       // Apply partitioning strategy to create actual database files
       LogUtil.Info('Applying partitioning strategy to create database files...')
@@ -13800,20 +13935,11 @@
         return false
       }
 
-      console.log(
-        '%c[SETTINGS] 💾 SAVING TO C++ — Rediscover Interval',
-        'background:#722ed1;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px;'
-      )
-      console.log('[SETTINGS] Interval (secs) :', interval_secs)
-      console.log('[SETTINGS] Interval human  :', formatRediscoverInterval(interval_secs))
-      console.log('[SETTINGS] Preset          :', rediscoverConfig.value.interval_preset)
-
       const result = await RediscoverConfigAPI.updateInterval(
         interval_secs,
         'user',
         'Updated via Trendlog Configuration UI'
       )
-      console.log('[SETTINGS] ✅ Rediscover interval saved — response:', result)
 
       if (showMessage) {
         message.success(`Rediscover interval updated to ${formatRediscoverInterval(interval_secs)}`)
@@ -13912,14 +14038,6 @@
         return false
       }
 
-      console.log(
-        '%c[SETTINGS] 💾 SAVING TO C++ — Sampling Interval',
-        'background:#fa8c16;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px;'
-      )
-      console.log('[SETTINGS] Interval (secs) :', interval_secs)
-      console.log('[SETTINGS] Interval human  :', formatInterval(interval_secs))
-      console.log('[SETTINGS] Preset          :', ffiSyncConfig.value.interval_preset)
-
       const data = await FfiSyncConfigAPI.updateFfiSyncInterval(
         interval_secs,
         'user',
@@ -13929,7 +14047,6 @@
       ffiSyncConfig.value.interval_secs = data.interval_secs
       ffiSyncConfig.value.next_sync_in = data.interval_secs
 
-      console.log('[SETTINGS] ✅ Sampling interval saved — response:', JSON.parse(JSON.stringify(data)))
       message.success(`Sampling Interval updated to ${formatInterval(interval_secs)}`)
       LogUtil.Info('Sampling Interval saved', data)
       return true

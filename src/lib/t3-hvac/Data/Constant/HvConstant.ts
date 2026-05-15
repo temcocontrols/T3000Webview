@@ -59,9 +59,9 @@ class HvConstant {
    * }));
    */
   static LogConfig = {
-    Debug: undefined,          // Console - undefined = auto-detect, false = force disable, true = force enable
-    Info: undefined,           // Console - undefined = auto-detect, false = force disable, true = force enable
-    Error: true,          // Console - undefined = auto-detect (always true), false = force disable
+    Debug: false,          // Console - undefined = auto-detect, false = force disable, true = force enable
+    Info: false,           // Console - undefined = auto-detect, false = force disable, true = force enable
+    Error: false,          // Console - undefined = auto-detect (always true), false = force disable
     FileLogging: false,    // File logging - undefined = enabled, false = disabled locally
   }
 
