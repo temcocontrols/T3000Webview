@@ -11,7 +11,6 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use crate::app_state::T3AppState;
-use crate::logger::ServiceLogger;
 use crate::t3_device::trendlog_webmsg_service::{TrendlogWebMsgService, TrendlogInfo};
 
 #[derive(Deserialize)]
@@ -59,13 +58,23 @@ pub fn create_trendlog_webmsg_routes() -> Router<T3AppState> {
 
 /// GET /api/trendlog/webmsg/list/{device_id} - Get trendlog list via HandleWebViewMsg
 async fn get_trendlog_list(
-    State(_app_state): State<T3AppState>,
+    State(app_state): State<T3AppState>,
     Path(device_id): Path<i32>,
     Query(params): Query<TrendlogListQuery>,
 ) -> Result<Json<TrendlogListResponse>, (StatusCode, Json<JsonValue>)> {
-    let mut logger = ServiceLogger::api().unwrap_or_else(|_| ServiceLogger::new("trendlog_webmsg").unwrap());
-
-    logger.info(&format!("🟢 WebMsg Trendlog List Request - Device: {}, Active Only: {}", device_id, params.active_only));
+    {
+        let db = app_state.conn.lock().await;
+        crate::logging::service::emit_app_log(
+            &*db,
+            "info",
+            "API_REQ",
+            Some("trendlog_webmsg_routes"),
+            None,
+            &format!("[INFO] WebMsg Trendlog List Request - Device: {}, Active Only: {}", device_id, params.active_only),
+            None,
+        )
+        .await;
+    }
 
     let service = TrendlogWebMsgService::new();
 
@@ -86,11 +95,35 @@ async fn get_trendlog_list(
                 timestamp: chrono::Utc::now().to_rfc3339(),
             };
 
-            logger.info(&format!("✅ WebMsg Trendlog List Success - Total: {}, Active: {}", response.total_count, response.active_count));
+            {
+                let db = app_state.conn.lock().await;
+                crate::logging::service::emit_app_log(
+                    &*db,
+                    "info",
+                    "API_REQ",
+                    Some("trendlog_webmsg_routes"),
+                    None,
+                    &format!("[OK] WebMsg Trendlog List Success - Total: {}, Active: {}", response.total_count, response.active_count),
+                    None,
+                )
+                .await;
+            }
             Ok(Json(response))
         }
         Err(e) => {
-            logger.error(&format!("❌ WebMsg Trendlog List Failed: {:?}", e));
+            {
+                let db = app_state.conn.lock().await;
+                crate::logging::service::emit_app_log(
+                    &*db,
+                    "error",
+                    "API_REQ",
+                    Some("trendlog_webmsg_routes"),
+                    None,
+                    &format!("[ERROR] WebMsg Trendlog List Failed: {:?}", e),
+                    None,
+                )
+                .await;
+            }
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
@@ -106,12 +139,22 @@ async fn get_trendlog_list(
 
 /// GET /api/trendlog/webmsg/entry/{device_id}/{monitor_index} - Get specific trendlog entry
 async fn get_trendlog_entry(
-    State(_app_state): State<T3AppState>,
+    State(app_state): State<T3AppState>,
     Path((device_id, monitor_index)): Path<(i32, i32)>,
 ) -> Result<Json<TrendlogEntryResponse>, (StatusCode, Json<JsonValue>)> {
-    let mut logger = ServiceLogger::api().unwrap_or_else(|_| ServiceLogger::new("trendlog_webmsg").unwrap());
-
-    logger.info(&format!("🟢 WebMsg Trendlog Entry Request - Device: {}, Monitor: {}", device_id, monitor_index));
+    {
+        let db = app_state.conn.lock().await;
+        crate::logging::service::emit_app_log(
+            &*db,
+            "info",
+            "API_REQ",
+            Some("trendlog_webmsg_routes"),
+            None,
+            &format!("[INFO] WebMsg Trendlog Entry Request - Device: {}, Monitor: {}", device_id, monitor_index),
+            None,
+        )
+        .await;
+    }
 
     let service = TrendlogWebMsgService::new();
 
@@ -125,11 +168,35 @@ async fn get_trendlog_entry(
                 timestamp: chrono::Utc::now().to_rfc3339(),
             };
 
-            logger.info(&format!("✅ WebMsg Trendlog Entry Success - Label: {}, Status: {}", response.trendlog.label, response.trendlog.status));
+            {
+                let db = app_state.conn.lock().await;
+                crate::logging::service::emit_app_log(
+                    &*db,
+                    "info",
+                    "API_REQ",
+                    Some("trendlog_webmsg_routes"),
+                    None,
+                    &format!("[OK] WebMsg Trendlog Entry Success - Label: {}, Status: {}", response.trendlog.label, response.trendlog.status),
+                    None,
+                )
+                .await;
+            }
             Ok(Json(response))
         }
         Err(e) => {
-            logger.error(&format!("❌ WebMsg Trendlog Entry Failed: {:?}", e));
+            {
+                let db = app_state.conn.lock().await;
+                crate::logging::service::emit_app_log(
+                    &*db,
+                    "error",
+                    "API_REQ",
+                    Some("trendlog_webmsg_routes"),
+                    None,
+                    &format!("[ERROR] WebMsg Trendlog Entry Failed: {:?}", e),
+                    None,
+                )
+                .await;
+            }
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
@@ -146,12 +213,22 @@ async fn get_trendlog_entry(
 
 /// GET /api/trendlog/webmsg/refresh/{device_id}/{monitor_index} - Refresh trendlog from device
 async fn refresh_trendlog_entry(
-    State(_app_state): State<T3AppState>,
+    State(app_state): State<T3AppState>,
     Path((device_id, monitor_index)): Path<(i32, i32)>,
 ) -> Result<Json<TrendlogEntryResponse>, (StatusCode, Json<JsonValue>)> {
-    let mut logger = ServiceLogger::api().unwrap_or_else(|_| ServiceLogger::new("trendlog_webmsg").unwrap());
-
-    logger.info(&format!("🔄 WebMsg Trendlog Refresh Request - Device: {}, Monitor: {}", device_id, monitor_index));
+    {
+        let db = app_state.conn.lock().await;
+        crate::logging::service::emit_app_log(
+            &*db,
+            "info",
+            "API_REQ",
+            Some("trendlog_webmsg_routes"),
+            None,
+            &format!("[SYNC] WebMsg Trendlog Refresh Request - Device: {}, Monitor: {}", device_id, monitor_index),
+            None,
+        )
+        .await;
+    }
 
     let service = TrendlogWebMsgService::new();
 
@@ -165,11 +242,35 @@ async fn refresh_trendlog_entry(
                 timestamp: chrono::Utc::now().to_rfc3339(),
             };
 
-            logger.info(&format!("✅ WebMsg Trendlog Refresh Success - Fresh data loaded"));
+            {
+                let db = app_state.conn.lock().await;
+                crate::logging::service::emit_app_log(
+                    &*db,
+                    "info",
+                    "API_REQ",
+                    Some("trendlog_webmsg_routes"),
+                    None,
+                    "[OK] WebMsg Trendlog Refresh Success - Fresh data loaded",
+                    None,
+                )
+                .await;
+            }
             Ok(Json(response))
         }
         Err(e) => {
-            logger.error(&format!("❌ WebMsg Trendlog Refresh Failed: {:?}", e));
+            {
+                let db = app_state.conn.lock().await;
+                crate::logging::service::emit_app_log(
+                    &*db,
+                    "error",
+                    "API_REQ",
+                    Some("trendlog_webmsg_routes"),
+                    None,
+                    &format!("[ERROR] WebMsg Trendlog Refresh Failed: {:?}", e),
+                    None,
+                )
+                .await;
+            }
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
@@ -186,12 +287,22 @@ async fn refresh_trendlog_entry(
 
 /// GET /api/trendlog/webmsg/status/{device_id} - Check device online status
 async fn check_device_status(
-    State(_app_state): State<T3AppState>,
+    State(app_state): State<T3AppState>,
     Path(device_id): Path<i32>,
 ) -> Result<Json<DeviceStatusResponse>, (StatusCode, Json<JsonValue>)> {
-    let mut logger = ServiceLogger::api().unwrap_or_else(|_| ServiceLogger::new("trendlog_webmsg").unwrap());
-
-    logger.info(&format!("🔍 WebMsg Device Status Check - Device: {}", device_id));
+    {
+        let db = app_state.conn.lock().await;
+        crate::logging::service::emit_app_log(
+            &*db,
+            "info",
+            "API_REQ",
+            Some("trendlog_webmsg_routes"),
+            None,
+            &format!("[CHECK] WebMsg Device Status Check - Device: {}", device_id),
+            None,
+        )
+        .await;
+    }
 
     let service = TrendlogWebMsgService::new();
 
@@ -204,11 +315,35 @@ async fn check_device_status(
                 timestamp: chrono::Utc::now().to_rfc3339(),
             };
 
-            logger.info(&format!("✅ WebMsg Device Status - Device {} is {}", device_id, if online { "ONLINE" } else { "OFFLINE" }));
+            {
+                let db = app_state.conn.lock().await;
+                crate::logging::service::emit_app_log(
+                    &*db,
+                    "info",
+                    "API_REQ",
+                    Some("trendlog_webmsg_routes"),
+                    None,
+                    &format!("[OK] WebMsg Device Status - Device {} is {}", device_id, if online { "ONLINE" } else { "OFFLINE" }),
+                    None,
+                )
+                .await;
+            }
             Ok(Json(response))
         }
         Err(e) => {
-            logger.error(&format!("❌ WebMsg Device Status Failed: {:?}", e));
+            {
+                let db = app_state.conn.lock().await;
+                crate::logging::service::emit_app_log(
+                    &*db,
+                    "error",
+                    "API_REQ",
+                    Some("trendlog_webmsg_routes"),
+                    None,
+                    &format!("[ERROR] WebMsg Device Status Failed: {:?}", e),
+                    None,
+                )
+                .await;
+            }
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
@@ -225,18 +360,40 @@ async fn check_device_status(
 
 /// GET /api/trendlog/webmsg/summary/{device_id} - Get trendlog summary
 async fn get_trendlog_summary(
-    State(_app_state): State<T3AppState>,
+    State(app_state): State<T3AppState>,
     Path(device_id): Path<i32>,
 ) -> Result<Json<JsonValue>, (StatusCode, Json<JsonValue>)> {
-    let mut logger = ServiceLogger::api().unwrap_or_else(|_| ServiceLogger::new("trendlog_webmsg").unwrap());
-
-    logger.info(&format!("📊 WebMsg Trendlog Summary Request - Device: {}", device_id));
+    {
+        let db = app_state.conn.lock().await;
+        crate::logging::service::emit_app_log(
+            &*db,
+            "info",
+            "API_REQ",
+            Some("trendlog_webmsg_routes"),
+            None,
+            &format!("[INFO] WebMsg Trendlog Summary Request - Device: {}", device_id),
+            None,
+        )
+        .await;
+    }
 
     let service = TrendlogWebMsgService::new();
 
     match service.get_trendlog_summary(device_id).await {
         Ok(summary) => {
-            logger.info(&format!("✅ WebMsg Trendlog Summary Success - Device: {}", device_id));
+            {
+                let db = app_state.conn.lock().await;
+                crate::logging::service::emit_app_log(
+                    &*db,
+                    "info",
+                    "API_REQ",
+                    Some("trendlog_webmsg_routes"),
+                    None,
+                    &format!("[OK] WebMsg Trendlog Summary Success - Device: {}", device_id),
+                    None,
+                )
+                .await;
+            }
 
             let mut response = summary;
             response.insert("success".to_string(), serde_json::Value::Bool(true));
@@ -245,7 +402,19 @@ async fn get_trendlog_summary(
             Ok(Json(serde_json::Value::Object(response.into_iter().collect())))
         }
         Err(e) => {
-            logger.error(&format!("❌ WebMsg Trendlog Summary Failed: {:?}", e));
+            {
+                let db = app_state.conn.lock().await;
+                crate::logging::service::emit_app_log(
+                    &*db,
+                    "error",
+                    "API_REQ",
+                    Some("trendlog_webmsg_routes"),
+                    None,
+                    &format!("[ERROR] WebMsg Trendlog Summary Failed: {:?}", e),
+                    None,
+                )
+                .await;
+            }
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({

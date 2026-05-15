@@ -5,7 +5,6 @@ use std::sync::{Arc, RwLock};
 use sea_orm::*;
 use crate::entity::t3_device::trendlog_data;
 use crate::error::AppError;
-use crate::logger::{write_structured_log_with_level, LogLevel};
 
 #[derive(Hash, Eq, PartialEq, Clone, Debug)]
 pub struct ParentKey {
@@ -86,8 +85,8 @@ impl TrendlogParentCache {
         }
 
         let mut parent_ids = Vec::with_capacity(keys.len());
-        let mut cache_hits = 0;
-        let mut cache_misses = 0;
+        let mut _cache_hits = 0;
+        let mut _cache_misses = 0;
         let mut keys_to_fetch = Vec::new();
         let mut fetch_indices = Vec::new();
 
@@ -96,11 +95,11 @@ impl TrendlogParentCache {
             let cached_id = self.cache.read().ok().and_then(|cache| cache.get(key).copied());
             if let Some(id) = cached_id {
                 parent_ids.push((idx, id));
-                cache_hits += 1;
+                _cache_hits += 1;
             } else {
                 keys_to_fetch.push((key.clone(), digital_analog.clone(), range_field.clone(), units.clone()));
                 fetch_indices.push(idx);
-                cache_misses += 1;
+                _cache_misses += 1;
             }
         }
 
@@ -244,18 +243,6 @@ impl TrendlogParentCache {
         // Sort by original index and extract IDs
         parent_ids.sort_by_key(|(idx, _)| *idx);
         let result: Vec<i32> = parent_ids.into_iter().map(|(_, id)| id).collect();
-
-        // Log batch statistics
-        if cache_misses > 0 || cache_hits > 0 {
-            let _ = write_structured_log_with_level(
-                "T3_Webview_API",
-                &format!(
-                    "📊 [ParentCache] Batch processed {} keys - Cache hits: {}, Database lookups: {}",
-                    keys.len(), cache_hits, cache_misses
-                ),
-                LogLevel::Info
-            );
-        }
 
         Ok(result)
     }
