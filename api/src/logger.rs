@@ -1,4 +1,4 @@
-use std::fs::{OpenOptions, create_dir_all};
+use std::fs::{create_dir_all, OpenOptions};
 use std::io::Write;
 use chrono::{Utc, Timelike};
 use crate::constants::get_t3000_runtime_path;
@@ -28,47 +28,38 @@ pub fn create_structured_log_path(base_filename: &str) -> Result<String, std::io
     Ok(log_filename.to_string_lossy().to_string())
 }
 
-/// Helper function to write structured logs with log level prefix
+/// Backward-compatible helper retained for tests and legacy callsites.
 pub fn write_structured_log(base_filename: &str, message: &str) -> Result<(), std::io::Error> {
     write_structured_log_with_level(base_filename, message, LogLevel::Info)
 }
 
-/// Helper function to write structured logs with specific log level
-pub fn write_structured_log_with_level(base_filename: &str, message: &str, level: LogLevel) -> Result<(), std::io::Error> {
+/// Backward-compatible helper retained for tests and legacy callsites.
+pub fn write_structured_log_with_level(
+    base_filename: &str,
+    message: &str,
+    level: LogLevel,
+) -> Result<(), std::io::Error> {
     if !ENABLE_T3_WEB_LOG {
         return Ok(());
     }
 
     let log_path = create_structured_log_path(base_filename)?;
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(log_path)?;
-
+    let mut file = OpenOptions::new().create(true).append(true).open(log_path)?;
     let timestamp = Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-    let log_entry = format!("[{}] [{}] {}", timestamp, level.as_str(), message);
-    writeln!(file, "{}", log_entry)?;
+    let line = format!("[{}] [{}] {}\n", timestamp, level.as_str(), message);
+    file.write_all(line.as_bytes())?;
+    file.flush()?;
     Ok(())
 }
 
 /// Structured logging for T3000 WebView Service
 pub struct ServiceLogger {
-    log_file: Option<std::fs::File>,
+    base_filename: String,
 }
 
 impl ServiceLogger {
     pub fn new(base_filename: &str) -> Result<Self, std::io::Error> {
-        if !ENABLE_T3_WEB_LOG {
-            return Ok(ServiceLogger { log_file: None });
-        }
-
-        let log_path = create_structured_log_path(base_filename)?;
-        let log_file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(log_path)?;
-
-        Ok(ServiceLogger { log_file: Some(log_file) })
+        Ok(ServiceLogger { base_filename: base_filename.to_string() })
     }
 
     /// Create a logger for FFI operations
@@ -99,7 +90,7 @@ impl ServiceLogger {
     /// Create a no-op logger that silently discards all messages.
     /// Used as a fallback when the log file cannot be created.
     pub fn noop() -> Self {
-        ServiceLogger { log_file: None }
+        ServiceLogger { base_filename: String::new() }
     }
 
     /// Create a logger for Input API operations
@@ -133,14 +124,32 @@ impl ServiceLogger {
     }
 
     pub fn log(&mut self, level: LogLevel, message: &str) {
-        if let Some(ref mut file) = self.log_file {
-            let timestamp = Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-            let log_entry = format!("[{}] [{}] {}\n", timestamp, level.as_str(), message);
-
-            // Write to file only (headless service)
-            let _ = file.write_all(log_entry.as_bytes());
-            let _ = file.flush();
+        if self.base_filename.is_empty() {
+            return;
         }
+
+        let base_filename = self.base_filename.clone();
+        let level_text = level.as_str().to_string();
+        let message_text = message.to_string();
+
+        tokio::spawn(async move {
+            let db = match crate::db_connection::establish_t3_device_connection().await {
+                Ok(db) => db,
+                Err(_) => return,
+            };
+
+            let category = legacy_category_for_base_filename(&base_filename);
+            crate::logging::service::emit_app_log(
+                &db,
+                &level_text,
+                category,
+                Some(&base_filename),
+                None,
+                &message_text,
+                None,
+            )
+            .await;
+        });
     }
 
     pub fn info(&mut self, message: &str) {
@@ -157,16 +166,38 @@ impl ServiceLogger {
 
     /// Add an empty line without timestamp for visual grouping
     pub fn add_empty_line(&mut self) {
-        if let Some(ref mut file) = self.log_file {
-            let _ = file.write_all(b"\n");
-            let _ = file.flush();
-        }
+        let _ = &self.base_filename;
     }
 
     /// Add a breakdown line separator for action rounds
     pub fn add_breakdown(&mut self, _round_description: &str) {
         // Just add empty line for visual grouping
         self.add_empty_line();
+    }
+}
+
+fn legacy_category_for_base_filename(base_filename: &str) -> &'static str {
+    match base_filename {
+        "T3_Webview_API" => "API_REQ",
+        "T3_Webview_Socket" => "WEBSOCKET",
+        "T3_Webview_FFI" => "FFI_CALL",
+        "T3_Webview_MsgAction" => "MESSAGE_ACTION",
+        "T3_Webview_Poll" => "POLL",
+        "T3_Webview_Device" => "DEVICE",
+        "T3_Webview_Trendlog" => "TRENDLOG",
+        "T3_Webview_Database" => "MAINTENANCE",
+        "T3_Webview_Initialize" => "STARTUP",
+        "T3_Webview_API_Inputs" => "DEVICE",
+        "T3_Webview_API_Outputs" => "DEVICE",
+        "T3_Webview_API_Variables" => "DEVICE",
+        "T3_Webview_Database_Inputs" => "DEVICE",
+        "T3_Webview_Database_Outputs" => "DEVICE",
+        "T3_Webview_Database_Variables" => "DEVICE",
+        "T3_PartitionMonitor" => "MAINTENANCE",
+        "T3_DatabaseSizeMonitor" => "MAINTENANCE",
+        "T3_PartitionQuery" => "TRENDLOG",
+        "T3_Webview_TRL_FFI" => "TRENDLOG",
+        _ => "STARTUP",
     }
 }
 

@@ -16,6 +16,7 @@ pub mod entity;
 pub mod error;
 pub mod file;
 pub mod log;
+pub mod logging;
 pub mod logger;
 pub mod modbus_register;
 pub mod server;
@@ -153,34 +154,45 @@ async fn load_ffi_sync_interval_from_db() -> Result<u64, Box<dyn std::error::Err
     }
 }
 
+async fn emit_service_log(level: &str, category: &str, message: &str) {
+    let db = match establish_t3_device_connection().await {
+        Ok(db) => db,
+        Err(_) => return,
+    };
+    crate::logging::service::emit_app_log(&db, level, category, None, None, message, None).await;
+}
+
 /// Start all T3000 services (HTTP + WebSocket)
 pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     // Log to file for headless service
     let startup_msg = format!("T3000 WebView Service initializing - HTTP (9103) + WebSocket (9104) + Auto-Sync (T3000.db → webview_t3_device.db)");
 
-    // Write to structured log file - new Initialize category
-    use crate::logger::{write_structured_log_with_level, LogLevel};
-    let _ = write_structured_log_with_level("T3_Webview_Initialize", &startup_msg, LogLevel::Info);
+    emit_service_log("info", "T3_Webview_Initialize", &startup_msg).await;
 
     // Initialize T3000 device database (webview_t3_device.db)
     // Automatically switches between Option 1 (copy) and Option 2 (dynamic) based on USE_DYNAMIC_DATABASE_CREATION constant
     if let Err(e) = crate::utils::initialize_t3_device_database().await {
         let error_msg = format!("T3000 webview database (webview_t3_device.db) initialization failed: {} - Core services will continue", e);
-        let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Error);
+        emit_service_log("error", "T3_Webview_Initialize", &error_msg).await;
         println!("⚠️  Warning: T3000 webview database unavailable - Core services starting anyway");
     } else {
         let success_msg = "T3000 webview database (webview_t3_device.db) ready";
-        let _ = write_structured_log_with_level("T3_Webview_Initialize", &success_msg, LogLevel::Info);
+        emit_service_log("info", "T3_Webview_Initialize", success_msg).await;
     }
 
     // Initialize T3000 Main Service with dynamic sync interval from database
     let sync_interval_secs = load_ffi_sync_interval_from_db().await.unwrap_or(300); // Default 5 minutes
 
-    let _ = write_structured_log_with_level(
+    emit_service_log(
+        "info",
         "T3_Webview_Initialize",
-        &format!("Sampling Interval loaded: {} seconds ({} minutes)", sync_interval_secs, sync_interval_secs / 60),
-        LogLevel::Info
-    );
+        &format!(
+            "Sampling Interval loaded: {} seconds ({} minutes)",
+            sync_interval_secs,
+            sync_interval_secs / 60
+        ),
+    )
+    .await;
 
     let main_service_config = T3000MainConfig {
         sync_interval_secs,
@@ -189,10 +201,15 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     };
     if let Err(e) = initialize_logging_service(main_service_config).await {
         let error_msg = format!("T3000 FFI Sync Service initialization failed: {} - Core services will continue", e);
-        let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Warn);
+        emit_service_log("warn", "T3_Webview_Initialize", &error_msg).await;
         println!("⚠️  Warning: T3000 FFI Sync Service unavailable - Core services starting anyway");
     } else {
-        let _ = write_structured_log_with_level("T3_Webview_Initialize", "T3000 FFI Sync Service initialized (Primary T3000 FFI integration service)", LogLevel::Info);
+        emit_service_log(
+            "info",
+            "T3_Webview_Initialize",
+            "T3000 FFI Sync Service initialized (Primary T3000 FFI integration service)",
+        )
+        .await;
     }
 
     // Start T3000 FFI Sync Service in background with immediate trigger
@@ -201,20 +218,29 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     //   - otherwise → FFI sync stays disabled
     let main_service_handle = {
         let ini_cfg = crate::ini_config::read_server_db_config_auto();
-        let _ = write_structured_log_with_level(
+        emit_service_log(
+            "info",
             "T3_Webview_Initialize",
-            &format!("FFI Sync runtime check: ini.enabled={}, ini.role={}", ini_cfg.enabled, ini_cfg.role),
-            LogLevel::Info,
-        );
+            &format!(
+                "FFI Sync runtime check: ini.enabled={}, ini.role={}",
+                ini_cfg.enabled, ini_cfg.role
+            ),
+        )
+        .await;
 
         if ini_cfg.enabled && ini_cfg.role == "server" {
             let handle = tokio::spawn(async move {
                 if let Err(e) = start_logging_sync().await {
                     let error_msg = format!("T3000 FFI Sync Service (FFI + DeviceSync + WebSocket) failed: {}", e);
-                    let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Error);
+                    emit_service_log("error", "T3_Webview_Initialize", &error_msg).await;
                 }
             });
-            let _ = write_structured_log_with_level("T3_Webview_Initialize", "✅ T3000 FFI Sync Service started (center DB active, role=server)", LogLevel::Info);
+            emit_service_log(
+                "info",
+                "T3_Webview_Initialize",
+                "✅ T3000 FFI Sync Service started (center DB active, role=server)",
+            )
+            .await;
             Some(handle)
         } else {
             let reason = if !ini_cfg.enabled {
@@ -222,7 +248,12 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 "role is client (only server syncs FFI data)"
             };
-            let _ = write_structured_log_with_level("T3_Webview_Initialize", &format!("⏸️  T3000 FFI Sync Service DISABLED — {}", reason), LogLevel::Info);
+            emit_service_log(
+                "info",
+                "T3_Webview_Initialize",
+                &format!("[PAUSE] T3000 FFI Sync Service DISABLED - {}", reason),
+            )
+            .await;
             None
         }
     };
@@ -231,52 +262,73 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     if crate::constants::ENABLE_PARTITION_MONITOR_SERVICE {
         if let Err(e) = partition_monitor_service::start_partition_monitor_service().await {
             let error_msg = format!("Partition monitor service initialization failed: {}", e);
-            let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Warn);
+            emit_service_log("warn", "T3_Webview_Initialize", &error_msg).await;
         } else {
-            let _ = write_structured_log_with_level("T3_Webview_Initialize", "✅ Partition monitor service started (hourly checks)", LogLevel::Info);
+            emit_service_log(
+                "info",
+                "T3_Webview_Initialize",
+                "✅ Partition monitor service started (hourly checks)",
+            )
+            .await;
         }
     } else {
-        let _ = write_structured_log_with_level("T3_Webview_Initialize", "⏸️  Partition monitor service DISABLED by constant (ENABLE_PARTITION_MONITOR_SERVICE = false)", LogLevel::Warn);
+            emit_service_log(
+                "warn",
+                "T3_Webview_Initialize",
+                "[PAUSE] Partition monitor service DISABLED by constant (ENABLE_PARTITION_MONITOR_SERVICE = false)",
+            )
+        .await;
     }
 
     // Schedule startup partition migration check (5 minute delay to allow database stabilization)
     tokio::spawn(async {
         let wait_secs = 300; // 5 minutes
-        let _ = write_structured_log_with_level(
+        emit_service_log(
+            "info",
             "T3_Webview_Initialize",
-            &format!("⏳ Scheduled partition check in {} seconds ({} minutes) to allow database stabilization...", wait_secs, wait_secs / 60),
-            LogLevel::Info
-        );
+            &format!(
+                "[TIMER] Scheduled partition check in {} seconds ({} minutes) to allow database stabilization...",
+                wait_secs,
+                wait_secs / 60
+            ),
+        )
+        .await;
 
         tokio::time::sleep(tokio::time::Duration::from_secs(wait_secs)).await;
 
-        let _ = write_structured_log_with_level(
+        emit_service_log(
+            "info",
             "T3_Webview_Initialize",
-            "🔍 Starting scheduled partition migration check (after 5-minute stabilization period)...",
-            LogLevel::Info
-        );
+            "[CHECK] Starting scheduled partition migration check (after 5-minute stabilization period)...",
+        )
+        .await;
 
         if let Err(e) = partition_monitor_service::check_startup_migrations().await {
-            let _ = write_structured_log_with_level(
+            emit_service_log(
+                "warn",
                 "T3_Webview_Initialize",
-                &format!("⚠️ Startup partition migration check failed: {}", e),
-                LogLevel::Warn
-            );
+                &format!("[WARN] Startup partition migration check failed: {}", e),
+            )
+            .await;
         } else {
-            let _ = write_structured_log_with_level(
+            emit_service_log(
+                "info",
                 "T3_Webview_Initialize",
                 "✅ Startup partition migration check completed",
-                LogLevel::Info
-            );
+            )
+            .await;
         }
     });
 
     // Start WebSocket service in background
     let websocket_handle = tokio::spawn(async move {
-        if let Err(e) = crate::t3_socket::start_websocket_service().await {
+        let websocket_result = crate::t3_socket::start_websocket_service()
+            .await
+            .map_err(|e| e.to_string());
+        if let Err(err_text) = websocket_result {
             // Log WebSocket errors to structured log
-            let error_msg = format!("WebSocket service failed: {}", e);
-            let _ = write_structured_log_with_level("T3_Webview_Socket", &error_msg, LogLevel::Error);
+            let error_msg = format!("WebSocket service failed: {}", err_text);
+            emit_service_log("error", "T3_Webview_Socket", &error_msg).await;
         }
     });
 
@@ -299,11 +351,11 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
 pub async fn start_all_services_with_options(run_migrations: bool) -> Result<(), Box<dyn std::error::Error>> {
     // Run migrations first if requested (force migration regardless of pending status)
     if run_migrations {
-        println!("🔄 Force running database migrations...");
+            println!("[RELOAD] Force running database migrations...");
         match utils::run_migrations().await {
-            Ok(_) => println!("✅ Database migrations completed"),
+            Ok(_) => println!("[OK] Database migrations completed"),
             Err(e) => {
-                eprintln!("❌ Database migration failed: {:?}", e);
+                eprintln!("[ERROR] Database migration failed: {:?}", e);
                 return Err(e);
             }
         }
@@ -321,15 +373,15 @@ pub extern "C" fn run_t3_server() -> RustError {
         };
 
         runtime.block_on(async {
-            println!("🔗 T3000 DLL Entry Point: Starting all services...");
+            println!("[LINK] T3000 DLL Entry Point: Starting all services...");
 
             match start_all_services().await {
                 Ok(_) => {
-                    println!("✅ T3000 WebView API services started from DLL");
+                    println!("[OK] T3000 WebView API services started from DLL");
                     RustError::Ok
                 }
                 Err(err) => {
-                    eprintln!("❌ DLL service startup failed: {:?}", err);
+                    eprintln!("[ERROR] DLL service startup failed: {:?}", err);
                     RustError::Error
                 }
             }

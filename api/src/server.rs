@@ -165,9 +165,9 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
             logger.info("T3000 application state created");
             // Emit a STARTUP activity-log entry now that the DB is ready
             {
-                use crate::database_management::sync_health::write_app_log;
+                use crate::logging::service::emit_app_log;
                 let db = state.conn.lock().await;
-                write_app_log(
+                emit_app_log(
                     &*db,
                     "info",
                     "STARTUP",

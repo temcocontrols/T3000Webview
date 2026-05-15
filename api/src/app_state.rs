@@ -74,7 +74,6 @@ use crate::db_connection::{
     establish_device_conn_from_config, establish_t3_device_connection, validate_device_conn_ready,
 };
 use crate::ini_config;
-use crate::logger::write_structured_log;
 
 /// Abstracted enhanced application state with T3000 device support
 #[derive(Clone)]
@@ -102,16 +101,27 @@ pub struct T3AppState {
 pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Error>> {
     // Log database paths before attempting connections
     let _timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+    let startup_log_db = establish_t3_device_connection().await.ok();
 
-    // Use structured logging for database connection attempts
-    use crate::logger::{write_structured_log_with_level, LogLevel};
+    // Use centralized logging for database connection attempts
     use crate::utils::{DATABASE_URL, T3_DEVICE_DATABASE_URL};
 
     let log_message = format!(
         "Database connection attempt: primary={}, t3_device={}",
         DATABASE_URL.as_str(), T3_DEVICE_DATABASE_URL.as_str()
     );
-    let _ = write_structured_log_with_level("T3_Webview_Initialize", &log_message, LogLevel::Info);
+    if let Some(log_db) = startup_log_db.as_ref() {
+        crate::logging::service::emit_app_log(
+            log_db,
+            "info",
+            "T3_Webview_Initialize",
+            None,
+            None,
+            &log_message,
+            None,
+        )
+        .await;
+    }
 
     // Check if database files exist
     let primary_path = DATABASE_URL.strip_prefix("sqlite://").unwrap_or(&DATABASE_URL);
@@ -122,7 +132,18 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
         std::path::Path::new(t3_device_path).exists(),
         std::env::current_dir().unwrap_or_default()
     );
-    let _ = write_structured_log_with_level("T3_Webview_Initialize", &file_check_message, LogLevel::Info);
+    if let Some(log_db) = startup_log_db.as_ref() {
+        crate::logging::service::emit_app_log(
+            log_db,
+            "info",
+            "T3_Webview_Initialize",
+            None,
+            None,
+            &file_check_message,
+            None,
+        )
+        .await;
+    }
 
     // Establish primary database connection
     let conn = match establish_connection().await {
@@ -136,7 +157,18 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
                 [{}] Error details: {:?}",
                 timestamp, timestamp, DATABASE_URL.as_str(), timestamp, e
             );
-            let _ = write_structured_log("database_errors", &error_message);
+            if let Some(log_db) = startup_log_db.as_ref() {
+                crate::logging::service::emit_app_log(
+                    log_db,
+                    "error",
+                    "database_errors",
+                    None,
+                    None,
+                    &error_message,
+                    None,
+                )
+                .await;
+            }
             return Err(e);
         }
     };
@@ -146,36 +178,48 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
     // we can determine which backend to connect to for device data.
     let local_config_conn = match establish_t3_device_connection().await {
         Ok(conn) => {
-            let _ = write_structured_log_with_level(
+            crate::logging::service::emit_app_log(
+                &conn,
+                "info",
                 "T3_Webview_Initialize",
+                None,
+                None,
                 "Local config connection (webview_t3_device.db) ready",
-                LogLevel::Info,
-            );
+                None,
+            )
+            .await;
             Some(Arc::new(Mutex::new(conn)))
         }
         Err(e) => {
-            let _ = write_structured_log_with_level(
+            crate::logging::service::emit_app_log(
+                &conn,
+                "warn",
                 "T3_Webview_Initialize",
+                None,
+                None,
                 &format!(
                     "local_config_conn unavailable — backend config REST endpoints disabled: {:?}",
                     e
                 ),
-                LogLevel::Warn,
-            );
+                None,
+            )
+            .await;
             None
         }
     };
 
     // ---- Step 2: Read setting.ini [ServerDatabase] for server/client config ----
     let ini_cfg = ini_config::read_server_db_config_auto();
-    let _ = write_structured_log_with_level(
+    crate::logging::service::emit_app_log(
+        &conn,
+        "info",
         "T3_Webview_Initialize",
-        &format!(
-            "INI config: enabled={}, role={}",
-            ini_cfg.enabled, ini_cfg.role
-        ),
-        LogLevel::Info,
-    );
+        None,
+        None,
+        &format!("INI config: enabled={}, role={}", ini_cfg.enabled, ini_cfg.role),
+        None,
+    )
+    .await;
 
     // ---- Step 3: Connect to the active backend based on INI + DB_BACKEND_CONFIG ----
     // When server DB is enabled (INI enabled=1), read DB_BACKEND_CONFIG and connect
@@ -189,69 +233,99 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
             match establish_device_conn_from_config(&*cfg_guard).await {
                 Ok((device_conn, config)) => {
                     if config.backend_type == crate::database_management::db_backend_config::BackendType::Sqlite {
-                        let _ = write_structured_log_with_level(
+                        crate::logging::service::emit_app_log(
+                            &conn,
+                            "warn",
                             "T3_Webview_Initialize",
+                            None,
+                            None,
                             "Server DB mode is enabled, but active backend is still SQLite — treating center DB as disconnected and falling back to local SQLite",
-                            LogLevel::Warn,
-                        );
+                            None,
+                        )
+                        .await;
                         establish_t3_device_connection().await.ok()
                     } else {
                         match validate_device_conn_ready(&device_conn).await {
                             Ok(()) => {
                                 server_db_connected = true;
-                                let _ = write_structured_log_with_level(
+                                crate::logging::service::emit_app_log(
+                                    &conn,
+                                    "info",
                                     "T3_Webview_Initialize",
+                                    None,
+                                    None,
                                     &format!(
                                         "Server DB connected via active backend: {} (role={})",
                                         config.backend_type, ini_cfg.role
                                     ),
-                                    LogLevel::Info,
-                                );
+                                    None,
+                                )
+                                .await;
                                 match device_conn {
                                     crate::device_db_conn::DeviceDbConn::SeaOrm { conn, .. } => Some(conn),
                                     crate::device_db_conn::DeviceDbConn::Mssql { pool } => {
-                                        let _ = write_structured_log_with_level(
+                                        crate::logging::service::emit_app_log(
+                                            &conn,
+                                            "info",
                                             "T3_Webview_Initialize",
+                                            None,
+                                            None,
                                             "MSSQL pool stored — MSSQL-specific services active",
-                                            LogLevel::Info,
-                                        );
+                                            None,
+                                        )
+                                        .await;
                                         mssql_pool = Some(pool);
                                         None
                                     }
                                 }
                             }
                             Err(e) => {
-                                let _ = write_structured_log_with_level(
+                                crate::logging::service::emit_app_log(
+                                    &conn,
+                                    "warn",
                                     "T3_Webview_Initialize",
+                                    None,
+                                    None,
                                     &format!(
                                         "Server DB validation failed, falling back to local SQLite: {}",
                                         e
                                     ),
-                                    LogLevel::Warn,
-                                );
+                                    None,
+                                )
+                                .await;
                                 establish_t3_device_connection().await.ok()
                             }
                         }
                     }
                 }
                 Err(e) => {
-                    let _ = write_structured_log_with_level(
+                    crate::logging::service::emit_app_log(
+                        &conn,
+                        "warn",
                         "T3_Webview_Initialize",
+                        None,
+                        None,
                         &format!(
                             "Server DB connect failed, falling back to local SQLite: {:?}",
                             e
                         ),
-                        LogLevel::Warn,
-                    );
+                        None,
+                    )
+                    .await;
                     establish_t3_device_connection().await.ok()
                 }
             }
         } else {
-            let _ = write_structured_log_with_level(
+            crate::logging::service::emit_app_log(
+                &conn,
+                "warn",
                 "T3_Webview_Initialize",
+                None,
+                None,
                 "Server DB enabled but local config unavailable — falling back to local SQLite",
-                LogLevel::Warn,
-            );
+                None,
+            )
+            .await;
             establish_t3_device_connection().await.ok()
         }
     } else {
@@ -260,14 +334,19 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
             let cfg_guard = lcfg.lock().await;
             match establish_device_conn_from_config(&*cfg_guard).await {
                 Ok((device_conn, config)) => {
-                    let _ = write_structured_log_with_level(
+                    crate::logging::service::emit_app_log(
+                        &conn,
+                        "info",
                         "T3_Webview_Initialize",
+                        None,
+                        None,
                         &format!(
                             "Device DB connected via active backend: {} (classic mode)",
                             config.backend_type
                         ),
-                        LogLevel::Info,
-                    );
+                        None,
+                    )
+                    .await;
                     match device_conn {
                         crate::device_db_conn::DeviceDbConn::SeaOrm { conn, .. } => Some(conn),
                         crate::device_db_conn::DeviceDbConn::Mssql { pool } => {
@@ -277,36 +356,51 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
                     }
                 }
                 Err(e) => {
-                    let _ = write_structured_log_with_level(
+                    crate::logging::service::emit_app_log(
+                        &conn,
+                        "warn",
                         "T3_Webview_Initialize",
+                        None,
+                        None,
                         &format!(
                             "Backend-aware connect failed, falling back to local SQLite: {:?}",
                             e
                         ),
-                        LogLevel::Warn,
-                    );
+                        None,
+                    )
+                    .await;
                     establish_t3_device_connection().await.ok()
                 }
             }
         } else {
             match establish_t3_device_connection().await {
                 Ok(conn) => {
-                    let _ = write_structured_log_with_level(
+                    crate::logging::service::emit_app_log(
+                        &conn,
+                        "info",
                         "T3_Webview_Initialize",
+                        None,
+                        None,
                         "WebView T3000 database connected (direct SQLite fallback)",
-                        LogLevel::Info,
-                    );
+                        None,
+                    )
+                    .await;
                     Some(conn)
                 }
                 Err(e) => {
-                    let _ = write_structured_log_with_level(
+                    crate::logging::service::emit_app_log(
+                        &conn,
+                        "warn",
                         "T3_Webview_Initialize",
+                        None,
+                        None,
                         &format!(
                             "WebView T3000 database unavailable — core services will continue: {:?}",
                             e
                         ),
-                        LogLevel::Warn,
-                    );
+                        None,
+                    )
+                    .await;
                     None
                 }
             }
