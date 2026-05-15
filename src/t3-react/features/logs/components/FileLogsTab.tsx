@@ -39,7 +39,7 @@ import {
 import { API_BASE_URL } from '../../../config/constants';
 import styles from '../../develop/pages/SystemLogsPage.module.css';
 
-const FILE_LOG_BASE = `${API_BASE_URL}/api/t3-develop/logs`;
+const FILE_LOG_BASE = `${API_BASE_URL}/api/develop/logs`;
 
 type LogLevel = 'all' | 'ERROR' | 'WARN' | 'INFO' | 'DEBUG';
 type LogCategory = 'all' | 'api' | 'cpp_msg' | 'handler' | 'database' | 'partition' | 'ffi' | 'initialize' | 'socket';
