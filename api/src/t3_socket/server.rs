@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use super::types::*;
 use crate::utils::log_message;
-use crate::logger::{write_structured_log_with_level, LogLevel};
+use crate::logging::types::LogLevel;
 // use crate::t3_device::trend_collector::TrendDataCollector; // Temporarily disabled
 
 /// Helper function to log WebSocket messages to both console and structured log file
@@ -19,8 +19,25 @@ fn log_socket_message(message: &str, level: LogLevel) {
     // Log to console for immediate debugging
     log_message(message, false);
 
-    // Log to structured file with T3_Webview_Socket_MMDD_HHHH.txt pattern
-    let _ = write_structured_log_with_level("T3_Webview_Socket", message, level);
+    let message_owned = message.to_string();
+    let level_owned = level.as_lower().to_string();
+
+    tokio::spawn(async move {
+        let db = match crate::db_connection::establish_t3_device_connection().await {
+            Ok(db) => db,
+            Err(_) => return,
+        };
+        crate::logging::service::emit_app_log(
+            &db,
+            &level_owned,
+            "T3_Webview_Socket",
+            None,
+            None,
+            &message_owned,
+            None,
+        )
+        .await;
+    });
 }
 
 /// Start the WebSocket service on port 9104

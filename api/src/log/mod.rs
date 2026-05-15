@@ -6,7 +6,7 @@ use axum::{
 };
 use serde::Deserialize;
 
-use crate::{app_state::AppState, database_management::sync_health::write_app_log};
+use crate::{app_state::AppState, logging::service::LoggingService};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -44,16 +44,17 @@ async fn handle_frontend_log(
     };
 
     let db = state.conn.lock().await;
-    write_app_log(
-        &*db,
-        level,
-        &payload.category,
-        payload.source.as_deref().or(Some("frontend")),
-        None,
-        &payload.message,
-        details.as_deref(),
-    )
-    .await;
+    LoggingService::new()
+        .emit_from_parts(
+            &*db,
+            level,
+            &payload.category,
+            payload.source.as_deref().or(Some("frontend")),
+            None,
+            &payload.message,
+            details.as_deref(),
+        )
+        .await;
 
     Ok(StatusCode::OK)
 }
