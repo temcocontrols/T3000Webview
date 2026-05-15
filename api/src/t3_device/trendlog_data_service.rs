@@ -9,7 +9,19 @@ use crate::t3_device::trendlog_parent_cache::{TrendlogParentCache, ParentKey};
 use crate::error::AppError;
 use std::sync::Arc;
 
-use crate::logger::{write_structured_log_with_level, LogLevel};
+
+async fn emit_api_log(db: &DatabaseConnection, level: &str, message: &str) {
+    crate::logging::service::emit_app_log(
+        db,
+        level,
+        "T3_Webview_API",
+        Some("trendlog_data_service"),
+        None,
+        message,
+        None,
+    )
+    .await;
+}
 
 /// Convert `?` placeholders to `$1, $2, …` when the backend is PostgreSQL.
 /// SQLite and MySQL both accept `?`, so they pass through unchanged.
@@ -141,17 +153,18 @@ impl T3TrendlogDataService {
             request.end_time.as_deref().unwrap_or("N/A"),
             request.limit
         );
-        let _ = write_structured_log_with_level("T3_Webview_API", &request_info, LogLevel::Info);
+        emit_api_log(db, "info", &request_info).await;
 
         // Execute the query with proper error handling
         match Self::execute_history_query(db, &request).await {
             Ok(result) => {
                 // Log successful completion
-                let _ = write_structured_log_with_level(
-                    "T3_Webview_API",
+                emit_api_log(
+                    db,
+                    "info",
                     "🎉 [TrendlogDataService] History query completed successfully",
-                    LogLevel::Info
-                );
+                )
+                .await;
                 Ok(result)
             },
             Err(error) => {
@@ -162,7 +175,7 @@ impl T3TrendlogDataService {
                     request.panel_id,
                     error
                 );
-                let _ = write_structured_log_with_level("T3_Webview_API", &error_info, LogLevel::Error);
+                emit_api_log(db, "error", &error_info).await;
                 Err(error)
             }
         }
@@ -231,7 +244,7 @@ impl T3TrendlogDataService {
                 "� [TrendlogDataService] Applied point types filter: {:?}",
                 point_types
             );
-            let _ = write_structured_log_with_level("T3_Webview_API", &filter_info, LogLevel::Info);
+            emit_api_log(db, "info", &filter_info).await;
         }
 
         // Apply specific points filter if provided
@@ -241,7 +254,7 @@ impl T3TrendlogDataService {
                     "🎯 [TrendlogDataService] Applying specific points filter: {} points",
                     specific_points.len()
                 );
-                let _ = write_structured_log_with_level("T3_Webview_API", &filter_info, LogLevel::Info);
+                emit_api_log(db, "info", &filter_info).await;
 
                 // Match by PointId + PointType + PanelId only.
                 // Exclude PointIndex: C++ stores it 0-based (IN1 → index=0) but the
@@ -264,7 +277,7 @@ impl T3TrendlogDataService {
                     "🔍 [TrendlogDataService] Specific points detail: {:?}",
                     debug_points
                 );
-                let _ = write_structured_log_with_level("T3_Webview_API", &debug_info, LogLevel::Info);
+                emit_api_log(db, "info", &debug_info).await;
             }
         }
 
@@ -281,7 +294,7 @@ impl T3TrendlogDataService {
                 "⏰ [TrendlogDataService] Applied start time filter: {}",
                 start_time
             );
-            let _ = write_structured_log_with_level("T3_Webview_API", &time_filter_info, LogLevel::Info);
+            emit_api_log(db, "info", &time_filter_info).await;
         }
 
         if let Some(end_time) = &request.end_time {
@@ -293,7 +306,7 @@ impl T3TrendlogDataService {
                 "⏰ [TrendlogDataService] Applied end time filter: {}",
                 end_time
             );
-            let _ = write_structured_log_with_level("T3_Webview_API", &time_filter_info, LogLevel::Info);
+            emit_api_log(db, "info", &time_filter_info).await;
         }
 
         // SAFETY: If no time filters provided, default to last 24 hours to prevent slow queries
@@ -307,7 +320,7 @@ impl T3TrendlogDataService {
                 "🛡️ [TrendlogDataService] No time filter provided - applying 24-hour safety limit from: {}",
                 default_start_str
             );
-            let _ = write_structured_log_with_level("T3_Webview_API", &safety_info, LogLevel::Warn);
+            emit_api_log(db, "warn", &safety_info).await;
         }
 
         // Order by logging time (newest first)
@@ -321,22 +334,18 @@ impl T3TrendlogDataService {
                 "📊 [TrendlogDataService] Applied result limit: {}",
                 limit
             );
-            let _ = write_structured_log_with_level("T3_Webview_API", &limit_info, LogLevel::Info);
+            emit_api_log(db, "info", &limit_info).await;
         } else {
             sql.push_str(&format!(" LIMIT {}", default_limit));
             let safety_info = format!(
                 "🛡️ [TrendlogDataService] No limit provided - applying safety limit: {}",
                 default_limit
             );
-            let _ = write_structured_log_with_level("T3_Webview_API", &safety_info, LogLevel::Warn);
+            emit_api_log(db, "warn", &safety_info).await;
         }
 
         // Log query execution start
-        let _ = write_structured_log_with_level(
-            "T3_Webview_API",
-            "🔄 [TrendlogDataService] Executing JOIN query...",
-            LogLevel::Info
-        );
+        emit_api_log(db, "info", "🔄 [TrendlogDataService] Executing JOIN query...").await;
 
         let query_start_time = std::time::Instant::now();
 
@@ -354,7 +363,7 @@ impl T3TrendlogDataService {
             query_duration.as_millis(),
             trendlog_data_list.len()
         );
-        let _ = write_structured_log_with_level("T3_Webview_API", &query_result_info, LogLevel::Info);
+        emit_api_log(db, "info", &query_result_info).await;
 
         // Analyze data distribution across points for debugging
         if !trendlog_data_list.is_empty() {
@@ -372,7 +381,7 @@ impl T3TrendlogDataService {
                 point_counts.len(),
                 point_counts
             );
-            let _ = write_structured_log_with_level("T3_Webview_API", &distribution_info, LogLevel::Info);
+            emit_api_log(db, "info", &distribution_info).await;
         }
 
         // Format the data for the TrendLogChart component
@@ -406,7 +415,7 @@ impl T3TrendlogDataService {
             format_duration.as_millis(),
             formatted_data.len()
         );
-        let _ = write_structured_log_with_level("T3_Webview_API", &format_info, LogLevel::Info);
+        emit_api_log(db, "info", &format_info).await;
 
         // Create detailed response message
         let specific_points_count = request.specific_points.as_ref().map(|sp| sp.len()).unwrap_or(0);
@@ -426,7 +435,7 @@ impl T3TrendlogDataService {
             request.start_time.as_deref().unwrap_or("N/A"),
             request.end_time.as_deref().unwrap_or("N/A")
         );
-        let _ = write_structured_log_with_level("T3_Webview_API", &success_summary, LogLevel::Info);
+        emit_api_log(db, "info", &success_summary).await;
 
         // Log sample data points for debugging (first 3 records)
         if !formatted_data.is_empty() {
@@ -435,7 +444,7 @@ impl T3TrendlogDataService {
                 "🔍 [TrendlogDataService] Sample data (first {} of {} records):",
                 sample_count, formatted_data.len()
             );
-            let _ = write_structured_log_with_level("T3_Webview_API", &sample_info, LogLevel::Info);
+            emit_api_log(db, "info", &sample_info).await;
 
             for (i, sample) in formatted_data.iter().take(sample_count).enumerate() {
                 let sample_detail = format!(
@@ -446,7 +455,7 @@ impl T3TrendlogDataService {
                     sample["point_id"].as_str().unwrap_or("N/A"),
                     sample["point_type"].as_str().unwrap_or("N/A")
                 );
-                let _ = write_structured_log_with_level("T3_Webview_API", &sample_detail, LogLevel::Info);
+                emit_api_log(db, "info", &sample_detail).await;
             }
         }
 
@@ -483,7 +492,7 @@ impl T3TrendlogDataService {
             data_point.point_type,
             data_point.value
         );
-        let _ = write_structured_log_with_level("T3_Webview_API", &save_info, LogLevel::Info);
+        emit_api_log(db, "info", &save_info).await;
 
         // Generate timestamp for logging - use Local time instead of UTC
         let now = chrono::Local::now();
@@ -523,7 +532,7 @@ impl T3TrendlogDataService {
                     data_point.point_id,
                     logging_time_fmt
                 );
-                let _ = write_structured_log_with_level("T3_Webview_API", &success_info, LogLevel::Info);
+                emit_api_log(db, "info", &success_info).await;
                 Ok(parent_id) // Return parent_id instead of detail.id
             },
             Err(error) => {
@@ -533,7 +542,7 @@ impl T3TrendlogDataService {
                     data_point.point_id,
                     error
                 );
-                let _ = write_structured_log_with_level("T3_Webview_API", &error_info, LogLevel::Error);
+                emit_api_log(db, "error", &error_info).await;
                 Err(error.into())
             }
         }
@@ -547,11 +556,12 @@ impl T3TrendlogDataService {
         data_points: Vec<CreateTrendlogDataRequest>
     ) -> Result<u64, AppError> {
         if data_points.is_empty() {
-            let _ = write_structured_log_with_level(
-                "T3_Webview_API",
+            emit_api_log(
+                db,
+                "warn",
                 "⚠️ [TrendlogDataService] Batch save called with empty data_points array",
-                LogLevel::Warn
-            );
+            )
+            .await;
             return Ok(0);
         }
 
@@ -560,7 +570,7 @@ impl T3TrendlogDataService {
             "📦 [TrendlogDataService] Starting batch save - {} data points",
             data_points.len()
         );
-        let _ = write_structured_log_with_level("T3_Webview_API", &batch_info, LogLevel::Info);
+        emit_api_log(db, "info", &batch_info).await;
 
         // Use Local time instead of UTC to match user's timezone
         let now = chrono::Local::now();
@@ -590,11 +600,9 @@ impl T3TrendlogDataService {
             .filter_map(|(dp, &parent_id)| {
                 // Skip only if value is completely empty (frontend already filtered fallback zeros via toFiniteNumber)
                 if dp.value.is_empty() {
-                    let _ = write_structured_log_with_level(
-                        "T3_Webview_API",
-                        &format!("⏭️ SKIPPING data point with fallback/empty value - Point: {}, Type: {}",
-                            dp.point_id, dp.point_type),
-                        LogLevel::Warn
+                    eprintln!(
+                        "⏭️ SKIPPING data point with fallback/empty value - Point: {}, Type: {}",
+                        dp.point_id, dp.point_type
                     );
                     return None; // Skip this point
                 }
@@ -629,7 +637,7 @@ impl T3TrendlogDataService {
                             "✅ [TrendlogDataService] Batch save succeeded after {} retries",
                             retry_count
                         );
-                        let _ = write_structured_log_with_level("T3_Webview_API", &retry_info, LogLevel::Info);
+                        emit_api_log(db, "info", &retry_info).await;
                     }
 
                     // Log successful batch save
@@ -639,7 +647,7 @@ impl T3TrendlogDataService {
                         count,
                         logging_time_fmt
                     );
-                    let _ = write_structured_log_with_level("T3_Webview_API", &success_info, LogLevel::Info);
+                    emit_api_log(db, "info", &success_info).await;
 
                     // 🆕 FIX: Removed partitioning check from hot path to prevent database locks
                     // Partitioning should be handled by a separate background task, not after every batch insert
@@ -665,7 +673,7 @@ impl T3TrendlogDataService {
                             retry_count + 1,
                             max_retries
                         );
-                        let _ = write_structured_log_with_level("T3_Webview_API", &retry_info, LogLevel::Warn);
+                        emit_api_log(db, "warn", &retry_info).await;
 
                         // Wait before retrying
                         tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
@@ -678,7 +686,7 @@ impl T3TrendlogDataService {
                                 "❌ [TrendlogDataService] Batch save failed after {} retries - database still locked",
                                 max_retries
                             );
-                            let _ = write_structured_log_with_level("T3_Webview_API", &max_retry_info, LogLevel::Error);
+                            emit_api_log(db, "error", &max_retry_info).await;
                         }
 
                         // Log batch save error
@@ -687,7 +695,7 @@ impl T3TrendlogDataService {
                             count,
                             error
                         );
-                        let _ = write_structured_log_with_level("T3_Webview_API", &error_info, LogLevel::Error);
+                        emit_api_log(db, "error", &error_info).await;
                         return Err(error.into());
                     }
                 }
@@ -701,7 +709,7 @@ impl T3TrendlogDataService {
                 max_retries,
                 count
             );
-            let _ = write_structured_log_with_level("T3_Webview_API", &final_error, LogLevel::Error);
+            emit_api_log(db, "error", &final_error).await;
             Err(error.into())
         } else {
             Err(AppError::DatabaseError("Unexpected retry loop exit".to_string()))
@@ -724,7 +732,7 @@ impl T3TrendlogDataService {
             point_types,
             limit
         );
-        let _ = write_structured_log_with_level("T3_Webview_API", &recent_info, LogLevel::Info);
+        emit_api_log(db, "info", &recent_info).await;
 
         // Build SQL query with JOIN for recent data
         let mut sql = r#"
@@ -770,7 +778,7 @@ impl T3TrendlogDataService {
                     "✅ [TrendlogDataService] Recent data retrieved - {} records found",
                     recent_data.len()
                 );
-                let _ = write_structured_log_with_level("T3_Webview_API", &success_info, LogLevel::Info);
+                emit_api_log(db, "info", &success_info).await;
                 Ok(recent_data)
             },
             Err(error) => {
@@ -780,7 +788,7 @@ impl T3TrendlogDataService {
                     serial_number,
                     error
                 );
-                let _ = write_structured_log_with_level("T3_Webview_API", &error_info, LogLevel::Error);
+                emit_api_log(db, "error", &error_info).await;
                 Err(error.into())
             }
         }
@@ -830,7 +838,7 @@ impl T3TrendlogDataService {
             serial_number,
             panel_id
         );
-        let _ = write_structured_log_with_level("T3_Webview_API", &stats_info, LogLevel::Info);
+        emit_api_log(db, "info", &stats_info).await;
 
         let stats_start_time = std::time::Instant::now();
 
@@ -912,7 +920,7 @@ impl T3TrendlogDataService {
             counts.variable_count,
             latest_timestamp.as_deref().unwrap_or("N/A")
         );
-        let _ = write_structured_log_with_level("T3_Webview_API", &completion_info, LogLevel::Info);
+        emit_api_log(db, "info", &completion_info).await;
 
         Ok(serde_json::json!({
             "device_id": serial_number,
@@ -941,7 +949,7 @@ impl T3TrendlogDataService {
             request.lookback_minutes,
             request.data_sources
         );
-        let _ = write_structured_log_with_level("T3_Webview_API", &smart_info, LogLevel::Info);
+        emit_api_log(db, "info", &smart_info).await;
 
         // Build SQL query with JOIN
         let mut sql = r#"
@@ -1039,7 +1047,7 @@ impl T3TrendlogDataService {
             smart_result.has_historical_data,
             smart_result.sources_used
         );
-        let _ = write_structured_log_with_level("T3_Webview_API", &completion_info, LogLevel::Info);
+        emit_api_log(db, "info", &completion_info).await;
 
         Ok(smart_result)
     }
