@@ -2286,8 +2286,6 @@ async fn get_trendlog_history(
     Path((device_id, trendlog_id)): Path<(i32, String)>,
     Json(mut payload): Json<TrendlogHistoryRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    use crate::logger::{write_structured_log_with_level, LogLevel};
-
     // Ensure the payload has the correct device_id and trendlog_id from the URL path
     payload.serial_number = device_id;
     payload.trendlog_id = trendlog_id.clone();
@@ -2303,7 +2301,7 @@ async fn get_trendlog_history(
         payload.limit,
         payload.specific_points.as_ref().map(|sp| sp.len()).unwrap_or(0)
     );
-    let _ = write_structured_log_with_level("T3_Webview_API", &request_info, LogLevel::Info);
+    eprintln!("{}", request_info);
 
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
@@ -2350,7 +2348,16 @@ async fn get_trendlog_history(
                 "✅ [Routes] Trendlog history retrieved successfully - Device: {}",
                 device_id
             );
-            let _ = write_structured_log_with_level("T3_Webview_API", &success_info, LogLevel::Info);
+            crate::logging::service::emit_app_log(
+                &db,
+                "info",
+                "T3_Webview_API",
+                Some("trendlog_routes"),
+                None,
+                &success_info,
+                None,
+            )
+            .await;
             Ok(Json(history_data))
         },
         Err(error) => {
@@ -2360,7 +2367,16 @@ async fn get_trendlog_history(
                 trendlog_id, // Use the path parameter instead of moved payload
                 error
             );
-            let _ = write_structured_log_with_level("T3_Webview_API", &error_info, LogLevel::Error);
+            crate::logging::service::emit_app_log(
+                &db,
+                "error",
+                "T3_Webview_API",
+                Some("trendlog_routes"),
+                None,
+                &error_info,
+                None,
+            )
+            .await;
 
             eprintln!("❌ [Routes] Trendlog history error details: {:?}", error);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -2630,19 +2646,44 @@ async fn save_realtime_trendlog_batch(
     State(state): State<T3AppState>,
     Json(payload): Json<Vec<CreateTrendlogDataRequest>>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    use crate::logger::{write_structured_log_with_level, LogLevel};
-
     // Log the batch save request
     let request_info = format!(
         "🔄 [Routes] Realtime batch save request - {} data points",
         payload.len()
     );
-    let _ = write_structured_log_with_level("T3_Webview_API", &request_info, LogLevel::Info);
+    let log_db = if let Some(conn) = state.t3_device_conn.as_ref() {
+        Some(conn.lock().await.clone())
+    } else {
+        None
+    };
+    if let Some(db) = log_db.as_ref() {
+        crate::logging::service::emit_app_log(
+            db,
+            "info",
+            "T3_Webview_API",
+            Some("trendlog_routes"),
+            None,
+            &request_info,
+            None,
+        )
+        .await;
+    }
 
     if state.server_db_enabled && !state.server_db_connected {
         let blocked_info =
             "❌ [Routes] Realtime batch save blocked - center DB enabled but not connected (local fallback active)";
-        let _ = write_structured_log_with_level("T3_Webview_API", blocked_info, LogLevel::Error);
+        if let Some(db) = log_db.as_ref() {
+            crate::logging::service::emit_app_log(
+                db,
+                "error",
+                "T3_Webview_API",
+                Some("trendlog_routes"),
+                None,
+                blocked_info,
+                None,
+            )
+            .await;
+        }
         eprintln!("{}", blocked_info);
         return Err((
             StatusCode::SERVICE_UNAVAILABLE,
@@ -2657,11 +2698,18 @@ async fn save_realtime_trendlog_batch(
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
         use crate::database_management::mssql_trendlog_service;
-        let _ = write_structured_log_with_level(
-            "T3_Webview_API",
-            "📤 [Routes] Realtime batch save target: CENTER DB (MSSQL)",
-            LogLevel::Info,
-        );
+        if let Some(db) = log_db.as_ref() {
+            crate::logging::service::emit_app_log(
+                db,
+                "info",
+                "T3_Webview_API",
+                Some("trendlog_routes"),
+                None,
+                "📤 [Routes] Realtime batch save target: CENTER DB (MSSQL)",
+                None,
+            )
+            .await;
+        }
         let batch: Vec<mssql_trendlog_service::RealtimeDataPoint> = payload
             .iter()
             .map(|p| mssql_trendlog_service::RealtimeDataPoint {
@@ -2697,17 +2745,31 @@ async fn save_realtime_trendlog_batch(
 
     // ── SeaORM branch ──
     if state.server_db_enabled {
-        let _ = write_structured_log_with_level(
-            "T3_Webview_API",
-            "📤 [Routes] Realtime batch save target: CENTER DB (SeaORM backend)",
-            LogLevel::Info,
-        );
+        if let Some(db) = log_db.as_ref() {
+            crate::logging::service::emit_app_log(
+                db,
+                "info",
+                "T3_Webview_API",
+                Some("trendlog_routes"),
+                None,
+                "📤 [Routes] Realtime batch save target: CENTER DB (SeaORM backend)",
+                None,
+            )
+            .await;
+        }
     } else {
-        let _ = write_structured_log_with_level(
-            "T3_Webview_API",
-            "📤 [Routes] Realtime batch save target: LOCAL SQLite",
-            LogLevel::Info,
-        );
+        if let Some(db) = log_db.as_ref() {
+            crate::logging::service::emit_app_log(
+                db,
+                "info",
+                "T3_Webview_API",
+                Some("trendlog_routes"),
+                None,
+                "📤 [Routes] Realtime batch save target: LOCAL SQLite",
+                None,
+            )
+            .await;
+        }
     }
     let db_connection = match state.t3_device_conn.as_ref() {
         Some(conn) => conn.lock().await.clone(),
@@ -2734,7 +2796,16 @@ async fn save_realtime_trendlog_batch(
                 "✅ [Routes] Realtime batch save successful - {} rows affected",
                 rows_affected
             );
-            let _ = write_structured_log_with_level("T3_Webview_API", &success_info, LogLevel::Info);
+            crate::logging::service::emit_app_log(
+                &db_connection,
+                "info",
+                "T3_Webview_API",
+                Some("trendlog_routes"),
+                None,
+                &success_info,
+                None,
+            )
+            .await;
 
             Ok(Json(json!({
                 "rows_affected": rows_affected,
@@ -2746,7 +2817,16 @@ async fn save_realtime_trendlog_batch(
                 "❌ [Routes] Realtime batch save FAILED - Error: {:?}",
                 error
             );
-            let _ = write_structured_log_with_level("T3_Webview_API", &error_info, LogLevel::Error);
+            crate::logging::service::emit_app_log(
+                &db_connection,
+                "error",
+                "T3_Webview_API",
+                Some("trendlog_routes"),
+                None,
+                &error_info,
+                None,
+            )
+            .await;
 
             eprintln!("❌ [Routes] Realtime batch save error details: {:?}", error);
             Err((

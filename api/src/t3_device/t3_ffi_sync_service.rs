@@ -610,7 +610,7 @@ impl T3000MainService {
             "center_db=disabled (standalone)".to_string()
         };
         crate::database_management::sync_health::ensure_app_log_table(&self.db).await;
-        crate::database_management::sync_health::write_app_log(
+        crate::logging::service::emit_app_log(
             &self.db,
             "info",
             "STARTUP",
@@ -650,7 +650,7 @@ impl T3000MainService {
             // Activity Log before the first full sync cycle lands in MSSQL.
             // Uses the pre-cloned connection captured before the spawn (avoids
             // re-establishing, which is not Send).
-            crate::database_management::sync_health::write_app_log(
+            crate::logging::service::emit_app_log(
                 &spawn_db,
                 "info",
                 "STARTUP",
@@ -723,7 +723,7 @@ impl T3000MainService {
                     let new_interval = current_sync_interval;
                     tokio::spawn(async move {
                         if let Ok(db) = establish_t3_device_connection().await.map_err(|e| e.to_string()) {
-                            crate::database_management::sync_health::write_app_log(
+                            crate::logging::service::emit_app_log(
                                 &db, "info", "POLL", Some("ffi_sync"), None,
                                 &format!("Sync interval changed: {}s -> {}s", old_interval, new_interval),
                                 None,
@@ -1230,7 +1230,7 @@ impl T3000MainService {
         })?;
 
         crate::database_management::sync_health::ensure_app_log_table(&local_db).await;
-        crate::database_management::sync_health::write_app_log(
+        crate::logging::service::emit_app_log(
             &local_db,
             "info",
             "POLL",
@@ -1269,7 +1269,7 @@ impl T3000MainService {
         if !server_cfg.enabled {
             let reason = "Standalone mode — backend interval sync disabled; only realtime writes are active";
             sync_logger.info(&format!("⏭️  {}", reason));
-            crate::database_management::sync_health::write_app_log(
+            crate::logging::service::emit_app_log(
                 &local_db,
                 "info",
                 "POLL",
@@ -1290,7 +1290,7 @@ impl T3000MainService {
             ) {
                 let reason = "Center DB mode is enabled but center DB is currently unavailable — skipping this cycle, will retry next cycle";
                 sync_logger.warn(&format!("⚠️ {}", reason));
-                crate::database_management::sync_health::write_app_log(
+                crate::logging::service::emit_app_log(
                     &local_db,
                     "warn",
                     "POLL",
@@ -1308,7 +1308,7 @@ impl T3000MainService {
             "✅ Database connections established — write target: {}",
             writer_target_text
         ));
-        crate::database_management::sync_health::write_app_log(
+        crate::logging::service::emit_app_log(
             &local_db,
             "info",
             "CONFIG",
@@ -1341,11 +1341,11 @@ impl T3000MainService {
                                 ("T3000.exe loaded but BacnetWebView_HandleWebViewMsg not found — FFI calls will fail", "error")
                             }
                         };
-                        crate::database_management::sync_health::write_app_log(
+                        crate::logging::service::emit_app_log(
                             &local_db, load_level, "STARTUP", Some("ffi_sync"), None, load_msg, None,
                         ).await;
                     }
-                    crate::database_management::sync_health::write_app_log(
+                    crate::logging::service::emit_app_log(
                         &local_db, "warn", "POLL", Some("ffi_sync"), None,
                         "GET_PANELS_LIST timed out — sync cycle skipped, will retry next cycle",
                         Some("action=4"),
@@ -1363,7 +1363,7 @@ impl T3000MainService {
                         ("T3000.exe loaded but BacnetWebView_HandleWebViewMsg not found — FFI calls will fail", "error")
                     }
                 };
-                crate::database_management::sync_health::write_app_log(
+                crate::logging::service::emit_app_log(
                     &local_db, load_level, "STARTUP", Some("ffi_sync"), None, load_msg, None,
                 ).await;
             }
@@ -1373,7 +1373,7 @@ impl T3000MainService {
             ));
             {
                 let sn_list = panels.iter().map(|p| p.serial_number.to_string()).collect::<Vec<_>>().join(", ");
-                crate::database_management::sync_health::write_app_log(
+                crate::logging::service::emit_app_log(
                     &local_db, "info", "POLL", Some("ffi_sync"), None,
                     &format!("GET_PANELS_LIST: {} device(s) found (SN: {})", panels.len(), sn_list),
                     None,
@@ -1382,7 +1382,7 @@ impl T3000MainService {
 
             if panels.is_empty() {
                 sync_logger.warn("⚠️ No devices found in GET_PANELS_LIST - skipping sync cycle");
-                crate::database_management::sync_health::write_app_log(
+                crate::logging::service::emit_app_log(
                     &local_db,
                     "warn",
                     "POLL",
@@ -1489,7 +1489,7 @@ impl T3000MainService {
                         Ok(p) => p,
                         Err(e) => {
                             sync_logger.error(&format!("❌ Forced rediscovery GET_PANELS_LIST failed: {} — skipping cycle, will retry next cycle", e));
-                            crate::database_management::sync_health::write_app_log(
+                            crate::logging::service::emit_app_log(
                                 &local_db, "warn", "POLL", Some("ffi_sync"), None,
                                 "GET_PANELS_LIST failed (forced rediscovery) — sync cycle skipped, will retry",
                                 Some("action=4"),
@@ -1500,7 +1500,7 @@ impl T3000MainService {
 
                     if panels.is_empty() {
                         sync_logger.warn("⚠️ No devices found - skipping sync cycle");
-                        crate::database_management::sync_health::write_app_log(
+                        crate::logging::service::emit_app_log(
                             &local_db,
                             "warn",
                             "POLL",
@@ -1637,7 +1637,7 @@ impl T3000MainService {
                         panel_info.serial_number, e
                     ));
                     failed_devices += 1;
-                    crate::database_management::sync_health::write_app_log(
+                    crate::logging::service::emit_app_log(
                         &local_db, "error", "DEVICE", Some("ffi_sync"),
                         Some(&panel_info.serial_number.to_string()),
                         &format!("SN-{} Panel#{}: FFI call failed — {}", panel_info.serial_number, panel_info.panel_number, e),
@@ -1661,7 +1661,7 @@ impl T3000MainService {
                         panel_info.serial_number, e
                     ));
                     failed_devices += 1;
-                    crate::database_management::sync_health::write_app_log(
+                    crate::logging::service::emit_app_log(
                         &local_db, "error", "DEVICE", Some("ffi_sync"),
                         Some(&panel_info.serial_number.to_string()),
                         &format!("SN-{} Panel#{}: JSON parse failed — {}", panel_info.serial_number, panel_info.panel_number, e),
@@ -1944,13 +1944,13 @@ impl T3000MainService {
                 } else {
                     format!("failed={} skipped={}", failed_devices, skipped_devices)
                 };
-                crate::database_management::sync_health::write_app_log(
+                crate::logging::service::emit_app_log(
                     &local_db, "error", "POLL", Some("ffi_sync"), None,
                     &format!("Cycle done: 0/{} devices synced — all returned serial=0 (C++ fix required)", total_devices),
                     Some(&detail),
                 ).await;
             } else {
-                crate::database_management::sync_health::write_app_log(
+                crate::logging::service::emit_app_log(
                     &local_db, "info", "POLL", Some("ffi_sync"), None,
                     &format!("Cycle done: {}/{} devices synced", successful_devices, total_devices),
                     Some(&format!("skipped={} failed={}", skipped_devices, failed_devices)),

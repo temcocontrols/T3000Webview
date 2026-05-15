@@ -19,7 +19,7 @@ use std::time::{Duration, Instant};
 use crate::error::Error;
 use crate::logger::ServiceLogger;
 use crate::app_state::T3AppState;
-use crate::database_management::sync_health::write_app_log;
+use crate::logging::service::emit_app_log;
 use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA};
 
 // FFI function type
@@ -266,8 +266,6 @@ async fn handle_ffi_call(
     State(app_state): State<T3AppState>,
     Json(payload): Json<JsonValue>
 ) -> Result<Json<JsonValue>, (StatusCode, Json<JsonValue>)> {
-    let mut api_logger = ServiceLogger::api().unwrap_or_else(|_| ServiceLogger::new("fallback_api").unwrap());
-
     // Convert payload to string for FFI call
     let message = payload.to_string();
 
@@ -277,19 +275,27 @@ async fn handle_ffi_call(
         .and_then(|a| a.as_i64())
         .unwrap_or(0);
 
-    api_logger.info(&format!("📡 FFI API Request - Action: {}, Full payload: {}", action, message));
-
     // Emit activity-log entry for this FFI call (DB/file per policy)
     {
         let db = app_state.conn.lock().await;
-        write_app_log(
+        emit_app_log(
+            &*db,
+            "info",
+            "API_REQ",
+            Some("ffi_api_service"),
+            None,
+            &format!("FFI request action={}", action),
+            Some(&message),
+        ).await;
+
+        emit_app_log(
             &*db,
             "info",
             "FFI_CALL",
             Some("ffi_api_service"),
             None,
             &format!("FFI call action={}", action),
-            None,
+            Some(&message),
         ).await;
     }
 
@@ -297,15 +303,22 @@ async fn handle_ffi_call(
 
     match service.call_ffi(&message).await {
         Ok(response) => {
-            api_logger.info(&format!("📡 FFI Response from C++: {}", response));
+            {
+                let db = app_state.conn.lock().await;
+                emit_app_log(
+                    &*db,
+                    "info",
+                    "API_REQ",
+                    Some("ffi_api_service"),
+                    None,
+                    &format!("FFI response action={}", action),
+                    Some(&response),
+                ).await;
+            }
 
             // Try to parse response as JSON, otherwise return as string
             match serde_json::from_str::<JsonValue>(&response) {
                 Ok(json_response) => {
-                    let response_action = json_response.get("action")
-                        .and_then(|a| a.as_str())
-                        .unwrap_or("UNKNOWN");
-                    api_logger.info(&format!("✅ C++ returned action: {}", response_action));
                     Ok(Json(json_response))
                 },
                 Err(_) => Ok(Json(serde_json::json!({
@@ -316,11 +329,10 @@ async fn handle_ffi_call(
             }
         }
         Err(e) => {
-            api_logger.error(&format!("❌ FFI call failed: {:?}", e));
             // Errors always go to DB regardless of policy
             {
                 let db = app_state.conn.lock().await;
-                write_app_log(
+                emit_app_log(
                     &*db,
                     "error",
                     "FFI_CALL",
