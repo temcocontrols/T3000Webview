@@ -1061,6 +1061,7 @@
     DeleteOutlined
   } from '@ant-design/icons-vue'
   import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil'
+  import { createFeatureTraceLogger } from '../../../shared/core/logging/traceLogger'
   import { scheduleItemData } from '@/lib/vue/T3000/Hvac/Data/Constant/RefConstant'
   import { T3000_Data, devVersion } from '@/lib/vue/T3000/Hvac/Data/T3Data'
   import { ranges as rangeDefinitions, T3_Types } from '@/lib/vue/T3000/Hvac/Data/Constant/T3Range'
@@ -2982,7 +2983,67 @@
 
   // 🆔 Unique instance ID to track and prevent duplicate intervals across HMR reloads
   const instanceId = Math.random().toString(36).substring(7)
+  const trendlogTrace = createFeatureTraceLogger({
+    feature: 'trendlog',
+    source: 'trendlog_chart',
+    category: 'MESSAGE_ACTION',
+  })
   LogUtil.Debug(`📊 TrendLogChart instance created: ${instanceId}`)
+
+  const getTrendlogTraceContext = () => {
+    const routePanelId = Number(route.query.panel_id)
+    const routeTrendlogId = Number(route.query.trendlog_id)
+    const routeSerial = Number(route.query.sn)
+
+    return {
+      instanceId,
+      panelId: Number.isFinite(routePanelId) ? routePanelId : monitorConfig.value?.pid ?? props.itemData?.t3Entry?.pid,
+      trendlogId: Number.isFinite(routeTrendlogId) ? routeTrendlogId : undefined,
+      serialNumber: Number.isFinite(routeSerial) ? routeSerial : undefined,
+      monitorId: monitorConfig.value?.id ?? props.itemData?.t3Entry?.id,
+    }
+  }
+
+  const parseTraceTimestamp = (value: any): number | null => {
+    if (value === null || value === undefined || value === '') return null
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value > 1e12 ? value : value * 1000
+    }
+
+    if (typeof value === 'string') {
+      const numericValue = Number(value)
+      if (Number.isFinite(numericValue)) {
+        return numericValue > 1e12 ? numericValue : numericValue * 1000
+      }
+
+      const parsed = Date.parse(value)
+      if (Number.isFinite(parsed)) {
+        return parsed
+      }
+    }
+
+    return null
+  }
+
+  const extractRealtimeFreshness = (items: any[]) => {
+    const timestampCandidates = ['timestamp', 'time', 'last_update', 'lastUpdate', 'logging_time', 'LoggingTime_Fmt']
+    const sourceTimestamp = items
+      .slice(0, 5)
+      .flatMap(item => timestampCandidates.map(key => parseTraceTimestamp(item?.[key])))
+      .find(value => value !== null) ?? null
+
+    const pollCadenceMs = monitorConfig.value?.dataIntervalMs || realtimeIntervalMs || 15000
+    const staleThresholdMs = Math.max(pollCadenceMs * 2, 30000)
+    const ageMs = sourceTimestamp ? Math.max(0, Date.now() - sourceTimestamp) : null
+
+    return {
+      sourceTimestamp,
+      ageMs,
+      staleThresholdMs,
+      isStale: ageMs !== null && ageMs > staleThresholdMs,
+    }
+  }
 
   // Computed properties
   const chartTitle = computed(() => {
@@ -8342,6 +8403,8 @@
    * Update chart with new data from GET_ENTRIES response
    */
   const updateChartWithNewData = (validDataItems: any[]) => {
+    const traceId = trendlogTrace.getTraceId()
+
     LogUtil.Debug('🔥 updateChartWithNewData CALLED', {
       itemsCount: validDataItems?.length || 0,
       hasDataSeries: !!dataSeries.value?.length,
@@ -8372,6 +8435,38 @@
     const timestamp = new Date()
     let matched = 0
     let unmatched = 0
+    let fallbackMatches = 0
+    const mismatchExamples: Array<Record<string, unknown>> = []
+
+    trendlogTrace.info({
+      traceId,
+      flow: 'realtime_poll',
+      step: 'response_received',
+      message: 'Realtime poll response received',
+      context: getTrendlogTraceContext(),
+      metrics: {
+        itemCount: validDataItems.length,
+        seriesCount: dataSeries.value.length,
+      },
+    })
+
+    const freshness = extractRealtimeFreshness(validDataItems)
+    if (freshness.sourceTimestamp !== null || freshness.isStale) {
+      trendlogTrace[freshness.isStale ? 'warn' : 'info']({
+        traceId,
+        flow: 'realtime_poll',
+        step: 'freshness_checked',
+        message: freshness.isStale ? 'Realtime payload appears stale' : 'Realtime payload freshness checked',
+        context: getTrendlogTraceContext(),
+        metrics: {
+          ageMs: freshness.ageMs,
+          staleThresholdMs: freshness.staleThresholdMs,
+          sourceTimestamp: freshness.sourceTimestamp,
+          itemCount: validDataItems.length,
+        },
+        details: freshness.isStale ? { reason: 'source timestamp older than threshold' } : undefined,
+      })
+    }
 
     LogUtil.Debug('🔍 updateChartWithNewData matching attempt:', {
       seriesCount: dataSeries.value.length,
@@ -8453,6 +8548,7 @@
       const seriesId = normalizeId(series.id)
       const seriesPanelId = normalizePanelId(series.panelId)
 
+      let usedFallback = false
       const matchedItem = validDataItems.find(item =>
         normalizeId(item.id) === seriesId && normalizePanelId(item.pid) === seriesPanelId
       )
@@ -8474,7 +8570,21 @@
         return typeMatches && indexMatches
       })
 
+      if (matchedItem) {
+        usedFallback = !(normalizeId(matchedItem.id) === seriesId && normalizePanelId(matchedItem.pid) === seriesPanelId)
+      }
+
       if (!matchedItem) {
+        if (mismatchExamples.length < 3) {
+          mismatchExamples.push({
+            seriesName: series.name,
+            expectedId: series.id,
+            expectedPanelId: series.panelId,
+            expectedPointType: series.pointType,
+            expectedPointNumber: series.pointNumber,
+          })
+        }
+
         LogUtil.Debug(`No match for series ${series.name}:`, {
           searchingFor: { id: series.id, panelId: series.panelId },
           seriesIndex,
@@ -8492,6 +8602,10 @@
         series: { id: series.id, panelId: series.panelId },
         item: { id: matchedItem.id, pid: matchedItem.pid }
       })
+
+      if (usedFallback) {
+        fallbackMatches++
+      }
 
       // 🎯 VALUE SELECTION: Use correct field based on digital_analog (per C struct definition)
       // digital_analog: 0=digital, 1=analog
@@ -8628,6 +8742,39 @@
       totalSeries: dataSeries.value,
       validDataItems: validDataItems
     })
+
+    trendlogTrace[unmatched > 0 || fallbackMatches > 0 ? 'warn' : 'info']({
+      traceId,
+      flow: 'realtime_poll',
+      step: 'matching_completed',
+      message: 'Realtime series matching completed',
+      context: getTrendlogTraceContext(),
+      metrics: {
+        matched,
+        unmatched,
+        fallbackMatches,
+        totalSeries: dataSeries.value.length,
+        itemCount: validDataItems.length,
+      },
+    })
+
+    if (mismatchExamples.length > 0) {
+      trendlogTrace.warn({
+        traceId,
+        flow: 'realtime_poll',
+        step: 'mismatch_examples',
+        mode: 'full',
+        message: 'Sample realtime mismatch examples captured',
+        context: getTrendlogTraceContext(),
+        metrics: {
+          totalUnmatched: unmatched,
+          sampleCount: mismatchExamples.length,
+        },
+        details: {
+          examples: mismatchExamples,
+        },
+      })
+    }
 
     // 💾 Store real-time data to database if in real-time mode (async, non-blocking)
     if (isRealTime.value && validDataItems.length > 0) {
@@ -9345,6 +9492,13 @@
   const updateAnalogChart = async () => {
     if (!analogChartInstance) {
       LogUtil.Debug('📊 updateAnalogChart: No analog chart instance available')
+      trendlogTrace.warn({
+        flow: 'render',
+        step: 'render_skipped',
+        message: 'Render skipped because chart instance is unavailable',
+        context: getTrendlogTraceContext(),
+        details: { reason: 'no_chart_instance' },
+      })
       return
     }
 
@@ -9354,6 +9508,17 @@
     // Skip only when BOTH analog and digital have nothing to draw
     if (visibleAnalog.length === 0 && visibleAnalogSeries.value.length > 0 && !hasVisibleDigital) {
       LogUtil.Debug('⏸️ updateAnalogChart: No analog data yet and no digital data — skipping to preserve existing chart')
+      trendlogTrace.info({
+        flow: 'render',
+        step: 'render_skipped',
+        message: 'Render skipped because no visible analog or digital points are ready',
+        context: getTrendlogTraceContext(),
+        metrics: {
+          visibleAnalogSeries: visibleAnalogSeries.value.length,
+          visibleDigitalSeries: visibleDigitalSeries.value.length,
+        },
+        details: { reason: 'no_visible_points' },
+      })
       return
     }
 
@@ -9900,6 +10065,19 @@
 
     analogChartInstance.data.datasets = datasets
 
+    trendlogTrace.info({
+      flow: 'render',
+      step: 'datasets_built',
+      message: 'Chart datasets built for render',
+      context: getTrendlogTraceContext(),
+      metrics: {
+        datasetCount: datasets.length,
+        totalPoints: datasets.reduce((sum, ds) => sum + ds.data.length, 0),
+        visibleAnalogSeries: visibleAnalog.length,
+        visibleDigitalSeries: visibleDigitalSeries.value.length,
+      },
+    })
+
     // Update x-axis configuration
     if (analogChartInstance.options.scales?.x) {
       const xScale = analogChartInstance.options.scales.x as any
@@ -10091,6 +10269,17 @@
     }
 
     analogChartInstance.update('none') // No animation but full scale recalculation
+
+    trendlogTrace.info({
+      flow: 'render',
+      step: 'render_completed',
+      message: 'Chart render completed',
+      context: getTrendlogTraceContext(),
+      metrics: {
+        datasetCount: analogChartInstance.data.datasets.length,
+        totalPoints: analogChartInstance.data.datasets.reduce((sum, ds) => sum + ds.data.length, 0),
+      },
+    })
   }
 
   const updateDigitalCharts = async () => {
@@ -11945,7 +12134,9 @@
   }
 
   const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[] => {
+    const traceId = trendlogTrace.getTraceId()
     LogUtil.Debug('= TLChart DataFlow: Converting API data to chart series format')
+    const unmatchedSeriesExamples: Array<Record<string, unknown>> = []
 
     const mapPrefixToPointType = (prefix?: string): string => {
       if (prefix === 'IN') return 'INPUT'
@@ -12095,6 +12286,16 @@
         })
       } else {
         // No matching API data - create empty series to maintain sequence
+        if (unmatchedSeriesExamples.length < 3) {
+          unmatchedSeriesExamples.push({
+            seriesName: originalSeries.name,
+            itemType: originalSeries.itemType,
+            expectedPanelId: seriesPanelId,
+            expectedPointId: seriesPointId,
+            expectedPointType: seriesPointType,
+          })
+        }
+
         const emptySeries: SeriesConfig = {
           name: originalSeries.name,
           color: originalSeries.color || colors[index % colors.length],
@@ -12141,6 +12342,40 @@
         } : null
       }))
     })
+
+    trendlogTrace[series.some(s => s.isEmpty) ? 'warn' : 'info']({
+      traceId,
+      flow: 'history_load',
+      step: 'mapping_completed',
+      message: 'Historical API data mapped to TrendLog series',
+      context: getTrendlogTraceContext(),
+      metrics: {
+        apiDataCount: apiData.length,
+        timeRangeMinutes: timeRanges?.durationMinutes,
+        totalSeries: series.length,
+        itemsWithData: series.filter(s => !s.isEmpty).length,
+        emptySeries: series.filter(s => s.isEmpty).length,
+        totalDataPoints: series.reduce((sum, s) => sum + s.data.length, 0),
+      },
+    })
+
+    if (unmatchedSeriesExamples.length > 0) {
+      trendlogTrace.warn({
+        traceId,
+        flow: 'history_load',
+        step: 'unmatched_examples',
+        mode: 'full',
+        message: 'Sample unmatched history mapping examples captured',
+        context: getTrendlogTraceContext(),
+        metrics: {
+          emptySeriesCount: series.filter(s => s.isEmpty).length,
+          sampleCount: unmatchedSeriesExamples.length,
+        },
+        details: {
+          examples: unmatchedSeriesExamples,
+        },
+      })
+    }
 
     return series
   }
@@ -13210,6 +13445,17 @@
 
   // Lifecycle
   onMounted(async () => {
+    const initTraceId = trendlogTrace.start({
+      flow: 'init',
+      step: 'mounted',
+      message: 'TrendLogChart mounted',
+      context: getTrendlogTraceContext(),
+      metrics: {
+        hasItemData: !!props.itemData,
+        existingSeriesCount: dataSeries.value.length,
+      },
+    })
+
     try {
       checkDbStatus()
       dbStatusTimer = setInterval(checkDbStatus, DB_STATUS_POLL_MS)
@@ -13287,6 +13533,18 @@
               id: monFromAction0.id,
               index: monFromAction0.index,
               inputCount: monFromAction0.input?.length ?? 0
+            })
+            trendlogTrace.info({
+              traceId: initTraceId,
+              flow: 'init',
+              step: 'config_resolved',
+              message: 'Trendlog monitor config resolved from Action 0 response',
+              context: getTrendlogTraceContext(),
+              metrics: {
+                source: 'action0',
+                inputCount: monFromAction0.input?.length ?? 0,
+                monitorIndex: monFromAction0.index,
+              },
             })
             freshMonitorData.value = monFromAction0
 
@@ -13394,6 +13652,18 @@
                 dataIntervalMs: intervalMs,
                 pid: monitorConfig.value.pid
               })
+              trendlogTrace.info({
+                traceId: initTraceId,
+                flow: 'init',
+                step: 'monitor_built',
+                message: 'Monitor config built from Action 0 data',
+                context: getTrendlogTraceContext(),
+                metrics: {
+                  source: 'action0',
+                  inputItemsCount: builtInputItems.length,
+                  dataIntervalMs: intervalMs,
+                },
+              })
 
               // Start real-time polling immediately since we have a valid config
               startRealTimeUpdates()
@@ -13463,6 +13733,19 @@
               dataIntervalMs: intervalMs,
               pid: monitorConfig.value.pid
             })
+            trendlogTrace.warn({
+              traceId: initTraceId,
+              flow: 'init',
+              step: 'config_resolved',
+              message: 'Monitor config built from props fallback',
+              context: getTrendlogTraceContext(),
+              metrics: {
+                source: 'props_fallback',
+                inputItemsCount: fallbackInputItems.length,
+                dataIntervalMs: intervalMs,
+              },
+              details: { reason: 'action0_unavailable_or_incomplete' },
+            })
             startRealTimeUpdates()
           }
         }
@@ -13522,13 +13805,42 @@
           finalMonitorConfigReady: !!monitorConfig.value,
           finalPanelId: monitorConfig.value?.pid
         })
+        trendlogTrace.info({
+          traceId: initTraceId,
+          flow: 'init',
+          step: 'completed',
+          message: 'TrendLogChart initialization completed',
+          context: getTrendlogTraceContext(),
+          metrics: {
+            finalDataSeriesCount: dataSeries.value.length,
+            monitorConfigReady: !!monitorConfig.value,
+          },
+        })
       } else {
         LogUtil.Warn('⚠️ TrendLogChart: No monitor config data available - keeping loading state')
+        trendlogTrace.warn({
+          traceId: initTraceId,
+          flow: 'init',
+          step: 'monitor_built',
+          message: 'Monitor config was not available after initialization',
+          context: getTrendlogTraceContext(),
+          details: { reason: 'monitor_config_missing' },
+        })
         // Keep loading state instead of showing error - data might still be loading
         // hasConnectionError.value = true // Removed - keep loading instead
       }
     } catch (error) {
       LogUtil.Error('TrendLogChart: Initialization failed:', error)
+      trendlogTrace.error({
+        traceId: initTraceId,
+        flow: 'init',
+        step: 'failed',
+        message: 'TrendLogChart initialization failed',
+        context: getTrendlogTraceContext(),
+        details: {
+          error: error instanceof Error ? error.message : String(error),
+        },
+      })
       // Only show connection error for actual errors, not missing data during startup
       if (error.message && !error.message.includes('timeout')) {
         hasConnectionError.value = true

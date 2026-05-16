@@ -6,6 +6,11 @@ interface FrontendLogEvent {
   message: string;
   params?: unknown[];
   source?: string;
+  traceId?: string;
+  feature?: string;
+  flow?: string;
+  step?: string;
+  status?: string;
 }
 
 const getApiBaseUrl = (): string => {
@@ -25,6 +30,11 @@ export async function logFrontendEvent({
   message,
   params,
   source,
+  traceId,
+  feature,
+  flow,
+  step,
+  status,
 }: FrontendLogEvent): Promise<void> {
   try {
     await fetch(LOG_ENDPOINT, {
@@ -36,6 +46,11 @@ export async function logFrontendEvent({
         message,
         params,
         source,
+        traceId,
+        feature,
+        flow,
+        step,
+        status,
         timestamp: new Date().toISOString(),
       }),
     });

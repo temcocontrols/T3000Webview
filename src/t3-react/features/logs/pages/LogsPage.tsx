@@ -20,6 +20,7 @@ import {
   DrawerHeaderTitle,
   DrawerBody,
   Badge,
+  Tooltip,
   tokens,
 } from '@fluentui/react-components';
 import {
@@ -29,6 +30,7 @@ import {
   Dismiss24Regular,
   ChevronUpRegular,
   ChevronDownRegular,
+  InfoRegular,
 } from '@fluentui/react-icons';
 import { ActivityLogTab } from '../components/ActivityLogTab';
 import { FileLogsTab } from '../components/FileLogsTab';
@@ -148,6 +150,30 @@ const useStyles = makeStyles({
     fontSize: '12px',
     fontWeight: 600,
     lineHeight: '16px',
+  },
+  drawerHeaderTitleRow: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  drawerInfoButton: {
+    minWidth: '14px',
+    width: '14px',
+    height: '14px',
+    padding: 0,
+  },
+  drawerInfoIcon: {
+    fontSize: '12px',
+  },
+  drawerPolicyTooltipContent: {
+    width: '100%',
+    maxWidth: '100%',
+    lineHeight: 1.45,
+    whiteSpace: 'normal',
+  },
+  drawerPolicyTooltip: {
+    width: 'min(1100px, calc(100vw - 32px))',
+    maxWidth: 'none',
   },
   drawerCloseButton: {
     minWidth: '24px',
@@ -674,7 +700,31 @@ export const LogsPage: React.FC = () => {
               />
             }
           >
-            <span className={s.drawerHeaderTitleText}>Configure Logging</span>
+            <span className={s.drawerHeaderTitleRow}>
+              <span className={s.drawerHeaderTitleText}>Configure Logging</span>
+              <Tooltip
+                relationship="description"
+                content={{
+                  className: s.drawerPolicyTooltip,
+                  children: (
+                    <div className={s.drawerPolicyTooltipContent}>
+                      <div><strong>Model</strong>: System and operational categories usually stay DB + Summary.</div>
+                      <div><strong>Debug</strong>: API_REQ, WEBSOCKET, FFI_CALL, and MESSAGE_ACTION should usually stay disabled until you are investigating an issue.</div>
+                      <div><strong>Meaning</strong>: Summary keeps the message compact. Full keeps the details payload too. Levels are checkbox-based, and All means every level.</div>
+                      <div>File routing is policy-controlled and not edited here.</div>
+                    </div>
+                  ),
+                }}
+              >
+                <Button
+                  size="small"
+                  appearance="subtle"
+                  className={s.drawerInfoButton}
+                  icon={<InfoRegular className={s.drawerInfoIcon} />}
+                  aria-label="Logging policy guidance"
+                />
+              </Tooltip>
+            </span>
           </DrawerHeaderTitle>
         </DrawerHeader>
         <DrawerBody className={s.drawerBody}>

@@ -63,6 +63,17 @@ class HvConstant {
     Info: false,           // Console - undefined = auto-detect, false = force disable, true = force enable
     Error: false,          // Console - undefined = auto-detect (always true), false = force disable
     FileLogging: false,    // File logging - undefined = enabled, false = disabled locally
+    Trace: {
+      enabled: false,
+      profile: 'baseline',
+      featureFilter: [],
+      stepMode: 'summary',
+      includePayload: false,
+      sampleRate: 1,
+      ttlSec: 1800,
+      traceIdMode: 'page-session',
+      consoleMirror: false,
+    },
   }
 
   static T3Config = {

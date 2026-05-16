@@ -1322,7 +1322,7 @@ pub struct UpdateLogSettingsRequest {
     pub settings: Vec<UpdateLogCategoryConfig>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateLogCategoryConfig {
     pub category: String,
@@ -1333,6 +1333,232 @@ pub struct UpdateLogCategoryConfig {
     pub sink_db: Option<bool>,
     #[serde(default)]
     pub sink_file: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplyLogProfileRequest {
+    pub profile: String,
+    #[serde(default)]
+    pub ttl_sec: Option<u32>,
+}
+
+fn baseline_profile_settings() -> Vec<UpdateLogCategoryConfig> {
+    default_log_settings()
+        .into_iter()
+        .map(|cfg| UpdateLogCategoryConfig {
+            category: cfg.category,
+            enabled: cfg.enabled,
+            detail_mode: cfg.detail_mode,
+            min_level: cfg.min_level,
+            sink_db: Some(cfg.sink_db),
+            sink_file: Some(cfg.sink_file),
+        })
+        .collect()
+}
+
+fn profile_settings(profile: &str) -> Option<Vec<UpdateLogCategoryConfig>> {
+    let mut settings = baseline_profile_settings();
+    let index_by_category: HashMap<String, usize> = settings
+        .iter()
+        .enumerate()
+        .map(|(idx, cfg)| (canonical_category(&cfg.category), idx))
+        .collect();
+
+    let mut set = |
+        category: &str,
+        enabled: bool,
+        detail_mode: &str,
+        min_level: &str,
+        sink_db: bool,
+        sink_file: bool,
+    | {
+        let canonical = canonical_category(category);
+        if let Some(idx) = index_by_category.get(&canonical) {
+            if let Some(cfg) = settings.get_mut(*idx) {
+                cfg.enabled = enabled;
+                cfg.detail_mode = detail_mode.to_string();
+                cfg.min_level = min_level.to_string();
+                cfg.sink_db = Some(sink_db);
+                cfg.sink_file = Some(sink_file);
+            }
+        }
+    };
+
+    match profile.trim().to_ascii_lowercase().as_str() {
+        "baseline" => {}
+        "trendlog-trace" => {
+            set("MESSAGE_ACTION", true, "FULL", "DEBUG", false, true);
+            set("TRENDLOG", true, "FULL", "INFO", true, true);
+            set("DEVICE", true, "FULL", "INFO", true, true);
+            set("FFI_CALL", true, "FULL", "DEBUG", false, true);
+        }
+        "ffi-stale-trace" => {
+            set("FFI_CALL", true, "FULL", "DEBUG", false, true);
+            set("DEVICE", true, "FULL", "INFO", true, true);
+            set("POLL", true, "FULL", "INFO", true, true);
+            set("MESSAGE_ACTION", true, "FULL", "DEBUG", false, true);
+        }
+        "ui-trace" => {
+            set("MESSAGE_ACTION", true, "FULL", "DEBUG", false, true);
+            set("API_REQ", true, "SUMMARY", "INFO", false, true);
+            set("WEBSOCKET", true, "SUMMARY", "INFO", false, true);
+        }
+        _ => return None,
+    }
+
+    Some(settings)
+}
+
+async fn upsert_application_config(
+    db: &DatabaseConnection,
+    key: &str,
+    value: &str,
+) -> Result<()> {
+    let key_sql = key.replace('\'', "''");
+    let val_sql = value.replace('\'', "''");
+    let ts_sql = chrono::Utc::now().naive_utc().to_string().replace('\'', "''");
+
+    let update_sql = format!(
+        "UPDATE APPLICATION_CONFIG \
+         SET config_value = '{val}', updated_at = '{ts}' \
+         WHERE config_key = '{key}'",
+        key = key_sql,
+        val = val_sql,
+        ts = ts_sql,
+    );
+
+    let update_result = db
+        .execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            update_sql,
+        ))
+        .await
+        .map_err(|e| {
+            crate::error::Error::DbError(format!(
+                "Failed to update config '{}': {}",
+                key, e
+            ))
+        })?;
+
+    if update_result.rows_affected() == 0 {
+        let insert_sql = format!(
+            "INSERT INTO APPLICATION_CONFIG (config_key, config_value, updated_at) \
+             VALUES ('{key}', '{val}', '{ts}')",
+            key = key_sql,
+            val = val_sql,
+            ts = ts_sql,
+        );
+
+        db.execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            insert_sql,
+        ))
+        .await
+        .map_err(|e| {
+            crate::error::Error::DbError(format!(
+                "Failed to insert config '{}': {}",
+                key, e
+            ))
+        })?;
+    }
+
+    Ok(())
+}
+
+async fn load_application_config(
+    db: &DatabaseConnection,
+    key: &str,
+) -> Option<String> {
+    let key_sql = key.replace('\'', "''");
+    let sql = format!(
+        "SELECT config_value FROM APPLICATION_CONFIG WHERE config_key = '{}' LIMIT 1",
+        key_sql
+    );
+
+    db.query_one(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        sql,
+    ))
+    .await
+    .ok()
+    .flatten()
+    .and_then(|row| row.try_get::<String>("", "config_value").ok())
+}
+
+async fn maybe_auto_revert_profile_if_expired(
+    db: &DatabaseConnection,
+) -> Result<bool> {
+    let active_profile = load_application_config(db, "log.profile.active")
+        .await
+        .unwrap_or_else(|| "baseline".to_string())
+        .trim()
+        .to_ascii_lowercase();
+
+    if active_profile == "baseline" {
+        return Ok(false);
+    }
+
+    let expires_at = load_application_config(db, "log.profile.expires_at")
+        .await
+        .unwrap_or_default();
+    if expires_at.trim().is_empty() {
+        return Ok(false);
+    }
+
+    let expires_at_dt = match chrono::DateTime::parse_from_rfc3339(expires_at.trim()) {
+        Ok(v) => v.with_timezone(&chrono::Utc),
+        Err(_) => return Ok(false),
+    };
+
+    if chrono::Utc::now() < expires_at_dt {
+        return Ok(false);
+    }
+
+    let baseline = baseline_profile_settings();
+    apply_log_settings_to_db(db, &baseline).await?;
+    upsert_application_config(db, "log.profile.active", "baseline").await?;
+    upsert_application_config(db, "log.profile.applied_at", &chrono::Utc::now().to_rfc3339()).await?;
+    upsert_application_config(db, "log.profile.ttl_sec", "0").await?;
+    upsert_application_config(db, "log.profile.expires_at", "").await?;
+
+    Ok(true)
+}
+
+async fn apply_log_settings_to_db(
+    db: &DatabaseConnection,
+    settings: &[UpdateLogCategoryConfig],
+) -> Result<()> {
+    let default_sink_by_category: HashMap<String, (bool, bool)> = default_log_settings()
+        .into_iter()
+        .map(|cfg| (cfg.category, (cfg.sink_db, cfg.sink_file)))
+        .collect();
+
+    for cfg in settings {
+        let canonical_cat = canonical_category(&cfg.category);
+        let prefix = format!("log.category.{}", canonical_cat);
+
+        let (default_sink_db, default_sink_file) = default_sink_by_category
+            .get(&canonical_cat)
+            .copied()
+            .unwrap_or((true, false));
+        let sink_db = cfg.sink_db.unwrap_or(default_sink_db);
+        let sink_file = cfg.sink_file.unwrap_or(default_sink_file);
+
+        let updates = [
+            (format!("{}.enabled", prefix), cfg.enabled.to_string()),
+            (format!("{}.detail_mode", prefix), cfg.detail_mode.clone()),
+            (format!("{}.min_level", prefix), cfg.min_level.clone()),
+            (format!("{}.sink_db", prefix), sink_db.to_string()),
+            (format!("{}.sink_file", prefix), sink_file.to_string()),
+        ];
+
+        for (key, value) in updates {
+            upsert_application_config(db, &key, &value).await?;
+        }
+    }
+
+    Ok(())
 }
 
 fn default_log_settings() -> Vec<LogCategoryConfig> {
@@ -1360,6 +1586,8 @@ async fn get_log_settings(
         Some(d) => d,
         None => return Ok(Json(default_log_settings())),
     };
+
+    let _ = maybe_auto_revert_profile_if_expired(&db).await;
 
     let defaults = default_log_settings();
     let mut result = Vec::with_capacity(defaults.len());
@@ -1420,86 +1648,107 @@ async fn put_log_settings(
         None => return Ok(Json(serde_json::json!({ "ok": false, "error": "DB unavailable" }))),
     };
 
-    let now = chrono::Utc::now().naive_utc().to_string();
-    let default_sink_by_category: HashMap<String, (bool, bool)> = default_log_settings()
-        .into_iter()
-        .map(|cfg| (cfg.category, (cfg.sink_db, cfg.sink_file)))
-        .collect();
-
-    for cfg in &body.settings {
-        let canonical_cat = canonical_category(&cfg.category);
-        let cat = canonical_cat.replace('\'', "''");
-        let prefix = format!("log.category.{}", cat);
-
-        let (default_sink_db, default_sink_file) = default_sink_by_category
-            .get(&canonical_cat)
-            .copied()
-            .unwrap_or((true, false));
-        let sink_db = cfg.sink_db.unwrap_or(default_sink_db);
-        let sink_file = cfg.sink_file.unwrap_or(default_sink_file);
-
-        let updates = [
-            (format!("{}.enabled", prefix), cfg.enabled.to_string()),
-            (format!("{}.detail_mode", prefix), cfg.detail_mode.clone()),
-            (format!("{}.min_level", prefix), cfg.min_level.clone()),
-            (format!("{}.sink_db", prefix), sink_db.to_string()),
-            (format!("{}.sink_file", prefix), sink_file.to_string()),
-        ];
-
-        for (key, value) in updates {
-            let key_sql = key.replace('\'', "''");
-            let val_sql = value.replace('\'', "''");
-            let ts_sql = now.replace('\'', "''");
-
-            // Some deployments do not enforce a UNIQUE constraint on config_key,
-            // so ON CONFLICT(config_key) fails. Use update-first, insert-if-missing.
-            let update_sql = format!(
-                "UPDATE APPLICATION_CONFIG \
-                 SET config_value = '{val}', updated_at = '{ts}' \
-                 WHERE config_key = '{key}'",
-                key = key_sql,
-                val = val_sql,
-                ts = ts_sql,
-            );
-
-            let update_result = db
-                .execute(sea_orm::Statement::from_string(
-                    sea_orm::DatabaseBackend::Sqlite,
-                    update_sql,
-                ))
-                .await
-                .map_err(|e| {
-                    crate::error::Error::DbError(format!(
-                        "Failed to update log setting '{}': {}",
-                        key, e
-                    ))
-                })?;
-
-            if update_result.rows_affected() == 0 {
-                let insert_sql = format!(
-                    "INSERT INTO APPLICATION_CONFIG (config_key, config_value, updated_at) \
-                     VALUES ('{key}', '{val}', '{ts}')",
-                    key = key_sql,
-                    val = val_sql,
-                    ts = ts_sql,
-                );
-
-                db.execute(sea_orm::Statement::from_string(
-                    sea_orm::DatabaseBackend::Sqlite,
-                    insert_sql,
-                ))
-                .await
-                .map_err(|e| {
-                    crate::error::Error::DbError(format!(
-                        "Failed to insert log setting '{}': {}",
-                        key, e
-                    ))
-                })?;
-            }
-        }
-    }
+    apply_log_settings_to_db(&db, &body.settings).await?;
 
     Ok(Json(serde_json::json!({ "ok": true })))
+}
+
+async fn get_log_profile_current(
+    State(state): State<T3AppState>,
+) -> Result<Json<serde_json::Value>> {
+    let db = match get_local_log_db_conn(&state).await {
+        Some(d) => d,
+        None => {
+            return Ok(Json(serde_json::json!({
+                "ok": false,
+                "error": "DB unavailable"
+            })))
+        }
+    };
+
+    let auto_reverted = maybe_auto_revert_profile_if_expired(&db).await?;
+
+    let active_profile = load_application_config(&db, "log.profile.active")
+        .await
+        .unwrap_or_else(|| "baseline".to_string());
+    let applied_at = load_application_config(&db, "log.profile.applied_at").await;
+    let ttl_sec = load_application_config(&db, "log.profile.ttl_sec")
+        .await
+        .and_then(|v| v.parse::<u32>().ok())
+        .unwrap_or(0);
+    let expires_at = load_application_config(&db, "log.profile.expires_at")
+        .await
+        .filter(|v| !v.trim().is_empty());
+
+    Ok(Json(serde_json::json!({
+        "ok": true,
+        "profile": active_profile,
+        "ttlSec": ttl_sec,
+        "appliedAt": applied_at,
+        "expiresAt": expires_at,
+        "autoReverted": auto_reverted,
+    })))
+}
+
+async fn apply_log_profile(
+    State(state): State<T3AppState>,
+    Json(body): Json<ApplyLogProfileRequest>,
+) -> Result<Json<serde_json::Value>> {
+    let db = match get_local_log_db_conn(&state).await {
+        Some(d) => d,
+        None => return Ok(Json(serde_json::json!({ "ok": false, "error": "DB unavailable" }))),
+    };
+
+    let profile_name = body.profile.trim().to_ascii_lowercase();
+    let Some(settings) = profile_settings(&profile_name) else {
+        return Ok(Json(serde_json::json!({
+            "ok": false,
+            "error": format!("Unknown profile '{}'", body.profile),
+            "supportedProfiles": ["baseline", "trendlog-trace", "ffi-stale-trace", "ui-trace"]
+        })));
+    };
+
+    apply_log_settings_to_db(&db, &settings).await?;
+
+    let now = chrono::Utc::now();
+    let ttl_sec = body.ttl_sec.unwrap_or(1800);
+    let expires_at = now + chrono::Duration::seconds(ttl_sec as i64);
+
+    upsert_application_config(&db, "log.profile.active", &profile_name).await?;
+    upsert_application_config(&db, "log.profile.applied_at", &now.to_rfc3339()).await?;
+    upsert_application_config(&db, "log.profile.ttl_sec", &ttl_sec.to_string()).await?;
+    upsert_application_config(&db, "log.profile.expires_at", &expires_at.to_rfc3339()).await?;
+
+    Ok(Json(serde_json::json!({
+        "ok": true,
+        "profile": profile_name,
+        "ttlSec": ttl_sec,
+        "expiresAt": expires_at.to_rfc3339(),
+        "appliedSettingsCount": settings.len()
+    })))
+}
+
+async fn disable_log_profile(
+    State(state): State<T3AppState>,
+) -> Result<Json<serde_json::Value>> {
+    let db = match get_local_log_db_conn(&state).await {
+        Some(d) => d,
+        None => return Ok(Json(serde_json::json!({ "ok": false, "error": "DB unavailable" }))),
+    };
+
+    let settings = baseline_profile_settings();
+    apply_log_settings_to_db(&db, &settings).await?;
+
+    upsert_application_config(&db, "log.profile.active", "baseline").await?;
+    upsert_application_config(&db, "log.profile.applied_at", &chrono::Utc::now().to_rfc3339()).await?;
+    upsert_application_config(&db, "log.profile.ttl_sec", "0").await?;
+    upsert_application_config(&db, "log.profile.expires_at", "").await?;
+
+    Ok(Json(serde_json::json!({
+        "ok": true,
+        "profile": "baseline",
+        "appliedSettingsCount": settings.len()
+    })))
 }
 
 // ============================================================================
@@ -1514,8 +1763,11 @@ pub fn sync_health_routes() -> Router<T3AppState> {
         .route("/api/sync/event-log", get(get_event_log))
         .route("/api/sync/event-log", post(post_event))
         .route("/api/logs/settings", get(get_log_settings))
-    .route("/api/logs/validation", get(get_log_validation))
+        .route("/api/logs/validation", get(get_log_validation))
+        .route("/api/logs/profile/current", get(get_log_profile_current))
         .route("/api/logs/settings", axum::routing::put(put_log_settings))
+        .route("/api/logs/profile/apply", post(apply_log_profile))
+        .route("/api/logs/profile/disable", post(disable_log_profile))
 }
 
 // ============================================================================

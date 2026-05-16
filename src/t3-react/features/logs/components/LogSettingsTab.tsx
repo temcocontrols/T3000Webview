@@ -14,6 +14,7 @@ import {
 } from '@fluentui/react-components';
 import { ArrowClockwiseRegular, SaveRegular, ErrorCircleRegular, InfoRegular } from '@fluentui/react-icons';
 import { API_BASE_URL } from '../../../config/constants';
+import HvConstant from '../../../../lib/t3-hvac/Data/Constant/HvConstant';
 
 const SETTINGS_URL = `${API_BASE_URL}/api/logs/settings`;
 
@@ -120,6 +121,111 @@ const serializeMinLevels = (levels: LogLevel[]): string => {
   }
 
   return selected.join(',');
+};
+
+type TraceStepMode = 'summary' | 'full';
+
+interface TraceRuntimeConfig {
+  enabled: boolean;
+  profile: string;
+  featureFilter: string[];
+  stepMode: TraceStepMode;
+  includePayload: boolean;
+  sampleRate: number;
+  ttlSec: number;
+  traceIdMode: string;
+  consoleMirror: boolean;
+}
+
+const getDefaultTraceRuntimeConfig = (): TraceRuntimeConfig => {
+  const fallback: TraceRuntimeConfig = {
+    enabled: false,
+    profile: 'baseline',
+    featureFilter: [],
+    stepMode: 'summary',
+    includePayload: false,
+    sampleRate: 1,
+    ttlSec: 1800,
+    traceIdMode: 'page-session',
+    consoleMirror: false,
+  };
+
+  const defaults = HvConstant.LogConfig?.Trace;
+  if (!defaults || typeof defaults !== 'object') {
+    return fallback;
+  }
+
+  return {
+    enabled: defaults.enabled ?? fallback.enabled,
+    profile: defaults.profile ?? fallback.profile,
+    featureFilter: Array.isArray(defaults.featureFilter) ? defaults.featureFilter : fallback.featureFilter,
+    stepMode: defaults.stepMode === 'full' ? 'full' : 'summary',
+    includePayload: defaults.includePayload ?? fallback.includePayload,
+    sampleRate: Math.max(1, Number(defaults.sampleRate) || fallback.sampleRate),
+    ttlSec: Math.max(0, Number(defaults.ttlSec) || fallback.ttlSec),
+    traceIdMode: defaults.traceIdMode ?? fallback.traceIdMode,
+    consoleMirror: defaults.consoleMirror ?? fallback.consoleMirror,
+  };
+};
+
+const loadTraceRuntimeConfig = (): TraceRuntimeConfig => {
+  const defaults = getDefaultTraceRuntimeConfig();
+  if (typeof window === 'undefined') {
+    return defaults;
+  }
+
+  try {
+    const raw = window.localStorage.getItem('t3.config');
+    if (!raw) {
+      return defaults;
+    }
+
+    const parsed = JSON.parse(raw);
+    const trace = parsed?.log?.trace;
+    if (!trace || typeof trace !== 'object') {
+      return defaults;
+    }
+
+    return {
+      ...defaults,
+      ...trace,
+      stepMode: trace.stepMode === 'full' ? 'full' : 'summary',
+      sampleRate: Math.max(1, Number(trace.sampleRate) || defaults.sampleRate),
+      ttlSec: Math.max(0, Number(trace.ttlSec) || defaults.ttlSec),
+      featureFilter: Array.isArray(trace.featureFilter)
+        ? trace.featureFilter.map((item: unknown) => String(item ?? '').trim().toLowerCase()).filter(Boolean)
+        : defaults.featureFilter,
+    };
+  } catch {
+    return defaults;
+  }
+};
+
+const persistTraceRuntimeConfig = (traceConfig: TraceRuntimeConfig): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  let parsed: Record<string, any> = {};
+
+  try {
+    const raw = window.localStorage.getItem('t3.config');
+    parsed = raw ? JSON.parse(raw) : {};
+  } catch {
+    parsed = {};
+  }
+
+  const nextConfig = {
+    ...parsed,
+    log: {
+      ...(parsed.log || {}),
+      trace: {
+        ...traceConfig,
+      },
+    },
+  };
+
+  window.localStorage.setItem('t3.config', JSON.stringify(nextConfig));
 };
 
 const useStyles = makeStyles({
@@ -336,7 +442,7 @@ const useStyles = makeStyles({
   },
   settingRowActive: {
     background: '#f3f9fd',
-    borderColor: '#c7e0f4',
+    border: '1px solid #c7e0f4',
   },
   categoryLabel: {
     display: 'flex',
@@ -469,6 +575,53 @@ const useStyles = makeStyles({
     background: '#faf9f8',
     color: '#605e5c',
   },
+  tracePanel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    padding: '10px 12px',
+    background: '#f7fbff',
+    border: '1px solid #c7e0f4',
+  },
+  traceRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    flexWrap: 'wrap',
+  },
+  traceCheckbox: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    cursor: 'pointer',
+    userSelect: 'none',
+    '& input[type="checkbox"]': {
+      width: '14px',
+      height: '14px',
+      minWidth: '14px',
+      margin: 0,
+      cursor: 'pointer',
+      accentColor: '#0078d4',
+    },
+  },
+  traceNumberInput: {
+    width: '72px',
+    height: '24px',
+    border: '1px solid #d2d0ce',
+    borderRadius: '2px',
+    padding: '0 6px',
+    fontSize: '12px',
+  },
+  traceStatusRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flexWrap: 'wrap',
+  },
+  traceStatusValue: {
+    color: '#004578',
+    fontWeight: 600,
+  },
   sinkLabel: {
     display: 'flex',
     alignItems: 'center',
@@ -480,55 +633,18 @@ const useStyles = makeStyles({
     display: 'block',
     marginTop: '2px',
   },
-  '@media (max-width: 920px)': {
-    globalRow: {
-      alignItems: 'flex-start',
-      flexDirection: 'column',
-      gap: '6px',
-    },
-    globalRowLabel: {
-      width: '100%',
-    },
-    groupList: {
-      gridTemplateColumns: '1fr',
-    },
-    rowTop: {
-      flexWrap: 'wrap',
-      gap: '6px',
-    },
-    controlsWrap: {
-      justifyContent: 'flex-start',
-      flexWrap: 'wrap',
-    },
-    rowBottom: {
-      flexDirection: 'column',
-      alignItems: 'stretch',
-      gap: '8px',
-    },
-    policyGroups: {
-      minWidth: 'unset',
-      flex: '1 1 auto',
-    },
-    policyGroup: {
-      flexWrap: 'wrap',
-    },
-    policyGroupOptions: {
-      flexWrap: 'wrap',
-    },
-    sinksWrap: {
-      justifyContent: 'flex-start',
-      minWidth: 'unset',
-    },
-  },
 });
 
 export const LogSettingsTab: React.FC = () => {
   const s = useStyles();
   const [settings, setSettings] = useState<LogCategoryConfig[]>([]);
+  const [traceConfig, setTraceConfig] = useState<TraceRuntimeConfig>(() => loadTraceRuntimeConfig());
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [traceDirty, setTraceDirty] = useState(false);
+  const [traceSaved, setTraceSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [offlineMode, setOfflineMode] = useState(false);
 
@@ -553,6 +669,11 @@ export const LogSettingsTab: React.FC = () => {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    setTraceConfig(loadTraceRuntimeConfig());
+    setTraceDirty(false);
+  }, []);
 
   const update = (category: string, patch: Partial<LogCategoryConfig>) => {
     setSettings(prev => prev.map(s => s.category === category ? { ...s, ...patch } : s));
@@ -584,6 +705,19 @@ export const LogSettingsTab: React.FC = () => {
     }
   };
 
+  const updateTraceConfig = (patch: Partial<TraceRuntimeConfig>) => {
+    setTraceConfig(prev => ({ ...prev, ...patch }));
+    setTraceDirty(true);
+    setTraceSaved(false);
+  };
+
+  const applyTraceConfig = () => {
+    persistTraceRuntimeConfig(traceConfig);
+    setTraceDirty(false);
+    setTraceSaved(true);
+    setTimeout(() => setTraceSaved(false), 3000);
+  };
+
   const grouped = GROUP_ORDER.map(group => ({
     group,
     label: GROUP_LABELS[group] ?? group,
@@ -591,6 +725,12 @@ export const LogSettingsTab: React.FC = () => {
   })).filter(g => g.items.length > 0);
 
   const hasInvalidLevelSelection = settings.some(cfg => cfg.enabled && expandLegacyMinLevel(cfg.minLevel).length === 0);
+  const traceStatusText = [
+    traceConfig.enabled ? 'On' : 'Off',
+    traceConfig.stepMode === 'full' ? 'Full' : 'Summary',
+    `Sample ${traceConfig.sampleRate}`,
+    traceConfig.featureFilter.length > 0 ? `Features: ${traceConfig.featureFilter.join(', ')}` : 'Features: all',
+  ].join(' | ');
 
   return (
     <div className={s.root}>
@@ -612,6 +752,17 @@ export const LogSettingsTab: React.FC = () => {
           {saved && (
             <Badge appearance="filled" color="success" size="small">Saved</Badge>
           )}
+          <Button
+            appearance={traceDirty ? 'primary' : 'subtle'}
+            onClick={applyTraceConfig}
+            disabled={!traceDirty}
+            size="small"
+          >
+            Apply Trace Runtime
+          </Button>
+          {traceSaved && (
+            <Badge appearance="filled" color="success" size="small">Trace Applied</Badge>
+          )}
         </div>
 
         <div className={s.infoBar}>
@@ -621,23 +772,69 @@ export const LogSettingsTab: React.FC = () => {
           </Text>
         </div>
 
-        <div className={s.globalPolicyBar}>
-          <Text size={400} weight="semibold" className={s.globalPolicyTitle}>Category Policy</Text>
-          <div className={s.globalRows}>
-            <div className={s.globalRow}>
-              <Text size={200} className={s.globalRowLabel}>Model</Text>
-              <Text size={200}>System and operational categories usually stay `DB + Summary`.</Text>
-            </div>
-            <div className={s.globalRow}>
-              <Text size={200} className={s.globalRowLabel}>Debug</Text>
-              <Text size={200}>API_REQ, WEBSOCKET, FFI_CALL, and MESSAGE_ACTION should usually stay disabled until you are investigating an issue.</Text>
-            </div>
-            <div className={s.globalRow}>
-              <Text size={200} className={s.globalRowLabel}>Meaning</Text>
-              <Text size={200}>Summary keeps the message compact. Full keeps the details payload too. Levels are checkbox-based, and All means every level.</Text>
+        <div className={s.tracePanel}>
+          <Text size={400} weight="semibold" className={s.globalPolicyTitle}>Trace Runtime (Frontend)</Text>
+          <Text size={100} className={s.levelHint}>
+            This writes to local browser config only. Use this to turn TrendLog trace on without DevTools.
+          </Text>
+          <div className={s.traceStatusRow}>
+            <Text size={200}>Current</Text>
+            <Text size={200} className={s.traceStatusValue}>{traceStatusText}</Text>
+          </div>
+          <div className={s.traceRow}>
+            <label className={s.traceCheckbox}>
+              <input
+                type="checkbox"
+                checked={traceConfig.enabled}
+                onChange={e => updateTraceConfig({ enabled: e.target.checked })}
+              />
+              <Text size={200}>Enable Trace</Text>
+            </label>
+            <label className={s.traceCheckbox}>
+              <input
+                type="checkbox"
+                checked={traceConfig.stepMode === 'full'}
+                onChange={e => updateTraceConfig({ stepMode: e.target.checked ? 'full' : 'summary' })}
+              />
+              <Text size={200}>Full Steps</Text>
+            </label>
+            <label className={s.traceCheckbox}>
+              <input
+                type="checkbox"
+                checked={traceConfig.consoleMirror}
+                onChange={e => updateTraceConfig({ consoleMirror: e.target.checked })}
+              />
+              <Text size={200}>Console Mirror</Text>
+            </label>
+            <label className={s.traceCheckbox}>
+              <input
+                type="checkbox"
+                checked={traceConfig.includePayload}
+                onChange={e => updateTraceConfig({ includePayload: e.target.checked })}
+              />
+              <Text size={200}>Include Payload</Text>
+            </label>
+            <label className={s.traceCheckbox}>
+              <input
+                type="checkbox"
+                checked={traceConfig.featureFilter.length === 0 || traceConfig.featureFilter.includes('trendlog')}
+                onChange={e => updateTraceConfig({ featureFilter: e.target.checked ? ['trendlog'] : [] })}
+              />
+              <Text size={200}>TrendLog Feature</Text>
+            </label>
+            <div className={s.traceRow}>
+              <Text size={200}>Sample Rate</Text>
+              <input
+                type="number"
+                min={1}
+                max={1000}
+                value={traceConfig.sampleRate}
+                aria-label="Trace sample rate"
+                onChange={e => updateTraceConfig({ sampleRate: Math.max(1, Number(e.target.value) || 1) })}
+                className={s.traceNumberInput}
+              />
             </div>
           </div>
-          <Text size={100} className={s.levelHint}>File routing is policy-controlled and not edited here.</Text>
         </div>
 
         {hasInvalidLevelSelection && !loading && (

@@ -5,9 +5,9 @@ use super::policy::{canonical_category, level_meets_min, load_runtime_log_policy
 use super::sinks::{is_high_volume_category, spawn_mssql_sink, write_file_sink, write_sqlite_sink};
 use super::types::{LogContext, LogEvent, LogLevel};
 
-/// Global kill switch — set to true to completely disable all logging (DB + file).
-/// Useful while the logging feature is not fully tested.
-const LOGGING_ENABLED: bool = false;
+/// Global kill switch — set to false to completely disable all logging (DB + file).
+/// Keep this true during local debugging to allow center log emission.
+const LOGGING_ENABLED: bool = true;
 
 pub struct LoggingService;
 
