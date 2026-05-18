@@ -5,10 +5,10 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useDeviceTreeStore } from '../../../../t3-react/features/devices/store/deviceTreeStore';
-import { API_BASE_URL } from '../../../../t3-react/config/constants';
-import { PanelDataRefreshService } from '../../../../t3-react/shared/services/panelDataRefreshService';
-import { useStatusBarStore } from '../../../../t3-react/store/statusBarStore';
+import { useDeviceTreeStore } from '@t3-react/features/devices/store/deviceTreeStore';
+import { API_BASE_URL } from '@t3-react/config/constants';
+import { PanelDataRefreshService } from '@t3-react/shared/services/panelDataRefreshService';
+import { useStatusBarStore } from '@t3-react/store/statusBarStore';
 import { InputPoint } from '../types/input.types';
 
 export const useInputsPage = () => {

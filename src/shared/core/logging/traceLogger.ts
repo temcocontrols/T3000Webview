@@ -1,4 +1,4 @@
-import HvConstant from '../../../lib/t3-hvac/Data/Constant/HvConstant'
+import HvConstant from '@common/t3-hvac/Data/Constant/HvConstant'
 import { logFrontendEvent, type FrontendLogLevel } from './frontendLogger'
 
 type TraceStepMode = 'summary' | 'full'
@@ -60,7 +60,7 @@ const parseTraceRuntimeConfig = (): TraceRuntimeConfig => {
   const defaults = {
     ...DEFAULT_TRACE_CONFIG,
     ...(HvConstant.LogConfig.Trace || {}),
-  }
+  } as TraceRuntimeConfig
 
   try {
     const raw = localStorage.getItem('t3.config')
@@ -71,13 +71,15 @@ const parseTraceRuntimeConfig = (): TraceRuntimeConfig => {
       return {
         ...defaults,
         featureFilter: normalizeStringArray(defaults.featureFilter),
-      }
+      } as TraceRuntimeConfig
     }
 
     const merged: TraceRuntimeConfig = {
       ...defaults,
       ...trace,
       featureFilter: normalizeStringArray(trace.featureFilter ?? defaults.featureFilter),
+      stepMode: (trace.stepMode === 'full' ? 'full' : 'summary') as TraceStepMode,
+      traceIdMode: (trace.traceIdMode === 'per-operation' ? 'per-operation' : 'page-session') as TraceIdMode,
     }
 
     if (merged.expiresAt) {
@@ -92,7 +94,7 @@ const parseTraceRuntimeConfig = (): TraceRuntimeConfig => {
     return {
       ...defaults,
       featureFilter: normalizeStringArray(defaults.featureFilter),
-    }
+    } as TraceRuntimeConfig
   }
 }
 
