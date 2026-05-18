@@ -10,11 +10,11 @@
  * Replaces old API route-based refresh with direct FFI calls via t3-transport
  */
 
-import { T3Transport } from '../../../lib/t3-transport/core/T3Transport';
-import { EntryType, WebViewMessageType } from '../../../lib/t3-transport/types/message-enums';
-import { T3Database } from '../../../lib/t3-database';
-import { API_BASE_URL } from '../../config/constants';
-import LogUtil from '../../../lib/t3-hvac/Util/LogUtil';
+import { T3Transport } from '@common/t3-transport/core/T3Transport';
+import { EntryType, WebViewMessageType } from '@common/t3-transport/types/message-enums';
+import { T3Database } from '@common/t3-database';
+import { API_BASE_URL } from '@t3-react/config/constants';
+import LogUtil from '@common/t3-hvac/Util/LogUtil';
 
 export type PointType = 'input' | 'output' | 'variable' | 'program' | 'schedule' | 'pidloop' | 'holiday' | 'trendlog' | 'alarm' | 'graphic';
 

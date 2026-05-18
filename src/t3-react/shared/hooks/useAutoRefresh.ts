@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { API_BASE_URL } from '../../config/constants';
+import { API_BASE_URL } from '@t3-react/config/constants';
 
 export interface AutoRefreshConfig {
   autoRefreshEnabled: boolean;
