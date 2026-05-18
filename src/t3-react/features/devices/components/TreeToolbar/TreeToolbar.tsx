@@ -31,7 +31,7 @@ import {
   DeleteRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../store/deviceTreeStore';
-import { useStatusBarStore } from '../../../../store/statusBarStore';
+import { useStatusBarStore } from '@t3-react/store/statusBarStore';
 import styles from './TreeToolbar.module.css';
 
 /**

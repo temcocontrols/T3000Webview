@@ -51,10 +51,10 @@ import {
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
 import { getRangeLabel } from '../data/rangeData';
-import { API_BASE_URL } from '../../../config/constants';
-import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
-import { useStatusBarStore } from '../../../store/statusBarStore';
-import { SyncStatusBar } from '../../../shared/components/SyncStatusBar';
+import { API_BASE_URL } from '@t3-react/config/constants';
+import { PanelDataRefreshService } from '@t3-react/shared/services/panelDataRefreshService';
+import { useStatusBarStore } from '@t3-react/store/statusBarStore';
+import { SyncStatusBar } from '@t3-react/shared/components/SyncStatusBar';
 import styles from './OutputsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';

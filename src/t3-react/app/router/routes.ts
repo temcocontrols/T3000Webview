@@ -5,7 +5,7 @@
 
 import { lazy } from 'react';
 import type { RouteObject } from 'react-router-dom';
-import { createResponsiveRoute } from '../../../shared/core/router/ViewRouter';
+import { createResponsiveRoute } from '@t3-shared/core/router/ViewRouter';
 
 // Lazy load page components for code splitting
 const HomePage = lazy(() => import('../pages').then(m => ({ default: m.HomePage })));

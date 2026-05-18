@@ -10,8 +10,8 @@
  * - Future: Add program-specific validation, transformations, etc.
  */
 
-import { PanelDataRefreshService, RefreshResult } from '../../../shared/services/panelDataRefreshService';
-import { T3Database } from '../../../../lib/t3-database';
+import { PanelDataRefreshService, RefreshResult } from '@t3-react/shared/services/panelDataRefreshService';
+import { T3Database } from '@common/t3-database';
 import type { Program } from '../types/program.types';
 
 /**

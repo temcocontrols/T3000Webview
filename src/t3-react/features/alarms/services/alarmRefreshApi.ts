@@ -10,10 +10,10 @@
  * - Future: Add alarm-specific validation, transformations, etc.
  */
 
-import { PanelDataRefreshService, RefreshResult } from '../../../shared/services/panelDataRefreshService';
-import { T3Database } from '../../../../lib/t3-database';
-import type { Alarm } from '../../../../lib/t3-database/types/alarms.types';
-import { API_BASE_URL } from '../../../config/constants';
+import { PanelDataRefreshService, RefreshResult } from '@t3-react/shared/services/panelDataRefreshService';
+import { T3Database } from '@common/t3-database';
+import type { Alarm } from '@common/t3-database/types/alarms.types';
+import { API_BASE_URL } from '@t3-react/config/constants';
 
 /**
  * Alarm Refresh API

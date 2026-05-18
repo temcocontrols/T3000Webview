@@ -35,7 +35,7 @@ import {
   InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
-import { API_BASE_URL } from '../../../config/constants';
+import { API_BASE_URL } from '@t3-react/config/constants';
 import { AlarmRefreshApi } from '../services/alarmRefreshApi';
 import styles from './AlarmsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';

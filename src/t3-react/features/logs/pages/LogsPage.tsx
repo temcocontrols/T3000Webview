@@ -35,7 +35,7 @@ import {
 import { ActivityLogTab } from '../components/ActivityLogTab';
 import { FileLogsTab } from '../components/FileLogsTab';
 import { LogSettingsTab } from '../components/LogSettingsTab';
-import { API_BASE_URL } from '../../../config/constants';
+import { API_BASE_URL } from '@t3-react/config/constants';
 
 const ACTIVITY_LOG_URL = `${API_BASE_URL}/api/sync/event-log`;
 
