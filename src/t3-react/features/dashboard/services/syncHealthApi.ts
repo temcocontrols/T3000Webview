@@ -151,3 +151,99 @@ export async function getServerSyncMetrics(): Promise<ServerSyncMetrics> {
     error:           data.error,
   };
 }
+
+// ── Sync diagnostics (dashboard troubleshooting panel) ───────────────────────
+
+export type DiagnosticSeverity = 'ok' | 'info' | 'warn' | 'error';
+
+export interface DiagnosticCheck {
+  severity: DiagnosticSeverity;
+  title: string;
+  detail: string;
+  hint?: string;
+}
+
+export interface SyncDiagnosticsData {
+  role: string;
+  hostname: string;
+  iniRole: string;
+  iniCenterDbEnabled: boolean;
+  syncRunsOnThisPc: boolean;
+  roleMismatch: boolean;
+  metricsSource: string;
+  ffiSyncHost: string | null;
+  eventLogScope: string;
+  eventLogNote: string;
+  checks: DiagnosticCheck[];
+  recentFfiEvents: AppLogEntry[];
+}
+
+export interface ServerDiagnosticsResult {
+  ok: boolean;
+  serverIp?: string;
+  error?: string;
+  diagnostics?: SyncDiagnosticsData;
+}
+
+function mapDiagnosticsPayload(data: Record<string, unknown>): SyncDiagnosticsData {
+  const checks = Array.isArray(data.checks)
+    ? (data.checks as Record<string, unknown>[]).map((c) => ({
+        severity: (c.severity as DiagnosticSeverity) ?? 'info',
+        title: String(c.title ?? ''),
+        detail: String(c.detail ?? ''),
+        hint: c.hint ? String(c.hint) : undefined,
+      }))
+    : [];
+
+  const recentFfiEvents = Array.isArray(data.recentFfiEvents)
+    ? (data.recentFfiEvents as Record<string, unknown>[]).map((e) => ({
+        id: Number(e.id ?? 0),
+        ts: String(e.ts ?? ''),
+        tsUnix: Number(e.tsUnix ?? 0),
+        level: (e.level as EventLevel) ?? 'info',
+        category: String(e.category ?? ''),
+        source: e.source ? String(e.source) : null,
+        hostname: e.hostname ? String(e.hostname) : null,
+        role: e.role ? String(e.role) : null,
+        deviceSerial: e.deviceSerial ? String(e.deviceSerial) : null,
+        message: String(e.message ?? ''),
+        details: e.details ? String(e.details) : null,
+      }))
+    : [];
+
+  return {
+    role: String(data.role ?? ''),
+    hostname: String(data.hostname ?? ''),
+    iniRole: String(data.iniRole ?? ''),
+    iniCenterDbEnabled: Boolean(data.iniCenterDbEnabled),
+    syncRunsOnThisPc: Boolean(data.syncRunsOnThisPc),
+    roleMismatch: Boolean(data.roleMismatch),
+    metricsSource: String(data.metricsSource ?? ''),
+    ffiSyncHost: data.ffiSyncHost ? String(data.ffiSyncHost) : null,
+    eventLogScope: String(data.eventLogScope ?? 'local'),
+    eventLogNote: String(data.eventLogNote ?? ''),
+    checks,
+    recentFfiEvents,
+  };
+}
+
+export async function getSyncDiagnostics(): Promise<SyncDiagnosticsData> {
+  const res = await fetch(`${API_BASE_URL}/api/sync/diagnostics`);
+  if (!res.ok) throw new Error(`sync/diagnostics: HTTP ${res.status}`);
+  const data = await res.json();
+  return mapDiagnosticsPayload(data);
+}
+
+export async function getServerSyncDiagnostics(): Promise<ServerDiagnosticsResult> {
+  const res = await fetch(`${API_BASE_URL}/api/sync/server-diagnostics`);
+  if (!res.ok) throw new Error(`sync/server-diagnostics: HTTP ${res.status}`);
+  const data = await res.json();
+  return {
+    ok: Boolean(data.ok),
+    serverIp: data.serverIp ? String(data.serverIp) : undefined,
+    error: data.error ? String(data.error) : undefined,
+    diagnostics: data.diagnostics
+      ? mapDiagnosticsPayload(data.diagnostics as Record<string, unknown>)
+      : undefined,
+  };
+}
