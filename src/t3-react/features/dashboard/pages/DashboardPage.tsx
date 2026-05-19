@@ -925,13 +925,6 @@ export const DashboardPage: React.FC = () => {
               isClient={appMode === 'client'}
               serverMetrics={serverMetrics ?? undefined}
             />
-            {appMode !== 'standalone' && (
-              <SyncDiagnosticsPanel
-                appMode={appMode}
-                onViewActivityLog={() => setSyncLogOpen(true)}
-                refreshKey={diagnosticsRefreshKey}
-              />
-            )}
           </div>
         </div>
 
@@ -1039,6 +1032,24 @@ export const DashboardPage: React.FC = () => {
           </div>
           <div className={s.monitoringColContent}>
             <RecentActivity key={activityRefreshKey} onSummary={setActivitySummary} />
+          </div>
+        </div>
+
+        {/* ── Sync Diagnostics ── */}
+        <div className={s.section}>
+          <div className={s.sectionHeader}>
+            <h3 className={s.sectionTitle}>
+              {appMode === 'standalone' ? 'Local Sync & Log Diagnostics' : 'Sync & Log Diagnostics'}
+            </h3>
+          </div>
+          <div className={s.syncHealthWrapper}> 
+            {appMode !== 'standalone' && (
+              <SyncDiagnosticsPanel
+                appMode={appMode}
+                onViewActivityLog={() => setSyncLogOpen(true)}
+                refreshKey={diagnosticsRefreshKey}
+              />
+            )}
           </div>
         </div>
 
