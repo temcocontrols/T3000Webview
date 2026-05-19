@@ -19,7 +19,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use chrono::{Datelike, Local, TimeZone, Utc};
+use chrono::{Datelike, Local, NaiveDateTime, TimeZone, Utc};
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashMap};
@@ -374,6 +374,18 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         }
     }
 
+    let response = build_sync_health_response(&state).await?;
+    {
+        let mut cache_guard = sync_health_cache().write().await;
+        *cache_guard = Some(CachedSyncHealth {
+            created_at: Instant::now(),
+            payload: response.clone(),
+        });
+    }
+    Ok(Json(response))
+}
+
+async fn build_sync_health_response(state: &T3AppState) -> Result<SyncHealthResponse> {
     let total_started = Instant::now();
 
     let resolve_status_started = Instant::now();
@@ -578,15 +590,7 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         sync_interval_secs,
     };
 
-    {
-        let mut cache_guard = sync_health_cache().write().await;
-        *cache_guard = Some(CachedSyncHealth {
-            created_at: Instant::now(),
-            payload: response.clone(),
-        });
-    }
-
-    Ok(Json(response))
+    Ok(response)
 }
 
 // ============================================================================
@@ -1752,6 +1756,418 @@ async fn disable_log_profile(
 }
 
 // ============================================================================
+// ============================================================================
+// GET /api/sync/diagnostics — structured sync troubleshooting for the dashboard
+// ============================================================================
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DiagnosticCheck {
+    pub severity: String,
+    pub title: String,
+    pub detail: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hint: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncDiagnosticsResponse {
+    /// Runtime role from the running service (same as GET /api/sync/health role).
+    pub role: String,
+    pub hostname: String,
+    /// setting.ini [ServerDatabase] role (read from disk now).
+    pub ini_role: String,
+    pub ini_center_db_enabled: bool,
+    /// True when setting.ini has enabled=1 and role=server (same gate as lib.rs FFI startup).
+    pub sync_runs_on_this_pc: bool,
+    /// True when ini role disagrees with runtime role (restart required).
+    pub role_mismatch: bool,
+    /// Where dashboard sync KPIs / metadata come from.
+    pub metrics_source: String,
+    pub ffi_sync_host: Option<String>,
+    pub event_log_scope: String,
+    pub event_log_note: String,
+    pub checks: Vec<DiagnosticCheck>,
+    pub recent_ffi_events: Vec<AppLogEntry>,
+}
+
+fn last_sync_age_secs(last_sync_time: &Option<String>) -> Option<i64> {
+    let raw = last_sync_time.as_ref()?;
+    let naive = NaiveDateTime::parse_from_str(raw, "%Y-%m-%d %H:%M:%S").ok()?;
+    let local_dt = Local.from_local_datetime(&naive).single()?;
+    Some(Local::now().timestamp() - local_dt.timestamp())
+}
+
+fn build_diagnostic_checks(
+    health: &SyncHealthResponse,
+    ini_cfg: &crate::ini_config::ServerDbIniConfig,
+    sync_runs_on_this_pc: bool,
+    role_mismatch: bool,
+    server_proxy_error: Option<&str>,
+) -> Vec<DiagnosticCheck> {
+    let mut checks: Vec<DiagnosticCheck> = Vec::new();
+
+    if role_mismatch {
+        checks.push(DiagnosticCheck {
+            severity: "error".into(),
+            title: "INI and running service disagree — restart required".into(),
+            detail: format!(
+                "setting.ini: enabled={}, role={}. Running service role={}. FFI startup uses INI at boot; dashboard uses runtime role.",
+                ini_cfg.enabled, ini_cfg.role, health.role
+            ),
+            hint: Some(
+                "Restart the T3000 webview / Rust service after changing setting.ini.".into(),
+            ),
+        });
+    }
+
+    match health.role.as_str() {
+        "standalone" => {
+            checks.push(DiagnosticCheck {
+                severity: "info".into(),
+                title: "This PC: standalone (not Shared DB)".into(),
+                detail: "Background FFI interval sync is disabled. Only realtime device writes are active.".into(),
+                hint: Some("Enable Shared DB + role=server in setting.ini to use interval sync.".into()),
+            });
+        }
+        "client" => {
+            let host = health
+                .center_db_host
+                .clone()
+                .unwrap_or_else(|| "server PC".into());
+            checks.push(DiagnosticCheck {
+                severity: "info".into(),
+                title: "This PC: CLIENT — FFI sync does not run here".into(),
+                detail: format!(
+                    "Dashboard Last Sync / Records Today are proxied from {}:9103 (not this machine).",
+                    host
+                ),
+                hint: Some(
+                    "To debug sync, open the dashboard or Develop → Logs on the server PC.".into(),
+                ),
+            });
+            if let Some(err) = server_proxy_error {
+                checks.push(DiagnosticCheck {
+                    severity: "error".into(),
+                    title: "Cannot reach server sync API".into(),
+                    detail: err.to_string(),
+                    hint: Some(
+                        "Verify the server PC is online, port 9103 is open, and Database Config host matches the server IP.".into(),
+                    ),
+                });
+            }
+        }
+        "server" => {
+            checks.push(DiagnosticCheck {
+                severity: "ok".into(),
+                title: "This PC: SERVER — FFI sync host".into(),
+                detail: format!(
+                    "Dashboard sync KPIs are read from local DATA_SYNC_METADATA on {} (this machine).",
+                    health.hostname
+                ),
+                hint: None,
+            });
+            if sync_runs_on_this_pc {
+                checks.push(DiagnosticCheck {
+                    severity: "ok".into(),
+                    title: "setting.ini allows FFI interval sync".into(),
+                    detail: format!(
+                        "enabled=1, role=server — service should run the FFI loop every {} seconds.",
+                        health.sync_interval_secs
+                    ),
+                    hint: Some(
+                        "If cycles still fail, check Activity Log category POLL (source ffi_sync) below.".into(),
+                    ),
+                });
+            } else {
+                checks.push(DiagnosticCheck {
+                    severity: "error".into(),
+                    title: "setting.ini blocks FFI interval sync".into(),
+                    detail: format!(
+                        "Current INI: enabled={}, role={}. Need enabled=1 and role=server, then restart the service.",
+                        ini_cfg.enabled, ini_cfg.role
+                    ),
+                    hint: Some(
+                        "Activity Log STARTUP may show \"FFI Sync Service DISABLED\".".into(),
+                    ),
+                });
+            }
+        }
+        _ => {}
+    }
+
+    if health.center_db_enabled && !health.center_db_connected {
+        checks.push(DiagnosticCheck {
+            severity: "error".into(),
+            title: "Center database disconnected".into(),
+            detail: health
+                .center_db_message
+                .clone()
+                .unwrap_or_else(|| format!("Status: {}", health.center_db_status)),
+            hint: Some("Use Test Connection on the dashboard or Database Config to fix connectivity.".into()),
+        });
+    }
+
+    if health.writes_blocked {
+        checks.push(DiagnosticCheck {
+            severity: "error".into(),
+            title: "Writes blocked — today counts forced to zero".into(),
+            detail: "Center DB is enabled but unavailable; dashboard zeros Records/Devices Today even if old metadata exists.".into(),
+            hint: None,
+        });
+    }
+
+    if health.sampling_paused {
+        checks.push(DiagnosticCheck {
+            severity: "warn".into(),
+            title: "FFI sampling paused".into(),
+            detail: health
+                .paused_reason
+                .clone()
+                .unwrap_or_else(|| "Sampling paused by policy.".into()),
+            hint: None,
+        });
+    }
+
+    if health.center_db_enabled && health.role == "server" && !health.mssql_pool_active {
+        checks.push(DiagnosticCheck {
+            severity: "warn".into(),
+            title: "MSSQL pool inactive — sync cycles may be skipped".into(),
+            detail: "When center DB mode is on but the pool is down, each cycle logs policy=center_db_skip_retry and writes no metadata.".into(),
+            hint: Some("Restore SQL Server connectivity on this server PC.".into()),
+        });
+    }
+
+    if let Some(age_secs) = last_sync_age_secs(&health.last_sync_time) {
+        let interval = health.sync_interval_secs.max(30) as i64;
+        if age_secs > interval * 3 {
+            let severity = if age_secs > 86_400 { "error" } else { "warn" };
+            checks.push(DiagnosticCheck {
+                severity: severity.into(),
+                title: "Last sync is stale".into(),
+                detail: format!(
+                    "Last successful FFI metadata write was {} ago ({}) — expected about every {}s.",
+                    health.last_sync_ago.clone().unwrap_or_else(|| "?".into()),
+                    health.last_sync_time.clone().unwrap_or_default(),
+                    interval
+                ),
+                hint: Some(
+                    "Open Activity Log, filter POLL, and look for policy= or GET_PANELS_LIST messages.".into(),
+                ),
+            });
+        }
+    } else if health.role == "server" && sync_runs_on_this_pc {
+        checks.push(DiagnosticCheck {
+            severity: "warn".into(),
+            title: "No sync metadata recorded yet".into(),
+            detail: "DATA_SYNC_METADATA has no FFI_BACKEND rows — the service may still be starting (30s delay) or cycles are failing.".into(),
+            hint: None,
+        });
+    }
+
+    if health.center_db_enabled
+        && !health.writes_blocked
+        && health.records_today.total == 0
+        && health.devices_synced_today == 0
+        && health.last_sync_time.is_some()
+    {
+        checks.push(DiagnosticCheck {
+            severity: "warn".into(),
+            title: "No sync activity today".into(),
+            detail: "Last sync exists but Records Today and Devices Today are both zero (local midnight boundary).".into(),
+            hint: Some(
+                "Confirm sync cycles are completing on the server after midnight local time.".into(),
+            ),
+        });
+    }
+
+    if checks.is_empty() {
+        checks.push(DiagnosticCheck {
+            severity: "ok".into(),
+            title: "No issues detected".into(),
+            detail: "Sync health checks passed with current configuration.".into(),
+            hint: None,
+        });
+    }
+
+    checks
+}
+
+async fn fetch_recent_ffi_events(state: &T3AppState, limit: usize) -> Vec<AppLogEntry> {
+    let mut merged: Vec<(i64, AppLogEntry)> = Vec::new();
+
+    if let Some(pool) = crate::server_db_writer::get_server_mssql_pool() {
+        for row in crate::database_management::mssql_queries::query_app_log(pool, None, Some("POLL"), 40)
+            .await
+            .unwrap_or_default()
+        {
+            if row["source"].as_str() != Some("ffi_sync") {
+                continue;
+            }
+            let entry = json_to_log_entry(&row);
+            merged.push((entry.ts_unix, entry));
+        }
+        for row in crate::database_management::mssql_queries::query_app_log(pool, None, Some("DEVICE"), 20)
+            .await
+            .unwrap_or_default()
+        {
+            if row["source"].as_str() != Some("ffi_sync") {
+                continue;
+            }
+            let entry = json_to_log_entry(&row);
+            merged.push((entry.ts_unix, entry));
+        }
+    }
+
+    if let Some(db) = get_local_log_db_conn(state).await {
+        ensure_app_log_table(&db).await;
+        for row in query_sqlite_log_raw(&db, None, Some("POLL"), 40).await {
+            if row["source"].as_str() != Some("ffi_sync") {
+                continue;
+            }
+            let entry = json_to_log_entry(&row);
+            merged.push((entry.ts_unix, entry));
+        }
+        for row in query_sqlite_log_raw(&db, None, Some("STARTUP"), 10).await {
+            if row["source"].as_str() != Some("ffi_sync") {
+                continue;
+            }
+            let entry = json_to_log_entry(&row);
+            merged.push((entry.ts_unix, entry));
+        }
+    }
+
+    merged.sort_unstable_by(|a, b| b.0.cmp(&a.0));
+    merged.dedup_by(|a, b| a.1.id == b.1.id && a.0 == b.0);
+    merged
+        .into_iter()
+        .take(limit)
+        .map(|(_, e)| e)
+        .collect()
+}
+
+async fn build_sync_diagnostics(
+    state: &T3AppState,
+    server_proxy_error: Option<String>,
+) -> Result<SyncDiagnosticsResponse> {
+    let health = build_sync_health_response(state).await?;
+    let ini_cfg = crate::ini_config::read_server_db_config_auto();
+    let sync_runs_on_this_pc = ini_cfg.enabled && ini_cfg.role == "server";
+    let role_mismatch = ini_cfg.enabled
+        && health.role != "standalone"
+        && ini_cfg.role != health.role;
+
+    let metrics_source = if health.role == "client" {
+        let host = health
+            .center_db_host
+            .clone()
+            .unwrap_or_else(|| "server".into());
+        format!("remote_server:{}", host)
+    } else {
+        "this_pc".to_string()
+    };
+
+    let ffi_sync_host = if health.role == "client" {
+        health.center_db_host.clone()
+    } else if sync_runs_on_this_pc {
+        Some(health.hostname.clone())
+    } else {
+        None
+    };
+
+    let mut checks = build_diagnostic_checks(
+        &health,
+        &ini_cfg,
+        sync_runs_on_this_pc,
+        role_mismatch,
+        server_proxy_error.as_deref(),
+    );
+
+    // Surface skip reasons from the latest POLL ffi_sync row when present.
+    let recent_ffi_events = fetch_recent_ffi_events(state, 12).await;
+    if let Some(ev) = recent_ffi_events.first() {
+        if let Some(details) = ev.details.as_deref() {
+            if details.contains("policy=center_db_skip_retry") {
+                checks.push(DiagnosticCheck {
+                    severity: "warn".into(),
+                    title: "Latest cycle: center DB skip".into(),
+                    detail: "Most recent ffi_sync POLL log shows policy=center_db_skip_retry — cycle wrote no metadata.".into(),
+                    hint: Some("Restore MSSQL pool on this PC (server) or fix SQL connectivity.".into()),
+                });
+            } else if details.contains("policy=standalone_skip") {
+                checks.push(DiagnosticCheck {
+                    severity: "warn".into(),
+                    title: "Latest cycle: standalone skip".into(),
+                    detail: "FFI loop is skipping because center DB is disabled in setting.ini at cycle time.".into(),
+                    hint: None,
+                });
+            }
+        }
+        if ev.message.contains("GET_PANELS_LIST timed out") {
+            checks.push(DiagnosticCheck {
+                severity: "warn".into(),
+                title: "Latest cycle: T3000 FFI timeout".into(),
+                detail: ev.message.clone(),
+                hint: Some("Ensure T3000.exe is running and BacnetWebView_HandleWebViewMsg is available.".into()),
+            });
+        }
+    }
+
+    Ok(SyncDiagnosticsResponse {
+        role: health.role,
+        hostname: health.hostname,
+        ini_role: ini_cfg.role,
+        ini_center_db_enabled: ini_cfg.enabled,
+        sync_runs_on_this_pc,
+        role_mismatch,
+        metrics_source,
+        ffi_sync_host,
+        event_log_scope: health.event_log_scope,
+        event_log_note: health.event_log_note,
+        checks,
+        recent_ffi_events,
+    })
+}
+
+async fn get_sync_diagnostics(State(state): State<T3AppState>) -> Result<Json<SyncDiagnosticsResponse>> {
+    let diagnostics = build_sync_diagnostics(&state, None).await?;
+    Ok(Json(diagnostics))
+}
+
+async fn get_server_sync_diagnostics(
+    State(state): State<T3AppState>,
+) -> Json<serde_json::Value> {
+    if !state.server_db_enabled || state.server_db_role != "client" {
+        return Json(serde_json::json!({
+            "ok": false,
+            "error": "Not in client mode"
+        }));
+    }
+
+    let server_ip = if let Some(ref local_conn) = state.local_config_conn {
+        let db = local_conn.lock().await;
+        crate::database_management::db_backend_config::load_active_config(&*db)
+            .await
+            .ok()
+            .and_then(|cfg| cfg.host)
+    } else {
+        None
+    };
+
+    let Some(server_ip) = server_ip else {
+        return Json(serde_json::json!({
+            "ok": false,
+            "error": "Server IP not configured"
+        }));
+    };
+
+    match fetch_server_get_raw(&server_ip, 9103, "/api/sync/diagnostics").await {
+        Ok(body) => Json(serde_json::json!({ "ok": true, "serverIp": server_ip, "diagnostics": body })),
+        Err(e) => Json(serde_json::json!({ "ok": false, "error": e, "serverIp": server_ip })),
+    }
+}
+
 // Router
 // ============================================================================
 
@@ -1759,6 +2175,8 @@ pub fn sync_health_routes() -> Router<T3AppState> {
     Router::new()
         .route("/api/sync/health", get(get_sync_health))
         .route("/api/sync/health/ping", get(ping_center_db))
+        .route("/api/sync/diagnostics", get(get_sync_diagnostics))
+        .route("/api/sync/server-diagnostics", get(get_server_sync_diagnostics))
         .route("/api/sync/server-health", get(get_server_sync_metrics))
         .route("/api/sync/event-log", get(get_event_log))
         .route("/api/sync/event-log", post(post_event))
@@ -1805,7 +2223,7 @@ async fn get_server_sync_metrics(
         }));
     };
 
-    match fetch_server_health_raw(&server_ip, 9103).await {
+    match fetch_server_get_raw(&server_ip, 9103, "/api/sync/health").await {
         Ok(body) => {
             // Extract only the fields we need.
             // /api/sync/health serialises with rename_all = "camelCase", so
@@ -1830,7 +2248,11 @@ async fn get_server_sync_metrics(
 }
 
 /// Raw HTTP/1.1 GET over a plain TCP stream — no TLS, no extra crates.
-async fn fetch_server_health_raw(host: &str, port: u16) -> std::result::Result<serde_json::Value, String> {
+async fn fetch_server_get_raw(
+    host: &str,
+    port: u16,
+    path: &str,
+) -> std::result::Result<serde_json::Value, String> {
     let addr = format!("{}:{}", host, port);
 
     let mut stream = tokio::time::timeout(
@@ -1842,8 +2264,8 @@ async fn fetch_server_health_raw(host: &str, port: u16) -> std::result::Result<s
     .map_err(|e| format!("TCP connect error: {}", e))?;
 
     let request = format!(
-        "GET /api/sync/health HTTP/1.1\r\nHost: {}\r\nConnection: close\r\nAccept: application/json\r\n\r\n",
-        host
+        "GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\nAccept: application/json\r\n\r\n",
+        path, host
     );
     stream
         .write_all(request.as_bytes())
