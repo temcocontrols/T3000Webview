@@ -436,10 +436,22 @@ const useStyles = makeStyles({
 
 });
 
+function readLogsHashParams(): { viewFiles: boolean; category: string } {
+  const hash = window.location.hash ?? '';
+  const qIndex = hash.indexOf('?');
+  if (qIndex < 0) return { viewFiles: false, category: '' };
+  const params = new URLSearchParams(hash.slice(qIndex + 1));
+  return {
+    viewFiles: params.get('view') === 'files',
+    category: params.get('category') ?? '',
+  };
+}
+
 export const LogsPage: React.FC = () => {
   const s = useStyles();
+  const initialHash = readLogsHashParams();
   const [showSettings, setShowSettings] = useState(false);
-  const [showFiles, setShowFiles] = useState(false);
+  const [showFiles, setShowFiles] = useState(initialHash.viewFiles);
   const [summaryVisible, setSummaryVisible] = useState(true);
   const [logData, setLogData] = useState<EventLogResponse | null>(null);
   const [latestLog, setLatestLog] = useState<AppLogEntry | null>(null);
@@ -450,7 +462,7 @@ export const LogsPage: React.FC = () => {
     categoryCount: 0,
     lastUpdated: '--:--:--',
   });
-  const [activeCategoryFilter, setActiveCategoryFilter] = useState('');
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState(initialHash.category);
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
   const entriesRef = useRef<AppLogEntry[]>([]);
