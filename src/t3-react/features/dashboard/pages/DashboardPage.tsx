@@ -31,7 +31,6 @@ import { getSyncHealth, getServerSyncMetrics, SyncHealthData, ServerSyncMetrics 
 import { API_BASE_URL } from '../../../config/constants';
 import { getIniConfig, IniConfig } from '../../database/services/databaseConfigApi';
 import { SyncHealthWidget } from '../components/SyncHealthWidget';
-import { SyncDiagnosticsPanel } from '../components/SyncDiagnosticsPanel';
 import { SyncLogDrawer } from '../components/SyncLogDrawer';
 import { TrendLogs, TrendDeviceOption } from '../components/TrendLogs';
 import { TrendlogVerifyDrawer } from '../../trendlogs/components/TrendlogVerifyDrawer';
@@ -587,7 +586,6 @@ export const DashboardPage: React.FC = () => {
   const [serverMetrics, setServerMetrics] = useState<ServerSyncMetrics | null>(null);
   // Track whether we're in "fast poll" mode (after a mode change, waiting for restart)
   const [fastPolling, setFastPolling] = useState(false);
-  const [diagnosticsRefreshKey, setDiagnosticsRefreshKey] = useState(0);
 
   // appMode derivation:
   // Primary = syncHealth.role (live runtime state — what the service is actually running as).
@@ -917,10 +915,7 @@ export const DashboardPage: React.FC = () => {
               data={syncHealth}
               loading={healthLoading}
               error={healthError}
-              onRefresh={async () => {
-                await fetchHealth();
-                setDiagnosticsRefreshKey((k) => k + 1);
-              }}
+              onRefresh={fetchHealth}
               isStandalone={appMode === 'standalone'}
               isClient={appMode === 'client'}
               serverMetrics={serverMetrics ?? undefined}
@@ -1032,24 +1027,6 @@ export const DashboardPage: React.FC = () => {
           </div>
           <div className={s.monitoringColContent}>
             <RecentActivity key={activityRefreshKey} onSummary={setActivitySummary} />
-          </div>
-        </div>
-
-        {/* ── Sync Diagnostics ── */}
-        <div className={s.section}>
-          <div className={s.sectionHeader}>
-            <h3 className={s.sectionTitle}>
-              {appMode === 'standalone' ? 'Local Sync & Log Diagnostics' : 'Sync & Log Diagnostics'}
-            </h3>
-          </div>
-          <div className={s.syncHealthWrapper}> 
-            {appMode !== 'standalone' && (
-              <SyncDiagnosticsPanel
-                appMode={appMode}
-                onViewActivityLog={() => setSyncLogOpen(true)}
-                refreshKey={diagnosticsRefreshKey}
-              />
-            )}
           </div>
         </div>
 

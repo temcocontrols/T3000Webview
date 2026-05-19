@@ -1205,18 +1205,54 @@ impl T3000MainService {
     /// Write path is chosen automatically at the start of each cycle:
     /// - MSSQL pool present → writes directly to MSSQL center DB (SyncWriter::MssqlDirect)
     /// - Otherwise         → writes to local SQLite or SeaORM center DB (SyncWriter::Sqlite)
+    async fn try_auto_resume_sampling(local_db: &DatabaseConnection) -> Result<bool, String> {
+        let ini_cfg = crate::ini_config::read_server_db_config_auto();
+
+        // Pause guard only matters for center-DB server sync.
+        if !ini_cfg.enabled || ini_cfg.role != "server" {
+            crate::app_state::set_sampling_active();
+            return Ok(true);
+        }
+
+        // If a pool is already available, we can safely resume.
+        if crate::server_db_writer::get_server_mssql_pool().is_some() {
+            crate::app_state::set_sampling_active();
+            return Ok(true);
+        }
+
+        let active_cfg = crate::database_management::db_backend_config::load_active_config(local_db)
+            .await
+            .map_err(|e| format!("load_active_backend_config failed: {}", e))?;
+
+        match active_cfg.backend_type {
+            crate::database_management::db_backend_config::BackendType::Mssql => {
+                let tib = crate::database_management::db_backend_config::build_mssql_config(&active_cfg)
+                    .map_err(|e| format!("build_mssql_config failed: {}", e))?;
+                let pool = crate::database_management::mssql_queries::create_mssql_pool(tib, 5)
+                    .await
+                    .map_err(|e| format!("create_mssql_pool failed: {}", e))?;
+
+                crate::server_db_writer::set_reconnect_mssql_pool(pool);
+                crate::app_state::set_sampling_active();
+                Ok(true)
+            }
+            _ => match crate::db_connection::establish_device_conn_from_config(local_db).await {
+                Ok((device_conn, _)) => {
+                    crate::db_connection::validate_device_conn_ready(&device_conn)
+                        .await
+                        .map_err(|e| format!("center_db_validation failed: {}", e))?;
+                    crate::app_state::set_sampling_active();
+                    Ok(true)
+                }
+                Err(_) => Ok(false),
+            },
+        }
+    }
+
     async fn sync_logging_data_static(config: T3000MainConfig) -> Result<(), AppError> {
         // Create logger for this sync operation
         let mut sync_logger =
             ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
-
-        // ── CHECK SAMPLING STATE ──────────────────────────────────────────────
-        if crate::app_state::is_sampling_paused() {
-            let reason = crate::app_state::get_pause_reason().unwrap_or_default();
-            sync_logger.warn(&format!("⏸️  Sampling paused — skipping cycle: {}", reason));
-            return Ok(());
-        }
-        // ─────────────────────────────────────────────────────────────────────
 
         sync_logger.info(&format!(
             "⚙️ Config: Timeout {}s, Retry {}x",
@@ -1230,6 +1266,55 @@ impl T3000MainService {
         })?;
 
         crate::database_management::sync_health::ensure_app_log_table(&local_db).await;
+
+        // ── CHECK SAMPLING STATE ──────────────────────────────────────────────
+        if crate::app_state::is_sampling_paused() {
+            let reason = crate::app_state::get_pause_reason().unwrap_or_default();
+            sync_logger.warn(&format!(
+                "⏸️  Sampling paused — probing center DB before this cycle: {}",
+                reason
+            ));
+
+            crate::logging::service::emit_app_log(
+                &local_db,
+                "warn",
+                "POLL",
+                Some("ffi_sync"),
+                None,
+                "Sampling paused — attempting auto-resume probe",
+                Some(&format!("reason={}", reason)),
+            )
+            .await;
+
+            match Self::try_auto_resume_sampling(&local_db).await {
+                Ok(true) => {
+                    sync_logger.info("▶️ Sampling auto-resumed after successful center DB probe");
+                    crate::logging::service::emit_app_log(
+                        &local_db,
+                        "info",
+                        "POLL",
+                        Some("ffi_sync"),
+                        None,
+                        "Sampling auto-resumed after center DB probe",
+                        None,
+                    )
+                    .await;
+                }
+                Ok(false) => {
+                    sync_logger.warn("⏸️  Sampling remains paused — skipping this cycle");
+                    return Ok(());
+                }
+                Err(e) => {
+                    sync_logger.warn(&format!(
+                        "⏸️  Auto-resume probe failed — skipping cycle: {}",
+                        e
+                    ));
+                    return Ok(());
+                }
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         crate::logging::service::emit_app_log(
             &local_db,
             "info",
