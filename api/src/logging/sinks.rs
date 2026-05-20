@@ -20,6 +20,13 @@ pub fn is_high_volume_category(cat: &str) -> bool {
     )
 }
 
+pub fn should_mirror_to_mssql(category: &str, source: Option<&str>) -> bool {
+    if !is_high_volume_category(category) {
+        return false;
+    }
+    matches!(source, Some("ffi_sync"))
+}
+
 pub fn file_log_base_for_category(category: &str) -> &'static str {
     match category {
         "API_REQ" => "T3_Webview_API",

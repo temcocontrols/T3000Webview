@@ -2,7 +2,7 @@ use chrono::Local;
 use sea_orm::DatabaseConnection;
 
 use super::policy::{canonical_category, level_meets_min, load_runtime_log_policy, normalize_level_upper};
-use super::sinks::{is_high_volume_category, spawn_mssql_sink, write_file_sink, write_sqlite_sink};
+use super::sinks::{should_mirror_to_mssql, spawn_mssql_sink, write_file_sink, write_sqlite_sink};
 use super::types::{LogContext, LogEvent, LogLevel};
 
 /// Global kill switch — set to false to completely disable all logging (DB + file).
@@ -58,33 +58,7 @@ impl LoggingService {
             return;
         }
 
-        let now = Local::now();
-        let ts_unix = now.timestamp();
-        let ts_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
-        let hostname_val = hostname::get()
-            .map(|h| h.to_string_lossy().into_owned())
-            .unwrap_or_else(|_| "unknown".into());
-
-        let wrote_mssql = if is_high_volume_category(&canonical_cat) {
-            spawn_mssql_sink(
-                ts_unix,
-                ts_fmt.clone(),
-                level_lc.clone(),
-                canonical_cat.clone(),
-                event.context.source.clone(),
-                hostname_val,
-                event.context.device_serial.clone(),
-                event.message.clone(),
-                event.details.clone(),
-            )
-        } else {
-            false
-        };
-
-        if wrote_mssql {
-            return;
-        }
-
+        // SQLite-first durability: always keep a local trace regardless of center DB mode.
         write_sqlite_sink(
             db,
             &canonical_cat,
@@ -97,6 +71,28 @@ impl LoggingService {
             is_error,
         )
         .await;
+
+        // Optional center mirror: only for ffi_sync high-volume operational categories.
+        if should_mirror_to_mssql(&canonical_cat, event.context.source.as_deref()) {
+            let now = Local::now();
+            let ts_unix = now.timestamp();
+            let ts_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
+            let hostname_val = hostname::get()
+                .map(|h| h.to_string_lossy().into_owned())
+                .unwrap_or_else(|_| "unknown".into());
+
+            let _ = spawn_mssql_sink(
+                ts_unix,
+                ts_fmt,
+                level_lc,
+                canonical_cat,
+                event.context.source.clone(),
+                hostname_val,
+                event.context.device_serial.clone(),
+                event.message.clone(),
+                event.details.clone(),
+            );
+        }
     }
 
     pub async fn emit_from_parts(
