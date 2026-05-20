@@ -2875,6 +2875,25 @@ impl T3000MainService {
                 "🔄 Calling HandleWebViewMsg(4) to get device list (attempt {}/{})",
                 attempt, GET_PANELS_MAX_ATTEMPTS
             ));
+            let telemetry_db = match establish_t3_device_connection().await {
+                Ok(db) => Some(db),
+                Err(_) => None,
+            };
+            if let Some(db) = telemetry_db {
+                crate::logging::service::emit_app_log(
+                    &db,
+                    "info",
+                    "POLL",
+                    Some("ffi_sync"),
+                    None,
+                    &format!(
+                        "GET_PANELS_LIST attempt {}/{} started",
+                        attempt, GET_PANELS_MAX_ATTEMPTS
+                    ),
+                    Some("action=4"),
+                )
+                .await;
+            }
 
             // Run FFI call in blocking task with timeout
             let spawn_result = tokio::time::timeout(
@@ -3022,7 +3041,34 @@ impl T3000MainService {
             };
 
             match attempt_result {
-                Ok(panels) => return Ok(panels),
+                Ok(panels) => {
+                    if attempt > 1 {
+                        sync_logger.info(&format!(
+                            "✅ GET_PANELS_LIST recovered on attempt {}/{}",
+                            attempt, GET_PANELS_MAX_ATTEMPTS
+                        ));
+                        let telemetry_db = match establish_t3_device_connection().await {
+                            Ok(db) => Some(db),
+                            Err(_) => None,
+                        };
+                        if let Some(db) = telemetry_db {
+                            crate::logging::service::emit_app_log(
+                                &db,
+                                "info",
+                                "POLL",
+                                Some("ffi_sync"),
+                                None,
+                                &format!(
+                                    "GET_PANELS_LIST recovered on attempt {}/{}",
+                                    attempt, GET_PANELS_MAX_ATTEMPTS
+                                ),
+                                Some("action=4 policy=retry_recovered"),
+                            )
+                            .await;
+                        }
+                    }
+                    return Ok(panels);
+                }
                 Err(e) => {
                     last_error = Some(e);
                     if attempt < GET_PANELS_MAX_ATTEMPTS {
@@ -3031,6 +3077,25 @@ impl T3000MainService {
                             "⚠️ GET_PANELS_LIST attempt {}/{} failed, retrying in {}s",
                             attempt, GET_PANELS_MAX_ATTEMPTS, backoff_secs
                         ));
+                        let telemetry_db = match establish_t3_device_connection().await {
+                            Ok(db) => Some(db),
+                            Err(_) => None,
+                        };
+                        if let Some(db) = telemetry_db {
+                            crate::logging::service::emit_app_log(
+                                &db,
+                                "warn",
+                                "POLL",
+                                Some("ffi_sync"),
+                                None,
+                                &format!(
+                                    "GET_PANELS_LIST attempt {}/{} failed, retrying in {}s",
+                                    attempt, GET_PANELS_MAX_ATTEMPTS, backoff_secs
+                                ),
+                                Some("action=4 policy=retry_pending"),
+                            )
+                            .await;
+                        }
                         sleep(Duration::from_secs(backoff_secs)).await;
                         continue;
                     }
