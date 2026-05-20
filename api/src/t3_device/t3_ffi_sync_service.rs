@@ -2865,162 +2865,182 @@ impl T3000MainService {
         let mut sync_logger =
             ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
 
-        sync_logger.info("🔄 Calling HandleWebViewMsg(4) to get device list");
+        const GET_PANELS_TIMEOUT_SECS: u64 = 45;
+        const GET_PANELS_MAX_ATTEMPTS: u64 = 2;
 
-        // Run FFI call in blocking task with timeout
-        let spawn_result = tokio::time::timeout(
-            Duration::from_secs(30), // 30 second timeout — matches LOGGING_DATA timeout, needed during T3000 startup
-            tokio::task::spawn_blocking(move || {
-                info!("🔌 Calling HandleWebViewMsg(GET_PANELS_LIST) for device list...");
+        let mut last_error: Option<AppError> = None;
 
-                // Prepare buffer for response - increased size for large device lists
-                const BUFFER_SIZE: usize = 1048576; // 1MB buffer for large device lists (was 10KB)
-                let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
+        for attempt in 1..=GET_PANELS_MAX_ATTEMPTS {
+            sync_logger.info(&format!(
+                "🔄 Calling HandleWebViewMsg(4) to get device list (attempt {}/{})",
+                attempt, GET_PANELS_MAX_ATTEMPTS
+            ));
 
-                // Call HandleWebViewMsg with Action 4 (GET_PANELS_LIST)
-                let result = match call_handle_webview_msg(
-                    WebViewMessageType::GET_PANELS_LIST as i32,
-                    &mut buffer,
-                ) {
-                    Ok(code) => code,
-                    Err(err) => {
-                        error!(
-                            "❌ Failed to call HandleWebViewMsg(GET_PANELS_LIST): {}",
-                            err
-                        );
-                        return Err(format!("Failed to call HandleWebViewMsg: {}", err));
-                    }
-                };
+            // Run FFI call in blocking task with timeout
+            let spawn_result = tokio::time::timeout(
+                Duration::from_secs(GET_PANELS_TIMEOUT_SECS),
+                tokio::task::spawn_blocking(move || {
+                    info!("🔌 Calling HandleWebViewMsg(GET_PANELS_LIST) for device list...");
 
-                if result == -2 {
-                    return Err("MFC application not initialized".to_string());
-                } else if result != 0 {
-                    let null_pos = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
-                    let _error_response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-                    error!(
-                        "❌ HandleWebViewMsg(GET_PANELS_LIST) returned error code: {}",
-                        result
-                    );
-                    return Err(format!("HandleWebViewMsg returned error code: {}", result));
-                }
+                    // Prepare buffer for response - increased size for large device lists
+                    const BUFFER_SIZE: usize = 1048576; // 1MB buffer for large device lists (was 10KB)
+                    let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
 
-                // Parse response
-                let null_pos = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
-                let result_str = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-
-                if result_str.is_empty() || result_str == "{}" {
-                    warn!("⚠️ GET_PANELS_LIST returned empty response");
-                    return Err("GET_PANELS_LIST returned empty response".to_string());
-                }
-
-                info!("✅ GET_PANELS_LIST returned {} bytes", result_str.len());
-                Ok(result_str)
-            }),
-        )
-        .await;
-
-        // Handle spawn result
-        match spawn_result {
-            Ok(join_result) => {
-                match join_result {
-                    Ok(ffi_result) => {
-                        match ffi_result {
-                            Ok(json_data) => {
-                                sync_logger.info(&format!(
-                                    "✅ GET_PANELS_LIST completed - {} bytes received",
-                                    json_data.len()
-                                ));
-
-                                // Parse JSON response: {"action":"GET_PANELS_LIST_RES","data":[...]}
-                                let json_value: JsonValue = serde_json::from_str(&json_data)
-                                    .map_err(|e| {
-                                        AppError::ParseError(format!(
-                                            "Failed to parse GET_PANELS_LIST JSON: {}",
-                                            e
-                                        ))
-                                    })?;
-
-                                let panels: Vec<PanelInfo> = json_value
-                                    .get("data")
-                                    .and_then(|v| v.as_array())
-                                    .map(|arr| {
-                                        arr.iter()
-                                            .filter_map(|panel_json| {
-                                                let panel_name = clean_cpp_string(
-                                                    panel_json
-                                                        .get("panel_name")?
-                                                        .as_str()?,
-                                                    "(Unknown)" // Keep "(Unknown)" as-is from C++
-                                                );
-                                                Some(PanelInfo {
-                                                    panel_number: panel_json
-                                                        .get("panel_number")?
-                                                        .as_i64()?
-                                                        as i32,
-                                                    serial_number: panel_json
-                                                        .get("serial_number")?
-                                                        .as_i64()?
-                                                        as i32,
-                                                    panel_name,
-                                                    pid: panel_json
-                                                        .get("pid")
-                                                        .and_then(|v| v.as_i64())
-                                                        .map(|v| v as i32),
-                                                    object_instance: panel_json
-                                                        .get("object_instance")
-                                                        .and_then(|v| v.as_i64())
-                                                        .map(|v| v as i32),
-                                                    online_time: panel_json
-                                                        .get("online_time")
-                                                        .and_then(|v| v.as_i64()),
-                                                })
-                                            })
-                                            .collect()
-                                    })
-                                    .unwrap_or_default();
-
-                                sync_logger.info(&format!(
-                                    "📋 Parsed {} panels from GET_PANELS_LIST",
-                                    panels.len()
-                                ));
-
-                                if panels.is_empty() {
-                                    sync_logger.warn("⚠️ No panels returned from GET_PANELS_LIST");
-                                }
-
-                                Ok(panels)
-                            }
-                            Err(ffi_error) => {
-                                error!("❌ GET_PANELS_LIST FFI call failed: {}", ffi_error);
-                                sync_logger
-                                    .error(&format!("❌ GET_PANELS_LIST failed: {}", ffi_error));
-                                Err(AppError::FfiError(format!(
-                                    "GET_PANELS_LIST failed: {}",
-                                    ffi_error
-                                )))
-                            }
+                    // Call HandleWebViewMsg with Action 4 (GET_PANELS_LIST)
+                    let result = match call_handle_webview_msg(
+                        WebViewMessageType::GET_PANELS_LIST as i32,
+                        &mut buffer,
+                    ) {
+                        Ok(code) => code,
+                        Err(err) => {
+                            error!(
+                                "❌ Failed to call HandleWebViewMsg(GET_PANELS_LIST): {}",
+                                err
+                            );
+                            return Err(format!("Failed to call HandleWebViewMsg: {}", err));
                         }
+                    };
+
+                    if result == -2 {
+                        return Err("MFC application not initialized".to_string());
+                    } else if result != 0 {
+                        let null_pos = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
+                        let _error_response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
+                        error!(
+                            "❌ HandleWebViewMsg(GET_PANELS_LIST) returned error code: {}",
+                            result
+                        );
+                        return Err(format!("HandleWebViewMsg returned error code: {}", result));
                     }
+
+                    // Parse response
+                    let null_pos = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
+                    let result_str = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
+
+                    if result_str.is_empty() || result_str == "{}" {
+                        warn!("⚠️ GET_PANELS_LIST returned empty response");
+                        return Err("GET_PANELS_LIST returned empty response".to_string());
+                    }
+
+                    info!("✅ GET_PANELS_LIST returned {} bytes", result_str.len());
+                    Ok(result_str)
+                }),
+            )
+            .await;
+
+            let attempt_result: Result<Vec<PanelInfo>, AppError> = match spawn_result {
+                Ok(join_result) => match join_result {
+                    Ok(ffi_result) => match ffi_result {
+                        Ok(json_data) => {
+                            sync_logger.info(&format!(
+                                "✅ GET_PANELS_LIST completed - {} bytes received",
+                                json_data.len()
+                            ));
+
+                            // Parse JSON response: {"action":"GET_PANELS_LIST_RES","data":[...]}
+                            let json_value: JsonValue = serde_json::from_str(&json_data).map_err(|e| {
+                                AppError::ParseError(format!(
+                                    "Failed to parse GET_PANELS_LIST JSON: {}",
+                                    e
+                                ))
+                            })?;
+
+                            let panels: Vec<PanelInfo> = json_value
+                                .get("data")
+                                .and_then(|v| v.as_array())
+                                .map(|arr| {
+                                    arr.iter()
+                                        .filter_map(|panel_json| {
+                                            let panel_name = clean_cpp_string(
+                                                panel_json.get("panel_name")?.as_str()?,
+                                                "(Unknown)",
+                                            );
+                                            Some(PanelInfo {
+                                                panel_number: panel_json
+                                                    .get("panel_number")?
+                                                    .as_i64()?
+                                                    as i32,
+                                                serial_number: panel_json
+                                                    .get("serial_number")?
+                                                    .as_i64()?
+                                                    as i32,
+                                                panel_name,
+                                                pid: panel_json
+                                                    .get("pid")
+                                                    .and_then(|v| v.as_i64())
+                                                    .map(|v| v as i32),
+                                                object_instance: panel_json
+                                                    .get("object_instance")
+                                                    .and_then(|v| v.as_i64())
+                                                    .map(|v| v as i32),
+                                                online_time: panel_json
+                                                    .get("online_time")
+                                                    .and_then(|v| v.as_i64()),
+                                            })
+                                        })
+                                        .collect()
+                                })
+                                .unwrap_or_default();
+
+                            sync_logger.info(&format!(
+                                "📋 Parsed {} panels from GET_PANELS_LIST",
+                                panels.len()
+                            ));
+
+                            if panels.is_empty() {
+                                sync_logger.warn("⚠️ No panels returned from GET_PANELS_LIST");
+                            }
+
+                            Ok(panels)
+                        }
+                        Err(ffi_error) => {
+                            error!("❌ GET_PANELS_LIST FFI call failed: {}", ffi_error);
+                            sync_logger.error(&format!("❌ GET_PANELS_LIST failed: {}", ffi_error));
+                            Err(AppError::FfiError(format!(
+                                "GET_PANELS_LIST failed: {}",
+                                ffi_error
+                            )))
+                        }
+                    },
                     Err(join_error) => {
                         error!("❌ GET_PANELS_LIST task failed: {}", join_error);
-                        sync_logger
-                            .error(&format!("❌ GET_PANELS_LIST task failed: {}", join_error));
+                        sync_logger.error(&format!("❌ GET_PANELS_LIST task failed: {}", join_error));
                         Err(AppError::FfiError(format!(
                             "GET_PANELS_LIST task failed: {}",
                             join_error
                         )))
                     }
+                },
+                Err(timeout_error) => {
+                    error!("❌ GET_PANELS_LIST timed out: {}", timeout_error);
+                    sync_logger.error(&format!("❌ GET_PANELS_LIST timed out: {}", timeout_error));
+                    Err(AppError::FfiError(format!(
+                        "GET_PANELS_LIST timed out: {}",
+                        timeout_error
+                    )))
+                }
+            };
+
+            match attempt_result {
+                Ok(panels) => return Ok(panels),
+                Err(e) => {
+                    last_error = Some(e);
+                    if attempt < GET_PANELS_MAX_ATTEMPTS {
+                        let backoff_secs = attempt * 2;
+                        sync_logger.warn(&format!(
+                            "⚠️ GET_PANELS_LIST attempt {}/{} failed, retrying in {}s",
+                            attempt, GET_PANELS_MAX_ATTEMPTS, backoff_secs
+                        ));
+                        sleep(Duration::from_secs(backoff_secs)).await;
+                        continue;
+                    }
                 }
             }
-            Err(timeout_error) => {
-                error!("❌ GET_PANELS_LIST timed out: {}", timeout_error);
-                sync_logger.error(&format!("❌ GET_PANELS_LIST timed out: {}", timeout_error));
-                Err(AppError::FfiError(format!(
-                    "GET_PANELS_LIST timed out: {}",
-                    timeout_error
-                )))
-            }
         }
+
+        Err(last_error.unwrap_or_else(|| {
+            AppError::FfiError("GET_PANELS_LIST failed with unknown error".to_string())
+        }))
     }
 
     /// Call T3000 C++ LOGGING_DATA function via FFI
