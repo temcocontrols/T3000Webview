@@ -190,13 +190,11 @@ async fn handle_websocket_command(command: &str, _json: &serde_json::Value) -> R
         "request_sync" => {
             // Trigger immediate sync if service is available
             if let Some(service) = t3_ffi_sync_service::get_logging_service() {
-                tokio::spawn(async move {
-                    if let Err(e) = service.sync_once().await {
-                        let _ = e;
-                    } else {
-                        // success handled by sync service itself
-                    }
-                });
+                if let Err(e) = service.sync_once().await {
+                    let _ = e;
+                } else {
+                    // success handled by sync service itself
+                }
             }
         }
         "subscribe_updates" => {
