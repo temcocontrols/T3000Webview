@@ -7,6 +7,182 @@ logging code are untouched.
 
 ---
 
+## 0. Database placement and migration strategy
+
+### 0a. Which database gets the flow tables?
+
+**Only `webview_t3_device.db` (local SQLite).** Never the MSSQL center DB.
+
+This is consistent with the existing design rule: flow logs are local-only diagnostic data, not
+operational records that need to be replicated to the center database. Every installation — both
+standalone and server mode — has a local `webview_t3_device.db`, so every installation always
+gets the tables.
+
+The four SQL schema files in `migration/sql/` serve different purposes:
+
+| File | Used by | Flow tables needed? |
+|---|---|---|
+| `webview_t3_device_schema.sql` | SQLite fresh-install path | **YES** |
+| `webview_t3_device_mssql.sql` | Reference / future MSSQL deploy | No |
+| `webview_t3_device_mysql.sql` | Reference / future MySQL deploy | No |
+| `webview_t3_device_postgres.sql` | Reference / future PostgreSQL deploy | No |
+
+### 0b. How the migration system works (existing infrastructure)
+
+```
+Startup
+  └── initialize_t3_device_database()
+        ├── [if no DB exists] create from embedded SQL schema OR copy ResourceFile/webview_t3_device.db
+        └── run_t3_device_migrations()
+              └── T3DeviceMigrator::up(&conn, None)   ← SeaORM
+                    ├── reads seaql_migrations table to find already-applied migrations
+                    └── applies only NEW migrations in order, skips already-applied ones
+```
+
+SeaORM maintains a `seaql_migrations` table inside the SQLite file itself. Every migration has a
+name derived from its file name (e.g. `m20260521_add_flow_log_tables`). On each startup, SeaORM
+compares the migration list in code against the table — migrations not yet in the table are run
+in order. Migrations already recorded are skipped. **Existing data is never touched.**
+
+This means the same startup path handles both cases without any conditional logic:
+
+| Scenario | What happens |
+|---|---|
+| Fresh install, DB just created | `seaql_migrations` empty → all migrations run → flow tables created |
+| Dev machine, up to date | Migration already in `seaql_migrations` → skipped |
+| Production, real data, older release | Migration NOT in `seaql_migrations` → runs once safely → flow tables added |
+| Production, re-deployed same version | Migration already in `seaql_migrations` → skipped |
+
+### 0c. Developer action required to ship the tables
+
+Two files must be edited and one new file must be created:
+
+**1. `api/migration/sql/webview_t3_device_schema.sql`** — add the DDL at the end.  
+This file is embedded into the binary and used only when creating a database from scratch. Using
+`CREATE TABLE IF NOT EXISTS` here means it is idempotent — even if the migration also runs, there
+is no conflict.
+
+**2. `api/migration/src/m20260521_add_flow_log_tables.rs`** — new migration file.  
+This is what runs on all existing production databases. Pattern is identical to
+`m20260403_add_raw_calibration_fields.rs`: raw SQL via `db.execute_unprepared()`, `CREATE TABLE IF
+NOT EXISTS`, `down()` left as a no-op (SQLite `DROP TABLE` would lose data with no benefit).
+
+**3. `api/migration/src/lib.rs`** — register the new migration inside `T3DeviceMigrator`.
+
+That is all. No changes to `utils.rs`, `db_connection.rs`, or any startup code — the existing
+`run_t3_device_migrations()` call automatically picks it up.
+
+### 0d. New migration file skeleton (for implementation)
+
+```rust
+// api/migration/src/m20260521_add_flow_log_tables.rs
+use sea_orm_migration::{async_trait::async_trait, prelude::*};
+
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+
+#[async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        let db = manager.get_connection();
+
+        // T3_FLOW: one row per flow instance
+        db.execute_unprepared(
+            "CREATE TABLE IF NOT EXISTS T3_FLOW (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                flow_id      TEXT    NOT NULL UNIQUE,
+                flow_type    TEXT    NOT NULL,
+                trigger_src  TEXT    NOT NULL,
+                started_at   INTEGER NOT NULL,
+                ended_at     INTEGER,
+                status       TEXT    NOT NULL DEFAULT 'running',
+                hostname     TEXT,
+                total_steps  INTEGER NOT NULL DEFAULT 0,
+                done_steps   INTEGER NOT NULL DEFAULT 0,
+                error_count  INTEGER NOT NULL DEFAULT 0,
+                meta         TEXT
+            )"
+        ).await?;
+
+        db.execute_unprepared(
+            "CREATE INDEX IF NOT EXISTS idx_t3_flow_type    ON T3_FLOW (flow_type)"
+        ).await?;
+        db.execute_unprepared(
+            "CREATE INDEX IF NOT EXISTS idx_t3_flow_started ON T3_FLOW (started_at DESC)"
+        ).await?;
+        db.execute_unprepared(
+            "CREATE INDEX IF NOT EXISTS idx_t3_flow_status  ON T3_FLOW (status)"
+        ).await?;
+
+        // T3_FLOW_STEP: one row per step inside a flow
+        db.execute_unprepared(
+            "CREATE TABLE IF NOT EXISTS T3_FLOW_STEP (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                flow_id      TEXT    NOT NULL,
+                seq          INTEGER NOT NULL,
+                step_name    TEXT    NOT NULL,
+                level        TEXT    NOT NULL DEFAULT 'info',
+                source       TEXT,
+                api_path     TEXT,
+                action_type  INTEGER,
+                status       TEXT    NOT NULL DEFAULT 'ok',
+                duration_ms  INTEGER,
+                payload_ref  TEXT,
+                message      TEXT,
+                details      TEXT,
+                ts_unix      INTEGER NOT NULL,
+                ts_fmt       TEXT    NOT NULL
+            )"
+        ).await?;
+
+        db.execute_unprepared(
+            "CREATE INDEX IF NOT EXISTS idx_t3_flow_step_flow ON T3_FLOW_STEP (flow_id)"
+        ).await?;
+        db.execute_unprepared(
+            "CREATE INDEX IF NOT EXISTS idx_t3_flow_step_ts   ON T3_FLOW_STEP (ts_unix DESC)"
+        ).await?;
+
+        // T3_FLOW_PAYLOAD: tracks offloaded large-payload files
+        db.execute_unprepared(
+            "CREATE TABLE IF NOT EXISTS T3_FLOW_PAYLOAD (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                flow_id      TEXT    NOT NULL,
+                step_id      INTEGER NOT NULL,
+                file_path    TEXT    NOT NULL,
+                size_bytes   INTEGER NOT NULL,
+                created_at   INTEGER NOT NULL,
+                purged       INTEGER NOT NULL DEFAULT 0
+            )"
+        ).await?;
+
+        Ok(())
+    }
+
+    async fn down(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
+        // Intentionally empty: dropping these tables would lose diagnostic history.
+        // To remove manually: DROP TABLE T3_FLOW_PAYLOAD; DROP TABLE T3_FLOW_STEP; DROP TABLE T3_FLOW;
+        Ok(())
+    }
+}
+```
+
+And register it in `lib.rs`:
+
+```rust
+pub struct T3DeviceMigrator;
+
+impl MigratorTrait for T3DeviceMigrator {
+    fn migrations() -> Vec<Box<dyn MigrationTrait>> {
+        vec![
+            Box::new(m20260403_add_raw_calibration_fields::Migration),
+            Box::new(m20260521_add_flow_log_tables::Migration),   // ← new
+        ]
+    }
+}
+```
+
+---
+
 ## 1. Why the tables are still needed
 
 The `FlowHandle` being passed as a parameter is about **how you write** — not **whether you store**.
