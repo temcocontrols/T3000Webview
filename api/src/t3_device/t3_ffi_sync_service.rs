@@ -1236,16 +1236,7 @@ impl T3000MainService {
                 crate::app_state::set_sampling_active();
                 Ok(true)
             }
-            _ => match crate::db_connection::establish_device_conn_from_config(local_db).await {
-                Ok((device_conn, _)) => {
-                    crate::db_connection::validate_device_conn_ready(&device_conn)
-                        .await
-                        .map_err(|e| format!("center_db_validation failed: {}", e))?;
-                    crate::app_state::set_sampling_active();
-                    Ok(true)
-                }
-                Err(_) => Ok(false),
-            },
+            _ => Ok(false),
         }
     }
 
@@ -1416,7 +1407,7 @@ impl T3000MainService {
             panels = match Self::get_panels_list_via_ffi().await {
                 Ok(p) => p,
                 Err(e) => {
-                    sync_logger.error(&format!("GET_PANELS_LIST FFI failed: {} -- skipping cycle, will retry next cycle", e));
+                    sync_logger.error(&format!("GET_PANELS_LIST FFI failed: {}", e));
                     // Activity Log: T3000.exe load status (once) + timeout event
                     if T3000_LOAD_LOGGED.compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed).is_ok() {
                         let (load_msg, load_level) = unsafe {
@@ -1430,12 +1421,42 @@ impl T3000MainService {
                             &local_db, load_level, "STARTUP", Some("ffi_sync"), None, load_msg, None,
                         ).await;
                     }
-                    crate::logging::service::emit_app_log(
-                        &local_db, "warn", "POLL", Some("ffi_sync"), None,
-                        "GET_PANELS_LIST timed out — sync cycle skipped, will retry next cycle",
-                        Some("action=4"),
-                    ).await;
-                    return Ok(());
+
+                    // Resilience path: if rediscovery fails, continue this cycle using cached
+                    // devices instead of dropping all interval sync writes.
+                    match Self::get_cached_device_list().await {
+                        Ok(cached_panels) if !cached_panels.is_empty() => {
+                            let msg = format!(
+                                "GET_PANELS_LIST failed ({}). Falling back to cached device list for this cycle",
+                                e
+                            );
+                            sync_logger.warn(&format!("⚠️ {}", msg));
+                            crate::logging::service::emit_app_log(
+                                &local_db,
+                                "warn",
+                                "POLL",
+                                Some("ffi_sync"),
+                                None,
+                                &msg,
+                                Some("action=4 policy=rediscover_fallback_cache"),
+                            )
+                            .await;
+                            cached_panels
+                        }
+                        _ => {
+                            crate::logging::service::emit_app_log(
+                                &local_db,
+                                "warn",
+                                "POLL",
+                                Some("ffi_sync"),
+                                None,
+                                "GET_PANELS_LIST timed out — sync cycle skipped, no cached devices available",
+                                Some("action=4 policy=skip_no_cache"),
+                            )
+                            .await;
+                            return Ok(());
+                        }
+                    }
                 }
             };
 
