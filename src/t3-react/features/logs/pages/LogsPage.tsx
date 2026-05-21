@@ -34,6 +34,7 @@ import {
 } from '@fluentui/react-icons';
 import { ActivityLogTab } from '../components/ActivityLogTab';
 import { FileLogsTab } from '../components/FileLogsTab';
+import { FlowLogTab } from '../components/FlowLogTab';
 import { LogSettingsTab } from '../components/LogSettingsTab';
 import { API_BASE_URL } from '@t3-react/config/constants';
 
@@ -452,6 +453,7 @@ export const LogsPage: React.FC = () => {
   const initialHash = readLogsHashParams();
   const [showSettings, setShowSettings] = useState(false);
   const [showFiles, setShowFiles] = useState(initialHash.viewFiles);
+  const [showFlows, setShowFlows] = useState(false);
   const [summaryVisible, setSummaryVisible] = useState(true);
   const [logData, setLogData] = useState<EventLogResponse | null>(null);
   const [latestLog, setLatestLog] = useState<AppLogEntry | null>(null);
@@ -535,10 +537,17 @@ export const LogsPage: React.FC = () => {
 
   const handleFilesClick = () => {
     setShowFiles(true);
+    setShowFlows(false);
+  };
+
+  const handleFlowsClick = () => {
+    setShowFlows(true);
+    setShowFiles(false);
   };
 
   const handleBackToActivity = () => {
     setShowFiles(false);
+    setShowFlows(false);
   };
 
   const handleRefreshLogs = () => {
@@ -557,7 +566,7 @@ export const LogsPage: React.FC = () => {
           </span>
         </div>
         <div className={s.headerActions}>
-          {!showFiles && (
+          {!showFiles && !showFlows && (
             <Button
               size="small"
               appearance="subtle"
@@ -565,6 +574,15 @@ export const LogsPage: React.FC = () => {
               onClick={handleFilesClick}
             >
               Raw File Logs
+            </Button>
+          )}
+          {!showFiles && !showFlows && (
+            <Button
+              size="small"
+              appearance="subtle"
+              onClick={handleFlowsClick}
+            >
+              Flow Log
             </Button>
           )}
           <Button
@@ -662,7 +680,7 @@ export const LogsPage: React.FC = () => {
         </div>
       )}
 
-      {!showFiles && !summaryVisible && (
+      {!showFiles && !showFlows && !summaryVisible && (
         <div className={s.showSummaryRow}>
           <div className={s.showSummaryInfo}>
             <span className={s.showSummaryInfoLabel}>Latest</span>
@@ -746,7 +764,24 @@ export const LogsPage: React.FC = () => {
 
       {/* Main content */}
       <div className={s.content}>
-        {showFiles ? (
+        {showFlows ? (
+          <>
+            <div className={s.backBar}>
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={<ArrowLeftRegular />}
+                onClick={handleBackToActivity}
+              >
+                Back to Activity Log
+              </Button>
+              <Text size={200} style={{ color: '#605e5c', marginRight: '8px' }}>
+                — Operation flows with step-by-step trace
+              </Text>
+            </div>
+            <FlowLogTab />
+          </>
+        ) : showFiles ? (
           <FileLogsTab
             headerPrefix={(
               <>
