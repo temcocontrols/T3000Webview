@@ -11,8 +11,7 @@ import {
   mergeClasses,
   Button,
   Switch,
-  TabList,
-  Tab,
+  Select,
   Spinner,
   Drawer,
   DrawerHeader,
@@ -542,9 +541,11 @@ export const LogsPage: React.FC = () => {
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
   const entriesRef = useRef<AppLogEntry[]>([]);
 
-  // Advanced drawer
+  // Advanced drawer (Log Settings only)
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [advancedTab, setAdvancedTab] = useState<'settings' | 'files' | 'flows'>('settings');
+
+  // Main view selector
+  const [mainView, setMainView] = useState<'default' | 'files' | 'flows'>('default');
 
   // Log Everything master toggle
   const [loggingEnabled, setLoggingEnabled] = useState(true);
@@ -790,20 +791,49 @@ export const LogsPage: React.FC = () => {
           />
         </div>
 
+        {/* View selector dropdown */}
+        <Select
+          size="small"
+          value={mainView}
+          onChange={(_, d) => setMainView(d.value as typeof mainView)}
+          style={{ minWidth: '110px', fontSize: '12px' }}
+        >
+          <option value="default">Default</option>
+          <option value="files">File Logs</option>
+          <option value="flows">Flow Logs</option>
+        </Select>
+
         {/* Advanced drawer trigger */}
         <Button
           size="small"
           appearance={showAdvanced ? 'primary' : 'subtle'}
           icon={<SettingsRegular />}
           style={{ fontSize: '12px' }}
-          onClick={() => { setShowAdvanced(true); setAdvancedTab('settings'); }}
+          onClick={() => setShowAdvanced(true)}
         >
           Advanced
         </Button>
       </div>
 
-      {/* ── Two-panel body: left sidebar + right main ── */}
+      {/* ── Body: switches based on mainView dropdown ── */}
       <div className={s.body}>
+
+        {/* File Logs full-width view */}
+        {mainView === 'files' && (
+          <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <FileLogsTab />
+          </div>
+        )}
+
+        {/* Flow Logs full-width view */}
+        {mainView === 'flows' && (
+          <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <FlowLogTab />
+          </div>
+        )}
+
+        {/* Default two-panel view */}
+        {mainView === 'default' && <>
 
         {/* Left sidebar — stats + scrollable category filter */}
         <div className={s.leftPanel}>
@@ -932,9 +962,10 @@ export const LogsPage: React.FC = () => {
             />
           </div>
         </div>
+        </> /* end default view */}
       </div>
 
-      {/* Advanced drawer — Settings | File Logs | Flow Logs */}
+      {/* Advanced drawer — Log Settings only */}
       <Drawer
         type="overlay"
         position="end"
@@ -984,19 +1015,8 @@ export const LogsPage: React.FC = () => {
           </DrawerHeaderTitle>
         </DrawerHeader>
         <DrawerBody className={s.drawerBody}>
-          <TabList
-            selectedValue={advancedTab}
-            onTabSelect={(_, data) => setAdvancedTab(data.value as typeof advancedTab)}
-            style={{ borderBottom: '1px solid #edebe9', padding: '0 4px', flexShrink: 0 }}
-          >
-            <Tab value="settings">Log Settings</Tab>
-            <Tab value="files">File Logs</Tab>
-            <Tab value="flows">Flow Logs</Tab>
-          </TabList>
           <div className={s.advancedTabContent}>
-            {advancedTab === 'settings' && <LogSettingsTab />}
-            {advancedTab === 'files' && <FileLogsTab />}
-            {advancedTab === 'flows' && <FlowLogTab />}
+            <LogSettingsTab />
           </div>
         </DrawerBody>
       </Drawer>
