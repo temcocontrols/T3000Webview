@@ -278,6 +278,9 @@ const FlowStepPanel: React.FC<{ flowId: string }> = ({ flowId }) => {
   const [detail, setDetail] = useState<FlowDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // seq → loaded payload text (null = not loaded yet, string = loaded)
+  const [payloads, setPayloads] = useState<Record<number, string>>({});
+  const [payloadLoading, setPayloadLoading] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -292,6 +295,19 @@ const FlowStepPanel: React.FC<{ flowId: string }> = ({ flowId }) => {
       .catch((e) => { if (!cancelled) { setError(String(e)); setLoading(false); } });
     return () => { cancelled = true; };
   }, [flowId]);
+
+  const loadPayload = async (seq: number) => {
+    setPayloadLoading((p) => ({ ...p, [seq]: true }));
+    try {
+      const res = await fetch(`${FLOWS_URL}/${encodeURIComponent(flowId)}/payload/${seq}`);
+      const text = await res.text();
+      setPayloads((p) => ({ ...p, [seq]: res.ok ? text : `Error ${res.status}: ${text}` }));
+    } catch (e) {
+      setPayloads((p) => ({ ...p, [seq]: `Failed to load: ${String(e)}` }));
+    } finally {
+      setPayloadLoading((p) => ({ ...p, [seq]: false }));
+    }
+  };
 
   if (loading) return (
     <div className={s.loadingRow}><Spinner size="tiny" /> Loading steps…</div>
@@ -319,8 +335,27 @@ const FlowStepPanel: React.FC<{ flowId: string }> = ({ flowId }) => {
               {step.status}
             </Badge>{' '}
             {step.message}
+            {/* inline details (small payloads stored directly in DB) */}
             {step.details && (
               <div className={s.stepDetails}>{step.details}</div>
+            )}
+            {/* large payload offloaded to file — show a load button */}
+            {!step.details && step.payload_ref && (
+              <div style={{ marginTop: '4px' }}>
+                {payloads[step.seq] !== undefined ? (
+                  <div className={s.stepDetails}>{payloads[step.seq]}</div>
+                ) : (
+                  <Button
+                    size="small"
+                    appearance="subtle"
+                    style={{ fontSize: '11px', padding: '0 6px', height: '20px' }}
+                    disabled={payloadLoading[step.seq]}
+                    onClick={() => loadPayload(step.seq)}
+                  >
+                    {payloadLoading[step.seq] ? 'Loading…' : 'View payload'}
+                  </Button>
+                )}
+              </div>
             )}
           </div>
           <span className={s.stepTs}>{step.ts_fmt}</span>

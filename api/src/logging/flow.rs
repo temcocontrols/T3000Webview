@@ -213,7 +213,7 @@ async fn resolve_payload(
     // Offload to file
     let month = Local::now().format("%Y-%m").to_string();
     let runtime_path = crate::constants::get_t3000_runtime_path();
-    let dir = runtime_path.join("T3WebLog").join("payloads").join(&month);
+    let dir = runtime_path.join("T3WebLog").join("detail").join(&month);
     let file_name = format!("{}_{}.txt", flow_id, seq);
     let file_path = dir.join(&file_name);
 
