@@ -28,9 +28,7 @@ import {
   ChevronUpRegular,
   ChevronDownRegular,
   InfoRegular,
-  InfoFilled,
-  ArrowSyncRegular,
-  CheckmarkCircleFilled,
+  DatabasePlugConnectedRegular,
 } from '@fluentui/react-icons';
 import { ActivityLogTab } from '../components/ActivityLogTab';
 import { FileLogsTab } from '../components/FileLogsTab';
@@ -147,8 +145,7 @@ const useStyles = makeStyles({
     color: '#8a8886',
   },
   infoIcon: {
-    fontSize: '14px',
-    color: '#0078d4',
+    color: '#605e5c',
     cursor: 'default',
     display: 'inline-flex',
     alignItems: 'center',
@@ -165,21 +162,6 @@ const useStyles = makeStyles({
     alignItems: 'center',
     gap: '4px',
     flexShrink: 0,
-  },
-  feedbackCheck: {
-    fontSize: '18px',
-    color: '#107c10',
-    opacity: 0,
-    transitionProperty: 'opacity, transform',
-    transitionDuration: '0.3s',
-    transitionTimingFunction: 'ease',
-    transform: 'scale(0.7)',
-    flexShrink: 0,
-    display: 'inline-flex',
-  },
-  feedbackCheckVisible: {
-    opacity: 1,
-    transform: 'scale(1)',
   },
 
   drawerHeader: {
@@ -480,8 +462,9 @@ const useStyles = makeStyles({
   },
   toggleLabel: {
     fontSize: '12px',
-    fontWeight: 500,
-    color: '#605e5c',
+    fontWeight: 400,
+    color: '#323130',
+    lineHeight: '20px',
     whiteSpace: 'nowrap',
     userSelect: 'none',
   },
@@ -563,7 +546,6 @@ export const LogsPage: React.FC = () => {
   // Log Everything master toggle
   const [loggingEnabled, setLoggingEnabled] = useState(true);
   const [logToggleLoading, setLogToggleLoading] = useState(false);
-  const [showEnabledFeedback, setShowEnabledFeedback] = useState(false);
 
   // SQL Server status
   const [sqlStatus, setSqlStatus] = useState<{
@@ -680,12 +662,12 @@ export const LogsPage: React.FC = () => {
   }, [loadLoggingEnabled, loadSqlStatus]);
 
   const handleToggleLogging = useCallback(async (enabled: boolean) => {
+    if (logToggleLoading) {
+      return;
+    }
+
     setLogToggleLoading(true);
     setLoggingEnabled(enabled); // optimistic
-    if (enabled) {
-      setShowEnabledFeedback(true);
-      setTimeout(() => setShowEnabledFeedback(false), 1800);
-    }
     try {
       const res = await fetch(`${API_BASE_URL}/api/logs/settings`);
       if (!res.ok) throw new Error('load failed');
@@ -701,7 +683,7 @@ export const LogsPage: React.FC = () => {
     } finally {
       setLogToggleLoading(false);
     }
-  }, []);
+  }, [logToggleLoading]);
 
   const handleTestSql = useCallback(async () => {
     setSqlTesting(true);
@@ -736,7 +718,7 @@ export const LogsPage: React.FC = () => {
               content="Captures all T3000 service activity: sync cycles, device polling, error traces, FFI calls, and more. Use Advanced → Log Settings to control per-category recording."
             >
               <span tabIndex={0} className={s.infoIcon} aria-label="About T3000 Logs">
-                <InfoFilled />
+                <InfoRegular className={s.drawerInfoIcon} />
               </span>
             </Tooltip>
           </div>
@@ -770,7 +752,7 @@ export const LogsPage: React.FC = () => {
         <Button
           size="small"
           appearance="subtle"
-          icon={sqlTesting ? <Spinner size="tiny" /> : <ArrowSyncRegular />}
+          icon={sqlTesting ? <Spinner size="tiny" /> : <DatabasePlugConnectedRegular />}
           disabled={sqlTesting}
           onClick={handleTestSql}
         >
@@ -784,14 +766,10 @@ export const LogsPage: React.FC = () => {
 
         <span className={s.headerDivider} />
 
-        {/* Enable / Disable Logging toggle with success checkmark */}
+        {/* Enable / Disable Logging toggle */}
         <div className={s.toggleWrapper}>
-          <CheckmarkCircleFilled
-            className={mergeClasses(s.feedbackCheck, showEnabledFeedback && s.feedbackCheckVisible)}
-          />
           <Switch
             checked={loggingEnabled}
-            disabled={logToggleLoading}
             onChange={(_, data) => void handleToggleLogging(data.checked)}
             label={
               <span className={s.toggleLabel}>
