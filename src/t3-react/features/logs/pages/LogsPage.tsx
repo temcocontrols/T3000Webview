@@ -213,6 +213,9 @@ const useStyles = makeStyles({
     flex: 1,
     overflow: 'hidden',
     minHeight: 0,
+    marginTop: '8px',
+    gap: '8px',
+    padding: '0 8px 8px',
   },
 
   /* ---- left sidebar ---- */
@@ -221,45 +224,53 @@ const useStyles = makeStyles({
     flexShrink: 0,
     display: 'flex',
     flexDirection: 'column',
-    borderRightWidth: '1px',
-    borderRightStyle: 'solid',
-    borderRightColor: '#e1dfdd',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#000000',
+    borderRadius: '6px',
     overflow: 'hidden',
-    backgroundColor: '#faf9f8',
+    backgroundColor: '#f5f5f5',
   },
   statsBlock: {
-    padding: '10px 12px 8px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '5px',
+    padding: '12px 10px 10px',
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '6px',
     flexShrink: 0,
   },
-  statRow: {
+  statCard: {
     display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '4px',
+    flexDirection: 'column',
+    gap: '1px',
+    padding: '6px 8px',
+    backgroundColor: '#ffffff',
+    borderRadius: '4px',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#e8e8e8',
   },
-  statRowLabel: {
-    fontSize: '11.5px',
+  statCardLabel: {
+    fontSize: '10px',
     color: '#8a8886',
     fontWeight: 400,
+    lineHeight: '13px',
   },
-  statRowValue: {
-    fontSize: '13px',
+  statCardValue: {
+    fontSize: '16px',
     fontWeight: 700,
     color: '#323130',
+    lineHeight: '20px',
   },
-  statRowValueError: {
+  statCardValueError: {
     color: tokens.colorPaletteRedForeground1,
   },
-  statRowValueWarn: {
+  statCardValueWarn: {
     color: tokens.colorPaletteMarigoldForeground1,
   },
   leftDivider: {
     height: '1px',
-    backgroundColor: '#e1dfdd',
-    margin: '0 8px',
+    backgroundColor: '#e0e0e0',
+    margin: '2px 8px 0',
     flexShrink: 0,
   },
   catSection: {
@@ -275,7 +286,7 @@ const useStyles = makeStyles({
     color: '#a19f9d',
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
-    padding: '8px 12px 4px',
+    padding: '10px 12px 5px',
     flexShrink: 0,
     userSelect: 'none',
   },
@@ -283,21 +294,23 @@ const useStyles = makeStyles({
     flex: 1,
     overflowY: 'auto',
     overflowX: 'hidden',
-    paddingBottom: '8px',
+    paddingBottom: '12px',
+    scrollbarWidth: 'thin',
+    scrollbarColor: '#c8c6c4 transparent',
   },
   catItem: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '4px 12px',
+    padding: '5px 12px',
     cursor: 'pointer',
     userSelect: 'none',
     gap: '6px',
-    ':hover': { backgroundColor: '#f3f2f1' },
+    ':hover': { backgroundColor: '#eaeaea' },
   },
   catItemActive: {
-    backgroundColor: '#e8f0fe',
-    ':hover': { backgroundColor: '#dce6fd' },
+    backgroundColor: '#dbeafe',
+    ':hover': { backgroundColor: '#d0e6fc' },
   },
   catName: {
     fontSize: '11.5px',
@@ -331,18 +344,24 @@ const useStyles = makeStyles({
     overflow: 'hidden',
     minWidth: 0,
     minHeight: 0,
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#d0e4f7',
+    borderRadius: '6px',
   },
 
   /* latest activity banner — top of right panel */
   latestPanel: {
-    backgroundColor: '#f3f8ff',
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: '#d0e4f7',
-    padding: '8px 14px',
+    backgroundColor: '#f5f5f5',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#d0e4f7',
+    borderRadius: '4px',
+    margin: '0 8px 8px',
+    padding: '10px 14px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '3px',
+    gap: '5px',
     flexShrink: 0,
   },
   latestHeader: {
@@ -518,7 +537,10 @@ export const LogsPage: React.FC = () => {
       document.head.appendChild(styleEl);
     }
 
-    styleEl.textContent = '.fce6y3m{--fui-Drawer--size:820px !important;}';
+    styleEl.textContent = '.fce6y3m{--fui-Drawer--size:820px !important;}' +
+      '[data-t3-catlist]::-webkit-scrollbar{width:4px}' +
+      '[data-t3-catlist]::-webkit-scrollbar-track{background:transparent}' +
+      '[data-t3-catlist]::-webkit-scrollbar-thumb{background-color:#c8c6c4;border-radius:4px}';
 
     return () => {
       const existing = document.getElementById(styleId);
@@ -570,8 +592,9 @@ export const LogsPage: React.FC = () => {
 
   useEffect(() => {
     loadTopSummary();
-    const timer = window.setInterval(loadTopSummary, 15000);
-    return () => window.clearInterval(timer);
+    // Interval disabled — fetching 5000 entries repeatedly is too expensive
+    // const timer = window.setInterval(loadTopSummary, 15000);
+    // return () => window.clearInterval(timer);
   }, [loadTopSummary]);
 
   // Load logging-enabled state
@@ -750,25 +773,25 @@ export const LogsPage: React.FC = () => {
         {/* Left sidebar — stats + scrollable category filter */}
         <div className={s.leftPanel}>
           <div className={s.statsBlock}>
-            <div className={s.statRow}>
-              <span className={s.statRowLabel}>Total</span>
-              <span className={s.statRowValue}>{summary.total.toLocaleString()}</span>
+            <div className={s.statCard}>
+              <span className={s.statCardLabel}>Total</span>
+              <span className={s.statCardValue}>{summary.total.toLocaleString()}</span>
             </div>
-            <div className={s.statRow}>
-              <span className={s.statRowLabel}>Errors</span>
-              <span className={mergeClasses(s.statRowValue, s.statRowValueError)}>
-                {summary.errorCount}
+            <div className={s.statCard}>
+              <span className={s.statCardLabel}>Errors</span>
+              <span className={mergeClasses(s.statCardValue, s.statCardValueError)}>
+                {summary.errorCount.toLocaleString()}
               </span>
             </div>
-            <div className={s.statRow}>
-              <span className={s.statRowLabel}>Warnings</span>
-              <span className={mergeClasses(s.statRowValue, s.statRowValueWarn)}>
-                {summary.warnCount}
+            <div className={s.statCard}>
+              <span className={s.statCardLabel}>Warnings</span>
+              <span className={mergeClasses(s.statCardValue, s.statCardValueWarn)}>
+                {summary.warnCount.toLocaleString()}
               </span>
             </div>
-            <div className={s.statRow}>
-              <span className={s.statRowLabel}>Categories</span>
-              <span className={s.statRowValue}>{summary.categoryCount}</span>
+            <div className={s.statCard}>
+              <span className={s.statCardLabel}>Categories</span>
+              <span className={s.statCardValue}>{summary.categoryCount}</span>
             </div>
           </div>
 
@@ -776,7 +799,7 @@ export const LogsPage: React.FC = () => {
 
           <div className={s.catSection}>
             <span className={s.catSectionLabel}>Category</span>
-            <div className={s.catList}>
+            <div className={s.catList} data-t3-catlist="">
               {/* All — resets filter */}
               <div
                 className={mergeClasses(s.catItem, activeCategoryFilter === '' && s.catItemActive)}

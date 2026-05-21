@@ -139,8 +139,41 @@ const useStyles = makeStyles({
   pagination: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    justifyContent: 'center',
+    gap: '2px',
+    justifyContent: 'flex-start',
+    flexWrap: 'wrap',
+    padding: '4px 8px',
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: '#edebe9',
+    flexShrink: 0,
+  },
+  paginationSpacer: {
+    flex: 1,
+  },
+  paginationJump: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    marginLeft: '8px',
+  },
+  paginationJumpLabel: {
+    fontSize: '11px',
+    color: '#605e5c',
+    whiteSpace: 'nowrap',
+  },
+  paginationJumpInput: {
+    width: '48px',
+    minWidth: '48px',
+  },
+  pageBtn: {
+    minWidth: '28px',
+    height: '26px',
+    padding: '0 4px',
+    fontSize: '12px',
+  },
+  pageBtnActive: {
+    fontWeight: 700,
   },
 });
 
@@ -170,6 +203,7 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
   const [internalCategoryFilter, setInternalCategoryFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [jumpValue, setJumpValue] = useState('');
 
   // If parent controls category filter, use that; else use internal
   const categoryFilter = externalCategoryFilter !== undefined ? externalCategoryFilter : internalCategoryFilter;
@@ -232,6 +266,16 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
   useEffect(() => { setPage(0); }, [levelFilter, categoryFilter]);
 
   const totalPages = data ? Math.ceil(data.total / limit) : 0;
+
+  const getPageNums = (cur: number, total: number): (number | null)[] => {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i);
+    const pages: (number | null)[] = [0];
+    if (cur > 2) pages.push(null);
+    for (let i = Math.max(1, cur - 1); i <= Math.min(total - 2, cur + 1); i++) pages.push(i);
+    if (cur < total - 3) pages.push(null);
+    pages.push(total - 1);
+    return pages;
+  };
 
   const filteredEntries = (data?.entries ?? []).filter(e =>
     !searchQuery || e.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -394,15 +438,48 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
             disabled={page === 0}
             onClick={() => setPage(p => Math.max(0, p - 1))}
             size="small"
+            className={s.pageBtn}
           />
-          <Text size={200}>Page {page + 1} of {totalPages}</Text>
+          {getPageNums(page, totalPages).map((pg, i) =>
+            pg === null
+              ? <span key={`el-${i}`} style={{ padding: '0 2px', color: '#8a8886', fontSize: '12px', lineHeight: '26px' }}>…</span>
+              : <Button
+                  key={pg}
+                  size="small"
+                  appearance={pg === page ? 'primary' : 'subtle'}
+                  className={mergeClasses(s.pageBtn, pg === page ? s.pageBtnActive : undefined)}
+                  onClick={() => setPage(pg)}
+                >{pg + 1}</Button>
+          )}
           <Button
             appearance="subtle"
             icon={<ChevronRightRegular />}
             disabled={page >= totalPages - 1}
             onClick={() => setPage(p => p + 1)}
             size="small"
+            className={s.pageBtn}
           />
+          <div className={s.paginationSpacer} />
+          <div className={s.paginationJump}>
+            <span className={s.paginationJumpLabel}>Go to</span>
+            <Input
+              className={s.paginationJumpInput}
+              size="small"
+              value={jumpValue}
+              placeholder={String(page + 1)}
+              onChange={(_, d) => setJumpValue(d.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const n = parseInt(jumpValue, 10);
+                  if (!isNaN(n) && n >= 1 && n <= totalPages) {
+                    setPage(n - 1);
+                    setJumpValue('');
+                  }
+                }
+              }}
+            />
+            <span className={s.paginationJumpLabel}>/ {totalPages}</span>
+          </div>
         </div>
       )}
     </div>
