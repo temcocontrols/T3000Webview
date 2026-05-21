@@ -1012,6 +1012,33 @@ async fn query_sqlite_log_category_counts(
     counts
 }
 
+async fn query_sqlite_log_level_counts(
+    db: &sea_orm::DatabaseConnection,
+    cat_filter: Option<&str>,
+) -> HashMap<String, i64> {
+    let cat_sql = sqlite_category_filter_sql(cat_filter);
+    let sql = format!(
+        "SELECT level, COUNT(*) AS cnt FROM T3_APP_LOG WHERE 1=1{} GROUP BY level",
+        cat_sql
+    );
+    let rows = db
+        .query_all(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            sql,
+        ))
+        .await
+        .unwrap_or_default();
+    let mut counts = HashMap::new();
+    for row in rows {
+        let level = row.try_get::<String>("", "level").unwrap_or_default().to_lowercase();
+        let count = row.try_get::<i64>("", "cnt").unwrap_or(0);
+        if !level.is_empty() {
+            *counts.entry(level).or_insert(0) += count;
+        }
+    }
+    counts
+}
+
 async fn query_sqlite_log_categories(db: &sea_orm::DatabaseConnection) -> Vec<String> {
     let sql = "SELECT DISTINCT category FROM T3_APP_LOG WHERE category IS NOT NULL AND category <> '' ORDER BY category ASC";
     let rows = db
@@ -1084,17 +1111,25 @@ async fn get_event_log(
         .await
         .unwrap_or_default();
 
+        let mssql_level_counts = crate::database_management::mssql_queries::query_app_log_level_counts(
+            pool,
+            cat_filter,
+        )
+        .await
+        .unwrap_or_default();
+
         // Fetch from local SQLite
-        let (sqlite_rows, sqlite_total, sqlite_categories, sqlite_category_counts) = if let Some(db) = get_local_log_db_conn(&state).await {
+        let (sqlite_rows, sqlite_total, sqlite_categories, sqlite_category_counts, sqlite_level_counts) = if let Some(db) = get_local_log_db_conn(&state).await {
             ensure_app_log_table(&db).await;
             (
                 query_sqlite_log_raw(&db, level_filter, cat_filter, fetch_count).await,
                 count_sqlite_log_raw(&db, level_filter, cat_filter).await,
                 query_sqlite_log_categories(&db).await,
                 query_sqlite_log_category_counts(&db, level_filter, cat_filter).await,
+                query_sqlite_log_level_counts(&db, cat_filter).await,
             )
         } else {
-            (Vec::new(), 0, Vec::new(), HashMap::new())
+            (Vec::new(), 0, Vec::new(), HashMap::new(), HashMap::new())
         };
 
         // Merge and sort descending by ts_unix
@@ -1125,6 +1160,14 @@ async fn get_event_log(
             category_counts.entry(cat.clone()).or_insert(0);
         }
 
+        let mut level_counts: HashMap<String, i64> = HashMap::new();
+        for (lvl, cnt) in sqlite_level_counts {
+            *level_counts.entry(lvl).or_insert(0) += cnt;
+        }
+        for (lvl, cnt) in mssql_level_counts {
+            *level_counts.entry(lvl).or_insert(0) += cnt;
+        }
+
         let entries: Vec<AppLogEntry> = all_rows
             .into_iter()
             .skip(offset)
@@ -1137,6 +1180,7 @@ async fn get_event_log(
             "total":   total,
             "categories": categories,
             "categoryCounts": category_counts,
+            "levelCounts": level_counts,
             "page":    q.page,
             "limit":   limit,
         })));
@@ -1177,6 +1221,7 @@ async fn get_event_log(
         .unwrap_or_default();
 
     let total = count_sqlite_log_raw(&db, level_filter, cat_filter).await;
+    let level_counts = query_sqlite_log_level_counts(&db, cat_filter).await;
     let mut category_counts = query_sqlite_log_category_counts(&db, level_filter, cat_filter).await;
     let mut category_set: BTreeSet<String> = BTreeSet::new();
     category_set.extend(default_log_settings().into_iter().map(|c| c.category));
@@ -1214,6 +1259,7 @@ async fn get_event_log(
         "total": total,
         "categories": categories,
         "categoryCounts": category_counts,
+        "levelCounts": level_counts,
         "page": q.page,
         "limit": limit,
     })))
