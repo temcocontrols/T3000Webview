@@ -630,10 +630,10 @@ export const LogsPage: React.FC = () => {
   // Load logging-enabled state
   const loadLoggingEnabled = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/logs/settings`);
+      const res = await fetch(`${API_BASE_URL}/api/logs/enabled`);
       if (!res.ok) return;
-      const cats: Array<{ enabled: boolean }> = await res.json();
-      setLoggingEnabled(cats.some((c) => c.enabled));
+      const json: { enabled: boolean } = await res.json();
+      setLoggingEnabled(json.enabled ?? true);
     } catch {
       // ignore
     }
@@ -670,15 +670,12 @@ export const LogsPage: React.FC = () => {
     setLogToggleLoading(true);
     setLoggingEnabled(enabled); // optimistic
     try {
-      const res = await fetch(`${API_BASE_URL}/api/logs/settings`);
-      if (!res.ok) throw new Error('load failed');
-      const cats: Array<Record<string, unknown> & { enabled: boolean }> = await res.json();
-      const updated = cats.map((c) => ({ ...c, enabled }));
-      await fetch(`${API_BASE_URL}/api/logs/settings`, {
+      const res = await fetch(`${API_BASE_URL}/api/logs/enabled`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated),
+        body: JSON.stringify({ enabled }),
       });
+      if (!res.ok) throw new Error('toggle failed');
     } catch {
       setLoggingEnabled(!enabled); // revert on error
     } finally {
