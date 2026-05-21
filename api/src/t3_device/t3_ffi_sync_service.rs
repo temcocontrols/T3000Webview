@@ -1258,10 +1258,11 @@ impl T3000MainService {
 
         crate::database_management::sync_health::ensure_app_log_table(&local_db).await;
 
-        // Start SYNC_CYCLE flow
+        // Start SYNC_CYCLE flow (total_steps=0 = variable; actual count depends on rediscovery path)
         let t_cycle = std::time::Instant::now();
+        let t_device_loop = std::time::Instant::now();
         let sync_flow = crate::logging::flow::FlowHandle::start(
-            &local_db, "SYNC_CYCLE", "ffi_sync", 5, None,
+            &local_db, "SYNC_CYCLE", "ffi_sync", 0, None,
         ).await;
         let mut sampling_check_recorded = false;
 
@@ -2184,6 +2185,13 @@ impl T3000MainService {
             config.sync_interval_secs,
             config.sync_interval_secs / 60
         ));
+
+        sync_flow.step(&local_db, "device_sync", "info", "ffi_sync",
+            if failed_devices == total_devices && total_devices > 0 { "error" } else { "ok" },
+            t_device_loop.elapsed().as_millis() as i64,
+            &format!("{} device(s) processed: ok={} fail={} skip={}",
+                total_devices, successful_devices, failed_devices, skipped_devices),
+            None).await;
 
         sync_flow.step(&local_db, "sync_complete", "info", "ffi_sync",
             if failed_devices == total_devices && total_devices > 0 { "error" } else { "ok" },

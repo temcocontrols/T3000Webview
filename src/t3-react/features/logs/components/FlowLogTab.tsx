@@ -1,28 +1,37 @@
-/**
- * Flow Log Tab — two-panel layout
+﻿/**
+ * Flow Log Tab — 3-panel layout
  *
- * Left:  type list (all flow types with counts and descriptions)
- * Right: search/filter header + paginated flow list with expandable step detail
+ * Left (220px):  Type list with info tooltips
+ * Middle (1fr):  Paginated flow table (server-side, like ActivityLogTab)
+ * Right (320px): Detail panel — flow summary + step list (shown on row click)
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   makeStyles,
   mergeClasses,
+  Text,
   Button,
   Badge,
   Spinner,
   Select,
   Input,
   Tooltip,
+  Table,
+  TableHeader,
+  TableHeaderCell,
+  TableBody,
+  TableRow,
+  TableCell,
   tokens,
 } from '@fluentui/react-components';
 import {
-  ArrowSyncRegular,
+  ArrowClockwiseRegular,
+  ChevronLeftRegular,
   ChevronRightRegular,
-  ChevronDownRegular,
   InfoRegular,
   SearchRegular,
+  DismissRegular,
 } from '@fluentui/react-icons';
 import { API_BASE_URL } from '../../../config/constants';
 
@@ -34,13 +43,14 @@ const TYPES_URL = `${API_BASE_URL}/api/flows/types`;
 // ---------------------------------------------------------------------------
 
 const FLOW_TYPE_DESC: Record<string, string> = {
-  SYNC_CYCLE:     'Full device synchronization cycle — polls panels, writes data, updates trendlog.',
-  DLL_INIT:       'DLL initialization on T3000 startup: DB connect, sampling state, config load.',
-  REDISCOVER:     'Network rediscovery scan for new or changed devices.',
-  TRENDLOG_SYNC:  'Trendlog configuration sync between local and center DB.',
-  DB_MAINTENANCE: 'Database partition creation, WAL checkpoint and size monitoring.',
-  API_FLOW:       'Client-initiated operation traced through the REST API.',
-  SOCKET_FLOW:    'WebSocket session lifecycle and command dispatch.',
+  SYNC_CYCLE:        'Full device sync cycle — polls panels, writes data to center DB.',
+  DLL_INIT:          'DLL init on T3000 startup: DB connect, sampling state, config load.',
+  REDISCOVER:        'Network rediscovery scan for new or changed devices.',
+  TRENDLOG_SYNC:     'Trendlog config sync between local and center DB.',
+  TRENDLOG_SYNC_ALL: 'Full trendlog sync for all devices.',
+  DB_MAINTENANCE:    'Database partition creation, WAL checkpoint and size monitoring.',
+  API_FLOW:          'Client-initiated REST API operation trace.',
+  SOCKET_FLOW:       'WebSocket session lifecycle and command dispatch.',
 };
 
 function flowTypeDescription(type: string): string {
@@ -52,47 +62,21 @@ function flowTypeDescription(type: string): string {
 // ---------------------------------------------------------------------------
 
 interface FlowRow {
-  id: number;
-  flow_id: string;
-  flow_type: string;
-  trigger_src: string;
-  started_at: number;
-  ended_at: number | null;
-  status: string;
-  hostname: string | null;
-  total_steps: number;
-  done_steps: number;
-  error_count: number;
-  meta: string | null;
+  id: number; flow_id: string; flow_type: string; trigger_src: string;
+  started_at: number; ended_at: number | null; status: string; hostname: string | null;
+  total_steps: number; done_steps: number; error_count: number; meta: string | null;
   duration_ms: number | null;
 }
-
 interface FlowStepRow {
-  id: number;
-  flow_id: string;
-  seq: number;
-  step_name: string;
-  level: string;
-  source: string | null;
-  api_path: string | null;
-  action_type: number | null;
-  status: string;
-  duration_ms: number | null;
-  payload_ref: string | null;
-  message: string | null;
-  details: string | null;
-  ts_unix: number;
-  ts_fmt: string;
+  id: number; flow_id: string; seq: number; step_name: string; level: string;
+  source: string | null; api_path: string | null; action_type: number | null;
+  status: string; duration_ms: number | null; payload_ref: string | null;
+  message: string | null; details: string | null; ts_unix: number; ts_fmt: string;
 }
-
-interface FlowDetail {
-  flow: FlowRow;
-  steps: FlowStepRow[];
-}
-
-interface FlowTypeCount {
-  flow_type: string;
-  count: number;
+interface FlowDetail { flow: FlowRow; steps: FlowStepRow[]; }
+interface FlowTypeCount { flow_type: string; count: number; }
+interface FlowListResponse {
+  flows: FlowRow[]; total: number; page: number; limit: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -100,18 +84,11 @@ interface FlowTypeCount {
 // ---------------------------------------------------------------------------
 
 const STATUS_COLOR: Record<string, 'success' | 'danger' | 'warning' | 'informative' | 'subtle'> = {
-  ok: 'success',
-  error: 'danger',
-  running: 'informative',
-  skip: 'subtle',
-  warning: 'warning',
+  ok: 'success', error: 'danger', running: 'informative', skip: 'subtle',
+  partial: 'warning', failed: 'danger', warning: 'warning',
 };
-
 const LEVEL_COLOR: Record<string, 'danger' | 'warning' | 'informative' | 'subtle'> = {
-  error: 'danger',
-  warn: 'warning',
-  info: 'informative',
-  debug: 'subtle',
+  error: 'danger', warn: 'warning', info: 'informative', debug: 'subtle',
 };
 
 function fmtMs(ms: number | null): string {
@@ -119,9 +96,24 @@ function fmtMs(ms: number | null): string {
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
 }
+function fmtTime(ms: number): string { return new Date(ms).toLocaleString(); }
+function truncateId(id: string): string { return id.length > 8 ? id.substring(0, 8) + '…' : id; }
 
-function fmtTime(ms: number): string {
-  return new Date(ms).toLocaleString();
+function getPageNums(cur: number, total: number): (number | null)[] {
+  if (total <= 9) return Array.from({ length: total }, (_, i) => i);
+  const pages: (number | null)[] = [0];
+  if (cur <= 2) {
+    for (let i = 1; i <= Math.min(4, total - 2); i++) pages.push(i);
+    pages.push(null); pages.push(total - 1); return pages;
+  }
+  if (cur >= total - 3) {
+    pages.push(null);
+    for (let i = Math.max(1, total - 5); i <= total - 2; i++) pages.push(i);
+    pages.push(total - 1); return pages;
+  }
+  pages.push(null);
+  for (let i = Math.max(1, cur - 1); i <= Math.min(total - 2, cur + 1); i++) pages.push(i);
+  pages.push(null); pages.push(total - 1); return pages;
 }
 
 // ---------------------------------------------------------------------------
@@ -129,18 +121,21 @@ function fmtTime(ms: number): string {
 // ---------------------------------------------------------------------------
 
 const useStyles = makeStyles({
-  // ── Shell ──────────────────────────────────────────────────────────────────
+  // Shell
   root: {
     display: 'grid',
     gridTemplateColumns: '220px 1fr',
-    gap: '10px',
+    gap: '8px',
     padding: '8px 10px',
     height: '100%',
     minHeight: 0,
     overflow: 'hidden',
     boxSizing: 'border-box',
   },
-  // ── Shared panel ──────────────────────────────────────────────────────────
+  rootWithDetail: {
+    gridTemplateColumns: '220px 1fr 320px',
+  },
+  // Shared panel
   panel: {
     backgroundColor: '#ffffff',
     border: '1px solid #d0d7de',
@@ -152,7 +147,7 @@ const useStyles = makeStyles({
     minHeight: 0,
   },
   panelHeader: {
-    padding: '0 12px',
+    padding: '0 10px',
     minHeight: '36px',
     borderBottomWidth: '1px',
     borderBottomStyle: 'solid',
@@ -163,6 +158,7 @@ const useStyles = makeStyles({
     justifyContent: 'space-between',
     flexShrink: 0,
     borderRadius: '8px 8px 0 0',
+    gap: '6px',
   },
   panelTitle: {
     fontSize: '12px',
@@ -171,23 +167,21 @@ const useStyles = makeStyles({
     textTransform: 'uppercase',
     letterSpacing: '0.4px',
   },
-  panelBody: {
+  // Left panel — type list
+  typeList: {
     padding: '6px 8px',
     overflowY: 'auto',
-    overflowX: 'hidden',
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    gap: '3px',
+    gap: '2px',
     scrollbarWidth: 'thin',
-    scrollbarColor: '#c0bebe transparent',
   },
-  // ── Left panel — type list ─────────────────────────────────────────────────
   typeItem: {
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
-    padding: '7px 8px',
+    padding: '6px 8px',
     borderRadius: '6px',
     cursor: 'pointer',
     ':hover': { backgroundColor: '#f6f8fa' },
@@ -199,108 +193,115 @@ const useStyles = makeStyles({
     borderLeftColor: '#0f6cbd',
     paddingLeft: '5px',
   },
-  typeName: {
-    fontSize: '12px',
-    fontWeight: 500,
-    color: '#24292f',
-    flex: 1,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
+  typeName: { fontSize: '12px', fontWeight: 500, color: '#24292f', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   typeNameActive: { color: '#0f6cbd', fontWeight: 600 },
-  typeBadge:     { fontSize: '11px', flexShrink: 0 },
-  typeInfoBtn: {
-    flexShrink: 0,
-    padding: 0,
-    minWidth: 'unset',
-    height: '16px',
-    width: '16px',
-    color: tokens.colorNeutralForeground3,
-  },
-  // ── Right panel toolbar ────────────────────────────────────────────────────
-  rightToolbar: {
+  typeBadge: { fontSize: '11px', flexShrink: 0 },
+  typeInfoBtn: { flexShrink: 0, padding: 0, minWidth: 'unset', height: '16px', width: '16px', color: tokens.colorNeutralForeground3 },
+  // Middle panel toolbar
+  toolbar: {
     display: 'flex',
+    gap: '6px',
     alignItems: 'center',
-    gap: '8px',
-    padding: '6px 12px',
+    padding: '6px 10px',
     borderBottomWidth: '1px',
     borderBottomStyle: 'solid',
     borderBottomColor: '#e1e4e8',
     backgroundColor: '#f6f8fa',
     flexShrink: 0,
+    flexWrap: 'wrap',
   },
-  searchInput: { flex: 1, maxWidth: '280px' },
-  spacer:      { flex: 1 },
-  // ── Flow list ─────────────────────────────────────────────────────────────
-  flowList: {
+  searchInput: { flex: 1, minWidth: '160px', maxWidth: '240px' },
+  statusSelect: { minWidth: '110px' },
+  totalText: { color: '#605e5c', fontSize: '12px', whiteSpace: 'nowrap' },
+  tableWrapper: {
     flex: 1,
-    overflowY: 'auto',
-    overflowX: 'hidden',
-    padding: '6px 10px',
+    overflow: 'auto',
     scrollbarWidth: 'thin',
-    scrollbarColor: '#c0bebe transparent',
+    scrollbarColor: '#c8c6c4 transparent',
   },
-  empty: {
+  table: { width: '100%' },
+  thTime:    { width: '148px', fontSize: '12px' },
+  thType:    { width: '120px', fontSize: '12px' },
+  thTrigger: { width: '80px',  fontSize: '12px' },
+  thStatus:  { width: '70px',  fontSize: '12px' },
+  thSteps:   { width: '80px',  fontSize: '12px' },
+  thDur:     { width: '72px',  fontSize: '12px' },
+  rowSelected: { backgroundColor: '#dff0ff' },
+  rowClickable: { cursor: 'pointer' },
+  timeCell: { fontSize: '11px', color: '#605e5c', whiteSpace: 'nowrap' },
+  typeCell: { fontSize: '12px', fontWeight: 600, color: '#0f6cbd' },
+  triggerCell: { fontSize: '11px', color: '#605e5c' },
+  stepsCell: { fontSize: '11px', color: '#605e5c' },
+  durCell: { fontSize: '11.5px', fontWeight: 600, color: '#323130' },
+  emptyCell: { textAlign: 'center', padding: '24px', color: '#605e5c' },
+  loadingState: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100px', gap: '8px' },
+  // Pagination
+  pagination: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center',
-    height: '100px',
-    color: tokens.colorNeutralForeground3,
-    fontSize: '13px',
-  },
-  // ── Flow card ─────────────────────────────────────────────────────────────
-  flowCard: {
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: '#e8e8e8',
-    borderRadius: '4px',
-    marginBottom: '5px',
-    backgroundColor: '#ffffff',
-    overflow: 'hidden',
-  },
-  flowHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '7px 10px',
-    cursor: 'pointer',
-    userSelect: 'none',
-    ':hover': { backgroundColor: '#f3f2f1' },
-  },
-  flowHeaderOpen: { backgroundColor: '#f0f6ff' },
-  flowType:    { fontSize: '12px', fontWeight: 700, color: '#0f6cbd', minWidth: '100px', flexShrink: 0 },
-  flowTrigger: { fontSize: '11px', color: tokens.colorNeutralForeground3, flexShrink: 0 },
-  flowTime:    { fontSize: '11px', color: tokens.colorNeutralForeground3, flexShrink: 0 },
-  flowDur:     { fontSize: '11.5px', fontWeight: 600, color: '#323130', flexShrink: 0 },
-  flowSteps:   { fontSize: '11px', color: tokens.colorNeutralForeground3, flexShrink: 0 },
-  spacerFlex:  { flex: 1 },
-  chevron:     { fontSize: '12px', color: tokens.colorNeutralForeground3, flexShrink: 0 },
-  // ── Step table ────────────────────────────────────────────────────────────
-  stepsTable: {
+    gap: '2px',
+    padding: '4px 8px',
     borderTopWidth: '1px',
     borderTopStyle: 'solid',
     borderTopColor: '#edebe9',
-    backgroundColor: '#faf9f8',
+    flexShrink: 0,
+    flexWrap: 'wrap',
+  },
+  paginationSpacer: { flex: 1 },
+  paginationJump: { display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px' },
+  paginationJumpLabel: { fontSize: '11px', color: '#605e5c', whiteSpace: 'nowrap' },
+  paginationJumpInput: { width: '48px', minWidth: '48px' },
+  pageBtn: { minWidth: '28px', height: '26px', padding: '0 4px', fontSize: '12px' },
+  // Right detail panel
+  detailHeader: {
+    padding: '8px 10px',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#e1e4e8',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    flexShrink: 0,
+    backgroundColor: '#fafbfc',
+  },
+  detailMeta: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '4px 12px',
+    fontSize: '11px',
+  },
+  detailMetaLabel: { color: '#888', fontWeight: 500 },
+  detailMetaValue: { color: '#24292f', wordBreak: 'break-all' },
+  detailSteps: {
+    flex: 1,
+    overflowY: 'auto',
+    scrollbarWidth: 'thin',
   },
   stepRow: {
     display: 'flex',
-    alignItems: 'flex-start',
-    gap: '8px',
-    padding: '5px 12px 5px 28px',
+    flexDirection: 'column',
+    gap: '2px',
+    padding: '6px 10px',
     borderBottomWidth: '1px',
     borderBottomStyle: 'solid',
-    borderBottomColor: '#f3f2f1',
+    borderBottomColor: '#f0f0f0',
     fontSize: '11.5px',
-    ':last-child': { borderBottom: 'none' },
   },
-  stepSeq:    { minWidth: '28px', color: tokens.colorNeutralForeground3, flexShrink: 0, fontFamily: 'monospace' },
-  stepName:   { minWidth: '120px', fontWeight: 600, color: '#201f1e', flexShrink: 0 },
-  stepSource: { minWidth: '70px', color: tokens.colorNeutralForeground3, flexShrink: 0 },
-  stepDur:    { minWidth: '60px', color: '#323130', flexShrink: 0 },
-  stepMsg:    { flex: 1, color: '#323130', wordBreak: 'break-word' },
+  stepRowTop: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    flexWrap: 'wrap',
+  },
+  stepSeq:    { color: tokens.colorNeutralForeground3, fontFamily: 'monospace', minWidth: '20px', fontSize: '11px' },
+  stepName:   { fontWeight: 600, color: '#201f1e' },
+  stepDur:    { color: '#605e5c', fontSize: '11px' },
+  stepSpacer: { flex: 1 },
+  stepTs:     { color: tokens.colorNeutralForeground3, fontSize: '10.5px', fontFamily: 'monospace' },
+  stepMsg:    { color: '#323130', paddingLeft: '26px', lineHeight: '1.4' },
   stepDetails: {
-    marginTop: '3px',
+    marginTop: '2px',
+    paddingLeft: '26px',
     fontSize: '11px',
     color: tokens.colorNeutralForeground3,
     fontFamily: 'monospace',
@@ -310,45 +311,45 @@ const useStyles = makeStyles({
     padding: '3px 6px',
     borderRadius: '2px',
   },
-  stepTs: {
-    flexShrink: 0,
-    color: tokens.colorNeutralForeground3,
+  loadingRow: { display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', fontSize: '11px', color: tokens.colorNeutralForeground3 },
+  noSelect: { padding: '24px 12px', textAlign: 'center', color: '#888', fontSize: '12px' },
+  detailMetaJson: {
     fontSize: '10.5px',
     fontFamily: 'monospace',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-all',
+    backgroundColor: '#f3f2f1',
+    padding: '3px 6px',
+    borderRadius: '2px',
+    marginTop: '2px',
   },
-  loadingRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '6px 12px 6px 28px',
-    fontSize: '11px',
-    color: tokens.colorNeutralForeground3,
+  detailFlowId: {
+    fontSize: '10.5px',
+    fontFamily: 'monospace',
+    color: '#605e5c',
+    wordBreak: 'break-all',
   },
+  dismissBtn: { marginLeft: 'auto', flexShrink: 0 },
 });
 
 // ---------------------------------------------------------------------------
-// Expanded-flow step panel
+// Step detail panel (shown in right column)
 // ---------------------------------------------------------------------------
 
-const FlowStepPanel: React.FC<{ flowId: string }> = ({ flowId }) => {
+const FlowDetailPanel: React.FC<{ flowId: string; onClose: () => void }> = ({ flowId, onClose }) => {
   const s = useStyles();
-  const [detail, setDetail] = useState<FlowDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  // seq → loaded payload text (null = not loaded yet, string = loaded)
+  const [detail, setDetail]     = useState<FlowDetail | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState<string | null>(null);
   const [payloads, setPayloads] = useState<Record<number, string>>({});
   const [payloadLoading, setPayloadLoading] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null); setDetail(null); setPayloads({});
     fetch(`${FLOWS_URL}/${encodeURIComponent(flowId)}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json() as Promise<FlowDetail>;
-      })
-      .then((data) => { if (!cancelled) { setDetail(data); setLoading(false); } })
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<FlowDetail>; })
+      .then((d) => { if (!cancelled) { setDetail(d); setLoading(false); } })
       .catch((e) => { if (!cancelled) { setError(String(e)); setLoading(false); } });
     return () => { cancelled = true; };
   }, [flowId]);
@@ -360,225 +361,326 @@ const FlowStepPanel: React.FC<{ flowId: string }> = ({ flowId }) => {
       const text = await res.text();
       setPayloads((p) => ({ ...p, [seq]: res.ok ? text : `Error ${res.status}: ${text}` }));
     } catch (e) {
-      setPayloads((p) => ({ ...p, [seq]: `Failed to load: ${String(e)}` }));
+      setPayloads((p) => ({ ...p, [seq]: `Failed: ${String(e)}` }));
     } finally {
       setPayloadLoading((p) => ({ ...p, [seq]: false }));
     }
   };
 
-  if (loading) return (
-    <div className={s.loadingRow}><Spinner size="tiny" /> Loading steps…</div>
-  );
-  if (error) return (
-    <div className={s.loadingRow} style={{ color: 'red' }}>Error: {error}</div>
-  );
-  if (!detail || detail.steps.length === 0) return (
-    <div className={s.loadingRow}>No steps recorded yet.</div>
-  );
+  const flow = detail?.flow;
 
   return (
-    <div className={s.stepsTable}>
-      {detail.steps.map((step) => (
-        <div key={step.id} className={s.stepRow}>
-          <span className={s.stepSeq}>#{step.seq}</span>
-          <span className={s.stepName}>{step.step_name}</span>
-          <span className={s.stepSource}>{step.source ?? '—'}</span>
-          <span className={s.stepDur}>{fmtMs(step.duration_ms)}</span>
-          <div className={s.stepMsg}>
-            <Badge size="small" color={LEVEL_COLOR[step.level] ?? 'subtle'}>{step.level}</Badge>{' '}
-            <Badge size="small" color={STATUS_COLOR[step.status] ?? 'subtle'}>{step.status}</Badge>{' '}
-            {step.message}
-            {step.details && (
-              <div className={s.stepDetails}>{step.details}</div>
-            )}
-            {!step.details && step.payload_ref && (
-              <div style={{ marginTop: '4px' }}>
-                {payloads[step.seq] !== undefined ? (
-                  <div className={s.stepDetails}>{payloads[step.seq]}</div>
-                ) : (
-                  <Button
-                    size="small"
-                    appearance="subtle"
-                    style={{ fontSize: '11px', padding: '0 6px', height: '20px' }}
-                    disabled={payloadLoading[step.seq]}
-                    onClick={() => loadPayload(step.seq)}
-                  >
-                    {payloadLoading[step.seq] ? 'Loading…' : 'View detail file'}
-                  </Button>
-                )}
+    <div className={s.panel}>
+      {/* Header */}
+      <div className={s.panelHeader}>
+        <span className={s.panelTitle}>Detail</span>
+        {flow && (
+          <Badge size="small" color={STATUS_COLOR[flow.status] ?? 'subtle'}>{flow.status}</Badge>
+        )}
+        <Button size="small" appearance="subtle" className={s.dismissBtn}
+          icon={<DismissRegular style={{ fontSize: '13px' }} />}
+          onClick={onClose} aria-label="Close detail panel" />
+      </div>
+
+      {loading && (
+        <div className={s.loadingRow}><Spinner size="tiny" /> Loading…</div>
+      )}
+      {error && (
+        <div className={s.loadingRow} style={{ color: 'red' }}>Error: {error}</div>
+      )}
+
+      {flow && (
+        <>
+          {/* Flow metadata */}
+          <div className={s.detailHeader}>
+            <div className={s.detailFlowId}>{flow.flow_id}</div>
+            <div className={s.detailMeta}>
+              <span className={s.detailMetaLabel}>Type</span>
+              <span className={s.detailMetaValue} style={{ color: '#0f6cbd', fontWeight: 600 }}>{flow.flow_type}</span>
+              <span className={s.detailMetaLabel}>Trigger</span>
+              <span className={s.detailMetaValue}>{flow.trigger_src}</span>
+              <span className={s.detailMetaLabel}>Started</span>
+              <span className={s.detailMetaValue}>{fmtTime(flow.started_at)}</span>
+              <span className={s.detailMetaLabel}>Duration</span>
+              <span className={s.detailMetaValue}>{fmtMs(flow.duration_ms)}</span>
+              <span className={s.detailMetaLabel}>Steps</span>
+              <span className={s.detailMetaValue}>
+                {flow.done_steps}{flow.total_steps > 0 ? `/${flow.total_steps}` : ''} done
+                {flow.error_count > 0 && <Badge size="small" color="danger" style={{ marginLeft: '4px' }}>{flow.error_count} err</Badge>}
+              </span>
+              {flow.hostname && <>
+                <span className={s.detailMetaLabel}>Host</span>
+                <span className={s.detailMetaValue}>{flow.hostname}</span>
+              </>}
+            </div>
+            {flow.meta && (
+              <div>
+                <div className={s.detailMetaLabel}>Meta</div>
+                <pre className={s.detailMetaJson}>{flow.meta}</pre>
               </div>
             )}
           </div>
-          <span className={s.stepTs}>{step.ts_fmt}</span>
-        </div>
-      ))}
+
+          {/* Step list */}
+          <div className={s.detailSteps}>
+            {(detail?.steps ?? []).length === 0 && !loading && (
+              <div className={s.loadingRow}>No steps recorded.</div>
+            )}
+            {(detail?.steps ?? []).map((step) => (
+              <div key={step.id} className={s.stepRow}>
+                <div className={s.stepRowTop}>
+                  <span className={s.stepSeq}>#{step.seq}</span>
+                  <span className={s.stepName}>{step.step_name}</span>
+                  <Badge size="small" color={LEVEL_COLOR[step.level] ?? 'subtle'}>{step.level}</Badge>
+                  <Badge size="small" color={STATUS_COLOR[step.status] ?? 'subtle'}>{step.status}</Badge>
+                  <span className={s.stepDur}>{fmtMs(step.duration_ms)}</span>
+                  <span className={s.stepSpacer} />
+                  <span className={s.stepTs}>{step.ts_fmt}</span>
+                </div>
+                {step.message && (
+                  <div className={s.stepMsg}>{step.message}</div>
+                )}
+                {step.details && (
+                  <div className={s.stepDetails}>{step.details}</div>
+                )}
+                {!step.details && step.payload_ref && (
+                  <div style={{ paddingLeft: '26px', marginTop: '3px' }}>
+                    {payloads[step.seq] !== undefined ? (
+                      <pre className={s.stepDetails}>{payloads[step.seq]}</pre>
+                    ) : (
+                      <Button size="small" appearance="subtle"
+                        style={{ fontSize: '11px', padding: '0 6px', height: '20px' }}
+                        disabled={payloadLoading[step.seq]}
+                        onClick={() => loadPayload(step.seq)}>
+                        {payloadLoading[step.seq] ? 'Loading…' : 'View detail file'}
+                      </Button>
+                    )}
+                  </div>
+                )}
+                {step.source && (
+                  <div style={{ paddingLeft: '26px', fontSize: '10.5px', color: '#888' }}>
+                    source: {step.source}{step.api_path ? ` · ${step.api_path}` : ''}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 };
 
 // ---------------------------------------------------------------------------
-// Main component — two-panel layout
+// Main component
 // ---------------------------------------------------------------------------
 
 export const FlowLogTab: React.FC = () => {
   const s = useStyles();
 
-  const [flows, setFlows]               = useState<FlowRow[]>([]);
-  const [types, setTypes]               = useState<FlowTypeCount[]>([]);
-  const [loading, setLoading]           = useState(false);
+  // State
+  const [data, setData]               = useState<FlowListResponse | null>(null);
+  const [types, setTypes]             = useState<FlowTypeCount[]>([]);
+  const [loading, setLoading]         = useState(false);
   const [selectedType, setSelectedType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
-  const [search, setSearch]             = useState('');
-  const [expandedId, setExpandedId]     = useState<string | null>(null);
+  const [search, setSearch]           = useState('');
+  const [page, setPage]               = useState(0);
+  const [limit]                       = useState(15);
+  const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
+  const [jumpValue, setJumpValue]     = useState('');
 
-  const loadFlows = useCallback(async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ limit: '200' });
-      if (selectedType) params.set('flow_type', selectedType);
-      if (filterStatus) params.set('status', filterStatus);
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      if (selectedType)   params.set('flow_type', selectedType);
+      if (filterStatus)   params.set('status', filterStatus);
       const [flowsRes, typesRes] = await Promise.all([
-        fetch(`${FLOWS_URL}?${params}`).then((r) => r.json() as Promise<FlowRow[]>),
+        fetch(`${FLOWS_URL}?${params}`).then((r) => r.json() as Promise<FlowListResponse>),
         fetch(TYPES_URL).then((r) => r.json() as Promise<FlowTypeCount[]>),
       ]);
-      setFlows(Array.isArray(flowsRes) ? flowsRes : []);
+      setData(flowsRes);
       setTypes(Array.isArray(typesRes) ? typesRes : []);
     } catch (e) {
       console.error('FlowLogTab fetch error', e);
     } finally {
       setLoading(false);
     }
-  }, [selectedType, filterStatus]);
+  }, [page, limit, selectedType, filterStatus]);
 
   useEffect(() => {
-    loadFlows();
-    const timer = window.setInterval(loadFlows, 15_000);
-    return () => window.clearInterval(timer);
-  }, [loadFlows]);
+    loadData();
+  }, [loadData]);
 
-  const visibleFlows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return flows;
-    return flows.filter(
-      (f) =>
-        f.flow_type.toLowerCase().includes(q) ||
-        f.trigger_src.toLowerCase().includes(q) ||
-        f.status.toLowerCase().includes(q),
-    );
-  }, [flows, search]);
+  // Reset page when filter/type changes
+  useEffect(() => { setPage(0); }, [selectedType, filterStatus]);
 
-  const totalCount = types.reduce((sum, t) => sum + t.count, 0);
+  const flows = data?.flows ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.ceil(total / limit);
+  const totalCount = types.reduce((s, t) => s + t.count, 0);
+
+  // Client-side search filter (on loaded page)
+  const visibleFlows = search.trim()
+    ? flows.filter((f) => {
+        const q = search.toLowerCase();
+        return f.flow_type.toLowerCase().includes(q) ||
+               f.trigger_src.toLowerCase().includes(q) ||
+               f.status.toLowerCase().includes(q);
+      })
+    : flows;
 
   return (
-    <div className={s.root}>
+    <div className={mergeClasses(s.root, selectedFlowId != null && s.rootWithDetail)}>
       {/* ── Left panel: type list ── */}
       <div className={s.panel}>
-        <div className={s.panelHeader}>
-          <span className={s.panelTitle}>Types</span>
-        </div>
-        <div className={s.panelBody}>
-          {/* All */}
-          <div
-            className={mergeClasses(s.typeItem, selectedType === '' && s.typeItemActive)}
-            onClick={() => setSelectedType('')}
-          >
+        <div className={s.panelHeader}><span className={s.panelTitle}>Types</span></div>
+        <div className={s.typeList}>
+          <div className={mergeClasses(s.typeItem, selectedType === '' && s.typeItemActive)}
+            onClick={() => setSelectedType('')}>
             <span className={mergeClasses(s.typeName, selectedType === '' && s.typeNameActive)}>All</span>
             <Badge size="small" appearance="tint" color="informative" className={s.typeBadge}>{totalCount}</Badge>
           </div>
-
           {types.map((t) => (
-            <div
-              key={t.flow_type}
+            <div key={t.flow_type}
               className={mergeClasses(s.typeItem, selectedType === t.flow_type && s.typeItemActive)}
-              onClick={() => setSelectedType(t.flow_type)}
-            >
+              onClick={() => setSelectedType(t.flow_type)}>
               <span className={mergeClasses(s.typeName, selectedType === t.flow_type && s.typeNameActive)}>
                 {t.flow_type}
               </span>
-              <Badge
-                size="small"
-                appearance="tint"
+              <Badge size="small" appearance="tint"
                 color={selectedType === t.flow_type ? 'brand' : 'subtle'}
-                className={s.typeBadge}
-              >
-                {t.count}
-              </Badge>
+                className={s.typeBadge}>{t.count}</Badge>
               <Tooltip relationship="description" content={flowTypeDescription(t.flow_type)}>
-                <Button
-                  size="small"
-                  appearance="subtle"
-                  className={s.typeInfoBtn}
+                <Button size="small" appearance="subtle" className={s.typeInfoBtn}
                   icon={<InfoRegular style={{ fontSize: '13px' }} />}
                   onClick={(e) => e.stopPropagation()}
-                  aria-label={`About ${t.flow_type}`}
-                />
+                  aria-label={`About ${t.flow_type}`} />
               </Tooltip>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── Right panel: search + flow list ── */}
+      {/* ── Middle panel: flow table ── */}
       <div className={s.panel}>
-        <div className={s.rightToolbar}>
-          <Input
-            size="small"
-            className={s.searchInput}
-            placeholder="Search type, trigger, status…"
-            contentBefore={<SearchRegular style={{ fontSize: '14px', color: '#888' }} />}
-            value={search}
-            onChange={(_, d) => setSearch(d.value)}
-          />
-          <Select
-            size="small"
-            value={filterStatus}
-            onChange={(_, d) => setFilterStatus(d.value)}
-            style={{ minWidth: '110px' }}
-          >
+        {/* Toolbar */}
+        <div className={s.toolbar}>
+          <Input size="small" className={s.searchInput}
+            placeholder="Search…"
+            contentBefore={<SearchRegular style={{ fontSize: '13px', color: '#888' }} />}
+            value={search} onChange={(_, d) => setSearch(d.value)} />
+          <Select size="small" className={s.statusSelect} value={filterStatus}
+            onChange={(_, d) => setFilterStatus(d.value)}>
             <option value="">All status</option>
             <option value="running">Running</option>
             <option value="ok">OK</option>
             <option value="error">Error</option>
+            <option value="partial">Partial</option>
+            <option value="skip">Skip</option>
           </Select>
-          <div className={s.spacer} />
+          <Button size="small" appearance="subtle" icon={<ArrowClockwiseRegular />}
+            onClick={loadData} disabled={loading}>Refresh</Button>
           {loading && <Spinner size="tiny" />}
-          <Button size="small" appearance="subtle" icon={<ArrowSyncRegular />} onClick={loadFlows}>
-            Refresh
-          </Button>
+          {data && (
+            <Text size={200} className={s.totalText}>{total.toLocaleString()} total</Text>
+          )}
         </div>
 
-        <div className={s.flowList}>
-          {visibleFlows.length === 0 && !loading && (
-            <div className={s.empty}>No flow runs found.</div>
+        {/* Table */}
+        <div className={s.tableWrapper}>
+          {loading && !data ? (
+            <div className={s.loadingState}><Spinner size="tiny" /><Text size={200}>Loading…</Text></div>
+          ) : (
+            <Table size="small" className={s.table}>
+              <TableHeader>
+                <TableRow>
+                  <TableHeaderCell className={s.thTime}>Time</TableHeaderCell>
+                  <TableHeaderCell className={s.thType}>Type</TableHeaderCell>
+                  <TableHeaderCell className={s.thTrigger}>Trigger</TableHeaderCell>
+                  <TableHeaderCell className={s.thStatus}>Status</TableHeaderCell>
+                  <TableHeaderCell className={s.thSteps}>Steps</TableHeaderCell>
+                  <TableHeaderCell className={s.thDur}>Duration</TableHeaderCell>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visibleFlows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className={s.emptyCell}>
+                      <Text size={200}>No flow runs found.</Text>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  visibleFlows.map((flow) => (
+                    <TableRow
+                      key={flow.flow_id}
+                      className={mergeClasses(s.rowClickable, selectedFlowId === flow.flow_id && s.rowSelected)}
+                      onClick={() => setSelectedFlowId((prev) => prev === flow.flow_id ? null : flow.flow_id)}
+                    >
+                      <TableCell className={s.timeCell}>{fmtTime(flow.started_at)}</TableCell>
+                      <TableCell className={s.typeCell}>{flow.flow_type}</TableCell>
+                      <TableCell className={s.triggerCell}>{flow.trigger_src}</TableCell>
+                      <TableCell>
+                        <Badge size="small" appearance="filled"
+                          color={STATUS_COLOR[flow.status] ?? 'subtle'}>{flow.status}</Badge>
+                        {flow.error_count > 0 && (
+                          <Badge size="small" color="danger" style={{ marginLeft: '4px' }}>{flow.error_count} err</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className={s.stepsCell}>
+                        {flow.done_steps}
+                        {flow.total_steps > 0 ? `/${flow.total_steps}` : ''}
+                      </TableCell>
+                      <TableCell className={s.durCell}>{fmtMs(flow.duration_ms)}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           )}
-          {visibleFlows.map((flow) => {
-            const isOpen = expandedId === flow.flow_id;
-            return (
-              <div key={flow.flow_id} className={s.flowCard}>
-                <div
-                  className={mergeClasses(s.flowHeader, isOpen && s.flowHeaderOpen)}
-                  onClick={() => setExpandedId((prev) => (prev === flow.flow_id ? null : flow.flow_id))}
-                >
-                  {isOpen ? <ChevronDownRegular className={s.chevron} /> : <ChevronRightRegular className={s.chevron} />}
-                  <span className={s.flowType}>{flow.flow_type}</span>
-                  <Badge size="small" color={STATUS_COLOR[flow.status] ?? 'subtle'}>{flow.status}</Badge>
-                  <span className={s.flowTrigger}>{flow.trigger_src}</span>
-                  <span className={s.flowTime}>{fmtTime(flow.started_at)}</span>
-                  <span className={s.spacerFlex} />
-                  <span className={s.flowSteps}>
-                    {flow.done_steps}/{flow.total_steps > 0 ? flow.total_steps : '?'} steps
-                    {flow.error_count > 0 && (
-                      <Badge size="small" color="danger" style={{ marginLeft: '6px' }}>{flow.error_count} err</Badge>
-                    )}
-                  </span>
-                  <span className={s.flowDur}>{fmtMs(flow.duration_ms)}</span>
-                </div>
-                {isOpen && <FlowStepPanel flowId={flow.flow_id} />}
-              </div>
-            );
-          })}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className={s.pagination}>
+            <Button size="small" appearance="subtle" icon={<ChevronLeftRegular />}
+              disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}
+              className={s.pageBtn} />
+            {getPageNums(page, totalPages).map((pg, i) =>
+              pg === null
+                ? <span key={`el-${i}`} style={{ padding: '0 2px', color: '#8a8886', fontSize: '12px', lineHeight: '26px' }}>…</span>
+                : <Button key={pg} size="small"
+                    appearance={pg === page ? 'primary' : 'subtle'}
+                    onClick={() => setPage(pg)}
+                    className={s.pageBtn}>{pg + 1}</Button>
+            )}
+            <Button size="small" appearance="subtle" icon={<ChevronRightRegular />}
+              disabled={page >= totalPages - 1} onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              className={s.pageBtn} />
+            <div className={s.paginationSpacer} />
+            <div className={s.paginationJump}>
+              <span className={s.paginationJumpLabel}>Go to</span>
+              <Input size="small" className={s.paginationJumpInput}
+                value={jumpValue} onChange={(_, d) => setJumpValue(d.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const n = parseInt(jumpValue, 10);
+                    if (!isNaN(n) && n >= 1 && n <= totalPages) { setPage(n - 1); setJumpValue(''); }
+                  }
+                }} />
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* ── Right panel: detail ── */}
+      {selectedFlowId != null && (
+        <FlowDetailPanel
+          flowId={selectedFlowId}
+          onClose={() => setSelectedFlowId(null)}
+        />
+      )}
     </div>
   );
 };

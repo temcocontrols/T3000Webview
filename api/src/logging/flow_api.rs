@@ -133,8 +133,16 @@ pub struct PurgeResult {
 }
 
 // ---------------------------------------------------------------------------
-// GET /api/flows
+// GET /api/flows  — returns { flows, total, page, limit }
 // ---------------------------------------------------------------------------
+
+#[derive(Debug, Serialize)]
+pub struct FlowListResponse {
+    pub flows: Vec<FlowRow>,
+    pub total: i64,
+    pub page: i64,
+    pub limit: i64,
+}
 
 async fn list_flows(
     State(state): State<T3AppState>,
@@ -143,8 +151,9 @@ async fn list_flows(
     let guard = local_db!(state);
     let db: &sea_orm::DatabaseConnection = &*guard;
 
-    let limit = q.limit.unwrap_or(50).min(500);
-    let offset = q.page.unwrap_or(0) * limit;
+    let limit = q.limit.unwrap_or(15).min(500);
+    let page  = q.page.unwrap_or(0);
+    let offset = page * limit;
 
     let mut where_clauses: Vec<String> = Vec::new();
     if let Some(ft) = &q.flow_type {
@@ -166,6 +175,16 @@ async fn list_flows(
         format!("WHERE {}", where_clauses.join(" AND "))
     };
 
+    // Count query (same WHERE, no LIMIT/OFFSET)
+    let count_sql = format!("SELECT COUNT(*) as total FROM T3_FLOW {}", where_sql);
+    let total: i64 = db
+        .query_one(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, count_sql))
+        .await
+        .ok()
+        .flatten()
+        .and_then(|r| r.try_get("", "total").ok())
+        .unwrap_or(0);
+
     let sql = format!(
         "SELECT id, flow_id, flow_type, trigger_src, started_at, ended_at, status, hostname, \
          total_steps, done_steps, error_count, meta \
@@ -179,7 +198,7 @@ async fn list_flows(
                 .iter()
                 .filter_map(|r| row_to_flow(r).ok())
                 .collect();
-            Json(flows).into_response()
+            Json(FlowListResponse { flows, total, page, limit }).into_response()
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
