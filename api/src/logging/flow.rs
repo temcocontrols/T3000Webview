@@ -212,22 +212,23 @@ async fn resolve_payload(
 
     // Offload to file
     let month = Local::now().format("%Y-%m").to_string();
-    let dir = format!("T3WebLog/payloads/{}", month);
-    let file_name = format!("{}_{}.json", flow_id, seq);
-    let file_path = format!("{}/{}", dir, file_name);
+    let runtime_path = crate::constants::get_t3000_runtime_path();
+    let dir = runtime_path.join("T3WebLog").join("payloads").join(&month);
+    let file_name = format!("{}_{}.txt", flow_id, seq);
+    let file_path = dir.join(&file_name);
 
     if let Err(e) = std::fs::create_dir_all(&dir) {
-        eprintln!("[flow] create_dir_all {} failed: {}", dir, e);
+        eprintln!("[flow] create_dir_all {:?} failed: {}", dir, e);
         // Fall back to inline (truncated)
         return (Some(text[..PAYLOAD_INLINE_LIMIT].to_string()), None);
     }
 
     if let Err(e) = std::fs::write(&file_path, text.as_bytes()) {
-        eprintln!("[flow] write payload file {} failed: {}", file_path, e);
+        eprintln!("[flow] write payload file {:?} failed: {}", file_path, e);
         return (Some(text[..PAYLOAD_INLINE_LIMIT].to_string()), None);
     }
 
-    (None, Some(file_path))
+    (None, Some(file_path.to_string_lossy().into_owned()))
 }
 
 // ---------------------------------------------------------------------------
