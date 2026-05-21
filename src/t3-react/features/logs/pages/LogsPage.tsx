@@ -28,7 +28,9 @@ import {
   ChevronUpRegular,
   ChevronDownRegular,
   InfoRegular,
+  InfoFilled,
   ArrowSyncRegular,
+  CheckmarkCircleFilled,
 } from '@fluentui/react-icons';
 import { ActivityLogTab } from '../components/ActivityLogTab';
 import { FileLogsTab } from '../components/FileLogsTab';
@@ -102,38 +104,82 @@ const useStyles = makeStyles({
     overflow: 'hidden',
   },
 
-  /* ---- header bar ---- */
+  /* ---- header bar (same width as content strips) ---- */
   header: {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
-    padding: '10px 16px',
+    gap: '8px',
+    margin: '8px 12px 0',
+    padding: '0 0 8px',
     borderBottomWidth: '1px',
     borderBottomStyle: 'solid',
-    borderBottomColor: '#edebe9',
-    backgroundColor: '#ffffff',
+    borderBottomColor: '#e1dfdd',
+    flexShrink: 0,
+  },
+  headerDivider: {
+    width: '1px',
+    height: '20px',
+    backgroundColor: '#d2d0ce',
     flexShrink: 0,
   },
   headerText: {
     flex: 1,
   },
+  titleSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1px',
+    flexShrink: 0,
+  },
+  titleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '2px',
+  },
   title: {
     fontSize: '14px',
-    fontWeight: 600,
+    fontWeight: 700,
     color: '#201f1e',
-    display: 'block',
+    whiteSpace: 'nowrap',
   },
   subtitle: {
-    fontSize: '11.5px',
-    color: '#605e5c',
-    marginTop: '1px',
-    display: 'block',
+    fontSize: '11px',
+    color: '#8a8886',
+  },
+  infoIcon: {
+    fontSize: '14px',
+    color: '#0078d4',
+    cursor: 'default',
+    display: 'inline-flex',
+    alignItems: 'center',
+    outline: 'none',
   },
   headerActions: {
     display: 'flex',
     gap: '6px',
     alignItems: 'center',
     flexShrink: 0,
+  },
+  toggleWrapper: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    flexShrink: 0,
+  },
+  feedbackCheck: {
+    fontSize: '18px',
+    color: '#107c10',
+    opacity: 0,
+    transitionProperty: 'opacity, transform',
+    transitionDuration: '0.3s',
+    transitionTimingFunction: 'ease',
+    transform: 'scale(0.7)',
+    flexShrink: 0,
+    display: 'inline-flex',
+  },
+  feedbackCheckVisible: {
+    opacity: 1,
+    transform: 'scale(1)',
   },
 
   drawerHeader: {
@@ -433,9 +479,11 @@ const useStyles = makeStyles({
     rowGap: '6px',
   },
   toggleLabel: {
-    fontSize: '13px',
-    fontWeight: 600,
-    color: '#201f1e',
+    fontSize: '12px',
+    fontWeight: 500,
+    color: '#605e5c',
+    whiteSpace: 'nowrap',
+    userSelect: 'none',
   },
   sqlBar: {
     display: 'flex',
@@ -515,6 +563,7 @@ export const LogsPage: React.FC = () => {
   // Log Everything master toggle
   const [loggingEnabled, setLoggingEnabled] = useState(true);
   const [logToggleLoading, setLogToggleLoading] = useState(false);
+  const [showEnabledFeedback, setShowEnabledFeedback] = useState(false);
 
   // SQL Server status
   const [sqlStatus, setSqlStatus] = useState<{
@@ -633,6 +682,10 @@ export const LogsPage: React.FC = () => {
   const handleToggleLogging = useCallback(async (enabled: boolean) => {
     setLogToggleLoading(true);
     setLoggingEnabled(enabled); // optimistic
+    if (enabled) {
+      setShowEnabledFeedback(true);
+      setTimeout(() => setShowEnabledFeedback(false), 1800);
+    }
     try {
       const res = await fetch(`${API_BASE_URL}/api/logs/settings`);
       if (!res.ok) throw new Error('load failed');
@@ -672,71 +725,92 @@ export const LogsPage: React.FC = () => {
 
   return (
     <div className={s.page}>
-      {/* Header */}
+      {/* Single unified header row — same width as content strips */}
       <div className={s.header}>
-        <div className={s.headerText}>
-          <span className={s.title}>T3000 Logs</span>
-          <span className={s.subtitle}>
-            View and search what the T3000 service has been doing — errors, sync activity, device changes.
-          </span>
+        {/* Title with short description and info tooltip */}
+        <div className={s.titleSection}>
+          <div className={s.titleRow}>
+            <span className={s.title}>T3000 Logs</span>
+            <Tooltip
+              relationship="description"
+              content="Captures all T3000 service activity: sync cycles, device polling, error traces, FFI calls, and more. Use Advanced → Log Settings to control per-category recording."
+            >
+              <span tabIndex={0} className={s.infoIcon} aria-label="About T3000 Logs">
+                <InfoFilled />
+              </span>
+            </Tooltip>
+          </div>
+          <span className={s.subtitle}>Monitor sync, errors and device activity</span>
         </div>
-        <div className={s.headerActions}>
-          <Button
-            size="small"
-            appearance={showAdvanced ? 'primary' : 'subtle'}
-            icon={<SettingsRegular />}
-            style={{ fontSize: '12px' }}
-            onClick={() => { setShowAdvanced(true); setAdvancedTab('settings'); }}
-          >
-            Advanced
-          </Button>
-        </div>
-      </div>
 
-      {/* Simple Controls Bar */}
-      <div className={s.simpleBar}>
-        <Switch
-          checked={loggingEnabled}
-          disabled={logToggleLoading}
-          onChange={(_, data) => void handleToggleLogging(data.checked)}
-          label={<span className={s.toggleLabel}>Log Everything</span>}
-        />
-        <div className={s.sqlBar}>
-          <span
-            className={mergeClasses(
-              s.sqlDot,
-              sqlStatus == null
-                ? s.sqlUnknown
-                : sqlStatus.connected
-                ? s.sqlConnected
-                : s.sqlDisconnected,
-            )}
-          />
-          <span className={s.sqlLabel}>
-            {sqlStatus == null
-              ? 'SQL …'
+        {/* Push SQL status to the right */}
+        <div style={{ flex: 1 }} />
+
+        {/* SQL Server status */}
+        <span
+          className={mergeClasses(
+            s.sqlDot,
+            sqlStatus == null
+              ? s.sqlUnknown
               : sqlStatus.connected
-              ? 'SQL Connected'
-              : 'SQL Disconnected'}
-          </span>
-          {sqlStatus?.lastContactAgo && (
-            <span className={s.sqlMeta}>· Last contact: {sqlStatus.lastContactAgo}</span>
+              ? s.sqlConnected
+              : s.sqlDisconnected,
           )}
-          <Button
-            size="small"
-            appearance="subtle"
-            icon={sqlTesting ? <Spinner size="tiny" /> : <ArrowSyncRegular />}
-            disabled={sqlTesting}
-            onClick={handleTestSql}
-          >
-            Test
-          </Button>
-          {sqlTestResult && (
-            <Badge color={sqlTestResult.ok ? 'success' : 'danger'} size="small">
-              {sqlTestResult.ok ? `OK ${sqlTestResult.latency_ms ?? ''}ms` : 'Failed'}
-            </Badge>
-          )}
+        />
+        <span className={s.sqlLabel}>
+          {sqlStatus == null
+            ? 'SQL …'
+            : sqlStatus.connected
+            ? 'SQL Connected'
+            : 'SQL Disconnected'}
+        </span>
+        {sqlStatus?.lastContactAgo && (
+          <span className={s.sqlMeta}>· Last contact: {sqlStatus.lastContactAgo}</span>
+        )}
+        <Button
+          size="small"
+          appearance="subtle"
+          icon={sqlTesting ? <Spinner size="tiny" /> : <ArrowSyncRegular />}
+          disabled={sqlTesting}
+          onClick={handleTestSql}
+        >
+          Test
+        </Button>
+        {sqlTestResult && (
+          <Badge color={sqlTestResult.ok ? 'success' : 'danger'} size="small">
+            {sqlTestResult.ok ? `OK ${sqlTestResult.latency_ms ?? ''}ms` : 'Failed'}
+          </Badge>
+        )}
+
+        <span className={s.headerDivider} />
+
+        {/* Enable / Disable Logging toggle with success checkmark */}
+        <div className={s.toggleWrapper}>
+          <CheckmarkCircleFilled
+            className={mergeClasses(s.feedbackCheck, showEnabledFeedback && s.feedbackCheckVisible)}
+          />
+          <Switch
+            checked={loggingEnabled}
+            disabled={logToggleLoading}
+            onChange={(_, data) => void handleToggleLogging(data.checked)}
+            label={
+              <span className={s.toggleLabel}>
+                {loggingEnabled ? 'Disable Logging' : 'Enable Logging'}
+              </span>
+            }
+          />
         </div>
+
+        {/* Advanced drawer trigger */}
+        <Button
+          size="small"
+          appearance={showAdvanced ? 'primary' : 'subtle'}
+          icon={<SettingsRegular />}
+          style={{ fontSize: '12px' }}
+          onClick={() => { setShowAdvanced(true); setAdvancedTab('settings'); }}
+        >
+          Advanced
+        </Button>
       </div>
 
       {/* Stats + Category filter strip */}
