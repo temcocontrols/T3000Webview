@@ -25,8 +25,6 @@ import {
 import {
   SettingsRegular,
   Dismiss24Regular,
-  ChevronUpRegular,
-  ChevronDownRegular,
   InfoRegular,
   DatabasePlugConnectedRegular,
 } from '@fluentui/react-icons';
@@ -208,33 +206,144 @@ const useStyles = makeStyles({
     height: '24px',
   },
 
-  topStrip: {
+  /* ---- body layout: left sidebar + right panel ---- */
+  body: {
+    display: 'flex',
+    flexDirection: 'row',
+    flex: 1,
+    overflow: 'hidden',
+    minHeight: 0,
+  },
+
+  /* ---- left sidebar ---- */
+  leftPanel: {
+    width: '170px',
+    flexShrink: 0,
     display: 'flex',
     flexDirection: 'column',
-    margin: '6px 12px 0',
-    gap: '8px',
+    borderRightWidth: '1px',
+    borderRightStyle: 'solid',
+    borderRightColor: '#e1dfdd',
+    overflow: 'hidden',
+    backgroundColor: '#faf9f8',
+  },
+  statsBlock: {
+    padding: '10px 12px 8px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '5px',
     flexShrink: 0,
   },
-  topStripHidden: {
-    display: 'none',
-  },
-
-  /* row 1 — latest activity */
-  latestPanel: {
-    backgroundColor: '#f3f8ff',
-    border: '1px solid #d0e4f7',
-    borderRadius: '4px',
-    padding: '9px 14px',
+  statRow: {
     display: 'flex',
-    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: '4px',
   },
-
-  summaryPanel: {
-    border: '1px solid #e1dfdd',
-    borderRadius: '4px',
-    backgroundColor: '#ffffff',
+  statRowLabel: {
+    fontSize: '11.5px',
+    color: '#8a8886',
+    fontWeight: 400,
+  },
+  statRowValue: {
+    fontSize: '13px',
+    fontWeight: 700,
+    color: '#323130',
+  },
+  statRowValueError: {
+    color: tokens.colorPaletteRedForeground1,
+  },
+  statRowValueWarn: {
+    color: tokens.colorPaletteMarigoldForeground1,
+  },
+  leftDivider: {
+    height: '1px',
+    backgroundColor: '#e1dfdd',
+    margin: '0 8px',
+    flexShrink: 0,
+  },
+  catSection: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
     overflow: 'hidden',
+    minHeight: 0,
+  },
+  catSectionLabel: {
+    fontSize: '10px',
+    fontWeight: 700,
+    color: '#a19f9d',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    padding: '8px 12px 4px',
+    flexShrink: 0,
+    userSelect: 'none',
+  },
+  catList: {
+    flex: 1,
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    paddingBottom: '8px',
+  },
+  catItem: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '4px 12px',
+    cursor: 'pointer',
+    userSelect: 'none',
+    gap: '6px',
+    ':hover': { backgroundColor: '#f3f2f1' },
+  },
+  catItemActive: {
+    backgroundColor: '#e8f0fe',
+    ':hover': { backgroundColor: '#dce6fd' },
+  },
+  catName: {
+    fontSize: '11.5px',
+    color: '#323130',
+    fontWeight: 400,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    flex: 1,
+    minWidth: 0,
+  },
+  catNameActive: {
+    fontWeight: 600,
+    color: '#0f6cbd',
+  },
+  catCount: {
+    fontSize: '10.5px',
+    color: '#a19f9d',
+    fontWeight: 600,
+    flexShrink: 0,
+  },
+  catCountActive: {
+    color: '#0f6cbd',
+  },
+
+  /* ---- right main panel ---- */
+  rightPanel: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    minWidth: 0,
+    minHeight: 0,
+  },
+
+  /* latest activity banner — top of right panel */
+  latestPanel: {
+    backgroundColor: '#f3f8ff',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#d0e4f7',
+    padding: '8px 14px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '3px',
+    flexShrink: 0,
   },
   latestHeader: {
     display: 'flex',
@@ -243,18 +352,18 @@ const useStyles = makeStyles({
     gap: '8px',
   },
   latestTitle: {
-    fontSize: '11px',
+    fontSize: '10px',
     fontWeight: 700,
     letterSpacing: '0.3px',
     color: tokens.colorBrandForeground1,
     textTransform: 'uppercase',
   },
   lastUpdated: {
-    fontSize: '11px',
+    fontSize: '10px',
     color: tokens.colorNeutralForeground3,
   },
   latestMessage: {
-    fontSize: '12.5px',
+    fontSize: '12px',
     fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     whiteSpace: 'nowrap',
@@ -268,166 +377,6 @@ const useStyles = makeStyles({
     flexWrap: 'wrap',
     fontSize: '11px',
     color: tokens.colorNeutralForeground3,
-  },
-
-  /* row 2 — compact inline stats bar */
-  summaryGrid: {
-    display: 'flex',
-    alignItems: 'center',
-    padding: '7px 12px',
-    gap: '10px',
-    backgroundColor: '#f8f8f8',
-  },
-  summaryStats: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    flexShrink: 0,
-  },
-  statCell: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    whiteSpace: 'nowrap',
-  },
-  statLabel: {
-    fontSize: '11.5px',
-    color: '#8a8886',
-    fontWeight: 400,
-  },
-  statValue: {
-    fontSize: '14px',
-    fontWeight: 700,
-    color: '#323130',
-  },
-  statValueError: {
-    color: tokens.colorPaletteRedForeground1,
-  },
-  statValueWarn: {
-    color: tokens.colorPaletteMarigoldForeground1,
-  },
-  vDivider: {
-    width: '1px',
-    height: '14px',
-    backgroundColor: '#d2d0ce',
-    flexShrink: 0,
-  },
-
-  /* filter inline with stats */
-  catsRow: {
-    display: 'flex',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: '6px',
-    rowGap: '5px',
-    minWidth: 0,
-    flex: 1,
-  },
-  catsLabel: {
-    fontSize: '11px',
-    fontWeight: 600,
-    color: '#8a8886',
-    flexShrink: 0,
-    marginRight: '2px',
-  },
-  chip: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '4px',
-    paddingTop: '3px',
-    paddingBottom: '3px',
-    paddingLeft: '8px',
-    paddingRight: '8px',
-    borderRadius: '12px',
-    borderTopWidth: '1px',
-    borderRightWidth: '1px',
-    borderBottomWidth: '1px',
-    borderLeftWidth: '1px',
-    borderTopStyle: 'solid',
-    borderRightStyle: 'solid',
-    borderBottomStyle: 'solid',
-    borderLeftStyle: 'solid',
-    borderTopColor: '#edebe9',
-    borderRightColor: '#edebe9',
-    borderBottomColor: '#edebe9',
-    borderLeftColor: '#edebe9',
-    fontSize: '11px',
-    fontWeight: 500,
-    color: '#323130',
-    backgroundColor: '#ffffff',
-    cursor: 'pointer',
-    userSelect: 'none',
-    transition: 'border-color 0.12s, background 0.12s, color 0.12s',
-    '&:hover': {
-      borderTopColor: '#0078d4',
-      borderRightColor: '#0078d4',
-      borderBottomColor: '#0078d4',
-      borderLeftColor: '#0078d4',
-      color: '#0078d4',
-    },
-  },
-  chipActive: {
-    borderTopColor: '#0f6cbd',
-    borderRightColor: '#0f6cbd',
-    borderBottomColor: '#0f6cbd',
-    borderLeftColor: '#0f6cbd',
-    backgroundColor: '#0f6cbd',
-    color: '#ffffff',
-    '&:hover': {
-      borderTopColor: '#0078d4',
-      borderRightColor: '#0078d4',
-      borderBottomColor: '#0078d4',
-      borderLeftColor: '#0078d4',
-      backgroundColor: '#0078d4',
-      color: '#ffffff',
-    },
-  },
-  chipCount: {
-    fontSize: '10px',
-    fontWeight: 700,
-    opacity: 0.8,
-  },
-  summaryActions: {
-    display: 'flex',
-    alignItems: 'center',
-    marginLeft: 'auto',
-  },
-  showSummaryRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    margin: '6px 12px 0',
-    padding: '6px 10px',
-    border: '1px solid #d7e5f7',
-    borderRadius: '4px',
-    backgroundColor: '#f5f9ff',
-  },
-  showSummaryInfo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    flex: 1,
-    minWidth: 0,
-  },
-  showSummaryInfoLabel: {
-    fontSize: '11px',
-    color: '#0f6cbd',
-    fontWeight: 600,
-    textTransform: 'uppercase',
-    whiteSpace: 'nowrap',
-  },
-  showSummaryInfoText: {
-    fontSize: '12px',
-    color: '#323130',
-    fontWeight: 500,
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-  },
-  showSummaryInfoMeta: {
-    fontSize: '11px',
-    color: '#605e5c',
-    whiteSpace: 'nowrap',
   },
 
   /* ---- drawer body ---- */
@@ -524,7 +473,6 @@ function readLogsHashParams(): { viewFiles: boolean; category: string } {
 export const LogsPage: React.FC = () => {
   const s = useStyles();
   const initialHash = readLogsHashParams();
-  const [summaryVisible, setSummaryVisible] = useState(true);
   const [logData, setLogData] = useState<EventLogResponse | null>(null);
   const [latestLog, setLatestLog] = useState<AppLogEntry | null>(null);
   const [summary, setSummary] = useState({
@@ -705,6 +653,11 @@ export const LogsPage: React.FC = () => {
     loadTopSummary();
   };
 
+  // Sort categories by count descending for the left sidebar list
+  const sortedCats = [...availableCategories].sort(
+    (a, b) => (categoryCounts[b] ?? 0) - (categoryCounts[a] ?? 0),
+  );
+
   return (
     <div className={s.page}>
       {/* Single unified header row — same width as content strips */}
@@ -791,114 +744,105 @@ export const LogsPage: React.FC = () => {
         </Button>
       </div>
 
-      {/* Stats + Category filter strip */}
-      <div className={mergeClasses(s.topStrip, !summaryVisible && s.topStripHidden)}>
-        {/* Row 1 — Latest Activity */}
-        <div className={s.latestPanel}>
-          <div className={s.latestHeader}>
-            <span className={s.latestTitle}>Latest Activity</span>
-            <span className={s.lastUpdated}>Updated {summary.lastUpdated}</span>
+      {/* ── Two-panel body: left sidebar + right main ── */}
+      <div className={s.body}>
+
+        {/* Left sidebar — stats + scrollable category filter */}
+        <div className={s.leftPanel}>
+          <div className={s.statsBlock}>
+            <div className={s.statRow}>
+              <span className={s.statRowLabel}>Total</span>
+              <span className={s.statRowValue}>{summary.total.toLocaleString()}</span>
+            </div>
+            <div className={s.statRow}>
+              <span className={s.statRowLabel}>Errors</span>
+              <span className={mergeClasses(s.statRowValue, s.statRowValueError)}>
+                {summary.errorCount}
+              </span>
+            </div>
+            <div className={s.statRow}>
+              <span className={s.statRowLabel}>Warnings</span>
+              <span className={mergeClasses(s.statRowValue, s.statRowValueWarn)}>
+                {summary.warnCount}
+              </span>
+            </div>
+            <div className={s.statRow}>
+              <span className={s.statRowLabel}>Categories</span>
+              <span className={s.statRowValue}>{summary.categoryCount}</span>
+            </div>
           </div>
-          <span className={s.latestMessage}>
-            {latestLog?.message || 'No recent activity yet'}
-          </span>
-          <div className={s.latestMeta}>
-            <Badge size="small" color={levelBadgeColor(latestLog?.level)}>
-              {latestLog?.level || 'INFO'}
-            </Badge>
-            <span>{latestLog?.category || 'N/A'}</span>
-            <span>{latestLog?.source || 'system'}</span>
-            <span>{latestLog?.logged_at ? new Date(latestLog.logged_at).toLocaleString() : '--'}</span>
+
+          <div className={s.leftDivider} />
+
+          <div className={s.catSection}>
+            <span className={s.catSectionLabel}>Category</span>
+            <div className={s.catList}>
+              {/* All — resets filter */}
+              <div
+                className={mergeClasses(s.catItem, activeCategoryFilter === '' && s.catItemActive)}
+                onClick={() => setActiveCategoryFilter('')}
+              >
+                <span className={mergeClasses(s.catName, activeCategoryFilter === '' && s.catNameActive)}>
+                  All
+                </span>
+                <span className={mergeClasses(s.catCount, activeCategoryFilter === '' && s.catCountActive)}>
+                  {summary.total.toLocaleString()}
+                </span>
+              </div>
+              {sortedCats.map((cat) => (
+                <div
+                  key={cat}
+                  className={mergeClasses(s.catItem, activeCategoryFilter === cat && s.catItemActive)}
+                  onClick={() => setActiveCategoryFilter((prev) => (prev === cat ? '' : cat))}
+                >
+                  <span className={mergeClasses(s.catName, activeCategoryFilter === cat && s.catNameActive)}>
+                    {cat}
+                  </span>
+                  <span className={mergeClasses(s.catCount, activeCategoryFilter === cat && s.catCountActive)}>
+                    {categoryCounts[cat] ?? 0}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Row 2 — compact stats bar */}
-        <div className={s.summaryPanel}>
-          <div className={s.summaryGrid}>
-            <div className={s.summaryStats}>
-              <div className={s.statCell}>
-                <span className={s.statLabel}>Total</span>
-                <span className={s.statValue}>{summary.total.toLocaleString()}</span>
-              </div>
-              <span className={s.vDivider} />
-              <div className={s.statCell}>
-                <span className={s.statLabel}>Errors</span>
-                <span className={mergeClasses(s.statValue, s.statValueError)}>{summary.errorCount}</span>
-              </div>
-              <span className={s.vDivider} />
-              <div className={s.statCell}>
-                <span className={s.statLabel}>Warnings</span>
-                <span className={mergeClasses(s.statValue, s.statValueWarn)}>{summary.warnCount}</span>
-              </div>
-              <span className={s.vDivider} />
-              <div className={s.statCell}>
-                <span className={s.statLabel}>Categories</span>
-                <span className={s.statValue}>{summary.categoryCount}</span>
-              </div>
+        {/* Right panel — latest activity banner + log list */}
+        <div className={s.rightPanel}>
+          <div className={s.latestPanel}>
+            <div className={s.latestHeader}>
+              <span className={s.latestTitle}>Latest Activity</span>
+              <span className={s.lastUpdated}>Updated {summary.lastUpdated}</span>
             </div>
-
-            <span className={s.vDivider} />
-
-            <div className={s.catsRow}>
-              <span className={s.catsLabel}>Filter:</span>
-              <span
-                className={mergeClasses(s.chip, activeCategoryFilter === '' && s.chipActive)}
-                onClick={() => setActiveCategoryFilter('')}
-              >
-                All
+            <span className={s.latestMessage}>
+              {latestLog?.message || 'No recent activity yet'}
+            </span>
+            <div className={s.latestMeta}>
+              <Badge size="small" color={levelBadgeColor(latestLog?.level)}>
+                {latestLog?.level || 'INFO'}
+              </Badge>
+              <span>{latestLog?.category || 'N/A'}</span>
+              <span>{latestLog?.source || 'system'}</span>
+              <span>
+                {latestLog?.logged_at
+                  ? new Date(latestLog.logged_at).toLocaleString()
+                  : '--'}
               </span>
-              {availableCategories.map((cat) => (
-                  <span
-                    key={cat}
-                    className={mergeClasses(s.chip, activeCategoryFilter === cat && s.chipActive)}
-                    onClick={() => setActiveCategoryFilter(prev => prev === cat ? '' : cat)}
-                  >
-                    {cat} <span className={s.chipCount}>{categoryCounts[cat] ?? 0}</span>
-                  </span>
-                ))}
             </div>
+          </div>
 
-            <div className={s.summaryActions}>
-              <Button
-                size="small"
-                appearance="subtle"
-                icon={<ChevronUpRegular />}
-                iconPosition="after"
-                onClick={() => setSummaryVisible(false)}
-              >
-                Hide
-              </Button>
-            </div>
+          <div className={s.content}>
+            <ActivityLogTab
+              externalCategoryFilter={activeCategoryFilter}
+              onCategoryFilterChange={setActiveCategoryFilter}
+              categoryOptions={availableCategories}
+              sharedData={logData ?? undefined}
+              sharedDataMode
+              onRefresh={handleRefreshLogs}
+            />
           </div>
         </div>
       </div>
-
-      {!summaryVisible && (
-        <div className={s.showSummaryRow}>
-          <div className={s.showSummaryInfo}>
-            <span className={s.showSummaryInfoLabel}>Latest</span>
-            <Badge
-              size="small"
-              color={levelBadgeColor(latestLog?.level)}
-            >
-              {latestLog?.level || 'INFO'}
-            </Badge>
-            <span className={s.showSummaryInfoText}>
-              {latestLog?.message || 'No recent activity yet'}
-            </span>
-            <span className={s.showSummaryInfoMeta}>{latestLog?.category || 'N/A'}</span>
-          </div>
-          <Button
-            size="small"
-            appearance="subtle"
-            icon={<ChevronDownRegular />}
-            iconPosition="after"
-            onClick={() => setSummaryVisible(true)}
-          >
-            Show summary
-          </Button>
-        </div>
-      )}
 
       {/* Advanced drawer — Settings | File Logs | Flow Logs */}
       <Drawer
@@ -966,18 +910,6 @@ export const LogsPage: React.FC = () => {
           </div>
         </DrawerBody>
       </Drawer>
-
-      {/* Main content — always activity log */}
-      <div className={s.content}>
-        <ActivityLogTab
-          externalCategoryFilter={activeCategoryFilter}
-          onCategoryFilterChange={setActiveCategoryFilter}
-          categoryOptions={availableCategories}
-          sharedData={logData ?? undefined}
-          sharedDataMode
-          onRefresh={handleRefreshLogs}
-        />
-      </div>
     </div>
   );
 };
