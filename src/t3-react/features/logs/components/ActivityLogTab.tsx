@@ -21,10 +21,33 @@ import {
   TableRow,
   TableCell,
 } from '@fluentui/react-components';
-import { ArrowSyncRegular, ChevronLeftRegular, ChevronRightRegular } from '@fluentui/react-icons';
+import { ArrowClockwiseRegular, ChevronLeftRegular, ChevronRightRegular } from '@fluentui/react-icons';
 import { API_BASE_URL } from '../../../config/constants';
 
 const ACTIVITY_LOG_URL = `${API_BASE_URL}/api/sync/event-log`;
+
+const activityLogRequestCache = new Map<string, Promise<EventLogResponse>>();
+
+async function fetchActivityLogOnce(url: string): Promise<EventLogResponse> {
+  const cached = activityLogRequestCache.get(url);
+  if (cached) {
+    return cached;
+  }
+
+  const request = fetch(url)
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`event-log: HTTP ${response.status}`);
+      }
+      return response.json() as Promise<EventLogResponse>;
+    })
+    .finally(() => {
+      activityLogRequestCache.delete(url);
+    });
+
+  activityLogRequestCache.set(url, request);
+  return request;
+}
 
 interface AppLogEntry {
   id: number;
@@ -178,6 +201,8 @@ const useStyles = makeStyles({
 });
 
 interface ActivityLogTabProps {
+  externalLevelFilter?: string;
+  onLevelFilterChange?: (level: string) => void;
   externalCategoryFilter?: string;
   onCategoryFilterChange?: (cat: string) => void;
   categoryOptions?: string[];
@@ -187,6 +212,8 @@ interface ActivityLogTabProps {
 }
 
 export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
+  externalLevelFilter,
+  onLevelFilterChange,
   externalCategoryFilter,
   onCategoryFilterChange,
   categoryOptions,
@@ -198,12 +225,22 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
   const [data, setData] = useState<EventLogResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
-  const [limit] = useState(50);
-  const [levelFilter, setLevelFilter] = useState('');
+  const [limit] = useState(15);
+  const [internalLevelFilter, setInternalLevelFilter] = useState('');
   const [internalCategoryFilter, setInternalCategoryFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [expanded, setExpanded] = useState<number | null>(null);
   const [jumpValue, setJumpValue] = useState('');
+
+  // If parent controls level filter, use that; else use internal
+  const levelFilter = externalLevelFilter !== undefined ? externalLevelFilter : internalLevelFilter;
+  const setLevelFilter = (val: string) => {
+    if (onLevelFilterChange) {
+      onLevelFilterChange(val);
+    } else {
+      setInternalLevelFilter(val);
+    }
+  };
 
   // If parent controls category filter, use that; else use internal
   const categoryFilter = externalCategoryFilter !== undefined ? externalCategoryFilter : internalCategoryFilter;
@@ -235,11 +272,8 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
         ...(levelFilter ? { level: levelFilter } : {}),
         ...(categoryFilter ? { category: categoryFilter } : {}),
       });
-      const response = await fetch(`${ACTIVITY_LOG_URL}?${params}`);
-      if (response.ok) {
-        const json: EventLogResponse = await response.json();
-        setData(json);
-      }
+      const json: EventLogResponse = await fetchActivityLogOnce(`${ACTIVITY_LOG_URL}?${params}`);
+      setData(json);
     } catch (error) {
       console.error('Failed to load activity log:', error);
     } finally {
@@ -268,11 +302,28 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
   const totalPages = data ? Math.ceil(data.total / limit) : 0;
 
   const getPageNums = (cur: number, total: number): (number | null)[] => {
-    if (total <= 7) return Array.from({ length: total }, (_, i) => i);
+    if (total <= 9) return Array.from({ length: total }, (_, i) => i);
+
     const pages: (number | null)[] = [0];
-    if (cur > 2) pages.push(null);
+
+    // Show a wider default range near the beginning/end for quicker jumps.
+    if (cur <= 2) {
+      for (let i = 1; i <= Math.min(4, total - 2); i++) pages.push(i);
+      pages.push(null);
+      pages.push(total - 1);
+      return pages;
+    }
+
+    if (cur >= total - 3) {
+      pages.push(null);
+      for (let i = Math.max(1, total - 5); i <= total - 2; i++) pages.push(i);
+      pages.push(total - 1);
+      return pages;
+    }
+
+    pages.push(null);
     for (let i = Math.max(1, cur - 1); i <= Math.min(total - 2, cur + 1); i++) pages.push(i);
-    if (cur < total - 3) pages.push(null);
+    pages.push(null);
     pages.push(total - 1);
     return pages;
   };
@@ -334,7 +385,7 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
 
         <Button
           appearance="subtle"
-          icon={<ArrowSyncRegular />}
+          icon={<ArrowClockwiseRegular />}
           onClick={sharedDataMode ? onRefresh : (sharedData ? onRefresh : load)}
           disabled={loading}
           size="small"

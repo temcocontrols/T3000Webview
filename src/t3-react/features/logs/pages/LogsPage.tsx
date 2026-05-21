@@ -72,6 +72,7 @@ interface EventLogResponse {
   total: number;
   categories?: string[];
   categoryCounts?: Record<string, number>;
+  levelCounts?: Record<string, number>;
   page: number;
   limit: number;
 }
@@ -226,17 +227,18 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: '#000000',
+    borderColor: '#b0b0b0',
     borderRadius: '6px',
     overflow: 'hidden',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#ffffff',
   },
   statsBlock: {
-    padding: '12px 10px 10px',
+    padding: '10px 10px',
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: '6px',
     flexShrink: 0,
+    backgroundColor: '#f5f5f5',
   },
   statCard: {
     display: 'flex',
@@ -248,6 +250,38 @@ const useStyles = makeStyles({
     borderWidth: '1px',
     borderStyle: 'solid',
     borderColor: '#e8e8e8',
+    textAlign: 'left',
+    transitionProperty: 'border-color, box-shadow, transform',
+    transitionDuration: '120ms',
+  },
+  statCardText: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1px',
+  },
+  statCardClickable: {
+    cursor: 'pointer',
+    ':hover': { backgroundColor: '#ffffff', borderColor: '#c8c6c4' },
+    ':active': { transform: 'translateY(1px)' },
+    ':focus-visible': {
+      outlineStyle: 'solid',
+      outlineWidth: '2px',
+      outlineColor: '#9cc7f1',
+      outlineOffset: '1px',
+    },
+  },
+  statCardActive: {
+    backgroundColor: '#ffffff',
+    borderColor: '#7fb4e9',
+  },
+  statCardLabelActive: {
+    display: 'inline-block',
+    borderLeftWidth: '3px',
+    borderLeftStyle: 'solid',
+    borderLeftColor: '#0f6cbd',
+    paddingLeft: '6px',
+    color: '#0f6cbd',
+    fontWeight: 600,
   },
   statCardLabel: {
     fontSize: '10px',
@@ -270,7 +304,7 @@ const useStyles = makeStyles({
   leftDivider: {
     height: '1px',
     backgroundColor: '#e0e0e0',
-    margin: '2px 8px 0',
+    margin: '6px 0',
     flexShrink: 0,
   },
   catSection: {
@@ -279,14 +313,15 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     overflow: 'hidden',
     minHeight: 0,
+    backgroundColor: '#f5f5f5',
   },
   catSectionLabel: {
     fontSize: '10px',
     fontWeight: 700,
-    color: '#a19f9d',
+    color: tokens.colorBrandForeground1,
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
-    padding: '10px 12px 5px',
+    padding: '8px 12px 5px',
     flexShrink: 0,
     userSelect: 'none',
   },
@@ -452,7 +487,7 @@ const useStyles = makeStyles({
     display: 'inline-block',
   },
   sqlConnected: {
-    backgroundColor: '#107c10',
+    backgroundColor: '#0078d4',
   },
   sqlDisconnected: {
     backgroundColor: '#d13438',
@@ -502,6 +537,7 @@ export const LogsPage: React.FC = () => {
     lastUpdated: '--:--:--',
   });
   const [activeCategoryFilter, setActiveCategoryFilter] = useState(initialHash.category);
+  const [activeLevelFilter, setActiveLevelFilter] = useState('');
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
   const entriesRef = useRef<AppLogEntry[]>([]);
@@ -552,19 +588,13 @@ export const LogsPage: React.FC = () => {
 
   const loadTopSummary = useCallback(async () => {
     try {
-      const params = new URLSearchParams({ page: '0', limit: '5000' });
-      const json: EventLogResponse = await fetchEventLogOnce(`${ACTIVITY_LOG_URL}?${params.toString()}`);
+      const json: EventLogResponse = await fetchEventLogOnce(`${ACTIVITY_LOG_URL}?page=0&limit=1`);
       const entries = json.entries ?? [];
       setLogData(json);
       entriesRef.current = entries;
-      let errorCount = 0;
-      let warnCount = 0;
 
-      for (const entry of entries) {
-        const level = normalizeLevel(entry.level);
-        if (level === 'ERROR') errorCount += 1;
-        if (level === 'WARN') warnCount += 1;
-      }
+      const errorCount = json.levelCounts?.['error'] ?? 0;
+      const warnCount  = json.levelCounts?.['warn']  ?? 0;
 
       const categoryList = (json.categories ?? []).length
         ? [...(json.categories ?? [])].sort((a, b) => a.localeCompare(b))
@@ -676,10 +706,18 @@ export const LogsPage: React.FC = () => {
     loadTopSummary();
   };
 
+  const toggleLevelFilter = (nextLevel: string) => {
+    setActiveLevelFilter((prev) => (prev === nextLevel ? '' : nextLevel));
+  };
+
   // Sort categories by count descending for the left sidebar list
   const sortedCats = [...availableCategories].sort(
     (a, b) => (categoryCounts[b] ?? 0) - (categoryCounts[a] ?? 0),
   );
+
+  const isAllLevels = activeLevelFilter === '';
+  const isErrorLevel = activeLevelFilter === 'ERROR';
+  const isWarnLevel = activeLevelFilter === 'WARN';
 
   return (
     <div className={s.page}>
@@ -773,26 +811,58 @@ export const LogsPage: React.FC = () => {
         {/* Left sidebar — stats + scrollable category filter */}
         <div className={s.leftPanel}>
           <div className={s.statsBlock}>
-            <div className={s.statCard}>
-              <span className={s.statCardLabel}>Total</span>
-              <span className={s.statCardValue}>{summary.total.toLocaleString()}</span>
-            </div>
-            <div className={s.statCard}>
-              <span className={s.statCardLabel}>Errors</span>
-              <span className={mergeClasses(s.statCardValue, s.statCardValueError)}>
-                {summary.errorCount.toLocaleString()}
+            <button
+              type="button"
+              className={mergeClasses(s.statCard, s.statCardClickable, isAllLevels && s.statCardActive)}
+              onClick={() => setActiveLevelFilter('')}
+              title="Show all levels"
+              aria-pressed={isAllLevels}
+            >
+              <span className={s.statCardText}>
+                <span className={mergeClasses(s.statCardLabel, isAllLevels && s.statCardLabelActive)}>Total</span>
+                <span className={s.statCardValue}>{summary.total.toLocaleString()}</span>
               </span>
-            </div>
-            <div className={s.statCard}>
-              <span className={s.statCardLabel}>Warnings</span>
-              <span className={mergeClasses(s.statCardValue, s.statCardValueWarn)}>
-                {summary.warnCount.toLocaleString()}
+            </button>
+            <button
+              type="button"
+              className={mergeClasses(s.statCard, s.statCardClickable, isErrorLevel && s.statCardActive)}
+              onClick={() => toggleLevelFilter('ERROR')}
+              title="Filter table to ERROR"
+              aria-pressed={isErrorLevel}
+            >
+              <span className={s.statCardText}>
+                <span className={mergeClasses(s.statCardLabel, isErrorLevel && s.statCardLabelActive)}>Errors</span>
+                <span className={mergeClasses(s.statCardValue, s.statCardValueError)}>
+                  {summary.errorCount.toLocaleString()}
+                </span>
               </span>
-            </div>
-            <div className={s.statCard}>
-              <span className={s.statCardLabel}>Categories</span>
-              <span className={s.statCardValue}>{summary.categoryCount}</span>
-            </div>
+            </button>
+            <button
+              type="button"
+              className={mergeClasses(s.statCard, s.statCardClickable, isWarnLevel && s.statCardActive)}
+              onClick={() => toggleLevelFilter('WARN')}
+              title="Filter table to WARN"
+              aria-pressed={isWarnLevel}
+            >
+              <span className={s.statCardText}>
+                <span className={mergeClasses(s.statCardLabel, isWarnLevel && s.statCardLabelActive)}>Warnings</span>
+                <span className={mergeClasses(s.statCardValue, s.statCardValueWarn)}>
+                  {summary.warnCount.toLocaleString()}
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              className={mergeClasses(s.statCard, s.statCardClickable)}
+              onClick={() => setActiveCategoryFilter('')}
+              title="Show all categories"
+              aria-pressed={false}
+            >
+              <span className={s.statCardText}>
+                <span className={s.statCardLabel}>Categories</span>
+                <span className={s.statCardValue}>{summary.categoryCount}</span>
+              </span>
+            </button>
           </div>
 
           <div className={s.leftDivider} />
@@ -856,11 +926,11 @@ export const LogsPage: React.FC = () => {
 
           <div className={s.content}>
             <ActivityLogTab
+              externalLevelFilter={activeLevelFilter}
+              onLevelFilterChange={setActiveLevelFilter}
               externalCategoryFilter={activeCategoryFilter}
               onCategoryFilterChange={setActiveCategoryFilter}
               categoryOptions={availableCategories}
-              sharedData={logData ?? undefined}
-              sharedDataMode
               onRefresh={handleRefreshLogs}
             />
           </div>
