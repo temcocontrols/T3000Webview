@@ -1258,6 +1258,13 @@ impl T3000MainService {
 
         crate::database_management::sync_health::ensure_app_log_table(&local_db).await;
 
+        // Start SYNC_CYCLE flow
+        let t_cycle = std::time::Instant::now();
+        let sync_flow = crate::logging::flow::FlowHandle::start(
+            &local_db, "SYNC_CYCLE", "ffi_sync", 5, None,
+        ).await;
+        let mut sampling_check_recorded = false;
+
         // ── CHECK SAMPLING STATE ──────────────────────────────────────────────
         if crate::app_state::is_sampling_paused() {
             let reason = crate::app_state::get_pause_reason().unwrap_or_default();
@@ -1290,9 +1297,16 @@ impl T3000MainService {
                         None,
                     )
                     .await;
+                    sync_flow.step(&local_db, "sampling_check", "info", "ffi_sync", "ok", 0,
+                        "Sampling auto-resumed", None).await;
+                    sampling_check_recorded = true;
+                    // fall-through: skip the duplicate "Sampling active" step below
                 }
                 Ok(false) => {
                     sync_logger.warn("⏸️  Sampling remains paused — skipping this cycle");
+                    sync_flow.step(&local_db, "sampling_check", "warn", "ffi_sync", "skip", 0,
+                        "Sampling paused — cycle skipped", None).await;
+                    sync_flow.done(&local_db, "skip").await;
                     return Ok(());
                 }
                 Err(e) => {
@@ -1300,6 +1314,9 @@ impl T3000MainService {
                         "⏸️  Auto-resume probe failed — skipping cycle: {}",
                         e
                     ));
+                    sync_flow.step(&local_db, "sampling_check", "warn", "ffi_sync", "skip", 0,
+                        &format!("Auto-resume probe failed: {}", e), None).await;
+                    sync_flow.done(&local_db, "skip").await;
                     return Ok(());
                 }
             }
@@ -1316,6 +1333,12 @@ impl T3000MainService {
             Some(&format!("sync_interval_secs={}", config.sync_interval_secs)),
         )
         .await;
+
+        // Only record "Sampling active" step if not already recorded above (paused+auto-resumed).
+        if !sampling_check_recorded {
+            sync_flow.step(&local_db, "sampling_check", "info", "ffi_sync", "ok", 0,
+                "Sampling active", None).await;
+        }
 
         // Decide write target: MSSQL direct (center DB) if pool active, else SQLite/SeaORM
         let writer = super::sync_writer::SyncWriter::from_pool_or_sqlite().await.map_err(|e| {
@@ -1398,6 +1421,10 @@ impl T3000MainService {
         // STEP 1: Decide whether to perform full rediscovery or use cache
         let should_do_rediscovery = Self::should_rediscover().await;
         let panels: Vec<PanelInfo>;
+
+        sync_flow.step(&local_db, "rediscover_decision", "info", "ffi_sync", "ok", 0,
+            if should_do_rediscovery { "Full rediscovery" } else { "Using cached device list" },
+            None).await;
 
         if should_do_rediscovery {
             sync_logger
@@ -1484,6 +1511,8 @@ impl T3000MainService {
                     &format!("GET_PANELS_LIST: {} device(s) found (SN: {})", panels.len(), sn_list),
                     None,
                 ).await;
+                sync_flow.step(&local_db, "get_panels_list", "info", "ffi_sync", "ok",
+                    0, &format!("{} device(s): {}", panels.len(), sn_list), None).await;
             }
 
             if panels.is_empty() {
@@ -2155,6 +2184,15 @@ impl T3000MainService {
             config.sync_interval_secs,
             config.sync_interval_secs / 60
         ));
+
+        sync_flow.step(&local_db, "sync_complete", "info", "ffi_sync",
+            if failed_devices == total_devices && total_devices > 0 { "error" } else { "ok" },
+            t_cycle.elapsed().as_millis() as i64,
+            &format!("total={} ok={} fail={} skip={}",
+                total_devices, successful_devices, failed_devices, skipped_devices),
+            None).await;
+        sync_flow.done(&local_db,
+            if failed_devices == total_devices && total_devices > 0 { "error" } else { "ok" }).await;
 
         Ok(())
     }
