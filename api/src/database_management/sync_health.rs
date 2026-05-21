@@ -1703,6 +1703,41 @@ async fn put_log_settings(
     Ok(Json(serde_json::json!({ "ok": true })))
 }
 
+// ============================================================================
+// GET /api/logs/enabled  |  PUT /api/logs/enabled
+// Global logging on/off switch stored as log.global.enabled in APPLICATION_CONFIG.
+// Does NOT touch per-category settings — categories keep their individual config.
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SetGlobalLoggingRequest {
+    enabled: bool,
+}
+
+async fn get_logging_enabled(
+    State(state): State<T3AppState>,
+) -> Result<Json<serde_json::Value>> {
+    let db = match get_local_log_db_conn(&state).await {
+        Some(d) => d,
+        None => return Ok(Json(serde_json::json!({ "enabled": true }))),
+    };
+    let enabled = crate::logging::service::load_global_logging_enabled(&db).await;
+    Ok(Json(serde_json::json!({ "enabled": enabled })))
+}
+
+async fn put_logging_enabled(
+    State(state): State<T3AppState>,
+    Json(body): Json<SetGlobalLoggingRequest>,
+) -> Result<Json<serde_json::Value>> {
+    let db = match get_local_log_db_conn(&state).await {
+        Some(d) => d,
+        None => return Ok(Json(serde_json::json!({ "ok": false, "error": "DB unavailable" }))),
+    };
+    upsert_application_config(&db, "log.global.enabled", &body.enabled.to_string()).await?;
+    Ok(Json(serde_json::json!({ "ok": true, "enabled": body.enabled })))
+}
+
 async fn get_log_profile_current(
     State(state): State<T3AppState>,
 ) -> Result<Json<serde_json::Value>> {
@@ -2232,6 +2267,8 @@ pub fn sync_health_routes() -> Router<T3AppState> {
         .route("/api/logs/settings", axum::routing::put(put_log_settings))
         .route("/api/logs/profile/apply", post(apply_log_profile))
         .route("/api/logs/profile/disable", post(disable_log_profile))
+        .route("/api/logs/enabled", get(get_logging_enabled))
+        .route("/api/logs/enabled", axum::routing::put(put_logging_enabled))
         // FFI sampling control
         .route("/api/sync/sampling/status", get(get_sampling_status))
         .route("/api/sync/sampling/pause", post(post_sampling_pause))
