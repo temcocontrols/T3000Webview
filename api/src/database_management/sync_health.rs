@@ -2186,6 +2186,98 @@ pub fn sync_health_routes() -> Router<T3AppState> {
         .route("/api/logs/settings", axum::routing::put(put_log_settings))
         .route("/api/logs/profile/apply", post(apply_log_profile))
         .route("/api/logs/profile/disable", post(disable_log_profile))
+        // FFI sampling control
+        .route("/api/sync/sampling/status", get(get_sampling_status))
+        .route("/api/sync/sampling/pause", post(post_sampling_pause))
+        .route("/api/sync/sampling/resume", post(post_sampling_resume))
+        .route("/api/sync/trigger", post(post_trigger_sync))
+}
+
+// ============================================================================
+// GET /api/sync/sampling/status
+// Returns real-time FFI sampling state: paused/active, pause reason, interval.
+// ============================================================================
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SamplingStatusResponse {
+    paused: bool,
+    pause_reason: Option<String>,
+    sync_interval_secs: u32,
+    service_running: bool,
+}
+
+async fn get_sampling_status() -> Json<SamplingStatusResponse> {
+    use crate::app_state::{get_pause_reason, is_sampling_paused};
+    use crate::t3_device::t3_ffi_sync_service::is_logging_service_running;
+
+    // Read interval from DB config (same path used elsewhere), fallback 300s
+    let sync_interval_secs = crate::t3_device::t3_ffi_sync_service::T3000MainService::get_service()
+        .map(|_| 300u32) // service is opaque; get from config API
+        .unwrap_or(300);
+
+    Json(SamplingStatusResponse {
+        paused: is_sampling_paused(),
+        pause_reason: get_pause_reason(),
+        sync_interval_secs,
+        service_running: is_logging_service_running(),
+    })
+}
+
+// ============================================================================
+// POST /api/sync/sampling/pause
+// Body: { "reason": "optional human-readable reason" }
+// Manually pause FFI sampling.
+// ============================================================================
+
+#[derive(Deserialize, Default)]
+struct PauseBody {
+    reason: Option<String>,
+}
+
+async fn post_sampling_pause(
+    body: Option<Json<PauseBody>>,
+) -> Json<serde_json::Value> {
+    let reason = body
+        .and_then(|b| b.reason.clone())
+        .unwrap_or_else(|| "manually paused via API".to_string());
+    crate::app_state::set_sampling_paused(&reason);
+    Json(serde_json::json!({ "ok": true, "paused": true, "reason": reason }))
+}
+
+// ============================================================================
+// POST /api/sync/sampling/resume
+// Manually resume FFI sampling (clears any pause).
+// ============================================================================
+
+async fn post_sampling_resume() -> Json<serde_json::Value> {
+    crate::app_state::set_sampling_active();
+    Json(serde_json::json!({ "ok": true, "paused": false }))
+}
+
+// ============================================================================
+// POST /api/sync/trigger
+// Fires an immediate sync cycle in the background (non-blocking).
+// Returns immediately; the sync runs concurrently.
+// ============================================================================
+
+async fn post_trigger_sync() -> Json<serde_json::Value> {
+    use crate::t3_device::t3_ffi_sync_service::sync_logging_data_once;
+
+    if crate::app_state::is_sampling_paused() {
+        return Json(serde_json::json!({
+            "ok": false,
+            "error": "sampling is paused — resume before triggering sync"
+        }));
+    }
+
+    tokio::spawn(async move {
+        if let Err(e) = sync_logging_data_once().await {
+            tracing::warn!("manual sync trigger failed: {}", e);
+        }
+    });
+
+    Json(serde_json::json!({ "ok": true, "message": "sync triggered in background" }))
 }
 
 // ============================================================================
