@@ -1,12 +1,8 @@
 /**
- * Logs Page — user-centric design
+ * Logs Page — two-tier UX
  *
- * The log viewer is the primary surface. Settings and file logs are
- * secondary actions accessible from a slim toolbar, not equal tabs.
- *
- * Header bar:  title + subtitle  |  [File Logs]  [Configure Logging]
- * Settings:    collapsible panel that opens inline below the header
- * Main area:   ActivityLogTab by default; FileLogsTab when files mode active
+ * Simple view (default):  Log Everything toggle + SQL Server status bar
+ * Advanced drawer:        Log Settings | File Logs | Flow Logs tabs
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -14,7 +10,10 @@ import {
   makeStyles,
   mergeClasses,
   Button,
-  Text,
+  Switch,
+  TabList,
+  Tab,
+  Spinner,
   Drawer,
   DrawerHeader,
   DrawerHeaderTitle,
@@ -24,13 +23,12 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import {
-  DocumentTextRegular,
   SettingsRegular,
-  ArrowLeftRegular,
   Dismiss24Regular,
   ChevronUpRegular,
   ChevronDownRegular,
   InfoRegular,
+  ArrowSyncRegular,
 } from '@fluentui/react-icons';
 import { ActivityLogTab } from '../components/ActivityLogTab';
 import { FileLogsTab } from '../components/FileLogsTab';
@@ -420,19 +418,63 @@ const useStyles = makeStyles({
     flexDirection: 'column',
   },
 
-  /* files mode back bar */
-  backBar: {
+  /* ---- simple controls bar (enable toggle + SQL status) ---- */
+  simpleBar: {
     display: 'flex',
     alignItems: 'center',
-    gap: '6px',
-    padding: '6px 14px',
+    gap: '12px',
+    padding: '8px 16px 10px',
     borderBottomWidth: '1px',
     borderBottomStyle: 'solid',
     borderBottomColor: '#edebe9',
-    backgroundColor: '#f0f6ff',
+    backgroundColor: '#f8f8f8',
     flexShrink: 0,
+    flexWrap: 'wrap',
+    rowGap: '6px',
+  },
+  toggleLabel: {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: '#201f1e',
+  },
+  sqlBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    marginLeft: 'auto',
+    flexWrap: 'wrap',
+    rowGap: '4px',
+  },
+  sqlDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    flexShrink: 0,
+    display: 'inline-block',
+  },
+  sqlConnected: {
+    backgroundColor: '#107c10',
+  },
+  sqlDisconnected: {
+    backgroundColor: '#d13438',
+  },
+  sqlUnknown: {
+    backgroundColor: '#a19f9d',
+  },
+  sqlLabel: {
     fontSize: '12px',
+    fontWeight: 600,
     color: '#323130',
+  },
+  sqlMeta: {
+    fontSize: '11.5px',
+    color: '#605e5c',
+  },
+  advancedTabContent: {
+    flex: 1,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
   },
 
 });
@@ -451,9 +493,6 @@ function readLogsHashParams(): { viewFiles: boolean; category: string } {
 export const LogsPage: React.FC = () => {
   const s = useStyles();
   const initialHash = readLogsHashParams();
-  const [showSettings, setShowSettings] = useState(false);
-  const [showFiles, setShowFiles] = useState(initialHash.viewFiles);
-  const [showFlows, setShowFlows] = useState(false);
   const [summaryVisible, setSummaryVisible] = useState(true);
   const [logData, setLogData] = useState<EventLogResponse | null>(null);
   const [latestLog, setLatestLog] = useState<AppLogEntry | null>(null);
@@ -468,6 +507,27 @@ export const LogsPage: React.FC = () => {
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
   const entriesRef = useRef<AppLogEntry[]>([]);
+
+  // Advanced drawer
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [advancedTab, setAdvancedTab] = useState<'settings' | 'files' | 'flows'>('settings');
+
+  // Log Everything master toggle
+  const [loggingEnabled, setLoggingEnabled] = useState(true);
+  const [logToggleLoading, setLogToggleLoading] = useState(false);
+
+  // SQL Server status
+  const [sqlStatus, setSqlStatus] = useState<{
+    connected: boolean;
+    lastContactAgo: string | null;
+    host: string | null;
+  } | null>(null);
+  const [sqlTesting, setSqlTesting] = useState(false);
+  const [sqlTestResult, setSqlTestResult] = useState<{
+    ok: boolean;
+    latency_ms?: number;
+    error?: string;
+  } | null>(null);
 
   useEffect(() => {
     const styleId = 'logs-page-drawer-size-override';
@@ -535,20 +595,76 @@ export const LogsPage: React.FC = () => {
     return () => window.clearInterval(timer);
   }, [loadTopSummary]);
 
-  const handleFilesClick = () => {
-    setShowFiles(true);
-    setShowFlows(false);
-  };
+  // Load logging-enabled state
+  const loadLoggingEnabled = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/logs/settings`);
+      if (!res.ok) return;
+      const cats: Array<{ enabled: boolean }> = await res.json();
+      setLoggingEnabled(cats.some((c) => c.enabled));
+    } catch {
+      // ignore
+    }
+  }, []);
 
-  const handleFlowsClick = () => {
-    setShowFlows(true);
-    setShowFiles(false);
-  };
+  // Load SQL Server status
+  const loadSqlStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/sync/health`);
+      if (!res.ok) return;
+      const json = await res.json();
+      setSqlStatus({
+        connected: json.centerDbConnected ?? false,
+        lastContactAgo: json.lastSyncAgo ?? null,
+        host: json.centerDbHost ?? null,
+      });
+    } catch {
+      // ignore
+    }
+  }, []);
 
-  const handleBackToActivity = () => {
-    setShowFiles(false);
-    setShowFlows(false);
-  };
+  useEffect(() => {
+    loadLoggingEnabled();
+    loadSqlStatus();
+    const sqlTimer = window.setInterval(loadSqlStatus, 30_000);
+    return () => window.clearInterval(sqlTimer);
+  }, [loadLoggingEnabled, loadSqlStatus]);
+
+  const handleToggleLogging = useCallback(async (enabled: boolean) => {
+    setLogToggleLoading(true);
+    setLoggingEnabled(enabled); // optimistic
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/logs/settings`);
+      if (!res.ok) throw new Error('load failed');
+      const cats: Array<Record<string, unknown> & { enabled: boolean }> = await res.json();
+      const updated = cats.map((c) => ({ ...c, enabled }));
+      await fetch(`${API_BASE_URL}/api/logs/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+    } catch {
+      setLoggingEnabled(!enabled); // revert on error
+    } finally {
+      setLogToggleLoading(false);
+    }
+  }, []);
+
+  const handleTestSql = useCallback(async () => {
+    setSqlTesting(true);
+    setSqlTestResult(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/sync/health/ping`);
+      const json = await res.json();
+      setSqlTestResult(json);
+      void loadSqlStatus();
+      setTimeout(() => setSqlTestResult(null), 6000);
+    } catch (e) {
+      setSqlTestResult({ ok: false, error: String(e) });
+    } finally {
+      setSqlTesting(false);
+    }
+  }, [loadSqlStatus]);
 
   const handleRefreshLogs = () => {
     loadTopSummary();
@@ -561,44 +677,70 @@ export const LogsPage: React.FC = () => {
         <div className={s.headerText}>
           <span className={s.title}>T3000 Logs</span>
           <span className={s.subtitle}>
-            View and search what the T3000 service has been doing — errors, sync activity, device
-            changes. Use <strong>Configure</strong> to control which categories get recorded.
+            View and search what the T3000 service has been doing — errors, sync activity, device changes.
           </span>
         </div>
         <div className={s.headerActions}>
-          {!showFiles && !showFlows && (
-            <Button
-              size="small"
-              appearance="subtle"
-              icon={<DocumentTextRegular />}
-              onClick={handleFilesClick}
-            >
-              Raw File Logs
-            </Button>
-          )}
-          {!showFiles && !showFlows && (
-            <Button
-              size="small"
-              appearance="subtle"
-              onClick={handleFlowsClick}
-            >
-              Flow Log
-            </Button>
-          )}
           <Button
             size="small"
-            appearance={showSettings ? 'primary' : 'subtle'}
+            appearance={showAdvanced ? 'primary' : 'subtle'}
             icon={<SettingsRegular />}
             style={{ fontSize: '12px' }}
-            onClick={() => setShowSettings(true)}
+            onClick={() => { setShowAdvanced(true); setAdvancedTab('settings'); }}
           >
-            Configure Logging
+            Advanced
           </Button>
         </div>
       </div>
 
-      {!showFiles && (
-        <div className={mergeClasses(s.topStrip, !summaryVisible && s.topStripHidden)}>
+      {/* Simple Controls Bar */}
+      <div className={s.simpleBar}>
+        <Switch
+          checked={loggingEnabled}
+          disabled={logToggleLoading}
+          onChange={(_, data) => void handleToggleLogging(data.checked)}
+          label={<span className={s.toggleLabel}>Log Everything</span>}
+        />
+        <div className={s.sqlBar}>
+          <span
+            className={mergeClasses(
+              s.sqlDot,
+              sqlStatus == null
+                ? s.sqlUnknown
+                : sqlStatus.connected
+                ? s.sqlConnected
+                : s.sqlDisconnected,
+            )}
+          />
+          <span className={s.sqlLabel}>
+            {sqlStatus == null
+              ? 'SQL …'
+              : sqlStatus.connected
+              ? 'SQL Connected'
+              : 'SQL Disconnected'}
+          </span>
+          {sqlStatus?.lastContactAgo && (
+            <span className={s.sqlMeta}>· Last contact: {sqlStatus.lastContactAgo}</span>
+          )}
+          <Button
+            size="small"
+            appearance="subtle"
+            icon={sqlTesting ? <Spinner size="tiny" /> : <ArrowSyncRegular />}
+            disabled={sqlTesting}
+            onClick={handleTestSql}
+          >
+            Test
+          </Button>
+          {sqlTestResult && (
+            <Badge color={sqlTestResult.ok ? 'success' : 'danger'} size="small">
+              {sqlTestResult.ok ? `OK ${sqlTestResult.latency_ms ?? ''}ms` : 'Failed'}
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      {/* Stats + Category filter strip */}
+      <div className={mergeClasses(s.topStrip, !summaryVisible && s.topStripHidden)}>
         {/* Row 1 — Latest Activity */}
         <div className={s.latestPanel}>
           <div className={s.latestHeader}>
@@ -677,10 +819,9 @@ export const LogsPage: React.FC = () => {
             </div>
           </div>
         </div>
-        </div>
-      )}
+      </div>
 
-      {!showFiles && !showFlows && !summaryVisible && (
+      {!summaryVisible && (
         <div className={s.showSummaryRow}>
           <div className={s.showSummaryInfo}>
             <span className={s.showSummaryInfoLabel}>Latest</span>
@@ -707,14 +848,14 @@ export const LogsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Settings drawer */}
+      {/* Advanced drawer — Settings | File Logs | Flow Logs */}
       <Drawer
         type="overlay"
         position="end"
         size="large"
         root={{ style: { '--fui-Drawer--size': '820px' } }}
-        open={showSettings}
-        onOpenChange={(_, { open }) => setShowSettings(open)}
+        open={showAdvanced}
+        onOpenChange={(_, { open }) => setShowAdvanced(open)}
       >
         <DrawerHeader className={s.drawerHeader}>
           <DrawerHeaderTitle
@@ -726,22 +867,21 @@ export const LogsPage: React.FC = () => {
                 appearance="subtle"
                 aria-label="Close"
                 icon={<Dismiss24Regular />}
-                onClick={() => setShowSettings(false)}
+                onClick={() => setShowAdvanced(false)}
               />
             }
           >
             <span className={s.drawerHeaderTitleRow}>
-              <span className={s.drawerHeaderTitleText}>Configure Logging</span>
+              <span className={s.drawerHeaderTitleText}>Advanced</span>
               <Tooltip
                 relationship="description"
                 content={{
                   className: s.drawerPolicyTooltip,
                   children: (
                     <div className={s.drawerPolicyTooltipContent}>
-                      <div><strong>Model</strong>: System and operational categories usually stay DB + Summary.</div>
-                      <div><strong>Debug</strong>: API_REQ, WEBSOCKET, FFI_CALL, and MESSAGE_ACTION should usually stay disabled until you are investigating an issue.</div>
-                      <div><strong>Meaning</strong>: Summary keeps the message compact. Full keeps the details payload too. Levels are checkbox-based, and All means every level.</div>
-                      <div>File routing is policy-controlled and not edited here.</div>
+                      <div><strong>Log Settings</strong>: Per-category enable/disable, log level, detail mode, and sink targets.</div>
+                      <div><strong>File Logs</strong>: Raw text files written by the T3000 service process (T3WebLog).</div>
+                      <div><strong>Flow Logs</strong>: Step-by-step operation traces with timing and status.</div>
                     </div>
                   ),
                 }}
@@ -751,64 +891,40 @@ export const LogsPage: React.FC = () => {
                   appearance="subtle"
                   className={s.drawerInfoButton}
                   icon={<InfoRegular className={s.drawerInfoIcon} />}
-                  aria-label="Logging policy guidance"
+                  aria-label="Advanced panel guide"
                 />
               </Tooltip>
             </span>
           </DrawerHeaderTitle>
         </DrawerHeader>
         <DrawerBody className={s.drawerBody}>
-          <LogSettingsTab />
+          <TabList
+            selectedValue={advancedTab}
+            onTabSelect={(_, data) => setAdvancedTab(data.value as typeof advancedTab)}
+            style={{ borderBottom: '1px solid #edebe9', padding: '0 4px', flexShrink: 0 }}
+          >
+            <Tab value="settings">Log Settings</Tab>
+            <Tab value="files">File Logs</Tab>
+            <Tab value="flows">Flow Logs</Tab>
+          </TabList>
+          <div className={s.advancedTabContent}>
+            {advancedTab === 'settings' && <LogSettingsTab />}
+            {advancedTab === 'files' && <FileLogsTab />}
+            {advancedTab === 'flows' && <FlowLogTab />}
+          </div>
         </DrawerBody>
       </Drawer>
 
-      {/* Main content */}
+      {/* Main content — always activity log */}
       <div className={s.content}>
-        {showFlows ? (
-          <>
-            <div className={s.backBar}>
-              <Button
-                size="small"
-                appearance="subtle"
-                icon={<ArrowLeftRegular />}
-                onClick={handleBackToActivity}
-              >
-                Back to Activity Log
-              </Button>
-              <Text size={200} style={{ color: '#605e5c', marginRight: '8px' }}>
-                — Operation flows with step-by-step trace
-              </Text>
-            </div>
-            <FlowLogTab />
-          </>
-        ) : showFiles ? (
-          <FileLogsTab
-            headerPrefix={(
-              <>
-                <Button
-                  size="small"
-                  appearance="subtle"
-                  icon={<ArrowLeftRegular />}
-                  onClick={handleBackToActivity}
-                >
-                  Back to Activity Log
-                </Button>
-                <Text size={200} style={{ color: '#605e5c', marginRight: '8px' }}>
-                  — Raw text files written by the T3000 service process (T3WebLog)
-                </Text>
-              </>
-            )}
-          />
-        ) : (
-          <ActivityLogTab
-            externalCategoryFilter={activeCategoryFilter}
-            onCategoryFilterChange={setActiveCategoryFilter}
-            categoryOptions={availableCategories}
-            sharedData={logData ?? undefined}
-            sharedDataMode
-            onRefresh={handleRefreshLogs}
-          />
-        )}
+        <ActivityLogTab
+          externalCategoryFilter={activeCategoryFilter}
+          onCategoryFilterChange={setActiveCategoryFilter}
+          categoryOptions={availableCategories}
+          sharedData={logData ?? undefined}
+          sharedDataMode
+          onRefresh={handleRefreshLogs}
+        />
       </div>
     </div>
   );
