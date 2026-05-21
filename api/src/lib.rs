@@ -163,24 +163,71 @@ async fn emit_service_log(level: &str, category: &str, message: &str) {
 }
 
 /// Start all T3000 services (HTTP + WebSocket)
+/// Helper for the daily cleanup scheduler — lives outside start_all_services
+/// so it can be used in tokio::spawn (must be Send + 'static).
+async fn run_flow_cleanup() {
+    use sea_orm::ConnectionTrait;
+    // Convert error to String immediately so the future is Send.
+    let db = match establish_t3_device_connection().await.map_err(|e| e.to_string()) {
+        Ok(db) => db,
+        Err(_) => return,
+    };
+    let cutoff_ms = (chrono::Utc::now() - chrono::Duration::days(30)).timestamp_millis();
+    // Delete child rows first to avoid orphans (no CASCADE in SQLite schema)
+    let _ = db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        format!("DELETE FROM T3_FLOW_PAYLOAD WHERE flow_id IN (SELECT flow_id FROM T3_FLOW WHERE started_at < {})", cutoff_ms),
+    )).await;
+    let _ = db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        format!("DELETE FROM T3_FLOW_STEP WHERE flow_id IN (SELECT flow_id FROM T3_FLOW WHERE started_at < {})", cutoff_ms),
+    )).await;
+    let _ = db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        format!("DELETE FROM T3_FLOW WHERE started_at < {}", cutoff_ms),
+    )).await;
+}
+
 pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     // Log to file for headless service
     let startup_msg = format!("T3000 WebView Service initializing - HTTP (9103) + WebSocket (9104) + Auto-Sync (T3000.db → webview_t3_device.db)");
 
     emit_service_log("info", "T3_Webview_Initialize", &startup_msg).await;
 
+    // Open local SQLite for DLL_INIT flow logging (best-effort — None if DB not yet ready)
+    let flow_db_opt = establish_t3_device_connection().await.ok();
+    let flow_opt: Option<(crate::logging::flow::FlowHandle, sea_orm::DatabaseConnection)> =
+        if let Some(ref db) = flow_db_opt {
+            let fh = crate::logging::flow::FlowHandle::start(
+                db, "DLL_INIT", "start_all_services", 6, None,
+            ).await;
+            Some((fh, db.clone()))
+        } else {
+            None
+        };
+
     // Initialize T3000 device database (webview_t3_device.db)
     // Automatically switches between Option 1 (copy) and Option 2 (dynamic) based on USE_DYNAMIC_DATABASE_CREATION constant
+    let t_db = std::time::Instant::now();
     if let Err(e) = crate::utils::initialize_t3_device_database().await {
         let error_msg = format!("T3000 webview database (webview_t3_device.db) initialization failed: {} - Core services will continue", e);
         emit_service_log("error", "T3_Webview_Initialize", &error_msg).await;
         println!("⚠️  Warning: T3000 webview database unavailable - Core services starting anyway");
+        if let Some((ref fh, ref db)) = flow_opt {
+            fh.step(db, "db_init", "error", "lib", "error", t_db.elapsed().as_millis() as i64,
+                    &format!("DB init failed: {}", e), None).await;
+        }
     } else {
         let success_msg = "T3000 webview database (webview_t3_device.db) ready";
         emit_service_log("info", "T3_Webview_Initialize", success_msg).await;
+        if let Some((ref fh, ref db)) = flow_opt {
+            fh.step(db, "db_init", "info", "lib", "ok", t_db.elapsed().as_millis() as i64,
+                    "T3 device database ready", None).await;
+        }
     }
 
     // Initialize T3000 Main Service with dynamic sync interval from database
+    let t_interval = std::time::Instant::now();
     let sync_interval_secs = load_ffi_sync_interval_from_db().await.unwrap_or(300); // Default 5 minutes
 
     emit_service_log(
@@ -193,7 +240,13 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
         ),
     )
     .await;
+    if let Some((ref fh, ref db)) = flow_opt {
+        fh.step(db, "load_sync_interval", "info", "lib", "ok",
+                t_interval.elapsed().as_millis() as i64,
+                &format!("sync_interval={}s", sync_interval_secs), None).await;
+    }
 
+    let t_ffi = std::time::Instant::now();
     let main_service_config = T3000MainConfig {
         sync_interval_secs,
         auto_start: false,  // We'll start it manually in background task below
@@ -203,6 +256,11 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
         let error_msg = format!("T3000 FFI Sync Service initialization failed: {} - Core services will continue", e);
         emit_service_log("warn", "T3_Webview_Initialize", &error_msg).await;
         println!("⚠️  Warning: T3000 FFI Sync Service unavailable - Core services starting anyway");
+        if let Some((ref fh, ref db)) = flow_opt {
+            fh.step(db, "init_ffi_service", "warn", "lib", "error",
+                    t_ffi.elapsed().as_millis() as i64,
+                    &format!("FFI service init failed: {}", e), None).await;
+        }
     } else {
         emit_service_log(
             "info",
@@ -210,6 +268,11 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
             "T3000 FFI Sync Service initialized (Primary T3000 FFI integration service)",
         )
         .await;
+        if let Some((ref fh, ref db)) = flow_opt {
+            fh.step(db, "init_ffi_service", "info", "lib", "ok",
+                    t_ffi.elapsed().as_millis() as i64,
+                    "FFI sync service initialized", None).await;
+        }
     }
 
     // Start T3000 FFI Sync Service in background with immediate trigger
@@ -229,6 +292,10 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
         .await;
 
         if ini_cfg.enabled && ini_cfg.role == "server" {
+            if let Some((ref fh, ref db)) = flow_opt {
+                fh.step(db, "start_ffi_sync", "info", "lib", "ok", 0,
+                        "FFI sync service started (center DB active, role=server)", None).await;
+            }
             let handle = tokio::spawn(async move {
                 if let Err(e) = start_logging_sync().await {
                     let error_msg = format!("T3000 FFI Sync Service (FFI + DeviceSync + WebSocket) failed: {}", e);
@@ -254,15 +321,25 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
                 &format!("[PAUSE] T3000 FFI Sync Service DISABLED - {}", reason),
             )
             .await;
+            if let Some((ref fh, ref db)) = flow_opt {
+                fh.step(db, "start_ffi_sync", "info", "lib", "skip", 0,
+                        &format!("FFI sync disabled: {}", reason), None).await;
+            }
             None
         }
     };
 
     // Start partition monitor service (hourly background checks)
+    let t_pm = std::time::Instant::now();
     if crate::constants::ENABLE_PARTITION_MONITOR_SERVICE {
         if let Err(e) = partition_monitor_service::start_partition_monitor_service().await {
             let error_msg = format!("Partition monitor service initialization failed: {}", e);
             emit_service_log("warn", "T3_Webview_Initialize", &error_msg).await;
+            if let Some((ref fh, ref db)) = flow_opt {
+                fh.step(db, "partition_monitor", "warn", "lib", "error",
+                        t_pm.elapsed().as_millis() as i64,
+                        &format!("partition monitor failed: {}", e), None).await;
+            }
         } else {
             emit_service_log(
                 "info",
@@ -270,6 +347,11 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
                 "✅ Partition monitor service started (hourly checks)",
             )
             .await;
+            if let Some((ref fh, ref db)) = flow_opt {
+                fh.step(db, "partition_monitor", "info", "lib", "ok",
+                        t_pm.elapsed().as_millis() as i64,
+                        "Partition monitor started", None).await;
+            }
         }
     } else {
             emit_service_log(
@@ -278,6 +360,10 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
                 "[PAUSE] Partition monitor service DISABLED by constant (ENABLE_PARTITION_MONITOR_SERVICE = false)",
             )
         .await;
+        if let Some((ref fh, ref db)) = flow_opt {
+            fh.step(db, "partition_monitor", "info", "lib", "skip", 0,
+                    "partition monitor disabled by constant", None).await;
+        }
     }
 
     // Schedule startup partition migration check (5 minute delay to allow database stabilization)
@@ -334,6 +420,23 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
 
     // Give WebSocket a moment to start
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+    // Mark DLL_INIT flow as done — HTTP server is about to start (it blocks)
+    if let Some((ref fh, ref db)) = flow_opt {
+        fh.step(db, "start_http_server", "info", "lib", "ok", 0,
+                "HTTP server starting on port 9103", None).await;
+        fh.done(db, "ok").await;
+    }
+
+    // Daily flow-log cleanup scheduler — purges T3_FLOW rows older than 30 days
+    // Runs once per 24 hours in the background; first run after 1 hour to avoid startup noise.
+    tokio::spawn(async move {
+        tokio::time::sleep(tokio::time::Duration::from_secs(3600)).await;
+        loop {
+            run_flow_cleanup().await;
+            tokio::time::sleep(tokio::time::Duration::from_secs(86400)).await;
+        }
+    });
 
     // Start HTTP server (this will block and run the main server)
     let http_result = server::server_start().await;

@@ -1,7 +1,11 @@
 use std::{env, error::Error};
 
 use axum::{
-    http::StatusCode,
+    http::{HeaderName, StatusCode},
+    middleware,
+    middleware::Next,
+    extract::Request,
+    response::Response,
     routing::{get, get_service},
     Json,
     Router,
@@ -22,6 +26,25 @@ use crate::{
 
 use super::modbus_register::routes::modbus_register_routes;
 use super::user::routes::user_routes;
+
+/// Axum middleware that propagates an incoming `X-Flow-Id` header to the response.
+/// If the request carries no such header, the response is unchanged.
+async fn propagate_flow_id(req: Request, next: Next) -> Response {
+    static X_FLOW_ID: HeaderName = HeaderName::from_static("x-flow-id");
+
+    let flow_id = req
+        .headers()
+        .get(&X_FLOW_ID)
+        .cloned();
+
+    let mut resp = next.run(req).await;
+
+    if let Some(v) = flow_id {
+        resp.headers_mut().insert(X_FLOW_ID.clone(), v);
+    }
+
+    resp
+}
 
 /// Returns the server's current local time as an ISO-8601 string (no timezone suffix).
 /// The frontend uses this to align query windows with the server's clock, regardless
@@ -117,12 +140,15 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         .merge(crate::database_management::sync_health::sync_health_routes())
         // Developer Tools routes
         .nest("/api/develop", crate::t3_develop::create_develop_routes())
+        // Flow log routes
+        .merge(crate::logging::flow_api::flow_routes())
         // Server local-time endpoint (for client timezone alignment)
         .route("/api/server/time", get(server_time_handler))
         // Real-time trend data routes - TEMPORARILY DISABLED
         // .nest("/api", crate::t3_device::trend_routes::trend_data_routes())
         .with_state(app_state)
         .fallback_service(routes_static())
+        .layer(middleware::from_fn(propagate_flow_id))
         .layer(cors))
 }
 
