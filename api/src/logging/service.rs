@@ -1,13 +1,9 @@
 use chrono::Local;
-use sea_orm::DatabaseConnection;
+use sea_orm::{ConnectionTrait, DatabaseConnection, Statement, DatabaseBackend};
 
 use super::policy::{canonical_category, level_meets_min, load_runtime_log_policy, normalize_level_upper};
 use super::sinks::{should_mirror_to_mssql, spawn_mssql_sink, write_file_sink, write_sqlite_sink};
 use super::types::{LogContext, LogEvent, LogLevel};
-
-/// Global kill switch — set to false to completely disable all logging (DB + file).
-/// Keep this true during local debugging to allow center log emission.
-const LOGGING_ENABLED: bool = true;
 
 pub struct LoggingService;
 
@@ -17,11 +13,17 @@ impl LoggingService {
     }
 
     pub async fn emit(&self, db: &DatabaseConnection, event: LogEvent) {
-        if !LOGGING_ENABLED { return; }
-        let canonical_cat = canonical_category(&event.category);
         let level_upper = normalize_level_upper(event.level.as_upper());
-        let level_lc = level_upper.to_ascii_lowercase();
         let is_error = level_upper == "ERROR";
+
+        // Check DB-backed global kill switch (log.global.enabled).
+        // Errors always bypass this so critical failures are never silenced.
+        if !is_error && !load_global_logging_enabled(db).await {
+            return;
+        }
+
+        let canonical_cat = canonical_category(&event.category);
+        let level_lc = level_upper.to_ascii_lowercase();
 
         let policy = load_runtime_log_policy(db, &canonical_cat).await;
 
@@ -128,4 +130,26 @@ pub async fn emit_app_log(
     LoggingService::new()
         .emit_from_parts(db, level, category, source, device_serial, message, details)
         .await;
+}
+
+/// Read `log.global.enabled` from APPLICATION_CONFIG.
+/// Returns `true` (logging on) when no key exists yet.
+pub async fn load_global_logging_enabled(db: &DatabaseConnection) -> bool {
+    let sql = "SELECT config_value FROM APPLICATION_CONFIG \
+               WHERE config_key = 'log.global.enabled' LIMIT 1";
+    let row = db
+        .query_one(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            sql.to_string(),
+        ))
+        .await
+        .ok()
+        .flatten();
+    match row {
+        Some(r) => {
+            let v: String = r.try_get("", "config_value").unwrap_or_default();
+            v.trim() != "false" && v.trim() != "0"
+        }
+        None => true, // default: logging enabled
+    }
 }

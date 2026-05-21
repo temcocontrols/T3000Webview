@@ -192,8 +192,8 @@ pub const ACTIVITY_LOG_CATEGORY_DEFS: &[ActivityLogCategoryDef] = &[
         detail_mode: "SUMMARY",
         min_level: "INFO",
         target: "sqlite",
-        sink_db: false,
-        sink_file: true,
+        sink_db: true,
+        sink_file: false,
     },
     ActivityLogCategoryDef {
         category: CAT_WEBSOCKET,
@@ -204,8 +204,8 @@ pub const ACTIVITY_LOG_CATEGORY_DEFS: &[ActivityLogCategoryDef] = &[
         detail_mode: "SUMMARY",
         min_level: "INFO",
         target: "sqlite",
-        sink_db: false,
-        sink_file: true,
+        sink_db: true,
+        sink_file: false,
     },
     ActivityLogCategoryDef {
         category: CAT_FFI_CALL,
@@ -216,8 +216,8 @@ pub const ACTIVITY_LOG_CATEGORY_DEFS: &[ActivityLogCategoryDef] = &[
         detail_mode: "FULL",
         min_level: "DEBUG",
         target: "sqlite",
-        sink_db: false,
-        sink_file: true,
+        sink_db: true,
+        sink_file: false,
     },
     ActivityLogCategoryDef {
         category: CAT_MESSAGE_ACTION,
@@ -228,8 +228,8 @@ pub const ACTIVITY_LOG_CATEGORY_DEFS: &[ActivityLogCategoryDef] = &[
         detail_mode: "FULL",
         min_level: "DEBUG",
         target: "sqlite",
-        sink_db: false,
-        sink_file: true,
+        sink_db: true,
+        sink_file: false,
     },
 ];
 
