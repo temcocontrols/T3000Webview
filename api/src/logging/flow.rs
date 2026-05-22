@@ -17,8 +17,6 @@ use uuid::Uuid;
 
 /// Maximum number of T3_FLOW rows to keep.  Oldest rows are trimmed on insert.
 const FLOW_ROW_CAP: i64 = 10_000;
-/// If `details` exceeds this byte length the text is written to a file instead.
-const PAYLOAD_INLINE_LIMIT: usize = 4096;
 
 // ---------------------------------------------------------------------------
 // FlowHandle
@@ -108,7 +106,7 @@ impl FlowHandle {
     // Step recording
     // -----------------------------------------------------------------------
 
-    /// Record one step. `details` over 4 KB is offloaded to a file.
+    /// Record one step. All `details` are stored inline in the DB row.
     ///
     /// * `step_name`  – short constant name, e.g. `"get_panels"`, `"write_db"`
     /// * `level`      – `"debug"` | `"info"` | `"warn"` | `"error"`
@@ -116,7 +114,7 @@ impl FlowHandle {
     /// * `status`     – `"ok"` | `"error"` | `"skip"`
     /// * `duration_ms`– elapsed ms for this step (0 if unknown)
     /// * `message`    – short human-readable message
-    /// * `details`    – optional longer payload (JSON, stack trace, etc.)
+    /// * `details`    – optional payload stored inline in the DB
     pub async fn step(
         &self,
         db: &DatabaseConnection,
@@ -129,15 +127,45 @@ impl FlowHandle {
         details: Option<&str>,
     ) {
         let seq = self.inner.seq.fetch_add(1, Ordering::Relaxed);
+        self.insert_step(db, seq, step_name, level, source, status, duration_ms, message,
+            details, None).await;
+    }
+
+    /// For FFI message action steps (GET_PANELS_LIST, LOGGING_DATA, etc.).
+    /// Writes the full `details` payload to a file on disk; only `message`
+    /// (the short summary) is kept in the DB row (`payload_ref` holds the path).
+    pub async fn step_ffi(
+        &self,
+        db: &DatabaseConnection,
+        step_name: &str,
+        level: &str,
+        source: &str,
+        status: &str,
+        duration_ms: i64,
+        message: &str,
+        details: Option<&str>,
+    ) {
+        let seq = self.inner.seq.fetch_add(1, Ordering::Relaxed);
+        let payload_ref = write_detail_file(&self.inner.flow_id, seq, details).await;
+        self.insert_step(db, seq, step_name, level, source, status, duration_ms, message,
+            None, payload_ref.as_deref()).await;
+    }
+
+    async fn insert_step(
+        &self,
+        db: &DatabaseConnection,
+        seq: i64,
+        step_name: &str,
+        level: &str,
+        source: &str,
+        status: &str,
+        duration_ms: i64,
+        message: &str,
+        inline_details: Option<&str>,
+        payload_ref: Option<&str>,
+    ) {
         let now_ms = Local::now().timestamp_millis();
         let ts_fmt = Local::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string();
-
-        let (inline_details, payload_ref) = resolve_payload(
-            &self.inner.flow_id,
-            seq,
-            details,
-        ).await;
-
         let sql = format!(
             "INSERT INTO T3_FLOW_STEP \
              (flow_id, seq, step_name, level, source, status, duration_ms, message, details, payload_ref, ts_unix, ts_fmt) \
@@ -190,27 +218,21 @@ impl FlowHandle {
 }
 
 // ---------------------------------------------------------------------------
-// Payload offload helper
+// File writer for FFI steps
 // ---------------------------------------------------------------------------
 
-/// If `details` fits inline, return `(Some(details), None)`.
-/// Otherwise write to `T3WebLog/payloads/YYYY-MM/{flow_id}_{seq}.json`,
-/// insert T3_FLOW_PAYLOAD row, and return `(None, Some(file_path))`.
-async fn resolve_payload(
+/// Write `details` to `T3WebLog/detail/YYYY-MM/{flow_id}_{seq}.txt`.
+/// Returns the file path on success, or `None` if `details` is empty or write fails.
+async fn write_detail_file(
     flow_id: &str,
     seq: i64,
     details: Option<&str>,
-) -> (Option<String>, Option<String>) {
+) -> Option<String> {
     let text = match details {
         Some(s) if !s.is_empty() => s,
-        _ => return (None, None),
+        _ => return None,
     };
 
-    if text.len() <= PAYLOAD_INLINE_LIMIT {
-        return (Some(text.to_string()), None);
-    }
-
-    // Offload to file
     let month = Local::now().format("%Y-%m").to_string();
     let runtime_path = crate::constants::get_t3000_runtime_path();
     let dir = runtime_path.join("T3WebLog").join("detail").join(&month);
@@ -219,16 +241,13 @@ async fn resolve_payload(
 
     if let Err(e) = std::fs::create_dir_all(&dir) {
         eprintln!("[flow] create_dir_all {:?} failed: {}", dir, e);
-        // Fall back to inline (truncated)
-        return (Some(text[..PAYLOAD_INLINE_LIMIT].to_string()), None);
+        return None;
     }
-
     if let Err(e) = std::fs::write(&file_path, text.as_bytes()) {
         eprintln!("[flow] write payload file {:?} failed: {}", file_path, e);
-        return (Some(text[..PAYLOAD_INLINE_LIMIT].to_string()), None);
+        return None;
     }
-
-    (None, Some(file_path.to_string_lossy().into_owned()))
+    Some(file_path.to_string_lossy().into_owned())
 }
 
 // ---------------------------------------------------------------------------

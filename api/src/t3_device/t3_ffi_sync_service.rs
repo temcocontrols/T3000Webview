@@ -370,7 +370,7 @@ impl Default for T3000MainConfig {
 /// PanelInfo structure for lightweight device list from GET_PANELS_LIST
 /// Used to get list of available devices before loading full LOGGING_DATA
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 struct PanelInfo {
     panel_number: i32,
     serial_number: i32,
@@ -1512,8 +1512,10 @@ impl T3000MainService {
                     &format!("GET_PANELS_LIST: {} device(s) found (SN: {})", panels.len(), sn_list),
                     None,
                 ).await;
-                sync_flow.step(&local_db, "get_panels_list", "info", "ffi_sync", "ok",
-                    0, &format!("{} device(s): {}", panels.len(), sn_list), None).await;
+                let panels_json = serde_json::to_string_pretty(&panels)
+                    .unwrap_or_else(|_| format!("[{} panels — serialization failed]", panels.len()));
+                sync_flow.step_ffi(&local_db, "get_panels_list", "info", "ffi_sync", "ok",
+                    0, &format!("{} device(s): {}", panels.len(), sn_list), Some(&panels_json)).await;
             }
 
             if panels.is_empty() {
@@ -1739,6 +1741,8 @@ impl T3000MainService {
         let mut skipped_devices = 0;
         // Track SNs that returned serial=0 (C++ issue) for cycle summary Activity Log
         let mut serial_zero_sns: Vec<String> = Vec::new();
+        // Collect raw LOGGING_DATA FFI responses per device for file payload
+        let mut device_raw_responses: Vec<String> = Vec::new();
 
         for (device_index, panel_info) in panels.iter().enumerate() {
             let device_start_time = std::time::Instant::now();
@@ -1787,6 +1791,10 @@ impl T3000MainService {
                     continue;
                 }
             };
+
+            // Record raw LOGGING_DATA response for file payload
+            device_raw_responses.push(format!("=== SN-{} Panel#{} ({}) ===\n{}",
+                panel_info.serial_number, panel_info.panel_number, panel_info.panel_name, json_data));
 
             // Parse response - might contain 0-1 devices depending on C++ validation
             let logging_response = match Self::parse_logging_response(&json_data) {
@@ -2187,16 +2195,26 @@ impl T3000MainService {
         ));
 
         let device_sync_level = if !serial_zero_sns.is_empty() { "warn" } else { "info" };
-        let device_sync_details: Option<String> = if serial_zero_sns.is_empty() {
-            None
-        } else {
-            Some(format!(
-                "{} device(s) had serial=0 (C++ panel_serial_number not set): {}\n💡 FIX: Update C++ HandleWebViewMsg to set panel_serial_number in LOGGING_DATA response",
+        // Build file payload: serial=0 diagnostics (if any) + all raw LOGGING_DATA responses
+        let mut payload_parts: Vec<String> = Vec::new();
+        if !serial_zero_sns.is_empty() {
+            payload_parts.push(format!(
+                "=== serial=0 devices ({} total) ===\n{}\n💡 FIX: Update C++ HandleWebViewMsg to set panel_serial_number in LOGGING_DATA response",
                 serial_zero_sns.len(),
                 serial_zero_sns.join(", "),
-            ))
+            ));
+        }
+        if !device_raw_responses.is_empty() {
+            payload_parts.push(format!("=== LOGGING_DATA responses ({} devices) ===\n{}",
+                device_raw_responses.len(),
+                device_raw_responses.join("\n\n")));
+        }
+        let device_sync_details: Option<String> = if payload_parts.is_empty() {
+            None
+        } else {
+            Some(payload_parts.join("\n\n"))
         };
-        sync_flow.step(&local_db, "device_sync", device_sync_level, "ffi_sync",
+        sync_flow.step_ffi(&local_db, "device_sync", device_sync_level, "ffi_sync",
             if failed_devices == total_devices && total_devices > 0 { "error" } else { "ok" },
             t_device_loop.elapsed().as_millis() as i64,
             &format!("{} device(s) processed: ok={} fail={} skip={}",
