@@ -16,7 +16,6 @@ import {
   Spinner,
   Select,
   Input,
-  Tooltip,
   Table,
   TableHeader,
   TableHeaderCell,
@@ -24,12 +23,15 @@ import {
   TableRow,
   TableCell,
   tokens,
+  Drawer,
+  DrawerHeader,
+  DrawerHeaderTitle,
+  DrawerBody,
 } from '@fluentui/react-components';
 import {
   ArrowClockwiseRegular,
   ChevronLeftRegular,
   ChevronRightRegular,
-  InfoRegular,
   SearchRegular,
   DismissRegular,
 } from '@fluentui/react-icons';
@@ -41,21 +43,6 @@ const TYPES_URL = `${API_BASE_URL}/api/flows/types`;
 // ---------------------------------------------------------------------------
 // Known flow-type descriptions
 // ---------------------------------------------------------------------------
-
-const FLOW_TYPE_DESC: Record<string, string> = {
-  SYNC_CYCLE:        'Full device sync cycle — polls panels, writes data to center DB.',
-  DLL_INIT:          'DLL init on T3000 startup: DB connect, sampling state, config load.',
-  REDISCOVER:        'Network rediscovery scan for new or changed devices.',
-  TRENDLOG_SYNC:     'Trendlog config sync between local and center DB.',
-  TRENDLOG_SYNC_ALL: 'Full trendlog sync for all devices.',
-  DB_MAINTENANCE:    'Database partition creation, WAL checkpoint and size monitoring.',
-  API_FLOW:          'Client-initiated REST API operation trace.',
-  SOCKET_FLOW:       'WebSocket session lifecycle and command dispatch.',
-};
-
-function flowTypeDescription(type: string): string {
-  return FLOW_TYPE_DESC[type] ?? `Flow type: ${type}`;
-}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -134,7 +121,7 @@ const useStyles = makeStyles({
     boxSizing: 'border-box',
   },
   rootWithDetail: {
-    gridTemplateColumns: '180px 600px 1fr',
+    gridTemplateColumns: '180px 720px 1fr',
   },
   // Shared panel
   panel: {
@@ -174,27 +161,45 @@ const useStyles = makeStyles({
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    paddingBottom: '12px',
+    gap: '1px',
+    padding: '4px 6px 8px',
     scrollbarWidth: 'thin',
     scrollbarColor: '#c8c6c4 transparent',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#ffffff',
   },
   typeItem: {
     display: 'flex',
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '5px 12px',
+    padding: '8px 10px 8px 14px',
     cursor: 'pointer',
     userSelect: 'none',
-    gap: '6px',
-    ':hover': { backgroundColor: '#eaeaea' },
+    borderRadius: '5px',
+    position: 'relative',
+    ':hover': { backgroundColor: '#f3f2f1' },
   },
   typeItemActive: {
-    backgroundColor: '#dbeafe',
-    ':hover': { backgroundColor: '#d0e6fc' },
+    backgroundColor: '#e8f4fd',
+    ':hover': { backgroundColor: '#dde8f7' },
   },
-  typeName: { fontSize: '11.5px', fontWeight: 400, color: '#323130', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 },
+  typeName: { fontSize: '13px', fontWeight: 500, color: '#323130', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   typeNameActive: { color: '#0f6cbd', fontWeight: 600 },
+  typeSubtext: { fontSize: '11px', color: '#8a8886', flexShrink: 0, marginLeft: '6px' },
+  typeIndicator: {
+    position: 'absolute',
+    left: '0',
+    top: '9px',
+    width: '3px',
+    height: '16px',
+    backgroundColor: tokens.colorBrandForeground1,
+    borderRadius: '2px',
+  },
+  panelHeaderLeft: {
+    backgroundColor: '#f5f5f5',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#e8e8e8',
+  },
   typeBadge: { fontSize: '11px', flexShrink: 0 },
   typeInfoBtn: { flexShrink: 0, padding: 0, minWidth: 'unset', height: '16px', width: '16px', color: tokens.colorNeutralForeground3 },
   // Middle panel toolbar
@@ -356,6 +361,8 @@ const FlowDetailPanel: React.FC<{ flowId: string; onClose: () => void }> = ({ fl
   const [error, setError]       = useState<string | null>(null);
   const [payloads, setPayloads] = useState<Record<number, string>>({});
   const [payloadLoading, setPayloadLoading] = useState<Record<number, boolean>>({});
+  const [drawerOpen, setDrawerOpen]   = useState(false);
+  const [drawerSeq, setDrawerSeq]     = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -380,9 +387,18 @@ const FlowDetailPanel: React.FC<{ flowId: string; onClose: () => void }> = ({ fl
     }
   };
 
+  const openPayloadDrawer = (seq: number) => {
+    setDrawerSeq(seq);
+    setDrawerOpen(true);
+    if (payloads[seq] === undefined && !payloadLoading[seq]) {
+      loadPayload(seq);
+    }
+  };
+
   const flow = detail?.flow;
 
   return (
+    <>
     <div className={s.panel}>
       {/* Header */}
       <div className={s.panelHeader}>
@@ -442,17 +458,12 @@ const FlowDetailPanel: React.FC<{ flowId: string; onClose: () => void }> = ({ fl
                   <div className={s.stepDetails}>{step.details}</div>
                 )}
                 {!step.details && step.payload_ref && (
-                  <div style={{ paddingLeft: '26px', marginTop: '3px' }}>
-                    {payloads[step.seq] !== undefined ? (
-                      <pre className={s.stepDetails}>{payloads[step.seq]}</pre>
-                    ) : (
-                      <Button size="small" appearance="subtle"
-                        style={{ fontSize: '11px', padding: '0 6px', height: '20px' }}
-                        disabled={payloadLoading[step.seq]}
-                        onClick={() => loadPayload(step.seq)}>
-                        {payloadLoading[step.seq] ? 'Loading…' : 'View detail file'}
-                      </Button>
-                    )}
+                  <div style={{ paddingLeft: '26px', marginTop: '2px' }}>
+                    <Button size="small" appearance="transparent"
+                      style={{ fontSize: '11px', padding: '0 2px', height: '18px', color: '#0f6cbd', minWidth: 'unset', textDecoration: 'underline' }}
+                      onClick={() => openPayloadDrawer(step.seq)}>
+                      View detail file
+                    </Button>
                   </div>
                 )}
                 {step.source && (
@@ -466,6 +477,43 @@ const FlowDetailPanel: React.FC<{ flowId: string; onClose: () => void }> = ({ fl
         </>
       )}
     </div>
+
+      {/* Payload detail drawer */}
+      <Drawer
+        type="overlay"
+        position="end"
+        size="medium"
+        open={drawerOpen}
+        onOpenChange={(_, { open }) => setDrawerOpen(open)}
+      >
+        <DrawerHeader style={{ padding: '8px 12px' }}>
+          <DrawerHeaderTitle
+            style={{ fontSize: '13px', fontWeight: 600 }}
+            action={
+              <Button size="small" appearance="subtle" aria-label="Close"
+                icon={<DismissRegular style={{ fontSize: '13px' }} />}
+                onClick={() => setDrawerOpen(false)} />
+            }
+          >
+            <span style={{ fontSize: '13px', fontWeight: 600 }}>
+              {drawerSeq !== null ? `Step #${drawerSeq} · detail` : 'Detail file'}
+            </span>
+          </DrawerHeaderTitle>
+        </DrawerHeader>
+        <DrawerBody style={{ padding: '12px', overflow: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#c8c6c4 transparent' }}>
+          {drawerSeq != null && payloadLoading[drawerSeq] && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Spinner size="tiny" /> Loading…
+            </div>
+          )}
+          {drawerSeq != null && payloads[drawerSeq] !== undefined && (
+            <pre style={{ margin: 0, fontSize: '11px', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: '1.5' }}>
+              {payloads[drawerSeq]}
+            </pre>
+          )}
+        </DrawerBody>
+      </Drawer>
+    </>
   );
 };
 
@@ -538,29 +586,23 @@ export const FlowLogTab: React.FC = () => {
     <div className={mergeClasses(s.root, selectedFlowId != null && s.rootWithDetail)}>
       {/* ── Left panel: type list ── */}
       <div className={mergeClasses(s.panel, s.panelLeft)}>
-        <div className={s.panelHeader}><span className={s.panelTitle}>Types</span></div>
+        <div className={mergeClasses(s.panelHeader, s.panelHeaderLeft)}><span className={s.panelTitle}>Types</span></div>
         <div className={s.typeList}>
           <div className={mergeClasses(s.typeItem, selectedType === '' && s.typeItemActive)}
             onClick={() => setSelectedType('')}>
+            {selectedType === '' && <span className={s.typeIndicator} />}
             <span className={mergeClasses(s.typeName, selectedType === '' && s.typeNameActive)}>All</span>
-            <Badge size="small" appearance="tint" color="informative" className={s.typeBadge}>{totalCount}</Badge>
+            <span className={s.typeSubtext}>{totalCount.toLocaleString()} flows</span>
           </div>
           {types.map((t) => (
             <div key={t.flow_type}
               className={mergeClasses(s.typeItem, selectedType === t.flow_type && s.typeItemActive)}
               onClick={() => setSelectedType(t.flow_type)}>
+              {selectedType === t.flow_type && <span className={s.typeIndicator} />}
               <span className={mergeClasses(s.typeName, selectedType === t.flow_type && s.typeNameActive)}>
                 {t.flow_type}
               </span>
-              <Badge size="small" appearance="tint"
-                color={selectedType === t.flow_type ? 'brand' : 'subtle'}
-                className={s.typeBadge}>{t.count}</Badge>
-              <Tooltip relationship="description" content={flowTypeDescription(t.flow_type)}>
-                <Button size="small" appearance="subtle" className={s.typeInfoBtn}
-                  icon={<InfoRegular style={{ fontSize: '13px' }} />}
-                  onClick={(e) => e.stopPropagation()}
-                  aria-label={`About ${t.flow_type}`} />
-              </Tooltip>
+              <span className={s.typeSubtext}>{t.count.toLocaleString()} flows</span>
             </div>
           ))}
         </div>
