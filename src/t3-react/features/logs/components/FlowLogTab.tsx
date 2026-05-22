@@ -23,6 +23,7 @@ import {
   TableRow,
   TableCell,
   tokens,
+  Tooltip,
   Drawer,
   DrawerHeader,
   DrawerHeaderTitle,
@@ -34,6 +35,7 @@ import {
   ChevronRightRegular,
   SearchRegular,
   DismissRegular,
+  InfoRegular,
 } from '@fluentui/react-icons';
 import { API_BASE_URL } from '../../../config/constants';
 
@@ -43,6 +45,10 @@ const TYPES_URL = `${API_BASE_URL}/api/flows/types`;
 // ---------------------------------------------------------------------------
 // Known flow-type descriptions
 // ---------------------------------------------------------------------------
+const FLOW_TYPE_DESC: Record<string, string> = {
+  SYNC_CYCLE: 'Periodic device sync triggered by the FFI scheduler. Reads data from all panels and writes changes to the local DB. Steps with warn level indicate non-fatal issues (e.g. skipped devices).',
+  DLL_INIT:   'One-time initialization sequence run when T3000 loads the DLL. Sets up all background services and verifies DB connectivity.',
+};
 
 // ---------------------------------------------------------------------------
 // Types
@@ -161,8 +167,8 @@ const useStyles = makeStyles({
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    gap: '1px',
-    padding: '4px 6px 8px',
+    gap: '5px',
+    padding: '6px 0 6px',
     scrollbarWidth: 'thin',
     scrollbarColor: '#c8c6c4 transparent',
     backgroundColor: '#ffffff',
@@ -174,8 +180,11 @@ const useStyles = makeStyles({
     padding: '8px 10px 8px 14px',
     cursor: 'pointer',
     userSelect: 'none',
-    borderRadius: '5px',
+    borderRadius: '0',
     position: 'relative',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#ebebeb',
     ':hover': { backgroundColor: '#f3f2f1' },
   },
   typeItemActive: {
@@ -195,10 +204,10 @@ const useStyles = makeStyles({
     borderRadius: '2px',
   },
   panelHeaderLeft: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: tokens.colorNeutralBackground2,
     borderBottomWidth: '1px',
     borderBottomStyle: 'solid',
-    borderBottomColor: '#e8e8e8',
+    borderBottomColor: '#e0e0e0',
   },
   typeBadge: { fontSize: '11px', flexShrink: 0 },
   typeInfoBtn: { flexShrink: 0, padding: 0, minWidth: 'unset', height: '16px', width: '16px', color: tokens.colorNeutralForeground3 },
@@ -211,7 +220,6 @@ const useStyles = makeStyles({
     borderBottomWidth: '1px',
     borderBottomStyle: 'solid',
     borderBottomColor: '#e1e4e8',
-    backgroundColor: '#f6f8fa',
     flexShrink: 0,
     flexWrap: 'wrap',
   },
@@ -404,7 +412,7 @@ const FlowDetailPanel: React.FC<{ flowId: string; onClose: () => void }> = ({ fl
       <div className={s.panelHeader}>
         <span className={s.panelTitle}>Detail</span>
         {flow && (
-          <Badge size="small" color={STATUS_COLOR[flow.status] ?? 'subtle'}>{flow.status}</Badge>
+          <Badge size="small" appearance="filled" color={STATUS_COLOR[flow.status] ?? 'subtle'}>{flow.status}</Badge>
         )}
         <Button size="small" appearance="subtle" className={s.dismissBtn}
           icon={<DismissRegular style={{ fontSize: '13px' }} />}
@@ -535,6 +543,7 @@ export const FlowLogTab: React.FC = () => {
   const [limit]                       = useState(15);
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
   const [jumpValue, setJumpValue]     = useState('');
+  const [refreshKey, setRefreshKey]   = useState(0);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -558,7 +567,7 @@ export const FlowLogTab: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, selectedType, filterStatus]);
+  }, [page, limit, selectedType, filterStatus, refreshKey]);
 
   useEffect(() => {
     loadData();
@@ -599,8 +608,18 @@ export const FlowLogTab: React.FC = () => {
               className={mergeClasses(s.typeItem, selectedType === t.flow_type && s.typeItemActive)}
               onClick={() => setSelectedType(t.flow_type)}>
               {selectedType === t.flow_type && <span className={s.typeIndicator} />}
-              <span className={mergeClasses(s.typeName, selectedType === t.flow_type && s.typeNameActive)}>
-                {t.flow_type}
+              <span style={{ flex: 1, display: 'flex', alignItems: 'center', overflow: 'hidden', minWidth: 0, gap: '3px' }}>
+                <span className={mergeClasses(s.typeName, selectedType === t.flow_type && s.typeNameActive)} style={{ flex: 'none' }}>
+                  {t.flow_type}
+                </span>
+                {FLOW_TYPE_DESC[t.flow_type] && (
+                  <Tooltip content={FLOW_TYPE_DESC[t.flow_type]} relationship="description" positioning="after">
+                    <Button size="small" appearance="transparent" className={s.typeInfoBtn}
+                      icon={<InfoRegular style={{ fontSize: '12px' }} />}
+                      aria-label={`Info: ${t.flow_type}`}
+                      onClick={(e) => e.stopPropagation()} />
+                  </Tooltip>
+                )}
               </span>
               <span className={s.typeSubtext}>{t.count.toLocaleString()} flows</span>
             </div>
@@ -626,7 +645,7 @@ export const FlowLogTab: React.FC = () => {
             <option value="skip">Skip</option>
           </Select>
           <Button size="small" appearance="subtle" icon={<ArrowClockwiseRegular />}
-            onClick={loadData} disabled={loading}>Refresh</Button>
+            onClick={() => { setPage(0); setSearch(''); setFilterStatus(''); setRefreshKey((k) => k + 1); }} disabled={loading}>Refresh</Button>
           {loading && <Spinner size="tiny" />}
           {data && (
             <Text size={200} className={s.totalText}>{total.toLocaleString()} total</Text>
@@ -672,7 +691,7 @@ export const FlowLogTab: React.FC = () => {
                         <Badge size="small" appearance="filled"
                           color={STATUS_COLOR[flow.status] ?? 'subtle'}>{flow.status}</Badge>
                         {flow.error_count > 0 && (
-                          <Badge size="small" color="danger" style={{ marginLeft: '4px' }}>{flow.error_count} err</Badge>
+                          <Badge size="small" appearance="filled" color="danger" style={{ marginLeft: '4px' }}>{flow.error_count} err</Badge>
                         )}
                       </TableCell>
                       <TableCell className={s.stepsCell}>
