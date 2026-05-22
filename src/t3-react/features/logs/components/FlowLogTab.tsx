@@ -126,74 +126,74 @@ const useStyles = makeStyles({
     display: 'grid',
     gridTemplateColumns: '220px 1fr',
     gap: '8px',
-    padding: '8px 10px',
+    padding: '0 8px 8px',
+    marginTop: '8px',
     height: '100%',
     minHeight: 0,
     overflow: 'hidden',
     boxSizing: 'border-box',
   },
   rootWithDetail: {
-    gridTemplateColumns: '220px 1fr 320px',
+    gridTemplateColumns: '180px minmax(220px, 1fr) 460px',
   },
   // Shared panel
   panel: {
     backgroundColor: '#ffffff',
-    border: '1px solid #d0d7de',
-    borderRadius: '8px',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#d0e4f7',
+    borderRadius: '6px',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
-    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
     minHeight: 0,
   },
+  panelLeft: {
+    borderColor: '#b0b0b0',
+  },
   panelHeader: {
-    padding: '0 10px',
-    minHeight: '36px',
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: '#e1e4e8',
-    backgroundColor: '#f6f8fa',
+    padding: '8px 12px 5px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     flexShrink: 0,
-    borderRadius: '8px 8px 0 0',
     gap: '6px',
   },
   panelTitle: {
-    fontSize: '12px',
-    fontWeight: 600,
-    color: '#24292f',
+    fontSize: '10px',
+    fontWeight: 700,
+    color: tokens.colorBrandForeground1,
     textTransform: 'uppercase',
-    letterSpacing: '0.4px',
+    letterSpacing: '0.5px',
+    userSelect: 'none',
   },
   // Left panel — type list
   typeList: {
-    padding: '6px 8px',
     overflowY: 'auto',
+    overflowX: 'hidden',
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    gap: '2px',
+    paddingBottom: '12px',
     scrollbarWidth: 'thin',
+    scrollbarColor: '#c8c6c4 transparent',
+    backgroundColor: '#f5f5f5',
   },
   typeItem: {
     display: 'flex',
     alignItems: 'center',
-    gap: '6px',
-    padding: '6px 8px',
-    borderRadius: '6px',
+    justifyContent: 'space-between',
+    padding: '5px 12px',
     cursor: 'pointer',
-    ':hover': { backgroundColor: '#f6f8fa' },
+    userSelect: 'none',
+    gap: '6px',
+    ':hover': { backgroundColor: '#eaeaea' },
   },
   typeItemActive: {
-    backgroundColor: '#dff0ff',
-    borderLeftWidth: '3px',
-    borderLeftStyle: 'solid',
-    borderLeftColor: '#0f6cbd',
-    paddingLeft: '5px',
+    backgroundColor: '#dbeafe',
+    ':hover': { backgroundColor: '#d0e6fc' },
   },
-  typeName: { fontSize: '12px', fontWeight: 500, color: '#24292f', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  typeName: { fontSize: '11.5px', fontWeight: 400, color: '#323130', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 },
   typeNameActive: { color: '#0f6cbd', fontWeight: 600 },
   typeBadge: { fontSize: '11px', flexShrink: 0 },
   typeInfoBtn: { flexShrink: 0, padding: 0, minWidth: 'unset', height: '16px', width: '16px', color: tokens.colorNeutralForeground3 },
@@ -496,11 +496,16 @@ export const FlowLogTab: React.FC = () => {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (selectedType)   params.set('flow_type', selectedType);
       if (filterStatus)   params.set('status', filterStatus);
-      const [flowsRes, typesRes] = await Promise.all([
-        fetch(`${FLOWS_URL}?${params}`).then((r) => r.json() as Promise<FlowListResponse>),
+      const [rawFlows, typesRes] = await Promise.all([
+        fetch(`${FLOWS_URL}?${params}`).then((r) => r.json()),
         fetch(TYPES_URL).then((r) => r.json() as Promise<FlowTypeCount[]>),
       ]);
-      setData(flowsRes);
+      // Support both paginated { flows, total } and legacy bare-array response
+      if (Array.isArray(rawFlows)) {
+        setData({ flows: rawFlows as FlowRow[], total: rawFlows.length, page, limit });
+      } else {
+        setData(rawFlows as FlowListResponse);
+      }
       setTypes(Array.isArray(typesRes) ? typesRes : []);
     } catch (e) {
       console.error('FlowLogTab fetch error', e);
@@ -534,7 +539,7 @@ export const FlowLogTab: React.FC = () => {
   return (
     <div className={mergeClasses(s.root, selectedFlowId != null && s.rootWithDetail)}>
       {/* ── Left panel: type list ── */}
-      <div className={s.panel}>
+      <div className={mergeClasses(s.panel, s.panelLeft)}>
         <div className={s.panelHeader}><span className={s.panelTitle}>Types</span></div>
         <div className={s.typeList}>
           <div className={mergeClasses(s.typeItem, selectedType === '' && s.typeItemActive)}

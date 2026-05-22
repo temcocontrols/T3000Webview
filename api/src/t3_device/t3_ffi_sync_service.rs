@@ -2186,12 +2186,22 @@ impl T3000MainService {
             config.sync_interval_secs / 60
         ));
 
-        sync_flow.step(&local_db, "device_sync", "info", "ffi_sync",
+        let device_sync_level = if !serial_zero_sns.is_empty() { "warn" } else { "info" };
+        let device_sync_details: Option<String> = if serial_zero_sns.is_empty() {
+            None
+        } else {
+            Some(format!(
+                "{} device(s) had serial=0 (C++ panel_serial_number not set): {}\n💡 FIX: Update C++ HandleWebViewMsg to set panel_serial_number in LOGGING_DATA response",
+                serial_zero_sns.len(),
+                serial_zero_sns.join(", "),
+            ))
+        };
+        sync_flow.step(&local_db, "device_sync", device_sync_level, "ffi_sync",
             if failed_devices == total_devices && total_devices > 0 { "error" } else { "ok" },
             t_device_loop.elapsed().as_millis() as i64,
             &format!("{} device(s) processed: ok={} fail={} skip={}",
                 total_devices, successful_devices, failed_devices, skipped_devices),
-            None).await;
+            device_sync_details.as_deref()).await;
 
         sync_flow.step(&local_db, "sync_complete", "info", "ffi_sync",
             if failed_devices == total_devices && total_devices > 0 { "error" } else { "ok" },
