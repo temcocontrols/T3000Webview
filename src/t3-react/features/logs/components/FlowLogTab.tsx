@@ -134,7 +134,7 @@ const useStyles = makeStyles({
     boxSizing: 'border-box',
   },
   rootWithDetail: {
-    gridTemplateColumns: '180px minmax(220px, 1fr) 460px',
+    gridTemplateColumns: '180px 600px 1fr',
   },
   // Shared panel
   panel: {
