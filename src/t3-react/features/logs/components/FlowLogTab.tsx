@@ -220,6 +220,7 @@ const useStyles = makeStyles({
     scrollbarColor: '#c8c6c4 transparent',
   },
   table: { width: '100%' },
+  thId:      { width: '86px',  fontSize: '12px' },
   thTime:    { width: '148px', fontSize: '12px' },
   thType:    { width: '120px', fontSize: '12px' },
   thTrigger: { width: '80px',  fontSize: '12px' },
@@ -230,6 +231,7 @@ const useStyles = makeStyles({
   rowClickable: { cursor: 'pointer' },
   timeCell: { fontSize: '11px', color: '#605e5c', whiteSpace: 'nowrap' },
   typeCell: { fontSize: '12px', fontWeight: 600, color: '#0f6cbd' },
+  idCell: { fontSize: '10.5px', fontFamily: 'monospace', color: '#605e5c', whiteSpace: 'nowrap' },
   triggerCell: { fontSize: '11px', color: '#605e5c' },
   stepsCell: { fontSize: '11px', color: '#605e5c' },
   durCell: { fontSize: '11.5px', fontWeight: 600, color: '#323130' },
@@ -254,22 +256,33 @@ const useStyles = makeStyles({
   pageBtn: { minWidth: '28px', height: '26px', padding: '0 4px', fontSize: '12px' },
   // Right detail panel
   detailHeader: {
-    padding: '8px 10px',
+    padding: '6px 10px',
     borderBottomWidth: '1px',
     borderBottomStyle: 'solid',
     borderBottomColor: '#e1e4e8',
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px',
+    gap: '4px',
     flexShrink: 0,
     backgroundColor: '#fafbfc',
   },
-  detailMeta: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '4px 12px',
+  detailBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0',
     fontSize: '11px',
+    color: '#24292f',
+    flexWrap: 'nowrap',
+    overflow: 'hidden',
   },
+  detailBarSep: {
+    color: '#ccc',
+    padding: '0 8px',
+    flexShrink: 0,
+    userSelect: 'none',
+  },
+  detailBarLabel: { color: '#888', fontWeight: 500, flexShrink: 0 },
+  detailBarValue: { color: '#24292f', flexShrink: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   detailMetaLabel: { color: '#888', fontWeight: 500 },
   detailMetaValue: { color: '#24292f', wordBreak: 'break-all' },
   detailSteps: {
@@ -301,7 +314,7 @@ const useStyles = makeStyles({
   stepMsg:    { color: '#323130', paddingLeft: '26px', lineHeight: '1.4' },
   stepDetails: {
     marginTop: '2px',
-    paddingLeft: '26px',
+    marginLeft: '26px',
     fontSize: '11px',
     color: tokens.colorNeutralForeground3,
     fontFamily: 'monospace',
@@ -391,34 +404,19 @@ const FlowDetailPanel: React.FC<{ flowId: string; onClose: () => void }> = ({ fl
 
       {flow && (
         <>
-          {/* Flow metadata */}
+          {/* Flow metadata — compact one-line bar */}
           <div className={s.detailHeader}>
-            <div className={s.detailFlowId}>{flow.flow_id}</div>
-            <div className={s.detailMeta}>
-              <span className={s.detailMetaLabel}>Type</span>
-              <span className={s.detailMetaValue} style={{ color: '#0f6cbd', fontWeight: 600 }}>{flow.flow_type}</span>
-              <span className={s.detailMetaLabel}>Trigger</span>
-              <span className={s.detailMetaValue}>{flow.trigger_src}</span>
-              <span className={s.detailMetaLabel}>Started</span>
-              <span className={s.detailMetaValue}>{fmtTime(flow.started_at)}</span>
-              <span className={s.detailMetaLabel}>Duration</span>
-              <span className={s.detailMetaValue}>{fmtMs(flow.duration_ms)}</span>
-              <span className={s.detailMetaLabel}>Steps</span>
-              <span className={s.detailMetaValue}>
-                {flow.done_steps}{flow.total_steps > 0 ? `/${flow.total_steps}` : ''} done
-                {flow.error_count > 0 && <Badge size="small" color="danger" style={{ marginLeft: '4px' }}>{flow.error_count} err</Badge>}
-              </span>
+            <div className={s.detailBar}>
+              <span className={s.detailFlowId} style={{ fontFamily: 'monospace', fontSize: '10.5px', color: '#605e5c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1 }}>{flow.flow_id}</span>
               {flow.hostname && <>
-                <span className={s.detailMetaLabel}>Host</span>
-                <span className={s.detailMetaValue}>{flow.hostname}</span>
+                <span className={s.detailBarSep}>|</span>
+                <span className={s.detailBarLabel}>Host</span>&nbsp;
+                <span className={s.detailBarValue}>{flow.hostname}</span>
               </>}
+              <span className={s.detailBarSep}>|</span>
+              <span className={s.detailBarLabel}>Started</span>&nbsp;
+              <span className={s.detailBarValue}>{fmtTime(flow.started_at)}</span>
             </div>
-            {flow.meta && (
-              <div>
-                <div className={s.detailMetaLabel}>Meta</div>
-                <pre className={s.detailMetaJson}>{flow.meta}</pre>
-              </div>
-            )}
           </div>
 
           {/* Step list */}
@@ -601,6 +599,7 @@ export const FlowLogTab: React.FC = () => {
             <Table size="small" className={s.table}>
               <TableHeader>
                 <TableRow>
+                  <TableHeaderCell className={s.thId}>ID</TableHeaderCell>
                   <TableHeaderCell className={s.thTime}>Time</TableHeaderCell>
                   <TableHeaderCell className={s.thType}>Type</TableHeaderCell>
                   <TableHeaderCell className={s.thTrigger}>Trigger</TableHeaderCell>
@@ -612,7 +611,7 @@ export const FlowLogTab: React.FC = () => {
               <TableBody>
                 {visibleFlows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className={s.emptyCell}>
+                    <TableCell colSpan={7} className={s.emptyCell}>
                       <Text size={200}>No flow runs found.</Text>
                     </TableCell>
                   </TableRow>
@@ -623,6 +622,7 @@ export const FlowLogTab: React.FC = () => {
                       className={mergeClasses(s.rowClickable, selectedFlowId === flow.flow_id && s.rowSelected)}
                       onClick={() => setSelectedFlowId((prev) => prev === flow.flow_id ? null : flow.flow_id)}
                     >
+                      <TableCell className={s.idCell}>{truncateId(flow.flow_id)}</TableCell>
                       <TableCell className={s.timeCell}>{fmtTime(flow.started_at)}</TableCell>
                       <TableCell className={s.typeCell}>{flow.flow_type}</TableCell>
                       <TableCell className={s.triggerCell}>{flow.trigger_src}</TableCell>
