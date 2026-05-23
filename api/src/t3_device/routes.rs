@@ -2651,11 +2651,10 @@ async fn save_realtime_trendlog_batch(
         "🔄 [Routes] Realtime batch save request - {} data points",
         payload.len()
     );
-    let log_db = if let Some(conn) = state.t3_device_conn.as_ref() {
-        Some(conn.lock().await.clone())
-    } else {
-        None
-    };
+    // Use a fresh direct connection to local SQLite (same pattern as TRENDLOG_CHART)
+    // so flow logs work even when state.t3_device_conn is None (e.g. MSSQL backend).
+    let log_db = crate::db_connection::establish_t3_device_connection().await
+        .map_err(|e| e.to_string()).ok();
     if let Some(db) = log_db.as_ref() {
         crate::logging::service::emit_app_log(
             db,

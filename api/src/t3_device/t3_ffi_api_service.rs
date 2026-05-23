@@ -339,8 +339,10 @@ async fn handle_ffi_call(
                     }))
                     .unwrap_or(0);
                 let elapsed = t0.elapsed().as_millis() as i64;
-                if let Some(conn) = app_state.t3_device_conn.as_ref() {
-                    let db = conn.lock().await.clone();
+                // Use a fresh direct connection to local SQLite (same pattern as TRENDLOG_CHART)
+                // so this works even when app_state.t3_device_conn is None (e.g. MSSQL backend).
+                if let Some(db) = crate::db_connection::establish_t3_device_connection().await
+                    .map_err(|e| e.to_string()).ok() {
                     let fh = crate::logging::flow::FlowHandle::start(
                         &db, "TRENDLOG_REALTIME", "realtime", 2,
                         Some(&format!("panel={} device={}", panel_id, sn)),
