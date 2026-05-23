@@ -468,6 +468,66 @@ async fn purge_flows(
 }
 
 // ---------------------------------------------------------------------------
+// POST /api/flows/clear-all
+// ---------------------------------------------------------------------------
+
+async fn clear_all_flows(State(state): State<T3AppState>) -> Response {
+    let guard = local_db!(state);
+    let db: &sea_orm::DatabaseConnection = &*guard;
+
+    // Collect all payload file paths before deletion
+    let mut deleted_payloads: i64 = 0;
+
+    if let Ok(rows) = db.query_all(Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "SELECT file_path FROM T3_FLOW_PAYLOAD".to_owned(),
+    )).await {
+        for r in &rows {
+            if let Ok(path) = r.try_get::<String>("", "file_path") {
+                if std::fs::remove_file(&path).is_ok() { deleted_payloads += 1; }
+            }
+        }
+    }
+
+    if let Ok(rows) = db.query_all(Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "SELECT payload_ref FROM T3_FLOW_STEP WHERE payload_ref IS NOT NULL".to_owned(),
+    )).await {
+        for r in &rows {
+            if let Ok(Some(path)) = r.try_get::<Option<String>>("", "payload_ref") {
+                if std::fs::remove_file(&path).is_ok() { deleted_payloads += 1; }
+            }
+        }
+    }
+
+    // Count rows before deletion for the response
+    let flow_count: i64 = db.query_one(Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "SELECT COUNT(*) as cnt FROM T3_FLOW".to_owned(),
+    )).await.ok().flatten()
+        .and_then(|r| r.try_get::<i64>("", "cnt").ok()).unwrap_or(0);
+
+    let step_count: i64 = db.query_one(Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "SELECT COUNT(*) as cnt FROM T3_FLOW_STEP".to_owned(),
+    )).await.ok().flatten()
+        .and_then(|r| r.try_get::<i64>("", "cnt").ok()).unwrap_or(0);
+
+    let _ = db.execute(Statement::from_string(sea_orm::DatabaseBackend::Sqlite,
+        "DELETE FROM T3_FLOW_PAYLOAD".to_owned())).await;
+    let _ = db.execute(Statement::from_string(sea_orm::DatabaseBackend::Sqlite,
+        "DELETE FROM T3_FLOW_STEP".to_owned())).await;
+    let _ = db.execute(Statement::from_string(sea_orm::DatabaseBackend::Sqlite,
+        "DELETE FROM T3_FLOW".to_owned())).await;
+
+    Json(PurgeResult {
+        deleted_flows: flow_count,
+        deleted_steps: step_count,
+        deleted_payloads,
+    }).into_response()
+}
+
+// ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
 
@@ -476,6 +536,7 @@ pub fn flow_routes() -> Router<T3AppState> {
         .route("/api/flows",                               get(list_flows))
         .route("/api/flows/types",                         get(list_flow_types))
         .route("/api/flows/purge",                         post(purge_flows))
+        .route("/api/flows/clear-all",                     post(clear_all_flows))
         .route("/api/flows/:flow_id",                      get(get_flow))
         .route("/api/flows/:flow_id/payload/:seq",         get(get_payload))
         .route("/api/flows/:flow_id/client-step",          post(post_client_step))

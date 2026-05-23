@@ -26,6 +26,7 @@ import {
   Dismiss24Regular,
   InfoRegular,
   DatabasePlugConnectedRegular,
+  DeleteRegular,
 } from '@fluentui/react-icons';
 import { ActivityLogTab } from '../components/ActivityLogTab';
 import { FileLogsTab } from '../components/FileLogsTab';
@@ -563,6 +564,7 @@ export const LogsPage: React.FC = () => {
     latency_ms?: number;
     error?: string;
   } | null>(null);
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     const styleId = 'logs-page-drawer-size-override';
@@ -704,6 +706,21 @@ export const LogsPage: React.FC = () => {
     loadTopSummary();
   };
 
+  const handleClearAll = useCallback(async () => {
+    if (!window.confirm('Clear ALL flow logs and file logs? This cannot be undone.')) return;
+    setClearing(true);
+    try {
+      await Promise.all([
+        fetch(`${API_BASE_URL}/api/flows/clear-all`, { method: 'POST' }),
+        fetch(`${API_BASE_URL}/api/develop/logs/clear`, { method: 'POST' }),
+      ]);
+    } catch (e) {
+      console.error('Clear all failed:', e);
+    } finally {
+      setClearing(false);
+    }
+  }, []);
+
   const toggleLevelFilter = (nextLevel: string) => {
     setActiveLevelFilter((prev) => (prev === nextLevel ? '' : nextLevel));
   };
@@ -764,8 +781,9 @@ export const LogsPage: React.FC = () => {
         <Button
           size="small"
           appearance="subtle"
-          icon={sqlTesting ? <Spinner size="tiny" /> : <DatabasePlugConnectedRegular />}
+          icon={sqlTesting ? <Spinner size="tiny" /> : <DatabasePlugConnectedRegular style={{ fontSize: '16px' }} />}
           disabled={sqlTesting}
+          style={{ fontSize: '12px' }}
           onClick={handleTestSql}
         >
           Test
@@ -783,12 +801,15 @@ export const LogsPage: React.FC = () => {
           <Switch
             checked={loggingEnabled}
             onChange={(_, data) => void handleToggleLogging(data.checked)}
-            label={
-              <span className={s.toggleLabel}>
-                {loggingEnabled ? 'Disable Logging' : 'Enable Logging'}
-              </span>
-            }
+            style={{ transform: 'scale(0.78)', transformOrigin: 'center', margin: '0 -5px' }}
           />
+          <span
+            className={s.toggleLabel}
+            style={{ cursor: 'pointer' }}
+            onClick={() => void handleToggleLogging(!loggingEnabled)}
+          >
+            {loggingEnabled ? 'Disable Logging' : 'Enable Logging'}
+          </span>
         </div>
 
         {/* View selector dropdown */}
@@ -807,11 +828,23 @@ export const LogsPage: React.FC = () => {
         <Button
           size="small"
           appearance={showAdvanced ? 'primary' : 'subtle'}
-          icon={<SettingsRegular />}
+          icon={<SettingsRegular style={{ fontSize: '16px' }} />}
           style={{ fontSize: '12px' }}
           onClick={() => setShowAdvanced(true)}
         >
           Advanced
+        </Button>
+
+        {/* Clear All — removes all flow logs and file logs */}
+        <Button
+          size="small"
+          appearance="subtle"
+          icon={clearing ? <Spinner size="tiny" /> : <DeleteRegular style={{ fontSize: '16px' }} />}
+          disabled={clearing}
+          style={{ fontSize: '12px', color: tokens.colorPaletteRedForeground1 }}
+          onClick={handleClearAll}
+        >
+          {clearing ? 'Clearing…' : 'Clear All'}
         </Button>
       </div>
 

@@ -148,13 +148,39 @@ pub async fn get_content(Query(query): Query<ContentQuery>) -> impl IntoResponse
     }
 }
 
-/// Clear all logs (optional - removes all log files)
+/// Clear all log files under the T3WebLog directory tree.
 pub async fn clear_logs() -> impl IntoResponse {
-    // For safety, we'll just return success without actually deleting
-    // You can implement actual deletion if needed
+    let log_base = get_t3weblog_path();
+    let mut deleted: u32 = 0;
+    let mut errors: Vec<String> = Vec::new();
+
+    if log_base.exists() {
+        // Walk the directory tree and delete every file
+        fn remove_dir_files(dir: &std::path::Path, deleted: &mut u32, errors: &mut Vec<String>) {
+            if let Ok(entries) = fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_file() {
+                        match fs::remove_file(&path) {
+                            Ok(_) => *deleted += 1,
+                            Err(e) => errors.push(format!("{}: {}", path.display(), e)),
+                        }
+                    } else if path.is_dir() {
+                        remove_dir_files(&path, deleted, errors);
+                        // Remove the now-empty sub-directory (best-effort)
+                        let _ = fs::remove_dir(&path);
+                    }
+                }
+            }
+        }
+        remove_dir_files(&log_base, &mut deleted, &mut errors);
+    }
+
     (StatusCode::OK, Json(serde_json::json!({
         "success": true,
-        "message": "Logs cleared"
+        "deleted_files": deleted,
+        "errors": errors,
+        "message": format!("{} log file(s) deleted", deleted)
     })))
 }
 
