@@ -6,6 +6,7 @@
 
 use std::ffi::CString;
 use std::os::raw::c_char;
+use std::collections::HashMap;
 use axum::{
     extract::State,
     http::StatusCode,
@@ -16,11 +17,17 @@ use axum::{
 use serde_json::Value as JsonValue;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
+use once_cell::sync::Lazy;
 use crate::error::Error;
 use crate::logger::ServiceLogger;
 use crate::app_state::T3AppState;
 use crate::logging::service::emit_app_log;
 use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA};
+
+/// Pending TRENDLOG_REALTIME flows: FFI action=15 starts the flow (step 0),
+/// batch save continues it (step 1 + done). Keyed by (panel_id, serial_number).
+pub static PENDING_REALTIME_FLOWS: Lazy<tokio::sync::Mutex<HashMap<(i32, i32), crate::logging::flow::FlowHandle>>> =
+    Lazy::new(|| tokio::sync::Mutex::new(HashMap::new()));
 
 // FFI function type
 type BacnetWebViewHandleWebViewMsgFn = unsafe extern "C" fn(action: i32, msg: *mut c_char, len: i32) -> i32;
@@ -299,6 +306,7 @@ async fn handle_ffi_call(
         ).await;
     }
 
+    let t0 = std::time::Instant::now();
     let service = T3000FfiApiService::new();
 
     match service.call_ffi(&message).await {
@@ -314,6 +322,35 @@ async fn handle_ffi_call(
                     &format!("FFI response action={}", action),
                     Some(&response),
                 ).await;
+            }
+
+            // Flow logging for action=15 (LOGGING_DATA — trendlog realtime poll)
+            // Starts a 2-step TRENDLOG_REALTIME flow; step 1 (batch_save) is logged
+            // from save_realtime_trendlog_batch when the frontend sends the data.
+            if action == 15 {
+                let panel_id = payload.get("panelId").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+                let sn       = payload.get("serialNumber").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+                let item_count: usize = serde_json::from_str::<serde_json::Value>(&response)
+                    .ok()
+                    .and_then(|j| j.get("data").and_then(|d| d.as_array()).map(|devs| {
+                        devs.iter()
+                            .filter_map(|d| d.get("device_data").and_then(|dd| dd.as_array()).map(|a| a.len()))
+                            .sum::<usize>()
+                    }))
+                    .unwrap_or(0);
+                let elapsed = t0.elapsed().as_millis() as i64;
+                if let Some(conn) = app_state.t3_device_conn.as_ref() {
+                    let db = conn.lock().await.clone();
+                    let fh = crate::logging::flow::FlowHandle::start(
+                        &db, "TRENDLOG_REALTIME", "realtime", 2,
+                        Some(&format!("panel={} device={}", panel_id, sn)),
+                    ).await;
+                    fh.step(&db, "ffi_poll", "info", "ffi", "ok", elapsed,
+                        &format!("{} items fetched — panel={} device={}", item_count, panel_id, sn),
+                        None).await;
+                    // Store for batch_save step — do NOT call done() yet
+                    PENDING_REALTIME_FLOWS.lock().await.insert((panel_id, sn), fh);
+                }
             }
 
             // Try to parse response as JSON, otherwise return as string
