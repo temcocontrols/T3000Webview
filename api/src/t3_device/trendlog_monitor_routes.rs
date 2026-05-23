@@ -127,7 +127,7 @@ pub async fn sync_trendlogs_handler(
     let flow_db_opt = crate::db_connection::establish_t3_device_connection().await
         .map_err(|e| e.to_string()).ok();
     let flow_opt = if let Some(ref fdb) = flow_db_opt {
-        Some(crate::logging::flow::FlowHandle::start(fdb, "TRENDLOG_SYNC", "api", 3, None).await)
+        Some(crate::logging::flow::FlowHandle::start(fdb, "TRENDLOG_SYNC", "api", 2, None).await)
     } else {
         None
     };
@@ -135,17 +135,30 @@ pub async fn sync_trendlogs_handler(
 
     // Look up serial_number from devices table using panel_id
     let db = db_connection.lock().await;
-    let device_result = devices::Entity::find()
-        .filter(devices::Column::PanelNumber.eq(panel_id))
-        .one(&*db)
-        .await?;
-    let device = match device_result {
-        Some(d) => d,
-        None => devices::Entity::find()
-            .filter(devices::Column::PanelId.eq(panel_id))
+    let device_lookup: Result<_, AppError> = async {
+        let d1 = devices::Entity::find()
+            .filter(devices::Column::PanelNumber.eq(panel_id))
             .one(&*db)
-            .await?
-            .ok_or_else(|| AppError::DatabaseError(format!("Device with panel_id {} not found", panel_id)))?,
+            .await?;
+        match d1 {
+            Some(d) => Ok(d),
+            None => devices::Entity::find()
+                .filter(devices::Column::PanelId.eq(panel_id))
+                .one(&*db)
+                .await?
+                .ok_or_else(|| AppError::DatabaseError(format!("Device with panel_id {} not found", panel_id))),
+        }
+    }.await;
+    let device = match device_lookup {
+        Ok(d) => d,
+        Err(e) => {
+            if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
+                fh.step(fdb, "lookup_device", "error", "db", "error",
+                    t0.elapsed().as_millis() as i64, &e.to_string(), None).await;
+                fh.done(fdb, "error").await;
+            }
+            return Err(e);
+        }
     };
     let serial_number = device.serial_number;
     drop(db);
@@ -199,7 +212,7 @@ pub async fn sync_all_devices_handler(
     let flow_db_opt = crate::db_connection::establish_t3_device_connection().await
         .map_err(|e| e.to_string()).ok();
     let flow_opt = if let Some(ref fdb) = flow_db_opt {
-        Some(crate::logging::flow::FlowHandle::start(fdb, "TRENDLOG_SYNC_ALL", "api", 2, None).await)
+        Some(crate::logging::flow::FlowHandle::start(fdb, "TRENDLOG_SYNC_ALL", "api", 1, None).await)
     } else {
         None
     };

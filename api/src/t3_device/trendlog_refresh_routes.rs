@@ -77,10 +77,28 @@ pub async fn refresh_trendlogs(
         }
     }
 
+    // Flow logging (best-effort)
+    let flow_db_opt = crate::db_connection::establish_t3_device_connection().await
+        .map_err(|e| e.to_string()).ok();
+    let flow_opt = if let Some(ref fdb) = flow_db_opt {
+        Some(crate::logging::flow::FlowHandle::start(
+            fdb, "TRENDLOG_REFRESH", "api", 2,
+            Some(&format!("serial={} index={:?}", serial, payload.index)),
+        ).await)
+    } else {
+        None
+    };
+    let t0 = std::time::Instant::now();
+
     let db_connection = match &state.t3_device_conn {
         Some(conn) => conn.lock().await.clone(),
         None => {
             error!("❌ T3000 device database unavailable");
+            if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
+                fh.step(fdb, "db_connect", "error", "api", "error",
+                    t0.elapsed().as_millis() as i64, "T3000 device database unavailable", None).await;
+                fh.done(fdb, "error").await;
+            }
             return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
         }
     };
@@ -93,13 +111,30 @@ pub async fn refresh_trendlogs(
         Ok(Some(device)) => device.panel_number.or(device.panel_id).unwrap_or(0),
         Ok(None) => {
             error!("Device not found for serial: {}", serial);
+            if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
+                fh.step(fdb, "lookup_device", "error", "db", "error",
+                    t0.elapsed().as_millis() as i64,
+                    &format!("serial={} not found", serial), None).await;
+                fh.done(fdb, "error").await;
+            }
             return Err((StatusCode::NOT_FOUND, format!("Device with serial {} not found", serial)));
         }
         Err(e) => {
             error!("Database error querying device: {:?}", e);
+            if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
+                fh.step(fdb, "lookup_device", "error", "db", "error",
+                    t0.elapsed().as_millis() as i64, &e.to_string(), None).await;
+                fh.done(fdb, "error").await;
+            }
             return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)));
         }
     };
+
+    if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
+        fh.step(fdb, "lookup_device", "info", "db", "ok",
+            t0.elapsed().as_millis() as i64,
+            &format!("serial={} panel_id={}", serial, panel_id), None).await;
+    }
 
     let mut refresh_json = json!({
         "action": WebViewMessageType::GET_WEBVIEW_LIST as i32,
@@ -112,12 +147,19 @@ pub async fn refresh_trendlogs(
         refresh_json["entryIndex"] = json!(idx);
     }
 
+    let t1 = std::time::Instant::now();
     match call_refresh_ffi(WebViewMessageType::GET_WEBVIEW_LIST as i32, refresh_json).await {
         Ok(response) => {
             let response_json: Value = match serde_json::from_str(&response) {
                 Ok(json) => json,
                 Err(e) => {
                     error!("❌ Failed to parse C++ response: {}", e);
+                    if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
+                        fh.step(fdb, "ffi_refresh", "error", "ffi", "error",
+                            t1.elapsed().as_millis() as i64,
+                            &format!("parse error: {}", e), None).await;
+                        fh.done(fdb, "error").await;
+                    }
                     return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Invalid response from device: {}", e)));
                 }
             };
@@ -129,15 +171,33 @@ pub async fn refresh_trendlogs(
 
                 if debug_msg.contains("empty response") || error_msg.contains("not implemented") {
                     error!("❌ Action 17 not implemented in C++: {}", debug_msg);
+                    if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
+                        fh.step(fdb, "ffi_refresh", "error", "ffi", "error",
+                            t1.elapsed().as_millis() as i64,
+                            "GET_WEBVIEW_LIST (Action 17) not implemented in C++", None).await;
+                        fh.done(fdb, "error").await;
+                    }
                     return Err((StatusCode::NOT_IMPLEMENTED, "GET_WEBVIEW_LIST (Action 17) not yet implemented in C++".to_string()));
                 }
 
                 error!("❌ Device refresh failed: {}", error_msg);
+                if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
+                    fh.step(fdb, "ffi_refresh", "error", "ffi", "error",
+                        t1.elapsed().as_millis() as i64, error_msg, None).await;
+                    fh.done(fdb, "error").await;
+                }
                 return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("{}", error_msg)));
             }
 
             let items = response_json.get("items").and_then(|v| v.as_array()).map(|arr| arr.clone()).unwrap_or_default();
             let count = items.len() as i32;
+
+            if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
+                fh.step(fdb, "ffi_refresh", "info", "ffi", "ok",
+                    t1.elapsed().as_millis() as i64,
+                    &format!("count={}", count), None).await;
+                fh.done(fdb, "ok").await;
+            }
 
             info!("✅ Refreshed {} trendlog(s) from device", count);
             Ok(Json(RefreshResponse {
@@ -150,6 +210,11 @@ pub async fn refresh_trendlogs(
         }
         Err(e) => {
             error!("❌ Failed to refresh trendlogs: {}", e);
+            if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
+                fh.step(fdb, "ffi_refresh", "error", "ffi", "error",
+                    t1.elapsed().as_millis() as i64, &e, None).await;
+                fh.done(fdb, "error").await;
+            }
             if e.contains("not implemented") || e.contains("empty response") {
                 return Err((StatusCode::NOT_IMPLEMENTED, "GET_WEBVIEW_LIST (Action 17) not yet implemented in C++".to_string()));
             }
