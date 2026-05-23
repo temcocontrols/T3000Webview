@@ -199,7 +199,7 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     let flow_opt: Option<(crate::logging::flow::FlowHandle, sea_orm::DatabaseConnection)> =
         if let Some(ref db) = flow_db_opt {
             let fh = crate::logging::flow::FlowHandle::start(
-                db, "DLL_INIT", "start_all_services", 6, None,
+                db, "DLL_INIT", "start_all_services", 0, None,
             ).await;
             Some((fh, db.clone()))
         } else {
@@ -222,7 +222,7 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
         emit_service_log("info", "T3_Webview_Initialize", success_msg).await;
         if let Some((ref fh, ref db)) = flow_opt {
             fh.step(db, "db_init", "info", "lib", "ok", t_db.elapsed().as_millis() as i64,
-                    "T3 device database ready", None).await;
+                    "webview_t3_device.db initialized — device cache ready", None).await;
         }
     }
 
@@ -243,7 +243,7 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     if let Some((ref fh, ref db)) = flow_opt {
         fh.step(db, "load_sync_interval", "info", "lib", "ok",
                 t_interval.elapsed().as_millis() as i64,
-                &format!("sync_interval={}s", sync_interval_secs), None).await;
+                &format!("poll every {}s ({}min) — from APPLICATION_CONFIG", sync_interval_secs, sync_interval_secs / 60), None).await;
     }
 
     let t_ffi = std::time::Instant::now();
@@ -271,7 +271,7 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
         if let Some((ref fh, ref db)) = flow_opt {
             fh.step(db, "init_ffi_service", "info", "lib", "ok",
                     t_ffi.elapsed().as_millis() as i64,
-                    "FFI sync service initialized", None).await;
+                    "T3000 FFI bridge loaded — panel polling ready", None).await;
         }
     }
 
@@ -362,7 +362,7 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
         .await;
         if let Some((ref fh, ref db)) = flow_opt {
             fh.step(db, "partition_monitor", "info", "lib", "skip", 0,
-                    "partition monitor disabled by constant", None).await;
+                    "disabled — ENABLE_PARTITION_MONITOR_SERVICE=false", None).await;
         }
     }
 
@@ -421,11 +421,9 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     // Give WebSocket a moment to start
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
-    // Mark DLL_INIT flow as done — HTTP server is about to start (it blocks)
     if let Some((ref fh, ref db)) = flow_opt {
-        fh.step(db, "start_http_server", "info", "lib", "ok", 0,
-                "HTTP server starting on port 9103", None).await;
-        fh.done(db, "ok").await;
+        fh.step(db, "start_websocket", "info", "lib", "ok", 0,
+                "WebSocket push service started on port 9104", None).await;
     }
 
     // Daily flow-log cleanup scheduler — purges T3_FLOW rows older than 30 days
@@ -438,8 +436,8 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    // Start HTTP server (this will block and run the main server)
-    let http_result = server::server_start().await;
+    // Start HTTP server (this will block); DLL_INIT flow completes inside server_start after port bind
+    let http_result = server::server_start(flow_opt).await;
 
     // If HTTP server stops, we should stop background services too
     websocket_handle.abort();

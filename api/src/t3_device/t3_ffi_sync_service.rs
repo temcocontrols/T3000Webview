@@ -1379,6 +1379,7 @@ impl T3000MainService {
                 Some("policy=standalone_skip"),
             )
             .await;
+            sync_flow.done(&local_db, "skip").await;
             return Ok(());
         }
 
@@ -1400,6 +1401,7 @@ impl T3000MainService {
                     Some("policy=center_db_skip_retry"),
                 )
                 .await;
+                sync_flow.done(&local_db, "skip").await;
                 return Ok(());
             }
         }
@@ -1482,6 +1484,7 @@ impl T3000MainService {
                                 Some("action=4 policy=skip_no_cache"),
                             )
                             .await;
+                            sync_flow.done(&local_db, "skip").await;
                             return Ok(());
                         }
                     }
@@ -1530,6 +1533,7 @@ impl T3000MainService {
                     None,
                 )
                 .await;
+                sync_flow.done(&local_db, "skip").await;
                 return Ok(());
             }
 
@@ -1632,6 +1636,7 @@ impl T3000MainService {
                                 "GET_PANELS_LIST failed (forced rediscovery) — sync cycle skipped, will retry",
                                 Some("action=4"),
                             ).await;
+                            sync_flow.done(&local_db, "skip").await;
                             return Ok(());
                         }
                     };
@@ -1648,6 +1653,7 @@ impl T3000MainService {
                             None,
                         )
                         .await;
+                        sync_flow.done(&local_db, "skip").await;
                         return Ok(());
                     }
 

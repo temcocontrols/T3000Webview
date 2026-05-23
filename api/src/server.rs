@@ -152,7 +152,9 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         .layer(cors))
 }
 
-pub async fn server_start() -> Result<(), Box<dyn Error>> {
+pub async fn server_start(
+    flow_opt: Option<(crate::logging::flow::FlowHandle, sea_orm::DatabaseConnection)>,
+) -> Result<(), Box<dyn Error>> {
     use crate::logger::ServiceLogger;
 
     // Initialize service logger - route to API log category
@@ -175,20 +177,36 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
     logger.info("Environment variables loaded");
 
     // Smart migration system: only run if there are pending migrations
+    let t_mig = std::time::Instant::now();
     match crate::utils::run_migrations_if_pending().await {
         Ok(_) => {
-            // Success message already printed by the function
+            if let Some((ref fh, ref db)) = flow_opt {
+                fh.step(db, "migrations", "info", "db", "ok",
+                    t_mig.elapsed().as_millis() as i64, "schema verified — all migrations applied", None).await;
+            }
         },
         Err(e) => {
             logger.error(&format!("Migration check/execution failed: {:?}", e));
+            if let Some((ref fh, ref db)) = flow_opt {
+                fh.step(db, "migrations", "error", "db", "error",
+                    t_mig.elapsed().as_millis() as i64, &e.to_string(), None).await;
+                fh.done(db, "error").await;
+            }
             return Err(e);
         }
     }
 
     // Create the enhanced T3000 application state
+    let t_state = std::time::Instant::now();
     let state = match create_t3_app_state().await {
         Ok(state) => {
             logger.info("T3000 application state created");
+            if let Some((ref fh, ref db)) = flow_opt {
+                fh.step(db, "app_state", "info", "db", "ok",
+                    t_state.elapsed().as_millis() as i64,
+                    &format!("center_db={} role={}", state.server_db_connected, state.server_db_role),
+                    None).await;
+            }
             // Emit a STARTUP activity-log entry now that the DB is ready
             {
                 use crate::logging::service::emit_app_log;
@@ -207,6 +225,11 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
         },
         Err(e) => {
             logger.error(&format!("Failed to create T3000 application state: {:?}", e));
+            if let Some((ref fh, ref db)) = flow_opt {
+                fh.step(db, "app_state", "error", "db", "error",
+                    t_state.elapsed().as_millis() as i64, &e.to_string(), None).await;
+                fh.done(db, "error").await;
+            }
             return Err(e);
         }
     };
@@ -227,6 +250,10 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
             "Server DB writer initialized (role={}, center DB connected)",
             state.server_db_role
         ));
+        if let Some((ref fh, ref db)) = flow_opt {
+            fh.step(db, "server_db_writer", "info", "lib", "ok", 0,
+                &format!("server DB writer active, role={}", state.server_db_role), None).await;
+        }
     } else if state.server_db_enabled {
         logger.warn(&format!(
             "Server DB enabled in INI but center DB unreachable — replication disabled (role={})",
@@ -235,16 +262,35 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
         // Pause FFI sampling so no data is written to SQLite when center DB is expected
         crate::app_state::set_sampling_paused("Center DB unreachable at startup");
         logger.warn("Sampling paused: center DB unreachable at startup");
+        if let Some((ref fh, ref db)) = flow_opt {
+            fh.step(db, "server_db_writer", "warn", "lib", "warn", 0,
+                &format!("center DB unreachable, replication disabled, role={}", state.server_db_role), None).await;
+        }
+    } else {
+        if let Some((ref fh, ref db)) = flow_opt {
+            fh.step(db, "server_db_writer", "info", "lib", "skip", 0,
+                "center DB not enabled, local-only mode", None).await;
+        }
     }
 
     // Create the application with T3000 device routes
+    let t_router = std::time::Instant::now();
     let app = match create_t3_app(state.clone()).await {
         Ok(app) => {
             logger.info("Application router created");
+            if let Some((ref fh, ref db)) = flow_opt {
+                fh.step(db, "router_create", "info", "lib", "ok",
+                    t_router.elapsed().as_millis() as i64, "HTTP routes registered — device, auth, trendlog, users, logs", None).await;
+            }
             app
         },
         Err(e) => {
             logger.error(&format!("Failed to create application router: {:?}", e));
+            if let Some((ref fh, ref db)) = flow_opt {
+                fh.step(db, "router_create", "error", "lib", "error",
+                    t_router.elapsed().as_millis() as i64, &e.to_string(), None).await;
+                fh.done(db, "error").await;
+            }
             return Err(e);
         }
     };
@@ -254,13 +300,25 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
     logger.info(&format!("Server will bind to port: {}", server_port));
 
     // Bind the server to the specified port
+    let t_bind = std::time::Instant::now();
     let listener = match TcpListener::bind(format!("0.0.0.0:{}", &server_port)).await {
         Ok(listener) => {
             logger.info(&format!("Server bound to 0.0.0.0:{}", server_port));
+            if let Some((ref fh, ref db)) = flow_opt {
+                fh.step(db, "bind_port", "info", "lib", "ok",
+                    t_bind.elapsed().as_millis() as i64,
+                    &format!("port {} open — API ready to accept requests", server_port), None).await;
+                fh.done(db, "ok").await;
+            }
             listener
         },
         Err(e) => {
             logger.error(&format!("Failed to bind server to port {}: {:?}", server_port, e));
+            if let Some((ref fh, ref db)) = flow_opt {
+                fh.step(db, "bind_port", "error", "lib", "error",
+                    t_bind.elapsed().as_millis() as i64, &e.to_string(), None).await;
+                fh.done(db, "error").await;
+            }
             return Err(e.into());
         }
     };
