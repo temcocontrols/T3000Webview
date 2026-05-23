@@ -2669,6 +2669,31 @@ async fn save_realtime_trendlog_batch(
         .await;
     }
 
+    // Flow logging (best-effort)
+    // Try to resume the pending TRENDLOG_REALTIME flow started by the preceding
+    // FFI action=15 call. Falls back to a new standalone flow if none is found.
+    let t0 = std::time::Instant::now();
+    let flow_device  = payload.first().map(|p| p.serial_number).unwrap_or(0);
+    let flow_panel   = payload.first().map(|p| p.panel_id).unwrap_or(0);
+    let flow_pts     = payload.len();
+    let flow_interval = payload.first().and_then(|p| p.sync_interval).unwrap_or(0);
+
+    // Retrieve (and remove) the pending flow left by the FFI call
+    let pending_fh: Option<crate::logging::flow::FlowHandle> = {
+        let mut map = crate::t3_device::t3_ffi_api_service::PENDING_REALTIME_FLOWS.lock().await;
+        map.remove(&(flow_panel, flow_device))
+    };
+    // Fallback: create standalone 1-step flow when batch arrives without FFI
+    let flow_opt: Option<crate::logging::flow::FlowHandle> = if pending_fh.is_some() {
+        pending_fh
+    } else if let Some(ref db) = log_db {
+        Some(crate::logging::flow::FlowHandle::start(
+            db, "TRENDLOG_REALTIME", "batch", 1,
+            Some(&format!("device={} panel={} pts={} interval={}s",
+                flow_device, flow_panel, flow_pts, flow_interval)),
+        ).await)
+    } else { None };
+
     if state.server_db_enabled && !state.server_db_connected {
         let blocked_info =
             "❌ [Routes] Realtime batch save blocked - center DB enabled but not connected (local fallback active)";
@@ -2685,6 +2710,11 @@ async fn save_realtime_trendlog_batch(
             .await;
         }
         eprintln!("{}", blocked_info);
+        if let (Some(ref db), Some(ref fh)) = (&log_db, &flow_opt) {
+            fh.step(db, "batch_save", "error", "api", "blocked", 0,
+                "blocked — center DB enabled but not connected", None).await;
+            fh.done(db, "blocked").await;
+        }
         return Err((
             StatusCode::SERVICE_UNAVAILABLE,
             Json(json!({
@@ -2737,6 +2767,13 @@ async fn save_realtime_trendlog_batch(
                     })),
                 )
             })?;
+        if let (Some(ref db), Some(ref fh)) = (&log_db, &flow_opt) {
+            fh.step(db, "batch_save", "info", "mssql", "ok",
+                t0.elapsed().as_millis() as i64,
+                &format!("{} rows saved — device={} panel={} pts={} via MSSQL",
+                    rows, flow_device, flow_panel, flow_pts), None).await;
+            fh.done(db, "ok").await;
+        }
         return Ok(Json(json!({
             "rows_affected": rows,
             "message": "Realtime trendlog batch data saved successfully"
@@ -2807,6 +2844,13 @@ async fn save_realtime_trendlog_batch(
             )
             .await;
 
+            if let (Some(ref db), Some(ref fh)) = (&log_db, &flow_opt) {
+                fh.step(db, "batch_save", "info", "db", "ok",
+                    t0.elapsed().as_millis() as i64,
+                    &format!("{} rows saved — device={} panel={} pts={}",
+                        rows_affected, flow_device, flow_panel, flow_pts), None).await;
+                fh.done(db, "ok").await;
+            }
             Ok(Json(json!({
                 "rows_affected": rows_affected,
                 "message": "Realtime trendlog batch data saved successfully"
@@ -2829,6 +2873,13 @@ async fn save_realtime_trendlog_batch(
             .await;
 
             eprintln!("❌ [Routes] Realtime batch save error details: {:?}", error);
+            if let (Some(ref db), Some(ref fh)) = (&log_db, &flow_opt) {
+                fh.step(db, "batch_save", "error", "db", "error",
+                    t0.elapsed().as_millis() as i64,
+                    &format!("batch save failed — device={} panel={}: {:?}",
+                        flow_device, flow_panel, error), None).await;
+                fh.done(db, "error").await;
+            }
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({
