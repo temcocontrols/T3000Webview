@@ -46,8 +46,12 @@ const TYPES_URL = `${API_BASE_URL}/api/flows/types`;
 // Known flow-type descriptions
 // ---------------------------------------------------------------------------
 const FLOW_TYPE_DESC: Record<string, string> = {
-  SYNC_CYCLE: 'Periodic device sync triggered by the FFI scheduler. Reads data from all panels and writes changes to the local DB. Steps with warn level indicate non-fatal issues (e.g. skipped devices).',
-  DLL_INIT:   'One-time initialization sequence run when T3000 loads the DLL. Sets up all background services and verifies DB connectivity.',
+  SYNC_CYCLE:     'Periodic device sync triggered by the FFI scheduler. Reads data from all panels and writes changes to the local DB. Steps with warn level indicate non-fatal issues (e.g. skipped devices).',
+  DLL_INIT:       'One-time initialization sequence run when T3000 loads the DLL. Sets up all background services, verifies DB connectivity, and binds port 9103.',
+  TRENDLOG_CHART:    'TrendLog chart page opened. trigger_src=init creates the DB record from URL params (fast). trigger_src=sync follows immediately and calls FFI to populate the full trendlog data. Both happen once per page load. See TRENDLOG_REALTIME for the ongoing interval polling.',
+  TRENDLOG_REALTIME: 'Periodic realtime data collection driven by the chart page interval timer. Each polling cycle produces ONE flow with 2 steps: ffi_poll (action=15 LOGGING_DATA call, shows items fetched from device) and batch_save (DB write, shows rows saved). trigger_src=realtime is the normal case; trigger_src=batch means batch arrived without a matching FFI call.',
+  TRENDLOG_SYNC:     'Manual trendlog sync triggered via the monitor page. Looks up the device then calls the FFI sync service.',
+  TRENDLOG_REFRESH:  'Trendlog list refresh via Action 17 (GET_WEBVIEW_LIST). Looks up device then calls FFI to get the latest trendlog list.',
 };
 
 // ---------------------------------------------------------------------------
@@ -127,7 +131,7 @@ const useStyles = makeStyles({
     boxSizing: 'border-box',
   },
   rootWithDetail: {
-    gridTemplateColumns: '180px 720px 1fr',
+    gridTemplateColumns: '180px 1fr 500px',
   },
   // Shared panel
   panel: {
@@ -175,9 +179,9 @@ const useStyles = makeStyles({
   },
   typeItem: {
     display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: '8px 10px 8px 14px',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    padding: '7px 10px 7px 14px',
     cursor: 'pointer',
     userSelect: 'none',
     borderRadius: '0',
@@ -191,9 +195,9 @@ const useStyles = makeStyles({
     backgroundColor: '#e8f4fd',
     ':hover': { backgroundColor: '#dde8f7' },
   },
-  typeName: { fontSize: '13px', fontWeight: 500, color: '#323130', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  typeName: { fontSize: '12px', fontWeight: 500, color: '#323130', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' },
   typeNameActive: { color: '#0f6cbd', fontWeight: 600 },
-  typeSubtext: { fontSize: '11px', color: '#8a8886', flexShrink: 0, marginLeft: '6px' },
+  typeSubtext: { fontSize: '10px', color: '#8a8886', marginTop: '1px' },
   typeIndicator: {
     position: 'absolute',
     left: '0',
@@ -287,6 +291,12 @@ const useStyles = makeStyles({
     color: '#24292f',
     flexWrap: 'nowrap',
     overflow: 'hidden',
+    cursor: 'help',
+    borderRadius: '4px',
+    padding: '2px 4px',
+    width: '100%',
+    boxSizing: 'border-box',
+    ':hover': { backgroundColor: '#f0f4f8' },
   },
   detailBarSep: {
     color: '#ccc',
@@ -371,6 +381,7 @@ const FlowDetailPanel: React.FC<{ flowId: string; onClose: () => void }> = ({ fl
   const [payloadLoading, setPayloadLoading] = useState<Record<number, boolean>>({});
   const [drawerOpen, setDrawerOpen]   = useState(false);
   const [drawerSeq, setDrawerSeq]     = useState<number | null>(null);
+  const [infoVisible, setInfoVisible] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -429,8 +440,12 @@ const FlowDetailPanel: React.FC<{ flowId: string; onClose: () => void }> = ({ fl
       {flow && (
         <>
           {/* Flow metadata — compact one-line bar */}
-          <div className={s.detailHeader}>
-            <div className={s.detailBar}>
+          <div className={s.detailHeader} style={{ position: 'relative' }}>
+            <div
+              className={s.detailBar}
+              onMouseEnter={() => setInfoVisible(true)}
+              onMouseLeave={() => setInfoVisible(false)}
+            >
               <span className={s.detailFlowId} style={{ fontFamily: 'monospace', fontSize: '10.5px', color: '#605e5c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1 }}>{flow.flow_id}</span>
               {flow.hostname && <>
                 <span className={s.detailBarSep}>|</span>
@@ -441,6 +456,21 @@ const FlowDetailPanel: React.FC<{ flowId: string; onClose: () => void }> = ({ fl
               <span className={s.detailBarLabel}>Started</span>&nbsp;
               <span className={s.detailBarValue}>{fmtTime(flow.started_at)}</span>
             </div>
+            {infoVisible && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0,
+                backgroundColor: '#1e2a3a', color: '#e2e8f0',
+                padding: '8px 12px', borderRadius: '0 0 4px 4px',
+                fontSize: '11px', fontFamily: 'monospace', lineHeight: '1.8',
+                zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.35)',
+                borderTop: '1px solid #2d3f55',
+              }}>
+                <div><span style={{ color: '#6b9fd4' }}>ID:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>{flow.flow_id}</div>
+                {flow.hostname && <div><span style={{ color: '#6b9fd4' }}>Host:&nbsp;&nbsp;&nbsp;</span>{flow.hostname}</div>}
+                <div><span style={{ color: '#6b9fd4' }}>Started:&nbsp;</span>{fmtTime(flow.started_at)}</div>
+                {flow.trigger_src && <div><span style={{ color: '#6b9fd4' }}>Trigger:&nbsp;</span>{flow.trigger_src}</div>}
+              </div>
+            )}
           </div>
 
           {/* Step list */}
@@ -608,8 +638,8 @@ export const FlowLogTab: React.FC = () => {
               className={mergeClasses(s.typeItem, selectedType === t.flow_type && s.typeItemActive)}
               onClick={() => setSelectedType(t.flow_type)}>
               {selectedType === t.flow_type && <span className={s.typeIndicator} />}
-              <span style={{ flex: 1, display: 'flex', alignItems: 'center', overflow: 'hidden', minWidth: 0, gap: '3px' }}>
-                <span className={mergeClasses(s.typeName, selectedType === t.flow_type && s.typeNameActive)} style={{ flex: 'none' }}>
+              <div style={{ display: 'flex', alignItems: 'center', width: '100%', minWidth: 0, gap: '2px' }}>
+                <span className={mergeClasses(s.typeName, selectedType === t.flow_type && s.typeNameActive)}>
                   {t.flow_type}
                 </span>
                 {FLOW_TYPE_DESC[t.flow_type] && (
@@ -620,7 +650,7 @@ export const FlowLogTab: React.FC = () => {
                       onClick={(e) => e.stopPropagation()} />
                   </Tooltip>
                 )}
-              </span>
+              </div>
               <span className={s.typeSubtext}>{t.count.toLocaleString()} flows</span>
             </div>
           ))}
