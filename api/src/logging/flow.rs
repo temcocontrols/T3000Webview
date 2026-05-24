@@ -221,7 +221,7 @@ impl FlowHandle {
 // File writer for FFI steps
 // ---------------------------------------------------------------------------
 
-/// Write `details` to `T3WebLog/detail/YYYY-MM/{flow_id}_{seq}.txt`.
+/// Write `details` to `T3WebLog/YYYY-MM/MMDD/{flow_id}_{seq}.txt`.
 /// Returns the file path on success, or `None` if `details` is empty or write fails.
 async fn write_detail_file(
     flow_id: &str,
@@ -233,9 +233,11 @@ async fn write_detail_file(
         _ => return None,
     };
 
-    let month = Local::now().format("%Y-%m").to_string();
+    let now = Local::now();
+    let month = now.format("%Y-%m").to_string();
+    let day   = now.format("%m%d").to_string();
     let runtime_path = crate::constants::get_t3000_runtime_path();
-    let dir = runtime_path.join("T3WebLog").join("detail").join(&month);
+    let dir = runtime_path.join("T3WebLog").join(&month).join(&day);
     let file_name = format!("{}_{}.txt", flow_id, seq);
     let file_path = dir.join(&file_name);
 
