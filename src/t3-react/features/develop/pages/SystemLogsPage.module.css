@@ -81,7 +81,7 @@
 }
 
 .fileList::-webkit-scrollbar {
-  width: 6px !important;
+  width: 4px;
 }
 
 .fileList::-webkit-scrollbar-track {
@@ -188,7 +188,24 @@
   padding: 12px 16px;
   background-color: #1e1e1e;
   color: #d4d4d4;
-  /* webkit fallbacks below */
+}
+
+.logViewer::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.logViewer::-webkit-scrollbar-track {
+  background: #2d2d2d;
+}
+
+.logViewer::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 2px;
+}
+
+.logViewer::-webkit-scrollbar-thumb:hover {
+  background: #888;
 }
 
 .logLine {

@@ -519,6 +519,8 @@ async fn clear_all_flows(State(state): State<T3AppState>) -> Response {
         "DELETE FROM T3_FLOW_STEP".to_owned())).await;
     let _ = db.execute(Statement::from_string(sea_orm::DatabaseBackend::Sqlite,
         "DELETE FROM T3_FLOW".to_owned())).await;
+    let _ = db.execute(Statement::from_string(sea_orm::DatabaseBackend::Sqlite,
+        "DELETE FROM T3_APP_LOG".to_owned())).await;
 
     Json(PurgeResult {
         deleted_flows: flow_count,

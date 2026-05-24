@@ -714,12 +714,13 @@ export const LogsPage: React.FC = () => {
         fetch(`${API_BASE_URL}/api/flows/clear-all`, { method: 'POST' }),
         fetch(`${API_BASE_URL}/api/develop/logs/clear`, { method: 'POST' }),
       ]);
+      loadTopSummary();
     } catch (e) {
       console.error('Clear all failed:', e);
     } finally {
       setClearing(false);
     }
-  }, []);
+  }, [loadTopSummary]);
 
   const toggleLevelFilter = (nextLevel: string) => {
     setActiveLevelFilter((prev) => (prev === nextLevel ? '' : nextLevel));

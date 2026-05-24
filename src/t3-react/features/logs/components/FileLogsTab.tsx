@@ -98,7 +98,8 @@ export const FileLogsTab: React.FC<FileLogsTabProps> = ({ headerPrefix }) => {
     if (filename.includes('T3_Webview_FFI_')) return { category: 'ffi', icon: 'plug', displayName: 'FFI Operations' };
     if (filename.includes('T3_Webview_Initialize_')) return { category: 'initialize', icon: 'rocket', displayName: 'Initialize' };
     if (filename.includes('T3_Webview_Socket_')) return { category: 'socket', icon: 'connector', displayName: 'Socket Logs' };
-    return { category: 'all', icon: 'document', displayName: 'Other' };
+    // Unrecognized file — show the actual filename (without .txt extension) instead of a generic "Other" label
+    return { category: 'all', icon: 'document', displayName: filename.replace(/\.txt$/i, '') };
   };
 
   /**
@@ -285,7 +286,7 @@ export const FileLogsTab: React.FC<FileLogsTabProps> = ({ headerPrefix }) => {
         <Menu>
           <MenuTrigger disableButtonEnhancement>
             <Button appearance="subtle" icon={<CalendarRegular />} size="small" style={{ fontSize: '12px' }}>
-              {availableDates.find(d => d.path === selectedDate)?.displayDate || selectedDate || 'Select Date'}
+              {availableDates.find(d => d.path === selectedDate)?.path.split('/')[0] || selectedDate?.split('/')[0] || 'Select Date'}
             </Button>
           </MenuTrigger>
           <MenuPopover>
@@ -295,7 +296,7 @@ export const FileLogsTab: React.FC<FileLogsTabProps> = ({ headerPrefix }) => {
               ) : (
                 availableDates.map((date) => (
                   <MenuItem key={date.path} onClick={() => setSelectedDate(date.path)} style={{ fontSize: '12px' }}>
-                    {date.displayDate}
+                    {date.path.split('/')[0]}
                     {date.fileCount > 0 && (
                       <span style={{ color: '#605e5c', marginLeft: 6 }}>
                         {date.fileCount} file{date.fileCount !== 1 ? 's' : ''} • {formatSize(date.totalSize)}
