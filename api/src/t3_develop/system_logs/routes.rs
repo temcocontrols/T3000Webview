@@ -125,13 +125,12 @@ pub async fn get_files(Query(query): Query<FilesQuery>) -> impl IntoResponse {
     (StatusCode::OK, Json(files))
 }
 
-/// Get T3WebLog path
+/// Get T3WebLog path — delegates to constants::get_t3000_log_path()
+/// which resolves TEMCO_T3000_PATH env var → dev relative path → exe dir.
 fn get_t3weblog_path() -> PathBuf {
     std::env::var("T3WEBLOG_PATH")
         .map(PathBuf::from)
-        .unwrap_or_else(|_| {
-            PathBuf::from(r"D:\1025\github\temcocontrols\T3000_Building_Automation_System\T3000 Output\Debug\T3WebLog")
-        })
+        .unwrap_or_else(|_| crate::constants::get_t3000_log_path())
 }
 
 /// Get log file content
