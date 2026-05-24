@@ -67,6 +67,12 @@ pub async fn get_dates() -> impl IntoResponse {
 
             let year_month = year_month_entry.file_name().to_string_lossy().to_string();
 
+            // Skip non-date directories (e.g. "detail/", "backup/").
+            // Valid year-month dirs match "YYYY-MM" exactly.
+            if !is_year_month_dir(&year_month) {
+                continue;
+            }
+
             // Read day folders within year-month
             if let Ok(days) = fs::read_dir(year_month_entry.path()) {
                 for day_entry in days.flatten() {
@@ -75,24 +81,57 @@ pub async fn get_dates() -> impl IntoResponse {
                     }
 
                     let day = day_entry.file_name().to_string_lossy().to_string();
-                    let path = format!("{}/{}", year_month, day);
 
-                    // Parse date for display (e.g., "2026-01/0121" -> "Jan 21, 2026")
+                    // Skip non-MMDD day folders (4 digits)
+                    if day.len() != 4 || !day.chars().all(|c| c.is_ascii_digit()) {
+                        continue;
+                    }
+
+                    let path = format!("{}/{}", year_month, day);
                     let display_date = format_date_display(&year_month, &day);
 
-                    dates.push(DateFolder {
-                        path,
-                        display_date,
-                    });
+                    // Count files and sum size for this day folder
+                    let (file_count, total_size) = count_files_in_dir(&day_entry.path());
+
+                    dates.push(serde_json::json!({
+                        "path": path,
+                        "displayDate": display_date,
+                        "fileCount": file_count,
+                        "totalSize": total_size,
+                    }));
                 }
             }
         }
     }
 
-    // Sort by date descending (newest first)
-    dates.sort_by(|a, b| b.path.cmp(&a.path));
+    // Sort by path descending (newest first)
+    dates.sort_by(|a, b| b["path"].as_str().unwrap_or("").cmp(a["path"].as_str().unwrap_or("")));
 
     (StatusCode::OK, Json(dates))
+}
+
+/// Returns true for "YYYY-MM" directory names only.
+fn is_year_month_dir(name: &str) -> bool {
+    name.len() == 7
+        && name.as_bytes()[4] == b'-'
+        && name[..4].bytes().all(|b| b.is_ascii_digit())
+        && name[5..].bytes().all(|b| b.is_ascii_digit())
+}
+
+/// Count .txt files and sum their sizes in a directory.
+fn count_files_in_dir(dir: &std::path::Path) -> (usize, u64) {
+    let mut count = 0usize;
+    let mut size = 0u64;
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_file() && p.extension().and_then(|e| e.to_str()) == Some("txt") {
+                count += 1;
+                size += entry.metadata().map(|m| m.len()).unwrap_or(0);
+            }
+        }
+    }
+    (count, size)
 }
 
 /// Get log files for a specific date
