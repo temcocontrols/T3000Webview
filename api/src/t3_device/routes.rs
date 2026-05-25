@@ -2680,7 +2680,7 @@ async fn save_realtime_trendlog_batch(
     // Retrieve (and remove) the pending flow left by the FFI call
     let pending_fh: Option<crate::logging::flow::FlowHandle> = {
         let mut map = crate::t3_device::t3_ffi_api_service::PENDING_REALTIME_FLOWS.lock().await;
-        map.remove(&(flow_panel, flow_device))
+        map.remove(&(flow_panel, flow_device)).map(|(fh, _)| fh)
     };
     // Fallback: create standalone 1-step flow when batch arrives without FFI
     let flow_opt: Option<crate::logging::flow::FlowHandle> = if pending_fh.is_some() {

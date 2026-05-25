@@ -20,6 +20,12 @@ import {
   Badge,
   Tooltip,
   tokens,
+  Dialog,
+  DialogSurface,
+  DialogTitle,
+  DialogBody,
+  DialogActions,
+  DialogContent,
 } from '@fluentui/react-components';
 import {
   SettingsRegular,
@@ -565,6 +571,8 @@ export const LogsPage: React.FC = () => {
     error?: string;
   } | null>(null);
   const [clearing, setClearing] = useState(false);
+  const [clearKey, setClearKey] = useState(0);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   useEffect(() => {
     const styleId = 'logs-page-drawer-size-override';
@@ -707,13 +715,21 @@ export const LogsPage: React.FC = () => {
   };
 
   const handleClearAll = useCallback(async () => {
-    if (!window.confirm('Clear ALL flow logs and file logs? This cannot be undone.')) return;
+    setShowClearConfirm(false);
     setClearing(true);
+    // Immediately wipe local state for instant visual feedback
+    setLogData(null);
+    setLatestLog(null);
+    setSummary({ total: 0, errorCount: 0, warnCount: 0, categoryCount: 0, lastUpdated: '--:--:--' });
+    setAvailableCategories([]);
+    setCategoryCounts({});
     try {
       await Promise.all([
         fetch(`${API_BASE_URL}/api/flows/clear-all`, { method: 'POST' }),
         fetch(`${API_BASE_URL}/api/develop/logs/clear`, { method: 'POST' }),
       ]);
+      // Bump clearKey AFTER the clear completes so tabs remount and fetch fresh (empty) data
+      setClearKey((k) => k + 1);
       loadTopSummary();
     } catch (e) {
       console.error('Clear all failed:', e);
@@ -836,18 +852,50 @@ export const LogsPage: React.FC = () => {
           Advanced
         </Button>
 
-        {/* Clear All — removes all flow logs and file logs */}
+        {/* Clear All — opens confirmation dialog */}
         <Button
           size="small"
           appearance="subtle"
           icon={clearing ? <Spinner size="tiny" /> : <DeleteRegular style={{ fontSize: '16px' }} />}
           disabled={clearing}
           style={{ fontSize: '12px', color: tokens.colorPaletteRedForeground1 }}
-          onClick={handleClearAll}
+          onClick={() => setShowClearConfirm(true)}
         >
           {clearing ? 'Clearing…' : 'Clear All'}
         </Button>
       </div>
+
+      {/* Clear All confirmation dialog */}
+      <Dialog open={showClearConfirm} onOpenChange={(_, d) => setShowClearConfirm(d.open)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle style={{ fontSize: '16px' }}>Clear All Logs?</DialogTitle>
+            <DialogContent>
+              <p style={{ margin: '8px 0 4px', color: tokens.colorNeutralForeground1 }}>
+                This will permanently delete:
+              </p>
+              <ul style={{ margin: '4px 0 12px', paddingLeft: '20px', color: tokens.colorNeutralForeground2, fontSize: '13px' }}>
+                <li>All flow logs (T3_FLOW, T3_FLOW_STEP)</li>
+                <li>All activity logs (T3_APP_LOG)</li>
+                <li>All log files on disk (T3WebLog folder)</li>
+              </ul>
+              <p style={{ margin: 0, fontWeight: 600, color: tokens.colorPaletteRedForeground1, fontSize: '13px' }}>
+                This cannot be undone.
+              </p>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" style={{ fontSize: '13px', fontWeight: 400 }} onClick={() => setShowClearConfirm(false)}>Cancel</Button>
+              <Button
+                appearance="primary"
+                style={{ backgroundColor: tokens.colorPaletteRedBackground3, border: 'none', fontSize: '13px', fontWeight: 400 }}
+                onClick={handleClearAll}
+              >
+                Yes, Clear All
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
 
       {/* ── Body: switches based on mainView dropdown ── */}
       <div className={s.body}>
@@ -855,14 +903,14 @@ export const LogsPage: React.FC = () => {
         {/* File Logs full-width view */}
         {mainView === 'files' && (
           <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <FileLogsTab />
+            <FileLogsTab key={clearKey} />
           </div>
         )}
 
         {/* Flow Logs full-width view */}
         {mainView === 'flows' && (
           <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <FlowLogTab />
+            <FlowLogTab key={clearKey} />
           </div>
         )}
 
@@ -987,6 +1035,7 @@ export const LogsPage: React.FC = () => {
 
           <div className={s.content}>
             <ActivityLogTab
+              key={clearKey}
               externalLevelFilter={activeLevelFilter}
               onLevelFilterChange={setActiveLevelFilter}
               externalCategoryFilter={activeCategoryFilter}

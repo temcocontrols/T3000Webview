@@ -540,6 +540,18 @@ async fn clear_all_flows(State(state): State<T3AppState>) -> Response {
     let _ = db.execute(Statement::from_string(sea_orm::DatabaseBackend::Sqlite,
         "DELETE FROM T3_APP_LOG".to_owned())).await;
 
+    // Also clear MSSQL T3_APP_LOG when a center-DB pool is active.
+    // The event-log endpoint merges both sources, so clearing only SQLite
+    // leaves all MSSQL entries visible after clear.
+    if let Some(pool) = crate::server_db_writer::get_server_mssql_pool() {
+        if let Ok(mut conn) = pool.get().await {
+            let _ = conn.execute(
+                "IF OBJECT_ID('T3_APP_LOG', 'U') IS NOT NULL DELETE FROM T3_APP_LOG",
+                &[],
+            ).await;
+        }
+    }
+
     Json(PurgeResult {
         deleted_flows: flow_count,
         deleted_steps: step_count,

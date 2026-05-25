@@ -26,7 +26,9 @@ use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA};
 
 /// Pending TRENDLOG_POLL flows: FFI action=15 starts the flow (step 0),
 /// batch save continues it (step 1 + done). Keyed by (panel_id, serial_number).
-pub static PENDING_REALTIME_FLOWS: Lazy<tokio::sync::Mutex<HashMap<(i32, i32), crate::logging::flow::FlowHandle>>> =
+/// The Instant is the insertion time; entries older than 60 s are reaped on
+/// the next insert so they don't stay stuck as "running" forever.
+pub static PENDING_REALTIME_FLOWS: Lazy<tokio::sync::Mutex<HashMap<(i32, i32), (crate::logging::flow::FlowHandle, std::time::Instant)>>> =
     Lazy::new(|| tokio::sync::Mutex::new(HashMap::new()));
 
 // FFI function type
@@ -360,8 +362,29 @@ async fn handle_ffi_call(
                     fh.step_ffi(&db, "ffi_poll", "info", "ffi", "ok", elapsed,
                         &format!("{} items fetched — panel={} device={}", item_count, panel_id, sn),
                         Some(&ffi_detail)).await;
-                    // Store for batch_save step — do NOT call done() yet
-                    PENDING_REALTIME_FLOWS.lock().await.insert((panel_id, sn), fh);
+                    // Store for batch_save step — do NOT call done() yet.
+                    // Before inserting, close any superseded entry for this key and reap
+                    // entries older than 60 s so they don't stay stuck as "running".
+                    {
+                        let mut map = PENDING_REALTIME_FLOWS.lock().await;
+                        // Close the previous entry for the same (panel, sn) if still pending.
+                        if let Some((old_fh, _)) = map.remove(&(panel_id, sn)) {
+                            old_fh.done(&db, "superseded").await;
+                        }
+                        // Reap stale entries (> 60 s old) across all keys.
+                        let timeout = std::time::Duration::from_secs(60);
+                        let stale_keys: Vec<(i32, i32)> = map
+                            .iter()
+                            .filter(|(_, (_, t))| t.elapsed() > timeout)
+                            .map(|(k, _)| *k)
+                            .collect();
+                        for key in stale_keys {
+                            if let Some((stale_fh, _)) = map.remove(&key) {
+                                stale_fh.done(&db, "timeout").await;
+                            }
+                        }
+                        map.insert((panel_id, sn), (fh, std::time::Instant::now()));
+                    }
                 }
             }
 
