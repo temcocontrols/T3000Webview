@@ -2669,7 +2669,7 @@ async fn save_realtime_trendlog_batch(
     }
 
     // Flow logging (best-effort)
-    // Try to resume the pending TRENDLOG_REALTIME flow started by the preceding
+    // Try to resume the pending TRENDLOG_POLL flow started by the preceding
     // FFI action=15 call. Falls back to a new standalone flow if none is found.
     let t0 = std::time::Instant::now();
     let flow_device  = payload.first().map(|p| p.serial_number).unwrap_or(0);
@@ -2687,7 +2687,7 @@ async fn save_realtime_trendlog_batch(
         pending_fh
     } else if let Some(ref db) = log_db {
         Some(crate::logging::flow::FlowHandle::start(
-            db, "TRENDLOG_REALTIME", "batch", 1,
+            db, "TRENDLOG_POLL", "batch", 1,
             Some(&format!("device={} panel={} pts={} interval={}s",
                 flow_device, flow_panel, flow_pts, flow_interval)),
         ).await)
