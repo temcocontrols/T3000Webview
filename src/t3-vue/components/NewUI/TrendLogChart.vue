@@ -2401,7 +2401,18 @@
       // Process new data for chart data points
       // Batch data is APPENDED to existing data, not replacing it
       const chartDataFormat = newPanelsData.flat()
-      updateChartWithNewData(chartDataFormat)
+      // 🔥 FIX: Only plot data points after initial history has loaded.
+      // The first panelsData update is from Action 0 (panel snapshot) which reflects the device's
+      // CURRENT value at page-load time (e.g. 20.00°C). Without this guard, that snapshot gets
+      // timestamped with new Date() and creates a spurious spike on the chart that doesn't match
+      // the historical DB records (which correctly show 14.00 at that time).
+      // Action 15 (LOGGING_DATA) real-time polls arrive AFTER hasLoadedInitialHistory becomes true,
+      // so they are unaffected.
+      if (hasLoadedInitialHistory.value) {
+        updateChartWithNewData(chartDataFormat)
+      } else {
+        LogUtil.Debug('⏭️ T3000_Data watcher: Skipping chart update — initial history not yet loaded (prevents Action 0 snapshot spike)')
+      }
 
       // Store real-time data to database if in real-time mode
       // 🔥 FIX: Only save Action 15 real-time data, NOT Action 0 initial data
@@ -4413,8 +4424,11 @@
             crosshairEl.style.zIndex = '999'
             document.body.appendChild(crosshairEl)
 
-            // Derive the hover time from the scale (avoids stale/clamped label from out-of-range points)
-            const hoverTimestamp = xScale?.getValueForPixel?.(caretCanvasX) ?? uniquePoints[0].parsed?.x
+            // Derive the hover time from the SNAPPED data point (not cursor position).
+            // Using caretCanvasX produced a mismatch: time label showed cursor time (e.g. 03:39:00)
+            // while values were taken from the nearest real data point (e.g. 03:38:45), making it
+            // appear as if data existed at a timestamp where the C++ returned an empty response.
+            const hoverTimestamp = snapPoint.parsed?.x ?? xScale?.getValueForPixel?.(caretCanvasX) ?? uniquePoints[0].parsed?.x
             const hoverDate = hoverTimestamp ? new Date(hoverTimestamp) : null
             const timeLabel = hoverDate
               ? hoverDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -9912,6 +9926,48 @@
       // Break when gap > 3× the recording interval, but never below 2 minutes
       const gapThresholdMs = Math.max(effectiveIntervalMs * 3, 2 * 60 * 1000)
 
+      // ── Isolated-spike filter ──────────────────────────────────────────────
+      // Replace single-point outliers with null so they don't draw a spike line.
+      // A point is an isolated spike when:
+      //   • it deviates from the series median by more than 5× MAD, AND
+      //   • both its nearest real neighbors agree with each other (they are stable),
+      //     i.e. the jump to EACH neighbor is large but the neighbors themselves are close.
+      // This catches cases like one Action-0 snapshot value (20.00) surrounded by
+      // stable historical readings (14.00) without affecting genuine step-changes
+      // where the value legitimately moves and stays at the new level.
+      const spikeFilteredData = (() => {
+        if (realOnly.length < 5) return sortedAll // too few points to judge reliably
+        const sortedVals = realOnly.map(p => Number(p.value)).sort((a, b) => a - b)
+        const medianVal = sortedVals[Math.floor(sortedVals.length / 2)]
+        const absDevs = sortedVals.map(v => Math.abs(v - medianVal)).sort((a, b) => a - b)
+        const mad = absDevs[Math.floor(absDevs.length / 2)]
+        // When MAD=0 (>50% of values are identical at the median), spikeThreshold becomes 0.
+        // The remaining logic still correctly handles this case:
+        //   - Values equal to the median: |v - median| = 0 ≤ 0 → kept
+        //   - Extreme outlier (e.g. 0xCCCCCC garbage): |v - median| > 0 → checked → filtered
+        //   - Genuine step-change (v stays at new level): next neighbor ≠ prev neighbor
+        //     so the "both neighbors agree" condition fails → NOT filtered
+        const spikeThreshold = mad * 5
+        return sortedAll.map((pt, idx) => {
+          if (pt.value === null || pt.value === undefined || isNaN(Number(pt.value))) return pt
+          const v = Number(pt.value)
+          if (Math.abs(v - medianVal) <= spikeThreshold) return pt // within normal range
+          // Find nearest real neighbors (skip null entries)
+          const prev = sortedAll.slice(0, idx).reverse().find(p => p.value !== null && p.value !== undefined && !isNaN(Number(p.value)))
+          const next = sortedAll.slice(idx + 1).find(p => p.value !== null && p.value !== undefined && !isNaN(Number(p.value)))
+          if (!prev || !next) return pt // no neighbors — keep edge points
+          const pv = Number(prev.value)
+          const nv = Number(next.value)
+          // Isolated spike: both jumps are large, but the two neighbors agree with each other
+          if (Math.abs(v - pv) > spikeThreshold && Math.abs(v - nv) > spikeThreshold && Math.abs(pv - nv) <= spikeThreshold) {
+            LogUtil.Debug(`🔕 Spike suppressed in ${series.name} at ${new Date(pt.timestamp).toLocaleTimeString()}: value=${v}, neighbors=${pv}/${nv}, threshold=${spikeThreshold.toFixed(2)}`)
+            return { ...pt, value: null }
+          }
+          return pt
+        })
+      })()
+      // ──────────────────────────────────────────────────────────────────────
+
       const MAX_NULL_RUN = 5
       const dataWithGaps: Array<{ x: number; y: number | null }> = []
       // Band-transform: look up which band this series belongs to.
@@ -9921,8 +9977,8 @@
 
       let lastRealX: number | null = null
       let j = 0
-      while (j < sortedAll.length) {
-        const pt = sortedAll[j]
+      while (j < spikeFilteredData.length) {
+        const pt = spikeFilteredData[j]
         const isNullPt = pt.value === null || pt.value === undefined || isNaN(Number(pt.value))
         if (!isNullPt) {
           // Time-gap break: insert null spacer if jump is too large
@@ -9936,8 +9992,8 @@
           // Count the full consecutive null run starting at j
           let nullCount = 0
           const runStart = j
-          while (j < sortedAll.length) {
-            const npt = sortedAll[j]
+          while (j < spikeFilteredData.length) {
+            const npt = spikeFilteredData[j]
             if (npt.value === null || npt.value === undefined || isNaN(Number(npt.value))) {
               nullCount++
               j++
@@ -9945,8 +10001,8 @@
           }
           if (nullCount >= MAX_NULL_RUN) {
             // Insert one null spacer at the midpoint to break the line.
-            const prevX = runStart > 0 ? sortedAll[runStart - 1].timestamp : sortedAll[runStart].timestamp
-            const nextX = j < sortedAll.length ? sortedAll[j].timestamp : prevX
+            const prevX = runStart > 0 ? spikeFilteredData[runStart - 1].timestamp : spikeFilteredData[runStart].timestamp
+            const nextX = j < spikeFilteredData.length ? spikeFilteredData[j].timestamp : prevX
             dataWithGaps.push({ x: (prevX + nextX) / 2, y: null })
             lastRealX = null // reset so next real point doesn't double-break
           }
