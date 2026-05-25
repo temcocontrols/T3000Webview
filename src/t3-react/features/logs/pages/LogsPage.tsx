@@ -633,9 +633,8 @@ export const LogsPage: React.FC = () => {
 
   useEffect(() => {
     loadTopSummary();
-    // Interval disabled — fetching 5000 entries repeatedly is too expensive
-    // const timer = window.setInterval(loadTopSummary, 15000);
-    // return () => window.clearInterval(timer);
+    const timer = window.setInterval(loadTopSummary, 15000);
+    return () => window.clearInterval(timer);
   }, [loadTopSummary]);
 
   // Load logging-enabled state
