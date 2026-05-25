@@ -660,7 +660,7 @@ fn category_filter_variants(category: &str) -> Vec<String> {
         ],
         "POLL" => vec![
             "POLL".to_string(),
-            "SYNC_CYCLE".to_string(),
+            "TRENDLOG_BACKEND".to_string(),
             "SAMPLING".to_string(),
             "FFI_POLL".to_string(),
             "T3_WEBVIEW_POLL".to_string(),
@@ -843,7 +843,7 @@ fn parse_bool_config(v: &str) -> bool {
 /// Write one entry to T3_APP_LOG.
 ///
 /// Routing:
-///   • High-volume sync categories (SYNC_CYCLE, SAMPLING, …)
+///   • High-volume sync categories (TRENDLOG_BACKEND, SAMPLING, …)
 ///       – MSSQL pool active → write to MSSQL only (fire-and-forget).
 ///       – MSSQL pool down   → fallback to local SQLite so the Activity Log
 ///                             still shows "MSSQL unavailable" context.
@@ -1077,7 +1077,7 @@ async fn get_event_log(
     let cat_filter   = q.category.as_deref().filter(|s| !s.is_empty());
 
     // ── When MSSQL pool is active: merge rows from both stores ────────────────
-    // High-volume sync logs (SYNC_CYCLE, SAMPLING, …) live in MSSQL.
+    // High-volume sync logs (TRENDLOG_BACKEND, SAMPLING, …) live in MSSQL.
     // System/config logs (DB_CONFIG, SERVER_EVENT, …) live in local SQLite.
     // The two sets are disjoint, so no deduplication is needed.
     if let Some(pool) = crate::server_db_writer::get_server_mssql_pool() {

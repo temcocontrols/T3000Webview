@@ -25,9 +25,9 @@ fn category_filter_variants(category: &str) -> Vec<String> {
     match upper.as_str() {
         "CONFIG" | "DB_CONFIG" => vec!["CONFIG".to_string(), "DB_CONFIG".to_string()],
         "STARTUP" | "SERVER_EVENT" => vec!["STARTUP".to_string(), "SERVER_EVENT".to_string()],
-        "POLL" | "SYNC_CYCLE" | "SAMPLING" | "FFI_POLL" => vec![
+        "POLL" | "TRENDLOG_BACKEND" | "SAMPLING" | "FFI_POLL" => vec![
             "POLL".to_string(),
-            "SYNC_CYCLE".to_string(),
+            "TRENDLOG_BACKEND".to_string(),
             "SAMPLING".to_string(),
             "FFI_POLL".to_string(),
         ],
