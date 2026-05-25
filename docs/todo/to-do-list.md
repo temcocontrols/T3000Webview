@@ -80,3 +80,8 @@ Tool: Dr explain
 
 ## 2026-05-05
 Running progs on the win pc
+
+
+## 2026-05-25
+Zoom all for graphic
+https://forums.temcocontrols.com/t/graphics-elements-not-showing/3208/3
