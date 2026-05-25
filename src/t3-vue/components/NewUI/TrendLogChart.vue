@@ -12549,7 +12549,7 @@
       //   trendlog_id_string: trendlog_id.toString()
       // })
 
-      const completeResult = await trendlogAPI.initializeCompleteFFI(sn, panel_id, trendlog_id.toString(), chartTitle.value)
+      const completeResult = await trendlogAPI.initializeCompleteFFI(sn, panel_id, trendlog_id.toString(), chartTitle.value, _initFlowId ?? undefined)
 
       // LogUtil.Debug('🔥 FFI DEBUG: Complete FFI result received', {
       //   completeResult
@@ -13593,6 +13593,24 @@
       sn: route.query.sn ?? null,
       hasItemData: !!props.itemData,
     })
+    const _allDataRaw = route.query.all_data
+    const _allDataLen = typeof _allDataRaw === 'string'
+      ? _allDataRaw.length
+      : Array.isArray(_allDataRaw)
+        ? _allDataRaw.join('').length
+        : 0
+    await _flowStep('cpp_launch_url',
+      `sn=${route.query.sn ?? 'none'} panel=${route.query.panel_id ?? 'none'} trendlog=${route.query.trendlog_id ?? 'none'} has_all_data=${_allDataLen > 0}`,
+      {
+        source: 'c++',
+        cxxUrlPattern: 'http://localhost:3003/#/trend-log?sn={sn}&panel_id={panel}&trendlog_id={trendlog}&all_data={urlEncodedJson}',
+        sn: route.query.sn ?? null,
+        panelId: route.query.panel_id ?? null,
+        trendlogId: route.query.trendlog_id ?? null,
+        hasAllData: _allDataLen > 0,
+        allDataLength: _allDataLen,
+      }
+    )
 
     try {
       checkDbStatus()

@@ -132,12 +132,12 @@ export function useTrendlogDataAPI() {
    * @param trendlog_id - TrendLog identifier (numeric)
    * @returns Promise with sync result
    */
-  const syncTrendlogWithFFI = async (device_id: number, panel_id: number, trendlog_id: number): Promise<any> => {
+  const syncTrendlogWithFFI = async (device_id: number, panel_id: number, trendlog_id: number, flow_id?: string | null): Promise<any> => {
     try {
       const response = await fetch(`${TRENDLOG_API_BASE_URL}/api/t3_device/trendlogs/${trendlog_id}/sync-ffi`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ device_id, panel_id })
+        body: JSON.stringify({ device_id, panel_id, flow_id: flow_id ?? undefined })
       })
 
       if (!response.ok) {
@@ -234,7 +234,7 @@ export function useTrendlogDataAPI() {
    * @param trendlog_id - TrendLog identifier (string like "MONITOR0" or "0")
    * @returns Promise with initial TrendLog info
    */
-  const createInitialTrendlog = async (serial_number: number, panel_id: number, trendlog_id: string, chart_title?: string): Promise<any> => {
+  const createInitialTrendlog = async (serial_number: number, panel_id: number, trendlog_id: string, chart_title?: string, flow_id?: string | null): Promise<any> => {
     try {
       const response = await fetch(`${TRENDLOG_API_BASE_URL}/api/t3_device/trendlogs/${trendlog_id}/init`, {
         method: 'POST',
@@ -242,7 +242,8 @@ export function useTrendlogDataAPI() {
         body: JSON.stringify({
           device_id: serial_number,
           panel_id: panel_id,
-          chart_title: chart_title
+          chart_title: chart_title,
+          flow_id: flow_id ?? undefined
         })
       })
 
@@ -266,15 +267,15 @@ export function useTrendlogDataAPI() {
    * @param trendlog_id - TrendLog identifier (string like "MONITOR0" or "0")
    * @returns Promise with complete TrendLog info
    */
-  const initializeCompleteFFI = async (serial_number: number, panel_id: number, trendlog_id: string, chart_title?: string): Promise<any> => {
+  const initializeCompleteFFI = async (serial_number: number, panel_id: number, trendlog_id: string, chart_title?: string, flow_id?: string | null): Promise<any> => {
     try {
       // Step 1: Create initial record (fast)
-      const initialResult = await createInitialTrendlog(serial_number, panel_id, trendlog_id, chart_title)
+      const initialResult = await createInitialTrendlog(serial_number, panel_id, trendlog_id, chart_title, flow_id)
 
       // Step 2: Sync with FFI for complete info (slower)
       // Convert trendlog_id to numeric for FFI sync
       const numericTrendlogId = parseInt(trendlog_id.replace('MONITOR', '')) || 0
-      const ffiResult = await syncTrendlogWithFFI(serial_number, panel_id, numericTrendlogId)
+      const ffiResult = await syncTrendlogWithFFI(serial_number, panel_id, numericTrendlogId, flow_id)
 
       return {
         initial: initialResult,
