@@ -1714,6 +1714,7 @@
   const dataSource = ref<'realtime' | 'api'>('realtime') // Track data source for timebase changes
   const hasConnectionError = ref(false) // Track connection errors for UI display
   const hasLoadedInitialHistory = ref(false) // Track if initial history has been loaded
+  const realtimePollCount = ref(0) // Count action=15 polls since page load; first 2 may have stale FFI cached values
 
   interface DbStatusState {
     visible: boolean
@@ -2401,32 +2402,19 @@
       // Process new data for chart data points
       // Batch data is APPENDED to existing data, not replacing it
       const chartDataFormat = newPanelsData.flat()
-      // 🔥 FIX: Only plot data points after initial history has loaded.
-      // The first panelsData update is from Action 0 (panel snapshot) which reflects the device's
-      // CURRENT value at page-load time (e.g. 20.00°C). Without this guard, that snapshot gets
-      // timestamped with new Date() and creates a spurious spike on the chart that doesn't match
-      // the historical DB records (which correctly show 14.00 at that time).
-      // Action 15 (LOGGING_DATA) real-time polls arrive AFTER hasLoadedInitialHistory becomes true,
-      // so they are unaffected.
-      if (hasLoadedInitialHistory.value) {
-        updateChartWithNewData(chartDataFormat)
-      } else {
-        LogUtil.Debug('⏭️ T3000_Data watcher: Skipping chart update — initial history not yet loaded (prevents Action 0 snapshot spike)')
-      }
+      // 🔥 FIX: T3000_Data.panelsData is ONLY updated by action=0 (panel snapshot).
+      // Action=0 returns the device's CURRENT value timestamped with new Date(), which creates a
+      // visual spike on the chart (e.g. showing 20.00°C at page-load time when history shows 14.00°C).
+      // Real-time chart updates come exclusively from sendPeriodicBatchRequest (action=15 polling).
+      // Therefore: NEVER update the chart from the T3000_Data watcher.
+      LogUtil.Debug('⏭️ T3000_Data watcher: Skipping chart update — action=0 snapshot data never plotted (use action=15 polling)')
 
-      // Store real-time data to database if in real-time mode
-      // 🔥 FIX: Only save Action 15 real-time data, NOT Action 0 initial data
-      // Skip batch save on initial load - let history load first
-      LogUtil.Info('💾 T3000_Data watcher: Checking storage conditions', {
-        isRealTime: isRealTime.value,
-        chartDataLength: chartDataFormat.length,
-        dataSeriesLength: dataSeries.value?.length || 0,
-        hasLoadedInitialHistory: hasLoadedInitialHistory.value,
-        willStore: isRealTime.value && chartDataFormat.length > 0 && dataSeries.value?.length > 0 && hasLoadedInitialHistory.value
-      })
-
-      // Only batch save after initial history is loaded (prevents blocking history load with Action 0 data)
-      if (isRealTime.value && chartDataFormat.length > 0 && dataSeries.value?.length > 0 && hasLoadedInitialHistory.value) {
+      // NOTE: DB saves are handled exclusively by updateChartWithNewData → storeRealtimeDataToDatabase.
+      // T3000_Data.panelsData is ONLY updated from action=0 (panel snapshot) responses.
+      // Saving from this watcher would write stale snapshot values (e.g. VAR20=39000 instead of
+      // the live action=15 value 14000), creating spurious spikes in the history DB.
+      // The sendPeriodicBatchRequest → updateChartWithNewData path already saves action=15 data correctly.
+      if (false) { // REMOVED: was saving action=0 stale data to DB — do not re-enable
 
         /*
         LogUtil.Info('💾 T3000_Data watcher: Filtering for chart series storage', {
@@ -6636,9 +6624,35 @@
         })
 
         if (validDataItems.length > 0) {
-          LogUtil.Debug('🔍Calling updateChartWithNewData with', validDataItems.length, 'items')
-          updateChartWithNewData(validDataItems)
-          // Batch save is done inside updateChartWithNewData - no duplicate call needed
+          realtimePollCount.value++
+          // The T3000 FFI server caches the last value in memory. On page refresh the first
+          // 1-2 action=15 polls return the stale cached value before the device re-syncs.
+          // Skip both chart display and DB save for those polls to avoid visual spikes.
+          const isStartupPoll = realtimePollCount.value <= 2
+          if (isStartupPoll) {
+            LogUtil.Warn(`⏭️ Action=15 poll #${realtimePollCount.value}: using last known values (FFI startup stale cache — no DB save)`)
+            // Replace each item's raw value with the last known good value from dataSeries.
+            // Keeps the chart line continuous without plotting the stale FFI cached value.
+            const normalId = (v: any) => String(v ?? '').trim().toUpperCase()
+            const itemsWithLastKnown = validDataItems.map(item => {
+              const series = dataSeries.value.find(s =>
+                normalId(s.id) === normalId(item.id) && Number(s.panelId) === Number(item.pid)
+              )
+              const lastKnown = series?.data?.[series.data.length - 1]
+              if (lastKnown?.value != null) {
+                // dataSeries stores scaled values: analog÷1000, digital as-is
+                const isAnalog = Number(item.digital_analog) === 1
+                const rawRestored = isAnalog ? Math.round(lastKnown.value * 1000) : lastKnown.value
+                return { ...item, value: rawRestored }
+              }
+              return item // no history yet — use original value as-is
+            })
+            updateChartWithNewData(itemsWithLastKnown, true) // skipDbSave=true
+          } else {
+            LogUtil.Debug('🔍Calling updateChartWithNewData with', validDataItems.length, 'items')
+            updateChartWithNewData(validDataItems)
+            // Batch save is done inside updateChartWithNewData - no duplicate call needed
+          }
         } else {
           LogUtil.Debug('⚠️ No valid data items - chart will NOT be updated, only scrolled')
         }
@@ -7226,10 +7240,7 @@
             })
 
             updateChartWithNewData(validItems)
-
-            // Store real-time data to database for historical usage
-            LogUtil.Info('💾 GET_ENTRIES: About to call storeRealtimeDataToDatabase')
-            storeRealtimeDataToDatabase(validItems)
+            // NOTE: storeRealtimeDataToDatabase is called inside updateChartWithNewData — no duplicate call needed here
           } else {
             LogUtil.Warn('⚠️ GET_ENTRIES: No valid items to process', {
               totalReceivedItems: msgData.data?.length || 0,
@@ -8515,7 +8526,7 @@
   /**
    * Update chart with new data from GET_ENTRIES response
    */
-  const updateChartWithNewData = (validDataItems: any[]) => {
+  const updateChartWithNewData = (validDataItems: any[], skipDbSave = false) => {
     const traceId = trendlogTrace.getTraceId()
 
     LogUtil.Debug('🔥 updateChartWithNewData CALLED', {
@@ -8890,7 +8901,8 @@
     }
 
     // 💾 Store real-time data to database if in real-time mode (async, non-blocking)
-    if (isRealTime.value && validDataItems.length > 0) {
+    // skipDbSave=true when called from T3000_Data watcher (action=0 snapshot data — must NOT be saved)
+    if (!skipDbSave && isRealTime.value && validDataItems.length > 0) {
       // Fire and forget - don't await, don't block chart updates
       storeRealtimeDataToDatabase(validDataItems).catch(err => {
         LogUtil.Warn('Background batch save failed (non-critical)', err)
@@ -9936,7 +9948,7 @@
       // stable historical readings (14.00) without affecting genuine step-changes
       // where the value legitimately moves and stays at the new level.
       const spikeFilteredData = (() => {
-        if (realOnly.length < 5) return sortedAll // too few points to judge reliably
+        if (realOnly.length < 3) return sortedAll // too few points to judge reliably
         const sortedVals = realOnly.map(p => Number(p.value)).sort((a, b) => a - b)
         const medianVal = sortedVals[Math.floor(sortedVals.length / 2)]
         const absDevs = sortedVals.map(v => Math.abs(v - medianVal)).sort((a, b) => a - b)
