@@ -343,13 +343,19 @@ async fn handle_ffi_call(
                 // so this works even when app_state.t3_device_conn is None (e.g. MSSQL backend).
                 if let Some(db) = crate::db_connection::establish_t3_device_connection().await
                     .map_err(|e| e.to_string()).ok() {
+                    // Truncate response for detail file (cap at 8 KB to avoid huge files)
+                    let response_detail = if response.len() > 8192 {
+                        format!("{}… [truncated {} bytes]", &response[..8192], response.len())
+                    } else {
+                        response.clone()
+                    };
                     let fh = crate::logging::flow::FlowHandle::start(
                         &db, "TRENDLOG_REALTIME", "realtime", 2,
-                        Some(&format!("panel={} device={}", panel_id, sn)),
+                        Some(&format!("panel={} device={} items={}", panel_id, sn, item_count)),
                     ).await;
                     fh.step(&db, "ffi_poll", "info", "ffi", "ok", elapsed,
                         &format!("{} items fetched — panel={} device={}", item_count, panel_id, sn),
-                        None).await;
+                        Some(&response_detail)).await;
                     // Store for batch_save step — do NOT call done() yet
                     PENDING_REALTIME_FLOWS.lock().await.insert((panel_id, sn), fh);
                 }

@@ -2826,6 +2826,18 @@ async fn save_realtime_trendlog_batch(
         }
     };
 
+    let payload_preview_points = payload
+        .iter()
+        .take(20)
+        .map(|p| {
+            serde_json::json!({
+                "point_id": p.point_id,
+                "point_type": p.point_type,
+                "value": p.value,
+            })
+        })
+        .collect::<Vec<_>>();
+
     match T3TrendlogDataService::save_realtime_batch(&db_connection, payload).await {
         Ok(rows_affected) => {
             let success_info = format!(
@@ -2844,10 +2856,20 @@ async fn save_realtime_trendlog_batch(
             .await;
 
             if let (Some(ref db), Some(ref fh)) = (&log_db, &flow_opt) {
+                // Build payload summary for detail file
+                let payload_summary = serde_json::to_string_pretty(&serde_json::json!({
+                    "pts": flow_pts,
+                    "device": flow_device,
+                    "panel": flow_panel,
+                    "interval_s": flow_interval,
+                    "rows_saved": rows_affected,
+                    "points": payload_preview_points,
+                })).unwrap_or_default();
                 fh.step(db, "batch_save", "info", "db", "ok",
                     t0.elapsed().as_millis() as i64,
-                    &format!("{} rows saved — device={} panel={} pts={}",
-                        rows_affected, flow_device, flow_panel, flow_pts), None).await;
+                    &format!("{} rows saved in {}ms — device={} panel={} pts={}",
+                        rows_affected, t0.elapsed().as_millis(), flow_device, flow_panel, flow_pts),
+                    Some(&payload_summary)).await;
                 fh.done(db, "ok").await;
             }
             Ok(Json(json!({

@@ -27,7 +27,7 @@ fn parse_bool_config(v: &str) -> bool {
 
 pub fn canonical_category(category: &str) -> String {
     match category.trim().to_ascii_uppercase().as_str() {
-        "SYNC_CYCLE" | "SAMPLING" | "FFI_POLL" => "POLL".to_string(),
+        "TRENDLOG_BACKEND" | "SAMPLING" | "FFI_POLL" => "POLL".to_string(),
         "DEVICE_SYNC" => "DEVICE".to_string(),
         "TREND_LOG" | "TD_READ" | "TD_WRITE" | "TD_INPUTS" | "TD_FFI" | "TD_SYNC" => {
             "TRENDLOG".to_string()

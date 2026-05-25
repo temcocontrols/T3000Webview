@@ -1258,11 +1258,11 @@ impl T3000MainService {
 
         crate::database_management::sync_health::ensure_app_log_table(&local_db).await;
 
-        // Start SYNC_CYCLE flow (total_steps=0 = variable; actual count depends on rediscovery path)
+        // Start TRENDLOG_BACKEND flow (total_steps=0 = variable; actual count depends on rediscovery path)
         let t_cycle = std::time::Instant::now();
         let t_device_loop = std::time::Instant::now();
         let sync_flow = crate::logging::flow::FlowHandle::start(
-            &local_db, "SYNC_CYCLE", "ffi_sync", 0, None,
+            &local_db, "TRENDLOG_BACKEND", "ffi_sync", 0, None,
         ).await;
         let mut sampling_check_recorded = false;
 

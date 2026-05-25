@@ -7,7 +7,7 @@ pub fn is_high_volume_category(cat: &str) -> bool {
         "POLL"
             | "DEVICE"
             | "TRENDLOG"
-            | "SYNC_CYCLE"
+            | "TRENDLOG_BACKEND"
             | "SAMPLING"
             | "FFI_POLL"
             | "DEVICE_SYNC"
