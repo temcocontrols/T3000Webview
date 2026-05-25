@@ -58,6 +58,8 @@ pub struct FrontendFFISyncRequest {
     pub device_id: i32,
     pub panel_id: i32,
     pub chart_title: Option<String>,
+    /// If provided, steps are appended to this existing vue_frontend flow instead of creating a new flow.
+    pub flow_id: Option<String>,
 }
 
 // Enhanced TrendLog routes with FFI integration - IMPROVED FLOW
@@ -132,28 +134,12 @@ pub async fn create_initial_trendlog_frontend_pattern(
     Path(trendlog_id): Path<String>,
     Json(request): Json<FrontendFFISyncRequest>,
 ) -> Result<Json<TrendLogFFIResponse>, AppError> {
-    // Flow logging (best-effort)
-    let flow_db_opt = crate::db_connection::establish_t3_device_connection().await
-        .map_err(|e| e.to_string()).ok();
-    let flow_opt = if let Some(ref fdb) = flow_db_opt {
-        Some(crate::logging::flow::FlowHandle::start(
-            fdb, "TRENDLOG_CHART", "init", 0,
-            Some(&format!("device={} panel={} trendlog={} title={}",
-                request.device_id, request.panel_id, trendlog_id,
-                request.chart_title.as_deref().unwrap_or("(none)"))),
-        ).await)
-    } else {
-        None
-    };
     let t0 = std::time::Instant::now();
-
-    // Step 0: log query params
-    if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
-        fh.step(fdb, "query_params", "info", "api", "ok", 0,
-            &format!("device={} panel={} trendlog={} title={}",
-                request.device_id, request.panel_id, trendlog_id,
-                request.chart_title.as_deref().unwrap_or("(none)")), None).await;
-    }
+    // Establish a separate connection for flow-step logging (best-effort, same pattern as old code)
+    let log_db = if request.flow_id.is_some() {
+        crate::db_connection::establish_t3_device_connection().await
+            .map_err(|e| e.to_string()).ok()
+    } else { None };
 
     // ── MSSQL branch ──
     if let Some(pool) = &app_state.mssql_pool {
@@ -163,15 +149,14 @@ pub async fn create_initial_trendlog_frontend_pattern(
         )
         .await
         .map_err(|e| AppError::InternalError(format!("MSSQL trendlog init: {}", e)))?;
-        if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
-            fh.step(fdb, "create_record", "info", "mssql", "ok",
+        if let (Some(ref fdb), Some(ref flow_id)) = (&log_db, &request.flow_id) {
+            crate::logging::flow_api::append_flow_step(
+                fdb, flow_id, "trendlog_init", "info", "backend", "ok",
                 t0.elapsed().as_millis() as i64,
                 &format!("trendlog record created via MSSQL in {}ms — device={} panel={} trendlog={}",
-                    t0.elapsed().as_millis(), request.device_id, request.panel_id, trendlog_id), None).await;
-            fh.step(fdb, "init_done", "info", "api", "ok",
-                t0.elapsed().as_millis() as i64,
-                &format!("chart init complete — total {}ms", t0.elapsed().as_millis()), None).await;
-            fh.done(fdb, "ok").await;
+                    t0.elapsed().as_millis(), request.device_id, request.panel_id, trendlog_id),
+                None,
+            ).await;
         }
         return Ok(Json(TrendLogFFIResponse {
             success: info["success"].as_bool().unwrap_or(true),
@@ -182,23 +167,18 @@ pub async fn create_initial_trendlog_frontend_pattern(
 
     // ── SeaORM branch ──
     let db = get_t3_device_conn!(app_state);
-    if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
-        fh.step(fdb, "backend_select", "info", "api", "ok", 0,
-            "backend=local_sqlite — using local device DB for trendlog init", None).await;
-    }
-
-    let t1 = std::time::Instant::now();
-    match TrendLogFFIService::create_initial_trendlog_info_with_panel_and_title(request.device_id as u32, request.panel_id, &trendlog_id, request.chart_title.as_deref(), &*db).await {
+    match TrendLogFFIService::create_initial_trendlog_info_with_panel_and_title(
+        request.device_id as u32, request.panel_id, &trendlog_id, request.chart_title.as_deref(), &*db
+    ).await {
         Ok(trendlog_info) => {
-            if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
-                fh.step(fdb, "create_record", "info", "db", "ok",
-                    t1.elapsed().as_millis() as i64,
-                    &format!("trendlog record created in {}ms — device={} panel={} trendlog={}",
-                        t1.elapsed().as_millis(), request.device_id, request.panel_id, trendlog_id), None).await;
-                fh.step(fdb, "init_done", "info", "api", "ok",
+            if let (Some(ref fdb), Some(ref flow_id)) = (&log_db, &request.flow_id) {
+                crate::logging::flow_api::append_flow_step(
+                    fdb, flow_id, "trendlog_init", "info", "backend", "ok",
                     t0.elapsed().as_millis() as i64,
-                    &format!("chart init complete — total {}ms", t0.elapsed().as_millis()), None).await;
-                fh.done(fdb, "ok").await;
+                    &format!("trendlog record created in {}ms — device={} panel={} trendlog={}",
+                        t0.elapsed().as_millis(), request.device_id, request.panel_id, trendlog_id),
+                    None,
+                ).await;
             }
             Ok(Json(TrendLogFFIResponse {
                 success: true,
@@ -207,11 +187,13 @@ pub async fn create_initial_trendlog_frontend_pattern(
             }))
         }
         Err(e) => {
-            if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
-                fh.step(fdb, "create_record", "error", "db", "error",
-                    t1.elapsed().as_millis() as i64,
-                    &format!("failed to create trendlog record: {}", e), None).await;
-                fh.done(fdb, "error").await;
+            if let (Some(ref fdb), Some(ref flow_id)) = (&log_db, &request.flow_id) {
+                crate::logging::flow_api::append_flow_step(
+                    fdb, flow_id, "trendlog_init", "info", "backend", "error",
+                    t0.elapsed().as_millis() as i64,
+                    &format!("failed to create trendlog record in {}ms: {}", t0.elapsed().as_millis(), e),
+                    None,
+                ).await;
             }
             Ok(Json(TrendLogFFIResponse {
                 success: false,
@@ -302,56 +284,35 @@ pub async fn sync_trendlog_with_ffi(
 
 // FRONTEND: Handle TrendLogChart.vue FFI sync call pattern
 // Route: POST /api/t3_device/trendlogs/MONITOR1/sync-ffi
-// Body: { "device_id": 123 }
+// Body: { "device_id": 123, "panel_id": 1, "flow_id": "..." }
 pub async fn sync_trendlog_frontend_pattern(
     State(app_state): State<T3AppState>,
     Path(trendlog_id): Path<String>,
     Json(request): Json<FrontendFFISyncRequest>,
 ) -> Result<Json<TrendLogFFIResponse>, AppError> {
-    // Add request logging to check if route is being called
-    println!("🔥 FRONTEND FFI ROUTE CALLED: trendlog_id={}, device_id={}", trendlog_id, request.device_id);
-
-    // Flow logging (best-effort)
-    let flow_db_opt = crate::db_connection::establish_t3_device_connection().await
-        .map_err(|e| e.to_string()).ok();
-    let flow_opt = if let Some(ref fdb) = flow_db_opt {
-        Some(crate::logging::flow::FlowHandle::start(
-            fdb, "TRENDLOG_CHART", "sync", 0,
-            Some(&format!("device={} panel={} trendlog={}", request.device_id, request.panel_id, trendlog_id)),
-        ).await)
-    } else {
-        None
-    };
     let t0 = std::time::Instant::now();
-
-    // Step 0: log query params
-    if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
-        fh.step(fdb, "query_params", "info", "api", "ok", 0,
-            &format!("device={} panel={} trendlog={}",
-                request.device_id, request.panel_id, trendlog_id), None).await;
-    }
+    // Establish a separate connection for flow-step logging (best-effort, same pattern as old code)
+    let log_db = if request.flow_id.is_some() {
+        crate::db_connection::establish_t3_device_connection().await
+            .map_err(|e| e.to_string()).ok()
+    } else { None };
 
     // ── MSSQL branch ──
     if let Some(pool) = &app_state.mssql_pool {
-        if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
-            fh.step(fdb, "backend_select", "info", "api", "ok", 0,
-                "backend=mssql — using center DB for trendlog sync", None).await;
-        }
         use crate::database_management::mssql_trendlog_service;
         let info = mssql_trendlog_service::create_initial_trendlog_info(
             pool, request.device_id, request.panel_id, &trendlog_id, request.chart_title.as_deref(),
         )
         .await
         .map_err(|e| AppError::InternalError(format!("MSSQL frontend sync: {}", e)))?;
-        if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
-            fh.step(fdb, "mssql_sync", "info", "mssql", "ok",
+        if let (Some(ref fdb), Some(ref flow_id)) = (&log_db, &request.flow_id) {
+            crate::logging::flow_api::append_flow_step(
+                fdb, flow_id, "trendlog_sync", "info", "backend", "ok",
                 t0.elapsed().as_millis() as i64,
                 &format!("trendlog synced via MSSQL in {}ms — device={} panel={} trendlog={}",
-                    t0.elapsed().as_millis(), request.device_id, request.panel_id, trendlog_id), None).await;
-            fh.step(fdb, "sync_done", "info", "api", "ok",
-                t0.elapsed().as_millis() as i64,
-                &format!("chart sync complete — total {}ms", t0.elapsed().as_millis()), None).await;
-            fh.done(fdb, "ok").await;
+                    t0.elapsed().as_millis(), request.device_id, request.panel_id, trendlog_id),
+                None,
+            ).await;
         }
         return Ok(Json(TrendLogFFIResponse {
             success: info["success"].as_bool().unwrap_or(true),
@@ -362,23 +323,16 @@ pub async fn sync_trendlog_frontend_pattern(
 
     // ── SeaORM branch ──
     let db = get_t3_device_conn!(app_state);
-    if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
-        fh.step(fdb, "backend_select", "info", "api", "ok", 0,
-            "backend=local_sqlite — using local device DB for trendlog sync", None).await;
-    }
-
-    let t1 = std::time::Instant::now();
     match TrendLogFFIService::sync_complete_trendlog_info(request.device_id as u32, &trendlog_id, &*db).await {
         Ok(trendlog_info) => {
-            if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
-                fh.step(fdb, "ffi_sync", "info", "ffi", "ok",
-                    t1.elapsed().as_millis() as i64,
-                    &format!("trendlog synced from device via FFI in {}ms — device={} panel={} trendlog={}",
-                        t1.elapsed().as_millis(), request.device_id, request.panel_id, trendlog_id), None).await;
-                fh.step(fdb, "sync_done", "info", "api", "ok",
+            if let (Some(ref fdb), Some(ref flow_id)) = (&log_db, &request.flow_id) {
+                crate::logging::flow_api::append_flow_step(
+                    fdb, flow_id, "trendlog_sync", "info", "backend", "ok",
                     t0.elapsed().as_millis() as i64,
-                    &format!("chart sync complete — total {}ms", t0.elapsed().as_millis()), None).await;
-                fh.done(fdb, "ok").await;
+                    &format!("trendlog synced from device via FFI in {}ms — device={} panel={} trendlog={}",
+                        t0.elapsed().as_millis(), request.device_id, request.panel_id, trendlog_id),
+                    None,
+                ).await;
             }
             Ok(Json(TrendLogFFIResponse {
                 success: true,
@@ -387,12 +341,14 @@ pub async fn sync_trendlog_frontend_pattern(
             }))
         }
         Err(e) => {
-            if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
-                fh.step(fdb, "ffi_sync", "error", "ffi", "error",
-                    t1.elapsed().as_millis() as i64,
-                    &format!("FFI sync failed — device={} panel={} trendlog={}: {}",
-                        request.device_id, request.panel_id, trendlog_id, e), None).await;
-                fh.done(fdb, "error").await;
+            if let (Some(ref fdb), Some(ref flow_id)) = (&log_db, &request.flow_id) {
+                crate::logging::flow_api::append_flow_step(
+                    fdb, flow_id, "trendlog_sync", "info", "backend", "error",
+                    t0.elapsed().as_millis() as i64,
+                    &format!("FFI sync failed in {}ms — device={} panel={} trendlog={}: {}",
+                        t0.elapsed().as_millis(), request.device_id, request.panel_id, trendlog_id, e),
+                    None,
+                ).await;
             }
             Ok(Json(TrendLogFFIResponse {
                 success: false,

@@ -685,3 +685,83 @@ fn row_to_step(r: &sea_orm::QueryResult) -> Result<FlowStepRow, sea_orm::DbErr> 
 fn esc(s: &str) -> String {
     s.replace('\'', "''")
 }
+
+// ---------------------------------------------------------------------------
+// Public helper: append a step to an existing flow (no new FlowHandle)
+// Called by backend handlers that are triggered by the frontend page-load
+// flow so they can contribute steps to the caller's existing flow_id.
+// ---------------------------------------------------------------------------
+
+pub async fn append_flow_step(
+    db: &sea_orm::DatabaseConnection,
+    flow_id: &str,
+    step_name: &str,
+    level: &str,
+    source: &str,
+    status: &str,
+    duration_ms: i64,
+    message: &str,
+    details: Option<&str>,
+) {
+    let seq_sql = format!(
+        "SELECT COALESCE(MAX(seq), -1) + 1 AS next_seq FROM T3_FLOW_STEP WHERE flow_id = '{}'",
+        esc(flow_id)
+    );
+    let seq: i64 = match db
+        .query_one(Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            seq_sql,
+        ))
+        .await
+    {
+        Ok(Some(r)) => r.try_get("", "next_seq").unwrap_or(0),
+        _ => 0,
+    };
+
+    let now_ms = chrono::Local::now().timestamp_millis();
+    let ts_fmt = chrono::Local::now()
+        .format("%Y-%m-%d %H:%M:%S%.3f")
+        .to_string();
+
+    let sql = format!(
+        "INSERT INTO T3_FLOW_STEP \
+         (flow_id, seq, step_name, level, source, status, duration_ms, message, details, ts_unix, ts_fmt) \
+         VALUES ('{}',{},'{}','{}','{}','{}',{},{},{},{},'{}')",
+        esc(flow_id),
+        seq,
+        esc(step_name),
+        esc(level),
+        esc(source),
+        esc(status),
+        duration_ms,
+        format!("'{}'", esc(message)),
+        details
+            .map(|s| format!("'{}'", esc(s)))
+            .unwrap_or_else(|| "NULL".into()),
+        now_ms,
+        esc(&ts_fmt),
+    );
+
+    let _ = db
+        .execute(Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            sql,
+        ))
+        .await;
+
+    let upd = format!(
+        "UPDATE T3_FLOW SET done_steps = done_steps + 1 {} WHERE flow_id = '{}'",
+        if status == "error" {
+            ", error_count = error_count + 1"
+        } else {
+            ""
+        },
+        esc(flow_id)
+    );
+    let _ = db
+        .execute(Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            upd,
+        ))
+        .await;
+}

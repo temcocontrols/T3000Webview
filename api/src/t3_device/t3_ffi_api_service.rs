@@ -343,19 +343,29 @@ async fn handle_ffi_call(
                 // so this works even when app_state.t3_device_conn is None (e.g. MSSQL backend).
                 if let Some(db) = crate::db_connection::establish_t3_device_connection().await
                     .map_err(|e| e.to_string()).ok() {
-                    // Truncate response for detail file (cap at 8 KB to avoid huge files)
+                    // Persist both request payload and response to detail file.
+                    // Cap each field at 8 KB to keep files bounded.
+                    let req_detail = if message.len() > 8192 {
+                        format!("{}… [truncated {} bytes]", &message[..8192], message.len())
+                    } else {
+                        message.clone()
+                    };
                     let response_detail = if response.len() > 8192 {
                         format!("{}… [truncated {} bytes]", &response[..8192], response.len())
                     } else {
                         response.clone()
                     };
+                    let ffi_detail = serde_json::to_string_pretty(&serde_json::json!({
+                        "request_payload": req_detail,
+                        "response_payload": response_detail,
+                    })).unwrap_or_default();
                     let fh = crate::logging::flow::FlowHandle::start(
                         &db, "TRENDLOG_REALTIME", "realtime", 2,
                         Some(&format!("panel={} device={} items={}", panel_id, sn, item_count)),
                     ).await;
                     fh.step(&db, "ffi_poll", "info", "ffi", "ok", elapsed,
                         &format!("{} items fetched — panel={} device={}", item_count, panel_id, sn),
-                        Some(&response_detail)).await;
+                        Some(&ffi_detail)).await;
                     // Store for batch_save step — do NOT call done() yet
                     PENDING_REALTIME_FLOWS.lock().await.insert((panel_id, sn), fh);
                 }
