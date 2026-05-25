@@ -1061,6 +1061,7 @@
     DeleteOutlined
   } from '@ant-design/icons-vue'
   import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil'
+  import { logFrontendEvent } from '@/shared/core/logging/frontendLogger'
   import { createFeatureTraceLogger } from '../../../shared/core/logging/traceLogger'
   import { scheduleItemData } from '@/lib/vue/T3000/Hvac/Data/Constant/RefConstant'
   import { T3000_Data, devVersion } from '@/lib/vue/T3000/Hvac/Data/T3Data'
@@ -2988,6 +2989,84 @@
     source: 'trendlog_chart',
     category: 'MESSAGE_ACTION',
   })
+
+  const logChartEvent = (action: string, detail: string, params?: unknown[]) => {
+    void logFrontendEvent({
+      level: 'info',
+      category: 'TRENDLOG_CHART',
+      source: 'TrendLogChart',
+      message: `[UI] ${action}: ${detail}`,
+      params,
+    })
+  }
+
+  // ---------------------------------------------------------------------------
+  // Init-flow helpers — write the page-open lifecycle into a real T3_FLOW record
+  // so it appears in the Flow Mode viewer under category TRENDLOG_CHART.
+  // _initFlowId is set by _flowStart() and cleared by _flowDone().
+  // ---------------------------------------------------------------------------
+  let _initFlowId: string | null = null
+  let _initFlowStepT0 = 0
+  const _flowApiBase = () =>
+    `${window.location.protocol}//${window.location.hostname}:9103`
+
+  const _flowStart = async (meta: object): Promise<void> => {
+    try {
+      const res = await fetch(`${_flowApiBase()}/api/flows/frontend-start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          flow_type: 'TRENDLOG_CHART',
+          trigger_src: 'vue_frontend',
+          meta: JSON.stringify(meta),
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        _initFlowId = data.flow_id
+        _initFlowStepT0 = Date.now()
+      }
+    } catch { /* fire-and-forget */ }
+  }
+
+  const _flowStep = async (
+    stepName: string,
+    message: string,
+    details?: object,
+    durationMs?: number,
+  ): Promise<void> => {
+    if (!_initFlowId) return
+    const duration_ms = durationMs ?? (Date.now() - _initFlowStepT0)
+    _initFlowStepT0 = Date.now()
+    try {
+      await fetch(`${_flowApiBase()}/api/flows/${_initFlowId}/client-step`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          step_name: stepName,
+          level: 'info',
+          status: 'ok',
+          duration_ms,
+          message,
+          details: details ? JSON.stringify(details, null, 2) : undefined,
+        }),
+      })
+    } catch { /* fire-and-forget */ }
+  }
+
+  const _flowDone = async (status = 'ok'): Promise<void> => {
+    if (!_initFlowId) return
+    const id = _initFlowId
+    _initFlowId = null
+    try {
+      await fetch(`${_flowApiBase()}/api/flows/${id}/frontend-done`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+    } catch { /* fire-and-forget */ }
+  }
+
   LogUtil.Debug(`📊 TrendLogChart instance created: ${instanceId}`)
 
   const getTrendlogTraceContext = () => {
@@ -7654,6 +7733,26 @@
         trendlogId: trendlogId
       })
 
+      if (_initFlowId) {
+        await _flowStep('query_params',
+          `sn=${currentSN} panel=${currentPanelId} trendlog=${trendlogId} range=${formattedStartTime}→${formattedEndTime} timebase=${timeBase.value} pts=${specificPoints.length}`,
+          {
+            sn: currentSN,
+            panelId: currentPanelId,
+            trendlogId,
+            startTime: formattedStartTime,
+            endTime: formattedEndTime,
+            timeBase: timeBase.value,
+            timeRangeMinutes,
+            panelCount: panelGroups.size,
+            panels: Array.from(panelGroups.entries()).map(([pid, pts]) => ({
+              panelId: pid, sn: getSnForHistoryPanel(pid), pointCount: pts.length,
+            })),
+            specificPoints: specificPoints.slice(0, 20),
+          }
+        )
+      }
+
       // Fetch all panels in parallel; offline panels return [] (do not throw)
       // Track whether the primary panel's API call actually failed (network error / null response)
       // vs returned empty data (no recordings yet) — only the former is a connection error.
@@ -9112,8 +9211,23 @@
       try {
         // Try to load historical data - this will create series structure if successful
         LogUtil.Info('🔧 Loading historical data from database')
+        const _histT0 = Date.now()
         await loadHistoricalDataFromDatabase()
+        const _histElapsedMs = Date.now() - _histT0
         LogUtil.Info('✅Historical data loaded successfully')
+        if (_initFlowId) {
+          await _flowStep('history_load',
+            `series=${dataSeries.value.length} pts=${dataSeries.value.reduce((s, x) => s + (x.data?.length ?? 0), 0)} elapsed=${_histElapsedMs}ms`,
+            {
+              seriesCount: dataSeries.value.length,
+              totalPoints: dataSeries.value.reduce((s, x) => s + (x.data?.length ?? 0), 0),
+              elapsedMs: _histElapsedMs,
+              timeBase: timeBase.value,
+              seriesNames: dataSeries.value.map(s => s.name),
+            },
+            _histElapsedMs,
+          )
+        }
 
       } catch (error) {
         LogUtil.Error('= TLChart: Error in data initialization:', error)
@@ -10386,6 +10500,9 @@
 
     // Update the time offset to track navigation
     timeOffset.value -= shiftMinutes
+    logChartEvent('navigate_back', `shift=${shiftMinutes}m timebase=${timeBase.value} offset=${timeOffset.value}`, [
+      { shiftMinutes, timeBase: timeBase.value, timeOffset: timeOffset.value, isRealTime: isRealTime.value },
+    ])
 
     // Regenerate data for the new time window
     await initializeData()
@@ -10407,8 +10524,15 @@
     if (timeOffset.value === 0) {
       isRealTime.value = true
       startRealTimeUpdates()
+      logChartEvent('navigate_forward', 'returned_to_live_mode offset=0', [
+        { shiftMinutes, timeBase: timeBase.value, timeOffset: timeOffset.value, isRealTime: isRealTime.value },
+      ])
       return
     }
+
+    logChartEvent('navigate_forward', `shift=${shiftMinutes}m timebase=${timeBase.value} offset=${timeOffset.value}`, [
+      { shiftMinutes, timeBase: timeBase.value, timeOffset: timeOffset.value, isRealTime: isRealTime.value },
+    ])
 
     // Regenerate data for the new time window
     await initializeData()
@@ -10426,6 +10550,9 @@
       // Real-time updates continue regardless of timebase selection
       // Just change timebase - let the watcher handle data loading with smart detection
       timeBase.value = newTimebase
+      logChartEvent('zoom_in', `timebase=${newTimebase}`, [
+        { previousTimebase: timebaseProgression[currentIndex], newTimebase, timeOffset: timeOffset.value, isRealTime: isRealTime.value },
+      ])
 
       LogUtil.Info(`🔍 Zoom In: Changed timebase to ${newTimebase}`, {
         autoScrollState: isRealTime.value,
@@ -10447,6 +10574,9 @@
       // Real-time updates continue regardless of timebase selection
       // Just change timebase - let the watcher handle data loading with smart detection
       timeBase.value = newTimebase
+      logChartEvent('zoom_out', `timebase=${newTimebase}`, [
+        { previousTimebase: timebaseProgression[currentIndex], newTimebase, timeOffset: timeOffset.value, isRealTime: isRealTime.value },
+      ])
 
       LogUtil.Info(`🔍 Zoom Out: Changed timebase to ${newTimebase}`, {
         autoScrollState: isRealTime.value,
@@ -13456,6 +13586,14 @@
       },
     })
 
+    const _mountT0 = Date.now()
+    await _flowStart({
+      panelId: route.query.panel_id ?? null,
+      trendlogId: route.query.trendlog_id ?? null,
+      sn: route.query.sn ?? null,
+      hasItemData: !!props.itemData,
+    })
+
     try {
       checkDbStatus()
       dbStatusTimer = setInterval(checkDbStatus, DB_STATUS_POLL_MS)
@@ -13517,6 +13655,36 @@
 
       const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : null
       const urlTrendlogId = route.query.trendlog_id ? parseInt(route.query.trendlog_id as string) : null
+      const urlSn = route.query.sn ? parseInt(route.query.sn as string) : null
+
+      // all_data from C++ is already decoded into props.itemData.t3Entry by IndexPageSocket.vue
+      // before TrendLogChart mounts — this is the real source of the input points.
+      const _t3Entry = (props.itemData as any)?.t3Entry
+      const _inputsFromCpp = _t3Entry?.input ?? []
+      await _flowStep('query_params',
+        `panel=${urlPanelId ?? 'none'} trendlog=${urlTrendlogId ?? 'none'} sn=${urlSn ?? 'none'} inputs_from_cpp=${_inputsFromCpp.length}`,
+        {
+          // URL params set by C++ when opening webview
+          panelId: urlPanelId,
+          trendlogId: urlTrendlogId,
+          sn: urlSn,
+          // t3Entry already decoded from all_data by IndexPageSocket.vue before this component mounted
+          monitorId: _t3Entry?.id,
+          monitorLabel: _t3Entry?.label,
+          numInputs: _t3Entry?.num_inputs ?? _inputsFromCpp.length,
+          intervalSec: (_t3Entry?.hour_interval_time ?? 0) * 3600
+            + (_t3Entry?.minute_interval_time ?? 0) * 60
+            + (_t3Entry?.second_interval_time ?? 0),
+          // Input points passed directly from C++ device memory
+          inputsFromCpp: _inputsFromCpp.map((inp: any) => ({
+            panel: inp.panel, point_number: inp.point_number,
+            point_type: inp.point_type, network: inp.network,
+          })),
+          nextAction: urlPanelId !== null && urlTrendlogId !== null
+            ? `ffi_action0(panel=${urlPanelId}) → confirm MON[index=${urlTrendlogId}] → merge with inputsFromCpp`
+            : 'skip — missing panel_id or trendlog_id',
+        }
+      )
 
       LogUtil.Debug('  - panel_id:', urlPanelId)
       LogUtil.Debug('  - trendlog_id:', urlTrendlogId)
@@ -13757,6 +13925,21 @@
       // Skip if STEP 0 already built monitorConfig from Action 0 data
       const monitorConfigData = monitorConfig.value || await getMonitorConfigFromT3000Data()
 
+      await _flowStep('config_resolve',
+        monitorConfigData
+          ? `ok inputs=${monitorConfigData?.inputItems?.length ?? 0} pid=${monitorConfigData?.pid} interval=${monitorConfigData?.dataIntervalMs ?? 0}ms`
+          : 'no_config',
+        monitorConfigData ? {
+          id: monitorConfigData.id,
+          pid: monitorConfigData.pid,
+          numInputs: monitorConfigData.inputItems?.length ?? 0,
+          dataIntervalMs: monitorConfigData.dataIntervalMs,
+          inputItems: monitorConfigData.inputItems?.map((i: any) => ({
+            panel: i.panel, point_number: i.point_number, point_type: i.point_type,
+          }))
+        } : { reason: 'no_config' }
+      )
+
       LogUtil.Info('📊 TrendLogChart: Monitor config result', {
         hasMonitorConfig: !!monitorConfigData,
         monitorConfigType: typeof monitorConfigData,
@@ -13773,6 +13956,10 @@
         // Now that monitorConfig.value has the authoritative dataIntervalMs, restart the interval.
         LogUtil.Info('🔄 Restarting real-time updates with full monitorConfig dataIntervalMs:', monitorConfigData.dataIntervalMs)
         startRealTimeUpdates()
+        await _flowStep('realtime_start',
+          `interval=${monitorConfigData.dataIntervalMs}ms pid=${monitorConfigData.pid} inputs=${monitorConfigData.inputItems?.length ?? 0}`,
+          { intervalMs: monitorConfigData.dataIntervalMs, pid: monitorConfigData.pid, inputCount: monitorConfigData.inputItems?.length ?? 0 }
+        )
 
         LogUtil.Info('TrendLogChart: Monitor config set, regenerating dataseries for consistency', {
           hasMonitorConfig: !!monitorConfig.value,
@@ -13914,6 +14101,10 @@
       LogUtil.Info('🔍 STEP 2: Chart instances created, verifying', {
         hasAnalogChart: !!analogChartInstance
       })
+      await _flowStep('chart_create',
+        `analog=${!!analogChartInstance} digital=${!!digitalChartInstance} canvas_wait=${canvasWaitAttempts * 50}ms`,
+        { hasAnalog: !!analogChartInstance, hasDigital: !!digitalChartInstance, canvasWaitMs: canvasWaitAttempts * 50 }
+      )
 
       // 🆕 FIX: Then load and display data
       // NOTE: Only initialize if series don't already exist (from panelsData watcher)
@@ -13949,6 +14140,17 @@
           item: mapping.item
         }))
       })
+      await _flowStep('page_ready',
+        `series=${dataSeries.value.length} pts=${dataSeries.value.reduce((s, x) => s + (x.data?.length ?? 0), 0)} elapsed=${Date.now() - _mountT0}ms`,
+        {
+          seriesCount: dataSeries.value.length,
+          totalPoints: dataSeries.value.reduce((s, x) => s + (x.data?.length ?? 0), 0),
+          isRealTime: isRealTime.value,
+          timeBase: timeBase.value,
+          elapsedMs: Date.now() - _mountT0,
+        }
+      )
+      await _flowDone()
     })
   })
 

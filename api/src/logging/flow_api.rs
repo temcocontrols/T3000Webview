@@ -132,6 +132,24 @@ pub struct PurgeResult {
     pub deleted_payloads: i64,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct FrontendStartRequest {
+    pub flow_type: String,
+    pub trigger_src: Option<String>,
+    /// Optional JSON string with context (panel_id, trendlog_id, sn, etc.)
+    pub meta: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FrontendStartResponse {
+    pub flow_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct FrontendDoneRequest {
+    pub status: Option<String>,
+}
+
 // ---------------------------------------------------------------------------
 // GET /api/flows  — returns { flows, total, page, limit }
 // ---------------------------------------------------------------------------
@@ -530,6 +548,70 @@ async fn clear_all_flows(State(state): State<T3AppState>) -> Response {
 }
 
 // ---------------------------------------------------------------------------
+// POST /api/flows/frontend-start  — create a new flow row from the frontend
+// ---------------------------------------------------------------------------
+
+async fn frontend_start_flow(
+    State(state): State<T3AppState>,
+    Json(req): Json<FrontendStartRequest>,
+) -> Response {
+    let guard = local_db!(state);
+    let db: &sea_orm::DatabaseConnection = &*guard;
+
+    let flow_id = uuid::Uuid::new_v4().to_string();
+    let now_ms = chrono::Local::now().timestamp_millis();
+    let trigger_src = req.trigger_src.as_deref().unwrap_or("vue_frontend");
+
+    let sql = format!(
+        "INSERT INTO T3_FLOW \
+         (flow_id, flow_type, trigger_src, started_at, status, total_steps, meta) \
+         VALUES ('{}','{}','{}',{},'running',0,{})",
+        esc(&flow_id),
+        esc(&req.flow_type),
+        esc(trigger_src),
+        now_ms,
+        req.meta.as_deref().map(|s| format!("'{}'", esc(s))).unwrap_or_else(|| "NULL".into()),
+    );
+
+    match db.execute(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, sql)).await {
+        Ok(_) => Json(FrontendStartResponse { flow_id }).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": format!("{}", e)})),
+        ).into_response(),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/flows/:flow_id/frontend-done  — mark flow ended from the frontend
+// ---------------------------------------------------------------------------
+
+async fn frontend_done_flow(
+    State(state): State<T3AppState>,
+    Path(flow_id): Path<String>,
+    Json(req): Json<FrontendDoneRequest>,
+) -> Response {
+    let guard = local_db!(state);
+    let db: &sea_orm::DatabaseConnection = &*guard;
+
+    let now_ms = chrono::Local::now().timestamp_millis();
+    let status = req.status.as_deref().unwrap_or("ok");
+
+    let sql = format!(
+        "UPDATE T3_FLOW SET ended_at = {}, status = '{}' WHERE flow_id = '{}'",
+        now_ms, esc(status), esc(&flow_id)
+    );
+
+    match db.execute(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, sql)).await {
+        Ok(_) => Json(serde_json::json!({"ok": true, "flow_id": flow_id})).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": format!("{}", e)})),
+        ).into_response(),
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
 
@@ -539,9 +621,11 @@ pub fn flow_routes() -> Router<T3AppState> {
         .route("/api/flows/types",                         get(list_flow_types))
         .route("/api/flows/purge",                         post(purge_flows))
         .route("/api/flows/clear-all",                     post(clear_all_flows))
+        .route("/api/flows/frontend-start",                post(frontend_start_flow))
         .route("/api/flows/:flow_id",                      get(get_flow))
         .route("/api/flows/:flow_id/payload/:seq",         get(get_payload))
         .route("/api/flows/:flow_id/client-step",          post(post_client_step))
+        .route("/api/flows/:flow_id/frontend-done",        post(frontend_done_flow))
 }
 
 // ---------------------------------------------------------------------------

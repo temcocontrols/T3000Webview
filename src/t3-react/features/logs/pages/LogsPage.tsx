@@ -821,8 +821,8 @@ export const LogsPage: React.FC = () => {
           style={{ minWidth: '110px', fontSize: '12px' }}
         >
           <option value="default">Default</option>
-          <option value="files">File Logs</option>
-          <option value="flows">Flow Logs</option>
+          <option value="files">File Mode</option>
+          <option value="flows">Flow Mode</option>
         </Select>
 
         {/* Advanced drawer trigger */}
@@ -1031,8 +1031,8 @@ export const LogsPage: React.FC = () => {
                   children: (
                     <div className={s.drawerPolicyTooltipContent}>
                       <div><strong>Log Settings</strong>: Per-category enable/disable, log level, detail mode, and sink targets.</div>
-                      <div><strong>File Logs</strong>: Raw text files written by the T3000 service process (T3WebLog).</div>
-                      <div><strong>Flow Logs</strong>: Step-by-step operation traces with timing and status.</div>
+                      <div><strong>File Mode</strong>: Raw text files written by the T3000 service process (T3WebLog).</div>
+                      <div><strong>Flow Mode</strong>: Step-by-step operation traces with timing and status.</div>
                     </div>
                   ),
                 }}
