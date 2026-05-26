@@ -299,33 +299,22 @@
                   <div v-if="shouldShowLoading" class="empty-state-icon">
                     <a-spin size="small" />
                   </div>
-                  <div v-else-if="showLoadingTimeout" class="empty-state-icon">⏱️</div>
-                  <div v-else-if="hasConnectionError" style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 4px;">
-                    <ExclamationCircleOutlined :style="{ fontSize: '16px' }" />
-                    <span style="font-size: 14px; font-weight: 500;">Data Connection Error</span>
+                  <div v-else class="empty-state-icon">
+                    <WifiOutlined :style="{ fontSize: '22px', color: '#bfbfbf' }" />
                   </div>
-                  <div v-else class="empty-state-icon">📊</div>
 
-                  <div v-if="shouldShowLoading" class="empty-state-text">Loading T3000 device data...</div>
-                  <div v-else-if="showLoadingTimeout" class="empty-state-text">Loading Timeout</div>
-                  <div v-else-if="!hasConnectionError" class="empty-state-text">No valid data available</div>
+                  <div v-if="shouldShowLoading" class="empty-state-text">Loading monitor data...</div>
+                  <div v-else class="empty-state-text">No data available</div>
 
                   <div v-if="shouldShowLoading" class="empty-state-subtitle">
-                    Connecting to your T3000 devices to retrieve trend data...
-                  </div>
-                  <div v-else-if="showLoadingTimeout" class="empty-state-subtitle">
-                    Loading took too long (>30s). The system may be busy or experiencing connection issues.
-                  </div>
-                  <div v-else-if="hasConnectionError" class="empty-state-subtitle" style="font-size: 12px;">
-                    Unable to load real-time or historical data. Check system connections.
+                    Retrieving monitor points from device...
                   </div>
                   <div v-else class="empty-state-subtitle">
-                    Configure monitor points to see data series
+                    The monitored device may be offline or not yet connected.
+                    No live data is available at this time.
                   </div>
 
-                  <!-- Refresh button for timeout and error states -->
-                  <div v-if="showLoadingTimeout || hasConnectionError" class="empty-state-actions"
-                       style="margin-top: 16px;">
+                  <div v-if="!shouldShowLoading" class="empty-state-actions" style="margin-top: 16px;">
                     <a-button type="primary" @click="manualRefresh" :loading="isLoading" size="small" style="font-size: 12px;">
                       <ReloadOutlined :style="{ fontSize: '12px', verticalAlign: 'middle' }" /> Refresh Data
                     </a-button>
@@ -1984,16 +1973,7 @@
       }
 
       if (!description) {
-        // Device not found yet — log and skip (will be picked up on regenerate)
-        if (panelsDataReady && index < 5) {
-          LogUtil.Debug('⚠️ generateDataSeries: filtered (device not found)', {
-            index, rawPanelId, panelId, pointType, pointNumber,
-            category: pointTypeInfo.category,
-            idToFind: `${pointTypeInfo.category}${pointNumber + 1}`,
-            panelsDataLength: T3000_Data.value.panelsData?.length || 0,
-            rawInputItem: JSON.parse(JSON.stringify(inputItem))
-          })
-        }
+        // Device not found — panel may be offline or not yet cached. Skip.
         continue;
       }
 
@@ -15138,14 +15118,14 @@
   }
 
   .empty-state-text {
-    font-size: 16px;
+    font-size: 13px;
     font-weight: 500;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     color: #595959;
   }
 
   .empty-state-subtitle {
-    font-size: 14px;
+    font-size: 12px;
     color: #8c8c8c;
   }
 
