@@ -17,7 +17,7 @@ use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
 use sea_orm::*;
 
 // Entry type constants matching C++ defines
-const BAC_PID: i32 = 5;
+const BAC_PID: i32 = 3;  // BAC_PID = 3 per global_define.h
 
 /// Request payload for refreshing a single PID loop (index is optional)
 #[derive(Debug, Deserialize)]
@@ -115,7 +115,7 @@ pub async fn refresh_pid_loops(
         "action": WebViewMessageType::GET_WEBVIEW_LIST as i32,
         "panelId": panel_id,
         "serialNumber": serial,
-        "entryType": BAC_PID,  // 5 = PID
+        "entryType": BAC_PID,  // 3 = PID
     });
 
     // Add entryIndex only if specified (omit for refresh all)

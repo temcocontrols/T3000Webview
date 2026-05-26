@@ -17,7 +17,7 @@ use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
 use sea_orm::*;
 
 // Entry type constants matching C++ defines
-const BAC_HOL: i32 = 8;
+const BAC_HOL: i32 = 5;  // BAC_HOL = 5 per global_define.h
 
 /// Request payload for refreshing a single holiday (index is optional)
 #[derive(Debug, Deserialize)]
@@ -115,7 +115,7 @@ pub async fn refresh_holidays(
         "action": WebViewMessageType::GET_WEBVIEW_LIST as i32,
         "panelId": panel_id,
         "serialNumber": serial,
-        "entryType": BAC_HOL,  // 8 = HOLIDAY
+        "entryType": BAC_HOL,  // 5 = HOLIDAY
     });
 
     // Add entryIndex only if specified (omit for refresh all)
