@@ -1,4 +1,4 @@
-// T3000 Main Service - Primary T3000 Building Automation Integration
+﻿// T3000 Main Service - Primary T3000 Building Automation Integration
 // This is the main service that handles all T3000 functionality:
 // - FFI calls to T3000 C++ functions (T3000_GetLoggingData)
 // - Real-time data synchronization
@@ -1680,7 +1680,7 @@ impl T3000MainService {
         let sync_start_time = chrono::Utc::now();
         let sync_metadata = trendlog_data_sync_metadata::ActiveModel {
             sync_time_fmt: Set(sync_start_time.format("%Y-%m-%d %H:%M:%S").to_string()),
-            message_type: Set("LOGGING_DATA".to_string()),
+            message_type: Set("GET_WEBVIEW_LIST".to_string()),
             panel_id: Set(None),            // NULL = all devices
             serial_number: Set(None),       // NULL = all devices
             records_inserted: Set(Some(0)), // Will update later
@@ -1707,7 +1707,7 @@ impl T3000MainService {
             if let Err(e) = mssql_queries::insert_trendlog_sync_metadata(
                 pool,
                 &ts_fmt,
-                "LOGGING_DATA",
+                "GET_WEBVIEW_LIST",
                 None,
                 None,
                 0,
@@ -1715,12 +1715,12 @@ impl T3000MainService {
                 1,
                 None,
             ).await {
-                sync_logger.error(&format!("❌ Failed to write LOGGING_DATA to MSSQL TRENDLOG_DATA_SYNC_METADATA (non-fatal): {}", e));
+                sync_logger.error(&format!("❌ Failed to write GET_WEBVIEW_LIST to MSSQL TRENDLOG_DATA_SYNC_METADATA (non-fatal): {}", e));
             }
         }
 
         sync_logger.info(&format!(
-            "📋 LOGGING_DATA sync metadata created - ID: {}",
+            "📋 GET_WEBVIEW_LIST sync metadata created - ID: {}",
             sync_metadata_id
         ));
 
@@ -1728,7 +1728,7 @@ impl T3000MainService {
         if let Err(e) = Self::insert_data_sync_metadata(
             &writer,
             &local_db,
-            "LOGGING_DATA_CYCLE",
+            "GET_WEBVIEW_LIST_CYCLE",
             "ALL",
             None,
             0,
@@ -1737,17 +1737,17 @@ impl T3000MainService {
         )
         .await
         {
-            sync_logger.error(&format!("❌ Failed to insert LOGGING_DATA_CYCLE to DATA_SYNC_METADATA: {}", e));
+            sync_logger.error(&format!("❌ Failed to insert GET_WEBVIEW_LIST_CYCLE to DATA_SYNC_METADATA: {}", e));
         }
 
-        // STEP 2: Process each device sequentially with per-device LOGGING_DATA calls
+        // STEP 2: Process each device sequentially with per-device GET_WEBVIEW_LIST calls (Action 17)
         let total_devices = panels.len();
         let mut successful_devices = 0;
         let mut failed_devices = 0;
         let mut skipped_devices = 0;
-        // Track SNs that returned serial=0 (C++ issue) for cycle summary Activity Log
+        // Track SNs that were skipped due to missing object_instance or other issues
         let mut serial_zero_sns: Vec<String> = Vec::new();
-        // Collect raw LOGGING_DATA FFI responses per device for file payload
+        // Collect per-device summaries for file payload
         let mut device_raw_responses: Vec<String> = Vec::new();
 
         for (device_index, panel_info) in panels.iter().enumerate() {
@@ -1763,305 +1763,319 @@ impl T3000MainService {
                 panel_info.panel_number, panel_info.serial_number, panel_info.panel_name
             ));
 
-            // Call LOGGING_DATA for this device (C++ will filter based on g_logging_time validation)
-            sync_logger.info(&format!(
-                "🔄 Calling LOGGING_DATA (Action 15) for device {}...",
-                panel_info.serial_number
-            ));
-
-            let json_data = match Self::get_logging_data_via_direct_ffi(
-                &config,
-                panel_info.panel_number,
-                panel_info.serial_number,
-            )
-            .await
-            {
-                Ok(data) => data,
-                Err(e) => {
-                    sync_logger.error(&format!(
-                        "❌ LOGGING_DATA FFI call failed for device {} - Error: {}",
-                        panel_info.serial_number, e
-                    ));
-                    failed_devices += 1;
-                    crate::logging::service::emit_app_log(
-                        &local_db, "error", "DEVICE", Some("ffi_sync"),
-                        Some(&panel_info.serial_number.to_string()),
-                        &format!("SN-{} Panel#{}: FFI call failed — {}", panel_info.serial_number, panel_info.panel_number, e),
-                        None,
-                    ).await;
-                    // Log device failure and continue to next device (Option A: Skip on error)
-                    sync_logger.info(&format!(
-                        "⏭️  Skipping device {} due to FFI error, continuing with next device",
+            // Validate object_instance — required for action 17
+            let object_instance = match panel_info.object_instance {
+                Some(oi) if oi > 0 => oi,
+                _ => {
+                    sync_logger.warn(&format!(
+                        "⚠️ Skipping device SN:{} — object_instance is None or 0 (required for GET_WEBVIEW_LIST action 17)",
                         panel_info.serial_number
                     ));
-                    continue;
-                }
-            };
-
-            // Record raw LOGGING_DATA response for file payload
-            device_raw_responses.push(format!("=== SN-{} Panel#{} ({}) ===\n{}",
-                panel_info.serial_number, panel_info.panel_number, panel_info.panel_name, json_data));
-
-            // Parse response - might contain 0-1 devices depending on C++ validation
-            let logging_response = match Self::parse_logging_response(&json_data) {
-                Ok(response) => response,
-                Err(e) => {
-                    sync_logger.error(&format!(
-                        "❌ JSON parse failed for device {} - Error: {}",
-                        panel_info.serial_number, e
-                    ));
-                    failed_devices += 1;
-                    crate::logging::service::emit_app_log(
-                        &local_db, "error", "DEVICE", Some("ffi_sync"),
-                        Some(&panel_info.serial_number.to_string()),
-                        &format!("SN-{} Panel#{}: JSON parse failed — {}", panel_info.serial_number, panel_info.panel_number, e),
-                        None,
-                    ).await;
-                    // Log parse failure and continue to next device
-                    sync_logger.info(&format!(
-                        "⏭️  Skipping device {} due to parse error, continuing with next device",
-                        panel_info.serial_number
-                    ));
+                    skipped_devices += 1;
+                    serial_zero_sns.push(format!("SN-{} Panel#{} (no oi)", panel_info.serial_number, panel_info.panel_number));
                     continue;
                 }
             };
 
             sync_logger.info(&format!(
-                "� LOGGING_DATA returned {} device(s), {} characters",
-                logging_response.devices.len(),
-                json_data.len()
+                "🔄 Calling GET_WEBVIEW_LIST (Action 17) for device SN:{} OI:{}...",
+                panel_info.serial_number, object_instance
             ));
 
-            // Handle empty response (C++ validation failed - device not ready)
-            if logging_response.devices.is_empty() {
-                sync_logger.warn(&format!("⚠️ Device {} returned 0 devices (C++ validation failed - basic_setting_status != 1 or g_logging_time mismatch)",
-                    panel_info.serial_number));
-                sync_logger.warn(&format!(
-                    "⏭️  Skipping device {} - not ready for logging, will retry next sync cycle",
-                    panel_info.serial_number
+            // Call action 17 for each entry type sequentially and collect points
+            let entry_types: &[(i32, &str)] = &[
+                (1, "INPUT"),
+                (2, "OUTPUT"),
+                (3, "VARIABLE"),
+            ];
+
+            let mut input_points: Vec<PointData> = Vec::new();
+            let mut output_points: Vec<PointData> = Vec::new();
+            let mut variable_points: Vec<PointData> = Vec::new();
+            let mut device_call_failed = false;
+
+            for (entry_type, entry_label) in entry_types {
+                let json_data = match Self::get_webview_list_via_direct_ffi(
+                    &config,
+                    panel_info.panel_number,
+                    panel_info.serial_number,
+                    object_instance,
+                    *entry_type,
+                    0,
+                    63,
+                ).await {
+                    Ok(data) => data,
+                    Err(e) => {
+                        sync_logger.error(&format!(
+                            "❌ GET_WEBVIEW_LIST action 17 ({}) failed for SN:{}: {}",
+                            entry_label, panel_info.serial_number, e
+                        ));
+                        crate::logging::service::emit_app_log(
+                            &local_db, "error", "DEVICE", Some("ffi_sync"),
+                            Some(&panel_info.serial_number.to_string()),
+                            &format!("SN-{} Panel#{}: GET_WEBVIEW_LIST ({}) action 17 FFI call failed — {}", panel_info.serial_number, panel_info.panel_number, entry_label, e),
+                            None,
+                        ).await;
+                        device_call_failed = true;
+                        break;
+                    }
+                };
+
+                // Record raw response for diagnostics
+                device_raw_responses.push(format!("=== SN-{} Panel#{} ({}) {} ===\n{}",
+                    panel_info.serial_number, panel_info.panel_number, panel_info.panel_name, entry_label, json_data));
+
+                let points = match Self::parse_webview_list_response(&json_data) {
+                    Ok(pts) => pts,
+                    Err(e) => {
+                        sync_logger.error(&format!(
+                            "❌ JSON parse failed for SN:{} {} - Error: {}",
+                            panel_info.serial_number, entry_label, e
+                        ));
+                        crate::logging::service::emit_app_log(
+                            &local_db, "error", "DEVICE", Some("ffi_sync"),
+                            Some(&panel_info.serial_number.to_string()),
+                            &format!("SN-{} Panel#{}: GET_WEBVIEW_LIST ({}) parse failed — {}", panel_info.serial_number, panel_info.panel_number, entry_label, e),
+                            None,
+                        ).await;
+                        device_call_failed = true;
+                        break;
+                    }
+                };
+
+                sync_logger.info(&format!(
+                    "✅ SN:{} {}: {} points parsed",
+                    panel_info.serial_number, entry_label, points.len()
                 ));
-                skipped_devices += 1;
+
+                match *entry_type {
+                    1 => input_points = points,
+                    2 => output_points = points,
+                    3 => variable_points = points,
+                    _ => {}
+                }
+            }
+
+            if device_call_failed {
+                failed_devices += 1;
+                let device_duration = device_start_time.elapsed();
+                sync_logger.info(&format!("⏱️  Device {} failed in {:.2}s", panel_info.serial_number, device_duration.as_secs_f64()));
+                sync_logger.info(&format!("📱 ========== Device {}/{} END (failed) ==========", device_index + 1, total_devices));
+                if device_index < total_devices - 1 {
+                    sync_logger.info("⏸️  Waiting 30 seconds before next device (load balancing)...");
+                    tokio::time::sleep(Duration::from_secs(30)).await;
+                }
                 continue;
             }
 
-            // Process device(s) from response (usually 1 device, but handle multiple just in case)
-            for device_with_points in logging_response.devices.iter() {
-                let serial_number = device_with_points.device_info.panel_serial_number;
+            let serial_number = panel_info.serial_number;
 
+            // Build DeviceInfo from PanelInfo (action 17 doesn't return device metadata)
+            let device_info = DeviceInfo {
+                panel_id: panel_info.panel_number,
+                panel_name: panel_info.panel_name.clone(),
+                panel_serial_number: serial_number,
+                panel_ipaddress: "0.0.0.0".to_string(),
+                input_logging_time: "".to_string(),
+                output_logging_time: "".to_string(),
+                variable_logging_time: "".to_string(),
+                ip_address: None,
+                port: None,
+                bacnet_mstp_mac_id: Some(object_instance),
+                modbus_address: None,
+                pc_ip_address: None,
+                modbus_port: None,
+                bacnet_ip_port: None,
+                show_label_name: None,
+                connection_type: Some("GET_WEBVIEW_LIST".to_string()),
+            };
+
+            let device_with_points = DeviceWithPoints {
+                device_info,
+                input_points,
+                output_points,
+                variable_points,
+            };
+
+            sync_logger.info(&format!(
+                "📝 Processing device data - Serial: {}, Name: '{}'",
+                serial_number, &device_with_points.device_info.panel_name
+            ));
+
+            // UPSERT device basic info (INSERT or UPDATE)
+            sync_logger.info(&format!(
+                "📝 Syncing device basic info - Serial: {}, Name: {}",
+                serial_number, &device_with_points.device_info.panel_name
+            ));
+
+            if let Err(e) =
+                writer.sync_device(&device_with_points.device_info).await
+            {
+                sync_logger.error(&format!(
+                    "❌ Device basic info sync failed - Serial: {}, Error: {}",
+                    serial_number, e
+                ));
+                failed_devices += 1;
+                continue;
+            }
+            sync_logger.info("✅ Device info synced");
+
+            // UPSERT input points (INSERT or UPDATE)
+            if !device_with_points.input_points.is_empty() {
                 sync_logger.info(&format!(
-                    "📝 Processing device data - Serial: {}, Name: '{}'",
-                    serial_number, device_with_points.device_info.panel_name
+                    "🔧 Processing {} INPUT points...",
+                    device_with_points.input_points.len()
                 ));
 
-                // Validate serial number - skip devices with invalid SerialNumber=0
-                if serial_number == 0 {
-                    sync_logger.warn(&format!(
-                        "⚠️ SKIPPING device with invalid SerialNumber=0 - Name: '{}', IP: '{}', Panel ID: {}",
-                        device_with_points.device_info.panel_name,
-                        device_with_points.device_info.ip_address.as_ref().unwrap_or(&"unknown".to_string()),
-                        device_with_points.device_info.panel_id
-                    ));
-                    sync_logger.warn("⚠️ This indicates missing or invalid panel_serial_number in JSON response - check C++ HandleWebViewMsg implementation");
-                    sync_logger.error(&format!(
-                        "🔍 DEBUG INFO for invalid device - Expected Serial: {} (from GET_PANELS_LIST), Got: {} (from LOGGING_DATA)",
-                        panel_info.serial_number, serial_number
-                    ));
-                    sync_logger.error(&format!(
-                        "💡 HINT: Device with Panel#{} probably has records in INPUTS/OUTPUTS/VARIABLES tables but won't show sync status due to SerialNumber=0",
-                        device_with_points.device_info.panel_id
-                    ));
-                    sync_logger.error(&format!(
-                        "💡 FIX: Update C++ code to properly set panel_serial_number field in LOGGING_DATA response for Panel#{}",
-                        device_with_points.device_info.panel_id
-                    ));
-                    skipped_devices += 1;
-                    serial_zero_sns.push(format!("SN-{} Panel#{}", panel_info.serial_number, panel_info.panel_number));
-                    continue;
+                for (point_index, point) in device_with_points.input_points.iter().enumerate() {
+                    if let Err(e) =
+                        writer.sync_input(serial_number, point).await
+                    {
+                        sync_logger.error(&format!(
+                            "❌ INPUT point {}/{} failed - Index: {}, Label: '{}', Error: {}",
+                            point_index + 1,
+                            device_with_points.input_points.len(),
+                            point.index,
+                            point.full_label,
+                            e
+                        ));
+                    }
                 }
+                sync_logger.info("✅ INPUT points completed");
 
-                // UPSERT device basic info (INSERT or UPDATE)
-                sync_logger.info(&format!(
-                    "📝 Syncing device basic info - Serial: {}, Name: {}",
-                    serial_number, &device_with_points.device_info.panel_name
-                ));
-
-                if let Err(e) =
-                    writer.sync_device(&device_with_points.device_info).await
+                // Insert DATA_SYNC_METADATA for INPUTS sync
+                if let Err(e) = Self::insert_data_sync_metadata(
+                    &writer,
+                    &local_db,
+                    "INPUTS",
+                    &serial_number.to_string(),
+                    Some(device_with_points.device_info.panel_id),
+                    device_with_points.input_points.len() as i32,
+                    true,
+                    None,
+                )
+                .await
                 {
-                    sync_logger.error(&format!(
-                        "❌ Device basic info sync failed - Serial: {}, Error: {}",
-                        serial_number, e
-                    ));
-                    failed_devices += 1;
-                    continue;
+                    sync_logger.error(&format!("❌ Failed to insert INPUTS sync metadata: {}", e));
                 }
-                sync_logger.info(&format!(
-                    "✅ Device info synced ({})",
-                    if device_with_points.device_info.panel_serial_number > 0 {
-                        "UPDATE"
-                    } else {
-                        "INSERT"
-                    }
-                ));
-
-                // UPSERT input points (INSERT or UPDATE)
-                if !device_with_points.input_points.is_empty() {
-                    sync_logger.info(&format!(
-                        "🔧 Processing {} INPUT points...",
-                        device_with_points.input_points.len()
-                    ));
-
-                    for (point_index, point) in device_with_points.input_points.iter().enumerate() {
-                        if let Err(e) =
-                            writer.sync_input(serial_number, point).await
-                        {
-                            sync_logger.error(&format!(
-                                "❌ INPUT point {}/{} failed - Index: {}, Label: '{}', Error: {}",
-                                point_index + 1,
-                                device_with_points.input_points.len(),
-                                point.index,
-                                point.full_label,
-                                e
-                            ));
-                        }
-                    }
-                    sync_logger.info("✅ INPUT points completed");
-
-                    // Insert DATA_SYNC_METADATA for INPUTS sync
-                    if let Err(e) = Self::insert_data_sync_metadata(
-                        &writer,
-                        &local_db,
-                        "INPUTS",
-                        &serial_number.to_string(),
-                        Some(device_with_points.device_info.panel_id),
-                        device_with_points.input_points.len() as i32,
-                        true,
-                        None,
-                    )
-                    .await
-                    {
-                        sync_logger.error(&format!("❌ Failed to insert INPUTS sync metadata: {}", e));
-                    }
-                }
-
-                // UPSERT output points (INSERT or UPDATE)
-                if !device_with_points.output_points.is_empty() {
-                    sync_logger.info(&format!(
-                        "🔧 Processing {} OUTPUT points...",
-                        device_with_points.output_points.len()
-                    ));
-
-                    for (point_index, point) in device_with_points.output_points.iter().enumerate()
-                    {
-                        if let Err(e) =
-                            writer.sync_output(serial_number, point).await
-                        {
-                            sync_logger.error(&format!(
-                                "❌ OUTPUT point {}/{} failed - Index: {}, Label: '{}', Error: {}",
-                                point_index + 1,
-                                device_with_points.output_points.len(),
-                                point.index,
-                                point.full_label,
-                                e
-                            ));
-                        }
-                    }
-                    sync_logger.info("✅ OUTPUT points completed");
-
-                    // Insert DATA_SYNC_METADATA for OUTPUTS sync
-                    if let Err(e) = Self::insert_data_sync_metadata(
-                        &writer,
-                        &local_db,
-                        "OUTPUTS",
-                        &serial_number.to_string(),
-                        Some(device_with_points.device_info.panel_id),
-                        device_with_points.output_points.len() as i32,
-                        true,
-                        None,
-                    )
-                    .await
-                    {
-                        sync_logger.error(&format!("❌ Failed to insert OUTPUTS sync metadata: {}", e));
-                    }
-                }
-
-                // UPSERT variable points (INSERT or UPDATE)
-                if !device_with_points.variable_points.is_empty() {
-                    sync_logger.info(&format!(
-                        "🔧 Processing {} VARIABLE points...",
-                        device_with_points.variable_points.len()
-                    ));
-
-                    for (point_index, point) in
-                        device_with_points.variable_points.iter().enumerate()
-                    {
-                        if let Err(e) =
-                            writer.sync_variable(serial_number, point).await
-                        {
-                            sync_logger.error(&format!("❌ VARIABLE point {}/{} failed - Index: {}, Label: '{}', Error: {}",
-                                point_index + 1, device_with_points.variable_points.len(), point.index, point.full_label, e));
-                        }
-                    }
-                    sync_logger.info("✅ VARIABLE points completed");
-
-                    // Insert DATA_SYNC_METADATA for VARIABLES sync
-                    if let Err(e) = Self::insert_data_sync_metadata(
-                        &writer,
-                        &local_db,
-                        "VARIABLES",
-                        &serial_number.to_string(),
-                        Some(device_with_points.device_info.panel_id),
-                        device_with_points.variable_points.len() as i32,
-                        true,
-                        None,
-                    )
-                    .await
-                    {
-                        sync_logger.error(&format!("❌ Failed to insert VARIABLES sync metadata: {}", e));
-                    }
-                }
-
-                // INSERT trend log data (ALWAYS INSERT for historical data)
-                let total_trend_points = device_with_points.input_points.len()
-                    + device_with_points.output_points.len()
-                    + device_with_points.variable_points.len();
-                if total_trend_points > 0 {
-                    sync_logger.info(&format!(
-                        "📊 Trend logs inserted ({} entries)",
-                        total_trend_points
-                    ));
-
-                    if let Err(e) = writer.insert_trendlogs(
-                        serial_number,
-                        device_with_points,
-                    )
-                    .await
-                    {
-                        sync_logger.error(&format!("❌ Trend log insertion failed - Serial: {}, Error: {}, Total entries: {}",
-                            serial_number, e, total_trend_points));
-                    } else {
-                        // Insert DATA_SYNC_METADATA so the dashboard "Records Today" counts trendlog details
-                        if let Err(e) = Self::insert_data_sync_metadata(
-                            &writer,
-                            &local_db,
-                            "TRENDLOG_DETAIL",
-                            &serial_number.to_string(),
-                            Some(device_with_points.device_info.panel_id),
-                            total_trend_points as i32,
-                            true,
-                            None,
-                        )
-                        .await
-                        {
-                            sync_logger.error(&format!("❌ Failed to insert TRENDLOG_DETAIL sync metadata: {}", e));
-                        }
-                    }
-                }
-
-                successful_devices += 1;
-                sync_logger.info(&format!("✅ Device {} data sync completed", serial_number));
             }
 
+            // UPSERT output points (INSERT or UPDATE)
+            if !device_with_points.output_points.is_empty() {
+                sync_logger.info(&format!(
+                    "🔧 Processing {} OUTPUT points...",
+                    device_with_points.output_points.len()
+                ));
+
+                for (point_index, point) in device_with_points.output_points.iter().enumerate()
+                {
+                    if let Err(e) =
+                        writer.sync_output(serial_number, point).await
+                    {
+                        sync_logger.error(&format!(
+                            "❌ OUTPUT point {}/{} failed - Index: {}, Label: '{}', Error: {}",
+                            point_index + 1,
+                            device_with_points.output_points.len(),
+                            point.index,
+                            point.full_label,
+                            e
+                        ));
+                    }
+                }
+                sync_logger.info("✅ OUTPUT points completed");
+
+                // Insert DATA_SYNC_METADATA for OUTPUTS sync
+                if let Err(e) = Self::insert_data_sync_metadata(
+                    &writer,
+                    &local_db,
+                    "OUTPUTS",
+                    &serial_number.to_string(),
+                    Some(device_with_points.device_info.panel_id),
+                    device_with_points.output_points.len() as i32,
+                    true,
+                    None,
+                )
+                .await
+                {
+                    sync_logger.error(&format!("❌ Failed to insert OUTPUTS sync metadata: {}", e));
+                }
+            }
+
+            // UPSERT variable points (INSERT or UPDATE)
+            if !device_with_points.variable_points.is_empty() {
+                sync_logger.info(&format!(
+                    "🔧 Processing {} VARIABLE points...",
+                    device_with_points.variable_points.len()
+                ));
+
+                for (point_index, point) in
+                    device_with_points.variable_points.iter().enumerate()
+                {
+                    if let Err(e) =
+                        writer.sync_variable(serial_number, point).await
+                    {
+                        sync_logger.error(&format!("❌ VARIABLE point {}/{} failed - Index: {}, Label: '{}', Error: {}",
+                            point_index + 1, device_with_points.variable_points.len(), point.index, point.full_label, e));
+                    }
+                }
+                sync_logger.info("✅ VARIABLE points completed");
+
+                // Insert DATA_SYNC_METADATA for VARIABLES sync
+                if let Err(e) = Self::insert_data_sync_metadata(
+                    &writer,
+                    &local_db,
+                    "VARIABLES",
+                    &serial_number.to_string(),
+                    Some(device_with_points.device_info.panel_id),
+                    device_with_points.variable_points.len() as i32,
+                    true,
+                    None,
+                )
+                .await
+                {
+                    sync_logger.error(&format!("❌ Failed to insert VARIABLES sync metadata: {}", e));
+                }
+            }
+
+            // INSERT trend log data (ALWAYS INSERT for historical data)
+            let total_trend_points = device_with_points.input_points.len()
+                + device_with_points.output_points.len()
+                + device_with_points.variable_points.len();
+            if total_trend_points > 0 {
+                sync_logger.info(&format!(
+                    "📊 Trend logs inserted ({} entries)",
+                    total_trend_points
+                ));
+
+                if let Err(e) = writer.insert_trendlogs(
+                    serial_number,
+                    &device_with_points,
+                )
+                .await
+                {
+                    sync_logger.error(&format!("❌ Trend log insertion failed - Serial: {}, Error: {}, Total entries: {}",
+                        serial_number, e, total_trend_points));
+                } else {
+                    // Insert DATA_SYNC_METADATA so the dashboard "Records Today" counts trendlog details
+                    if let Err(e) = Self::insert_data_sync_metadata(
+                        &writer,
+                        &local_db,
+                        "TRENDLOG_DETAIL",
+                        &serial_number.to_string(),
+                        Some(device_with_points.device_info.panel_id),
+                        total_trend_points as i32,
+                        true,
+                        None,
+                    )
+                    .await
+                    {
+                        sync_logger.error(&format!("❌ Failed to insert TRENDLOG_DETAIL sync metadata: {}", e));
+                    }
+                }
+            }
+
+            successful_devices += 1;
+            sync_logger.info(&format!("✅ Device {} data sync completed", serial_number));
             // Log device processing time
             let device_duration = device_start_time.elapsed();
             sync_logger.info(&format!(
@@ -2096,7 +2110,7 @@ impl T3000MainService {
                 };
                 crate::logging::service::emit_app_log(
                     &local_db, "error", "POLL", Some("ffi_sync"), None,
-                    &format!("Cycle done: 0/{} devices synced — all returned serial=0 (C++ fix required)", total_devices),
+                    &format!("Cycle done: 0/{} devices synced — all skipped or failed (check object_instance / FFI errors)", total_devices),
                     Some(&detail),
                 ).await;
             } else {
@@ -2201,17 +2215,17 @@ impl T3000MainService {
         ));
 
         let device_sync_level = if !serial_zero_sns.is_empty() { "warn" } else { "info" };
-        // Build file payload: serial=0 diagnostics (if any) + all raw LOGGING_DATA responses
+        // Build file payload: skipped device diagnostics (if any) + all raw GET_WEBVIEW_LIST responses
         let mut payload_parts: Vec<String> = Vec::new();
         if !serial_zero_sns.is_empty() {
             payload_parts.push(format!(
-                "=== serial=0 devices ({} total) ===\n{}\n💡 FIX: Update C++ HandleWebViewMsg to set panel_serial_number in LOGGING_DATA response",
+                "=== skipped devices (no object_instance or FFI error) ({} total) ===\n{}",
                 serial_zero_sns.len(),
                 serial_zero_sns.join(", "),
             ));
         }
         if !device_raw_responses.is_empty() {
-            payload_parts.push(format!("=== LOGGING_DATA responses ({} devices) ===\n{}",
+            payload_parts.push(format!("=== GET_WEBVIEW_LIST responses ({} devices) ===\n{}",
                 device_raw_responses.len(),
                 device_raw_responses.join("\n\n")));
         }
@@ -2728,6 +2742,168 @@ impl T3000MainService {
             total_inserted, serial_number, timestamp
         );
         Ok(())
+    }
+
+    /// Call T3000 C++ HandleWebViewMsg via FFI for GET_WEBVIEW_LIST (Action 17).
+    /// Reads directly from device hardware — no FFI cache.
+    /// Parameters match the action 17 JSON payload:
+    ///   entry_type: 1=BAC_IN/INPUT, 2=BAC_OUT/OUTPUT, 3=BAC_VAR/VARIABLE
+    ///   index_start / index_end: 0..63 for all 64 points of a type
+    async fn get_webview_list_via_direct_ffi(
+        config: &T3000MainConfig,
+        panel_id: i32,
+        serial_number: i32,
+        object_instance: i32,
+        entry_type: i32,
+        index_start: i32,
+        index_end: i32,
+    ) -> Result<String, AppError> {
+        info!("🔄 Starting DIRECT FFI call GET_WEBVIEW_LIST (Action 17) - Panel: {}, SN: {}, OI: {}, entryType: {}", panel_id, serial_number, object_instance, entry_type);
+
+        if let Ok(mut sync_logger) = ServiceLogger::ffi() {
+            sync_logger.info(&format!(
+                "🔄 Starting DIRECT FFI call HandleWebViewMsg(17) - Panel: {}, SN: {}, OI: {}, entryType: {}",
+                panel_id, serial_number, object_instance, entry_type
+            ));
+        }
+
+        for attempt in 1..=(config.retry_attempts + 1) {
+            let panel_id_clone = panel_id;
+            let serial_number_clone = serial_number;
+            let object_instance_clone = object_instance;
+            let entry_type_clone = entry_type;
+            let index_start_clone = index_start;
+            let index_end_clone = index_end;
+
+            let spawn_result = tokio::time::timeout(
+                Duration::from_secs(config.timeout_seconds),
+                tokio::task::spawn_blocking(move || {
+                    let input_json = serde_json::json!({
+                        "action": WebViewMessageType::GET_WEBVIEW_LIST as i32,  // 17
+                        "panelId": panel_id_clone,
+                        "serialNumber": serial_number_clone,
+                        "objectinstance": object_instance_clone,
+                        "entryType": entry_type_clone,
+                        "entryIndexStart": index_start_clone,
+                        "entryIndexEnd": index_end_clone
+                    });
+                    let input_str = input_json.to_string();
+
+                    info!("📤 Sending JSON to C++ (action 17): {}", input_str);
+                    if let Ok(mut sync_logger) = ServiceLogger::ffi() {
+                        sync_logger.info(&format!("📤 GET_WEBVIEW_LIST JSON sent to C++: {}", input_str));
+                    }
+
+                    // 2MB buffer is sufficient for 64 points of one type
+                    const BUFFER_SIZE: usize = 2097152;
+                    let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
+
+                    let input_bytes = input_str.as_bytes();
+                    if input_bytes.len() < BUFFER_SIZE {
+                        buffer[..input_bytes.len()].copy_from_slice(input_bytes);
+                        buffer[input_bytes.len()] = 0;
+                    } else {
+                        return Err("Input JSON too large for buffer".to_string());
+                    }
+
+                    let result = match call_handle_webview_msg(WebViewMessageType::GET_WEBVIEW_LIST as i32, &mut buffer) {
+                        Ok(code) => code,
+                        Err(err) => {
+                            error!("❌ Failed to call BacnetWebView_HandleWebViewMsg (action 17): {}", err);
+                            return Err(format!("Failed to call BacnetWebView_HandleWebViewMsg: {}", err));
+                        }
+                    };
+
+                    if result == -2 {
+                        return Err("MFC application not initialized".to_string());
+                    } else if result != 0 {
+                        let null_pos = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
+                        let error_response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
+                        return Err(format!("BacnetWebView HandleWebViewMsg (action 17) returned error code: {} - Response: {}", result, error_response));
+                    }
+
+                    let null_pos = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
+                    let result_str = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
+
+                    if result_str.is_empty() || result_str == "{}" {
+                        return Err("HandleWebViewMsg (action 17) returned empty response".to_string());
+                    }
+                    if result_str.contains("\"error\"") {
+                        return Err(format!("HandleWebViewMsg (action 17) returned error: {}", result_str));
+                    }
+
+                    info!("🎉 SUCCESS: GET_WEBVIEW_LIST action 17 returned data. Preview: {}",
+                          if result_str.len() > 200 { &result_str[..200] } else { &result_str });
+
+                    Ok(result_str)
+                }),
+            ).await;
+
+            match spawn_result {
+                Ok(join_result) => {
+                    match join_result {
+                        Ok(ffi_result) => {
+                            match ffi_result {
+                                Ok(data) => {
+                                    if let Ok(mut sync_logger) = ServiceLogger::ffi() {
+                                        sync_logger.info("✅ GET_WEBVIEW_LIST action 17 FFI call completed successfully");
+                                    }
+                                    return Ok(data);
+                                }
+                                Err(ffi_error) => {
+                                    if ffi_error.contains("MFC application not initialized") && attempt < config.retry_attempts + 1 {
+                                        warn!("⚠️ MFC not ready on attempt {}, waiting before retry...", attempt);
+                                        let delay_seconds = attempt as u64 * 2;
+                                        tokio::time::sleep(Duration::from_secs(delay_seconds)).await;
+                                        break;
+                                    }
+                                    error!("❌ GET_WEBVIEW_LIST action 17 FFI call failed: {}", ffi_error);
+                                    return Err(AppError::FfiError(format!("GET_WEBVIEW_LIST action 17 FFI call failed: {}", ffi_error)));
+                                }
+                            }
+                        }
+                        Err(join_error) => {
+                            error!("❌ GET_WEBVIEW_LIST action 17 task failed: {}", join_error);
+                            return Err(AppError::FfiError(format!("GET_WEBVIEW_LIST action 17 task failed: {}", join_error)));
+                        }
+                    }
+                }
+                Err(timeout_error) => {
+                    error!("❌ GET_WEBVIEW_LIST action 17 timed out: {}", timeout_error);
+                    if attempt < config.retry_attempts + 1 {
+                        break;
+                    }
+                    return Err(AppError::FfiError(format!("GET_WEBVIEW_LIST action 17 timed out: {}", timeout_error)));
+                }
+            }
+        }
+
+        Err(AppError::FfiError("GET_WEBVIEW_LIST action 17: All FFI attempts failed".to_string()))
+    }
+
+    /// Parse a GET_WEBVIEW_LIST (Action 17) JSON response into a Vec<PointData>.
+    /// Response format: { "data": { "device_data": [ { pid, type, index, ... } ] } }
+    fn parse_webview_list_response(json_data: &str) -> Result<Vec<PointData>, AppError> {
+        let json_value: JsonValue = serde_json::from_str(json_data)
+            .map_err(|e| AppError::ParseError(format!("Failed to parse GET_WEBVIEW_LIST JSON: {}", e)))?;
+
+        let device_data = &json_value["data"]["device_data"];
+        if device_data.is_null() || !device_data.is_array() {
+            // Empty or unexpected shape — return empty (not an error; device may have no points of this type)
+            return Ok(Vec::new());
+        }
+
+        let arr = device_data.as_array().unwrap();
+        let mut points: Vec<PointData> = Vec::with_capacity(arr.len());
+        for point_json in arr {
+            match Self::parse_point_data(point_json) {
+                Ok(pt) => points.push(pt),
+                Err(e) => {
+                    warn!("⚠️ parse_webview_list_response: skipping point due to parse error: {}", e);
+                }
+            }
+        }
+        Ok(points)
     }
 
     /// Call T3000 C++ HandleWebViewMsg function directly via FFI for LOGGING_DATA
