@@ -1714,7 +1714,7 @@
   const dataSource = ref<'realtime' | 'api'>('realtime') // Track data source for timebase changes
   const hasConnectionError = ref(false) // Track connection errors for UI display
   const hasLoadedInitialHistory = ref(false) // Track if initial history has been loaded
-  const realtimePollCount = ref(0) // Count action=15 polls since page load; first 2 may have stale FFI cached values
+  const realtimePollCount = ref(0) // Count action=17 polls since page load (kept for reference; no startup skip needed)
 
   interface DbStatusState {
     visible: boolean
@@ -2138,17 +2138,20 @@
       const fetchPromises = Array.from(fetchSet.values()).map(async ({ panelId, entryType, panel }) => {
         try {
           const sn: number = panel.serial_number ?? panel.panel_serial_number ?? 0
-          const oi: number = panel.object_instance ?? 0
-          if (!sn || !oi) {
-            LogUtil.Warn(`⚠️ fetchFreshPointsForAllPanels: panelId ${panelId} missing serialNumber=${sn} or objectinstance=${oi}`)
+          if (!sn) {
+            LogUtil.Warn(`⚠️ fetchFreshPointsForAllPanels: panelId ${panelId} missing serialNumber — skipping`)
             return
           }
-          const resp = await ffiApi.ffiGetWebviewList(panelId, sn, oi, entryType, 0, 63)
+          // T3000 C++ action 17 uses serial_number as objectinstance (same pattern as refresh routes)
+          const resp = await ffiApi.ffiGetWebviewList(panelId, sn, sn, entryType, 0, 63)
           const deviceData: any[] = resp?.data?.device_data ?? []
           const newCache = new Map(freshWebviewCache.value)
           for (const pt of deviceData) {
-            const cacheKey = `${pt.pid}_${pt.id}`
-            newCache.set(cacheKey, pt)
+            // Normalize pid=0: action 17 may return pid=0 for local panel items.
+            // Use the queried panelId so getDeviceDescription cache lookups hit correctly.
+            const fixedPid = Number(pt.pid) > 0 ? pt.pid : panelId
+            const cacheKey = `${fixedPid}_${pt.id}`
+            newCache.set(cacheKey, { ...pt, pid: fixedPid })
           }
           freshWebviewCache.value = newCache
           LogUtil.Info(`✅ fetchFreshPointsForAllPanels: cached ${deviceData.length} points for panelId=${panelId} entryType=${entryType}`)
@@ -2405,15 +2408,15 @@
       // 🔥 FIX: T3000_Data.panelsData is ONLY updated by action=0 (panel snapshot).
       // Action=0 returns the device's CURRENT value timestamped with new Date(), which creates a
       // visual spike on the chart (e.g. showing 20.00°C at page-load time when history shows 14.00°C).
-      // Real-time chart updates come exclusively from sendPeriodicBatchRequest (action=15 polling).
+      // Real-time chart updates come exclusively from sendPeriodicBatchRequest (action=17 polling).
       // Therefore: NEVER update the chart from the T3000_Data watcher.
-      LogUtil.Debug('⏭️ T3000_Data watcher: Skipping chart update — action=0 snapshot data never plotted (use action=15 polling)')
+      LogUtil.Debug('⏭️ T3000_Data watcher: Skipping chart update — action=0 snapshot data never plotted (use action=17 polling)')
 
       // NOTE: DB saves are handled exclusively by updateChartWithNewData → storeRealtimeDataToDatabase.
       // T3000_Data.panelsData is ONLY updated from action=0 (panel snapshot) responses.
       // Saving from this watcher would write stale snapshot values (e.g. VAR20=39000 instead of
-      // the live action=15 value 14000), creating spurious spikes in the history DB.
-      // The sendPeriodicBatchRequest → updateChartWithNewData path already saves action=15 data correctly.
+      // the live action=17 value 14000), creating spurious spikes in the history DB.
+      // The sendPeriodicBatchRequest → updateChartWithNewData path already saves action=17 data correctly.
       if (false) { // REMOVED: was saving action=0 stale data to DB — do not re-enable
 
         /*
@@ -6530,83 +6533,124 @@
    * 🆕 FFI API: Get logging data directly using synchronous FFI call
    * Uses action 15 (LOGGING_DATA) - gets all inputs, outputs, variables in one call
    */
+  /**
+   * 🆕 FFI API: Get real-time point data using action 17 (GET_WEBVIEW_LIST).
+   * Reads directly from the device — no FFI cache, so no startup stale-value spikes.
+   * Calls are split by (panelId, entryType) so only the types actually on screen are fetched.
+   * entryType: 1=INPUT (BAC_IN), 2=OUTPUT (BAC_OUT), 3=VARIABLE (BAC_VAR)
+   */
   const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> => {
-    LogUtil.Info('🚀 sendPeriodicBatchRequest (FFI API action=15)', {
+    LogUtil.Info('🚀 sendPeriodicBatchRequest (FFI API action=17 GET_WEBVIEW_LIST)', {
       hasMonitorConfig: !!monitorConfigData,
       inputItemsCount: monitorConfigData?.inputItems?.length || 0,
       timestamp: new Date().toISOString()
     })
 
     try {
-      // Get serial number and panel ID for LOGGING_DATA request
-      const urlSerialNumber = route.query.sn ? parseInt(route.query.sn as string) : 0
       const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : 0
       const panelsList = T3000_Data.value.panelsList || []
-      const currentSN = urlSerialNumber || (panelsList.length > 0 ? panelsList[0].serial_number : 0)
-      const currentPanelId = urlPanelId || (panelsList.length > 0 ? panelsList[0].panel_number : 1)
+      const mainPanelId = urlPanelId || (panelsList.length > 0 ? panelsList[0].panel_number : 0)
 
-      if (!currentSN) {
-        LogUtil.Error('❌No serial number available for LOGGING_DATA')
+      if (!mainPanelId) {
+        LogUtil.Error('❌No panel ID available for GET_WEBVIEW_LIST')
         return
       }
 
-      // Build the exact set of panel IDs that have live chart series.
-      // Derived from dataSeries (what's actually on screen) rather than always
-      // adding currentPanelId this avoids a wasted call when ALL inputs belong
-      // to a foreign panel (e.g. MON1 pid=144 monitors only panel 11 points).
-      // Falls back to currentPanelId when no series exist yet (initial state).
-      const monitoredPanelIds = new Set<number>(
-        dataSeries.value
-          .map(s => s.panelId)
-          .filter((pid): pid is number => !!pid)
-      )
-      if (monitoredPanelIds.size === 0) monitoredPanelIds.add(currentPanelId)
-
-      // Build per-panel serial number lookup from panelsList.
-      // Each panel has its OWN serial_number we must NOT use the URL panel's SN for foreign panels.
-      // Example: URL panel=144 SN=240488, but panel 53's SN is 249555.
-      const getSerialForPanel = (pid: number): number => {
-        const entry = panelsList.find((p: any) => p.panel_number === pid)
-        return (entry?.serial_number) || currentSN
+      // Map T3000 point_type → action 17 entryType
+      // point_type: 1=OUT→entryType 2 (BAC_OUT), 2=IN→entryType 1 (BAC_IN), 3=VAR→entryType 3 (BAC_VAR)
+      const pointTypeToEntryType = (pt: number): number => {
+        if (pt === 1) return 2  // OUT → BAC_OUT
+        if (pt === 2) return 1  // IN  → BAC_IN
+        if (pt === 3) return 3  // VAR → BAC_VAR
+        return -1
       }
 
-      LogUtil.Info('📡 FFI API ffiGetLoggingData (action=15)', {
-        panelsToPoll: Array.from(monitoredPanelIds),  // only panels with active series
-        primaryPanel: currentPanelId,
-        primarySN: currentSN,
-        perPanelSN: Array.from(monitoredPanelIds).map(pid => ({ pid, sn: getSerialForPanel(pid) }))
+      // Collect unique (panelId, entryType) combos from active dataSeries.
+      // Avoids calling unnecessary types and avoids hard-coding currentPanelId.
+      const fetchSet = new Map<string, { panelId: number; entryType: number; panel: any }>()
+      for (const series of dataSeries.value) {
+        const pid = series.panelId
+        if (!pid) continue
+        const pt = series.pointType
+        if (!pt) continue
+        const entryType = pointTypeToEntryType(pt)
+        if (entryType < 0) continue
+        const key = `${pid}_${entryType}`
+        if (fetchSet.has(key)) continue
+        const panelEntry = panelsList.find(
+          (p: any) => p.panel_number === pid || p.panel_id === pid || p.id === pid
+        )
+        if (!panelEntry) {
+          LogUtil.Warn(`⚠️ sendPeriodicBatchRequest: panelId ${pid} not found in panelsList`)
+          continue
+        }
+        fetchSet.set(key, { panelId: pid, entryType, panel: panelEntry })
+      }
+
+      // Fallback: when no series exist yet, fetch all types for the main panel
+      if (fetchSet.size === 0) {
+        const panelEntry = panelsList.find(
+          (p: any) => p.panel_number === mainPanelId || p.panel_id === mainPanelId || p.id === mainPanelId
+        )
+        if (panelEntry) {
+          for (const et of [1, 2, 3]) {
+            fetchSet.set(`${mainPanelId}_${et}`, { panelId: mainPanelId, entryType: et, panel: panelEntry })
+          }
+        } else {
+          LogUtil.Error('❌sendPeriodicBatchRequest: main panel not found in panelsList, cannot call GET_WEBVIEW_LIST')
+          return
+        }
+      }
+
+      LogUtil.Info('📡 FFI API ffiGetWebviewList (action=17)', {
+        combos: Array.from(fetchSet.keys()),
+        totalCombos: fetchSet.size,
+        timestamp: new Date().toISOString()
       })
 
-      // Fetch Action 15 for every monitored panel (parallel).
-      // Each call uses that panel's own serial_number NOT the URL panel's SN.
-      const panelResponses = await Promise.all(
-        Array.from(monitoredPanelIds).map(pid => ffiApi.ffiGetLoggingData(pid, getSerialForPanel(pid)))
+      // Fetch action 17 for each (panelId, entryType) combo in parallel.
+      // Each call reads fresh data directly from the device — no FFI stale cache.
+      const fetchResults = await Promise.allSettled(
+        Array.from(fetchSet.values()).map(async ({ panelId, entryType, panel }) => {
+          const sn: number = panel.serial_number ?? panel.panel_serial_number ?? 0
+          if (!sn) {
+            LogUtil.Warn(`⚠️ sendPeriodicBatchRequest: panelId ${panelId} missing serialNumber — skipping`)
+            return [] as any[]
+          }
+          // T3000 C++ action 17 uses serial_number as objectinstance (same pattern as refresh routes)
+          const resp = await ffiApi.ffiGetWebviewList(panelId, sn, sn, entryType, 0, 63)
+          const rawItems: any[] = resp?.data?.device_data ?? []
+          // Normalize pid=0: action 17 may return pid=0 for local panel items.
+          // Replace with the queried panelId so updateChartWithNewData can match series.
+          return rawItems.map(item => ({
+            ...item,
+            pid: Number(item.pid) > 0 ? item.pid : panelId
+          })) as any[]
+        })
       )
 
       let allPanelItems: any[] = []
-      panelResponses.forEach(response => {
-        if (response && response.data && Array.isArray(response.data)) {
-          response.data.forEach((device: any) => {
-            if (device.device_data && Array.isArray(device.device_data)) {
-              allPanelItems = allPanelItems.concat(device.device_data)
-            }
-          })
+      for (const result of fetchResults) {
+        if (result.status === 'fulfilled') {
+          allPanelItems = allPanelItems.concat(result.value)
+        } else {
+          LogUtil.Warn('⚠️ sendPeriodicBatchRequest: one combo fetch failed:', result.reason)
         }
-      })
+      }
 
-      LogUtil.Debug('📊 Action 15 response received:', {
-        panelsPolled: monitoredPanelIds.size,
+      LogUtil.Debug('📊 Action 17 response received:', {
+        combosPolled: fetchSet.size,
         totalItems: allPanelItems.length,
         timestamp: new Date().toLocaleTimeString()
       })
 
       if (allPanelItems.length > 0) {
-        LogUtil.Info('📊 LOGGING_DATA extracted items', {
-          panelsPolled: monitoredPanelIds.size,
+        LogUtil.Info('📊 GET_WEBVIEW_LIST extracted items', {
+          combosPolled: fetchSet.size,
           totalItems: allPanelItems.length
         })
 
-        // Validate data quality across all panel results
+        // Validate data quality across all results
         const validDataItems = allPanelItems.filter(item =>
           item &&
           typeof item === 'object' &&
@@ -6616,7 +6660,7 @@
           item.id
         )
 
-        LogUtil.Debug('📊 Action 15 processed:', {
+        LogUtil.Debug('📊 Action 17 processed:', {
           totalItems: allPanelItems.length,
           validItems: validDataItems.length,
           willUpdate: validDataItems.length > 0,
@@ -6625,34 +6669,10 @@
 
         if (validDataItems.length > 0) {
           realtimePollCount.value++
-          // The T3000 FFI server caches the last value in memory. On page refresh the first
-          // 1-2 action=15 polls return the stale cached value before the device re-syncs.
-          // Skip both chart display and DB save for those polls to avoid visual spikes.
-          const isStartupPoll = realtimePollCount.value <= 2
-          if (isStartupPoll) {
-            LogUtil.Warn(`⏭️ Action=15 poll #${realtimePollCount.value}: using last known values (FFI startup stale cache — no DB save)`)
-            // Replace each item's raw value with the last known good value from dataSeries.
-            // Keeps the chart line continuous without plotting the stale FFI cached value.
-            const normalId = (v: any) => String(v ?? '').trim().toUpperCase()
-            const itemsWithLastKnown = validDataItems.map(item => {
-              const series = dataSeries.value.find(s =>
-                normalId(s.id) === normalId(item.id) && Number(s.panelId) === Number(item.pid)
-              )
-              const lastKnown = series?.data?.[series.data.length - 1]
-              if (lastKnown?.value != null) {
-                // dataSeries stores scaled values: analog÷1000, digital as-is
-                const isAnalog = Number(item.digital_analog) === 1
-                const rawRestored = isAnalog ? Math.round(lastKnown.value * 1000) : lastKnown.value
-                return { ...item, value: rawRestored }
-              }
-              return item // no history yet — use original value as-is
-            })
-            updateChartWithNewData(itemsWithLastKnown, true) // skipDbSave=true
-          } else {
-            LogUtil.Debug('🔍Calling updateChartWithNewData with', validDataItems.length, 'items')
-            updateChartWithNewData(validDataItems)
-            // Batch save is done inside updateChartWithNewData - no duplicate call needed
-          }
+          // Action 17 reads directly from the device — no FFI cache, so no startup skip needed.
+          LogUtil.Debug('🔍 Calling updateChartWithNewData with', validDataItems.length, 'items (action=17, no cache skip)')
+          updateChartWithNewData(validDataItems)
+          // Batch save is done inside updateChartWithNewData - no duplicate call needed
         } else {
           LogUtil.Debug('⚠️ No valid data items - chart will NOT be updated, only scrolled')
         }
@@ -6662,14 +6682,14 @@
           hasConnectionError.value = false
         }
       } else {
-        LogUtil.Debug('⚠️ Action 15 returned no items across all panels', {
-          panelsPolled: monitoredPanelIds.size,
+        LogUtil.Debug('⚠️ Action 17 returned no items across all combos', {
+          combosPolled: fetchSet.size,
           timestamp: new Date().toLocaleTimeString()
         })
       }
 
     } catch (error) {
-      LogUtil.Error('❌FFI API (action=15) failed:', error)
+      LogUtil.Error('❌FFI API (action=17) failed:', error)
       hasConnectionError.value = true
     }
   }
@@ -9378,11 +9398,6 @@
 
       if (!monitorConfigData) {
         LogUtil.Debug('🔍EXIT: No monitor config')
-        return
-      }
-
-      if (!monitorConfigData.inputItems || monitorConfigData.inputItems.length === 0) {
-        LogUtil.Debug('🔍EXIT: No input items in monitor config')
         return
       }
 
@@ -13779,8 +13794,15 @@
         try {
           const action0Resp = await ffiApi.ffiGetPanelData(urlPanelId)
           const action0Items: any[] = action0Resp?.data ?? []
+          // Robust MON lookup: T3000 may use 0-based OR 1-based d.index.
+          // Also match by d.id (e.g., "MON2") as the most reliable fallback.
+          const targetMonId = (props.itemData as any)?.t3Entry?.id  // e.g., "MON2"
           const monFromAction0 = action0Items.find(
-            (d: any) => d.type === 'MON' && d.index === urlTrendlogId
+            (d: any) => d.type === 'MON' && (
+              d.index === urlTrendlogId ||            // 0-based: "MON2" → trendlog_id=1, d.index=1
+              d.index === urlTrendlogId + 1 ||        // 1-based: "MON2" → trendlog_id=1, d.index=2
+              (targetMonId && d.id === targetMonId)   // id-match: "MON2" === "MON2"
+            )
           )
           if (monFromAction0) {
             LogUtil.Info('✅ STEP 0 (Action 0): found MON config', {
