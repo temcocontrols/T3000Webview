@@ -11,6 +11,7 @@ import {
   Button,
   Spinner,
   Badge,
+  Select,
 } from '@fluentui/react-components';
 import { ArrowClockwiseRegular, SaveRegular, ErrorCircleRegular, InfoRegular } from '@fluentui/react-icons';
 import { API_BASE_URL } from '../../../config/constants';
@@ -635,7 +636,12 @@ const useStyles = makeStyles({
   },
 });
 
-export const LogSettingsTab: React.FC = () => {
+interface LogSettingsTabProps {
+  mainView: 'default' | 'files' | 'flows';
+  onMainViewChange: (view: 'default' | 'files' | 'flows') => void;
+}
+
+export const LogSettingsTab: React.FC<LogSettingsTabProps> = ({ mainView, onMainViewChange }) => {
   const s = useStyles();
   const [settings, setSettings] = useState<LogCategoryConfig[]>([]);
   const [traceConfig, setTraceConfig] = useState<TraceRuntimeConfig>(() => loadTraceRuntimeConfig());
@@ -763,6 +769,16 @@ export const LogSettingsTab: React.FC = () => {
           {traceSaved && (
             <Badge appearance="filled" color="success" size="small">Trace Applied</Badge>
           )}
+          <Select
+            size="small"
+            value={mainView}
+            onChange={(_, d) => onMainViewChange(d.value as 'default' | 'files' | 'flows')}
+            style={{ minWidth: '110px', fontSize: '12px', marginLeft: 'auto' }}
+          >
+            <option value="default">Default</option>
+            <option value="files">File Mode</option>
+            <option value="flows">Flow Mode</option>
+          </Select>
         </div>
 
         <div className={s.infoBar}>

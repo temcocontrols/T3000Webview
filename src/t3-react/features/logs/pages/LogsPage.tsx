@@ -828,18 +828,6 @@ export const LogsPage: React.FC = () => {
           </span>
         </div>
 
-        {/* View selector dropdown */}
-        <Select
-          size="small"
-          value={mainView}
-          onChange={(_, d) => setMainView(d.value as typeof mainView)}
-          style={{ minWidth: '110px', fontSize: '12px' }}
-        >
-          <option value="default">Default</option>
-          <option value="files">File Mode</option>
-          <option value="flows">Flow Mode</option>
-        </Select>
-
         {/* Advanced drawer trigger */}
         <Button
           size="small"
@@ -1098,7 +1086,7 @@ export const LogsPage: React.FC = () => {
         </DrawerHeader>
         <DrawerBody className={s.drawerBody}>
           <div className={s.advancedTabContent}>
-            <LogSettingsTab />
+            <LogSettingsTab mainView={mainView} onMainViewChange={setMainView} />
           </div>
         </DrawerBody>
       </Drawer>
