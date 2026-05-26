@@ -2814,18 +2814,30 @@ impl T3000MainService {
                         }
                     };
 
+                    // Mirror HTTP endpoint semantics: codes >= 0 are success (0 = ok, 1 = partial/offline),
+                    // only negative codes are hard errors. Treating code 1 as an error caused entire
+                    // devices to be skipped during sync cycles, producing data gaps.
                     if result == -2 {
                         return Err("MFC application not initialized".to_string());
-                    } else if result != 0 {
+                    } else if result < 0 {
                         let null_pos = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
                         let error_response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
                         return Err(format!("BacnetWebView HandleWebViewMsg (action 17) returned error code: {} - Response: {}", result, error_response));
+                    } else if result > 0 {
+                        // Non-zero but non-negative: log as informational (e.g. device offline, partial data)
+                        info!("ℹ️  GET_WEBVIEW_LIST action 17 returned code {} (non-fatal, treating as success)", result);
                     }
 
                     let null_pos = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
                     let result_str = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
 
                     if result_str.is_empty() || result_str == "{}" {
+                        if result > 0 {
+                            // Code > 0 with no data = device offline / no points for this entry type.
+                            // Return an empty JSON array so the caller saves zero points (not an error).
+                            info!("ℹ️  GET_WEBVIEW_LIST action 17 code {} — empty buffer, returning empty list", result);
+                            return Ok("[]".to_string());
+                        }
                         return Err("HandleWebViewMsg (action 17) returned empty response".to_string());
                     }
                     if result_str.contains("\"error\"") {
