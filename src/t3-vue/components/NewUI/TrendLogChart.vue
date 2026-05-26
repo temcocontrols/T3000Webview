@@ -1921,11 +1921,27 @@
     const inputData = (freshInput?.length ? freshInput : null) ?? props.itemData?.t3Entry?.input
     const rangeData = (freshRange?.length ? freshRange : null) ?? props.itemData?.t3Entry?.range
 
+    // num_inputs: T3000 stores all allocated MON slots in the input[] array but only the first
+    // num_inputs are active. Cap the loop to num_inputs to match T3000 native display.
+    const numInputs: number | undefined = freshMonitorData.value?.num_inputs ?? (props.itemData as any)?.t3Entry?.num_inputs
+
+    LogUtil.Info('📊 generateDataSeries: data source', {
+      usingFreshMonitorData: !!(freshInput?.length),
+      freshInputLength: freshInput?.length ?? 0,
+      propsInputLength: (props.itemData as any)?.t3Entry?.input?.length ?? 0,
+      numInputs,
+      freshMonitorId: freshMonitorData.value?.id ?? null
+    })
+
     if (!inputData?.length || !rangeData?.length) {
       return []
     }
 
-    const actualItemCount = Math.min(inputData.length, rangeData.length)
+    const rawItemCount = Math.min(inputData.length, rangeData.length)
+    // Cap to num_inputs when available so we only render configured slots, matching T3000 native.
+    const actualItemCount = (numInputs != null && numInputs > 0)
+      ? Math.min(numInputs, rawItemCount)
+      : rawItemCount
 
     if (actualItemCount === 0) return []
 
@@ -13797,8 +13813,18 @@
           // Robust MON lookup: T3000 may use 0-based OR 1-based d.index.
           // Also match by d.id (e.g., "MON2") as the most reliable fallback.
           const targetMonId = (props.itemData as any)?.t3Entry?.id  // e.g., "MON2"
+
+          // === DIAGNOSTIC: dump all MON items to help debug mismatches ===
+          const allMonItems = action0Items.filter((d: any) => d.type === 'MON' || d.type?.toUpperCase?.() === 'MON')
+          LogUtil.Info('🔍 STEP 0: Action 0 MON items', {
+            totalItems: action0Items.length,
+            monCount: allMonItems.length,
+            monItems: allMonItems.map((d: any) => ({ type: d.type, index: d.index, id: d.id, num_inputs: d.num_inputs })),
+            comparing: { urlTrendlogId, urlTrendlogId_plus1: urlTrendlogId + 1, targetMonId }
+          })
+
           const monFromAction0 = action0Items.find(
-            (d: any) => d.type === 'MON' && (
+            (d: any) => (d.type === 'MON' || d.type?.toUpperCase?.() === 'MON') && (
               d.index === urlTrendlogId ||            // 0-based: "MON2" → trendlog_id=1, d.index=1
               d.index === urlTrendlogId + 1 ||        // 1-based: "MON2" → trendlog_id=1, d.index=2
               (targetMonId && d.id === targetMonId)   // id-match: "MON2" === "MON2"
@@ -13822,7 +13848,26 @@
                 monitorIndex: monFromAction0.index,
               },
             })
-            freshMonitorData.value = monFromAction0
+            // T3000 C++ stores ALL allocated MON slots in input[] (here num_inputs=14),
+            // but T3000 native only displays the first an_inputs IN-type active channels.
+            // The URL all_data (props.itemData.t3Entry) was pre-filtered to that active set.
+            // Use the URL's filtered input[]/range[] for generateDataSeries so it renders
+            // the correct series count, while still taking fresh intervals/status from Action 0.
+            const urlInputForFresh = (props.itemData as any)?.t3Entry?.input as any[] | undefined
+            const urlRangeForFresh = (props.itemData as any)?.t3Entry?.range as any[] | undefined
+            freshMonitorData.value = (urlInputForFresh?.length) ? {
+              ...monFromAction0,
+              input: urlInputForFresh,
+              range: urlRangeForFresh?.length ? urlRangeForFresh : monFromAction0.range,
+              num_inputs: urlInputForFresh.length
+            } : monFromAction0
+
+            LogUtil.Info('🔧 STEP 0: freshMonitorData set', {
+              source: urlInputForFresh?.length ? 'url_filtered' : 'action0_raw',
+              inputCount: freshMonitorData.value.input?.length ?? 0,
+              num_inputs: freshMonitorData.value.num_inputs,
+              action0RawCount: monFromAction0.input?.length ?? 0
+            })
 
             // 🆕 FIX: Build monitorConfig.value directly from Action 0 data
             // getMonitorConfigFromT3000Data() relies on t3000DataManager which often isn't ready yet,
