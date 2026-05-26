@@ -2092,10 +2092,12 @@
       }
 
       // Map from point_type to Action 17 entryType
+      // point_type in AMON config is 1-indexed: 1=OUT, 2=IN, 3=VAR
+      // entryType for GET_WEBVIEW_LIST matches BAC_* defines: 0=BAC_OUT, 1=BAC_IN, 2=BAC_VAR
       const pointTypeToEntryType = (pt: number): number => {
-        if (pt === 1) return 2  // OUT → BAC_OUT
-        if (pt === 2) return 1  // IN  → BAC_IN
-        if (pt === 3) return 3  // VAR → BAC_VAR
+        if (pt === 1) return 0  // OUT → BAC_OUT (0)
+        if (pt === 2) return 1  // IN  → BAC_IN  (1)
+        if (pt === 3) return 2  // VAR → BAC_VAR (2)
         return -1
       }
 
@@ -6553,11 +6555,12 @@
       }
 
       // Map T3000 point_type → action 17 entryType
-      // point_type: 1=OUT→entryType 2 (BAC_OUT), 2=IN→entryType 1 (BAC_IN), 3=VAR→entryType 3 (BAC_VAR)
+      // point_type in AMON config is 1-indexed: 1=OUT, 2=IN, 3=VAR
+      // entryType for GET_WEBVIEW_LIST matches BAC_* defines: 0=BAC_OUT, 1=BAC_IN, 2=BAC_VAR
       const pointTypeToEntryType = (pt: number): number => {
-        if (pt === 1) return 2  // OUT → BAC_OUT
-        if (pt === 2) return 1  // IN  → BAC_IN
-        if (pt === 3) return 3  // VAR → BAC_VAR
+        if (pt === 1) return 0  // OUT → BAC_OUT (0)
+        if (pt === 2) return 1  // IN  → BAC_IN  (1)
+        if (pt === 3) return 2  // VAR → BAC_VAR (2)
         return -1
       }
 
@@ -6589,7 +6592,7 @@
           (p: any) => p.panel_number === mainPanelId || p.panel_id === mainPanelId || p.id === mainPanelId
         )
         if (panelEntry) {
-          for (const et of [1, 2, 3]) {
+          for (const et of [0, 1, 2]) {  // BAC_OUT=0, BAC_IN=1, BAC_VAR=2
             fetchSet.set(`${mainPanelId}_${et}`, { panelId: mainPanelId, entryType: et, panel: panelEntry })
           }
         } else {

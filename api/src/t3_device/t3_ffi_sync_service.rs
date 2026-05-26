@@ -1783,10 +1783,11 @@ impl T3000MainService {
             ));
 
             // Call action 17 for each entry type sequentially and collect points
+            // entryType uses BAC_* values: 0=BAC_OUT/OUTPUT, 1=BAC_IN/INPUT, 2=BAC_VAR/VARIABLE
             let entry_types: &[(i32, &str)] = &[
+                (0, "OUTPUT"),
                 (1, "INPUT"),
-                (2, "OUTPUT"),
-                (3, "VARIABLE"),
+                (2, "VARIABLE"),
             ];
 
             let mut input_points: Vec<PointData> = Vec::new();
@@ -1849,9 +1850,9 @@ impl T3000MainService {
                 ));
 
                 match *entry_type {
+                    0 => output_points = points,
                     1 => input_points = points,
-                    2 => output_points = points,
-                    3 => variable_points = points,
+                    2 => variable_points = points,
                     _ => {}
                 }
             }
@@ -2747,7 +2748,7 @@ impl T3000MainService {
     /// Call T3000 C++ HandleWebViewMsg via FFI for GET_WEBVIEW_LIST (Action 17).
     /// Reads directly from device hardware — no FFI cache.
     /// Parameters match the action 17 JSON payload:
-    ///   entry_type: 1=BAC_IN/INPUT, 2=BAC_OUT/OUTPUT, 3=BAC_VAR/VARIABLE
+    ///   entry_type: 0=BAC_OUT/OUTPUT, 1=BAC_IN/INPUT, 2=BAC_VAR/VARIABLE
     ///   index_start / index_end: 0..63 for all 64 points of a type
     async fn get_webview_list_via_direct_ffi(
         config: &T3000MainConfig,
