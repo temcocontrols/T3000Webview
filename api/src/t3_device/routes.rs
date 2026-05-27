@@ -2553,21 +2553,24 @@ async fn save_realtime_trendlog_data(
     Json(payload): Json<CreateTrendlogDataRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     if state.server_db_enabled && !state.server_db_connected {
-        eprintln!(
-            "❌ Realtime trendlog save blocked: center DB is enabled but not connected (local fallback active)"
-        );
-        return Err((
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(json!({
-                "success": false,
-                "error": "Center DB is enabled but not connected",
-                "hint": "Realtime writes are intentionally blocked in center-db mode until center DB reconnects. Check DB config/connection and restart API service."
-            })),
-        ));
+        if crate::server_db_writer::get_server_mssql_pool().is_none() {
+            eprintln!("❌ Realtime trendlog save blocked: center DB enabled but not connected");
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(json!({
+                    "success": false,
+                    "error": "Center DB is enabled but not connected",
+                    "hint": "Check server database config/connection and restart API service"
+                })),
+            ));
+        }
+        eprintln!("✅ Realtime trendlog save: using runtime-reconnected MSSQL pool");
     }
 
-    // ── MSSQL branch ──
-    if let Some(pool) = &state.mssql_pool {
+    // ── MSSQL branch — uses startup pool or runtime-reconnected pool ──
+    let effective_mssql_pool = state.mssql_pool.as_ref()
+        .or_else(|| crate::server_db_writer::get_server_mssql_pool());
+    if let Some(pool) = effective_mssql_pool {
         use crate::database_management::mssql_trendlog_service;
         eprintln!("📤 Realtime trendlog save target: CENTER DB (MSSQL)");
         let parent_id = mssql_trendlog_service::save_realtime_data(
@@ -2609,6 +2612,16 @@ async fn save_realtime_trendlog_data(
     let db_connection = match state.t3_device_conn.as_ref() {
         Some(conn) => conn.lock().await.clone(),
         None => {
+            if state.server_db_enabled {
+                return Err((
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    Json(json!({
+                        "success": false,
+                        "error": "Center DB is enabled but not connected",
+                        "hint": "Check server database config/connection and restart API service"
+                    })),
+                ));
+            }
             match crate::db_connection::establish_t3_device_connection().await {
                 Ok(conn) => conn,
                 Err(_) => {
@@ -2694,38 +2707,43 @@ async fn save_realtime_trendlog_batch(
     } else { None };
 
     if state.server_db_enabled && !state.server_db_connected {
-        let blocked_info =
-            "❌ [Routes] Realtime batch save blocked - center DB enabled but not connected (local fallback active)";
-        if let Some(db) = log_db.as_ref() {
-            crate::logging::service::emit_app_log(
-                db,
-                "error",
-                "T3_Webview_API",
-                Some("trendlog_routes"),
-                None,
-                blocked_info,
-                None,
-            )
-            .await;
+        if crate::server_db_writer::get_server_mssql_pool().is_none() {
+            let blocked_info =
+                "❌ [Routes] Realtime batch save blocked - center DB enabled but not connected";
+            if let Some(db) = log_db.as_ref() {
+                crate::logging::service::emit_app_log(
+                    db,
+                    "error",
+                    "T3_Webview_API",
+                    Some("trendlog_routes"),
+                    None,
+                    blocked_info,
+                    None,
+                )
+                .await;
+            }
+            eprintln!("{}", blocked_info);
+            if let (Some(ref db), Some(ref fh)) = (&log_db, &flow_opt) {
+                fh.step(db, "batch_save", "error", "api", "blocked", 0,
+                    "blocked — center DB enabled but not connected", None).await;
+                fh.done(db, "blocked").await;
+            }
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(json!({
+                    "success": false,
+                    "error": "Center DB is enabled but not connected",
+                    "hint": "Check server database config/connection and restart API service"
+                })),
+            ));
         }
-        eprintln!("{}", blocked_info);
-        if let (Some(ref db), Some(ref fh)) = (&log_db, &flow_opt) {
-            fh.step(db, "batch_save", "error", "api", "blocked", 0,
-                "blocked — center DB enabled but not connected", None).await;
-            fh.done(db, "blocked").await;
-        }
-        return Err((
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(json!({
-                "success": false,
-                "error": "Center DB is enabled but not connected",
-                "hint": "Check server database config/connection and restart API service"
-            })),
-        ));
+        eprintln!("✅ [Routes] Batch save: using runtime-reconnected MSSQL pool");
     }
 
-    // ── MSSQL branch ──
-    if let Some(pool) = &state.mssql_pool {
+    // ── MSSQL branch — uses startup pool or runtime-reconnected pool ──
+    let effective_mssql_pool = state.mssql_pool.as_ref()
+        .or_else(|| crate::server_db_writer::get_server_mssql_pool());
+    if let Some(pool) = effective_mssql_pool {
         use crate::database_management::mssql_trendlog_service;
         if let Some(db) = log_db.as_ref() {
             crate::logging::service::emit_app_log(
@@ -2810,6 +2828,21 @@ async fn save_realtime_trendlog_batch(
     let db_connection = match state.t3_device_conn.as_ref() {
         Some(conn) => conn.lock().await.clone(),
         None => {
+            if state.server_db_enabled {
+                if let (Some(ref db), Some(ref fh)) = (&log_db, &flow_opt) {
+                    fh.step(db, "batch_save", "error", "api", "blocked", 0,
+                        "blocked — center DB enabled but t3_device_conn unavailable", None).await;
+                    fh.done(db, "blocked").await;
+                }
+                return Err((
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    Json(json!({
+                        "success": false,
+                        "error": "Center DB is enabled but not connected",
+                        "hint": "Check server database config/connection and restart API service"
+                    })),
+                ));
+            }
             match crate::db_connection::establish_t3_device_connection().await {
                 Ok(conn) => conn,
                 Err(_) => {
