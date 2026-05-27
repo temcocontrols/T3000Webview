@@ -713,6 +713,13 @@ export const LogsPage: React.FC = () => {
     loadTopSummary();
   };
 
+  const handleMainViewChange = useCallback((view: 'default' | 'files' | 'flows') => {
+    setMainView(view);
+    if (view === 'files' || view === 'flows') {
+      setShowAdvanced(false);
+    }
+  }, []);
+
   const handleClearAll = useCallback(async () => {
     setShowClearConfirm(false);
     setClearing(true);
@@ -1086,7 +1093,7 @@ export const LogsPage: React.FC = () => {
         </DrawerHeader>
         <DrawerBody className={s.drawerBody}>
           <div className={s.advancedTabContent}>
-            <LogSettingsTab mainView={mainView} onMainViewChange={setMainView} />
+            <LogSettingsTab mainView={mainView} onMainViewChange={handleMainViewChange} />
           </div>
         </DrawerBody>
       </Drawer>
