@@ -1720,7 +1720,7 @@
     message: '',
   })
 
-  const DB_STATUS_POLL_MS = 10000
+  const DB_STATUS_POLL_MS = 60000
   let dbStatusTimer: ReturnType<typeof setInterval> | null = null
 
   async function checkDbStatus() {
@@ -2643,6 +2643,23 @@
           oldTimeBase,
           newTimeBase
         })
+
+        // ⚡ OPTIMIZATION: Check if in-memory data already covers the new time window.
+        // This handles zoom-in (shorter window is already contained in existing data)
+        // so we can skip the API call entirely and just re-render the chart.
+        const targetWindow = getCurrentTimeWindow() // uses already-updated timeBase.value
+        const coverageCheck = getExistingDataTimeRange()
+        if (coverageCheck && coverageCheck.totalPoints > 0 &&
+            coverageCheck.latestEarliest <= targetWindow.min) {
+          LogUtil.Info('⚡ In-memory data already covers new window — skipping API call, re-rendering only', {
+            newTimeBase,
+            windowMin: new Date(targetWindow.min).toISOString(),
+            dataEarliest: new Date(coverageCheck.latestEarliest).toISOString(),
+            totalPoints: coverageCheck.totalPoints
+          })
+          updateCharts()
+          return
+        }
 
         // 🆕 FIX: Don't show loading state if we already have data
         const existingDataRange = getExistingDataTimeRange()
@@ -10599,6 +10616,21 @@
       { shiftMinutes, timeBase: timeBase.value, timeOffset: timeOffset.value, isRealTime: isRealTime.value },
     ])
 
+    // ⚡ OPTIMIZATION: If in-memory data already covers the new window, just re-render.
+    // Use latestEarliest (most conservative: all series must cover) to avoid showing gaps.
+    const leftTargetWindow = getCurrentTimeWindow() // uses updated timeOffset
+    const leftCoverage = getExistingDataTimeRange()
+    if (leftCoverage && leftCoverage.totalPoints > 0 &&
+        leftCoverage.latestEarliest <= leftTargetWindow.min) {
+      LogUtil.Info('⚡ Scroll left: In-memory data covers window — skipping API call', {
+        windowMin: new Date(leftTargetWindow.min).toISOString(),
+        dataEarliest: new Date(leftCoverage.latestEarliest).toISOString(),
+        timeOffset: timeOffset.value
+      })
+      updateCharts()
+      return
+    }
+
     // Regenerate data for the new time window
     await initializeData()
 
@@ -10628,6 +10660,20 @@
     logChartEvent('navigate_forward', `shift=${shiftMinutes}m timebase=${timeBase.value} offset=${timeOffset.value}`, [
       { shiftMinutes, timeBase: timeBase.value, timeOffset: timeOffset.value, isRealTime: isRealTime.value },
     ])
+
+    // ⚡ OPTIMIZATION: If in-memory data already covers the new window, just re-render.
+    const rightTargetWindow = getCurrentTimeWindow() // uses updated timeOffset
+    const rightCoverage = getExistingDataTimeRange()
+    if (rightCoverage && rightCoverage.totalPoints > 0 &&
+        rightCoverage.latestEarliest <= rightTargetWindow.min) {
+      LogUtil.Info('⚡ Scroll right: In-memory data covers window — skipping API call', {
+        windowMin: new Date(rightTargetWindow.min).toISOString(),
+        dataEarliest: new Date(rightCoverage.latestEarliest).toISOString(),
+        timeOffset: timeOffset.value
+      })
+      updateCharts()
+      return
+    }
 
     // Regenerate data for the new time window
     await initializeData()
@@ -11445,8 +11491,9 @@
     if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
       LogUtil.Debug('= TLChart DataFlow: Custom date range selected - fetching historical data')
 
-      // Stop any real-time updates when using custom dates
-      stopRealTimeUpdates()
+      // Keep background polling running — interval fires in background-only mode (!isRealTime)
+      // so device data continues to be saved to DB while viewing history (no gaps).
+      // Do NOT call stopRealTimeUpdates() here.
 
       // Extract device parameters
       const deviceParams = extractDeviceParameters()
@@ -11524,6 +11571,12 @@
 
       // Digital data is now part of the unified chart update
       LogUtil.Debug('= TLChart DataFlow: Charts updated with custom range data')
+
+      // Ensure background polling is active after historical load
+      if (!realtimeInterval) {
+        LogUtil.Debug('= TLChart DataFlow: Restarting background polling after custom date load')
+        startRealTimeUpdates()
+      }
     }
   }
 
@@ -11567,10 +11620,6 @@
       isRealTime.value = false // Disable Auto Scroll for custom date ranges (historical data)
       customDateModalVisible.value = false
       saveViewState() // 🆕 Persist custom date range to localStorage
-      // Keep background polling running so no data gaps occur while viewing history
-      if (!realtimeInterval) {
-        startRealTimeUpdates()
-      }
       onCustomDateChange()
     } else {
       LogUtil.Warn('Custom date range incomplete - missing start or end date/time')
@@ -13713,6 +13762,7 @@
 
     try {
       checkDbStatus()
+      if (dbStatusTimer) clearInterval(dbStatusTimer)
       dbStatusTimer = setInterval(checkDbStatus, DB_STATUS_POLL_MS)
 
       // 🆕 FORCE: Always reset history flag on mount to ensure data loads
