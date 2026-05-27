@@ -132,8 +132,11 @@ impl FlowHandle {
     }
 
     /// For FFI message action steps (GET_PANELS_LIST, LOGGING_DATA, etc.).
-    /// Writes the full `details` payload to a file on disk; only `message`
-    /// (the short summary) is kept in the DB row (`payload_ref` holds the path).
+    /// Writes the full `details` payload to a file on disk and keeps DB
+    /// storage small by leaving `details` empty.
+    ///
+    /// The generated payload file path is appended to `message` so operators
+    /// can see where the large payload is stored even without opening payload_ref.
     pub async fn step_ffi(
         &self,
         db: &DatabaseConnection,
@@ -147,7 +150,11 @@ impl FlowHandle {
     ) {
         let seq = self.inner.seq.fetch_add(1, Ordering::Relaxed);
         let payload_ref = write_detail_file(&self.inner.flow_id, seq, details).await;
-        self.insert_step(db, seq, step_name, level, source, status, duration_ms, message,
+        let message_with_ref = match payload_ref.as_deref() {
+            Some(path) => format!("{} | payload_file={}", message, path),
+            None => message.to_string(),
+        };
+        self.insert_step(db, seq, step_name, level, source, status, duration_ms, &message_with_ref,
             None, payload_ref.as_deref()).await;
     }
 
