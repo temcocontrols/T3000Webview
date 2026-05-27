@@ -2572,7 +2572,16 @@
       destroyAllCharts()
       await nextTick()
 
-      LogUtil.Info('✅Cleared custom date settings and destroyed charts, will reload data for new timebase', {
+      // 🧹 CRITICAL: Clear stale custom-range data points from all series.
+      // The smart-loading coverage check in loadHistoricalDataFromDatabase uses
+      // getExistingDataTimeRange() — if custom data is still present it incorrectly
+      // concludes "data already covers the 5m window" and skips the DB fetch,
+      // leaving the chart empty because the old timestamps don't fit the new X-axis.
+      dataSeries.value.forEach(series => { series.data = [] })
+      // Also reset the history-loaded guard so createAnalogChart triggers a fresh load
+      hasLoadedInitialHistory.value = false
+
+      LogUtil.Info('✅Cleared custom date settings, stale data, and destroyed charts — will reload for new timebase', {
         timeBase: newTimeBase,
         isRealTime: isRealTime.value
       })
@@ -2581,6 +2590,9 @@
       // This ensures fresh data is loaded immediately
       LogUtil.Info('🔄 Calling onTimeBaseChange() directly for custom→preset transition')
       await onTimeBaseChange()
+      // 🆕 FIX: Mark that we just exited custom mode so the first zoom/timebase-change
+      // does a full DB reload instead of gap-only load (avoids break lines from sparse DB data)
+      _justSwitchedFromCustom = true
       return // Exit early - onTimeBaseChange handles everything
     }
 
@@ -3325,6 +3337,10 @@
   // ─── localStorage view-state persistence ─────────────────────────────────────
   // Used to suppress saveViewState during programmatic restoration (avoids double writes)
   let _restoringViewState = false
+
+  // Flag: first timebase zoom after exiting custom mode should do a full DB reload
+  // (not gap-only) to avoid break lines from sparse DB data in the gap window.
+  let _justSwitchedFromCustom = false
 
   const _viewStateKey = () => {
     // props.title is already "TRL{sn}_{panelId}_{trendlogId}" unique per device+panel+trendlog.
@@ -8978,6 +8994,18 @@
 
   // 🆕 OPTIMIZATION: Check if we can reuse existing data when changing timebase
   const checkDataReuseOptimization = async (oldTimeBase: string, newTimeBase: string): Promise<boolean> => {
+    // 🆕 FIX: After exiting custom mode the first zoom must do a full reload, not a gap-only
+    // load, to ensure all available DB data for the new timebase is fetched in one shot.
+    // This prevents break lines caused by sparse data in the gap-only window.
+    if (_justSwitchedFromCustom) {
+      _justSwitchedFromCustom = false
+      LogUtil.Info('⚡ Skipping gap optimization: recently exited custom mode — doing full DB reload', {
+        oldTimeBase,
+        newTimeBase
+      })
+      return false
+    }
+
     // Only optimize for real-time mode (5m) or when time offset is 0 (current time view)
     if (!isRealTime.value && timeOffset.value !== 0) {
       LogUtil.Debug('Cannot optimize: Not real-time and has time offset', { timeOffset: timeOffset.value })
@@ -9130,7 +9158,14 @@
           totalDataPointsAfter: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
         })
       } else {
-        LogUtil.Warn('⚠️ No gap data found or query failed', { response: gapDataResponse })
+        // 🆕 FIX: Gap query returned nothing (DB has no records for this older window).
+        // Fall back to a full DB reload for the new timebase so the chart always shows
+        // all available data instead of leaving an empty section.
+        LogUtil.Warn('⚠️ No gap data found — falling back to full DB reload for ' + newTimeBase, {
+          gapStartTime: formattedStartTime,
+          gapEndTime: formattedEndTime
+        })
+        await loadHistoricalDataFromDatabase(true)
       }
 
     } catch (error) {
