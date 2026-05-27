@@ -2140,8 +2140,19 @@
             LogUtil.Warn(`⚠️ fetchFreshPointsForAllPanels: panelId ${panelId} missing serialNumber — skipping`)
             return
           }
-          // T3000 C++ action 17 uses serial_number as objectinstance (same pattern as refresh routes)
-          const resp = await ffiApi.ffiGetWebviewList(panelId, sn, sn, entryType, 0, 63)
+          const objectInstance: number = panel.object_instance ?? panel.objectInstance ?? 0
+          if (!objectInstance) {
+            LogUtil.Warn(`⚠️ fetchFreshPointsForAllPanels: panelId ${panelId} missing object_instance — skip Action 17 to avoid invalid payload`)
+            return
+          }
+          const resp = await ffiApi.ffiGetWebviewList(
+            panelId,
+            sn,
+            objectInstance,
+            entryType,
+            0,
+            63
+          )
           const deviceData: any[] = resp?.data?.device_data ?? []
           const newCache = new Map(freshWebviewCache.value)
           for (const pt of deviceData) {
@@ -3252,6 +3263,19 @@
   // Timebase progression for zoom functionality (shorter to longer)
   const timebaseProgression = ['5m', '10m', '30m', '1h', '4h', '12h', '1d', '4d']
 
+  const normalizeCustomModeForPresetSelection = (targetTimeBase: string) => {
+    if (timeBase.value !== 'custom') return
+
+    isRealTime.value = true
+    dataSource.value = 'realtime'
+    timeOffset.value = 0
+
+    LogUtil.Info('🔄 Exiting custom mode via preset selection', {
+      selectedTimeBase: targetTimeBase,
+      isRealTime: isRealTime.value
+    })
+  }
+
   // Computed properties for navigation button states
   const canScroll = computed(() => {
     // Scroll buttons work for all regular timebases (including live mode)
@@ -3320,6 +3344,10 @@
       customDateModalVisible.value = true
       return
     }
+
+    // Any preset selected while in custom mode should immediately return to live mode.
+    // The timeBase watcher + onTimeBaseChange will perform the full data reload/restart.
+    normalizeCustomModeForPresetSelection(value)
 
     // 🔧 FIX: Timebase only controls X-axis display range (5m, 10m, 30m, 1h)
     // Real-time mode should stay active for all timebases - only 'custom' disables it
@@ -6649,8 +6677,19 @@
             LogUtil.Warn(`⚠️ sendPeriodicBatchRequest: panelId ${panelId} missing serialNumber — skipping`)
             return [] as any[]
           }
-          // T3000 C++ action 17 uses serial_number as objectinstance (same pattern as refresh routes)
-          const resp = await ffiApi.ffiGetWebviewList(panelId, sn, sn, entryType, 0, 63)
+          const objectInstance: number = panel.object_instance ?? panel.objectInstance ?? 0
+          if (!objectInstance) {
+            LogUtil.Warn(`⚠️ sendPeriodicBatchRequest: panelId ${panelId} missing object_instance — skip Action 17 to avoid invalid payload`)
+            return [] as any[]
+          }
+          const resp = await ffiApi.ffiGetWebviewList(
+            panelId,
+            sn,
+            objectInstance,
+            entryType,
+            0,
+            63
+          )
           const rawItems: any[] = resp?.data?.device_data ?? []
           // Normalize pid=0: action 17 may return pid=0 for local panel items.
           // Replace with the queried panelId so updateChartWithNewData can match series.
@@ -9455,11 +9494,28 @@
       }
 
       // Check if we have real monitor configuration for live data
-      const monitorConfigData = monitorConfig.value
+      let monitorConfigData = monitorConfig.value
 
       if (!monitorConfigData) {
-        LogUtil.Debug('🔍EXIT: No monitor config')
-        return
+        LogUtil.Warn('⚠️ addRealtimeDataPoint: monitorConfig missing, attempting in-tick recovery')
+
+        monitorConfigData = await getMonitorConfigFromT3000Data()
+
+        if (!monitorConfigData) {
+          monitorConfigData = await createTempMonitorConfigFromProps()
+        }
+
+        if (monitorConfigData) {
+          monitorConfig.value = monitorConfigData
+          LogUtil.Info('✅ addRealtimeDataPoint: monitorConfig recovered in polling tick', {
+            pid: monitorConfigData.pid,
+            inputItems: monitorConfigData.inputItems?.length || 0,
+            dataIntervalMs: monitorConfigData.dataIntervalMs
+          })
+        } else {
+          LogUtil.Debug('🔍EXIT: No monitor config (recovery failed)')
+          return
+        }
       }
 
       LogUtil.Debug('🔍All checks passed - calling sendPeriodicBatchRequest')
@@ -10715,6 +10771,9 @@
   }
 
   const zoomIn = () => {
+    // If called while in custom mode (e.g., keyboard path), normalize first.
+    normalizeCustomModeForPresetSelection('5m')
+
     // Guard: Don't allow zoom for custom date ranges
     if (timeBase.value === 'custom') return
 
@@ -10739,6 +10798,9 @@
   }
 
   const zoomOut = () => {
+    // If called while in custom mode (e.g., keyboard path), normalize first.
+    normalizeCustomModeForPresetSelection('5m')
+
     // Guard: Don't allow zoom for custom date ranges
     if (timeBase.value === 'custom') return
 
@@ -10770,6 +10832,7 @@
     })
 
     // Reset states first
+    normalizeCustomModeForPresetSelection('5m')
     timeOffset.value = 0 // Reset time navigation as well
     isRealTime.value = true // 🆕 FIX: Reset button should always turn Auto Scroll ON
 
@@ -11514,10 +11577,36 @@
         await initializeData()
       }
 
-      // 🔥 FIX: Restart realtime updates if in realtime mode after timebase change
-      if (isRealTime.value && monitorConfig.value) {
-        LogUtil.Info('🔄 Restarting realtime updates after timebase change')
-        startRealTimeUpdates()
+      // 🔥 FIX: Restart realtime updates if in realtime mode after timebase change.
+      // Recover monitor config first because custom-range flows may temporarily leave it unset.
+      if (isRealTime.value) {
+        let activeMonitorConfig = monitorConfig.value
+
+        if (!activeMonitorConfig) {
+          LogUtil.Warn('⚠️ onTimeBaseChange: monitorConfig missing after timebase switch, attempting recovery')
+
+          activeMonitorConfig = await getMonitorConfigFromT3000Data()
+
+          if (!activeMonitorConfig) {
+            activeMonitorConfig = await createTempMonitorConfigFromProps()
+          }
+
+          if (activeMonitorConfig) {
+            monitorConfig.value = activeMonitorConfig
+            LogUtil.Info('✅ onTimeBaseChange: monitorConfig recovered for realtime restart', {
+              pid: activeMonitorConfig.pid,
+              inputItems: activeMonitorConfig.inputItems?.length || 0,
+              dataIntervalMs: activeMonitorConfig.dataIntervalMs
+            })
+          } else {
+            LogUtil.Warn('⚠️ onTimeBaseChange: monitorConfig recovery failed; skipping realtime restart')
+          }
+        }
+
+        if (monitorConfig.value) {
+          LogUtil.Info('🔄 Restarting realtime updates after timebase change')
+          startRealTimeUpdates()
+        }
       }
     }
   }
