@@ -78,7 +78,9 @@ impl T3000FfiApiService {
     fn load_t3000_function() -> bool {
         unsafe {
             if T3000_LOADED {
-                return BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN.is_some();
+                return std::ptr::addr_of!(BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN)
+                    .read()
+                    .is_some();
             }
 
             let mut api_logger = ServiceLogger::api().unwrap_or_else(|_| ServiceLogger::new("fallback_api").unwrap());
