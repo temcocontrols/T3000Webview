@@ -261,10 +261,9 @@ impl T3TrendlogDataService {
                 // frontend sends 1-based (pointNumber+1=1), causing a systematic mismatch.
                 let mut point_conditions = Vec::new();
                 for point in specific_points {
-                    point_conditions.push("(p.PointId = ? AND p.PointType = ? AND p.PanelId = ?)");
+                    point_conditions.push("(p.PointId = ? AND p.PointType = ?)");
                     params.push(point.point_id.clone().into());
                     params.push(point.point_type.clone().into());
-                    params.push(point.panel_id.into());
                 }
 
                 sql.push_str(&format!(" AND ({})", point_conditions.join(" OR ")));

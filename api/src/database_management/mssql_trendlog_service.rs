@@ -101,8 +101,7 @@ pub async fn get_trendlog_history(
                         .collect::<Vec<_>>()
                         .join(",");
                     format!(
-                        "(p.PanelId = {} AND UPPER(p.PointType) IN ({}) AND p.PointId = '{}')",
-                        p.panel_id,
+                        "(UPPER(p.PointType) IN ({}) AND p.PointId = '{}')",
                         type_sql,
                         p.point_id.replace('\'', "''"),
                     )
