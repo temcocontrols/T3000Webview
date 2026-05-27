@@ -20,7 +20,7 @@ const GraphicsPage = lazy(() => import('../pages').then(m => ({ default: m.Graph
 const SchedulesPage = lazy(() => import('../pages').then(m => ({ default: m.SchedulesPage })));
 const HolidaysPage = lazy(() => import('../pages').then(m => ({ default: m.HolidaysPage })));
 const TrendLogsPage = lazy(() => import('../pages').then(m => ({ default: m.TrendLogsPage })));
-const TrendPolicyPage = lazy(() => import('../pages').then(m => ({ default: m.TrendPolicyPage })));
+const TrendPolicyRouteAdapterPage = lazy(() => import('../../features/trendlogs/pages/TrendPolicyRouteAdapterPage').then(m => ({ default: m.TrendPolicyRouteAdapterPage })));
 const TrendChartPage = lazy(() => import('../pages').then(m => ({ default: m.TrendChartPage })));
 const AlarmsPage = lazy(() => import('../pages').then(m => ({ default: m.AlarmsPage })));
 const NetworkPage = lazy(() => import('../pages').then(m => ({ default: m.NetworkPage })));
@@ -203,7 +203,7 @@ export const t3000Routes: T3000Route[] = [
   },
   {
     path: '/t3000/trend-policy',
-    element: TrendPolicyPage,
+    element: TrendPolicyRouteAdapterPage,
     title: 'Unified Trend Logging',
     requiresDevice: false,
   },

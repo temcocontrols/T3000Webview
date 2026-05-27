@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   DataGrid,
   DataGridHeader,
@@ -35,6 +35,8 @@ import { TrendlogRefreshApi } from '../services/trendlogRefreshApi';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import { API_BASE_URL } from '../../../config/constants';
 import { TrendlogVerifyDrawer } from '../components/TrendlogVerifyDrawer';
+import { TrendChartContent } from '../components/TrendChartContent';
+import { TrendPolicyPage } from './TrendPolicyPage';
 import styles from './TrendlogsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
@@ -68,8 +70,15 @@ interface TrendLogInput {
   isSelected?: number;
 }
 
+type TrendCenterTab = 'overview' | 'monitors' | 'points-tags' | 'chart' | 'verify';
+
+const isTrendCenterTab = (value: string | null): value is TrendCenterTab => {
+  return value === 'overview' || value === 'monitors' || value === 'points-tags' || value === 'chart' || value === 'verify';
+};
+
 export const TrendLogsPage: React.FC = () => {
   const { selectedDevice, treeData, selectDevice } = useDeviceTreeStore();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [trendLogs, setTrendLogs] = useState<TrendLogData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -88,6 +97,11 @@ export const TrendLogsPage: React.FC = () => {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const selectedSerial = selectedDevice?.serialNumber;
   const selectedPanelId = selectedDevice?.panelId;
+  const rawTab = searchParams.get('tab');
+  const activeTab: TrendCenterTab = isTrendCenterTab(rawTab) ? rawTab : 'monitors';
+  const requestedSerial = searchParams.get('serial');
+  const requestedMonitorId = searchParams.get('monitorId');
+  const requestedTrendlogId = searchParams.get('trendlogId');
 
   // Helper function to get row ID for a trendlog
   const getRowIdForItem = useCallback((item: TrendLogData) => {
@@ -96,6 +110,22 @@ export const TrendLogsPage: React.FC = () => {
 
   const navigate = useNavigate();
   const [verifyDrawerOpen, setVerifyDrawerOpen] = useState(false);
+
+  const setActiveTab = useCallback((tab: TrendCenterTab) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', tab);
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const syncMonitorQuery = useCallback((trendlog: TrendLogData) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('serial', String(selectedDevice?.serialNumber || trendlog.serialNumber || ''));
+    next.set('panel', String(selectedDevice?.panelId || trendlog.panelId || 1));
+    next.set('monitorId', trendlog.trendlogIndex || trendlog.trendlogId || '0');
+    next.set('trendlogId', trendlog.trendlogId || trendlog.trendlogIndex || '0');
+    next.set('tab', activeTab);
+    setSearchParams(next, { replace: true });
+  }, [activeTab, searchParams, selectedDevice?.panelId, selectedDevice?.serialNumber, setSearchParams]);
 
   // Internal function to load inputs with deduplication
   const loadTrendlogInputsInternal = async (trendlog: TrendLogData) => {
@@ -288,12 +318,32 @@ export const TrendLogsPage: React.FC = () => {
         return null;
       };
 
+      const findDeviceBySerial = (nodes: any[], serial: number): any => {
+        for (const node of nodes) {
+          if (node.data?.serialNumber === serial) return node;
+          if (node.children && node.children.length > 0) {
+            const found = findDeviceBySerial(node.children, serial);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      const requestedSerialNum = requestedSerial ? Number(requestedSerial) : null;
+      if (requestedSerialNum && !Number.isNaN(requestedSerialNum)) {
+        const requestedDeviceNode = findDeviceBySerial(treeData, requestedSerialNum);
+        if (requestedDeviceNode?.data) {
+          selectDevice(requestedDeviceNode.data);
+          return;
+        }
+      }
+
       const firstDeviceNode = findFirstDevice(treeData);
       if (firstDeviceNode?.data) {
         selectDevice(firstDeviceNode.data);
       }
     }
-  }, [selectedDevice, treeData, selectDevice]);
+  }, [requestedSerial, selectedDevice, treeData, selectDevice]);
 
   // Fetch trendlogs for selected device
   const fetchTrendLogs = useCallback(async () => {
@@ -368,20 +418,32 @@ export const TrendLogsPage: React.FC = () => {
 
       setTrendLogs(trendlogsWithIndex);
 
-      // Auto-select first trendlog and load its inputs
+      // Auto-select trendlog from query (if provided), else select first trendlog
       if (trendlogsWithIndex.length > 0) {
-        console.log('🎯 [TrendLogsPage] Auto-selecting first trendlog:', trendlogsWithIndex[0]);
-        const firstTrendlog = trendlogsWithIndex[0];
+        const normalizeMonitorId = (value?: string | null) => (value || '').toUpperCase().replace(/^MON/, '');
+        const requestedNormalized = normalizeMonitorId(requestedMonitorId || requestedTrendlogId);
+
+        const queriedTrendlog = requestedNormalized
+          ? trendlogsWithIndex.find((item: TrendLogData) => {
+              const itemA = normalizeMonitorId(item.trendlogId);
+              const itemB = normalizeMonitorId(item.trendlogIndex);
+              return itemA === requestedNormalized || itemB === requestedNormalized;
+            })
+          : null;
+
+        const initialTrendlog = queriedTrendlog || trendlogsWithIndex[0];
+
+        console.log('🎯 [TrendLogsPage] Auto-selecting trendlog:', initialTrendlog);
 
         // Use loadTrendlogInputs to handle the loading with deduplication
-        setSelectedMonitor(firstTrendlog);
+        setSelectedMonitor(initialTrendlog);
 
         // Select the first row's radio button
-        const firstRowId = `${firstTrendlog.serialNumber}-${firstTrendlog.trendlogId || firstTrendlog.trendlogIndex}-${firstTrendlog._uniqueIndex}`;
+        const firstRowId = `${initialTrendlog.serialNumber}-${initialTrendlog.trendlogId || initialTrendlog.trendlogIndex}-${initialTrendlog._uniqueIndex}`;
         setSelectedItems(new Set([firstRowId]));
 
-        if (firstTrendlog.trendlogId) {
-          await loadTrendlogInputsInternal(firstTrendlog);
+        if (initialTrendlog.trendlogId) {
+          await loadTrendlogInputsInternal(initialTrendlog);
         }
       }
     } catch (err) {
@@ -398,7 +460,7 @@ export const TrendLogsPage: React.FC = () => {
       setLoading(false);
       setDbChecked(true);
     }
-  }, [selectedPanelId, selectedSerial]);
+  }, [requestedMonitorId, requestedTrendlogId, selectedPanelId, selectedSerial]);
 
   // Load inputs for a specific trendlog
   const loadTrendlogInputs = useCallback(async (trendlog: TrendLogData) => {
@@ -417,6 +479,14 @@ export const TrendLogsPage: React.FC = () => {
   useEffect(() => {
     fetchTrendLogs();
   }, [fetchTrendLogs]);
+
+  useEffect(() => {
+    if (!rawTab) {
+      const next = new URLSearchParams(searchParams);
+      next.set('tab', 'monitors');
+      setSearchParams(next, { replace: true });
+    }
+  }, [rawTab, searchParams, setSearchParams]);
 
   // Reset auto-refresh state when device changes (don't clear data to avoid visual flash)
   useEffect(() => {
@@ -549,13 +619,38 @@ export const TrendLogsPage: React.FC = () => {
     // Update radio button selection
     const rowId = getRowIdForItem(monitor);
     setSelectedItems(new Set([rowId]));
+    syncMonitorQuery(monitor);
 
     await loadTrendlogInputs(monitor);
-  }, [loadTrendlogInputs, getRowIdForItem]);
+  }, [loadTrendlogInputs, getRowIdForItem, syncMonitorQuery]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   };
+
+  const selectedMonitorIndex = selectedMonitor?.trendlogIndex || selectedMonitor?.trendlogId || '0';
+  const selectedTrendlogId = selectedMonitor?.trendlogId || '0';
+  const selectedMonitorTitle = selectedMonitor?.trendlogLabel || `Monitor ${selectedMonitorIndex}`;
+  const selectedMonitorItemData = selectedMonitor
+    ? {
+      title: selectedMonitorTitle,
+      t3Entry: {
+        id: `MON${selectedMonitorIndex}`,
+        pid: selectedDevice?.panelId || 1,
+        label: selectedMonitorTitle,
+        command: `${selectedDevice?.panelId || 1}MON${selectedMonitorIndex}`,
+      },
+    }
+    : undefined;
+
+  useEffect(() => {
+    if (activeTab === 'verify' && selectedDevice && selectedMonitor) {
+      syncMonitorQuery(selectedMonitor);
+      setVerifyDrawerOpen(true);
+      return;
+    }
+    setVerifyDrawerOpen(false);
+  }, [activeTab, selectedDevice, selectedMonitor, syncMonitorQuery]);
 
   // Display all 12 trendlog slots (matching T3000 desktop), merge actual data
   const displayTrendLogs = React.useMemo(() => {
@@ -733,7 +828,10 @@ export const TrendLogsPage: React.FC = () => {
             <Button
               size="small"
               icon={<ChartMultipleRegular className={styles.iconSmall} />}
-              onClick={() => handleViewChart(item)}
+              onClick={async () => {
+                await handleMonitorSelect(item);
+                setActiveTab('chart');
+              }}
               title="View trend chart for this trendlog"
             >
               View Graphic
@@ -764,11 +862,131 @@ export const TrendLogsPage: React.FC = () => {
                 </div>
               )}
 
+              <div className={styles.tabBar}>
+                <button
+                  className={`${styles.tabButton} ${activeTab === 'overview' ? styles.tabButtonActive : ''}`}
+                  onClick={() => setActiveTab('overview')}
+                >
+                  Overview
+                </button>
+                <button
+                  className={`${styles.tabButton} ${activeTab === 'monitors' ? styles.tabButtonActive : ''}`}
+                  onClick={() => setActiveTab('monitors')}
+                >
+                  Monitors
+                </button>
+                <button
+                  className={`${styles.tabButton} ${activeTab === 'points-tags' ? styles.tabButtonActive : ''}`}
+                  onClick={() => setActiveTab('points-tags')}
+                >
+                  Points and Tags
+                </button>
+                <button
+                  className={`${styles.tabButton} ${activeTab === 'chart' ? styles.tabButtonActive : ''}`}
+                  onClick={() => setActiveTab('chart')}
+                >
+                  Chart
+                </button>
+                <button
+                  className={`${styles.tabButton} ${activeTab === 'verify' ? styles.tabButtonActive : ''}`}
+                  onClick={() => setActiveTab('verify')}
+                >
+                  Verify Data
+                </button>
+              </div>
+
+              {activeTab === 'overview' && (
+                <div className={styles.summaryGrid}>
+                  <div className={styles.summaryCard}>
+                    <Text size={200}>Selected Device</Text>
+                    <Text size={400} weight="semibold">{selectedDevice?.nameShowOnTree || selectedDevice?.productName || 'None'}</Text>
+                  </div>
+                  <div className={styles.summaryCard}>
+                    <Text size={200}>Configured Monitors</Text>
+                    <Text size={400} weight="semibold">{trendLogs.length}</Text>
+                  </div>
+                  <div className={styles.summaryCard}>
+                    <Text size={200}>Inputs In Selected Monitor</Text>
+                    <Text size={400} weight="semibold">{monitorInputs.length}</Text>
+                  </div>
+                  <div className={styles.summaryCardActions}>
+                    <Button appearance="primary" onClick={() => setActiveTab('monitors')}>Open Monitors</Button>
+                    <Button appearance="secondary" onClick={() => setActiveTab('verify')} disabled={!selectedDevice}>Verify Data</Button>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'points-tags' && (
+                <div className={styles.embeddedPolicyWrap}>
+                  <TrendPolicyPage embedded />
+                </div>
+              )}
+
+              {activeTab === 'chart' && (
+                <div className={styles.chartTabWrap}>
+                  {!selectedDevice || !selectedMonitor ? (
+                    <div className={styles.placeholderPanel}>
+                      <Text size={400} weight="semibold">Chart Workspace</Text>
+                      <Text size={300}>
+                        Select a monitor in the Monitors tab first, then return here for in-page analysis.
+                      </Text>
+                      <Button appearance="primary" onClick={() => setActiveTab('monitors')}>
+                        Go To Monitors
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className={styles.chartTabActions}>
+                        <Text size={300} weight="semibold">
+                          {selectedMonitorTitle}
+                        </Text>
+                        <Button appearance="secondary" onClick={() => handleViewChart(selectedMonitor)}>
+                          Open Full Chart Page
+                        </Button>
+                      </div>
+                      <div className={styles.embeddedChartFrame}>
+                        <TrendChartContent
+                          serialNumber={selectedDevice.serialNumber}
+                          panelId={selectedDevice.panelId || 1}
+                          trendlogId={selectedTrendlogId}
+                          monitorId={selectedMonitorIndex}
+                          itemData={selectedMonitorItemData}
+                          monitorInputs={monitorInputs}
+                          isDrawerMode={false}
+                          onBack={() => setActiveTab('monitors')}
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'verify' && (
+                <div className={styles.placeholderPanel}>
+                  <Text size={400} weight="semibold">Verify Trendlog Data</Text>
+                  <Text size={300}>
+                    Verification opens with the currently selected monitor and device context.
+                  </Text>
+                  {selectedMonitor && (
+                    <Text size={200}>
+                      Current monitor: {selectedMonitor.trendlogId || selectedMonitor.trendlogIndex} {selectedMonitor.trendlogLabel ? `- ${selectedMonitor.trendlogLabel}` : ''}
+                    </Text>
+                  )}
+                  <Button
+                    appearance="primary"
+                    onClick={() => setVerifyDrawerOpen(true)}
+                    disabled={!selectedDevice || !selectedMonitor}
+                  >
+                    Open Verify Panel
+                  </Button>
+                </div>
+              )}
+
               {/* ========================================
                   TOOLBAR - Azure Portal Command Bar
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
-              {selectedDevice && (
+              {activeTab === 'monitors' && selectedDevice && (
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   {/* Search Input Box */}
@@ -803,7 +1021,7 @@ export const TrendLogsPage: React.FC = () => {
                   {/* Verify Data Button */}
                   <button
                     className={styles.toolbarButton}
-                    onClick={() => setVerifyDrawerOpen(true)}
+                    onClick={() => setActiveTab('verify')}
                     disabled={!selectedDevice}
                     title="Verify trendlog data records"
                   >
@@ -832,6 +1050,7 @@ export const TrendLogsPage: React.FC = () => {
                   DOCKING BODY - Main Content (Dual Grid Layout)
                   Matches: msportalfx-docking-body
                   ======================================== */}
+              {activeTab === 'monitors' && (
               <div className={styles.dockingBody}>
 
                 {/* Loading State */}
@@ -960,6 +1179,7 @@ export const TrendLogsPage: React.FC = () => {
                 )} */}
 
               </div>
+              )}
             </div>
           </div>
         </div>

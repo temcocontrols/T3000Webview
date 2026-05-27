@@ -48,6 +48,107 @@
   min-height: 0;
 }
 
+.tabBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #edebe9;
+}
+
+.tabButton {
+  border: 1px solid #d1d1d1;
+  background: #ffffff;
+  color: #323130;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.tabButton:hover {
+  background: #f3f2f1;
+}
+
+.tabButtonActive {
+  border-color: #0078d4;
+  color: #005a9e;
+  background: #f3f9fd;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.summaryCard {
+  border: 1px solid #edebe9;
+  border-radius: 6px;
+  padding: 12px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.summaryCardActions {
+  border: 1px solid #edebe9;
+  border-radius: 6px;
+  padding: 12px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+
+.placeholderPanel {
+  border: 1px solid #edebe9;
+  border-radius: 6px;
+  padding: 16px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.embeddedPolicyWrap {
+  border: 1px solid #edebe9;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.chartTabWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.chartTabActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #edebe9;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.embeddedChartFrame {
+  border: 1px solid #edebe9;
+  border-radius: 6px;
+  background: #ffffff;
+  overflow: hidden;
+  min-height: 70vh;
+}
+
 /* Toolbar styles */
 .toolbar {
   background-color: transparent;

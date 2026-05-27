@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeftRegular, TagRegular, FilterRegular } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
@@ -33,8 +33,27 @@ const pointTypeResponseKey: Record<PointType, string> = {
 
 const labelizeType = (t: PointType) => (t === 'input' ? 'Input' : t === 'output' ? 'Output' : 'Variable');
 const ALL_TYPES: PointType[] = ['input', 'output', 'variable'];
+const POLICY_STORAGE_KEY = 't3000.trend.policy.state.v2';
+const PROFILE_STORAGE_KEY = 't3000.trend.policy.profiles.v1';
+const SEMANTIC_TAGS = new Set(['temp', 'humidity', 'pressure', 'flow', 'co2', 'occupancy']);
 
-export const TrendPolicyPage: React.FC = () => {
+interface SavedTagProfile {
+  id: string;
+  name: string;
+  createdAt: string;
+  selectedDeviceSerials: number[];
+  filterTags: string[];
+  tagStateFilter: TagStateFilter;
+  activeTypeTab: TabType;
+  pointSearch: string;
+}
+
+interface TrendPolicyPageProps {
+  embedded?: boolean;
+  onBack?: () => void;
+}
+
+export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = false, onBack }) => {
   const { devices, fetchDevices } = useDeviceTreeStore();
 
   const [selectedDeviceSerials, setSelectedDeviceSerials] = useState<Set<number>>(new Set());
@@ -51,6 +70,61 @@ export const TrendPolicyPage: React.FC = () => {
   const [pointSearch, setPointSearch] = useState('');
   const [filterTags, setFilterTags] = useState<string[]>([]);
   const [pointTags, setPointTags] = useState<Record<string, string[]>>({});
+  const [savedProfiles, setSavedProfiles] = useState<SavedTagProfile[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState('');
+  const [profileNameInput, setProfileNameInput] = useState('');
+  const importFileRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    try {
+      const savedStateRaw = localStorage.getItem(POLICY_STORAGE_KEY);
+      if (savedStateRaw) {
+        const parsed = JSON.parse(savedStateRaw);
+        setSelectedDeviceSerials(new Set(Array.isArray(parsed.selectedDeviceSerials) ? parsed.selectedDeviceSerials : []));
+        setPrimaryTab(parsed.primaryTab === 'tags' ? 'tags' : 'points');
+        setActiveTypeTab(parsed.activeTypeTab === 'input' || parsed.activeTypeTab === 'output' || parsed.activeTypeTab === 'variable' ? parsed.activeTypeTab : 'all');
+        setTagStateFilter(parsed.tagStateFilter === 'tagged' || parsed.tagStateFilter === 'untagged' ? parsed.tagStateFilter : 'all');
+        setPointSearch(typeof parsed.pointSearch === 'string' ? parsed.pointSearch : '');
+        setFilterTags(Array.isArray(parsed.filterTags) ? parsed.filterTags : []);
+        setPointTags(parsed.pointTags && typeof parsed.pointTags === 'object' ? parsed.pointTags : {});
+      }
+
+      const savedProfilesRaw = localStorage.getItem(PROFILE_STORAGE_KEY);
+      if (savedProfilesRaw) {
+        const parsedProfiles = JSON.parse(savedProfilesRaw);
+        setSavedProfiles(Array.isArray(parsedProfiles) ? parsedProfiles : []);
+      }
+    } catch (e) {
+      console.warn('Failed to restore TrendPolicy state:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        POLICY_STORAGE_KEY,
+        JSON.stringify({
+          selectedDeviceSerials: Array.from(selectedDeviceSerials),
+          primaryTab,
+          activeTypeTab,
+          tagStateFilter,
+          pointSearch,
+          filterTags,
+          pointTags,
+        })
+      );
+    } catch (e) {
+      console.warn('Failed to persist TrendPolicy state:', e);
+    }
+  }, [selectedDeviceSerials, primaryTab, activeTypeTab, tagStateFilter, pointSearch, filterTags, pointTags]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(savedProfiles));
+    } catch (e) {
+      console.warn('Failed to persist TrendPolicy profiles:', e);
+    }
+  }, [savedProfiles]);
 
   useEffect(() => {
     if (devices.length === 0) {
@@ -248,6 +322,91 @@ export const TrendPolicyPage: React.FC = () => {
     [allPoints, pointTags]
   );
 
+  const validationSummary = useMemo(() => {
+    let selectedWithoutTags = 0;
+    let selectedInsufficientTags = 0;
+    let selectedSemanticConflicts = 0;
+
+    selectedPointKeys.forEach((key) => {
+      const tags = pointTags[key] ?? [];
+      if (tags.length === 0) selectedWithoutTags += 1;
+      if (tags.length < 2) selectedInsufficientTags += 1;
+      const semanticCount = tags.filter(tag => SEMANTIC_TAGS.has(tag)).length;
+      if (semanticCount > 1) selectedSemanticConflicts += 1;
+    });
+
+    return {
+      selectedWithoutTags,
+      selectedInsufficientTags,
+      selectedSemanticConflicts,
+    };
+  }, [pointTags, selectedPointKeys]);
+
+  const saveCurrentProfile = () => {
+    const name = profileNameInput.trim() || `Profile ${savedProfiles.length + 1}`;
+    const profile: SavedTagProfile = {
+      id: `${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      name,
+      createdAt: new Date().toISOString(),
+      selectedDeviceSerials: Array.from(selectedDeviceSerials),
+      filterTags: [...filterTags],
+      tagStateFilter,
+      activeTypeTab,
+      pointSearch,
+    };
+    setSavedProfiles(prev => [profile, ...prev]);
+    setSelectedProfileId(profile.id);
+    setProfileNameInput('');
+  };
+
+  const applySelectedProfile = () => {
+    const profile = savedProfiles.find(p => p.id === selectedProfileId);
+    if (!profile) return;
+    setSelectedDeviceSerials(new Set(profile.selectedDeviceSerials));
+    setFilterTags(profile.filterTags);
+    setTagStateFilter(profile.tagStateFilter);
+    setActiveTypeTab(profile.activeTypeTab);
+    setPointSearch(profile.pointSearch);
+  };
+
+  const deleteSelectedProfile = () => {
+    if (!selectedProfileId) return;
+    setSavedProfiles(prev => prev.filter(p => p.id !== selectedProfileId));
+    setSelectedProfileId('');
+  };
+
+  const exportTagPackage = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      pointTags,
+      profiles: savedProfiles,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `trend-tags-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const importTagPackage = async (file: File) => {
+    try {
+      const content = await file.text();
+      const parsed = JSON.parse(content);
+      if (parsed.pointTags && typeof parsed.pointTags === 'object') {
+        setPointTags(parsed.pointTags);
+      }
+      if (Array.isArray(parsed.profiles)) {
+        setSavedProfiles(parsed.profiles as SavedTagProfile[]);
+      }
+    } catch (e) {
+      console.error('Failed to import trend tag package:', e);
+    }
+  };
+
   const allDevicesSelected = devices.length > 0 && selectedDeviceSerials.size === devices.length;
   return (
     <div className={styles.page}>
@@ -268,15 +427,32 @@ export const TrendPolicyPage: React.FC = () => {
           </span>
         </div>
         <div className={styles.topBarDivider} />
-        <button
-          className={styles.backBtn}
-          onClick={() => { window.history.back(); }}
-          aria-label="Back to Dashboard"
-        >
-          <ArrowLeftRegular style={{ fontSize: '13px' }} />
-          Back to Dashboard
-        </button>
+        {!embedded && (
+          <button
+            className={styles.backBtn}
+            onClick={() => {
+              if (onBack) {
+                onBack();
+                return;
+              }
+              window.history.back();
+            }}
+            aria-label="Back to Dashboard"
+          >
+            <ArrowLeftRegular style={{ fontSize: '13px' }} />
+            Back to Dashboard
+          </button>
+        )}
       </div>
+
+      {(validationSummary.selectedWithoutTags > 0 || validationSummary.selectedSemanticConflicts > 0 || validationSummary.selectedInsufficientTags > 0) && (
+        <div className={styles.validationBanner}>
+          <strong>Tag Validation:</strong>
+          <span>{validationSummary.selectedWithoutTags} selected point(s) untagged.</span>
+          <span>{validationSummary.selectedInsufficientTags} selected point(s) have fewer than 2 tags.</span>
+          <span>{validationSummary.selectedSemanticConflicts} selected point(s) have semantic tag conflicts.</span>
+        </div>
+      )}
 
       {/* ── Two-panel layout ── */}
       <div className={styles.main}>
@@ -481,6 +657,42 @@ export const TrendPolicyPage: React.FC = () => {
                       </button>
                     )) : <span className={styles.helperText}>No tags yet</span>}
                   </div>
+                </div>
+
+                <div className={styles.profileRow}>
+                  <span className={styles.controlLabel}>Saved Profiles</span>
+                  <select
+                    className={styles.profileSelect}
+                    value={selectedProfileId}
+                    onChange={e => setSelectedProfileId(e.target.value)}
+                  >
+                    <option value="">Select profile</option>
+                    {savedProfiles.map(profile => (
+                      <option key={profile.id} value={profile.id}>{profile.name}</option>
+                    ))}
+                  </select>
+                  <input
+                    className={styles.tagInput}
+                    value={profileNameInput}
+                    onChange={e => setProfileNameInput(e.target.value)}
+                    placeholder="profile name"
+                  />
+                  <button className={styles.tagActionBtn} onClick={saveCurrentProfile}>Save</button>
+                  <button className={styles.tagActionBtn} onClick={applySelectedProfile} disabled={!selectedProfileId}>Apply</button>
+                  <button className={styles.tagActionBtn} onClick={deleteSelectedProfile} disabled={!selectedProfileId}>Delete</button>
+                  <button className={styles.tagActionBtn} onClick={exportTagPackage}>Export</button>
+                  <button className={styles.tagActionBtn} onClick={() => importFileRef.current?.click()}>Import</button>
+                  <input
+                    ref={importFileRef}
+                    type="file"
+                    accept="application/json"
+                    className={styles.hiddenFileInput}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) await importTagPackage(file);
+                      e.currentTarget.value = '';
+                    }}
+                  />
                 </div>
               </div>
             )}

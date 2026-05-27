@@ -49,11 +49,13 @@ export const TrendChartPage: React.FC = () => {
     trendlogId?: string;
     monitorId?: string;
   }>({});
+  const [shouldRedirectToTrendCenter, setShouldRedirectToTrendCenter] = useState(false);
 
   // Parse URL query params (C++ path — only used when no navState)
   useEffect(() => {
     if (navState) return;
     const searchParams = new URLSearchParams(window.location.search);
+    const legacyMode = searchParams.get('legacy') === '1';
     const serialNumber = searchParams.get('serial_number');
     const panelId = searchParams.get('panel_id');
     const trendlogId = searchParams.get('trendlog_id');
@@ -64,10 +66,31 @@ export const TrendChartPage: React.FC = () => {
       trendlogId: trendlogId || undefined,
       monitorId: monitorId || undefined,
     });
+
+    if (!legacyMode) {
+      setShouldRedirectToTrendCenter(true);
+    }
   }, [navState]);
 
   const params = navState ?? urlParams;
   const fromReact = !!navState;
+
+  useEffect(() => {
+    if (!shouldRedirectToTrendCenter || navState) return;
+
+    const next = new URLSearchParams();
+    next.set('tab', 'chart');
+    if (urlParams.serialNumber != null) next.set('serial', String(urlParams.serialNumber));
+    if (urlParams.panelId != null) next.set('panel', String(urlParams.panelId));
+    if (urlParams.monitorId) next.set('monitorId', urlParams.monitorId);
+    if (urlParams.trendlogId) next.set('trendlogId', urlParams.trendlogId);
+
+    navigate(`/t3000/trendlogs?${next.toString()}`, { replace: true });
+  }, [shouldRedirectToTrendCenter, navState, urlParams, navigate]);
+
+  if (shouldRedirectToTrendCenter && !navState) {
+    return null;
+  }
 
   return (
     <div className={styles.pageContainer}>
