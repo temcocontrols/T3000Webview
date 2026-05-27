@@ -6669,9 +6669,18 @@
         if (validDataItems.length > 0) {
           realtimePollCount.value++
           // Action 17 reads directly from the device — no FFI cache, so no startup skip needed.
-          LogUtil.Debug('🔍 Calling updateChartWithNewData with', validDataItems.length, 'items (action=17, no cache skip)')
-          updateChartWithNewData(validDataItems)
-          // Batch save is done inside updateChartWithNewData - no duplicate call needed
+          if (isRealTime.value) {
+            // Live mode: update chart AND save to DB
+            LogUtil.Debug('🔍 Calling updateChartWithNewData with', validDataItems.length, 'items (action=17, no cache skip)')
+            updateChartWithNewData(validDataItems)
+            // Batch save is done inside updateChartWithNewData - no duplicate call needed
+          } else {
+            // Custom date mode: save to DB only — don't touch chart display
+            LogUtil.Debug('🔍 Background save only (custom mode):', validDataItems.length, 'items')
+            storeRealtimeDataToDatabase(validDataItems).catch(err => {
+              LogUtil.Warn('Background batch save (custom mode) failed (non-critical)', err)
+            })
+          }
         } else {
           LogUtil.Debug('⚠️ No valid data items - chart will NOT be updated, only scrolled')
         }
@@ -9380,10 +9389,11 @@
     try {
       LogUtil.Debug('🔍addRealtimeDataPoint FIRED at', new Date().toLocaleTimeString() + '.' + new Date().getMilliseconds())
 
-      // Only add data if we're in real-time mode
+      // Background polling: always poll the device even in custom date range mode
+      // so no data gaps occur in the DB. Chart visual update is skipped when !isRealTime.
       if (!isRealTime.value) {
-        LogUtil.Debug('🔍EXIT: Not in real-time mode')
-        return
+        LogUtil.Debug('🔍 Background polling (custom mode) - will save to DB, skip chart update')
+        // Fall through — sendPeriodicBatchRequest will save only, not update chart
       }
 
       // Safety check: If no data series exist, skip processing
@@ -9441,7 +9451,10 @@
         // Don't clear data - let accumulated points remain visible
       }
 
-      updateCharts()
+      // Only scroll/update the chart when in live mode
+      if (isRealTime.value) {
+        updateCharts()
+      }
     } catch (error) {
       // 🛡️CRITICAL ERROR HANDLER: Catch ANY error to prevent interval from stopping
       // This ensures the polling continues even if there are unexpected errors
@@ -11554,6 +11567,10 @@
       isRealTime.value = false // Disable Auto Scroll for custom date ranges (historical data)
       customDateModalVisible.value = false
       saveViewState() // 🆕 Persist custom date range to localStorage
+      // Keep background polling running so no data gaps occur while viewing history
+      if (!realtimeInterval) {
+        startRealTimeUpdates()
+      }
       onCustomDateChange()
     } else {
       LogUtil.Warn('Custom date range incomplete - missing start or end date/time')
@@ -14262,9 +14279,9 @@
         loadViewState()
       }
 
-      if (isRealTime.value) {
-        startRealTimeUpdates()
-      }
+      // Always start background polling — keeps device data flowing to DB
+      // even when viewing a custom date range (isRealTime=false).
+      startRealTimeUpdates()
 
       // ⌨️ Setup keyboard navigation
       document.addEventListener('keydown', handleKeydown)
