@@ -27,6 +27,7 @@ import {
   SearchRegular,
   ErrorCircleRegular,
   ChartMultipleRegular,
+  InfoFilled,
   InfoRegular,
   DataBarVerticalRegular,
 } from '@fluentui/react-icons';
@@ -631,6 +632,38 @@ export const TrendLogsPage: React.FC = () => {
   const selectedMonitorIndex = selectedMonitor?.trendlogIndex || selectedMonitor?.trendlogId || '0';
   const selectedTrendlogId = selectedMonitor?.trendlogId || '0';
   const selectedMonitorTitle = selectedMonitor?.trendlogLabel || `Monitor ${selectedMonitorIndex}`;
+  const activeMonitorCount = trendLogs.filter((item) => (item.status || '').toUpperCase() === 'ON').length;
+  const autoModeCount = trendLogs.filter((item) => {
+    const value = (item.autoManual || '').toUpperCase();
+    return value === 'AUTO' || value === '1';
+  }).length;
+  const monitorsWithLabel = trendLogs.filter((item) => !!item.trendlogLabel?.trim()).length;
+  const intervalValues = trendLogs
+    .map((item) => item.intervalSeconds)
+    .filter((value): value is number => typeof value === 'number' && value > 0);
+  const bufferValues = trendLogs
+    .map((item) => item.bufferSize)
+    .filter((value): value is number => typeof value === 'number' && value > 0);
+  const avgIntervalSeconds = intervalValues.length > 0
+    ? Math.round(intervalValues.reduce((sum, value) => sum + value, 0) / intervalValues.length)
+    : null;
+  const minIntervalSeconds = intervalValues.length > 0 ? Math.min(...intervalValues) : null;
+  const maxIntervalSeconds = intervalValues.length > 0 ? Math.max(...intervalValues) : null;
+  const avgBufferSize = bufferValues.length > 0
+    ? Math.round(bufferValues.reduce((sum, value) => sum + value, 0) / bufferValues.length)
+    : null;
+  const manualModeCount = Math.max(trendLogs.length - autoModeCount, 0);
+  const unlabeledCount = Math.max(trendLogs.length - monitorsWithLabel, 0);
+  const activeMonitorPercent = trendLogs.length > 0
+    ? Math.round((activeMonitorCount / trendLogs.length) * 100)
+    : 0;
+  const formatSeconds = (totalSeconds: number | null) => {
+    if (totalSeconds == null) return 'N/A';
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
   const selectedMonitorItemData = selectedMonitor
     ? {
       title: selectedMonitorTitle,
@@ -896,22 +929,167 @@ export const TrendLogsPage: React.FC = () => {
               </div>
 
               {activeTab === 'overview' && (
-                <div className={styles.summaryGrid}>
-                  <div className={styles.summaryCard}>
-                    <Text size={200}>Selected Device</Text>
-                    <Text size={400} weight="semibold">{selectedDevice?.nameShowOnTree || selectedDevice?.productName || 'None'}</Text>
+                <div className={styles.overviewWrap}>
+                  <div className={styles.summaryGrid}>
+                    <div className={styles.summaryCard}>
+                      <div className={styles.metricTitleRow}>
+                        <Text size={200}>Selected Device</Text>
+                        <Tooltip content="Current panel context for all trendlog metrics and actions on this page." relationship="description">
+                          <button type="button" className={styles.metricInfoButton} aria-label="Selected Device help">
+                            <InfoFilled className={styles.metricInfoIcon} />
+                          </button>
+                        </Tooltip>
+                      </div>
+                      <Text size={400} weight="semibold">{selectedDevice?.nameShowOnTree || selectedDevice?.productName || 'None'}</Text>
+                      <Text size={200}>SN {selectedDevice?.serialNumber || 'N/A'} · Panel {selectedDevice?.panelId || 'N/A'}</Text>
+                    </div>
+                    <div className={styles.summaryCard}>
+                      <div className={styles.metricTitleRow}>
+                        <Text size={200}>Configured Monitors</Text>
+                        <Tooltip content="Total monitors detected from database/device sync; ON/OFF shows runtime state split." relationship="description">
+                          <button type="button" className={styles.metricInfoButton} aria-label="Configured Monitors help">
+                            <InfoFilled className={styles.metricInfoIcon} />
+                          </button>
+                        </Tooltip>
+                      </div>
+                      <Text size={500} weight="semibold">{trendLogs.length}</Text>
+                      <div className={styles.summaryMetaRow}>
+                        <Badge color="success" appearance="tint">{activeMonitorCount} ON</Badge>
+                        <Badge color="subtle" appearance="tint">{Math.max(trendLogs.length - activeMonitorCount, 0)} OFF</Badge>
+                      </div>
+                    </div>
+                    <div className={styles.summaryCard}>
+                      <div className={styles.metricTitleRow}>
+                        <Text size={200}>Monitor Configuration Quality</Text>
+                        <Tooltip content="Shows how many monitors have labels and how many are running in Auto mode." relationship="description">
+                          <button type="button" className={styles.metricInfoButton} aria-label="Monitor Configuration Quality help">
+                            <InfoFilled className={styles.metricInfoIcon} />
+                          </button>
+                        </Tooltip>
+                      </div>
+                      <Text size={500} weight="semibold">{monitorsWithLabel}/{trendLogs.length || 0}</Text>
+                      <Text size={200}>labeled monitors · {autoModeCount} auto mode</Text>
+                    </div>
+                    <div className={styles.summaryCard}>
+                      <div className={styles.metricTitleRow}>
+                        <Text size={200}>Inputs In Selected Monitor</Text>
+                        <Tooltip content="Number of points currently assigned to the selected monitor and the average logging interval across monitors." relationship="description">
+                          <button type="button" className={styles.metricInfoButton} aria-label="Inputs In Selected Monitor help">
+                            <InfoFilled className={styles.metricInfoIcon} />
+                          </button>
+                        </Tooltip>
+                      </div>
+                      <Text size={500} weight="semibold">{monitorInputs.length}</Text>
+                      <Text size={200}>Average interval: {formatSeconds(avgIntervalSeconds)}</Text>
+                    </div>
                   </div>
-                  <div className={styles.summaryCard}>
-                    <Text size={200}>Configured Monitors</Text>
-                    <Text size={400} weight="semibold">{trendLogs.length}</Text>
+
+                  <div className={styles.overviewMiddleCard}>
+                    <div className={styles.middleCardBody}>
+                      <div className={styles.middleSnapshotPanel}>
+                        <div className={styles.middleSectionTitleRow}>
+                          <Text size={300} weight="semibold">Current Monitor Snapshot</Text>
+                          {selectedMonitor && (
+                            <Badge appearance="outline" color="informative">
+                              {(selectedMonitor.trendlogId || selectedMonitor.trendlogIndex)} · {selectedMonitor.trendlogLabel || 'No label'}
+                            </Badge>
+                          )}
+                        </div>
+                        {selectedMonitor ? (
+                          <>
+                            <Text size={200}>Review current collection parameters before validation or charting.</Text>
+                            <div className={styles.summaryMetaRow}>
+                              <Badge appearance="outline">Interval {formatSeconds(selectedMonitor.intervalSeconds ?? null)}</Badge>
+                              <Badge appearance="outline">Buffer {selectedMonitor.bufferSize ?? 'N/A'}</Badge>
+                              <Badge appearance="outline">Inputs {monitorInputs.length}</Badge>
+                            </div>
+                            <div className={styles.summaryMetaRow}>
+                              <Badge appearance="tint" color={(selectedMonitor.status || '').toUpperCase() === 'ON' ? 'success' : 'subtle'}>
+                                Status {(selectedMonitor.status || 'OFF').toUpperCase()}
+                              </Badge>
+                              <Badge appearance="tint" color="informative">
+                                Mode {((selectedMonitor.autoManual || '').toUpperCase() === 'AUTO' || selectedMonitor.autoManual === '1') ? 'Auto' : 'Manual'}
+                              </Badge>
+                            </div>
+                          </>
+                        ) : (
+                          <Text size={200}>Select a monitor in the Monitors tab to view its runtime snapshot and readiness.</Text>
+                        )}
+                      </div>
+
+                      <div className={styles.middleActionPanel}>
+                        <Text size={300} weight="semibold">Action Center</Text>
+                        <Text size={200}>Use this flow to configure, verify, and inspect logs quickly.</Text>
+                        <div className={styles.workflowList}>
+                          <Text size={200}>1. Open Monitors to review interval, buffer, and status.</Text>
+                          <Text size={200}>2. Use Points and Tags to confirm logged points and labels.</Text>
+                          <Text size={200}>3. Run Verify Data for health checks before chart analysis.</Text>
+                        </div>
+                        <div className={styles.quickActionGrid}>
+                          <Button size="small" appearance="primary" className={styles.quickActionButton} onClick={() => setActiveTab('monitors')}>Open Monitors</Button>
+                          <Button size="small" appearance="outline" className={styles.quickActionButton} onClick={() => setActiveTab('points-tags')} disabled={!selectedDevice}>Points and Tags</Button>
+                          <Button size="small" appearance="outline" className={styles.quickActionButton} onClick={() => setActiveTab('verify')} disabled={!selectedDevice || !selectedMonitor}>Verify Data</Button>
+                          <Button size="small" appearance="outline" className={styles.quickActionButton} onClick={() => setActiveTab('chart')} disabled={!selectedDevice || !selectedMonitor}>Open Chart</Button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className={styles.summaryCard}>
-                    <Text size={200}>Inputs In Selected Monitor</Text>
-                    <Text size={400} weight="semibold">{monitorInputs.length}</Text>
-                  </div>
-                  <div className={styles.summaryCardActions}>
-                    <Button appearance="primary" onClick={() => setActiveTab('monitors')}>Open Monitors</Button>
-                    <Button appearance="secondary" onClick={() => setActiveTab('verify')} disabled={!selectedDevice}>Verify Data</Button>
+
+                  <div className={styles.overviewFooterPanel}>
+                    <div className={styles.globalSummaryHeader}>
+                      <Text size={200}>Selected device: SN {selectedDevice?.serialNumber || 'N/A'} · Panel {selectedDevice?.panelId || 'N/A'}</Text>
+                    </div>
+
+                    <div className={styles.globalMetricGrid}>
+                      <div className={styles.globalMetricTile}>
+                        <Text className={styles.globalMetricValue}>{trendLogs.length}/12</Text>
+                        <Text className={styles.globalMetricLabel}>Configured slots</Text>
+                      </div>
+                      <div className={styles.globalMetricTile}>
+                        <Text className={styles.globalMetricValue}>{activeMonitorCount}</Text>
+                        <Text className={styles.globalMetricLabel}>Active monitors</Text>
+                      </div>
+                      <div className={styles.globalMetricTile}>
+                        <Text className={styles.globalMetricValue}>{Math.max(trendLogs.length - activeMonitorCount, 0)}</Text>
+                        <Text className={styles.globalMetricLabel}>Inactive monitors</Text>
+                      </div>
+                      <div className={styles.globalMetricTile}>
+                        <Text className={styles.globalMetricValue}>{activeMonitorPercent}%</Text>
+                        <Text className={styles.globalMetricLabel}>Activity ratio</Text>
+                      </div>
+                      <div className={styles.globalMetricTile}>
+                        <Text className={styles.globalMetricValue}>{monitorsWithLabel}</Text>
+                        <Text className={styles.globalMetricLabel}>Labeled monitors</Text>
+                      </div>
+                      <div className={styles.globalMetricTile}>
+                        <Text className={styles.globalMetricValue}>{unlabeledCount}</Text>
+                        <Text className={styles.globalMetricLabel}>Unlabeled monitors</Text>
+                      </div>
+                      <div className={styles.globalMetricTile}>
+                        <Text className={styles.globalMetricValue}>{autoModeCount}/{manualModeCount}</Text>
+                        <Text className={styles.globalMetricLabel}>Auto / Manual</Text>
+                      </div>
+                      <div className={styles.globalMetricTile}>
+                        <Text className={styles.globalMetricValue}>{formatSeconds(avgIntervalSeconds)}</Text>
+                        <Text className={styles.globalMetricLabel}>Avg interval</Text>
+                      </div>
+                      <div className={styles.globalMetricTile}>
+                        <Text className={styles.globalMetricValue}>{formatSeconds(minIntervalSeconds)} - {formatSeconds(maxIntervalSeconds)}</Text>
+                        <Text className={styles.globalMetricLabel}>Interval range</Text>
+                      </div>
+                      <div className={styles.globalMetricTile}>
+                        <Text className={styles.globalMetricValue}>{avgBufferSize ?? 'N/A'}</Text>
+                        <Text className={styles.globalMetricLabel}>Avg buffer size</Text>
+                      </div>
+                      <div className={styles.globalMetricTile}>
+                        <Text className={styles.globalMetricValue}>{selectedMonitor ? monitorInputs.length : 0}</Text>
+                        <Text className={styles.globalMetricLabel}>Selected monitor inputs</Text>
+                      </div>
+                      <div className={styles.globalMetricTile}>
+                        <Text className={styles.globalMetricValue}>{refreshing ? 'Syncing' : 'Ready'}</Text>
+                        <Text className={styles.globalMetricLabel}>Live sync state</Text>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

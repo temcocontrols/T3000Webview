@@ -2653,6 +2653,8 @@
           // Update charts immediately with extended data
           updateCharts()
 
+          ensureRealtimePollingActive('timebase reuse optimization')
+
           LogUtil.Info('Seamless timebase transition completed', {
             newTimeBase,
             totalDataPoints: dataSeries.value.reduce((sum, series) => sum + series.data.length, 0)
@@ -2681,6 +2683,7 @@
             totalPoints: coverageCheck.totalPoints
           })
           updateCharts()
+          ensureRealtimePollingActive('timebase in-memory coverage')
           return
         }
 
@@ -3354,8 +3357,15 @@
     // The Auto Scroll toggle is the primary control for real-time mode
     // Note: Custom date ranges will disable real-time mode separately
 
-    // Now set timebase - the watcher will see the correct isRealTime value
+    // Now set timebase - the watcher will see the correct isRealTime value.
+    // If the user re-selects the same preset, the watcher won't fire, so recover
+    // polling here when the chart should already be in live mode.
+    const isSamePresetSelection = timeBase.value === value
     timeBase.value = value
+
+    if (isSamePresetSelection) {
+      ensureRealtimePollingActive('same preset reselected')
+    }
 
     // Don't call onTimeBaseChange() manually - let the Vue watcher handle timebase changes
     // This prevents duplicate API calls with different trendlog IDs
@@ -3369,6 +3379,22 @@
   // Flag: first timebase zoom after exiting custom mode should do a full DB reload
   // (not gap-only) to avoid break lines from sparse DB data in the gap window.
   let _justSwitchedFromCustom = false
+
+  const ensureRealtimePollingActive = (reason: string) => {
+    if (timeBase.value === 'custom' || !isRealTime.value) {
+      return
+    }
+
+    if (!realtimeInterval) {
+      LogUtil.Info('🔄 Re-arming realtime polling for preset mode', {
+        reason,
+        timeBase: timeBase.value,
+        dataSource: dataSource.value,
+        hasMonitorConfig: !!monitorConfig.value
+      })
+      startRealTimeUpdates()
+    }
+  }
 
   const _viewStateKey = () => {
     // props.title is already "TRL{sn}_{panelId}_{trendlogId}" unique per device+panel+trendlog.
@@ -3402,6 +3428,12 @@
       const state = JSON.parse(raw)
       _restoringViewState = true
       if (state.timeBase && state.timeBase !== 'custom') {
+        customStartDate.value = null
+        customEndDate.value = null
+        customStartTime.value = null
+        customEndTime.value = null
+        isRealTime.value = true
+        dataSource.value = 'realtime'
         timeBase.value = state.timeBase
       } else if (state.timeBase === 'custom' && state.customStartMS && state.customEndMS) {
         customStartDate.value = dayjs(state.customStartMS)
@@ -3410,6 +3442,7 @@
         customEndTime.value = dayjs(state.customEndMS)
         timeBase.value = 'custom'
         isRealTime.value = false
+        dataSource.value = 'api'
       }
       if (typeof state.timeOffset === 'number') {
         // Production safety: never restore persisted preset-mode timeOffset.
@@ -10839,6 +10872,7 @@
     // Use nextTick to ensure DOM is stable before changing timeBase
     nextTick(() => {
       timeBase.value = '5m'
+      ensureRealtimePollingActive('reset to default timebase')
 
       LogUtil.Info('🔄 Reset to default timebase (5m) with Auto Scroll ON', {
         autoScrollState: isRealTime.value,

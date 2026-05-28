@@ -77,32 +77,193 @@
   background: #f3f9fd;
 }
 
+.overviewWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+}
+
 .summaryGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
-  margin-bottom: 12px;
+  align-items: stretch;
 }
 
-.summaryCard {
+.overviewMiddleCard {
   border: 1px solid #edebe9;
-  border-radius: 6px;
-  padding: 12px;
+  border-radius: 8px;
+  padding: 10px 14px;
   background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.middleCardBody {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 12px;
+}
+
+.middleSectionTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.middleSnapshotPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 10px;
+  border-right: 1px solid #f1f0ef;
+}
+
+.middleActionPanel {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.summaryCardActions {
+.summaryCard {
   border: 1px solid #edebe9;
-  border-radius: 6px;
-  padding: 12px;
+  border-radius: 8px;
+  padding: 14px;
   background: #ffffff;
   display: flex;
   flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.summaryGrid .summaryCard {
+  min-height: 124px;
+}
+
+.overviewFooterGrid .summaryCard {
+  min-height: 164px;
+}
+
+.summaryMetaRow {
+  display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+.metricTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.metricInfoButton {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  border: none;
+  background: transparent;
+  color: #8a8886;
+  cursor: pointer;
+  padding: 0;
+}
+
+.metricInfoButton:hover {
+  color: #0f6cbd;
+}
+
+.metricInfoButton:focus-visible {
+  outline: 1px solid #0f6cbd;
+  outline-offset: 2px;
+}
+
+.metricInfoIcon {
+  font-size: 14px;
+}
+
+.summaryCardActions {
+  border: 1px solid #edebe9;
+  border-radius: 8px;
+  padding: 14px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: flex-start;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.workflowList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.quickActionGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.quickActionButton {
+  border-radius: 6px;
+  min-height: 24px;
+  height: 24px;
+  padding-left: 8px;
+  padding-right: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  justify-content: center;
+}
+
+.overviewFooterPanel {
+  border: 1px solid #edebe9;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.globalSummaryHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.globalMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.globalMetricTile {
+  border: 1px solid #f0efee;
+  border-radius: 6px;
+  padding: 8px;
+  background: #fbfbfb;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 62px;
+}
+
+.globalMetricValue {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: #201f1e;
+}
+
+.globalMetricLabel {
+  font-size: 11px;
+  color: #605e5c;
 }
 
 .placeholderPanel {
@@ -147,6 +308,47 @@
   background: #ffffff;
   overflow: hidden;
   min-height: 70vh;
+}
+
+@media (max-width: 1200px) {
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .middleCardBody {
+    grid-template-columns: 1fr;
+  }
+
+  .middleSnapshotPanel {
+    border-right: none;
+    border-bottom: 1px solid #f1f0ef;
+    padding-right: 0;
+    padding-bottom: 8px;
+  }
+
+  .globalMetricGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .quickActionGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .globalSummaryHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+
+  .globalMetricGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* Toolbar styles */
