@@ -28,14 +28,13 @@ import {
   SearchRegular,
   ErrorCircleRegular,
   ChartMultipleRegular,
+  ZoomInRegular,
   InfoRegular,
-  DataBarVerticalRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { TrendlogRefreshApi } from '../services/trendlogRefreshApi';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import { API_BASE_URL } from '../../../config/constants';
-import { TrendlogVerifyDrawer } from '../components/TrendlogVerifyDrawer';
 import { TrendChartContent } from '../components/TrendChartContent';
 import { TrendPolicyPage } from './TrendPolicyPage';
 import styles from './TrendlogsPage.module.css';
@@ -78,6 +77,9 @@ interface DevicePointSyncSummary {
   syncedTypes: number;
   backendSyncedTypes: number;
   backendRecordsSynced: number;
+  trendlogDetailCount: number | null;
+  trendlogLatestSyncInserted: number | null;
+  trendlogLatestTimestamp: string | null;
   lastSyncedAt: number | null;
   lastSyncedFmt: string;
   lastSyncMethod: string;
@@ -99,6 +101,9 @@ const EMPTY_POINT_SYNC_SUMMARY: DevicePointSyncSummary = {
   syncedTypes: 0,
   backendSyncedTypes: 0,
   backendRecordsSynced: 0,
+  trendlogDetailCount: null,
+  trendlogLatestSyncInserted: null,
+  trendlogLatestTimestamp: null,
   lastSyncedAt: null,
   lastSyncedFmt: 'N/A',
   lastSyncMethod: 'N/A',
@@ -106,10 +111,28 @@ const EMPTY_POINT_SYNC_SUMMARY: DevicePointSyncSummary = {
 
 const TRACKED_POINT_SYNC_TYPES = ['INPUTS', 'OUTPUTS', 'VARIABLES'] as const;
 
-type TrendCenterTab = 'overview' | 'monitors' | 'points-tags' | 'chart' | 'verify';
+type TrendCenterTab = 'overview' | 'monitors' | 'points-tags' | 'chart';
+type MonitorViewMode = 'default' | 'global';
+
+interface GlobalPointItem {
+  key: string;
+  type: 'INPUT' | 'OUTPUT' | 'VARIABLE';
+  index: string;
+  label: string;
+}
+
+interface GlobalWatchlistSet {
+  name: string;
+  selectedKeys: string[];
+  pointTags: Record<string, string[]>;
+}
+
+const COMMON_HAYSTACK_TAGS = ['ahu', 'temp', 'critical', 'floor1'] as const;
+const GLOBAL_WATCHLIST_STORAGE_PREFIX = 'trendlogs_global_watchlists';
+const TREND_POLICY_STORAGE_KEY = 't3000.trend.policy.state.v2';
 
 const isTrendCenterTab = (value: string | null): value is TrendCenterTab => {
-  return value === 'overview' || value === 'monitors' || value === 'points-tags' || value === 'chart' || value === 'verify';
+  return value === 'overview' || value === 'monitors' || value === 'points-tags' || value === 'chart';
 };
 
 export const TrendLogsPage: React.FC = () => {
@@ -131,7 +154,7 @@ export const TrendLogsPage: React.FC = () => {
   const [loadingInputs, setLoadingInputs] = useState(false);
   const [pointSummaryLoading, setPointSummaryLoading] = useState(false);
   const [devicePointSyncSummary, setDevicePointSyncSummary] = useState<DevicePointSyncSummary>(EMPTY_POINT_SYNC_SUMMARY);
-  const [syncingPointTypes, setSyncingPointTypes] = useState<Set<string>>(new Set());
+  const [, setSyncingPointTypes] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const selectedSerial = selectedDevice?.serialNumber;
@@ -148,7 +171,16 @@ export const TrendLogsPage: React.FC = () => {
   }, []);
 
   const navigate = useNavigate();
-  const [verifyDrawerOpen, setVerifyDrawerOpen] = useState(false);
+  const [monitorViewMode, setMonitorViewMode] = useState<MonitorViewMode>('default');
+  const [globalPoints, setGlobalPoints] = useState<GlobalPointItem[]>([]);
+  const [globalPointsLoading, setGlobalPointsLoading] = useState(false);
+  const [globalSearch, setGlobalSearch] = useState('');
+  const [globalSelectedKeys, setGlobalSelectedKeys] = useState<Set<string>>(new Set());
+  const [globalTagFilter, setGlobalTagFilter] = useState<string>('all');
+  const [globalPointTags, setGlobalPointTags] = useState<Record<string, string[]>>({});
+  const [globalSetName, setGlobalSetName] = useState('');
+  const [selectedSavedSetName, setSelectedSavedSetName] = useState('');
+  const [savedGlobalSets, setSavedGlobalSets] = useState<GlobalWatchlistSet[]>([]);
 
   const setActiveTab = useCallback((tab: TrendCenterTab) => {
     const next = new URLSearchParams(searchParams);
@@ -186,17 +218,19 @@ export const TrendLogsPage: React.FC = () => {
 
     setPointSummaryLoading(true);
     try {
-      const [inputsResponse, outputsResponse, variablesResponse, syncStatusResponse] = await Promise.all([
+      const [inputsResponse, outputsResponse, variablesResponse, syncStatusResponse, trendlogStatsResponse] = await Promise.all([
         fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/input-points`),
         fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/output-points`),
         fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/variable-points`),
         fetch(`${API_BASE_URL}/api/sync-status/${selectedSerial}`),
+        fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/trendlog-data/stats?panel_id=${selectedPanelId || 1}`),
       ]);
 
       const inputsData = inputsResponse.ok ? await inputsResponse.json() : {};
       const outputsData = outputsResponse.ok ? await outputsResponse.json() : {};
       const variablesData = variablesResponse.ok ? await variablesResponse.json() : {};
       const syncRows: SyncStatusRow[] = syncStatusResponse.ok ? await syncStatusResponse.json() : [];
+      const trendlogStatsData = trendlogStatsResponse.ok ? await trendlogStatsResponse.json() : {};
       const trackedRows = (syncRows || []).filter((row) => TRACKED_POINT_SYNC_TYPES.includes(String(row.dataType || '').toUpperCase() as any));
 
       const latestByType = new Map<string, SyncStatusRow>();
@@ -230,6 +264,9 @@ export const TrendLogsPage: React.FC = () => {
         syncedTypes,
         backendSyncedTypes,
         backendRecordsSynced,
+        trendlogDetailCount: typeof trendlogStatsData.total_data_points === 'number' ? trendlogStatsData.total_data_points : null,
+        trendlogLatestSyncInserted: typeof trendlogStatsData.latest_sync_records_inserted === 'number' ? trendlogStatsData.latest_sync_records_inserted : null,
+        trendlogLatestTimestamp: typeof trendlogStatsData.latest_timestamp === 'string' ? trendlogStatsData.latest_timestamp : null,
         lastSyncedAt: latestSuccessfulRow?.syncTime ?? null,
         lastSyncedFmt: latestSuccessfulRow?.syncTimeFmt || 'N/A',
         lastSyncMethod: latestSuccessfulRow?.syncMethod || 'N/A',
@@ -240,7 +277,7 @@ export const TrendLogsPage: React.FC = () => {
     } finally {
       setPointSummaryLoading(false);
     }
-  }, [selectedSerial]);
+  }, [selectedPanelId, selectedSerial]);
 
   // Internal function to load inputs with deduplication
   const loadTrendlogInputsInternal = async (trendlog: TrendLogData) => {
@@ -798,7 +835,6 @@ export const TrendLogsPage: React.FC = () => {
   const avgIntervalSeconds = intervalValues.length > 0
     ? Math.round(intervalValues.reduce((sum, value) => sum + value, 0) / intervalValues.length)
     : null;
-  const totalSensors = devicePointSyncSummary.inputs + devicePointSyncSummary.outputs + devicePointSyncSummary.variables;
   const formatTimeAgo = (timestampSeconds: number | null) => {
     if (!timestampSeconds) return 'N/A';
     const diffSeconds = Math.max(0, Math.floor(Date.now() / 1000) - timestampSeconds);
@@ -810,7 +846,20 @@ export const TrendLogsPage: React.FC = () => {
     const diffDays = Math.floor(diffHours / 24);
     return `${diffDays}d ago`;
   };
-  const lastSyncedAgo = formatTimeAgo(devicePointSyncSummary.lastSyncedAt);
+  const parseDateToEpochSeconds = (value: string | null): number | null => {
+    if (!value) return null;
+    const parsed = Date.parse(value.replace(' ', 'T'));
+    if (Number.isNaN(parsed)) return null;
+    return Math.floor(parsed / 1000);
+  };
+  const trendlogLastSyncedAt = parseDateToEpochSeconds(devicePointSyncSummary.trendlogLatestTimestamp);
+  const lastSyncedAgo = formatTimeAgo(trendlogLastSyncedAt ?? devicePointSyncSummary.lastSyncedAt);
+  const lastSyncedFmt = devicePointSyncSummary.trendlogLatestTimestamp || devicePointSyncSummary.lastSyncedFmt;
+  const syncSourceLabel = devicePointSyncSummary.lastSyncMethod === 'FFI_BACKEND'
+    ? 'Backend Auto'
+    : devicePointSyncSummary.lastSyncMethod === 'UI_REFRESH'
+      ? 'Manual Refresh'
+      : (pointSummaryLoading ? '...' : 'Unknown');
   const formatSeconds = (totalSeconds: number | null) => {
     if (totalSeconds == null) return 'N/A';
     const h = Math.floor(totalSeconds / 3600);
@@ -829,6 +878,142 @@ export const TrendLogsPage: React.FC = () => {
       },
     }
     : undefined;
+
+  const selectedGlobalPoints = React.useMemo(
+    () => globalPoints.filter((point) => globalSelectedKeys.has(point.key)),
+    [globalPoints, globalSelectedKeys]
+  );
+
+  const availableGlobalTags = React.useMemo(() => {
+    const tags = new Set<string>();
+    Object.values(globalPointTags).forEach((pointTags) => {
+      pointTags.forEach((tag) => tags.add(tag));
+    });
+    return Array.from(tags).sort((a, b) => a.localeCompare(b));
+  }, [globalPointTags]);
+
+  const filteredGlobalPoints = React.useMemo(() => {
+    const q = globalSearch.trim().toLowerCase();
+    return globalPoints.filter((point) => {
+      const tags = globalPointTags[point.key] || [];
+      const tagMatch = globalTagFilter === 'all' || tags.includes(globalTagFilter);
+      if (!tagMatch) return false;
+      if (!q) return true;
+      return (
+        point.label.toLowerCase().includes(q) ||
+        point.type.toLowerCase().includes(q) ||
+        point.index.toLowerCase().includes(q) ||
+        tags.some((tag) => tag.includes(q))
+      );
+    });
+  }, [globalPoints, globalPointTags, globalSearch, globalTagFilter]);
+
+  const toggleGlobalPointSelection = useCallback((key: string) => {
+    setGlobalSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }, []);
+
+  const applyGlobalSelectionToChart = useCallback(() => {
+    if (!selectedDevice || selectedGlobalPoints.length === 0) return;
+
+    const syntheticMonitor: TrendLogData = {
+      serialNumber: selectedDevice.serialNumber,
+      trendlogId: 'GLOBAL',
+      trendlogIndex: 'GLOBAL',
+      trendlogLabel: 'Global Watchlist',
+      status: 'ON',
+      _uniqueIndex: 99999,
+      panelId: selectedDevice.panelId,
+    };
+
+    const syntheticInputs: TrendLogInput[] = selectedGlobalPoints.map((point) => ({
+      serialNumber: selectedDevice.serialNumber,
+      panelId: selectedDevice.panelId || 1,
+      trendlogId: 'GLOBAL',
+      pointType: point.type,
+      pointIndex: point.index,
+      pointLabel: point.label,
+    }));
+
+    setSelectedMonitor(syntheticMonitor);
+    setSelectedItems(new Set());
+    setMonitorInputs(syntheticInputs);
+    syncMonitorQuery(syntheticMonitor);
+    setActiveTab('chart');
+  }, [selectedDevice, selectedGlobalPoints, setActiveTab, syncMonitorQuery]);
+
+  const applyCommonTag = useCallback((tag: string) => {
+    setGlobalTagFilter(tag);
+  }, []);
+
+  const selectAllVisibleGlobalPoints = useCallback(() => {
+    setGlobalSelectedKeys((prev) => {
+      const next = new Set(prev);
+      filteredGlobalPoints.forEach((point) => next.add(point.key));
+      return next;
+    });
+  }, [filteredGlobalPoints]);
+
+  const clearGlobalSelection = useCallback(() => {
+    setGlobalSelectedKeys(new Set());
+  }, []);
+
+  const saveCurrentGlobalSet = useCallback(() => {
+    const normalizedName = globalSetName.trim();
+    if (!normalizedName) return;
+
+    const newSet: GlobalWatchlistSet = {
+      name: normalizedName,
+      selectedKeys: Array.from(globalSelectedKeys),
+      pointTags: JSON.parse(JSON.stringify(globalPointTags || {})),
+    };
+
+    setSavedGlobalSets((prev) => {
+      const withoutSame = prev.filter((setItem) => setItem.name !== normalizedName);
+      return [...withoutSame, newSet].sort((a, b) => a.name.localeCompare(b.name));
+    });
+    setSelectedSavedSetName(normalizedName);
+  }, [globalPointTags, globalSelectedKeys, globalSetName]);
+
+  const renameSelectedGlobalSet = useCallback(() => {
+    const nextName = globalSetName.trim();
+    if (!selectedSavedSetName || !nextName) return;
+
+    setSavedGlobalSets((prev) => {
+      const target = prev.find((setItem) => setItem.name === selectedSavedSetName);
+      if (!target) return prev;
+      const renamed: GlobalWatchlistSet = {
+        ...target,
+        name: nextName,
+      };
+      const withoutOld = prev.filter((setItem) => setItem.name !== selectedSavedSetName && setItem.name !== nextName);
+      return [...withoutOld, renamed].sort((a, b) => a.name.localeCompare(b.name));
+    });
+    setSelectedSavedSetName(nextName);
+  }, [globalSetName, selectedSavedSetName]);
+
+  const removeSelectedGlobalSet = useCallback(() => {
+    if (!selectedSavedSetName) return;
+    setSavedGlobalSets((prev) => prev.filter((setItem) => setItem.name !== selectedSavedSetName));
+    setSelectedSavedSetName('');
+  }, [selectedSavedSetName]);
+
+  const loadSavedGlobalSet = useCallback(() => {
+    if (!selectedSavedSetName) return;
+    const target = savedGlobalSets.find((setItem) => setItem.name === selectedSavedSetName);
+    if (!target) return;
+    setGlobalSelectedKeys(new Set(target.selectedKeys));
+    setGlobalPointTags(target.pointTags || {});
+    setGlobalTagFilter('all');
+    setGlobalSetName(target.name);
+  }, [savedGlobalSets, selectedSavedSetName]);
 
   const headerActionsTarget = document.getElementById('page-header-actions');
   const trendTabs = (
@@ -857,23 +1042,146 @@ export const TrendLogsPage: React.FC = () => {
       >
         Chart
       </button>
-      <button
-        className={`${styles.tabButton} ${activeTab === 'verify' ? styles.tabButtonActive : ''}`}
-        onClick={() => setActiveTab('verify')}
-      >
-        Verify Data
-      </button>
     </div>
   );
 
   useEffect(() => {
-    if (activeTab === 'verify' && selectedDevice && selectedMonitor) {
-      syncMonitorQuery(selectedMonitor);
-      setVerifyDrawerOpen(true);
+    if (activeTab !== 'monitors' || monitorViewMode !== 'global') {
       return;
     }
-    setVerifyDrawerOpen(false);
-  }, [activeTab, selectedDevice, selectedMonitor, syncMonitorQuery]);
+
+    const loadGlobalPoints = async () => {
+      if (!selectedDevice?.serialNumber) {
+        setGlobalPoints([]);
+        setGlobalPointTags({});
+        setGlobalSelectedKeys(new Set());
+        return;
+      }
+
+      setGlobalPointsLoading(true);
+      try {
+        const serial = selectedDevice.serialNumber;
+        const [inputsResponse, outputsResponse, variablesResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/t3_device/devices/${serial}/input-points`),
+          fetch(`${API_BASE_URL}/api/t3_device/devices/${serial}/output-points`),
+          fetch(`${API_BASE_URL}/api/t3_device/devices/${serial}/variable-points`),
+        ]);
+
+        const inputsData = inputsResponse.ok ? await inputsResponse.json() : {};
+        const outputsData = outputsResponse.ok ? await outputsResponse.json() : {};
+        const variablesData = variablesResponse.ok ? await variablesResponse.json() : {};
+
+        const mapRows = (rows: any[], type: 'INPUT' | 'OUTPUT' | 'VARIABLE'): GlobalPointItem[] => {
+          return rows.map((row: any, idx: number) => {
+            const rawIndex =
+              row.inputIndex ?? row.outputIndex ?? row.variableIndex ?? row.pointIndex ?? row.Point_Index ?? row.index ?? row.number ?? idx + 1;
+            const index = String(rawIndex);
+            const label = String(row.label ?? row.name ?? row.pointLabel ?? row.Point_Label ?? `${type} ${index}`);
+            return {
+              key: `${type}:${index}`,
+              type,
+              index,
+              label,
+            };
+          });
+        };
+
+        const merged = [
+          ...mapRows(inputsData.input_points || [], 'INPUT'),
+          ...mapRows(outputsData.output_points || [], 'OUTPUT'),
+          ...mapRows(variablesData.variable_points || [], 'VARIABLE'),
+        ];
+
+        const seededTags: Record<string, string[]> = {};
+        merged.forEach((point) => {
+          seededTags[point.key] = [point.type.toLowerCase()];
+        });
+
+        // Import persisted Haystack tags authored in Points and Tags workspace.
+        // TrendPolicyPage stores keys as "serial:type:index" where type is input/output/variable.
+        try {
+          const rawPolicy = localStorage.getItem(TREND_POLICY_STORAGE_KEY);
+          if (rawPolicy) {
+            const parsedPolicy = JSON.parse(rawPolicy) as { pointTags?: Record<string, string[]> };
+            const sourcePointTags = parsedPolicy?.pointTags || {};
+            Object.entries(sourcePointTags).forEach(([policyKey, tags]) => {
+              const parts = policyKey.split(':');
+              if (parts.length !== 3) return;
+              const [serialRaw, typeRaw, indexRaw] = parts;
+              if (Number(serialRaw) !== selectedDevice.serialNumber) return;
+              const mappedType =
+                typeRaw === 'input' ? 'INPUT' :
+                typeRaw === 'output' ? 'OUTPUT' :
+                typeRaw === 'variable' ? 'VARIABLE' :
+                '';
+              if (!mappedType) return;
+              const globalKey = `${mappedType}:${indexRaw}`;
+              const existing = new Set(seededTags[globalKey] || []);
+              (tags || []).forEach((tag) => {
+                if (typeof tag === 'string' && tag.trim()) {
+                  existing.add(tag.trim().toLowerCase());
+                }
+              });
+              seededTags[globalKey] = Array.from(existing);
+            });
+          }
+        } catch (policyLoadError) {
+          console.warn('[TrendLogsPage] Failed to load tags from Points and Tags workspace:', policyLoadError);
+        }
+
+        setGlobalPoints(merged);
+        setGlobalPointTags(seededTags);
+        setGlobalSelectedKeys(new Set());
+      } catch (globalPointsError) {
+        console.error('[TrendLogsPage] Failed to load global points:', globalPointsError);
+        setGlobalPoints([]);
+        setGlobalPointTags({});
+      } finally {
+        setGlobalPointsLoading(false);
+      }
+    };
+
+    loadGlobalPoints();
+  }, [activeTab, monitorViewMode, selectedDevice?.serialNumber]);
+
+  useEffect(() => {
+    if (!selectedDevice?.serialNumber) {
+      setSavedGlobalSets([]);
+      setSelectedSavedSetName('');
+      return;
+    }
+
+    const storageKey = `${GLOBAL_WATCHLIST_STORAGE_PREFIX}_${selectedDevice.serialNumber}`;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) {
+        setSavedGlobalSets([]);
+        setSelectedSavedSetName('');
+        return;
+      }
+      const parsed = JSON.parse(raw) as GlobalWatchlistSet[];
+      if (Array.isArray(parsed)) {
+        setSavedGlobalSets(parsed);
+      } else {
+        setSavedGlobalSets([]);
+      }
+      setSelectedSavedSetName('');
+    } catch (error) {
+      console.warn('[TrendLogsPage] Failed to parse saved global watchlist sets:', error);
+      setSavedGlobalSets([]);
+      setSelectedSavedSetName('');
+    }
+  }, [selectedDevice?.serialNumber]);
+
+  useEffect(() => {
+    if (!selectedDevice?.serialNumber) return;
+    const storageKey = `${GLOBAL_WATCHLIST_STORAGE_PREFIX}_${selectedDevice.serialNumber}`;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(savedGlobalSets));
+    } catch (error) {
+      console.warn('[TrendLogsPage] Failed to persist global watchlist sets:', error);
+    }
+  }, [savedGlobalSets, selectedDevice?.serialNumber]);
 
   // Display all 12 trendlog slots (matching T3000 desktop), merge actual data
   const displayTrendLogs = React.useMemo(() => {
@@ -915,6 +1223,16 @@ export const TrendLogsPage: React.FC = () => {
 
     return slots;
   }, [trendLogs, selectedDevice]);
+
+  const filteredDisplayTrendLogs = React.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return displayTrendLogs;
+    return displayTrendLogs.filter((item) => {
+      const id = (item.trendlogId || item.trendlogIndex || '').toLowerCase();
+      const label = (item.trendlogLabel || '').toLowerCase();
+      return id.includes(q) || label.includes(q);
+    });
+  }, [displayTrendLogs, searchQuery]);
 
   // Helper to identify empty/padding rows
   const isEmptyRow = (item: TrendLogData) => !item.trendlogId && !item.trendlogIndex;
@@ -1201,34 +1519,30 @@ export const TrendLogsPage: React.FC = () => {
                         <Text className={styles.globalMetricLabel}>Active monitors</Text>
                       </div>
                       <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>{pointSummaryLoading ? '...' : totalSensors}</Text>
-                        <Text className={styles.globalMetricLabel}>Total sensors (IN + OUT + VAR)</Text>
-                      </div>
-                      <div className={styles.globalMetricTile}>
                         <Text className={styles.globalMetricValue}>
-                          {pointSummaryLoading ? '...' : `${devicePointSyncSummary.backendRecordsSynced}`}
+                          {pointSummaryLoading
+                            ? '...'
+                            : `${devicePointSyncSummary.inputs}/${devicePointSyncSummary.outputs}/${devicePointSyncSummary.variables}`}
                         </Text>
-                        <Text className={styles.globalMetricLabel}>Synced records (backend)</Text>
+                        <Text className={styles.globalMetricLabel}>Sensor points inventory (IN / OUT / VAR)</Text>
                       </div>
                       <div className={styles.globalMetricTile}>
                         <Text className={styles.globalMetricValue}>{pointSummaryLoading ? '...' : lastSyncedAgo}</Text>
-                        <Text className={styles.globalMetricLabel}>Last synced · {devicePointSyncSummary.lastSyncedFmt}</Text>
+                        <Text className={styles.globalMetricLabel}>Last synced · {lastSyncedFmt}</Text>
                       </div>
                       <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>{pointSummaryLoading ? '...' : devicePointSyncSummary.lastSyncMethod}</Text>
+                        <Text className={styles.globalMetricValue}>
+                          {pointSummaryLoading
+                            ? '...'
+                            : devicePointSyncSummary.trendlogDetailCount == null
+                              ? 'N/A'
+                              : `${devicePointSyncSummary.trendlogDetailCount}`}
+                        </Text>
+                        <Text className={styles.globalMetricLabel}>Synced value count (total)</Text>
+                      </div>
+                      <div className={styles.globalMetricTile}>
+                        <Text className={styles.globalMetricValue}>{syncSourceLabel}</Text>
                         <Text className={styles.globalMetricLabel}>Sync source</Text>
-                      </div>
-                      <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>{pointSummaryLoading ? '...' : `${devicePointSyncSummary.backendSyncedTypes}/3`}</Text>
-                        <Text className={styles.globalMetricLabel}>Backend-synced types</Text>
-                      </div>
-                      <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>{syncingPointTypes.size}/3</Text>
-                        <Text className={styles.globalMetricLabel}>Point types syncing now</Text>
-                      </div>
-                      <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>{refreshing ? 'Syncing' : 'Ready'}</Text>
-                        <Text className={styles.globalMetricLabel}>Live sync state</Text>
                       </div>
                     </div>
                   </div>
@@ -1255,14 +1569,6 @@ export const TrendLogsPage: React.FC = () => {
                     </div>
                   ) : (
                     <>
-                      <div className={styles.chartTabActions}>
-                        <Text size={300} weight="semibold">
-                          {selectedMonitorTitle}
-                        </Text>
-                        <Button appearance="secondary" onClick={() => handleViewChart(selectedMonitor)}>
-                          Open Full Chart Page
-                        </Button>
-                      </div>
                       <div className={styles.embeddedChartFrame}>
                         <TrendChartContent
                           serialNumber={selectedDevice.serialNumber}
@@ -1272,6 +1578,18 @@ export const TrendLogsPage: React.FC = () => {
                           itemData={selectedMonitorItemData}
                           monitorInputs={monitorInputs}
                           isDrawerMode={false}
+                          toolbarActionBeforeBack={
+                            <Tooltip content="Open Full Chart Page" relationship="label">
+                              <Button
+                                appearance="subtle"
+                                icon={<ZoomInRegular />}
+                                onClick={() => handleViewChart(selectedMonitor)}
+                                size="small"
+                                aria-label="Open Full Chart Page"
+                                title="Open Full Chart Page"
+                              />
+                            </Tooltip>
+                          }
                           onBack={() => setActiveTab('monitors')}
                         />
                       </div>
@@ -1280,24 +1598,20 @@ export const TrendLogsPage: React.FC = () => {
                 </div>
               )}
 
-              {activeTab === 'verify' && (
-                <div className={styles.placeholderPanel}>
-                  <Text size={400} weight="semibold">Verify Trendlog Data</Text>
-                  <Text size={300}>
-                    Verification opens with the currently selected monitor and device context.
-                  </Text>
-                  {selectedMonitor && (
-                    <Text size={200}>
-                      Current monitor: {selectedMonitor.trendlogId || selectedMonitor.trendlogIndex} {selectedMonitor.trendlogLabel ? `- ${selectedMonitor.trendlogLabel}` : ''}
-                    </Text>
-                  )}
-                  <Button
-                    appearance="primary"
-                    onClick={() => setVerifyDrawerOpen(true)}
-                    disabled={!selectedDevice || !selectedMonitor}
+              {activeTab === 'monitors' && (
+                <div className={styles.monitorModeTabs}>
+                  <button
+                    className={`${styles.tabButton} ${monitorViewMode === 'default' ? styles.tabButtonActive : ''}`}
+                    onClick={() => setMonitorViewMode('default')}
                   >
-                    Open Verify Panel
-                  </Button>
+                    Default
+                  </button>
+                  <button
+                    className={`${styles.tabButton} ${monitorViewMode === 'global' ? styles.tabButtonActive : ''}`}
+                    onClick={() => setMonitorViewMode('global')}
+                  >
+                    Global
+                  </button>
                 </div>
               )}
 
@@ -1305,7 +1619,7 @@ export const TrendLogsPage: React.FC = () => {
                   TOOLBAR - Azure Portal Command Bar
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
-              {activeTab === 'monitors' && selectedDevice && (
+              {activeTab === 'monitors' && selectedDevice && monitorViewMode === 'default' && (
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   {/* Search Input Box */}
@@ -1335,19 +1649,6 @@ export const TrendLogsPage: React.FC = () => {
                     <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
                   </button>
 
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  {/* Verify Data Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={() => setActiveTab('verify')}
-                    disabled={!selectedDevice}
-                    title="Verify trendlog data records"
-                  >
-                    <DataBarVerticalRegular />
-                    Verify Data
-                  </button>
-
                   {/* Info Button with Tooltip */}
                   <Tooltip
                     content={`Showing trend log monitors for ${selectedDevice.nameShowOnTree || selectedDevice.productName} (SN: ${selectedDevice.serialNumber}). This table displays all configured trendlog/monitor data collection points. Click the refresh icon next to each trendlog to sync from the device.`}
@@ -1365,11 +1666,99 @@ export const TrendLogsPage: React.FC = () => {
               </div>
               )}
 
+              {activeTab === 'monitors' && selectedDevice && monitorViewMode === 'global' && (
+              <div className={styles.toolbar}>
+                <div className={styles.toolbarContainer}>
+                  <div className={styles.searchInputWrapper}>
+                    <SearchRegular className={styles.searchIcon} />
+                    <input
+                      className={styles.searchInput}
+                      type="text"
+                      placeholder="Search points or tags..."
+                      value={globalSearch}
+                      onChange={(e) => setGlobalSearch(e.target.value)}
+                      spellCheck="false"
+                      role="searchbox"
+                      aria-label="Search global points"
+                    />
+                  </div>
+                  <div className={styles.toolbarSeparator} role="separator" />
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={() => setActiveTab('points-tags')}
+                    title="Open Points and Tags to add or edit Haystack tags"
+                  >
+                    Manage Tags
+                  </button>
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={applyGlobalSelectionToChart}
+                    disabled={globalSelectedKeys.size === 0}
+                    title="Open chart with selected global points"
+                  >
+                    Open Chart
+                  </button>
+                  <div className={styles.toolbarSeparator} role="separator" />
+                  <input
+                    className={styles.tagInput}
+                    type="text"
+                    placeholder="Set name"
+                    value={globalSetName}
+                    onChange={(e) => setGlobalSetName(e.target.value)}
+                    aria-label="Watchlist set name"
+                  />
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={saveCurrentGlobalSet}
+                    disabled={!globalSetName.trim()}
+                    title="Save current watchlist set"
+                  >
+                    Save Set
+                  </button>
+                  <select
+                    className={styles.setSelect}
+                    value={selectedSavedSetName}
+                    onChange={(e) => setSelectedSavedSetName(e.target.value)}
+                    aria-label="Load saved watchlist set"
+                  >
+                    <option value="">Load set...</option>
+                    {savedGlobalSets.map((setItem) => (
+                      <option key={setItem.name} value={setItem.name}>{setItem.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={loadSavedGlobalSet}
+                    disabled={!selectedSavedSetName}
+                    title="Load selected watchlist set"
+                  >
+                    Load Set
+                  </button>
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={renameSelectedGlobalSet}
+                    disabled={!selectedSavedSetName || !globalSetName.trim()}
+                    title="Rename selected watchlist set"
+                  >
+                    Rename Set
+                  </button>
+                  <button
+                    className={`${styles.toolbarButton} ${styles.destructiveButton}`}
+                    onClick={removeSelectedGlobalSet}
+                    disabled={!selectedSavedSetName}
+                    title="Remove selected watchlist set"
+                  >
+                    Remove Set
+                  </button>
+                </div>
+              </div>
+              )}
+
               {/* ========================================
                   DOCKING BODY - Main Content (Dual Grid Layout)
                   Matches: msportalfx-docking-body
                   ======================================== */}
-              {activeTab === 'monitors' && (
+              {activeTab === 'monitors' && monitorViewMode === 'default' && (
               <div className={styles.dockingBody}>
 
                 {/* Loading State */}
@@ -1398,7 +1787,7 @@ export const TrendLogsPage: React.FC = () => {
                     <div className={styles.mainGrid}>
                       <DataGrid
                         key="trendlogs-grid-v5"
-                        items={displayTrendLogs}
+                        items={filteredDisplayTrendLogs}
                         columns={columns}
                         sortable
                         selectionMode="single"
@@ -1499,23 +1888,148 @@ export const TrendLogsPage: React.FC = () => {
 
               </div>
               )}
+
+              {activeTab === 'monitors' && monitorViewMode === 'global' && (
+              <div className={styles.dockingBody}>
+                {!selectedDevice && !loading && (
+                  <div className={styles.noData}>
+                    <div className={styles.centerText}>
+                      <Text size={400} weight="semibold">No device selected</Text>
+                      <br />
+                      <Text size={200}>Please select a device from the tree to build a global watchlist</Text>
+                    </div>
+                  </div>
+                )}
+
+                {selectedDevice && (
+                  <div className={styles.globalLayout}>
+                    <div className={styles.tagSourceBanner}>
+                      <Text size={200} weight="semibold">Tag Source</Text>
+                      <Badge appearance="outline" color="informative">Points and Tags workspace</Badge>
+                      <Text size={200}>Tags are read-only here. Use Manage Tags to add or edit Haystack tags.</Text>
+                    </div>
+                    <div className={styles.globalTagBar}>
+                      <button
+                        className={`${styles.tagChip} ${globalTagFilter === 'all' ? styles.tagChipActive : ''}`}
+                        onClick={() => setGlobalTagFilter('all')}
+                      >
+                        All
+                      </button>
+                      {COMMON_HAYSTACK_TAGS.map((tag) => (
+                        <button
+                          key={tag}
+                          className={styles.tagChip}
+                          onClick={() => applyCommonTag(tag)}
+                          title={`Filter by #${tag}`}
+                        >
+                          #{tag}
+                        </button>
+                      ))}
+                      {availableGlobalTags.map((tag) => (
+                        <button
+                          key={tag}
+                          className={`${styles.tagChip} ${globalTagFilter === tag ? styles.tagChipActive : ''}`}
+                          onClick={() => setGlobalTagFilter(tag)}
+                        >
+                          #{tag}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className={styles.globalGrid}>
+                      <div className={styles.globalPanel}>
+                        <div className={styles.globalPanelHeader}>
+                          <Text size={300} weight="semibold">Point Library</Text>
+                          <div className={styles.globalPanelHeaderActions}>
+                            <Text size={200}>{globalPointsLoading ? 'Loading...' : `${filteredGlobalPoints.length} points`}</Text>
+                            <button
+                              className={styles.smallActionButton}
+                              onClick={selectAllVisibleGlobalPoints}
+                              disabled={filteredGlobalPoints.length === 0}
+                              title="Select all currently visible rows"
+                            >
+                              Select All Visible
+                            </button>
+                            <button
+                              className={styles.smallActionButton}
+                              onClick={clearGlobalSelection}
+                              disabled={globalSelectedKeys.size === 0}
+                              title="Clear selected points"
+                            >
+                              Clear Selection
+                            </button>
+                          </div>
+                        </div>
+                        <div className={styles.globalPanelBody}>
+                          {globalPointsLoading ? (
+                            <div className={styles.centerPadding}>
+                              <Spinner size="small" label="Loading point library..." />
+                            </div>
+                          ) : filteredGlobalPoints.length === 0 ? (
+                            <div className={styles.centerPaddingMuted}>
+                              <Text size={200}>No points matched your filter</Text>
+                            </div>
+                          ) : (
+                            filteredGlobalPoints.map((point) => {
+                              const tags = globalPointTags[point.key] || [];
+                              const selected = globalSelectedKeys.has(point.key);
+                              return (
+                                <button
+                                  key={point.key}
+                                  type="button"
+                                  className={`${styles.globalPointRow} ${selected ? styles.globalPointRowSelected : ''}`}
+                                  onClick={() => toggleGlobalPointSelection(point.key)}
+                                >
+                                  <div className={styles.globalPointMain}>
+                                    <Badge appearance="outline">{point.type}</Badge>
+                                    <Text size={200}>{point.index}</Text>
+                                    <Text size={200} weight="semibold" className={styles.globalPointLabel}>{point.label}</Text>
+                                  </div>
+                                  <div className={styles.globalPointTags}>
+                                    {tags.map((tag) => (
+                                      <span key={`${point.key}-${tag}`} className={styles.pointTagPill}>
+                                        #{tag}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+
+                      <div className={styles.globalPanel}>
+                        <div className={styles.globalPanelHeader}>
+                          <Text size={300} weight="semibold">Active Watchlist</Text>
+                          <Text size={200}>{selectedGlobalPoints.length} selected</Text>
+                        </div>
+                        <div className={styles.globalPanelBody}>
+                          {selectedGlobalPoints.length === 0 ? (
+                            <div className={styles.centerPaddingMuted}>
+                              <Text size={200}>Select points on the left to build your watchlist</Text>
+                            </div>
+                          ) : (
+                            selectedGlobalPoints.map((point, index) => (
+                              <div key={point.key} className={styles.watchlistRow}>
+                                <Text size={200}>{index + 1}.</Text>
+                                <Badge appearance="outline">{point.type}</Badge>
+                                <Text size={200}>{point.index}</Text>
+                                <Text size={200} weight="semibold" className={styles.globalPointLabel}>{point.label}</Text>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-
-      {/* Trendlog Verify Drawer */}
-      {selectedDevice && selectedMonitor && (
-        <TrendlogVerifyDrawer
-          isOpen={verifyDrawerOpen}
-          onClose={() => setVerifyDrawerOpen(false)}
-          serialNumber={selectedDevice.serialNumber}
-          panelId={selectedDevice.panelId || 1}
-          trendlogId={selectedMonitor.trendlogId || selectedMonitor.trendlogIndex || '0'}
-          trendlogLabel={selectedMonitor.trendlogLabel}
-          intervalSeconds={selectedMonitor.intervalSeconds}
-        />
-      )}
 
 
     </div>

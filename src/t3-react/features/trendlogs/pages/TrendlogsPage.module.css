@@ -109,6 +109,15 @@
   transform: scaleX(1);
 }
 
+.monitorModeTabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #edebe9;
+}
+
 .overviewWrap {
   display: flex;
   flex-direction: column;
@@ -235,7 +244,7 @@
 
 .globalMetricGrid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -332,6 +341,12 @@
   }
 }
 
+@media (max-width: 520px) {
+  .globalMetricGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Toolbar styles */
 .toolbar {
   background-color: transparent;
@@ -390,6 +405,15 @@
   background-color: transparent;
 }
 
+.destructiveButton {
+  color: #a4262c;
+}
+
+.destructiveButton:hover {
+  background-color: #fde7e9;
+  color: #a4262c;
+}
+
 .toolbarSeparator {
   width: 1px;
   height: 24px;
@@ -442,6 +466,33 @@
   border-color: #0078d4;
   box-shadow: none;
   outline: none;
+}
+
+.tagInput {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid #8a8886;
+  border-radius: 2px;
+  background-color: #ffffff;
+  color: #323130;
+  font-size: 13px;
+  outline: none;
+  min-width: 220px;
+}
+
+.tagInput:focus {
+  border-color: #0078d4;
+}
+
+.setSelect {
+  height: 28px;
+  border: 1px solid #8a8886;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #323130;
+  font-size: 13px;
+  min-width: 140px;
+  padding: 0 6px;
 }
 
 /* Blade Description */
@@ -965,6 +1016,188 @@
   white-space: nowrap;
   flex-shrink: 0;
   overflow: visible;
+}
+
+.globalLayout {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tagSourceBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border: 1px solid #d6e4f7;
+  border-radius: 6px;
+  background: #f7fbff;
+}
+
+.globalTagBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid #edebe9;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.tagChip {
+  border: 1px solid #d0d0d0;
+  background: #ffffff;
+  color: #323130;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tagChipActive {
+  background: #e6f2ff;
+  border-color: #0f6cbd;
+  color: #0f6cbd;
+}
+
+.globalGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  min-height: 0;
+}
+
+.globalPanel {
+  border: 1px solid #edebe9;
+  border-radius: 6px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  min-height: 440px;
+}
+
+.globalPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid #edebe9;
+  padding: 10px 12px;
+}
+
+.globalPanelHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.smallActionButton {
+  border: 1px solid #d0d0d0;
+  background: #ffffff;
+  color: #323130;
+  border-radius: 4px;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.smallActionButton:hover {
+  background: #f3f2f1;
+}
+
+.smallActionButton:disabled {
+  color: #a19f9d;
+  cursor: default;
+  background: #faf9f8;
+}
+
+.globalPanelBody {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+}
+
+.globalPointRow {
+  border: 1px solid #ececec;
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 8px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.globalPointRow:hover {
+  background: #f8fbff;
+  border-color: #cfe4ff;
+}
+
+.globalPointRowSelected {
+  background: #e6f2ff;
+  border-color: #7ab3f3;
+}
+
+.globalPointMain {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.globalPointLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.globalPointTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pointTagPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #c8d9f0;
+  background: #f0f6ff;
+  color: #1b3a5c;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.pointTagRemove {
+  border: none;
+  background: transparent;
+  color: #1b3a5c;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  font-size: 11px;
+}
+
+.watchlistRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #ececec;
+  border-radius: 4px;
+  padding: 8px;
+}
+
+@media (max-width: 1000px) {
+  .globalGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /*

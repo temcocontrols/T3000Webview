@@ -1147,6 +1147,7 @@ export interface TrendChartContentProps {
   monitorInputs?: any[]; // Monitor inputs for the selected trendlog
   isDrawerMode?: boolean;
   onToolbarRender?: (toolbar: React.ReactNode) => void;
+  toolbarActionBeforeBack?: React.ReactNode;
   onBack?: () => void;
 }
 
@@ -3224,23 +3225,29 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
       {loading && <Spinner size="tiny" />}
 
-      {/* Back button — pinned to far right */}
-      {props.onBack && (
-        <Button
-          appearance="subtle"
-          icon={<ArrowLeftRegular fontSize={16} />}
-          onClick={props.onBack}
-          size="small"
-          style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: 'normal' }}
-        >
-          Back
-        </Button>
+      {/* Right-end actions: custom action then Back */}
+      {(props.toolbarActionBeforeBack || props.onBack) && (
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {props.toolbarActionBeforeBack}
+          {props.onBack && (
+            <Button
+              appearance="subtle"
+              icon={<ArrowLeftRegular fontSize={16} />}
+              onClick={props.onBack}
+              size="small"
+              style={{ fontSize: '11px', fontWeight: 'normal' }}
+            >
+              Back
+            </Button>
+          )}
+        </div>
       )}
     </div>
   ), [
     timeBase, currentView, isRealtime, loading, lastSyncTime, dbStatus, hasTrackedItems,
     zoomIn, zoomOut, resetTimeBase, moveTimeLeft, moveTimeRight, restoreLiveMode,
     exportToPNG, exportToCSV, exportToJSON, openItemSelector, getTimeRangeMinutes,
+    props.toolbarActionBeforeBack,
     props.onBack,
   ]);
 
