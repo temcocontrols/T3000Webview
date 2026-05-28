@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   DataGrid,
@@ -676,6 +677,42 @@ export const TrendLogsPage: React.FC = () => {
     }
     : undefined;
 
+  const headerActionsTarget = document.getElementById('page-header-actions');
+  const trendTabs = (
+    <div className={styles.headerTabBar}>
+      <button
+        className={`${styles.tabButton} ${activeTab === 'overview' ? styles.tabButtonActive : ''}`}
+        onClick={() => setActiveTab('overview')}
+      >
+        Overview
+      </button>
+      <button
+        className={`${styles.tabButton} ${activeTab === 'monitors' ? styles.tabButtonActive : ''}`}
+        onClick={() => setActiveTab('monitors')}
+      >
+        Monitors
+      </button>
+      <button
+        className={`${styles.tabButton} ${activeTab === 'points-tags' ? styles.tabButtonActive : ''}`}
+        onClick={() => setActiveTab('points-tags')}
+      >
+        Points and Tags
+      </button>
+      <button
+        className={`${styles.tabButton} ${activeTab === 'chart' ? styles.tabButtonActive : ''}`}
+        onClick={() => setActiveTab('chart')}
+      >
+        Chart
+      </button>
+      <button
+        className={`${styles.tabButton} ${activeTab === 'verify' ? styles.tabButtonActive : ''}`}
+        onClick={() => setActiveTab('verify')}
+      >
+        Verify Data
+      </button>
+    </div>
+  );
+
   useEffect(() => {
     if (activeTab === 'verify' && selectedDevice && selectedMonitor) {
       syncMonitorQuery(selectedMonitor);
@@ -879,6 +916,7 @@ export const TrendLogsPage: React.FC = () => {
 
   return (
     <div className={styles.container}>
+      {headerActionsTarget ? createPortal(trendTabs, headerActionsTarget) : null}
       <div className={styles.bladeContentContainer}>
         <div className={styles.bladeContentWrapper}>
           <div className={styles.bladeContent}>
@@ -895,38 +933,11 @@ export const TrendLogsPage: React.FC = () => {
                 </div>
               )}
 
-              <div className={styles.tabBar}>
-                <button
-                  className={`${styles.tabButton} ${activeTab === 'overview' ? styles.tabButtonActive : ''}`}
-                  onClick={() => setActiveTab('overview')}
-                >
-                  Overview
-                </button>
-                <button
-                  className={`${styles.tabButton} ${activeTab === 'monitors' ? styles.tabButtonActive : ''}`}
-                  onClick={() => setActiveTab('monitors')}
-                >
-                  Monitors
-                </button>
-                <button
-                  className={`${styles.tabButton} ${activeTab === 'points-tags' ? styles.tabButtonActive : ''}`}
-                  onClick={() => setActiveTab('points-tags')}
-                >
-                  Points and Tags
-                </button>
-                <button
-                  className={`${styles.tabButton} ${activeTab === 'chart' ? styles.tabButtonActive : ''}`}
-                  onClick={() => setActiveTab('chart')}
-                >
-                  Chart
-                </button>
-                <button
-                  className={`${styles.tabButton} ${activeTab === 'verify' ? styles.tabButtonActive : ''}`}
-                  onClick={() => setActiveTab('verify')}
-                >
-                  Verify Data
-                </button>
-              </div>
+              {!headerActionsTarget && (
+                <div className={styles.tabBar}>
+                  {trendTabs}
+                </div>
+              )}
 
               {activeTab === 'overview' && (
                 <div className={styles.overviewWrap}>
