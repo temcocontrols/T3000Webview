@@ -13,6 +13,7 @@ use tracing::{error, info, warn};
 
 use crate::app_state::T3AppState;
 use crate::entity::t3_device::{devices, trendlogs, trendlog_inputs, input_points, output_points, variable_points};
+use crate::t3_device::action17_refresh_helper::lookup_action17_target;
 use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
 use sea_orm::*;
 
@@ -103,43 +104,29 @@ pub async fn refresh_trendlogs(
         }
     };
 
-    let panel_id = match devices::Entity::find()
-        .filter(devices::Column::SerialNumber.eq(serial))
-        .one(&db_connection)
-        .await
-    {
-        Ok(Some(device)) => device.panel_number.or(device.panel_id).unwrap_or(0),
-        Ok(None) => {
-            error!("Device not found for serial: {}", serial);
+    let (panel_id, object_instance) = match lookup_action17_target(&db_connection, serial).await {
+        Ok(target) => target,
+        Err(err) => {
             if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
                 fh.step(fdb, "lookup_device", "error", "db", "error",
-                    t0.elapsed().as_millis() as i64,
-                    &format!("serial={} not found", serial), None).await;
+                    t0.elapsed().as_millis() as i64, &err.1, None).await;
                 fh.done(fdb, "error").await;
             }
-            return Err((StatusCode::NOT_FOUND, format!("Device with serial {} not found", serial)));
-        }
-        Err(e) => {
-            error!("Database error querying device: {:?}", e);
-            if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
-                fh.step(fdb, "lookup_device", "error", "db", "error",
-                    t0.elapsed().as_millis() as i64, &e.to_string(), None).await;
-                fh.done(fdb, "error").await;
-            }
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)));
+            return Err(err);
         }
     };
 
     if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
         fh.step(fdb, "lookup_device", "info", "db", "ok",
             t0.elapsed().as_millis() as i64,
-            &format!("serial={} panel_id={}", serial, panel_id), None).await;
+            &format!("serial={} panel_id={} objectinstance={}", serial, panel_id, object_instance), None).await;
     }
 
     let mut refresh_json = json!({
         "action": WebViewMessageType::GET_WEBVIEW_LIST as i32,
         "panelId": panel_id,
         "serialNumber": serial,
+        "objectinstance": object_instance,
         "entryType": BAC_AMON,
     });
 
