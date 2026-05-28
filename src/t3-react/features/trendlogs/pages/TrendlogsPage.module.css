@@ -135,12 +135,6 @@
   gap: 8px;
 }
 
-.middleCardBody {
-  display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: 12px;
-}
-
 .middleSectionTitleRow {
   display: flex;
   align-items: center;
@@ -152,11 +146,9 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding-right: 10px;
-  border-right: 1px solid #f1f0ef;
 }
 
-.middleActionPanel {
+.middleSnapshotPanelOnly {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -200,13 +192,13 @@
   justify-content: center;
   border: none;
   background: transparent;
-  color: #8a8886;
+  color: #0f6cbd;
   cursor: pointer;
   padding: 0;
 }
 
 .metricInfoButton:hover {
-  color: #0f6cbd;
+  color: #115ea3;
 }
 
 .metricInfoButton:focus-visible {
@@ -215,43 +207,9 @@
 }
 
 .metricInfoIcon {
-  font-size: 14px;
+  font-size: 15px;
 }
 
-.summaryCardActions {
-  border: 1px solid #edebe9;
-  border-radius: 8px;
-  padding: 14px;
-  background: #ffffff;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  justify-content: flex-start;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
-.workflowList {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.quickActionGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.quickActionButton {
-  border-radius: 6px;
-  min-height: 24px;
-  height: 24px;
-  padding-left: 8px;
-  padding-right: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  justify-content: center;
-}
 
 .overviewFooterPanel {
   border: 1px solid #edebe9;
@@ -347,17 +305,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .middleCardBody {
-    grid-template-columns: 1fr;
-  }
-
-  .middleSnapshotPanel {
-    border-right: none;
-    border-bottom: 1px solid #f1f0ef;
-    padding-right: 0;
-    padding-bottom: 8px;
-  }
-
   .globalMetricGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -365,10 +312,6 @@
 
 @media (max-width: 768px) {
   .summaryGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .quickActionGrid {
     grid-template-columns: 1fr;
   }
 

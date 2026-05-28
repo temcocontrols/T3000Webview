@@ -28,7 +28,6 @@ import {
   SearchRegular,
   ErrorCircleRegular,
   ChartMultipleRegular,
-  InfoFilled,
   InfoRegular,
   DataBarVerticalRegular,
 } from '@fluentui/react-icons';
@@ -947,7 +946,7 @@ export const TrendLogsPage: React.FC = () => {
                         <Text size={200}>Selected Device</Text>
                         <Tooltip content="Current panel context for all trendlog metrics and actions on this page." relationship="description">
                           <button type="button" className={styles.metricInfoButton} aria-label="Selected Device help">
-                            <InfoFilled className={styles.metricInfoIcon} />
+                            <InfoRegular className={styles.metricInfoIcon} />
                           </button>
                         </Tooltip>
                       </div>
@@ -959,7 +958,7 @@ export const TrendLogsPage: React.FC = () => {
                         <Text size={200}>Configured Monitors</Text>
                         <Tooltip content="Total monitors detected from database/device sync; ON/OFF shows runtime state split." relationship="description">
                           <button type="button" className={styles.metricInfoButton} aria-label="Configured Monitors help">
-                            <InfoFilled className={styles.metricInfoIcon} />
+                            <InfoRegular className={styles.metricInfoIcon} />
                           </button>
                         </Tooltip>
                       </div>
@@ -974,7 +973,7 @@ export const TrendLogsPage: React.FC = () => {
                         <Text size={200}>Monitor Configuration Quality</Text>
                         <Tooltip content="Shows how many monitors have labels and how many are running in Auto mode." relationship="description">
                           <button type="button" className={styles.metricInfoButton} aria-label="Monitor Configuration Quality help">
-                            <InfoFilled className={styles.metricInfoIcon} />
+                            <InfoRegular className={styles.metricInfoIcon} />
                           </button>
                         </Tooltip>
                       </div>
@@ -986,7 +985,7 @@ export const TrendLogsPage: React.FC = () => {
                         <Text size={200}>Inputs In Selected Monitor</Text>
                         <Tooltip content="Number of points currently assigned to the selected monitor and the average logging interval across monitors." relationship="description">
                           <button type="button" className={styles.metricInfoButton} aria-label="Inputs In Selected Monitor help">
-                            <InfoFilled className={styles.metricInfoIcon} />
+                            <InfoRegular className={styles.metricInfoIcon} />
                           </button>
                         </Tooltip>
                       </div>
@@ -996,53 +995,35 @@ export const TrendLogsPage: React.FC = () => {
                   </div>
 
                   <div className={styles.overviewMiddleCard}>
-                    <div className={styles.middleCardBody}>
-                      <div className={styles.middleSnapshotPanel}>
-                        <div className={styles.middleSectionTitleRow}>
-                          <Text size={300} weight="semibold">Current Monitor Snapshot</Text>
-                          {selectedMonitor && (
-                            <Badge appearance="outline" color="informative">
-                              {(selectedMonitor.trendlogId || selectedMonitor.trendlogIndex)} · {selectedMonitor.trendlogLabel || 'No label'}
-                            </Badge>
-                          )}
-                        </div>
-                        {selectedMonitor ? (
-                          <>
-                            <Text size={200}>Review current collection parameters before validation or charting.</Text>
-                            <div className={styles.summaryMetaRow}>
-                              <Badge appearance="outline">Interval {formatSeconds(selectedMonitor.intervalSeconds ?? null)}</Badge>
-                              <Badge appearance="outline">Buffer {selectedMonitor.bufferSize ?? 'N/A'}</Badge>
-                              <Badge appearance="outline">Inputs {monitorInputs.length}</Badge>
-                            </div>
-                            <div className={styles.summaryMetaRow}>
-                              <Badge appearance="tint" color={(selectedMonitor.status || '').toUpperCase() === 'ON' ? 'success' : 'subtle'}>
-                                Status {(selectedMonitor.status || 'OFF').toUpperCase()}
-                              </Badge>
-                              <Badge appearance="tint" color="informative">
-                                Mode {((selectedMonitor.autoManual || '').toUpperCase() === 'AUTO' || selectedMonitor.autoManual === '1') ? 'Auto' : 'Manual'}
-                              </Badge>
-                            </div>
-                          </>
-                        ) : (
-                          <Text size={200}>Select a monitor in the Monitors tab to view its runtime snapshot and readiness.</Text>
+                    <div className={styles.middleSnapshotPanelOnly}>
+                      <div className={styles.middleSectionTitleRow}>
+                        <Text size={300} weight="semibold">Current Monitor Snapshot</Text>
+                        {selectedMonitor && (
+                          <Badge appearance="outline" color="informative">
+                            {(selectedMonitor.trendlogId || selectedMonitor.trendlogIndex)} · {selectedMonitor.trendlogLabel || 'No label'}
+                          </Badge>
                         )}
                       </div>
-
-                      <div className={styles.middleActionPanel}>
-                        <Text size={300} weight="semibold">Action Center</Text>
-                        <Text size={200}>Use this flow to configure, verify, and inspect logs quickly.</Text>
-                        <div className={styles.workflowList}>
-                          <Text size={200}>1. Open Monitors to review interval, buffer, and status.</Text>
-                          <Text size={200}>2. Use Points and Tags to confirm logged points and labels.</Text>
-                          <Text size={200}>3. Run Verify Data for health checks before chart analysis.</Text>
-                        </div>
-                        <div className={styles.quickActionGrid}>
-                          <Button size="small" appearance="primary" className={styles.quickActionButton} onClick={() => setActiveTab('monitors')}>Open Monitors</Button>
-                          <Button size="small" appearance="outline" className={styles.quickActionButton} onClick={() => setActiveTab('points-tags')} disabled={!selectedDevice}>Points and Tags</Button>
-                          <Button size="small" appearance="outline" className={styles.quickActionButton} onClick={() => setActiveTab('verify')} disabled={!selectedDevice || !selectedMonitor}>Verify Data</Button>
-                          <Button size="small" appearance="outline" className={styles.quickActionButton} onClick={() => setActiveTab('chart')} disabled={!selectedDevice || !selectedMonitor}>Open Chart</Button>
-                        </div>
-                      </div>
+                      {selectedMonitor ? (
+                        <>
+                          <Text size={200}>Review current collection parameters before validation or charting.</Text>
+                          <div className={styles.summaryMetaRow}>
+                            <Badge appearance="outline">Interval {formatSeconds(selectedMonitor.intervalSeconds ?? null)}</Badge>
+                            <Badge appearance="outline">Buffer {selectedMonitor.bufferSize ?? 'N/A'}</Badge>
+                            <Badge appearance="outline">Inputs {monitorInputs.length}</Badge>
+                          </div>
+                          <div className={styles.summaryMetaRow}>
+                            <Badge appearance="tint" color={(selectedMonitor.status || '').toUpperCase() === 'ON' ? 'success' : 'subtle'}>
+                              Status {(selectedMonitor.status || 'OFF').toUpperCase()}
+                            </Badge>
+                            <Badge appearance="tint" color="informative">
+                              Mode {((selectedMonitor.autoManual || '').toUpperCase() === 'AUTO' || selectedMonitor.autoManual === '1') ? 'Auto' : 'Manual'}
+                            </Badge>
+                          </div>
+                        </>
+                      ) : (
+                        <Text size={200}>Select a monitor in the Monitors tab to view its runtime snapshot and readiness.</Text>
+                      )}
                     </div>
                   </div>
 
