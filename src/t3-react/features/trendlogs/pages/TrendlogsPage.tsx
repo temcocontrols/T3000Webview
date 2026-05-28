@@ -71,6 +71,41 @@ interface TrendLogInput {
   isSelected?: number;
 }
 
+interface DevicePointSyncSummary {
+  inputs: number;
+  outputs: number;
+  variables: number;
+  syncedTypes: number;
+  backendSyncedTypes: number;
+  backendRecordsSynced: number;
+  lastSyncedAt: number | null;
+  lastSyncedFmt: string;
+  lastSyncMethod: string;
+}
+
+interface SyncStatusRow {
+  dataType?: string;
+  syncMethod?: string;
+  success?: boolean;
+  recordsSynced?: number;
+  syncTime?: number;
+  syncTimeFmt?: string;
+}
+
+const EMPTY_POINT_SYNC_SUMMARY: DevicePointSyncSummary = {
+  inputs: 0,
+  outputs: 0,
+  variables: 0,
+  syncedTypes: 0,
+  backendSyncedTypes: 0,
+  backendRecordsSynced: 0,
+  lastSyncedAt: null,
+  lastSyncedFmt: 'N/A',
+  lastSyncMethod: 'N/A',
+};
+
+const TRACKED_POINT_SYNC_TYPES = ['INPUTS', 'OUTPUTS', 'VARIABLES'] as const;
+
 type TrendCenterTab = 'overview' | 'monitors' | 'points-tags' | 'chart' | 'verify';
 
 const isTrendCenterTab = (value: string | null): value is TrendCenterTab => {
@@ -94,6 +129,9 @@ export const TrendLogsPage: React.FC = () => {
   const [selectedMonitor, setSelectedMonitor] = useState<TrendLogData | null>(null);
   const [monitorInputs, setMonitorInputs] = useState<TrendLogInput[]>([]);
   const [loadingInputs, setLoadingInputs] = useState(false);
+  const [pointSummaryLoading, setPointSummaryLoading] = useState(false);
+  const [devicePointSyncSummary, setDevicePointSyncSummary] = useState<DevicePointSyncSummary>(EMPTY_POINT_SYNC_SUMMARY);
+  const [syncingPointTypes, setSyncingPointTypes] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const selectedSerial = selectedDevice?.serialNumber;
@@ -127,6 +165,82 @@ export const TrendLogsPage: React.FC = () => {
     next.set('tab', activeTab);
     setSearchParams(next, { replace: true });
   }, [activeTab, searchParams, selectedDevice?.panelId, selectedDevice?.serialNumber, setSearchParams]);
+
+  const setPointTypeSyncing = useCallback((type: string, isSyncing: boolean) => {
+    setSyncingPointTypes((prev) => {
+      const next = new Set(prev);
+      if (isSyncing) {
+        next.add(type);
+      } else {
+        next.delete(type);
+      }
+      return next;
+    });
+  }, []);
+
+  const fetchPointSyncSummary = useCallback(async () => {
+    if (!selectedSerial) {
+      setDevicePointSyncSummary(EMPTY_POINT_SYNC_SUMMARY);
+      return;
+    }
+
+    setPointSummaryLoading(true);
+    try {
+      const [inputsResponse, outputsResponse, variablesResponse, syncStatusResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/input-points`),
+        fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/output-points`),
+        fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/variable-points`),
+        fetch(`${API_BASE_URL}/api/sync-status/${selectedSerial}`),
+      ]);
+
+      const inputsData = inputsResponse.ok ? await inputsResponse.json() : {};
+      const outputsData = outputsResponse.ok ? await outputsResponse.json() : {};
+      const variablesData = variablesResponse.ok ? await variablesResponse.json() : {};
+      const syncRows: SyncStatusRow[] = syncStatusResponse.ok ? await syncStatusResponse.json() : [];
+      const trackedRows = (syncRows || []).filter((row) => TRACKED_POINT_SYNC_TYPES.includes(String(row.dataType || '').toUpperCase() as any));
+
+      const latestByType = new Map<string, SyncStatusRow>();
+      (syncRows || []).forEach((row) => {
+        const key = String(row.dataType || '').toUpperCase();
+        if (!latestByType.has(key)) {
+          latestByType.set(key, row);
+        }
+      });
+
+      let syncedTypes = 0;
+      let backendSyncedTypes = 0;
+      let backendRecordsSynced = 0;
+      const latestSuccessfulRow = trackedRows.find((row) => !!row.success) || null;
+
+      TRACKED_POINT_SYNC_TYPES.forEach((type) => {
+        const latest = latestByType.get(type);
+        if (latest?.success) {
+          syncedTypes += 1;
+        }
+        if (latest?.success && String(latest.syncMethod || '').toUpperCase() === 'FFI_BACKEND') {
+          backendSyncedTypes += 1;
+          backendRecordsSynced += Number(latest.recordsSynced || 0);
+        }
+      });
+
+      setDevicePointSyncSummary({
+        inputs: (inputsData.input_points || []).length,
+        outputs: (outputsData.output_points || []).length,
+        variables: (variablesData.variable_points || []).length,
+        syncedTypes,
+        backendSyncedTypes,
+        backendRecordsSynced,
+        lastSyncedAt: latestSuccessfulRow?.syncTime ?? null,
+        lastSyncedFmt: latestSuccessfulRow?.syncTimeFmt || 'N/A',
+        lastSyncMethod: latestSuccessfulRow?.syncMethod || 'N/A',
+      });
+    } catch (summaryError) {
+      console.error('[TrendLogsPage] Failed to load point sync summary:', summaryError);
+      setDevicePointSyncSummary(EMPTY_POINT_SYNC_SUMMARY);
+    } finally {
+      setPointSummaryLoading(false);
+    }
+  }, [selectedSerial]);
 
   // Internal function to load inputs with deduplication
   const loadTrendlogInputsInternal = async (trendlog: TrendLogData) => {
@@ -211,7 +325,7 @@ export const TrendLogsPage: React.FC = () => {
       // Label is already available in the row data — no extra API call needed
       const title = trendlog.trendlogLabel || `Monitor ${monitorIndex}`;
 
-      const buildItemData = (inputs: any[]) => ({
+      const buildItemData = () => ({
         title,
         t3Entry: {
           id: `MON${monitorIndex}`,
@@ -235,7 +349,7 @@ export const TrendLogsPage: React.FC = () => {
             panelId: selectedDevice.panelId || 1,
             trendlogId: trendlog.trendlogId || '0',
             monitorId: monitorIndex,
-            itemData: buildItemData(monitorInputs),
+            itemData: buildItemData(),
             monitorInputs,
           },
         });
@@ -277,7 +391,7 @@ export const TrendLogsPage: React.FC = () => {
             panelId: selectedDevice.panelId || 1,
             trendlogId: trendlog.trendlogId || '0',
             monitorId: monitorIndex,
-            itemData: buildItemData(freshInputs),
+            itemData: buildItemData(),
             monitorInputs: freshInputs,
           },
         });
@@ -289,7 +403,7 @@ export const TrendLogsPage: React.FC = () => {
             panelId: selectedDevice.panelId || 1,
             trendlogId: trendlog.trendlogId || '0',
             monitorId: monitorIndex,
-            itemData: buildItemData([]),
+            itemData: buildItemData(),
             monitorInputs,
           },
         });
@@ -489,6 +603,10 @@ export const TrendLogsPage: React.FC = () => {
     }
   }, [rawTab, searchParams, setSearchParams]);
 
+  useEffect(() => {
+    fetchPointSyncSummary();
+  }, [fetchPointSyncSummary]);
+
   // Reset auto-refresh state when device changes (don't clear data to avoid visual flash)
   useEffect(() => {
     setAutoRefreshed(false);
@@ -509,24 +627,42 @@ export const TrendLogsPage: React.FC = () => {
         const serial = selectedSerial;
         // Pre-refresh inputs/outputs/variables so label resolution uses current names
         console.log('[TrendLogsPage] Pre-refreshing inputs/outputs/variables for label resolution...');
-        await PanelDataRefreshService.refreshAllInputs(serial);
-        await PanelDataRefreshService.refreshAllOutputs(serial);
-        await PanelDataRefreshService.refreshAllVariables(serial);
+        setPointTypeSyncing('INPUTS', true);
+        try {
+          await PanelDataRefreshService.refreshAllInputs(serial);
+        } finally {
+          setPointTypeSyncing('INPUTS', false);
+        }
+        setPointTypeSyncing('OUTPUTS', true);
+        try {
+          await PanelDataRefreshService.refreshAllOutputs(serial);
+        } finally {
+          setPointTypeSyncing('OUTPUTS', false);
+        }
+        setPointTypeSyncing('VARIABLES', true);
+        try {
+          await PanelDataRefreshService.refreshAllVariables(serial);
+        } finally {
+          setPointTypeSyncing('VARIABLES', false);
+        }
         console.log('[TrendLogsPage] Auto-refreshing from device...');
         const refreshResponse = await TrendlogRefreshApi.refreshAllFromDevice(serial);
         console.log('[TrendLogsPage] Refresh response:', refreshResponse);
         await fetchTrendLogs();
+        await fetchPointSyncSummary();
         setAutoRefreshed(true);
       } catch (error) {
         console.error('[TrendLogsPage] Auto-refresh failed:', error);
         setAutoRefreshed(true);
       } finally {
+        setSyncingPointTypes(new Set());
+        await fetchPointSyncSummary();
         autoRefreshInProgressRef.current = false;
       }
     };
 
     checkAndRefresh();
-  }, [autoRefreshed, dbChecked, fetchTrendLogs, loading, selectedSerial]);
+  }, [autoRefreshed, dbChecked, fetchPointSyncSummary, fetchTrendLogs, loading, selectedSerial, setPointTypeSyncing]);
 
   // Refresh all trendlogs from device (Trigger #2: Manual "Refresh All" button)
   const handleRefreshFromDevice = async () => {
@@ -537,17 +673,35 @@ export const TrendLogsPage: React.FC = () => {
       const serial = selectedDevice.serialNumber;
       // Pre-refresh inputs/outputs/variables so label resolution uses current names
       console.log('[TrendLogsPage] Pre-refreshing inputs/outputs/variables for label resolution...');
-      await PanelDataRefreshService.refreshAllInputs(serial);
-      await PanelDataRefreshService.refreshAllOutputs(serial);
-      await PanelDataRefreshService.refreshAllVariables(serial);
+      setPointTypeSyncing('INPUTS', true);
+      try {
+        await PanelDataRefreshService.refreshAllInputs(serial);
+      } finally {
+        setPointTypeSyncing('INPUTS', false);
+      }
+      setPointTypeSyncing('OUTPUTS', true);
+      try {
+        await PanelDataRefreshService.refreshAllOutputs(serial);
+      } finally {
+        setPointTypeSyncing('OUTPUTS', false);
+      }
+      setPointTypeSyncing('VARIABLES', true);
+      try {
+        await PanelDataRefreshService.refreshAllVariables(serial);
+      } finally {
+        setPointTypeSyncing('VARIABLES', false);
+      }
       console.log('[TrendLogsPage] Refreshing all trendlogs from device...');
       const refreshResponse = await TrendlogRefreshApi.refreshAllFromDevice(serial);
       console.log('[TrendLogsPage] Refresh response:', refreshResponse);
       await fetchTrendLogs();
+      await fetchPointSyncSummary();
     } catch (error) {
       console.error('[TrendLogsPage] Failed to refresh from device:', error);
       setError(error instanceof Error ? error.message : 'Failed to refresh from device');
     } finally {
+      setSyncingPointTypes(new Set());
+      await fetchPointSyncSummary();
       setRefreshing(false);
     }
   };
@@ -641,22 +795,22 @@ export const TrendLogsPage: React.FC = () => {
   const intervalValues = trendLogs
     .map((item) => item.intervalSeconds)
     .filter((value): value is number => typeof value === 'number' && value > 0);
-  const bufferValues = trendLogs
-    .map((item) => item.bufferSize)
-    .filter((value): value is number => typeof value === 'number' && value > 0);
   const avgIntervalSeconds = intervalValues.length > 0
     ? Math.round(intervalValues.reduce((sum, value) => sum + value, 0) / intervalValues.length)
     : null;
-  const minIntervalSeconds = intervalValues.length > 0 ? Math.min(...intervalValues) : null;
-  const maxIntervalSeconds = intervalValues.length > 0 ? Math.max(...intervalValues) : null;
-  const avgBufferSize = bufferValues.length > 0
-    ? Math.round(bufferValues.reduce((sum, value) => sum + value, 0) / bufferValues.length)
-    : null;
-  const manualModeCount = Math.max(trendLogs.length - autoModeCount, 0);
-  const unlabeledCount = Math.max(trendLogs.length - monitorsWithLabel, 0);
-  const activeMonitorPercent = trendLogs.length > 0
-    ? Math.round((activeMonitorCount / trendLogs.length) * 100)
-    : 0;
+  const totalSensors = devicePointSyncSummary.inputs + devicePointSyncSummary.outputs + devicePointSyncSummary.variables;
+  const formatTimeAgo = (timestampSeconds: number | null) => {
+    if (!timestampSeconds) return 'N/A';
+    const diffSeconds = Math.max(0, Math.floor(Date.now() / 1000) - timestampSeconds);
+    if (diffSeconds < 60) return `${diffSeconds}s ago`;
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  };
+  const lastSyncedAgo = formatTimeAgo(devicePointSyncSummary.lastSyncedAt);
   const formatSeconds = (totalSeconds: number | null) => {
     if (totalSeconds == null) return 'N/A';
     const h = Math.floor(totalSeconds / 3600);
@@ -1004,7 +1158,12 @@ export const TrendLogsPage: React.FC = () => {
                           </Badge>
                         )}
                       </div>
-                      {selectedMonitor ? (
+                      {loadingInputs && selectedMonitor ? (
+                        <div className={styles.snapshotLoadingState}>
+                          <Spinner size="tiny" />
+                          <Text size={200}>Loading selected monitor snapshot...</Text>
+                        </div>
+                      ) : selectedMonitor ? (
                         <>
                           <Text size={200}>Review current collection parameters before validation or charting.</Text>
                           <div className={styles.summaryMetaRow}>
@@ -1042,40 +1201,30 @@ export const TrendLogsPage: React.FC = () => {
                         <Text className={styles.globalMetricLabel}>Active monitors</Text>
                       </div>
                       <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>{Math.max(trendLogs.length - activeMonitorCount, 0)}</Text>
-                        <Text className={styles.globalMetricLabel}>Inactive monitors</Text>
+                        <Text className={styles.globalMetricValue}>{pointSummaryLoading ? '...' : totalSensors}</Text>
+                        <Text className={styles.globalMetricLabel}>Total sensors (IN + OUT + VAR)</Text>
                       </div>
                       <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>{activeMonitorPercent}%</Text>
-                        <Text className={styles.globalMetricLabel}>Activity ratio</Text>
+                        <Text className={styles.globalMetricValue}>
+                          {pointSummaryLoading ? '...' : `${devicePointSyncSummary.backendRecordsSynced}`}
+                        </Text>
+                        <Text className={styles.globalMetricLabel}>Synced records (backend)</Text>
                       </div>
                       <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>{monitorsWithLabel}</Text>
-                        <Text className={styles.globalMetricLabel}>Labeled monitors</Text>
+                        <Text className={styles.globalMetricValue}>{pointSummaryLoading ? '...' : lastSyncedAgo}</Text>
+                        <Text className={styles.globalMetricLabel}>Last synced · {devicePointSyncSummary.lastSyncedFmt}</Text>
                       </div>
                       <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>{unlabeledCount}</Text>
-                        <Text className={styles.globalMetricLabel}>Unlabeled monitors</Text>
+                        <Text className={styles.globalMetricValue}>{pointSummaryLoading ? '...' : devicePointSyncSummary.lastSyncMethod}</Text>
+                        <Text className={styles.globalMetricLabel}>Sync source</Text>
                       </div>
                       <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>{autoModeCount}/{manualModeCount}</Text>
-                        <Text className={styles.globalMetricLabel}>Auto / Manual</Text>
+                        <Text className={styles.globalMetricValue}>{pointSummaryLoading ? '...' : `${devicePointSyncSummary.backendSyncedTypes}/3`}</Text>
+                        <Text className={styles.globalMetricLabel}>Backend-synced types</Text>
                       </div>
                       <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>{formatSeconds(avgIntervalSeconds)}</Text>
-                        <Text className={styles.globalMetricLabel}>Avg interval</Text>
-                      </div>
-                      <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>{formatSeconds(minIntervalSeconds)} - {formatSeconds(maxIntervalSeconds)}</Text>
-                        <Text className={styles.globalMetricLabel}>Interval range</Text>
-                      </div>
-                      <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>{avgBufferSize ?? 'N/A'}</Text>
-                        <Text className={styles.globalMetricLabel}>Avg buffer size</Text>
-                      </div>
-                      <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>{selectedMonitor ? monitorInputs.length : 0}</Text>
-                        <Text className={styles.globalMetricLabel}>Selected monitor inputs</Text>
+                        <Text className={styles.globalMetricValue}>{syncingPointTypes.size}/3</Text>
+                        <Text className={styles.globalMetricLabel}>Point types syncing now</Text>
                       </div>
                       <div className={styles.globalMetricTile}>
                         <Text className={styles.globalMetricValue}>{refreshing ? 'Syncing' : 'Ready'}</Text>

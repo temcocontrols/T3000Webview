@@ -210,6 +210,12 @@
   font-size: 15px;
 }
 
+.snapshotLoadingState {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 
 .overviewFooterPanel {
   border: 1px solid #edebe9;
