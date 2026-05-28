@@ -906,18 +906,44 @@ impl T3TrendlogDataService {
         .await?
         .map(|r| r.logging_time_fmt);
 
+        // Get latest sync metadata for this device/panel
+        #[derive(Debug, sea_orm::FromQueryResult)]
+        struct LatestSyncMetaResult {
+            records_inserted: Option<i32>,
+            sync_time_fmt: Option<String>,
+        }
+
+        let latest_sync_meta_sql = r#"
+            SELECT RecordsInserted as records_inserted, SyncTime_Fmt as sync_time_fmt
+            FROM TRENDLOG_DATA_SYNC_METADATA
+            WHERE SerialNumber = ?
+              AND (PanelId = ? OR PanelId IS NULL)
+              AND (Success = 1 OR Success IS NULL)
+            ORDER BY id DESC
+            LIMIT 1
+        "#;
+
+        let latest_sync_meta = LatestSyncMetaResult::find_by_statement(Statement::from_sql_and_values(
+            db.get_database_backend(),
+            &adapt_placeholders(db.get_database_backend(), latest_sync_meta_sql),
+            vec![serial_number.into(), panel_id.into()],
+        ))
+        .one(db)
+        .await?;
+
         let stats_duration = stats_start_time.elapsed();
 
         // Log statistics completion
         let completion_info = format!(
-            "✅ [TrendlogDataService] Statistics completed in {:.3}ms - Points: {}, Detail Records: {}, Input: {}, Output: {}, Variable: {}, Latest: {}",
+            "✅ [TrendlogDataService] Statistics completed in {:.3}ms - Points: {}, Detail Records: {}, Input: {}, Output: {}, Variable: {}, Latest: {}, LatestSyncInserted: {}",
             stats_duration.as_millis(),
             total_points,
             counts.total_count,
             counts.input_count,
             counts.output_count,
             counts.variable_count,
-            latest_timestamp.as_deref().unwrap_or("N/A")
+            latest_timestamp.as_deref().unwrap_or("N/A"),
+            latest_sync_meta.as_ref().and_then(|m| m.records_inserted).unwrap_or(0)
         );
         emit_api_log(db, "info", &completion_info).await;
 
@@ -930,6 +956,8 @@ impl T3TrendlogDataService {
             "output_data_points": counts.output_count,
             "variable_data_points": counts.variable_count,
             "latest_timestamp": latest_timestamp,
+            "latest_sync_records_inserted": latest_sync_meta.as_ref().and_then(|m| m.records_inserted),
+            "latest_sync_time_fmt": latest_sync_meta.as_ref().and_then(|m| m.sync_time_fmt.clone()),
             "message": "Trendlog data statistics retrieved successfully (split-table optimized)"
         }))
     }
