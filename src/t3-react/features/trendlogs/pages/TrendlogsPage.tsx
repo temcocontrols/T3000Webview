@@ -30,6 +30,8 @@ import {
   ChartMultipleRegular,
   FullScreenMaximizeRegular,
   InfoRegular,
+  ChevronUpRegular,
+  ChevronDownRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { TrendlogRefreshApi } from '../services/trendlogRefreshApi';
@@ -174,6 +176,7 @@ export const TrendLogsPage: React.FC = () => {
   const [globalPointsLoading, setGlobalPointsLoading] = useState(false);
   const [globalSearch, setGlobalSearch] = useState('');
   const [globalSelectedKeys, setGlobalSelectedKeys] = useState<Set<string>>(new Set());
+  const [globalSelectedOrder, setGlobalSelectedOrder] = useState<string[]>([]);
   const [globalTagFilter, setGlobalTagFilter] = useState<string>('all');
   const [globalPointTags, setGlobalPointTags] = useState<Record<string, string[]>>({});
   const [globalSetName, setGlobalSetName] = useState('');
@@ -182,6 +185,9 @@ export const TrendLogsPage: React.FC = () => {
   const [globalRebuildLoading, setGlobalRebuildLoading] = useState(false);
   const [globalRebuildMessage, setGlobalRebuildMessage] = useState('');
   const [globalReloadRevision, setGlobalReloadRevision] = useState(0);
+  const [isPointPickerOpen, setIsPointPickerOpen] = useState(false);
+  const [showPointSetsHelp, setShowPointSetsHelp] = useState(true);
+  const [draggingPointKey, setDraggingPointKey] = useState<string | null>(null);
 
   const setActiveTab = useCallback((tab: TrendCenterTab) => {
     const next = new URLSearchParams(searchParams);
@@ -881,8 +887,26 @@ export const TrendLogsPage: React.FC = () => {
     : undefined;
 
   const selectedGlobalPoints = React.useMemo(
-    () => globalPoints.filter((point) => globalSelectedKeys.has(point.key)),
-    [globalPoints, globalSelectedKeys]
+    () => {
+      const byKey = new Map(globalPoints.map((point) => [point.key, point]));
+      const ordered: GlobalPointItem[] = [];
+
+      globalSelectedOrder.forEach((key) => {
+        if (!globalSelectedKeys.has(key)) return;
+        const point = byKey.get(key);
+        if (point) ordered.push(point);
+      });
+
+      // Backward compatibility for sets saved before ordered sets existed.
+      globalPoints.forEach((point) => {
+        if (!globalSelectedKeys.has(point.key)) return;
+        if (ordered.some((item) => item.key === point.key)) return;
+        ordered.push(point);
+      });
+
+      return ordered;
+    },
+    [globalPoints, globalSelectedKeys, globalSelectedOrder]
   );
 
   const availableGlobalTags = React.useMemo(() => {
@@ -914,8 +938,10 @@ export const TrendLogsPage: React.FC = () => {
       const next = new Set(prev);
       if (next.has(key)) {
         next.delete(key);
+        setGlobalSelectedOrder((orderPrev) => orderPrev.filter((value) => value !== key));
       } else {
         next.add(key);
+        setGlobalSelectedOrder((orderPrev) => (orderPrev.includes(key) ? orderPrev : [...orderPrev, key]));
       }
       return next;
     });
@@ -928,7 +954,7 @@ export const TrendLogsPage: React.FC = () => {
       serialNumber: selectedDevice.serialNumber,
       trendlogId: 'GLOBAL',
       trendlogIndex: 'GLOBAL',
-      trendlogLabel: 'Global Watchlist',
+      trendlogLabel: 'Point Set',
       status: 'ON',
       _uniqueIndex: 99999,
       panelId: selectedDevice.panelId,
@@ -957,22 +983,81 @@ export const TrendLogsPage: React.FC = () => {
   const selectAllVisibleGlobalPoints = useCallback(() => {
     setGlobalSelectedKeys((prev) => {
       const next = new Set(prev);
+      const additions: string[] = [];
       filteredGlobalPoints.forEach((point) => next.add(point.key));
+      filteredGlobalPoints.forEach((point) => {
+        if (!prev.has(point.key)) additions.push(point.key);
+      });
+      if (additions.length > 0) {
+        setGlobalSelectedOrder((orderPrev) => {
+          const seen = new Set(orderPrev);
+          const merged = [...orderPrev];
+          additions.forEach((key) => {
+            if (seen.has(key)) return;
+            seen.add(key);
+            merged.push(key);
+          });
+          return merged;
+        });
+      }
       return next;
     });
   }, [filteredGlobalPoints]);
 
   const clearGlobalSelection = useCallback(() => {
     setGlobalSelectedKeys(new Set());
+    setGlobalSelectedOrder([]);
   }, []);
+
+  const removePointFromCurrentSet = useCallback((key: string) => {
+    setGlobalSelectedKeys((prev) => {
+      if (!prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+    setGlobalSelectedOrder((prev) => prev.filter((value) => value !== key));
+  }, []);
+
+  const movePointWithinSet = useCallback((draggedKey: string, targetKey: string) => {
+    if (!draggedKey || !targetKey || draggedKey === targetKey) return;
+    setGlobalSelectedOrder((prev) => {
+      const base = prev.filter((key) => globalSelectedKeys.has(key));
+      const from = base.indexOf(draggedKey);
+      const to = base.indexOf(targetKey);
+      if (from < 0 || to < 0) return prev;
+      const next = [...base];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  }, [globalSelectedKeys]);
+
+  const movePointByOffset = useCallback((key: string, offset: number) => {
+    if (!key || offset === 0) return;
+    setGlobalSelectedOrder((prev) => {
+      const base = prev.filter((value) => globalSelectedKeys.has(value));
+      const from = base.indexOf(key);
+      if (from < 0) return prev;
+      const to = Math.min(base.length - 1, Math.max(0, from + offset));
+      if (to === from) return prev;
+      const next = [...base];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  }, [globalSelectedKeys]);
 
   const saveCurrentGlobalSet = useCallback(() => {
     const normalizedName = globalSetName.trim();
     if (!normalizedName) return;
 
+    const orderedKeys = globalSelectedOrder.filter((key) => globalSelectedKeys.has(key));
+    const fallbackOrderedKeys = orderedKeys.length > 0 ? orderedKeys : Array.from(globalSelectedKeys);
+
     const newSet: GlobalWatchlistSet = {
       name: normalizedName,
-      selectedKeys: Array.from(globalSelectedKeys),
+      selectedKeys: fallbackOrderedKeys,
       pointTags: JSON.parse(JSON.stringify(globalPointTags || {})),
     };
 
@@ -981,7 +1066,7 @@ export const TrendLogsPage: React.FC = () => {
       return [...withoutSame, newSet].sort((a, b) => a.name.localeCompare(b.name));
     });
     setSelectedSavedSetName(normalizedName);
-  }, [globalPointTags, globalSelectedKeys, globalSetName]);
+  }, [globalPointTags, globalSelectedKeys, globalSelectedOrder, globalSetName]);
 
   const renameSelectedGlobalSet = useCallback(() => {
     const nextName = globalSetName.trim();
@@ -1000,6 +1085,38 @@ export const TrendLogsPage: React.FC = () => {
     setSelectedSavedSetName(nextName);
   }, [globalSetName, selectedSavedSetName]);
 
+  const duplicateSelectedGlobalSet = useCallback(() => {
+    if (!selectedSavedSetName) return;
+
+    setSavedGlobalSets((prev) => {
+      const target = prev.find((setItem) => setItem.name === selectedSavedSetName);
+      if (!target) return prev;
+
+      const usedNames = new Set(prev.map((setItem) => setItem.name));
+      let suffix = 1;
+      let candidate = `${target.name} Copy`;
+      while (usedNames.has(candidate)) {
+        suffix += 1;
+        candidate = `${target.name} Copy ${suffix}`;
+      }
+
+      const duplicated: GlobalWatchlistSet = {
+        ...target,
+        name: candidate,
+      };
+
+      const next = [...prev, duplicated].sort((a, b) => a.name.localeCompare(b.name));
+      setSelectedSavedSetName(candidate);
+      setGlobalSetName(candidate);
+      return next;
+    });
+  }, [selectedSavedSetName]);
+
+  const resetPointPickerFilters = useCallback(() => {
+    setGlobalSearch('');
+    setGlobalTagFilter('all');
+  }, []);
+
   const removeSelectedGlobalSet = useCallback(() => {
     if (!selectedSavedSetName) return;
     setSavedGlobalSets((prev) => prev.filter((setItem) => setItem.name !== selectedSavedSetName));
@@ -1011,6 +1128,7 @@ export const TrendLogsPage: React.FC = () => {
     const target = savedGlobalSets.find((setItem) => setItem.name === selectedSavedSetName);
     if (!target) return;
     setGlobalSelectedKeys(new Set(target.selectedKeys));
+    setGlobalSelectedOrder(target.selectedKeys || []);
     setGlobalPointTags(target.pointTags || {});
     setGlobalTagFilter('all');
     setGlobalSetName(target.name);
@@ -1072,7 +1190,7 @@ export const TrendLogsPage: React.FC = () => {
         className={`${styles.tabButton} ${activeTab === 'global' ? styles.tabButtonActive : ''}`}
         onClick={() => setActiveTab('global')}
       >
-        Watchlist
+        Point Sets
       </button>
       <button
         className={`${styles.tabButton} ${activeTab === 'points-tags' ? styles.tabButtonActive : ''}`}
@@ -1099,6 +1217,7 @@ export const TrendLogsPage: React.FC = () => {
         setGlobalPoints([]);
         setGlobalPointTags({});
         setGlobalSelectedKeys(new Set());
+        setGlobalSelectedOrder([]);
         return;
       }
 
@@ -1226,10 +1345,12 @@ export const TrendLogsPage: React.FC = () => {
         setGlobalPoints(merged);
         setGlobalPointTags(seededTags);
         setGlobalSelectedKeys(new Set());
+        setGlobalSelectedOrder([]);
       } catch (globalPointsError) {
         console.error('[TrendLogsPage] Failed to load global points:', globalPointsError);
         setGlobalPoints([]);
         setGlobalPointTags({});
+        setGlobalSelectedOrder([]);
       } finally {
         setGlobalPointsLoading(false);
       }
@@ -1746,19 +1867,81 @@ export const TrendLogsPage: React.FC = () => {
               {activeTab === 'global' && selectedDevice && (
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
-                  <div className={styles.searchInputWrapper}>
-                    <SearchRegular className={styles.searchIcon} />
-                    <input
-                      className={styles.searchInput}
-                      type="text"
-                      placeholder="Search points or tags..."
-                      value={globalSearch}
-                      onChange={(e) => setGlobalSearch(e.target.value)}
-                      spellCheck="false"
-                      role="searchbox"
-                      aria-label="Search global points"
-                    />
-                  </div>
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={() => setIsPointPickerOpen(true)}
+                    title="Add or remove points using point picker"
+                  >
+                    Add Points
+                  </button>
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={applyGlobalSelectionToChart}
+                    disabled={globalSelectedKeys.size === 0}
+                    title="Open chart with selected points from current set"
+                  >
+                    Open Chart
+                  </button>
+                  <div className={styles.toolbarSeparator} role="separator" />
+                  <input
+                    className={styles.tagInput}
+                    type="text"
+                    placeholder="Set name"
+                    value={globalSetName}
+                    onChange={(e) => setGlobalSetName(e.target.value)}
+                    aria-label="Point set name"
+                  />
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={saveCurrentGlobalSet}
+                    disabled={!globalSetName.trim()}
+                    title="Save current point set"
+                  >
+                    Save Set
+                  </button>
+                  <select
+                    className={styles.setSelect}
+                    value={selectedSavedSetName}
+                    onChange={(e) => setSelectedSavedSetName(e.target.value)}
+                    aria-label="Load saved point set"
+                  >
+                    <option value="">Load set...</option>
+                    {savedGlobalSets.map((setItem) => (
+                      <option key={setItem.name} value={setItem.name}>{setItem.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={loadSavedGlobalSet}
+                    disabled={!selectedSavedSetName}
+                    title="Load selected point set"
+                  >
+                    Load Set
+                  </button>
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={renameSelectedGlobalSet}
+                    disabled={!selectedSavedSetName || !globalSetName.trim()}
+                    title="Rename selected point set"
+                  >
+                    Rename Set
+                  </button>
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={duplicateSelectedGlobalSet}
+                    disabled={!selectedSavedSetName}
+                    title="Duplicate selected point set"
+                  >
+                    Duplicate Set
+                  </button>
+                  <button
+                    className={`${styles.toolbarButton} ${styles.destructiveButton}`}
+                    onClick={removeSelectedGlobalSet}
+                    disabled={!selectedSavedSetName}
+                    title="Remove selected point set"
+                  >
+                    Remove Set
+                  </button>
                   <div className={styles.toolbarSeparator} role="separator" />
                   <button
                     className={styles.toolbarButton}
@@ -1777,68 +1960,23 @@ export const TrendLogsPage: React.FC = () => {
                   </button>
                   <button
                     className={styles.toolbarButton}
-                    onClick={applyGlobalSelectionToChart}
-                    disabled={globalSelectedKeys.size === 0}
-                    title="Open chart with selected global points"
+                    onClick={() => setShowPointSetsHelp((prev) => !prev)}
+                    title="Show or hide quick help for Point Sets"
                   >
-                    Open Chart
+                    {showPointSetsHelp ? 'Hide Help' : 'Show Help'}
                   </button>
                   {globalRebuildMessage && (
                     <Text size={200}>{globalRebuildMessage}</Text>
                   )}
-                  <div className={styles.toolbarSeparator} role="separator" />
-                  <input
-                    className={styles.tagInput}
-                    type="text"
-                    placeholder="Set name"
-                    value={globalSetName}
-                    onChange={(e) => setGlobalSetName(e.target.value)}
-                    aria-label="Watchlist set name"
-                  />
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={saveCurrentGlobalSet}
-                    disabled={!globalSetName.trim()}
-                    title="Save current watchlist set"
-                  >
-                    Save Set
-                  </button>
-                  <select
-                    className={styles.setSelect}
-                    value={selectedSavedSetName}
-                    onChange={(e) => setSelectedSavedSetName(e.target.value)}
-                    aria-label="Load saved watchlist set"
-                  >
-                    <option value="">Load set...</option>
-                    {savedGlobalSets.map((setItem) => (
-                      <option key={setItem.name} value={setItem.name}>{setItem.name}</option>
-                    ))}
-                  </select>
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={loadSavedGlobalSet}
-                    disabled={!selectedSavedSetName}
-                    title="Load selected watchlist set"
-                  >
-                    Load Set
-                  </button>
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={renameSelectedGlobalSet}
-                    disabled={!selectedSavedSetName || !globalSetName.trim()}
-                    title="Rename selected watchlist set"
-                  >
-                    Rename Set
-                  </button>
-                  <button
-                    className={`${styles.toolbarButton} ${styles.destructiveButton}`}
-                    onClick={removeSelectedGlobalSet}
-                    disabled={!selectedSavedSetName}
-                    title="Remove selected watchlist set"
-                  >
-                    Remove Set
-                  </button>
                 </div>
+              </div>
+              )}
+
+              {activeTab === 'global' && selectedDevice && showPointSetsHelp && (
+              <div className={styles.commandHelpBar}>
+                <Text size={200}><strong>Point Sets</strong>: this page is set-first. Build and reuse named point sets for charting.</Text>
+                <Text size={200}><strong>Add Points</strong>: opens a drawer with point search + tag filters for quick selection.</Text>
+                <Text size={200}><strong>Manage Tags</strong>: use Points and Tags workspace when you need to author or edit tags.</Text>
               </div>
               )}
 
@@ -1978,138 +2116,241 @@ export const TrendLogsPage: React.FC = () => {
               )}
 
               {activeTab === 'global' && (
-              <div className={styles.dockingBody}>
-                {!selectedDevice && !loading && (
-                  <div className={styles.noData}>
-                    <div className={styles.centerText}>
-                      <Text size={400} weight="semibold">No device selected</Text>
-                      <br />
-                      <Text size={200}>Please select a device from the tree to build a global watchlist</Text>
-                    </div>
-                  </div>
-                )}
-
-                {selectedDevice && (
-                  <div className={styles.globalLayout}>
-                    <div className={styles.tagSourceBanner}>
-                      <Text size={200} weight="semibold">Tag Source</Text>
-                      <Badge appearance="outline" color="informative">Points and Tags workspace</Badge>
-                      <Text size={200}>Tags are read-only here. Use Manage Tags to add or edit Haystack tags.</Text>
-                    </div>
-                    <div className={styles.globalTagBar}>
-                      <button
-                        className={`${styles.tagChip} ${globalTagFilter === 'all' ? styles.tagChipActive : ''}`}
-                        onClick={() => setGlobalTagFilter('all')}
-                      >
-                        All
-                      </button>
-                      {COMMON_HAYSTACK_TAGS.map((tag) => (
-                        <button
-                          key={tag}
-                          className={styles.tagChip}
-                          onClick={() => applyCommonTag(tag)}
-                          title={`Filter by #${tag}`}
-                        >
-                          #{tag}
-                        </button>
-                      ))}
-                      {availableGlobalTags.map((tag) => (
-                        <button
-                          key={tag}
-                          className={`${styles.tagChip} ${globalTagFilter === tag ? styles.tagChipActive : ''}`}
-                          onClick={() => setGlobalTagFilter(tag)}
-                        >
-                          #{tag}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className={styles.globalGrid}>
-                      <div className={styles.globalPanel}>
-                        <div className={styles.globalPanelHeader}>
-                          <Text size={300} weight="semibold">Point Library</Text>
-                          <div className={styles.globalPanelHeaderActions}>
-                            <Text size={200}>{globalPointsLoading ? 'Loading...' : `${filteredGlobalPoints.length} points`}</Text>
-                            <button
-                              className={styles.smallActionButton}
-                              onClick={selectAllVisibleGlobalPoints}
-                              disabled={filteredGlobalPoints.length === 0}
-                              title="Select all currently visible rows"
-                            >
-                              Select All Visible
-                            </button>
-                            <button
-                              className={styles.smallActionButton}
-                              onClick={clearGlobalSelection}
-                              disabled={globalSelectedKeys.size === 0}
-                              title="Clear selected points"
-                            >
-                              Clear Selection
-                            </button>
-                          </div>
-                        </div>
-                        <div className={styles.globalPanelBody}>
-                          {globalPointsLoading ? (
-                            <div className={styles.centerPadding}>
-                              <Spinner size="small" label="Loading point library..." />
-                            </div>
-                          ) : filteredGlobalPoints.length === 0 ? (
-                            <div className={styles.centerPaddingMuted}>
-                              <Text size={200}>No points matched your filter</Text>
-                            </div>
-                          ) : (
-                            filteredGlobalPoints.map((point) => {
-                              const tags = globalPointTags[point.key] || [];
-                              const selected = globalSelectedKeys.has(point.key);
-                              return (
-                                <button
-                                  key={point.key}
-                                  type="button"
-                                  className={`${styles.globalPointRow} ${selected ? styles.globalPointRowSelected : ''}`}
-                                  onClick={() => toggleGlobalPointSelection(point.key)}
-                                >
-                                  <div className={styles.globalPointMain}>
-                                    <Badge appearance="outline">{point.type}</Badge>
-                                    <Text size={200}>{point.index}</Text>
-                                    <Text size={200} weight="semibold" className={styles.globalPointLabel}>{point.label}</Text>
-                                  </div>
-                                  <div className={styles.globalPointTags}>
-                                    {tags.map((tag) => (
-                                      <span key={`${point.key}-${tag}`} className={styles.pointTagPill}>
-                                        #{tag}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </button>
-                              );
-                            })
-                          )}
-                        </div>
+              <div className={styles.globalTabSurface}>
+                <div className={styles.dockingBody}>
+                  {!selectedDevice && !loading && (
+                    <div className={styles.noData}>
+                      <div className={styles.centerText}>
+                        <Text size={400} weight="semibold">No device selected</Text>
+                        <br />
+                        <Text size={200}>Please select a device from the tree to build point sets</Text>
                       </div>
+                    </div>
+                  )}
 
-                      <div className={styles.globalPanel}>
-                        <div className={styles.globalPanelHeader}>
-                          <Text size={300} weight="semibold">Active Watchlist</Text>
+                  {selectedDevice && (
+                    <div className={styles.globalLayout}>
+                    <div className={styles.globalSetSummary}>
+                      <Text size={300} weight="semibold">Current Set</Text>
+                      <Text size={200}>Build reusable point sets for charting. Use Add Points to open the tag filter drawer.</Text>
+                    </div>
+
+                    <div className={styles.globalCurrentSetPanel}>
+                      <div className={styles.globalPanelHeader}>
+                        <Text size={300} weight="semibold">Current Set Points</Text>
+                        <div className={styles.globalPanelHeaderActions}>
                           <Text size={200}>{selectedGlobalPoints.length} selected</Text>
-                        </div>
-                        <div className={styles.globalPanelBody}>
-                          {selectedGlobalPoints.length === 0 ? (
-                            <div className={styles.centerPaddingMuted}>
-                              <Text size={200}>Select points on the left to build your watchlist</Text>
-                            </div>
-                          ) : (
-                            selectedGlobalPoints.map((point, index) => (
-                              <div key={point.key} className={styles.watchlistRow}>
-                                <Text size={200}>{index + 1}.</Text>
-                                <Badge appearance="outline">{point.type}</Badge>
-                                <Text size={200}>{point.index}</Text>
-                                <Text size={200} weight="semibold" className={styles.globalPointLabel}>{point.label}</Text>
-                              </div>
-                            ))
-                          )}
+                          <button
+                            className={styles.smallActionButton}
+                            onClick={() => setIsPointPickerOpen(true)}
+                            title="Open point picker drawer"
+                          >
+                            Add Points
+                          </button>
+                          <button
+                            className={styles.smallActionButton}
+                            onClick={clearGlobalSelection}
+                            disabled={globalSelectedKeys.size === 0}
+                            title="Clear all points from current set"
+                          >
+                            Clear Set
+                          </button>
                         </div>
                       </div>
+                      <div className={styles.globalPanelBody}>
+                        {selectedGlobalPoints.length === 0 ? (
+                          <div className={styles.centerPaddingMuted}>
+                            <Text size={200}>No points in current set. Click Add Points to start building this set.</Text>
+                          </div>
+                        ) : (
+                          selectedGlobalPoints.map((point, index) => (
+                            <div
+                              key={point.key}
+                              className={styles.watchlistRow}
+                              onDragOver={(e) => e.preventDefault()}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                if (draggingPointKey) {
+                                  movePointWithinSet(draggingPointKey, point.key);
+                                }
+                                setDraggingPointKey(null);
+                              }}
+                            >
+                              <button
+                                type="button"
+                                className={styles.dragHandleButton}
+                                draggable
+                                onDragStart={() => setDraggingPointKey(point.key)}
+                                onDragEnd={() => setDraggingPointKey(null)}
+                                title="Drag to reorder"
+                              >
+                                ⋮⋮
+                              </button>
+                              <Text size={200}>{index + 1}.</Text>
+                              <Badge appearance="outline">{point.type}</Badge>
+                              <Text size={200}>{point.index}</Text>
+                              <Text
+                                size={200}
+                                weight="semibold"
+                                className={`${styles.globalPointLabel} ${draggingPointKey === point.key ? styles.draggingPointLabel : ''}`}
+                              >
+                                {point.label}
+                              </Text>
+                              <div className={styles.reorderButtonsGroup}>
+                                <button
+                                  type="button"
+                                  className={styles.reorderButton}
+                                  onClick={() => movePointByOffset(point.key, -1)}
+                                  disabled={index === 0}
+                                  title="Move up"
+                                >
+                                  <ChevronUpRegular />
+                                </button>
+                                <button
+                                  type="button"
+                                  className={styles.reorderButton}
+                                  onClick={() => movePointByOffset(point.key, 1)}
+                                  disabled={index === selectedGlobalPoints.length - 1}
+                                  title="Move down"
+                                >
+                                  <ChevronDownRegular />
+                                </button>
+                              </div>
+                              <button
+                                type="button"
+                                className={styles.pointRemoveButton}
+                                onClick={() => removePointFromCurrentSet(point.key)}
+                                title="Remove point from current set"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </div>
+
+                    </div>
+                  )}
+                </div>
+
+                {isPointPickerOpen && selectedDevice && (
+                  <div className={styles.pointPickerOverlay} onClick={() => setIsPointPickerOpen(false)}>
+                    <aside className={styles.pointPickerDrawer} onClick={(e) => e.stopPropagation()}>
+                      <div className={styles.pointPickerHeader}>
+                        <Text size={400} weight="semibold">Add Points to Current Set</Text>
+                        <button
+                          type="button"
+                          className={styles.smallActionButton}
+                          onClick={() => setIsPointPickerOpen(false)}
+                        >
+                          Done
+                        </button>
+                      </div>
+
+                      <div className={styles.pointPickerSearchRow}>
+                        <div className={`${styles.searchInputWrapper} ${styles.globalPanelSearchWrapper}`}>
+                          <SearchRegular className={styles.searchIcon} />
+                          <input
+                            className={`${styles.searchInput} ${styles.globalPanelSearchInput}`}
+                            type="text"
+                            placeholder="Search points or tags..."
+                            value={globalSearch}
+                            onChange={(e) => setGlobalSearch(e.target.value)}
+                            spellCheck="false"
+                            role="searchbox"
+                            aria-label="Search points in picker"
+                          />
+                        </div>
+                        <Text size={200}>{globalPointsLoading ? 'Loading...' : `${filteredGlobalPoints.length} points`}</Text>
+                      </div>
+
+                      <div className={styles.globalTagBar}>
+                        <button
+                          className={`${styles.tagChip} ${globalTagFilter === 'all' ? styles.tagChipActive : ''}`}
+                          onClick={() => setGlobalTagFilter('all')}
+                        >
+                          All
+                        </button>
+                        {COMMON_HAYSTACK_TAGS.map((tag) => (
+                          <button
+                            key={tag}
+                            className={styles.tagChip}
+                            onClick={() => applyCommonTag(tag)}
+                            title={`Filter by #${tag}`}
+                          >
+                            #{tag}
+                          </button>
+                        ))}
+                        {availableGlobalTags.map((tag) => (
+                          <button
+                            key={tag}
+                            className={`${styles.tagChip} ${globalTagFilter === tag ? styles.tagChipActive : ''}`}
+                            onClick={() => setGlobalTagFilter(tag)}
+                          >
+                            #{tag}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className={styles.pointPickerBody}>
+                        {globalPointsLoading ? (
+                          <div className={styles.centerPadding}>
+                            <Spinner size="extra-small" />
+                            <Text size={200}>Loading point library...</Text>
+                          </div>
+                        ) : filteredGlobalPoints.length === 0 ? (
+                          <div className={styles.centerPaddingMuted}>
+                            <Text size={200}>No points matched your filter</Text>
+                          </div>
+                        ) : (
+                          filteredGlobalPoints.map((point) => {
+                            const tags = globalPointTags[point.key] || [];
+                            const selected = globalSelectedKeys.has(point.key);
+                            return (
+                              <button
+                                key={point.key}
+                                type="button"
+                                className={`${styles.globalPointRow} ${selected ? styles.globalPointRowSelected : ''}`}
+                                onClick={() => toggleGlobalPointSelection(point.key)}
+                              >
+                                <div className={styles.globalPointMain}>
+                                  <Badge appearance="outline">{point.type}</Badge>
+                                  <Text size={200}>{point.index}</Text>
+                                  <Text size={200} weight="semibold" className={styles.globalPointLabel}>{point.label}</Text>
+                                  <Text size={200} className={styles.pointPickerSelectState}>{selected ? 'Selected' : 'Tap to add'}</Text>
+                                </div>
+                                <div className={styles.globalPointTags}>
+                                  {tags.map((tag) => (
+                                    <span key={`${point.key}-${tag}`} className={styles.pointTagPill}>
+                                      #{tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      <div className={styles.pointPickerFooter}>
+                        <button
+                          type="button"
+                          className={styles.smallActionButton}
+                          onClick={selectAllVisibleGlobalPoints}
+                          disabled={filteredGlobalPoints.length === 0}
+                        >
+                          Select All Visible
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.smallActionButton}
+                          onClick={resetPointPickerFilters}
+                        >
+                          Reset Filters
+                        </button>
+                      </div>
+                    </aside>
                   </div>
                 )}
               </div>

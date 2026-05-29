@@ -1013,6 +1013,37 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  flex: 1;
+  min-height: 0;
+}
+
+.globalTabSurface {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.globalSetSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid #e8edf3;
+  border-radius: 6px;
+  background: #fbfcfe;
+}
+
+.globalCurrentSetPanel {
+  border: 1px solid #edebe9;
+  border-radius: 6px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .tagSourceBanner {
@@ -1024,6 +1055,22 @@
   border: 1px solid #d6e4f7;
   border-radius: 6px;
   background: #f7fbff;
+}
+
+.commandHelpBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 8px 10px;
+  border: 1px solid #e4ecf7;
+  border-radius: 6px;
+  background: #fbfdff;
+  margin-bottom: 8px;
+}
+
+.commandHelpBar strong {
+  color: #1b3a5c;
+  font-weight: 600;
 }
 
 .globalTagBar {
@@ -1056,7 +1103,9 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+  flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 .globalPanel {
@@ -1065,7 +1114,9 @@
   background: #ffffff;
   display: flex;
   flex-direction: column;
-  min-height: 440px;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 .globalPanelHeader {
@@ -1081,6 +1132,15 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.globalPanelSearchWrapper {
+  margin-left: 0;
+}
+
+.globalPanelSearchInput {
+  min-width: 260px;
+  width: 260px;
 }
 
 .smallActionButton {
@@ -1106,11 +1166,31 @@
 
 .globalPanelBody {
   flex: 1;
+  min-height: 0;
   overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cfd6e0 #f5f7fa;
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 8px;
+}
+
+.globalPanelBody::-webkit-scrollbar {
+  width: 4px;
+}
+
+.globalPanelBody::-webkit-scrollbar-track {
+  background: #f5f7fa;
+}
+
+.globalPanelBody::-webkit-scrollbar-thumb {
+  background-color: #cfd6e0;
+  border-radius: 999px;
+}
+
+.globalPanelBody::-webkit-scrollbar-thumb:hover {
+  background-color: #b5bfcc;
 }
 
 .globalPointRow {
@@ -1185,9 +1265,168 @@
   padding: 8px;
 }
 
+.dragHandleButton {
+  border: none;
+  background: transparent;
+  color: #605e5c;
+  cursor: grab;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 4px;
+}
+
+.dragHandleButton:active {
+  cursor: grabbing;
+}
+
+.draggingPointLabel {
+  opacity: 0.65;
+}
+
+.reorderButtonsGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reorderButton {
+  border: 1px solid #d0d0d0;
+  background: #ffffff;
+  color: #323130;
+  border-radius: 4px;
+  height: 22px;
+  min-width: 22px;
+  padding: 0 4px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reorderButton svg {
+  width: 12px;
+  height: 12px;
+}
+
+.reorderButton:hover {
+  background: #f3f2f1;
+}
+
+.reorderButton:disabled {
+  color: #a19f9d;
+  cursor: default;
+  background: #faf9f8;
+}
+
+.pointRemoveButton {
+  margin-left: auto;
+  border: 1px solid #d0d0d0;
+  background: #ffffff;
+  color: #323130;
+  border-radius: 4px;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.pointRemoveButton:hover {
+  background: #fef2f2;
+  border-color: #f2c7c7;
+}
+
+.pointPickerOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(32, 31, 30, 0.2);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 20;
+}
+
+.pointPickerDrawer {
+  width: min(560px, 96vw);
+  height: 100%;
+  background: #ffffff;
+  border-left: 1px solid #e1dfdd;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -8px 0 20px rgba(0, 0, 0, 0.08);
+}
+
+.pointPickerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #edebe9;
+}
+
+.pointPickerSearchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+}
+
+.pointPickerBody {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: #cfd6e0 #f5f7fa;
+}
+
+.pointPickerBody::-webkit-scrollbar {
+  width: 4px;
+}
+
+.pointPickerBody::-webkit-scrollbar-track {
+  background: #f5f7fa;
+}
+
+.pointPickerBody::-webkit-scrollbar-thumb {
+  background-color: #cfd6e0;
+  border-radius: 999px;
+}
+
+.pointPickerBody::-webkit-scrollbar-thumb:hover {
+  background-color: #b5bfcc;
+}
+
+.pointPickerFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid #edebe9;
+}
+
+.pointPickerSelectState {
+  margin-left: auto;
+  color: #605e5c;
+}
+
 @media (max-width: 1000px) {
   .globalGrid {
     grid-template-columns: 1fr;
+  }
+
+  .globalPanelSearchInput {
+    min-width: 200px;
+    width: 200px;
+  }
+
+  .pointPickerDrawer {
+    width: 100%;
   }
 }
 
