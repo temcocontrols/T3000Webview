@@ -26,6 +26,7 @@ import {
 import {
   ArrowSyncRegular,
   SearchRegular,
+  DismissRegular,
   ErrorCircleRegular,
   ChartMultipleRegular,
   FullScreenMaximizeRegular,
@@ -192,6 +193,8 @@ export const TrendLogsPage: React.FC = () => {
   const [globalSetSearch, setGlobalSetSearch] = useState('');
   const [globalSetActionMessage, setGlobalSetActionMessage] = useState('');
   const [globalSetInitialized, setGlobalSetInitialized] = useState(false);
+  const [inlineRenameSetName, setInlineRenameSetName] = useState('');
+  const [inlineRenameValue, setInlineRenameValue] = useState('');
   const pointSetSerialNumber = React.useMemo(() => {
     if (typeof selectedDevice?.serialNumber === 'number' && Number.isFinite(selectedDevice.serialNumber)) {
       return selectedDevice.serialNumber;
@@ -1211,7 +1214,12 @@ export const TrendLogsPage: React.FC = () => {
 
   const saveCurrentGlobalSet = useCallback(async () => {
     setGlobalSetActionMessage('Save click received...');
-    const normalizedName = globalSetName.trim();
+    const candidateName = (selectedSavedSetName || globalSetName || '').trim();
+    let normalizedName = candidateName;
+    if (!normalizedName) {
+      const entered = window.prompt('Set name', globalSetName || '');
+      normalizedName = (entered || '').trim();
+    }
     if (!normalizedName) {
       setGlobalSetActionMessage('Set name is required.');
       return;
@@ -1263,37 +1271,37 @@ export const TrendLogsPage: React.FC = () => {
         selectedCount: fallbackOrderedKeys.length,
       });
       setGlobalSetActionMessage('Saving set...');
-      const saveSource = await savePointSetToDb(serialNumber, newSet);
+      await savePointSetToDb(serialNumber, newSet);
       setSavedGlobalSets((prev) => {
         const withoutSame = prev.filter((setItem) => setItem.name !== normalizedName);
         return [...withoutSame, newSet].sort((a, b) => a.name.localeCompare(b.name));
       });
       setSelectedSavedSetName(normalizedName);
+      setGlobalSetName(normalizedName);
       setIsTemporarySetMode(false);
-      setGlobalSetActionMessage(`Saved set "${normalizedName}" via ${saveSource}.`);
+      setGlobalSetActionMessage(`Set "${normalizedName}" saved successfully.`);
     } catch (error) {
       console.error('[TrendLogsPage] Failed to save set to DB:', error);
       setGlobalSetActionMessage('Failed to save set to database.');
     }
   }, [globalPointTags, globalSelectedKeys, globalSelectedOrder, globalSetName, pointSetSerialNumber, savePointSetToDb, savedGlobalSets, selectedSavedSetName]);
 
-  const renameSelectedGlobalSet = useCallback(async () => {
-    const nextName = globalSetName.trim();
-    if (!selectedSavedSetName) {
-      setGlobalSetActionMessage('Select a set before renaming.');
-      return;
-    }
+  const renameGlobalSetByName = useCallback(async (setName: string, nextNameRaw: string) => {
+    const baseName = (setName || '').trim();
+    if (!baseName) return;
+
+    const nextName = (nextNameRaw || '').trim();
     if (!nextName) {
       setGlobalSetActionMessage('New set name is required.');
       return;
     }
-    if (nextName === selectedSavedSetName) {
+    if (nextName === baseName) {
       setGlobalSetActionMessage('Name is unchanged.');
       return;
     }
 
     const existing = savedGlobalSets.find((setItem) => setItem.name === nextName);
-    const replaceExisting = !!existing && existing.name !== selectedSavedSetName;
+    const replaceExisting = !!existing && existing.name !== baseName;
     if (replaceExisting) {
       const ok = window.confirm(`A set named "${nextName}" already exists. Replace it?`);
       if (!ok) {
@@ -1308,7 +1316,7 @@ export const TrendLogsPage: React.FC = () => {
       return;
     }
 
-    const target = savedGlobalSets.find((setItem) => setItem.name === selectedSavedSetName);
+    const target = savedGlobalSets.find((setItem) => setItem.name === baseName);
     if (!target) {
       setGlobalSetActionMessage('Selected set was not found.');
       return;
@@ -1322,77 +1330,37 @@ export const TrendLogsPage: React.FC = () => {
 
     try {
       setGlobalSetActionMessage('Renaming set...');
-      await renamePointSetInDb(serialNumber, selectedSavedSetName, nextName, replaceExisting);
+      await renamePointSetInDb(serialNumber, baseName, nextName, replaceExisting);
       setSavedGlobalSets((prev) => {
-        const withoutOld = prev.filter((setItem) => setItem.name !== selectedSavedSetName && setItem.name !== nextName);
+        const withoutOld = prev.filter((setItem) => setItem.name !== baseName && setItem.name !== nextName);
         return [...withoutOld, renamed].sort((a, b) => a.name.localeCompare(b.name));
       });
-      setSelectedSavedSetName(nextName);
+      if (selectedSavedSetName === baseName) {
+        setSelectedSavedSetName(nextName);
+        setGlobalSetName(nextName);
+      }
       setIsTemporarySetMode(false);
+      setInlineRenameSetName('');
+      setInlineRenameValue('');
       setGlobalSetActionMessage(`Renamed to "${nextName}".`);
     } catch (error) {
       console.error('[TrendLogsPage] Failed to rename set in DB:', error);
       setGlobalSetActionMessage('Failed to rename set in database.');
     }
-  }, [globalSetName, pointSetSerialNumber, renamePointSetInDb, savedGlobalSets, selectedSavedSetName]);
-
-  const duplicateSelectedGlobalSet = useCallback(async () => {
-    if (!selectedSavedSetName) {
-      setGlobalSetActionMessage('Select a set before duplicating.');
-      return;
-    }
-
-    const serialNumber = pointSetSerialNumber;
-    if (!serialNumber) {
-      setGlobalSetActionMessage('No device selected.');
-      return;
-    }
-
-    const target = savedGlobalSets.find((setItem) => setItem.name === selectedSavedSetName);
-    if (!target) {
-      setGlobalSetActionMessage('Selected set was not found.');
-      return;
-    }
-
-    const usedNames = new Set(savedGlobalSets.map((setItem) => setItem.name));
-    let suffix = 1;
-    let candidate = `${target.name} Copy`;
-    while (usedNames.has(candidate)) {
-      suffix += 1;
-      candidate = `${target.name} Copy ${suffix}`;
-    }
-
-    const duplicated: GlobalWatchlistSet = {
-      ...target,
-      name: candidate,
-      updatedAt: Date.now(),
-    };
-
-    try {
-      setGlobalSetActionMessage('Duplicating set...');
-      await savePointSetToDb(serialNumber, duplicated);
-      setSavedGlobalSets((prev) => [...prev.filter((setItem) => setItem.name !== candidate), duplicated].sort((a, b) => a.name.localeCompare(b.name)));
-      setSelectedSavedSetName(candidate);
-      setGlobalSetName(candidate);
-      setIsTemporarySetMode(false);
-      setGlobalSetActionMessage(`Duplicated as "${candidate}".`);
-    } catch (error) {
-      console.error('[TrendLogsPage] Failed to duplicate set in DB:', error);
-      setGlobalSetActionMessage('Failed to duplicate set in database.');
-    }
-  }, [pointSetSerialNumber, savePointSetToDb, savedGlobalSets, selectedSavedSetName]);
+  }, [pointSetSerialNumber, renamePointSetInDb, savedGlobalSets, selectedSavedSetName]);
 
   const resetPointPickerFilters = useCallback(() => {
     setGlobalSearch('');
     setGlobalTagFilter('all');
   }, []);
 
-  const removeSelectedGlobalSet = useCallback(async () => {
-    if (!selectedSavedSetName) {
-      setGlobalSetActionMessage('Select a set before deleting.');
-      return;
-    }
-    const ok = window.confirm(`Delete set "${selectedSavedSetName}"? This cannot be undone.`);
+  const removeGlobalSetByName = useCallback(async (setName: string) => {
+    const targetName = (setName || '').trim();
+    if (!targetName) return;
+
+    const target = savedGlobalSets.find((setItem) => setItem.name === targetName);
+    const pointsCount = target?.selectedKeys.length ?? 0;
+    const ok = window.confirm(`Delete set "${targetName}" (${pointsCount} points)? This cannot be undone.`);
     if (!ok) {
       setGlobalSetActionMessage('Delete canceled.');
       return;
@@ -1406,29 +1374,71 @@ export const TrendLogsPage: React.FC = () => {
 
     try {
       setGlobalSetActionMessage('Deleting set...');
-      await deletePointSetFromDb(serialNumber, selectedSavedSetName);
-      setSavedGlobalSets((prev) => prev.filter((setItem) => setItem.name !== selectedSavedSetName));
-      setGlobalSetName('');
-      setSelectedSavedSetName('');
+      await deletePointSetFromDb(serialNumber, targetName);
+      setSavedGlobalSets((prev) => prev.filter((setItem) => setItem.name !== targetName));
+      if (selectedSavedSetName === targetName) {
+        setGlobalSetName('');
+        setSelectedSavedSetName('');
+      }
+      if (inlineRenameSetName === targetName) {
+        setInlineRenameSetName('');
+        setInlineRenameValue('');
+      }
       setIsTemporarySetMode(false);
-      setGlobalSetActionMessage(`Deleted set "${selectedSavedSetName}".`);
+      setGlobalSetActionMessage(`Deleted set "${targetName}".`);
     } catch (error) {
       console.error('[TrendLogsPage] Failed to delete set from DB:', error);
       setGlobalSetActionMessage('Failed to delete set from database.');
     }
-  }, [deletePointSetFromDb, pointSetSerialNumber, selectedSavedSetName]);
+  }, [deletePointSetFromDb, inlineRenameSetName, pointSetSerialNumber, savedGlobalSets, selectedSavedSetName]);
 
   const createNewGlobalSet = useCallback(() => {
     if (!confirmDiscardUnsavedSetChanges()) return;
-    setSelectedSavedSetName('');
-    setGlobalSetName('');
+
+    const baseName = 'New Set';
+    const existingNames = new Set(savedGlobalSets.map((setItem) => setItem.name.toLowerCase()));
+    let nextName = baseName;
+    let suffix = 2;
+    while (existingNames.has(nextName.toLowerCase())) {
+      nextName = `${baseName} ${suffix}`;
+      suffix += 1;
+    }
+
+    const draftSet: GlobalWatchlistSet = {
+      name: nextName,
+      selectedKeys: [],
+      pointTags: {},
+      updatedAt: Date.now(),
+    };
+
+    setSavedGlobalSets((prev) => {
+      const withoutSame = prev.filter((setItem) => setItem.name !== nextName);
+      return [...withoutSame, draftSet].sort((a, b) => a.name.localeCompare(b.name));
+    });
+    setSelectedSavedSetName(nextName);
+    setGlobalSetName(nextName);
     setGlobalSelectedKeys(new Set());
     setGlobalSelectedOrder([]);
+    setGlobalPointTags({});
     setGlobalTagFilter('all');
+    setGlobalSetSearch('');
+    setInlineRenameSetName('');
+    setInlineRenameValue('');
     setIsTemporarySetMode(true);
     setGlobalSetInitialized(true);
-    setGlobalSetActionMessage('New temporary set started.');
-  }, [confirmDiscardUnsavedSetChanges]);
+    setGlobalSetActionMessage(`New set "${nextName}" created. Add points and click Save Set.`);
+  }, [confirmDiscardUnsavedSetChanges, savedGlobalSets]);
+
+  const startInlineRename = useCallback((setName: string) => {
+    setInlineRenameSetName(setName);
+    setInlineRenameValue(setName);
+  }, []);
+
+  const cancelInlineRename = useCallback(() => {
+    setInlineRenameSetName('');
+    setInlineRenameValue('');
+    setGlobalSetActionMessage('Rename canceled.');
+  }, []);
 
   const applyGlobalSetSelection = useCallback((target: GlobalWatchlistSet, showMessage = true) => {
     setSelectedSavedSetName(target.name);
@@ -1439,9 +1449,7 @@ export const TrendLogsPage: React.FC = () => {
       ...(target.pointTags || {}),
     }));
     setGlobalTagFilter('all');
-    setGlobalSetName(target.name);
     setIsTemporarySetMode(false);
-    setGlobalSetInitialized(true);
     if (showMessage) {
       setGlobalSetActionMessage(`Loaded set "${target.name}".`);
     }
@@ -1449,12 +1457,11 @@ export const TrendLogsPage: React.FC = () => {
 
   const loadGlobalSetByName = useCallback((setName: string) => {
     if (!setName) return;
-    if (setName === selectedSavedSetName) return;
     if (!confirmDiscardUnsavedSetChanges()) return;
     const target = savedGlobalSets.find((setItem) => setItem.name === setName);
     if (!target) return;
     applyGlobalSetSelection(target);
-  }, [applyGlobalSetSelection, confirmDiscardUnsavedSetChanges, savedGlobalSets, selectedSavedSetName]);
+  }, [applyGlobalSetSelection, confirmDiscardUnsavedSetChanges, savedGlobalSets]);
 
   const openGlobalSetChartByName = useCallback((setName: string) => {
     if (!setName) return;
@@ -1500,26 +1507,17 @@ export const TrendLogsPage: React.FC = () => {
       pointLabel: point.label,
     }));
 
-    syncMonitorQuery(syntheticMonitor);
-    navigate('/t3000/trends/chart', {
-      state: {
-        serialNumber: selectedDevice.serialNumber,
-        panelId: selectedDevice.panelId || 1,
-        trendlogId: 'GLOBAL',
-        monitorId: 'GLOBAL',
-        itemData: {
-          title: `Point Set: ${target.name}`,
-          t3Entry: {
-            id: 'GLOBAL',
-            pid: selectedDevice.panelId || 1,
-            label: `Point Set: ${target.name}`,
-            command: `GLOBAL:${target.name}`,
-          },
-        },
-        monitorInputs: syntheticInputs,
-      },
-    });
-  }, [applyGlobalSetSelection, confirmDiscardUnsavedSetChanges, globalPoints, navigate, savedGlobalSets, selectedDevice, selectedSavedSetName, syncMonitorQuery]);
+    setSelectedMonitor(syntheticMonitor);
+    setMonitorInputs(syntheticInputs);
+
+    const next = new URLSearchParams(searchParams);
+    next.set('serial', String(selectedDevice.serialNumber));
+    next.set('panel', String(selectedDevice.panelId || 1));
+    next.set('monitorId', 'GLOBAL');
+    next.set('trendlogId', 'GLOBAL');
+    next.set('tab', 'chart');
+    setSearchParams(next, { replace: true });
+  }, [applyGlobalSetSelection, confirmDiscardUnsavedSetChanges, globalPoints, savedGlobalSets, searchParams, selectedDevice, selectedSavedSetName, setSearchParams]);
 
   const triggerGlobalReload = useCallback(() => {
     setGlobalReloadRevision((prev) => prev + 1);
@@ -2460,37 +2458,55 @@ export const TrendLogsPage: React.FC = () => {
                           <Text size={300} weight="semibold">Point Sets</Text>
                           <div className={styles.globalSetHeaderActions}>
                             <div className={styles.globalSetSortGroup} role="group" aria-label="Sort point sets">
+                              <span className={styles.globalSetSortLabel}>Sort by:</span>
                               <button
                                 type="button"
-                                className={`${styles.smallActionButton} ${globalSetSort === 'recent' ? styles.smallActionButtonActive : ''}`}
+                                className={`${styles.globalSetSortTextButton} ${globalSetSort === 'recent' ? styles.globalSetSortTextButtonActive : ''}`}
                                 onClick={() => setGlobalSetSort('recent')}
-                                title="Sort sets by recently updated"
+                                title="Sort by most recently updated"
                               >
-                                Recent
+                                Recently Updated
                               </button>
+                              <span className={styles.globalSetSortDivider}>|</span>
                               <button
                                 type="button"
-                                className={`${styles.smallActionButton} ${globalSetSort === 'name' ? styles.smallActionButtonActive : ''}`}
+                                className={`${styles.globalSetSortTextButton} ${globalSetSort === 'name' ? styles.globalSetSortTextButtonActive : ''}`}
                                 onClick={() => setGlobalSetSort('name')}
-                                title="Sort sets by name"
+                                title="Sort by name (A to Z)"
                               >
-                                Name
+                                Name (A-Z)
                               </button>
                             </div>
-                            <button
-                              type="button"
-                              className={styles.smallActionButton}
-                              onClick={createNewGlobalSet}
-                              title="Start a new temporary set"
-                            >
-                              New Set
-                            </button>
+                          </div>
+                        </div>
+
+                        <div className={styles.globalSetSearchRow}>
+                          <div className={styles.globalSetSearchInputWrap}>
+                            <input
+                              className={`${styles.tagInput} ${styles.globalSetSearchInput}`}
+                              type="text"
+                              placeholder="Search saved sets"
+                              value={globalSetSearch}
+                              onChange={(e) => setGlobalSetSearch(e.target.value)}
+                              aria-label="Search saved point sets"
+                            />
+                            {globalSetSearch.trim() ? (
+                              <button
+                                type="button"
+                                className={styles.globalSetSearchClearButton}
+                                onClick={() => setGlobalSetSearch('')}
+                                aria-label="Clear set search"
+                                title="Clear"
+                              >
+                                <DismissRegular fontSize={14} />
+                              </button>
+                            ) : null}
                           </div>
                         </div>
 
                         <div className={styles.globalSetList}>
                           {sortedSavedGlobalSets.length === 0 ? (
-                            <div className={styles.centerPaddingMuted}>
+                            <div className={`${styles.centerPaddingMuted} ${styles.globalSetEmptyState}`}>
                               <Text size={200}>No saved sets yet. Build one on the right and click Save Set.</Text>
                             </div>
                           ) : filteredSavedGlobalSets.length === 0 ? (
@@ -2498,106 +2514,114 @@ export const TrendLogsPage: React.FC = () => {
                               <Text size={200}>No sets matched your search.</Text>
                             </div>
                           ) : (
-                            filteredSavedGlobalSets.map((setItem) => (
-                              <div
-                                key={setItem.name}
-                                className={`${styles.globalSetListItem} ${selectedSavedSetName === setItem.name ? styles.globalSetListItemActive : ''}`}
-                              >
-                                <div className={styles.globalSetItemHeaderRow}>
-                                  <button
-                                    type="button"
-                                    className={styles.globalSetItemMainButton}
-                                    onClick={() => loadGlobalSetByName(setItem.name)}
-                                    title={`Load ${setItem.name}`}
-                                  >
-                                    <Text size={200} weight="semibold" className={styles.globalSetNameText}>{setItem.name}</Text>
-                                  </button>
-                                  <Tooltip content={`Open chart for set "${setItem.name}"`} relationship="label">
-                                    <button
-                                      type="button"
-                                      className={styles.smallActionButton}
-                                      onClick={() => openGlobalSetChartByName(setItem.name)}
-                                      title={`Open chart for ${setItem.name}`}
-                                    >
-                                      Open Chart
-                                    </button>
-                                  </Tooltip>
+                            filteredSavedGlobalSets.map((setItem) => {
+                              const isRenaming = inlineRenameSetName === setItem.name;
+                              return (
+                                <div
+                                  key={setItem.name}
+                                  className={`${styles.globalSetListItem} ${selectedSavedSetName === setItem.name ? styles.globalSetListItemActive : ''}`}
+                                >
+                                  <div className={styles.globalSetItemHeaderRow}>
+                                    {isRenaming ? (
+                                      <input
+                                        type="text"
+                                        className={styles.globalSetRenameInput}
+                                        value={inlineRenameValue}
+                                        onChange={(e) => setInlineRenameValue(e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            renameGlobalSetByName(setItem.name, inlineRenameValue);
+                                          }
+                                          if (e.key === 'Escape') {
+                                            e.preventDefault();
+                                            cancelInlineRename();
+                                          }
+                                        }}
+                                        autoFocus
+                                        aria-label={`Rename ${setItem.name}`}
+                                      />
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        className={styles.globalSetItemMainButton}
+                                        onClick={() => loadGlobalSetByName(setItem.name)}
+                                        title={`Load ${setItem.name}`}
+                                      >
+                                        <Text size={200} weight="semibold" className={styles.globalSetNameText}>{setItem.name}</Text>
+                                      </button>
+                                    )}
+                                  </div>
+                                  <div className={styles.globalSetMetaRow}>
+                                    <span className={styles.globalSetMetaBadge}>{setItem.selectedKeys.length} pts</span>
+                                    <Text size={100} className={styles.globalSetMetaText}>
+                                      {setItem.updatedAt ? `Updated ${new Date(setItem.updatedAt).toLocaleString()}` : 'Updated time unavailable'}
+                                    </Text>
+                                  </div>
+                                  <div className={styles.globalSetItemActions}>
+                                    {isRenaming ? (
+                                      <>
+                                        <button
+                                          type="button"
+                                          className={styles.globalSetItemActionLink}
+                                          onClick={() => renameGlobalSetByName(setItem.name, inlineRenameValue)}
+                                          title={`Save new name for ${setItem.name}`}
+                                        >
+                                          Save
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className={styles.globalSetItemActionLink}
+                                          onClick={cancelInlineRename}
+                                          title="Cancel rename"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Tooltip content={`Open chart for set "${setItem.name}"`} relationship="label">
+                                          <button
+                                            type="button"
+                                            className={styles.globalSetItemActionLink}
+                                            onClick={() => openGlobalSetChartByName(setItem.name)}
+                                            title={`Open chart for ${setItem.name}`}
+                                          >
+                                            Open Chart
+                                          </button>
+                                        </Tooltip>
+                                        <button
+                                          type="button"
+                                          className={styles.globalSetItemActionLink}
+                                          onClick={() => startInlineRename(setItem.name)}
+                                          title={`Rename ${setItem.name}`}
+                                        >
+                                          Rename
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className={`${styles.globalSetItemActionLink} ${styles.globalSetItemActionDelete}`}
+                                          onClick={() => removeGlobalSetByName(setItem.name)}
+                                          title={`Delete ${setItem.name}`}
+                                        >
+                                          Delete
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className={styles.globalSetMetaRow}>
-                                  <span className={styles.globalSetMetaBadge}>{setItem.selectedKeys.length} pts</span>
-                                  <Text size={100} className={styles.globalSetMetaText}>
-                                    {setItem.updatedAt ? `Updated ${new Date(setItem.updatedAt).toLocaleString()}` : 'Updated time unavailable'}
-                                  </Text>
-                                </div>
-                              </div>
-                            ))
+                              );
+                            })
                           )}
                         </div>
-
-                        <div className={styles.globalSetActions}>
-                          <Text size={200} weight="semibold">Find Set</Text>
-                          <input
-                            className={styles.tagInput}
-                            type="text"
-                            placeholder="Search saved sets"
-                            value={globalSetSearch}
-                            onChange={(e) => setGlobalSetSearch(e.target.value)}
-                            aria-label="Search saved point sets"
-                          />
-                          <Text size={200} weight="semibold">Set Name</Text>
-                          <input
-                            className={styles.tagInput}
-                            type="text"
-                            placeholder="Type set name"
-                            value={globalSetName}
-                            onChange={(e) => setGlobalSetName(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && globalSetName.trim()) {
-                                saveCurrentGlobalSet();
-                              }
-                            }}
-                            aria-label="Point set name"
-                          />
-                          <div className={styles.globalSetActionGrid}>
-                            <button
-                              type="button"
-                              className={styles.smallActionButton}
-                              onClick={saveCurrentGlobalSet}
-                              title="Save current points into this set name"
-                            >
-                              Save Set
-                            </button>
-                            <button
-                              type="button"
-                              className={styles.smallActionButton}
-                              onClick={renameSelectedGlobalSet}
-                              disabled={!selectedSavedSetName || !globalSetName.trim()}
-                              title="Rename selected set to current name"
-                            >
-                              Rename
-                            </button>
-                            <button
-                              type="button"
-                              className={styles.smallActionButton}
-                              onClick={duplicateSelectedGlobalSet}
-                              disabled={!selectedSavedSetName}
-                              title="Duplicate selected set"
-                            >
-                              Duplicate
-                            </button>
-                            <button
-                              type="button"
-                              className={`${styles.smallActionButton} ${styles.destructiveActionButton}`}
-                              onClick={removeSelectedGlobalSet}
-                              disabled={!selectedSavedSetName}
-                              title="Remove selected set"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                          {globalSetActionMessage && (
-                            <Text size={100} className={styles.globalSetActionMessage}>{globalSetActionMessage}</Text>
-                          )}
+                        <div className={styles.globalSetFooterActions}>
+                          <button
+                            type="button"
+                            className={`${styles.smallActionButton} ${styles.smallPrimaryActionButton}`}
+                            onClick={createNewGlobalSet}
+                          >
+                            New Set
+                          </button>
                         </div>
                       </div>
 
@@ -2606,7 +2630,7 @@ export const TrendLogsPage: React.FC = () => {
                           <div className={styles.globalCurrentSetHeaderTitle}>
                             <Text size={300} weight="semibold">Current Set Points</Text>
                             <div className={styles.globalCurrentSetHeaderMeta}>
-                              <Text size={200}>{selectedSavedSetName || 'Unsaved Set'}</Text>
+                              <Text size={200}>{selectedSavedSetName || globalSetName || 'Unsaved Set'}</Text>
                               {isCurrentSetDirty && (
                                 <span className={styles.unsavedBadge}>Unsaved changes</span>
                               )}
@@ -2614,6 +2638,13 @@ export const TrendLogsPage: React.FC = () => {
                           </div>
                           <div className={styles.globalPanelHeaderActions}>
                             <Text size={200}>{selectedGlobalPoints.length} selected</Text>
+                            <button
+                              className={styles.smallActionButton}
+                              onClick={saveCurrentGlobalSet}
+                              title="Save current set"
+                            >
+                              Save Set
+                            </button>
                             <button
                               className={styles.smallActionButton}
                               onClick={() => setIsPointPickerOpen(true)}
@@ -2631,6 +2662,11 @@ export const TrendLogsPage: React.FC = () => {
                             </button>
                           </div>
                         </div>
+                        {globalSetActionMessage && (
+                          <div className={styles.globalSetInlineMessageBar}>
+                            <Text size={100} className={styles.globalSetActionMessage}>{globalSetActionMessage}</Text>
+                          </div>
+                        )}
                         <div className={styles.globalPanelBody}>
                           {selectedGlobalPoints.length === 0 ? (
                             <div className={styles.centerPaddingMuted}>

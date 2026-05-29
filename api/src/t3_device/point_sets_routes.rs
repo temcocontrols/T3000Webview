@@ -289,7 +289,7 @@ async fn save_point_set(
 
     Ok(Json(json!({
         "success": true,
-        "message": "Point set saved",
+        "message": "Set saved successfully.",
         "source": "local_sqlite"
     })))
 }
