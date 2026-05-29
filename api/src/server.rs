@@ -151,6 +151,8 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         .merge(crate::logging::flow_api::flow_routes())
         // Haystack API routes
         .merge(crate::t3_device::haystack_routes::create_haystack_routes())
+        // Point Sets API routes (DB-backed)
+        .merge(crate::t3_device::point_sets_routes::create_point_sets_routes())
         // Server local-time endpoint (for client timezone alignment)
         .route("/api/server/time", get(server_time_handler))
         // Real-time trend data routes - TEMPORARILY DISABLED

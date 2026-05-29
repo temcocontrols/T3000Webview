@@ -130,8 +130,6 @@ interface GlobalWatchlistSet {
 }
 
 const COMMON_HAYSTACK_TAGS = ['ahu', 'temp', 'critical', 'floor1'] as const;
-const GLOBAL_WATCHLIST_STORAGE_PREFIX = 'trendlogs_global_watchlists';
-const GLOBAL_SET_SORT_STORAGE_KEY = 'trendlogs.global.set.sort';
 const TREND_POLICY_STORAGE_KEY = 't3000.trend.policy.state.v2';
 
 const isTrendCenterTab = (value: string | null): value is TrendCenterTab => {
@@ -193,25 +191,112 @@ export const TrendLogsPage: React.FC = () => {
   const [globalSetSort, setGlobalSetSort] = useState<'recent' | 'name'>('recent');
   const [globalSetSearch, setGlobalSetSearch] = useState('');
   const [globalSetActionMessage, setGlobalSetActionMessage] = useState('');
+  const pointSetSerialNumber = React.useMemo(() => {
+    if (typeof selectedDevice?.serialNumber === 'number' && Number.isFinite(selectedDevice.serialNumber)) {
+      return selectedDevice.serialNumber;
+    }
+    const fromQuery = requestedSerial ? Number(requestedSerial) : NaN;
+    if (Number.isFinite(fromQuery) && fromQuery > 0) {
+      return fromQuery;
+    }
+    return null;
+  }, [requestedSerial, selectedDevice?.serialNumber]);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(GLOBAL_SET_SORT_STORAGE_KEY);
-      if (raw === 'recent' || raw === 'name') {
-        setGlobalSetSort(raw);
-      }
-    } catch (error) {
-      console.warn('[TrendLogsPage] Failed to restore global set sort mode:', error);
+  const listPointSetsFromDb = useCallback(async (serialNumber: number): Promise<GlobalWatchlistSet[]> => {
+    const response = await fetch(`${API_BASE_URL}/api/point-sets/list`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ serialNumber }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`List point sets failed: ${response.status}`);
+    }
+
+    const payload = await response.json() as { sets?: Array<GlobalWatchlistSet> };
+    const sets = Array.isArray(payload?.sets) ? payload.sets : [];
+
+    return sets
+      .filter((setItem) => setItem && typeof setItem.name === 'string')
+      .map((setItem) => ({
+        name: String(setItem.name || '').trim(),
+        selectedKeys: Array.isArray(setItem.selectedKeys) ? Array.from(new Set(setItem.selectedKeys.filter((key) => typeof key === 'string' && key.trim()))) : [],
+        pointTags: setItem.pointTags && typeof setItem.pointTags === 'object' ? setItem.pointTags : {},
+        updatedAt: typeof setItem.updatedAt === 'number' ? setItem.updatedAt : undefined,
+      }))
+      .filter((setItem) => !!setItem.name)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, []);
+
+  const savePointSetToDb = useCallback(async (serialNumber: number, setItem: GlobalWatchlistSet): Promise<string> => {
+    const response = await fetch(`${API_BASE_URL}/api/point-sets/save`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        serialNumber,
+        name: setItem.name,
+        selectedKeys: setItem.selectedKeys,
+        pointTags: setItem.pointTags,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Save point set failed: ${response.status}`);
+    }
+
+    const payload = await response.json() as { success?: boolean; source?: string; message?: string };
+    if (!payload?.success) {
+      throw new Error(payload?.message || 'Save point set failed: invalid API response');
+    }
+    return typeof payload.source === 'string' && payload.source.trim()
+      ? payload.source.trim()
+      : 'api';
+  }, []);
+
+  const deletePointSetFromDb = useCallback(async (serialNumber: number, setName: string): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/api/point-sets/delete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        serialNumber,
+        name: setName,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Delete point set failed: ${response.status}`);
     }
   }, []);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(GLOBAL_SET_SORT_STORAGE_KEY, globalSetSort);
-    } catch (error) {
-      console.warn('[TrendLogsPage] Failed to persist global set sort mode:', error);
+  const renamePointSetInDb = useCallback(async (
+    serialNumber: number,
+    oldName: string,
+    newName: string,
+    replaceExisting: boolean,
+  ): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/api/point-sets/rename`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        serialNumber,
+        oldName,
+        newName,
+        replaceExisting,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Rename point set failed: ${response.status}`);
     }
-  }, [globalSetSort]);
+  }, []);
 
   useEffect(() => {
     if (!globalSetActionMessage) return;
@@ -1147,7 +1232,8 @@ export const TrendLogsPage: React.FC = () => {
     });
   }, [globalSelectedKeys]);
 
-  const saveCurrentGlobalSet = useCallback(() => {
+  const saveCurrentGlobalSet = useCallback(async () => {
+    setGlobalSetActionMessage('Save click received...');
     const normalizedName = globalSetName.trim();
     if (!normalizedName) {
       setGlobalSetActionMessage('Set name is required.');
@@ -1170,23 +1256,51 @@ export const TrendLogsPage: React.FC = () => {
       }
     }
 
+    const compactPointTags: Record<string, string[]> = {};
+    fallbackOrderedKeys.forEach((key) => {
+      const tags = globalPointTags[key];
+      if (!Array.isArray(tags) || tags.length === 0) return;
+      const normalizedTags = Array.from(new Set(tags.filter((tag) => typeof tag === 'string' && tag.trim()).map((tag) => tag.trim().toLowerCase())));
+      if (normalizedTags.length > 0) {
+        compactPointTags[key] = normalizedTags;
+      }
+    });
+
     const newSet: GlobalWatchlistSet = {
       name: normalizedName,
       selectedKeys: fallbackOrderedKeys,
-      pointTags: JSON.parse(JSON.stringify(globalPointTags || {})),
+      pointTags: compactPointTags,
       updatedAt: Date.now(),
     };
 
-    setSavedGlobalSets((prev) => {
-      const withoutSame = prev.filter((setItem) => setItem.name !== normalizedName);
-      return [...withoutSame, newSet].sort((a, b) => a.name.localeCompare(b.name));
-    });
-    setSelectedSavedSetName(normalizedName);
-    setIsTemporarySetMode(false);
-    setGlobalSetActionMessage(`Saved set "${normalizedName}".`);
-  }, [globalPointTags, globalSelectedKeys, globalSelectedOrder, globalSetName, savedGlobalSets, selectedSavedSetName]);
+    const serialNumber = pointSetSerialNumber;
+    if (!serialNumber) {
+      setGlobalSetActionMessage('No device selected.');
+      return;
+    }
 
-  const renameSelectedGlobalSet = useCallback(() => {
+    try {
+      console.info('[TrendLogsPage] Save Set click', {
+        serialNumber,
+        setName: normalizedName,
+        selectedCount: fallbackOrderedKeys.length,
+      });
+      setGlobalSetActionMessage('Saving set...');
+      const saveSource = await savePointSetToDb(serialNumber, newSet);
+      setSavedGlobalSets((prev) => {
+        const withoutSame = prev.filter((setItem) => setItem.name !== normalizedName);
+        return [...withoutSame, newSet].sort((a, b) => a.name.localeCompare(b.name));
+      });
+      setSelectedSavedSetName(normalizedName);
+      setIsTemporarySetMode(false);
+      setGlobalSetActionMessage(`Saved set "${normalizedName}" via ${saveSource}.`);
+    } catch (error) {
+      console.error('[TrendLogsPage] Failed to save set to DB:', error);
+      setGlobalSetActionMessage('Failed to save set to database.');
+    }
+  }, [globalPointTags, globalSelectedKeys, globalSelectedOrder, globalSetName, pointSetSerialNumber, savePointSetToDb, savedGlobalSets, selectedSavedSetName]);
+
+  const renameSelectedGlobalSet = useCallback(async () => {
     const nextName = globalSetName.trim();
     if (!selectedSavedSetName) {
       setGlobalSetActionMessage('Select a set before renaming.');
@@ -1202,7 +1316,8 @@ export const TrendLogsPage: React.FC = () => {
     }
 
     const existing = savedGlobalSets.find((setItem) => setItem.name === nextName);
-    if (existing && existing.name !== selectedSavedSetName) {
+    const replaceExisting = !!existing && existing.name !== selectedSavedSetName;
+    if (replaceExisting) {
       const ok = window.confirm(`A set named "${nextName}" already exists. Replace it?`);
       if (!ok) {
         setGlobalSetActionMessage('Rename canceled.');
@@ -1210,61 +1325,92 @@ export const TrendLogsPage: React.FC = () => {
       }
     }
 
-    setSavedGlobalSets((prev) => {
-      const target = prev.find((setItem) => setItem.name === selectedSavedSetName);
-      if (!target) return prev;
-      const renamed: GlobalWatchlistSet = {
-        ...target,
-        name: nextName,
-        updatedAt: Date.now(),
-      };
-      const withoutOld = prev.filter((setItem) => setItem.name !== selectedSavedSetName && setItem.name !== nextName);
-      return [...withoutOld, renamed].sort((a, b) => a.name.localeCompare(b.name));
-    });
-    setSelectedSavedSetName(nextName);
-    setIsTemporarySetMode(false);
-    setGlobalSetActionMessage(`Renamed to "${nextName}".`);
-  }, [globalSetName, savedGlobalSets, selectedSavedSetName]);
+    const serialNumber = pointSetSerialNumber;
+    if (!serialNumber) {
+      setGlobalSetActionMessage('No device selected.');
+      return;
+    }
 
-  const duplicateSelectedGlobalSet = useCallback(() => {
+    const target = savedGlobalSets.find((setItem) => setItem.name === selectedSavedSetName);
+    if (!target) {
+      setGlobalSetActionMessage('Selected set was not found.');
+      return;
+    }
+
+    const renamed: GlobalWatchlistSet = {
+      ...target,
+      name: nextName,
+      updatedAt: Date.now(),
+    };
+
+    try {
+      setGlobalSetActionMessage('Renaming set...');
+      await renamePointSetInDb(serialNumber, selectedSavedSetName, nextName, replaceExisting);
+      setSavedGlobalSets((prev) => {
+        const withoutOld = prev.filter((setItem) => setItem.name !== selectedSavedSetName && setItem.name !== nextName);
+        return [...withoutOld, renamed].sort((a, b) => a.name.localeCompare(b.name));
+      });
+      setSelectedSavedSetName(nextName);
+      setIsTemporarySetMode(false);
+      setGlobalSetActionMessage(`Renamed to "${nextName}".`);
+    } catch (error) {
+      console.error('[TrendLogsPage] Failed to rename set in DB:', error);
+      setGlobalSetActionMessage('Failed to rename set in database.');
+    }
+  }, [globalSetName, pointSetSerialNumber, renamePointSetInDb, savedGlobalSets, selectedSavedSetName]);
+
+  const duplicateSelectedGlobalSet = useCallback(async () => {
     if (!selectedSavedSetName) {
       setGlobalSetActionMessage('Select a set before duplicating.');
       return;
     }
 
-    setSavedGlobalSets((prev) => {
-      const target = prev.find((setItem) => setItem.name === selectedSavedSetName);
-      if (!target) return prev;
+    const serialNumber = pointSetSerialNumber;
+    if (!serialNumber) {
+      setGlobalSetActionMessage('No device selected.');
+      return;
+    }
 
-      const usedNames = new Set(prev.map((setItem) => setItem.name));
-      let suffix = 1;
-      let candidate = `${target.name} Copy`;
-      while (usedNames.has(candidate)) {
-        suffix += 1;
-        candidate = `${target.name} Copy ${suffix}`;
-      }
+    const target = savedGlobalSets.find((setItem) => setItem.name === selectedSavedSetName);
+    if (!target) {
+      setGlobalSetActionMessage('Selected set was not found.');
+      return;
+    }
 
-      const duplicated: GlobalWatchlistSet = {
-        ...target,
-        name: candidate,
-        updatedAt: Date.now(),
-      };
+    const usedNames = new Set(savedGlobalSets.map((setItem) => setItem.name));
+    let suffix = 1;
+    let candidate = `${target.name} Copy`;
+    while (usedNames.has(candidate)) {
+      suffix += 1;
+      candidate = `${target.name} Copy ${suffix}`;
+    }
 
-      const next = [...prev, duplicated].sort((a, b) => a.name.localeCompare(b.name));
+    const duplicated: GlobalWatchlistSet = {
+      ...target,
+      name: candidate,
+      updatedAt: Date.now(),
+    };
+
+    try {
+      setGlobalSetActionMessage('Duplicating set...');
+      await savePointSetToDb(serialNumber, duplicated);
+      setSavedGlobalSets((prev) => [...prev.filter((setItem) => setItem.name !== candidate), duplicated].sort((a, b) => a.name.localeCompare(b.name)));
       setSelectedSavedSetName(candidate);
       setGlobalSetName(candidate);
       setIsTemporarySetMode(false);
       setGlobalSetActionMessage(`Duplicated as "${candidate}".`);
-      return next;
-    });
-  }, [selectedSavedSetName]);
+    } catch (error) {
+      console.error('[TrendLogsPage] Failed to duplicate set in DB:', error);
+      setGlobalSetActionMessage('Failed to duplicate set in database.');
+    }
+  }, [pointSetSerialNumber, savePointSetToDb, savedGlobalSets, selectedSavedSetName]);
 
   const resetPointPickerFilters = useCallback(() => {
     setGlobalSearch('');
     setGlobalTagFilter('all');
   }, []);
 
-  const removeSelectedGlobalSet = useCallback(() => {
+  const removeSelectedGlobalSet = useCallback(async () => {
     if (!selectedSavedSetName) {
       setGlobalSetActionMessage('Select a set before deleting.');
       return;
@@ -1274,12 +1420,26 @@ export const TrendLogsPage: React.FC = () => {
       setGlobalSetActionMessage('Delete canceled.');
       return;
     }
-    setSavedGlobalSets((prev) => prev.filter((setItem) => setItem.name !== selectedSavedSetName));
-    setGlobalSetName('');
-    setSelectedSavedSetName('');
-    setIsTemporarySetMode(false);
-    setGlobalSetActionMessage(`Deleted set "${selectedSavedSetName}".`);
-  }, [selectedSavedSetName]);
+
+    const serialNumber = pointSetSerialNumber;
+    if (!serialNumber) {
+      setGlobalSetActionMessage('No device selected.');
+      return;
+    }
+
+    try {
+      setGlobalSetActionMessage('Deleting set...');
+      await deletePointSetFromDb(serialNumber, selectedSavedSetName);
+      setSavedGlobalSets((prev) => prev.filter((setItem) => setItem.name !== selectedSavedSetName));
+      setGlobalSetName('');
+      setSelectedSavedSetName('');
+      setIsTemporarySetMode(false);
+      setGlobalSetActionMessage(`Deleted set "${selectedSavedSetName}".`);
+    } catch (error) {
+      console.error('[TrendLogsPage] Failed to delete set from DB:', error);
+      setGlobalSetActionMessage('Failed to delete set from database.');
+    }
+  }, [deletePointSetFromDb, pointSetSerialNumber, selectedSavedSetName]);
 
   const createNewGlobalSet = useCallback(() => {
     if (!confirmDiscardUnsavedSetChanges()) return;
@@ -1301,7 +1461,10 @@ export const TrendLogsPage: React.FC = () => {
     setSelectedSavedSetName(setName);
     setGlobalSelectedKeys(new Set(target.selectedKeys));
     setGlobalSelectedOrder(target.selectedKeys || []);
-    setGlobalPointTags(target.pointTags || {});
+    setGlobalPointTags((prev) => ({
+      ...prev,
+      ...(target.pointTags || {}),
+    }));
     setGlobalTagFilter('all');
     setGlobalSetName(target.name);
     setIsTemporarySetMode(false);
@@ -1540,39 +1703,28 @@ export const TrendLogsPage: React.FC = () => {
       return;
     }
 
-    const storageKey = `${GLOBAL_WATCHLIST_STORAGE_PREFIX}_${selectedDevice.serialNumber}`;
-    try {
-      const raw = localStorage.getItem(storageKey);
-      if (!raw) {
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await listPointSetsFromDb(selectedDevice.serialNumber);
+        if (cancelled) return;
+        setSavedGlobalSets(rows);
+        setSelectedSavedSetName('');
+        setIsTemporarySetMode(false);
+      } catch (error) {
+        console.error('[TrendLogsPage] Failed to load point sets from DB:', error);
+        if (cancelled) return;
         setSavedGlobalSets([]);
         setSelectedSavedSetName('');
-        return;
+        setIsTemporarySetMode(false);
+        setGlobalSetActionMessage('Failed to load point sets from database.');
       }
-      const parsed = JSON.parse(raw) as GlobalWatchlistSet[];
-      if (Array.isArray(parsed)) {
-        const normalized = parsed
-          .filter((setItem) => setItem && typeof setItem.name === 'string')
-          .map((setItem) => ({
-            name: String(setItem.name || '').trim(),
-            selectedKeys: Array.isArray(setItem.selectedKeys) ? setItem.selectedKeys : [],
-            pointTags: setItem.pointTags && typeof setItem.pointTags === 'object' ? setItem.pointTags : {},
-            updatedAt: typeof setItem.updatedAt === 'number' ? setItem.updatedAt : undefined,
-          }))
-          .filter((setItem) => !!setItem.name)
-          .sort((a, b) => a.name.localeCompare(b.name));
-        setSavedGlobalSets(normalized);
-      } else {
-        setSavedGlobalSets([]);
-      }
-      setSelectedSavedSetName('');
-      setIsTemporarySetMode(false);
-    } catch (error) {
-      console.warn('[TrendLogsPage] Failed to parse saved global watchlist sets:', error);
-      setSavedGlobalSets([]);
-      setSelectedSavedSetName('');
-      setIsTemporarySetMode(false);
-    }
-  }, [selectedDevice?.serialNumber]);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [listPointSetsFromDb, selectedDevice?.serialNumber]);
 
   useEffect(() => {
     if (activeTab !== 'global') return;
@@ -1581,16 +1733,6 @@ export const TrendLogsPage: React.FC = () => {
     if (sortedSavedGlobalSets.length === 0) return;
     loadGlobalSetByName(sortedSavedGlobalSets[0].name);
   }, [activeTab, isTemporarySetMode, loadGlobalSetByName, selectedSavedSetName, sortedSavedGlobalSets]);
-
-  useEffect(() => {
-    if (!selectedDevice?.serialNumber) return;
-    const storageKey = `${GLOBAL_WATCHLIST_STORAGE_PREFIX}_${selectedDevice.serialNumber}`;
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(savedGlobalSets));
-    } catch (error) {
-      console.warn('[TrendLogsPage] Failed to persist global watchlist sets:', error);
-    }
-  }, [savedGlobalSets, selectedDevice?.serialNumber]);
 
   // Display all 12 trendlog slots (matching T3000 desktop), merge actual data
   const displayTrendLogs = React.useMemo(() => {
@@ -2258,6 +2400,7 @@ export const TrendLogsPage: React.FC = () => {
                           <div className={styles.globalSetHeaderActions}>
                             <div className={styles.globalSetSortGroup} role="group" aria-label="Sort point sets">
                               <button
+                                type="button"
                                 className={`${styles.smallActionButton} ${globalSetSort === 'recent' ? styles.smallActionButtonActive : ''}`}
                                 onClick={() => setGlobalSetSort('recent')}
                                 title="Sort sets by recently updated"
@@ -2265,6 +2408,7 @@ export const TrendLogsPage: React.FC = () => {
                                 Recent
                               </button>
                               <button
+                                type="button"
                                 className={`${styles.smallActionButton} ${globalSetSort === 'name' ? styles.smallActionButtonActive : ''}`}
                                 onClick={() => setGlobalSetSort('name')}
                                 title="Sort sets by name"
@@ -2273,6 +2417,7 @@ export const TrendLogsPage: React.FC = () => {
                               </button>
                             </div>
                             <button
+                              type="button"
                               className={styles.smallActionButton}
                               onClick={createNewGlobalSet}
                               title="Start a new temporary set"
@@ -2338,14 +2483,15 @@ export const TrendLogsPage: React.FC = () => {
                           />
                           <div className={styles.globalSetActionGrid}>
                             <button
+                              type="button"
                               className={styles.smallActionButton}
                               onClick={saveCurrentGlobalSet}
-                              disabled={!globalSetName.trim()}
                               title="Save current points into this set name"
                             >
                               Save Set
                             </button>
                             <button
+                              type="button"
                               className={styles.smallActionButton}
                               onClick={renameSelectedGlobalSet}
                               disabled={!selectedSavedSetName || !globalSetName.trim()}
@@ -2354,6 +2500,7 @@ export const TrendLogsPage: React.FC = () => {
                               Rename
                             </button>
                             <button
+                              type="button"
                               className={styles.smallActionButton}
                               onClick={duplicateSelectedGlobalSet}
                               disabled={!selectedSavedSetName}
@@ -2362,6 +2509,7 @@ export const TrendLogsPage: React.FC = () => {
                               Duplicate
                             </button>
                             <button
+                              type="button"
                               className={`${styles.smallActionButton} ${styles.destructiveActionButton}`}
                               onClick={removeSelectedGlobalSet}
                               disabled={!selectedSavedSetName}
