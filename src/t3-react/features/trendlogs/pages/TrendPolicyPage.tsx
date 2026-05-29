@@ -1,12 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeftRegular, TagRegular, FilterRegular } from '@fluentui/react-icons';
+import React, { useEffect, useMemo, useState } from 'react';
+import { TagRegular, FilterRegular } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './TrendPolicyPage.module.css';
 
 type PointType = 'input' | 'output' | 'variable';
 type TabType = 'all' | PointType;
-type PrimaryTab = 'points' | 'tags';
 type TagStateFilter = 'all' | 'tagged' | 'untagged';
 
 interface UnifiedPoint {
@@ -40,6 +39,7 @@ const ALL_TYPES: PointType[] = ['input', 'output', 'variable'];
 const POLICY_STORAGE_KEY = 't3000.trend.policy.state.v2';
 const PROFILE_STORAGE_KEY = 't3000.trend.policy.profiles.v1';
 const SEMANTIC_TAGS = new Set(['temp', 'humidity', 'pressure', 'flow', 'co2', 'occupancy', 'volt', 'current', 'elec']);
+const QUICK_TAGS = ['temp', 'humidity', 'pressure', 'flow', 'co2', 'occupancy', 'zone', 'site', 'equip'];
 
 const HAYSTACK_UNIT_TAGS: Record<string, string[]> = {
   f: ['temp'],
@@ -158,7 +158,6 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
   const { devices, fetchDevices } = useDeviceTreeStore();
 
   const [selectedDeviceSerials, setSelectedDeviceSerials] = useState<Set<number>>(new Set());
-  const [primaryTab, setPrimaryTab] = useState<PrimaryTab>('points');
   const [activeTypeTab, setActiveTypeTab] = useState<TabType>('all');
   const [tagStateFilter, setTagStateFilter] = useState<TagStateFilter>('all');
 
@@ -174,10 +173,14 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
   const [savedProfiles, setSavedProfiles] = useState<SavedTagProfile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState('');
   const [profileNameInput, setProfileNameInput] = useState('');
+  const [collapsedSections, setCollapsedSections] = useState({
+    actions: false,
+    filters: true,
+    profiles: true,
+  });
   const [rebuildInProgress, setRebuildInProgress] = useState(false);
   const [rebuildStatusMessage, setRebuildStatusMessage] = useState('');
   const [loadRevision, setLoadRevision] = useState(0);
-  const importFileRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     try {
@@ -185,7 +188,6 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
       if (savedStateRaw) {
         const parsed = JSON.parse(savedStateRaw);
         setSelectedDeviceSerials(new Set(Array.isArray(parsed.selectedDeviceSerials) ? parsed.selectedDeviceSerials : []));
-        setPrimaryTab(parsed.primaryTab === 'tags' ? 'tags' : 'points');
         setActiveTypeTab(parsed.activeTypeTab === 'input' || parsed.activeTypeTab === 'output' || parsed.activeTypeTab === 'variable' ? parsed.activeTypeTab : 'all');
         setTagStateFilter(parsed.tagStateFilter === 'tagged' || parsed.tagStateFilter === 'untagged' ? parsed.tagStateFilter : 'all');
         setPointSearch(typeof parsed.pointSearch === 'string' ? parsed.pointSearch : '');
@@ -209,7 +211,6 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
         POLICY_STORAGE_KEY,
         JSON.stringify({
           selectedDeviceSerials: Array.from(selectedDeviceSerials),
-          primaryTab,
           activeTypeTab,
           tagStateFilter,
           pointSearch,
@@ -220,7 +221,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
     } catch (e) {
       console.warn('Failed to persist TrendPolicy state:', e);
     }
-  }, [selectedDeviceSerials, primaryTab, activeTypeTab, tagStateFilter, pointSearch, filterTags, pointTags]);
+  }, [selectedDeviceSerials, activeTypeTab, tagStateFilter, pointSearch, filterTags, pointTags]);
 
   useEffect(() => {
     try {
@@ -396,23 +397,6 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
     variable: allPoints.filter(p => p.type === 'variable').length,
   }), [allPoints]);
 
-  const handleToggleDevice = (serial: number, checked: boolean) => {
-    setSelectedDeviceSerials(prev => {
-      const next = new Set(prev);
-      if (checked) next.add(serial);
-      else next.delete(serial);
-      return next;
-    });
-  };
-
-  const handleSelectAllDevices = (checked: boolean) => {
-    if (!checked) {
-      setSelectedDeviceSerials(new Set());
-      return;
-    }
-    setSelectedDeviceSerials(new Set(devices.map(d => d.serialNumber)));
-  };
-
   const handleTogglePoint = (key: string, checked: boolean) => {
     setSelectedPointKeys(prev => {
       const next = new Set(prev);
@@ -451,6 +435,20 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
       return next;
     });
     setApplyTagInput('');
+  };
+
+  const applyQuickTag = (rawTag: string) => {
+    const tag = rawTag.trim().toLowerCase();
+    if (!tag || selectedPointKeys.size === 0) return;
+
+    setPointTags(prev => {
+      const next = { ...prev };
+      selectedPointKeys.forEach(key => {
+        const tags = next[key] ?? [];
+        if (!tags.includes(tag)) next[key] = [...tags, tag];
+      });
+      return next;
+    });
   };
 
   const resetSelectedPointsToHaystackDefaults = () => {
@@ -585,76 +583,12 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
     setSelectedProfileId('');
   };
 
-  const exportTagPackage = () => {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      pointTags,
-      profiles: savedProfiles,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `trend-tags-${Date.now()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const toggleSection = (section: 'actions' | 'filters' | 'profiles') => {
+    setCollapsedSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
-  const importTagPackage = async (file: File) => {
-    try {
-      const content = await file.text();
-      const parsed = JSON.parse(content);
-      if (parsed.pointTags && typeof parsed.pointTags === 'object') {
-        setPointTags(parsed.pointTags);
-      }
-      if (Array.isArray(parsed.profiles)) {
-        setSavedProfiles(parsed.profiles as SavedTagProfile[]);
-      }
-    } catch (e) {
-      console.error('Failed to import trend tag package:', e);
-    }
-  };
-
-  const allDevicesSelected = devices.length > 0 && selectedDeviceSerials.size === devices.length;
   return (
     <div className={styles.page}>
-      {/* ── Top toolbar ── */}
-      <div className={styles.topBar}>
-        <div className={styles.summaryChips}>
-          <span className={styles.summaryChip}>
-            <span className={styles.chipLabel}>Devices</span>
-            <span className={styles.chipValue}>{selectedDevices.length}/{devices.length}</span>
-          </span>
-          <span className={styles.summaryChip}>
-            <span className={styles.chipLabel}>Visible</span>
-            <span className={styles.chipValue}>{visiblePoints.length}</span>
-          </span>
-          <span className={styles.summaryChip}>
-            <span className={styles.chipLabel}>Selected</span>
-            <span className={styles.chipValue}>{selectedPointKeys.size}</span>
-          </span>
-        </div>
-        <div className={styles.topBarDivider} />
-        {!embedded && (
-          <button
-            className={styles.backBtn}
-            onClick={() => {
-              if (onBack) {
-                onBack();
-                return;
-              }
-              window.history.back();
-            }}
-            aria-label="Back to Dashboard"
-          >
-            <ArrowLeftRegular style={{ fontSize: '13px' }} />
-            Back to Dashboard
-          </button>
-        )}
-      </div>
-
       {(validationSummary.selectedWithoutTags > 0 || validationSummary.selectedSemanticConflicts > 0 || validationSummary.selectedInsufficientTags > 0) && (
         <div className={styles.validationBanner}>
           <strong>Tag Validation:</strong>
@@ -664,18 +598,202 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
         </div>
       )}
 
-      {/* ── Haystack-first layout ── */}
-      <div className={`${styles.main} ${styles.mainSingleColumn}`}>
-        <section className={styles.rightPanel}>
-          <div className={styles.haystackHeaderRow}>
-            <div className={styles.haystackHeaderScope}>
-              <strong>Device Scope:</strong> All devices ({selectedDevices.length}/{devices.length})
-            </div>
-            <div className={styles.haystackHeaderScope}>
-              <strong>Tagged:</strong> {taggedPointsCount}
-            </div>
+      {/* ── Two-panel Haystack workspace ── */}
+      <div className={styles.main}>
+        <aside className={styles.leftPanel}>
+          <div className={styles.panelHeader}>
+            <span className={styles.panelTitle}>Tag Workspace</span>
+            <button
+              className={styles.tagActionBtn}
+              onClick={rebuildHaystackFromBackend}
+              disabled={selectedDevices.length === 0 || rebuildInProgress}
+            >
+              {rebuildInProgress ? 'Rebuilding...' : 'Rebuild Tags'}
+            </button>
           </div>
+          <div className={styles.panelBody}>
+            <div className={styles.tagHint}>
+              <TagRegular style={{ fontSize: '12px' }} />
+              Defaults come from point metadata. Use custom tags only when needed.
+            </div>
 
+            {rebuildStatusMessage && <span className={styles.helperText}>{rebuildStatusMessage}</span>}
+
+            <section className={styles.leftSection}>
+              <button
+                type="button"
+                className={styles.sectionHeaderBtn}
+                onClick={() => toggleSection('actions')}
+                aria-expanded={!collapsedSections.actions}
+              >
+                <h4 className={styles.sectionTitle}>Tag Actions</h4>
+                <span className={styles.sectionChevron}>{collapsedSections.actions ? '+' : '-'}</span>
+              </button>
+              {!collapsedSections.actions && (
+                <>
+                  <p className={styles.sectionHint}>Step 2: apply tags to points selected on the right.</p>
+                  <div className={styles.sectionRow}>
+                    <input
+                      className={styles.tagInput}
+                      value={applyTagInput}
+                      onChange={e => setApplyTagInput(e.target.value)}
+                      onKeyDown={handleApplyTagKeyDown}
+                      placeholder="Custom tag (e.g. critical)"
+                    />
+                    <button
+                      className={styles.tagActionBtn}
+                      onClick={applyTagToSelected}
+                      disabled={selectedPointKeys.size === 0 || !applyTagInput.trim()}
+                    >
+                      Add to {selectedPointKeys.size}
+                    </button>
+                  </div>
+
+                  <div className={styles.quickTagRow}>
+                    {QUICK_TAGS.map((tag) => (
+                      <button
+                        key={tag}
+                        className={styles.knownTagBtn}
+                        onClick={() => applyQuickTag(tag)}
+                        disabled={selectedPointKeys.size === 0}
+                        title={`Apply ${tag} to selected points`}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className={styles.sectionRow}>
+                    <button
+                      className={styles.tagActionBtn}
+                      onClick={resetSelectedPointsToHaystackDefaults}
+                      disabled={selectedPointKeys.size === 0}
+                    >
+                      Reset selected to defaults
+                    </button>
+                  </div>
+                </>
+              )}
+            </section>
+
+            <section className={styles.leftSection}>
+              <button
+                type="button"
+                className={styles.sectionHeaderBtn}
+                onClick={() => toggleSection('filters')}
+                aria-expanded={!collapsedSections.filters}
+              >
+                <h4 className={styles.sectionTitle}>Filters</h4>
+                <span className={styles.sectionChevron}>{collapsedSections.filters ? '+' : '-'}</span>
+              </button>
+              {!collapsedSections.filters && (
+                <>
+                  <p className={styles.sectionHint}>Use filters to narrow the points list before selecting.</p>
+                  <div className={styles.sectionRow}>
+                    <input
+                      className={styles.tagInput}
+                      value={filterTagInput}
+                      onChange={e => setFilterTagInput(e.target.value)}
+                      onKeyDown={handleFilterTagKeyDown}
+                      placeholder="Filter by tag"
+                    />
+                    <button className={styles.tagActionBtn} onClick={addTagFilter} disabled={!filterTagInput.trim()}>
+                      <FilterRegular style={{ fontSize: '12px' }} /> Add
+                    </button>
+                  </div>
+
+                  <div className={styles.sectionRow}>
+                    <div className={styles.segmentedControl}>
+                      {(['all', 'tagged', 'untagged'] as TagStateFilter[]).map(state => (
+                        <button
+                          key={state}
+                          className={`${styles.segmentBtn} ${tagStateFilter === state ? styles.segmentBtnActive : ''}`}
+                          onClick={() => setTagStateFilter(state)}
+                        >
+                          {state === 'all' ? 'All' : state === 'tagged' ? 'Tagged' : 'Untagged'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {filterTags.length > 0 ? (
+                    <div className={styles.filterChips}>
+                      <span className={styles.filterChipsLabel}>Active filters:</span>
+                      {filterTags.map(tag => (
+                        <span key={tag} className={styles.filterChip}>
+                          {tag}
+                          <button
+                            className={styles.chipRemove}
+                            aria-label={`Remove filter ${tag}`}
+                            onClick={() => removeFilterTag(tag)}
+                          >×</button>
+                        </span>
+                      ))}
+                      <button className={styles.clearFilters} onClick={() => setFilterTags([])}>Clear all</button>
+                    </div>
+                  ) : (
+                    <span className={styles.helperText}>No tag filters active</span>
+                  )}
+
+                  <div className={styles.knownTags}>
+                    <span className={styles.filterChipsLabel}>Known tags:</span>
+                    {allKnownTags.length > 0 ? allKnownTags.map(tag => (
+                      <button
+                        key={tag}
+                        className={styles.knownTagBtn}
+                        onClick={() => setFilterTags(prev => (prev.includes(tag) ? prev : [...prev, tag]))}
+                      >
+                        {tag}
+                      </button>
+                    )) : <span className={styles.helperText}>No tags yet</span>}
+                  </div>
+                </>
+              )}
+            </section>
+
+            <section className={styles.leftSection}>
+              <button
+                type="button"
+                className={styles.sectionHeaderBtn}
+                onClick={() => toggleSection('profiles')}
+                aria-expanded={!collapsedSections.profiles}
+              >
+                <h4 className={styles.sectionTitle}>Profiles</h4>
+                <span className={styles.sectionChevron}>{collapsedSections.profiles ? '+' : '-'}</span>
+              </button>
+              {!collapsedSections.profiles && (
+                <>
+                  <p className={styles.sectionHint}>Save common filter setups and recall them quickly.</p>
+                  <div className={styles.sectionRow}>
+                    <select
+                      className={styles.profileSelect}
+                      value={selectedProfileId}
+                      onChange={e => setSelectedProfileId(e.target.value)}
+                    >
+                      <option value="">Select profile</option>
+                      {savedProfiles.map(profile => (
+                        <option key={profile.id} value={profile.id}>{profile.name}</option>
+                      ))}
+                    </select>
+                    <button className={styles.tagActionBtn} onClick={applySelectedProfile} disabled={!selectedProfileId}>Apply</button>
+                    <button className={styles.tagActionBtn} onClick={deleteSelectedProfile} disabled={!selectedProfileId}>Delete</button>
+                  </div>
+                  <div className={styles.sectionRow}>
+                    <input
+                      className={styles.tagInput}
+                      value={profileNameInput}
+                      onChange={e => setProfileNameInput(e.target.value)}
+                      placeholder="New profile name"
+                    />
+                    <button className={styles.tagActionBtn} onClick={saveCurrentProfile}>Save</button>
+                  </div>
+                </>
+              )}
+            </section>
+          </div>
+        </aside>
+
+        <section className={styles.rightPanel}>
           <div className={styles.secondaryBar}>
             <div className={styles.typeFilterBar}>
               <div className={styles.typeTabs}>
@@ -706,6 +824,11 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
               >
                 Clear selection
               </button>
+              <div className={styles.statsRow}>
+                <span className={styles.statsChip}>Visible {visiblePoints.length}</span>
+                <span className={styles.statsChip}>Selected {selectedPointKeys.size}</span>
+                <span className={styles.statsChip}>Tagged {taggedPointsCount}</span>
+              </div>
               <div className={styles.typeSearchWrap}>
                 <input
                   className={styles.typeSearchInput}
@@ -726,151 +849,6 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
                 )}
               </div>
             </div>
-
-            <div className={styles.tagWorkspace}>
-                <div className={styles.tagHint}>
-                  <TagRegular style={{ fontSize: '12px' }} />
-                  Haystack 4 defaults are generated from point metadata. Use custom tags only for overrides.
-                </div>
-
-                <div className={styles.tagControlsRow}>
-                  <div className={styles.inlineControl}>
-                    <span className={styles.controlLabel}>Custom Tag</span>
-                    <input
-                      className={styles.tagInput}
-                      value={applyTagInput}
-                      onChange={e => setApplyTagInput(e.target.value)}
-                      onKeyDown={handleApplyTagKeyDown}
-                      placeholder="e.g. critical"
-                    />
-                    <button
-                      className={styles.tagActionBtn}
-                      onClick={applyTagToSelected}
-                      disabled={selectedPointKeys.size === 0 || !applyTagInput.trim()}
-                    >
-                      Add to {selectedPointKeys.size}
-                    </button>
-                    <button
-                      className={styles.tagActionBtn}
-                      onClick={resetSelectedPointsToHaystackDefaults}
-                      disabled={selectedPointKeys.size === 0}
-                    >
-                      Reset selected to defaults
-                    </button>
-                  </div>
-
-                  <div className={styles.inlineControl}>
-                    <span className={styles.controlLabel}>Filter Tag</span>
-                    <input
-                      className={styles.tagInput}
-                      value={filterTagInput}
-                      onChange={e => setFilterTagInput(e.target.value)}
-                      onKeyDown={handleFilterTagKeyDown}
-                      placeholder="tag to filter"
-                    />
-                    <button className={styles.tagActionBtn} onClick={addTagFilter} disabled={!filterTagInput.trim()}>
-                      <FilterRegular style={{ fontSize: '12px' }} /> Add
-                    </button>
-                  </div>
-
-                  <div className={styles.inlineControl}>
-                    <span className={styles.controlLabel}>Tag State</span>
-                    <div className={styles.segmentedControl}>
-                      {(['all', 'tagged', 'untagged'] as TagStateFilter[]).map(state => (
-                        <button
-                          key={state}
-                          className={`${styles.segmentBtn} ${tagStateFilter === state ? styles.segmentBtnActive : ''}`}
-                          onClick={() => setTagStateFilter(state)}
-                        >
-                          {state === 'all' ? 'All' : state === 'tagged' ? 'Tagged' : 'Untagged'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className={styles.inlineControl}>
-                    <span className={styles.controlLabel}>Backend Sync</span>
-                    <button
-                      className={styles.tagActionBtn}
-                      onClick={rebuildHaystackFromBackend}
-                      disabled={selectedDevices.length === 0 || rebuildInProgress}
-                    >
-                      {rebuildInProgress ? 'Rebuilding...' : 'Rebuild from device data'}
-                    </button>
-                    {rebuildStatusMessage && <span className={styles.helperText}>{rebuildStatusMessage}</span>}
-                  </div>
-                </div>
-
-                <div className={styles.filterSummaryRow}>
-                  {filterTags.length > 0 ? (
-                    <div className={styles.filterChips}>
-                      <span className={styles.filterChipsLabel}>Active Filters:</span>
-                      {filterTags.map(tag => (
-                        <span key={tag} className={styles.filterChip}>
-                          {tag}
-                          <button
-                            className={styles.chipRemove}
-                            aria-label={`Remove filter ${tag}`}
-                            onClick={() => removeFilterTag(tag)}
-                          >×</button>
-                        </span>
-                      ))}
-                      <button className={styles.clearFilters} onClick={() => setFilterTags([])}>Clear all</button>
-                    </div>
-                  ) : (
-                    <span className={styles.helperText}>No tag filters active</span>
-                  )}
-
-                  <div className={styles.knownTags}>
-                    <span className={styles.filterChipsLabel}>Known Haystack Tags:</span>
-                    {allKnownTags.length > 0 ? allKnownTags.map(tag => (
-                      <button
-                        key={tag}
-                        className={styles.knownTagBtn}
-                        onClick={() => setFilterTags(prev => (prev.includes(tag) ? prev : [...prev, tag]))}
-                      >
-                        {tag}
-                      </button>
-                    )) : <span className={styles.helperText}>No tags yet</span>}
-                  </div>
-                </div>
-
-                <div className={styles.profileRow}>
-                  <span className={styles.controlLabel}>Saved Profiles</span>
-                  <select
-                    className={styles.profileSelect}
-                    value={selectedProfileId}
-                    onChange={e => setSelectedProfileId(e.target.value)}
-                  >
-                    <option value="">Select profile</option>
-                    {savedProfiles.map(profile => (
-                      <option key={profile.id} value={profile.id}>{profile.name}</option>
-                    ))}
-                  </select>
-                  <input
-                    className={styles.tagInput}
-                    value={profileNameInput}
-                    onChange={e => setProfileNameInput(e.target.value)}
-                    placeholder="profile name"
-                  />
-                  <button className={styles.tagActionBtn} onClick={saveCurrentProfile}>Save</button>
-                  <button className={styles.tagActionBtn} onClick={applySelectedProfile} disabled={!selectedProfileId}>Apply</button>
-                  <button className={styles.tagActionBtn} onClick={deleteSelectedProfile} disabled={!selectedProfileId}>Delete</button>
-                  <button className={styles.tagActionBtn} onClick={exportTagPackage}>Export</button>
-                  <button className={styles.tagActionBtn} onClick={() => importFileRef.current?.click()}>Import</button>
-                  <input
-                    ref={importFileRef}
-                    type="file"
-                    accept="application/json"
-                    className={styles.hiddenFileInput}
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) await importTagPackage(file);
-                      e.currentTarget.value = '';
-                    }}
-                  />
-                </div>
-              </div>
           </div>
 
           {/* Points list */}

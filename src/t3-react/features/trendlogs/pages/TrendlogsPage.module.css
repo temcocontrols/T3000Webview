@@ -274,8 +274,8 @@
 }
 
 .embeddedPolicyWrap {
-  border: 1px solid #edebe9;
-  border-radius: 6px;
+  border: none;
+  border-radius: 0;
   overflow: hidden;
   margin-bottom: 12px;
 }

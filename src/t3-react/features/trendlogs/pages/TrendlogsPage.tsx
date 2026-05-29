@@ -207,9 +207,7 @@ export const TrendLogsPage: React.FC = () => {
   const [globalSetName, setGlobalSetName] = useState('');
   const [selectedSavedSetName, setSelectedSavedSetName] = useState('');
   const [savedGlobalSets, setSavedGlobalSets] = useState<GlobalWatchlistSet[]>([]);
-  const [globalRebuildLoading, setGlobalRebuildLoading] = useState(false);
-  const [globalRebuildMessage, setGlobalRebuildMessage] = useState('');
-  const [globalReloadRevision, setGlobalReloadRevision] = useState(0);
+  const [globalReloadRevision] = useState(0);
   const [isPointPickerOpen, setIsPointPickerOpen] = useState(false);
   const [draggingPointKey, setDraggingPointKey] = useState<string | null>(null);
   const [, setIsTemporarySetMode] = useState(false);
@@ -1687,43 +1685,6 @@ export const TrendLogsPage: React.FC = () => {
     setSearchParams(next, { replace: true });
   }, [applyGlobalSetSelection, confirmDiscardUnsavedSetChanges, globalPoints, savedGlobalSets, searchParams, selectedDevice, selectedSavedSetName, setSearchParams]);
 
-  const triggerGlobalReload = useCallback(() => {
-    setGlobalReloadRevision((prev) => prev + 1);
-  }, []);
-
-  const rebuildGlobalHaystack = useCallback(async () => {
-    if (!selectedDevice?.serialNumber || globalRebuildLoading) {
-      return;
-    }
-
-    setGlobalRebuildLoading(true);
-    setGlobalRebuildMessage('');
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/haystack/rebuild`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          serialNumbers: [selectedDevice.serialNumber],
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Haystack rebuild failed with status ${response.status}`);
-      }
-
-      setGlobalRebuildMessage('Haystack tags rebuilt from backend device data.');
-      triggerGlobalReload();
-    } catch (error) {
-      console.error('[TrendLogsPage] Failed to rebuild Haystack tags:', error);
-      setGlobalRebuildMessage('Failed to rebuild Haystack tags.');
-    } finally {
-      setGlobalRebuildLoading(false);
-    }
-  }, [globalRebuildLoading, selectedDevice?.serialNumber, triggerGlobalReload]);
-
   const headerActionsTarget = document.getElementById('page-header-actions');
   const trendTabs = (
     <div className={styles.headerTabBar}>
@@ -2333,22 +2294,6 @@ export const TrendLogsPage: React.FC = () => {
 
               {activeTab === 'points-tags' && (
                 <div className={styles.embeddedPolicyWrap}>
-                  <div className={styles.policyInfoBar}>
-                    <Text size={200} className={styles.globalInfoBarText}>
-                      Manage semantic tags for Haystack integration on this page.
-                    </Text>
-                    <button
-                      className={styles.infoBarLinkButton}
-                      onClick={rebuildGlobalHaystack}
-                      disabled={globalRebuildLoading}
-                      title="Rebuild Haystack tags from backend point metadata"
-                    >
-                      {globalRebuildLoading ? 'Rebuilding tags...' : 'Rebuild Tags'}
-                    </button>
-                    {globalRebuildMessage && (
-                      <Text size={200} className={styles.globalInfoBarMessage}>{globalRebuildMessage}</Text>
-                    )}
-                  </div>
                   <TrendPolicyPage embedded />
                 </div>
               )}

@@ -12,86 +12,10 @@
   overflow: hidden;
 }
 
-/* ── Top toolbar bar ── */
-.topBar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  min-height: 44px;
-  margin: 4px 10px 0;
-  background: rgb(240, 246, 255);
-  border: 1px solid #c9defa;
-  border-radius: 6px;
-  flex-shrink: 0;
-  box-shadow: none;
-}
-
-.backBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 400;
-  color: #0f6cbd;
-  white-space: nowrap;
-  flex-shrink: 0;
-  text-decoration: none;
-}
-
-.backBtn:hover {
-  color: #0d5ba4;
-  text-decoration: underline;
-  background: transparent;
-}
-
-.topBarDivider {
-  width: 1px;
-  height: 18px;
-  background: #dddcdb;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
-.summaryChips {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.summaryChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 22px;
-  padding: 0 8px;
-  font-size: 12px;
-  border: 1px solid #d8e5f8;
-  border-radius: 999px;
-  background: #ffffff;
-}
-
-.chipLabel {
-  color: #667085;
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.chipValue {
-  color: #0f6cbd;
-  font-size: 12px;
-  font-weight: 700;
-}
-
 /* ── Two-panel main area ── */
 .main {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
   gap: 12px;
   padding: 8px 10px 8px 9px;
   min-height: 0;
@@ -104,7 +28,7 @@
 }
 
 .haystackHeaderRow {
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -191,13 +115,13 @@
 
 /* ── Left panel body ── */
 .panelBody {
-  padding: 6px 8px;
+  padding: 8px 10px;
   overflow-y: auto;
   overflow-x: hidden;
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
   scrollbar-width: thin;
   scrollbar-color: #c0bebe transparent;
 }
@@ -321,6 +245,7 @@
   padding: 4px 12px;
   gap: 6px;
   min-height: 36px;
+  border-bottom: 1px solid #e1e4e8;
 }
 
 .typeTabs {
@@ -477,7 +402,69 @@
   display: flex;
   flex-direction: column;
   gap: 7px;
-  padding: 6px 12px 8px;
+  padding: 0;
+}
+
+.leftSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fafbfc;
+}
+
+.sectionHeaderBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 11px;
+  color: #667085;
+  text-transform: uppercase;
+  letter-spacing: 0.25px;
+}
+
+.sectionChevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #d0d7de;
+  border-radius: 4px;
+  color: #475467;
+  font-size: 12px;
+  line-height: 1;
+  background: #ffffff;
+}
+
+.sectionHint {
+  margin: 0;
+  font-size: 11px;
+  color: #667085;
+}
+
+.sectionRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.quickTagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .tagHint {
@@ -486,26 +473,6 @@
   gap: 6px;
   font-size: 12px;
   color: #475467;
-}
-
-.tagControlsRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-}
-
-.inlineControl {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.controlLabel {
-  font-size: 11px;
-  color: #667085;
-  text-transform: uppercase;
-  letter-spacing: 0.2px;
 }
 
 .segmentedControl {
@@ -541,7 +508,8 @@
   font-size: 12px;
   background: #ffffff;
   color: #24292f;
-  width: 160px;
+  min-width: 160px;
+  flex: 1;
   outline: none;
 }
 
@@ -577,33 +545,15 @@
   cursor: not-allowed;
 }
 
-.filterSummaryRow {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 8px 16px;
-}
-
-.profileRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin-top: 4px;
-}
-
 .profileSelect {
   height: 26px;
   border: 1px solid #d0d7de;
   border-radius: 6px;
   padding: 0 8px;
   min-width: 180px;
+  flex: 1;
   font-size: 12px;
   background: #ffffff;
-}
-
-.hiddenFileInput {
-  display: none;
 }
 
 .filterChips {
@@ -680,6 +630,30 @@
   color: #0f6cbd;
 }
 
+.knownTagBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.statsRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+}
+
+.statsChip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid #d0d7de;
+  background: #ffffff;
+  color: #475467;
+  font-size: 11px;
+}
+
 .helperText {
   font-size: 11px;
   color: #98a2b3;
@@ -730,12 +704,12 @@
 }
 
 .colCheck { width: 34px; }
-.colType { width: 84px; }
-.colPoint { width: 88px; }
-.colLabel { width: 160px; }
-.colFullLabel { width: auto; }
-.colDevice { width: 130px; }
-.colTags { width: 210px; }
+.colType { width: 72px; }
+.colPoint { width: 72px; }
+.colLabel { width: 120px; }
+.colFullLabel { width: 180px; }
+.colDevice { width: 110px; }
+.colTags { width: 260px; }
 
 .rowSelected {
   background: #f0f7ff;
