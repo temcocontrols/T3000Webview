@@ -1455,13 +1455,39 @@ export const TrendLogsPage: React.FC = () => {
     }
   }, []);
 
-  const loadGlobalSetByName = useCallback((setName: string) => {
+  const loadGlobalSetByName = useCallback(async (setName: string) => {
     if (!setName) return;
+    const serialNumber = pointSetSerialNumber;
+
+    if (!serialNumber) {
+      setGlobalSetActionMessage('No device selected.');
+      return;
+    }
+
     if (!confirmDiscardUnsavedSetChanges()) return;
-    const target = savedGlobalSets.find((setItem) => setItem.name === setName);
-    if (!target) return;
-    applyGlobalSetSelection(target);
-  }, [applyGlobalSetSelection, confirmDiscardUnsavedSetChanges, savedGlobalSets]);
+
+    try {
+      const rows = await listPointSetsFromDb(serialNumber);
+      setSavedGlobalSets(rows);
+
+      const target = rows.find((setItem) => setItem.name === setName);
+      if (!target) {
+        setGlobalSetActionMessage(`Set "${setName}" was not found.`);
+        return;
+      }
+
+      applyGlobalSetSelection(target);
+    } catch (error) {
+      console.error('[TrendLogsPage] Failed to refresh point sets on selection:', error);
+      const fallback = savedGlobalSets.find((setItem) => setItem.name === setName);
+      if (!fallback) {
+        setGlobalSetActionMessage('Failed to load selected set from database.');
+        return;
+      }
+      applyGlobalSetSelection(fallback);
+      setGlobalSetActionMessage('Loaded set from local cache (refresh failed).');
+    }
+  }, [applyGlobalSetSelection, confirmDiscardUnsavedSetChanges, listPointSetsFromDb, pointSetSerialNumber, savedGlobalSets]);
 
   const openGlobalSetChartByName = useCallback((setName: string) => {
     if (!setName) return;
@@ -2520,6 +2546,19 @@ export const TrendLogsPage: React.FC = () => {
                                 <div
                                   key={setItem.name}
                                   className={`${styles.globalSetListItem} ${selectedSavedSetName === setItem.name ? styles.globalSetListItemActive : ''}`}
+                                  onClick={() => {
+                                    if (isRenaming) return;
+                                    void loadGlobalSetByName(setItem.name);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (isRenaming) return;
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault();
+                                      void loadGlobalSetByName(setItem.name);
+                                    }
+                                  }}
+                                  role="button"
+                                  tabIndex={0}
                                 >
                                   <div className={styles.globalSetItemHeaderRow}>
                                     {isRenaming ? (
@@ -2528,6 +2567,7 @@ export const TrendLogsPage: React.FC = () => {
                                         className={styles.globalSetRenameInput}
                                         value={inlineRenameValue}
                                         onChange={(e) => setInlineRenameValue(e.target.value)}
+                                        onClick={(e) => e.stopPropagation()}
                                         onKeyDown={(e) => {
                                           if (e.key === 'Enter') {
                                             e.preventDefault();
@@ -2545,7 +2585,10 @@ export const TrendLogsPage: React.FC = () => {
                                       <button
                                         type="button"
                                         className={styles.globalSetItemMainButton}
-                                        onClick={() => loadGlobalSetByName(setItem.name)}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          void loadGlobalSetByName(setItem.name);
+                                        }}
                                         title={`Load ${setItem.name}`}
                                       >
                                         <Text size={200} weight="semibold" className={styles.globalSetNameText}>{setItem.name}</Text>
@@ -2584,7 +2627,10 @@ export const TrendLogsPage: React.FC = () => {
                                           <button
                                             type="button"
                                             className={styles.globalSetItemActionLink}
-                                            onClick={() => openGlobalSetChartByName(setItem.name)}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              openGlobalSetChartByName(setItem.name);
+                                            }}
                                             title={`Open chart for ${setItem.name}`}
                                           >
                                             Open Chart
@@ -2593,7 +2639,10 @@ export const TrendLogsPage: React.FC = () => {
                                         <button
                                           type="button"
                                           className={styles.globalSetItemActionLink}
-                                          onClick={() => startInlineRename(setItem.name)}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            startInlineRename(setItem.name);
+                                          }}
                                           title={`Rename ${setItem.name}`}
                                         >
                                           Rename
@@ -2601,7 +2650,10 @@ export const TrendLogsPage: React.FC = () => {
                                         <button
                                           type="button"
                                           className={`${styles.globalSetItemActionLink} ${styles.globalSetItemActionDelete}`}
-                                          onClick={() => removeGlobalSetByName(setItem.name)}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            removeGlobalSetByName(setItem.name);
+                                          }}
                                           title={`Delete ${setItem.name}`}
                                         >
                                           Delete
@@ -2615,6 +2667,7 @@ export const TrendLogsPage: React.FC = () => {
                           )}
                         </div>
                         <div className={styles.globalSetFooterActions}>
+                          <Text size={100} className={styles.globalSetFooterHint}>Create and manage saved sets</Text>
                           <button
                             type="button"
                             className={`${styles.smallActionButton} ${styles.smallPrimaryActionButton}`}

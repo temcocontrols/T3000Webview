@@ -1144,10 +1144,17 @@
 
 .globalSetFooterActions {
   border-top: 1px solid #edebe9;
-  padding: 10px 8px;
+  padding: 8px 10px;
   display: flex;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   background: #ffffff;
+}
+
+.globalSetFooterHint {
+  color: #605e5c;
+  white-space: nowrap;
 }
 
 .globalSetSearchRow {
