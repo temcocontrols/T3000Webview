@@ -17,6 +17,10 @@ interface UnifiedPoint {
   index: string;
   pointLabel: string;
   fullLabel: string;
+  digitalAnalog?: string | null;
+  units?: string | null;
+  fValue?: string | null;
+  rangeField?: string | null;
 }
 
 const pointTypeEndpoint: Record<PointType, string> = {
@@ -35,7 +39,60 @@ const labelizeType = (t: PointType) => (t === 'input' ? 'Input' : t === 'output'
 const ALL_TYPES: PointType[] = ['input', 'output', 'variable'];
 const POLICY_STORAGE_KEY = 't3000.trend.policy.state.v2';
 const PROFILE_STORAGE_KEY = 't3000.trend.policy.profiles.v1';
-const SEMANTIC_TAGS = new Set(['temp', 'humidity', 'pressure', 'flow', 'co2', 'occupancy']);
+const SEMANTIC_TAGS = new Set(['temp', 'humidity', 'pressure', 'flow', 'co2', 'occupancy', 'volt', 'current', 'elec']);
+
+const HAYSTACK_UNIT_TAGS: Record<string, string[]> = {
+  f: ['temp'],
+  c: ['temp'],
+  '%': ['humidity'],
+  ppm: ['co2'],
+  v: ['volt', 'elec'],
+  a: ['current', 'elec'],
+};
+
+const mergeTagLists = (...tagLists: string[][]): string[] => {
+  const seen = new Set<string>();
+  const merged: string[] = [];
+
+  tagLists.forEach((list) => {
+    list.forEach((tag) => {
+      const normalizedTag = tag.trim();
+      if (!normalizedTag || seen.has(normalizedTag)) {
+        return;
+      }
+      seen.add(normalizedTag);
+      merged.push(normalizedTag);
+    });
+  });
+
+  return merged;
+};
+
+const deriveHaystackTagsForPoint = (point: UnifiedPoint): string[] => {
+  const tags: string[] = ['point', 'sensor', 'his'];
+  const kind = String(point.digitalAnalog ?? '').trim() === '1' ? 'Number' : 'Bool';
+  tags.push(`kind:${kind}`);
+
+  const units = String(point.units ?? '').trim();
+  if (units) {
+    tags.push(`unit:${units}`);
+    const unitTags = HAYSTACK_UNIT_TAGS[units.toLowerCase()];
+    if (unitTags) {
+      tags.push(...unitTags);
+    }
+  }
+
+  const rawValue = String(point.fValue ?? '').trim();
+  if (rawValue) {
+    const numericValue = Number(rawValue);
+    if (Number.isFinite(numericValue)) {
+      tags.push(`curVal:${numericValue}`);
+    }
+  }
+
+  tags.push(`equipRef:dev${point.serial}`);
+  return mergeTagLists(tags);
+};
 
 interface SavedTagProfile {
   id: string;
@@ -165,6 +222,10 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
                     const pointLabel = row.label ?? row.name ?? `${labelizeType(type)} ${index}`;
                     const fullLabel = row.fullLabel ?? row.description ?? pointLabel;
                     const panel = row.panelId ?? dev.panelId ?? 1;
+                    const digitalAnalog = row.digitalAnalog ?? row.digital_analog ?? row.Digital_Analog ?? null;
+                    const units = row.units ?? row.Units ?? null;
+                    const fValue = row.fValue ?? row.f_value ?? row.FValue ?? null;
+                    const rangeField = row.rangeField ?? row.range_field ?? row.Range_Field ?? null;
                     const key = `${dev.serialNumber}:${type}:${index}`;
                     return {
                       key,
@@ -174,6 +235,10 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
                       index: String(index),
                       pointLabel: String(pointLabel),
                       fullLabel: String(fullLabel),
+                      digitalAnalog: digitalAnalog == null ? null : String(digitalAnalog),
+                      units: units == null ? null : String(units),
+                      fValue: fValue == null ? null : String(fValue),
+                      rangeField: rangeField == null ? null : String(rangeField),
                     } as UnifiedPoint;
                   });
                 })
@@ -188,6 +253,23 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
           setAllPoints(merged);
           // Default behavior: when points are loaded, All points is selected and all rows are checked.
           setSelectedPointKeys(new Set(merged.map(p => p.key)));
+          setPointTags((prev) => {
+            const next = { ...prev };
+            const validKeys = new Set(merged.map((point) => point.key));
+
+            Object.keys(next).forEach((key) => {
+              if (!validKeys.has(key)) {
+                delete next[key];
+              }
+            });
+
+            merged.forEach((point) => {
+              const currentTags = next[point.key] ?? [];
+              next[point.key] = mergeTagLists(deriveHaystackTagsForPoint(point), currentTags);
+            });
+
+            return next;
+          });
         }
       } finally {
         if (!cancelled) setLoadingPoints(false);
@@ -289,6 +371,20 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
       return next;
     });
     setApplyTagInput('');
+  };
+
+  const resetSelectedPointsToHaystackDefaults = () => {
+    if (selectedPointKeys.size === 0) return;
+
+    setPointTags((prev) => {
+      const next = { ...prev };
+      selectedPointKeys.forEach((key) => {
+        const point = allPoints.find((item) => item.key === key);
+        if (!point) return;
+        next[key] = deriveHaystackTagsForPoint(point);
+      });
+      return next;
+    });
   };
 
   const removeFilterTag = (tag: string) => {
@@ -503,7 +599,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
           <div className={styles.primaryTabBar}>
             {([
               { key: 'points', label: 'By Points', count: allPoints.length },
-              { key: 'tags', label: 'By Tags', count: taggedPointsCount },
+              { key: 'tags', label: 'Haystack Tags', count: taggedPointsCount },
             ] as Array<{ key: PrimaryTab; label: string; count: number }>).map(tab => (
               <button
                 key={tab.key}
@@ -573,12 +669,12 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
               <div className={styles.tagWorkspace}>
                 <div className={styles.tagHint}>
                   <TagRegular style={{ fontSize: '12px' }} />
-                  Select point rows, then apply tags. Use filter tags to narrow the grid.
+                  Haystack 4 defaults are generated from point metadata. Use custom tags only for overrides.
                 </div>
 
                 <div className={styles.tagControlsRow}>
                   <div className={styles.inlineControl}>
-                    <span className={styles.controlLabel}>Apply Tag</span>
+                    <span className={styles.controlLabel}>Custom Tag</span>
                     <input
                       className={styles.tagInput}
                       value={applyTagInput}
@@ -591,7 +687,14 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
                       onClick={applyTagToSelected}
                       disabled={selectedPointKeys.size === 0 || !applyTagInput.trim()}
                     >
-                      Apply to {selectedPointKeys.size}
+                      Add to {selectedPointKeys.size}
+                    </button>
+                    <button
+                      className={styles.tagActionBtn}
+                      onClick={resetSelectedPointsToHaystackDefaults}
+                      disabled={selectedPointKeys.size === 0}
+                    >
+                      Reset selected to defaults
                     </button>
                   </div>
 
@@ -646,7 +749,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
                   )}
 
                   <div className={styles.knownTags}>
-                    <span className={styles.filterChipsLabel}>Known Tags:</span>
+                    <span className={styles.filterChipsLabel}>Known Haystack Tags:</span>
                     {allKnownTags.length > 0 ? allKnownTags.map(tag => (
                       <button
                         key={tag}

@@ -28,7 +28,7 @@ import {
   SearchRegular,
   ErrorCircleRegular,
   ChartMultipleRegular,
-  ZoomInRegular,
+  FullScreenMaximizeRegular,
   InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
@@ -111,8 +111,7 @@ const EMPTY_POINT_SYNC_SUMMARY: DevicePointSyncSummary = {
 
 const TRACKED_POINT_SYNC_TYPES = ['INPUTS', 'OUTPUTS', 'VARIABLES'] as const;
 
-type TrendCenterTab = 'overview' | 'monitors' | 'points-tags' | 'chart';
-type MonitorViewMode = 'default' | 'global';
+type TrendCenterTab = 'overview' | 'default' | 'global' | 'points-tags' | 'chart';
 
 interface GlobalPointItem {
   key: string;
@@ -132,7 +131,7 @@ const GLOBAL_WATCHLIST_STORAGE_PREFIX = 'trendlogs_global_watchlists';
 const TREND_POLICY_STORAGE_KEY = 't3000.trend.policy.state.v2';
 
 const isTrendCenterTab = (value: string | null): value is TrendCenterTab => {
-  return value === 'overview' || value === 'monitors' || value === 'points-tags' || value === 'chart';
+  return value === 'overview' || value === 'default' || value === 'global' || value === 'points-tags' || value === 'chart';
 };
 
 export const TrendLogsPage: React.FC = () => {
@@ -160,7 +159,7 @@ export const TrendLogsPage: React.FC = () => {
   const selectedSerial = selectedDevice?.serialNumber;
   const selectedPanelId = selectedDevice?.panelId;
   const rawTab = searchParams.get('tab');
-  const activeTab: TrendCenterTab = isTrendCenterTab(rawTab) ? rawTab : 'monitors';
+  const activeTab: TrendCenterTab = isTrendCenterTab(rawTab) ? rawTab : 'default';
   const requestedSerial = searchParams.get('serial');
   const requestedMonitorId = searchParams.get('monitorId');
   const requestedTrendlogId = searchParams.get('trendlogId');
@@ -171,7 +170,6 @@ export const TrendLogsPage: React.FC = () => {
   }, []);
 
   const navigate = useNavigate();
-  const [monitorViewMode, setMonitorViewMode] = useState<MonitorViewMode>('default');
   const [globalPoints, setGlobalPoints] = useState<GlobalPointItem[]>([]);
   const [globalPointsLoading, setGlobalPointsLoading] = useState(false);
   const [globalSearch, setGlobalSearch] = useState('');
@@ -635,7 +633,7 @@ export const TrendLogsPage: React.FC = () => {
   useEffect(() => {
     if (!rawTab) {
       const next = new URLSearchParams(searchParams);
-      next.set('tab', 'monitors');
+      next.set('tab', 'default');
       setSearchParams(next, { replace: true });
     }
   }, [rawTab, searchParams, setSearchParams]);
@@ -1025,10 +1023,16 @@ export const TrendLogsPage: React.FC = () => {
         Overview
       </button>
       <button
-        className={`${styles.tabButton} ${activeTab === 'monitors' ? styles.tabButtonActive : ''}`}
-        onClick={() => setActiveTab('monitors')}
+        className={`${styles.tabButton} ${activeTab === 'default' ? styles.tabButtonActive : ''}`}
+        onClick={() => setActiveTab('default')}
       >
-        Monitors
+        Default
+      </button>
+      <button
+        className={`${styles.tabButton} ${activeTab === 'global' ? styles.tabButtonActive : ''}`}
+        onClick={() => setActiveTab('global')}
+      >
+        Watchlist
       </button>
       <button
         className={`${styles.tabButton} ${activeTab === 'points-tags' ? styles.tabButtonActive : ''}`}
@@ -1046,7 +1050,7 @@ export const TrendLogsPage: React.FC = () => {
   );
 
   useEffect(() => {
-    if (activeTab !== 'monitors' || monitorViewMode !== 'global') {
+    if (activeTab !== 'global') {
       return;
     }
 
@@ -1142,7 +1146,7 @@ export const TrendLogsPage: React.FC = () => {
     };
 
     loadGlobalPoints();
-  }, [activeTab, monitorViewMode, selectedDevice?.serialNumber]);
+  }, [activeTab, selectedDevice?.serialNumber]);
 
   useEffect(() => {
     if (!selectedDevice?.serialNumber) {
@@ -1561,10 +1565,10 @@ export const TrendLogsPage: React.FC = () => {
                     <div className={styles.placeholderPanel}>
                       <Text size={400} weight="semibold">Chart Workspace</Text>
                       <Text size={300}>
-                        Select a monitor in the Monitors tab first, then return here for in-page analysis.
+                        Select a monitor in the Default tab first, then return here for in-page analysis.
                       </Text>
-                      <Button appearance="primary" onClick={() => setActiveTab('monitors')}>
-                        Go To Monitors
+                      <Button appearance="primary" onClick={() => setActiveTab('default')}>
+                        Go To Default
                       </Button>
                     </div>
                   ) : (
@@ -1582,7 +1586,7 @@ export const TrendLogsPage: React.FC = () => {
                             <Tooltip content="Open Full Chart Page" relationship="label">
                               <Button
                                 appearance="subtle"
-                                icon={<ZoomInRegular />}
+                                icon={<FullScreenMaximizeRegular />}
                                 onClick={() => handleViewChart(selectedMonitor)}
                                 size="small"
                                 aria-label="Open Full Chart Page"
@@ -1590,7 +1594,7 @@ export const TrendLogsPage: React.FC = () => {
                               />
                             </Tooltip>
                           }
-                          onBack={() => setActiveTab('monitors')}
+                          onBack={() => setActiveTab('default')}
                         />
                       </div>
                     </>
@@ -1598,28 +1602,11 @@ export const TrendLogsPage: React.FC = () => {
                 </div>
               )}
 
-              {activeTab === 'monitors' && (
-                <div className={styles.monitorModeTabs}>
-                  <button
-                    className={`${styles.tabButton} ${monitorViewMode === 'default' ? styles.tabButtonActive : ''}`}
-                    onClick={() => setMonitorViewMode('default')}
-                  >
-                    Default
-                  </button>
-                  <button
-                    className={`${styles.tabButton} ${monitorViewMode === 'global' ? styles.tabButtonActive : ''}`}
-                    onClick={() => setMonitorViewMode('global')}
-                  >
-                    Global
-                  </button>
-                </div>
-              )}
-
               {/* ========================================
                   TOOLBAR - Azure Portal Command Bar
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
-              {activeTab === 'monitors' && selectedDevice && monitorViewMode === 'default' && (
+              {activeTab === 'default' && selectedDevice && (
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   {/* Search Input Box */}
@@ -1666,7 +1653,7 @@ export const TrendLogsPage: React.FC = () => {
               </div>
               )}
 
-              {activeTab === 'monitors' && selectedDevice && monitorViewMode === 'global' && (
+              {activeTab === 'global' && selectedDevice && (
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   <div className={styles.searchInputWrapper}>
@@ -1758,7 +1745,7 @@ export const TrendLogsPage: React.FC = () => {
                   DOCKING BODY - Main Content (Dual Grid Layout)
                   Matches: msportalfx-docking-body
                   ======================================== */}
-              {activeTab === 'monitors' && monitorViewMode === 'default' && (
+              {activeTab === 'default' && (
               <div className={styles.dockingBody}>
 
                 {/* Loading State */}
@@ -1889,7 +1876,7 @@ export const TrendLogsPage: React.FC = () => {
               </div>
               )}
 
-              {activeTab === 'monitors' && monitorViewMode === 'global' && (
+              {activeTab === 'global' && (
               <div className={styles.dockingBody}>
                 {!selectedDevice && !loading && (
                   <div className={styles.noData}>
