@@ -16,10 +16,10 @@
 .topBar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 14px;
-  min-height: 52px;
-  margin: 6px 10px 0;
+  gap: 8px;
+  padding: 0 12px;
+  min-height: 44px;
+  margin: 4px 10px 0;
   background: rgb(240, 246, 255);
   border: 1px solid #c9defa;
   border-radius: 6px;
@@ -61,27 +61,30 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 
 .summaryChip {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  min-height: 24px;
-  padding: 0 2px;
+  gap: 6px;
+  min-height: 22px;
+  padding: 0 8px;
   font-size: 12px;
+  border: 1px solid #d8e5f8;
+  border-radius: 999px;
+  background: #ffffff;
 }
 
 .chipLabel {
-  color: #55606d;
-  font-size: 12px;
+  color: #667085;
+  font-size: 11px;
   font-weight: 500;
 }
 
 .chipValue {
   color: #0f6cbd;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -94,6 +97,26 @@
   min-height: 0;
   flex: 1;
   overflow: hidden;
+}
+
+.mainSingleColumn {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.haystackHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-bottom: 1px solid #e1e4e8;
+  background: #f8fbff;
+}
+
+.haystackHeaderScope {
+  font-size: 11px;
+  color: #334155;
 }
 
 .validationBanner {
@@ -288,16 +311,16 @@
 /* ── Secondary controls container ── */
 .secondaryBar {
   border-bottom: 1px solid #e1e4e8;
-  background: #fbfcfe;
+  background: #fcfdff;
   flex-shrink: 0;
 }
 
 .typeFilterBar {
   display: flex;
   align-items: center;
-  padding: 3px 12px 0;
-  gap: 0;
-  min-height: 40px;
+  padding: 4px 12px;
+  gap: 6px;
+  min-height: 36px;
 }
 
 .typeTabs {
@@ -308,7 +331,7 @@
 
 .clearSelectionBtn {
   margin-left: 8px;
-  height: 28px;
+  height: 26px;
   padding: 0 2px;
   border: none;
   background: transparent;
@@ -333,8 +356,8 @@
 }
 
 .typeSearchInput {
-  width: 220px;
-  height: 28px;
+  width: 240px;
+  height: 26px;
   border: 1px solid #d0d7de;
   border-radius: 8px;
   background: #ffffff;
@@ -373,12 +396,12 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 28px;
-  padding: 0 10px;
+  height: 26px;
+  padding: 0 9px;
   border: 1px solid #d0d7de;
   border-radius: 8px;
   background: #ffffff;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   color: #475467;
   cursor: pointer;
@@ -453,8 +476,8 @@
 .tagWorkspace {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 8px 12px 10px;
+  gap: 7px;
+  padding: 6px 12px 8px;
 }
 
 .tagHint {
@@ -468,7 +491,7 @@
 .tagControlsRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
 }
 
@@ -686,7 +709,7 @@
   top: 0;
   background: #f6f8fa;
   border-bottom: 1px solid #d0d7de;
-  padding: 6px 8px;
+  padding: 5px 8px;
   text-align: left;
   font-size: 11px;
   font-weight: 600;
@@ -698,7 +721,7 @@
 
 .pointTable td {
   border-bottom: 1px solid #eaeef2;
-  padding: 6px 8px;
+  padding: 4px 8px;
   vertical-align: middle;
 }
 
@@ -729,9 +752,9 @@
 /* ── Type badge ── */
 .typeTag {
   display: inline-block;
-  padding: 1px 6px;
+  padding: 1px 5px;
   border-radius: 8px;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.15px;
@@ -763,7 +786,7 @@
 .pointTagsCell {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
+  gap: 2px;
   min-width: 120px;
 }
 
@@ -771,11 +794,11 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  padding: 1px 5px;
+  padding: 1px 4px;
   border: 1px solid #d2b4f7;
   border-radius: 8px;
   background: #f0e6ff;
-  font-size: 10px;
+  font-size: 9px;
   color: #5a1e99;
 }
 

@@ -236,6 +236,12 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
     }
   }, [devices.length, fetchDevices]);
 
+  useEffect(() => {
+    if (devices.length === 0) return;
+    if (selectedDeviceSerials.size > 0) return;
+    setSelectedDeviceSerials(new Set(devices.map((d) => d.serialNumber)));
+  }, [devices, selectedDeviceSerials.size]);
+
   const selectedDevices = useMemo(
     () => devices.filter(d => selectedDeviceSerials.has(d.serialNumber)),
     [devices, selectedDeviceSerials]
@@ -368,23 +374,21 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
       );
     }
 
-    if (primaryTab !== 'points') {
-      if (tagStateFilter === 'tagged') {
-        pts = pts.filter(p => (pointTags[p.key] ?? []).length > 0);
-      } else if (tagStateFilter === 'untagged') {
-        pts = pts.filter(p => (pointTags[p.key] ?? []).length === 0);
-      }
+    if (tagStateFilter === 'tagged') {
+      pts = pts.filter(p => (pointTags[p.key] ?? []).length > 0);
+    } else if (tagStateFilter === 'untagged') {
+      pts = pts.filter(p => (pointTags[p.key] ?? []).length === 0);
+    }
 
-      if (filterTags.length > 0) {
-        pts = pts.filter(p => {
-          const tags = pointTags[p.key] ?? [];
-          return filterTags.every(tag => tags.includes(tag));
-        });
-      }
+    if (filterTags.length > 0) {
+      pts = pts.filter(p => {
+        const tags = pointTags[p.key] ?? [];
+        return filterTags.every(tag => tags.includes(tag));
+      });
     }
 
     return pts;
-  }, [allPoints, activeTypeTab, pointSearch, filterTags, pointTags, primaryTab, tagStateFilter]);
+  }, [allPoints, activeTypeTab, pointSearch, filterTags, pointTags, tagStateFilter]);
 
   const countByType = useMemo(() => ({
     input: allPoints.filter(p => p.type === 'input').length,
@@ -660,123 +664,70 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
         </div>
       )}
 
-      {/* ── Two-panel layout ── */}
-      <div className={styles.main}>
-
-        {/* ── Left: Device Scope ── */}
-        <section className={styles.leftPanel}>
-          <div className={styles.panelHeader}>
-            <span className={styles.panelTitle}>Device Scope</span>
-            <label className={styles.selectAllLabel}>
-              <input
-                type="checkbox"
-                className={styles.nativeCheck}
-                aria-label="Select all devices"
-                checked={allDevicesSelected}
-                onChange={e => handleSelectAllDevices(e.target.checked)}
-              />
-              All ({devices.length})
-            </label>
-          </div>
-          <div className={styles.panelBody}>
-            {devices.map(dev => {
-              const checked = selectedDeviceSerials.has(dev.serialNumber);
-              return (
-                <label
-                  key={dev.serialNumber}
-                  className={`${styles.deviceItem} ${checked ? styles.deviceItemSelected : ''}`}
-                >
-                  <input
-                    type="checkbox"
-                    className={styles.nativeCheck}
-                    aria-label={`Select device ${dev.nameShowOnTree || `SN-${dev.serialNumber}`}`}
-                    checked={checked}
-                    onChange={e => handleToggleDevice(dev.serialNumber, e.target.checked)}
-                  />
-                  <div>
-                    <div className={styles.deviceName}>{dev.nameShowOnTree || `SN-${dev.serialNumber}`}</div>
-                    <div className={styles.deviceSub}>SN-{dev.serialNumber} · Panel {dev.panelId ?? 1}</div>
-                  </div>
-                </label>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ── Right: Point Selection ── */}
+      {/* ── Haystack-first layout ── */}
+      <div className={`${styles.main} ${styles.mainSingleColumn}`}>
         <section className={styles.rightPanel}>
-
-          <div className={styles.primaryTabBar}>
-            {([
-              { key: 'points', label: 'By Points', count: allPoints.length },
-              { key: 'tags', label: 'Haystack Tags', count: taggedPointsCount },
-            ] as Array<{ key: PrimaryTab; label: string; count: number }>).map(tab => (
-              <button
-                key={tab.key}
-                className={`${styles.primaryTab} ${primaryTab === tab.key ? styles.primaryTabActive : ''}`}
-                onClick={() => setPrimaryTab(tab.key)}
-              >
-                {tab.label}
-                <span className={styles.tabCount}>{tab.count}</span>
-              </button>
-            ))}
+          <div className={styles.haystackHeaderRow}>
+            <div className={styles.haystackHeaderScope}>
+              <strong>Device Scope:</strong> All devices ({selectedDevices.length}/{devices.length})
+            </div>
+            <div className={styles.haystackHeaderScope}>
+              <strong>Tagged:</strong> {taggedPointsCount}
+            </div>
           </div>
 
           <div className={styles.secondaryBar}>
-            {primaryTab === 'points' && (
-              <div className={styles.typeFilterBar}>
-                <div className={styles.typeTabs}>
-                  {([
-                    { key: 'all', label: 'All points', count: allPoints.length },
-                    { key: 'input', label: 'Inputs', count: countByType.input },
-                    { key: 'output', label: 'Outputs', count: countByType.output },
-                    { key: 'variable', label: 'Variables', count: countByType.variable },
-                  ] as Array<{ key: TabType; label: string; count: number }>).map(item => {
-                    const active = activeTypeTab === item.key;
-                    return (
-                      <button
-                        key={item.key}
-                        className={`${styles.typeTab} ${active ? styles.typeTabActive : ''}`}
-                        onClick={() => handleTypeChipClick(item.key)}
-                      >
-                        {item.label}
-                        {item.count > 0 && <span className={styles.tabCount}>{item.count}</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-                <button
-                  type="button"
-                  className={styles.clearSelectionBtn}
-                  onClick={() => setSelectedPointKeys(new Set())}
-                  disabled={selectedPointKeys.size === 0}
-                >
-                  Clear selection
-                </button>
-                <div className={styles.typeSearchWrap}>
-                  <input
-                    className={styles.typeSearchInput}
-                    value={pointSearch}
-                    onChange={e => setPointSearch(e.target.value)}
-                    placeholder="Search label / full label"
-                    aria-label="Search by label or full label"
-                  />
-                  {pointSearch.length > 0 && (
+            <div className={styles.typeFilterBar}>
+              <div className={styles.typeTabs}>
+                {([
+                  { key: 'all', label: 'All points', count: allPoints.length },
+                  { key: 'input', label: 'Inputs', count: countByType.input },
+                  { key: 'output', label: 'Outputs', count: countByType.output },
+                  { key: 'variable', label: 'Variables', count: countByType.variable },
+                ] as Array<{ key: TabType; label: string; count: number }>).map(item => {
+                  const active = activeTypeTab === item.key;
+                  return (
                     <button
-                      type="button"
-                      className={styles.typeSearchClear}
-                      onClick={() => setPointSearch('')}
-                      aria-label="Clear search"
+                      key={item.key}
+                      className={`${styles.typeTab} ${active ? styles.typeTabActive : ''}`}
+                      onClick={() => handleTypeChipClick(item.key)}
                     >
-                      ×
+                      {item.label}
+                      {item.count > 0 && <span className={styles.tabCount}>{item.count}</span>}
                     </button>
-                  )}
-                </div>
+                  );
+                })}
               </div>
-            )}
+              <button
+                type="button"
+                className={styles.clearSelectionBtn}
+                onClick={() => setSelectedPointKeys(new Set())}
+                disabled={selectedPointKeys.size === 0}
+              >
+                Clear selection
+              </button>
+              <div className={styles.typeSearchWrap}>
+                <input
+                  className={styles.typeSearchInput}
+                  value={pointSearch}
+                  onChange={e => setPointSearch(e.target.value)}
+                  placeholder="Search label / full label"
+                  aria-label="Search by label or full label"
+                />
+                {pointSearch.length > 0 && (
+                  <button
+                    type="button"
+                    className={styles.typeSearchClear}
+                    onClick={() => setPointSearch('')}
+                    aria-label="Clear search"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            </div>
 
-            {primaryTab === 'tags' && (
-              <div className={styles.tagWorkspace}>
+            <div className={styles.tagWorkspace}>
                 <div className={styles.tagHint}>
                   <TagRegular style={{ fontSize: '12px' }} />
                   Haystack 4 defaults are generated from point metadata. Use custom tags only for overrides.
@@ -842,7 +793,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
                     <button
                       className={styles.tagActionBtn}
                       onClick={rebuildHaystackFromBackend}
-                      disabled={selectedDeviceSerials.size === 0 || rebuildInProgress}
+                      disabled={selectedDevices.length === 0 || rebuildInProgress}
                     >
                       {rebuildInProgress ? 'Rebuilding...' : 'Rebuild from device data'}
                     </button>
@@ -920,7 +871,6 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
                   />
                 </div>
               </div>
-            )}
           </div>
 
           {/* Points list */}
@@ -928,7 +878,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
             {loadingPoints ? (
               <div className={styles.empty}>Loading points…</div>
             ) : selectedDevices.length === 0 ? (
-              <div className={styles.empty}>Select one or more devices on the left to load points.</div>
+              <div className={styles.empty}>No devices available.</div>
             ) : visiblePoints.length === 0 ? (
               <div className={styles.empty}>No points match the current filters.</div>
             ) : (
