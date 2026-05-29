@@ -179,6 +179,9 @@ export const TrendLogsPage: React.FC = () => {
   const [globalSetName, setGlobalSetName] = useState('');
   const [selectedSavedSetName, setSelectedSavedSetName] = useState('');
   const [savedGlobalSets, setSavedGlobalSets] = useState<GlobalWatchlistSet[]>([]);
+  const [globalRebuildLoading, setGlobalRebuildLoading] = useState(false);
+  const [globalRebuildMessage, setGlobalRebuildMessage] = useState('');
+  const [globalReloadRevision, setGlobalReloadRevision] = useState(0);
 
   const setActiveTab = useCallback((tab: TrendCenterTab) => {
     const next = new URLSearchParams(searchParams);
@@ -1013,6 +1016,43 @@ export const TrendLogsPage: React.FC = () => {
     setGlobalSetName(target.name);
   }, [savedGlobalSets, selectedSavedSetName]);
 
+  const triggerGlobalReload = useCallback(() => {
+    setGlobalReloadRevision((prev) => prev + 1);
+  }, []);
+
+  const rebuildGlobalHaystack = useCallback(async () => {
+    if (!selectedDevice?.serialNumber || globalRebuildLoading) {
+      return;
+    }
+
+    setGlobalRebuildLoading(true);
+    setGlobalRebuildMessage('');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/haystack/rebuild`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          serialNumbers: [selectedDevice.serialNumber],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Haystack rebuild failed with status ${response.status}`);
+      }
+
+      setGlobalRebuildMessage('Haystack tags rebuilt from backend device data.');
+      triggerGlobalReload();
+    } catch (error) {
+      console.error('[TrendLogsPage] Failed to rebuild Haystack tags:', error);
+      setGlobalRebuildMessage('Failed to rebuild Haystack tags.');
+    } finally {
+      setGlobalRebuildLoading(false);
+    }
+  }, [globalRebuildLoading, selectedDevice?.serialNumber, triggerGlobalReload]);
+
   const headerActionsTarget = document.getElementById('page-header-actions');
   const trendTabs = (
     <div className={styles.headerTabBar}>
@@ -1101,6 +1141,56 @@ export const TrendLogsPage: React.FC = () => {
           seededTags[point.key] = [point.type.toLowerCase()];
         });
 
+        // Import backend Haystack tags first so Watchlist reflects Rust-generated entities.
+        try {
+          const haystackResponse = await fetch(`${API_BASE_URL}/api/haystack/read`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              serialNumbers: [selectedDevice.serialNumber],
+            }),
+          });
+
+          if (haystackResponse.ok) {
+            const haystackPayload = await haystackResponse.json();
+            const rows: any[] = Array.isArray(haystackPayload?.rows) ? haystackPayload.rows : [];
+
+            rows.forEach((row) => {
+              const pointTable = String(row?.pointTable ?? row?.point_table ?? '').trim().toUpperCase();
+              const pointIndex = String(row?.pointIndex ?? row?.point_index ?? '').trim();
+              if (!pointTable || !pointIndex) return;
+
+              const mappedType =
+                pointTable === 'INPUTS' ? 'INPUT' :
+                pointTable === 'OUTPUTS' ? 'OUTPUT' :
+                pointTable === 'VARIABLES' ? 'VARIABLE' :
+                '';
+              if (!mappedType) return;
+
+              const globalKey = `${mappedType}:${pointIndex}`;
+              const tagsObj = row?.tags && typeof row.tags === 'object' && !Array.isArray(row.tags)
+                ? row.tags as Record<string, any>
+                : null;
+              if (!tagsObj) return;
+
+              const existing = new Set(seededTags[globalKey] || []);
+              Object.entries(tagsObj).forEach(([tagKey, tagValue]) => {
+                if (!tagKey) return;
+                if (tagValue === 'M') {
+                  existing.add(tagKey.toLowerCase());
+                } else if (typeof tagValue === 'string' || typeof tagValue === 'number' || typeof tagValue === 'boolean') {
+                  existing.add(`${tagKey.toLowerCase()}:${String(tagValue).toLowerCase()}`);
+                }
+              });
+              seededTags[globalKey] = Array.from(existing);
+            });
+          }
+        } catch (haystackLoadError) {
+          console.warn('[TrendLogsPage] Failed to load backend Haystack tags:', haystackLoadError);
+        }
+
         // Import persisted Haystack tags authored in Points and Tags workspace.
         // TrendPolicyPage stores keys as "serial:type:index" where type is input/output/variable.
         try {
@@ -1146,7 +1236,7 @@ export const TrendLogsPage: React.FC = () => {
     };
 
     loadGlobalPoints();
-  }, [activeTab, selectedDevice?.serialNumber]);
+  }, [activeTab, globalReloadRevision, selectedDevice?.serialNumber]);
 
   useEffect(() => {
     if (!selectedDevice?.serialNumber) {
@@ -1679,12 +1769,23 @@ export const TrendLogsPage: React.FC = () => {
                   </button>
                   <button
                     className={styles.toolbarButton}
+                    onClick={rebuildGlobalHaystack}
+                    disabled={globalRebuildLoading}
+                    title="Rebuild Haystack tags from backend point metadata"
+                  >
+                    {globalRebuildLoading ? 'Rebuilding...' : 'Rebuild Haystack'}
+                  </button>
+                  <button
+                    className={styles.toolbarButton}
                     onClick={applyGlobalSelectionToChart}
                     disabled={globalSelectedKeys.size === 0}
                     title="Open chart with selected global points"
                   >
                     Open Chart
                   </button>
+                  {globalRebuildMessage && (
+                    <Text size={200}>{globalRebuildMessage}</Text>
+                  )}
                   <div className={styles.toolbarSeparator} role="separator" />
                   <input
                     className={styles.tagInput}

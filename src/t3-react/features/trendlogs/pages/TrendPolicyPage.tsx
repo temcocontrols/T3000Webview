@@ -68,6 +68,50 @@ const mergeTagLists = (...tagLists: string[][]): string[] => {
   return merged;
 };
 
+const pointTypeFromHaystackTable = (pointTable: string): PointType | null => {
+  const table = pointTable.trim().toUpperCase();
+  if (table === 'INPUTS') return 'input';
+  if (table === 'OUTPUTS') return 'output';
+  if (table === 'VARIABLES') return 'variable';
+  return null;
+};
+
+const parseHaystackTagList = (rawTags: unknown): string[] => {
+  if (!rawTags || typeof rawTags !== 'object' || Array.isArray(rawTags)) {
+    return [];
+  }
+
+  const tagsObj = rawTags as Record<string, unknown>;
+  return Object.entries(tagsObj).map(([key, value]) => {
+    if (value === 'M') {
+      return key;
+    }
+
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      return `${key}:${String(value)}`;
+    }
+
+    return `${key}:${JSON.stringify(value)}`;
+  });
+};
+
+const buildPolicyKeyFromHaystack = (row: any): string | null => {
+  const serial = Number(row?.serialNumber ?? row?.serial_number ?? 0);
+  const pointTable = String(row?.pointTable ?? row?.point_table ?? '').trim();
+  const pointIndex = String(row?.pointIndex ?? row?.point_index ?? '').trim();
+
+  if (!serial || !pointTable || !pointIndex) {
+    return null;
+  }
+
+  const pointType = pointTypeFromHaystackTable(pointTable);
+  if (!pointType) {
+    return null;
+  }
+
+  return `${serial}:${pointType}:${pointIndex}`;
+};
+
 const deriveHaystackTagsForPoint = (point: UnifiedPoint): string[] => {
   const tags: string[] = ['point', 'sensor', 'his'];
   const kind = String(point.digitalAnalog ?? '').trim() === '1' ? 'Number' : 'Bool';
@@ -130,6 +174,9 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
   const [savedProfiles, setSavedProfiles] = useState<SavedTagProfile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState('');
   const [profileNameInput, setProfileNameInput] = useState('');
+  const [rebuildInProgress, setRebuildInProgress] = useState(false);
+  const [rebuildStatusMessage, setRebuildStatusMessage] = useState('');
+  const [loadRevision, setLoadRevision] = useState(0);
   const importFileRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -249,6 +296,34 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
 
         const settled = await Promise.all(requests);
         const merged = settled.flat();
+
+        const haystackByPointKey: Record<string, string[]> = {};
+        try {
+          const haystackResponse = await fetch(`${API_BASE_URL}/api/haystack/read`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              serialNumbers: selectedDevices.map((dev) => dev.serialNumber),
+            }),
+          });
+
+          if (haystackResponse.ok) {
+            const haystackPayload = await haystackResponse.json();
+            const rows: any[] = Array.isArray(haystackPayload?.rows) ? haystackPayload.rows : [];
+            rows.forEach((row) => {
+              const key = buildPolicyKeyFromHaystack(row);
+              if (!key) {
+                return;
+              }
+              haystackByPointKey[key] = parseHaystackTagList(row?.tags);
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to load backend Haystack tags; using derived tags only:', error);
+        }
+
         if (!cancelled) {
           setAllPoints(merged);
           // Default behavior: when points are loaded, All points is selected and all rows are checked.
@@ -265,7 +340,8 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
 
             merged.forEach((point) => {
               const currentTags = next[point.key] ?? [];
-              next[point.key] = mergeTagLists(deriveHaystackTagsForPoint(point), currentTags);
+              const backendTags = haystackByPointKey[point.key] ?? [];
+              next[point.key] = mergeTagLists(deriveHaystackTagsForPoint(point), backendTags, currentTags);
             });
 
             return next;
@@ -280,7 +356,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
     return () => {
       cancelled = true;
     };
-  }, [selectedDevices]);
+  }, [selectedDevices, loadRevision]);
 
   const visiblePoints = useMemo(() => {
     let pts = activeTypeTab === 'all' ? allPoints : allPoints.filter(p => p.type === activeTypeTab);
@@ -385,6 +461,40 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
       });
       return next;
     });
+  };
+
+  const rebuildHaystackFromBackend = async () => {
+    if (selectedDeviceSerials.size === 0 || rebuildInProgress) {
+      return;
+    }
+
+    setRebuildInProgress(true);
+    setRebuildStatusMessage('');
+
+    try {
+      const serialNumbers = Array.from(selectedDeviceSerials);
+      const response = await fetch(`${API_BASE_URL}/api/haystack/rebuild`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ serialNumbers }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed with status ${response.status}`);
+      }
+
+      const payload = await response.json();
+      const updated = Number(payload?.updated ?? serialNumbers.length);
+      setRebuildStatusMessage(`Rebuilt Haystack tags for ${updated} device(s).`);
+      setLoadRevision((prev) => prev + 1);
+    } catch (error) {
+      console.warn('Failed to rebuild Haystack tags from backend:', error);
+      setRebuildStatusMessage('Failed to rebuild Haystack tags from backend.');
+    } finally {
+      setRebuildInProgress(false);
+    }
   };
 
   const removeFilterTag = (tag: string) => {
@@ -725,6 +835,18 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
                         </button>
                       ))}
                     </div>
+                  </div>
+
+                  <div className={styles.inlineControl}>
+                    <span className={styles.controlLabel}>Backend Sync</span>
+                    <button
+                      className={styles.tagActionBtn}
+                      onClick={rebuildHaystackFromBackend}
+                      disabled={selectedDeviceSerials.size === 0 || rebuildInProgress}
+                    >
+                      {rebuildInProgress ? 'Rebuilding...' : 'Rebuild from device data'}
+                    </button>
+                    {rebuildStatusMessage && <span className={styles.helperText}>{rebuildStatusMessage}</span>}
                   </div>
                 </div>
 
