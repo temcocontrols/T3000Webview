@@ -396,6 +396,11 @@
   background-color: transparent;
 }
 
+.globalToolbarHint {
+  margin-left: 10px;
+  color: #605e5c;
+}
+
 .destructiveButton {
   color: #a4262c;
 }
@@ -1010,9 +1015,9 @@
 }
 
 .globalLayout {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
+  gap: 12px;
   flex: 1;
   min-height: 0;
 }
@@ -1025,14 +1030,113 @@
   position: relative;
 }
 
-.globalSetSummary {
+.globalSetExplorerPanel {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px 10px;
-  border: 1px solid #e8edf3;
+  border: 1px solid #edebe9;
   border-radius: 6px;
-  background: #fbfcfe;
+  background: #ffffff;
+  min-height: 0;
+}
+
+.globalSetList {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #cfd6e0 #f5f7fa;
+}
+
+.globalSetList::-webkit-scrollbar {
+  width: 4px;
+}
+
+.globalSetList::-webkit-scrollbar-track {
+  background: #f5f7fa;
+}
+
+.globalSetList::-webkit-scrollbar-thumb {
+  background-color: #cfd6e0;
+  border-radius: 999px;
+}
+
+.globalSetList::-webkit-scrollbar-thumb:hover {
+  background-color: #b5bfcc;
+}
+
+.globalSetListItem {
+  border: 1px solid #ececec;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #323130;
+  text-align: left;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+}
+
+.globalSetListItem:hover {
+  background: #f8fbff;
+  border-color: #cfe4ff;
+}
+
+.globalSetListItemActive {
+  background: #e6f2ff;
+  border-color: #7ab3f3;
+}
+
+.globalSetNameText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.globalSetMetaText {
+  color: #605e5c;
+}
+
+.globalSetMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.globalSetMetaBadge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #d0d7e2;
+  border-radius: 999px;
+  background: #f4f8ff;
+  color: #2f4f77;
+  padding: 1px 7px;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.globalSetActions {
+  border-top: 1px solid #edebe9;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.globalSetActionGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.globalSetActionMessage {
+  color: #2f4f77;
+  min-height: 14px;
 }
 
 .globalCurrentSetPanel {
@@ -1044,6 +1148,30 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+
+.globalCurrentSetHeaderTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.globalCurrentSetHeaderMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.unsavedBadge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #f4cc8d;
+  background: #fff8e6;
+  color: #7a4f00;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .tagSourceBanner {
@@ -1134,6 +1262,18 @@
   gap: 8px;
 }
 
+.globalSetHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.globalSetSortGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .globalPanelSearchWrapper {
   margin-left: 0;
 }
@@ -1158,10 +1298,29 @@
   background: #f3f2f1;
 }
 
+.smallActionButtonActive {
+  background: #e6f2ff;
+  border-color: #7ab3f3;
+  color: #0f4f94;
+}
+
+.smallActionButtonActive:hover {
+  background: #d8ecff;
+}
+
 .smallActionButton:disabled {
   color: #a19f9d;
   cursor: default;
   background: #faf9f8;
+}
+
+.destructiveActionButton {
+  color: #a4262c;
+  border-color: #f4b7bb;
+}
+
+.destructiveActionButton:hover {
+  background: #fde7e9;
 }
 
 .globalPanelBody {
@@ -1416,7 +1575,15 @@
 }
 
 @media (max-width: 1000px) {
-  .globalGrid {
+  .globalLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .globalSetExplorerPanel {
+    max-height: 280px;
+  }
+
+  .globalSetActionGrid {
     grid-template-columns: 1fr;
   }
 
