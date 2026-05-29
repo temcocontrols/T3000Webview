@@ -114,6 +114,21 @@ CREATE TABLE IF NOT EXISTS VARIABLES (
     Control TEXT
 );
 
+CREATE TABLE IF NOT EXISTS HAYSTACK_ENTITY (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    dis TEXT,
+    tags TEXT NOT NULL,
+    serial_number INTEGER,
+    point_table TEXT,
+    point_index TEXT,
+    updated_at BIGINT
+);
+
+CREATE INDEX IF NOT EXISTS idx_haystack_entity_kind ON HAYSTACK_ENTITY(kind);
+CREATE INDEX IF NOT EXISTS idx_haystack_entity_serial ON HAYSTACK_ENTITY(serial_number);
+CREATE INDEX IF NOT EXISTS idx_haystack_entity_point_table ON HAYSTACK_ENTITY(point_table);
+
 CREATE TABLE IF NOT EXISTS PROGRAMS (
     SerialNumber INTEGER NOT NULL,
     Program_ID TEXT,

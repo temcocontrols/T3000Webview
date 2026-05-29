@@ -119,6 +119,27 @@ CREATE TABLE VARIABLES (
     Control NVARCHAR(64)
 );
 
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'HAYSTACK_ENTITY')
+CREATE TABLE HAYSTACK_ENTITY (
+    id NVARCHAR(255) PRIMARY KEY,
+    kind NVARCHAR(64) NOT NULL,
+    dis NVARCHAR(512),
+    tags NVARCHAR(MAX) NOT NULL,
+    serial_number INT,
+    point_table NVARCHAR(32),
+    point_index NVARCHAR(64),
+    updated_at BIGINT
+);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_haystack_entity_kind' AND object_id = OBJECT_ID('HAYSTACK_ENTITY'))
+CREATE INDEX idx_haystack_entity_kind ON HAYSTACK_ENTITY(kind);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_haystack_entity_serial' AND object_id = OBJECT_ID('HAYSTACK_ENTITY'))
+CREATE INDEX idx_haystack_entity_serial ON HAYSTACK_ENTITY(serial_number);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_haystack_entity_point_table' AND object_id = OBJECT_ID('HAYSTACK_ENTITY'))
+CREATE INDEX idx_haystack_entity_point_table ON HAYSTACK_ENTITY(point_table);
+
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'PROGRAMS')
 CREATE TABLE PROGRAMS (
     SerialNumber INT NOT NULL,

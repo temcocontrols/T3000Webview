@@ -121,6 +121,23 @@ CREATE TABLE IF NOT EXISTS VARIABLES (
     Control TEXT                               -- C++ control (0=OFF, 1=ON)
 );
 
+-- HAYSTACK_ENTITY table
+-- Normalized Haystack entities generated from INPUTS/OUTPUTS/VARIABLES metadata.
+CREATE TABLE IF NOT EXISTS HAYSTACK_ENTITY (
+    id TEXT PRIMARY KEY,                       -- e.g. dev1001.in0
+    kind TEXT NOT NULL,                        -- site | equip | point
+    dis TEXT,                                  -- display name
+    tags TEXT NOT NULL,                        -- JSON object as string
+    serial_number INTEGER,                     -- DEVICES.SerialNumber
+    point_table TEXT,                          -- INPUTS | OUTPUTS | VARIABLES
+    point_index TEXT,                          -- Input_Index / Output_Index / Variable_Index
+    updated_at INTEGER                         -- epoch millis
+);
+
+CREATE INDEX IF NOT EXISTS idx_haystack_entity_kind ON HAYSTACK_ENTITY(kind);
+CREATE INDEX IF NOT EXISTS idx_haystack_entity_serial ON HAYSTACK_ENTITY(serial_number);
+CREATE INDEX IF NOT EXISTS idx_haystack_entity_point_table ON HAYSTACK_ENTITY(point_table);
+
 -- PROGRAMS table (Original T3000 programs table)
 -- Optimized schema - removed unused BinaryArray field
 CREATE TABLE IF NOT EXISTS PROGRAMS (
