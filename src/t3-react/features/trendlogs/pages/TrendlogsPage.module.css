@@ -277,7 +277,7 @@
   border: none;
   border-radius: 0;
   overflow: hidden;
-  margin-bottom: 12px;
+  margin-bottom: 0;
 }
 
 .policyInfoBar {

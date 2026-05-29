@@ -175,7 +175,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
   const [profileNameInput, setProfileNameInput] = useState('');
   const [collapsedSections, setCollapsedSections] = useState({
     actions: false,
-    filters: true,
+    filters: false,
     profiles: true,
   });
   const [rebuildInProgress, setRebuildInProgress] = useState(false);
