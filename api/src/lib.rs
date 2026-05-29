@@ -464,7 +464,27 @@ pub async fn start_all_services_with_options(run_migrations: bool) -> Result<(),
 
     // Start all services normally (which will auto-detect pending migrations)
     start_all_services().await
-}/// Abstracted T3000 server startup for DLL entry point
+}
+
+/// Start services while forcing only webview_t3_device migrations.
+/// This mode avoids touching the general webview_database migration path.
+pub async fn start_all_services_t3_migrations_only() -> Result<(), Box<dyn std::error::Error>> {
+    println!("[RELOAD] Force running T3 device migrations only...");
+    match utils::run_t3_device_migrations().await {
+        Ok(_) => println!("[OK] T3 device migrations completed"),
+        Err(e) => {
+            eprintln!("[ERROR] T3 device migration failed: {:?}", e);
+            return Err(e);
+        }
+    }
+
+    server::set_skip_general_migrations(true);
+    let result = start_all_services().await;
+    server::set_skip_general_migrations(false);
+    result
+}
+
+/// Abstracted T3000 server startup for DLL entry point
 #[no_mangle]
 pub extern "C" fn run_t3_server() -> RustError {
     let result = panic::catch_unwind(|| {

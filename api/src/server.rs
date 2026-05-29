@@ -1,4 +1,5 @@
 use std::{env, error::Error};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use axum::{
     http::{HeaderName, StatusCode},
@@ -68,6 +69,12 @@ fn routes_static() -> Router {
 
 async fn health_check_handler() -> &'static str {
     "T3000 WebView Service OK"
+}
+
+static SKIP_GENERAL_MIGRATIONS: AtomicBool = AtomicBool::new(false);
+
+pub fn set_skip_general_migrations(skip: bool) {
+    SKIP_GENERAL_MIGRATIONS.store(skip, Ordering::SeqCst);
 }
 
 // This function creates the application state and returns a router with all of the routes for the API.
@@ -142,6 +149,8 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         .nest("/api/develop", crate::t3_develop::create_develop_routes())
         // Flow log routes
         .merge(crate::logging::flow_api::flow_routes())
+        // Haystack API routes
+        .merge(crate::t3_device::haystack_routes::create_haystack_routes())
         // Server local-time endpoint (for client timezone alignment)
         .route("/api/server/time", get(server_time_handler))
         // Real-time trend data routes - TEMPORARILY DISABLED
@@ -176,23 +185,27 @@ pub async fn server_start(
     dotenvy::dotenv().ok();
     logger.info("Environment variables loaded");
 
-    // Smart migration system: only run if there are pending migrations
-    let t_mig = std::time::Instant::now();
-    match crate::utils::run_migrations_if_pending().await {
-        Ok(_) => {
-            if let Some((ref fh, ref db)) = flow_opt {
-                fh.step(db, "migrations", "info", "db", "ok",
-                    t_mig.elapsed().as_millis() as i64, "schema verified — all migrations applied", None).await;
+    if SKIP_GENERAL_MIGRATIONS.load(Ordering::SeqCst) {
+        logger.info("Skipping general migrations (T3-only startup mode)");
+    } else {
+        // Smart migration system: only run if there are pending migrations
+        let t_mig = std::time::Instant::now();
+        match crate::utils::run_migrations_if_pending().await {
+            Ok(_) => {
+                if let Some((ref fh, ref db)) = flow_opt {
+                    fh.step(db, "migrations", "info", "db", "ok",
+                        t_mig.elapsed().as_millis() as i64, "schema verified — all migrations applied", None).await;
+                }
+            },
+            Err(e) => {
+                logger.error(&format!("Migration check/execution failed: {:?}", e));
+                if let Some((ref fh, ref db)) = flow_opt {
+                    fh.step(db, "migrations", "error", "db", "error",
+                        t_mig.elapsed().as_millis() as i64, &e.to_string(), None).await;
+                    fh.done(db, "error").await;
+                }
+                return Err(e);
             }
-        },
-        Err(e) => {
-            logger.error(&format!("Migration check/execution failed: {:?}", e));
-            if let Some((ref fh, ref db)) = flow_opt {
-                fh.step(db, "migrations", "error", "db", "error",
-                    t_mig.elapsed().as_millis() as i64, &e.to_string(), None).await;
-                fh.done(db, "error").await;
-            }
-            return Err(e);
         }
     }
 

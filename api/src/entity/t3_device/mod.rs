@@ -18,6 +18,7 @@ pub mod trendlog_inputs;
 pub mod trendlog_views;
 pub mod trendlogs;
 pub mod variable_points;
+pub mod haystack_entity;
 
 // 🆕 Extended T3000 Tables (Arrays, Tables, Users, Settings)
 pub mod array_points;

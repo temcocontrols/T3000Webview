@@ -4007,6 +4007,25 @@ impl T3000MainService {
                     })?;
 
                 info!("✅ INPUT point {}:{} UPDATED", serial_number, point.index);
+                if let Err(e) = crate::t3_device::haystack_service::upsert_from_point_data(
+                    txn,
+                    "INPUTS",
+                    serial_number,
+                    point.index,
+                    Some(point.full_label.as_str()),
+                    point.digital_analog,
+                    Some(derived_units.as_str()),
+                    Some(point.value),
+                )
+                .await
+                {
+                    warn!(
+                        "⚠️ Failed to upsert Haystack entity for INPUT {}:{}: {}",
+                        serial_number,
+                        point.index,
+                        e
+                    );
+                }
                 Ok(())
             }
             None => {
@@ -4050,6 +4069,25 @@ impl T3000MainService {
                     })?;
 
                 info!("✅ INPUT point {}:{} INSERTED", serial_number, point.index);
+                if let Err(e) = crate::t3_device::haystack_service::upsert_from_point_data(
+                    txn,
+                    "INPUTS",
+                    serial_number,
+                    point.index,
+                    Some(point.full_label.as_str()),
+                    point.digital_analog,
+                    Some(derived_units.as_str()),
+                    Some(point.value),
+                )
+                .await
+                {
+                    warn!(
+                        "⚠️ Failed to upsert Haystack entity for INPUT {}:{}: {}",
+                        serial_number,
+                        point.index,
+                        e
+                    );
+                }
                 Ok(())
             }
         }
@@ -4115,6 +4153,25 @@ impl T3000MainService {
                     })?;
 
                 info!("✅ OUTPUT point {}:{} UPDATED", serial_number, point.index);
+                if let Err(e) = crate::t3_device::haystack_service::upsert_from_point_data(
+                    txn,
+                    "OUTPUTS",
+                    serial_number,
+                    point.index,
+                    Some(point.full_label.as_str()),
+                    point.digital_analog,
+                    Some(derived_units.as_str()),
+                    Some(point.value),
+                )
+                .await
+                {
+                    warn!(
+                        "⚠️ Failed to upsert Haystack entity for OUTPUT {}:{}: {}",
+                        serial_number,
+                        point.index,
+                        e
+                    );
+                }
                 Ok(())
             }
             None => {
@@ -4158,6 +4215,25 @@ impl T3000MainService {
                     })?;
 
                 info!("✅ OUTPUT point {}:{} INSERTED", serial_number, point.index);
+                if let Err(e) = crate::t3_device::haystack_service::upsert_from_point_data(
+                    txn,
+                    "OUTPUTS",
+                    serial_number,
+                    point.index,
+                    Some(point.full_label.as_str()),
+                    point.digital_analog,
+                    Some(derived_units.as_str()),
+                    Some(point.value),
+                )
+                .await
+                {
+                    warn!(
+                        "⚠️ Failed to upsert Haystack entity for OUTPUT {}:{}: {}",
+                        serial_number,
+                        point.index,
+                        e
+                    );
+                }
                 Ok(())
             }
         }
@@ -4228,6 +4304,25 @@ impl T3000MainService {
                     "✅ VARIABLE point {}:{} UPDATED",
                     serial_number, point.index
                 );
+                if let Err(e) = crate::t3_device::haystack_service::upsert_from_point_data(
+                    txn,
+                    "VARIABLES",
+                    serial_number,
+                    point.index,
+                    Some(point.full_label.as_str()),
+                    point.digital_analog,
+                    Some(derived_units.as_str()),
+                    Some(point.value),
+                )
+                .await
+                {
+                    warn!(
+                        "⚠️ Failed to upsert Haystack entity for VARIABLE {}:{}: {}",
+                        serial_number,
+                        point.index,
+                        e
+                    );
+                }
                 Ok(())
             }
             None => {
@@ -4274,6 +4369,25 @@ impl T3000MainService {
                     "✅ VARIABLE point {}:{} INSERTED",
                     serial_number, point.index
                 );
+                if let Err(e) = crate::t3_device::haystack_service::upsert_from_point_data(
+                    txn,
+                    "VARIABLES",
+                    serial_number,
+                    point.index,
+                    Some(point.full_label.as_str()),
+                    point.digital_analog,
+                    Some(derived_units.as_str()),
+                    Some(point.value),
+                )
+                .await
+                {
+                    warn!(
+                        "⚠️ Failed to upsert Haystack entity for VARIABLE {}:{}: {}",
+                        serial_number,
+                        point.index,
+                        e
+                    );
+                }
                 Ok(())
             }
         }
