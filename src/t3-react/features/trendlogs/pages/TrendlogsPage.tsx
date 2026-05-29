@@ -22,6 +22,13 @@ import {
   Text,
   Badge,
   Tooltip,
+  Dialog,
+  DialogSurface,
+  DialogBody,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Input,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
@@ -130,6 +137,23 @@ interface GlobalWatchlistSet {
   updatedAt?: number;
 }
 
+interface ConfirmDialogState {
+  open: boolean;
+  title: string;
+  content: string;
+  confirmText: string;
+  cancelText: string;
+}
+
+interface PromptDialogState {
+  open: boolean;
+  title: string;
+  content: string;
+  confirmText: string;
+  cancelText: string;
+  placeholder: string;
+}
+
 const COMMON_HAYSTACK_TAGS = ['ahu', 'temp', 'critical', 'floor1'] as const;
 const TREND_POLICY_STORAGE_KEY = 't3000.trend.policy.state.v2';
 
@@ -195,6 +219,95 @@ export const TrendLogsPage: React.FC = () => {
   const [globalSetInitialized, setGlobalSetInitialized] = useState(false);
   const [inlineRenameSetName, setInlineRenameSetName] = useState('');
   const [inlineRenameValue, setInlineRenameValue] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({
+    open: false,
+    title: '',
+    content: '',
+    confirmText: 'OK',
+    cancelText: 'Cancel',
+  });
+  const [promptDialog, setPromptDialog] = useState<PromptDialogState>({
+    open: false,
+    title: '',
+    content: '',
+    confirmText: 'Save',
+    cancelText: 'Cancel',
+    placeholder: 'Set name',
+  });
+  const [promptInputValue, setPromptInputValue] = useState('');
+  const confirmResolverRef = useRef<((result: boolean) => void) | null>(null);
+  const promptResolverRef = useRef<((result: string | null) => void) | null>(null);
+
+  const requestConfirmDialog = useCallback((options: {
+    title: string;
+    content: string;
+    confirmText?: string;
+    cancelText?: string;
+  }) => {
+    return new Promise<boolean>((resolve) => {
+      confirmResolverRef.current = resolve;
+      setConfirmDialog({
+        open: true,
+        title: options.title,
+        content: options.content,
+        confirmText: options.confirmText || 'OK',
+        cancelText: options.cancelText || 'Cancel',
+      });
+    });
+  }, []);
+
+  const settleConfirmDialog = useCallback((result: boolean) => {
+    setConfirmDialog((prev) => ({ ...prev, open: false }));
+    const resolver = confirmResolverRef.current;
+    confirmResolverRef.current = null;
+    if (resolver) {
+      resolver(result);
+    }
+  }, []);
+
+  const requestPromptDialog = useCallback((options: {
+    title: string;
+    content: string;
+    initialValue?: string;
+    confirmText?: string;
+    cancelText?: string;
+    placeholder?: string;
+  }) => {
+    return new Promise<string | null>((resolve) => {
+      promptResolverRef.current = resolve;
+      setPromptInputValue(options.initialValue || '');
+      setPromptDialog({
+        open: true,
+        title: options.title,
+        content: options.content,
+        confirmText: options.confirmText || 'Save',
+        cancelText: options.cancelText || 'Cancel',
+        placeholder: options.placeholder || 'Set name',
+      });
+    });
+  }, []);
+
+  const settlePromptDialog = useCallback((result: string | null) => {
+    setPromptDialog((prev) => ({ ...prev, open: false }));
+    const resolver = promptResolverRef.current;
+    promptResolverRef.current = null;
+    if (resolver) {
+      resolver(result);
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (confirmResolverRef.current) {
+        confirmResolverRef.current(false);
+        confirmResolverRef.current = null;
+      }
+      if (promptResolverRef.current) {
+        promptResolverRef.current(null);
+        promptResolverRef.current = null;
+      }
+    };
+  }, []);
   const pointSetSerialNumber = React.useMemo(() => {
     if (typeof selectedDevice?.serialNumber === 'number' && Number.isFinite(selectedDevice.serialNumber)) {
       return selectedDevice.serialNumber;
@@ -1116,15 +1229,20 @@ export const TrendLogsPage: React.FC = () => {
     return false;
   }, [activeSavedSet, currentOrderedSelectedKeys, globalSetInitialized, globalSetName]);
 
-  const confirmDiscardUnsavedSetChanges = useCallback(() => {
+  const confirmDiscardUnsavedSetChanges = useCallback(async () => {
     if (!isCurrentSetDirty) return true;
-    const ok = window.confirm('You have unsaved set changes. Continue and discard them?');
+    const ok = await requestConfirmDialog({
+      title: 'Discard changes?',
+      content: 'You have unsaved set changes. Continue and discard them?',
+      confirmText: 'Discard',
+      cancelText: 'Keep editing',
+    });
     if (!ok) {
       setGlobalSetActionMessage('Stayed on current set.');
       return false;
     }
     return true;
-  }, [isCurrentSetDirty]);
+  }, [isCurrentSetDirty, requestConfirmDialog]);
 
   const toggleGlobalPointSelection = useCallback((key: string) => {
     setGlobalSelectedKeys((prev) => {
@@ -1217,7 +1335,14 @@ export const TrendLogsPage: React.FC = () => {
     const candidateName = (selectedSavedSetName || globalSetName || '').trim();
     let normalizedName = candidateName;
     if (!normalizedName) {
-      const entered = window.prompt('Set name', globalSetName || '');
+      const entered = await requestPromptDialog({
+        title: 'Save Set',
+        content: 'Enter a name for this point set.',
+        initialValue: globalSetName || '',
+        confirmText: 'Save',
+        cancelText: 'Cancel',
+        placeholder: 'Set name',
+      });
       normalizedName = (entered || '').trim();
     }
     if (!normalizedName) {
@@ -1234,7 +1359,12 @@ export const TrendLogsPage: React.FC = () => {
 
     const existing = savedGlobalSets.find((setItem) => setItem.name === normalizedName);
     if (existing && existing.name !== selectedSavedSetName) {
-      const ok = window.confirm(`A set named "${normalizedName}" already exists. Replace it?`);
+      const ok = await requestConfirmDialog({
+        title: 'Replace existing set?',
+        content: `A set named "${normalizedName}" already exists. Replace it?`,
+        confirmText: 'Replace',
+        cancelText: 'Cancel',
+      });
       if (!ok) {
         setGlobalSetActionMessage('Save canceled.');
         return;
@@ -1284,7 +1414,7 @@ export const TrendLogsPage: React.FC = () => {
       console.error('[TrendLogsPage] Failed to save set to DB:', error);
       setGlobalSetActionMessage('Failed to save set to database.');
     }
-  }, [globalPointTags, globalSelectedKeys, globalSelectedOrder, globalSetName, pointSetSerialNumber, savePointSetToDb, savedGlobalSets, selectedSavedSetName]);
+  }, [globalPointTags, globalSelectedKeys, globalSelectedOrder, globalSetName, pointSetSerialNumber, requestConfirmDialog, requestPromptDialog, savePointSetToDb, savedGlobalSets, selectedSavedSetName]);
 
   const renameGlobalSetByName = useCallback(async (setName: string, nextNameRaw: string) => {
     const baseName = (setName || '').trim();
@@ -1303,7 +1433,12 @@ export const TrendLogsPage: React.FC = () => {
     const existing = savedGlobalSets.find((setItem) => setItem.name === nextName);
     const replaceExisting = !!existing && existing.name !== baseName;
     if (replaceExisting) {
-      const ok = window.confirm(`A set named "${nextName}" already exists. Replace it?`);
+      const ok = await requestConfirmDialog({
+        title: 'Replace existing set?',
+        content: `A set named "${nextName}" already exists. Replace it?`,
+        confirmText: 'Replace',
+        cancelText: 'Cancel',
+      });
       if (!ok) {
         setGlobalSetActionMessage('Rename canceled.');
         return;
@@ -1347,7 +1482,7 @@ export const TrendLogsPage: React.FC = () => {
       console.error('[TrendLogsPage] Failed to rename set in DB:', error);
       setGlobalSetActionMessage('Failed to rename set in database.');
     }
-  }, [pointSetSerialNumber, renamePointSetInDb, savedGlobalSets, selectedSavedSetName]);
+  }, [pointSetSerialNumber, renamePointSetInDb, requestConfirmDialog, savedGlobalSets, selectedSavedSetName]);
 
   const resetPointPickerFilters = useCallback(() => {
     setGlobalSearch('');
@@ -1360,7 +1495,12 @@ export const TrendLogsPage: React.FC = () => {
 
     const target = savedGlobalSets.find((setItem) => setItem.name === targetName);
     const pointsCount = target?.selectedKeys.length ?? 0;
-    const ok = window.confirm(`Delete set "${targetName}" (${pointsCount} points)? This cannot be undone.`);
+    const ok = await requestConfirmDialog({
+      title: 'Delete point set?',
+      content: `Delete set "${targetName}" (${pointsCount} points)? This cannot be undone.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+    });
     if (!ok) {
       setGlobalSetActionMessage('Delete canceled.');
       return;
@@ -1390,10 +1530,10 @@ export const TrendLogsPage: React.FC = () => {
       console.error('[TrendLogsPage] Failed to delete set from DB:', error);
       setGlobalSetActionMessage('Failed to delete set from database.');
     }
-  }, [deletePointSetFromDb, inlineRenameSetName, pointSetSerialNumber, savedGlobalSets, selectedSavedSetName]);
+  }, [deletePointSetFromDb, inlineRenameSetName, pointSetSerialNumber, requestConfirmDialog, savedGlobalSets, selectedSavedSetName]);
 
-  const createNewGlobalSet = useCallback(() => {
-    if (!confirmDiscardUnsavedSetChanges()) return;
+  const createNewGlobalSet = useCallback(async () => {
+    if (!(await confirmDiscardUnsavedSetChanges())) return;
 
     const baseName = 'New Set';
     const existingNames = new Set(savedGlobalSets.map((setItem) => setItem.name.toLowerCase()));
@@ -1449,6 +1589,7 @@ export const TrendLogsPage: React.FC = () => {
       ...(target.pointTags || {}),
     }));
     setGlobalTagFilter('all');
+    setGlobalSetName(target.name);
     setIsTemporarySetMode(false);
     if (showMessage) {
       setGlobalSetActionMessage(`Loaded set "${target.name}".`);
@@ -1457,6 +1598,7 @@ export const TrendLogsPage: React.FC = () => {
 
   const loadGlobalSetByName = useCallback(async (setName: string) => {
     if (!setName) return;
+    if (setName === selectedSavedSetName) return;
     const serialNumber = pointSetSerialNumber;
 
     if (!serialNumber) {
@@ -1464,7 +1606,7 @@ export const TrendLogsPage: React.FC = () => {
       return;
     }
 
-    if (!confirmDiscardUnsavedSetChanges()) return;
+    if (!(await confirmDiscardUnsavedSetChanges())) return;
 
     try {
       const rows = await listPointSetsFromDb(serialNumber);
@@ -1487,15 +1629,15 @@ export const TrendLogsPage: React.FC = () => {
       applyGlobalSetSelection(fallback);
       setGlobalSetActionMessage('Loaded set from local cache (refresh failed).');
     }
-  }, [applyGlobalSetSelection, confirmDiscardUnsavedSetChanges, listPointSetsFromDb, pointSetSerialNumber, savedGlobalSets]);
+  }, [applyGlobalSetSelection, confirmDiscardUnsavedSetChanges, listPointSetsFromDb, pointSetSerialNumber, savedGlobalSets, selectedSavedSetName]);
 
-  const openGlobalSetChartByName = useCallback((setName: string) => {
+  const openGlobalSetChartByName = useCallback(async (setName: string) => {
     if (!setName) return;
     const target = savedGlobalSets.find((setItem) => setItem.name === setName);
     if (!target) return;
 
     if (setName !== selectedSavedSetName) {
-      if (!confirmDiscardUnsavedSetChanges()) return;
+      if (!(await confirmDiscardUnsavedSetChanges())) return;
       applyGlobalSetSelection(target, false);
     }
 
@@ -2921,6 +3063,70 @@ export const TrendLogsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <Dialog
+        open={confirmDialog.open}
+        onOpenChange={(_, data) => {
+          if (!data.open) {
+            settleConfirmDialog(false);
+          }
+        }}
+      >
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>{confirmDialog.title}</DialogTitle>
+            <DialogContent>
+              <Text>{confirmDialog.content}</Text>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => settleConfirmDialog(false)}>
+                {confirmDialog.cancelText}
+              </Button>
+              <Button appearance="primary" onClick={() => settleConfirmDialog(true)}>
+                {confirmDialog.confirmText}
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      <Dialog
+        open={promptDialog.open}
+        onOpenChange={(_, data) => {
+          if (!data.open) {
+            settlePromptDialog(null);
+          }
+        }}
+      >
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>{promptDialog.title}</DialogTitle>
+            <DialogContent>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <Text>{promptDialog.content}</Text>
+                <Input
+                  value={promptInputValue}
+                  onChange={(_, data) => setPromptInputValue(data.value)}
+                  placeholder={promptDialog.placeholder}
+                  aria-label={promptDialog.placeholder}
+                />
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => settlePromptDialog(null)}>
+                {promptDialog.cancelText}
+              </Button>
+              <Button
+                appearance="primary"
+                onClick={() => settlePromptDialog(promptInputValue)}
+                disabled={!promptInputValue.trim()}
+              >
+                {promptDialog.confirmText}
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
 
 
     </div>
