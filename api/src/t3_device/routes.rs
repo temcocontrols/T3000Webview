@@ -107,6 +107,7 @@ fn get_valid_table_names() -> &'static [&'static str] {
         "DEVICES", "INPUTS", "OUTPUTS", "VARIABLES", "PROGRAMS",
         "SCHEDULES", "PID_TABLE", "HOLIDAYS", "GRAPHICS", "ALARMS",
         "MONITORDATA", "TRENDLOGS", "TRENDLOG_INPUTS", "TRENDLOG_DATA", "ARRAYS", "HAYSTACK_ENTITY"
+        , "TRENDLOG_POINT_SETS"
     ]
 }
 
@@ -196,6 +197,7 @@ async fn get_database_status(State(state): State<T3AppState>) -> Result<Json<Dat
                 "TRENDLOG_INPUTS" => "Trend log input point configurations",
                 "TRENDLOG_DATA" => "Historical trend data",
                 "HAYSTACK_ENTITY" => "Normalized Haystack entity cache",
+                "TRENDLOG_POINT_SETS" => "Saved point sets for Trend Logs Point Sets workspace",
                 _ => "Database table",
             };
             TableInfo { name, description: description.to_string() }
@@ -241,6 +243,7 @@ async fn get_database_status(State(state): State<T3AppState>) -> Result<Json<Dat
             "TRENDLOG_INPUTS" => "Trend log input point configurations",
             "TRENDLOG_DATA" => "Historical trend data",
             "HAYSTACK_ENTITY" => "Normalized Haystack entity cache",
+            "TRENDLOG_POINT_SETS" => "Saved point sets for Trend Logs Point Sets workspace",
             _ => "Database table",
         };
 

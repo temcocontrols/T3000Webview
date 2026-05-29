@@ -61,3 +61,4 @@ pub mod email_settings_routes;  // ✅ T3000 Email Settings API Routes (DB-backe
 pub mod expansion_io_routes;    // ✅ T3000 Expansion IO API Routes (DB-backed + FFI refresh stub entryType=51)
 pub mod haystack_service;       // ✅ Haystack entity mapper and query service
 pub mod haystack_routes;        // ✅ Haystack API routes (/api/haystack/*)
+pub mod point_sets_routes;      // ✅ Point Sets API routes (/api/point-sets/*)

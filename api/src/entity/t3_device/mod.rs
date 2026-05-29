@@ -15,6 +15,7 @@ pub mod trendlog_data_detail;
 pub mod trendlog_data_old;
 pub mod trendlog_data_sync_metadata;
 pub mod trendlog_inputs;
+pub mod trendlog_point_sets;
 pub mod trendlog_views;
 pub mod trendlogs;
 pub mod variable_points;
