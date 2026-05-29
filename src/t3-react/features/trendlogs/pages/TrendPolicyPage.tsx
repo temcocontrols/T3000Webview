@@ -867,7 +867,6 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
                   <col className={styles.colPoint} />
                   <col className={styles.colLabel} />
                   <col className={styles.colFullLabel} />
-                  <col className={styles.colDevice} />
                   <col className={styles.colTags} />
                 </colgroup>
                 <thead>
@@ -877,7 +876,6 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
                     <th>Point</th>
                     <th>Label</th>
                     <th>Full Label</th>
-                    <th>Device</th>
                     <th>Tags</th>
                   </tr>
                 </thead>
@@ -903,7 +901,6 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
                         <td className={styles.monoCell}>{p.type.charAt(0).toUpperCase()}{p.index}</td>
                         <td className={styles.truncateText} title={p.pointLabel}>{p.pointLabel}</td>
                         <td className={styles.truncateText} title={p.fullLabel}>{p.fullLabel}</td>
-                        <td className={styles.deviceCell}>SN-{p.serial}</td>
                         <td>
                           <div className={styles.pointTagsCell}>
                             {tags.length === 0 ? (

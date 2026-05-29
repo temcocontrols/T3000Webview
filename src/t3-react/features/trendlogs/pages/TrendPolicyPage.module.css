@@ -109,8 +109,8 @@
   margin: 0;
   cursor: pointer;
   accent-color: #0f6cbd;
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
 }
 
 /* ── Left panel body ── */
@@ -242,10 +242,11 @@
 .typeFilterBar {
   display: flex;
   align-items: center;
-  padding: 4px 12px;
-  gap: 6px;
-  min-height: 36px;
+  padding: 2px 10px;
+  gap: 5px;
+  min-height: 32px;
   border-bottom: 1px solid #e1e4e8;
+  flex-wrap: nowrap;
 }
 
 .typeTabs {
@@ -256,14 +257,15 @@
 
 .clearSelectionBtn {
   margin-left: 8px;
-  height: 26px;
+  height: 24px;
   padding: 0 2px;
   border: none;
   background: transparent;
   color: #0f6cbd;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .clearSelectionBtn:hover:not(:disabled) {
@@ -277,17 +279,20 @@
 
 .typeSearchWrap {
   position: relative;
-  margin-left: 10px;
+  margin-left: auto;
+  flex: 1;
+  min-width: 170px;
+  max-width: 280px;
 }
 
 .typeSearchInput {
-  width: 240px;
-  height: 26px;
+  width: 100%;
+  height: 24px;
   border: 1px solid #d0d7de;
   border-radius: 8px;
   background: #ffffff;
   padding: 0 28px 0 10px;
-  font-size: 12px;
+  font-size: 11px;
   color: #24292f;
   outline: none;
 }
@@ -321,12 +326,12 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 26px;
-  padding: 0 9px;
+  height: 24px;
+  padding: 0 7px;
   border: 1px solid #d0d7de;
   border-radius: 8px;
   background: #ffffff;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   color: #475467;
   cursor: pointer;
@@ -382,12 +387,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
-  height: 16px;
+  min-width: 16px;
+  height: 14px;
   padding: 0 4px;
   background: #eaeef2;
   border-radius: 6px;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   color: #656d76;
 }
@@ -638,20 +643,23 @@
 .statsRow {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-left: 6px;
+  gap: 4px;
+  margin-left: 4px;
+  flex-wrap: nowrap;
 }
 
 .statsChip {
   display: inline-flex;
   align-items: center;
-  height: 22px;
-  padding: 0 8px;
+  justify-content: center;
+  height: 20px;
+  padding: 0 6px;
   border-radius: 999px;
   border: 1px solid #d0d7de;
   background: #ffffff;
   color: #475467;
-  font-size: 11px;
+  font-size: 9px;
+  white-space: nowrap;
 }
 
 .helperText {
@@ -674,7 +682,7 @@
 .pointTable {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 11px;
   table-layout: fixed;
 }
 
@@ -683,9 +691,9 @@
   top: 0;
   background: #f6f8fa;
   border-bottom: 1px solid #d0d7de;
-  padding: 5px 8px;
+  padding: 6px 6px;
   text-align: left;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: #656d76;
   text-transform: uppercase;
@@ -695,7 +703,7 @@
 
 .pointTable td {
   border-bottom: 1px solid #eaeef2;
-  padding: 4px 8px;
+  padding: 6px 6px;
   vertical-align: middle;
 }
 
@@ -704,12 +712,41 @@
 }
 
 .colCheck { width: 34px; }
-.colType { width: 72px; }
-.colPoint { width: 72px; }
-.colLabel { width: 120px; }
-.colFullLabel { width: 180px; }
-.colDevice { width: 110px; }
-.colTags { width: 260px; }
+.colType { width: 52px; }
+.colPoint { width: 52px; }
+.colLabel { width: 72px; }
+.colFullLabel { width: 96px; }
+.colTags { width: 320px; }
+
+.pointTable th:nth-child(2),
+.pointTable td:nth-child(2) {
+  width: 52px;
+  max-width: 52px;
+}
+
+.pointTable th:nth-child(3),
+.pointTable td:nth-child(3) {
+  width: 52px;
+  max-width: 52px;
+}
+
+.pointTable th:nth-child(4),
+.pointTable td:nth-child(4) {
+  width: 72px;
+  max-width: 72px;
+}
+
+.pointTable th:nth-child(5),
+.pointTable td:nth-child(5) {
+  width: 96px;
+  max-width: 96px;
+}
+
+.pointTable th:nth-child(6),
+.pointTable td:nth-child(6) {
+  width: 320px;
+  max-width: 320px;
+}
 
 .rowSelected {
   background: #f0f7ff;
@@ -726,9 +763,9 @@
 /* ── Type badge ── */
 .typeTag {
   display: inline-block;
-  padding: 1px 5px;
+  padding: 1px 4px;
   border-radius: 8px;
-  font-size: 8px;
+  font-size: 7px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.15px;
@@ -741,13 +778,7 @@
 .monoCell {
   font-family: monospace;
   color: #656d76;
-  font-size: 11px;
-}
-
-.deviceCell {
-  color: #656d76;
-  font-size: 11px;
-  font-family: monospace;
+  font-size: 10px;
 }
 
 .truncateText {
@@ -760,19 +791,19 @@
 .pointTagsCell {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;
+  gap: 1px;
   min-width: 120px;
 }
 
 .pointTagChip {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: 1px 4px;
+  gap: 1px;
+  padding: 1px 3px;
   border: 1px solid #d2b4f7;
   border-radius: 8px;
   background: #f0e6ff;
-  font-size: 9px;
+  font-size: 8px;
   color: #5a1e99;
 }
 
@@ -796,7 +827,6 @@
     grid-template-rows: 280px 1fr;
   }
 
-  .colDevice,
   .colTags {
     width: 150px;
   }
