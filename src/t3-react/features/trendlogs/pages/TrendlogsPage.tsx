@@ -186,7 +186,6 @@ export const TrendLogsPage: React.FC = () => {
   const [globalRebuildMessage, setGlobalRebuildMessage] = useState('');
   const [globalReloadRevision, setGlobalReloadRevision] = useState(0);
   const [isPointPickerOpen, setIsPointPickerOpen] = useState(false);
-  const [showPointSetsHelp, setShowPointSetsHelp] = useState(true);
   const [draggingPointKey, setDraggingPointKey] = useState<string | null>(null);
 
   const setActiveTab = useCallback((tab: TrendCenterTab) => {
@@ -1958,25 +1957,10 @@ export const TrendLogsPage: React.FC = () => {
                   >
                     {globalRebuildLoading ? 'Rebuilding...' : 'Rebuild Haystack'}
                   </button>
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={() => setShowPointSetsHelp((prev) => !prev)}
-                    title="Show or hide quick help for Point Sets"
-                  >
-                    {showPointSetsHelp ? 'Hide Help' : 'Show Help'}
-                  </button>
                   {globalRebuildMessage && (
                     <Text size={200}>{globalRebuildMessage}</Text>
                   )}
                 </div>
-              </div>
-              )}
-
-              {activeTab === 'global' && selectedDevice && showPointSetsHelp && (
-              <div className={styles.commandHelpBar}>
-                <Text size={200}><strong>Point Sets</strong>: this page is set-first. Build and reuse named point sets for charting.</Text>
-                <Text size={200}><strong>Add Points</strong>: opens a drawer with point search + tag filters for quick selection.</Text>
-                <Text size={200}><strong>Manage Tags</strong>: use Points and Tags workspace when you need to author or edit tags.</Text>
               </div>
               )}
 
