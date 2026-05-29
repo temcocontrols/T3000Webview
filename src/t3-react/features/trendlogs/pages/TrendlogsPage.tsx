@@ -1137,35 +1137,6 @@ export const TrendLogsPage: React.FC = () => {
     });
   }, []);
 
-  const applyGlobalSelectionToChart = useCallback(() => {
-    if (!selectedDevice || selectedGlobalPoints.length === 0) return;
-
-    const syntheticMonitor: TrendLogData = {
-      serialNumber: selectedDevice.serialNumber,
-      trendlogId: 'GLOBAL',
-      trendlogIndex: 'GLOBAL',
-      trendlogLabel: 'Point Set',
-      status: 'ON',
-      _uniqueIndex: 99999,
-      panelId: selectedDevice.panelId,
-    };
-
-    const syntheticInputs: TrendLogInput[] = selectedGlobalPoints.map((point) => ({
-      serialNumber: selectedDevice.serialNumber,
-      panelId: selectedDevice.panelId || 1,
-      trendlogId: 'GLOBAL',
-      pointType: point.type,
-      pointIndex: point.index,
-      pointLabel: point.label,
-    }));
-
-    setSelectedMonitor(syntheticMonitor);
-    setSelectedItems(new Set());
-    setMonitorInputs(syntheticInputs);
-    syncMonitorQuery(syntheticMonitor);
-    setActiveTab('chart');
-  }, [selectedDevice, selectedGlobalPoints, setActiveTab, syncMonitorQuery]);
-
   const applyCommonTag = useCallback((tag: string) => {
     setGlobalTagFilter(tag);
   }, []);
@@ -1485,6 +1456,71 @@ export const TrendLogsPage: React.FC = () => {
     applyGlobalSetSelection(target);
   }, [applyGlobalSetSelection, confirmDiscardUnsavedSetChanges, savedGlobalSets, selectedSavedSetName]);
 
+  const openGlobalSetChartByName = useCallback((setName: string) => {
+    if (!setName) return;
+    const target = savedGlobalSets.find((setItem) => setItem.name === setName);
+    if (!target) return;
+
+    if (setName !== selectedSavedSetName) {
+      if (!confirmDiscardUnsavedSetChanges()) return;
+      applyGlobalSetSelection(target, false);
+    }
+
+    if (!selectedDevice) {
+      setGlobalSetActionMessage('No device selected.');
+      return;
+    }
+
+    const pointsByKey = new Map(globalPoints.map((point) => [point.key, point]));
+    const orderedPoints = (target.selectedKeys || [])
+      .map((key) => pointsByKey.get(key))
+      .filter((point): point is GlobalPointItem => !!point);
+
+    if (orderedPoints.length === 0) {
+      setGlobalSetActionMessage(`Set "${target.name}" has no valid points to chart.`);
+      return;
+    }
+
+    const syntheticMonitor: TrendLogData = {
+      serialNumber: selectedDevice.serialNumber,
+      trendlogId: 'GLOBAL',
+      trendlogIndex: 'GLOBAL',
+      trendlogLabel: `Point Set: ${target.name}`,
+      status: 'ON',
+      _uniqueIndex: 99999,
+      panelId: selectedDevice.panelId,
+    };
+
+    const syntheticInputs: TrendLogInput[] = orderedPoints.map((point) => ({
+      serialNumber: selectedDevice.serialNumber,
+      panelId: selectedDevice.panelId || 1,
+      trendlogId: 'GLOBAL',
+      pointType: point.type,
+      pointIndex: point.index,
+      pointLabel: point.label,
+    }));
+
+    syncMonitorQuery(syntheticMonitor);
+    navigate('/t3000/trends/chart', {
+      state: {
+        serialNumber: selectedDevice.serialNumber,
+        panelId: selectedDevice.panelId || 1,
+        trendlogId: 'GLOBAL',
+        monitorId: 'GLOBAL',
+        itemData: {
+          title: `Point Set: ${target.name}`,
+          t3Entry: {
+            id: 'GLOBAL',
+            pid: selectedDevice.panelId || 1,
+            label: `Point Set: ${target.name}`,
+            command: `GLOBAL:${target.name}`,
+          },
+        },
+        monitorInputs: syntheticInputs,
+      },
+    });
+  }, [applyGlobalSetSelection, confirmDiscardUnsavedSetChanges, globalPoints, navigate, savedGlobalSets, selectedDevice, selectedSavedSetName, syncMonitorQuery]);
+
   const triggerGlobalReload = useCallback(() => {
     setGlobalReloadRevision((prev) => prev + 1);
   }, []);
@@ -1547,13 +1583,7 @@ export const TrendLogsPage: React.FC = () => {
         className={`${styles.tabButton} ${activeTab === 'points-tags' ? styles.tabButtonActive : ''}`}
         onClick={() => setActiveTab('points-tags')}
       >
-        Points and Tags
-      </button>
-      <button
-        className={`${styles.tabButton} ${activeTab === 'chart' ? styles.tabButtonActive : ''}`}
-        onClick={() => setActiveTab('chart')}
-      >
-        Chart
+        Haystack Tags
       </button>
     </div>
   );
@@ -1957,7 +1987,7 @@ export const TrendLogsPage: React.FC = () => {
               icon={<ChartMultipleRegular className={styles.iconSmall} />}
               onClick={async () => {
                 await handleMonitorSelect(item);
-                setActiveTab('chart');
+                await handleViewChart(item);
               }}
               title="View trend chart for this trendlog"
             >
@@ -2137,6 +2167,22 @@ export const TrendLogsPage: React.FC = () => {
 
               {activeTab === 'points-tags' && (
                 <div className={styles.embeddedPolicyWrap}>
+                  <div className={styles.policyInfoBar}>
+                    <Text size={200} className={styles.globalInfoBarText}>
+                      Manage semantic tags for Haystack integration on this page.
+                    </Text>
+                    <button
+                      className={styles.infoBarLinkButton}
+                      onClick={rebuildGlobalHaystack}
+                      disabled={globalRebuildLoading}
+                      title="Rebuild Haystack tags from backend point metadata"
+                    >
+                      {globalRebuildLoading ? 'Rebuilding tags...' : 'Rebuild Tags'}
+                    </button>
+                    {globalRebuildMessage && (
+                      <Text size={200} className={styles.globalInfoBarMessage}>{globalRebuildMessage}</Text>
+                    )}
+                  </div>
                   <TrendPolicyPage embedded />
                 </div>
               )}
@@ -2236,45 +2282,21 @@ export const TrendLogsPage: React.FC = () => {
               )}
 
               {activeTab === 'global' && selectedDevice && (
-              <div className={styles.toolbar}>
-                <div className={styles.toolbarContainer}>
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={() => setIsPointPickerOpen(true)}
-                    title="Add or remove points using point picker"
-                  >
-                    Add Points
-                  </button>
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={applyGlobalSelectionToChart}
-                    disabled={globalSelectedKeys.size === 0}
-                    title="Open chart with selected points from current set"
-                  >
-                    Open Chart
-                  </button>
-                  <Text size={200} className={styles.globalToolbarHint}>
-                    {selectedSavedSetName ? `Editing set: ${selectedSavedSetName}` : 'Editing temporary set'}
+              <div className={styles.globalInfoBar}>
+                <div className={styles.globalInfoBarLeft}>
+                  <InfoRegular className={styles.globalInfoBarIcon} />
+                  <Text size={200} className={styles.globalInfoBarText}>
+                    Select a saved point set from the left list, then use <strong>Add Points</strong> in Current Set Points to edit it and click <strong>Save Set</strong> to persist changes. Open <strong>Haystack Tags</strong> to manage semantic tags. Rebuild Tags is available inside that page.
                   </Text>
-                  <div className={styles.toolbarSeparator} role="separator" />
+                </div>
+                <div className={styles.globalInfoBarActions}>
                   <button
-                    className={styles.toolbarButton}
+                    className={styles.infoBarLinkButton}
                     onClick={() => setActiveTab('points-tags')}
-                    title="Open Points and Tags to add or edit Haystack tags"
+                    title="Open the dedicated Haystack page to manage tags"
                   >
-                    Manage Tags
+                    Haystack Tags
                   </button>
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={rebuildGlobalHaystack}
-                    disabled={globalRebuildLoading}
-                    title="Rebuild Haystack tags from backend point metadata"
-                  >
-                    {globalRebuildLoading ? 'Rebuilding...' : 'Rebuild Haystack'}
-                  </button>
-                  {globalRebuildMessage && (
-                    <Text size={200}>{globalRebuildMessage}</Text>
-                  )}
                 </div>
               </div>
               )}
@@ -2473,21 +2495,37 @@ export const TrendLogsPage: React.FC = () => {
                             </div>
                           ) : (
                             filteredSavedGlobalSets.map((setItem) => (
-                              <button
+                              <div
                                 key={setItem.name}
-                                type="button"
                                 className={`${styles.globalSetListItem} ${selectedSavedSetName === setItem.name ? styles.globalSetListItemActive : ''}`}
-                                onClick={() => loadGlobalSetByName(setItem.name)}
-                                title={`Load ${setItem.name}`}
                               >
-                                <Text size={200} weight="semibold" className={styles.globalSetNameText}>{setItem.name}</Text>
+                                <div className={styles.globalSetItemHeaderRow}>
+                                  <button
+                                    type="button"
+                                    className={styles.globalSetItemMainButton}
+                                    onClick={() => loadGlobalSetByName(setItem.name)}
+                                    title={`Load ${setItem.name}`}
+                                  >
+                                    <Text size={200} weight="semibold" className={styles.globalSetNameText}>{setItem.name}</Text>
+                                  </button>
+                                  <Tooltip content={`Open chart for set "${setItem.name}"`} relationship="label">
+                                    <button
+                                      type="button"
+                                      className={styles.smallActionButton}
+                                      onClick={() => openGlobalSetChartByName(setItem.name)}
+                                      title={`Open chart for ${setItem.name}`}
+                                    >
+                                      Open Chart
+                                    </button>
+                                  </Tooltip>
+                                </div>
                                 <div className={styles.globalSetMetaRow}>
                                   <span className={styles.globalSetMetaBadge}>{setItem.selectedKeys.length} pts</span>
                                   <Text size={100} className={styles.globalSetMetaText}>
                                     {setItem.updatedAt ? `Updated ${new Date(setItem.updatedAt).toLocaleString()}` : 'Updated time unavailable'}
                                   </Text>
                                 </div>
-                              </button>
+                              </div>
                             ))
                           )}
                         </div>
