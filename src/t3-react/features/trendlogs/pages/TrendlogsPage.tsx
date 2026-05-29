@@ -187,10 +187,11 @@ export const TrendLogsPage: React.FC = () => {
   const [globalReloadRevision, setGlobalReloadRevision] = useState(0);
   const [isPointPickerOpen, setIsPointPickerOpen] = useState(false);
   const [draggingPointKey, setDraggingPointKey] = useState<string | null>(null);
-  const [isTemporarySetMode, setIsTemporarySetMode] = useState(false);
+  const [, setIsTemporarySetMode] = useState(false);
   const [globalSetSort, setGlobalSetSort] = useState<'recent' | 'name'>('recent');
   const [globalSetSearch, setGlobalSetSearch] = useState('');
   const [globalSetActionMessage, setGlobalSetActionMessage] = useState('');
+  const [globalSetInitialized, setGlobalSetInitialized] = useState(false);
   const pointSetSerialNumber = React.useMemo(() => {
     if (typeof selectedDevice?.serialNumber === 'number' && Number.isFinite(selectedDevice.serialNumber)) {
       return selectedDevice.serialNumber;
@@ -753,8 +754,9 @@ export const TrendLogsPage: React.FC = () => {
   }, [selectedSerial]);
 
   useEffect(() => {
+    if (activeTab === 'global') return;
     fetchTrendLogs();
-  }, [fetchTrendLogs]);
+  }, [activeTab, fetchTrendLogs]);
 
   useEffect(() => {
     if (!rawTab) {
@@ -765,8 +767,9 @@ export const TrendLogsPage: React.FC = () => {
   }, [rawTab, searchParams, setSearchParams]);
 
   useEffect(() => {
+    if (activeTab === 'global') return;
     fetchPointSyncSummary();
-  }, [fetchPointSyncSummary]);
+  }, [activeTab, fetchPointSyncSummary]);
 
   // Reset auto-refresh state when device changes (don't clear data to avoid visual flash)
   useEffect(() => {
@@ -776,6 +779,7 @@ export const TrendLogsPage: React.FC = () => {
 
   // Auto-refresh once per device - ONLY after initial DB fetch completes
   useEffect(() => {
+    if (activeTab === 'global') return;
     if (!dbChecked || loading || !selectedSerial || autoRefreshed) return;
     if (deviceRefreshedRef.current === selectedSerial) return;
     if (autoRefreshInProgressRef.current) return;
@@ -810,7 +814,6 @@ export const TrendLogsPage: React.FC = () => {
         const refreshResponse = await TrendlogRefreshApi.refreshAllFromDevice(serial);
         console.log('[TrendLogsPage] Refresh response:', refreshResponse);
         await fetchTrendLogs();
-        await fetchPointSyncSummary();
         setAutoRefreshed(true);
       } catch (error) {
         console.error('[TrendLogsPage] Auto-refresh failed:', error);
@@ -823,7 +826,7 @@ export const TrendLogsPage: React.FC = () => {
     };
 
     checkAndRefresh();
-  }, [autoRefreshed, dbChecked, fetchPointSyncSummary, fetchTrendLogs, loading, selectedSerial, setPointTypeSyncing]);
+  }, [activeTab, autoRefreshed, dbChecked, fetchPointSyncSummary, fetchTrendLogs, loading, selectedSerial, setPointTypeSyncing]);
 
   // Refresh all trendlogs from device (Trigger #2: Manual "Refresh All" button)
   const handleRefreshFromDevice = async () => {
@@ -856,7 +859,6 @@ export const TrendLogsPage: React.FC = () => {
       const refreshResponse = await TrendlogRefreshApi.refreshAllFromDevice(serial);
       console.log('[TrendLogsPage] Refresh response:', refreshResponse);
       await fetchTrendLogs();
-      await fetchPointSyncSummary();
     } catch (error) {
       console.error('[TrendLogsPage] Failed to refresh from device:', error);
       setError(error instanceof Error ? error.message : 'Failed to refresh from device');
@@ -1085,6 +1087,10 @@ export const TrendLogsPage: React.FC = () => {
   }, [savedGlobalSets, selectedSavedSetName]);
 
   const isCurrentSetDirty = React.useMemo(() => {
+    if (!globalSetInitialized) {
+      return false;
+    }
+
     const normalizedName = globalSetName.trim();
     if (!activeSavedSet) {
       return normalizedName.length > 0 || currentOrderedSelectedKeys.length > 0;
@@ -1105,7 +1111,7 @@ export const TrendLogsPage: React.FC = () => {
     }
 
     return false;
-  }, [activeSavedSet, currentOrderedSelectedKeys, globalSetName]);
+  }, [activeSavedSet, currentOrderedSelectedKeys, globalSetInitialized, globalSetName]);
 
   const confirmDiscardUnsavedSetChanges = useCallback(() => {
     if (!isCurrentSetDirty) return true;
@@ -1449,16 +1455,12 @@ export const TrendLogsPage: React.FC = () => {
     setGlobalSelectedOrder([]);
     setGlobalTagFilter('all');
     setIsTemporarySetMode(true);
+    setGlobalSetInitialized(true);
     setGlobalSetActionMessage('New temporary set started.');
   }, [confirmDiscardUnsavedSetChanges]);
 
-  const loadGlobalSetByName = useCallback((setName: string) => {
-    if (!setName) return;
-    if (setName === selectedSavedSetName) return;
-    if (!confirmDiscardUnsavedSetChanges()) return;
-    const target = savedGlobalSets.find((setItem) => setItem.name === setName);
-    if (!target) return;
-    setSelectedSavedSetName(setName);
+  const applyGlobalSetSelection = useCallback((target: GlobalWatchlistSet, showMessage = true) => {
+    setSelectedSavedSetName(target.name);
     setGlobalSelectedKeys(new Set(target.selectedKeys));
     setGlobalSelectedOrder(target.selectedKeys || []);
     setGlobalPointTags((prev) => ({
@@ -1468,8 +1470,20 @@ export const TrendLogsPage: React.FC = () => {
     setGlobalTagFilter('all');
     setGlobalSetName(target.name);
     setIsTemporarySetMode(false);
-    setGlobalSetActionMessage(`Loaded set "${target.name}".`);
-  }, [confirmDiscardUnsavedSetChanges, savedGlobalSets, selectedSavedSetName]);
+    setGlobalSetInitialized(true);
+    if (showMessage) {
+      setGlobalSetActionMessage(`Loaded set "${target.name}".`);
+    }
+  }, []);
+
+  const loadGlobalSetByName = useCallback((setName: string) => {
+    if (!setName) return;
+    if (setName === selectedSavedSetName) return;
+    if (!confirmDiscardUnsavedSetChanges()) return;
+    const target = savedGlobalSets.find((setItem) => setItem.name === setName);
+    if (!target) return;
+    applyGlobalSetSelection(target);
+  }, [applyGlobalSetSelection, confirmDiscardUnsavedSetChanges, savedGlobalSets, selectedSavedSetName]);
 
   const triggerGlobalReload = useCallback(() => {
     setGlobalReloadRevision((prev) => prev + 1);
@@ -1681,13 +1695,10 @@ export const TrendLogsPage: React.FC = () => {
 
         setGlobalPoints(merged);
         setGlobalPointTags(seededTags);
-        setGlobalSelectedKeys(new Set());
-        setGlobalSelectedOrder([]);
       } catch (globalPointsError) {
         console.error('[TrendLogsPage] Failed to load global points:', globalPointsError);
         setGlobalPoints([]);
         setGlobalPointTags({});
-        setGlobalSelectedOrder([]);
       } finally {
         setGlobalPointsLoading(false);
       }
@@ -1700,6 +1711,7 @@ export const TrendLogsPage: React.FC = () => {
     if (!selectedDevice?.serialNumber) {
       setSavedGlobalSets([]);
       setSelectedSavedSetName('');
+      setGlobalSetInitialized(false);
       return;
     }
 
@@ -1709,14 +1721,25 @@ export const TrendLogsPage: React.FC = () => {
         const rows = await listPointSetsFromDb(selectedDevice.serialNumber);
         if (cancelled) return;
         setSavedGlobalSets(rows);
-        setSelectedSavedSetName('');
-        setIsTemporarySetMode(false);
+
+        if (rows.length > 0) {
+          const selectedFromRows = rows.find((setItem) => setItem.name === selectedSavedSetName);
+          applyGlobalSetSelection(selectedFromRows || rows[0], false);
+        } else {
+          setSelectedSavedSetName('');
+          setGlobalSetName('');
+          setGlobalSelectedKeys(new Set());
+          setGlobalSelectedOrder([]);
+          setIsTemporarySetMode(false);
+          setGlobalSetInitialized(false);
+        }
       } catch (error) {
         console.error('[TrendLogsPage] Failed to load point sets from DB:', error);
         if (cancelled) return;
         setSavedGlobalSets([]);
         setSelectedSavedSetName('');
         setIsTemporarySetMode(false);
+        setGlobalSetInitialized(false);
         setGlobalSetActionMessage('Failed to load point sets from database.');
       }
     })();
@@ -1724,15 +1747,27 @@ export const TrendLogsPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [listPointSetsFromDb, selectedDevice?.serialNumber]);
+  }, [applyGlobalSetSelection, listPointSetsFromDb, selectedDevice?.serialNumber]);
 
   useEffect(() => {
     if (activeTab !== 'global') return;
-    if (isTemporarySetMode) return;
-    if (selectedSavedSetName) return;
-    if (sortedSavedGlobalSets.length === 0) return;
-    loadGlobalSetByName(sortedSavedGlobalSets[0].name);
-  }, [activeTab, isTemporarySetMode, loadGlobalSetByName, selectedSavedSetName, sortedSavedGlobalSets]);
+    if (!selectedDevice?.serialNumber) return;
+    if (globalPoints.length === 0) return;
+    if (savedGlobalSets.length === 0) return;
+
+    const selectedName = selectedSavedSetName && savedGlobalSets.some((setItem) => setItem.name === selectedSavedSetName)
+      ? selectedSavedSetName
+      : savedGlobalSets[0].name;
+
+    if (!selectedName) return;
+
+    if (globalSetInitialized && selectedSavedSetName === selectedName) return;
+
+    const target = savedGlobalSets.find((setItem) => setItem.name === selectedName);
+    if (!target) return;
+
+    applyGlobalSetSelection(target, false);
+  }, [activeTab, applyGlobalSetSelection, globalPoints.length, globalSetInitialized, savedGlobalSets, selectedDevice?.serialNumber, selectedSavedSetName]);
 
   // Display all 12 trendlog slots (matching T3000 desktop), merge actual data
   const displayTrendLogs = React.useMemo(() => {
