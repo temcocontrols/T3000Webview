@@ -434,7 +434,7 @@
 .globalInfoBar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 16px;
   padding: 10px 12px;
   margin-bottom: 8px;
@@ -461,6 +461,19 @@
 .globalInfoBarText {
   color: #1f2a37;
   line-height: 1.45;
+}
+
+.globalInfoBarTextBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.globalInfoBarInlineRow {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .globalInfoBarActions {

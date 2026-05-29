@@ -2285,18 +2285,22 @@ export const TrendLogsPage: React.FC = () => {
               <div className={styles.globalInfoBar}>
                 <div className={styles.globalInfoBarLeft}>
                   <InfoRegular className={styles.globalInfoBarIcon} />
-                  <Text size={200} className={styles.globalInfoBarText}>
-                    Select a saved point set from the left list, then use <strong>Add Points</strong> in Current Set Points to edit it and click <strong>Save Set</strong> to persist changes. Open <strong>Haystack Tags</strong> to manage semantic tags. Rebuild Tags is available inside that page.
-                  </Text>
-                </div>
-                <div className={styles.globalInfoBarActions}>
-                  <button
-                    className={styles.infoBarLinkButton}
-                    onClick={() => setActiveTab('points-tags')}
-                    title="Open the dedicated Haystack page to manage tags"
-                  >
-                    Haystack Tags
-                  </button>
+                  <div className={styles.globalInfoBarTextBlock}>
+                    <Text size={200} className={styles.globalInfoBarText}>
+                      Select a saved point set from the left list, then use <strong>Add Points</strong> in Current Set Points to edit it and click <strong>Save Set</strong> to persist changes.
+                    </Text>
+                    <div className={styles.globalInfoBarInlineRow}>
+                      <Text size={200} className={styles.globalInfoBarText}>Open</Text>
+                      <button
+                        className={styles.infoBarLinkButton}
+                        onClick={() => setActiveTab('points-tags')}
+                        title="Open the dedicated Haystack page to manage tags"
+                      >
+                        Haystack Tags
+                      </button>
+                      <Text size={200} className={styles.globalInfoBarText}>to manage semantic tags. Rebuild Tags is available inside that page.</Text>
+                    </div>
+                  </div>
                 </div>
               </div>
               )}
