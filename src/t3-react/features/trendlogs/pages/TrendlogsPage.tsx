@@ -185,11 +185,23 @@ export const TrendLogsPage: React.FC = () => {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const selectedSerial = selectedDevice?.serialNumber;
   const selectedPanelId = selectedDevice?.panelId;
+
   const rawTab = searchParams.get('tab');
   const activeTab: TrendCenterTab = isTrendCenterTab(rawTab) ? rawTab : 'default';
   const requestedSerial = searchParams.get('serial');
   const requestedMonitorId = searchParams.get('monitorId');
   const requestedTrendlogId = searchParams.get('trendlogId');
+
+  const normalizeMonitorToken = useCallback((value?: string | null) => {
+    return (value || '').toUpperCase().replace(/^MON/, '');
+  }, []);
+
+  const isPointSetChartMode = React.useMemo(() => {
+    if (activeTab !== 'chart') return false;
+    const requested = normalizeMonitorToken(requestedMonitorId || requestedTrendlogId);
+    const selected = normalizeMonitorToken(selectedMonitor?.trendlogId || selectedMonitor?.trendlogIndex || '');
+    return requested === 'GLOBAL' || selected === 'GLOBAL';
+  }, [activeTab, normalizeMonitorToken, requestedMonitorId, requestedTrendlogId, selectedMonitor?.trendlogId, selectedMonitor?.trendlogIndex]);
 
   // Helper function to get row ID for a trendlog
   const getRowIdForItem = useCallback((item: TrendLogData) => {
@@ -811,13 +823,19 @@ export const TrendLogsPage: React.FC = () => {
 
       // Auto-select trendlog from query (if provided), else select first trendlog
       if (trendlogsWithIndex.length > 0) {
-        const normalizeMonitorId = (value?: string | null) => (value || '').toUpperCase().replace(/^MON/, '');
-        const requestedNormalized = normalizeMonitorId(requestedMonitorId || requestedTrendlogId);
+        const requestedNormalized = normalizeMonitorToken(requestedMonitorId || requestedTrendlogId);
+
+        // Point Sets chart mode uses a synthetic GLOBAL monitor with specific_points.
+        // Do not auto-fallback to first physical monitor (MON1), or history calls will use MON1 path.
+        if (requestedNormalized === 'GLOBAL') {
+          console.log('[TrendLogsPage] GLOBAL chart context detected; skipping trendlog auto-select fallback.');
+          return;
+        }
 
         const queriedTrendlog = requestedNormalized
           ? trendlogsWithIndex.find((item: TrendLogData) => {
-              const itemA = normalizeMonitorId(item.trendlogId);
-              const itemB = normalizeMonitorId(item.trendlogIndex);
+              const itemA = normalizeMonitorToken(item.trendlogId);
+              const itemB = normalizeMonitorToken(item.trendlogIndex);
               return itemA === requestedNormalized || itemB === requestedNormalized;
             })
           : null;
@@ -851,7 +869,7 @@ export const TrendLogsPage: React.FC = () => {
       setLoading(false);
       setDbChecked(true);
     }
-  }, [requestedMonitorId, requestedTrendlogId, selectedPanelId, selectedSerial]);
+  }, [normalizeMonitorToken, requestedMonitorId, requestedTrendlogId, selectedPanelId, selectedSerial]);
 
   // Load inputs for a specific trendlog
   const loadTrendlogInputs = useCallback(async (trendlog: TrendLogData) => {
@@ -868,9 +886,9 @@ export const TrendLogsPage: React.FC = () => {
   }, [selectedSerial]);
 
   useEffect(() => {
-    if (activeTab === 'global') return;
+    if (activeTab === 'global' || isPointSetChartMode) return;
     fetchTrendLogs();
-  }, [activeTab, fetchTrendLogs]);
+  }, [activeTab, fetchTrendLogs, isPointSetChartMode]);
 
   useEffect(() => {
     if (!rawTab) {
@@ -881,9 +899,15 @@ export const TrendLogsPage: React.FC = () => {
   }, [rawTab, searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (activeTab === 'global') return;
+    if (activeTab !== 'chart') return;
+    if (selectedDevice && selectedMonitor) return;
+    setActiveTab(isPointSetChartMode ? 'global' : 'default');
+  }, [activeTab, isPointSetChartMode, selectedDevice, selectedMonitor, setActiveTab]);
+
+  useEffect(() => {
+    if (activeTab === 'global' || isPointSetChartMode) return;
     fetchPointSyncSummary();
-  }, [activeTab, fetchPointSyncSummary]);
+  }, [activeTab, fetchPointSyncSummary, isPointSetChartMode]);
 
   // Reset auto-refresh state when device changes (don't clear data to avoid visual flash)
   useEffect(() => {
@@ -893,7 +917,7 @@ export const TrendLogsPage: React.FC = () => {
 
   // Auto-refresh once per device - ONLY after initial DB fetch completes
   useEffect(() => {
-    if (activeTab === 'global') return;
+    if (activeTab === 'global' || isPointSetChartMode) return;
     if (!dbChecked || loading || !selectedSerial || autoRefreshed) return;
     if (deviceRefreshedRef.current === selectedSerial) return;
     if (autoRefreshInProgressRef.current) return;
@@ -940,7 +964,7 @@ export const TrendLogsPage: React.FC = () => {
     };
 
     checkAndRefresh();
-  }, [activeTab, autoRefreshed, dbChecked, fetchPointSyncSummary, fetchTrendLogs, loading, selectedSerial, setPointTypeSyncing]);
+  }, [activeTab, autoRefreshed, dbChecked, fetchPointSyncSummary, fetchTrendLogs, isPointSetChartMode, loading, selectedSerial, setPointTypeSyncing]);
 
   // Refresh all trendlogs from device (Trigger #2: Manual "Refresh All" button)
   const handleRefreshFromDevice = async () => {
@@ -1107,6 +1131,9 @@ export const TrendLogsPage: React.FC = () => {
     const s = totalSeconds % 60;
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
+  const handleChartBack = useCallback(() => {
+    setActiveTab(isPointSetChartMode ? 'global' : 'default');
+  }, [isPointSetChartMode, setActiveTab]);
   const selectedMonitorItemData = selectedMonitor
     ? {
       title: selectedMonitorTitle,
@@ -2114,7 +2141,7 @@ export const TrendLogsPage: React.FC = () => {
               icon={<ChartMultipleRegular className={styles.iconSmall} />}
               onClick={async () => {
                 await handleMonitorSelect(item);
-                await handleViewChart(item);
+                setActiveTab('chart');
               }}
               title="View trend chart for this trendlog"
             >
@@ -2333,7 +2360,7 @@ export const TrendLogsPage: React.FC = () => {
                               />
                             </Tooltip>
                           }
-                          onBack={() => setActiveTab('default')}
+                          onBack={handleChartBack}
                         />
                       </div>
                     </>
