@@ -154,8 +154,8 @@ interface TrendPolicyPageProps {
   onBack?: () => void;
 }
 
-export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = false, onBack }) => {
-  const { devices, fetchDevices } = useDeviceTreeStore();
+export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
+  const { selectedDevice } = useDeviceTreeStore();
 
   const [selectedDeviceSerials, setSelectedDeviceSerials] = useState<Set<number>>(new Set());
   const [activeTypeTab, setActiveTypeTab] = useState<TabType>('all');
@@ -187,7 +187,6 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
       const savedStateRaw = localStorage.getItem(POLICY_STORAGE_KEY);
       if (savedStateRaw) {
         const parsed = JSON.parse(savedStateRaw);
-        setSelectedDeviceSerials(new Set(Array.isArray(parsed.selectedDeviceSerials) ? parsed.selectedDeviceSerials : []));
         setActiveTypeTab(parsed.activeTypeTab === 'input' || parsed.activeTypeTab === 'output' || parsed.activeTypeTab === 'variable' ? parsed.activeTypeTab : 'all');
         setTagStateFilter(parsed.tagStateFilter === 'tagged' || parsed.tagStateFilter === 'untagged' ? parsed.tagStateFilter : 'all');
         setPointSearch(typeof parsed.pointSearch === 'string' ? parsed.pointSearch : '');
@@ -232,20 +231,17 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
   }, [savedProfiles]);
 
   useEffect(() => {
-    if (devices.length === 0) {
-      fetchDevices();
+    if (!selectedDevice?.serialNumber) {
+      setSelectedDeviceSerials(new Set());
+      return;
     }
-  }, [devices.length, fetchDevices]);
 
-  useEffect(() => {
-    if (devices.length === 0) return;
-    if (selectedDeviceSerials.size > 0) return;
-    setSelectedDeviceSerials(new Set(devices.map((d) => d.serialNumber)));
-  }, [devices, selectedDeviceSerials.size]);
+    setSelectedDeviceSerials(new Set([selectedDevice.serialNumber]));
+  }, [selectedDevice?.serialNumber]);
 
   const selectedDevices = useMemo(
-    () => devices.filter(d => selectedDeviceSerials.has(d.serialNumber)),
-    [devices, selectedDeviceSerials]
+    () => (selectedDevice ? [selectedDevice] : []),
+    [selectedDevice]
   );
 
   useEffect(() => {
@@ -570,7 +566,6 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
   const applySelectedProfile = () => {
     const profile = savedProfiles.find(p => p.id === selectedProfileId);
     if (!profile) return;
-    setSelectedDeviceSerials(new Set(profile.selectedDeviceSerials));
     setFilterTags(profile.filterTags);
     setTagStateFilter(profile.tagStateFilter);
     setActiveTypeTab(profile.activeTypeTab);
@@ -795,6 +790,15 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = ({ embedded = fal
 
         <section className={styles.rightPanel}>
           <div className={styles.secondaryBar}>
+            {selectedDevice && (
+              <div className={styles.deviceContextRow}>
+                <span className={styles.deviceContextLabel}>Device</span>
+                <span className={styles.deviceContextValue}>
+                  {selectedDevice.nameShowOnTree || selectedDevice.productName || `SN-${selectedDevice.serialNumber}`}
+                </span>
+                <span className={styles.deviceContextMeta}>SN {selectedDevice.serialNumber}</span>
+              </div>
+            )}
             <div className={styles.typeFilterBar}>
               <div className={styles.typeTabs}>
                 {([

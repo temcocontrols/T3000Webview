@@ -41,6 +41,9 @@ const cleanDeviceName = (name: string | undefined | null, fallback: string = 'Un
   return cleaned || fallback;
 };
 
+// Prevent duplicate bursts when multiple components trigger fetches at the same time.
+let fetchDevicesInFlight: Promise<void> | null = null;
+
 /**
  * Device Tree State Interface
  */
@@ -82,7 +85,7 @@ interface DeviceTreeState {
   fetchDevices: () => Promise<void>;
   refreshDevices: () => Promise<void>;
   scanForDevices: (options?: ScanOptions) => Promise<void>;
-  loadDevicesWithSync: () => Promise<void>;
+  loadDevicesWithSync: (options?: { skipInitialFetch?: boolean }) => Promise<void>;
   syncDatabaseWithCpp: () => Promise<void>; // Manual cleanup: sync DB with C++ side
   syncDevicePoints: (device: DeviceInfo) => Promise<void>;
   checkIfDeviceNeedsSync: (serialNumber: number) => Promise<boolean>;
@@ -161,79 +164,89 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
       // Fetch devices from API
       fetchDevices: async () => {
-        set({ isLoading: true, error: null });
-        try {
-          const response = await DeviceApiService.getAllDevices();
-
-          // Clean device names from database (remove null bytes and garbage from C++ buffers)
-          // Also filter out (Unknown) devices — they are not real/discoverable devices
-          const cleanedDevices = response.devices
-            .filter(device => {
-              const name = (device.nameShowOnTree || '').trim();
-              return name !== '(Unknown)' && name !== 'Unknown' && name !== '';
-            })
-            .map(device => ({
-              ...device,
-              nameShowOnTree: cleanDeviceName(device.nameShowOnTree, `Device ${device.serialNumber}`),
-              productName: cleanDeviceName(device.productName, ''),
-            }));
-
-          set({
-            devices: cleanedDevices,
-            isLoading: false,
-            lastSyncTime: new Date(),
-          });
-
-          // Auto-expand root building and subnet nodes on first load
-          const { expandedNodes } = get();
-          if (expandedNodes.size === 0) {
-            // Get unique root building names, auto-expand all levels
-            const nodesToExpand = new Set<string>();
-            response.devices.forEach((device) => {
-              const rootBuilding = device.mainBuildingName || 'Default_Building';
-
-              // Add root building node
-              nodesToExpand.add(`building-${rootBuilding}`);
-
-              // Add subnet node - ALWAYS "Local View" (hardcoded like C++)
-              nodesToExpand.add(`subnet-${rootBuilding}-Local View`);
-            });
-            set({ expandedNodes: nodesToExpand });
-          }
-
-          get().buildTreeStructure();
-
-          // Auto-select first device if none is selected
-          const { selectedDevice, selectDevice, devices } = get();
-          console.log(`[fetchDevices] Devices loaded:`, response.devices.map((d, idx) => `[${idx}] ${d.nameShowOnTree} (SN: ${d.serialNumber})`));
-          console.log(`[fetchDevices] Current selectedDevice:`, selectedDevice?.nameShowOnTree || 'none');
-
-          if (!selectedDevice && devices.length > 0) {
-            // Sort devices alphabetically, pushing (Unknown) devices to the bottom
-            const sortedDevices = [...devices].sort((a, b) => {
-              const aUnknown = a.nameShowOnTree === '(Unknown)' || a.nameShowOnTree === 'Unknown';
-              const bUnknown = b.nameShowOnTree === '(Unknown)' || b.nameShowOnTree === 'Unknown';
-              if (aUnknown !== bUnknown) return aUnknown ? 1 : -1;
-              return a.nameShowOnTree.localeCompare(b.nameShowOnTree);
-            });
-            const firstDevice = sortedDevices[0];
-            console.log(`[fetchDevices] Auto-selecting first device (alphabetically): ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
-            selectDevice(firstDevice);
-          }
-
-          // Update status bar with success message
-          useStatusBarStore.getState().setMessage(`Loaded ${response.devices.length} devices`, 'success');
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to fetch devices';
-          set({
-            error: errorMessage,
-            isLoading: false,
-          });
-
-          // Send error to status bar instead of inline display
-          useStatusBarStore.getState().setMessage(`Error: ${errorMessage}`, 'error');
-          console.error('Device fetch error:', errorMessage);
+        if (fetchDevicesInFlight) {
+          return fetchDevicesInFlight;
         }
+
+        fetchDevicesInFlight = (async () => {
+          set({ isLoading: true, error: null });
+          try {
+            const response = await DeviceApiService.getAllDevices();
+
+            // Clean device names from database (remove null bytes and garbage from C++ buffers)
+            // Also filter out (Unknown) devices — they are not real/discoverable devices
+            const cleanedDevices = response.devices
+              .filter(device => {
+                const name = (device.nameShowOnTree || '').trim();
+                return name !== '(Unknown)' && name !== 'Unknown' && name !== '';
+              })
+              .map(device => ({
+                ...device,
+                nameShowOnTree: cleanDeviceName(device.nameShowOnTree, `Device ${device.serialNumber}`),
+                productName: cleanDeviceName(device.productName, ''),
+              }));
+
+            set({
+              devices: cleanedDevices,
+              isLoading: false,
+              lastSyncTime: new Date(),
+            });
+
+            // Auto-expand root building and subnet nodes on first load
+            const { expandedNodes } = get();
+            if (expandedNodes.size === 0) {
+              // Get unique root building names, auto-expand all levels
+              const nodesToExpand = new Set<string>();
+              response.devices.forEach((device) => {
+                const rootBuilding = device.mainBuildingName || 'Default_Building';
+
+                // Add root building node
+                nodesToExpand.add(`building-${rootBuilding}`);
+
+                // Add subnet node - ALWAYS "Local View" (hardcoded like C++)
+                nodesToExpand.add(`subnet-${rootBuilding}-Local View`);
+              });
+              set({ expandedNodes: nodesToExpand });
+            }
+
+            get().buildTreeStructure();
+
+            // Auto-select first device if none is selected
+            const { selectedDevice, selectDevice, devices } = get();
+            console.log(`[fetchDevices] Devices loaded:`, response.devices.map((d, idx) => `[${idx}] ${d.nameShowOnTree} (SN: ${d.serialNumber})`));
+            console.log(`[fetchDevices] Current selectedDevice:`, selectedDevice?.nameShowOnTree || 'none');
+
+            if (!selectedDevice && devices.length > 0) {
+              // Sort devices alphabetically, pushing (Unknown) devices to the bottom
+              const sortedDevices = [...devices].sort((a, b) => {
+                const aUnknown = a.nameShowOnTree === '(Unknown)' || a.nameShowOnTree === 'Unknown';
+                const bUnknown = b.nameShowOnTree === '(Unknown)' || b.nameShowOnTree === 'Unknown';
+                if (aUnknown !== bUnknown) return aUnknown ? 1 : -1;
+                return a.nameShowOnTree.localeCompare(b.nameShowOnTree);
+              });
+              const firstDevice = sortedDevices[0];
+              console.log(`[fetchDevices] Auto-selecting first device (alphabetically): ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
+              selectDevice(firstDevice);
+            }
+
+            // Update status bar with success message
+            useStatusBarStore.getState().setMessage(`Loaded ${response.devices.length} devices`, 'success');
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to fetch devices';
+            set({
+              error: errorMessage,
+              isLoading: false,
+            });
+
+            // Send error to status bar instead of inline display
+            useStatusBarStore.getState().setMessage(`Error: ${errorMessage}`, 'error');
+            console.error('Device fetch error:', errorMessage);
+          } finally {
+            fetchDevicesInFlight = null;
+          }
+        })();
+
+        return fetchDevicesInFlight;
       },
 
       // Refresh devices (alias for fetchDevices)
@@ -258,17 +271,20 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
       },
 
       // Load devices with full sync (device list + selected device points)
-      loadDevicesWithSync: async () => {
+      loadDevicesWithSync: async (options) => {
         const { setMessage } = useStatusBarStore.getState();
+        const skipInitialFetch = Boolean(options?.skipInitialFetch);
 
         try {
-          // Step 1: Load from DB (instant)
-          setMessage('Loading devices from database...', 'info');
-          await get().fetchDevices();
+          // Step 1: Optional load from DB (instant)
+          if (!skipInitialFetch) {
+            setMessage('Loading devices from database...', 'info');
+            await get().fetchDevices();
 
-          const { devices } = get();
-          if (devices.length === 0) {
-            setMessage('No devices in database', 'warning');
+            const { devices } = get();
+            if (devices.length === 0) {
+              setMessage('No devices in database', 'warning');
+            }
           }
 
           // Step 2: Sync device list with T3000
@@ -461,10 +477,9 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             PanelDataRefreshService.refreshAllVariables(device.serialNumber),
           ]);
 
-          const inputCount = inputsResult.count || 0;
-          const outputCount = outputsResult.count || 0;
-          const variableCount = variablesResult.count || 0;
-          const totalPoints = inputCount + outputCount + variableCount;
+          const inputCount = inputsResult.savedCount || inputsResult.itemCount || 0;
+          const outputCount = outputsResult.savedCount || outputsResult.itemCount || 0;
+          const variableCount = variablesResult.savedCount || variablesResult.itemCount || 0;
 
           setMessage(
             `✓ Synced ${device.nameShowOnTree}: ${inputCount} inputs, ${outputCount} outputs, ${variableCount} variables`,

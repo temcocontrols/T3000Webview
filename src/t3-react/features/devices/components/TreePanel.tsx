@@ -61,7 +61,7 @@ export const TreePanel: React.FC = () => {
       const { devices } = useDeviceTreeStore.getState();
       if (devices.length === 0) {
         //console.log('[TreePanel] No devices in database, auto-syncing from T3000...');
-        await loadDevicesWithSync();
+        await loadDevicesWithSync({ skipInitialFetch: true });
       } else {
         //console.log(`[TreePanel] Found ${devices.length} devices in database, skipping auto-sync`);
       }
@@ -79,7 +79,7 @@ export const TreePanel: React.FC = () => {
   };
 
   const handleLoadDevices = async () => {
-    await loadDevicesWithSync();
+    await loadDevicesWithSync({ skipInitialFetch: true });
   };
 
   return (

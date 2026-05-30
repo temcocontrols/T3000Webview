@@ -56,7 +56,7 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
     setIsRefreshing(true);
     try {
       // Use the same full sync as "Load Devices" button
-      await loadDevicesWithSync();
+      await loadDevicesWithSync({ skipInitialFetch: true });
     } catch (err) {
       console.error('Failed to refresh devices:', err);
       setMessage('Failed to refresh device list. Please try again.', 'error');
@@ -69,7 +69,7 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
     const newMode = viewMode === 'equipment' ? 'projectPoint' : 'equipment';
     setViewMode(newMode);
     // Trigger full sync to load the device tree view
-    await loadDevicesWithSync();
+    await loadDevicesWithSync({ skipInitialFetch: true });
   };
 
   const handleToggleExpandCollapse = () => {
