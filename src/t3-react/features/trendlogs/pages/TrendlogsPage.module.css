@@ -403,12 +403,13 @@
 }
 
 .coverageHealthTableHeader {
-  font-size: 10px;
-  color: #8a8886;
+  font-size: 11px;
+  color: #605e5c;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
-  padding: 2px 2px 5px;
-  border-bottom: 1px dashed #ecebea;
+  letter-spacing: 0.4px;
+  padding: 4px 2px 6px;
+  border-bottom: 2px solid #0f6cbd;
 }
 
 .coverageHealthTableRow {

@@ -131,7 +131,7 @@ const useStyles = makeStyles({
     boxSizing: 'border-box',
   },
   rootWithDetail: {
-    gridTemplateColumns: '180px 1fr 500px',
+    gridTemplateColumns: '180px 1fr 440px',
   },
   // Shared panel
   panel: {
@@ -238,7 +238,7 @@ const useStyles = makeStyles({
   },
   table: { width: '100%' },
   thId:      { width: '86px',  fontSize: '12px' },
-  thTime:    { width: '148px', fontSize: '12px' },
+  thTime:    { width: '122px', fontSize: '12px' },
   thType:    { width: '120px', fontSize: '12px' },
   thTrigger: { width: '80px',  fontSize: '12px' },
   thStatus:  { width: '70px',  fontSize: '12px' },
@@ -246,7 +246,7 @@ const useStyles = makeStyles({
   thDur:     { width: '72px',  fontSize: '12px' },
   rowSelected: { backgroundColor: '#dff0ff' },
   rowClickable: { cursor: 'pointer' },
-  timeCell: { fontSize: '11px', color: '#605e5c', whiteSpace: 'nowrap' },
+  timeCell: { fontSize: '10.5px', color: '#605e5c', whiteSpace: 'nowrap' },
   typeCell: { fontSize: '12px', fontWeight: 600, color: '#0f6cbd' },
   idCell: { fontSize: '10.5px', fontFamily: 'monospace', color: '#605e5c', whiteSpace: 'nowrap' },
   triggerCell: { fontSize: '11px', color: '#605e5c' },
