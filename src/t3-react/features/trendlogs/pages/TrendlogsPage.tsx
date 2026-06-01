@@ -638,12 +638,26 @@ export const TrendLogsPage: React.FC = () => {
           (m) => m.trendlogId === trendlog.trendlogId || m.trendlogId === trendlog.trendlogIndex
         );
 
-      // Capture current React Router location as returnUrl so both the minimize
-      // icon and Back button in full-page mode reliably return here.
-      const returnUrl = location.pathname + location.search;
+      // Build deterministic return URL and keep chart context (including GLOBAL)
+      // so minimizing from full-page returns to the exact chart route.
+      const returnSearchParams = new URLSearchParams(searchParams);
+      returnSearchParams.set('serial', String(selectedDevice.serialNumber));
+      returnSearchParams.set('panel', String(selectedDevice.panelId || 1));
+      returnSearchParams.set('tab', 'chart');
+      returnSearchParams.set('monitorId', monitorIndex);
+      returnSearchParams.set('trendlogId', trendlog.trendlogId || monitorIndex);
+      const returnUrl = `${location.pathname}?${returnSearchParams.toString()}`;
+      const fullPageSearchParams = new URLSearchParams();
+      fullPageSearchParams.set('mode', 'full');
+      fullPageSearchParams.set('tab', 'chart');
+      fullPageSearchParams.set('serial', String(selectedDevice.serialNumber));
+      fullPageSearchParams.set('panel', String(selectedDevice.panelId || 1));
+      fullPageSearchParams.set('monitorId', monitorIndex);
+      fullPageSearchParams.set('trendlogId', trendlog.trendlogId || monitorIndex);
+      const fullPageUrl = `/t3000/trends/chart?${fullPageSearchParams.toString()}`;
 
       if (alreadyLoaded) {
-        navigate('/t3000/trends/chart', {
+        navigate(fullPageUrl, {
           state: {
             serialNumber: selectedDevice.serialNumber,
             panelId: selectedDevice.panelId || 1,
@@ -687,7 +701,7 @@ export const TrendLogsPage: React.FC = () => {
           }));
         }
 
-        navigate('/t3000/trends/chart', {
+        navigate(fullPageUrl, {
           state: {
             serialNumber: selectedDevice.serialNumber,
             panelId: selectedDevice.panelId || 1,
@@ -701,7 +715,7 @@ export const TrendLogsPage: React.FC = () => {
         });
       } catch (error) {
         console.error('❌ [TrendLogsPage] Failed to load inputs for chart:', error);
-        navigate('/t3000/trends/chart', {
+        navigate(fullPageUrl, {
           state: {
             serialNumber: selectedDevice.serialNumber,
             panelId: selectedDevice.panelId || 1,
@@ -715,7 +729,7 @@ export const TrendLogsPage: React.FC = () => {
         });
       }
     },
-    [selectedDevice, monitorInputs, loadTrendlogInputsInternal, location]
+    [selectedDevice, monitorInputs, loadTrendlogInputsInternal, location, normalizeMonitorToken, searchParams]
   );
   // Debug log to verify new component is loading
   useEffect(() => {
@@ -916,11 +930,8 @@ export const TrendLogsPage: React.FC = () => {
     }
   }, [rawTab, searchParams, setSearchParams]);
 
-  useEffect(() => {
-    if (activeTab !== 'chart') return;
-    if (selectedDevice && selectedMonitor) return;
-    setActiveTab(isPointSetChartMode ? 'point-sets' : 'default');
-  }, [activeTab, isPointSetChartMode, selectedDevice, selectedMonitor, setActiveTab]);
+  // Keep chart tab stable during reload/rehydration. Falling back to default/point-sets
+  // here causes URL churn and breaks full-page return behavior.
 
   useEffect(() => {
     if (activeTab === 'point-sets' || isPointSetChartMode) return;
@@ -1762,7 +1773,11 @@ export const TrendLogsPage: React.FC = () => {
   );
 
   useEffect(() => {
-    if (activeTab !== 'point-sets') {
+    const isGlobalChartMode =
+      activeTab === 'chart' &&
+      normalizeMonitorToken(requestedMonitorId || requestedTrendlogId) === 'GLOBAL';
+
+    if (activeTab !== 'point-sets' && !isGlobalChartMode) {
       return;
     }
 
@@ -1989,7 +2004,7 @@ export const TrendLogsPage: React.FC = () => {
     };
 
     loadPointSetPoints();
-  }, [activeTab, pointSetReloadRevision, selectedDevice?.serialNumber]);
+  }, [activeTab, normalizeMonitorToken, pointSetReloadRevision, requestedMonitorId, requestedTrendlogId, selectedDevice?.serialNumber]);
 
   useEffect(() => {
     if (!selectedDevice?.serialNumber) {
@@ -2052,6 +2067,45 @@ export const TrendLogsPage: React.FC = () => {
 
     applyPointSetSelection(target, false);
   }, [activeTab, applyPointSetSelection, pointSetPoints.length, pointSetInitialized, savedPointSets, selectedDevice?.serialNumber, selectedPointSetName]);
+
+  useEffect(() => {
+    if (activeTab !== 'chart') return;
+    const requested = normalizeMonitorToken(requestedMonitorId || requestedTrendlogId);
+    if (requested !== 'GLOBAL') return;
+    if (!selectedDevice) return;
+    if (pointSetPoints.length === 0) return;
+
+    const syntheticMonitor: TrendLogData = {
+      serialNumber: selectedDevice.serialNumber,
+      trendlogId: 'GLOBAL',
+      trendlogIndex: 'GLOBAL',
+      trendlogLabel: selectedPointSetName ? `Point Set: ${selectedPointSetName}` : 'Point Set Chart',
+      status: 'ON',
+      _uniqueIndex: 99999,
+      panelId: selectedDevice.panelId,
+    };
+
+    const syntheticInputs: TrendLogInput[] = selectedPointSetPoints.map((point) => ({
+      serialNumber: selectedDevice.serialNumber,
+      panelId: selectedDevice.panelId || 1,
+      trendlogId: 'GLOBAL',
+      pointType: point.type,
+      pointIndex: point.index,
+      pointLabel: point.label,
+    }));
+
+    setSelectedMonitor(syntheticMonitor);
+    setMonitorInputs(syntheticInputs);
+  }, [
+    activeTab,
+    normalizeMonitorToken,
+    requestedMonitorId,
+    requestedTrendlogId,
+    selectedDevice,
+    selectedPointSetName,
+    pointSetPoints.length,
+    selectedPointSetPoints,
+  ]);
 
   // Display all 12 trendlog slots (matching T3000 desktop), merge actual data
   const displayTrendLogs = React.useMemo(() => {

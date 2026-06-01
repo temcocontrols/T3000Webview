@@ -57,12 +57,13 @@ export const TrendChartPage: React.FC = () => {
   // Parse URL query params (C++ path — only used when no navState)
   useEffect(() => {
     if (navState) return;
-    const searchParams = new URLSearchParams(window.location.search);
+    const searchParams = new URLSearchParams(location.search);
     const legacyMode = searchParams.get('legacy') === '1';
-    const serialNumber = searchParams.get('serial_number');
-    const panelId = searchParams.get('panel_id');
-    const trendlogId = searchParams.get('trendlog_id');
-    const monitorId = searchParams.get('monitor_id');
+    const fullMode = searchParams.get('mode') === 'full';
+    const serialNumber = searchParams.get('serial') || searchParams.get('serial_number');
+    const panelId = searchParams.get('panel') || searchParams.get('panel_id');
+    const trendlogId = searchParams.get('trendlogId') || searchParams.get('trendlog_id');
+    const monitorId = searchParams.get('monitorId') || searchParams.get('monitor_id');
     setUrlParams({
       serialNumber: serialNumber ? parseInt(serialNumber, 10) : undefined,
       panelId: panelId ? parseInt(panelId, 10) : undefined,
@@ -70,13 +71,30 @@ export const TrendChartPage: React.FC = () => {
       monitorId: monitorId || undefined,
     });
 
-    if (!legacyMode) {
+    if (!legacyMode && !fullMode) {
       setShouldRedirectToTrendCenter(true);
     }
-  }, [navState]);
+  }, [navState, location.search]);
 
   const params = navState ?? urlParams;
   const fromReact = !!navState;
+  const returnUrl = React.useMemo(() => {
+    if (navState?.returnUrl) return navState.returnUrl;
+    const hasContext =
+      params.serialNumber != null ||
+      params.panelId != null ||
+      !!params.monitorId ||
+      !!params.trendlogId;
+    if (!hasContext) return undefined;
+
+    const next = new URLSearchParams();
+    next.set('tab', 'chart');
+    if (params.serialNumber != null) next.set('serial', String(params.serialNumber));
+    if (params.panelId != null) next.set('panel', String(params.panelId));
+    if (params.monitorId) next.set('monitorId', params.monitorId);
+    if (params.trendlogId) next.set('trendlogId', params.trendlogId);
+    return `/t3000/trendlogs?${next.toString()}`;
+  }, [navState?.returnUrl, params.monitorId, params.panelId, params.serialNumber, params.trendlogId]);
 
   useEffect(() => {
     if (!shouldRedirectToTrendCenter || navState) return;
@@ -108,19 +126,19 @@ export const TrendChartPage: React.FC = () => {
           isDrawerMode={false}
           initialTimeBase={navState?.initialTimeBase}
           toolbarActionBeforeBack={
-            fromReact ? (
+            returnUrl ? (
               <Tooltip content="Back to Embedded View" relationship="label">
                 <Button
                   appearance="subtle"
                   icon={<FullScreenMinimizeRegular />}
                   size="small"
                   aria-label="Back to Embedded View"
-                  onClick={() => navigate(navState!.returnUrl!)}
+                  onClick={() => navigate(returnUrl)}
                 />
               </Tooltip>
             ) : undefined
           }
-          onBack={fromReact ? () => navigate(navState!.returnUrl!) : undefined}
+          onBack={returnUrl ? () => navigate(returnUrl) : undefined}
         />
       </div>
     </div>
