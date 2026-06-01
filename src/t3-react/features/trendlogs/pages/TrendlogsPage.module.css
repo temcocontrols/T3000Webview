@@ -247,6 +247,172 @@
   background: #f8f7f6;
 }
 
+.overviewInventoryPillLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  padding: 0 7px;
+  border: 1px solid #e1dfdd;
+  border-radius: 10px;
+  font-size: 11px;
+  color: #0f6cbd;
+  background: #f8f7f6;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.overviewInventoryPillLink:hover {
+  border-color: #0f6cbd;
+  background: #f0f6ff;
+}
+
+/* Stat card action buttons */
+.overviewStatActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.overviewStatAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #0f6cbd;
+  background: transparent;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+.overviewStatAction:hover {
+  text-decoration: underline;
+}
+
+/* Info banner (backend sampling notice) */
+.infoBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: #f0f6ff;
+  border: 1px solid #c7dff7;
+  border-radius: 6px;
+  margin: 0 16px 8px;
+}
+
+.infoBannerIcon {
+  color: #0f6cbd;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.infoBannerText {
+  flex: 1;
+  font-size: 13px;
+  color: #201f1e;
+}
+
+.infoBannerAction {
+  font-size: 13px;
+  color: #0f6cbd;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.infoBannerAction:hover {
+  text-decoration: underline;
+}
+
+.infoBannerDismiss {
+  font-size: 16px;
+  color: #8a8886;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  font-family: inherit;
+}
+.infoBannerDismiss:hover {
+  color: #323130;
+}
+
+/* Logging Coverage EChart card */
+.overviewCoverageCard {
+  border: 1px solid #edebe9;
+  border-radius: 8px;
+  padding: 12px 16px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.overviewCoverageChart {
+  height: 130px;
+  width: 100%;
+}
+
+.overviewCoverageSub {
+  font-size: 11px;
+  color: #8a8886;
+  margin-left: auto;
+}
+
+/* ── Backend tab ── */
+.backendTabWrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 10px;
+  padding: 12px 16px;
+  overflow: hidden;
+}
+
+.backendConfigCard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  padding: 12px 16px;
+  border: 1px solid #edebe9;
+  border-radius: 6px;
+  background: #f8fafc;
+  flex-shrink: 0;
+}
+
+.backendConfigRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.backendConfigLabel {
+  font-size: 12px;
+  color: #8a8886;
+  font-weight: 500;
+  min-width: 100px;
+}
+
+.backendConfigValue {
+  font-size: 12px;
+  color: #201f1e;
+  font-weight: 600;
+}
+
+.backendFlowSection {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid #edebe9;
+  border-radius: 6px;
+}
+
 /* ── 2-column bottom row ── */
 .overviewBottomRow {
   display: grid;

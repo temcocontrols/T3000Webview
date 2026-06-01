@@ -4,7 +4,7 @@
  * Manage trend log configurations with device refresh
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
@@ -40,6 +40,8 @@ import {
   InfoRegular,
   ChevronUpRegular,
   ChevronDownRegular,
+  OpenRegular,
+  CheckmarkCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { TrendlogRefreshApi } from '../services/trendlogRefreshApi';
@@ -47,6 +49,9 @@ import { PanelDataRefreshService } from '../../../shared/services/panelDataRefre
 import { API_BASE_URL } from '../../../config/constants';
 import { TrendChartContent } from '../components/TrendChartContent';
 import { TrendPolicyPage } from './TrendPolicyPage';
+import { TrendlogVerifyDrawer } from '../components/TrendlogVerifyDrawer';
+import { FlowLogTab } from '../../logs/components/FlowLogTab';
+import * as echarts from 'echarts';
 import styles from './TrendlogsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
@@ -93,6 +98,14 @@ interface DevicePointSyncSummary {
   lastSyncedAt: number | null;
   lastSyncedFmt: string;
   lastSyncMethod: string;
+  // Per-type logged record counts (from trendlog-data/stats)
+  inputDataPoints: number;
+  outputDataPoints: number;
+  variableDataPoints: number;
+  // How many distinct points have been tracked in TRENDLOG_DATA parent rows
+  trackedInputs: number;
+  trackedOutputs: number;
+  trackedVariables: number;
 }
 
 interface SyncStatusRow {
@@ -117,11 +130,17 @@ const EMPTY_POINT_SYNC_SUMMARY: DevicePointSyncSummary = {
   lastSyncedAt: null,
   lastSyncedFmt: 'N/A',
   lastSyncMethod: 'N/A',
+  inputDataPoints: 0,
+  outputDataPoints: 0,
+  variableDataPoints: 0,
+  trackedInputs: 0,
+  trackedOutputs: 0,
+  trackedVariables: 0,
 };
 
 const TRACKED_POINT_SYNC_TYPES = ['INPUTS', 'OUTPUTS', 'VARIABLES'] as const;
 
-type TrendCenterTab = 'overview' | 'default' | 'point-sets' | 'haystack-tags' | 'chart';
+type TrendCenterTab = 'overview' | 'default' | 'point-sets' | 'haystack-tags' | 'chart' | 'backend';
 
 interface PointSetPointItem {
   key: string;
@@ -160,7 +179,7 @@ const COMMON_HAYSTACK_TAGS = ['ahu', 'temp', 'critical', 'floor1'] as const;
 const TREND_POLICY_STORAGE_KEY = 't3000.trend.policy.state.v2';
 
 const isTrendCenterTab = (value: string | null): value is TrendCenterTab => {
-  return value === 'overview' || value === 'default' || value === 'point-sets' || value === 'haystack-tags' || value === 'chart';
+  return value === 'overview' || value === 'default' || value === 'point-sets' || value === 'haystack-tags' || value === 'chart' || value === 'backend';
 };
 
 export const TrendLogsPage: React.FC = () => {
@@ -184,6 +203,12 @@ export const TrendLogsPage: React.FC = () => {
   const [pointSummaryLoading, setPointSummaryLoading] = useState(false);
   const [devicePointSyncSummary, setDevicePointSyncSummary] = useState<DevicePointSyncSummary>(EMPTY_POINT_SYNC_SUMMARY);
   const [, setSyncingPointTypes] = useState<Set<string>>(new Set());
+  const [verifyDrawerOpen, setVerifyDrawerOpen] = useState(false);
+  const [infoBannerDismissed, setInfoBannerDismissed] = useState(() =>
+    sessionStorage.getItem('tl-infobanner-v1') === '1'
+  );
+  const coverageChartRef = useRef<HTMLDivElement | null>(null);
+  const coverageChartInstance = useRef<echarts.ECharts | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const selectedSerial = selectedDevice?.serialNumber;
@@ -484,12 +509,13 @@ export const TrendLogsPage: React.FC = () => {
 
     setPointSummaryLoading(true);
     try {
-      const [inputsResponse, outputsResponse, variablesResponse, syncStatusResponse, trendlogStatsResponse] = await Promise.all([
+      const [inputsResponse, outputsResponse, variablesResponse, syncStatusResponse, trendlogStatsResponse, trendlogDataResponse] = await Promise.all([
         fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/input-points`),
         fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/output-points`),
         fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/variable-points`),
         fetch(`${API_BASE_URL}/api/sync-status/${selectedSerial}`),
         fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/trendlog-data/stats?panel_id=${selectedPanelId || 1}`),
+        fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/table/TRENDLOG_DATA`),
       ]);
 
       const inputsData = inputsResponse.ok ? await inputsResponse.json() : {};
@@ -497,6 +523,17 @@ export const TrendLogsPage: React.FC = () => {
       const variablesData = variablesResponse.ok ? await variablesResponse.json() : {};
       const syncRows: SyncStatusRow[] = syncStatusResponse.ok ? await syncStatusResponse.json() : [];
       const trendlogStatsData = trendlogStatsResponse.ok ? await trendlogStatsResponse.json() : {};
+      const trendlogDataJson = trendlogDataResponse.ok ? await trendlogDataResponse.json() : { data: [] };
+      const trendlogDataRows: any[] = Array.isArray(trendlogDataJson.data) ? trendlogDataJson.data : [];
+
+      // Count tracked points per type from TRENDLOG_DATA parent rows
+      let trackedInputs = 0, trackedOutputs = 0, trackedVariables = 0;
+      for (const row of trendlogDataRows) {
+        const pt = String(row.PointType || row.point_type || '').toUpperCase();
+        if (pt === 'INPUT') trackedInputs++;
+        else if (pt === 'OUTPUT') trackedOutputs++;
+        else if (pt === 'VARIABLE') trackedVariables++;
+      }
       const trackedRows = (syncRows || []).filter((row) => TRACKED_POINT_SYNC_TYPES.includes(String(row.dataType || '').toUpperCase() as any));
 
       const latestByType = new Map<string, SyncStatusRow>();
@@ -536,6 +573,12 @@ export const TrendLogsPage: React.FC = () => {
         lastSyncedAt: latestSuccessfulRow?.syncTime ?? null,
         lastSyncedFmt: latestSuccessfulRow?.syncTimeFmt || 'N/A',
         lastSyncMethod: latestSuccessfulRow?.syncMethod || 'N/A',
+        inputDataPoints: typeof trendlogStatsData.input_data_points === 'number' ? trendlogStatsData.input_data_points : 0,
+        outputDataPoints: typeof trendlogStatsData.output_data_points === 'number' ? trendlogStatsData.output_data_points : 0,
+        variableDataPoints: typeof trendlogStatsData.variable_data_points === 'number' ? trendlogStatsData.variable_data_points : 0,
+        trackedInputs,
+        trackedOutputs,
+        trackedVariables,
       });
     } catch (summaryError) {
       console.error('[TrendLogsPage] Failed to load point sync summary:', summaryError);
@@ -1197,6 +1240,96 @@ export const TrendLogsPage: React.FC = () => {
   const handleChartBack = useCallback(() => {
     setActiveTab(isPointSetChartMode ? 'point-sets' : 'default');
   }, [isPointSetChartMode, setActiveTab]);
+
+  // ── EChart: Logged Coverage ────────────────────────────────────────────
+  useLayoutEffect(() => {
+    if (activeTab !== 'overview') {
+      if (coverageChartInstance.current) {
+        coverageChartInstance.current.dispose();
+        coverageChartInstance.current = null;
+      }
+      return;
+    }
+    if (!coverageChartRef.current || pointSummaryLoading) return;
+
+    // Dispose previous instance
+    if (coverageChartInstance.current) {
+      coverageChartInstance.current.dispose();
+    }
+    const chart = echarts.init(coverageChartRef.current);
+    coverageChartInstance.current = chart;
+
+    const total  = [devicePointSyncSummary.inputs,    devicePointSyncSummary.outputs,    devicePointSyncSummary.variables];
+    const tracked= [devicePointSyncSummary.trackedInputs, devicePointSyncSummary.trackedOutputs, devicePointSyncSummary.trackedVariables];
+    const records= [devicePointSyncSummary.inputDataPoints, devicePointSyncSummary.outputDataPoints, devicePointSyncSummary.variableDataPoints];
+    const untracked = total.map((t, i) => Math.max(0, t - tracked[i]));
+    const labels = ['Variables', 'Outputs', 'Inputs']; // reversed for bottom-to-top
+    const trackedRev  = [...tracked].reverse();
+    const untrackedRev = [...untracked].reverse();
+    const totalRev    = [...total].reverse();
+    const recordsRev  = [...records].reverse();
+
+    chart.setOption({
+      grid: { left: 72, right: 120, top: 16, bottom: 24 },
+      legend: { data: ['Tracked', 'Not Tracked'], bottom: 0, itemHeight: 10, textStyle: { fontSize: 11 } },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: (params: any) => {
+          const idx = params[0].dataIndex;
+          const t = trackedRev[idx]; const tot = totalRev[idx]; const rec = recordsRev[idx];
+          return `${labels[idx]}<br/>Tracked: ${t}/${tot} points<br/>Records: ${rec.toLocaleString()}`;
+        },
+      },
+      xAxis: { type: 'value', max: Math.max(...total, 1), axisLabel: { fontSize: 11 } },
+      yAxis: { type: 'category', data: labels, axisLabel: { fontSize: 12, fontWeight: 500 } },
+      series: [
+        {
+          name: 'Tracked',
+          type: 'bar',
+          stack: 'pts',
+          data: trackedRev,
+          color: '#0f6cbd',
+          label: {
+            show: true,
+            position: 'inside',
+            fontSize: 11,
+            color: '#fff',
+            formatter: (p: any) => p.value > 0 ? String(p.value) : '',
+          },
+        },
+        {
+          name: 'Not Tracked',
+          type: 'bar',
+          stack: 'pts',
+          data: untrackedRev,
+          color: '#edebe9',
+          label: {
+            show: true,
+            position: 'right',
+            fontSize: 11,
+            color: '#605e5c',
+            formatter: (p: any) => {
+              const i = p.dataIndex;
+              return `${trackedRev[i]}/${totalRev[i]}  ·  ${recordsRev[i].toLocaleString()} rec`;
+            },
+          },
+        },
+      ],
+    } as echarts.EChartsOption);
+
+    const handleResize = () => chart.resize();
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      chart.dispose();
+      coverageChartInstance.current = null;
+    };
+  }, [activeTab, pointSummaryLoading,
+    devicePointSyncSummary.inputs, devicePointSyncSummary.outputs, devicePointSyncSummary.variables,
+    devicePointSyncSummary.trackedInputs, devicePointSyncSummary.trackedOutputs, devicePointSyncSummary.trackedVariables,
+    devicePointSyncSummary.inputDataPoints, devicePointSyncSummary.outputDataPoints, devicePointSyncSummary.variableDataPoints,
+  ]);
   const selectedMonitorItemData = selectedMonitor
     ? {
       title: selectedMonitorTitle,
@@ -1803,6 +1936,12 @@ export const TrendLogsPage: React.FC = () => {
         onClick={() => setActiveTab('haystack-tags')}
       >
         Haystack Tags
+      </button>
+      <button
+        className={`${styles.tabButton} ${activeTab === 'backend' ? styles.tabButtonActive : ''}`}
+        onClick={() => setActiveTab('backend')}
+      >
+        Backend
       </button>
     </div>
   );
@@ -2450,9 +2589,30 @@ export const TrendLogsPage: React.FC = () => {
                         {pointSummaryLoading ? '…' : devicePointSyncSummary.inputs + devicePointSyncSummary.outputs + devicePointSyncSummary.variables}
                       </span>
                       <div className={styles.overviewStatMeta}>
-                        <span className={styles.overviewInventoryPill}>IN {pointSummaryLoading ? '…' : devicePointSyncSummary.inputs}</span>
-                        <span className={styles.overviewInventoryPill}>OUT {pointSummaryLoading ? '…' : devicePointSyncSummary.outputs}</span>
-                        <span className={styles.overviewInventoryPill}>VAR {pointSummaryLoading ? '…' : devicePointSyncSummary.variables}</span>
+                        <button
+                          type="button"
+                          className={styles.overviewInventoryPillLink}
+                          onClick={() => navigate(`/t3000/inputs?backTo=${encodeURIComponent(location.pathname + location.search)}`)}
+                          title="Go to Inputs"
+                        >
+                          IN {pointSummaryLoading ? '…' : devicePointSyncSummary.inputs} <OpenRegular style={{ fontSize: 10 }} />
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.overviewInventoryPillLink}
+                          onClick={() => navigate(`/t3000/outputs?backTo=${encodeURIComponent(location.pathname + location.search)}`)}
+                          title="Go to Outputs"
+                        >
+                          OUT {pointSummaryLoading ? '…' : devicePointSyncSummary.outputs} <OpenRegular style={{ fontSize: 10 }} />
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.overviewInventoryPillLink}
+                          onClick={() => navigate(`/t3000/variables?backTo=${encodeURIComponent(location.pathname + location.search)}`)}
+                          title="Go to Variables"
+                        >
+                          VAR {pointSummaryLoading ? '…' : devicePointSyncSummary.variables} <OpenRegular style={{ fontSize: 10 }} />
+                        </button>
                       </div>
                     </div>
 
@@ -2475,9 +2635,55 @@ export const TrendLogsPage: React.FC = () => {
                       {!pointSummaryLoading && lastSyncedFmt && (
                         <span className={styles.overviewStatTimestamp}>{lastSyncedFmt}</span>
                       )}
+                      {selectedDevice && (
+                        <div className={styles.overviewStatActions}>
+                          <button
+                            type="button"
+                            className={styles.overviewStatAction}
+                            onClick={() => setVerifyDrawerOpen(true)}
+                          >
+                            <CheckmarkCircleRegular style={{ fontSize: 12 }} /> Verify Data
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.overviewStatAction}
+                            onClick={() => setActiveTab('backend')}
+                          >
+                            Detail →
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                   </div>
+
+                  {/* ── Logging Coverage EChart ── */}
+                  {selectedDevice && (
+                    <div className={styles.overviewCoverageCard}>
+                      <div className={styles.overviewDetailHeader}>
+                        <span className={styles.overviewDetailTitle}>Logging Coverage by Sensor Type</span>
+                        {!pointSummaryLoading && (
+                          <span className={styles.overviewCoverageSub}>
+                            {devicePointSyncSummary.trackedInputs}/{devicePointSyncSummary.inputs} IN
+                            {' · '}{devicePointSyncSummary.trackedOutputs}/{devicePointSyncSummary.outputs} OUT
+                            {' · '}{devicePointSyncSummary.trackedVariables}/{devicePointSyncSummary.variables} VAR tracked
+                          </span>
+                        )}
+                      </div>
+                      {pointSummaryLoading && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '20px 0' }}>
+                          <Spinner size="tiny" />
+                          <Text size={200}>Loading…</Text>
+                        </div>
+                      )}
+                      {/* Always mounted so ECharts can dispose safely before React detaches the node */}
+                      <div
+                        ref={coverageChartRef}
+                        className={styles.overviewCoverageChart}
+                        style={pointSummaryLoading ? { height: 0, overflow: 'hidden' } : undefined}
+                      />
+                    </div>
+                  )}
 
                   {/* ── 2-column bottom row ── */}
                   <div className={styles.overviewBottomRow}>
@@ -2600,6 +2806,49 @@ export const TrendLogsPage: React.FC = () => {
                 </div>
               )}
 
+              {/* ── Backend tab ── */}
+              {activeTab === 'backend' && (
+                <div className={styles.backendTabWrap}>
+                  {selectedDevice && (
+                    <div className={styles.backendConfigCard}>
+                      <div className={styles.backendConfigRow}>
+                        <span className={styles.backendConfigLabel}>Device</span>
+                        <span className={styles.backendConfigValue}>
+                          {selectedDevice.nameShowOnTree || selectedDevice.productName} — SN {selectedDevice.serialNumber}
+                        </span>
+                      </div>
+                      <div className={styles.backendConfigRow}>
+                        <span className={styles.backendConfigLabel}>Stored Values</span>
+                        <span className={styles.backendConfigValue}>
+                          {pointSummaryLoading
+                            ? '…'
+                            : devicePointSyncSummary.trendlogDetailCount == null
+                              ? 'N/A'
+                              : devicePointSyncSummary.trendlogDetailCount.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className={styles.backendConfigRow}>
+                        <span className={styles.backendConfigLabel}>Last Sync</span>
+                        <span className={styles.backendConfigValue}>{lastSyncedFmt || 'N/A'}</span>
+                      </div>
+                      <div className={styles.backendConfigRow}>
+                        <span className={styles.backendConfigLabel}>Method</span>
+                        <span className={styles.backendConfigValue}>{syncSourceLabel}</span>
+                      </div>
+                      <div className={styles.backendConfigRow}>
+                        <span className={styles.backendConfigLabel}>Tracked Points</span>
+                        <span className={styles.backendConfigValue}>
+                          {devicePointSyncSummary.trackedInputs} IN · {devicePointSyncSummary.trackedOutputs} OUT · {devicePointSyncSummary.trackedVariables} VAR
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <div className={styles.backendFlowSection}>
+                    <FlowLogTab initialTypeFilter="TRENDLOG_REALTIME" />
+                  </div>
+                </div>
+              )}
+
               {activeTab === 'chart' && (
                 <div className={styles.chartTabWrap}>
                   {!selectedDevice ? (
@@ -2653,6 +2902,37 @@ export const TrendLogsPage: React.FC = () => {
                       </div>
                     </>
                   )}
+                </div>
+              )}
+
+              {/* ── Info banner (backend sampling notice) ── */}
+              {activeTab === 'default' && !infoBannerDismissed && selectedDevice && (
+                <div className={styles.infoBanner}>
+                  <InfoRegular className={styles.infoBannerIcon} />
+                  <span className={styles.infoBannerText}>
+                    <strong>Backend Sampling is active</strong> — sensor values are collected automatically by the background sync service
+                    {devicePointSyncSummary.lastSyncMethod === 'FFI_BACKEND' && lastSyncedAgo && (
+                      <> · {lastSyncedAgo}</>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.infoBannerAction}
+                    onClick={() => setActiveTab('backend')}
+                  >
+                    View Backend →
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.infoBannerDismiss}
+                    aria-label="Dismiss"
+                    onClick={() => {
+                      setInfoBannerDismissed(true);
+                      sessionStorage.setItem('tl-infobanner-v1', '1');
+                    }}
+                  >
+                    ×
+                  </button>
                 </div>
               )}
 
@@ -3432,6 +3712,15 @@ export const TrendLogsPage: React.FC = () => {
         </DialogSurface>
       </Dialog>
 
+      {/* ── Verify Data Drawer ── */}
+      {verifyDrawerOpen && selectedDevice && (
+        <TrendlogVerifyDrawer
+          isOpen={verifyDrawerOpen}
+          onClose={() => setVerifyDrawerOpen(false)}
+          serialNumber={selectedDevice.serialNumber}
+          panelId={(selectedDevice as any).panelId || 1}
+        />
+      )}
 
     </div>
   );
