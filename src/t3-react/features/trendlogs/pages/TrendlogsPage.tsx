@@ -128,6 +128,7 @@ interface PointSetPointItem {
   type: 'INPUT' | 'OUTPUT' | 'VARIABLE';
   index: string;
   label: string;
+  fullLabel?: string;
 }
 
 interface SavedPointSet {
@@ -219,7 +220,7 @@ export const TrendLogsPage: React.FC = () => {
   const [pointSetName, setPointSetName] = useState('');
   const [selectedPointSetName, setSelectedSavedSetName] = useState('');
   const [savedPointSets, setSavedPointSets] = useState<SavedPointSet[]>([]);
-  const [pointSetReloadRevision] = useState(0);
+  const [pointSetReloadRevision, setPointSetReloadRevision] = useState(0);
   const [isPointPickerOpen, setIsPointPickerOpen] = useState(false);
   const [draggingPointKey, setDraggingPointKey] = useState<string | null>(null);
   const [, setIsTemporarySetMode] = useState(false);
@@ -1186,6 +1187,7 @@ export const TrendLogsPage: React.FC = () => {
       if (!q) return true;
       return (
         point.label.toLowerCase().includes(q) ||
+        (point.fullLabel || '').toLowerCase().includes(q) ||
         point.type.toLowerCase().includes(q) ||
         point.index.toLowerCase().includes(q) ||
         tags.some((tag) => tag.includes(q))
@@ -1770,16 +1772,60 @@ export const TrendLogsPage: React.FC = () => {
         const variablesData = variablesResponse.ok ? await variablesResponse.json() : {};
 
         const mapRows = (rows: any[], type: 'INPUT' | 'OUTPUT' | 'VARIABLE'): PointSetPointItem[] => {
+          const normalizePointIndex = (rawValue: unknown, fallbackValue?: unknown): string => {
+            const source = String(rawValue ?? fallbackValue ?? '').trim();
+            if (!source) return '';
+            const numericMatch = source.match(/(\d+)/);
+            if (numericMatch) {
+              const parsed = Number.parseInt(numericMatch[1], 10);
+              if (!Number.isNaN(parsed)) {
+                return String(parsed);
+              }
+            }
+            return source.toUpperCase();
+          };
+
+          const pickDisplayText = (...candidates: unknown[]): string => {
+            for (const candidate of candidates) {
+              if (typeof candidate === 'string' && candidate.trim()) {
+                return candidate.trim();
+              }
+              if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+                return String(candidate);
+              }
+            }
+            return '';
+          };
+
           return rows.map((row: any, idx: number) => {
             const rawIndex =
               row.inputIndex ?? row.outputIndex ?? row.variableIndex ?? row.pointIndex ?? row.Point_Index ?? row.index ?? row.number ?? idx + 1;
-            const index = String(rawIndex);
-            const label = String(row.label ?? row.name ?? row.pointLabel ?? row.Point_Label ?? `${type} ${index}`);
+            const index = normalizePointIndex(rawIndex, idx + 1);
+            const shortLabel = pickDisplayText(
+              row.label,
+              row.name,
+              row.pointLabel,
+              row.point_label,
+              row.Point_Label,
+              row.pointName,
+              row.point_name,
+            );
+            const fullLabel = pickDisplayText(
+              row.fullLabel,
+              row.full_label,
+              row.Full_Label,
+              row.description,
+              row.Description,
+              row.displayLabel,
+              row.display_label,
+            );
+            const label = fullLabel || shortLabel || `${type} ${index}`;
             return {
               key: `${type}:${index}`,
               type,
               index,
               label,
+              fullLabel: fullLabel || undefined,
             };
           });
         };
@@ -1813,7 +1859,20 @@ export const TrendLogsPage: React.FC = () => {
 
             rows.forEach((row) => {
               const pointTable = String(row?.pointTable ?? row?.point_table ?? '').trim().toUpperCase();
-              const pointIndex = String(row?.pointIndex ?? row?.point_index ?? '').trim();
+              const normalizePointIndex = (rawValue: unknown): string => {
+                const source = String(rawValue ?? '').trim();
+                if (!source) return '';
+                const numericMatch = source.match(/(\d+)/);
+                if (numericMatch) {
+                  const parsed = Number.parseInt(numericMatch[1], 10);
+                  if (!Number.isNaN(parsed)) {
+                    return String(parsed);
+                  }
+                }
+                return source.toUpperCase();
+              };
+
+              const pointIndex = normalizePointIndex(row?.pointIndex ?? row?.point_index);
               if (!pointTable || !pointIndex) return;
 
               const mappedType =
@@ -1824,15 +1883,30 @@ export const TrendLogsPage: React.FC = () => {
               if (!mappedType) return;
 
               const pointTagKey = `${mappedType}:${pointIndex}`;
-              const tagsObj = row?.tags && typeof row.tags === 'object' && !Array.isArray(row.tags)
-                ? row.tags as Record<string, any>
-                : null;
+              const parseTagsObject = (value: unknown): Record<string, unknown> | null => {
+                if (value && typeof value === 'object' && !Array.isArray(value)) {
+                  return value as Record<string, unknown>;
+                }
+                if (typeof value === 'string' && value.trim()) {
+                  try {
+                    const parsed = JSON.parse(value);
+                    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+                      ? parsed as Record<string, unknown>
+                      : null;
+                  } catch {
+                    return null;
+                  }
+                }
+                return null;
+              };
+
+              const tagsObj = parseTagsObject(row?.tags);
               if (!tagsObj) return;
 
               const existing = new Set(seededTags[pointTagKey] || []);
               Object.entries(tagsObj).forEach(([tagKey, tagValue]) => {
                 if (!tagKey) return;
-                if (tagValue === 'M') {
+                if (typeof tagValue === 'string' && tagValue.toUpperCase() === 'M') {
                   existing.add(tagKey.toLowerCase());
                 } else if (typeof tagValue === 'string' || typeof tagValue === 'number' || typeof tagValue === 'boolean') {
                   existing.add(`${tagKey.toLowerCase()}:${String(tagValue).toLowerCase()}`);
@@ -1863,7 +1937,15 @@ export const TrendLogsPage: React.FC = () => {
                 typeRaw === 'variable' ? 'VARIABLE' :
                 '';
               if (!mappedType) return;
-              const globalKey = `${mappedType}:${indexRaw}`;
+              const normalizedIndex = (() => {
+                const source = String(indexRaw ?? '').trim();
+                if (!source) return source;
+                const numericMatch = source.match(/(\d+)/);
+                if (!numericMatch) return source;
+                const parsed = Number.parseInt(numericMatch[1], 10);
+                return Number.isNaN(parsed) ? source : String(parsed);
+              })();
+              const globalKey = `${mappedType}:${normalizedIndex || indexRaw}`;
               const existing = new Set(seededTags[globalKey] || []);
               (tags || []).forEach((tag) => {
                 if (typeof tag === 'string' && tag.trim()) {
@@ -2814,7 +2896,10 @@ export const TrendLogsPage: React.FC = () => {
                             </button>
                             <button
                               className={styles.smallActionButton}
-                              onClick={() => setIsPointPickerOpen(true)}
+                              onClick={() => {
+                                setPointSetReloadRevision((prev) => prev + 1);
+                                setIsPointPickerOpen(true);
+                              }}
                               title="Open point picker drawer"
                             >
                               Add Points
@@ -2993,7 +3078,7 @@ export const TrendLogsPage: React.FC = () => {
                                 <div className={styles.globalPointMain}>
                                   <Badge appearance="outline">{point.type}</Badge>
                                   <Text size={200}>{point.index}</Text>
-                                  <Text size={200} weight="semibold" className={styles.globalPointLabel}>{point.label}</Text>
+                                  <Text size={200} className={styles.pointPickerLabel} title={point.label}>{point.label}</Text>
                                   <Text size={200} className={styles.pointPickerSelectState}>{selected ? 'Selected' : 'Tap to add'}</Text>
                                 </div>
                                 <div className={styles.globalPointTags}>
@@ -3044,17 +3129,17 @@ export const TrendLogsPage: React.FC = () => {
           }
         }}
       >
-        <DialogSurface>
+        <DialogSurface className={styles.compactDialogSurface}>
           <DialogBody>
-            <DialogTitle>{confirmDialog.title}</DialogTitle>
+            <DialogTitle className={styles.compactDialogTitle}>{confirmDialog.title}</DialogTitle>
             <DialogContent>
               <Text>{confirmDialog.content}</Text>
             </DialogContent>
-            <DialogActions>
-              <Button appearance="secondary" onClick={() => settleConfirmDialog(false)}>
+            <DialogActions className={styles.compactDialogActions}>
+              <Button className={styles.compactDialogButton} appearance="secondary" onClick={() => settleConfirmDialog(false)}>
                 {confirmDialog.cancelText}
               </Button>
-              <Button appearance="primary" onClick={() => settleConfirmDialog(true)}>
+              <Button className={styles.compactDialogButton} appearance="primary" onClick={() => settleConfirmDialog(true)}>
                 {confirmDialog.confirmText}
               </Button>
             </DialogActions>
@@ -3070,9 +3155,9 @@ export const TrendLogsPage: React.FC = () => {
           }
         }}
       >
-        <DialogSurface>
+        <DialogSurface className={styles.compactDialogSurface}>
           <DialogBody>
-            <DialogTitle>{promptDialog.title}</DialogTitle>
+            <DialogTitle className={styles.compactDialogTitle}>{promptDialog.title}</DialogTitle>
             <DialogContent>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <Text>{promptDialog.content}</Text>
@@ -3084,11 +3169,12 @@ export const TrendLogsPage: React.FC = () => {
                 />
               </div>
             </DialogContent>
-            <DialogActions>
-              <Button appearance="secondary" onClick={() => settlePromptDialog(null)}>
+            <DialogActions className={styles.compactDialogActions}>
+              <Button className={styles.compactDialogButton} appearance="secondary" onClick={() => settlePromptDialog(null)}>
                 {promptDialog.cancelText}
               </Button>
               <Button
+                className={styles.compactDialogButton}
                 appearance="primary"
                 onClick={() => settlePromptDialog(promptInputValue)}
                 disabled={!promptInputValue.trim()}

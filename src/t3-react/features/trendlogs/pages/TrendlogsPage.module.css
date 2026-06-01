@@ -1681,6 +1681,16 @@
   white-space: nowrap;
 }
 
+.pointPickerLabel {
+  min-width: 0;
+  flex: 1;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
 .globalPointTags {
   display: flex;
   flex-wrap: wrap;
@@ -1866,6 +1876,24 @@
 .pointPickerSelectState {
   margin-left: auto;
   color: #605e5c;
+}
+
+.compactDialogSurface {
+  width: min(520px, calc(100vw - 32px));
+  max-width: 520px;
+}
+
+.compactDialogTitle {
+  font-weight: 400;
+}
+
+.compactDialogActions {
+  gap: 10px;
+}
+
+.compactDialogButton {
+  font-weight: 400;
+  font-size: 14px;
 }
 
 @media (max-width: 1000px) {
