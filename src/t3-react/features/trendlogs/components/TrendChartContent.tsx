@@ -90,7 +90,7 @@ const useStyles = makeStyles({
     overflow: 'hidden',
   },
   topControlsBar: {
-    padding: '4px 8px',
+    padding: '2px 4px',
     backgroundColor: tokens.colorNeutralBackground2,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     flexShrink: 0,
@@ -110,7 +110,7 @@ const useStyles = makeStyles({
     minHeight: '200px',
     gap: '6px',
     overflow: 'hidden',
-    padding: '4px',
+    padding: '2px',
     backgroundColor: '#f5f5f5',
     border: `1px solid ${tokens.colorNeutralStroke1}`,
     borderRadius: '4px',
@@ -1149,6 +1149,8 @@ export interface TrendChartContentProps {
   onToolbarRender?: (toolbar: React.ReactNode) => void;
   toolbarActionBeforeBack?: React.ReactNode;
   onBack?: () => void;
+  initialTimeBase?: string;
+  onTimeBaseChange?: (tb: string) => void;
 }
 
 type TimeBase = '5m' | '10m' | '30m' | '1h' | '4h' | '12h' | '1d' | '4d' | 'custom';
@@ -1298,7 +1300,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
   // ── State ──────────────────────────────────────────────────────────────
   const [series, setSeries] = useState<TrendSeries[]>([]);
-  const [timeBase, setTimeBase] = useState<TimeBase>('5m');
+  const [timeBase, setTimeBase] = useState<TimeBase>((props.initialTimeBase as TimeBase) || '5m');
   const [showGrid] = useState(true);
   const [isRealtime, setIsRealtime] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -1371,6 +1373,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   // Keep refs in sync with state (for stale-closure-free interval callbacks)
   useEffect(() => { seriesRef.current = series; }, [series]);
   useEffect(() => { timeBaseRef.current = timeBase; }, [timeBase]);
+  useEffect(() => { props.onTimeBaseChange?.(timeBase); }, [timeBase, props.onTimeBaseChange]);
 
   /**
    * Computed: Series displayed in current view (filtered for View 2 & 3)

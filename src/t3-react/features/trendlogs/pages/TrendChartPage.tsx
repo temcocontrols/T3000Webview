@@ -10,7 +10,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { makeStyles, tokens } from '@fluentui/react-components';
+import { makeStyles, tokens, Button, Tooltip } from '@fluentui/react-components';
+import { FullScreenMinimizeRegular } from '@fluentui/react-icons';
 import { TrendChartContent } from '../components/TrendChartContent';
 
 const useStyles = makeStyles({
@@ -41,6 +42,8 @@ export const TrendChartPage: React.FC = () => {
     monitorId?: string;
     itemData?: any;
     monitorInputs?: any[];
+    initialTimeBase?: string;
+    returnUrl?: string;
   } | null;
 
   const [urlParams, setUrlParams] = useState<{
@@ -103,7 +106,21 @@ export const TrendChartPage: React.FC = () => {
           itemData={navState?.itemData}
           monitorInputs={navState?.monitorInputs}
           isDrawerMode={false}
-          onBack={fromReact ? () => navigate(-1) : undefined}
+          initialTimeBase={navState?.initialTimeBase}
+          toolbarActionBeforeBack={
+            fromReact ? (
+              <Tooltip content="Back to Embedded View" relationship="label">
+                <Button
+                  appearance="subtle"
+                  icon={<FullScreenMinimizeRegular />}
+                  size="small"
+                  aria-label="Back to Embedded View"
+                  onClick={() => navigate(navState!.returnUrl!)}
+                />
+              </Tooltip>
+            ) : undefined
+          }
+          onBack={fromReact ? () => navigate(navState!.returnUrl!) : undefined}
         />
       </div>
     </div>

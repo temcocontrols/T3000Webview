@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   DataGrid,
   DataGridHeader,
@@ -177,6 +177,7 @@ export const TrendLogsPage: React.FC = () => {
   const deviceRefreshedRef = useRef<number | null>(null);
   const autoRefreshInProgressRef = useRef(false);
   const fetchRequestIdRef = useRef(0);
+  const embeddedChartTimeBaseRef = useRef<string>('5m');
   const [selectedMonitor, setSelectedMonitor] = useState<TrendLogData | null>(null);
   const [monitorInputs, setMonitorInputs] = useState<TrendLogInput[]>([]);
   const [loadingInputs, setLoadingInputs] = useState(false);
@@ -211,6 +212,7 @@ export const TrendLogsPage: React.FC = () => {
   }, []);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const [pointSetPoints, setPointSetPoints] = useState<PointSetPointItem[]>([]);
   const [pointSetPointsLoading, setPointSetPointsLoading] = useState(false);
   const [pointPickerSearch, setPointPickerSearch] = useState('');
@@ -636,6 +638,10 @@ export const TrendLogsPage: React.FC = () => {
           (m) => m.trendlogId === trendlog.trendlogId || m.trendlogId === trendlog.trendlogIndex
         );
 
+      // Capture current React Router location as returnUrl so both the minimize
+      // icon and Back button in full-page mode reliably return here.
+      const returnUrl = location.pathname + location.search;
+
       if (alreadyLoaded) {
         navigate('/t3000/trends/chart', {
           state: {
@@ -645,6 +651,8 @@ export const TrendLogsPage: React.FC = () => {
             monitorId: monitorIndex,
             itemData: buildItemData(),
             monitorInputs,
+            initialTimeBase: embeddedChartTimeBaseRef.current,
+            returnUrl,
           },
         });
         return;
@@ -687,6 +695,8 @@ export const TrendLogsPage: React.FC = () => {
             monitorId: monitorIndex,
             itemData: buildItemData(),
             monitorInputs: freshInputs,
+            initialTimeBase: embeddedChartTimeBaseRef.current,
+            returnUrl,
           },
         });
       } catch (error) {
@@ -699,11 +709,13 @@ export const TrendLogsPage: React.FC = () => {
             monitorId: monitorIndex,
             itemData: buildItemData(),
             monitorInputs,
+            initialTimeBase: embeddedChartTimeBaseRef.current,
+            returnUrl,
           },
         });
       }
     },
-    [selectedDevice, monitorInputs, loadTrendlogInputsInternal]
+    [selectedDevice, monitorInputs, loadTrendlogInputsInternal, location]
   );
   // Debug log to verify new component is loading
   useEffect(() => {
@@ -2511,6 +2523,7 @@ export const TrendLogsPage: React.FC = () => {
                           itemData={selectedMonitorItemData}
                           monitorInputs={monitorInputs}
                           isDrawerMode={false}
+                          onTimeBaseChange={(tb) => { embeddedChartTimeBaseRef.current = tb; }}
                           toolbarActionBeforeBack={
                             <Tooltip content="Open Full Chart Page" relationship="label">
                               <Button
