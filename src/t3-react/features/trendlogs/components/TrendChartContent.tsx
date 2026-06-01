@@ -3687,8 +3687,19 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
               </div>
             </DialogContent>
             <DialogActions>
-              <Button size="medium" appearance="secondary" style={{ fontSize: '14px', fontWeight: 'normal' }} onClick={() => setShowCustomDateModal(false)}>Cancel</Button>
-              <Button size="medium" appearance="primary" style={{ fontSize: '14px', fontWeight: 'normal' }} onClick={applyCustomDateRange}
+              <Button
+                size="small"
+                appearance="secondary"
+                style={{ fontSize: '12px', fontWeight: 400, minHeight: '28px', height: '28px', minWidth: '80px' }}
+                onClick={() => setShowCustomDateModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="small"
+                appearance="primary"
+                style={{ fontSize: '12px', fontWeight: 400, minHeight: '28px', height: '28px', minWidth: '80px' }}
+                onClick={applyCustomDateRange}
                 disabled={!customStartInput || !customEndInput}>Apply</Button>
             </DialogActions>
           </DialogBody>

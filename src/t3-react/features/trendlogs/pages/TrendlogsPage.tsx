@@ -3129,17 +3129,37 @@ export const TrendLogsPage: React.FC = () => {
           }
         }}
       >
-        <DialogSurface className={styles.compactDialogSurface}>
+        <DialogSurface
+          className={styles.compactDialogSurface}
+          style={{ width: 'min(380px, calc(100vw - 28px))', maxWidth: '380px' }}
+        >
           <DialogBody>
-            <DialogTitle className={styles.compactDialogTitle}>{confirmDialog.title}</DialogTitle>
+            <DialogTitle
+              className={styles.compactDialogTitle}
+              style={{ fontSize: '16px', lineHeight: 1.25, fontWeight: 600 }}
+            >
+              {confirmDialog.title}
+            </DialogTitle>
             <DialogContent>
-              <Text>{confirmDialog.content}</Text>
+              <Text className={styles.compactDialogContentText}>{confirmDialog.content}</Text>
             </DialogContent>
             <DialogActions className={styles.compactDialogActions}>
-              <Button className={styles.compactDialogButton} appearance="secondary" onClick={() => settleConfirmDialog(false)}>
+              <Button
+                className={styles.compactDialogButton}
+                size="small"
+                appearance="secondary"
+                style={{ fontSize: '12px', fontWeight: 400, minHeight: '28px', height: '28px', minWidth: '80px' }}
+                onClick={() => settleConfirmDialog(false)}
+              >
                 {confirmDialog.cancelText}
               </Button>
-              <Button className={styles.compactDialogButton} appearance="primary" onClick={() => settleConfirmDialog(true)}>
+              <Button
+                className={styles.compactDialogButton}
+                size="small"
+                appearance="primary"
+                style={{ fontSize: '12px', fontWeight: 400, minHeight: '28px', height: '28px', minWidth: '80px' }}
+                onClick={() => settleConfirmDialog(true)}
+              >
                 {confirmDialog.confirmText}
               </Button>
             </DialogActions>
@@ -3155,12 +3175,20 @@ export const TrendLogsPage: React.FC = () => {
           }
         }}
       >
-        <DialogSurface className={styles.compactDialogSurface}>
+        <DialogSurface
+          className={styles.compactDialogSurface}
+          style={{ width: 'min(380px, calc(100vw - 28px))', maxWidth: '380px' }}
+        >
           <DialogBody>
-            <DialogTitle className={styles.compactDialogTitle}>{promptDialog.title}</DialogTitle>
+            <DialogTitle
+              className={styles.compactDialogTitle}
+              style={{ fontSize: '16px', lineHeight: 1.25, fontWeight: 600 }}
+            >
+              {promptDialog.title}
+            </DialogTitle>
             <DialogContent>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <Text>{promptDialog.content}</Text>
+                <Text className={styles.compactDialogContentText}>{promptDialog.content}</Text>
                 <Input
                   value={promptInputValue}
                   onChange={(_, data) => setPromptInputValue(data.value)}
@@ -3170,12 +3198,20 @@ export const TrendLogsPage: React.FC = () => {
               </div>
             </DialogContent>
             <DialogActions className={styles.compactDialogActions}>
-              <Button className={styles.compactDialogButton} appearance="secondary" onClick={() => settlePromptDialog(null)}>
+              <Button
+                className={styles.compactDialogButton}
+                size="small"
+                appearance="secondary"
+                style={{ fontSize: '12px', fontWeight: 400, minHeight: '28px', height: '28px', minWidth: '80px' }}
+                onClick={() => settlePromptDialog(null)}
+              >
                 {promptDialog.cancelText}
               </Button>
               <Button
                 className={styles.compactDialogButton}
+                size="small"
                 appearance="primary"
+                style={{ fontSize: '12px', fontWeight: 400, minHeight: '28px', height: '28px', minWidth: '80px' }}
                 onClick={() => settlePromptDialog(promptInputValue)}
                 disabled={!promptInputValue.trim()}
               >

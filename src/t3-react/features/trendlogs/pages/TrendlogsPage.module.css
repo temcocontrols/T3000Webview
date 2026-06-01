@@ -1879,21 +1879,33 @@
 }
 
 .compactDialogSurface {
-  width: min(520px, calc(100vw - 32px));
-  max-width: 520px;
+  width: min(380px, calc(100vw - 28px)) !important;
+  max-width: 380px !important;
 }
 
 .compactDialogTitle {
-  font-weight: 400;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+  line-height: 1.25 !important;
+}
+
+.compactDialogContentText {
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  font-weight: 400 !important;
 }
 
 .compactDialogActions {
-  gap: 10px;
+  gap: 8px;
 }
 
 .compactDialogButton {
-  font-weight: 400;
-  font-size: 14px;
+  font-weight: 400 !important;
+  font-size: 12px !important;
+  min-height: 28px !important;
+  height: 28px !important;
+  min-width: 80px !important;
+  padding: 0 10px !important;
 }
 
 @media (max-width: 1000px) {
