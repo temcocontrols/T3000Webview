@@ -207,9 +207,9 @@ export const TrendLogsPage: React.FC = () => {
   const [infoBannerDismissed, setInfoBannerDismissed] = useState(() =>
     sessionStorage.getItem('tl-infobanner-v1') === '1'
   );
-  const [trendlogDataFailed, setTrendlogDataFailed] = useState(false);
   const coverageChartRef = useRef<HTMLDivElement | null>(null);
   const coverageChartInstance = useRef<echarts.ECharts | null>(null);
+  const [hiddenCoverageSeries, setHiddenCoverageSeries] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const selectedSerial = selectedDevice?.serialNumber;
@@ -510,13 +510,6 @@ export const TrendLogsPage: React.FC = () => {
 
     setPointSummaryLoading(true);
     try {
-      // Fire TRENDLOG_DATA in parallel but isolate its errors so a network reset
-      // doesn't abort the whole summary fetch.
-      let trendlogDataFetchFailed = false;
-      const trendlogDataPromise = fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/table/TRENDLOG_DATA`)
-        .then(r => r.ok ? r.json().catch(() => { trendlogDataFetchFailed = true; return { data: [] }; }) : { data: [] })
-        .catch(() => { trendlogDataFetchFailed = true; return { data: [] as any[] }; });
-
       const [inputsResponse, outputsResponse, variablesResponse, syncStatusResponse, trendlogStatsResponse] = await Promise.all([
         fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/input-points`),
         fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/output-points`),
@@ -531,19 +524,10 @@ export const TrendLogsPage: React.FC = () => {
       const syncRows: SyncStatusRow[] = syncStatusResponse.ok ? await syncStatusResponse.json() : [];
       const trendlogStatsData = trendlogStatsResponse.ok ? await trendlogStatsResponse.json() : {};
 
-      // TRENDLOG_DATA: already in flight, safe to await now
-      const trendlogDataJson = await trendlogDataPromise;
-      const trendlogDataRows: any[] = Array.isArray(trendlogDataJson.data) ? trendlogDataJson.data : [];
-      setTrendlogDataFailed(trendlogDataFetchFailed);
+      const trackedInputs = typeof trendlogStatsData.input_tracked_points === 'number' ? trendlogStatsData.input_tracked_points : 0;
+      const trackedOutputs = typeof trendlogStatsData.output_tracked_points === 'number' ? trendlogStatsData.output_tracked_points : 0;
+      const trackedVariables = typeof trendlogStatsData.variable_tracked_points === 'number' ? trendlogStatsData.variable_tracked_points : 0;
 
-      // Count tracked points per type from TRENDLOG_DATA parent rows
-      let trackedInputs = 0, trackedOutputs = 0, trackedVariables = 0;
-      for (const row of trendlogDataRows) {
-        const pt = String(row.PointType || row.point_type || '').toUpperCase();
-        if (pt === 'INPUT') trackedInputs++;
-        else if (pt === 'OUTPUT') trackedOutputs++;
-        else if (pt === 'VARIABLE') trackedVariables++;
-      }
       const trackedRows = (syncRows || []).filter((row) => TRACKED_POINT_SYNC_TYPES.includes(String(row.dataType || '').toUpperCase() as any));
 
       const latestByType = new Map<string, SyncStatusRow>();
@@ -1278,6 +1262,9 @@ export const TrendLogsPage: React.FC = () => {
     const untrackedRev = [...untracked].reverse();
     const totalRev    = [...total].reverse();
     const recordsRev  = [...records].reverse();
+    // Apply series visibility from custom legend state
+    const effectiveTrackedRev   = hiddenCoverageSeries.has('Tracked')     ? trackedRev.map(() => 0)   : trackedRev;
+    const effectiveUntrackedRev = hiddenCoverageSeries.has('Not Tracked') ? untrackedRev.map(() => 0) : untrackedRev;
 
     chart.setOption({
       grid: { left: 58, right: 96, top: 8, bottom: 8 },
@@ -1298,7 +1285,7 @@ export const TrendLogsPage: React.FC = () => {
           name: 'Tracked',
           type: 'bar',
           stack: 'pts',
-          data: trackedRev,
+          data: effectiveTrackedRev,
           color: '#0f6cbd',
           barMaxWidth: 18,
           label: {
@@ -1313,7 +1300,7 @@ export const TrendLogsPage: React.FC = () => {
           name: 'Not Tracked',
           type: 'bar',
           stack: 'pts',
-          data: untrackedRev,
+          data: effectiveUntrackedRev,
           color: '#edebe9',
           barMaxWidth: 18,
           label: {
@@ -1341,6 +1328,7 @@ export const TrendLogsPage: React.FC = () => {
     devicePointSyncSummary.inputs, devicePointSyncSummary.outputs, devicePointSyncSummary.variables,
     devicePointSyncSummary.trackedInputs, devicePointSyncSummary.trackedOutputs, devicePointSyncSummary.trackedVariables,
     devicePointSyncSummary.inputDataPoints, devicePointSyncSummary.outputDataPoints, devicePointSyncSummary.variableDataPoints,
+    hiddenCoverageSeries,
   ]);
   const selectedMonitorItemData = selectedMonitor
     ? {
@@ -2632,25 +2620,6 @@ export const TrendLogsPage: React.FC = () => {
                     <div className={styles.overviewStatCard}>
                       <div className={styles.overviewStatHeader}>
                         <span className={styles.overviewStatLabel}>Sync Health</span>
-                        {selectedDevice && (
-                          <div className={styles.overviewStatHeaderActions}>
-                            <button
-                              type="button"
-                              className={styles.overviewStatAction}
-                              onClick={() => setVerifyDrawerOpen(true)}
-                            >
-                              <CheckmarkCircleRegular style={{ fontSize: 11 }} /> Verify
-                            </button>
-                            <span className={styles.overviewStatActionSep}>·</span>
-                            <button
-                              type="button"
-                              className={styles.overviewStatAction}
-                              onClick={() => setActiveTab('backend')}
-                            >
-                              Detail →
-                            </button>
-                          </div>
-                        )}
                         <Tooltip content="Total trend values stored and time of last successful sync." relationship="description">
                           <button type="button" className={styles.metricInfoButton} aria-label="Sync Health info">
                             <InfoRegular className={styles.metricInfoIcon} />
@@ -2666,6 +2635,24 @@ export const TrendLogsPage: React.FC = () => {
                           <span className={styles.overviewStatTimestamp}>· {lastSyncedFmt}</span>
                         )}
                       </div>
+                      {selectedDevice && (
+                        <div className={styles.overviewStatActions}>
+                          <button
+                            type="button"
+                            className={styles.overviewStatAction}
+                            onClick={() => setVerifyDrawerOpen(true)}
+                          >
+                            <CheckmarkCircleRegular style={{ fontSize: 11 }} /> Verify Data
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.overviewStatAction}
+                            onClick={() => setActiveTab('backend')}
+                          >
+                            Detail →
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                   </div>
@@ -2676,11 +2663,33 @@ export const TrendLogsPage: React.FC = () => {
                       <div className={styles.overviewDetailHeader}>
                         <span className={styles.overviewDetailTitle}>Logging Coverage by Sensor Type</span>
                         <div className={styles.overviewCoverageHeaderRight}>
-                          {/* Inline legend so ECharts legend doesn't overlap axes */}
-                          <span className={styles.overviewCoverageLegendDot} style={{ background: '#0f6cbd' }} />
-                          <span className={styles.overviewCoverageLegendLabel}>Tracked</span>
-                          <span className={styles.overviewCoverageLegendDot} style={{ background: '#ddd' }} />
-                          <span className={styles.overviewCoverageLegendLabel}>Not Tracked</span>
+                          {/* Clickable legend — toggles series visibility */}
+                          <button
+                            type="button"
+                            className={styles.overviewCoverageLegendBtn}
+                            onClick={() => setHiddenCoverageSeries(prev => {
+                              const next = new Set(prev);
+                              if (next.has('Tracked')) next.delete('Tracked'); else next.add('Tracked');
+                              return next;
+                            })}
+                            style={{ opacity: hiddenCoverageSeries.has('Tracked') ? 0.35 : 1 }}
+                          >
+                            <span className={styles.overviewCoverageLegendDot} style={{ background: '#0f6cbd' }} />
+                            <span className={styles.overviewCoverageLegendLabel}>Tracked</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.overviewCoverageLegendBtn}
+                            onClick={() => setHiddenCoverageSeries(prev => {
+                              const next = new Set(prev);
+                              if (next.has('Not Tracked')) next.delete('Not Tracked'); else next.add('Not Tracked');
+                              return next;
+                            })}
+                            style={{ opacity: hiddenCoverageSeries.has('Not Tracked') ? 0.35 : 1 }}
+                          >
+                            <span className={styles.overviewCoverageLegendDot} style={{ background: '#ddd' }} />
+                            <span className={styles.overviewCoverageLegendLabel}>Not Tracked</span>
+                          </button>
                           {!pointSummaryLoading && (
                             <span className={styles.overviewCoverageSub}>
                               {devicePointSyncSummary.trackedInputs}/{devicePointSyncSummary.inputs} IN
@@ -2695,11 +2704,6 @@ export const TrendLogsPage: React.FC = () => {
                           <Spinner size="tiny" />
                           <Text size={200}>Loading…</Text>
                         </div>
-                      )}
-                      {!pointSummaryLoading && trendlogDataFailed && (
-                        <Text size={100} style={{ color: '#8a8886', fontStyle: 'italic', padding: '2px 0 4px' }}>
-                          Tracking breakdown unavailable for this device (TRENDLOG_DATA table not accessible).
-                        </Text>
                       )}
                       {/* Always mounted so ECharts can dispose safely before React detaches the node */}
                       <div
