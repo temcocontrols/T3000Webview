@@ -4,7 +4,7 @@
  * Manage trend log configurations with device refresh
  */
 
-import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
@@ -50,7 +50,6 @@ import { TrendChartContent } from '../components/TrendChartContent';
 import { TrendPolicyPage } from './TrendPolicyPage';
 import { TrendlogVerifyDrawer } from '../components/TrendlogVerifyDrawer';
 import { FlowLogTab } from '../../logs/components/FlowLogTab';
-import * as echarts from 'echarts';
 import styles from './TrendlogsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
@@ -105,6 +104,12 @@ interface DevicePointSyncSummary {
   trackedInputs: number;
   trackedOutputs: number;
   trackedVariables: number;
+  inputLastSyncAt: number | null;
+  outputLastSyncAt: number | null;
+  variableLastSyncAt: number | null;
+  inputLastSyncFmt: string;
+  outputLastSyncFmt: string;
+  variableLastSyncFmt: string;
 }
 
 interface SyncStatusRow {
@@ -135,6 +140,12 @@ const EMPTY_POINT_SYNC_SUMMARY: DevicePointSyncSummary = {
   trackedInputs: 0,
   trackedOutputs: 0,
   trackedVariables: 0,
+  inputLastSyncAt: null,
+  outputLastSyncAt: null,
+  variableLastSyncAt: null,
+  inputLastSyncFmt: 'N/A',
+  outputLastSyncFmt: 'N/A',
+  variableLastSyncFmt: 'N/A',
 };
 
 const TRACKED_POINT_SYNC_TYPES = ['INPUTS', 'OUTPUTS', 'VARIABLES'] as const;
@@ -206,9 +217,6 @@ export const TrendLogsPage: React.FC = () => {
   const [infoBannerDismissed, setInfoBannerDismissed] = useState(() =>
     sessionStorage.getItem('tl-infobanner-v1') === '1'
   );
-  const coverageChartRef = useRef<HTMLDivElement | null>(null);
-  const coverageChartInstance = useRef<echarts.ECharts | null>(null);
-  const [hiddenCoverageSeries, setHiddenCoverageSeries] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const selectedSerial = selectedDevice?.serialNumber;
@@ -541,6 +549,9 @@ export const TrendLogsPage: React.FC = () => {
       let backendSyncedTypes = 0;
       let backendRecordsSynced = 0;
       const latestSuccessfulRow = trackedRows.find((row) => !!row.success) || null;
+      const inputLatest = latestByType.get('INPUTS');
+      const outputLatest = latestByType.get('OUTPUTS');
+      const variableLatest = latestByType.get('VARIABLES');
 
       TRACKED_POINT_SYNC_TYPES.forEach((type) => {
         const latest = latestByType.get(type);
@@ -572,6 +583,12 @@ export const TrendLogsPage: React.FC = () => {
         trackedInputs,
         trackedOutputs,
         trackedVariables,
+        inputLastSyncAt: typeof inputLatest?.syncTime === 'number' ? inputLatest.syncTime : null,
+        outputLastSyncAt: typeof outputLatest?.syncTime === 'number' ? outputLatest.syncTime : null,
+        variableLastSyncAt: typeof variableLatest?.syncTime === 'number' ? variableLatest.syncTime : null,
+        inputLastSyncFmt: inputLatest?.syncTimeFmt || 'N/A',
+        outputLastSyncFmt: outputLatest?.syncTimeFmt || 'N/A',
+        variableLastSyncFmt: variableLatest?.syncTimeFmt || 'N/A',
       });
     } catch (summaryError) {
       console.error('[TrendLogsPage] Failed to load point sync summary:', summaryError);
@@ -1234,101 +1251,43 @@ export const TrendLogsPage: React.FC = () => {
     setActiveTab(isPointSetChartMode ? 'point-sets' : 'default');
   }, [isPointSetChartMode, setActiveTab]);
 
-  // ── EChart: Logged Coverage ────────────────────────────────────────────
-  useLayoutEffect(() => {
-    if (activeTab !== 'overview') {
-      if (coverageChartInstance.current) {
-        coverageChartInstance.current.dispose();
-        coverageChartInstance.current = null;
-      }
-      return;
-    }
-    if (!coverageChartRef.current || pointSummaryLoading) return;
+  const coverageRows = [
+    {
+      key: 'inputs',
+      label: 'Inputs',
+      total: devicePointSyncSummary.inputs,
+      tracked: devicePointSyncSummary.trackedInputs,
+      records: devicePointSyncSummary.inputDataPoints,
+      lastSyncAt: devicePointSyncSummary.inputLastSyncAt,
+      lastSyncFmt: devicePointSyncSummary.inputLastSyncFmt,
+    },
+    {
+      key: 'outputs',
+      label: 'Outputs',
+      total: devicePointSyncSummary.outputs,
+      tracked: devicePointSyncSummary.trackedOutputs,
+      records: devicePointSyncSummary.outputDataPoints,
+      lastSyncAt: devicePointSyncSummary.outputLastSyncAt,
+      lastSyncFmt: devicePointSyncSummary.outputLastSyncFmt,
+    },
+    {
+      key: 'variables',
+      label: 'Variables',
+      total: devicePointSyncSummary.variables,
+      tracked: devicePointSyncSummary.trackedVariables,
+      records: devicePointSyncSummary.variableDataPoints,
+      lastSyncAt: devicePointSyncSummary.variableLastSyncAt,
+      lastSyncFmt: devicePointSyncSummary.variableLastSyncFmt,
+    },
+  ];
 
-    // Dispose previous instance
-    if (coverageChartInstance.current) {
-      coverageChartInstance.current.dispose();
-    }
-    const chart = echarts.init(coverageChartRef.current);
-    coverageChartInstance.current = chart;
-
-    const total  = [devicePointSyncSummary.inputs,    devicePointSyncSummary.outputs,    devicePointSyncSummary.variables];
-    const tracked= [devicePointSyncSummary.trackedInputs, devicePointSyncSummary.trackedOutputs, devicePointSyncSummary.trackedVariables];
-    const records= [devicePointSyncSummary.inputDataPoints, devicePointSyncSummary.outputDataPoints, devicePointSyncSummary.variableDataPoints];
-    const untracked = total.map((t, i) => Math.max(0, t - tracked[i]));
-    const labels = ['Variables', 'Outputs', 'Inputs']; // reversed for bottom-to-top
-    const trackedRev  = [...tracked].reverse();
-    const untrackedRev = [...untracked].reverse();
-    const totalRev    = [...total].reverse();
-    const recordsRev  = [...records].reverse();
-    // Apply series visibility from custom legend state
-    const effectiveTrackedRev   = hiddenCoverageSeries.has('Tracked')     ? trackedRev.map(() => 0)   : trackedRev;
-    const effectiveUntrackedRev = hiddenCoverageSeries.has('Not Tracked') ? untrackedRev.map(() => 0) : untrackedRev;
-
-    chart.setOption({
-      grid: { left: 58, right: 96, top: 8, bottom: 8 },
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: { type: 'shadow' },
-        textStyle: { fontSize: 11 },
-        formatter: (params: any) => {
-          const idx = params[0].dataIndex;
-          const t = trackedRev[idx]; const tot = totalRev[idx]; const rec = recordsRev[idx];
-          return `<b style="font-size:11px">${labels[idx]}</b><br/><span style="font-size:11px">Tracked: ${t}/${tot} &nbsp; Records: ${rec.toLocaleString()}</span>`;
-        },
-      },
-      xAxis: { type: 'value', max: Math.max(...total, 1), axisLabel: { fontSize: 10 }, splitLine: { lineStyle: { type: 'dashed' as const, color: '#f0efee' } } },
-      yAxis: { type: 'category', data: labels, axisLabel: { fontSize: 10, fontWeight: 600 } },
-      series: [
-        {
-          name: 'Tracked',
-          type: 'bar',
-          stack: 'pts',
-          data: effectiveTrackedRev,
-          color: '#0f6cbd',
-          barMaxWidth: 18,
-          label: {
-            show: true,
-            position: 'inside',
-            fontSize: 10,
-            color: '#fff',
-            formatter: (p: any) => p.value > 0 ? String(p.value) : '',
-          },
-        },
-        {
-          name: 'Not Tracked',
-          type: 'bar',
-          stack: 'pts',
-          data: effectiveUntrackedRev,
-          color: '#edebe9',
-          barMaxWidth: 18,
-          label: {
-            show: true,
-            position: 'right',
-            fontSize: 10,
-            color: '#605e5c',
-            formatter: (p: any) => {
-              const i = p.dataIndex;
-              return `${trackedRev[i]}/${totalRev[i]}  ·  ${recordsRev[i].toLocaleString()} rec`;
-            },
-          },
-        },
-      ],
-    } as echarts.EChartsOption);
-
-    const handleResize = () => chart.resize();
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      chart.dispose();
-      coverageChartInstance.current = null;
-    };
-  }, [activeTab, pointSummaryLoading,
-    devicePointSyncSummary.inputs, devicePointSyncSummary.outputs, devicePointSyncSummary.variables,
-    devicePointSyncSummary.trackedInputs, devicePointSyncSummary.trackedOutputs, devicePointSyncSummary.trackedVariables,
-    devicePointSyncSummary.inputDataPoints, devicePointSyncSummary.outputDataPoints, devicePointSyncSummary.variableDataPoints,
-    hiddenCoverageSeries,
-  ]);
+  const getCoverageAgeStatus = (syncAt: number | null): 'fresh' | 'warning' | 'stale' => {
+    if (!syncAt) return 'stale';
+    const diffMin = Math.floor((Date.now() / 1000 - syncAt) / 60);
+    if (diffMin < 5) return 'fresh';
+    if (diffMin <= 15) return 'warning';
+    return 'stale';
+  };
   const selectedMonitorItemData = selectedMonitor
     ? {
       title: selectedMonitorTitle,
@@ -2655,44 +2614,15 @@ export const TrendLogsPage: React.FC = () => {
                     </div> 
                   </div>
 
-                  {/* ── Logging Coverage EChart ── */}
+                  {/* ── Logging Coverage Health ── */}
                   {selectedDevice && (
                     <div className={styles.overviewCoverageCard}>
                       <div className={styles.overviewDetailHeader}>
-                        <span className={styles.overviewDetailTitle}>Logging Coverage by Sensor Type</span>
+                        <span className={styles.overviewDetailTitle}>Logging Coverage Health</span>
                         <div className={styles.overviewCoverageHeaderRight}>
-                          {/* Clickable legend — toggles series visibility */}
-                          <button
-                            type="button"
-                            className={styles.overviewCoverageLegendBtn}
-                            onClick={() => setHiddenCoverageSeries(prev => {
-                              const next = new Set(prev);
-                              if (next.has('Tracked')) next.delete('Tracked'); else next.add('Tracked');
-                              return next;
-                            })}
-                            style={{ opacity: hiddenCoverageSeries.has('Tracked') ? 0.35 : 1 }}
-                          >
-                            <span className={styles.overviewCoverageLegendDot} style={{ background: '#0f6cbd' }} />
-                            <span className={styles.overviewCoverageLegendLabel}>Tracked</span>
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.overviewCoverageLegendBtn}
-                            onClick={() => setHiddenCoverageSeries(prev => {
-                              const next = new Set(prev);
-                              if (next.has('Not Tracked')) next.delete('Not Tracked'); else next.add('Not Tracked');
-                              return next;
-                            })}
-                            style={{ opacity: hiddenCoverageSeries.has('Not Tracked') ? 0.35 : 1 }}
-                          >
-                            <span className={styles.overviewCoverageLegendDot} style={{ background: '#ddd' }} />
-                            <span className={styles.overviewCoverageLegendLabel}>Not Tracked</span>
-                          </button>
                           {!pointSummaryLoading && (
                             <span className={styles.overviewCoverageSub}>
-                              {devicePointSyncSummary.trackedInputs}/{devicePointSyncSummary.inputs} IN
-                              {' · '}{devicePointSyncSummary.trackedOutputs}/{devicePointSyncSummary.outputs} OUT
-                              {' · '}{devicePointSyncSummary.trackedVariables}/{devicePointSyncSummary.variables} VAR
+                              Legend: Age &lt;5m = Fresh, 5–15m = Warning, &gt;15m = Stale
                             </span>
                           )}
                         </div>
@@ -2703,12 +2633,42 @@ export const TrendLogsPage: React.FC = () => {
                           <Text size={200}>Loading…</Text>
                         </div>
                       )}
-                      {/* Always mounted so ECharts can dispose safely before React detaches the node */}
-                      <div
-                        ref={coverageChartRef}
-                        className={styles.overviewCoverageChart}
-                        style={pointSummaryLoading ? { height: 0, overflow: 'hidden' } : undefined}
-                      />
+                      {!pointSummaryLoading && (
+                        <div className={styles.coverageHealthTableWrap}>
+                          <div className={styles.coverageHealthTableHeader}>
+                            <span>Type</span>
+                            <span>Coverage</span>
+                            <span>Tracked / Total</span>
+                            <span>Records</span>
+                            <span>Last Sync Time</span>
+                            <span>Age</span>
+                          </div>
+                          {coverageRows.map((row) => {
+                            const total = Math.max(0, row.total || 0);
+                            const tracked = Math.max(0, Math.min(total, row.tracked || 0));
+                            const pct = total > 0 ? Math.round((tracked / total) * 100) : 0;
+                            const ageStatus = getCoverageAgeStatus(row.lastSyncAt);
+
+                            return (
+                              <div key={row.key} className={styles.coverageHealthTableRow}>
+                                <span className={styles.coverageHealthType}>{row.label}</span>
+                                <div className={styles.coverageHealthBarCell}>
+                                  <div className={styles.coverageHealthBarTrack}>
+                                    <div className={styles.coverageHealthBarFill} style={{ width: `${pct}%` }} />
+                                  </div>
+                                  <span className={styles.coverageHealthPercent}>{pct}%</span>
+                                </div>
+                                <span className={styles.coverageHealthMetric}>{tracked} / {total}</span>
+                                <span className={styles.coverageHealthMetric}>{(row.records || 0).toLocaleString()}</span>
+                                <span className={styles.coverageHealthTime}>{row.lastSyncFmt || 'N/A'}</span>
+                                <span className={`${styles.coverageHealthAge} ${ageStatus === 'fresh' ? styles.coverageHealthAgeFresh : ageStatus === 'warning' ? styles.coverageHealthAgeWarning : styles.coverageHealthAgeStale}`}>
+                                  {formatTimeAgo(row.lastSyncAt)}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
 
