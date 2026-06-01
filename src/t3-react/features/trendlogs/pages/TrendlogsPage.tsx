@@ -41,7 +41,6 @@ import {
   ChevronUpRegular,
   ChevronDownRegular,
   OpenRegular,
-  CheckmarkCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { TrendlogRefreshApi } from '../services/trendlogRefreshApi';
@@ -2839,14 +2838,14 @@ export const TrendLogsPage: React.FC = () => {
                 <div className={styles.backendTabWrap}>
                   {selectedDevice && (
                     <div className={styles.backendConfigCard}>
-                      <div className={styles.backendConfigRow}>
-                        <span className={styles.backendConfigLabel}>Device</span>
+                      <div className={styles.backendConfigField}>
+                        <span className={styles.backendConfigLabel}>Device:</span>
                         <span className={styles.backendConfigValue}>
                           {selectedDevice.nameShowOnTree || selectedDevice.productName} — SN {selectedDevice.serialNumber}
                         </span>
                       </div>
-                      <div className={styles.backendConfigRow}>
-                        <span className={styles.backendConfigLabel}>Stored Values</span>
+                      <div className={styles.backendConfigField}>
+                        <span className={styles.backendConfigLabel}>Stored Values:</span>
                         <span className={styles.backendConfigValue}>
                           {pointSummaryLoading
                             ? '…'
@@ -2855,16 +2854,16 @@ export const TrendLogsPage: React.FC = () => {
                               : devicePointSyncSummary.trendlogDetailCount.toLocaleString()}
                         </span>
                       </div>
-                      <div className={styles.backendConfigRow}>
-                        <span className={styles.backendConfigLabel}>Last Sync</span>
+                      <div className={styles.backendConfigField}>
+                        <span className={styles.backendConfigLabel}>Last Sync:</span>
                         <span className={styles.backendConfigValue}>{lastSyncedFmt || 'N/A'}</span>
                       </div>
-                      <div className={styles.backendConfigRow}>
-                        <span className={styles.backendConfigLabel}>Method</span>
+                      <div className={styles.backendConfigField}>
+                        <span className={styles.backendConfigLabel}>Method:</span>
                         <span className={styles.backendConfigValue}>{syncSourceLabel}</span>
                       </div>
-                      <div className={styles.backendConfigRow}>
-                        <span className={styles.backendConfigLabel}>Tracked Points</span>
+                      <div className={styles.backendConfigField}>
+                        <span className={styles.backendConfigLabel}>Tracked Points:</span>
                         <span className={styles.backendConfigValue}>
                           {devicePointSyncSummary.trackedInputs} IN · {devicePointSyncSummary.trackedOutputs} OUT · {devicePointSyncSummary.trackedVariables} VAR
                         </span>
@@ -2872,7 +2871,7 @@ export const TrendLogsPage: React.FC = () => {
                     </div>
                   )}
                   <div className={styles.backendFlowSection}>
-                    <FlowLogTab initialTypeFilter="TRENDLOG_REALTIME" />
+                    <FlowLogTab forceTypeFilter="TRENDLOG_BACKEND" />
                   </div>
                 </div>
               )}

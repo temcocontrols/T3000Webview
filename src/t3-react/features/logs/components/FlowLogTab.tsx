@@ -562,9 +562,14 @@ const FlowDetailPanel: React.FC<{ flowId: string; onClose: () => void }> = ({ fl
 interface FlowLogTabProps {
   /** Pre-select a flow type in the left panel when the tab mounts. */
   initialTypeFilter?: string;
+  /** Hard-lock flow type and hide other categories when provided. */
+  forceTypeFilter?: string;
 }
 
-export const FlowLogTab: React.FC<FlowLogTabProps> = ({ initialTypeFilter = '' }) => {
+export const FlowLogTab: React.FC<FlowLogTabProps> = ({
+  initialTypeFilter = '',
+  forceTypeFilter = '',
+}) => {
   const s = useStyles();
 
   // State
@@ -580,11 +585,19 @@ export const FlowLogTab: React.FC<FlowLogTabProps> = ({ initialTypeFilter = '' }
   const [jumpValue, setJumpValue]     = useState('');
   const [refreshKey, setRefreshKey]   = useState(0);
 
+  const effectiveTypeFilter = forceTypeFilter || selectedType;
+
+  useEffect(() => {
+    if (forceTypeFilter && selectedType !== forceTypeFilter) {
+      setSelectedType(forceTypeFilter);
+    }
+  }, [forceTypeFilter, selectedType]);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-      if (selectedType)   params.set('flow_type', selectedType);
+      if (effectiveTypeFilter) params.set('flow_type', effectiveTypeFilter);
       if (filterStatus)   params.set('status', filterStatus);
       const [rawFlows, typesRes] = await Promise.all([
         fetch(`${FLOWS_URL}?${params}`).then((r) => r.json()),
@@ -596,13 +609,14 @@ export const FlowLogTab: React.FC<FlowLogTabProps> = ({ initialTypeFilter = '' }
       } else {
         setData(rawFlows as FlowListResponse);
       }
-      setTypes(Array.isArray(typesRes) ? typesRes : []);
+      const allTypes = Array.isArray(typesRes) ? typesRes : [];
+      setTypes(forceTypeFilter ? allTypes.filter((t) => t.flow_type === forceTypeFilter) : allTypes);
     } catch (e) {
       console.error('FlowLogTab fetch error', e);
     } finally {
       setLoading(false);
     }
-  }, [page, limit, selectedType, filterStatus, refreshKey]);
+  }, [page, limit, effectiveTypeFilter, filterStatus, refreshKey, forceTypeFilter]);
 
   useEffect(() => {
     loadData();
@@ -614,7 +628,9 @@ export const FlowLogTab: React.FC<FlowLogTabProps> = ({ initialTypeFilter = '' }
   const flows = data?.flows ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / limit);
-  const totalCount = types.reduce((s, t) => s + t.count, 0);
+  const totalCount = forceTypeFilter
+    ? total
+    : types.reduce((s, t) => s + t.count, 0);
 
   // Client-side search filter (on loaded page)
   const visibleFlows = search.trim()
@@ -632,19 +648,21 @@ export const FlowLogTab: React.FC<FlowLogTabProps> = ({ initialTypeFilter = '' }
       <div className={mergeClasses(s.panel, s.panelLeft)}>
         <div className={mergeClasses(s.panelHeader, s.panelHeaderLeft)}><span className={s.panelTitle}>Types</span></div>
         <div className={s.typeList}>
-          <div className={mergeClasses(s.typeItem, selectedType === '' && s.typeItemActive)}
-            onClick={() => setSelectedType('')}>
-            {selectedType === '' && <span className={s.typeIndicator} />}
-            <span className={mergeClasses(s.typeName, selectedType === '' && s.typeNameActive)}>All</span>
-            <span className={s.typeSubtext}>{totalCount.toLocaleString()} flows</span>
-          </div>
+          {!forceTypeFilter && (
+            <div className={mergeClasses(s.typeItem, selectedType === '' && s.typeItemActive)}
+              onClick={() => setSelectedType('')}>
+              {selectedType === '' && <span className={s.typeIndicator} />}
+              <span className={mergeClasses(s.typeName, selectedType === '' && s.typeNameActive)}>All</span>
+              <span className={s.typeSubtext}>{totalCount.toLocaleString()} flows</span>
+            </div>
+          )}
           {types.map((t) => (
             <div key={t.flow_type}
-              className={mergeClasses(s.typeItem, selectedType === t.flow_type && s.typeItemActive)}
-              onClick={() => setSelectedType(t.flow_type)}>
-              {selectedType === t.flow_type && <span className={s.typeIndicator} />}
+              className={mergeClasses(s.typeItem, effectiveTypeFilter === t.flow_type && s.typeItemActive)}
+              onClick={() => !forceTypeFilter && setSelectedType(t.flow_type)}>
+              {effectiveTypeFilter === t.flow_type && <span className={s.typeIndicator} />}
               <div style={{ display: 'flex', alignItems: 'center', width: '100%', minWidth: 0, gap: '2px' }}>
-                <span className={mergeClasses(s.typeName, selectedType === t.flow_type && s.typeNameActive)}>
+                <span className={mergeClasses(s.typeName, effectiveTypeFilter === t.flow_type && s.typeNameActive)}>
                   {t.flow_type}
                 </span>
                 {FLOW_TYPE_DESC[t.flow_type] && (
