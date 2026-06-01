@@ -300,20 +300,21 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
         if (!cancelled) {
           setAllPoints(merged);
           setSelectedPointKeys(new Set());
-          setPointTags((prev) => {
-            const next = { ...prev };
-            const validKeys = new Set(merged.map((point) => point.key));
-
-            Object.keys(next).forEach((key) => {
-              if (!validKeys.has(key)) {
-                delete next[key];
-              }
-            });
+          setPointTags(() => {
+            const next: Record<string, string[]> = {};
+            // Track which point keys have an explicit DB entry (even if empty after a Clear All).
+            // For those, the DB is the source of truth — do NOT re-derive.
+            // Only derive tags for points that have never been written to the DB yet.
+            const dbKeys = new Set(Object.keys(haystackByPointKey));
 
             merged.forEach((point) => {
-              const currentTags = next[point.key] ?? [];
-              const backendTags = haystackByPointKey[point.key] ?? [];
-              next[point.key] = mergeTagLists(deriveHaystackTagsForPoint(point), backendTags, currentTags);
+              if (dbKeys.has(point.key)) {
+                // DB entry exists → use it exactly (empty = user cleared, preserve that)
+                next[point.key] = haystackByPointKey[point.key];
+              } else {
+                // No DB entry yet → derive initial tags so the point isn't blank on first view
+                next[point.key] = deriveHaystackTagsForPoint(point);
+              }
             });
 
             return next;
@@ -442,7 +443,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
     showStatusBar('info', `Clearing tags on ${selectedPointKeys.size} point(s)…`, 0);
     try {
       await saveTagsToBackend(snapshot);
-      showStatusBar('success', `Tags cleared on ${snapshot ? Object.keys(snapshot).length : 0} point(s).`);
+      showStatusBar('success', `Tags cleared on ${selectedPointKeys.size} point(s).`);
     } catch (e) {
       console.warn('Failed to clear selected tags in backend:', e);
       showStatusBar('error', 'Failed to clear tags — check the console for details.');

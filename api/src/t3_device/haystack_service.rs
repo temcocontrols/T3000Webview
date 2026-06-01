@@ -258,6 +258,20 @@ pub async fn update_entity_tags(
         active.tags = Set(tags_json);
         active.updated_at = Set(Some(timestamp));
         active.update(conn).await?;
+    } else {
+        // Row doesn't exist yet (device never Auto-Tagged) — insert it so the
+        // save/clear is durable and won't be overridden by derived tags on reload.
+        let active = haystack_entity::ActiveModel {
+            id: Set(id),
+            kind: Set("point".to_string()),
+            dis: Set(Some(format!("{} {}", point_table, point_index))),
+            tags: Set(tags_json),
+            serial_number: Set(Some(serial)),
+            point_table: Set(Some(point_table.to_string())),
+            point_index: Set(Some(point_index.to_string())),
+            updated_at: Set(Some(timestamp)),
+        };
+        active.insert(conn).await?;
     }
 
     Ok(())
