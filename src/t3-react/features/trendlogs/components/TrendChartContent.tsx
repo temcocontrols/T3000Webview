@@ -1763,7 +1763,17 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     if (!serialNumber || !panelId) return;
 
     try {
-      // Priority 1: Use monitorInputs if provided (from TrendLogs page selection)
+      // Priority 1: Use monitorInputs if provided (from TrendLogs page selection).
+      // Distinguish: undefined = not provided (fall through), [] = provided but empty (no items).
+      if (props.monitorInputs !== undefined) {
+        if (props.monitorInputs.length === 0) {
+          // Monitor has no inputs configured — show empty left panel
+          console.log('[TrendChartContent] monitorInputs provided but empty — no items to show');
+          seriesRef.current = [];
+          setSeries([]);
+          return;
+        }
+      }
       if (props.monitorInputs && props.monitorInputs.length > 0) {
         console.log('鉁?TrendChartContent: Initializing series from monitorInputs', {
           inputCount: props.monitorInputs.length,
@@ -2493,6 +2503,12 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       }
     };
   }, []); // Empty deps - run only once on mount
+
+  // Re-initialize series when monitorInputs changes (e.g. user switches monitors in embedded view)
+  useEffect(() => {
+    if (!hasLoadedInitialDataRef.current) return; // Skip during initial mount (handled above)
+    initializeSeries();
+  }, [initializeSeries, props.monitorInputs]);
 
   useEffect(() => {
     if (!showConfigModal) {

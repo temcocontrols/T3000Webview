@@ -437,10 +437,13 @@ export const TrendLogsPage: React.FC = () => {
     return () => window.clearTimeout(timer);
   }, [pointSetActionMessage]);
 
-  const setActiveTab = useCallback((tab: TrendCenterTab) => {
+  const setActiveTab = useCallback((tab: TrendCenterTab, monitor?: TrendLogData) => {
     const next = new URLSearchParams(searchParams);
     next.set('tab', tab);
-    if (tab !== 'chart') {
+    if (tab === 'chart' && monitor) {
+      next.set('monitorId', monitor.trendlogIndex || monitor.trendlogId || '0');
+      next.set('trendlogId', monitor.trendlogId || monitor.trendlogIndex || '0');
+    } else if (tab !== 'chart') {
       next.delete('monitorId');
       next.delete('trendlogId');
     }
@@ -2295,7 +2298,7 @@ export const TrendLogsPage: React.FC = () => {
               icon={<ChartMultipleRegular className={styles.iconSmall} />}
               onClick={async () => {
                 await handleMonitorSelect(item);
-                setActiveTab('chart');
+                setActiveTab('chart', item);
               }}
               title="View trend chart for this trendlog"
             >
