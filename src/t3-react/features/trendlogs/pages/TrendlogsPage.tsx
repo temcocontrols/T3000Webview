@@ -2634,15 +2634,14 @@ export const TrendLogsPage: React.FC = () => {
                         {!pointSummaryLoading && lastSyncedFmt && (
                           <span className={styles.overviewStatTimestamp}>· {lastSyncedFmt}</span>
                         )}
-                      </div>
-                      {selectedDevice && (
+                         {selectedDevice && (
                         <div className={styles.overviewStatActions}>
                           <button
                             type="button"
                             className={styles.overviewStatAction}
                             onClick={() => setVerifyDrawerOpen(true)}
                           >
-                            <CheckmarkCircleRegular style={{ fontSize: 11 }} /> Verify Data
+                            Verify Data →
                           </button>
                           <button
                             type="button"
@@ -2653,8 +2652,8 @@ export const TrendLogsPage: React.FC = () => {
                           </button>
                         </div>
                       )}
-                    </div>
-
+                      </div> 
+                    </div> 
                   </div>
 
                   {/* ── Logging Coverage EChart ── */}
