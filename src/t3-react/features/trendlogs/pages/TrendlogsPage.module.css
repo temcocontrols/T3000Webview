@@ -194,19 +194,34 @@
 .overviewStatCard {
   border: 1px solid #edebe9;
   border-radius: 6px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   background: #ffffff;
   box-shadow: 0 1px 2px rgba(0,0,0,0.04);
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .overviewStatHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  gap: 4px;
+}
+
+/* Inline action buttons in stat card header (Verify / Detail) */
+.overviewStatHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  margin-right: 4px;
+}
+
+.overviewStatActionSep {
+  color: #c8c6c4;
+  font-size: 11px;
+  user-select: none;
 }
 
 .overviewStatLabel {
@@ -238,7 +253,6 @@
 .overviewStatTimestamp {
   font-size: 11px;
   color: #8a8886;
-  margin-top: -2px;
 }
 
 .overviewInventoryPill {
@@ -276,19 +290,19 @@
 .overviewStatActions {
   display: flex;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 4px;
   flex-wrap: wrap;
 }
 
 .overviewStatAction {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 12px;
+  gap: 3px;
+  font-size: 11px;
   color: #0f6cbd;
   background: transparent;
   border: none;
-  padding: 2px 0;
+  padding: 1px 0;
   cursor: pointer;
   font-family: inherit;
 }
@@ -356,18 +370,40 @@
   background: #ffffff;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+}
+
+.overviewCoverageHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.overviewCoverageLegendDot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.overviewCoverageLegendLabel {
+  font-size: 10px;
+  color: #605e5c;
+  margin-right: 4px;
 }
 
 .overviewCoverageChart {
-  height: 100px;
+  height: 84px;
   width: 100%;
 }
 
 .overviewCoverageSub {
-  font-size: 11px;
+  font-size: 10px;
   color: #8a8886;
-  margin-left: auto;
+  white-space: nowrap;
 }
 
 /* ── Backend tab ── */
