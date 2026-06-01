@@ -826,6 +826,7 @@ impl T3TrendlogDataService {
 
     /// Get trendlog data statistics
     /// Queries both parent and detail tables for comprehensive stats
+    /// Returns total points, counts by type, latest timestamp, and sync metadata
     pub async fn get_data_statistics(
         db: &DatabaseConnection,
         serial_number: i32,
