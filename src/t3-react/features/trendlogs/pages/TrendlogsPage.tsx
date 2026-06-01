@@ -509,13 +509,18 @@ export const TrendLogsPage: React.FC = () => {
 
     setPointSummaryLoading(true);
     try {
-      const [inputsResponse, outputsResponse, variablesResponse, syncStatusResponse, trendlogStatsResponse, trendlogDataResponse] = await Promise.all([
+      // Fire TRENDLOG_DATA in parallel but isolate its errors so a network reset
+      // doesn't abort the whole summary fetch.
+      const trendlogDataPromise = fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/table/TRENDLOG_DATA`)
+        .then(r => r.ok ? r.json() : { data: [] })
+        .catch(() => ({ data: [] as any[] }));
+
+      const [inputsResponse, outputsResponse, variablesResponse, syncStatusResponse, trendlogStatsResponse] = await Promise.all([
         fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/input-points`),
         fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/output-points`),
         fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/variable-points`),
         fetch(`${API_BASE_URL}/api/sync-status/${selectedSerial}`),
         fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/trendlog-data/stats?panel_id=${selectedPanelId || 1}`),
-        fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedSerial}/table/TRENDLOG_DATA`),
       ]);
 
       const inputsData = inputsResponse.ok ? await inputsResponse.json() : {};
@@ -523,7 +528,9 @@ export const TrendLogsPage: React.FC = () => {
       const variablesData = variablesResponse.ok ? await variablesResponse.json() : {};
       const syncRows: SyncStatusRow[] = syncStatusResponse.ok ? await syncStatusResponse.json() : [];
       const trendlogStatsData = trendlogStatsResponse.ok ? await trendlogStatsResponse.json() : {};
-      const trendlogDataJson = trendlogDataResponse.ok ? await trendlogDataResponse.json() : { data: [] };
+
+      // TRENDLOG_DATA: already in flight, safe to await now
+      const trendlogDataJson = await trendlogDataPromise;
       const trendlogDataRows: any[] = Array.isArray(trendlogDataJson.data) ? trendlogDataJson.data : [];
 
       // Count tracked points per type from TRENDLOG_DATA parent rows
@@ -1270,19 +1277,20 @@ export const TrendLogsPage: React.FC = () => {
     const recordsRev  = [...records].reverse();
 
     chart.setOption({
-      grid: { left: 72, right: 120, top: 16, bottom: 24 },
-      legend: { data: ['Tracked', 'Not Tracked'], bottom: 0, itemHeight: 10, textStyle: { fontSize: 11 } },
+      grid: { left: 58, right: 96, top: 8, bottom: 18 },
+      legend: { data: ['Tracked', 'Not Tracked'], bottom: 0, itemHeight: 8, textStyle: { fontSize: 10 } },
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
+        textStyle: { fontSize: 11 },
         formatter: (params: any) => {
           const idx = params[0].dataIndex;
           const t = trackedRev[idx]; const tot = totalRev[idx]; const rec = recordsRev[idx];
-          return `${labels[idx]}<br/>Tracked: ${t}/${tot} points<br/>Records: ${rec.toLocaleString()}`;
+          return `<b style="font-size:11px">${labels[idx]}</b><br/><span style="font-size:11px">Tracked: ${t}/${tot} &nbsp; Records: ${rec.toLocaleString()}</span>`;
         },
       },
-      xAxis: { type: 'value', max: Math.max(...total, 1), axisLabel: { fontSize: 11 } },
-      yAxis: { type: 'category', data: labels, axisLabel: { fontSize: 12, fontWeight: 500 } },
+      xAxis: { type: 'value', max: Math.max(...total, 1), axisLabel: { fontSize: 10 }, splitLine: { lineStyle: { type: 'dashed' as const, color: '#f0efee' } } },
+      yAxis: { type: 'category', data: labels, axisLabel: { fontSize: 10, fontWeight: 600 } },
       series: [
         {
           name: 'Tracked',
@@ -1290,10 +1298,11 @@ export const TrendLogsPage: React.FC = () => {
           stack: 'pts',
           data: trackedRev,
           color: '#0f6cbd',
+          barMaxWidth: 18,
           label: {
             show: true,
             position: 'inside',
-            fontSize: 11,
+            fontSize: 10,
             color: '#fff',
             formatter: (p: any) => p.value > 0 ? String(p.value) : '',
           },
@@ -1304,10 +1313,11 @@ export const TrendLogsPage: React.FC = () => {
           stack: 'pts',
           data: untrackedRev,
           color: '#edebe9',
+          barMaxWidth: 18,
           label: {
             show: true,
             position: 'right',
-            fontSize: 11,
+            fontSize: 10,
             color: '#605e5c',
             formatter: (p: any) => {
               const i = p.dataIndex;
