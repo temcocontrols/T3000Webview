@@ -42,6 +42,21 @@ pub struct RebuildRequest {
     pub serial_numbers: Vec<i32>,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TagUpdate {
+    pub serial: i32,
+    pub point_table: String,
+    pub point_index: String,
+    pub tags: Value,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateTagsRequest {
+    pub updates: Vec<TagUpdate>,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct HaystackGridResponse<T>
@@ -93,6 +108,7 @@ pub fn create_haystack_routes() -> Router<T3AppState> {
         .route("/api/haystack/hisRead", post(haystack_his_read))
         .route("/api/haystack/download", get(haystack_download))
         .route("/api/haystack/rebuild", post(haystack_rebuild))
+        .route("/api/haystack/update-tags", post(haystack_update_tags))
 }
 
 async fn haystack_about() -> Json<Value> {
@@ -267,5 +283,35 @@ async fn haystack_rebuild(
         "success": true,
         "message": "Haystack entities rebuilt",
         "updated": payload.serial_numbers.len()
+    })))
+}
+
+async fn haystack_update_tags(
+    State(state): State<T3AppState>,
+    Json(payload): Json<UpdateTagsRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let db = get_db_conn(&state).await?;
+
+    let mut updated = 0usize;
+    for update in &payload.updates {
+        let point_table = update.point_table.to_ascii_uppercase();
+        haystack_service::update_entity_tags(
+            &db,
+            update.serial,
+            &point_table,
+            &update.point_index,
+            update.tags.clone(),
+        )
+        .await
+        .map_err(|e| (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to update tags for {}/{}: {}", update.point_table, update.point_index, e),
+        ))?;
+        updated += 1;
+    }
+
+    Ok(Json(json!({
+        "success": true,
+        "updated": updated
     })))
 }

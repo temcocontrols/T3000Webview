@@ -584,16 +584,7 @@
   cursor: not-allowed;
 }
 
-.profileSelect {
-  height: 26px;
-  border: 1px solid #d0d7de;
-  border-radius: 6px;
-  padding: 0 8px;
-  min-width: 180px;
-  flex: 1;
-  font-size: 12px;
-  background: #ffffff;
-}
+
 
 .filterChips {
   display: inline-flex;
@@ -900,6 +891,32 @@
   cursor: not-allowed;
 }
 
+.headerActionBtnPrimary {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid #2da44e;
+  border-radius: 6px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.headerActionBtnPrimary:hover:not(:disabled) {
+  background: #dcfce7;
+  border-color: #166534;
+}
+
+.headerActionBtnPrimary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .headerActionBtnDanger {
   display: inline-flex;
   align-items: center;
@@ -924,6 +941,69 @@
 .headerActionBtnDanger:disabled {
   opacity: 0.38;
   cursor: not-allowed;
+}
+
+/* ── Panel title row (title + save status) ── */
+.panelTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.saveStatusSaving {
+  font-size: 10px;
+  color: #0f6cbd;
+  white-space: nowrap;
+}
+
+.saveStatusSaved {
+  font-size: 10px;
+  color: #15803d;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.saveStatusError {
+  font-size: 10px;
+  color: #b91c1c;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── Tag-state pill tabs (All / Tagged / Untagged) ── */
+.tagStateTabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tagStateTab {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid #d0d7de;
+  border-radius: 999px;
+  background: #ffffff;
+  font-size: 10px;
+  font-weight: 500;
+  color: #475467;
+  cursor: pointer;
+  transition: border-color 0.1s, background 0.1s, color 0.1s;
+  white-space: nowrap;
+}
+
+.tagStateTab:hover {
+  border-color: #9fb6d1;
+  color: #0f6cbd;
+}
+
+.tagStateTabActive {
+  border-color: #0f6cbd;
+  background: #eef6ff;
+  color: #0f6cbd;
+  font-weight: 600;
 }
 
 /* ── Rebuild status bar ── */

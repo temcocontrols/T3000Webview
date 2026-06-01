@@ -37,9 +37,19 @@ const pointTypeResponseKey: Record<PointType, string> = {
 const labelizeType = (t: PointType) => (t === 'input' ? 'Input' : t === 'output' ? 'Output' : 'Variable');
 const ALL_TYPES: PointType[] = ['input', 'output', 'variable'];
 const POLICY_STORAGE_KEY = 't3000.trend.policy.state.v2';
-const PROFILE_STORAGE_KEY = 't3000.trend.policy.profiles.v1';
 const SEMANTIC_TAGS = new Set(['temp', 'humidity', 'pressure', 'flow', 'co2', 'occupancy', 'volt', 'current', 'elec']);
 const QUICK_TAGS = ['temp', 'humidity', 'pressure', 'flow', 'co2', 'occupancy', 'zone', 'site', 'equip'];
+
+/** Convert ["point", "kind:Number", "unit:F"] to {"point":"M","kind":"Number","unit":"F"} */
+const tagsArrayToObject = (tags: string[]): Record<string, string> => {
+  const obj: Record<string, string> = {};
+  tags.forEach(tag => {
+    const colonIdx = tag.indexOf(':');
+    if (colonIdx === -1) obj[tag] = 'M';
+    else obj[tag.slice(0, colonIdx)] = tag.slice(colonIdx + 1);
+  });
+  return obj;
+};
 
 const HAYSTACK_UNIT_TAGS: Record<string, string[]> = {
   f: ['temp'],
@@ -131,17 +141,6 @@ const deriveHaystackTagsForPoint = (point: UnifiedPoint): string[] => {
   return mergeTagLists(tags);
 };
 
-interface SavedTagProfile {
-  id: string;
-  name: string;
-  createdAt: string;
-  selectedDeviceSerials: number[];
-  filterTags: string[];
-  tagStateFilter: TagStateFilter;
-  activeTypeTab: TabType;
-  pointSearch: string;
-}
-
 interface TrendPolicyPageProps {
   embedded?: boolean;
   onBack?: () => void;
@@ -163,14 +162,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
   const [pointSearch, setPointSearch] = useState('');
   const [filterTags, setFilterTags] = useState<string[]>([]);
   const [pointTags, setPointTags] = useState<Record<string, string[]>>({});
-  const [savedProfiles, setSavedProfiles] = useState<SavedTagProfile[]>([]);
-  const [selectedProfileId, setSelectedProfileId] = useState('');
-  const [profileNameInput, setProfileNameInput] = useState('');
-  const [collapsedSections, setCollapsedSections] = useState({
-    actions: false,
-    filters: false,
-    profiles: true,
-  });
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [rebuildInProgress, setRebuildInProgress] = useState(false);
   const [rebuildStatusMessage, setRebuildStatusMessage] = useState('');
   const [loadRevision, setLoadRevision] = useState(0);
@@ -185,12 +177,6 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
         setPointSearch(typeof parsed.pointSearch === 'string' ? parsed.pointSearch : '');
         setFilterTags(Array.isArray(parsed.filterTags) ? parsed.filterTags : []);
         setPointTags(parsed.pointTags && typeof parsed.pointTags === 'object' ? parsed.pointTags : {});
-      }
-
-      const savedProfilesRaw = localStorage.getItem(PROFILE_STORAGE_KEY);
-      if (savedProfilesRaw) {
-        const parsedProfiles = JSON.parse(savedProfilesRaw);
-        setSavedProfiles(Array.isArray(parsedProfiles) ? parsedProfiles : []);
       }
     } catch (e) {
       console.warn('Failed to restore TrendPolicy state:', e);
@@ -214,14 +200,6 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
       console.warn('Failed to persist TrendPolicy state:', e);
     }
   }, [selectedDeviceSerials, activeTypeTab, tagStateFilter, pointSearch, filterTags, pointTags]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(savedProfiles));
-    } catch (e) {
-      console.warn('Failed to persist TrendPolicy profiles:', e);
-    }
-  }, [savedProfiles]);
 
   useEffect(() => {
     if (!selectedDevice?.serialNumber) {
@@ -448,21 +426,45 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
     });
   };
 
-  const clearTagsOnSelected = () => {
+  const clearTagsOnSelected = async () => {
     if (selectedPointKeys.size === 0) return;
+    const snapshot: Record<string, string[]> = {};
+    selectedPointKeys.forEach(k => { snapshot[k] = []; });
     setPointTags((prev) => {
       const next = { ...prev };
       selectedPointKeys.forEach((key) => { next[key] = []; });
       return next;
     });
+    try {
+      setSaveStatus('saving');
+      await saveTagsToBackend(snapshot);
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2500);
+    } catch (e) {
+      console.warn('Failed to clear selected tags in backend:', e);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    }
   };
 
-  const clearAllTags = () => {
+  const clearAllTags = async () => {
+    const snapshot: Record<string, string[]> = {};
+    allPoints.forEach(p => { snapshot[p.key] = []; });
     setPointTags((prev) => {
       const next = { ...prev };
       Object.keys(next).forEach((key) => { next[key] = []; });
       return next;
     });
+    try {
+      setSaveStatus('saving');
+      await saveTagsToBackend(snapshot);
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2500);
+    } catch (e) {
+      console.warn('Failed to clear all tags in backend:', e);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    }
   };
 
   const rebuildHaystackFromBackend = async () => {
@@ -505,6 +507,37 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
 
   const removePointTag = (key: string, tag: string) => {
     setPointTags(prev => ({ ...prev, [key]: (prev[key] ?? []).filter(t => t !== tag) }));
+  };
+
+  const saveTagsToBackend = async (tagsSnapshot: Record<string, string[]>) => {
+    const updates = allPoints
+      .filter(p => p.key in tagsSnapshot)
+      .map(p => ({
+        serial: p.serial,
+        pointTable: p.type === 'input' ? 'INPUTS' : p.type === 'output' ? 'OUTPUTS' : 'VARIABLES',
+        pointIndex: p.index,
+        tags: tagsArrayToObject(tagsSnapshot[p.key] ?? []),
+      }));
+    if (updates.length === 0) return;
+    const response = await fetch(`${API_BASE_URL}/api/haystack/update-tags`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ updates }),
+    });
+    if (!response.ok) throw new Error(`Save tags failed: ${response.status}`);
+  };
+
+  const handleSaveTags = async () => {
+    try {
+      setSaveStatus('saving');
+      await saveTagsToBackend(pointTags);
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2500);
+    } catch (e) {
+      console.warn('Failed to save tags to backend:', e);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    }
   };
 
   const handleApplyTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -552,42 +585,6 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
     };
   }, [pointTags, selectedPointKeys]);
 
-  const saveCurrentProfile = () => {
-    const name = profileNameInput.trim() || `Profile ${savedProfiles.length + 1}`;
-    const profile: SavedTagProfile = {
-      id: `${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-      name,
-      createdAt: new Date().toISOString(),
-      selectedDeviceSerials: Array.from(selectedDeviceSerials),
-      filterTags: [...filterTags],
-      tagStateFilter,
-      activeTypeTab,
-      pointSearch,
-    };
-    setSavedProfiles(prev => [profile, ...prev]);
-    setSelectedProfileId(profile.id);
-    setProfileNameInput('');
-  };
-
-  const applySelectedProfile = () => {
-    const profile = savedProfiles.find(p => p.id === selectedProfileId);
-    if (!profile) return;
-    setFilterTags(profile.filterTags);
-    setTagStateFilter(profile.tagStateFilter);
-    setActiveTypeTab(profile.activeTypeTab);
-    setPointSearch(profile.pointSearch);
-  };
-
-  const deleteSelectedProfile = () => {
-    if (!selectedProfileId) return;
-    setSavedProfiles(prev => prev.filter(p => p.id !== selectedProfileId));
-    setSelectedProfileId('');
-  };
-
-  const toggleSection = (section: 'actions' | 'filters' | 'profiles') => {
-    setCollapsedSections((prev) => ({ ...prev, [section]: !prev[section] }));
-  };
-
   return (
     <div className={styles.page}>
       {(validationSummary.selectedWithoutTags > 0 || validationSummary.selectedSemanticConflicts > 0 || validationSummary.selectedInsufficientTags > 0) && (
@@ -604,7 +601,14 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
         <aside className={styles.leftPanel}>
           {/* ── Panel header with action buttons ── */}
           <div className={styles.panelHeader}>
-            <span className={styles.panelTitle}>Tag Workspace</span>
+            <div className={styles.panelTitleRow}>
+              <span className={styles.panelTitle}>Tag Workspace</span>
+              {saveStatus !== 'idle' && (
+                <span className={saveStatus === 'saved' ? styles.saveStatusSaved : saveStatus === 'saving' ? styles.saveStatusSaving : styles.saveStatusError}>
+                  {saveStatus === 'saving' ? '⟳ Saving…' : saveStatus === 'saved' ? '✓ Saved' : '⚠ Error'}
+                </span>
+              )}
+            </div>
             <div className={styles.panelHeaderActions}>
               <button
                 className={styles.headerActionBtn}
@@ -612,7 +616,15 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
                 disabled={selectedDevices.length === 0 || rebuildInProgress}
                 title="Auto-Tag: re-derive static tags (unit, kind, equipRef) from device metadata for all points. Safe to run anytime — does not overwrite tags you added manually."
               >
-                {rebuildInProgress ? '⟳ Running…' : 'Auto-Tag'}
+                {rebuildInProgress ? '⟳…' : 'Auto-Tag'}
+              </button>
+              <button
+                className={styles.headerActionBtnPrimary}
+                onClick={handleSaveTags}
+                disabled={allPoints.length === 0 || saveStatus === 'saving'}
+                title="Save Tags: push all current tag edits to the database"
+              >
+                Save Tags
               </button>
               <button
                 className={styles.headerActionBtnDanger}
@@ -628,7 +640,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
                 disabled={selectedPointKeys.size === 0}
                 title="Clear Selected: remove all tags from the currently checked rows only"
               >
-                Clear Selected
+                Clear Sel.
               </button>
             </div>
           </div>
@@ -643,10 +655,10 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
           <div className={styles.panelBody}>
             {/* Workflow hint */}
             <div className={styles.workflowHint}>
-              <span className={styles.workflowStep}>①</span>
+              <span className={styles.workflowStep}>1</span>
               <span>Filter &amp; select rows on the right</span>
               <span className={styles.hintArrow}>→</span>
-              <span className={styles.workflowStep}>②</span>
+              <span className={styles.workflowStep}>2</span>
               <span>Apply tags here</span>
             </div>
 
@@ -709,11 +721,11 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
                 </button>
               </div>
 
-              <div className={styles.segmentedControl}>
+              <div className={styles.tagStateTabs}>
                 {(['all', 'tagged', 'untagged'] as TagStateFilter[]).map(state => (
                   <button
                     key={state}
-                    className={`${styles.segmentBtn} ${tagStateFilter === state ? styles.segmentBtnActive : ''}`}
+                    className={`${styles.tagStateTab} ${tagStateFilter === state ? styles.tagStateTabActive : ''}`}
                     onClick={() => setTagStateFilter(state)}
                   >
                     {state === 'all' ? 'All' : state === 'tagged' ? 'Tagged' : 'Untagged'}
@@ -754,46 +766,6 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
               </div>
             </div>
 
-            {/* ─── PROFILES (collapsible) ─── */}
-            <section className={styles.leftSection}>
-              <button
-                type="button"
-                className={styles.sectionHeaderBtn}
-                onClick={() => toggleSection('profiles')}
-                aria-expanded={!collapsedSections.profiles}
-              >
-                <span className={styles.flatSectionLabel} style={{ marginBottom: 0 }}>Profiles</span>
-                <span className={styles.sectionChevron}>{collapsedSections.profiles ? '▸' : '▾'}</span>
-              </button>
-              {!collapsedSections.profiles && (
-                <>
-                  <p className={styles.sectionHint}>Save filter setups and recall them quickly.</p>
-                  <div className={styles.sectionRow}>
-                    <select
-                      className={styles.profileSelect}
-                      value={selectedProfileId}
-                      onChange={e => setSelectedProfileId(e.target.value)}
-                    >
-                      <option value="">Select profile</option>
-                      {savedProfiles.map(profile => (
-                        <option key={profile.id} value={profile.id}>{profile.name}</option>
-                      ))}
-                    </select>
-                    <button className={styles.tagActionBtn} onClick={applySelectedProfile} disabled={!selectedProfileId}>Apply</button>
-                    <button className={styles.tagActionBtn} onClick={deleteSelectedProfile} disabled={!selectedProfileId}>Delete</button>
-                  </div>
-                  <div className={styles.sectionRow}>
-                    <input
-                      className={styles.tagInput}
-                      value={profileNameInput}
-                      onChange={e => setProfileNameInput(e.target.value)}
-                      placeholder="New profile name"
-                    />
-                    <button className={styles.tagActionBtn} onClick={saveCurrentProfile}>Save</button>
-                  </div>
-                </>
-              )}
-            </section>
           </div>
         </aside>
 

@@ -238,6 +238,31 @@ pub async fn seed_device(conn: &impl ConnectionTrait, serial: i32) -> Result<(),
     Ok(())
 }
 
+pub async fn update_entity_tags(
+    conn: &impl ConnectionTrait,
+    serial: i32,
+    point_table: &str,
+    point_index: &str,
+    tags: Value,
+) -> Result<(), DbErr> {
+    let id = make_id(serial, point_table, point_index);
+    let timestamp = now_ms();
+    let tags_json = tags.to_string();
+
+    let existing = haystack_entity::Entity::find_by_id(id.clone())
+        .one(conn)
+        .await?;
+
+    if let Some(model) = existing {
+        let mut active: haystack_entity::ActiveModel = model.into();
+        active.tags = Set(tags_json);
+        active.updated_at = Set(Some(timestamp));
+        active.update(conn).await?;
+    }
+
+    Ok(())
+}
+
 fn parse_model(model: haystack_entity::Model) -> Option<HaystackEntityRow> {
     let tags: Value = serde_json::from_str(&model.tags).ok()?;
     Some(HaystackEntityRow {
