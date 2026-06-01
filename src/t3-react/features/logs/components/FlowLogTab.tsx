@@ -559,14 +559,19 @@ const FlowDetailPanel: React.FC<{ flowId: string; onClose: () => void }> = ({ fl
 // Main component
 // ---------------------------------------------------------------------------
 
-export const FlowLogTab: React.FC = () => {
+interface FlowLogTabProps {
+  /** Pre-select a flow type in the left panel when the tab mounts. */
+  initialTypeFilter?: string;
+}
+
+export const FlowLogTab: React.FC<FlowLogTabProps> = ({ initialTypeFilter = '' }) => {
   const s = useStyles();
 
   // State
   const [data, setData]               = useState<FlowListResponse | null>(null);
   const [types, setTypes]             = useState<FlowTypeCount[]>([]);
   const [loading, setLoading]         = useState(false);
-  const [selectedType, setSelectedType] = useState('');
+  const [selectedType, setSelectedType] = useState(initialTypeFilter);
   const [filterStatus, setFilterStatus] = useState('');
   const [search, setSearch]           = useState('');
   const [page, setPage]               = useState(0);
