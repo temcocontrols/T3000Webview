@@ -428,7 +428,7 @@
   height: 100%;
   min-height: 0;
   gap: 10px;
-  padding: 12px 16px;
+  /* padding: 12px 16px; */
   overflow: hidden;
 }
 
