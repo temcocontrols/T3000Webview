@@ -437,6 +437,10 @@ export const TrendLogsPage: React.FC = () => {
   const setActiveTab = useCallback((tab: TrendCenterTab) => {
     const next = new URLSearchParams(searchParams);
     next.set('tab', tab);
+    if (tab !== 'chart') {
+      next.delete('monitorId');
+      next.delete('trendlogId');
+    }
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 

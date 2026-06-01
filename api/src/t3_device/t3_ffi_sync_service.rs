@@ -4015,7 +4015,6 @@ impl T3000MainService {
                     Some(point.full_label.as_str()),
                     point.digital_analog,
                     Some(derived_units.as_str()),
-                    Some(point.value),
                 )
                 .await
                 {
@@ -4077,7 +4076,6 @@ impl T3000MainService {
                     Some(point.full_label.as_str()),
                     point.digital_analog,
                     Some(derived_units.as_str()),
-                    Some(point.value),
                 )
                 .await
                 {
@@ -4161,7 +4159,6 @@ impl T3000MainService {
                     Some(point.full_label.as_str()),
                     point.digital_analog,
                     Some(derived_units.as_str()),
-                    Some(point.value),
                 )
                 .await
                 {
@@ -4223,7 +4220,6 @@ impl T3000MainService {
                     Some(point.full_label.as_str()),
                     point.digital_analog,
                     Some(derived_units.as_str()),
-                    Some(point.value),
                 )
                 .await
                 {
@@ -4312,7 +4308,6 @@ impl T3000MainService {
                     Some(point.full_label.as_str()),
                     point.digital_analog,
                     Some(derived_units.as_str()),
-                    Some(point.value),
                 )
                 .await
                 {
@@ -4377,7 +4372,6 @@ impl T3000MainService {
                     Some(point.full_label.as_str()),
                     point.digital_analog,
                     Some(derived_units.as_str()),
-                    Some(point.value),
                 )
                 .await
                 {

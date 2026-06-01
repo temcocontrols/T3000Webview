@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { TagRegular, FilterRegular } from '@fluentui/react-icons';
+import { FilterRegular } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './TrendPolicyPage.module.css';
@@ -82,7 +82,8 @@ const parseHaystackTagList = (rawTags: unknown): string[] => {
   }
 
   const tagsObj = rawTags as Record<string, unknown>;
-  return Object.entries(tagsObj).map(([key, value]) => {
+  // Exclude curVal — it is a live sensor reading, not a static semantic tag
+  return Object.entries(tagsObj).filter(([key]) => key !== 'curVal').map(([key, value]) => {
     if (value === 'M') {
       return key;
     }
@@ -123,14 +124,6 @@ const deriveHaystackTagsForPoint = (point: UnifiedPoint): string[] => {
     const unitTags = HAYSTACK_UNIT_TAGS[units.toLowerCase()];
     if (unitTags) {
       tags.push(...unitTags);
-    }
-  }
-
-  const rawValue = String(point.fValue ?? '').trim();
-  if (rawValue) {
-    const numericValue = Number(rawValue);
-    if (Number.isFinite(numericValue)) {
-      tags.push(`curVal:${numericValue}`);
     }
   }
 
@@ -329,8 +322,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
 
         if (!cancelled) {
           setAllPoints(merged);
-          // Default behavior: when points are loaded, All points is selected and all rows are checked.
-          setSelectedPointKeys(new Set(merged.map(p => p.key)));
+          setSelectedPointKeys(new Set());
           setPointTags((prev) => {
             const next = { ...prev };
             const validKeys = new Set(merged.map((point) => point.key));
@@ -404,11 +396,6 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
 
   const handleTypeChipClick = (tab: TabType) => {
     setActiveTypeTab(tab);
-    if (tab === 'all') {
-      setSelectedPointKeys(new Set(allPoints.map(p => p.key)));
-      return;
-    }
-    setSelectedPointKeys(new Set(allPoints.filter(p => p.type === tab).map(p => p.key)));
   };
 
   const addTagFilter = () => {
@@ -457,6 +444,23 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
         if (!point) return;
         next[key] = deriveHaystackTagsForPoint(point);
       });
+      return next;
+    });
+  };
+
+  const clearTagsOnSelected = () => {
+    if (selectedPointKeys.size === 0) return;
+    setPointTags((prev) => {
+      const next = { ...prev };
+      selectedPointKeys.forEach((key) => { next[key] = []; });
+      return next;
+    });
+  };
+
+  const clearAllTags = () => {
+    setPointTags((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((key) => { next[key] = []; });
       return next;
     });
   };
@@ -518,7 +522,9 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
   const allKnownTags = useMemo(() => {
     const tags = new Set<string>();
     Object.values(pointTags).forEach(list => list.forEach(tag => tags.add(tag)));
-    return Array.from(tags).sort((a, b) => a.localeCompare(b));
+    return Array.from(tags)
+      .filter(t => !t.startsWith('curVal:'))
+      .sort((a, b) => a.localeCompare(b));
   }, [pointTags]);
 
   const taggedPointsCount = useMemo(
@@ -596,156 +602,159 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
       {/* ── Two-panel Haystack workspace ── */}
       <div className={styles.main}>
         <aside className={styles.leftPanel}>
+          {/* ── Panel header with action buttons ── */}
           <div className={styles.panelHeader}>
             <span className={styles.panelTitle}>Tag Workspace</span>
-            <button
-              className={styles.tagActionBtn}
-              onClick={rebuildHaystackFromBackend}
-              disabled={selectedDevices.length === 0 || rebuildInProgress}
-            >
-              {rebuildInProgress ? 'Rebuilding...' : 'Rebuild Tags'}
-            </button>
+            <div className={styles.panelHeaderActions}>
+              <button
+                className={styles.headerActionBtn}
+                onClick={rebuildHaystackFromBackend}
+                disabled={selectedDevices.length === 0 || rebuildInProgress}
+                title="Auto-Tag: re-derive static tags (unit, kind, equipRef) from device metadata for all points. Safe to run anytime — does not overwrite tags you added manually."
+              >
+                {rebuildInProgress ? '⟳ Running…' : 'Auto-Tag'}
+              </button>
+              <button
+                className={styles.headerActionBtnDanger}
+                onClick={clearAllTags}
+                disabled={allPoints.length === 0}
+                title="Clear All Tags: remove all tags from every point on this device"
+              >
+                Clear All
+              </button>
+              <button
+                className={styles.headerActionBtnDanger}
+                onClick={clearTagsOnSelected}
+                disabled={selectedPointKeys.size === 0}
+                title="Clear Selected: remove all tags from the currently checked rows only"
+              >
+                Clear Selected
+              </button>
+            </div>
           </div>
+
+          {rebuildStatusMessage && (
+            <div className={styles.rebuildStatus}>
+              <span>{rebuildStatusMessage}</span>
+              <button className={styles.dismissStatus} onClick={() => setRebuildStatusMessage('')}>×</button>
+            </div>
+          )}
+
           <div className={styles.panelBody}>
-            <div className={styles.tagHint}>
-              <TagRegular style={{ fontSize: '12px' }} />
-              Defaults come from point metadata. Use custom tags only when needed.
+            {/* Workflow hint */}
+            <div className={styles.workflowHint}>
+              <span className={styles.workflowStep}>①</span>
+              <span>Filter &amp; select rows on the right</span>
+              <span className={styles.hintArrow}>→</span>
+              <span className={styles.workflowStep}>②</span>
+              <span>Apply tags here</span>
             </div>
 
-            {rebuildStatusMessage && <span className={styles.helperText}>{rebuildStatusMessage}</span>}
+            {/* ─── APPLY TAGS (always visible) ─── */}
+            <div className={styles.flatSection}>
+              <div className={styles.flatSectionLabel}>Apply Tags</div>
+              <div className={styles.sectionRow}>
+                <input
+                  className={styles.tagInput}
+                  value={applyTagInput}
+                  onChange={e => setApplyTagInput(e.target.value)}
+                  onKeyDown={handleApplyTagKeyDown}
+                  placeholder="Custom tag (e.g. critical)"
+                />
+                <button
+                  className={styles.tagActionBtn}
+                  onClick={applyTagToSelected}
+                  disabled={selectedPointKeys.size === 0 || !applyTagInput.trim()}
+                >
+                  + Add to {selectedPointKeys.size}
+                </button>
+              </div>
 
-            <section className={styles.leftSection}>
+              <div className={styles.quickTagRow}>
+                {QUICK_TAGS.map((tag) => (
+                  <button
+                    key={tag}
+                    className={styles.knownTagBtn}
+                    onClick={() => applyQuickTag(tag)}
+                    disabled={selectedPointKeys.size === 0}
+                    title={`Apply "${tag}" to ${selectedPointKeys.size} selected point(s)`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+
               <button
-                type="button"
-                className={styles.sectionHeaderBtn}
-                onClick={() => toggleSection('actions')}
-                aria-expanded={!collapsedSections.actions}
+                className={styles.tagActionBtn}
+                onClick={resetSelectedPointsToHaystackDefaults}
+                disabled={selectedPointKeys.size === 0}
               >
-                <h4 className={styles.sectionTitle}>Tag Actions</h4>
-                <span className={styles.sectionChevron}>{collapsedSections.actions ? '+' : '-'}</span>
+                ↺ Reset selected to defaults
               </button>
-              {!collapsedSections.actions && (
-                <>
-                  <p className={styles.sectionHint}>Step 2: apply tags to points selected on the right.</p>
-                  <div className={styles.sectionRow}>
-                    <input
-                      className={styles.tagInput}
-                      value={applyTagInput}
-                      onChange={e => setApplyTagInput(e.target.value)}
-                      onKeyDown={handleApplyTagKeyDown}
-                      placeholder="Custom tag (e.g. critical)"
-                    />
-                    <button
-                      className={styles.tagActionBtn}
-                      onClick={applyTagToSelected}
-                      disabled={selectedPointKeys.size === 0 || !applyTagInput.trim()}
-                    >
-                      Add to {selectedPointKeys.size}
-                    </button>
-                  </div>
+            </div>
 
-                  <div className={styles.quickTagRow}>
-                    {QUICK_TAGS.map((tag) => (
+            {/* ─── FILTER POINTS ─── */}
+            <div className={styles.flatSection}>
+              <div className={styles.flatSectionLabel}>Filter Points</div>
+              <div className={styles.sectionRow}>
+                <input
+                  className={styles.tagInput}
+                  value={filterTagInput}
+                  onChange={e => setFilterTagInput(e.target.value)}
+                  onKeyDown={handleFilterTagKeyDown}
+                  placeholder="Filter by tag"
+                />
+                <button className={styles.tagActionBtn} onClick={addTagFilter} disabled={!filterTagInput.trim()}>
+                  <FilterRegular style={{ fontSize: '11px' }} /> Add
+                </button>
+              </div>
+
+              <div className={styles.segmentedControl}>
+                {(['all', 'tagged', 'untagged'] as TagStateFilter[]).map(state => (
+                  <button
+                    key={state}
+                    className={`${styles.segmentBtn} ${tagStateFilter === state ? styles.segmentBtnActive : ''}`}
+                    onClick={() => setTagStateFilter(state)}
+                  >
+                    {state === 'all' ? 'All' : state === 'tagged' ? 'Tagged' : 'Untagged'}
+                  </button>
+                ))}
+              </div>
+
+              {filterTags.length > 0 ? (
+                <div className={styles.filterChips}>
+                  <span className={styles.filterChipsLabel}>Active:</span>
+                  {filterTags.map(tag => (
+                    <span key={tag} className={styles.filterChip}>
+                      {tag}
                       <button
-                        key={tag}
-                        className={styles.knownTagBtn}
-                        onClick={() => applyQuickTag(tag)}
-                        disabled={selectedPointKeys.size === 0}
-                        title={`Apply ${tag} to selected points`}
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className={styles.sectionRow}>
-                    <button
-                      className={styles.tagActionBtn}
-                      onClick={resetSelectedPointsToHaystackDefaults}
-                      disabled={selectedPointKeys.size === 0}
-                    >
-                      Reset selected to defaults
-                    </button>
-                  </div>
-                </>
+                        className={styles.chipRemove}
+                        aria-label={`Remove filter ${tag}`}
+                        onClick={() => removeFilterTag(tag)}
+                      >×</button>
+                    </span>
+                  ))}
+                  <button className={styles.clearFilters} onClick={() => setFilterTags([])}>Clear all</button>
+                </div>
+              ) : (
+                <span className={styles.helperText}>No active tag filters</span>
               )}
-            </section>
 
-            <section className={styles.leftSection}>
-              <button
-                type="button"
-                className={styles.sectionHeaderBtn}
-                onClick={() => toggleSection('filters')}
-                aria-expanded={!collapsedSections.filters}
-              >
-                <h4 className={styles.sectionTitle}>Filters</h4>
-                <span className={styles.sectionChevron}>{collapsedSections.filters ? '+' : '-'}</span>
-              </button>
-              {!collapsedSections.filters && (
-                <>
-                  <p className={styles.sectionHint}>Use filters to narrow the points list before selecting.</p>
-                  <div className={styles.sectionRow}>
-                    <input
-                      className={styles.tagInput}
-                      value={filterTagInput}
-                      onChange={e => setFilterTagInput(e.target.value)}
-                      onKeyDown={handleFilterTagKeyDown}
-                      placeholder="Filter by tag"
-                    />
-                    <button className={styles.tagActionBtn} onClick={addTagFilter} disabled={!filterTagInput.trim()}>
-                      <FilterRegular style={{ fontSize: '12px' }} /> Add
-                    </button>
-                  </div>
+              <div className={styles.knownTags}>
+                <span className={styles.filterChipsLabel}>Known:</span>
+                {allKnownTags.length > 0 ? allKnownTags.map(tag => (
+                  <button
+                    key={tag}
+                    className={styles.knownTagBtn}
+                    onClick={() => setFilterTags(prev => (prev.includes(tag) ? prev : [...prev, tag]))}
+                  >
+                    {tag}
+                  </button>
+                )) : <span className={styles.helperText}>No tags yet</span>}
+              </div>
+            </div>
 
-                  <div className={styles.sectionRow}>
-                    <div className={styles.segmentedControl}>
-                      {(['all', 'tagged', 'untagged'] as TagStateFilter[]).map(state => (
-                        <button
-                          key={state}
-                          className={`${styles.segmentBtn} ${tagStateFilter === state ? styles.segmentBtnActive : ''}`}
-                          onClick={() => setTagStateFilter(state)}
-                        >
-                          {state === 'all' ? 'All' : state === 'tagged' ? 'Tagged' : 'Untagged'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {filterTags.length > 0 ? (
-                    <div className={styles.filterChips}>
-                      <span className={styles.filterChipsLabel}>Active filters:</span>
-                      {filterTags.map(tag => (
-                        <span key={tag} className={styles.filterChip}>
-                          {tag}
-                          <button
-                            className={styles.chipRemove}
-                            aria-label={`Remove filter ${tag}`}
-                            onClick={() => removeFilterTag(tag)}
-                          >×</button>
-                        </span>
-                      ))}
-                      <button className={styles.clearFilters} onClick={() => setFilterTags([])}>Clear all</button>
-                    </div>
-                  ) : (
-                    <span className={styles.helperText}>No tag filters active</span>
-                  )}
-
-                  <div className={styles.knownTags}>
-                    <span className={styles.filterChipsLabel}>Known tags:</span>
-                    {allKnownTags.length > 0 ? allKnownTags.map(tag => (
-                      <button
-                        key={tag}
-                        className={styles.knownTagBtn}
-                        onClick={() => setFilterTags(prev => (prev.includes(tag) ? prev : [...prev, tag]))}
-                      >
-                        {tag}
-                      </button>
-                    )) : <span className={styles.helperText}>No tags yet</span>}
-                  </div>
-                </>
-              )}
-            </section>
-
+            {/* ─── PROFILES (collapsible) ─── */}
             <section className={styles.leftSection}>
               <button
                 type="button"
@@ -753,12 +762,12 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
                 onClick={() => toggleSection('profiles')}
                 aria-expanded={!collapsedSections.profiles}
               >
-                <h4 className={styles.sectionTitle}>Profiles</h4>
-                <span className={styles.sectionChevron}>{collapsedSections.profiles ? '+' : '-'}</span>
+                <span className={styles.flatSectionLabel} style={{ marginBottom: 0 }}>Profiles</span>
+                <span className={styles.sectionChevron}>{collapsedSections.profiles ? '▸' : '▾'}</span>
               </button>
               {!collapsedSections.profiles && (
                 <>
-                  <p className={styles.sectionHint}>Save common filter setups and recall them quickly.</p>
+                  <p className={styles.sectionHint}>Save filter setups and recall them quickly.</p>
                   <div className={styles.sectionRow}>
                     <select
                       className={styles.profileSelect}
@@ -823,6 +832,18 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
               <button
                 type="button"
                 className={styles.clearSelectionBtn}
+                onClick={() => setSelectedPointKeys(prev => {
+                  const next = new Set(prev);
+                  visiblePoints.forEach(p => next.add(p.key));
+                  return next;
+                })}
+                disabled={visiblePoints.length === 0}
+              >
+                Select all visible
+              </button>
+              <button
+                type="button"
+                className={styles.clearSelectionBtn}
                 onClick={() => setSelectedPointKeys(new Set())}
                 disabled={selectedPointKeys.size === 0}
               >
@@ -875,7 +896,34 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
                 </colgroup>
                 <thead>
                   <tr>
-                    <th className={styles.checkCol} />
+                    <th className={styles.checkCol}>
+                      <input
+                        type="checkbox"
+                        className={styles.nativeCheck}
+                        ref={el => {
+                          if (el) el.indeterminate =
+                            visiblePoints.some(p => selectedPointKeys.has(p.key)) &&
+                            !visiblePoints.every(p => selectedPointKeys.has(p.key));
+                        }}
+                        checked={visiblePoints.length > 0 && visiblePoints.every(p => selectedPointKeys.has(p.key))}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setSelectedPointKeys(prev => {
+                              const next = new Set(prev);
+                              visiblePoints.forEach(p => next.add(p.key));
+                              return next;
+                            });
+                          } else {
+                            setSelectedPointKeys(prev => {
+                              const next = new Set(prev);
+                              visiblePoints.forEach(p => next.delete(p.key));
+                              return next;
+                            });
+                          }
+                        }}
+                        aria-label="Select / deselect all visible points"
+                      />
+                    </th>
                     <th>Type</th>
                     <th>Point</th>
                     <th>Label</th>
@@ -907,20 +955,23 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
                         <td className={styles.truncateText} title={p.fullLabel}>{p.fullLabel}</td>
                         <td>
                           <div className={styles.pointTagsCell}>
-                            {tags.length === 0 ? (
-                              <span className={styles.noTags}>No tags</span>
-                            ) : (
-                              tags.map(tag => (
-                                <span key={tag} className={styles.pointTagChip}>
-                                  {tag}
-                                  <button
-                                    className={styles.chipRemove}
-                                    aria-label={`Remove tag ${tag}`}
-                                    onClick={() => removePointTag(p.key, tag)}
-                                  >×</button>
-                                </span>
-                              ))
-                            )}
+                            {(() => {
+                              const visibleTags = tags.filter(t => !t.startsWith('curVal:'));
+                              return visibleTags.length === 0 ? (
+                                <span className={styles.noTags}>No tags</span>
+                              ) : (
+                                visibleTags.map(tag => (
+                                  <span key={tag} className={styles.pointTagChip}>
+                                    {tag}
+                                    <button
+                                      className={styles.chipRemove}
+                                      aria-label={`Remove tag ${tag}`}
+                                      onClick={() => removePointTag(p.key, tag)}
+                                    >×</button>
+                                  </span>
+                                ))
+                              );
+                            })()}
                           </div>
                         </td>
                       </tr>

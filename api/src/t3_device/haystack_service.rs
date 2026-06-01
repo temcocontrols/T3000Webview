@@ -56,7 +56,6 @@ fn compute_tags(
     serial: i32,
     digital_analog: Option<&str>,
     units: Option<&str>,
-    f_value: Option<&str>,
 ) -> Value {
     let mut tags = Map::new();
 
@@ -81,17 +80,6 @@ fn compute_tags(
         }
     }
 
-    if let Some(raw) = f_value {
-        let trimmed = raw.trim();
-        if !trimmed.is_empty() {
-            if let Ok(v) = trimmed.parse::<f64>() {
-                if let Some(n) = serde_json::Number::from_f64(v) {
-                    tags.insert("curVal".into(), Value::Number(n));
-                }
-            }
-        }
-    }
-
     tags.insert(
         "equipRef".into(),
         Value::String(format!("dev{}", serial)),
@@ -108,7 +96,6 @@ pub async fn upsert_point_entity(
     dis: Option<&str>,
     digital_analog: Option<&str>,
     units: Option<&str>,
-    f_value: Option<&str>,
 ) -> Result<(), DbErr> {
     let id = make_id(serial, point_table, point_index);
     let dis_value = dis
@@ -116,7 +103,7 @@ pub async fn upsert_point_entity(
         .filter(|v| !v.is_empty())
         .unwrap_or_else(|| format!("{} {}", point_table, point_index));
 
-    let tags_json = compute_tags(serial, digital_analog, units, f_value).to_string();
+    let tags_json = compute_tags(serial, digital_analog, units).to_string();
     let timestamp = now_ms();
 
     let existing = haystack_entity::Entity::find_by_id(id.clone())
@@ -158,10 +145,8 @@ pub async fn upsert_from_point_data(
     dis: Option<&str>,
     digital_analog: Option<i32>,
     units: Option<&str>,
-    f_value: Option<f64>,
 ) -> Result<(), DbErr> {
     let da_str = digital_analog.map(|v| v.to_string());
-    let val_str = f_value.map(|v| v.to_string());
     upsert_point_entity(
         conn,
         serial,
@@ -170,7 +155,6 @@ pub async fn upsert_from_point_data(
         dis,
         da_str.as_deref(),
         units,
-        val_str.as_deref(),
     )
     .await
 }
@@ -196,7 +180,6 @@ pub async fn seed_device(conn: &impl ConnectionTrait, serial: i32) -> Result<(),
                 dis,
                 point.digital_analog.as_deref(),
                 point.units.as_deref(),
-                point.f_value.as_deref(),
             )
             .await?;
         }
@@ -222,7 +205,6 @@ pub async fn seed_device(conn: &impl ConnectionTrait, serial: i32) -> Result<(),
                 dis,
                 point.digital_analog.as_deref(),
                 point.units.as_deref(),
-                point.f_value.as_deref(),
             )
             .await?;
         }
@@ -248,7 +230,6 @@ pub async fn seed_device(conn: &impl ConnectionTrait, serial: i32) -> Result<(),
                 dis,
                 point.digital_analog.as_deref(),
                 point.units.as_deref(),
-                point.f_value.as_deref(),
             )
             .await?;
         }
