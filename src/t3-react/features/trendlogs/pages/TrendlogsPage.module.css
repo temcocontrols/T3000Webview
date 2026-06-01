@@ -112,48 +112,233 @@
 .overviewWrap {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-}
-
-.summaryGrid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
-  align-items: stretch;
+  padding-bottom: 8px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
 }
 
-.overviewMiddleCard {
+/* ── Device / sync context bar ── */
+.overviewContextBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  border: 1px solid #e1e4e8;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.overviewContextLeft {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.overviewDeviceName {
+  font-size: 12px;
+  font-weight: 600;
+  color: #201f1e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.overviewDeviceMeta {
+  font-size: 11px;
+  color: #605e5c;
+  white-space: nowrap;
+}
+
+.overviewContextRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #605e5c;
+}
+
+.syncDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.syncDotGreen  { background: #107c10; }
+.syncDotYellow { background: #d29200; }
+.syncDotRed    { background: #a4262c; }
+.syncDotUnknown { background: #8a8886; }
+
+.overviewSyncLabel { color: #323130; font-weight: 500; font-size: 11px; }
+.overviewSyncSep   { color: #c8c6c4; }
+.overviewSyncSource { color: #605e5c; }
+
+/* ── 3-column stat cards ── */
+.overviewStatGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.overviewStatCard {
   border: 1px solid #edebe9;
   border-radius: 8px;
-  padding: 10px 14px;
+  padding: 14px 16px;
   background: #ffffff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
-.middleSectionTitleRow {
+.overviewStatHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.overviewStatLabel {
+  font-size: 12px;
+  color: #605e5c;
+  font-weight: 500;
+}
+
+.overviewStatValue {
+  font-size: 22px;
+  font-weight: 700;
+  color: #201f1e;
+  line-height: 1;
+}
+
+.overviewStatMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.overviewStatSlots {
+  font-size: 11px;
+  color: #8a8886;
+}
+
+.overviewStatTimestamp {
+  font-size: 11px;
+  color: #8a8886;
+  margin-top: -2px;
+}
+
+.overviewInventoryPill {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border: 1px solid #e1dfdd;
+  border-radius: 10px;
+  font-size: 11px;
+  color: #323130;
+  background: #f8f7f6;
+}
+
+/* ── 2-column bottom row ── */
+.overviewBottomRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+.overviewDetailCard {
+  border: 1px solid #edebe9;
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.overviewDetailHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
-.middleSnapshotPanel {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.overviewDetailTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #201f1e;
 }
 
-.middleSnapshotPanelOnly {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.overviewSnapshotGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: start;
+  gap: 8px;
+  flex: 1;
+  overflow-y: auto;
 }
 
+.overviewSnapshotTile {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 1px solid #f0efee;
+  border-radius: 6px;
+  background: #faf9f8;
+}
+
+.overviewSnapshotKey {
+  font-size: 11px;
+  color: #8a8886;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.overviewSnapshotVal {
+  font-size: 12px;
+  font-weight: 600;
+  color: #201f1e;
+}
+
+.overviewSnapshotValSm {
+  font-size: 11px;
+  font-weight: 400;
+  color: #605e5c;
+  word-break: break-all;
+}
+
+/* Status chip — replaces Fluent Badge for compact display */
+.overviewStatusChip {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  width: fit-content;
+}
+.overviewStatusOn  { background: #dff6dd; color: #107c10; }
+.overviewStatusOff { background: #f0f0f0; color: #605e5c; }
+
+/* ── keep used shared helpers ── */
 .summaryCard {
   border: 1px solid #edebe9;
   border-radius: 8px;
@@ -165,25 +350,10 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
-.summaryGrid .summaryCard {
-  min-height: 124px;
-}
-
-.overviewFooterGrid .summaryCard {
-  min-height: 164px;
-}
-
 .summaryMetaRow {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-.metricTitleRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
 }
 
 .metricInfoButton {
@@ -196,19 +366,9 @@
   cursor: pointer;
   padding: 0;
 }
-
-.metricInfoButton:hover {
-  color: #115ea3;
-}
-
-.metricInfoButton:focus-visible {
-  outline: 1px solid #0f6cbd;
-  outline-offset: 2px;
-}
-
-.metricInfoIcon {
-  font-size: 15px;
-}
+.metricInfoButton:hover { color: #115ea3; }
+.metricInfoButton:focus-visible { outline: 1px solid #0f6cbd; outline-offset: 2px; }
+.metricInfoIcon { font-size: 15px; }
 
 .snapshotLoadingState {
   display: flex;
@@ -216,51 +376,16 @@
   gap: 8px;
 }
 
-
-.overviewFooterPanel {
-  border: 1px solid #edebe9;
-  border-radius: 8px;
-  background: #ffffff;
-  padding: 12px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+@media (max-width: 1100px) {
+  .overviewStatGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .overviewBottomRow { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .overviewStatGrid { grid-template-columns: 1fr; }
+  .overviewSnapshotGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-.globalSummaryHeader {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-}
 
-.globalMetricGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.globalMetricTile {
-  border: 1px solid #f0efee;
-  border-radius: 6px;
-  padding: 8px;
-  background: #fbfbfb;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-height: 62px;
-}
-
-.globalMetricValue {
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.1;
-  color: #201f1e;
-}
-
-.globalMetricLabel {
-  font-size: 11px;
-  color: #605e5c;
-}
 
 .placeholderPanel {
   border: 1px solid #edebe9;
@@ -314,38 +439,6 @@
   background: #ffffff;
   overflow: hidden;
   min-height: 70vh;
-}
-
-@media (max-width: 1200px) {
-  .summaryGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .globalMetricGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 768px) {
-  .summaryGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .globalSummaryHeader {
-    flex-direction: column;
-    align-items: flex-start;
-    margin-bottom: 8px;
-  }
-
-  .globalMetricGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 520px) {
-  .globalMetricGrid {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* Toolbar styles */

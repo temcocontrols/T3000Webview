@@ -2268,139 +2268,214 @@ export const TrendLogsPage: React.FC = () => {
 
               {activeTab === 'overview' && (
                 <div className={styles.overviewWrap}>
-                  <div className={styles.summaryGrid}>
-                    <div className={styles.summaryCard}>
-                      <div className={styles.metricTitleRow}>
-                        <Text size={200}>Selected Device</Text>
-                        <Tooltip content="Current panel context for all trendlog metrics and actions on this page." relationship="description">
-                          <button type="button" className={styles.metricInfoButton} aria-label="Selected Device help">
-                            <InfoRegular className={styles.metricInfoIcon} />
-                          </button>
-                        </Tooltip>
-                      </div>
-                      <Text size={400} weight="semibold">{selectedDevice?.nameShowOnTree || selectedDevice?.productName || 'None'}</Text>
-                      <Text size={200}>SN {selectedDevice?.serialNumber || 'N/A'} · Panel {selectedDevice?.panelId || 'N/A'}</Text>
+
+                  {/* ── Device / sync context bar ── */}
+                  <div className={styles.overviewContextBar}>
+                    <div className={styles.overviewContextLeft}>
+                      <span className={styles.overviewDeviceName}>
+                        {selectedDevice?.nameShowOnTree || selectedDevice?.productName || 'No device selected'}
+                      </span>
+                      {selectedDevice && (
+                        <span className={styles.overviewDeviceMeta}>
+                          SN {selectedDevice.serialNumber} · Panel {selectedDevice.panelId || 'N/A'}
+                        </span>
+                      )}
                     </div>
-                    <div className={styles.summaryCard}>
-                      <div className={styles.metricTitleRow}>
-                        <Text size={200}>Configured Monitors</Text>
-                        <Tooltip content="Total monitors detected from database/device sync; ON/OFF shows runtime state split." relationship="description">
-                          <button type="button" className={styles.metricInfoButton} aria-label="Configured Monitors help">
-                            <InfoRegular className={styles.metricInfoIcon} />
-                          </button>
-                        </Tooltip>
+                    {selectedDevice && (
+                      <div className={styles.overviewContextRight}>
+                        {(() => {
+                          const rawTs = trendlogLastSyncedAt ?? devicePointSyncSummary.lastSyncedAt;
+                          const diffH = rawTs ? Math.floor((Date.now() / 1000 - rawTs) / 3600) : null;
+                          const dotCls = diffH == null ? styles.syncDotUnknown : diffH < 1 ? styles.syncDotGreen : diffH < 24 ? styles.syncDotYellow : styles.syncDotRed;
+                          return <span className={`${styles.syncDot} ${dotCls}`} title={`Last synced: ${lastSyncedFmt || 'unknown'}`} />;
+                        })()}
+                        <span className={styles.overviewSyncLabel}>
+                          {pointSummaryLoading ? 'Syncing…' : `Last synced ${lastSyncedAgo}`}
+                        </span>
+                        <span className={styles.overviewSyncSep}>·</span>
+                        <span className={styles.overviewSyncSource}>{syncSourceLabel}</span>
                       </div>
-                      <Text size={500} weight="semibold">{trendLogs.length}</Text>
-                      <div className={styles.summaryMetaRow}>
-                        <Badge color="success" appearance="tint">{activeMonitorCount} ON</Badge>
-                        <Badge color="subtle" appearance="tint">{Math.max(trendLogs.length - activeMonitorCount, 0)} OFF</Badge>
-                      </div>
-                    </div>
-                    <div className={styles.summaryCard}>
-                      <div className={styles.metricTitleRow}>
-                        <Text size={200}>Monitor Configuration Quality</Text>
-                        <Tooltip content="Shows how many monitors have labels and how many are running in Auto mode." relationship="description">
-                          <button type="button" className={styles.metricInfoButton} aria-label="Monitor Configuration Quality help">
-                            <InfoRegular className={styles.metricInfoIcon} />
-                          </button>
-                        </Tooltip>
-                      </div>
-                      <Text size={500} weight="semibold">{monitorsWithLabel}/{trendLogs.length || 0}</Text>
-                      <Text size={200}>labeled monitors · {autoModeCount} auto mode</Text>
-                    </div>
-                    <div className={styles.summaryCard}>
-                      <div className={styles.metricTitleRow}>
-                        <Text size={200}>Inputs In Selected Monitor</Text>
-                        <Tooltip content="Number of points currently assigned to the selected monitor and the average logging interval across monitors." relationship="description">
-                          <button type="button" className={styles.metricInfoButton} aria-label="Inputs In Selected Monitor help">
-                            <InfoRegular className={styles.metricInfoIcon} />
-                          </button>
-                        </Tooltip>
-                      </div>
-                      <Text size={500} weight="semibold">{monitorInputs.length}</Text>
-                      <Text size={200}>Average interval: {formatSeconds(avgIntervalSeconds)}</Text>
-                    </div>
+                    )}
                   </div>
 
-                  <div className={styles.overviewMiddleCard}>
-                    <div className={styles.middleSnapshotPanelOnly}>
-                      <div className={styles.middleSectionTitleRow}>
-                        <Text size={300} weight="semibold">Current Monitor Snapshot</Text>
+                  {/* ── 3-column stat cards ── */}
+                  <div className={styles.overviewStatGrid}>
+
+                    {/* Monitors */}
+                    <div className={styles.overviewStatCard}>
+                      <div className={styles.overviewStatHeader}>
+                        <span className={styles.overviewStatLabel}>Configured Monitors</span>
+                        <Tooltip content="Total monitors detected from database/device sync. ON/OFF shows runtime state split." relationship="description">
+                          <button type="button" className={styles.metricInfoButton} aria-label="Configured Monitors info">
+                            <InfoRegular className={styles.metricInfoIcon} />
+                          </button>
+                        </Tooltip>
+                      </div>
+                      <span className={styles.overviewStatValue}>{trendLogs.length}</span>
+                      <div className={styles.overviewStatMeta}>
+                        <span className={styles.overviewStatSlots}>{trendLogs.length}/12 slots</span>
+                        <Badge color="success" appearance="tint" size="small">{activeMonitorCount} ON</Badge>
+                        <Badge color="subtle" appearance="tint" size="small">{Math.max(trendLogs.length - activeMonitorCount, 0)} OFF</Badge>
+                        {avgIntervalSeconds != null && (
+                          <span className={styles.overviewStatSlots}>avg {formatSeconds(avgIntervalSeconds)}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Sensor Inventory */}
+                    <div className={styles.overviewStatCard}>
+                      <div className={styles.overviewStatHeader}>
+                        <span className={styles.overviewStatLabel}>Sensor Points</span>
+                        <Tooltip content="Total input, output, and variable points synced from this device." relationship="description">
+                          <button type="button" className={styles.metricInfoButton} aria-label="Sensor Points info">
+                            <InfoRegular className={styles.metricInfoIcon} />
+                          </button>
+                        </Tooltip>
+                      </div>
+                      <span className={styles.overviewStatValue}>
+                        {pointSummaryLoading ? '…' : devicePointSyncSummary.inputs + devicePointSyncSummary.outputs + devicePointSyncSummary.variables}
+                      </span>
+                      <div className={styles.overviewStatMeta}>
+                        <span className={styles.overviewInventoryPill}>IN {pointSummaryLoading ? '…' : devicePointSyncSummary.inputs}</span>
+                        <span className={styles.overviewInventoryPill}>OUT {pointSummaryLoading ? '…' : devicePointSyncSummary.outputs}</span>
+                        <span className={styles.overviewInventoryPill}>VAR {pointSummaryLoading ? '…' : devicePointSyncSummary.variables}</span>
+                      </div>
+                    </div>
+
+                    {/* Sync Health */}
+                    <div className={styles.overviewStatCard}>
+                      <div className={styles.overviewStatHeader}>
+                        <span className={styles.overviewStatLabel}>Sync Health</span>
+                        <Tooltip content="Total trend values stored and time of last successful sync." relationship="description">
+                          <button type="button" className={styles.metricInfoButton} aria-label="Sync Health info">
+                            <InfoRegular className={styles.metricInfoIcon} />
+                          </button>
+                        </Tooltip>
+                      </div>
+                      <span className={styles.overviewStatValue}>
+                        {pointSummaryLoading ? '…' : devicePointSyncSummary.trendlogDetailCount == null ? 'N/A' : devicePointSyncSummary.trendlogDetailCount.toLocaleString()}
+                      </span>
+                      <div className={styles.overviewStatMeta}>
+                        <span className={styles.overviewStatSlots}>stored values</span>
+                      </div>
+                      {!pointSummaryLoading && lastSyncedFmt && (
+                        <span className={styles.overviewStatTimestamp}>{lastSyncedFmt}</span>
+                      )}
+                    </div>
+
+                  </div>
+
+                  {/* ── 2-column bottom row ── */}
+                  <div className={styles.overviewBottomRow}>
+
+                    {/* Monitor Snapshot */}
+                    <div className={styles.overviewDetailCard}>
+                      <div className={styles.overviewDetailHeader}>
+                        <span className={styles.overviewDetailTitle}>Current Monitor Snapshot</span>
                         {selectedMonitor && (
                           <Badge appearance="outline" color="informative">
-                            {(selectedMonitor.trendlogId || selectedMonitor.trendlogIndex)} · {selectedMonitor.trendlogLabel || 'No label'}
+                            {selectedMonitor.trendlogId || selectedMonitor.trendlogIndex} · {selectedMonitor.trendlogLabel || 'No label'}
                           </Badge>
                         )}
                       </div>
                       {loadingInputs && selectedMonitor ? (
                         <div className={styles.snapshotLoadingState}>
                           <Spinner size="tiny" />
-                          <Text size={200}>Loading selected monitor snapshot...</Text>
+                          <Text size={200}>Loading…</Text>
                         </div>
                       ) : selectedMonitor ? (
-                        <>
-                          <Text size={200}>Review current collection parameters before validation or charting.</Text>
-                          <div className={styles.summaryMetaRow}>
-                            <Badge appearance="outline">Interval {formatSeconds(selectedMonitor.intervalSeconds ?? null)}</Badge>
-                            <Badge appearance="outline">Buffer {selectedMonitor.bufferSize ?? 'N/A'}</Badge>
-                            <Badge appearance="outline">Inputs {monitorInputs.length}</Badge>
+                        <div className={styles.overviewSnapshotGrid}>
+                          <div className={styles.overviewSnapshotTile}>
+                            <span className={styles.overviewSnapshotKey}>Status</span>
+                            <span className={`${styles.overviewStatusChip} ${(selectedMonitor.status || '').toUpperCase() === 'ON' ? styles.overviewStatusOn : styles.overviewStatusOff}`}>
+                              {(selectedMonitor.status || 'OFF').toUpperCase()}
+                            </span>
                           </div>
-                          <div className={styles.summaryMetaRow}>
-                            <Badge appearance="tint" color={(selectedMonitor.status || '').toUpperCase() === 'ON' ? 'success' : 'subtle'}>
-                              Status {(selectedMonitor.status || 'OFF').toUpperCase()}
-                            </Badge>
-                            <Badge appearance="tint" color="informative">
-                              Mode {((selectedMonitor.autoManual || '').toUpperCase() === 'AUTO' || selectedMonitor.autoManual === '1') ? 'Auto' : 'Manual'}
-                            </Badge>
+                          <div className={styles.overviewSnapshotTile}>
+                            <span className={styles.overviewSnapshotKey}>Mode</span>
+                            <span className={styles.overviewSnapshotVal}>
+                              {((selectedMonitor.autoManual || '').toUpperCase() === 'AUTO' || selectedMonitor.autoManual === '1') ? 'Auto' : 'Manual'}
+                            </span>
                           </div>
-                        </>
+                          <div className={styles.overviewSnapshotTile}>
+                            <span className={styles.overviewSnapshotKey}>Interval</span>
+                            <span className={styles.overviewSnapshotVal}>{formatSeconds(selectedMonitor.intervalSeconds ?? null)}</span>
+                          </div>
+                          <div className={styles.overviewSnapshotTile}>
+                            <span className={styles.overviewSnapshotKey}>Buffer</span>
+                            <span className={styles.overviewSnapshotVal}>{selectedMonitor.bufferSize ?? 'N/A'}</span>
+                          </div>
+                          <div className={styles.overviewSnapshotTile}>
+                            <span className={styles.overviewSnapshotKey}>Inputs</span>
+                            <span className={styles.overviewSnapshotVal}>{monitorInputs.length}</span>
+                          </div>
+                          <div className={styles.overviewSnapshotTile}>
+                            <span className={styles.overviewSnapshotKey}>Slot #</span>
+                            <span className={styles.overviewSnapshotVal}>{selectedMonitor.trendlogIndex ?? 'N/A'}</span>
+                          </div>
+                          <div className={styles.overviewSnapshotTile}>
+                            <span className={styles.overviewSnapshotKey}>Label</span>
+                            <span className={styles.overviewSnapshotVal}>{selectedMonitor.trendlogLabel?.trim() || <em style={{ color: '#8a8886', fontStyle: 'normal' }}>No label</em>}</span>
+                          </div>
+                          <div className={styles.overviewSnapshotTile}>
+                            <span className={styles.overviewSnapshotKey}>Mon ID</span>
+                            <span className={styles.overviewSnapshotVal}>{selectedMonitor.trendlogId || 'N/A'}</span>
+                          </div>
+                          <div className={styles.overviewSnapshotTile}>
+                            <span className={styles.overviewSnapshotKey}>Data size</span>
+                            <span className={styles.overviewSnapshotVal}>{selectedMonitor.dataSizeKb != null ? `${selectedMonitor.dataSizeKb} KB` : 'N/A'}</span>
+                          </div>
+                        </div>
                       ) : (
-                        <Text size={200}>Select a monitor in the Monitors tab to view its runtime snapshot and readiness.</Text>
+                        <Text size={200} style={{ color: '#8a8886' }}>Select a monitor in the Default tab to see its snapshot here.</Text>
                       )}
                     </div>
-                  </div>
 
-                  <div className={styles.overviewFooterPanel}>
-                    <div className={styles.globalSummaryHeader}>
-                      <Text size={200}>Selected device: SN {selectedDevice?.serialNumber || 'N/A'} · Panel {selectedDevice?.panelId || 'N/A'}</Text>
+                    {/* Device Stats */}
+                    <div className={styles.overviewDetailCard}>
+                      <div className={styles.overviewDetailHeader}>
+                        <span className={styles.overviewDetailTitle}>Device Stats</span>
+                      </div>
+                      <div className={styles.overviewSnapshotGrid}>
+                        <div className={styles.overviewSnapshotTile}>
+                          <span className={styles.overviewSnapshotKey}>Active monitors</span>
+                          <span className={styles.overviewSnapshotVal}>{activeMonitorCount}</span>
+                        </div>
+                        <div className={styles.overviewSnapshotTile}>
+                          <span className={styles.overviewSnapshotKey}>Avg interval</span>
+                          <span className={styles.overviewSnapshotVal}>{formatSeconds(avgIntervalSeconds)}</span>
+                        </div>
+                        <div className={styles.overviewSnapshotTile}>
+                          <span className={styles.overviewSnapshotKey}>Labeled monitors</span>
+                          <span className={styles.overviewSnapshotVal}>{monitorsWithLabel} / {trendLogs.length}</span>
+                        </div>
+                        <div className={styles.overviewSnapshotTile}>
+                          <span className={styles.overviewSnapshotKey}>Auto mode</span>
+                          <span className={styles.overviewSnapshotVal}>{autoModeCount}</span>
+                        </div>
+                        <div className={styles.overviewSnapshotTile}>
+                          <span className={styles.overviewSnapshotKey}>Last synced</span>
+                          <span className={styles.overviewSnapshotVal}>{pointSummaryLoading ? '…' : lastSyncedAgo}</span>
+                        </div>
+                        <div className={styles.overviewSnapshotTile}>
+                          <span className={styles.overviewSnapshotKey}>Sync source</span>
+                          <span className={styles.overviewSnapshotVal}>{pointSummaryLoading ? '…' : syncSourceLabel}</span>
+                        </div>
+                        <div className={styles.overviewSnapshotTile}>
+                          <span className={styles.overviewSnapshotKey}>Slots free</span>
+                          <span className={styles.overviewSnapshotVal}>{Math.max(12 - trendLogs.length, 0)} / 12</span>
+                        </div>
+                        <div className={styles.overviewSnapshotTile}>
+                          <span className={styles.overviewSnapshotKey}>Sync time</span>
+                          <span className={`${styles.overviewSnapshotVal} ${styles.overviewSnapshotValSm}`}>{pointSummaryLoading ? '…' : (lastSyncedFmt || 'N/A')}</span>
+                        </div>
+                        <div className={styles.overviewSnapshotTile}>
+                          <span className={styles.overviewSnapshotKey}>Mon. inputs</span>
+                          <span className={styles.overviewSnapshotVal}>{selectedMonitor ? monitorInputs.length : '—'}</span>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className={styles.globalMetricGrid}>
-                      <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>{trendLogs.length}/12</Text>
-                        <Text className={styles.globalMetricLabel}>Configured slots</Text>
-                      </div>
-                      <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>{activeMonitorCount}</Text>
-                        <Text className={styles.globalMetricLabel}>Active monitors</Text>
-                      </div>
-                      <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>
-                          {pointSummaryLoading
-                            ? '...'
-                            : `${devicePointSyncSummary.inputs}/${devicePointSyncSummary.outputs}/${devicePointSyncSummary.variables}`}
-                        </Text>
-                        <Text className={styles.globalMetricLabel}>Sensor points inventory (IN / OUT / VAR)</Text>
-                      </div>
-                      <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>{pointSummaryLoading ? '...' : lastSyncedAgo}</Text>
-                        <Text className={styles.globalMetricLabel}>Last synced · {lastSyncedFmt}</Text>
-                      </div>
-                      <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>
-                          {pointSummaryLoading
-                            ? '...'
-                            : devicePointSyncSummary.trendlogDetailCount == null
-                              ? 'N/A'
-                              : `${devicePointSyncSummary.trendlogDetailCount}`}
-                        </Text>
-                        <Text className={styles.globalMetricLabel}>Synced value count (total)</Text>
-                      </div>
-                      <div className={styles.globalMetricTile}>
-                        <Text className={styles.globalMetricValue}>{syncSourceLabel}</Text>
-                        <Text className={styles.globalMetricLabel}>Sync source</Text>
-                      </div>
-                    </div>
                   </div>
                 </div>
               )}
