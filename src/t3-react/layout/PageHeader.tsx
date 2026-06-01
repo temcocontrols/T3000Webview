@@ -10,7 +10,7 @@
  */
 
 import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -19,8 +19,9 @@ import {
   makeStyles,
   Divider,
   Text,
+  Button,
 } from '@fluentui/react-components';
-import { ChevronRight20Regular } from '@fluentui/react-icons';
+import { ChevronRight20Regular, ChevronLeftRegular } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../features/devices/store/deviceTreeStore';
 import { SyncStatusBar } from '../shared/components/SyncStatusBar';
 import { InputRefreshApi } from '../features/inputs/services/inputRefreshApi';
@@ -132,7 +133,11 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => 
   const styles = useStyles();
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { selectedDevice } = useDeviceTreeStore();
+
+  // Back navigation
+  const backTo = searchParams.get('backTo');
 
   // Get breadcrumb info from route
   const breadcrumbInfo = routeToBreadcrumb[location.pathname];
@@ -203,6 +208,17 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => 
       </div>
       {/* Slot for page-specific actions (filled via React portal) */}
       <div id="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }} />
+      {backTo && (
+        <Button
+          appearance="subtle"
+          size="small"
+          icon={<ChevronLeftRegular />}
+          onClick={() => navigate(decodeURIComponent(backTo))}
+          style={{ marginRight: 8 }}
+        >
+          Back
+        </Button>
+      )}
       {shouldShowSync && (
         <div className={styles.syncSection}>
           <SyncStatusBar
