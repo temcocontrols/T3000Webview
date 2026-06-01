@@ -121,16 +121,16 @@ const EMPTY_POINT_SYNC_SUMMARY: DevicePointSyncSummary = {
 
 const TRACKED_POINT_SYNC_TYPES = ['INPUTS', 'OUTPUTS', 'VARIABLES'] as const;
 
-type TrendCenterTab = 'overview' | 'default' | 'global' | 'points-tags' | 'chart';
+type TrendCenterTab = 'overview' | 'default' | 'point-sets' | 'haystack-tags' | 'chart';
 
-interface GlobalPointItem {
+interface PointSetPointItem {
   key: string;
   type: 'INPUT' | 'OUTPUT' | 'VARIABLE';
   index: string;
   label: string;
 }
 
-interface GlobalWatchlistSet {
+interface SavedPointSet {
   name: string;
   selectedKeys: string[];
   pointTags: Record<string, string[]>;
@@ -158,7 +158,7 @@ const COMMON_HAYSTACK_TAGS = ['ahu', 'temp', 'critical', 'floor1'] as const;
 const TREND_POLICY_STORAGE_KEY = 't3000.trend.policy.state.v2';
 
 const isTrendCenterTab = (value: string | null): value is TrendCenterTab => {
-  return value === 'overview' || value === 'default' || value === 'global' || value === 'points-tags' || value === 'chart';
+  return value === 'overview' || value === 'default' || value === 'point-sets' || value === 'haystack-tags' || value === 'chart';
 };
 
 export const TrendLogsPage: React.FC = () => {
@@ -209,25 +209,25 @@ export const TrendLogsPage: React.FC = () => {
   }, []);
 
   const navigate = useNavigate();
-  const [globalPoints, setGlobalPoints] = useState<GlobalPointItem[]>([]);
-  const [globalPointsLoading, setGlobalPointsLoading] = useState(false);
-  const [globalSearch, setGlobalSearch] = useState('');
-  const [globalSelectedKeys, setGlobalSelectedKeys] = useState<Set<string>>(new Set());
-  const [globalSelectedOrder, setGlobalSelectedOrder] = useState<string[]>([]);
-  const [globalTagFilter, setGlobalTagFilter] = useState<string>('all');
-  const [globalPointTags, setGlobalPointTags] = useState<Record<string, string[]>>({});
-  const [globalSetName, setGlobalSetName] = useState('');
-  const [selectedSavedSetName, setSelectedSavedSetName] = useState('');
-  const [savedGlobalSets, setSavedGlobalSets] = useState<GlobalWatchlistSet[]>([]);
-  const [globalReloadRevision] = useState(0);
+  const [pointSetPoints, setPointSetPoints] = useState<PointSetPointItem[]>([]);
+  const [pointSetPointsLoading, setPointSetPointsLoading] = useState(false);
+  const [pointPickerSearch, setPointPickerSearch] = useState('');
+  const [pointSetSelectedKeys, setPointSetSelectedKeys] = useState<Set<string>>(new Set());
+  const [pointSetSelectedOrder, setPointSetSelectedOrder] = useState<string[]>([]);
+  const [pointSetTagFilter, setPointSetTagFilter] = useState<string>('all');
+  const [pointSetPointTags, setPointSetPointTags] = useState<Record<string, string[]>>({});
+  const [pointSetName, setPointSetName] = useState('');
+  const [selectedPointSetName, setSelectedSavedSetName] = useState('');
+  const [savedPointSets, setSavedPointSets] = useState<SavedPointSet[]>([]);
+  const [pointSetReloadRevision] = useState(0);
   const [isPointPickerOpen, setIsPointPickerOpen] = useState(false);
   const [draggingPointKey, setDraggingPointKey] = useState<string | null>(null);
   const [, setIsTemporarySetMode] = useState(false);
-  const [globalSetSort, setGlobalSetSort] = useState<'recent' | 'name'>('recent');
-  const [globalSetSearch, setGlobalSetSearch] = useState('');
-  const [globalSetActionMessage, setGlobalSetActionMessage] = useState('');
-  const [globalSetInitialized, setGlobalSetInitialized] = useState(false);
-  const [inlineRenameSetName, setInlineRenameSetName] = useState('');
+  const [pointSetSort, setPointSetSort] = useState<'recent' | 'name'>('recent');
+  const [pointSetSearch, setPointSetSearch] = useState('');
+  const [pointSetActionMessage, setPointSetActionMessage] = useState('');
+  const [pointSetInitialized, setPointSetInitialized] = useState(false);
+  const [inlineRenamePointSetName, setInlineRenamePointSetName] = useState('');
   const [inlineRenameValue, setInlineRenameValue] = useState('');
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({
     open: false,
@@ -329,7 +329,7 @@ export const TrendLogsPage: React.FC = () => {
     return null;
   }, [requestedSerial, selectedDevice?.serialNumber]);
 
-  const listPointSetsFromDb = useCallback(async (serialNumber: number): Promise<GlobalWatchlistSet[]> => {
+  const listPointSetsFromDb = useCallback(async (serialNumber: number): Promise<SavedPointSet[]> => {
     const response = await fetch(`${API_BASE_URL}/api/point-sets/list`, {
       method: 'POST',
       headers: {
@@ -342,7 +342,7 @@ export const TrendLogsPage: React.FC = () => {
       throw new Error(`List point sets failed: ${response.status}`);
     }
 
-    const payload = await response.json() as { sets?: Array<GlobalWatchlistSet> };
+    const payload = await response.json() as { sets?: Array<SavedPointSet> };
     const sets = Array.isArray(payload?.sets) ? payload.sets : [];
 
     return sets
@@ -357,7 +357,7 @@ export const TrendLogsPage: React.FC = () => {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, []);
 
-  const savePointSetToDb = useCallback(async (serialNumber: number, setItem: GlobalWatchlistSet): Promise<string> => {
+  const savePointSetToDb = useCallback(async (serialNumber: number, setItem: SavedPointSet): Promise<string> => {
     const response = await fetch(`${API_BASE_URL}/api/point-sets/save`, {
       method: 'POST',
       headers: {
@@ -426,12 +426,12 @@ export const TrendLogsPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!globalSetActionMessage) return;
+    if (!pointSetActionMessage) return;
     const timer = window.setTimeout(() => {
-      setGlobalSetActionMessage('');
+      setPointSetActionMessage('');
     }, 2800);
     return () => window.clearTimeout(timer);
-  }, [globalSetActionMessage]);
+  }, [pointSetActionMessage]);
 
   const setActiveTab = useCallback((tab: TrendCenterTab) => {
     const next = new URLSearchParams(searchParams);
@@ -886,7 +886,7 @@ export const TrendLogsPage: React.FC = () => {
   }, [selectedSerial]);
 
   useEffect(() => {
-    if (activeTab === 'global' || isPointSetChartMode) return;
+    if (activeTab === 'point-sets' || isPointSetChartMode) return;
     fetchTrendLogs();
   }, [activeTab, fetchTrendLogs, isPointSetChartMode]);
 
@@ -901,11 +901,11 @@ export const TrendLogsPage: React.FC = () => {
   useEffect(() => {
     if (activeTab !== 'chart') return;
     if (selectedDevice && selectedMonitor) return;
-    setActiveTab(isPointSetChartMode ? 'global' : 'default');
+    setActiveTab(isPointSetChartMode ? 'point-sets' : 'default');
   }, [activeTab, isPointSetChartMode, selectedDevice, selectedMonitor, setActiveTab]);
 
   useEffect(() => {
-    if (activeTab === 'global' || isPointSetChartMode) return;
+    if (activeTab === 'point-sets' || isPointSetChartMode) return;
     fetchPointSyncSummary();
   }, [activeTab, fetchPointSyncSummary, isPointSetChartMode]);
 
@@ -917,7 +917,7 @@ export const TrendLogsPage: React.FC = () => {
 
   // Auto-refresh once per device - ONLY after initial DB fetch completes
   useEffect(() => {
-    if (activeTab === 'global' || isPointSetChartMode) return;
+    if (activeTab === 'point-sets' || isPointSetChartMode) return;
     if (!dbChecked || loading || !selectedSerial || autoRefreshed) return;
     if (deviceRefreshedRef.current === selectedSerial) return;
     if (autoRefreshInProgressRef.current) return;
@@ -1132,7 +1132,7 @@ export const TrendLogsPage: React.FC = () => {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
   const handleChartBack = useCallback(() => {
-    setActiveTab(isPointSetChartMode ? 'global' : 'default');
+    setActiveTab(isPointSetChartMode ? 'point-sets' : 'default');
   }, [isPointSetChartMode, setActiveTab]);
   const selectedMonitorItemData = selectedMonitor
     ? {
@@ -1146,42 +1146,42 @@ export const TrendLogsPage: React.FC = () => {
     }
     : undefined;
 
-  const selectedGlobalPoints = React.useMemo(
+  const selectedPointSetPoints = React.useMemo(
     () => {
-      const byKey = new Map(globalPoints.map((point) => [point.key, point]));
-      const ordered: GlobalPointItem[] = [];
+      const byKey = new Map(pointSetPoints.map((point) => [point.key, point]));
+      const ordered: PointSetPointItem[] = [];
 
-      globalSelectedOrder.forEach((key) => {
-        if (!globalSelectedKeys.has(key)) return;
+      pointSetSelectedOrder.forEach((key) => {
+        if (!pointSetSelectedKeys.has(key)) return;
         const point = byKey.get(key);
         if (point) ordered.push(point);
       });
 
       // Backward compatibility for sets saved before ordered sets existed.
-      globalPoints.forEach((point) => {
-        if (!globalSelectedKeys.has(point.key)) return;
+      pointSetPoints.forEach((point) => {
+        if (!pointSetSelectedKeys.has(point.key)) return;
         if (ordered.some((item) => item.key === point.key)) return;
         ordered.push(point);
       });
 
       return ordered;
     },
-    [globalPoints, globalSelectedKeys, globalSelectedOrder]
+    [pointSetPoints, pointSetSelectedKeys, pointSetSelectedOrder]
   );
 
-  const availableGlobalTags = React.useMemo(() => {
+  const availablePointTags = React.useMemo(() => {
     const tags = new Set<string>();
-    Object.values(globalPointTags).forEach((pointTags) => {
+    Object.values(pointSetPointTags).forEach((pointTags) => {
       pointTags.forEach((tag) => tags.add(tag));
     });
     return Array.from(tags).sort((a, b) => a.localeCompare(b));
-  }, [globalPointTags]);
+  }, [pointSetPointTags]);
 
-  const filteredGlobalPoints = React.useMemo(() => {
-    const q = globalSearch.trim().toLowerCase();
-    return globalPoints.filter((point) => {
-      const tags = globalPointTags[point.key] || [];
-      const tagMatch = globalTagFilter === 'all' || tags.includes(globalTagFilter);
+  const filteredPointSetPoints = React.useMemo(() => {
+    const q = pointPickerSearch.trim().toLowerCase();
+    return pointSetPoints.filter((point) => {
+      const tags = pointSetPointTags[point.key] || [];
+      const tagMatch = pointSetTagFilter === 'all' || tags.includes(pointSetTagFilter);
       if (!tagMatch) return false;
       if (!q) return true;
       return (
@@ -1191,11 +1191,11 @@ export const TrendLogsPage: React.FC = () => {
         tags.some((tag) => tag.includes(q))
       );
     });
-  }, [globalPoints, globalPointTags, globalSearch, globalTagFilter]);
+  }, [pointSetPoints, pointSetPointTags, pointPickerSearch, pointSetTagFilter]);
 
-  const sortedSavedGlobalSets = React.useMemo(() => {
-    const next = [...savedGlobalSets];
-    if (globalSetSort === 'name') {
+  const sortedSavedPointSets = React.useMemo(() => {
+    const next = [...savedPointSets];
+    if (pointSetSort === 'name') {
       next.sort((a, b) => a.name.localeCompare(b.name));
       return next;
     }
@@ -1206,33 +1206,33 @@ export const TrendLogsPage: React.FC = () => {
       return a.name.localeCompare(b.name);
     });
     return next;
-  }, [globalSetSort, savedGlobalSets]);
+  }, [pointSetSort, savedPointSets]);
 
-  const filteredSavedGlobalSets = React.useMemo(() => {
-    const q = globalSetSearch.trim().toLowerCase();
-    if (!q) return sortedSavedGlobalSets;
-    return sortedSavedGlobalSets.filter((setItem) => {
+  const filteredSavedPointSets = React.useMemo(() => {
+    const q = pointSetSearch.trim().toLowerCase();
+    if (!q) return sortedSavedPointSets;
+    return sortedSavedPointSets.filter((setItem) => {
       return setItem.name.toLowerCase().includes(q);
     });
-  }, [globalSetSearch, sortedSavedGlobalSets]);
+  }, [pointSetSearch, sortedSavedPointSets]);
 
   const currentOrderedSelectedKeys = React.useMemo(() => {
-    const ordered = globalSelectedOrder.filter((key) => globalSelectedKeys.has(key));
+    const ordered = pointSetSelectedOrder.filter((key) => pointSetSelectedKeys.has(key));
     if (ordered.length > 0) return ordered;
-    return Array.from(globalSelectedKeys);
-  }, [globalSelectedKeys, globalSelectedOrder]);
+    return Array.from(pointSetSelectedKeys);
+  }, [pointSetSelectedKeys, pointSetSelectedOrder]);
 
   const activeSavedSet = React.useMemo(() => {
-    if (!selectedSavedSetName) return null;
-    return savedGlobalSets.find((setItem) => setItem.name === selectedSavedSetName) || null;
-  }, [savedGlobalSets, selectedSavedSetName]);
+    if (!selectedPointSetName) return null;
+    return savedPointSets.find((setItem) => setItem.name === selectedPointSetName) || null;
+  }, [savedPointSets, selectedPointSetName]);
 
   const isCurrentSetDirty = React.useMemo(() => {
-    if (!globalSetInitialized) {
+    if (!pointSetInitialized) {
       return false;
     }
 
-    const normalizedName = globalSetName.trim();
+    const normalizedName = pointSetName.trim();
     if (!activeSavedSet) {
       return normalizedName.length > 0 || currentOrderedSelectedKeys.length > 0;
     }
@@ -1252,9 +1252,9 @@ export const TrendLogsPage: React.FC = () => {
     }
 
     return false;
-  }, [activeSavedSet, currentOrderedSelectedKeys, globalSetInitialized, globalSetName]);
+  }, [activeSavedSet, currentOrderedSelectedKeys, pointSetInitialized, pointSetName]);
 
-  const confirmDiscardUnsavedSetChanges = useCallback(async () => {
+  const confirmDiscardUnsavedPointSetChanges = useCallback(async () => {
     if (!isCurrentSetDirty) return true;
     const ok = await requestConfirmDialog({
       title: 'Discard changes?',
@@ -1263,40 +1263,40 @@ export const TrendLogsPage: React.FC = () => {
       cancelText: 'Keep editing',
     });
     if (!ok) {
-      setGlobalSetActionMessage('Stayed on current set.');
+      setPointSetActionMessage('Stayed on current set.');
       return false;
     }
     return true;
   }, [isCurrentSetDirty, requestConfirmDialog]);
 
-  const toggleGlobalPointSelection = useCallback((key: string) => {
-    setGlobalSelectedKeys((prev) => {
+  const togglePointSetSelection = useCallback((key: string) => {
+    setPointSetSelectedKeys((prev) => {
       const next = new Set(prev);
       if (next.has(key)) {
         next.delete(key);
-        setGlobalSelectedOrder((orderPrev) => orderPrev.filter((value) => value !== key));
+        setPointSetSelectedOrder((orderPrev) => orderPrev.filter((value) => value !== key));
       } else {
         next.add(key);
-        setGlobalSelectedOrder((orderPrev) => (orderPrev.includes(key) ? orderPrev : [...orderPrev, key]));
+        setPointSetSelectedOrder((orderPrev) => (orderPrev.includes(key) ? orderPrev : [...orderPrev, key]));
       }
       return next;
     });
   }, []);
 
   const applyCommonTag = useCallback((tag: string) => {
-    setGlobalTagFilter(tag);
+    setPointSetTagFilter(tag);
   }, []);
 
-  const selectAllVisibleGlobalPoints = useCallback(() => {
-    setGlobalSelectedKeys((prev) => {
+  const selectAllVisiblePointSetPoints = useCallback(() => {
+    setPointSetSelectedKeys((prev) => {
       const next = new Set(prev);
       const additions: string[] = [];
-      filteredGlobalPoints.forEach((point) => next.add(point.key));
-      filteredGlobalPoints.forEach((point) => {
+      filteredPointSetPoints.forEach((point) => next.add(point.key));
+      filteredPointSetPoints.forEach((point) => {
         if (!prev.has(point.key)) additions.push(point.key);
       });
       if (additions.length > 0) {
-        setGlobalSelectedOrder((orderPrev) => {
+        setPointSetSelectedOrder((orderPrev) => {
           const seen = new Set(orderPrev);
           const merged = [...orderPrev];
           additions.forEach((key) => {
@@ -1309,27 +1309,27 @@ export const TrendLogsPage: React.FC = () => {
       }
       return next;
     });
-  }, [filteredGlobalPoints]);
+  }, [filteredPointSetPoints]);
 
-  const clearGlobalSelection = useCallback(() => {
-    setGlobalSelectedKeys(new Set());
-    setGlobalSelectedOrder([]);
+  const clearPointSetSelection = useCallback(() => {
+    setPointSetSelectedKeys(new Set());
+    setPointSetSelectedOrder([]);
   }, []);
 
   const removePointFromCurrentSet = useCallback((key: string) => {
-    setGlobalSelectedKeys((prev) => {
+    setPointSetSelectedKeys((prev) => {
       if (!prev.has(key)) return prev;
       const next = new Set(prev);
       next.delete(key);
       return next;
     });
-    setGlobalSelectedOrder((prev) => prev.filter((value) => value !== key));
+    setPointSetSelectedOrder((prev) => prev.filter((value) => value !== key));
   }, []);
 
-  const movePointWithinSet = useCallback((draggedKey: string, targetKey: string) => {
+  const movePointWithinPointSet = useCallback((draggedKey: string, targetKey: string) => {
     if (!draggedKey || !targetKey || draggedKey === targetKey) return;
-    setGlobalSelectedOrder((prev) => {
-      const base = prev.filter((key) => globalSelectedKeys.has(key));
+    setPointSetSelectedOrder((prev) => {
+      const base = prev.filter((key) => pointSetSelectedKeys.has(key));
       const from = base.indexOf(draggedKey);
       const to = base.indexOf(targetKey);
       if (from < 0 || to < 0) return prev;
@@ -1338,12 +1338,12 @@ export const TrendLogsPage: React.FC = () => {
       next.splice(to, 0, moved);
       return next;
     });
-  }, [globalSelectedKeys]);
+  }, [pointSetSelectedKeys]);
 
   const movePointByOffset = useCallback((key: string, offset: number) => {
     if (!key || offset === 0) return;
-    setGlobalSelectedOrder((prev) => {
-      const base = prev.filter((value) => globalSelectedKeys.has(value));
+    setPointSetSelectedOrder((prev) => {
+      const base = prev.filter((value) => pointSetSelectedKeys.has(value));
       const from = base.indexOf(key);
       if (from < 0) return prev;
       const to = Math.min(base.length - 1, Math.max(0, from + offset));
@@ -1353,17 +1353,17 @@ export const TrendLogsPage: React.FC = () => {
       next.splice(to, 0, moved);
       return next;
     });
-  }, [globalSelectedKeys]);
+  }, [pointSetSelectedKeys]);
 
-  const saveCurrentGlobalSet = useCallback(async () => {
-    setGlobalSetActionMessage('Save click received...');
-    const candidateName = (selectedSavedSetName || globalSetName || '').trim();
+  const saveCurrentPointSet = useCallback(async () => {
+    setPointSetActionMessage('Save click received...');
+    const candidateName = (selectedPointSetName || pointSetName || '').trim();
     let normalizedName = candidateName;
     if (!normalizedName) {
       const entered = await requestPromptDialog({
         title: 'Save Set',
         content: 'Enter a name for this point set.',
-        initialValue: globalSetName || '',
+        initialValue: pointSetName || '',
         confirmText: 'Save',
         cancelText: 'Cancel',
         placeholder: 'Set name',
@@ -1371,19 +1371,19 @@ export const TrendLogsPage: React.FC = () => {
       normalizedName = (entered || '').trim();
     }
     if (!normalizedName) {
-      setGlobalSetActionMessage('Set name is required.');
+      setPointSetActionMessage('Set name is required.');
       return;
     }
 
-    const orderedKeys = globalSelectedOrder.filter((key) => globalSelectedKeys.has(key));
-    const fallbackOrderedKeys = orderedKeys.length > 0 ? orderedKeys : Array.from(globalSelectedKeys);
+    const orderedKeys = pointSetSelectedOrder.filter((key) => pointSetSelectedKeys.has(key));
+    const fallbackOrderedKeys = orderedKeys.length > 0 ? orderedKeys : Array.from(pointSetSelectedKeys);
     if (fallbackOrderedKeys.length === 0) {
-      setGlobalSetActionMessage('Current set is empty. Add points before saving.');
+      setPointSetActionMessage('Current set is empty. Add points before saving.');
       return;
     }
 
-    const existing = savedGlobalSets.find((setItem) => setItem.name === normalizedName);
-    if (existing && existing.name !== selectedSavedSetName) {
+    const existing = savedPointSets.find((setItem) => setItem.name === normalizedName);
+    if (existing && existing.name !== selectedPointSetName) {
       const ok = await requestConfirmDialog({
         title: 'Replace existing set?',
         content: `A set named "${normalizedName}" already exists. Replace it?`,
@@ -1391,14 +1391,14 @@ export const TrendLogsPage: React.FC = () => {
         cancelText: 'Cancel',
       });
       if (!ok) {
-        setGlobalSetActionMessage('Save canceled.');
+        setPointSetActionMessage('Save canceled.');
         return;
       }
     }
 
     const compactPointTags: Record<string, string[]> = {};
     fallbackOrderedKeys.forEach((key) => {
-      const tags = globalPointTags[key];
+      const tags = pointSetPointTags[key];
       if (!Array.isArray(tags) || tags.length === 0) return;
       const normalizedTags = Array.from(new Set(tags.filter((tag) => typeof tag === 'string' && tag.trim()).map((tag) => tag.trim().toLowerCase())));
       if (normalizedTags.length > 0) {
@@ -1406,7 +1406,7 @@ export const TrendLogsPage: React.FC = () => {
       }
     });
 
-    const newSet: GlobalWatchlistSet = {
+    const newSet: SavedPointSet = {
       name: normalizedName,
       selectedKeys: fallbackOrderedKeys,
       pointTags: compactPointTags,
@@ -1415,7 +1415,7 @@ export const TrendLogsPage: React.FC = () => {
 
     const serialNumber = pointSetSerialNumber;
     if (!serialNumber) {
-      setGlobalSetActionMessage('No device selected.');
+      setPointSetActionMessage('No device selected.');
       return;
     }
 
@@ -1425,37 +1425,37 @@ export const TrendLogsPage: React.FC = () => {
         setName: normalizedName,
         selectedCount: fallbackOrderedKeys.length,
       });
-      setGlobalSetActionMessage('Saving set...');
+      setPointSetActionMessage('Saving set...');
       await savePointSetToDb(serialNumber, newSet);
-      setSavedGlobalSets((prev) => {
+      setSavedPointSets((prev) => {
         const withoutSame = prev.filter((setItem) => setItem.name !== normalizedName);
         return [...withoutSame, newSet].sort((a, b) => a.name.localeCompare(b.name));
       });
       setSelectedSavedSetName(normalizedName);
-      setGlobalSetName(normalizedName);
+      setPointSetName(normalizedName);
       setIsTemporarySetMode(false);
-      setGlobalSetActionMessage(`Set "${normalizedName}" saved successfully.`);
+      setPointSetActionMessage(`Set "${normalizedName}" saved successfully.`);
     } catch (error) {
       console.error('[TrendLogsPage] Failed to save set to DB:', error);
-      setGlobalSetActionMessage('Failed to save set to database.');
+      setPointSetActionMessage('Failed to save set to database.');
     }
-  }, [globalPointTags, globalSelectedKeys, globalSelectedOrder, globalSetName, pointSetSerialNumber, requestConfirmDialog, requestPromptDialog, savePointSetToDb, savedGlobalSets, selectedSavedSetName]);
+  }, [pointSetPointTags, pointSetSelectedKeys, pointSetSelectedOrder, pointSetName, pointSetSerialNumber, requestConfirmDialog, requestPromptDialog, savePointSetToDb, savedPointSets, selectedPointSetName]);
 
-  const renameGlobalSetByName = useCallback(async (setName: string, nextNameRaw: string) => {
+  const renamePointSetByName = useCallback(async (setName: string, nextNameRaw: string) => {
     const baseName = (setName || '').trim();
     if (!baseName) return;
 
     const nextName = (nextNameRaw || '').trim();
     if (!nextName) {
-      setGlobalSetActionMessage('New set name is required.');
+      setPointSetActionMessage('New set name is required.');
       return;
     }
     if (nextName === baseName) {
-      setGlobalSetActionMessage('Name is unchanged.');
+      setPointSetActionMessage('Name is unchanged.');
       return;
     }
 
-    const existing = savedGlobalSets.find((setItem) => setItem.name === nextName);
+    const existing = savedPointSets.find((setItem) => setItem.name === nextName);
     const replaceExisting = !!existing && existing.name !== baseName;
     if (replaceExisting) {
       const ok = await requestConfirmDialog({
@@ -1465,60 +1465,60 @@ export const TrendLogsPage: React.FC = () => {
         cancelText: 'Cancel',
       });
       if (!ok) {
-        setGlobalSetActionMessage('Rename canceled.');
+        setPointSetActionMessage('Rename canceled.');
         return;
       }
     }
 
     const serialNumber = pointSetSerialNumber;
     if (!serialNumber) {
-      setGlobalSetActionMessage('No device selected.');
+      setPointSetActionMessage('No device selected.');
       return;
     }
 
-    const target = savedGlobalSets.find((setItem) => setItem.name === baseName);
+    const target = savedPointSets.find((setItem) => setItem.name === baseName);
     if (!target) {
-      setGlobalSetActionMessage('Selected set was not found.');
+      setPointSetActionMessage('Selected set was not found.');
       return;
     }
 
-    const renamed: GlobalWatchlistSet = {
+    const renamed: SavedPointSet = {
       ...target,
       name: nextName,
       updatedAt: Date.now(),
     };
 
     try {
-      setGlobalSetActionMessage('Renaming set...');
+      setPointSetActionMessage('Renaming set...');
       await renamePointSetInDb(serialNumber, baseName, nextName, replaceExisting);
-      setSavedGlobalSets((prev) => {
+      setSavedPointSets((prev) => {
         const withoutOld = prev.filter((setItem) => setItem.name !== baseName && setItem.name !== nextName);
         return [...withoutOld, renamed].sort((a, b) => a.name.localeCompare(b.name));
       });
-      if (selectedSavedSetName === baseName) {
+      if (selectedPointSetName === baseName) {
         setSelectedSavedSetName(nextName);
-        setGlobalSetName(nextName);
+        setPointSetName(nextName);
       }
       setIsTemporarySetMode(false);
-      setInlineRenameSetName('');
+      setInlineRenamePointSetName('');
       setInlineRenameValue('');
-      setGlobalSetActionMessage(`Renamed to "${nextName}".`);
+      setPointSetActionMessage(`Renamed to "${nextName}".`);
     } catch (error) {
       console.error('[TrendLogsPage] Failed to rename set in DB:', error);
-      setGlobalSetActionMessage('Failed to rename set in database.');
+      setPointSetActionMessage('Failed to rename set in database.');
     }
-  }, [pointSetSerialNumber, renamePointSetInDb, requestConfirmDialog, savedGlobalSets, selectedSavedSetName]);
+  }, [pointSetSerialNumber, renamePointSetInDb, requestConfirmDialog, savedPointSets, selectedPointSetName]);
 
   const resetPointPickerFilters = useCallback(() => {
-    setGlobalSearch('');
-    setGlobalTagFilter('all');
+    setPointPickerSearch('');
+    setPointSetTagFilter('all');
   }, []);
 
-  const removeGlobalSetByName = useCallback(async (setName: string) => {
+  const removePointSetByName = useCallback(async (setName: string) => {
     const targetName = (setName || '').trim();
     if (!targetName) return;
 
-    const target = savedGlobalSets.find((setItem) => setItem.name === targetName);
+    const target = savedPointSets.find((setItem) => setItem.name === targetName);
     const pointsCount = target?.selectedKeys.length ?? 0;
     const ok = await requestConfirmDialog({
       title: 'Delete point set?',
@@ -1527,41 +1527,41 @@ export const TrendLogsPage: React.FC = () => {
       cancelText: 'Cancel',
     });
     if (!ok) {
-      setGlobalSetActionMessage('Delete canceled.');
+      setPointSetActionMessage('Delete canceled.');
       return;
     }
 
     const serialNumber = pointSetSerialNumber;
     if (!serialNumber) {
-      setGlobalSetActionMessage('No device selected.');
+      setPointSetActionMessage('No device selected.');
       return;
     }
 
     try {
-      setGlobalSetActionMessage('Deleting set...');
+      setPointSetActionMessage('Deleting set...');
       await deletePointSetFromDb(serialNumber, targetName);
-      setSavedGlobalSets((prev) => prev.filter((setItem) => setItem.name !== targetName));
-      if (selectedSavedSetName === targetName) {
-        setGlobalSetName('');
+      setSavedPointSets((prev) => prev.filter((setItem) => setItem.name !== targetName));
+      if (selectedPointSetName === targetName) {
+        setPointSetName('');
         setSelectedSavedSetName('');
       }
-      if (inlineRenameSetName === targetName) {
-        setInlineRenameSetName('');
+      if (inlineRenamePointSetName === targetName) {
+        setInlineRenamePointSetName('');
         setInlineRenameValue('');
       }
       setIsTemporarySetMode(false);
-      setGlobalSetActionMessage(`Deleted set "${targetName}".`);
+      setPointSetActionMessage(`Deleted set "${targetName}".`);
     } catch (error) {
       console.error('[TrendLogsPage] Failed to delete set from DB:', error);
-      setGlobalSetActionMessage('Failed to delete set from database.');
+      setPointSetActionMessage('Failed to delete set from database.');
     }
-  }, [deletePointSetFromDb, inlineRenameSetName, pointSetSerialNumber, requestConfirmDialog, savedGlobalSets, selectedSavedSetName]);
+  }, [deletePointSetFromDb, inlineRenamePointSetName, pointSetSerialNumber, requestConfirmDialog, savedPointSets, selectedPointSetName]);
 
-  const createNewGlobalSet = useCallback(async () => {
-    if (!(await confirmDiscardUnsavedSetChanges())) return;
+  const createNewPointSet = useCallback(async () => {
+    if (!(await confirmDiscardUnsavedPointSetChanges())) return;
 
     const baseName = 'New Set';
-    const existingNames = new Set(savedGlobalSets.map((setItem) => setItem.name.toLowerCase()));
+    const existingNames = new Set(savedPointSets.map((setItem) => setItem.name.toLowerCase()));
     let nextName = baseName;
     let suffix = 2;
     while (existingNames.has(nextName.toLowerCase())) {
@@ -1569,115 +1569,115 @@ export const TrendLogsPage: React.FC = () => {
       suffix += 1;
     }
 
-    const draftSet: GlobalWatchlistSet = {
+    const draftSet: SavedPointSet = {
       name: nextName,
       selectedKeys: [],
       pointTags: {},
       updatedAt: Date.now(),
     };
 
-    setSavedGlobalSets((prev) => {
+    setSavedPointSets((prev) => {
       const withoutSame = prev.filter((setItem) => setItem.name !== nextName);
       return [...withoutSame, draftSet].sort((a, b) => a.name.localeCompare(b.name));
     });
     setSelectedSavedSetName(nextName);
-    setGlobalSetName(nextName);
-    setGlobalSelectedKeys(new Set());
-    setGlobalSelectedOrder([]);
-    setGlobalPointTags({});
-    setGlobalTagFilter('all');
-    setGlobalSetSearch('');
-    setInlineRenameSetName('');
+    setPointSetName(nextName);
+    setPointSetSelectedKeys(new Set());
+    setPointSetSelectedOrder([]);
+    setPointSetPointTags({});
+    setPointSetTagFilter('all');
+    setPointSetSearch('');
+    setInlineRenamePointSetName('');
     setInlineRenameValue('');
     setIsTemporarySetMode(true);
-    setGlobalSetInitialized(true);
-    setGlobalSetActionMessage(`New set "${nextName}" created. Add points and click Save Set.`);
-  }, [confirmDiscardUnsavedSetChanges, savedGlobalSets]);
+    setPointSetInitialized(true);
+    setPointSetActionMessage(`New set "${nextName}" created. Add points and click Save Set.`);
+  }, [confirmDiscardUnsavedPointSetChanges, savedPointSets]);
 
   const startInlineRename = useCallback((setName: string) => {
-    setInlineRenameSetName(setName);
+    setInlineRenamePointSetName(setName);
     setInlineRenameValue(setName);
   }, []);
 
   const cancelInlineRename = useCallback(() => {
-    setInlineRenameSetName('');
+    setInlineRenamePointSetName('');
     setInlineRenameValue('');
-    setGlobalSetActionMessage('Rename canceled.');
+    setPointSetActionMessage('Rename canceled.');
   }, []);
 
-  const applyGlobalSetSelection = useCallback((target: GlobalWatchlistSet, showMessage = true) => {
+  const applyPointSetSelection = useCallback((target: SavedPointSet, showMessage = true) => {
     setSelectedSavedSetName(target.name);
-    setGlobalSelectedKeys(new Set(target.selectedKeys));
-    setGlobalSelectedOrder(target.selectedKeys || []);
-    setGlobalPointTags((prev) => ({
+    setPointSetSelectedKeys(new Set(target.selectedKeys));
+    setPointSetSelectedOrder(target.selectedKeys || []);
+    setPointSetPointTags((prev) => ({
       ...prev,
       ...(target.pointTags || {}),
     }));
-    setGlobalTagFilter('all');
-    setGlobalSetName(target.name);
+    setPointSetTagFilter('all');
+    setPointSetName(target.name);
     setIsTemporarySetMode(false);
     if (showMessage) {
-      setGlobalSetActionMessage(`Loaded set "${target.name}".`);
+      setPointSetActionMessage(`Loaded set "${target.name}".`);
     }
   }, []);
 
-  const loadGlobalSetByName = useCallback(async (setName: string) => {
+  const loadPointSetByName = useCallback(async (setName: string) => {
     if (!setName) return;
-    if (setName === selectedSavedSetName) return;
+    if (setName === selectedPointSetName) return;
     const serialNumber = pointSetSerialNumber;
 
     if (!serialNumber) {
-      setGlobalSetActionMessage('No device selected.');
+      setPointSetActionMessage('No device selected.');
       return;
     }
 
-    if (!(await confirmDiscardUnsavedSetChanges())) return;
+    if (!(await confirmDiscardUnsavedPointSetChanges())) return;
 
     try {
       const rows = await listPointSetsFromDb(serialNumber);
-      setSavedGlobalSets(rows);
+      setSavedPointSets(rows);
 
       const target = rows.find((setItem) => setItem.name === setName);
       if (!target) {
-        setGlobalSetActionMessage(`Set "${setName}" was not found.`);
+        setPointSetActionMessage(`Set "${setName}" was not found.`);
         return;
       }
 
-      applyGlobalSetSelection(target);
+      applyPointSetSelection(target);
     } catch (error) {
       console.error('[TrendLogsPage] Failed to refresh point sets on selection:', error);
-      const fallback = savedGlobalSets.find((setItem) => setItem.name === setName);
+      const fallback = savedPointSets.find((setItem) => setItem.name === setName);
       if (!fallback) {
-        setGlobalSetActionMessage('Failed to load selected set from database.');
+        setPointSetActionMessage('Failed to load selected set from database.');
         return;
       }
-      applyGlobalSetSelection(fallback);
-      setGlobalSetActionMessage('Loaded set from local cache (refresh failed).');
+      applyPointSetSelection(fallback);
+      setPointSetActionMessage('Loaded set from local cache (refresh failed).');
     }
-  }, [applyGlobalSetSelection, confirmDiscardUnsavedSetChanges, listPointSetsFromDb, pointSetSerialNumber, savedGlobalSets, selectedSavedSetName]);
+  }, [applyPointSetSelection, confirmDiscardUnsavedPointSetChanges, listPointSetsFromDb, pointSetSerialNumber, savedPointSets, selectedPointSetName]);
 
-  const openGlobalSetChartByName = useCallback(async (setName: string) => {
+  const openPointSetChartByName = useCallback(async (setName: string) => {
     if (!setName) return;
-    const target = savedGlobalSets.find((setItem) => setItem.name === setName);
+    const target = savedPointSets.find((setItem) => setItem.name === setName);
     if (!target) return;
 
-    if (setName !== selectedSavedSetName) {
-      if (!(await confirmDiscardUnsavedSetChanges())) return;
-      applyGlobalSetSelection(target, false);
+    if (setName !== selectedPointSetName) {
+      if (!(await confirmDiscardUnsavedPointSetChanges())) return;
+      applyPointSetSelection(target, false);
     }
 
     if (!selectedDevice) {
-      setGlobalSetActionMessage('No device selected.');
+      setPointSetActionMessage('No device selected.');
       return;
     }
 
-    const pointsByKey = new Map(globalPoints.map((point) => [point.key, point]));
+    const pointsByKey = new Map(pointSetPoints.map((point) => [point.key, point]));
     const orderedPoints = (target.selectedKeys || [])
       .map((key) => pointsByKey.get(key))
-      .filter((point): point is GlobalPointItem => !!point);
+      .filter((point): point is PointSetPointItem => !!point);
 
     if (orderedPoints.length === 0) {
-      setGlobalSetActionMessage(`Set "${target.name}" has no valid points to chart.`);
+      setPointSetActionMessage(`Set "${target.name}" has no valid points to chart.`);
       return;
     }
 
@@ -1710,7 +1710,7 @@ export const TrendLogsPage: React.FC = () => {
     next.set('trendlogId', 'GLOBAL');
     next.set('tab', 'chart');
     setSearchParams(next, { replace: true });
-  }, [applyGlobalSetSelection, confirmDiscardUnsavedSetChanges, globalPoints, savedGlobalSets, searchParams, selectedDevice, selectedSavedSetName, setSearchParams]);
+  }, [applyPointSetSelection, confirmDiscardUnsavedPointSetChanges, pointSetPoints, savedPointSets, searchParams, selectedDevice, selectedPointSetName, setSearchParams]);
 
   const headerActionsTarget = document.getElementById('page-header-actions');
   const trendTabs = (
@@ -1728,14 +1728,14 @@ export const TrendLogsPage: React.FC = () => {
         Default
       </button>
       <button
-        className={`${styles.tabButton} ${activeTab === 'global' ? styles.tabButtonActive : ''}`}
-        onClick={() => setActiveTab('global')}
+        className={`${styles.tabButton} ${activeTab === 'point-sets' ? styles.tabButtonActive : ''}`}
+        onClick={() => setActiveTab('point-sets')}
       >
         Point Sets
       </button>
       <button
-        className={`${styles.tabButton} ${activeTab === 'points-tags' ? styles.tabButtonActive : ''}`}
-        onClick={() => setActiveTab('points-tags')}
+        className={`${styles.tabButton} ${activeTab === 'haystack-tags' ? styles.tabButtonActive : ''}`}
+        onClick={() => setActiveTab('haystack-tags')}
       >
         Haystack Tags
       </button>
@@ -1743,20 +1743,20 @@ export const TrendLogsPage: React.FC = () => {
   );
 
   useEffect(() => {
-    if (activeTab !== 'global') {
+    if (activeTab !== 'point-sets') {
       return;
     }
 
-    const loadGlobalPoints = async () => {
+    const loadPointSetPoints = async () => {
       if (!selectedDevice?.serialNumber) {
-        setGlobalPoints([]);
-        setGlobalPointTags({});
-        setGlobalSelectedKeys(new Set());
-        setGlobalSelectedOrder([]);
+        setPointSetPoints([]);
+        setPointSetPointTags({});
+        setPointSetSelectedKeys(new Set());
+        setPointSetSelectedOrder([]);
         return;
       }
 
-      setGlobalPointsLoading(true);
+      setPointSetPointsLoading(true);
       try {
         const serial = selectedDevice.serialNumber;
         const [inputsResponse, outputsResponse, variablesResponse] = await Promise.all([
@@ -1769,7 +1769,7 @@ export const TrendLogsPage: React.FC = () => {
         const outputsData = outputsResponse.ok ? await outputsResponse.json() : {};
         const variablesData = variablesResponse.ok ? await variablesResponse.json() : {};
 
-        const mapRows = (rows: any[], type: 'INPUT' | 'OUTPUT' | 'VARIABLE'): GlobalPointItem[] => {
+        const mapRows = (rows: any[], type: 'INPUT' | 'OUTPUT' | 'VARIABLE'): PointSetPointItem[] => {
           return rows.map((row: any, idx: number) => {
             const rawIndex =
               row.inputIndex ?? row.outputIndex ?? row.variableIndex ?? row.pointIndex ?? row.Point_Index ?? row.index ?? row.number ?? idx + 1;
@@ -1823,13 +1823,13 @@ export const TrendLogsPage: React.FC = () => {
                 '';
               if (!mappedType) return;
 
-              const globalKey = `${mappedType}:${pointIndex}`;
+              const pointTagKey = `${mappedType}:${pointIndex}`;
               const tagsObj = row?.tags && typeof row.tags === 'object' && !Array.isArray(row.tags)
                 ? row.tags as Record<string, any>
                 : null;
               if (!tagsObj) return;
 
-              const existing = new Set(seededTags[globalKey] || []);
+              const existing = new Set(seededTags[pointTagKey] || []);
               Object.entries(tagsObj).forEach(([tagKey, tagValue]) => {
                 if (!tagKey) return;
                 if (tagValue === 'M') {
@@ -1838,7 +1838,7 @@ export const TrendLogsPage: React.FC = () => {
                   existing.add(`${tagKey.toLowerCase()}:${String(tagValue).toLowerCase()}`);
                 }
               });
-              seededTags[globalKey] = Array.from(existing);
+              seededTags[pointTagKey] = Array.from(existing);
             });
           }
         } catch (haystackLoadError) {
@@ -1877,25 +1877,25 @@ export const TrendLogsPage: React.FC = () => {
           console.warn('[TrendLogsPage] Failed to load tags from Points and Tags workspace:', policyLoadError);
         }
 
-        setGlobalPoints(merged);
-        setGlobalPointTags(seededTags);
-      } catch (globalPointsError) {
-        console.error('[TrendLogsPage] Failed to load global points:', globalPointsError);
-        setGlobalPoints([]);
-        setGlobalPointTags({});
+        setPointSetPoints(merged);
+        setPointSetPointTags(seededTags);
+      } catch (pointSetPointsError) {
+        console.error('[TrendLogsPage] Failed to load global points:', pointSetPointsError);
+        setPointSetPoints([]);
+        setPointSetPointTags({});
       } finally {
-        setGlobalPointsLoading(false);
+        setPointSetPointsLoading(false);
       }
     };
 
-    loadGlobalPoints();
-  }, [activeTab, globalReloadRevision, selectedDevice?.serialNumber]);
+    loadPointSetPoints();
+  }, [activeTab, pointSetReloadRevision, selectedDevice?.serialNumber]);
 
   useEffect(() => {
     if (!selectedDevice?.serialNumber) {
-      setSavedGlobalSets([]);
+      setSavedPointSets([]);
       setSelectedSavedSetName('');
-      setGlobalSetInitialized(false);
+      setPointSetInitialized(false);
       return;
     }
 
@@ -1904,54 +1904,54 @@ export const TrendLogsPage: React.FC = () => {
       try {
         const rows = await listPointSetsFromDb(selectedDevice.serialNumber);
         if (cancelled) return;
-        setSavedGlobalSets(rows);
+        setSavedPointSets(rows);
 
         if (rows.length > 0) {
-          const selectedFromRows = rows.find((setItem) => setItem.name === selectedSavedSetName);
-          applyGlobalSetSelection(selectedFromRows || rows[0], false);
+          const selectedFromRows = rows.find((setItem) => setItem.name === selectedPointSetName);
+          applyPointSetSelection(selectedFromRows || rows[0], false);
         } else {
           setSelectedSavedSetName('');
-          setGlobalSetName('');
-          setGlobalSelectedKeys(new Set());
-          setGlobalSelectedOrder([]);
+          setPointSetName('');
+          setPointSetSelectedKeys(new Set());
+          setPointSetSelectedOrder([]);
           setIsTemporarySetMode(false);
-          setGlobalSetInitialized(false);
+          setPointSetInitialized(false);
         }
       } catch (error) {
         console.error('[TrendLogsPage] Failed to load point sets from DB:', error);
         if (cancelled) return;
-        setSavedGlobalSets([]);
+        setSavedPointSets([]);
         setSelectedSavedSetName('');
         setIsTemporarySetMode(false);
-        setGlobalSetInitialized(false);
-        setGlobalSetActionMessage('Failed to load point sets from database.');
+        setPointSetInitialized(false);
+        setPointSetActionMessage('Failed to load point sets from database.');
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [applyGlobalSetSelection, listPointSetsFromDb, selectedDevice?.serialNumber]);
+  }, [applyPointSetSelection, listPointSetsFromDb, selectedDevice?.serialNumber]);
 
   useEffect(() => {
-    if (activeTab !== 'global') return;
+    if (activeTab !== 'point-sets') return;
     if (!selectedDevice?.serialNumber) return;
-    if (globalPoints.length === 0) return;
-    if (savedGlobalSets.length === 0) return;
+    if (pointSetPoints.length === 0) return;
+    if (savedPointSets.length === 0) return;
 
-    const selectedName = selectedSavedSetName && savedGlobalSets.some((setItem) => setItem.name === selectedSavedSetName)
-      ? selectedSavedSetName
-      : savedGlobalSets[0].name;
+    const selectedName = selectedPointSetName && savedPointSets.some((setItem) => setItem.name === selectedPointSetName)
+      ? selectedPointSetName
+      : savedPointSets[0].name;
 
     if (!selectedName) return;
 
-    if (globalSetInitialized && selectedSavedSetName === selectedName) return;
+    if (pointSetInitialized && selectedPointSetName === selectedName) return;
 
-    const target = savedGlobalSets.find((setItem) => setItem.name === selectedName);
+    const target = savedPointSets.find((setItem) => setItem.name === selectedName);
     if (!target) return;
 
-    applyGlobalSetSelection(target, false);
-  }, [activeTab, applyGlobalSetSelection, globalPoints.length, globalSetInitialized, savedGlobalSets, selectedDevice?.serialNumber, selectedSavedSetName]);
+    applyPointSetSelection(target, false);
+  }, [activeTab, applyPointSetSelection, pointSetPoints.length, pointSetInitialized, savedPointSets, selectedDevice?.serialNumber, selectedPointSetName]);
 
   // Display all 12 trendlog slots (matching T3000 desktop), merge actual data
   const displayTrendLogs = React.useMemo(() => {
@@ -2319,7 +2319,7 @@ export const TrendLogsPage: React.FC = () => {
                 </div>
               )}
 
-              {activeTab === 'points-tags' && (
+              {activeTab === 'haystack-tags' && (
                 <div className={styles.embeddedPolicyWrap}>
                   <TrendPolicyPage embedded />
                 </div>
@@ -2419,7 +2419,7 @@ export const TrendLogsPage: React.FC = () => {
               </div>
               )}
 
-              {activeTab === 'global' && selectedDevice && (
+              {activeTab === 'point-sets' && selectedDevice && (
               <div className={styles.globalInfoBar}>
                 <div className={styles.globalInfoBarLeft}>
                   <InfoRegular className={styles.globalInfoBarIcon} />
@@ -2431,7 +2431,7 @@ export const TrendLogsPage: React.FC = () => {
                       <Text size={200} className={styles.globalInfoBarText}>Open</Text>
                       <button
                         className={styles.infoBarLinkButton}
-                        onClick={() => setActiveTab('points-tags')}
+                        onClick={() => setActiveTab('haystack-tags')}
                         title="Open the dedicated Haystack page to manage tags"
                       >
                         Haystack Tags
@@ -2578,7 +2578,7 @@ export const TrendLogsPage: React.FC = () => {
               </div>
               )}
 
-              {activeTab === 'global' && (
+              {activeTab === 'point-sets' && (
               <div className={styles.globalTabSurface}>
                 <div className={styles.dockingBody}>
                   {!selectedDevice && !loading && (
@@ -2601,8 +2601,8 @@ export const TrendLogsPage: React.FC = () => {
                               <span className={styles.globalSetSortLabel}>Sort by:</span>
                               <button
                                 type="button"
-                                className={`${styles.globalSetSortTextButton} ${globalSetSort === 'recent' ? styles.globalSetSortTextButtonActive : ''}`}
-                                onClick={() => setGlobalSetSort('recent')}
+                                className={`${styles.globalSetSortTextButton} ${pointSetSort === 'recent' ? styles.globalSetSortTextButtonActive : ''}`}
+                                onClick={() => setPointSetSort('recent')}
                                 title="Sort by most recently updated"
                               >
                                 Recently Updated
@@ -2610,8 +2610,8 @@ export const TrendLogsPage: React.FC = () => {
                               <span className={styles.globalSetSortDivider}>|</span>
                               <button
                                 type="button"
-                                className={`${styles.globalSetSortTextButton} ${globalSetSort === 'name' ? styles.globalSetSortTextButtonActive : ''}`}
-                                onClick={() => setGlobalSetSort('name')}
+                                className={`${styles.globalSetSortTextButton} ${pointSetSort === 'name' ? styles.globalSetSortTextButtonActive : ''}`}
+                                onClick={() => setPointSetSort('name')}
                                 title="Sort by name (A to Z)"
                               >
                                 Name (A-Z)
@@ -2626,15 +2626,15 @@ export const TrendLogsPage: React.FC = () => {
                               className={`${styles.tagInput} ${styles.globalSetSearchInput}`}
                               type="text"
                               placeholder="Search saved sets"
-                              value={globalSetSearch}
-                              onChange={(e) => setGlobalSetSearch(e.target.value)}
+                              value={pointSetSearch}
+                              onChange={(e) => setPointSetSearch(e.target.value)}
                               aria-label="Search saved point sets"
                             />
-                            {globalSetSearch.trim() ? (
+                            {pointSetSearch.trim() ? (
                               <button
                                 type="button"
                                 className={styles.globalSetSearchClearButton}
-                                onClick={() => setGlobalSetSearch('')}
+                                onClick={() => setPointSetSearch('')}
                                 aria-label="Clear set search"
                                 title="Clear"
                               >
@@ -2645,30 +2645,30 @@ export const TrendLogsPage: React.FC = () => {
                         </div>
 
                         <div className={styles.globalSetList}>
-                          {sortedSavedGlobalSets.length === 0 ? (
+                          {sortedSavedPointSets.length === 0 ? (
                             <div className={`${styles.centerPaddingMuted} ${styles.globalSetEmptyState}`}>
                               <Text size={200}>No saved sets yet. Build one on the right and click Save Set.</Text>
                             </div>
-                          ) : filteredSavedGlobalSets.length === 0 ? (
+                          ) : filteredSavedPointSets.length === 0 ? (
                             <div className={styles.centerPaddingMuted}>
                               <Text size={200}>No sets matched your search.</Text>
                             </div>
                           ) : (
-                            filteredSavedGlobalSets.map((setItem) => {
-                              const isRenaming = inlineRenameSetName === setItem.name;
+                            filteredSavedPointSets.map((setItem) => {
+                              const isRenaming = inlineRenamePointSetName === setItem.name;
                               return (
                                 <div
                                   key={setItem.name}
-                                  className={`${styles.globalSetListItem} ${selectedSavedSetName === setItem.name ? styles.globalSetListItemActive : ''}`}
+                                  className={`${styles.globalSetListItem} ${selectedPointSetName === setItem.name ? styles.globalSetListItemActive : ''}`}
                                   onClick={() => {
                                     if (isRenaming) return;
-                                    void loadGlobalSetByName(setItem.name);
+                                    void loadPointSetByName(setItem.name);
                                   }}
                                   onKeyDown={(e) => {
                                     if (isRenaming) return;
                                     if (e.key === 'Enter' || e.key === ' ') {
                                       e.preventDefault();
-                                      void loadGlobalSetByName(setItem.name);
+                                      void loadPointSetByName(setItem.name);
                                     }
                                   }}
                                   role="button"
@@ -2685,7 +2685,7 @@ export const TrendLogsPage: React.FC = () => {
                                         onKeyDown={(e) => {
                                           if (e.key === 'Enter') {
                                             e.preventDefault();
-                                            renameGlobalSetByName(setItem.name, inlineRenameValue);
+                                            renamePointSetByName(setItem.name, inlineRenameValue);
                                           }
                                           if (e.key === 'Escape') {
                                             e.preventDefault();
@@ -2701,7 +2701,7 @@ export const TrendLogsPage: React.FC = () => {
                                         className={styles.globalSetItemMainButton}
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          void loadGlobalSetByName(setItem.name);
+                                          void loadPointSetByName(setItem.name);
                                         }}
                                         title={`Load ${setItem.name}`}
                                       >
@@ -2721,7 +2721,7 @@ export const TrendLogsPage: React.FC = () => {
                                         <button
                                           type="button"
                                           className={styles.globalSetItemActionLink}
-                                          onClick={() => renameGlobalSetByName(setItem.name, inlineRenameValue)}
+                                          onClick={() => renamePointSetByName(setItem.name, inlineRenameValue)}
                                           title={`Save new name for ${setItem.name}`}
                                         >
                                           Save
@@ -2743,7 +2743,7 @@ export const TrendLogsPage: React.FC = () => {
                                             className={styles.globalSetItemActionLink}
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              openGlobalSetChartByName(setItem.name);
+                                              openPointSetChartByName(setItem.name);
                                             }}
                                             title={`Open chart for ${setItem.name}`}
                                           >
@@ -2766,7 +2766,7 @@ export const TrendLogsPage: React.FC = () => {
                                           className={`${styles.globalSetItemActionLink} ${styles.globalSetItemActionDelete}`}
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            removeGlobalSetByName(setItem.name);
+                                            removePointSetByName(setItem.name);
                                           }}
                                           title={`Delete ${setItem.name}`}
                                         >
@@ -2785,7 +2785,7 @@ export const TrendLogsPage: React.FC = () => {
                           <button
                             type="button"
                             className={`${styles.smallActionButton} ${styles.smallPrimaryActionButton}`}
-                            onClick={createNewGlobalSet}
+                            onClick={createNewPointSet}
                           >
                             New Set
                           </button>
@@ -2797,17 +2797,17 @@ export const TrendLogsPage: React.FC = () => {
                           <div className={styles.globalCurrentSetHeaderTitle}>
                             <Text size={300} weight="semibold">Current Set Points</Text>
                             <div className={styles.globalCurrentSetHeaderMeta}>
-                              <Text size={200}>{selectedSavedSetName || globalSetName || 'Unsaved Set'}</Text>
+                              <Text size={200}>{selectedPointSetName || pointSetName || 'Unsaved Set'}</Text>
                               {isCurrentSetDirty && (
                                 <span className={styles.unsavedBadge}>Unsaved changes</span>
                               )}
                             </div>
                           </div>
                           <div className={styles.globalPanelHeaderActions}>
-                            <Text size={200}>{selectedGlobalPoints.length} selected</Text>
+                            <Text size={200}>{selectedPointSetPoints.length} selected</Text>
                             <button
                               className={styles.smallActionButton}
-                              onClick={saveCurrentGlobalSet}
+                              onClick={saveCurrentPointSet}
                               title="Save current set"
                             >
                               Save Set
@@ -2821,26 +2821,26 @@ export const TrendLogsPage: React.FC = () => {
                             </button>
                             <button
                               className={styles.smallActionButton}
-                              onClick={clearGlobalSelection}
-                              disabled={globalSelectedKeys.size === 0}
+                              onClick={clearPointSetSelection}
+                              disabled={pointSetSelectedKeys.size === 0}
                               title="Clear all points from current set"
                             >
                               Clear Set
                             </button>
                           </div>
                         </div>
-                        {globalSetActionMessage && (
+                        {pointSetActionMessage && (
                           <div className={styles.globalSetInlineMessageBar}>
-                            <Text size={100} className={styles.globalSetActionMessage}>{globalSetActionMessage}</Text>
+                            <Text size={100} className={styles.globalSetActionMessage}>{pointSetActionMessage}</Text>
                           </div>
                         )}
                         <div className={styles.globalPanelBody}>
-                          {selectedGlobalPoints.length === 0 ? (
+                          {selectedPointSetPoints.length === 0 ? (
                             <div className={styles.centerPaddingMuted}>
                               <Text size={200}>No points in current set. Click Add Points to start building this set.</Text>
                             </div>
                           ) : (
-                            selectedGlobalPoints.map((point, index) => (
+                            selectedPointSetPoints.map((point, index) => (
                               <div
                                 key={point.key}
                                 className={styles.watchlistRow}
@@ -2848,7 +2848,7 @@ export const TrendLogsPage: React.FC = () => {
                                 onDrop={(e) => {
                                   e.preventDefault();
                                   if (draggingPointKey) {
-                                    movePointWithinSet(draggingPointKey, point.key);
+                                    movePointWithinPointSet(draggingPointKey, point.key);
                                   }
                                   setDraggingPointKey(null);
                                 }}
@@ -2887,7 +2887,7 @@ export const TrendLogsPage: React.FC = () => {
                                     type="button"
                                     className={styles.reorderButton}
                                     onClick={() => movePointByOffset(point.key, 1)}
-                                    disabled={index === selectedGlobalPoints.length - 1}
+                                    disabled={index === selectedPointSetPoints.length - 1}
                                     title="Move down"
                                   >
                                     <ChevronDownRegular />
@@ -2931,20 +2931,20 @@ export const TrendLogsPage: React.FC = () => {
                             className={`${styles.searchInput} ${styles.globalPanelSearchInput}`}
                             type="text"
                             placeholder="Search points or tags..."
-                            value={globalSearch}
-                            onChange={(e) => setGlobalSearch(e.target.value)}
+                            value={pointPickerSearch}
+                            onChange={(e) => setPointPickerSearch(e.target.value)}
                             spellCheck="false"
                             role="searchbox"
                             aria-label="Search points in picker"
                           />
                         </div>
-                        <Text size={200}>{globalPointsLoading ? 'Loading...' : `${filteredGlobalPoints.length} points`}</Text>
+                        <Text size={200}>{pointSetPointsLoading ? 'Loading...' : `${filteredPointSetPoints.length} points`}</Text>
                       </div>
 
                       <div className={styles.globalTagBar}>
                         <button
-                          className={`${styles.tagChip} ${globalTagFilter === 'all' ? styles.tagChipActive : ''}`}
-                          onClick={() => setGlobalTagFilter('all')}
+                          className={`${styles.tagChip} ${pointSetTagFilter === 'all' ? styles.tagChipActive : ''}`}
+                          onClick={() => setPointSetTagFilter('all')}
                         >
                           All
                         </button>
@@ -2958,11 +2958,11 @@ export const TrendLogsPage: React.FC = () => {
                             #{tag}
                           </button>
                         ))}
-                        {availableGlobalTags.map((tag) => (
+                        {availablePointTags.map((tag) => (
                           <button
                             key={tag}
-                            className={`${styles.tagChip} ${globalTagFilter === tag ? styles.tagChipActive : ''}`}
-                            onClick={() => setGlobalTagFilter(tag)}
+                            className={`${styles.tagChip} ${pointSetTagFilter === tag ? styles.tagChipActive : ''}`}
+                            onClick={() => setPointSetTagFilter(tag)}
                           >
                             #{tag}
                           </button>
@@ -2970,25 +2970,25 @@ export const TrendLogsPage: React.FC = () => {
                       </div>
 
                       <div className={styles.pointPickerBody}>
-                        {globalPointsLoading ? (
+                        {pointSetPointsLoading ? (
                           <div className={styles.centerPadding}>
                             <Spinner size="extra-small" />
                             <Text size={200}>Loading point library...</Text>
                           </div>
-                        ) : filteredGlobalPoints.length === 0 ? (
+                        ) : filteredPointSetPoints.length === 0 ? (
                           <div className={styles.centerPaddingMuted}>
                             <Text size={200}>No points matched your filter</Text>
                           </div>
                         ) : (
-                          filteredGlobalPoints.map((point) => {
-                            const tags = globalPointTags[point.key] || [];
-                            const selected = globalSelectedKeys.has(point.key);
+                          filteredPointSetPoints.map((point) => {
+                            const tags = pointSetPointTags[point.key] || [];
+                            const selected = pointSetSelectedKeys.has(point.key);
                             return (
                               <button
                                 key={point.key}
                                 type="button"
                                 className={`${styles.globalPointRow} ${selected ? styles.globalPointRowSelected : ''}`}
-                                onClick={() => toggleGlobalPointSelection(point.key)}
+                                onClick={() => togglePointSetSelection(point.key)}
                               >
                                 <div className={styles.globalPointMain}>
                                   <Badge appearance="outline">{point.type}</Badge>
@@ -3013,8 +3013,8 @@ export const TrendLogsPage: React.FC = () => {
                         <button
                           type="button"
                           className={styles.smallActionButton}
-                          onClick={selectAllVisibleGlobalPoints}
-                          disabled={filteredGlobalPoints.length === 0}
+                          onClick={selectAllVisiblePointSetPoints}
+                          disabled={filteredPointSetPoints.length === 0}
                         >
                           Select All Visible
                         </button>

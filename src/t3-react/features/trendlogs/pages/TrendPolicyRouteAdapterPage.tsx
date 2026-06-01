@@ -4,7 +4,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 export const TrendPolicyRouteAdapterPage: React.FC = () => {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
-  params.set('tab', 'points-tags');
+  params.set('tab', 'haystack-tags');
 
   return (
     <Navigate

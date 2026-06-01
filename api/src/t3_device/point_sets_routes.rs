@@ -157,7 +157,7 @@ pub fn create_point_sets_routes() -> Router<T3AppState> {
     Router::new()
         .route("/api/point-sets/list", post(list_point_sets))
         .route("/api/point-sets/save", post(save_point_set))
-    .route("/api/point-sets/rename", post(rename_point_set))
+        .route("/api/point-sets/rename", post(rename_point_set))
         .route("/api/point-sets/delete", post(delete_point_set))
 }
 

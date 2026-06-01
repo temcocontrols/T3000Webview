@@ -8,7 +8,7 @@ pub mod trendlogs_service;      // ✅ T3000 Trendlogs Management Service
 pub mod trendlog_ffi_service;   // ✅ T3000 TrendLog FFI Service for complete info retrieval
 pub mod trendlog_monitor_service; // ✅ Lightweight service for new C++ trendlog export functions
 pub mod trendlog_monitor_routes; // ✅ API routes for new C++ trendlog export functions
-// pub mod ffi_test_helper;     // ⚠️  Moved to tests/ - FFI diagnostic endpoints (used by public/ffi-test.html)
+// pub mod ffi_test_helper;     // Moved to tests/ - FFI diagnostic endpoints (used by public/ffi-test.html)
 pub mod trendlog_enhanced_routes; // ✅ T3000 TrendLog Enhanced API Routes for FFI and view management
 pub mod trendlog_data_service;  // ✅ T3000 TrendLog Historical Data Service (TRENDLOG_DATA table)
 pub mod trendlog_parent_cache;  // ✅ Parent ID cache for split-table optimization
@@ -18,7 +18,7 @@ pub mod t3_ffi_sync_service;  // ✅ MAIN T3000 SERVICE - Primary T3000 FFI & Sy
 pub mod t3_ffi_api_service;     // ✅ T3000 FFI API Service - HTTP API endpoints with FFI integration (same JSON as WebSocket)
 pub mod trendlog_webmsg_service; // ✅ T3000 TrendLog via HandleWebViewMsg (working approach instead of direct FFI)
 pub mod trendlog_webmsg_routes;  // ✅ T3000 TrendLog WebMsg API Routes (working HandleWebViewMsg endpoints)
-pub mod websocket_handler;  // 🔥 MOVED EARLY - Must initialize before route modules for proper logging
+pub mod websocket_handler;  //  MOVED EARLY - Must initialize before route modules for proper logging
 pub mod action17_refresh_helper; // Shared lookup for Action 17 panelId/objectinstance payloads
 pub mod input_update_routes;    // ✅ T3000 Input Update API Routes using UPDATE_WEBVIEW_LIST (Action 16)
 pub mod output_update_routes;   // ✅ T3000 Output Update API Routes using UPDATE_WEBVIEW_LIST (Action 16)
