@@ -3233,7 +3233,7 @@ export const TrendLogsPage: React.FC = () => {
                 className={styles.compactDialogButton}
                 size="small"
                 appearance="secondary"
-                style={{ fontSize: '12px', fontWeight: 400, minHeight: '28px', height: '28px', minWidth: '80px' }}
+                style={{ fontSize: '12px', fontWeight: 400, minHeight: '28px', height: '28px', minWidth: 'max-content', whiteSpace: 'nowrap', padding: '0 12px' }}
                 onClick={() => settleConfirmDialog(false)}
               >
                 {confirmDialog.cancelText}
@@ -3242,7 +3242,7 @@ export const TrendLogsPage: React.FC = () => {
                 className={styles.compactDialogButton}
                 size="small"
                 appearance="primary"
-                style={{ fontSize: '12px', fontWeight: 400, minHeight: '28px', height: '28px', minWidth: '80px' }}
+                style={{ fontSize: '12px', fontWeight: 400, minHeight: '28px', height: '28px', minWidth: 'max-content', whiteSpace: 'nowrap', padding: '0 12px' }}
                 onClick={() => settleConfirmDialog(true)}
               >
                 {confirmDialog.confirmText}
