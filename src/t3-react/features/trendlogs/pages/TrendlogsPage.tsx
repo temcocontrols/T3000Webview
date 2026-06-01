@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   DataGrid,
   DataGridHeader,
@@ -40,6 +40,7 @@ import {
   InfoRegular,
   ChevronUpRegular,
   ChevronDownRegular,
+  OpenRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { TrendlogRefreshApi } from '../services/trendlogRefreshApi';
@@ -47,6 +48,8 @@ import { PanelDataRefreshService } from '../../../shared/services/panelDataRefre
 import { API_BASE_URL } from '../../../config/constants';
 import { TrendChartContent } from '../components/TrendChartContent';
 import { TrendPolicyPage } from './TrendPolicyPage';
+import { TrendlogVerifyDrawer } from '../components/TrendlogVerifyDrawer';
+import { FlowLogTab } from '../../logs/components/FlowLogTab';
 import styles from './TrendlogsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
@@ -93,6 +96,20 @@ interface DevicePointSyncSummary {
   lastSyncedAt: number | null;
   lastSyncedFmt: string;
   lastSyncMethod: string;
+  // Per-type logged record counts (from trendlog-data/stats)
+  inputDataPoints: number;
+  outputDataPoints: number;
+  variableDataPoints: number;
+  // How many distinct points have been tracked in TRENDLOG_DATA parent rows
+  trackedInputs: number;
+  trackedOutputs: number;
+  trackedVariables: number;
+  inputLastSyncAt: number | null;
+  outputLastSyncAt: number | null;
+  variableLastSyncAt: number | null;
+  inputLastSyncFmt: string;
+  outputLastSyncFmt: string;
+  variableLastSyncFmt: string;
 }
 
 interface SyncStatusRow {
@@ -117,11 +134,23 @@ const EMPTY_POINT_SYNC_SUMMARY: DevicePointSyncSummary = {
   lastSyncedAt: null,
   lastSyncedFmt: 'N/A',
   lastSyncMethod: 'N/A',
+  inputDataPoints: 0,
+  outputDataPoints: 0,
+  variableDataPoints: 0,
+  trackedInputs: 0,
+  trackedOutputs: 0,
+  trackedVariables: 0,
+  inputLastSyncAt: null,
+  outputLastSyncAt: null,
+  variableLastSyncAt: null,
+  inputLastSyncFmt: 'N/A',
+  outputLastSyncFmt: 'N/A',
+  variableLastSyncFmt: 'N/A',
 };
 
 const TRACKED_POINT_SYNC_TYPES = ['INPUTS', 'OUTPUTS', 'VARIABLES'] as const;
 
-type TrendCenterTab = 'overview' | 'default' | 'point-sets' | 'haystack-tags' | 'chart';
+type TrendCenterTab = 'overview' | 'default' | 'point-sets' | 'haystack-tags' | 'chart' | 'backend';
 
 interface PointSetPointItem {
   key: string;
@@ -160,7 +189,7 @@ const COMMON_HAYSTACK_TAGS = ['ahu', 'temp', 'critical', 'floor1'] as const;
 const TREND_POLICY_STORAGE_KEY = 't3000.trend.policy.state.v2';
 
 const isTrendCenterTab = (value: string | null): value is TrendCenterTab => {
-  return value === 'overview' || value === 'default' || value === 'point-sets' || value === 'haystack-tags' || value === 'chart';
+  return value === 'overview' || value === 'default' || value === 'point-sets' || value === 'haystack-tags' || value === 'chart' || value === 'backend';
 };
 
 export const TrendLogsPage: React.FC = () => {
@@ -177,12 +206,17 @@ export const TrendLogsPage: React.FC = () => {
   const deviceRefreshedRef = useRef<number | null>(null);
   const autoRefreshInProgressRef = useRef(false);
   const fetchRequestIdRef = useRef(0);
+  const embeddedChartTimeBaseRef = useRef<string>('5m');
   const [selectedMonitor, setSelectedMonitor] = useState<TrendLogData | null>(null);
   const [monitorInputs, setMonitorInputs] = useState<TrendLogInput[]>([]);
   const [loadingInputs, setLoadingInputs] = useState(false);
   const [pointSummaryLoading, setPointSummaryLoading] = useState(false);
   const [devicePointSyncSummary, setDevicePointSyncSummary] = useState<DevicePointSyncSummary>(EMPTY_POINT_SYNC_SUMMARY);
   const [, setSyncingPointTypes] = useState<Set<string>>(new Set());
+  const [verifyDrawerOpen, setVerifyDrawerOpen] = useState(false);
+  const [infoBannerDismissed, setInfoBannerDismissed] = useState(() =>
+    sessionStorage.getItem('tl-infobanner-v1') === '1'
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const selectedSerial = selectedDevice?.serialNumber;
@@ -193,6 +227,7 @@ export const TrendLogsPage: React.FC = () => {
   const requestedSerial = searchParams.get('serial');
   const requestedMonitorId = searchParams.get('monitorId');
   const requestedTrendlogId = searchParams.get('trendlogId');
+  const requestedPointSetName = searchParams.get('pointSetName');
 
   const normalizeMonitorToken = useCallback((value?: string | null) => {
     return (value || '').toUpperCase().replace(/^MON/, '');
@@ -211,6 +246,7 @@ export const TrendLogsPage: React.FC = () => {
   }, []);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const [pointSetPoints, setPointSetPoints] = useState<PointSetPointItem[]>([]);
   const [pointSetPointsLoading, setPointSetPointsLoading] = useState(false);
   const [pointPickerSearch, setPointPickerSearch] = useState('');
@@ -435,12 +471,18 @@ export const TrendLogsPage: React.FC = () => {
     return () => window.clearTimeout(timer);
   }, [pointSetActionMessage]);
 
-  const setActiveTab = useCallback((tab: TrendCenterTab) => {
+  const setActiveTab = useCallback((tab: TrendCenterTab, monitor?: TrendLogData) => {
     const next = new URLSearchParams(searchParams);
     next.set('tab', tab);
-    if (tab !== 'chart') {
+    if (tab === 'chart' && monitor) {
+      const mIdx = monitor.trendlogIndex || monitor.trendlogId || '0';
+      const mId  = monitor.trendlogId   || monitor.trendlogIndex || '0';
+      next.set('monitorId', mIdx);
+      next.set('trendlogId', mId);
+    } else if (tab !== 'chart') {
       next.delete('monitorId');
       next.delete('trendlogId');
+      next.delete('pointSetName');
     }
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
@@ -488,6 +530,11 @@ export const TrendLogsPage: React.FC = () => {
       const variablesData = variablesResponse.ok ? await variablesResponse.json() : {};
       const syncRows: SyncStatusRow[] = syncStatusResponse.ok ? await syncStatusResponse.json() : [];
       const trendlogStatsData = trendlogStatsResponse.ok ? await trendlogStatsResponse.json() : {};
+
+      const trackedInputs = typeof trendlogStatsData.input_tracked_points === 'number' ? trendlogStatsData.input_tracked_points : 0;
+      const trackedOutputs = typeof trendlogStatsData.output_tracked_points === 'number' ? trendlogStatsData.output_tracked_points : 0;
+      const trackedVariables = typeof trendlogStatsData.variable_tracked_points === 'number' ? trendlogStatsData.variable_tracked_points : 0;
+
       const trackedRows = (syncRows || []).filter((row) => TRACKED_POINT_SYNC_TYPES.includes(String(row.dataType || '').toUpperCase() as any));
 
       const latestByType = new Map<string, SyncStatusRow>();
@@ -502,6 +549,9 @@ export const TrendLogsPage: React.FC = () => {
       let backendSyncedTypes = 0;
       let backendRecordsSynced = 0;
       const latestSuccessfulRow = trackedRows.find((row) => !!row.success) || null;
+      const inputLatest = latestByType.get('INPUTS');
+      const outputLatest = latestByType.get('OUTPUTS');
+      const variableLatest = latestByType.get('VARIABLES');
 
       TRACKED_POINT_SYNC_TYPES.forEach((type) => {
         const latest = latestByType.get(type);
@@ -527,6 +577,18 @@ export const TrendLogsPage: React.FC = () => {
         lastSyncedAt: latestSuccessfulRow?.syncTime ?? null,
         lastSyncedFmt: latestSuccessfulRow?.syncTimeFmt || 'N/A',
         lastSyncMethod: latestSuccessfulRow?.syncMethod || 'N/A',
+        inputDataPoints: typeof trendlogStatsData.input_data_points === 'number' ? trendlogStatsData.input_data_points : 0,
+        outputDataPoints: typeof trendlogStatsData.output_data_points === 'number' ? trendlogStatsData.output_data_points : 0,
+        variableDataPoints: typeof trendlogStatsData.variable_data_points === 'number' ? trendlogStatsData.variable_data_points : 0,
+        trackedInputs,
+        trackedOutputs,
+        trackedVariables,
+        inputLastSyncAt: typeof inputLatest?.syncTime === 'number' ? inputLatest.syncTime : null,
+        outputLastSyncAt: typeof outputLatest?.syncTime === 'number' ? outputLatest.syncTime : null,
+        variableLastSyncAt: typeof variableLatest?.syncTime === 'number' ? variableLatest.syncTime : null,
+        inputLastSyncFmt: inputLatest?.syncTimeFmt || 'N/A',
+        outputLastSyncFmt: outputLatest?.syncTimeFmt || 'N/A',
+        variableLastSyncFmt: variableLatest?.syncTimeFmt || 'N/A',
       });
     } catch (summaryError) {
       console.error('[TrendLogsPage] Failed to load point sync summary:', summaryError);
@@ -615,7 +677,7 @@ export const TrendLogsPage: React.FC = () => {
     async (trendlog: TrendLogData) => {
       if (!selectedDevice) return;
 
-      const monitorIndex = trendlog.trendlogIndex || '0';
+      const monitorIndex = trendlog.trendlogIndex || trendlog.trendlogId || '0';
       // Label is already available in the row data — no extra API call needed
       const title = trendlog.trendlogLabel || `Monitor ${monitorIndex}`;
 
@@ -636,8 +698,36 @@ export const TrendLogsPage: React.FC = () => {
           (m) => m.trendlogId === trendlog.trendlogId || m.trendlogId === trendlog.trendlogIndex
         );
 
+      // Build deterministic return URL and keep chart context (including GLOBAL)
+      // so minimizing from full-page returns to the exact chart route.
+      const returnSearchParams = new URLSearchParams(searchParams);
+      returnSearchParams.set('serial', String(selectedDevice.serialNumber));
+      returnSearchParams.set('panel', String(selectedDevice.panelId || 1));
+      returnSearchParams.set('tab', 'chart');
+      returnSearchParams.set('monitorId', monitorIndex);
+      returnSearchParams.set('trendlogId', trendlog.trendlogId || monitorIndex);
+      // Preserve point set name so minimize restores the correct set
+      const currentPointSetName = searchParams.get('pointSetName');
+      if (monitorIndex === 'GLOBAL' && currentPointSetName) {
+        returnSearchParams.set('pointSetName', currentPointSetName);
+      } else {
+        returnSearchParams.delete('pointSetName');
+      }
+      const returnUrl = `${location.pathname}?${returnSearchParams.toString()}`;
+      const fullPageSearchParams = new URLSearchParams();
+      fullPageSearchParams.set('mode', 'full');
+      fullPageSearchParams.set('tab', 'chart');
+      fullPageSearchParams.set('serial', String(selectedDevice.serialNumber));
+      fullPageSearchParams.set('panel', String(selectedDevice.panelId || 1));
+      fullPageSearchParams.set('monitorId', monitorIndex);
+      fullPageSearchParams.set('trendlogId', trendlog.trendlogId || monitorIndex);
+      if (monitorIndex === 'GLOBAL' && currentPointSetName) {
+        fullPageSearchParams.set('pointSetName', currentPointSetName);
+      }
+      const fullPageUrl = `/t3000/trends/chart?${fullPageSearchParams.toString()}`;
+
       if (alreadyLoaded) {
-        navigate('/t3000/trends/chart', {
+        navigate(fullPageUrl, {
           state: {
             serialNumber: selectedDevice.serialNumber,
             panelId: selectedDevice.panelId || 1,
@@ -645,6 +735,8 @@ export const TrendLogsPage: React.FC = () => {
             monitorId: monitorIndex,
             itemData: buildItemData(),
             monitorInputs,
+            initialTimeBase: embeddedChartTimeBaseRef.current,
+            returnUrl,
           },
         });
         return;
@@ -679,7 +771,7 @@ export const TrendLogsPage: React.FC = () => {
           }));
         }
 
-        navigate('/t3000/trends/chart', {
+        navigate(fullPageUrl, {
           state: {
             serialNumber: selectedDevice.serialNumber,
             panelId: selectedDevice.panelId || 1,
@@ -687,11 +779,13 @@ export const TrendLogsPage: React.FC = () => {
             monitorId: monitorIndex,
             itemData: buildItemData(),
             monitorInputs: freshInputs,
+            initialTimeBase: embeddedChartTimeBaseRef.current,
+            returnUrl,
           },
         });
       } catch (error) {
         console.error('❌ [TrendLogsPage] Failed to load inputs for chart:', error);
-        navigate('/t3000/trends/chart', {
+        navigate(fullPageUrl, {
           state: {
             serialNumber: selectedDevice.serialNumber,
             panelId: selectedDevice.panelId || 1,
@@ -699,11 +793,13 @@ export const TrendLogsPage: React.FC = () => {
             monitorId: monitorIndex,
             itemData: buildItemData(),
             monitorInputs,
+            initialTimeBase: embeddedChartTimeBaseRef.current,
+            returnUrl,
           },
         });
       }
     },
-    [selectedDevice, monitorInputs, loadTrendlogInputsInternal]
+    [selectedDevice, monitorInputs, loadTrendlogInputsInternal, location, normalizeMonitorToken, searchParams]
   );
   // Debug log to verify new component is loading
   useEffect(() => {
@@ -830,11 +926,16 @@ export const TrendLogsPage: React.FC = () => {
       // Auto-select trendlog from query (if provided), else select first trendlog
       if (trendlogsWithIndex.length > 0) {
         const requestedNormalized = normalizeMonitorToken(requestedMonitorId || requestedTrendlogId);
+        const isChartContext = activeTab === 'chart';
 
         // Point Sets chart mode uses a synthetic GLOBAL monitor with specific_points.
         // Do not auto-fallback to first physical monitor (MON1), or history calls will use MON1 path.
         if (requestedNormalized === 'GLOBAL') {
           console.log('[TrendLogsPage] GLOBAL chart context detected; skipping trendlog auto-select fallback.');
+          // Clear stale physical monitor state while GLOBAL hydration resolves selected point set.
+          setSelectedMonitor(null);
+          setMonitorInputs([]);
+          setSelectedItems(new Set());
           return;
         }
 
@@ -845,6 +946,18 @@ export const TrendLogsPage: React.FC = () => {
               return itemA === requestedNormalized || itemB === requestedNormalized;
             })
           : null;
+
+        // In chart context with an explicit requested monitor, never fallback to MON1.
+        if (isChartContext && requestedNormalized && !queriedTrendlog) {
+          console.warn('[TrendLogsPage] Requested monitor not found in chart context; skipping fallback selection.', {
+            requestedMonitorId,
+            requestedTrendlogId,
+          });
+          setSelectedMonitor(null);
+          setMonitorInputs([]);
+          setSelectedItems(new Set());
+          return;
+        }
 
         const initialTrendlog = queriedTrendlog || trendlogsWithIndex[0];
 
@@ -875,7 +988,7 @@ export const TrendLogsPage: React.FC = () => {
       setLoading(false);
       setDbChecked(true);
     }
-  }, [normalizeMonitorToken, requestedMonitorId, requestedTrendlogId, selectedPanelId, selectedSerial]);
+  }, [activeTab, normalizeMonitorToken, requestedMonitorId, requestedTrendlogId, selectedPanelId, selectedSerial]);
 
   // Load inputs for a specific trendlog
   const loadTrendlogInputs = useCallback(async (trendlog: TrendLogData) => {
@@ -904,11 +1017,8 @@ export const TrendLogsPage: React.FC = () => {
     }
   }, [rawTab, searchParams, setSearchParams]);
 
-  useEffect(() => {
-    if (activeTab !== 'chart') return;
-    if (selectedDevice && selectedMonitor) return;
-    setActiveTab(isPointSetChartMode ? 'point-sets' : 'default');
-  }, [activeTab, isPointSetChartMode, selectedDevice, selectedMonitor, setActiveTab]);
+  // Keep chart tab stable during reload/rehydration. Falling back to default/point-sets
+  // here causes URL churn and breaks full-page return behavior.
 
   useEffect(() => {
     if (activeTab === 'point-sets' || isPointSetChartMode) return;
@@ -1140,6 +1250,44 @@ export const TrendLogsPage: React.FC = () => {
   const handleChartBack = useCallback(() => {
     setActiveTab(isPointSetChartMode ? 'point-sets' : 'default');
   }, [isPointSetChartMode, setActiveTab]);
+
+  const coverageRows = [
+    {
+      key: 'inputs',
+      label: 'Inputs',
+      total: devicePointSyncSummary.inputs,
+      tracked: devicePointSyncSummary.trackedInputs,
+      records: devicePointSyncSummary.inputDataPoints,
+      lastSyncAt: devicePointSyncSummary.inputLastSyncAt,
+      lastSyncFmt: devicePointSyncSummary.inputLastSyncFmt,
+    },
+    {
+      key: 'outputs',
+      label: 'Outputs',
+      total: devicePointSyncSummary.outputs,
+      tracked: devicePointSyncSummary.trackedOutputs,
+      records: devicePointSyncSummary.outputDataPoints,
+      lastSyncAt: devicePointSyncSummary.outputLastSyncAt,
+      lastSyncFmt: devicePointSyncSummary.outputLastSyncFmt,
+    },
+    {
+      key: 'variables',
+      label: 'Variables',
+      total: devicePointSyncSummary.variables,
+      tracked: devicePointSyncSummary.trackedVariables,
+      records: devicePointSyncSummary.variableDataPoints,
+      lastSyncAt: devicePointSyncSummary.variableLastSyncAt,
+      lastSyncFmt: devicePointSyncSummary.variableLastSyncFmt,
+    },
+  ];
+
+  const getCoverageAgeStatus = (syncAt: number | null): 'fresh' | 'warning' | 'stale' => {
+    if (!syncAt) return 'stale';
+    const diffMin = Math.floor((Date.now() / 1000 - syncAt) / 60);
+    if (diffMin < 5) return 'fresh';
+    if (diffMin <= 15) return 'warning';
+    return 'stale';
+  };
   const selectedMonitorItemData = selectedMonitor
     ? {
       title: selectedMonitorTitle,
@@ -1715,6 +1863,7 @@ export const TrendLogsPage: React.FC = () => {
     next.set('panel', String(selectedDevice.panelId || 1));
     next.set('monitorId', 'GLOBAL');
     next.set('trendlogId', 'GLOBAL');
+    next.set('pointSetName', target.name);
     next.set('tab', 'chart');
     setSearchParams(next, { replace: true });
   }, [applyPointSetSelection, confirmDiscardUnsavedPointSetChanges, pointSetPoints, savedPointSets, searchParams, selectedDevice, selectedPointSetName, setSearchParams]);
@@ -1746,11 +1895,21 @@ export const TrendLogsPage: React.FC = () => {
       >
         Haystack Tags
       </button>
+      <button
+        className={`${styles.tabButton} ${activeTab === 'backend' ? styles.tabButtonActive : ''}`}
+        onClick={() => setActiveTab('backend')}
+      >
+        Backend
+      </button>
     </div>
   );
 
   useEffect(() => {
-    if (activeTab !== 'point-sets') {
+    const isGlobalChartMode =
+      activeTab === 'chart' &&
+      normalizeMonitorToken(requestedMonitorId || requestedTrendlogId) === 'GLOBAL';
+
+    if (activeTab !== 'point-sets' && !isGlobalChartMode) {
       return;
     }
 
@@ -1977,7 +2136,7 @@ export const TrendLogsPage: React.FC = () => {
     };
 
     loadPointSetPoints();
-  }, [activeTab, pointSetReloadRevision, selectedDevice?.serialNumber]);
+  }, [activeTab, normalizeMonitorToken, pointSetReloadRevision, requestedMonitorId, requestedTrendlogId, selectedDevice?.serialNumber]);
 
   useEffect(() => {
     if (!selectedDevice?.serialNumber) {
@@ -2022,14 +2181,17 @@ export const TrendLogsPage: React.FC = () => {
   }, [applyPointSetSelection, listPointSetsFromDb, selectedDevice?.serialNumber]);
 
   useEffect(() => {
-    if (activeTab !== 'point-sets') return;
+    if (activeTab !== 'point-sets' && !isPointSetChartMode) return;
     if (!selectedDevice?.serialNumber) return;
     if (pointSetPoints.length === 0) return;
     if (savedPointSets.length === 0) return;
 
-    const selectedName = selectedPointSetName && savedPointSets.some((setItem) => setItem.name === selectedPointSetName)
-      ? selectedPointSetName
-      : savedPointSets[0].name;
+    // In GLOBAL chart mode, use the URL's pointSetName to restore the exact set
+    const selectedName = (isPointSetChartMode && requestedPointSetName && savedPointSets.some((s) => s.name === requestedPointSetName))
+      ? requestedPointSetName
+      : selectedPointSetName && savedPointSets.some((setItem) => setItem.name === selectedPointSetName)
+        ? selectedPointSetName
+        : savedPointSets[0].name;
 
     if (!selectedName) return;
 
@@ -2039,7 +2201,50 @@ export const TrendLogsPage: React.FC = () => {
     if (!target) return;
 
     applyPointSetSelection(target, false);
-  }, [activeTab, applyPointSetSelection, pointSetPoints.length, pointSetInitialized, savedPointSets, selectedDevice?.serialNumber, selectedPointSetName]);
+  }, [activeTab, applyPointSetSelection, isPointSetChartMode, pointSetPoints.length, pointSetInitialized, requestedPointSetName, savedPointSets, selectedDevice?.serialNumber, selectedPointSetName]);
+
+  useEffect(() => {
+    if (activeTab !== 'chart') return;
+    const requested = normalizeMonitorToken(requestedMonitorId || requestedTrendlogId);
+    if (requested !== 'GLOBAL') return;
+    if (!selectedDevice) return;
+    if (pointSetPoints.length === 0) return;
+    if (selectedPointSetPoints.length === 0) return; // wait for applyPointSetSelection to run first
+    // When a specific set name is requested via URL, wait until that set is active
+    if (requestedPointSetName && selectedPointSetName !== requestedPointSetName) return;
+
+    const syntheticMonitor: TrendLogData = {
+      serialNumber: selectedDevice.serialNumber,
+      trendlogId: 'GLOBAL',
+      trendlogIndex: 'GLOBAL',
+      trendlogLabel: selectedPointSetName ? `Point Set: ${selectedPointSetName}` : 'Point Set Chart',
+      status: 'ON',
+      _uniqueIndex: 99999,
+      panelId: selectedDevice.panelId,
+    };
+
+    const syntheticInputs: TrendLogInput[] = selectedPointSetPoints.map((point) => ({
+      serialNumber: selectedDevice.serialNumber,
+      panelId: selectedDevice.panelId || 1,
+      trendlogId: 'GLOBAL',
+      pointType: point.type,
+      pointIndex: point.index,
+      pointLabel: point.label,
+    }));
+
+    setSelectedMonitor(syntheticMonitor);
+    setMonitorInputs(syntheticInputs);
+  }, [
+    activeTab,
+    normalizeMonitorToken,
+    requestedMonitorId,
+    requestedTrendlogId,
+    requestedPointSetName,
+    selectedDevice,
+    selectedPointSetName,
+    pointSetPoints.length,
+    selectedPointSetPoints,
+  ]);
 
   // Display all 12 trendlog slots (matching T3000 desktop), merge actual data
   const displayTrendLogs = React.useMemo(() => {
@@ -2062,7 +2267,11 @@ export const TrendLogsPage: React.FC = () => {
     for (let i = 1; i <= totalSlots; i++) {
       const existing = dataMap.get(i);
       if (existing) {
-        slots.push(existing);
+        slots.push({
+          ...existing,
+          // Guarantee trendlogIndex is always populated — API sometimes omits it
+          trendlogIndex: existing.trendlogIndex || existing.trendlogId || `MON${i}`,
+        });
       } else {
         slots.push({
           serialNumber: serial,
@@ -2229,7 +2438,7 @@ export const TrendLogsPage: React.FC = () => {
               icon={<ChartMultipleRegular className={styles.iconSmall} />}
               onClick={async () => {
                 await handleMonitorSelect(item);
-                setActiveTab('chart');
+                setActiveTab('chart', item);
               }}
               title="View trend chart for this trendlog"
             >
@@ -2338,9 +2547,30 @@ export const TrendLogsPage: React.FC = () => {
                         {pointSummaryLoading ? '…' : devicePointSyncSummary.inputs + devicePointSyncSummary.outputs + devicePointSyncSummary.variables}
                       </span>
                       <div className={styles.overviewStatMeta}>
-                        <span className={styles.overviewInventoryPill}>IN {pointSummaryLoading ? '…' : devicePointSyncSummary.inputs}</span>
-                        <span className={styles.overviewInventoryPill}>OUT {pointSummaryLoading ? '…' : devicePointSyncSummary.outputs}</span>
-                        <span className={styles.overviewInventoryPill}>VAR {pointSummaryLoading ? '…' : devicePointSyncSummary.variables}</span>
+                        <button
+                          type="button"
+                          className={styles.overviewInventoryPillLink}
+                          onClick={() => navigate(`/t3000/inputs?backTo=${encodeURIComponent(location.pathname + location.search)}`)}
+                          title="Go to Inputs"
+                        >
+                          IN {pointSummaryLoading ? '…' : devicePointSyncSummary.inputs} <OpenRegular style={{ fontSize: 10 }} />
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.overviewInventoryPillLink}
+                          onClick={() => navigate(`/t3000/outputs?backTo=${encodeURIComponent(location.pathname + location.search)}`)}
+                          title="Go to Outputs"
+                        >
+                          OUT {pointSummaryLoading ? '…' : devicePointSyncSummary.outputs} <OpenRegular style={{ fontSize: 10 }} />
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.overviewInventoryPillLink}
+                          onClick={() => navigate(`/t3000/variables?backTo=${encodeURIComponent(location.pathname + location.search)}`)}
+                          title="Go to Variables"
+                        >
+                          VAR {pointSummaryLoading ? '…' : devicePointSyncSummary.variables} <OpenRegular style={{ fontSize: 10 }} />
+                        </button>
                       </div>
                     </div>
 
@@ -2359,13 +2589,88 @@ export const TrendLogsPage: React.FC = () => {
                       </span>
                       <div className={styles.overviewStatMeta}>
                         <span className={styles.overviewStatSlots}>stored values</span>
+                        {!pointSummaryLoading && lastSyncedFmt && (
+                          <span className={styles.overviewStatTimestamp}>· {lastSyncedFmt}</span>
+                        )}
+                         {selectedDevice && (
+                        <div className={styles.overviewStatActions}>
+                          <button
+                            type="button"
+                            className={styles.overviewStatAction}
+                            onClick={() => setVerifyDrawerOpen(true)}
+                          >
+                            Verify Data →
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.overviewStatAction}
+                            onClick={() => setActiveTab('backend')}
+                          >
+                            Detail →
+                          </button>
+                        </div>
+                      )}
+                      </div> 
+                    </div> 
+                  </div>
+
+                  {/* ── Logging Coverage Health ── */}
+                  {selectedDevice && (
+                    <div className={styles.overviewCoverageCard}>
+                      <div className={styles.overviewDetailHeader}>
+                        <span className={styles.overviewDetailTitle}>Logging Coverage Health</span>
+                        <div className={styles.overviewCoverageHeaderRight}>
+                          {!pointSummaryLoading && (
+                            <span className={styles.overviewCoverageSub}>
+                              Legend: Age &lt;5m = Fresh, 5–15m = Warning, &gt;15m = Stale
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      {!pointSummaryLoading && lastSyncedFmt && (
-                        <span className={styles.overviewStatTimestamp}>{lastSyncedFmt}</span>
+                      {pointSummaryLoading && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 0' }}>
+                          <Spinner size="tiny" />
+                          <Text size={200}>Loading…</Text>
+                        </div>
+                      )}
+                      {!pointSummaryLoading && (
+                        <div className={styles.coverageHealthTableWrap}>
+                          <div className={styles.coverageHealthTableHeader}>
+                            <span>Type</span>
+                            <span>Coverage</span>
+                            <span>Tracked / Total</span>
+                            <span>Records</span>
+                            <span>Last Sync Time</span>
+                            <span>Age</span>
+                          </div>
+                          {coverageRows.map((row) => {
+                            const total = Math.max(0, row.total || 0);
+                            const tracked = Math.max(0, Math.min(total, row.tracked || 0));
+                            const pct = total > 0 ? Math.round((tracked / total) * 100) : 0;
+                            const ageStatus = getCoverageAgeStatus(row.lastSyncAt);
+
+                            return (
+                              <div key={row.key} className={styles.coverageHealthTableRow}>
+                                <span className={styles.coverageHealthType}>{row.label}</span>
+                                <div className={styles.coverageHealthBarCell}>
+                                  <div className={styles.coverageHealthBarTrack}>
+                                    <div className={styles.coverageHealthBarFill} style={{ width: `${pct}%` }} />
+                                  </div>
+                                  <span className={styles.coverageHealthPercent}>{pct}%</span>
+                                </div>
+                                <span className={styles.coverageHealthMetric}>{tracked} / {total}</span>
+                                <span className={styles.coverageHealthMetric}>{(row.records || 0).toLocaleString()}</span>
+                                <span className={styles.coverageHealthTime}>{row.lastSyncFmt || 'N/A'}</span>
+                                <span className={`${styles.coverageHealthAge} ${ageStatus === 'fresh' ? styles.coverageHealthAgeFresh : ageStatus === 'warning' ? styles.coverageHealthAgeWarning : styles.coverageHealthAgeStale}`}>
+                                  {formatTimeAgo(row.lastSyncAt)}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
                     </div>
-
-                  </div>
+                  )}
 
                   {/* ── 2-column bottom row ── */}
                   <div className={styles.overviewBottomRow}>
@@ -2488,9 +2793,59 @@ export const TrendLogsPage: React.FC = () => {
                 </div>
               )}
 
+              {/* ── Backend tab ── */}
+              {activeTab === 'backend' && (
+                <div className={styles.backendTabWrap}>
+                  {selectedDevice && (
+                    <div className={styles.backendConfigCard}>
+                      <div className={styles.backendConfigField}>
+                        <span className={styles.backendConfigLabel}>Device:</span>
+                        <span className={styles.backendConfigValue}>
+                          {selectedDevice.nameShowOnTree || selectedDevice.productName} — SN {selectedDevice.serialNumber}
+                        </span>
+                      </div>
+                      <div className={styles.backendConfigField}>
+                        <span className={styles.backendConfigLabel}>Stored Values:</span>
+                        <span className={styles.backendConfigValue}>
+                          {pointSummaryLoading
+                            ? '…'
+                            : devicePointSyncSummary.trendlogDetailCount == null
+                              ? 'N/A'
+                              : devicePointSyncSummary.trendlogDetailCount.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className={styles.backendConfigField}>
+                        <span className={styles.backendConfigLabel}>Last Sync:</span>
+                        <span className={styles.backendConfigValue}>{lastSyncedFmt || 'N/A'}</span>
+                      </div>
+                      <div className={styles.backendConfigField}>
+                        <span className={styles.backendConfigLabel}>Method:</span>
+                        <span className={styles.backendConfigValue}>{syncSourceLabel}</span>
+                      </div>
+                      <div className={styles.backendConfigField}>
+                        <span className={styles.backendConfigLabel}>Tracked Points:</span>
+                        <span className={styles.backendConfigValue}>
+                          {devicePointSyncSummary.trackedInputs} IN · {devicePointSyncSummary.trackedOutputs} OUT · {devicePointSyncSummary.trackedVariables} VAR
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <div className={styles.backendFlowSection}>
+                    <FlowLogTab forceTypeFilter="TRENDLOG_BACKEND" />
+                  </div>
+                </div>
+              )}
+
               {activeTab === 'chart' && (
                 <div className={styles.chartTabWrap}>
-                  {!selectedDevice || !selectedMonitor ? (
+                  {!selectedDevice ? (
+                    <div className={styles.placeholderPanel}>
+                      <Text size={400} weight="semibold">Chart Workspace</Text>
+                      <Text size={300}>
+                        No device selected. Select a device from the device tree.
+                      </Text>
+                    </div>
+                  ) : !selectedMonitor && !requestedMonitorId ? (
                     <div className={styles.placeholderPanel}>
                       <Text size={400} weight="semibold">Chart Workspace</Text>
                       <Text size={300}>
@@ -2499,6 +2854,11 @@ export const TrendLogsPage: React.FC = () => {
                       <Button appearance="primary" onClick={() => setActiveTab('default')}>
                         Go To Default
                       </Button>
+                    </div>
+                  ) : !selectedMonitor ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px' }}>
+                      <Spinner size="extra-small" />
+                      <Text size={200}>Loading chart...</Text>
                     </div>
                   ) : (
                     <>
@@ -2511,6 +2871,7 @@ export const TrendLogsPage: React.FC = () => {
                           itemData={selectedMonitorItemData}
                           monitorInputs={monitorInputs}
                           isDrawerMode={false}
+                          onTimeBaseChange={(tb) => { embeddedChartTimeBaseRef.current = tb; }}
                           toolbarActionBeforeBack={
                             <Tooltip content="Open Full Chart Page" relationship="label">
                               <Button
@@ -2528,6 +2889,37 @@ export const TrendLogsPage: React.FC = () => {
                       </div>
                     </>
                   )}
+                </div>
+              )}
+
+              {/* ── Info banner (backend sampling notice) ── */}
+              {activeTab === 'default' && !infoBannerDismissed && selectedDevice && (
+                <div className={styles.infoBanner}>
+                  <InfoRegular className={styles.infoBannerIcon} />
+                  <span className={styles.infoBannerText}>
+                    <strong>Backend Sampling is active</strong> — sensor values are collected automatically by the background sync service
+                    {devicePointSyncSummary.lastSyncMethod === 'FFI_BACKEND' && lastSyncedAgo && (
+                      <> · {lastSyncedAgo}</>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.infoBannerAction}
+                    onClick={() => setActiveTab('backend')}
+                  >
+                    View Backend →
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.infoBannerDismiss}
+                    aria-label="Dismiss"
+                    onClick={() => {
+                      setInfoBannerDismissed(true);
+                      sessionStorage.setItem('tl-infobanner-v1', '1');
+                    }}
+                  >
+                    ×
+                  </button>
                 </div>
               )}
 
@@ -3233,7 +3625,7 @@ export const TrendLogsPage: React.FC = () => {
                 className={styles.compactDialogButton}
                 size="small"
                 appearance="secondary"
-                style={{ fontSize: '12px', fontWeight: 400, minHeight: '28px', height: '28px', minWidth: '80px' }}
+                style={{ fontSize: '12px', fontWeight: 400, minHeight: '28px', height: '28px', minWidth: 'max-content', whiteSpace: 'nowrap', padding: '0 12px' }}
                 onClick={() => settleConfirmDialog(false)}
               >
                 {confirmDialog.cancelText}
@@ -3242,7 +3634,7 @@ export const TrendLogsPage: React.FC = () => {
                 className={styles.compactDialogButton}
                 size="small"
                 appearance="primary"
-                style={{ fontSize: '12px', fontWeight: 400, minHeight: '28px', height: '28px', minWidth: '80px' }}
+                style={{ fontSize: '12px', fontWeight: 400, minHeight: '28px', height: '28px', minWidth: 'max-content', whiteSpace: 'nowrap', padding: '0 12px' }}
                 onClick={() => settleConfirmDialog(true)}
               >
                 {confirmDialog.confirmText}
@@ -3307,6 +3699,15 @@ export const TrendLogsPage: React.FC = () => {
         </DialogSurface>
       </Dialog>
 
+      {/* ── Verify Data Drawer ── */}
+      {verifyDrawerOpen && selectedDevice && (
+        <TrendlogVerifyDrawer
+          isOpen={verifyDrawerOpen}
+          onClose={() => setVerifyDrawerOpen(false)}
+          serialNumber={selectedDevice.serialNumber}
+          panelId={(selectedDevice as any).panelId || 1}
+        />
+      )}
 
     </div>
   );

@@ -246,6 +246,71 @@ pub async fn get_data_statistics(
         .and_then(|r| r.get::<i32, _>("cnt"))
         .unwrap_or(0);
 
+    // Count detail records by point type (INPUT / OUTPUT / VARIABLE)
+    let detail_per_type_result = conn
+        .query(
+            "SELECT \
+                CAST(COALESCE(SUM(CASE WHEN p.PointType IN ('INPUT', 'IN') THEN 1 ELSE 0 END), 0) AS INT) AS input_data_points, \
+                CAST(COALESCE(SUM(CASE WHEN p.PointType IN ('OUTPUT', 'OUT') THEN 1 ELSE 0 END), 0) AS INT) AS output_data_points, \
+                CAST(COALESCE(SUM(CASE WHEN p.PointType IN ('VARIABLE', 'VAR') THEN 1 ELSE 0 END), 0) AS INT) AS variable_data_points \
+             FROM TRENDLOG_DATA_DETAIL d \
+             INNER JOIN TRENDLOG_DATA p ON d.ParentId = p.id \
+             WHERE p.SerialNumber = @P1 AND p.PanelId = @P2",
+            &[&serial_number, &panel_id],
+        )
+        .await
+        .map_err(|e| format!("MSSQL detail-by-type count failed: {}", e))?;
+
+    let detail_per_type_row = detail_per_type_result
+        .into_row()
+        .await
+        .map_err(|e| format!("Row fetch failed: {}", e))?;
+
+    let input_data_points: i32 = detail_per_type_row
+        .as_ref()
+        .and_then(|r| r.get::<i32, _>("input_data_points"))
+        .unwrap_or(0);
+    let output_data_points: i32 = detail_per_type_row
+        .as_ref()
+        .and_then(|r| r.get::<i32, _>("output_data_points"))
+        .unwrap_or(0);
+    let variable_data_points: i32 = detail_per_type_row
+        .as_ref()
+        .and_then(|r| r.get::<i32, _>("variable_data_points"))
+        .unwrap_or(0);
+
+    // Count tracked parent records by point type (distinct TRENDLOG_DATA rows)
+    let tracked_per_type_result = conn
+        .query(
+            "SELECT \
+                CAST(COALESCE(SUM(CASE WHEN PointType IN ('INPUT', 'IN') THEN 1 ELSE 0 END), 0) AS INT) AS input_tracked_points, \
+                CAST(COALESCE(SUM(CASE WHEN PointType IN ('OUTPUT', 'OUT') THEN 1 ELSE 0 END), 0) AS INT) AS output_tracked_points, \
+                CAST(COALESCE(SUM(CASE WHEN PointType IN ('VARIABLE', 'VAR') THEN 1 ELSE 0 END), 0) AS INT) AS variable_tracked_points \
+             FROM TRENDLOG_DATA \
+             WHERE SerialNumber = @P1 AND PanelId = @P2",
+            &[&serial_number, &panel_id],
+        )
+        .await
+        .map_err(|e| format!("MSSQL tracked-by-type count failed: {}", e))?;
+
+    let tracked_per_type_row = tracked_per_type_result
+        .into_row()
+        .await
+        .map_err(|e| format!("Row fetch failed: {}", e))?;
+
+    let input_tracked_points: i32 = tracked_per_type_row
+        .as_ref()
+        .and_then(|r| r.get::<i32, _>("input_tracked_points"))
+        .unwrap_or(0);
+    let output_tracked_points: i32 = tracked_per_type_row
+        .as_ref()
+        .and_then(|r| r.get::<i32, _>("output_tracked_points"))
+        .unwrap_or(0);
+    let variable_tracked_points: i32 = tracked_per_type_row
+        .as_ref()
+        .and_then(|r| r.get::<i32, _>("variable_tracked_points"))
+        .unwrap_or(0);
+
     // Latest detail timestamp
     let latest_result = conn
         .query(
@@ -295,6 +360,12 @@ pub async fn get_data_statistics(
         "device_id": serial_number,
         "total_points": parent_count,
         "total_data_points": detail_count,
+        "input_data_points": input_data_points,
+        "output_data_points": output_data_points,
+        "variable_data_points": variable_data_points,
+        "input_tracked_points": input_tracked_points,
+        "output_tracked_points": output_tracked_points,
+        "variable_tracked_points": variable_tracked_points,
         "latest_timestamp": latest_timestamp,
         "latest_sync_records_inserted": latest_sync_records_inserted,
         "latest_sync_time_fmt": latest_sync_time_fmt,

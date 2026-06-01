@@ -826,6 +826,7 @@ impl T3TrendlogDataService {
 
     /// Get trendlog data statistics
     /// Queries both parent and detail tables for comprehensive stats
+    /// Returns total points, counts by type, latest timestamp, and sync metadata
     pub async fn get_data_statistics(
         db: &DatabaseConnection,
         serial_number: i32,
@@ -881,6 +882,32 @@ impl T3TrendlogDataService {
             output_count: 0,
             variable_count: 0,
         });
+
+        // Count tracked points per type (distinct TRENDLOG_DATA parent rows)
+        #[derive(Debug, sea_orm::FromQueryResult)]
+        struct TrackedPerTypeResult {
+            input_tracked: i64,
+            output_tracked: i64,
+            variable_tracked: i64,
+        }
+
+        let tracked_per_type_sql = r#"
+            SELECT
+                SUM(CASE WHEN PointType = 'INPUT'    THEN 1 ELSE 0 END) as input_tracked,
+                SUM(CASE WHEN PointType = 'OUTPUT'   THEN 1 ELSE 0 END) as output_tracked,
+                SUM(CASE WHEN PointType = 'VARIABLE' THEN 1 ELSE 0 END) as variable_tracked
+            FROM TRENDLOG_DATA
+            WHERE SerialNumber = ? AND PanelId = ?
+        "#;
+
+        let tracked_per_type = TrackedPerTypeResult::find_by_statement(Statement::from_sql_and_values(
+            db.get_database_backend(),
+            &adapt_placeholders(db.get_database_backend(), tracked_per_type_sql),
+            vec![serial_number.into(), panel_id.into()],
+        ))
+        .one(db)
+        .await?
+        .unwrap_or(TrackedPerTypeResult { input_tracked: 0, output_tracked: 0, variable_tracked: 0 });
 
         // Get latest data timestamp from detail table
         let latest_sql = r#"
@@ -955,6 +982,9 @@ impl T3TrendlogDataService {
             "input_data_points": counts.input_count,
             "output_data_points": counts.output_count,
             "variable_data_points": counts.variable_count,
+            "input_tracked_points": tracked_per_type.input_tracked,
+            "output_tracked_points": tracked_per_type.output_tracked,
+            "variable_tracked_points": tracked_per_type.variable_tracked,
             "latest_timestamp": latest_timestamp,
             "latest_sync_records_inserted": latest_sync_meta.as_ref().and_then(|m| m.records_inserted),
             "latest_sync_time_fmt": latest_sync_meta.as_ref().and_then(|m| m.sync_time_fmt.clone()),
