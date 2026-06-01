@@ -194,6 +194,7 @@ export const TrendLogsPage: React.FC = () => {
   const requestedSerial = searchParams.get('serial');
   const requestedMonitorId = searchParams.get('monitorId');
   const requestedTrendlogId = searchParams.get('trendlogId');
+  const requestedPointSetName = searchParams.get('pointSetName');
 
   const normalizeMonitorToken = useCallback((value?: string | null) => {
     return (value || '').toUpperCase().replace(/^MON/, '');
@@ -441,11 +442,14 @@ export const TrendLogsPage: React.FC = () => {
     const next = new URLSearchParams(searchParams);
     next.set('tab', tab);
     if (tab === 'chart' && monitor) {
-      next.set('monitorId', monitor.trendlogIndex || monitor.trendlogId || '0');
-      next.set('trendlogId', monitor.trendlogId || monitor.trendlogIndex || '0');
+      const mIdx = monitor.trendlogIndex || monitor.trendlogId || '0';
+      const mId  = monitor.trendlogId   || monitor.trendlogIndex || '0';
+      next.set('monitorId', mIdx);
+      next.set('trendlogId', mId);
     } else if (tab !== 'chart') {
       next.delete('monitorId');
       next.delete('trendlogId');
+      next.delete('pointSetName');
     }
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
@@ -620,7 +624,7 @@ export const TrendLogsPage: React.FC = () => {
     async (trendlog: TrendLogData) => {
       if (!selectedDevice) return;
 
-      const monitorIndex = trendlog.trendlogIndex || '0';
+      const monitorIndex = trendlog.trendlogIndex || trendlog.trendlogId || '0';
       // Label is already available in the row data — no extra API call needed
       const title = trendlog.trendlogLabel || `Monitor ${monitorIndex}`;
 
@@ -649,6 +653,13 @@ export const TrendLogsPage: React.FC = () => {
       returnSearchParams.set('tab', 'chart');
       returnSearchParams.set('monitorId', monitorIndex);
       returnSearchParams.set('trendlogId', trendlog.trendlogId || monitorIndex);
+      // Preserve point set name so minimize restores the correct set
+      const currentPointSetName = searchParams.get('pointSetName');
+      if (monitorIndex === 'GLOBAL' && currentPointSetName) {
+        returnSearchParams.set('pointSetName', currentPointSetName);
+      } else {
+        returnSearchParams.delete('pointSetName');
+      }
       const returnUrl = `${location.pathname}?${returnSearchParams.toString()}`;
       const fullPageSearchParams = new URLSearchParams();
       fullPageSearchParams.set('mode', 'full');
@@ -657,6 +668,9 @@ export const TrendLogsPage: React.FC = () => {
       fullPageSearchParams.set('panel', String(selectedDevice.panelId || 1));
       fullPageSearchParams.set('monitorId', monitorIndex);
       fullPageSearchParams.set('trendlogId', trendlog.trendlogId || monitorIndex);
+      if (monitorIndex === 'GLOBAL' && currentPointSetName) {
+        fullPageSearchParams.set('pointSetName', currentPointSetName);
+      }
       const fullPageUrl = `/t3000/trends/chart?${fullPageSearchParams.toString()}`;
 
       if (alreadyLoaded) {
@@ -859,11 +873,16 @@ export const TrendLogsPage: React.FC = () => {
       // Auto-select trendlog from query (if provided), else select first trendlog
       if (trendlogsWithIndex.length > 0) {
         const requestedNormalized = normalizeMonitorToken(requestedMonitorId || requestedTrendlogId);
+        const isChartContext = activeTab === 'chart';
 
         // Point Sets chart mode uses a synthetic GLOBAL monitor with specific_points.
         // Do not auto-fallback to first physical monitor (MON1), or history calls will use MON1 path.
         if (requestedNormalized === 'GLOBAL') {
           console.log('[TrendLogsPage] GLOBAL chart context detected; skipping trendlog auto-select fallback.');
+          // Clear stale physical monitor state while GLOBAL hydration resolves selected point set.
+          setSelectedMonitor(null);
+          setMonitorInputs([]);
+          setSelectedItems(new Set());
           return;
         }
 
@@ -874,6 +893,18 @@ export const TrendLogsPage: React.FC = () => {
               return itemA === requestedNormalized || itemB === requestedNormalized;
             })
           : null;
+
+        // In chart context with an explicit requested monitor, never fallback to MON1.
+        if (isChartContext && requestedNormalized && !queriedTrendlog) {
+          console.warn('[TrendLogsPage] Requested monitor not found in chart context; skipping fallback selection.', {
+            requestedMonitorId,
+            requestedTrendlogId,
+          });
+          setSelectedMonitor(null);
+          setMonitorInputs([]);
+          setSelectedItems(new Set());
+          return;
+        }
 
         const initialTrendlog = queriedTrendlog || trendlogsWithIndex[0];
 
@@ -904,7 +935,7 @@ export const TrendLogsPage: React.FC = () => {
       setLoading(false);
       setDbChecked(true);
     }
-  }, [normalizeMonitorToken, requestedMonitorId, requestedTrendlogId, selectedPanelId, selectedSerial]);
+  }, [activeTab, normalizeMonitorToken, requestedMonitorId, requestedTrendlogId, selectedPanelId, selectedSerial]);
 
   // Load inputs for a specific trendlog
   const loadTrendlogInputs = useCallback(async (trendlog: TrendLogData) => {
@@ -1741,6 +1772,7 @@ export const TrendLogsPage: React.FC = () => {
     next.set('panel', String(selectedDevice.panelId || 1));
     next.set('monitorId', 'GLOBAL');
     next.set('trendlogId', 'GLOBAL');
+    next.set('pointSetName', target.name);
     next.set('tab', 'chart');
     setSearchParams(next, { replace: true });
   }, [applyPointSetSelection, confirmDiscardUnsavedPointSetChanges, pointSetPoints, savedPointSets, searchParams, selectedDevice, selectedPointSetName, setSearchParams]);
@@ -2052,14 +2084,17 @@ export const TrendLogsPage: React.FC = () => {
   }, [applyPointSetSelection, listPointSetsFromDb, selectedDevice?.serialNumber]);
 
   useEffect(() => {
-    if (activeTab !== 'point-sets') return;
+    if (activeTab !== 'point-sets' && !isPointSetChartMode) return;
     if (!selectedDevice?.serialNumber) return;
     if (pointSetPoints.length === 0) return;
     if (savedPointSets.length === 0) return;
 
-    const selectedName = selectedPointSetName && savedPointSets.some((setItem) => setItem.name === selectedPointSetName)
-      ? selectedPointSetName
-      : savedPointSets[0].name;
+    // In GLOBAL chart mode, use the URL's pointSetName to restore the exact set
+    const selectedName = (isPointSetChartMode && requestedPointSetName && savedPointSets.some((s) => s.name === requestedPointSetName))
+      ? requestedPointSetName
+      : selectedPointSetName && savedPointSets.some((setItem) => setItem.name === selectedPointSetName)
+        ? selectedPointSetName
+        : savedPointSets[0].name;
 
     if (!selectedName) return;
 
@@ -2069,7 +2104,7 @@ export const TrendLogsPage: React.FC = () => {
     if (!target) return;
 
     applyPointSetSelection(target, false);
-  }, [activeTab, applyPointSetSelection, pointSetPoints.length, pointSetInitialized, savedPointSets, selectedDevice?.serialNumber, selectedPointSetName]);
+  }, [activeTab, applyPointSetSelection, isPointSetChartMode, pointSetPoints.length, pointSetInitialized, requestedPointSetName, savedPointSets, selectedDevice?.serialNumber, selectedPointSetName]);
 
   useEffect(() => {
     if (activeTab !== 'chart') return;
@@ -2077,6 +2112,9 @@ export const TrendLogsPage: React.FC = () => {
     if (requested !== 'GLOBAL') return;
     if (!selectedDevice) return;
     if (pointSetPoints.length === 0) return;
+    if (selectedPointSetPoints.length === 0) return; // wait for applyPointSetSelection to run first
+    // When a specific set name is requested via URL, wait until that set is active
+    if (requestedPointSetName && selectedPointSetName !== requestedPointSetName) return;
 
     const syntheticMonitor: TrendLogData = {
       serialNumber: selectedDevice.serialNumber,
@@ -2104,6 +2142,7 @@ export const TrendLogsPage: React.FC = () => {
     normalizeMonitorToken,
     requestedMonitorId,
     requestedTrendlogId,
+    requestedPointSetName,
     selectedDevice,
     selectedPointSetName,
     pointSetPoints.length,
@@ -2131,7 +2170,11 @@ export const TrendLogsPage: React.FC = () => {
     for (let i = 1; i <= totalSlots; i++) {
       const existing = dataMap.get(i);
       if (existing) {
-        slots.push(existing);
+        slots.push({
+          ...existing,
+          // Guarantee trendlogIndex is always populated — API sometimes omits it
+          trendlogIndex: existing.trendlogIndex || existing.trendlogId || `MON${i}`,
+        });
       } else {
         slots.push({
           serialNumber: serial,
@@ -2559,7 +2602,14 @@ export const TrendLogsPage: React.FC = () => {
 
               {activeTab === 'chart' && (
                 <div className={styles.chartTabWrap}>
-                  {!selectedDevice || !selectedMonitor ? (
+                  {!selectedDevice ? (
+                    <div className={styles.placeholderPanel}>
+                      <Text size={400} weight="semibold">Chart Workspace</Text>
+                      <Text size={300}>
+                        No device selected. Select a device from the device tree.
+                      </Text>
+                    </div>
+                  ) : !selectedMonitor && !requestedMonitorId ? (
                     <div className={styles.placeholderPanel}>
                       <Text size={400} weight="semibold">Chart Workspace</Text>
                       <Text size={300}>
@@ -2568,6 +2618,11 @@ export const TrendLogsPage: React.FC = () => {
                       <Button appearance="primary" onClick={() => setActiveTab('default')}>
                         Go To Default
                       </Button>
+                    </div>
+                  ) : !selectedMonitor ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px' }}>
+                      <Spinner size="extra-small" />
+                      <Text size={200}>Loading chart...</Text>
                     </div>
                   ) : (
                     <>

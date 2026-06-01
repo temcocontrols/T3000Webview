@@ -3663,8 +3663,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                   </>
                 ) : (
                   <>
-                    <Text size={500} weight="semibold">No Data Available</Text>
-                    <Text size={300} className={styles.textMuted}>
+                    <Text size={400} weight="semibold">No Data Available</Text>
+                    <Text size={200} className={styles.textMuted}>
                       Please select a device and monitor configuration.
                     </Text>
                   </>
