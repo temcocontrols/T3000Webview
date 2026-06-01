@@ -21,10 +21,33 @@ import {
   TableRow,
   TableCell,
 } from '@fluentui/react-components';
-import { ArrowSyncRegular, ChevronLeftRegular, ChevronRightRegular } from '@fluentui/react-icons';
+import { ArrowClockwiseRegular, ChevronLeftRegular, ChevronRightRegular } from '@fluentui/react-icons';
 import { API_BASE_URL } from '../../../config/constants';
 
 const ACTIVITY_LOG_URL = `${API_BASE_URL}/api/sync/event-log`;
+
+const activityLogRequestCache = new Map<string, Promise<EventLogResponse>>();
+
+async function fetchActivityLogOnce(url: string): Promise<EventLogResponse> {
+  const cached = activityLogRequestCache.get(url);
+  if (cached) {
+    return cached;
+  }
+
+  const request = fetch(url)
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`event-log: HTTP ${response.status}`);
+      }
+      return response.json() as Promise<EventLogResponse>;
+    })
+    .finally(() => {
+      activityLogRequestCache.delete(url);
+    });
+
+  activityLogRequestCache.set(url, request);
+  return request;
+}
 
 interface AppLogEntry {
   id: number;
@@ -139,12 +162,47 @@ const useStyles = makeStyles({
   pagination: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    justifyContent: 'center',
+    gap: '2px',
+    justifyContent: 'flex-start',
+    flexWrap: 'wrap',
+    padding: '4px 8px',
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: '#edebe9',
+    flexShrink: 0,
+  },
+  paginationSpacer: {
+    flex: 1,
+  },
+  paginationJump: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    marginLeft: '8px',
+  },
+  paginationJumpLabel: {
+    fontSize: '11px',
+    color: '#605e5c',
+    whiteSpace: 'nowrap',
+  },
+  paginationJumpInput: {
+    width: '48px',
+    minWidth: '48px',
+  },
+  pageBtn: {
+    minWidth: '28px',
+    height: '26px',
+    padding: '0 4px',
+    fontSize: '12px',
+  },
+  pageBtnActive: {
+    fontWeight: 700,
   },
 });
 
 interface ActivityLogTabProps {
+  externalLevelFilter?: string;
+  onLevelFilterChange?: (level: string) => void;
   externalCategoryFilter?: string;
   onCategoryFilterChange?: (cat: string) => void;
   categoryOptions?: string[];
@@ -154,6 +212,8 @@ interface ActivityLogTabProps {
 }
 
 export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
+  externalLevelFilter,
+  onLevelFilterChange,
   externalCategoryFilter,
   onCategoryFilterChange,
   categoryOptions,
@@ -165,11 +225,22 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
   const [data, setData] = useState<EventLogResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
-  const [limit] = useState(50);
-  const [levelFilter, setLevelFilter] = useState('');
+  const [limit] = useState(15);
+  const [internalLevelFilter, setInternalLevelFilter] = useState('');
   const [internalCategoryFilter, setInternalCategoryFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [jumpValue, setJumpValue] = useState('');
+
+  // If parent controls level filter, use that; else use internal
+  const levelFilter = externalLevelFilter !== undefined ? externalLevelFilter : internalLevelFilter;
+  const setLevelFilter = (val: string) => {
+    if (onLevelFilterChange) {
+      onLevelFilterChange(val);
+    } else {
+      setInternalLevelFilter(val);
+    }
+  };
 
   // If parent controls category filter, use that; else use internal
   const categoryFilter = externalCategoryFilter !== undefined ? externalCategoryFilter : internalCategoryFilter;
@@ -201,11 +272,8 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
         ...(levelFilter ? { level: levelFilter } : {}),
         ...(categoryFilter ? { category: categoryFilter } : {}),
       });
-      const response = await fetch(`${ACTIVITY_LOG_URL}?${params}`);
-      if (response.ok) {
-        const json: EventLogResponse = await response.json();
-        setData(json);
-      }
+      const json: EventLogResponse = await fetchActivityLogOnce(`${ACTIVITY_LOG_URL}?${params}`);
+      setData(json);
     } catch (error) {
       console.error('Failed to load activity log:', error);
     } finally {
@@ -232,6 +300,33 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
   useEffect(() => { setPage(0); }, [levelFilter, categoryFilter]);
 
   const totalPages = data ? Math.ceil(data.total / limit) : 0;
+
+  const getPageNums = (cur: number, total: number): (number | null)[] => {
+    if (total <= 9) return Array.from({ length: total }, (_, i) => i);
+
+    const pages: (number | null)[] = [0];
+
+    // Show a wider default range near the beginning/end for quicker jumps.
+    if (cur <= 2) {
+      for (let i = 1; i <= Math.min(4, total - 2); i++) pages.push(i);
+      pages.push(null);
+      pages.push(total - 1);
+      return pages;
+    }
+
+    if (cur >= total - 3) {
+      pages.push(null);
+      for (let i = Math.max(1, total - 5); i <= total - 2; i++) pages.push(i);
+      pages.push(total - 1);
+      return pages;
+    }
+
+    pages.push(null);
+    for (let i = Math.max(1, cur - 1); i <= Math.min(total - 2, cur + 1); i++) pages.push(i);
+    pages.push(null);
+    pages.push(total - 1);
+    return pages;
+  };
 
   const filteredEntries = (data?.entries ?? []).filter(e =>
     !searchQuery || e.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -290,7 +385,7 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
 
         <Button
           appearance="subtle"
-          icon={<ArrowSyncRegular />}
+          icon={<ArrowClockwiseRegular />}
           onClick={sharedDataMode ? onRefresh : (sharedData ? onRefresh : load)}
           disabled={loading}
           size="small"
@@ -394,15 +489,48 @@ export const ActivityLogTab: React.FC<ActivityLogTabProps> = ({
             disabled={page === 0}
             onClick={() => setPage(p => Math.max(0, p - 1))}
             size="small"
+            className={s.pageBtn}
           />
-          <Text size={200}>Page {page + 1} of {totalPages}</Text>
+          {getPageNums(page, totalPages).map((pg, i) =>
+            pg === null
+              ? <span key={`el-${i}`} style={{ padding: '0 2px', color: '#8a8886', fontSize: '12px', lineHeight: '26px' }}>…</span>
+              : <Button
+                  key={pg}
+                  size="small"
+                  appearance={pg === page ? 'primary' : 'subtle'}
+                  className={mergeClasses(s.pageBtn, pg === page ? s.pageBtnActive : undefined)}
+                  onClick={() => setPage(pg)}
+                >{pg + 1}</Button>
+          )}
           <Button
             appearance="subtle"
             icon={<ChevronRightRegular />}
             disabled={page >= totalPages - 1}
             onClick={() => setPage(p => p + 1)}
             size="small"
+            className={s.pageBtn}
           />
+          <div className={s.paginationSpacer} />
+          <div className={s.paginationJump}>
+            <span className={s.paginationJumpLabel}>Go to</span>
+            <Input
+              className={s.paginationJumpInput}
+              size="small"
+              value={jumpValue}
+              placeholder={String(page + 1)}
+              onChange={(_, d) => setJumpValue(d.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const n = parseInt(jumpValue, 10);
+                  if (!isNaN(n) && n >= 1 && n <= totalPages) {
+                    setPage(n - 1);
+                    setJumpValue('');
+                  }
+                }
+              }}
+            />
+            <span className={s.paginationJumpLabel}>/ {totalPages}</span>
+          </div>
         </div>
       )}
     </div>

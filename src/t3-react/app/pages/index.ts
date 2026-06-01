@@ -23,6 +23,7 @@ export { HolidaysPage } from '../../features/schedules/pages/HolidaysPage';
 // Monitoring
 export { TrendLogsPage } from '../../features/trendlogs/pages/TrendlogsPage';
 export { TrendChartPage } from '../../features/trendlogs/pages/TrendChartPage';
+export { TrendPolicyPage } from '../../features/trendlogs/pages/TrendPolicyPage';
 export { default as AlarmsPage } from '../../features/alarms/pages/AlarmsPage';
 
 // Configuration

@@ -12,12 +12,13 @@ use serde_json::{json, Value};
 use tracing::{error, info};
 
 use crate::app_state::T3AppState;
-use crate::entity::t3_device::{devices, holidays};
+use crate::entity::t3_device::holidays;
+use crate::t3_device::action17_refresh_helper::lookup_action17_target;
 use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
 use sea_orm::*;
 
 // Entry type constants matching C++ defines
-const BAC_HOL: i32 = 8;
+const BAC_HOL: i32 = 5;  // BAC_HOL = 5 per global_define.h
 
 /// Request payload for refreshing a single holiday (index is optional)
 #[derive(Debug, Deserialize)]
@@ -93,29 +94,15 @@ pub async fn refresh_holidays(
         }
     };
 
-    // Find panel_id from devices table
-    let panel_id = match devices::Entity::find()
-        .filter(devices::Column::SerialNumber.eq(serial))
-        .one(&db_connection)
-        .await
-    {
-        Ok(Some(device)) => device.panel_id.unwrap_or(0),
-        Ok(None) => {
-            error!("Device not found for serial: {}", serial);
-            return Err((StatusCode::NOT_FOUND, format!("Device with serial {} not found", serial)));
-        }
-        Err(e) => {
-            error!("Database error querying device: {:?}", e);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)));
-        }
-    };
+    let (panel_id, object_instance) = lookup_action17_target(&db_connection, serial).await?;
 
     // Prepare refresh JSON for GET_WEBVIEW_LIST action
     let mut refresh_json = json!({
         "action": WebViewMessageType::GET_WEBVIEW_LIST as i32,
         "panelId": panel_id,
         "serialNumber": serial,
-        "entryType": BAC_HOL,  // 8 = HOLIDAY
+        "objectinstance": object_instance,
+        "entryType": BAC_HOL,  // 5 = HOLIDAY
     });
 
     // Add entryIndex only if specified (omit for refresh all)

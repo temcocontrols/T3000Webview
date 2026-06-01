@@ -8,6 +8,25 @@ use crate::constants::get_t3000_database_path;
 use sea_orm::*;
 use chrono::{Utc, NaiveDate, Datelike, Duration};
 
+fn emit_partition_log_bg(level: &'static str, category: &'static str, message: String) {
+    tokio::spawn(async move {
+        let db = match establish_t3_device_connection().await {
+            Ok(db) => db,
+            Err(_) => return,
+        };
+        crate::logging::service::emit_app_log(
+            &db,
+            level,
+            category,
+            Some("partition_monitor"),
+            None,
+            &message,
+            None,
+        )
+        .await;
+    });
+}
+
 /// Start background partition monitor service (checks every hour)
 pub async fn start_partition_monitor_service() -> Result<()> {
     // Spawn hourly partition migration task
@@ -21,24 +40,24 @@ pub async fn start_partition_monitor_service() -> Result<()> {
             }
         };
 
-        logger.info("🚀 Starting partition monitor service (checks every hour)");
+        logger.info("[PARTITION] Starting partition monitor service (checks every hour)");
 
         loop {
             // Sleep for 1 hour
             tokio::time::sleep(tokio::time::Duration::from_secs(3600)).await;
 
-            logger.info("🔍 Hourly partition check triggered");
+            logger.info("[PARTITION] Hourly partition check triggered");
 
             match check_and_migrate_if_needed().await {
                 Ok(migrated) => {
                     if migrated {
-                        logger.info("✅ Period transition detected and data migrated");
+                        logger.info("[OK] Period transition detected and data migrated");
                     } else {
-                        logger.info("✅ No migration needed - still in current period");
+                        logger.info("[OK] No migration needed - still in current period");
                     }
                 }
                 Err(e) => {
-                    logger.error(&format!("❌ Partition check failed: {}", e));
+                    logger.error(&format!("[FAIL] Partition check failed: {}", e));
                 }
             }
         }
@@ -46,15 +65,13 @@ pub async fn start_partition_monitor_service() -> Result<()> {
 
     // Spawn periodic WAL/SHM cleanup task (every 5 minutes)
     tokio::spawn(async {
-        use crate::logger::{write_structured_log_with_level, LogLevel};
-
         // Initial delay to let system stabilize
         tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
 
-        let _ = write_structured_log_with_level(
+        emit_partition_log_bg(
+            "info",
             "T3_PartitionMonitor",
-            "🧹 Starting periodic WAL/SHM cleanup task (every 5 minutes)",
-            LogLevel::Info
+            "[CLEANUP] Starting periodic WAL/SHM cleanup task (every 5 minutes)".to_string(),
         );
 
         loop {
@@ -68,15 +85,13 @@ pub async fn start_partition_monitor_service() -> Result<()> {
 
     // Spawn database size monitor task (checks every hour)
     tokio::spawn(async {
-        use crate::logger::{write_structured_log_with_level, LogLevel};
-
         // Initial delay to let system stabilize
         tokio::time::sleep(tokio::time::Duration::from_secs(120)).await;
 
-        let _ = write_structured_log_with_level(
+        emit_partition_log_bg(
+            "info",
             "T3_DatabaseSizeMonitor",
-            "📊 Starting database size monitor (checks every hour)",
-            LogLevel::Info
+            "[DATABASE] Starting database size monitor (checks every hour)".to_string(),
         );
 
         loop {
@@ -87,18 +102,18 @@ pub async fn start_partition_monitor_service() -> Result<()> {
             match check_and_partition_by_size().await {
                 Ok(created) => {
                     if created {
-                        let _ = write_structured_log_with_level(
+                        emit_partition_log_bg(
+                            "info",
                             "T3_DatabaseSizeMonitor",
-                            "✅ Size-based partition created successfully",
-                            LogLevel::Info
+                            "[OK] Size-based partition created successfully".to_string(),
                         );
                     }
                 }
                 Err(e) => {
-                    let _ = write_structured_log_with_level(
+                    emit_partition_log_bg(
+                        "error",
                         "T3_DatabaseSizeMonitor",
-                        &format!("⚠️ Database size check failed: {}", e),
-                        LogLevel::Error
+                        format!("[WARNING] Database size check failed: {}", e),
                     );
                 }
             }
@@ -427,11 +442,11 @@ async fn migrate_single_period(
     let mut logger = ServiceLogger::new("T3_PartitionMonitor")
         .map_err(|e| crate::error::Error::ServerError(format!("Logger creation failed: {}", e)))?;
 
-    logger.info(&format!("🔨 Creating partition: {}", partition_id));
+    logger.info(&format!("Creating partition: {}", partition_id));
 
     // Step 1: Calculate date range for this period
     let (start_date, end_date) = calculate_period_boundaries(config, period_date);
-    logger.info(&format!("📅 Period boundaries: {} to {}", start_date, end_date));
+    logger.info(&format!("Period boundaries: {} to {}", start_date, end_date));
 
     // Step 2: Copy main database to create partition file
     let runtime_path = get_t3000_database_path();
@@ -439,7 +454,7 @@ async fn migrate_single_period(
     let partition_file_name = format!("webview_t3_device_{}.db", partition_id);
     let partition_path = runtime_path.join(&partition_file_name);
 
-    logger.info(&format!("📁 Creating partition by copying main database"));
+    logger.info(&format!("Copying main database to create partition"));
     logger.info(&format!("   Source: {}", main_db_path.display()));
     logger.info(&format!("   Destination: {}", partition_path.display()));
 
@@ -450,16 +465,16 @@ async fn migrate_single_period(
     let copied_size = std::fs::metadata(&partition_path)
         .map(|m| m.len())
         .unwrap_or(0);
-    logger.info(&format!("✅ Database copied: {} bytes", copied_size));
+    logger.info(&format!("[OK] Database copied: {} bytes", copied_size));
 
     // Step 3: Connect to partition database and delete data we DON'T want (keep only this period's data)
-    logger.info("🔗 Connecting to partition database to clean up non-period data");
+    logger.info("[CONNECT] Connecting to partition database to clean up non-period data");
     let partition_db_url = format!("sqlite://{}?mode=rwc", partition_path.display());
     let partition_conn = sea_orm::Database::connect(&partition_db_url).await
         .map_err(|e| crate::error::Error::ServerError(format!("Failed to connect to partition: {}", e)))?;
 
     // Delete all data OUTSIDE the target period from partition (keep only period data)
-    logger.info(&format!("🗑️ Deleting non-period data from partition (keeping {} to {})", start_date, end_date));
+    logger.info(&format!("[DELETE] Deleting non-period data from partition (keeping {} to {})", start_date, end_date));
 
     let delete_partition_detail_sql = format!(
         r#"
@@ -477,11 +492,11 @@ async fn migrate_single_period(
     )).await?;
 
     let partition_deleted = partition_delete_result.rows_affected();
-    logger.info(&format!("✅ Deleted {} non-period DETAIL records from partition", partition_deleted));
+    logger.info(&format!("[OK] Deleted {} non-period DETAIL records from partition", partition_deleted));
 
     // NOTE: We keep ALL TRENDLOG_DATA parent records (no orphan cleanup)
     // This ensures partition has complete device/point metadata
-    logger.info("ℹ️ Keeping all TRENDLOG_DATA parent records in partition");
+    logger.info("[METADATA] Keeping all TRENDLOG_DATA parent records in partition");
 
     // Count remaining records in partition (this is what we migrated)
     let count_sql = "SELECT COUNT(*) as count FROM TRENDLOG_DATA_DETAIL";
@@ -493,10 +508,10 @@ async fn migrate_single_period(
     .and_then(|row| row.try_get("", "count").ok());
 
     let migrated_count = count_result.unwrap_or(0) as u64;
-    logger.info(&format!("📊 Partition contains {} period DETAIL records", migrated_count));
+    logger.info(&format!("[INFO] Partition contains {} period DETAIL records", migrated_count));
 
     // VACUUM partition to reclaim space
-    logger.info("🧹 Running VACUUM on partition database to reclaim space");
+    logger.info("[CLEANUP] Running VACUUM on partition database to reclaim space");
     partition_conn.execute(sea_orm::Statement::from_string(
         sea_orm::DatabaseBackend::Sqlite,
         "VACUUM".to_string()
@@ -509,14 +524,14 @@ async fn migrate_single_period(
 
     // Check if partition has any data - skip if empty
     if migrated_count == 0 {
-        logger.warn(&format!("⚠️ No data found for period {} - skipping partition creation", partition_id));
-        logger.info("🗑️ Removing empty partition file");
+        logger.warn(&format!("[WARNING] No data found for period {} - skipping partition creation", partition_id));
+        logger.info("[DELETE] Removing empty partition file");
 
         // Remove the empty partition file
         if let Err(e) = std::fs::remove_file(&partition_path) {
-            logger.warn(&format!("⚠️ Could not remove empty partition file: {}", e));
+            logger.warn(&format!("[WARNING] Could not remove empty partition file: {}", e));
         } else {
-            logger.info("✅ Empty partition file removed");
+            logger.info("[OK] Empty partition file removed");
         }
 
         // Also clean up any WAL/SHM files
@@ -530,11 +545,11 @@ async fn migrate_single_period(
             std::fs::remove_file(&shm_path).ok();
         }
 
-        logger.info("ℹ️ Partition creation skipped - no data for this period");
+        logger.info("[METADATA] Partition creation skipped - no data for this period");
         // Activity Log: partition skipped
-        crate::database_management::sync_health::write_app_log(
+        crate::logging::service::emit_app_log(
             db, "info", "MAINTENANCE", Some("partition_monitor"), None,
-            &format!("Partition {} skipped — no data found for this period", partition_id),
+            &format!("Partition {} skipped - no data found for this period", partition_id),
             None,
         ).await;
         return Ok(0);
@@ -545,7 +560,7 @@ async fn migrate_single_period(
         .map(|m| m.len())
         .unwrap_or(0);
     let partition_size_mb = (partition_size as f64 / 1024.0 / 1024.0).round() as i32;
-    logger.info(&format!("✅ Partition size after VACUUM: {} MB ({} bytes)", partition_size_mb, partition_size));
+    logger.info(&format!("[OK] Partition size after VACUUM: {} MB ({} bytes)", partition_size_mb, partition_size));
 
     // Clean up WAL and SHM files if they still exist
     let wal_path = partition_path.with_extension("db-wal");
@@ -553,26 +568,26 @@ async fn migrate_single_period(
 
     if wal_path.exists() {
         if let Err(e) = std::fs::remove_file(&wal_path) {
-            logger.warn(&format!("⚠️ Could not remove .db-wal file: {}", e));
+            logger.warn(&format!("[WARNING] Could not remove .db-wal file: {}", e));
         } else {
-            logger.info("🧹 Removed .db-wal file");
+            logger.info("[CLEANUP] Removed .db-wal file");
         }
     }
 
     if shm_path.exists() {
         if let Err(e) = std::fs::remove_file(&shm_path) {
-            logger.warn(&format!("⚠️ Could not remove .db-shm file: {}", e));
+            logger.warn(&format!("[WARNING] Could not remove .db-shm file: {}", e));
         } else {
-            logger.info("🧹 Removed .db-shm file");
+            logger.info("[CLEANUP] Removed .db-shm file");
         }
     }
 
     // Step 4: Delete period data from main database (COMMENTED OUT FOR TESTING)
     // TODO: Uncomment this section when ready to actually remove old data from main DB
-    logger.info("⚠️ Skipping deletion from main database (commented out for testing)");
+    logger.info("[METADATA] Skipping deletion from main database (commented out for testing)");
 
     /*
-    logger.info(&format!("🗑️ Deleting period data from main database ({} to {})", start_date, end_date));
+    logger.info(&format!("[DELETE] Deleting period data from main database ({} to {})", start_date, end_date));
 
     let delete_main_detail_sql = format!(
         r#"
@@ -589,7 +604,7 @@ async fn migrate_single_period(
         delete_main_detail_sql
     )).await?;
 
-    logger.info(&format!("✅ Deleted {} period records from main database", main_delete_result.rows_affected()));
+    logger.info(&format!("[OK] Deleted {} period records from main database", main_delete_result.rows_affected()));
 
     // Clean up orphaned parent records in main database
     let delete_main_orphans_sql = r#"
@@ -602,10 +617,10 @@ async fn migrate_single_period(
         delete_main_orphans_sql.to_string()
     )).await?;
 
-    logger.info(&format!("✅ Cleaned up {} orphaned parent records from main database", main_orphan_result.rows_affected()));
+    logger.info(&format!("[OK] Cleaned up {} orphaned parent records from main database", main_orphan_result.rows_affected()));
 
     // VACUUM main database to reclaim space
-    logger.info("🧹 Running VACUUM on main database to reclaim space");
+    logger.info("[CLEANUP] Running VACUUM on main database to reclaim space");
     db.execute(sea_orm::Statement::from_string(
         sea_orm::DatabaseBackend::Sqlite,
         "VACUUM".to_string()
@@ -615,11 +630,11 @@ async fn migrate_single_period(
         .map(|m| m.len())
         .unwrap_or(0);
     let main_size_mb = (main_size_after as f64 / 1024.0 / 1024.0).round() as i32;
-    logger.info(&format!("✅ Main database size after VACUUM: {} MB", main_size_mb));
+    logger.info(&format!("[OK] Main database size after VACUUM: {} MB", main_size_mb));
     */
 
     // Step 5: Register partition in DATABASE_FILES table
-    logger.info("📝 Registering partition in DATABASE_FILES table");
+    logger.info("[REGISTER] Registering partition in DATABASE_FILES table");
 
     let file_size = std::fs::metadata(&partition_path)
         .map(|m| m.len() as i64)
@@ -642,13 +657,13 @@ async fn migrate_single_period(
 
     new_file.insert(db).await?;
 
-    logger.info(&format!("✅ Partition {} registered in DATABASE_FILES", partition_id));
-    logger.info(&format!("🎉 Migration complete: {} records, {} MB partition (main DB unchanged for testing)",
+    logger.info(&format!("[OK] Partition {} registered in DATABASE_FILES", partition_id));
+    logger.info(&format!("[SUCCESS] Migration complete: {} records, {} MB partition (main DB unchanged for testing)",
         migrated_count, partition_size_mb));
     // Activity Log: partition created
-    crate::database_management::sync_health::write_app_log(
+    crate::logging::service::emit_app_log(
         db, "info", "MAINTENANCE", Some("partition_monitor"), None,
-        &format!("Partition {} created — {} records migrated ({} MB)", partition_id, migrated_count, partition_size_mb),
+        &format!("Partition {} created - {} records migrated ({} MB)", partition_id, migrated_count, partition_size_mb),
         None,
     ).await;
 
@@ -657,14 +672,12 @@ async fn migrate_single_period(
 
 /// Clean up orphaned WAL and SHM files for partition databases
 fn cleanup_partition_wal_shm_files() {
-    use crate::logger::{write_structured_log_with_level, LogLevel};
-
     let runtime_path = get_t3000_database_path();
 
-    let _ = write_structured_log_with_level(
+    emit_partition_log_bg(
+        "info",
         "T3_PartitionMonitor",
-        "🧹 Cleaning up orphaned WAL/SHM files for partition databases...",
-        LogLevel::Info
+        "[CLEANUP] Cleaning up orphaned WAL/SHM files for partition databases...".to_string(),
     );
 
     // Find all partition database files (matching pattern webview_t3_device_YYYY-MM-DD.db)
@@ -687,13 +700,13 @@ fn cleanup_partition_wal_shm_files() {
                 if wal_path.exists() {
                     match std::fs::remove_file(&wal_path) {
                         Ok(_) => {
-                            let msg = format!("   🗑️ Removed: {}", wal_path.file_name().unwrap().to_string_lossy());
-                            let _ = write_structured_log_with_level("T3_PartitionMonitor", &msg, LogLevel::Info);
+                            let msg = format!("   [REMOVED] Removed: {}", wal_path.file_name().unwrap().to_string_lossy());
+                            emit_partition_log_bg("info", "T3_PartitionMonitor", msg);
                             cleaned_count += 1;
                         }
                         Err(e) => {
-                            let msg = format!("   ⚠️ Could not remove {}: {}", wal_path.file_name().unwrap().to_string_lossy(), e);
-                            let _ = write_structured_log_with_level("T3_PartitionMonitor", &msg, LogLevel::Warn);
+                            let msg = format!("   [WARNING] Could not remove {}: {}", wal_path.file_name().unwrap().to_string_lossy(), e);
+                            emit_partition_log_bg("warn", "T3_PartitionMonitor", msg);
                             failed_count += 1;
                         }
                     }
@@ -704,13 +717,13 @@ fn cleanup_partition_wal_shm_files() {
                 if shm_path.exists() {
                     match std::fs::remove_file(&shm_path) {
                         Ok(_) => {
-                            let msg = format!("   🗑️ Removed: {}", shm_path.file_name().unwrap().to_string_lossy());
-                            let _ = write_structured_log_with_level("T3_PartitionMonitor", &msg, LogLevel::Info);
+                            let msg = format!("   [REMOVED] Removed: {}", shm_path.file_name().unwrap().to_string_lossy());
+                            emit_partition_log_bg("info", "T3_PartitionMonitor", msg);
                             cleaned_count += 1;
                         }
                         Err(e) => {
-                            let msg = format!("   ⚠️ Could not remove {}: {}", shm_path.file_name().unwrap().to_string_lossy(), e);
-                            let _ = write_structured_log_with_level("T3_PartitionMonitor", &msg, LogLevel::Warn);
+                            let msg = format!("   [WARNING] Could not remove {}: {}", shm_path.file_name().unwrap().to_string_lossy(), e);
+                            emit_partition_log_bg("warn", "T3_PartitionMonitor", msg);
                             failed_count += 1;
                         }
                     }
@@ -719,29 +732,28 @@ fn cleanup_partition_wal_shm_files() {
         }
 
         if cleaned_count > 0 {
-            let msg = format!("✅ Cleaned up {} orphaned WAL/SHM file(s)", cleaned_count);
-            let _ = write_structured_log_with_level("T3_PartitionMonitor", &msg, LogLevel::Info);
+            let msg = format!("[OK] Cleaned up {} orphaned WAL/SHM file(s)", cleaned_count);
+            emit_partition_log_bg("info", "T3_PartitionMonitor", msg);
         } else if failed_count == 0 {
-            let _ = write_structured_log_with_level(
+            emit_partition_log_bg(
+                "info",
                 "T3_PartitionMonitor",
-                "✅ No orphaned WAL/SHM files found",
-                LogLevel::Info
+                "[OK] No orphaned WAL/SHM files found".to_string(),
             );
         }
 
         if failed_count > 0 {
-            let msg = format!("⏳ {} WAL/SHM file(s) still in use - will retry in 5 minutes", failed_count);
-            let _ = write_structured_log_with_level("T3_PartitionMonitor", &msg, LogLevel::Info);
+            let msg = format!("[TIMER] {} WAL/SHM file(s) still in use - will retry in 5 minutes", failed_count);
+            emit_partition_log_bg("info", "T3_PartitionMonitor", msg);
         }
     } else {
-        let msg = format!("⚠️ Could not read database directory: {}", runtime_path.display());
-        let _ = write_structured_log_with_level("T3_PartitionMonitor", &msg, LogLevel::Error);
+        let msg = format!("[ERROR] Could not read database directory: {}", runtime_path.display());
+        emit_partition_log_bg("error", "T3_PartitionMonitor", msg);
     }
 }
 
 /// Check database size and create partition if exceeds max_file_size
 async fn check_and_partition_by_size() -> Result<bool> {
-    use crate::logger::{write_structured_log_with_level, LogLevel};
     use rusqlite::Connection;
     use chrono::NaiveDateTime;
 
@@ -767,8 +779,8 @@ async fn check_and_partition_by_size() -> Result<bool> {
     let file_size_mb = match std::fs::metadata(&db_path) {
         Ok(metadata) => (metadata.len() / 1024 / 1024) as i64,
         Err(e) => {
-            let msg = format!("⚠️ Cannot read database file size: {}", e);
-            let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Error);
+            let msg = format!("[ERROR] Cannot read database file size: {}", e);
+            emit_partition_log_bg("error", "T3_DatabaseSizeMonitor", msg);
             return Ok(false);
         }
     };
@@ -778,24 +790,24 @@ async fn check_and_partition_by_size() -> Result<bool> {
 
     // Log size information
     let msg = format!(
-        "📊 Database size: {} MB / {} MB ({}%)",
+        "[INFO] Database size: {} MB / {} MB ({}%)",
         file_size_mb, max_file_size_mb, percentage
     );
-    let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Info);
+    emit_partition_log_bg("info", "T3_DatabaseSizeMonitor", msg);
 
     // Check if size exceeded
     if file_size_mb <= max_file_size_mb {
         if percentage >= 80 {
             let msg = format!(
-                "⚠️ Database approaching size limit ({}%). Partition will be auto-created at 100%.",
+                "[WARN] Database approaching size limit ({}%). Partition will be auto-created at 100%.",
                 percentage
             );
-            let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Warn);
+            emit_partition_log_bg("warn", "T3_DatabaseSizeMonitor", msg);
             // Activity Log: DB nearing limit
             if let Ok(db) = crate::db_connection::establish_t3_device_connection().await.map_err(|e| e.to_string()) {
-                crate::database_management::sync_health::write_app_log(
+                crate::logging::service::emit_app_log(
                     &db, "warn", "MAINTENANCE", Some("db_size_monitor"), None,
-                    &format!("DB at {}% capacity ({} MB / {} MB) — auto-partition triggers at 100%", percentage, file_size_mb, max_file_size_mb),
+                    &format!("DB at {}% capacity ({} MB / {} MB) - auto-partition triggers at 100%", percentage, file_size_mb, max_file_size_mb),
                     None,
                 ).await;
             }
@@ -808,16 +820,16 @@ async fn check_and_partition_by_size() -> Result<bool> {
 
     if times_over_limit > 1 {
         let msg = format!(
-            "⚠️ DATABASE SEVERELY EXCEEDED! {} MB is {}x over {} MB limit. Will create ONE partition per period as per split config.",
+            "[WARN] DATABASE SEVERELY EXCEEDED! {} MB is {}x over {} MB limit. Will create ONE partition per period as per split config.",
             file_size_mb, times_over_limit, max_file_size_mb
         );
-        let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Warn);
+        emit_partition_log_bg("warn", "T3_DatabaseSizeMonitor", msg);
     } else {
         let msg = format!(
-            "⚠️ DATABASE SIZE EXCEEDED! {} MB > {} MB. Creating partition...",
+            "[WARN] DATABASE SIZE EXCEEDED! {} MB > {} MB. Creating partition...",
             file_size_mb, max_file_size_mb
         );
-        let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Warn);
+        emit_partition_log_bg("warn", "T3_DatabaseSizeMonitor", msg);
     }
 
     // Get database connection and config
@@ -827,10 +839,10 @@ async fn check_and_partition_by_size() -> Result<bool> {
     let config = DatabaseConfigService::get_config(&db).await?;
 
     if !config.is_active {
-        let _ = write_structured_log_with_level(
+        emit_partition_log_bg(
+            "warn",
             "T3_DatabaseSizeMonitor",
-            "⚠️ Partitioning is disabled. Cannot auto-partition. Please enable partitioning or increase max_file_size.",
-            LogLevel::Warn
+            "[WARN] Partitioning is disabled. Cannot auto-partition. Please enable partitioning or increase max_file_size.".to_string(),
         );
         return Ok(false);
     }
@@ -880,17 +892,21 @@ async fn check_and_partition_by_size() -> Result<bool> {
     let partition_path = runtime_path.join(&partition_file_name);
 
     let msg = format!(
-        "🔄 Creating size-based partition: {} (sequence {}/{} for this period, size: {} MB)",
+        "[CREATE] Creating size-based partition: {} (sequence {}/{} for this period, size: {} MB)",
         partition_id, next_sequence, existing_partitions.len() + 1, file_size_mb
     );
-    let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Info);
+    emit_partition_log_bg("info", "T3_DatabaseSizeMonitor", msg);
 
     // Step 1: Copy entire main database to partition file
-    let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", "📋 Copying main database to partition file...", LogLevel::Info);
+    emit_partition_log_bg(
+        "info",
+        "T3_DatabaseSizeMonitor",
+        "[COPY] Copying main database to partition file...".to_string(),
+    );
 
     if let Err(e) = std::fs::copy(&db_path, &partition_path) {
-        let msg = format!("❌ Failed to copy database: {}", e);
-        let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Error);
+        let msg = format!("[ERROR] Failed to copy database: {}", e);
+        emit_partition_log_bg("error", "T3_DatabaseSizeMonitor", msg.clone());
         return Err(crate::error::Error::ServerError(msg));
     }
 
@@ -899,8 +915,8 @@ async fn check_and_partition_by_size() -> Result<bool> {
         Ok(metadata) => {
             let copied_size = metadata.len();
             if copied_size == 0 {
-                let msg = "❌ Copied database file is 0 bytes! Copy operation failed.";
-                let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", msg, LogLevel::Error);
+                let msg = "[ERROR] Copied database file is 0 bytes! Copy operation failed.";
+                emit_partition_log_bg("error", "T3_DatabaseSizeMonitor", msg.to_string());
                 // Clean up the invalid file
                 let _ = std::fs::remove_file(&partition_path);
                 return Err(crate::error::Error::ServerError(msg.to_string()));
@@ -909,20 +925,20 @@ async fn check_and_partition_by_size() -> Result<bool> {
             let original_size = std::fs::metadata(&db_path).map(|m| m.len()).unwrap_or(0);
             if copied_size < original_size / 2 {
                 let msg = format!(
-                    "❌ Copied database file is suspiciously small ({} bytes vs {} bytes original). Possible corruption.",
+                    "[ERROR] Copied database file is suspiciously small ({} bytes vs {} bytes original). Possible corruption.",
                     copied_size, original_size
                 );
-                let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Error);
+                emit_partition_log_bg("error", "T3_DatabaseSizeMonitor", msg.clone());
                 // Clean up the suspicious file
                 let _ = std::fs::remove_file(&partition_path);
                 return Err(crate::error::Error::ServerError(msg));
             }
-            let msg = format!("✅ Database copied successfully ({:.2} MB)", copied_size as f64 / 1024.0 / 1024.0);
-            let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Info);
+            let msg = format!("[OK] Database copied successfully ({:.2} MB)", copied_size as f64 / 1024.0 / 1024.0);
+            emit_partition_log_bg("info", "T3_DatabaseSizeMonitor", msg);
         }
         Err(e) => {
-            let msg = format!("❌ Cannot verify copied database file: {}", e);
-            let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Error);
+            let msg = format!("[ERROR] Cannot verify copied database file: {}", e);
+            emit_partition_log_bg("error", "T3_DatabaseSizeMonitor", msg.clone());
             // Clean up if file exists
             let _ = std::fs::remove_file(&partition_path);
             return Err(crate::error::Error::ServerError(msg));
@@ -930,14 +946,18 @@ async fn check_and_partition_by_size() -> Result<bool> {
     }
 
     // Step 2: Get record count and date range from copied partition
-    let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", "📊 Querying partition metadata...", LogLevel::Info);
+    emit_partition_log_bg(
+        "info",
+        "T3_DatabaseSizeMonitor",
+        "[INFO] Querying partition metadata...".to_string(),
+    );
 
     let (record_count, start_datetime, end_datetime) = match Connection::open(&partition_path) {
         Ok(conn) => {
             // Verify database integrity
             if let Err(e) = conn.execute("PRAGMA integrity_check", []) {
-                let msg = format!("❌ Partition database integrity check failed: {}", e);
-                let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Error);
+                let msg = format!("[ERROR] Partition database integrity check failed: {}", e);
+                emit_partition_log_bg("error", "T3_DatabaseSizeMonitor", msg.clone());
                 // Clean up corrupted file
                 let _ = std::fs::remove_file(&partition_path);
                 return Err(crate::error::Error::ServerError(msg));
@@ -964,8 +984,8 @@ async fn check_and_partition_by_size() -> Result<bool> {
             (count, start, end)
         }
         Err(e) => {
-            let msg = format!("❌ Cannot open partition database file (possibly corrupted): {}", e);
-            let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Error);
+            let msg = format!("[ERROR] Cannot open partition database file (possibly corrupted): {}", e);
+            emit_partition_log_bg("error", "T3_DatabaseSizeMonitor", msg.clone());
             // Clean up corrupted file
             let _ = std::fs::remove_file(&partition_path);
             return Err(crate::error::Error::ServerError(msg));
@@ -973,28 +993,32 @@ async fn check_and_partition_by_size() -> Result<bool> {
     };
 
     // Step 3: Clear main database (delete child data and sync metadata only)
-    let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", "🗑️ Clearing main database (TRENDLOG_DATA_DETAIL & TRENDLOG_DATA_SYNC_METADATA)...", LogLevel::Info);
+    emit_partition_log_bg(
+        "info",
+        "T3_DatabaseSizeMonitor",
+        "[CLEANUP] Clearing main database (TRENDLOG_DATA_DETAIL & TRENDLOG_DATA_SYNC_METADATA)...".to_string(),
+    );
 
     match Connection::open(&db_path) {
         Ok(conn) => {
             if let Err(e) = conn.execute("DELETE FROM TRENDLOG_DATA_DETAIL", []) {
-                let msg = format!("⚠️ Failed to clear TRENDLOG_DATA_DETAIL table: {}", e);
-                let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Warn);
+                let msg = format!("[WARN] Failed to clear TRENDLOG_DATA_DETAIL table: {}", e);
+                emit_partition_log_bg("warn", "T3_DatabaseSizeMonitor", msg);
             }
             // Clear sync metadata table
             if let Err(e) = conn.execute("DELETE FROM TRENDLOG_DATA_SYNC_METADATA", []) {
-                let msg = format!("⚠️ Failed to clear TRENDLOG_DATA_SYNC_METADATA table: {}", e);
-                let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Warn);
+                let msg = format!("[WARN] Failed to clear TRENDLOG_DATA_SYNC_METADATA table: {}", e);
+                emit_partition_log_bg("warn", "T3_DatabaseSizeMonitor", msg);
             }
             // Run VACUUM to reclaim space
             if let Err(e) = conn.execute("VACUUM", []) {
-                let msg = format!("⚠️ Failed to vacuum database: {}", e);
-                let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Warn);
+                let msg = format!("[WARN] Failed to vacuum database: {}", e);
+                emit_partition_log_bg("warn", "T3_DatabaseSizeMonitor", msg);
             }
         }
         Err(e) => {
-            let msg = format!("⚠️ Failed to open main database for clearing: {}", e);
-            let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Warn);
+            let msg = format!("[WARN] Failed to open main database for clearing: {}", e);
+            emit_partition_log_bg("warn", "T3_DatabaseSizeMonitor", msg);
         }
     }
 
@@ -1024,10 +1048,10 @@ async fn check_and_partition_by_size() -> Result<bool> {
         .await?;
 
     let msg = format!(
-        "✅ Size-based partition created: {} ({} records, {:.2} MB). Main database cleared and ready for new data.",
+        "[OK] Size-based partition created: {} ({} records, {:.2} MB). Main database cleared and ready for new data.",
         partition_id, record_count, file_size_bytes as f64 / 1024.0 / 1024.0
     );
-    let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Info);
+    emit_partition_log_bg("info", "T3_DatabaseSizeMonitor", msg);
 
     Ok(true)
 }

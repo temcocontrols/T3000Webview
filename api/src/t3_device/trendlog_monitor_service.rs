@@ -17,7 +17,19 @@ use std::ffi::CString;
 
 use crate::entity::t3_device::trendlogs;
 use crate::error::AppError;
-use crate::logger::{write_structured_log_with_level, LogLevel};
+
+async fn emit_monitor_log(db: &DatabaseConnection, level: &str, message: &str) {
+    crate::logging::service::emit_app_log(
+        db,
+        level,
+        "T3_Webview_Trendlog_Monitor",
+        Some("trendlog_monitor_service"),
+        None,
+        message,
+        None,
+    )
+    .await;
+}
 
 // Dynamic loading approach to avoid linking errors
 #[cfg(target_os = "windows")]
@@ -87,6 +99,11 @@ pub struct TrendlogMonitorService {
 }
 
 impl TrendlogMonitorService {
+    async fn emit_log(&self, level: &str, message: &str) {
+        let db = self.db_connection.lock().await.clone();
+        emit_monitor_log(&db, level, message).await;
+    }
+
     /// Create new service instance
     pub fn new(db_connection: Arc<Mutex<DatabaseConnection>>) -> Self {
         // Try to dynamically load the C++ functions
@@ -151,12 +168,11 @@ impl TrendlogMonitorService {
 
     /// Get trendlog list for a device using new C++ export function
     pub async fn get_trendlog_list(&self, panel_id: i32) -> Result<TrendlogListResponse, AppError> {
-        use crate::logger::{write_structured_log_with_level, LogLevel};
-        let _ = write_structured_log_with_level("T3_Webview_Trendlog_Monitor", &format!("🔍 Getting trendlog list for panel_id: {}", panel_id), LogLevel::Info);
+        self.emit_log("info", &format!("🔍 Getting trendlog list for panel_id: {}", panel_id)).await;
 
         // Check if FFI function is available
         if let Some(ffi_fn) = self.get_trendlog_list_fn {
-            let _ = write_structured_log_with_level("T3_Webview_Trendlog_Monitor", "✅ Using NEW C++ export function: BacnetWebView_GetTrendlogList", LogLevel::Info);
+            self.emit_log("info", "✅ Using NEW C++ export function: BacnetWebView_GetTrendlogList").await;
             // Prepare buffer for C++ response
             let mut buffer = vec![0u8; self.buffer_size];
 
@@ -170,34 +186,30 @@ impl TrendlogMonitorService {
             };
 
             if result > 0 {
-                let _ = write_structured_log_with_level("T3_Webview_Trendlog_Monitor", &format!("✅ C++ export function returned {} bytes", result), LogLevel::Info);
+                self.emit_log("info", &format!("✅ C++ export function returned {} bytes", result)).await;
 
                 // Convert buffer to string (result contains actual length)
                 let json_str = unsafe {
                     std::str::from_utf8_unchecked(&buffer[..result as usize])
                 };
 
-                let _ = write_structured_log_with_level("T3_Webview_Trendlog_Monitor", &format!("📋 C++ Response: {}", json_str), LogLevel::Info);
+                self.emit_log("info", &format!("📋 C++ Response: {}", json_str)).await;
 
                 // Parse JSON response from C++
                 match serde_json::from_str::<TrendlogListResponse>(json_str) {
                     Ok(response) => {
-                        let _ = write_structured_log_with_level("T3_Webview_Trendlog_Monitor", &format!("🎉 Successfully retrieved {} trendlogs for panel_id {} via NEW C++ exports", response.trendlogs.len(), panel_id), LogLevel::Info);
+                        self.emit_log("info", &format!("🎉 Successfully retrieved {} trendlogs for panel_id {} via NEW C++ exports", response.trendlogs.len(), panel_id)).await;
                         return Ok(response);
                     },
                     Err(e) => {
-                        let _ = write_structured_log_with_level(
-                            "T3_Webview_Trendlog_Monitor",
-                            &format!("Failed to parse C++ JSON response: {}", e),
-                            LogLevel::Warn,
-                        );
+                        self.emit_log("warn", &format!("Failed to parse C++ JSON response: {}", e)).await;
                     }
                 }
             }
         }
 
         // Fallback: return mock/empty response when FFI is not available
-        let _ = write_structured_log_with_level("T3_Webview_Trendlog_Monitor", &format!("⚠️ NEW C++ export functions NOT available for panel_id {}, returning empty fallback data", panel_id), LogLevel::Warn);
+        self.emit_log("warn", &format!("⚠️ NEW C++ export functions NOT available for panel_id {}, returning empty fallback data", panel_id)).await;
 
         Ok(TrendlogListResponse {
             success: true,
@@ -233,30 +245,18 @@ impl TrendlogMonitorService {
                 match serde_json::from_str::<TrendlogEntryResponse>(json_str) {
                     Ok(response) => {
                         // Log successful retrieval
-                        let _ = write_structured_log_with_level(
-                            "T3_Webview_Trendlog_Monitor",
-                            &format!("Retrieved trendlog entry panel_id {} monitor {} with {} inputs", panel_id, monitor_index, response.inputs.len()),
-                            LogLevel::Info,
-                        );
+                        self.emit_log("info", &format!("Retrieved trendlog entry panel_id {} monitor {} with {} inputs", panel_id, monitor_index, response.inputs.len())).await;
                         return Ok(response);
                     },
                     Err(e) => {
-                        let _ = write_structured_log_with_level(
-                            "T3_Webview_Trendlog_Monitor",
-                            &format!("Failed to parse C++ entry JSON response: {} | JSON preview: {}", e, &json_str.chars().take(300).collect::<String>()),
-                            LogLevel::Warn,
-                        );
+                        self.emit_log("warn", &format!("Failed to parse C++ entry JSON response: {} | JSON preview: {}", e, &json_str.chars().take(300).collect::<String>())).await;
                     }
                 }
             }
         }
 
         // Fallback: return mock/empty response when FFI is not available
-        let _ = write_structured_log_with_level(
-            "T3_Webview_Trendlog_Monitor",
-            &format!("FFI not available for panel_id {} monitor {}, returning fallback data", panel_id, monitor_index),
-            LogLevel::Warn,
-        );
+        self.emit_log("warn", &format!("FFI not available for panel_id {} monitor {}, returning fallback data", panel_id, monitor_index)).await;
 
         Ok(TrendlogEntryResponse {
             success: true,
@@ -287,26 +287,14 @@ impl TrendlogMonitorService {
             let result = unsafe { sync_fn(panel_id) };
 
             if result >= 0 {
-                let _ = write_structured_log_with_level(
-                    "T3_Webview_Trendlog_Monitor",
-                    &format!("✅ Synced {} monitors to g_monitor_data[{}]", result, panel_id),
-                    LogLevel::Info,
-                );
+                self.emit_log("info", &format!("✅ Synced {} monitors to g_monitor_data[{}]", result, panel_id)).await;
                 Ok(result)
             } else {
-                let _ = write_structured_log_with_level(
-                    "T3_Webview_Trendlog_Monitor",
-                    &format!("⚠️ Failed to sync monitor data for panel_id {}: returned {}", panel_id, result),
-                    LogLevel::Warn,
-                );
+                self.emit_log("warn", &format!("⚠️ Failed to sync monitor data for panel_id {}: returned {}", panel_id, result)).await;
                 Err(AppError::NotFound(format!("Failed to sync monitor data for panel_id {}", panel_id)))
             }
         } else {
-            let _ = write_structured_log_with_level(
-                "T3_Webview_Trendlog_Monitor",
-                &format!("⚠️ BacnetWebView_SyncMonitorData function not available"),
-                LogLevel::Warn,
-            );
+            self.emit_log("warn", "⚠️ BacnetWebView_SyncMonitorData function not available").await;
             // Not a fatal error, just means the function isn't available
             Ok(0)
         }
@@ -337,11 +325,7 @@ impl TrendlogMonitorService {
             match result {
                 Ok(_) => {
                     synced_count += 1;
-                    let _ = write_structured_log_with_level(
-                        "T3_Webview_Trendlog_Monitor",
-                        &format!("Saved trendlog {} '{}' to database", trendlog_data.num, trendlog_data.label),
-                        LogLevel::Info,
-                    );
+                    self.emit_log("info", &format!("Saved trendlog {} '{}' to database", trendlog_data.num, trendlog_data.label)).await;
 
                     // Also save the related inputs to TRENDLOG_INPUTS table
                     if let Ok(entry) = trendlog_entry {
@@ -349,38 +333,22 @@ impl TrendlogMonitorService {
                         let inputs_result = self.save_trendlog_inputs_to_database(&*db, serial_number, panel_id, &trendlog_id, &entry.inputs).await;
                         match inputs_result {
                             Ok(count) => {
-                                let _ = write_structured_log_with_level(
-                                    "T3_Webview_Trendlog_Monitor",
-                                    &format!("Saved {} input points for trendlog {}", count, trendlog_id),
-                                    LogLevel::Info,
-                                );
+                                self.emit_log("info", &format!("Saved {} input points for trendlog {}", count, trendlog_id)).await;
                             },
                             Err(e) => {
-                                let _ = write_structured_log_with_level(
-                                    "T3_Webview_Trendlog_Monitor",
-                                    &format!("Failed to save inputs for trendlog {}: {}", trendlog_id, e),
-                                    LogLevel::Warn,
-                                );
+                                self.emit_log("warn", &format!("Failed to save inputs for trendlog {}: {}", trendlog_id, e)).await;
                             }
                         }
                     }
                 },
                 Err(e) => {
-                    let _ = write_structured_log_with_level(
-                        "T3_Webview_Trendlog_Monitor",
-                        &format!("Failed to save trendlog {} to database: {}", trendlog_data.num, e),
-                        LogLevel::Error,
-                    );
+                    self.emit_log("error", &format!("Failed to save trendlog {} to database: {}", trendlog_data.num, e)).await;
                 }
             }
         }
 
-        let _ = write_structured_log_with_level(
-            "T3_Webview_Trendlog_Monitor",
-            &format!("Synced {}/{} trendlogs for panel_id {} to database",
-                synced_count, trendlog_list.trendlogs.len(), panel_id),
-            LogLevel::Info,
-        );
+        self.emit_log("info", &format!("Synced {}/{} trendlogs for panel_id {} to database",
+            synced_count, trendlog_list.trendlogs.len(), panel_id)).await;
 
         Ok(synced_count)
     }
@@ -419,12 +387,8 @@ impl TrendlogMonitorService {
             let (first, duplicates) = existing_records.split_first().unwrap();
             if !duplicates.is_empty() {
                 let duplicate_ids: Vec<i32> = duplicates.iter().map(|d| d.id).collect();
-                let _ = write_structured_log_with_level(
-                    "T3_Webview_Trendlog_Monitor",
-                    &format!("🧹 Cleaning up {} duplicate trendlog records for {}: ids={:?}",
-                        duplicates.len(), trendlog_id, duplicate_ids),
-                    LogLevel::Warn,
-                );
+                emit_monitor_log(db, "warn", &format!("🧹 Cleaning up {} duplicate trendlog records for {}: ids={:?}",
+                    duplicates.len(), trendlog_id, duplicate_ids)).await;
                 trendlogs::Entity::delete_many()
                     .filter(trendlogs::Column::Id.is_in(duplicate_ids))
                     .exec(db)
@@ -444,12 +408,8 @@ impl TrendlogMonitorService {
             update_model.ffi_synced = Set(Some(1));
             update_model.last_ffi_sync = Set(Some(now));
 
-            let _ = write_structured_log_with_level(
-                "T3_Webview_Trendlog_Monitor",
-                &format!("UPDATING trendlog: SerialNumber={}, PanelId={}, MonitorIndex={}, ID='{}' (from C++: '{}'), Label='{}'",
-                    device_id, panel_id, trendlog.num, trendlog_id, trendlog.id, trendlog.label),
-                LogLevel::Info,
-            );
+            emit_monitor_log(db, "info", &format!("UPDATING trendlog: SerialNumber={}, PanelId={}, MonitorIndex={}, ID='{}' (from C++: '{}'), Label='{}'",
+                device_id, panel_id, trendlog.num, trendlog_id, trendlog.id, trendlog.label)).await;
 
             update_model.update(db).await?;
         } else {
@@ -473,12 +433,8 @@ impl TrendlogMonitorService {
                 ..Default::default()
             };
 
-            let _ = write_structured_log_with_level(
-                "T3_Webview_Trendlog_Monitor",
-                &format!("INSERTING new trendlog: SerialNumber={}, PanelId={}, MonitorIndex={}, ID='{}' (from C++: '{}'), Label='{}'",
-                    device_id, panel_id, trendlog.num, trendlog_id, trendlog.id, trendlog.label),
-                LogLevel::Info,
-            );
+            emit_monitor_log(db, "info", &format!("INSERTING new trendlog: SerialNumber={}, PanelId={}, MonitorIndex={}, ID='{}' (from C++: '{}'), Label='{}'",
+                device_id, panel_id, trendlog.num, trendlog_id, trendlog.id, trendlog.label)).await;
 
             new_trendlog.insert(db).await?;
         }
@@ -570,19 +526,11 @@ impl TrendlogMonitorService {
         drop(db); // Release lock before sync operations
 
         if all_devices.is_empty() {
-            let _ = write_structured_log_with_level(
-                "T3_Webview_Trendlog_Monitor",
-                "No devices found in database to sync",
-                LogLevel::Warn,
-            );
+            self.emit_log("warn", "No devices found in database to sync").await;
             return Ok(0);
         }
 
-        let _ = write_structured_log_with_level(
-            "T3_Webview_Trendlog_Monitor",
-            &format!("Found {} devices in database, starting trendlog sync", all_devices.len()),
-            LogLevel::Info,
-        );
+        self.emit_log("info", &format!("Found {} devices in database, starting trendlog sync", all_devices.len())).await;
 
         let mut total_synced = 0;
 
@@ -590,41 +538,25 @@ impl TrendlogMonitorService {
             let serial_number = device.serial_number;
             let panel_id = device.panel_id.unwrap_or(device.panel_number.unwrap_or(1));
 
-            let _ = write_structured_log_with_level(
-                "T3_Webview_Trendlog_Monitor",
-                &format!("Syncing device: SerialNumber={}, PanelId={}, ProductName={:?}",
-                    serial_number, panel_id, device.product_name),
-                LogLevel::Info,
-            );
+            self.emit_log("info", &format!("Syncing device: SerialNumber={}, PanelId={}, ProductName={:?}",
+                serial_number, panel_id, device.product_name)).await;
 
             // FIXED: Now correctly uses actual panel_id and serial_number from database
             match self.sync_trendlogs_to_database(panel_id, serial_number).await {
                 Ok(count) => {
                     total_synced += count;
-                    let _ = write_structured_log_with_level(
-                        "T3_Webview_Trendlog_Monitor",
-                        &format!("✅ Synced {} trendlogs for device SerialNumber={}, PanelId={}",
-                            count, serial_number, panel_id),
-                        LogLevel::Info,
-                    );
+                    self.emit_log("info", &format!("✅ Synced {} trendlogs for device SerialNumber={}, PanelId={}",
+                        count, serial_number, panel_id)).await;
                 },
                 Err(e) => {
                     // Log error but continue with other devices
-                    let _ = write_structured_log_with_level(
-                        "T3_Webview_Trendlog_Monitor",
-                        &format!("⚠️ Failed to sync trendlogs for device SerialNumber={}, PanelId={}: {}",
-                            serial_number, panel_id, e),
-                        LogLevel::Warn,
-                    );
+                    self.emit_log("warn", &format!("⚠️ Failed to sync trendlogs for device SerialNumber={}, PanelId={}: {}",
+                        serial_number, panel_id, e)).await;
                 }
             }
         }
 
-        let _ = write_structured_log_with_level(
-            "T3_Webview_Trendlog_Monitor",
-            &format!("✅ Total trendlogs synced: {} across {} devices", total_synced, all_devices.len()),
-            LogLevel::Info,
-        );
+        self.emit_log("info", &format!("✅ Total trendlogs synced: {} across {} devices", total_synced, all_devices.len())).await;
 
         Ok(total_synced)
     }
@@ -640,36 +572,20 @@ impl TrendlogMonitorService {
             match self.get_trendlog_list(1).await {
                 Ok(response) => {
                     if !response.trendlogs.is_empty() {
-                        let _ = write_structured_log_with_level(
-                            "T3_Webview_Trendlog_Monitor",
-                            &format!("FFI connectivity test successful - got {} trendlogs", response.trendlogs.len()),
-                            LogLevel::Info,
-                        );
+                        self.emit_log("info", &format!("FFI connectivity test successful - got {} trendlogs", response.trendlogs.len())).await;
                         Ok(true)
                     } else {
-                        let _ = write_structured_log_with_level(
-                            "T3_Webview_Trendlog_Monitor",
-                            "FFI functions loaded but returned empty data - may indicate T3000 not running or no devices configured",
-                            LogLevel::Warn,
-                        );
+                        self.emit_log("warn", "FFI functions loaded but returned empty data - may indicate T3000 not running or no devices configured").await;
                         Ok(false)
                     }
                 },
                 Err(_) => {
-                    let _ = write_structured_log_with_level(
-                        "T3_Webview_Trendlog_Monitor",
-                        "FFI functions loaded but call failed - T3000 may not be ready",
-                        LogLevel::Warn,
-                    );
+                    self.emit_log("warn", "FFI functions loaded but call failed - T3000 may not be ready").await;
                     Ok(false)
                 }
             }
         } else {
-            let _ = write_structured_log_with_level(
-                "T3_Webview_Trendlog_Monitor",
-                &format!("FFI functions not available - list_fn: {}, entry_fn: {}", has_list_fn, has_entry_fn),
-                LogLevel::Info,
-            );
+            self.emit_log("info", &format!("FFI functions not available - list_fn: {}, entry_fn: {}", has_list_fn, has_entry_fn)).await;
             Ok(false)
         }
     }
@@ -690,17 +606,25 @@ pub async fn initialize_trendlog_monitor_service(
     let is_connected = service.test_ffi_connectivity().await?;
 
     if is_connected {
-        let _ = write_structured_log_with_level(
-            "T3_Webview_Trendlog_Monitor",
-            "TrendLog Monitor Service initialized successfully with C++ FFI connectivity",
-            LogLevel::Info,
-        );
+        {
+            let db = service.db_connection.lock().await.clone();
+            emit_monitor_log(
+                &db,
+                "info",
+                "TrendLog Monitor Service initialized successfully with C++ FFI connectivity",
+            )
+            .await;
+        }
     } else {
-        let _ = write_structured_log_with_level(
-            "T3_Webview_Trendlog_Monitor",
-            "TrendLog Monitor Service initialized but C++ FFI not available (fallback mode)",
-            LogLevel::Warn,
-        );
+        {
+            let db = service.db_connection.lock().await.clone();
+            emit_monitor_log(
+                &db,
+                "warn",
+                "TrendLog Monitor Service initialized but C++ FFI not available (fallback mode)",
+            )
+            .await;
+        }
     }
 
     Ok(service)

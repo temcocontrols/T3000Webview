@@ -5,7 +5,7 @@
 
 import { lazy } from 'react';
 import type { RouteObject } from 'react-router-dom';
-import { createResponsiveRoute } from '../../../shared/core/router/ViewRouter';
+import { createResponsiveRoute } from '@t3-shared/core/router/ViewRouter';
 
 // Lazy load page components for code splitting
 const HomePage = lazy(() => import('../pages').then(m => ({ default: m.HomePage })));
@@ -20,6 +20,7 @@ const GraphicsPage = lazy(() => import('../pages').then(m => ({ default: m.Graph
 const SchedulesPage = lazy(() => import('../pages').then(m => ({ default: m.SchedulesPage })));
 const HolidaysPage = lazy(() => import('../pages').then(m => ({ default: m.HolidaysPage })));
 const TrendLogsPage = lazy(() => import('../pages').then(m => ({ default: m.TrendLogsPage })));
+const TrendPolicyRouteAdapterPage = lazy(() => import('../../features/trendlogs/pages/TrendPolicyRouteAdapterPage').then(m => ({ default: m.TrendPolicyRouteAdapterPage })));
 const TrendChartPage = lazy(() => import('../pages').then(m => ({ default: m.TrendChartPage })));
 const AlarmsPage = lazy(() => import('../pages').then(m => ({ default: m.AlarmsPage })));
 const NetworkPage = lazy(() => import('../pages').then(m => ({ default: m.NetworkPage })));
@@ -199,6 +200,12 @@ export const t3000Routes: T3000Route[] = [
     windowId: 9, // WINDOW_MONITOR
     shortcut: 'Alt+T',
     requiresDevice: true,
+  },
+  {
+    path: '/t3000/trend-policy',
+    element: TrendPolicyRouteAdapterPage,
+    title: 'Unified Trend Logging',
+    requiresDevice: false,
   },
   {
     path: '/t3000/trends/chart',

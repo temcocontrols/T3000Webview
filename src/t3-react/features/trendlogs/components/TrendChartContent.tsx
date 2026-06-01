@@ -1147,6 +1147,7 @@ export interface TrendChartContentProps {
   monitorInputs?: any[]; // Monitor inputs for the selected trendlog
   isDrawerMode?: boolean;
   onToolbarRender?: (toolbar: React.ReactNode) => void;
+  toolbarActionBeforeBack?: React.ReactNode;
   onBack?: () => void;
 }
 
@@ -2035,6 +2036,14 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         const updated = prev.map(s => ({ ...s, data: [...s.data] }));
         let matched = 0;
 
+        // ⚠️ IMPORTANT: do NOT write fallback zeros to DB. Skip rows when source value is missing/invalid.
+        // Same validation as Vue's toFiniteNumber()
+        const toFiniteNumber = (raw: any): number | null => {
+          if (raw === null || raw === undefined || raw === '') return null;
+          const n = Number(raw);
+          return Number.isFinite(n) ? n : null;
+        };
+
         updated.forEach(s => {
           // Match by id (pointId, e.g. "IN1") and pid (panelId) — same as Vue
           const item = allItems.find(
@@ -2047,11 +2056,18 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           const isAnalog = s.digitalAnalog === 'Analog'
             ? true
             : (item.digital_analog === 1);
-          const rawValue: number = isAnalog ? Number(item.value ?? 0) : Number(item.control ?? 0);
+          const selectedRaw = isAnalog ? item.value : item.control;
+          const parsedValue = toFiniteNumber(selectedRaw);
+
+          // ✅ Skip fallback zeros (missing/invalid values)
+          if (parsedValue === null) {
+            console.debug(`⏭️ SKIPPING fallback zero - ${s.pointId}: missing/invalid ${isAnalog ? 'value' : 'control'}`);
+            return;
+          }
 
           // Avoid duplicate timestamps (same second)
           if (!s.data.some(d => d.timestamp === timestamp)) {
-            s.data.push({ timestamp, value: rawValue });
+            s.data.push({ timestamp, value: parsedValue });
             if (timestamp > lastDataTimestampRef.current) {
               lastDataTimestampRef.current = timestamp;
             }
@@ -2065,7 +2081,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             point_id: s.pointId,
             point_index: s.pointIndex,
             point_type: s.pointType,
-            value: String(rawValue),
+            value: String(parsedValue),
             digital_analog: String(item.digital_analog ?? (isAnalog ? 1 : 0)),
             units: s.unit,
             range_field: item.range != null ? String(item.range) : undefined,
@@ -3209,23 +3225,29 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
       {loading && <Spinner size="tiny" />}
 
-      {/* Back button — pinned to far right */}
-      {props.onBack && (
-        <Button
-          appearance="subtle"
-          icon={<ArrowLeftRegular fontSize={16} />}
-          onClick={props.onBack}
-          size="small"
-          style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: 'normal' }}
-        >
-          Back
-        </Button>
+      {/* Right-end actions: custom action then Back */}
+      {(props.toolbarActionBeforeBack || props.onBack) && (
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {props.toolbarActionBeforeBack}
+          {props.onBack && (
+            <Button
+              appearance="subtle"
+              icon={<ArrowLeftRegular fontSize={16} />}
+              onClick={props.onBack}
+              size="small"
+              style={{ fontSize: '11px', fontWeight: 'normal' }}
+            >
+              Back
+            </Button>
+          )}
+        </div>
       )}
     </div>
   ), [
     timeBase, currentView, isRealtime, loading, lastSyncTime, dbStatus, hasTrackedItems,
     zoomIn, zoomOut, resetTimeBase, moveTimeLeft, moveTimeRight, restoreLiveMode,
     exportToPNG, exportToCSV, exportToJSON, openItemSelector, getTimeRangeMinutes,
+    props.toolbarActionBeforeBack,
     props.onBack,
   ]);
 
@@ -3665,8 +3687,19 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
               </div>
             </DialogContent>
             <DialogActions>
-              <Button size="medium" appearance="secondary" style={{ fontSize: '14px', fontWeight: 'normal' }} onClick={() => setShowCustomDateModal(false)}>Cancel</Button>
-              <Button size="medium" appearance="primary" style={{ fontSize: '14px', fontWeight: 'normal' }} onClick={applyCustomDateRange}
+              <Button
+                size="small"
+                appearance="secondary"
+                style={{ fontSize: '12px', fontWeight: 400, minHeight: '28px', height: '28px', minWidth: '80px' }}
+                onClick={() => setShowCustomDateModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="small"
+                appearance="primary"
+                style={{ fontSize: '12px', fontWeight: 400, minHeight: '28px', height: '28px', minWidth: '80px' }}
+                onClick={applyCustomDateRange}
                 disabled={!customStartInput || !customEndInput}>Apply</Button>
             </DialogActions>
           </DialogBody>

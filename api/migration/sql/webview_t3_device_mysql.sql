@@ -114,6 +114,21 @@ CREATE TABLE IF NOT EXISTS VARIABLES (
     Control TEXT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS HAYSTACK_ENTITY (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    dis TEXT,
+    tags TEXT NOT NULL,
+    serial_number INTEGER,
+    point_table TEXT,
+    point_index TEXT,
+    updated_at BIGINT
+);
+
+CREATE INDEX idx_haystack_entity_kind ON HAYSTACK_ENTITY(kind);
+CREATE INDEX idx_haystack_entity_serial ON HAYSTACK_ENTITY(serial_number);
+CREATE INDEX idx_haystack_entity_point_table ON HAYSTACK_ENTITY(point_table);
+
 CREATE TABLE IF NOT EXISTS PROGRAMS (
     SerialNumber INT NOT NULL,
     Program_ID TEXT,
@@ -1054,4 +1069,57 @@ CREATE TABLE IF NOT EXISTS SERVER_CLIENT_REGISTRY (
     version       VARCHAR(50) DEFAULT '',
     created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_host_ip (hostname, ip_address)
+);
+
+-- ============================================================================
+-- T3_FLOW / T3_FLOW_STEP / T3_FLOW_PAYLOAD - Flow-based trace logging
+-- NOTE: At runtime these tables live in local SQLite only (webview_t3_device.db).
+-- This MySQL DDL is kept as a reference schema for future multi-DB deployments.
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS T3_FLOW (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    flow_id      VARCHAR(36)   NOT NULL UNIQUE,
+    flow_type    VARCHAR(50)   NOT NULL,
+    trigger_src  VARCHAR(30)   NOT NULL,
+    started_at   BIGINT        NOT NULL,
+    ended_at     BIGINT,
+    status       VARCHAR(20)   NOT NULL DEFAULT 'running',
+    hostname     VARCHAR(100),
+    total_steps  INT           NOT NULL DEFAULT 0,
+    done_steps   INT           NOT NULL DEFAULT 0,
+    error_count  INT           NOT NULL DEFAULT 0,
+    meta         LONGTEXT
+);
+CREATE INDEX idx_t3_flow_type    ON T3_FLOW (flow_type);
+CREATE INDEX idx_t3_flow_started ON T3_FLOW (started_at DESC);
+CREATE INDEX idx_t3_flow_status  ON T3_FLOW (status);
+
+CREATE TABLE IF NOT EXISTS T3_FLOW_STEP (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    flow_id      VARCHAR(36)   NOT NULL,
+    seq          INT           NOT NULL,
+    step_name    VARCHAR(100)  NOT NULL,
+    level        VARCHAR(10)   NOT NULL DEFAULT 'info',
+    source       VARCHAR(100),
+    api_path     VARCHAR(500),
+    action_type  INT,
+    status       VARCHAR(20)   NOT NULL DEFAULT 'ok',
+    duration_ms  BIGINT,
+    payload_ref  VARCHAR(500),
+    message      TEXT,
+    details      LONGTEXT,
+    ts_unix      BIGINT        NOT NULL,
+    ts_fmt       VARCHAR(30)   NOT NULL
+);
+CREATE INDEX idx_t3_flow_step_flow ON T3_FLOW_STEP (flow_id);
+CREATE INDEX idx_t3_flow_step_ts   ON T3_FLOW_STEP (ts_unix DESC);
+
+CREATE TABLE IF NOT EXISTS T3_FLOW_PAYLOAD (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    flow_id      VARCHAR(36)   NOT NULL,
+    step_id      INT           NOT NULL,
+    file_path    VARCHAR(500)  NOT NULL,
+    size_bytes   BIGINT        NOT NULL,
+    created_at   BIGINT        NOT NULL,
+    purged       INT           NOT NULL DEFAULT 0
 );

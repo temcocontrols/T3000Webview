@@ -67,6 +67,12 @@ pub async fn get_dates() -> impl IntoResponse {
 
             let year_month = year_month_entry.file_name().to_string_lossy().to_string();
 
+            // Skip non-date directories (e.g. "detail/", "backup/").
+            // Valid year-month dirs match "YYYY-MM" exactly.
+            if !is_year_month_dir(&year_month) {
+                continue;
+            }
+
             // Read day folders within year-month
             if let Ok(days) = fs::read_dir(year_month_entry.path()) {
                 for day_entry in days.flatten() {
@@ -75,24 +81,57 @@ pub async fn get_dates() -> impl IntoResponse {
                     }
 
                     let day = day_entry.file_name().to_string_lossy().to_string();
-                    let path = format!("{}/{}", year_month, day);
 
-                    // Parse date for display (e.g., "2026-01/0121" -> "Jan 21, 2026")
+                    // Skip non-MMDD day folders (4 digits)
+                    if day.len() != 4 || !day.chars().all(|c| c.is_ascii_digit()) {
+                        continue;
+                    }
+
+                    let path = format!("{}/{}", year_month, day);
                     let display_date = format_date_display(&year_month, &day);
 
-                    dates.push(DateFolder {
-                        path,
-                        display_date,
-                    });
+                    // Count files and sum size for this day folder
+                    let (file_count, total_size) = count_files_in_dir(&day_entry.path());
+
+                    dates.push(serde_json::json!({
+                        "path": path,
+                        "displayDate": display_date,
+                        "fileCount": file_count,
+                        "totalSize": total_size,
+                    }));
                 }
             }
         }
     }
 
-    // Sort by date descending (newest first)
-    dates.sort_by(|a, b| b.path.cmp(&a.path));
+    // Sort by path descending (newest first)
+    dates.sort_by(|a, b| b["path"].as_str().unwrap_or("").cmp(a["path"].as_str().unwrap_or("")));
 
     (StatusCode::OK, Json(dates))
+}
+
+/// Returns true for "YYYY-MM" directory names only.
+fn is_year_month_dir(name: &str) -> bool {
+    name.len() == 7
+        && name.as_bytes()[4] == b'-'
+        && name[..4].bytes().all(|b| b.is_ascii_digit())
+        && name[5..].bytes().all(|b| b.is_ascii_digit())
+}
+
+/// Count .txt files and sum their sizes in a directory.
+fn count_files_in_dir(dir: &std::path::Path) -> (usize, u64) {
+    let mut count = 0usize;
+    let mut size = 0u64;
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_file() && p.extension().and_then(|e| e.to_str()) == Some("txt") {
+                count += 1;
+                size += entry.metadata().map(|m| m.len()).unwrap_or(0);
+            }
+        }
+    }
+    (count, size)
 }
 
 /// Get log files for a specific date
@@ -125,13 +164,12 @@ pub async fn get_files(Query(query): Query<FilesQuery>) -> impl IntoResponse {
     (StatusCode::OK, Json(files))
 }
 
-/// Get T3WebLog path
+/// Get T3WebLog path — delegates to constants::get_t3000_log_path()
+/// which resolves TEMCO_T3000_PATH env var → dev relative path → exe dir.
 fn get_t3weblog_path() -> PathBuf {
     std::env::var("T3WEBLOG_PATH")
         .map(PathBuf::from)
-        .unwrap_or_else(|_| {
-            PathBuf::from(r"D:\1025\github\temcocontrols\T3000_Building_Automation_System\T3000 Output\Debug\T3WebLog")
-        })
+        .unwrap_or_else(|_| crate::constants::get_t3000_log_path())
 }
 
 /// Get log file content
@@ -148,13 +186,39 @@ pub async fn get_content(Query(query): Query<ContentQuery>) -> impl IntoResponse
     }
 }
 
-/// Clear all logs (optional - removes all log files)
+/// Clear all log files under the T3WebLog directory tree.
 pub async fn clear_logs() -> impl IntoResponse {
-    // For safety, we'll just return success without actually deleting
-    // You can implement actual deletion if needed
+    let log_base = get_t3weblog_path();
+    let mut deleted: u32 = 0;
+    let mut errors: Vec<String> = Vec::new();
+
+    if log_base.exists() {
+        // Walk the directory tree and delete every file
+        fn remove_dir_files(dir: &std::path::Path, deleted: &mut u32, errors: &mut Vec<String>) {
+            if let Ok(entries) = fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_file() {
+                        match fs::remove_file(&path) {
+                            Ok(_) => *deleted += 1,
+                            Err(e) => errors.push(format!("{}: {}", path.display(), e)),
+                        }
+                    } else if path.is_dir() {
+                        remove_dir_files(&path, deleted, errors);
+                        // Remove the now-empty sub-directory (best-effort)
+                        let _ = fs::remove_dir(&path);
+                    }
+                }
+            }
+        }
+        remove_dir_files(&log_base, &mut deleted, &mut errors);
+    }
+
     (StatusCode::OK, Json(serde_json::json!({
         "success": true,
-        "message": "Logs cleared"
+        "deleted_files": deleted,
+        "errors": errors,
+        "message": format!("{} log file(s) deleted", deleted)
     })))
 }
 

@@ -121,6 +121,23 @@ CREATE TABLE IF NOT EXISTS VARIABLES (
     Control TEXT                               -- C++ control (0=OFF, 1=ON)
 );
 
+-- HAYSTACK_ENTITY table
+-- Normalized Haystack entities generated from INPUTS/OUTPUTS/VARIABLES metadata.
+CREATE TABLE IF NOT EXISTS HAYSTACK_ENTITY (
+    id TEXT PRIMARY KEY,                       -- e.g. dev1001.in0
+    kind TEXT NOT NULL,                        -- site | equip | point
+    dis TEXT,                                  -- display name
+    tags TEXT NOT NULL,                        -- JSON object as string
+    serial_number INTEGER,                     -- DEVICES.SerialNumber
+    point_table TEXT,                          -- INPUTS | OUTPUTS | VARIABLES
+    point_index TEXT,                          -- Input_Index / Output_Index / Variable_Index
+    updated_at INTEGER                         -- epoch millis
+);
+
+CREATE INDEX IF NOT EXISTS idx_haystack_entity_kind ON HAYSTACK_ENTITY(kind);
+CREATE INDEX IF NOT EXISTS idx_haystack_entity_serial ON HAYSTACK_ENTITY(serial_number);
+CREATE INDEX IF NOT EXISTS idx_haystack_entity_point_table ON HAYSTACK_ENTITY(point_table);
+
 -- PROGRAMS table (Original T3000 programs table)
 -- Optimized schema - removed unused BinaryArray field
 CREATE TABLE IF NOT EXISTS PROGRAMS (
@@ -1407,3 +1424,57 @@ CREATE TABLE IF NOT EXISTS T3_APP_LOG (
 CREATE INDEX IF NOT EXISTS idx_t3_app_log_ts  ON T3_APP_LOG (ts_unix DESC);
 CREATE INDEX IF NOT EXISTS idx_t3_app_log_cat ON T3_APP_LOG (category);
 CREATE INDEX IF NOT EXISTS idx_t3_app_log_lvl ON T3_APP_LOG (level);
+
+-- ============================================================================
+-- T3_FLOW / T3_FLOW_STEP / T3_FLOW_PAYLOAD - Flow-based trace logging
+-- Additive diagnostic layer. Local SQLite only — never written to MSSQL.
+-- Max 10,000 T3_FLOW rows; oldest pruned by scheduled cleanup.
+-- Config: flow_log.retention_days (default 30), flow_log.enabled (default true)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS T3_FLOW (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    flow_id      TEXT    NOT NULL UNIQUE,        -- UUID v4, generated at flow start
+    flow_type    TEXT    NOT NULL,               -- DLL_INIT | SYNC_CYCLE | INPUTS_LOAD | ...
+    trigger_src  TEXT    NOT NULL,               -- startup | scheduler | user | api | ws
+    started_at   INTEGER NOT NULL,               -- unix epoch ms
+    ended_at     INTEGER,                        -- null until done() is called
+    status       TEXT    NOT NULL DEFAULT 'running', -- running | ok | partial | failed
+    hostname     TEXT,
+    total_steps  INTEGER NOT NULL DEFAULT 0,     -- expected step count set at start
+    done_steps   INTEGER NOT NULL DEFAULT 0,
+    error_count  INTEGER NOT NULL DEFAULT 0,
+    meta         TEXT                            -- optional JSON, e.g. {"device_serial":"1234"}
+);
+CREATE INDEX IF NOT EXISTS idx_t3_flow_type    ON T3_FLOW (flow_type);
+CREATE INDEX IF NOT EXISTS idx_t3_flow_started ON T3_FLOW (started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_t3_flow_status  ON T3_FLOW (status);
+
+CREATE TABLE IF NOT EXISTS T3_FLOW_STEP (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    flow_id      TEXT    NOT NULL,               -- FK → T3_FLOW.flow_id
+    seq          INTEGER NOT NULL,               -- step order: 1, 2, 3…
+    step_name    TEXT    NOT NULL,               -- dll_load | ffi_call | db_write | ...
+    level        TEXT    NOT NULL DEFAULT 'info',-- info | warn | error
+    source       TEXT,                           -- rust module or react component
+    api_path     TEXT,                           -- optional HTTP path, e.g. "/api/ffi"
+    action_type  INTEGER,                        -- optional FFI action number (4, 15, 17...)
+    status       TEXT    NOT NULL DEFAULT 'ok',  -- ok | skip | fail
+    duration_ms  INTEGER,                        -- elapsed time for this step
+    payload_ref  TEXT,                           -- NULL or relative file path if payload offloaded
+    message      TEXT,
+    details      TEXT,                           -- short summary; NULL if large payload offloaded
+    ts_unix      INTEGER NOT NULL,
+    ts_fmt       TEXT    NOT NULL                -- "2026-05-21 14:30:00"
+);
+CREATE INDEX IF NOT EXISTS idx_t3_flow_step_flow ON T3_FLOW_STEP (flow_id);
+CREATE INDEX IF NOT EXISTS idx_t3_flow_step_ts   ON T3_FLOW_STEP (ts_unix DESC);
+
+CREATE TABLE IF NOT EXISTS T3_FLOW_PAYLOAD (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    flow_id      TEXT    NOT NULL,
+    step_id      INTEGER NOT NULL,               -- FK → T3_FLOW_STEP.id
+    file_path    TEXT    NOT NULL,               -- relative: T3WebLog/payloads/YYYY-MM/flowid_seq.json
+    size_bytes   INTEGER NOT NULL,
+    created_at   INTEGER NOT NULL,               -- unix epoch ms
+    purged       INTEGER NOT NULL DEFAULT 0      -- 0=file exists, 1=file deleted
+);

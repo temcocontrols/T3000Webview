@@ -494,23 +494,52 @@ async fn update_database_config(
     State(app_state): State<T3AppState>,
     Json(config): Json<database_partition_config::DatabasePartitionConfig>,
 ) -> Result<Json<database_partition_config::DatabasePartitionConfig>> {
-    crate::logger::write_structured_log("T3_Database", &format!("[DatabaseConfig] Received update request: strategy={:?}, retention={}:{:?}", config.strategy, config.retention_value, config.retention_unit)).ok();
-
     let db = match &app_state.local_config_conn {
         Some(conn) => &*conn.lock().await,
         None => {
-            crate::logger::write_structured_log_with_level("T3_Database", "[DatabaseConfig] T3 device database not available", crate::logger::LogLevel::Error).ok();
             return Err(crate::error::Error::ServerError("T3 device database not available".to_string()));
         }
     };
 
+    crate::logging::service::emit_app_log(
+        db,
+        "info",
+        "CONFIG",
+        Some("database_config"),
+        None,
+        "Database config update request received",
+        Some(&format!(
+            "strategy={:?}, retention={}:{:?}",
+            config.strategy, config.retention_value, config.retention_unit
+        )),
+    )
+    .await;
+
     match DatabaseConfigService::save_config(db, &config).await {
         Ok(updated_config) => {
-            crate::logger::write_structured_log("T3_Database", &format!("[DatabaseConfig] Configuration saved successfully: id={:?}", updated_config.id)).ok();
+            crate::logging::service::emit_app_log(
+                db,
+                "info",
+                "CONFIG",
+                Some("database_config"),
+                None,
+                "Database config saved",
+                Some(&format!("id={:?}", updated_config.id)),
+            )
+            .await;
             Ok(Json(updated_config))
         },
         Err(e) => {
-            crate::logger::write_structured_log_with_level("T3_Database", &format!("[DatabaseConfig] Failed to save configuration: {:?}", e), crate::logger::LogLevel::Error).ok();
+            crate::logging::service::emit_app_log(
+                db,
+                "error",
+                "CONFIG",
+                Some("database_config"),
+                None,
+                "Failed to save database config",
+                Some(&format!("error={:?}", e)),
+            )
+            .await;
             Err(e)
         }
     }

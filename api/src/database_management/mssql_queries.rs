@@ -25,9 +25,9 @@ fn category_filter_variants(category: &str) -> Vec<String> {
     match upper.as_str() {
         "CONFIG" | "DB_CONFIG" => vec!["CONFIG".to_string(), "DB_CONFIG".to_string()],
         "STARTUP" | "SERVER_EVENT" => vec!["STARTUP".to_string(), "SERVER_EVENT".to_string()],
-        "POLL" | "SYNC_CYCLE" | "SAMPLING" | "FFI_POLL" => vec![
+        "POLL" | "TRENDLOG_BACKEND" | "SAMPLING" | "FFI_POLL" => vec![
             "POLL".to_string(),
-            "SYNC_CYCLE".to_string(),
+            "TRENDLOG_BACKEND".to_string(),
             "SAMPLING".to_string(),
             "FFI_POLL".to_string(),
         ],
@@ -997,6 +997,56 @@ pub async fn query_app_log_category_counts(
                     .or_else(|| row.get::<i64, _>(1))
                     .unwrap_or(0);
                 rows.push((category, count));
+            }
+        }
+    }
+
+    Ok(rows)
+}
+
+/// Return grouped level counts from MSSQL T3_APP_LOG with optional category filter.
+pub async fn query_app_log_level_counts(
+    pool: &MssqlPool,
+    category_filter: Option<&str>,
+) -> Result<Vec<(String, i64)>, String> {
+    let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
+
+    let where_sql = if let Some(cat) = category_filter {
+        let variants = category_filter_variants(cat);
+        let in_list = variants
+            .iter()
+            .map(|v| format!("'{}'", v.replace('\'', "''")))
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!(" WHERE category IN ({})", in_list)
+    } else {
+        String::new()
+    };
+
+    let sql = format!(
+        "IF OBJECT_ID('T3_APP_LOG', 'U') IS NOT NULL \
+         SELECT level, COUNT(*) AS cnt FROM T3_APP_LOG{} GROUP BY level",
+        where_sql
+    );
+
+    let result = conn
+        .query(&sql, &[])
+        .await
+        .map_err(|e| format!("T3_APP_LOG level COUNT failed: {}", e))?;
+
+    let result_sets = result
+        .into_results()
+        .await
+        .map_err(|e| format!("T3_APP_LOG level COUNT row fetch failed: {}", e))?;
+
+    let mut rows: Vec<(String, i64)> = Vec::new();
+    for result_set in result_sets {
+        for row in result_set {
+            if let Some(level) = clean_cpp_string(row.get::<&str, _>(0)) {
+                let count = row.get::<i32, _>(1).map(|v| v as i64)
+                    .or_else(|| row.get::<i64, _>(1))
+                    .unwrap_or(0);
+                rows.push((level.to_lowercase(), count));
             }
         }
     }

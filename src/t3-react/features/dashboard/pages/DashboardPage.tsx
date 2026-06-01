@@ -936,6 +936,12 @@ export const DashboardPage: React.FC = () => {
                   <InfoRegular style={{ fontSize: '12px' }} />
                 </button>
               </Tooltip>
+              <button
+                className={s.viewAll}
+                onClick={() => { window.location.hash = '#/t3000/trendlogs?tab=haystack-tags'; }}
+              >
+                Trend Policy <ChevronRightRegular style={{ fontSize: '12px' }} />
+              </button>
             </div>
             <div className={s.sectionHeaderActions}>
               <Button

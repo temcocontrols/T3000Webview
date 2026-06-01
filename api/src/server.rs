@@ -1,7 +1,12 @@
 use std::{env, error::Error};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use axum::{
-    http::StatusCode,
+    http::{HeaderName, StatusCode},
+    middleware,
+    middleware::Next,
+    extract::Request,
+    response::Response,
     routing::{get, get_service},
     Json,
     Router,
@@ -22,6 +27,25 @@ use crate::{
 
 use super::modbus_register::routes::modbus_register_routes;
 use super::user::routes::user_routes;
+
+/// Axum middleware that propagates an incoming `X-Flow-Id` header to the response.
+/// If the request carries no such header, the response is unchanged.
+async fn propagate_flow_id(req: Request, next: Next) -> Response {
+    static X_FLOW_ID: HeaderName = HeaderName::from_static("x-flow-id");
+
+    let flow_id = req
+        .headers()
+        .get(&X_FLOW_ID)
+        .cloned();
+
+    let mut resp = next.run(req).await;
+
+    if let Some(v) = flow_id {
+        resp.headers_mut().insert(X_FLOW_ID.clone(), v);
+    }
+
+    resp
+}
 
 /// Returns the server's current local time as an ISO-8601 string (no timezone suffix).
 /// The frontend uses this to align query windows with the server's clock, regardless
@@ -45,6 +69,12 @@ fn routes_static() -> Router {
 
 async fn health_check_handler() -> &'static str {
     "T3000 WebView Service OK"
+}
+
+static SKIP_GENERAL_MIGRATIONS: AtomicBool = AtomicBool::new(false);
+
+pub fn set_skip_general_migrations(skip: bool) {
+    SKIP_GENERAL_MIGRATIONS.store(skip, Ordering::SeqCst);
 }
 
 // This function creates the application state and returns a router with all of the routes for the API.
@@ -117,16 +147,25 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         .merge(crate::database_management::sync_health::sync_health_routes())
         // Developer Tools routes
         .nest("/api/develop", crate::t3_develop::create_develop_routes())
+        // Flow log routes
+        .merge(crate::logging::flow_api::flow_routes())
+        // Haystack API routes
+        .merge(crate::t3_device::haystack_routes::create_haystack_routes())
+        // Point Sets API routes (DB-backed)
+        .merge(crate::t3_device::point_sets_routes::create_point_sets_routes())
         // Server local-time endpoint (for client timezone alignment)
         .route("/api/server/time", get(server_time_handler))
         // Real-time trend data routes - TEMPORARILY DISABLED
         // .nest("/api", crate::t3_device::trend_routes::trend_data_routes())
         .with_state(app_state)
         .fallback_service(routes_static())
+        .layer(middleware::from_fn(propagate_flow_id))
         .layer(cors))
 }
 
-pub async fn server_start() -> Result<(), Box<dyn Error>> {
+pub async fn server_start(
+    flow_opt: Option<(crate::logging::flow::FlowHandle, sea_orm::DatabaseConnection)>,
+) -> Result<(), Box<dyn Error>> {
     use crate::logger::ServiceLogger;
 
     // Initialize service logger - route to API log category
@@ -148,25 +187,64 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
     dotenvy::dotenv().ok();
     logger.info("Environment variables loaded");
 
-    // Smart migration system: only run if there are pending migrations
-    match crate::utils::run_migrations_if_pending().await {
-        Ok(_) => {
-            // Success message already printed by the function
-        },
-        Err(e) => {
-            logger.error(&format!("Migration check/execution failed: {:?}", e));
-            return Err(e);
+    if SKIP_GENERAL_MIGRATIONS.load(Ordering::SeqCst) {
+        logger.info("Skipping general migrations (T3-only startup mode)");
+    } else {
+        // Smart migration system: only run if there are pending migrations
+        let t_mig = std::time::Instant::now();
+        match crate::utils::run_migrations_if_pending().await {
+            Ok(_) => {
+                if let Some((ref fh, ref db)) = flow_opt {
+                    fh.step(db, "migrations", "info", "db", "ok",
+                        t_mig.elapsed().as_millis() as i64, "schema verified — all migrations applied", None).await;
+                }
+            },
+            Err(e) => {
+                logger.error(&format!("Migration check/execution failed: {:?}", e));
+                if let Some((ref fh, ref db)) = flow_opt {
+                    fh.step(db, "migrations", "error", "db", "error",
+                        t_mig.elapsed().as_millis() as i64, &e.to_string(), None).await;
+                    fh.done(db, "error").await;
+                }
+                return Err(e);
+            }
         }
     }
 
     // Create the enhanced T3000 application state
+    let t_state = std::time::Instant::now();
     let state = match create_t3_app_state().await {
         Ok(state) => {
             logger.info("T3000 application state created");
+            if let Some((ref fh, ref db)) = flow_opt {
+                fh.step(db, "app_state", "info", "db", "ok",
+                    t_state.elapsed().as_millis() as i64,
+                    &format!("center_db={} role={}", state.server_db_connected, state.server_db_role),
+                    None).await;
+            }
+            // Emit a STARTUP activity-log entry now that the DB is ready
+            {
+                use crate::logging::service::emit_app_log;
+                let db = state.conn.lock().await;
+                emit_app_log(
+                    &*db,
+                    "info",
+                    "STARTUP",
+                    Some("server"),
+                    None,
+                    "T3000 WebView server started",
+                    None,
+                ).await;
+            }
             state
         },
         Err(e) => {
             logger.error(&format!("Failed to create T3000 application state: {:?}", e));
+            if let Some((ref fh, ref db)) = flow_opt {
+                fh.step(db, "app_state", "error", "db", "error",
+                    t_state.elapsed().as_millis() as i64, &e.to_string(), None).await;
+                fh.done(db, "error").await;
+            }
             return Err(e);
         }
     };
@@ -187,6 +265,10 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
             "Server DB writer initialized (role={}, center DB connected)",
             state.server_db_role
         ));
+        if let Some((ref fh, ref db)) = flow_opt {
+            fh.step(db, "server_db_writer", "info", "lib", "ok", 0,
+                &format!("server DB writer active, role={}", state.server_db_role), None).await;
+        }
     } else if state.server_db_enabled {
         logger.warn(&format!(
             "Server DB enabled in INI but center DB unreachable — replication disabled (role={})",
@@ -195,16 +277,35 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
         // Pause FFI sampling so no data is written to SQLite when center DB is expected
         crate::app_state::set_sampling_paused("Center DB unreachable at startup");
         logger.warn("Sampling paused: center DB unreachable at startup");
+        if let Some((ref fh, ref db)) = flow_opt {
+            fh.step(db, "server_db_writer", "warn", "lib", "warn", 0,
+                &format!("center DB unreachable, replication disabled, role={}", state.server_db_role), None).await;
+        }
+    } else {
+        if let Some((ref fh, ref db)) = flow_opt {
+            fh.step(db, "server_db_writer", "info", "lib", "skip", 0,
+                "center DB not enabled, local-only mode", None).await;
+        }
     }
 
     // Create the application with T3000 device routes
+    let t_router = std::time::Instant::now();
     let app = match create_t3_app(state.clone()).await {
         Ok(app) => {
             logger.info("Application router created");
+            if let Some((ref fh, ref db)) = flow_opt {
+                fh.step(db, "router_create", "info", "lib", "ok",
+                    t_router.elapsed().as_millis() as i64, "HTTP routes registered — device, auth, trendlog, users, logs", None).await;
+            }
             app
         },
         Err(e) => {
             logger.error(&format!("Failed to create application router: {:?}", e));
+            if let Some((ref fh, ref db)) = flow_opt {
+                fh.step(db, "router_create", "error", "lib", "error",
+                    t_router.elapsed().as_millis() as i64, &e.to_string(), None).await;
+                fh.done(db, "error").await;
+            }
             return Err(e);
         }
     };
@@ -214,13 +315,25 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
     logger.info(&format!("Server will bind to port: {}", server_port));
 
     // Bind the server to the specified port
+    let t_bind = std::time::Instant::now();
     let listener = match TcpListener::bind(format!("0.0.0.0:{}", &server_port)).await {
         Ok(listener) => {
             logger.info(&format!("Server bound to 0.0.0.0:{}", server_port));
+            if let Some((ref fh, ref db)) = flow_opt {
+                fh.step(db, "bind_port", "info", "lib", "ok",
+                    t_bind.elapsed().as_millis() as i64,
+                    &format!("port {} open — API ready to accept requests", server_port), None).await;
+                fh.done(db, "ok").await;
+            }
             listener
         },
         Err(e) => {
             logger.error(&format!("Failed to bind server to port {}: {:?}", server_port, e));
+            if let Some((ref fh, ref db)) = flow_opt {
+                fh.step(db, "bind_port", "error", "lib", "error",
+                    t_bind.elapsed().as_millis() as i64, &e.to_string(), None).await;
+                fh.done(db, "error").await;
+            }
             return Err(e.into());
         }
     };

@@ -15,7 +15,35 @@ use chrono::Utc;
 
 use crate::entity::t3_device::{trendlogs, trendlog_inputs, trendlog_views};
 use crate::error::AppError;
-use crate::logger::{write_structured_log_with_level, LogLevel};
+use crate::logging::types::LogLevel;
+
+fn emit_ffi_log_sync(category: &str, message: &str, level: LogLevel) {
+    let handle = match tokio::runtime::Handle::try_current() {
+        Ok(handle) => handle,
+        Err(_) => return,
+    };
+
+    let category_owned = category.to_string();
+    let message_owned = message.to_string();
+    let level_owned = level.as_lower().to_string();
+
+    handle.spawn(async move {
+        let db = match crate::db_connection::establish_t3_device_connection().await {
+            Ok(db) => db,
+            Err(_) => return,
+        };
+        crate::logging::service::emit_app_log(
+            &db,
+            &level_owned,
+            &category_owned,
+            Some("trendlog_ffi_service"),
+            None,
+            &message_owned,
+            None,
+        )
+        .await;
+    });
+}
 
 // Maximum points in a TrendLog monitor (from T3000 C++)
 pub const MAX_POINTS_IN_MONITOR: usize = 14;
@@ -83,7 +111,7 @@ fn check_t3000_availability() -> Result<(), String> {
             return Err("T3000.exe is running but required FFI functions are not available. Please update T3000 software or check compatibility.".to_string());
         }
 
-        let _ = write_structured_log_with_level("T3_FFI", "✅ T3000.exe is available and ready for FFI operations", LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_FFI", "[OK] T3000.exe is available and ready for FFI operations", LogLevel::Info);
         Ok(())
     }
 }
@@ -167,17 +195,17 @@ unsafe fn T3000_GetMonitorById(device_id: c_int, monitor_id: c_int, monitor_data
 unsafe fn T3000_IsDeviceOnline(device_id: c_int) -> c_int {
     let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
     if handle.is_null() {
-        let _ = write_structured_log_with_level("T3_FFI", "❌ T3000.exe not found in memory - T3000 application may not be running", LogLevel::Error);
+        let _ = emit_ffi_log_sync("T3_FFI", "[ERROR] T3000.exe not found in memory - T3000 application may not be running", LogLevel::Error);
         return 0;
     }
 
     let func_ptr = GetProcAddress(handle, b"T3000_IsDeviceOnline\0".as_ptr());
     if func_ptr.is_null() {
-        let _ = write_structured_log_with_level("T3_FFI", "❌ T3000_IsDeviceOnline function not found in T3000.exe", LogLevel::Error);
+        let _ = emit_ffi_log_sync("T3_FFI", "[ERROR] T3000_IsDeviceOnline function not found in T3000.exe", LogLevel::Error);
         return 0;
     }
 
-    let _ = write_structured_log_with_level("T3_FFI", &format!("📡 Checking device {} online status via T3000.exe", device_id), LogLevel::Info);
+    let _ = emit_ffi_log_sync("T3_FFI", &format!("[CHECK] Checking device {} online status via T3000.exe", device_id), LogLevel::Info);
     let func: T3000IsDeviceOnlineFn = std::mem::transmute(func_ptr);
     func(device_id)
 }
@@ -186,7 +214,7 @@ unsafe fn T3000_IsDeviceOnline(device_id: c_int) -> c_int {
 unsafe fn T3000_ConnectToDevice(device_id: c_int) -> c_int {
     let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
     if handle.is_null() {
-        let _ = write_structured_log_with_level("T3_FFI", "❌ T3000.exe not found in memory - T3000 application may not be running", LogLevel::Error);
+        let _ = emit_ffi_log_sync("T3_FFI", "[ERROR] T3000.exe not found in memory - T3000 application may not be running", LogLevel::Error);
         return 0;
     }
 
@@ -267,15 +295,15 @@ impl TrendLogFFIService {
         trendlog_id: &str,
         db: &DatabaseConnection
     ) -> Result<TrendLogInfo, AppError> {
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("🔄 Creating fallback TrendLog info for {} (device {})", trendlog_id, device_id), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[SYNC] Creating fallback TrendLog info for {} (device {})", trendlog_id, device_id), LogLevel::Info);
 
         // FIRST: Try WebMessage API path (T3000 may still be running, just FFI broken)
         if let Ok(webmessage_info) = Self::try_webmessage_trendlog_info(device_id, trendlog_id).await {
-            let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "✅ Successfully retrieved TrendLog data via WebMessage API", LogLevel::Info);
+            let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "[OK] Successfully retrieved TrendLog data via WebMessage API", LogLevel::Info);
             return Ok(webmessage_info);
         }
 
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "⚠️ WebMessage API also unavailable, falling back to database", LogLevel::Warn);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "[WARN] WebMessage API also unavailable, falling back to database", LogLevel::Warn);
 
         // SECOND: Try to get existing trendlog from database
         match trendlogs::Entity::find()
@@ -285,7 +313,7 @@ impl TrendLogFFIService {
             .await?
         {
             Some(existing_trendlog) => {
-                let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "✅ Found existing trendlog in database, using stored configuration", LogLevel::Info);
+                let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "[OK] Found existing trendlog in database, using stored configuration", LogLevel::Info);
 
                 // Get related inputs
                 let related_inputs = trendlog_inputs::Entity::find()
@@ -321,7 +349,7 @@ impl TrendLogFFIService {
                 })
             },
             None => {
-                let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "📝 No existing trendlog found, creating minimal fallback info", LogLevel::Info);
+                let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "[INFO] No existing trendlog found, creating minimal fallback info", LogLevel::Info);
 
                 // Create minimal TrendLog info with defaults
                 Self::create_initial_trendlog_info_with_panel_and_title(
@@ -342,7 +370,7 @@ impl TrendLogFFIService {
     ) -> Result<TrendLogInfo, AppError> {
         use crate::t3_device::t3_ffi_api_service::T3000FfiApiService;
 
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "🌐 Attempting TrendLog data retrieval via WebMessage API", LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "[API] Attempting TrendLog data retrieval via WebMessage API", LogLevel::Info);
 
         // Create GET_PANEL_DATA request
         let panel_id = 1; // Default panel for now
@@ -373,7 +401,7 @@ impl TrendLogFFIService {
                 if entry.get("type").and_then(|t| t.as_str()) == Some("MON") &&
                    entry.get("index").and_then(|i| i.as_u64()) == Some(monitor_index as u64) {
 
-                    let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("✅ Found TrendLog {} in WebMessage response", trendlog_id), LogLevel::Info);
+                    let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[OK] Found TrendLog {} in WebMessage response", trendlog_id), LogLevel::Info);
 
                     // Extract TrendLog info from WebMessage response
                     let label = entry.get("label").and_then(|l| l.as_str()).unwrap_or("Unknown");
@@ -397,7 +425,7 @@ impl TrendLogFFIService {
                             ) {
                                 if panel > 0 && point_type > 0 {
                                     // PointNet point_type is 1-based offset from BAC_* constants:
-                                    // BAC_OUT=0 → 1 (OUTPUT), BAC_IN=1 → 2 (INPUT), BAC_VAR=2 → 3 (VARIABLE)
+                                    // BAC_OUT=0 -> 1 (OUTPUT), BAC_IN=1 -> 2 (INPUT), BAC_VAR=2 -> 3 (VARIABLE)
                                     let point_type_str = match point_type {
                                         1 => "OUTPUT",
                                         2 => "INPUT",
@@ -451,7 +479,7 @@ impl TrendLogFFIService {
         chart_title: Option<&str>,
         db: &DatabaseConnection
     ) -> Result<TrendLogInfo, AppError> {
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("🆕 Creating initial TrendLog info: {} for device {}", trendlog_id, device_id), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[INIT] Creating initial TrendLog info: {} for device {}", trendlog_id, device_id), LogLevel::Info);
 
         // Normalize Trendlog_ID: Convert numeric index (0,1,2...) to MON format (MON1,MON2,MON3...)
         let normalized_trendlog_id = if trendlog_id.starts_with("MON") {
@@ -460,7 +488,7 @@ impl TrendLogFFIService {
         } else {
             // Try to parse as number and convert to MON format (0-based to 1-based)
             match trendlog_id.parse::<i32>() {
-                Ok(index) => format!("MON{}", index + 1),  // 0→MON1, 1→MON2, etc.
+                Ok(index) => format!("MON{}", index + 1),  // 0->MON1, 1->MON2, etc.
                 Err(_) => {
                     // Try to parse MONITOR format
                     if trendlog_id.starts_with("MONITOR") {
@@ -487,8 +515,8 @@ impl TrendLogFFIService {
             .map(|title| title.to_string())
             .unwrap_or_else(|| format!("Monitor {}", monitor_number));
 
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI",
-            &format!("📝 Normalized Trendlog_ID: '{}' → '{}'", trendlog_id, normalized_trendlog_id), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI",
+            &format!("[INFO] Normalized Trendlog_ID: '{}' -> '{}'", trendlog_id, normalized_trendlog_id), LogLevel::Info);
 
         let basic_info = TrendLogInfo {
             serial_number: device_id as i32,
@@ -507,7 +535,7 @@ impl TrendLogFFIService {
         // Save basic info to database (will be updated later by FFI)
         Self::save_basic_trendlog_to_database(&basic_info, db).await?;
 
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("✅ Created initial TrendLog info: {}", basic_info.trendlog_label), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[OK] Created initial TrendLog info: {}", basic_info.trendlog_label), LogLevel::Info);
         Ok(basic_info)
     }
 
@@ -516,7 +544,7 @@ impl TrendLogFFIService {
         info: &TrendLogInfo,
         db: &DatabaseConnection
     ) -> Result<(), AppError> {
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("💾 Saving basic TrendLog to database: {}", info.trendlog_id), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[SAVE] Saving basic TrendLog to database: {}", info.trendlog_id), LogLevel::Info);
 
         let trendlog_record = trendlogs::ActiveModel {
             id: NotSet, // Auto-increment
@@ -537,7 +565,7 @@ impl TrendLogFFIService {
             ..Default::default()
         };
 
-        // Check by (SerialNumber, TrendlogId) only — panelId is NOT part of unique identity
+        // Check by (SerialNumber, TrendlogId) only - panelId is NOT part of unique identity
         let existing_records = trendlogs::Entity::find()
             .filter(trendlogs::Column::SerialNumber.eq(info.serial_number))
             .filter(trendlogs::Column::TrendlogId.eq(&info.trendlog_id))
@@ -564,12 +592,12 @@ impl TrendLogFFIService {
             update_model.panel_id = Set(info.panel_id);
             update_model.updated_at = Set(Some(Utc::now().to_rfc3339()));
             update_model.update(db).await?;
-            let _ = write_structured_log_with_level("T3_Webview_TRL_FFI",
-                &format!("📝 TrendLog already exists: SerialNumber={}, TrendlogId={}",
+            let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI",
+                &format!("[INFO] TrendLog already exists: SerialNumber={}, TrendlogId={}",
                     info.serial_number, info.trendlog_id), LogLevel::Info);
         }
 
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "✅ Basic TrendLog info saved to database", LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "[OK] Basic TrendLog info saved to database", LogLevel::Info);
         Ok(())
     }
 
@@ -579,7 +607,7 @@ impl TrendLogFFIService {
         trendlog_id: &str,
         db: &DatabaseConnection
     ) -> Result<TrendLogInfo, AppError> {
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("🔄 Background FFI sync for TrendLog: {} (device {})", trendlog_id, device_id), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[SYNC] Background FFI sync for TrendLog: {} (device {})", trendlog_id, device_id), LogLevel::Info);
 
         // This is the existing detailed FFI sync logic
         Self::sync_complete_trendlog_info(device_id, trendlog_id, db).await
@@ -596,7 +624,7 @@ impl TrendLogFFIService {
         // Default panel_id to 1 for backward compatibility
         let panel_id = 1u32;
 
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("📊 Adding {} points to View{} for TrendLog: {} (device {}, panel {})",
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[INFO] Adding {} points to View{} for TrendLog: {} (device {}, panel {})",
             selected_points.len(), view_number, trendlog_id, device_id, panel_id), LogLevel::Info);
 
         // First, clear existing selections for this view by updating is_selected to 0
@@ -653,7 +681,7 @@ impl TrendLogFFIService {
             }
         }
 
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("✅ View{} selections saved", view_number), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[OK] View{} selections saved", view_number), LogLevel::Info);
         Ok(())
     }
 
@@ -666,7 +694,7 @@ impl TrendLogFFIService {
         selected_points: Vec<ViewSelection>,
         db: &DatabaseConnection
     ) -> Result<(), AppError> {
-        println!("🔥 DEBUG: add_points_to_view_selection_with_panel called with:");
+        println!("[DEBUG] add_points_to_view_selection_with_panel called with:");
         println!("  device_id: {}", device_id);
         println!("  panel_id: {}", panel_id);
         println!("  trendlog_id: {}", trendlog_id);
@@ -680,11 +708,11 @@ impl TrendLogFFIService {
         use std::io::{self, Write};
         io::stdout().flush().unwrap(); // Force flush stdout
 
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("📊 Adding {} points to View{} for TrendLog: {} (device {}, panel {})",
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[INFO] Adding {} points to View{} for TrendLog: {} (device {}, panel {})",
             selected_points.len(), view_number, trendlog_id, device_id, panel_id), LogLevel::Info);
 
         // First, clear existing selections for this view by updating is_selected to 0 in BOTH tables
-        println!("🔥 DEBUG: Clearing existing selections from TRENDLOG_VIEWS...");
+        println!("[DEBUG] Clearing existing selections from TRENDLOG_VIEWS...");
         let clear_views_result = trendlog_views::Entity::update_many()
             .col_expr(trendlog_views::Column::IsSelected, Expr::value(0))
             .filter(trendlog_views::Column::SerialNumber.eq(device_id as i32))
@@ -695,14 +723,14 @@ impl TrendLogFFIService {
             .await;
 
         match clear_views_result {
-            Ok(result) => println!("🔥 DEBUG: TRENDLOG_VIEWS clear result: {:?}", result),
+            Ok(result) => println!("[DEBUG] TRENDLOG_VIEWS clear result: {:?}", result),
             Err(e) => {
-                println!("🔥 DEBUG: TRENDLOG_VIEWS clear failed with error: {:?}", e);
+                println!("[DEBUG] TRENDLOG_VIEWS clear failed with error: {:?}", e);
                 return Err(e.into());
             }
         }
 
-        println!("🔥 DEBUG: Clearing existing selections from TRENDLOG_INPUTS...");
+        println!("[DEBUG] Clearing existing selections from TRENDLOG_INPUTS...");
         let clear_inputs_result = trendlog_inputs::Entity::update_many()
             .col_expr(trendlog_inputs::Column::IsSelected, Expr::value(0))
             .filter(trendlog_inputs::Column::SerialNumber.eq(device_id as i32))
@@ -713,18 +741,18 @@ impl TrendLogFFIService {
             .await;
 
         match clear_inputs_result {
-            Ok(result) => println!("🔥 DEBUG: TRENDLOG_INPUTS clear result: {:?}", result),
+            Ok(result) => println!("[DEBUG] TRENDLOG_INPUTS clear result: {:?}", result),
             Err(e) => {
-                println!("🔥 DEBUG: TRENDLOG_INPUTS clear failed with error: {:?}", e);
+                println!("[DEBUG] TRENDLOG_INPUTS clear failed with error: {:?}", e);
                 return Err(e.into());
             }
         }
 
         // Add new selections by updating or inserting records to BOTH tables
-        println!("🔥 DEBUG: Adding new selections...");
+        println!("[DEBUG] Adding new selections...");
         for (i, point) in selected_points.into_iter().enumerate() {
             if point.is_selected {
-                println!("🔥 DEBUG: Processing point {}: {} ({})", i, point.point_label, point.point_type);
+                println!("[DEBUG] Processing point {}: {} ({})", i, point.point_label, point.point_type);
 
                 // 1. Insert into TRENDLOG_VIEWS table (View-specific selections)
                 let view_record = trendlog_views::ActiveModel {
@@ -761,7 +789,7 @@ impl TrendLogFFIService {
                 };
 
                 // Insert into TRENDLOG_VIEWS table
-                println!("🔥 DEBUG: Attempting upsert to TRENDLOG_VIEWS for point: {}", point.point_label);
+                println!("[DEBUG] Attempting upsert to TRENDLOG_VIEWS for point: {}", point.point_label);
                 let views_insert_result = trendlog_views::Entity::insert(view_record)
                     .on_conflict(
                         OnConflict::columns([
@@ -783,15 +811,15 @@ impl TrendLogFFIService {
                     .await;
 
                 match views_insert_result {
-                    Ok(result) => println!("🔥 DEBUG: TRENDLOG_VIEWS insert/update success for {}: {:?}", point.point_label, result),
+                    Ok(result) => println!("[DEBUG] TRENDLOG_VIEWS insert/update success for {}: {:?}", point.point_label, result),
                     Err(e) => {
-                        println!("🔥 DEBUG: TRENDLOG_VIEWS insert/update failed for {}: {:?}", point.point_label, e);
+                        println!("[DEBUG] TRENDLOG_VIEWS insert/update failed for {}: {:?}", point.point_label, e);
                         return Err(e.into());
                     }
                 }
 
                 // Insert into TRENDLOG_INPUTS table
-                println!("🔥 DEBUG: Attempting upsert to TRENDLOG_INPUTS for point: {}", point.point_label);
+                println!("[DEBUG] Attempting upsert to TRENDLOG_INPUTS for point: {}", point.point_label);
                 let inputs_insert_result = trendlog_inputs::Entity::insert(input_record)
                     .on_conflict(
                         OnConflict::columns([
@@ -814,19 +842,19 @@ impl TrendLogFFIService {
                     .await;
 
                 match inputs_insert_result {
-                    Ok(result) => println!("🔥 DEBUG: TRENDLOG_INPUTS insert/update success for {}: {:?}", point.point_label, result),
+                    Ok(result) => println!("[DEBUG] TRENDLOG_INPUTS insert/update success for {}: {:?}", point.point_label, result),
                     Err(e) => {
-                        println!("🔥 DEBUG: TRENDLOG_INPUTS insert/update failed for {}: {:?}", point.point_label, e);
+                        println!("[DEBUG] TRENDLOG_INPUTS insert/update failed for {}: {:?}", point.point_label, e);
                         return Err(e.into());
                     }
                 }
             } else {
-                println!("🔥 DEBUG: Skipping unselected point {}: {}", i, point.point_label);
+                println!("[DEBUG] Skipping unselected point {}: {}", i, point.point_label);
             }
         }
 
-        println!("🔥 DEBUG: Function completed successfully");
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("✅ View{} selections saved with panel_id {}", view_number, panel_id), LogLevel::Info);
+        println!("[DEBUG] Function completed successfully");
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[OK] View{} selections saved with panel_id {}", view_number, panel_id), LogLevel::Info);
         Ok(())
     }
 
@@ -840,7 +868,7 @@ impl TrendLogFFIService {
         // Default panel_id to 1 for backward compatibility
         let panel_id = 1u32;
 
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("📋 Getting View{} selections for TrendLog: {} (device {}, panel {})",
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[INFO] Getting View{} selections for TrendLog: {} (device {}, panel {})",
             view_number, trendlog_id, device_id, panel_id), LogLevel::Info);
 
         let selections = trendlog_inputs::Entity::find()
@@ -862,7 +890,7 @@ impl TrendLogFFIService {
             })
             .collect();
 
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("📊 Found {} selected points for View{}", view_selections.len(), view_number), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[INFO] Found {} selected points for View{}", view_selections.len(), view_number), LogLevel::Info);
         Ok(view_selections)
     }
 
@@ -874,7 +902,7 @@ impl TrendLogFFIService {
         view_number: i32,
         db: &DatabaseConnection
     ) -> Result<Vec<ViewSelection>, AppError> {
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("🔍 Fetching View{} selections for TrendLog: {} (device {}, panel {})",
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[INFO] Fetching View{} selections for TrendLog: {} (device {}, panel {})",
             view_number, trendlog_id, device_id, panel_id), LogLevel::Info);
 
         let view_records = trendlog_views::Entity::find()
@@ -896,7 +924,7 @@ impl TrendLogFFIService {
             })
             .collect();
 
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("📊 Found {} selected points for View{} (panel_id {})", view_selections.len(), view_number, panel_id), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[INFO] Found {} selected points for View{} (panel_id {})", view_selections.len(), view_number, panel_id), LogLevel::Info);
         Ok(view_selections)
     }
 
@@ -906,46 +934,46 @@ impl TrendLogFFIService {
         trendlog_id: &str,
         db: &DatabaseConnection
     ) -> Result<TrendLogInfo, AppError> {
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "\n🚀 === Starting TrendLog FFI Sync (T3000 Monitor Functions) ===", LogLevel::Info);
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("Device ID: {}, TrendLog ID: {}", device_id, trendlog_id), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "\n[START] === Starting TrendLog FFI Sync (T3000 Monitor Functions) ===", LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("Device ID: {}, TrendLog ID: {}", device_id, trendlog_id), LogLevel::Info);
 
         // 0. Check T3000.exe availability first - use fallback if not available
         if let Err(availability_error) = check_t3000_availability() {
-            let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("⚠️ T3000 FFI not available: {}", availability_error), LogLevel::Warn);
-            let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "📋 Falling back to database-based TrendLog info (limited functionality)", LogLevel::Info);
+            let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[WARN] T3000 FFI not available: {}", availability_error), LogLevel::Warn);
+            let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "[INFO] Falling back to database-based TrendLog info (limited functionality)", LogLevel::Info);
 
             // Use fallback mechanism to create basic TrendLog info from database
             return Self::create_fallback_trendlog_info(device_id, trendlog_id, db).await;
         }
 
         // 1. Ensure device is connected
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "🔍 Checking T3000 device connection...", LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "[CHECK] Checking T3000 device connection...", LogLevel::Info);
         let device_online = unsafe { T3000_IsDeviceOnline(device_id as c_int) };
         if device_online == 0 {
-            let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("⚠️ Device {} is offline, attempting to connect...", device_id), LogLevel::Warn);
+            let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[WARN] Device {} is offline, attempting to connect...", device_id), LogLevel::Warn);
             // Try to connect
             let connect_result = unsafe { T3000_ConnectToDevice(device_id as c_int) };
             if connect_result == 0 {
-                let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("❌ Failed to connect to T3000 device {}", device_id), LogLevel::Error);
+                let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[ERROR] Failed to connect to T3000 device {}", device_id), LogLevel::Error);
                 return Err(AppError::InternalError("Failed to connect to T3000 device".to_string()));
             } else {
-                let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("✅ Successfully connected to T3000 device {}", device_id), LogLevel::Info);
+                let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[OK] Successfully connected to T3000 device {}", device_id), LogLevel::Info);
             }
         } else {
-            let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("✅ Device {} is online", device_id), LogLevel::Info);
+            let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[OK] Device {} is online", device_id), LogLevel::Info);
         }
 
         // 2. Parse TrendLog ID to get monitor index
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("🔢 Parsing TrendLog ID: {} → monitor index", trendlog_id), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[PARSE] Parsing TrendLog ID: {} -> monitor index", trendlog_id), LogLevel::Info);
         let monitor_index = trendlog_id.replace("MONITOR", "").parse::<i32>()
             .map_err(|e| {
-                let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("❌ Invalid TrendLog ID format: {} ({})", trendlog_id, e), LogLevel::Error);
+                let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[ERROR] Invalid TrendLog ID format: {} ({})", trendlog_id, e), LogLevel::Error);
                 AppError::ValidationError("Invalid TrendLog ID format".to_string())
             })?;
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("✅ Monitor index: {}", monitor_index), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[OK] Monitor index: {}", monitor_index), LogLevel::Info);
 
         // 3. Get monitor data from T3000 via FFI
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("📡 Calling GetMonitorBlockData(device={}, monitor={})", device_id, monitor_index), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[CALL] Calling GetMonitorBlockData(device={}, monitor={})", device_id, monitor_index), LogLevel::Info);
         let mut monitor_data = StrMonitorPoint {
             label: [0; 9],
             inputs: [PointNet { number: 0, point_type: 0, panel: 0, sub_panel: 0, network: 0 }; MAX_POINTS_IN_MONITOR],
@@ -965,23 +993,23 @@ impl TrendLogFFIService {
         };
 
         if ffi_result == 0 {
-            let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("❌ GetMonitorBlockData failed for device {} monitor {}", device_id, monitor_index), LogLevel::Error);
+            let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[ERROR] GetMonitorBlockData failed for device {} monitor {}", device_id, monitor_index), LogLevel::Error);
             return Err(AppError::FfiError("Failed to retrieve TrendLog data from T3000".to_string()));
         }
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("✅ GetMonitorBlockData successful, result code: {}", ffi_result), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[OK] GetMonitorBlockData successful, result code: {}", ffi_result), LogLevel::Info);
 
         // 4. Process the FFI monitor data
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "🔧 Processing raw monitor data into TrendLogInfo structure...", LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "[PROCESS] Processing raw monitor data into TrendLogInfo structure...", LogLevel::Info);
         let trendlog_info = Self::process_monitor_data(device_id as i32, trendlog_id, &monitor_data)?;
 
         // 5. Save to database
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "💾 Saving TrendLog info to database...", LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "[SAVE] Saving TrendLog info to database...", LogLevel::Info);
         Self::save_trendlog_to_database(&trendlog_info, db).await?;
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "✅ TrendLog info saved to database successfully", LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "[OK] TrendLog info saved to database successfully", LogLevel::Info);
 
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("🎉 TrendLog FFI sync completed successfully: {} ({} points)",
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[DONE] TrendLog FFI sync completed successfully: {} ({} points)",
             trendlog_info.trendlog_label, trendlog_info.num_inputs), LogLevel::Info);
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "=== TrendLog FFI Sync End ===\n", LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "=== TrendLog FFI Sync End ===\n", LogLevel::Info);
 
         Ok(trendlog_info)
     }
@@ -992,36 +1020,36 @@ impl TrendLogFFIService {
         trendlog_id: &str,
         monitor_data: &StrMonitorPoint
     ) -> Result<TrendLogInfo, AppError> {
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "📊 Processing raw StrMonitorPoint data:", LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "[INFO] Processing raw StrMonitorPoint data:", LogLevel::Info);
 
         // Convert C string label to Rust String
         let label_cstr = unsafe { CStr::from_ptr(monitor_data.label.as_ptr()) };
         let trendlog_label = label_cstr.to_string_lossy().to_string();
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("  📝 Label: '{}'", trendlog_label), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("  [INFO] Label: '{}'", trendlog_label), LogLevel::Info);
 
         // Calculate interval in minutes
         let interval_minutes = monitor_data.hour_interval_time as i32 * 60
             + monitor_data.minute_interval_time as i32
             + (monitor_data.second_interval_time as f32 / 60.0) as i32;
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("  ⏱️ Interval: {}h:{}m:{}s = {} minutes",
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("  [INFO] Interval: {}h:{}m:{}s = {} minutes",
             monitor_data.hour_interval_time, monitor_data.minute_interval_time, monitor_data.second_interval_time, interval_minutes), LogLevel::Info);
 
         // Convert status
         let status = if monitor_data.status == 1 { "ON".to_string() } else { "OFF".to_string() };
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("  🔛 Status: {} (raw: {})", status, monitor_data.status), LogLevel::Info);
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("  📊 Buffer: max_time_length = {}, num_inputs = {}, an_inputs = {}",
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("  [INFO] Status: {} (raw: {})", status, monitor_data.status), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("  [INFO] Buffer: max_time_length = {}, num_inputs = {}, an_inputs = {}",
             monitor_data.max_time_length, monitor_data.num_inputs, monitor_data.an_inputs), LogLevel::Info);
 
         // Process related points
         let mut related_points = Vec::new();
         let num_inputs = monitor_data.num_inputs.min(MAX_POINTS_IN_MONITOR as u8) as usize;
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("  🔍 Processing {} input points:", num_inputs), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("  [INFO] Processing {} input points:", num_inputs), LogLevel::Info);
 
         for i in 0..num_inputs {
             let point = &monitor_data.inputs[i];
             if point.panel > 0 && point.point_type > 0 {  // Valid point
                 // PointNet point_type is 1-based offset from BAC_* constants:
-                // BAC_OUT=0 → point_type=1 (OUTPUT), BAC_IN=1 → point_type=2 (INPUT), BAC_VAR=2 → point_type=3 (VARIABLE)
+                // BAC_OUT=0 -> point_type=1 (OUTPUT), BAC_IN=1 -> point_type=2 (INPUT), BAC_VAR=2 -> point_type=3 (VARIABLE)
                 let point_type = match point.point_type {
                     1 => "OUTPUT",
                     2 => "INPUT",
@@ -1034,7 +1062,7 @@ impl TrendLogFFIService {
                     point.number
                 );
 
-                let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("    Point {}: {} #{} (Panel {}, Network {}, Range {})",
+                let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("    Point {}: {} #{} (Panel {}, Network {}, Range {})",
                     i+1, point_type, point.number, point.panel, point.network, monitor_data.range[i]), LogLevel::Info);
 
                 related_points.push(RelatedPointInfo {
@@ -1046,7 +1074,7 @@ impl TrendLogFFIService {
                     range_value: monitor_data.range[i],
                 });
             } else {
-                let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("    Point {}: EMPTY (panel={}, type={})",
+                let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("    Point {}: EMPTY (panel={}, type={})",
                     i+1, point.panel, point.point_type), LogLevel::Info);
             }
         }
@@ -1055,7 +1083,7 @@ impl TrendLogFFIService {
         let estimated_size_kb = format!("{}KB",
             (num_inputs * monitor_data.max_time_length as usize * 4) / 1024
         );
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("  💾 Estimated data size: {}", estimated_size_kb), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("  [INFO] Estimated data size: {}", estimated_size_kb), LogLevel::Info);
 
         let trendlog_info = TrendLogInfo {
             serial_number,
@@ -1071,7 +1099,7 @@ impl TrendLogFFIService {
             related_points,
         };
 
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("✅ Created TrendLogInfo: '{}' ({} points, {} status, {} sec interval)",
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[OK] Created TrendLogInfo: '{}' ({} points, {} status, {} sec interval)",
             trendlog_info.trendlog_label, trendlog_info.num_inputs, trendlog_info.status, trendlog_info.interval_seconds), LogLevel::Info);
 
         Ok(trendlog_info)
@@ -1082,10 +1110,10 @@ impl TrendLogFFIService {
         info: &TrendLogInfo,
         db: &DatabaseConnection
     ) -> Result<(), AppError> {
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("💾 Saving TrendLog to database: {} (device {})",
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[SAVE] Saving TrendLog to database: {} (device {})",
             info.trendlog_id, info.serial_number), LogLevel::Info);
 
-        // Check by (SerialNumber, TrendlogId) only — panelId is NOT part of unique identity
+        // Check by (SerialNumber, TrendlogId) only - panelId is NOT part of unique identity
         // Find ALL matching records and clean up duplicates
         let existing_records = trendlogs::Entity::find()
             .filter(trendlogs::Column::SerialNumber.eq(info.serial_number))
@@ -1098,8 +1126,8 @@ impl TrendLogFFIService {
             let (first, duplicates) = existing_records.split_first().unwrap();
             if !duplicates.is_empty() {
                 let dup_ids: Vec<i32> = duplicates.iter().map(|d| d.id).collect();
-                let _ = write_structured_log_with_level("T3_Webview_TRL_FFI",
-                    &format!("🧹 Removing {} duplicate trendlog records for {}: ids={:?}",
+                let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI",
+                    &format!("[CLEANUP] Removing {} duplicate trendlog records for {}: ids={:?}",
                         duplicates.len(), info.trendlog_id, dup_ids), LogLevel::Warn);
                 trendlogs::Entity::delete_many()
                     .filter(trendlogs::Column::Id.is_in(dup_ids))
@@ -1120,8 +1148,8 @@ impl TrendLogFFIService {
             update_model.updated_at = Set(Some(Utc::now().to_rfc3339()));
             update_model.update(db).await?;
 
-            let _ = write_structured_log_with_level("T3_Webview_TRL_FFI",
-                &format!("📝 Updated existing TrendLog: SerialNumber={}, TrendlogId={}",
+            let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI",
+                &format!("[INFO] Updated existing TrendLog: SerialNumber={}, TrendlogId={}",
                     info.serial_number, info.trendlog_id), LogLevel::Info);
         } else {
             // INSERT new trendlog record
@@ -1145,7 +1173,7 @@ impl TrendLogFFIService {
             trendlogs::Entity::insert(trendlog_record)
                 .exec(db)
                 .await?;
-            let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "✅ New TrendLog record created", LogLevel::Info);
+            let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "[OK] New TrendLog record created", LogLevel::Info);
         }
 
         // Clear existing MAIN inputs for this TrendLog (any panelId)
@@ -1180,7 +1208,7 @@ impl TrendLogFFIService {
                 .await?;
         }
 
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("✅ Saved {} related points to database", info.related_points.len()), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[OK] Saved {} related points to database", info.related_points.len()), LogLevel::Info);
         Ok(())
     }
 
@@ -1252,3 +1280,4 @@ impl TrendLogFFIService {
         Ok(Some(trendlog_info))
     }
 }
+

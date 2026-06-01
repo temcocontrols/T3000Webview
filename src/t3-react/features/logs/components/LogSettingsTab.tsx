@@ -11,9 +11,11 @@ import {
   Button,
   Spinner,
   Badge,
+  Select,
 } from '@fluentui/react-components';
 import { ArrowClockwiseRegular, SaveRegular, ErrorCircleRegular, InfoRegular } from '@fluentui/react-icons';
 import { API_BASE_URL } from '../../../config/constants';
+import HvConstant from '../../../../lib/t3-hvac/Data/Constant/HvConstant';
 
 const SETTINGS_URL = `${API_BASE_URL}/api/logs/settings`;
 
@@ -53,146 +55,13 @@ interface LogCategoryConfig {
   sinkFile: boolean;
 }
 
-const DEFAULT_SETTINGS: LogCategoryConfig[] = [
-  {
-    category: 'STARTUP',
-    displayName: 'Service Startup',
-    description: 'DLL load, server init, DB connect, sampling state changes',
-    group: 'system',
-    enabled: true,
-    detailMode: 'SUMMARY',
-    minLevel: 'INFO',
-    target: 'sqlite',
-    sinkDb: true,
-    sinkFile: false,
-  },
-  {
-    category: 'AUTH',
-    displayName: 'Authentication',
-    description: 'Login, logout, session events',
-    group: 'system',
-    enabled: true,
-    detailMode: 'SUMMARY',
-    minLevel: 'INFO',
-    target: 'sqlite',
-    sinkDb: true,
-    sinkFile: false,
-  },
-  {
-    category: 'CONFIG',
-    displayName: 'Config Changes',
-    description: 'Operator settings: sync interval, rediscover interval',
-    group: 'system',
-    enabled: true,
-    detailMode: 'SUMMARY',
-    minLevel: 'INFO',
-    target: 'sqlite',
-    sinkDb: true,
-    sinkFile: false,
-  },
-  {
-    category: 'MAINTENANCE',
-    displayName: 'DB Maintenance',
-    description: 'Migration, partition creation, DB size warnings',
-    group: 'system',
-    enabled: true,
-    detailMode: 'SUMMARY',
-    minLevel: 'INFO',
-    target: 'sqlite',
-    sinkDb: true,
-    sinkFile: false,
-  },
-  {
-    category: 'POLL',
-    displayName: 'Device Poll',
-    description: 'Sync cycle: device count, ok/fail totals, policy skips',
-    group: 'operational',
-    enabled: true,
-    detailMode: 'SUMMARY',
-    minLevel: 'INFO',
-    target: 'mssql',
-    sinkDb: true,
-    sinkFile: false,
-  },
-  {
-    category: 'DEVICE',
-    displayName: 'Device Sync',
-    description: 'Per-device: points written, FFI errors, serial=0 skips',
-    group: 'operational',
-    enabled: true,
-    detailMode: 'SUMMARY',
-    minLevel: 'INFO',
-    target: 'mssql',
-    sinkDb: true,
-    sinkFile: false,
-  },
-  {
-    category: 'TRENDLOG',
-    displayName: 'Trendlog',
-    description: 'Trendlog config sync and data write summary',
-    group: 'operational',
-    enabled: true,
-    detailMode: 'SUMMARY',
-    minLevel: 'INFO',
-    target: 'mssql',
-    sinkDb: true,
-    sinkFile: false,
-  },
-  {
-    category: 'API_REQ',
-    displayName: 'API Requests',
-    description: 'HTTP endpoint calls - enable for debugging only',
-    group: 'debug',
-    enabled: false,
-    detailMode: 'SUMMARY',
-    minLevel: 'INFO',
-    target: 'sqlite',
-    sinkDb: true,
-    sinkFile: false,
-  },
-  {
-    category: 'WEBSOCKET',
-    displayName: 'WebSocket',
-    description: 'WS connect/disconnect, message types',
-    group: 'debug',
-    enabled: false,
-    detailMode: 'SUMMARY',
-    minLevel: 'INFO',
-    target: 'sqlite',
-    sinkDb: true,
-    sinkFile: false,
-  },
-  {
-    category: 'FFI_CALL',
-    displayName: 'C++ FFI Calls',
-    description: 'Raw C++ request/response - very high volume',
-    group: 'debug',
-    enabled: false,
-    detailMode: 'FULL',
-    minLevel: 'DEBUG',
-    target: 'sqlite',
-    sinkDb: true,
-    sinkFile: false,
-  },
-  {
-    category: 'MESSAGE_ACTION',
-    displayName: 'Message Action',
-    description: 'Message action processing and command dispatch details',
-    group: 'debug',
-    enabled: false,
-    detailMode: 'FULL',
-    minLevel: 'DEBUG',
-    target: 'sqlite',
-    sinkDb: true,
-    sinkFile: false,
-  },
-];
-
 const normalizeLoadedConfig = (cfg: LogCategoryConfig): LogCategoryConfig => ({
   ...cfg,
   sinkDb: cfg.sinkDb ?? true,
   sinkFile: cfg.sinkFile ?? false,
   target: cfg.target ?? 'sqlite',
+  minLevel: cfg.minLevel ?? 'INFO',
+  detailMode: cfg.detailMode ?? 'SUMMARY',
 });
 
 const GROUP_LABELS: Record<string, string> = {
@@ -205,32 +74,159 @@ const GROUP_ORDER = ['system', 'operational', 'debug'];
 
 type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 
-interface LevelSelection {
-  DEBUG: boolean;
-  INFO: boolean;
-  WARN: boolean;
-  ERROR: boolean;
-}
-
 const LEVEL_ORDER: LogLevel[] = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
 
-const levelSelectionFromMinLevel = (minLevel: string): LevelSelection => {
-  const startIndex = Math.max(0, LEVEL_ORDER.indexOf(minLevel as LogLevel));
+const DETAIL_OPTIONS = ['SUMMARY', 'FULL'] as const;
+
+const formatLevelLabel = (level: LogLevel) => level.charAt(0) + level.slice(1).toLowerCase();
+
+const formatDetailLabel = (detailMode: typeof DETAIL_OPTIONS[number]) =>
+  detailMode.charAt(0) + detailMode.slice(1).toLowerCase();
+
+const isLogLevel = (value: string): value is LogLevel =>
+  (LEVEL_ORDER as readonly string[]).includes(value);
+
+const expandLegacyMinLevel = (rawLevel: string | null | undefined): LogLevel[] => {
+  const normalized = (rawLevel ?? '').trim().toUpperCase();
+
+  if (!normalized) {
+    return [];
+  }
+
+  if (normalized === 'ALL') {
+    return [...LEVEL_ORDER];
+  }
+
+  if (normalized.includes(',')) {
+    const selected = normalized
+      .split(',')
+      .map(part => part.trim())
+      .filter(isLogLevel);
+
+    return LEVEL_ORDER.filter(level => selected.includes(level));
+  }
+
+  if (!isLogLevel(normalized)) {
+    return [];
+  }
+
+  const startIndex = LEVEL_ORDER.indexOf(normalized);
+  return startIndex >= 0 ? [...LEVEL_ORDER.slice(startIndex)] : [];
+};
+
+const serializeMinLevels = (levels: LogLevel[]): string => {
+  const selected = LEVEL_ORDER.filter(level => levels.includes(level));
+
+  if (selected.length === LEVEL_ORDER.length) {
+    return 'ALL';
+  }
+
+  return selected.join(',');
+};
+
+type TraceStepMode = 'summary' | 'full';
+
+interface TraceRuntimeConfig {
+  enabled: boolean;
+  profile: string;
+  featureFilter: string[];
+  stepMode: TraceStepMode;
+  includePayload: boolean;
+  sampleRate: number;
+  ttlSec: number;
+  traceIdMode: string;
+  consoleMirror: boolean;
+}
+
+const getDefaultTraceRuntimeConfig = (): TraceRuntimeConfig => {
+  const fallback: TraceRuntimeConfig = {
+    enabled: false,
+    profile: 'baseline',
+    featureFilter: [],
+    stepMode: 'summary',
+    includePayload: false,
+    sampleRate: 1,
+    ttlSec: 1800,
+    traceIdMode: 'page-session',
+    consoleMirror: false,
+  };
+
+  const defaults = HvConstant.LogConfig?.Trace;
+  if (!defaults || typeof defaults !== 'object') {
+    return fallback;
+  }
+
   return {
-    DEBUG: startIndex <= 0,
-    INFO: startIndex <= 1,
-    WARN: startIndex <= 2,
-    ERROR: true,
+    enabled: defaults.enabled ?? fallback.enabled,
+    profile: defaults.profile ?? fallback.profile,
+    featureFilter: Array.isArray(defaults.featureFilter) ? defaults.featureFilter : fallback.featureFilter,
+    stepMode: defaults.stepMode === 'full' ? 'full' : 'summary',
+    includePayload: defaults.includePayload ?? fallback.includePayload,
+    sampleRate: Math.max(1, Number(defaults.sampleRate) || fallback.sampleRate),
+    ttlSec: Math.max(0, Number(defaults.ttlSec) || fallback.ttlSec),
+    traceIdMode: defaults.traceIdMode ?? fallback.traceIdMode,
+    consoleMirror: defaults.consoleMirror ?? fallback.consoleMirror,
   };
 };
 
-const minLevelFromSelection = (selection: LevelSelection): LogLevel | null => {
-  for (const level of LEVEL_ORDER) {
-    if (selection[level]) {
-      return level;
-    }
+const loadTraceRuntimeConfig = (): TraceRuntimeConfig => {
+  const defaults = getDefaultTraceRuntimeConfig();
+  if (typeof window === 'undefined') {
+    return defaults;
   }
-  return null;
+
+  try {
+    const raw = window.localStorage.getItem('t3.config');
+    if (!raw) {
+      return defaults;
+    }
+
+    const parsed = JSON.parse(raw);
+    const trace = parsed?.log?.trace;
+    if (!trace || typeof trace !== 'object') {
+      return defaults;
+    }
+
+    return {
+      ...defaults,
+      ...trace,
+      stepMode: trace.stepMode === 'full' ? 'full' : 'summary',
+      sampleRate: Math.max(1, Number(trace.sampleRate) || defaults.sampleRate),
+      ttlSec: Math.max(0, Number(trace.ttlSec) || defaults.ttlSec),
+      featureFilter: Array.isArray(trace.featureFilter)
+        ? trace.featureFilter.map((item: unknown) => String(item ?? '').trim().toLowerCase()).filter(Boolean)
+        : defaults.featureFilter,
+    };
+  } catch {
+    return defaults;
+  }
+};
+
+const persistTraceRuntimeConfig = (traceConfig: TraceRuntimeConfig): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  let parsed: Record<string, any> = {};
+
+  try {
+    const raw = window.localStorage.getItem('t3.config');
+    parsed = raw ? JSON.parse(raw) : {};
+  } catch {
+    parsed = {};
+  }
+
+  const nextConfig = {
+    ...parsed,
+    log: {
+      ...(parsed.log || {}),
+      trace: {
+        ...traceConfig,
+      },
+    },
+  };
+
+  window.localStorage.setItem('t3.config', JSON.stringify(nextConfig));
 };
 
 const useStyles = makeStyles({
@@ -434,20 +430,20 @@ const useStyles = makeStyles({
   groupList: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: '6px',
+    gap: '8px',
   },
   settingRow: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px',
-    padding: '10px 12px',
+    gap: '4px',
+    padding: '8px 10px',
     background: '#faf9f8',
     borderRadius: '4px',
     border: '1px solid #edebe9',
   },
   settingRowActive: {
     background: '#f3f9fd',
-    borderColor: '#c7e0f4',
+    border: '1px solid #c7e0f4',
   },
   categoryLabel: {
     display: 'flex',
@@ -479,9 +475,10 @@ const useStyles = makeStyles({
   },
   rowBottom: {
     display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '12px',
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
+    gap: '8px',
   },
   titleCell: {
     display: 'flex',
@@ -538,15 +535,93 @@ const useStyles = makeStyles({
     color: '#605e5c',
     lineHeight: '1.35',
     flex: 1,
-    minWidth: '180px',
+    minWidth: '140px',
   },
   sinksWrap: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
     flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-    minWidth: '170px',
+    justifyContent: 'flex-start',
+    minWidth: 'unset',
+    flex: '0 0 auto',
+  },
+  policyGroups: {
+    display: 'flex',
+    flex: '1 1 auto',
+    flexDirection: 'column',
+    gap: '8px',
+    minWidth: '0',
+  },
+  policyGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flexWrap: 'nowrap',
+  },
+  policyGroupOptions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    flexWrap: 'nowrap',
+    minWidth: 0,
+  },
+  policyGroupLabel: {
+    color: '#605e5c',
+    minWidth: '42px',
+  },
+  emptyState: {
+    padding: '12px',
+    border: '1px solid #edebe9',
+    background: '#faf9f8',
+    color: '#605e5c',
+  },
+  tracePanel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    padding: '10px 12px',
+    background: '#f7fbff',
+    border: '1px solid #c7e0f4',
+  },
+  traceRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    flexWrap: 'wrap',
+  },
+  traceCheckbox: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    cursor: 'pointer',
+    userSelect: 'none',
+    '& input[type="checkbox"]': {
+      width: '14px',
+      height: '14px',
+      minWidth: '14px',
+      margin: 0,
+      cursor: 'pointer',
+      accentColor: '#0078d4',
+    },
+  },
+  traceNumberInput: {
+    width: '72px',
+    height: '24px',
+    border: '1px solid #d2d0ce',
+    borderRadius: '2px',
+    padding: '0 6px',
+    fontSize: '12px',
+  },
+  traceStatusRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flexWrap: 'wrap',
+  },
+  traceStatusValue: {
+    color: '#004578',
+    fontWeight: 600,
   },
   sinkLabel: {
     display: 'flex',
@@ -559,51 +634,23 @@ const useStyles = makeStyles({
     display: 'block',
     marginTop: '2px',
   },
-  '@media (max-width: 920px)': {
-    globalRow: {
-      alignItems: 'flex-start',
-      flexDirection: 'column',
-      gap: '6px',
-    },
-    globalRowLabel: {
-      width: '100%',
-    },
-    groupList: {
-      gridTemplateColumns: '1fr',
-    },
-    rowTop: {
-      flexWrap: 'wrap',
-      gap: '6px',
-    },
-    controlsWrap: {
-      justifyContent: 'flex-start',
-      flexWrap: 'wrap',
-    },
-    rowBottom: {
-      flexDirection: 'column',
-      alignItems: 'stretch',
-      gap: '8px',
-    },
-    sinksWrap: {
-      justifyContent: 'flex-start',
-      minWidth: 'unset',
-    },
-  },
 });
 
-export const LogSettingsTab: React.FC = () => {
+interface LogSettingsTabProps {
+  mainView: 'default' | 'files' | 'flows';
+  onMainViewChange: (view: 'default' | 'files' | 'flows') => void;
+}
+
+export const LogSettingsTab: React.FC<LogSettingsTabProps> = ({ mainView, onMainViewChange }) => {
   const s = useStyles();
   const [settings, setSettings] = useState<LogCategoryConfig[]>([]);
-  const [globalDetailMode, setGlobalDetailMode] = useState('SUMMARY');
-  const [globalLevelSelection, setGlobalLevelSelection] = useState<LevelSelection>(
-    levelSelectionFromMinLevel('INFO')
-  );
-  const [globalSinkDb, setGlobalSinkDb] = useState(true);
-  const [globalSinkFile, setGlobalSinkFile] = useState(false);
+  const [traceConfig, setTraceConfig] = useState<TraceRuntimeConfig>(() => loadTraceRuntimeConfig());
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [traceDirty, setTraceDirty] = useState(false);
+  const [traceSaved, setTraceSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [offlineMode, setOfflineMode] = useState(false);
 
@@ -614,24 +661,14 @@ export const LogSettingsTab: React.FC = () => {
       const data: LogCategoryConfig[] = await fetchSettingsOnce(SETTINGS_URL);
       const normalized = data.map(normalizeLoadedConfig);
       setSettings(normalized);
-      if (normalized.length > 0) {
-        setGlobalDetailMode(normalized[0].detailMode);
-        setGlobalLevelSelection(levelSelectionFromMinLevel(normalized[0].minLevel));
-        setGlobalSinkDb(normalized[0].sinkDb);
-        setGlobalSinkFile(normalized[0].sinkFile);
-      }
       setDirty(false);
       setOfflineMode(false);
     } catch (err) {
       console.error('Failed to load log settings:', err);
-      setSettings(DEFAULT_SETTINGS);
-      setGlobalDetailMode(DEFAULT_SETTINGS[0].detailMode);
-      setGlobalLevelSelection(levelSelectionFromMinLevel(DEFAULT_SETTINGS[0].minLevel));
-      setGlobalSinkDb(DEFAULT_SETTINGS[0].sinkDb);
-      setGlobalSinkFile(DEFAULT_SETTINGS[0].sinkFile);
       setDirty(false);
       setOfflineMode(true);
-      setError('Could not reach the T3000 service — showing local defaults (read-only).');
+      setSettings(prev => prev);
+      setError('Could not reach the T3000 service — category settings are unavailable until the service responds.');
     } finally {
       setLoading(false);
     }
@@ -639,46 +676,19 @@ export const LogSettingsTab: React.FC = () => {
 
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    setTraceConfig(loadTraceRuntimeConfig());
+    setTraceDirty(false);
+  }, []);
+
   const update = (category: string, patch: Partial<LogCategoryConfig>) => {
     setSettings(prev => prev.map(s => s.category === category ? { ...s, ...patch } : s));
     setDirty(true);
     setSaved(false);
   };
 
-  const applyGlobalPolicy = (patch: Pick<LogCategoryConfig, 'detailMode' | 'minLevel' | 'sinkDb' | 'sinkFile'> | Partial<Pick<LogCategoryConfig, 'detailMode' | 'minLevel' | 'sinkDb' | 'sinkFile'>>) => {
-    setSettings(prev => prev.map(item => ({ ...item, ...patch })));
-    setDirty(true);
-    setSaved(false);
-  };
-
-  const updateGlobalLevel = (level: LogLevel, checked: boolean) => {
-    setGlobalLevelSelection(prev => {
-      const next = { ...prev, [level]: checked };
-      const nextMinLevel = minLevelFromSelection(next);
-      if (nextMinLevel) {
-        applyGlobalPolicy({ minLevel: nextMinLevel });
-      } else {
-        setDirty(true);
-        setSaved(false);
-      }
-      return next;
-    });
-  };
-
-  const setAllLevels = (checked: boolean) => {
-    const nextSelection: LevelSelection = {
-      DEBUG: checked,
-      INFO: checked,
-      WARN: checked,
-      ERROR: checked,
-    };
-    setGlobalLevelSelection(nextSelection);
-    if (checked) {
-      applyGlobalPolicy({ minLevel: 'DEBUG' });
-    } else {
-      setDirty(true);
-      setSaved(false);
-    }
+  const updateMinLevels = (category: string, levels: LogLevel[]) => {
+    update(category, { minLevel: serializeMinLevels(levels) });
   };
 
   const save = async () => {
@@ -701,15 +711,32 @@ export const LogSettingsTab: React.FC = () => {
     }
   };
 
+  const updateTraceConfig = (patch: Partial<TraceRuntimeConfig>) => {
+    setTraceConfig(prev => ({ ...prev, ...patch }));
+    setTraceDirty(true);
+    setTraceSaved(false);
+  };
+
+  const applyTraceConfig = () => {
+    persistTraceRuntimeConfig(traceConfig);
+    setTraceDirty(false);
+    setTraceSaved(true);
+    setTimeout(() => setTraceSaved(false), 3000);
+  };
+
   const grouped = GROUP_ORDER.map(group => ({
     group,
     label: GROUP_LABELS[group] ?? group,
     items: settings.filter(s => s.group === group),
   })).filter(g => g.items.length > 0);
 
-  const hasInvalidSinkSelection = settings.some(s => s.enabled) && !globalSinkDb && !globalSinkFile;
-  const hasInvalidLevelSelection = settings.some(s => s.enabled) && !Object.values(globalLevelSelection).some(Boolean);
-  const areAllLevelsSelected = Object.values(globalLevelSelection).every(Boolean);
+  const hasInvalidLevelSelection = settings.some(cfg => cfg.enabled && expandLegacyMinLevel(cfg.minLevel).length === 0);
+  const traceStatusText = [
+    traceConfig.enabled ? 'On' : 'Off',
+    traceConfig.stepMode === 'full' ? 'Full' : 'Summary',
+    `Sample ${traceConfig.sampleRate}`,
+    traceConfig.featureFilter.length > 0 ? `Features: ${traceConfig.featureFilter.join(', ')}` : 'Features: all',
+  ].join(' | ');
 
   return (
     <div className={s.root}>
@@ -723,7 +750,7 @@ export const LogSettingsTab: React.FC = () => {
             appearance={dirty ? 'primary' : 'subtle'}
             icon={saving ? <Spinner size="tiny" /> : <SaveRegular />}
             onClick={save}
-            disabled={saving || !dirty || offlineMode || hasInvalidSinkSelection || hasInvalidLevelSelection}
+            disabled={saving || !dirty || offlineMode || hasInvalidLevelSelection}
             size="small"
           >
             Save Changes
@@ -731,124 +758,100 @@ export const LogSettingsTab: React.FC = () => {
           {saved && (
             <Badge appearance="filled" color="success" size="small">Saved</Badge>
           )}
+          <Button
+            appearance={traceDirty ? 'primary' : 'subtle'}
+            onClick={applyTraceConfig}
+            disabled={!traceDirty}
+            size="small"
+          >
+            Apply Trace Runtime
+          </Button>
+          {traceSaved && (
+            <Badge appearance="filled" color="success" size="small">Trace Applied</Badge>
+          )}
+          <Select
+            size="small"
+            value={mainView}
+            onChange={(_, d) => onMainViewChange(d.value as 'default' | 'files' | 'flows')}
+            style={{ minWidth: '110px', fontSize: '12px', marginLeft: 'auto' }}
+          >
+            <option value="default">Default</option>
+            <option value="files">File Mode</option>
+            <option value="flows">Flow Mode</option>
+          </Select>
         </div>
 
         <div className={s.infoBar}>
           <InfoRegular className={s.infoIcon} />
           <Text size={200} className={s.infoText}>
-            ERROR logs are always written to DB. Changes apply on next log write.
+            ERROR logs are always written to DB. Category switches below are the real runtime policy, and changes apply on the next log write.
           </Text>
         </div>
 
-        <div className={s.globalPolicyBar}>
-          <Text size={400} weight="semibold" className={s.globalPolicyTitle}>Default Logging Settings</Text>
-          <div className={s.globalRows}>
-            <div className={s.globalRow}>
-              <Text size={200} className={s.globalRowLabel}>Detail</Text>
-              <label className={`${s.detailPill} ${globalDetailMode === 'SUMMARY' ? s.detailPillActive : ''}`}>
-                <input
-                  type="radio"
-                  name="global-detail-mode"
-                  checked={globalDetailMode === 'SUMMARY'}
-                  onChange={() => {
-                    setGlobalDetailMode('SUMMARY');
-                    applyGlobalPolicy({ detailMode: 'SUMMARY' });
-                  }}
-                  disabled={offlineMode}
-                  className={s.detailRadioInput}
-                />
-                Summary
-              </label>
-              <label className={`${s.detailPill} ${globalDetailMode === 'FULL' ? s.detailPillActive : ''}`}>
-                <input
-                  type="radio"
-                  name="global-detail-mode"
-                  checked={globalDetailMode === 'FULL'}
-                  onChange={() => {
-                    setGlobalDetailMode('FULL');
-                    applyGlobalPolicy({ detailMode: 'FULL' });
-                  }}
-                  disabled={offlineMode}
-                  className={s.detailRadioInput}
-                />
-                Full
-              </label>
-              <Text size={100} className={s.detailHint}>Summary = compact totals, Full = every event line.</Text>
-            </div>
-
-            <div className={s.globalRow}>
-              <Text size={200} className={s.globalRowLabel}>Levels</Text>
-              <div className={s.levelChecksWrap}>
-                <label className={`${s.policyCheckLabel} ${areAllLevelsSelected ? s.policyCheckActive : ''} ${offlineMode ? s.policyCheckDisabled : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={areAllLevelsSelected}
-                    onChange={e => setAllLevels(e.target.checked)}
-                    disabled={offlineMode}
-                    className={s.policyCheckInput}
-                  />
-                  All
-                </label>
-                {LEVEL_ORDER.map(level => (
-                  <label
-                    key={level}
-                    className={`${s.policyCheckLabel} ${globalLevelSelection[level] ? s.policyCheckActive : ''} ${offlineMode ? s.policyCheckDisabled : ''}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={globalLevelSelection[level]}
-                      onChange={e => updateGlobalLevel(level, e.target.checked)}
-                      disabled={offlineMode}
-                      className={s.policyCheckInput}
-                    />
-                    {level.charAt(0) + level.slice(1).toLowerCase()}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className={s.globalRow}>
-              <Text size={200} className={s.globalRowLabel}>Sinks</Text>
-              <label className={`${s.policyCheckLabel} ${globalSinkDb ? s.policyCheckActive : ''} ${offlineMode ? s.policyCheckDisabled : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={globalSinkDb}
-                  onChange={e => {
-                    setGlobalSinkDb(e.target.checked);
-                    applyGlobalPolicy({ sinkDb: e.target.checked });
-                  }}
-                  disabled={offlineMode}
-                  className={s.policyCheckInput}
-                />
-                Db
-              </label>
-
-              <label className={`${s.policyCheckLabel} ${globalSinkFile ? s.policyCheckActive : ''} ${offlineMode ? s.policyCheckDisabled : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={globalSinkFile}
-                  onChange={e => {
-                    setGlobalSinkFile(e.target.checked);
-                    applyGlobalPolicy({ sinkFile: e.target.checked });
-                  }}
-                  disabled={offlineMode}
-                  className={s.policyCheckInput}
-                />
-                File
-              </label>
+        <div className={s.tracePanel}>
+          <Text size={400} weight="semibold" className={s.globalPolicyTitle}>Trace Runtime (Frontend)</Text>
+          <Text size={100} className={s.levelHint}>
+            This writes to local browser config only. Use this to turn TrendLog trace on without DevTools.
+          </Text>
+          <div className={s.traceStatusRow}>
+            <Text size={200}>Current</Text>
+            <Text size={200} className={s.traceStatusValue}>{traceStatusText}</Text>
+          </div>
+          <div className={s.traceRow}>
+            <label className={s.traceCheckbox}>
+              <input
+                type="checkbox"
+                checked={traceConfig.enabled}
+                onChange={e => updateTraceConfig({ enabled: e.target.checked })}
+              />
+              <Text size={200}>Enable Trace</Text>
+            </label>
+            <label className={s.traceCheckbox}>
+              <input
+                type="checkbox"
+                checked={traceConfig.stepMode === 'full'}
+                onChange={e => updateTraceConfig({ stepMode: e.target.checked ? 'full' : 'summary' })}
+              />
+              <Text size={200}>Full Steps</Text>
+            </label>
+            <label className={s.traceCheckbox}>
+              <input
+                type="checkbox"
+                checked={traceConfig.consoleMirror}
+                onChange={e => updateTraceConfig({ consoleMirror: e.target.checked })}
+              />
+              <Text size={200}>Console Mirror</Text>
+            </label>
+            <label className={s.traceCheckbox}>
+              <input
+                type="checkbox"
+                checked={traceConfig.includePayload}
+                onChange={e => updateTraceConfig({ includePayload: e.target.checked })}
+              />
+              <Text size={200}>Include Payload</Text>
+            </label>
+            <label className={s.traceCheckbox}>
+              <input
+                type="checkbox"
+                checked={traceConfig.featureFilter.length === 0 || traceConfig.featureFilter.includes('trendlog')}
+                onChange={e => updateTraceConfig({ featureFilter: e.target.checked ? ['trendlog'] : [] })}
+              />
+              <Text size={200}>TrendLog Feature</Text>
+            </label>
+            <div className={s.traceRow}>
+              <Text size={200}>Sample Rate</Text>
+              <input
+                type="number"
+                min={1}
+                max={1000}
+                value={traceConfig.sampleRate}
+                aria-label="Trace sample rate"
+                onChange={e => updateTraceConfig({ sampleRate: Math.max(1, Number(e.target.value) || 1) })}
+                className={s.traceNumberInput}
+              />
             </div>
           </div>
-          <Text size={100} className={s.levelHint}>Levels are cumulative. Selecting Debug includes Info, Warn, and Error logs.</Text>
         </div>
-
-        {hasInvalidSinkSelection && !loading && (
-          <div className={s.validationBar}>
-            <ErrorCircleRegular className={s.validationIcon} />
-            <Text size={200} className={s.validationText}>
-              Select at least one global sink target (DB or File) when any category is enabled.
-            </Text>
-          </div>
-        )}
 
         {hasInvalidLevelSelection && !loading && (
           <div className={s.validationBar}>
@@ -884,7 +887,11 @@ export const LogSettingsTab: React.FC = () => {
           )}
 
           <div className={s.groupsWrap}>
-          {grouped.map(({ group, label, items }) => (
+          {grouped.length === 0 && !loading ? (
+            <div className={s.emptyState}>
+              <Text size={200}>No category settings available.</Text>
+            </div>
+          ) : grouped.map(({ group, label, items }) => (
             <div key={group}>
               <Text size={400} weight="semibold" className={s.groupTitle}>
                 {label}
@@ -892,20 +899,89 @@ export const LogSettingsTab: React.FC = () => {
               <div className={s.groupList}>
                 {items.map(cfg => (
                   <div key={cfg.category} className={`${s.settingRow} ${cfg.enabled ? s.settingRowActive : ''}`}>
-                    <label className={s.categoryLabel}>
-                      <input
-                        type="checkbox"
-                        checked={cfg.enabled}
-                        onChange={e => update(cfg.category, { enabled: e.target.checked })}
-                        disabled={offlineMode}
-                        className={s.categoryCheckbox}
-                      />
-                      <div className={s.categoryText}>
-                        <Text size={200} weight="semibold">{cfg.displayName}</Text>
-                        <Text size={100} className={s.categoryCode}>{cfg.category}</Text>
-                        <Text size={100} className={s.descriptionCell}>{cfg.description}</Text>
+                    <div className={s.rowTop}>
+                      <label className={s.categoryLabel}>
+                        <input
+                          type="checkbox"
+                          checked={cfg.enabled}
+                          onChange={e => update(cfg.category, { enabled: e.target.checked })}
+                          disabled={offlineMode}
+                          className={s.categoryCheckbox}
+                        />
+                        <div className={s.categoryText}>
+                          <Text size={200} weight="semibold">{cfg.displayName}</Text>
+                          <Text size={100} className={s.categoryCode}>{cfg.category}</Text>
+                          <Text size={100} className={s.descriptionCell}>{cfg.description}</Text>
+                        </div>
+                      </label>
+                    </div>
+                    <div className={s.rowBottom}>
+                      <div className={s.policyGroups}>
+                        <div className={s.policyGroup}>
+                          <Text size={100} className={s.policyGroupLabel}>Detail</Text>
+                          <div className={s.policyGroupOptions}>
+                            {DETAIL_OPTIONS.map(detailMode => (
+                              <label
+                                key={detailMode}
+                                className={`${s.detailPill} ${cfg.detailMode === detailMode ? s.detailPillActive : ''}`}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`${cfg.category}-detail-mode`}
+                                  checked={cfg.detailMode === detailMode}
+                                  onChange={() => update(cfg.category, { detailMode })}
+                                  disabled={offlineMode}
+                                  className={s.detailRadioInput}
+                                />
+                                <Text size={100}>{formatDetailLabel(detailMode)}</Text>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <div className={s.policyGroup}>
+                          <Text size={100} className={s.policyGroupLabel}>Levels</Text>
+                          {(() => {
+                            const selectedLevels = expandLegacyMinLevel(cfg.minLevel);
+                            const allSelected = selectedLevels.length === LEVEL_ORDER.length;
+
+                            return (
+                              <div className={s.policyGroupOptions}>
+                                <label className={s.policyCheckLabel}>
+                                  <input
+                                    type="checkbox"
+                                    checked={allSelected}
+                                    onChange={e => updateMinLevels(cfg.category, e.target.checked ? [...LEVEL_ORDER] : [])}
+                                    disabled={offlineMode}
+                                    className={s.policyCheckInput}
+                                  />
+                                  <Text size={100}>All</Text>
+                                </label>
+                                {LEVEL_ORDER.map(level => (
+                                  <label key={level} className={s.policyCheckLabel}>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedLevels.includes(level)}
+                                      onChange={e => {
+                                        const next = new Set(selectedLevels);
+                                        if (e.target.checked) {
+                                          next.add(level);
+                                        } else {
+                                          next.delete(level);
+                                        }
+                                        updateMinLevels(cfg.category, [...next]);
+                                      }}
+                                      disabled={offlineMode}
+                                      className={s.policyCheckInput}
+                                    />
+                                    <Text size={100}>{formatLevelLabel(level)}</Text>
+                                  </label>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
                       </div>
-                    </label>
+                    </div>
                   </div>
                 ))}
               </div>

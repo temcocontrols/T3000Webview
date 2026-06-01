@@ -376,7 +376,7 @@ export function useT3000FfiApi() {
 
   /// GetWebviewList - Action 17 (GET_WEBVIEW_LIST) - reads fresh from device (not from cache)
   /// C++ validation: panelId 1-254, serialNumber must match device, objectinstance must match device
-  /// entryType: 1=INPUT (BAC_IN), 2=OUTPUT (BAC_OUT), 3=VARIABLE (BAC_VAR)
+  /// entryType: 0=OUTPUT (BAC_OUT), 1=INPUT (BAC_IN), 2=VARIABLE (BAC_VAR)
   /// Response: { data: { device_data: [ { pid, type, index, id, label, description, digital_analog, range, value, ... } ] } }
   const ffiGetWebviewList = async (
     panelId: number,

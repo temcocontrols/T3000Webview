@@ -733,15 +733,21 @@ async fn save_ini_config(
         )
         .await;
         local_db_mirror_saved = enabled_saved.is_ok() && role_saved.is_ok();
-    }
 
-    let _ = crate::logger::write_structured_log(
-        "T3_Database",
-        &format!(
-            "INI config updated: enabled={}, role={} (restart required)",
-            config.enabled, config.role,
-        ),
-    );
+        crate::logging::service::emit_app_log(
+            &*db,
+            "info",
+            "CONFIG",
+            Some("db_backend_routes"),
+            None,
+            "INI server DB config updated",
+            Some(&format!(
+                "enabled={}, role={} (restart required)",
+                config.enabled, config.role
+            )),
+        )
+        .await;
+    }
 
     Ok(Json(serde_json::json!({
         "success": true,

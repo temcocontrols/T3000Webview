@@ -28,7 +28,7 @@ import {
   ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
-import { API_BASE_URL } from '../../../config/constants';
+import { API_BASE_URL } from '@t3-react/config/constants';
 import styles from './BuildingsPage.module.css';
 
 // Types based on C++ Building_Config struct

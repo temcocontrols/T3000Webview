@@ -14,7 +14,9 @@
       <a-flex wrap="wrap" gap="small" class="controls-main-flex">
         <!-- Time Base Control -->
         <a-flex align="center" gap="small" class="control-group">
-          <a-typography-text class="control-label" style="font-size: 11px;">Time Base:</a-typography-text>
+          <a-tooltip :title="devVersion" placement="bottomLeft">
+            <a-typography-text class="control-label" style="font-size: 11px; cursor: default;">Time Base:</a-typography-text>
+          </a-tooltip>
           <a-dropdown placement="bottomRight">
             <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
               <span>{{ getTimeBaseLabel() }}</span>
@@ -297,33 +299,22 @@
                   <div v-if="shouldShowLoading" class="empty-state-icon">
                     <a-spin size="small" />
                   </div>
-                  <div v-else-if="showLoadingTimeout" class="empty-state-icon">⏱️</div>
-                  <div v-else-if="hasConnectionError" style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 4px;">
-                    <ExclamationCircleOutlined :style="{ fontSize: '16px' }" />
-                    <span style="font-size: 14px; font-weight: 500;">Data Connection Error</span>
+                  <div v-else class="empty-state-icon">
+                    <WifiOutlined :style="{ fontSize: '22px', color: '#bfbfbf' }" />
                   </div>
-                  <div v-else class="empty-state-icon">📊</div>
 
-                  <div v-if="shouldShowLoading" class="empty-state-text">Loading T3000 device data...</div>
-                  <div v-else-if="showLoadingTimeout" class="empty-state-text">Loading Timeout</div>
-                  <div v-else-if="!hasConnectionError" class="empty-state-text">No valid data available</div>
+                  <div v-if="shouldShowLoading" class="empty-state-text">Loading monitor data...</div>
+                  <div v-else class="empty-state-text">No data available</div>
 
                   <div v-if="shouldShowLoading" class="empty-state-subtitle">
-                    Connecting to your T3000 devices to retrieve trend data...
-                  </div>
-                  <div v-else-if="showLoadingTimeout" class="empty-state-subtitle">
-                    Loading took too long (>30s). The system may be busy or experiencing connection issues.
-                  </div>
-                  <div v-else-if="hasConnectionError" class="empty-state-subtitle" style="font-size: 12px;">
-                    Unable to load real-time or historical data. Check system connections.
+                    Retrieving monitor points from device...
                   </div>
                   <div v-else class="empty-state-subtitle">
-                    Configure monitor points to see data series
+                    The monitored device may be offline or not yet connected.
+                    No live data is available at this time.
                   </div>
 
-                  <!-- Refresh button for timeout and error states -->
-                  <div v-if="showLoadingTimeout || hasConnectionError" class="empty-state-actions"
-                       style="margin-top: 16px;">
+                  <div v-if="!shouldShowLoading" class="empty-state-actions" style="margin-top: 16px;">
                     <a-button type="primary" @click="manualRefresh" :loading="isLoading" size="small" style="font-size: 12px;">
                       <ReloadOutlined :style="{ fontSize: '12px', verticalAlign: 'middle' }" /> Refresh Data
                     </a-button>
@@ -1059,6 +1050,8 @@
     DeleteOutlined
   } from '@ant-design/icons-vue'
   import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil'
+  import { logFrontendEvent } from '@/shared/core/logging/frontendLogger'
+  import { createFeatureTraceLogger } from '../../../shared/core/logging/traceLogger'
   import { scheduleItemData } from '@/lib/vue/T3000/Hvac/Data/Constant/RefConstant'
   import { T3000_Data, devVersion } from '@/lib/vue/T3000/Hvac/Data/T3Data'
   import { ranges as rangeDefinitions, T3_Types } from '@/lib/vue/T3000/Hvac/Data/Constant/T3Range'
@@ -1710,6 +1703,7 @@
   const dataSource = ref<'realtime' | 'api'>('realtime') // Track data source for timebase changes
   const hasConnectionError = ref(false) // Track connection errors for UI display
   const hasLoadedInitialHistory = ref(false) // Track if initial history has been loaded
+  const realtimePollCount = ref(0) // Count action=17 polls since page load (kept for reference; no startup skip needed)
 
   interface DbStatusState {
     visible: boolean
@@ -1726,7 +1720,7 @@
     message: '',
   })
 
-  const DB_STATUS_POLL_MS = 10000
+  const DB_STATUS_POLL_MS = 60000
   let dbStatusTimer: ReturnType<typeof setInterval> | null = null
 
   async function checkDbStatus() {
@@ -1916,11 +1910,27 @@
     const inputData = (freshInput?.length ? freshInput : null) ?? props.itemData?.t3Entry?.input
     const rangeData = (freshRange?.length ? freshRange : null) ?? props.itemData?.t3Entry?.range
 
+    // num_inputs: T3000 stores all allocated MON slots in the input[] array but only the first
+    // num_inputs are active. Cap the loop to num_inputs to match T3000 native display.
+    const numInputs: number | undefined = freshMonitorData.value?.num_inputs ?? (props.itemData as any)?.t3Entry?.num_inputs
+
+    LogUtil.Info('📊 generateDataSeries: data source', {
+      usingFreshMonitorData: !!(freshInput?.length),
+      freshInputLength: freshInput?.length ?? 0,
+      propsInputLength: (props.itemData as any)?.t3Entry?.input?.length ?? 0,
+      numInputs,
+      freshMonitorId: freshMonitorData.value?.id ?? null
+    })
+
     if (!inputData?.length || !rangeData?.length) {
       return []
     }
 
-    const actualItemCount = Math.min(inputData.length, rangeData.length)
+    const rawItemCount = Math.min(inputData.length, rangeData.length)
+    // Cap to num_inputs when available so we only render configured slots, matching T3000 native.
+    const actualItemCount = (numInputs != null && numInputs > 0)
+      ? Math.min(numInputs, rawItemCount)
+      : rawItemCount
 
     if (actualItemCount === 0) return []
 
@@ -1963,16 +1973,7 @@
       }
 
       if (!description) {
-        // Device not found yet — log and skip (will be picked up on regenerate)
-        if (panelsDataReady && index < 5) {
-          LogUtil.Debug('⚠️ generateDataSeries: filtered (device not found)', {
-            index, rawPanelId, panelId, pointType, pointNumber,
-            category: pointTypeInfo.category,
-            idToFind: `${pointTypeInfo.category}${pointNumber + 1}`,
-            panelsDataLength: T3000_Data.value.panelsData?.length || 0,
-            rawInputItem: JSON.parse(JSON.stringify(inputItem))
-          })
-        }
+        // Device not found — panel may be offline or not yet cached. Skip.
         continue;
       }
 
@@ -2091,10 +2092,12 @@
       }
 
       // Map from point_type to Action 17 entryType
+      // point_type in AMON config is 1-indexed: 1=OUT, 2=IN, 3=VAR
+      // entryType for GET_WEBVIEW_LIST matches BAC_* defines: 0=BAC_OUT, 1=BAC_IN, 2=BAC_VAR
       const pointTypeToEntryType = (pt: number): number => {
-        if (pt === 1) return 2  // OUT → BAC_OUT
-        if (pt === 2) return 1  // IN  → BAC_IN
-        if (pt === 3) return 3  // VAR → BAC_VAR
+        if (pt === 1) return 0  // OUT → BAC_OUT (0)
+        if (pt === 2) return 1  // IN  → BAC_IN  (1)
+        if (pt === 3) return 2  // VAR → BAC_VAR (2)
         return -1
       }
 
@@ -2133,17 +2136,31 @@
       const fetchPromises = Array.from(fetchSet.values()).map(async ({ panelId, entryType, panel }) => {
         try {
           const sn: number = panel.serial_number ?? panel.panel_serial_number ?? 0
-          const oi: number = panel.object_instance ?? 0
-          if (!sn || !oi) {
-            LogUtil.Warn(`⚠️ fetchFreshPointsForAllPanels: panelId ${panelId} missing serialNumber=${sn} or objectinstance=${oi}`)
+          if (!sn) {
+            LogUtil.Warn(`⚠️ fetchFreshPointsForAllPanels: panelId ${panelId} missing serialNumber — skipping`)
             return
           }
-          const resp = await ffiApi.ffiGetWebviewList(panelId, sn, oi, entryType, 0, 63)
+          const objectInstance: number = panel.object_instance ?? panel.objectInstance ?? 0
+          if (!objectInstance) {
+            LogUtil.Warn(`⚠️ fetchFreshPointsForAllPanels: panelId ${panelId} missing object_instance — skip Action 17 to avoid invalid payload`)
+            return
+          }
+          const resp = await ffiApi.ffiGetWebviewList(
+            panelId,
+            sn,
+            objectInstance,
+            entryType,
+            0,
+            63
+          )
           const deviceData: any[] = resp?.data?.device_data ?? []
           const newCache = new Map(freshWebviewCache.value)
           for (const pt of deviceData) {
-            const cacheKey = `${pt.pid}_${pt.id}`
-            newCache.set(cacheKey, pt)
+            // Normalize pid=0: action 17 may return pid=0 for local panel items.
+            // Use the queried panelId so getDeviceDescription cache lookups hit correctly.
+            const fixedPid = Number(pt.pid) > 0 ? pt.pid : panelId
+            const cacheKey = `${fixedPid}_${pt.id}`
+            newCache.set(cacheKey, { ...pt, pid: fixedPid })
           }
           freshWebviewCache.value = newCache
           LogUtil.Info(`✅ fetchFreshPointsForAllPanels: cached ${deviceData.length} points for panelId=${panelId} entryType=${entryType}`)
@@ -2397,21 +2414,19 @@
       // Process new data for chart data points
       // Batch data is APPENDED to existing data, not replacing it
       const chartDataFormat = newPanelsData.flat()
-      updateChartWithNewData(chartDataFormat)
+      // 🔥 FIX: T3000_Data.panelsData is ONLY updated by action=0 (panel snapshot).
+      // Action=0 returns the device's CURRENT value timestamped with new Date(), which creates a
+      // visual spike on the chart (e.g. showing 20.00°C at page-load time when history shows 14.00°C).
+      // Real-time chart updates come exclusively from sendPeriodicBatchRequest (action=17 polling).
+      // Therefore: NEVER update the chart from the T3000_Data watcher.
+      LogUtil.Debug('⏭️ T3000_Data watcher: Skipping chart update — action=0 snapshot data never plotted (use action=17 polling)')
 
-      // Store real-time data to database if in real-time mode
-      // 🔥 FIX: Only save Action 15 real-time data, NOT Action 0 initial data
-      // Skip batch save on initial load - let history load first
-      LogUtil.Info('💾 T3000_Data watcher: Checking storage conditions', {
-        isRealTime: isRealTime.value,
-        chartDataLength: chartDataFormat.length,
-        dataSeriesLength: dataSeries.value?.length || 0,
-        hasLoadedInitialHistory: hasLoadedInitialHistory.value,
-        willStore: isRealTime.value && chartDataFormat.length > 0 && dataSeries.value?.length > 0 && hasLoadedInitialHistory.value
-      })
-
-      // Only batch save after initial history is loaded (prevents blocking history load with Action 0 data)
-      if (isRealTime.value && chartDataFormat.length > 0 && dataSeries.value?.length > 0 && hasLoadedInitialHistory.value) {
+      // NOTE: DB saves are handled exclusively by updateChartWithNewData → storeRealtimeDataToDatabase.
+      // T3000_Data.panelsData is ONLY updated from action=0 (panel snapshot) responses.
+      // Saving from this watcher would write stale snapshot values (e.g. VAR20=39000 instead of
+      // the live action=17 value 14000), creating spurious spikes in the history DB.
+      // The sendPeriodicBatchRequest → updateChartWithNewData path already saves action=17 data correctly.
+      if (false) { // REMOVED: was saving action=0 stale data to DB — do not re-enable
 
         /*
         LogUtil.Info('💾 T3000_Data watcher: Filtering for chart series storage', {
@@ -2568,7 +2583,16 @@
       destroyAllCharts()
       await nextTick()
 
-      LogUtil.Info('✅Cleared custom date settings and destroyed charts, will reload data for new timebase', {
+      // 🧹 CRITICAL: Clear stale custom-range data points from all series.
+      // The smart-loading coverage check in loadHistoricalDataFromDatabase uses
+      // getExistingDataTimeRange() — if custom data is still present it incorrectly
+      // concludes "data already covers the 5m window" and skips the DB fetch,
+      // leaving the chart empty because the old timestamps don't fit the new X-axis.
+      dataSeries.value.forEach(series => { series.data = [] })
+      // Also reset the history-loaded guard so createAnalogChart triggers a fresh load
+      hasLoadedInitialHistory.value = false
+
+      LogUtil.Info('✅Cleared custom date settings, stale data, and destroyed charts — will reload for new timebase', {
         timeBase: newTimeBase,
         isRealTime: isRealTime.value
       })
@@ -2577,6 +2601,9 @@
       // This ensures fresh data is loaded immediately
       LogUtil.Info('🔄 Calling onTimeBaseChange() directly for custom→preset transition')
       await onTimeBaseChange()
+      // 🆕 FIX: Mark that we just exited custom mode so the first zoom/timebase-change
+      // does a full DB reload instead of gap-only load (avoids break lines from sparse DB data)
+      _justSwitchedFromCustom = true
       return // Exit early - onTimeBaseChange handles everything
     }
 
@@ -2626,6 +2653,8 @@
           // Update charts immediately with extended data
           updateCharts()
 
+          ensureRealtimePollingActive('timebase reuse optimization')
+
           LogUtil.Info('Seamless timebase transition completed', {
             newTimeBase,
             totalDataPoints: dataSeries.value.reduce((sum, series) => sum + series.data.length, 0)
@@ -2639,6 +2668,24 @@
           oldTimeBase,
           newTimeBase
         })
+
+        // ⚡ OPTIMIZATION: Check if in-memory data already covers the new time window.
+        // This handles zoom-in (shorter window is already contained in existing data)
+        // so we can skip the API call entirely and just re-render the chart.
+        const targetWindow = getCurrentTimeWindow() // uses already-updated timeBase.value
+        const coverageCheck = getExistingDataTimeRange()
+        if (coverageCheck && coverageCheck.totalPoints > 0 &&
+            coverageCheck.latestEarliest <= targetWindow.min) {
+          LogUtil.Info('⚡ In-memory data already covers new window — skipping API call, re-rendering only', {
+            newTimeBase,
+            windowMin: new Date(targetWindow.min).toISOString(),
+            dataEarliest: new Date(coverageCheck.latestEarliest).toISOString(),
+            totalPoints: coverageCheck.totalPoints
+          })
+          updateCharts()
+          ensureRealtimePollingActive('timebase in-memory coverage')
+          return
+        }
 
         // 🆕 FIX: Don't show loading state if we already have data
         const existingDataRange = getExistingDataTimeRange()
@@ -2980,7 +3027,145 @@
 
   // 🆔 Unique instance ID to track and prevent duplicate intervals across HMR reloads
   const instanceId = Math.random().toString(36).substring(7)
+  const trendlogTrace = createFeatureTraceLogger({
+    feature: 'trendlog',
+    source: 'trendlog_chart',
+    category: 'MESSAGE_ACTION',
+  })
+
+  const logChartEvent = (action: string, detail: string, params?: unknown[]) => {
+    void logFrontendEvent({
+      level: 'info',
+      category: 'TRENDLOG_CHART',
+      source: 'TrendLogChart',
+      message: `[UI] ${action}: ${detail}`,
+      params,
+    })
+  }
+
+  // ---------------------------------------------------------------------------
+  // Init-flow helpers — write the page-open lifecycle into a real T3_FLOW record
+  // so it appears in the Flow Mode viewer under category TRENDLOG_CHART.
+  // _initFlowId is set by _flowStart() and cleared by _flowDone().
+  // ---------------------------------------------------------------------------
+  let _initFlowId: string | null = null
+  let _initFlowStepT0 = 0
+  const _flowApiBase = () =>
+    `${window.location.protocol}//${window.location.hostname}:9103`
+
+  const _flowStart = async (meta: object): Promise<void> => {
+    try {
+      const res = await fetch(`${_flowApiBase()}/api/flows/frontend-start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          flow_type: 'TRENDLOG_CHART',
+          trigger_src: 'vue_frontend',
+          meta: JSON.stringify(meta),
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        _initFlowId = data.flow_id
+        _initFlowStepT0 = Date.now()
+      }
+    } catch { /* fire-and-forget */ }
+  }
+
+  const _flowStep = async (
+    stepName: string,
+    message: string,
+    details?: object,
+    durationMs?: number,
+  ): Promise<void> => {
+    if (!_initFlowId) return
+    const duration_ms = durationMs ?? (Date.now() - _initFlowStepT0)
+    _initFlowStepT0 = Date.now()
+    try {
+      await fetch(`${_flowApiBase()}/api/flows/${_initFlowId}/client-step`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          step_name: stepName,
+          level: 'info',
+          status: 'ok',
+          duration_ms,
+          message,
+          details: details ? JSON.stringify(details, null, 2) : undefined,
+        }),
+      })
+    } catch { /* fire-and-forget */ }
+  }
+
+  const _flowDone = async (status = 'ok'): Promise<void> => {
+    if (!_initFlowId) return
+    const id = _initFlowId
+    _initFlowId = null
+    try {
+      await fetch(`${_flowApiBase()}/api/flows/${id}/frontend-done`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+    } catch { /* fire-and-forget */ }
+  }
+
   LogUtil.Debug(`📊 TrendLogChart instance created: ${instanceId}`)
+
+  const getTrendlogTraceContext = () => {
+    const routePanelId = Number(route.query.panel_id)
+    const routeTrendlogId = Number(route.query.trendlog_id)
+    const routeSerial = Number(route.query.sn)
+
+    return {
+      instanceId,
+      panelId: Number.isFinite(routePanelId) ? routePanelId : monitorConfig.value?.pid ?? props.itemData?.t3Entry?.pid,
+      trendlogId: Number.isFinite(routeTrendlogId) ? routeTrendlogId : undefined,
+      serialNumber: Number.isFinite(routeSerial) ? routeSerial : undefined,
+      monitorId: monitorConfig.value?.id ?? props.itemData?.t3Entry?.id,
+    }
+  }
+
+  const parseTraceTimestamp = (value: any): number | null => {
+    if (value === null || value === undefined || value === '') return null
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value > 1e12 ? value : value * 1000
+    }
+
+    if (typeof value === 'string') {
+      const numericValue = Number(value)
+      if (Number.isFinite(numericValue)) {
+        return numericValue > 1e12 ? numericValue : numericValue * 1000
+      }
+
+      const parsed = Date.parse(value)
+      if (Number.isFinite(parsed)) {
+        return parsed
+      }
+    }
+
+    return null
+  }
+
+  const extractRealtimeFreshness = (items: any[]) => {
+    const timestampCandidates = ['timestamp', 'time', 'last_update', 'lastUpdate', 'logging_time', 'LoggingTime_Fmt']
+    const sourceTimestamp = items
+      .slice(0, 5)
+      .flatMap(item => timestampCandidates.map(key => parseTraceTimestamp(item?.[key])))
+      .find(value => value !== null) ?? null
+
+    const pollCadenceMs = monitorConfig.value?.dataIntervalMs || realtimeIntervalMs || 15000
+    const staleThresholdMs = Math.max(pollCadenceMs * 2, 30000)
+    const ageMs = sourceTimestamp ? Math.max(0, Date.now() - sourceTimestamp) : null
+
+    return {
+      sourceTimestamp,
+      ageMs,
+      staleThresholdMs,
+      isStale: ageMs !== null && ageMs > staleThresholdMs,
+    }
+  }
 
   // Computed properties
   const chartTitle = computed(() => {
@@ -3081,6 +3266,19 @@
   // Timebase progression for zoom functionality (shorter to longer)
   const timebaseProgression = ['5m', '10m', '30m', '1h', '4h', '12h', '1d', '4d']
 
+  const normalizeCustomModeForPresetSelection = (targetTimeBase: string) => {
+    if (timeBase.value !== 'custom') return
+
+    isRealTime.value = true
+    dataSource.value = 'realtime'
+    timeOffset.value = 0
+
+    LogUtil.Info('🔄 Exiting custom mode via preset selection', {
+      selectedTimeBase: targetTimeBase,
+      isRealTime: isRealTime.value
+    })
+  }
+
   // Computed properties for navigation button states
   const canScroll = computed(() => {
     // Scroll buttons work for all regular timebases (including live mode)
@@ -3150,13 +3348,24 @@
       return
     }
 
+    // Any preset selected while in custom mode should immediately return to live mode.
+    // The timeBase watcher + onTimeBaseChange will perform the full data reload/restart.
+    normalizeCustomModeForPresetSelection(value)
+
     // 🔧 FIX: Timebase only controls X-axis display range (5m, 10m, 30m, 1h)
     // Real-time mode should stay active for all timebases - only 'custom' disables it
     // The Auto Scroll toggle is the primary control for real-time mode
     // Note: Custom date ranges will disable real-time mode separately
 
-    // Now set timebase - the watcher will see the correct isRealTime value
+    // Now set timebase - the watcher will see the correct isRealTime value.
+    // If the user re-selects the same preset, the watcher won't fire, so recover
+    // polling here when the chart should already be in live mode.
+    const isSamePresetSelection = timeBase.value === value
     timeBase.value = value
+
+    if (isSamePresetSelection) {
+      ensureRealtimePollingActive('same preset reselected')
+    }
 
     // Don't call onTimeBaseChange() manually - let the Vue watcher handle timebase changes
     // This prevents duplicate API calls with different trendlog IDs
@@ -3166,6 +3375,26 @@
   // ─── localStorage view-state persistence ─────────────────────────────────────
   // Used to suppress saveViewState during programmatic restoration (avoids double writes)
   let _restoringViewState = false
+
+  // Flag: first timebase zoom after exiting custom mode should do a full DB reload
+  // (not gap-only) to avoid break lines from sparse DB data in the gap window.
+  let _justSwitchedFromCustom = false
+
+  const ensureRealtimePollingActive = (reason: string) => {
+    if (timeBase.value === 'custom' || !isRealTime.value) {
+      return
+    }
+
+    if (!realtimeInterval) {
+      LogUtil.Info('🔄 Re-arming realtime polling for preset mode', {
+        reason,
+        timeBase: timeBase.value,
+        dataSource: dataSource.value,
+        hasMonitorConfig: !!monitorConfig.value
+      })
+      startRealTimeUpdates()
+    }
+  }
 
   const _viewStateKey = () => {
     // props.title is already "TRL{sn}_{panelId}_{trendlogId}" unique per device+panel+trendlog.
@@ -3199,6 +3428,12 @@
       const state = JSON.parse(raw)
       _restoringViewState = true
       if (state.timeBase && state.timeBase !== 'custom') {
+        customStartDate.value = null
+        customEndDate.value = null
+        customStartTime.value = null
+        customEndTime.value = null
+        isRealTime.value = true
+        dataSource.value = 'realtime'
         timeBase.value = state.timeBase
       } else if (state.timeBase === 'custom' && state.customStartMS && state.customEndMS) {
         customStartDate.value = dayjs(state.customStartMS)
@@ -3207,6 +3442,7 @@
         customEndTime.value = dayjs(state.customEndMS)
         timeBase.value = 'custom'
         isRealTime.value = false
+        dataSource.value = 'api'
       }
       if (typeof state.timeOffset === 'number') {
         // Production safety: never restore persisted preset-mode timeOffset.
@@ -4271,8 +4507,11 @@
             crosshairEl.style.zIndex = '999'
             document.body.appendChild(crosshairEl)
 
-            // Derive the hover time from the scale (avoids stale/clamped label from out-of-range points)
-            const hoverTimestamp = xScale?.getValueForPixel?.(caretCanvasX) ?? uniquePoints[0].parsed?.x
+            // Derive the hover time from the SNAPPED data point (not cursor position).
+            // Using caretCanvasX produced a mismatch: time label showed cursor time (e.g. 03:39:00)
+            // while values were taken from the nearest real data point (e.g. 03:38:45), making it
+            // appear as if data existed at a timestamp where the C++ returned an empty response.
+            const hoverTimestamp = snapPoint.parsed?.x ?? xScale?.getValueForPixel?.(caretCanvasX) ?? uniquePoints[0].parsed?.x
             const hoverDate = hoverTimestamp ? new Date(hoverTimestamp) : null
             const timeLabel = hoverDate
               ? hoverDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -5930,39 +6169,90 @@
       ...(response.data.variables || [])
     ]
 
-    // Match each monitor input item with corresponding point from panel data
-    monitorConfigData.inputItems.forEach((inputItem: any, index: number) => {
-      const rangeValue = monitorConfigData.ranges[index] || 0
+    // Match values to chart series identity (panel + id) to avoid index-shift bugs.
+    // If no series exist yet, fall back to monitor input order.
+    const seriesToResolve = dataSeries.value.length > 0
+      ? dataSeries.value.map((series, index) => {
+        const matchingInput = monitorConfigData.inputItems?.find((inputItem: any) => {
+          const expectedDeviceId = generateDeviceId(inputItem.point_type, inputItem.point_number)
+          const expectedPanelId = inputItem.panel === 0
+            ? (monitorConfigData.pid || (route.query.panel_id ? parseInt(route.query.panel_id as string) : 0))
+            : inputItem.panel
+          return expectedDeviceId === series.id && Number(expectedPanelId) === Number(series.panelId)
+        })
 
-      // Find matching point by panel, point_number, and point_type
+        const rangeValue = matchingInput
+          ? (monitorConfigData.ranges?.[monitorConfigData.inputItems.indexOf(matchingInput)] || 0)
+          : (series.unitCode || 0)
+
+        return {
+          index,
+          expectedDeviceId: series.id,
+          expectedPanelId: series.panelId,
+          expectedIndex0: series.pointNumber,
+          expectedIndex1: (series.pointNumber ?? 0) + 1,
+          rangeValue
+        }
+      })
+      : (monitorConfigData.inputItems || []).map((inputItem: any, index: number) => {
+        const expectedDeviceId = generateDeviceId(inputItem.point_type, inputItem.point_number)
+        const expectedPanelId = inputItem.panel === 0
+          ? (monitorConfigData.pid || (route.query.panel_id ? parseInt(route.query.panel_id as string) : 0))
+          : inputItem.panel
+
+        return {
+          index,
+          expectedDeviceId,
+          expectedPanelId,
+          expectedIndex0: Number(inputItem.point_number),
+          expectedIndex1: Number(inputItem.point_number) + 1,
+          rangeValue: monitorConfigData.ranges?.[index] || 0
+        }
+      })
+
+    const normalizePanelId = (value: any): number => {
+      const n = Number(value)
+      return Number.isFinite(n) ? n : -1
+    }
+
+    seriesToResolve.forEach((target) => {
+      const expectedPanelIdNum = normalizePanelId(target.expectedPanelId)
+      const expectedDeviceId = String(target.expectedDeviceId || '').toUpperCase()
+
+      // Prefer ID match; keep index fallback for compatibility with responses lacking IDs.
       const matchingPoint = allPoints.find((point: any) => {
-        const pointPanel = point.panel || point.pid
-        const pointIndex = point.index
-        // point_type: 1=INPUT, 2=OUTPUT, 3=VARIABLE
-        const expectedIndex = inputItem.point_number
+        const pointPanel = normalizePanelId(point.panel ?? point.pid)
+        const pointId = String(point.id || '').toUpperCase()
+        const pointIndex = Number(point.index)
 
-        return pointPanel === inputItem.panel && pointIndex === expectedIndex
+        if (pointPanel !== expectedPanelIdNum) return false
+        if (pointId && expectedDeviceId) return pointId === expectedDeviceId
+
+        return pointIndex === target.expectedIndex0 || pointIndex === target.expectedIndex1
       })
 
       if (matchingPoint) {
-        const processedValue = processDeviceValue(matchingPoint, rangeValue)
+        const processedValue = processDeviceValue(matchingPoint, target.rangeValue)
         results.push([{
           timestamp: Date.now(),
           value: processedValue.value
         }])
 
-        LogUtil.Info(`Matched point ${index}:`, {
-          inputItem,
-          matchingPoint: { index: matchingPoint.index, value: matchingPoint.value, label: matchingPoint.label }
+        LogUtil.Info(`Matched point ${target.index}:`, {
+          expectedDeviceId,
+          expectedPanelId: target.expectedPanelId,
+          matchingPoint: { id: matchingPoint.id, index: matchingPoint.index, value: matchingPoint.value, label: matchingPoint.label }
         })
       } else {
-        // Default data point for unmatched items
         results.push([{
           timestamp: Date.now(),
           value: 0
         }])
 
-        LogUtil.Warn(`⚠️ No matching point for item ${index}`, { inputItem })
+        LogUtil.Warn(`⚠️ No matching point for item ${target.index}`, {
+          expectedDeviceId,
+          expectedPanelId: target.expectedPanelId
+        })
       }
     })
 
@@ -6335,83 +6625,136 @@
    * 🆕 FFI API: Get logging data directly using synchronous FFI call
    * Uses action 15 (LOGGING_DATA) - gets all inputs, outputs, variables in one call
    */
+  /**
+   * 🆕 FFI API: Get real-time point data using action 17 (GET_WEBVIEW_LIST).
+   * Reads directly from the device — no FFI cache, so no startup stale-value spikes.
+   * Calls are split by (panelId, entryType) so only the types actually on screen are fetched.
+   * entryType: 1=INPUT (BAC_IN), 2=OUTPUT (BAC_OUT), 3=VARIABLE (BAC_VAR)
+   */
   const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> => {
-    LogUtil.Info('🚀 sendPeriodicBatchRequest (FFI API action=15)', {
+    LogUtil.Info('🚀 sendPeriodicBatchRequest (FFI API action=17 GET_WEBVIEW_LIST)', {
       hasMonitorConfig: !!monitorConfigData,
       inputItemsCount: monitorConfigData?.inputItems?.length || 0,
       timestamp: new Date().toISOString()
     })
 
     try {
-      // Get serial number and panel ID for LOGGING_DATA request
-      const urlSerialNumber = route.query.sn ? parseInt(route.query.sn as string) : 0
       const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : 0
       const panelsList = T3000_Data.value.panelsList || []
-      const currentSN = urlSerialNumber || (panelsList.length > 0 ? panelsList[0].serial_number : 0)
-      const currentPanelId = urlPanelId || (panelsList.length > 0 ? panelsList[0].panel_number : 1)
+      const mainPanelId = urlPanelId || (panelsList.length > 0 ? panelsList[0].panel_number : 0)
 
-      if (!currentSN) {
-        LogUtil.Error('❌No serial number available for LOGGING_DATA')
+      if (!mainPanelId) {
+        LogUtil.Error('❌No panel ID available for GET_WEBVIEW_LIST')
         return
       }
 
-      // Build the exact set of panel IDs that have live chart series.
-      // Derived from dataSeries (what's actually on screen) rather than always
-      // adding currentPanelId this avoids a wasted call when ALL inputs belong
-      // to a foreign panel (e.g. MON1 pid=144 monitors only panel 11 points).
-      // Falls back to currentPanelId when no series exist yet (initial state).
-      const monitoredPanelIds = new Set<number>(
-        dataSeries.value
-          .map(s => s.panelId)
-          .filter((pid): pid is number => !!pid)
-      )
-      if (monitoredPanelIds.size === 0) monitoredPanelIds.add(currentPanelId)
-
-      // Build per-panel serial number lookup from panelsList.
-      // Each panel has its OWN serial_number we must NOT use the URL panel's SN for foreign panels.
-      // Example: URL panel=144 SN=240488, but panel 53's SN is 249555.
-      const getSerialForPanel = (pid: number): number => {
-        const entry = panelsList.find((p: any) => p.panel_number === pid)
-        return (entry?.serial_number) || currentSN
+      // Map T3000 point_type → action 17 entryType
+      // point_type in AMON config is 1-indexed: 1=OUT, 2=IN, 3=VAR
+      // entryType for GET_WEBVIEW_LIST matches BAC_* defines: 0=BAC_OUT, 1=BAC_IN, 2=BAC_VAR
+      const pointTypeToEntryType = (pt: number): number => {
+        if (pt === 1) return 0  // OUT → BAC_OUT (0)
+        if (pt === 2) return 1  // IN  → BAC_IN  (1)
+        if (pt === 3) return 2  // VAR → BAC_VAR (2)
+        return -1
       }
 
-      LogUtil.Info('📡 FFI API ffiGetLoggingData (action=15)', {
-        panelsToPoll: Array.from(monitoredPanelIds),  // only panels with active series
-        primaryPanel: currentPanelId,
-        primarySN: currentSN,
-        perPanelSN: Array.from(monitoredPanelIds).map(pid => ({ pid, sn: getSerialForPanel(pid) }))
+      // Collect unique (panelId, entryType) combos from active dataSeries.
+      // Avoids calling unnecessary types and avoids hard-coding currentPanelId.
+      const fetchSet = new Map<string, { panelId: number; entryType: number; panel: any }>()
+      for (const series of dataSeries.value) {
+        const pid = series.panelId
+        if (!pid) continue
+        const pt = series.pointType
+        if (!pt) continue
+        const entryType = pointTypeToEntryType(pt)
+        if (entryType < 0) continue
+        const key = `${pid}_${entryType}`
+        if (fetchSet.has(key)) continue
+        const panelEntry = panelsList.find(
+          (p: any) => p.panel_number === pid || p.panel_id === pid || p.id === pid
+        )
+        if (!panelEntry) {
+          LogUtil.Warn(`⚠️ sendPeriodicBatchRequest: panelId ${pid} not found in panelsList`)
+          continue
+        }
+        fetchSet.set(key, { panelId: pid, entryType, panel: panelEntry })
+      }
+
+      // Fallback: when no series exist yet, fetch all types for the main panel
+      if (fetchSet.size === 0) {
+        const panelEntry = panelsList.find(
+          (p: any) => p.panel_number === mainPanelId || p.panel_id === mainPanelId || p.id === mainPanelId
+        )
+        if (panelEntry) {
+          for (const et of [0, 1, 2]) {  // BAC_OUT=0, BAC_IN=1, BAC_VAR=2
+            fetchSet.set(`${mainPanelId}_${et}`, { panelId: mainPanelId, entryType: et, panel: panelEntry })
+          }
+        } else {
+          LogUtil.Error('❌sendPeriodicBatchRequest: main panel not found in panelsList, cannot call GET_WEBVIEW_LIST')
+          return
+        }
+      }
+
+      LogUtil.Info('📡 FFI API ffiGetWebviewList (action=17)', {
+        combos: Array.from(fetchSet.keys()),
+        totalCombos: fetchSet.size,
+        timestamp: new Date().toISOString()
       })
 
-      // Fetch Action 15 for every monitored panel (parallel).
-      // Each call uses that panel's own serial_number NOT the URL panel's SN.
-      const panelResponses = await Promise.all(
-        Array.from(monitoredPanelIds).map(pid => ffiApi.ffiGetLoggingData(pid, getSerialForPanel(pid)))
+      // Fetch action 17 for each (panelId, entryType) combo in parallel.
+      // Each call reads fresh data directly from the device — no FFI stale cache.
+      const fetchResults = await Promise.allSettled(
+        Array.from(fetchSet.values()).map(async ({ panelId, entryType, panel }) => {
+          const sn: number = panel.serial_number ?? panel.panel_serial_number ?? 0
+          if (!sn) {
+            LogUtil.Warn(`⚠️ sendPeriodicBatchRequest: panelId ${panelId} missing serialNumber — skipping`)
+            return [] as any[]
+          }
+          const objectInstance: number = panel.object_instance ?? panel.objectInstance ?? 0
+          if (!objectInstance) {
+            LogUtil.Warn(`⚠️ sendPeriodicBatchRequest: panelId ${panelId} missing object_instance — skip Action 17 to avoid invalid payload`)
+            return [] as any[]
+          }
+          const resp = await ffiApi.ffiGetWebviewList(
+            panelId,
+            sn,
+            objectInstance,
+            entryType,
+            0,
+            63
+          )
+          const rawItems: any[] = resp?.data?.device_data ?? []
+          // Normalize pid=0: action 17 may return pid=0 for local panel items.
+          // Replace with the queried panelId so updateChartWithNewData can match series.
+          return rawItems.map(item => ({
+            ...item,
+            pid: Number(item.pid) > 0 ? item.pid : panelId
+          })) as any[]
+        })
       )
 
       let allPanelItems: any[] = []
-      panelResponses.forEach(response => {
-        if (response && response.data && Array.isArray(response.data)) {
-          response.data.forEach((device: any) => {
-            if (device.device_data && Array.isArray(device.device_data)) {
-              allPanelItems = allPanelItems.concat(device.device_data)
-            }
-          })
+      for (const result of fetchResults) {
+        if (result.status === 'fulfilled') {
+          allPanelItems = allPanelItems.concat(result.value)
+        } else {
+          LogUtil.Warn('⚠️ sendPeriodicBatchRequest: one combo fetch failed:', result.reason)
         }
-      })
+      }
 
-      LogUtil.Debug('📊 Action 15 response received:', {
-        panelsPolled: monitoredPanelIds.size,
+      LogUtil.Debug('📊 Action 17 response received:', {
+        combosPolled: fetchSet.size,
         totalItems: allPanelItems.length,
         timestamp: new Date().toLocaleTimeString()
       })
 
       if (allPanelItems.length > 0) {
-        LogUtil.Info('📊 LOGGING_DATA extracted items', {
-          panelsPolled: monitoredPanelIds.size,
+        LogUtil.Info('📊 GET_WEBVIEW_LIST extracted items', {
+          combosPolled: fetchSet.size,
           totalItems: allPanelItems.length
         })
 
-        // Validate data quality across all panel results
+        // Validate data quality across all results
         const validDataItems = allPanelItems.filter(item =>
           item &&
           typeof item === 'object' &&
@@ -6421,7 +6764,7 @@
           item.id
         )
 
-        LogUtil.Debug('📊 Action 15 processed:', {
+        LogUtil.Debug('📊 Action 17 processed:', {
           totalItems: allPanelItems.length,
           validItems: validDataItems.length,
           willUpdate: validDataItems.length > 0,
@@ -6429,9 +6772,20 @@
         })
 
         if (validDataItems.length > 0) {
-          LogUtil.Debug('🔍Calling updateChartWithNewData with', validDataItems.length, 'items')
-          updateChartWithNewData(validDataItems)
-          // Batch save is done inside updateChartWithNewData - no duplicate call needed
+          realtimePollCount.value++
+          // Action 17 reads directly from the device — no FFI cache, so no startup skip needed.
+          if (isRealTime.value) {
+            // Live mode: update chart AND save to DB
+            LogUtil.Debug('🔍 Calling updateChartWithNewData with', validDataItems.length, 'items (action=17, no cache skip)')
+            updateChartWithNewData(validDataItems)
+            // Batch save is done inside updateChartWithNewData - no duplicate call needed
+          } else {
+            // Custom date mode: save to DB only — don't touch chart display
+            LogUtil.Debug('🔍 Background save only (custom mode):', validDataItems.length, 'items')
+            storeRealtimeDataToDatabase(validDataItems).catch(err => {
+              LogUtil.Warn('Background batch save (custom mode) failed (non-critical)', err)
+            })
+          }
         } else {
           LogUtil.Debug('⚠️ No valid data items - chart will NOT be updated, only scrolled')
         }
@@ -6441,14 +6795,14 @@
           hasConnectionError.value = false
         }
       } else {
-        LogUtil.Debug('⚠️ Action 15 returned no items across all panels', {
-          panelsPolled: monitoredPanelIds.size,
+        LogUtil.Debug('⚠️ Action 17 returned no items across all combos', {
+          combosPolled: fetchSet.size,
           timestamp: new Date().toLocaleTimeString()
         })
       }
 
     } catch (error) {
-      LogUtil.Error('❌FFI API (action=15) failed:', error)
+      LogUtil.Error('❌FFI API (action=17) failed:', error)
       hasConnectionError.value = true
     }
   }
@@ -7019,10 +7373,7 @@
             })
 
             updateChartWithNewData(validItems)
-
-            // Store real-time data to database for historical usage
-            LogUtil.Info('💾 GET_ENTRIES: About to call storeRealtimeDataToDatabase')
-            storeRealtimeDataToDatabase(validItems)
+            // NOTE: storeRealtimeDataToDatabase is called inside updateChartWithNewData — no duplicate call needed here
           } else {
             LogUtil.Warn('⚠️ GET_ENTRIES: No valid items to process', {
               totalReceivedItems: msgData.data?.length || 0,
@@ -7539,6 +7890,26 @@
         })),
         trendlogId: trendlogId
       })
+
+      if (_initFlowId) {
+        await _flowStep('query_params',
+          `sn=${currentSN} panel=${currentPanelId} trendlog=${trendlogId} range=${formattedStartTime}→${formattedEndTime} timebase=${timeBase.value} pts=${specificPoints.length}`,
+          {
+            sn: currentSN,
+            panelId: currentPanelId,
+            trendlogId,
+            startTime: formattedStartTime,
+            endTime: formattedEndTime,
+            timeBase: timeBase.value,
+            timeRangeMinutes,
+            panelCount: panelGroups.size,
+            panels: Array.from(panelGroups.entries()).map(([pid, pts]) => ({
+              panelId: pid, sn: getSnForHistoryPanel(pid), pointCount: pts.length,
+            })),
+            specificPoints: specificPoints.slice(0, 20),
+          }
+        )
+      }
 
       // Fetch all panels in parallel; offline panels return [] (do not throw)
       // Track whether the primary panel's API call actually failed (network error / null response)
@@ -8103,7 +8474,17 @@
       }
 
       // Convert GET_ENTRIES response to RealtimeDataRequest format
-      const realtimeDataPoints: RealtimeDataRequest[] = currentDeviceItems.map(item => {
+      // IMPORTANT: do NOT write fallback zeros to DB. Skip rows when source value is missing/invalid.
+      const toFiniteNumber = (raw: any): number | null => {
+        if (raw === null || raw === undefined || raw === '') return null
+        const n = Number(raw)
+        return Number.isFinite(n) ? n : null
+      }
+
+      const skippedFallbackItems: Array<{ point_id: string; panel_id: number; reason: string; digital_analog: any; raw_value: any; raw_control: any }> = []
+      let zeroValuesFromDevice = 0
+
+      const realtimeDataPoints: RealtimeDataRequest[] = currentDeviceItems.reduce((acc: RealtimeDataRequest[], item) => {
         // Enhanced debugging for point type determination
         const pointId = item.id || 'UNKNOWN'
         const pointType = getCorrectPointTypeFromId(pointId, item.point_type)
@@ -8135,13 +8516,30 @@
         })
         */
 
-        // 🎯 CRITICAL FIX: Use correct value field based on digital_analog
-        // Digital outputs (digital_analog=0): use 'control' field
-        // Analog outputs (digital_analog=1): use 'value' field
-        // This must match the display logic to ensure database consistency
-        const valueToStore = item.digital_analog === 1
-          ? (item.value || 0)      // Analog: use 'value' field
-          : (item.control || 0);   // Digital: use 'control' field (per Str_out_point struct)
+        // Select source field based on digital_analog without fallback-to-zero behavior.
+        // analog(1) => value, digital(0) => control. Unknown => try value first, then control.
+        const digitalAnalog = item.digital_analog
+        const selectedField = digitalAnalog === 1
+          ? 'value'
+          : (digitalAnalog === 0 ? 'control' : (item.value !== undefined && item.value !== null ? 'value' : 'control'))
+        const selectedRaw = selectedField === 'value' ? item.value : item.control
+        const parsedValue = toFiniteNumber(selectedRaw)
+
+        if (parsedValue === null) {
+          skippedFallbackItems.push({
+            point_id: pointId,
+            panel_id: item.pid || currentPanelId,
+            reason: `missing_or_invalid_${selectedField}`,
+            digital_analog: digitalAnalog,
+            raw_value: item.value,
+            raw_control: item.control
+          })
+          return acc
+        }
+
+        if (parsedValue === 0) {
+          zeroValuesFromDevice += 1
+        }
 
         // 🔍 DEBUG: Log value selection for digital outputs
         if (item.digital_analog === 0 && pointId.startsWith('OUT')) {
@@ -8149,27 +8547,45 @@
             digital_analog: item.digital_analog,
             control: item.control,
             value: item.value,
-            valueToStore,
+            selectedField,
+            parsedValue,
             auto_manual: item.auto_manual
           })
         }
 
-        return {
+        acc.push({
           serial_number: getSerialForPanelInSave(item.pid || currentPanelId),
           panel_id: item.pid || currentPanelId,
           point_id: pointId,
           point_index: pointIndex,
           point_type: pointType,
-          value: String(valueToStore), // Store correct field based on digital_analog
+          value: String(parsedValue),
           // Optional fields - with enhanced logic
-          range_field: item.range ? String(item.range) : undefined,
-          digital_analog: item.digital_analog ? String(item.digital_analog) : undefined,
+          range_field: item.range !== undefined && item.range !== null ? String(item.range) : undefined,
+          digital_analog: item.digital_analog !== undefined && item.digital_analog !== null ? String(item.digital_analog) : undefined,
           units: units,
           // Enhanced source tracking
           data_source: 'REALTIME',
           created_by: 'FRONTEND',
           sync_interval: syncInterval // Use user-configured interval
-        }
+        })
+
+        return acc
+      }, [])
+
+      if (skippedFallbackItems.length > 0) {
+        LogUtil.Warn('⚠️ Skipping realtime points with missing/invalid source values (fallback zeros not written)', {
+          skippedCount: skippedFallbackItems.length,
+          totalCandidateItems: currentDeviceItems.length,
+          sampleSkipped: skippedFallbackItems.slice(0, 5)
+        })
+      }
+
+      LogUtil.Info('📏 Realtime payload quality for DB write', {
+        totalCandidateItems: currentDeviceItems.length,
+        acceptedPoints: realtimeDataPoints.length,
+        skippedFallbackItems: skippedFallbackItems.length,
+        zeroValuesFromDevice
       })
 
       // Store batch to database with detailed logging
@@ -8243,7 +8659,9 @@
   /**
    * Update chart with new data from GET_ENTRIES response
    */
-  const updateChartWithNewData = (validDataItems: any[]) => {
+  const updateChartWithNewData = (validDataItems: any[], skipDbSave = false) => {
+    const traceId = trendlogTrace.getTraceId()
+
     LogUtil.Debug('🔥 updateChartWithNewData CALLED', {
       itemsCount: validDataItems?.length || 0,
       hasDataSeries: !!dataSeries.value?.length,
@@ -8274,6 +8692,38 @@
     const timestamp = new Date()
     let matched = 0
     let unmatched = 0
+    let fallbackMatches = 0
+    const mismatchExamples: Array<Record<string, unknown>> = []
+
+    trendlogTrace.info({
+      traceId,
+      flow: 'realtime_poll',
+      step: 'response_received',
+      message: 'Realtime poll response received',
+      context: getTrendlogTraceContext(),
+      metrics: {
+        itemCount: validDataItems.length,
+        seriesCount: dataSeries.value.length,
+      },
+    })
+
+    const freshness = extractRealtimeFreshness(validDataItems)
+    if (freshness.sourceTimestamp !== null || freshness.isStale) {
+      trendlogTrace[freshness.isStale ? 'warn' : 'info']({
+        traceId,
+        flow: 'realtime_poll',
+        step: 'freshness_checked',
+        message: freshness.isStale ? 'Realtime payload appears stale' : 'Realtime payload freshness checked',
+        context: getTrendlogTraceContext(),
+        metrics: {
+          ageMs: freshness.ageMs,
+          staleThresholdMs: freshness.staleThresholdMs,
+          sourceTimestamp: freshness.sourceTimestamp,
+          itemCount: validDataItems.length,
+        },
+        details: freshness.isStale ? { reason: 'source timestamp older than threshold' } : undefined,
+      })
+    }
 
     LogUtil.Debug('🔍 updateChartWithNewData matching attempt:', {
       seriesCount: dataSeries.value.length,
@@ -8294,6 +8744,12 @@
     // 🔎 DEBUG: Show ALL properties of first series to understand structure
     if (dataSeries.value[0]) {
       LogUtil.Debug('🔎 First series FULL object:', dataSeries.value[0])
+    }
+
+    const normalizeId = (value: any): string => String(value ?? '').trim().toUpperCase()
+    const normalizePanelId = (value: any): number => {
+      const n = Number(value)
+      return Number.isFinite(n) ? n : -1
     }
 
     // 🚀 OPTIMIZED APPROACH: Loop through dataSeries (14 max) instead of validDataItems (328)
@@ -8345,12 +8801,47 @@
         return
       }
 
-      // Direct lookup: Find matching item by id and panelId
+      // Direct lookup: Find matching item by normalized identity (id + panelId)
+      const seriesId = normalizeId(series.id)
+      const seriesPanelId = normalizePanelId(series.panelId)
+
+      let usedFallback = false
       const matchedItem = validDataItems.find(item =>
-        item.id === series.id && item.pid === series.panelId
+        normalizeId(item.id) === seriesId && normalizePanelId(item.pid) === seriesPanelId
       )
+      // Fallback: type/index on same panel (handles occasional malformed/missing id in payload)
+      || validDataItems.find(item => {
+        const samePanel = normalizePanelId(item.pid) === seriesPanelId
+        if (!samePanel) return false
+
+        const itemType = Number(item.type)
+        const itemIndex = Number(item.index)
+        const seriesPointType = Number(series.pointType)
+        const seriesPointNumber = Number(series.pointNumber)
+
+        const typeMatches = Number.isFinite(itemType) && Number.isFinite(seriesPointType) && itemType === seriesPointType
+        const indexMatches = Number.isFinite(itemIndex) && Number.isFinite(seriesPointNumber) && (
+          itemIndex === seriesPointNumber || itemIndex === (seriesPointNumber + 1)
+        )
+
+        return typeMatches && indexMatches
+      })
+
+      if (matchedItem) {
+        usedFallback = !(normalizeId(matchedItem.id) === seriesId && normalizePanelId(matchedItem.pid) === seriesPanelId)
+      }
 
       if (!matchedItem) {
+        if (mismatchExamples.length < 3) {
+          mismatchExamples.push({
+            seriesName: series.name,
+            expectedId: series.id,
+            expectedPanelId: series.panelId,
+            expectedPointType: series.pointType,
+            expectedPointNumber: series.pointNumber,
+          })
+        }
+
         LogUtil.Debug(`No match for series ${series.name}:`, {
           searchingFor: { id: series.id, panelId: series.panelId },
           seriesIndex,
@@ -8369,17 +8860,25 @@
         item: { id: matchedItem.id, pid: matchedItem.pid }
       })
 
+      if (usedFallback) {
+        fallbackMatches++
+      }
+
       // 🎯 VALUE SELECTION: Use correct field based on digital_analog (per C struct definition)
       // digital_analog: 0=digital, 1=analog
       // For digital (digital_analog=0): use 'control' field (0=off, 1=on)
       // For analog (digital_analog=1): use 'value' field (int32_t)
+      const digitalAnalogRaw = Number(matchedItem.digital_analog)
+      const isAnalogPoint = digitalAnalogRaw === BAC_UNITS_ANALOG ||
+        (Number.isNaN(digitalAnalogRaw) && series.unitType === 'analog')
+
       let actualValue;
-      if (matchedItem.digital_analog === 1) {
+      if (isAnalogPoint) {
         // Analog: use 'value' field
         actualValue = matchedItem.value;
       } else {
         // Digital: use 'control' field (per Str_out_point struct)
-        actualValue = matchedItem.control;
+        actualValue = matchedItem.control ?? matchedItem.value;
 
         // 🔍 DEBUG: Log for digital outputs
         if (matchedItem.id && matchedItem.id.startsWith('OUT')) {
@@ -8393,17 +8892,18 @@
         }
       }
 
-      const rawValue = actualValue || 0
+      const rawValue = Number(actualValue)
+      const safeRawValue = Number.isFinite(rawValue) ? rawValue : 0
       // 🎯 CRITICAL: Don't scale digital values - control field is already 0 or 1
       // Only scale analog values (which are multiplied by 1000 in database)
-      const scaledValue = matchedItem.digital_analog === 0 ? rawValue : scaleValueIfNeeded(rawValue)
+      const scaledValue = isAnalogPoint ? scaleValueIfNeeded(safeRawValue) : safeRawValue
 
       // 📊 VALUE PRECISION LOGGING: Track how scaling affects small variations
-      if (rawValue >= 1000) {
+      if (safeRawValue >= 1000) {
         LogUtil.Info(`🔍 Value Scaling Analysis for ${series.name}`, {
-          rawValue,
+          rawValue: safeRawValue,
           scaledValue,
-          precisionLoss: rawValue - (scaledValue * 1000),
+          precisionLoss: safeRawValue - (scaledValue * 1000),
           seriesName: series.name,
           note: 'Large values scaled down - check for precision loss'
         })
@@ -8500,8 +9000,42 @@
       validDataItems: validDataItems
     })
 
+    trendlogTrace[unmatched > 0 || fallbackMatches > 0 ? 'warn' : 'info']({
+      traceId,
+      flow: 'realtime_poll',
+      step: 'matching_completed',
+      message: 'Realtime series matching completed',
+      context: getTrendlogTraceContext(),
+      metrics: {
+        matched,
+        unmatched,
+        fallbackMatches,
+        totalSeries: dataSeries.value.length,
+        itemCount: validDataItems.length,
+      },
+    })
+
+    if (mismatchExamples.length > 0) {
+      trendlogTrace.warn({
+        traceId,
+        flow: 'realtime_poll',
+        step: 'mismatch_examples',
+        mode: 'full',
+        message: 'Sample realtime mismatch examples captured',
+        context: getTrendlogTraceContext(),
+        metrics: {
+          totalUnmatched: unmatched,
+          sampleCount: mismatchExamples.length,
+        },
+        details: {
+          examples: mismatchExamples,
+        },
+      })
+    }
+
     // 💾 Store real-time data to database if in real-time mode (async, non-blocking)
-    if (isRealTime.value && validDataItems.length > 0) {
+    // skipDbSave=true when called from T3000_Data watcher (action=0 snapshot data — must NOT be saved)
+    if (!skipDbSave && isRealTime.value && validDataItems.length > 0) {
       // Fire and forget - don't await, don't block chart updates
       storeRealtimeDataToDatabase(validDataItems).catch(err => {
         LogUtil.Warn('Background batch save failed (non-critical)', err)
@@ -8532,6 +9066,18 @@
 
   // 🆕 OPTIMIZATION: Check if we can reuse existing data when changing timebase
   const checkDataReuseOptimization = async (oldTimeBase: string, newTimeBase: string): Promise<boolean> => {
+    // 🆕 FIX: After exiting custom mode the first zoom must do a full reload, not a gap-only
+    // load, to ensure all available DB data for the new timebase is fetched in one shot.
+    // This prevents break lines caused by sparse data in the gap-only window.
+    if (_justSwitchedFromCustom) {
+      _justSwitchedFromCustom = false
+      LogUtil.Info('⚡ Skipping gap optimization: recently exited custom mode — doing full DB reload', {
+        oldTimeBase,
+        newTimeBase
+      })
+      return false
+    }
+
     // Only optimize for real-time mode (5m) or when time offset is 0 (current time view)
     if (!isRealTime.value && timeOffset.value !== 0) {
       LogUtil.Debug('Cannot optimize: Not real-time and has time offset', { timeOffset: timeOffset.value })
@@ -8684,7 +9230,14 @@
           totalDataPointsAfter: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
         })
       } else {
-        LogUtil.Warn('⚠️ No gap data found or query failed', { response: gapDataResponse })
+        // 🆕 FIX: Gap query returned nothing (DB has no records for this older window).
+        // Fall back to a full DB reload for the new timebase so the chart always shows
+        // all available data instead of leaving an empty section.
+        LogUtil.Warn('⚠️ No gap data found — falling back to full DB reload for ' + newTimeBase, {
+          gapStartTime: formattedStartTime,
+          gapEndTime: formattedEndTime
+        })
+        await loadHistoricalDataFromDatabase(true)
       }
 
     } catch (error) {
@@ -8836,8 +9389,23 @@
       try {
         // Try to load historical data - this will create series structure if successful
         LogUtil.Info('🔧 Loading historical data from database')
+        const _histT0 = Date.now()
         await loadHistoricalDataFromDatabase()
+        const _histElapsedMs = Date.now() - _histT0
         LogUtil.Info('✅Historical data loaded successfully')
+        if (_initFlowId) {
+          await _flowStep('history_load',
+            `series=${dataSeries.value.length} pts=${dataSeries.value.reduce((s, x) => s + (x.data?.length ?? 0), 0)} elapsed=${_histElapsedMs}ms`,
+            {
+              seriesCount: dataSeries.value.length,
+              totalPoints: dataSeries.value.reduce((s, x) => s + (x.data?.length ?? 0), 0),
+              elapsedMs: _histElapsedMs,
+              timeBase: timeBase.value,
+              seriesNames: dataSeries.value.map(s => s.name),
+            },
+            _histElapsedMs,
+          )
+        }
 
       } catch (error) {
         LogUtil.Error('= TLChart: Error in data initialization:', error)
@@ -8945,10 +9513,11 @@
     try {
       LogUtil.Debug('🔍addRealtimeDataPoint FIRED at', new Date().toLocaleTimeString() + '.' + new Date().getMilliseconds())
 
-      // Only add data if we're in real-time mode
+      // Background polling: always poll the device even in custom date range mode
+      // so no data gaps occur in the DB. Chart visual update is skipped when !isRealTime.
       if (!isRealTime.value) {
-        LogUtil.Debug('🔍EXIT: Not in real-time mode')
-        return
+        LogUtil.Debug('🔍 Background polling (custom mode) - will save to DB, skip chart update')
+        // Fall through — sendPeriodicBatchRequest will save only, not update chart
       }
 
       // Safety check: If no data series exist, skip processing
@@ -8958,16 +9527,28 @@
       }
 
       // Check if we have real monitor configuration for live data
-      const monitorConfigData = monitorConfig.value
+      let monitorConfigData = monitorConfig.value
 
       if (!monitorConfigData) {
-        LogUtil.Debug('🔍EXIT: No monitor config')
-        return
-      }
+        LogUtil.Warn('⚠️ addRealtimeDataPoint: monitorConfig missing, attempting in-tick recovery')
 
-      if (!monitorConfigData.inputItems || monitorConfigData.inputItems.length === 0) {
-        LogUtil.Debug('🔍EXIT: No input items in monitor config')
-        return
+        monitorConfigData = await getMonitorConfigFromT3000Data()
+
+        if (!monitorConfigData) {
+          monitorConfigData = await createTempMonitorConfigFromProps()
+        }
+
+        if (monitorConfigData) {
+          monitorConfig.value = monitorConfigData
+          LogUtil.Info('✅ addRealtimeDataPoint: monitorConfig recovered in polling tick', {
+            pid: monitorConfigData.pid,
+            inputItems: monitorConfigData.inputItems?.length || 0,
+            dataIntervalMs: monitorConfigData.dataIntervalMs
+          })
+        } else {
+          LogUtil.Debug('🔍EXIT: No monitor config (recovery failed)')
+          return
+        }
       }
 
       LogUtil.Debug('🔍All checks passed - calling sendPeriodicBatchRequest')
@@ -9011,7 +9592,10 @@
         // Don't clear data - let accumulated points remain visible
       }
 
-      updateCharts()
+      // Only scroll/update the chart when in live mode
+      if (isRealTime.value) {
+        updateCharts()
+      }
     } catch (error) {
       // 🛡️CRITICAL ERROR HANDLER: Catch ANY error to prevent interval from stopping
       // This ensures the polling continues even if there are unexpected errors
@@ -9216,6 +9800,13 @@
   const updateAnalogChart = async () => {
     if (!analogChartInstance) {
       LogUtil.Debug('📊 updateAnalogChart: No analog chart instance available')
+      trendlogTrace.warn({
+        flow: 'render',
+        step: 'render_skipped',
+        message: 'Render skipped because chart instance is unavailable',
+        context: getTrendlogTraceContext(),
+        details: { reason: 'no_chart_instance' },
+      })
       return
     }
 
@@ -9225,6 +9816,17 @@
     // Skip only when BOTH analog and digital have nothing to draw
     if (visibleAnalog.length === 0 && visibleAnalogSeries.value.length > 0 && !hasVisibleDigital) {
       LogUtil.Debug('⏸️ updateAnalogChart: No analog data yet and no digital data — skipping to preserve existing chart')
+      trendlogTrace.info({
+        flow: 'render',
+        step: 'render_skipped',
+        message: 'Render skipped because no visible analog or digital points are ready',
+        context: getTrendlogTraceContext(),
+        metrics: {
+          visibleAnalogSeries: visibleAnalogSeries.value.length,
+          visibleDigitalSeries: visibleDigitalSeries.value.length,
+        },
+        details: { reason: 'no_visible_points' },
+      })
       return
     }
 
@@ -9504,6 +10106,48 @@
       // Break when gap > 3× the recording interval, but never below 2 minutes
       const gapThresholdMs = Math.max(effectiveIntervalMs * 3, 2 * 60 * 1000)
 
+      // ── Isolated-spike filter ──────────────────────────────────────────────
+      // Replace single-point outliers with null so they don't draw a spike line.
+      // A point is an isolated spike when:
+      //   • it deviates from the series median by more than 5× MAD, AND
+      //   • both its nearest real neighbors agree with each other (they are stable),
+      //     i.e. the jump to EACH neighbor is large but the neighbors themselves are close.
+      // This catches cases like one Action-0 snapshot value (20.00) surrounded by
+      // stable historical readings (14.00) without affecting genuine step-changes
+      // where the value legitimately moves and stays at the new level.
+      const spikeFilteredData = (() => {
+        if (realOnly.length < 3) return sortedAll // too few points to judge reliably
+        const sortedVals = realOnly.map(p => Number(p.value)).sort((a, b) => a - b)
+        const medianVal = sortedVals[Math.floor(sortedVals.length / 2)]
+        const absDevs = sortedVals.map(v => Math.abs(v - medianVal)).sort((a, b) => a - b)
+        const mad = absDevs[Math.floor(absDevs.length / 2)]
+        // When MAD=0 (>50% of values are identical at the median), spikeThreshold becomes 0.
+        // The remaining logic still correctly handles this case:
+        //   - Values equal to the median: |v - median| = 0 ≤ 0 → kept
+        //   - Extreme outlier (e.g. 0xCCCCCC garbage): |v - median| > 0 → checked → filtered
+        //   - Genuine step-change (v stays at new level): next neighbor ≠ prev neighbor
+        //     so the "both neighbors agree" condition fails → NOT filtered
+        const spikeThreshold = mad * 5
+        return sortedAll.map((pt, idx) => {
+          if (pt.value === null || pt.value === undefined || isNaN(Number(pt.value))) return pt
+          const v = Number(pt.value)
+          if (Math.abs(v - medianVal) <= spikeThreshold) return pt // within normal range
+          // Find nearest real neighbors (skip null entries)
+          const prev = sortedAll.slice(0, idx).reverse().find(p => p.value !== null && p.value !== undefined && !isNaN(Number(p.value)))
+          const next = sortedAll.slice(idx + 1).find(p => p.value !== null && p.value !== undefined && !isNaN(Number(p.value)))
+          if (!prev || !next) return pt // no neighbors — keep edge points
+          const pv = Number(prev.value)
+          const nv = Number(next.value)
+          // Isolated spike: both jumps are large, but the two neighbors agree with each other
+          if (Math.abs(v - pv) > spikeThreshold && Math.abs(v - nv) > spikeThreshold && Math.abs(pv - nv) <= spikeThreshold) {
+            LogUtil.Debug(`🔕 Spike suppressed in ${series.name} at ${new Date(pt.timestamp).toLocaleTimeString()}: value=${v}, neighbors=${pv}/${nv}, threshold=${spikeThreshold.toFixed(2)}`)
+            return { ...pt, value: null }
+          }
+          return pt
+        })
+      })()
+      // ──────────────────────────────────────────────────────────────────────
+
       const MAX_NULL_RUN = 5
       const dataWithGaps: Array<{ x: number; y: number | null }> = []
       // Band-transform: look up which band this series belongs to.
@@ -9513,8 +10157,8 @@
 
       let lastRealX: number | null = null
       let j = 0
-      while (j < sortedAll.length) {
-        const pt = sortedAll[j]
+      while (j < spikeFilteredData.length) {
+        const pt = spikeFilteredData[j]
         const isNullPt = pt.value === null || pt.value === undefined || isNaN(Number(pt.value))
         if (!isNullPt) {
           // Time-gap break: insert null spacer if jump is too large
@@ -9528,8 +10172,8 @@
           // Count the full consecutive null run starting at j
           let nullCount = 0
           const runStart = j
-          while (j < sortedAll.length) {
-            const npt = sortedAll[j]
+          while (j < spikeFilteredData.length) {
+            const npt = spikeFilteredData[j]
             if (npt.value === null || npt.value === undefined || isNaN(Number(npt.value))) {
               nullCount++
               j++
@@ -9537,8 +10181,8 @@
           }
           if (nullCount >= MAX_NULL_RUN) {
             // Insert one null spacer at the midpoint to break the line.
-            const prevX = runStart > 0 ? sortedAll[runStart - 1].timestamp : sortedAll[runStart].timestamp
-            const nextX = j < sortedAll.length ? sortedAll[j].timestamp : prevX
+            const prevX = runStart > 0 ? spikeFilteredData[runStart - 1].timestamp : spikeFilteredData[runStart].timestamp
+            const nextX = j < spikeFilteredData.length ? spikeFilteredData[j].timestamp : prevX
             dataWithGaps.push({ x: (prevX + nextX) / 2, y: null })
             lastRealX = null // reset so next real point doesn't double-break
           }
@@ -9771,6 +10415,19 @@
 
     analogChartInstance.data.datasets = datasets
 
+    trendlogTrace.info({
+      flow: 'render',
+      step: 'datasets_built',
+      message: 'Chart datasets built for render',
+      context: getTrendlogTraceContext(),
+      metrics: {
+        datasetCount: datasets.length,
+        totalPoints: datasets.reduce((sum, ds) => sum + ds.data.length, 0),
+        visibleAnalogSeries: visibleAnalog.length,
+        visibleDigitalSeries: visibleDigitalSeries.value.length,
+      },
+    })
+
     // Update x-axis configuration
     if (analogChartInstance.options.scales?.x) {
       const xScale = analogChartInstance.options.scales.x as any
@@ -9962,6 +10619,17 @@
     }
 
     analogChartInstance.update('none') // No animation but full scale recalculation
+
+    trendlogTrace.info({
+      flow: 'render',
+      step: 'render_completed',
+      message: 'Chart render completed',
+      context: getTrendlogTraceContext(),
+      metrics: {
+        datasetCount: analogChartInstance.data.datasets.length,
+        totalPoints: analogChartInstance.data.datasets.reduce((sum, ds) => sum + ds.data.length, 0),
+      },
+    })
   }
 
   const updateDigitalCharts = async () => {
@@ -10068,6 +10736,24 @@
 
     // Update the time offset to track navigation
     timeOffset.value -= shiftMinutes
+    logChartEvent('navigate_back', `shift=${shiftMinutes}m timebase=${timeBase.value} offset=${timeOffset.value}`, [
+      { shiftMinutes, timeBase: timeBase.value, timeOffset: timeOffset.value, isRealTime: isRealTime.value },
+    ])
+
+    // ⚡ OPTIMIZATION: If in-memory data already covers the new window, just re-render.
+    // Use latestEarliest (most conservative: all series must cover) to avoid showing gaps.
+    const leftTargetWindow = getCurrentTimeWindow() // uses updated timeOffset
+    const leftCoverage = getExistingDataTimeRange()
+    if (leftCoverage && leftCoverage.totalPoints > 0 &&
+        leftCoverage.latestEarliest <= leftTargetWindow.min) {
+      LogUtil.Info('⚡ Scroll left: In-memory data covers window — skipping API call', {
+        windowMin: new Date(leftTargetWindow.min).toISOString(),
+        dataEarliest: new Date(leftCoverage.latestEarliest).toISOString(),
+        timeOffset: timeOffset.value
+      })
+      updateCharts()
+      return
+    }
 
     // Regenerate data for the new time window
     await initializeData()
@@ -10089,6 +10775,27 @@
     if (timeOffset.value === 0) {
       isRealTime.value = true
       startRealTimeUpdates()
+      logChartEvent('navigate_forward', 'returned_to_live_mode offset=0', [
+        { shiftMinutes, timeBase: timeBase.value, timeOffset: timeOffset.value, isRealTime: isRealTime.value },
+      ])
+      return
+    }
+
+    logChartEvent('navigate_forward', `shift=${shiftMinutes}m timebase=${timeBase.value} offset=${timeOffset.value}`, [
+      { shiftMinutes, timeBase: timeBase.value, timeOffset: timeOffset.value, isRealTime: isRealTime.value },
+    ])
+
+    // ⚡ OPTIMIZATION: If in-memory data already covers the new window, just re-render.
+    const rightTargetWindow = getCurrentTimeWindow() // uses updated timeOffset
+    const rightCoverage = getExistingDataTimeRange()
+    if (rightCoverage && rightCoverage.totalPoints > 0 &&
+        rightCoverage.latestEarliest <= rightTargetWindow.min) {
+      LogUtil.Info('⚡ Scroll right: In-memory data covers window — skipping API call', {
+        windowMin: new Date(rightTargetWindow.min).toISOString(),
+        dataEarliest: new Date(rightCoverage.latestEarliest).toISOString(),
+        timeOffset: timeOffset.value
+      })
+      updateCharts()
       return
     }
 
@@ -10097,6 +10804,9 @@
   }
 
   const zoomIn = () => {
+    // If called while in custom mode (e.g., keyboard path), normalize first.
+    normalizeCustomModeForPresetSelection('5m')
+
     // Guard: Don't allow zoom for custom date ranges
     if (timeBase.value === 'custom') return
 
@@ -10108,6 +10818,9 @@
       // Real-time updates continue regardless of timebase selection
       // Just change timebase - let the watcher handle data loading with smart detection
       timeBase.value = newTimebase
+      logChartEvent('zoom_in', `timebase=${newTimebase}`, [
+        { previousTimebase: timebaseProgression[currentIndex], newTimebase, timeOffset: timeOffset.value, isRealTime: isRealTime.value },
+      ])
 
       LogUtil.Info(`🔍 Zoom In: Changed timebase to ${newTimebase}`, {
         autoScrollState: isRealTime.value,
@@ -10118,6 +10831,9 @@
   }
 
   const zoomOut = () => {
+    // If called while in custom mode (e.g., keyboard path), normalize first.
+    normalizeCustomModeForPresetSelection('5m')
+
     // Guard: Don't allow zoom for custom date ranges
     if (timeBase.value === 'custom') return
 
@@ -10129,6 +10845,9 @@
       // Real-time updates continue regardless of timebase selection
       // Just change timebase - let the watcher handle data loading with smart detection
       timeBase.value = newTimebase
+      logChartEvent('zoom_out', `timebase=${newTimebase}`, [
+        { previousTimebase: timebaseProgression[currentIndex], newTimebase, timeOffset: timeOffset.value, isRealTime: isRealTime.value },
+      ])
 
       LogUtil.Info(`🔍 Zoom Out: Changed timebase to ${newTimebase}`, {
         autoScrollState: isRealTime.value,
@@ -10146,12 +10865,14 @@
     })
 
     // Reset states first
+    normalizeCustomModeForPresetSelection('5m')
     timeOffset.value = 0 // Reset time navigation as well
     isRealTime.value = true // 🆕 FIX: Reset button should always turn Auto Scroll ON
 
     // Use nextTick to ensure DOM is stable before changing timeBase
     nextTick(() => {
       timeBase.value = '5m'
+      ensureRealtimePollingActive('reset to default timebase')
 
       LogUtil.Info('🔄 Reset to default timebase (5m) with Auto Scroll ON', {
         autoScrollState: isRealTime.value,
@@ -10890,10 +11611,36 @@
         await initializeData()
       }
 
-      // 🔥 FIX: Restart realtime updates if in realtime mode after timebase change
-      if (isRealTime.value && monitorConfig.value) {
-        LogUtil.Info('🔄 Restarting realtime updates after timebase change')
-        startRealTimeUpdates()
+      // 🔥 FIX: Restart realtime updates if in realtime mode after timebase change.
+      // Recover monitor config first because custom-range flows may temporarily leave it unset.
+      if (isRealTime.value) {
+        let activeMonitorConfig = monitorConfig.value
+
+        if (!activeMonitorConfig) {
+          LogUtil.Warn('⚠️ onTimeBaseChange: monitorConfig missing after timebase switch, attempting recovery')
+
+          activeMonitorConfig = await getMonitorConfigFromT3000Data()
+
+          if (!activeMonitorConfig) {
+            activeMonitorConfig = await createTempMonitorConfigFromProps()
+          }
+
+          if (activeMonitorConfig) {
+            monitorConfig.value = activeMonitorConfig
+            LogUtil.Info('✅ onTimeBaseChange: monitorConfig recovered for realtime restart', {
+              pid: activeMonitorConfig.pid,
+              inputItems: activeMonitorConfig.inputItems?.length || 0,
+              dataIntervalMs: activeMonitorConfig.dataIntervalMs
+            })
+          } else {
+            LogUtil.Warn('⚠️ onTimeBaseChange: monitorConfig recovery failed; skipping realtime restart')
+          }
+        }
+
+        if (monitorConfig.value) {
+          LogUtil.Info('🔄 Restarting realtime updates after timebase change')
+          startRealTimeUpdates()
+        }
       }
     }
   }
@@ -10902,8 +11649,9 @@
     if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
       LogUtil.Debug('= TLChart DataFlow: Custom date range selected - fetching historical data')
 
-      // Stop any real-time updates when using custom dates
-      stopRealTimeUpdates()
+      // Keep background polling running — interval fires in background-only mode (!isRealTime)
+      // so device data continues to be saved to DB while viewing history (no gaps).
+      // Do NOT call stopRealTimeUpdates() here.
 
       // Extract device parameters
       const deviceParams = extractDeviceParameters()
@@ -10981,6 +11729,12 @@
 
       // Digital data is now part of the unified chart update
       LogUtil.Debug('= TLChart DataFlow: Charts updated with custom range data')
+
+      // Ensure background polling is active after historical load
+      if (!realtimeInterval) {
+        LogUtil.Debug('= TLChart DataFlow: Restarting background polling after custom date load')
+        startRealTimeUpdates()
+      }
     }
   }
 
@@ -11816,7 +12570,27 @@
   }
 
   const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[] => {
+    const traceId = trendlogTrace.getTraceId()
     LogUtil.Debug('= TLChart DataFlow: Converting API data to chart series format')
+    const unmatchedSeriesExamples: Array<Record<string, unknown>> = []
+
+    const mapPrefixToPointType = (prefix?: string): string => {
+      if (prefix === 'IN') return 'INPUT'
+      if (prefix === 'OUT') return 'OUTPUT'
+      if (prefix === 'VAR') return 'VARIABLE'
+      if (prefix === 'HOL') return 'MONITOR'
+      return ''
+    }
+
+    const parseSeriesIdentityFromItemType = (itemType?: string): { panelId?: number; pointId?: string } => {
+      if (!itemType) return {}
+      const match = itemType.match(/^(\d+)([A-Z]+)(\d+)$/)
+      if (!match) return {}
+      return {
+        panelId: parseInt(match[1], 10),
+        pointId: `${match[2]}${match[3]}`
+      }
+    }
 
     // Store original series for name preservation and MAINTAIN ORIGINAL SEQUENCE
     const originalSeries = dataSeries.value || []
@@ -11825,11 +12599,12 @@
       preservingSequence: originalSeries.length > 0
     })
 
-    // Group data points by point_id and point_type
+    // Group data points by panel_id + point_type + point_id
     const groupedData = new Map<string, any[]>()
 
     apiData.forEach(point => {
-      const key = `${point.point_type}_${point.point_id}`
+      const pointPanelId = point.panel_id ?? point.pid ?? 'unknown'
+      const key = `${pointPanelId}_${point.point_type}_${point.point_id}`
       if (!groupedData.has(key)) {
         groupedData.set(key, [])
       }
@@ -11851,15 +12626,32 @@
 
     // Process in original series order to maintain sequence
     originalSeries.forEach((originalSeries, index) => {
+      const parsedIdentity = parseSeriesIdentityFromItemType(originalSeries.itemType)
+      const seriesPanelId = originalSeries.panelId ?? parsedIdentity.panelId
+      const seriesPointId = originalSeries.id ?? parsedIdentity.pointId
+      const seriesPointType = originalSeries.pointType
+        ? mapPointTypeFromNumber(originalSeries.pointType)
+        : mapPrefixToPointType(originalSeries.prefix)
+
       // Find matching API data for this original series
       let matchingApiData: any[] | undefined = undefined
       let matchedKey: string | undefined = undefined
+
+      // Strategy 0: exact identity match by panel + point_type + point_id
+      if (seriesPanelId !== undefined && seriesPointId && seriesPointType) {
+        const exactKey = `${seriesPanelId}_${seriesPointType}_${seriesPointId}`
+        const exactMatch = groupedData.get(exactKey)
+        if (exactMatch) {
+          matchingApiData = exactMatch
+          matchedKey = exactKey
+        }
+      }
 
       // Try different matching strategies
       groupedData.forEach((apiPoints, apiKey) => {
         if (matchingApiData) return // Already found a match
 
-        const [apiPointType, apiPointId] = apiKey.split('_')
+        const [_apiPanelId, apiPointType, apiPointId] = apiKey.split('_')
 
         // Strategy 1: Match by itemType containing point ID
         if (originalSeries.itemType && originalSeries.itemType.includes(apiPointId)) {
@@ -11913,7 +12705,12 @@
           itemType: originalSeries.itemType,
           prefix: originalSeries.prefix,
           // PRESERVE ORIGINAL DESCRIPTION - no time range labels
-          description: originalSeries.description
+          description: originalSeries.description,
+          pointType: originalSeries.pointType,
+          pointNumber: originalSeries.pointNumber,
+          panelId: originalSeries.panelId,
+          id: originalSeries.id,
+          key: originalSeries.key
         }
 
         series.push(seriesConfig)
@@ -11925,6 +12722,16 @@
         })
       } else {
         // No matching API data - create empty series to maintain sequence
+        if (unmatchedSeriesExamples.length < 3) {
+          unmatchedSeriesExamples.push({
+            seriesName: originalSeries.name,
+            itemType: originalSeries.itemType,
+            expectedPanelId: seriesPanelId,
+            expectedPointId: seriesPointId,
+            expectedPointType: seriesPointType,
+          })
+        }
+
         const emptySeries: SeriesConfig = {
           name: originalSeries.name,
           color: originalSeries.color || colors[index % colors.length],
@@ -11936,6 +12743,11 @@
           itemType: originalSeries.itemType,
           prefix: originalSeries.prefix,
           description: originalSeries.description,
+          pointType: originalSeries.pointType,
+          pointNumber: originalSeries.pointNumber,
+          panelId: originalSeries.panelId,
+          id: originalSeries.id,
+          key: originalSeries.key,
           isEmpty: true // Mark as empty for UI handling
         }
 
@@ -11966,6 +12778,40 @@
         } : null
       }))
     })
+
+    trendlogTrace[series.some(s => s.isEmpty) ? 'warn' : 'info']({
+      traceId,
+      flow: 'history_load',
+      step: 'mapping_completed',
+      message: 'Historical API data mapped to TrendLog series',
+      context: getTrendlogTraceContext(),
+      metrics: {
+        apiDataCount: apiData.length,
+        timeRangeMinutes: timeRanges?.durationMinutes,
+        totalSeries: series.length,
+        itemsWithData: series.filter(s => !s.isEmpty).length,
+        emptySeries: series.filter(s => s.isEmpty).length,
+        totalDataPoints: series.reduce((sum, s) => sum + s.data.length, 0),
+      },
+    })
+
+    if (unmatchedSeriesExamples.length > 0) {
+      trendlogTrace.warn({
+        traceId,
+        flow: 'history_load',
+        step: 'unmatched_examples',
+        mode: 'full',
+        message: 'Sample unmatched history mapping examples captured',
+        context: getTrendlogTraceContext(),
+        metrics: {
+          emptySeriesCount: series.filter(s => s.isEmpty).length,
+          sampleCount: unmatchedSeriesExamples.length,
+        },
+        details: {
+          examples: unmatchedSeriesExamples,
+        },
+      })
+    }
 
     return series
   }
@@ -12009,7 +12855,7 @@
       //   trendlog_id_string: trendlog_id.toString()
       // })
 
-      const completeResult = await trendlogAPI.initializeCompleteFFI(sn, panel_id, trendlog_id.toString(), chartTitle.value)
+      const completeResult = await trendlogAPI.initializeCompleteFFI(sn, panel_id, trendlog_id.toString(), chartTitle.value, _initFlowId ?? undefined)
 
       // LogUtil.Debug('🔥 FFI DEBUG: Complete FFI result received', {
       //   completeResult
@@ -13035,8 +13881,46 @@
 
   // Lifecycle
   onMounted(async () => {
+    const initTraceId = trendlogTrace.start({
+      flow: 'init',
+      step: 'mounted',
+      message: 'TrendLogChart mounted',
+      context: getTrendlogTraceContext(),
+      metrics: {
+        hasItemData: !!props.itemData,
+        existingSeriesCount: dataSeries.value.length,
+      },
+    })
+
+    const _mountT0 = Date.now()
+    await _flowStart({
+      panelId: route.query.panel_id ?? null,
+      trendlogId: route.query.trendlog_id ?? null,
+      sn: route.query.sn ?? null,
+      hasItemData: !!props.itemData,
+    })
+    const _allDataRaw = route.query.all_data
+    const _allDataLen = typeof _allDataRaw === 'string'
+      ? _allDataRaw.length
+      : Array.isArray(_allDataRaw)
+        ? _allDataRaw.join('').length
+        : 0
+    await _flowStep('cpp_launch_url',
+      `sn=${route.query.sn ?? 'none'} panel=${route.query.panel_id ?? 'none'} trendlog=${route.query.trendlog_id ?? 'none'} has_all_data=${_allDataLen > 0}`,
+      {
+        source: 'c++',
+        cxxUrlPattern: 'http://localhost:3003/#/trend-log?sn={sn}&panel_id={panel}&trendlog_id={trendlog}&all_data={urlEncodedJson}',
+        sn: route.query.sn ?? null,
+        panelId: route.query.panel_id ?? null,
+        trendlogId: route.query.trendlog_id ?? null,
+        hasAllData: _allDataLen > 0,
+        allDataLength: _allDataLen,
+      }
+    )
+
     try {
       checkDbStatus()
+      if (dbStatusTimer) clearInterval(dbStatusTimer)
       dbStatusTimer = setInterval(checkDbStatus, DB_STATUS_POLL_MS)
 
       // 🆕 FORCE: Always reset history flag on mount to ensure data loads
@@ -13096,6 +13980,36 @@
 
       const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : null
       const urlTrendlogId = route.query.trendlog_id ? parseInt(route.query.trendlog_id as string) : null
+      const urlSn = route.query.sn ? parseInt(route.query.sn as string) : null
+
+      // all_data from C++ is already decoded into props.itemData.t3Entry by IndexPageSocket.vue
+      // before TrendLogChart mounts — this is the real source of the input points.
+      const _t3Entry = (props.itemData as any)?.t3Entry
+      const _inputsFromCpp = _t3Entry?.input ?? []
+      await _flowStep('query_params',
+        `panel=${urlPanelId ?? 'none'} trendlog=${urlTrendlogId ?? 'none'} sn=${urlSn ?? 'none'} inputs_from_cpp=${_inputsFromCpp.length}`,
+        {
+          // URL params set by C++ when opening webview
+          panelId: urlPanelId,
+          trendlogId: urlTrendlogId,
+          sn: urlSn,
+          // t3Entry already decoded from all_data by IndexPageSocket.vue before this component mounted
+          monitorId: _t3Entry?.id,
+          monitorLabel: _t3Entry?.label,
+          numInputs: _t3Entry?.num_inputs ?? _inputsFromCpp.length,
+          intervalSec: (_t3Entry?.hour_interval_time ?? 0) * 3600
+            + (_t3Entry?.minute_interval_time ?? 0) * 60
+            + (_t3Entry?.second_interval_time ?? 0),
+          // Input points passed directly from C++ device memory
+          inputsFromCpp: _inputsFromCpp.map((inp: any) => ({
+            panel: inp.panel, point_number: inp.point_number,
+            point_type: inp.point_type, network: inp.network,
+          })),
+          nextAction: urlPanelId !== null && urlTrendlogId !== null
+            ? `ffi_action0(panel=${urlPanelId}) → confirm MON[index=${urlTrendlogId}] → merge with inputsFromCpp`
+            : 'skip — missing panel_id or trendlog_id',
+        }
+      )
 
       LogUtil.Debug('  - panel_id:', urlPanelId)
       LogUtil.Debug('  - trendlog_id:', urlTrendlogId)
@@ -13104,8 +14018,25 @@
         try {
           const action0Resp = await ffiApi.ffiGetPanelData(urlPanelId)
           const action0Items: any[] = action0Resp?.data ?? []
+          // Robust MON lookup: T3000 may use 0-based OR 1-based d.index.
+          // Also match by d.id (e.g., "MON2") as the most reliable fallback.
+          const targetMonId = (props.itemData as any)?.t3Entry?.id  // e.g., "MON2"
+
+          // === DIAGNOSTIC: dump all MON items to help debug mismatches ===
+          const allMonItems = action0Items.filter((d: any) => d.type === 'MON' || d.type?.toUpperCase?.() === 'MON')
+          LogUtil.Info('🔍 STEP 0: Action 0 MON items', {
+            totalItems: action0Items.length,
+            monCount: allMonItems.length,
+            monItems: allMonItems.map((d: any) => ({ type: d.type, index: d.index, id: d.id, num_inputs: d.num_inputs })),
+            comparing: { urlTrendlogId, urlTrendlogId_plus1: urlTrendlogId + 1, targetMonId }
+          })
+
           const monFromAction0 = action0Items.find(
-            (d: any) => d.type === 'MON' && d.index === urlTrendlogId
+            (d: any) => (d.type === 'MON' || d.type?.toUpperCase?.() === 'MON') && (
+              d.index === urlTrendlogId ||            // 0-based: "MON2" → trendlog_id=1, d.index=1
+              d.index === urlTrendlogId + 1 ||        // 1-based: "MON2" → trendlog_id=1, d.index=2
+              (targetMonId && d.id === targetMonId)   // id-match: "MON2" === "MON2"
+            )
           )
           if (monFromAction0) {
             LogUtil.Info('✅ STEP 0 (Action 0): found MON config', {
@@ -13113,17 +14044,38 @@
               index: monFromAction0.index,
               inputCount: monFromAction0.input?.length ?? 0
             })
-            freshMonitorData.value = monFromAction0
-            console.log(
-              '%c[SETTINGS] ✅ RECEIVED FROM C++ (Action 0 - Monitor Config)',
-              'background:#0064c8;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px;'
-            )
-            console.log('[SETTINGS] Panel ID        :', urlPanelId)
-            console.log('[SETTINGS] Trendlog ID     :', urlTrendlogId)
-            console.log('[SETTINGS] Monitor ID      :', monFromAction0.id)
-            console.log('[SETTINGS] Monitor Index   :', monFromAction0.index)
-            console.log('[SETTINGS] Input channels  :', monFromAction0.input?.length ?? 0)
-            console.log('[SETTINGS] Full data       :', JSON.parse(JSON.stringify(monFromAction0)))
+            trendlogTrace.info({
+              traceId: initTraceId,
+              flow: 'init',
+              step: 'config_resolved',
+              message: 'Trendlog monitor config resolved from Action 0 response',
+              context: getTrendlogTraceContext(),
+              metrics: {
+                source: 'action0',
+                inputCount: monFromAction0.input?.length ?? 0,
+                monitorIndex: monFromAction0.index,
+              },
+            })
+            // T3000 C++ stores ALL allocated MON slots in input[] (here num_inputs=14),
+            // but T3000 native only displays the first an_inputs IN-type active channels.
+            // The URL all_data (props.itemData.t3Entry) was pre-filtered to that active set.
+            // Use the URL's filtered input[]/range[] for generateDataSeries so it renders
+            // the correct series count, while still taking fresh intervals/status from Action 0.
+            const urlInputForFresh = (props.itemData as any)?.t3Entry?.input as any[] | undefined
+            const urlRangeForFresh = (props.itemData as any)?.t3Entry?.range as any[] | undefined
+            freshMonitorData.value = (urlInputForFresh?.length) ? {
+              ...monFromAction0,
+              input: urlInputForFresh,
+              range: urlRangeForFresh?.length ? urlRangeForFresh : monFromAction0.range,
+              num_inputs: urlInputForFresh.length
+            } : monFromAction0
+
+            LogUtil.Info('🔧 STEP 0: freshMonitorData set', {
+              source: urlInputForFresh?.length ? 'url_filtered' : 'action0_raw',
+              inputCount: freshMonitorData.value.input?.length ?? 0,
+              num_inputs: freshMonitorData.value.num_inputs,
+              action0RawCount: monFromAction0.input?.length ?? 0
+            })
 
             // 🆕 FIX: Build monitorConfig.value directly from Action 0 data
             // getMonitorConfigFromT3000Data() relies on t3000DataManager which often isn't ready yet,
@@ -13158,21 +14110,47 @@
               }
             }
 
-            // Fallback: if URL matching found nothing, use all MON inputs directly
-            if (builtInputItems.length === 0 && monInputs.length > 0) {
-              LogUtil.Warn('⚠️ STEP 0: URL input matching failed, using all MON inputs as fallback')
-              for (let mi = 0; mi < monInputs.length; mi++) {
-                const inp = monInputs[mi]
-                if (inp && inp.panel !== undefined && inp.point_number !== undefined) {
-                  builtInputItems.push({
-                    panel: inp.panel,
-                    point_number: inp.point_number,
-                    index: mi,
-                    point_type: inp.point_type,
-                    network: inp.network,
-                    sub_panel: inp.sub_panel
-                  })
-                  builtRanges.push((monFromAction0.range && monFromAction0.range[mi]) || 0)
+            // Fallback priority when Action 0 MON input mapping does not match URL configuration:
+            // 1) Prefer URL inputs (user-opened trendlog selection) to avoid wrong point_number remap
+            // 2) Only use raw MON inputs when URL has no input definition at all
+            if (builtInputItems.length === 0) {
+              if (urlInputItems.length > 0) {
+                LogUtil.Warn('⚠️ STEP 0: URL↔MON input matching failed, using URL inputs as fallback to preserve intended point_number mapping', {
+                  urlInputCount: urlInputItems.length,
+                  monInputCount: monInputs.length,
+                  monitorId: monFromAction0.id,
+                  monitorIndex: monFromAction0.index
+                })
+
+                for (let ui = 0; ui < urlInputItems.length; ui++) {
+                  const urlItem = urlInputItems[ui]
+                  if (urlItem && urlItem.point_type > 0) {
+                    builtInputItems.push({
+                      panel: urlItem.panel,
+                      point_number: urlItem.point_number,
+                      index: ui,
+                      point_type: urlItem.point_type,
+                      network: urlItem.network || 0,
+                      sub_panel: urlItem.sub_panel || 0
+                    })
+                    builtRanges.push(urlRangeItems[ui] || 0)
+                  }
+                }
+              } else if (monInputs.length > 0) {
+                LogUtil.Warn('⚠️ STEP 0: URL has no input definition, using all MON inputs as fallback')
+                for (let mi = 0; mi < monInputs.length; mi++) {
+                  const inp = monInputs[mi]
+                  if (inp && inp.panel !== undefined && inp.point_number !== undefined) {
+                    builtInputItems.push({
+                      panel: inp.panel,
+                      point_number: inp.point_number,
+                      index: mi,
+                      point_type: inp.point_type,
+                      network: inp.network,
+                      sub_panel: inp.sub_panel
+                    })
+                    builtRanges.push((monFromAction0.range && monFromAction0.range[mi]) || 0)
+                  }
                 }
               }
             }
@@ -13202,6 +14180,18 @@
                 inputItemsCount: builtInputItems.length,
                 dataIntervalMs: intervalMs,
                 pid: monitorConfig.value.pid
+              })
+              trendlogTrace.info({
+                traceId: initTraceId,
+                flow: 'init',
+                step: 'monitor_built',
+                message: 'Monitor config built from Action 0 data',
+                context: getTrendlogTraceContext(),
+                metrics: {
+                  source: 'action0',
+                  inputItemsCount: builtInputItems.length,
+                  dataIntervalMs: intervalMs,
+                },
               })
 
               // Start real-time polling immediately since we have a valid config
@@ -13272,6 +14262,19 @@
               dataIntervalMs: intervalMs,
               pid: monitorConfig.value.pid
             })
+            trendlogTrace.warn({
+              traceId: initTraceId,
+              flow: 'init',
+              step: 'config_resolved',
+              message: 'Monitor config built from props fallback',
+              context: getTrendlogTraceContext(),
+              metrics: {
+                source: 'props_fallback',
+                inputItemsCount: fallbackInputItems.length,
+                dataIntervalMs: intervalMs,
+              },
+              details: { reason: 'action0_unavailable_or_incomplete' },
+            })
             startRealTimeUpdates()
           }
         }
@@ -13282,6 +14285,21 @@
       // Initialize monitor configuration
       // Skip if STEP 0 already built monitorConfig from Action 0 data
       const monitorConfigData = monitorConfig.value || await getMonitorConfigFromT3000Data()
+
+      await _flowStep('config_resolve',
+        monitorConfigData
+          ? `ok inputs=${monitorConfigData?.inputItems?.length ?? 0} pid=${monitorConfigData?.pid} interval=${monitorConfigData?.dataIntervalMs ?? 0}ms`
+          : 'no_config',
+        monitorConfigData ? {
+          id: monitorConfigData.id,
+          pid: monitorConfigData.pid,
+          numInputs: monitorConfigData.inputItems?.length ?? 0,
+          dataIntervalMs: monitorConfigData.dataIntervalMs,
+          inputItems: monitorConfigData.inputItems?.map((i: any) => ({
+            panel: i.panel, point_number: i.point_number, point_type: i.point_type,
+          }))
+        } : { reason: 'no_config' }
+      )
 
       LogUtil.Info('📊 TrendLogChart: Monitor config result', {
         hasMonitorConfig: !!monitorConfigData,
@@ -13299,6 +14317,10 @@
         // Now that monitorConfig.value has the authoritative dataIntervalMs, restart the interval.
         LogUtil.Info('🔄 Restarting real-time updates with full monitorConfig dataIntervalMs:', monitorConfigData.dataIntervalMs)
         startRealTimeUpdates()
+        await _flowStep('realtime_start',
+          `interval=${monitorConfigData.dataIntervalMs}ms pid=${monitorConfigData.pid} inputs=${monitorConfigData.inputItems?.length ?? 0}`,
+          { intervalMs: monitorConfigData.dataIntervalMs, pid: monitorConfigData.pid, inputCount: monitorConfigData.inputItems?.length ?? 0 }
+        )
 
         LogUtil.Info('TrendLogChart: Monitor config set, regenerating dataseries for consistency', {
           hasMonitorConfig: !!monitorConfig.value,
@@ -13331,13 +14353,42 @@
           finalMonitorConfigReady: !!monitorConfig.value,
           finalPanelId: monitorConfig.value?.pid
         })
+        trendlogTrace.info({
+          traceId: initTraceId,
+          flow: 'init',
+          step: 'completed',
+          message: 'TrendLogChart initialization completed',
+          context: getTrendlogTraceContext(),
+          metrics: {
+            finalDataSeriesCount: dataSeries.value.length,
+            monitorConfigReady: !!monitorConfig.value,
+          },
+        })
       } else {
         LogUtil.Warn('⚠️ TrendLogChart: No monitor config data available - keeping loading state')
+        trendlogTrace.warn({
+          traceId: initTraceId,
+          flow: 'init',
+          step: 'monitor_built',
+          message: 'Monitor config was not available after initialization',
+          context: getTrendlogTraceContext(),
+          details: { reason: 'monitor_config_missing' },
+        })
         // Keep loading state instead of showing error - data might still be loading
         // hasConnectionError.value = true // Removed - keep loading instead
       }
     } catch (error) {
       LogUtil.Error('TrendLogChart: Initialization failed:', error)
+      trendlogTrace.error({
+        traceId: initTraceId,
+        flow: 'init',
+        step: 'failed',
+        message: 'TrendLogChart initialization failed',
+        context: getTrendlogTraceContext(),
+        details: {
+          error: error instanceof Error ? error.message : String(error),
+        },
+      })
       // Only show connection error for actual errors, not missing data during startup
       if (error.message && !error.message.includes('timeout')) {
         hasConnectionError.value = true
@@ -13411,6 +14462,10 @@
       LogUtil.Info('🔍 STEP 2: Chart instances created, verifying', {
         hasAnalogChart: !!analogChartInstance
       })
+      await _flowStep('chart_create',
+        `analog=${!!analogChartInstance} digital=${!!digitalChartInstance} canvas_wait=${canvasWaitAttempts * 50}ms`,
+        { hasAnalog: !!analogChartInstance, hasDigital: !!digitalChartInstance, canvasWaitMs: canvasWaitAttempts * 50 }
+      )
 
       // 🆕 FIX: Then load and display data
       // NOTE: Only initialize if series don't already exist (from panelsData watcher)
@@ -13432,9 +14487,9 @@
         loadViewState()
       }
 
-      if (isRealTime.value) {
-        startRealTimeUpdates()
-      }
+      // Always start background polling — keeps device data flowing to DB
+      // even when viewing a custom date range (isRealTime=false).
+      startRealTimeUpdates()
 
       // ⌨️ Setup keyboard navigation
       document.addEventListener('keydown', handleKeydown)
@@ -13446,6 +14501,17 @@
           item: mapping.item
         }))
       })
+      await _flowStep('page_ready',
+        `series=${dataSeries.value.length} pts=${dataSeries.value.reduce((s, x) => s + (x.data?.length ?? 0), 0)} elapsed=${Date.now() - _mountT0}ms`,
+        {
+          seriesCount: dataSeries.value.length,
+          totalPoints: dataSeries.value.reduce((s, x) => s + (x.data?.length ?? 0), 0),
+          isRealTime: isRealTime.value,
+          timeBase: timeBase.value,
+          elapsedMs: Date.now() - _mountT0,
+        }
+      )
+      await _flowDone()
     })
   })
 
@@ -13520,22 +14586,11 @@
         return
       }
 
-      console.log(
-        '%c[SETTINGS] 💾 SAVING TO C++ — Database Config',
-        'background:#52c41a;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px;'
-      )
-      console.log('[SETTINGS] Strategy        :', databaseConfig.value.strategy)
-      console.log('[SETTINGS] Custom days     :', databaseConfig.value.custom_days)
-      console.log('[SETTINGS] Custom months   :', databaseConfig.value.custom_months)
-      console.log('[SETTINGS] Auto cleanup    :', databaseConfig.value.auto_cleanup_enabled)
-      console.log('[SETTINGS] Retention       :', databaseConfig.value.retention_value, databaseConfig.value.retention_unit)
-      console.log('[SETTINGS] Full payload    :', JSON.parse(JSON.stringify(databaseConfig.value)))
       LogUtil.Info('Saving Trendlog Configuration...', databaseConfig.value)
 
       // Save configuration via API
       const savedConfig = await databaseService.config.updateConfig(databaseConfig.value)
       databaseConfig.value = savedConfig
-      console.log('[SETTINGS] ✅ Database config saved — response:', JSON.parse(JSON.stringify(savedConfig)))
 
       // Apply partitioning strategy to create actual database files
       LogUtil.Info('Applying partitioning strategy to create database files...')
@@ -13755,20 +14810,11 @@
         return false
       }
 
-      console.log(
-        '%c[SETTINGS] 💾 SAVING TO C++ — Rediscover Interval',
-        'background:#722ed1;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px;'
-      )
-      console.log('[SETTINGS] Interval (secs) :', interval_secs)
-      console.log('[SETTINGS] Interval human  :', formatRediscoverInterval(interval_secs))
-      console.log('[SETTINGS] Preset          :', rediscoverConfig.value.interval_preset)
-
       const result = await RediscoverConfigAPI.updateInterval(
         interval_secs,
         'user',
         'Updated via Trendlog Configuration UI'
       )
-      console.log('[SETTINGS] ✅ Rediscover interval saved — response:', result)
 
       if (showMessage) {
         message.success(`Rediscover interval updated to ${formatRediscoverInterval(interval_secs)}`)
@@ -13867,14 +14913,6 @@
         return false
       }
 
-      console.log(
-        '%c[SETTINGS] 💾 SAVING TO C++ — Sampling Interval',
-        'background:#fa8c16;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px;'
-      )
-      console.log('[SETTINGS] Interval (secs) :', interval_secs)
-      console.log('[SETTINGS] Interval human  :', formatInterval(interval_secs))
-      console.log('[SETTINGS] Preset          :', ffiSyncConfig.value.interval_preset)
-
       const data = await FfiSyncConfigAPI.updateFfiSyncInterval(
         interval_secs,
         'user',
@@ -13884,7 +14922,6 @@
       ffiSyncConfig.value.interval_secs = data.interval_secs
       ffiSyncConfig.value.next_sync_in = data.interval_secs
 
-      console.log('[SETTINGS] ✅ Sampling interval saved — response:', JSON.parse(JSON.stringify(data)))
       message.success(`Sampling Interval updated to ${formatInterval(interval_secs)}`)
       LogUtil.Info('Sampling Interval saved', data)
       return true
@@ -14309,14 +15346,14 @@
   }
 
   .empty-state-text {
-    font-size: 16px;
+    font-size: 13px;
     font-weight: 500;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     color: #595959;
   }
 
   .empty-state-subtitle {
-    font-size: 14px;
+    font-size: 12px;
     color: #8c8c8c;
   }
 

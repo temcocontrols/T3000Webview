@@ -6,6 +6,7 @@
 
 use std::ffi::CString;
 use std::os::raw::c_char;
+use std::collections::HashMap;
 use axum::{
     extract::State,
     http::StatusCode,
@@ -16,10 +17,19 @@ use axum::{
 use serde_json::Value as JsonValue;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
+use once_cell::sync::Lazy;
 use crate::error::Error;
 use crate::logger::ServiceLogger;
 use crate::app_state::T3AppState;
+use crate::logging::service::emit_app_log;
 use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA};
+
+/// Pending TRENDLOG_POLL flows: FFI action=15 starts the flow (step 0),
+/// batch save continues it (step 1 + done). Keyed by (panel_id, serial_number).
+/// The Instant is the insertion time; entries older than 60 s are reaped on
+/// the next insert so they don't stay stuck as "running" forever.
+pub static PENDING_REALTIME_FLOWS: Lazy<tokio::sync::Mutex<HashMap<(i32, i32), (crate::logging::flow::FlowHandle, std::time::Instant)>>> =
+    Lazy::new(|| tokio::sync::Mutex::new(HashMap::new()));
 
 // FFI function type
 type BacnetWebViewHandleWebViewMsgFn = unsafe extern "C" fn(action: i32, msg: *mut c_char, len: i32) -> i32;
@@ -68,7 +78,9 @@ impl T3000FfiApiService {
     fn load_t3000_function() -> bool {
         unsafe {
             if T3000_LOADED {
-                return BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN.is_some();
+                return std::ptr::addr_of!(BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN)
+                    .read()
+                    .is_some();
             }
 
             let mut api_logger = ServiceLogger::api().unwrap_or_else(|_| ServiceLogger::new("fallback_api").unwrap());
@@ -262,11 +274,9 @@ pub fn create_ffi_api_routes() -> Router<T3AppState> {
 
 /// Simple HTTP endpoint - receives JSON message, calls FFI, returns response
 async fn handle_ffi_call(
-    State(_app_state): State<T3AppState>,
+    State(app_state): State<T3AppState>,
     Json(payload): Json<JsonValue>
 ) -> Result<Json<JsonValue>, (StatusCode, Json<JsonValue>)> {
-    let mut api_logger = ServiceLogger::api().unwrap_or_else(|_| ServiceLogger::new("fallback_api").unwrap());
-
     // Convert payload to string for FFI call
     let message = payload.to_string();
 
@@ -276,21 +286,113 @@ async fn handle_ffi_call(
         .and_then(|a| a.as_i64())
         .unwrap_or(0);
 
-    api_logger.info(&format!("📡 FFI API Request - Action: {}, Full payload: {}", action, message));
+    // Emit activity-log entry for this FFI call (DB/file per policy)
+    {
+        let db = app_state.conn.lock().await;
+        emit_app_log(
+            &*db,
+            "info",
+            "API_REQ",
+            Some("ffi_api_service"),
+            None,
+            &format!("FFI request action={}", action),
+            Some(&message),
+        ).await;
 
+        emit_app_log(
+            &*db,
+            "info",
+            "FFI_CALL",
+            Some("ffi_api_service"),
+            None,
+            &format!("FFI call action={}", action),
+            Some(&message),
+        ).await;
+    }
+
+    let t0 = std::time::Instant::now();
     let service = T3000FfiApiService::new();
 
     match service.call_ffi(&message).await {
         Ok(response) => {
-            api_logger.info(&format!("📡 FFI Response from C++: {}", response));
+            {
+                let db = app_state.conn.lock().await;
+                emit_app_log(
+                    &*db,
+                    "info",
+                    "API_REQ",
+                    Some("ffi_api_service"),
+                    None,
+                    &format!("FFI response action={}", action),
+                    Some(&response),
+                ).await;
+            }
+
+            // Flow logging for action=15 (LOGGING_DATA — trendlog realtime poll)
+            // Starts a 2-step TRENDLOG_POLL flow; step 1 (batch_save) is logged
+            // from save_realtime_trendlog_batch when the frontend sends the data.
+            if action == 15 {
+                let panel_id = payload.get("panelId").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+                let sn       = payload.get("serialNumber").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+                let item_count: usize = serde_json::from_str::<serde_json::Value>(&response)
+                    .ok()
+                    .and_then(|j| j.get("data").and_then(|d| d.as_array()).map(|devs| {
+                        devs.iter()
+                            .filter_map(|d| d.get("device_data").and_then(|dd| dd.as_array()).map(|a| a.len()))
+                            .sum::<usize>()
+                    }))
+                    .unwrap_or(0);
+                let elapsed = t0.elapsed().as_millis() as i64;
+                // Use a fresh direct connection to local SQLite (same pattern as TRENDLOG_CHART)
+                // so this works even when app_state.t3_device_conn is None (e.g. MSSQL backend).
+                if let Some(db) = crate::db_connection::establish_t3_device_connection().await
+                    .map_err(|e| e.to_string()).ok() {
+                    // Build a readable detail block: request summary line + full prettified response.
+                    // Written to disk via step_ffi(); the DB row stores only the short message.
+                    let response_pretty = serde_json::from_str::<serde_json::Value>(&response)
+                        .ok()
+                        .and_then(|v| serde_json::to_string_pretty(&v).ok())
+                        .unwrap_or_else(|| response.clone());
+                    let ffi_detail = format!(
+                        "// request: {}\n// response ({} items):\n{}",
+                        message, item_count, response_pretty,
+                    );
+                    let fh = crate::logging::flow::FlowHandle::start(
+                        &db, "TRENDLOG_POLL", "realtime", 2,
+                        Some(&format!("panel={} device={} items={}", panel_id, sn, item_count)),
+                    ).await;
+                    fh.step_ffi(&db, "ffi_poll", "info", "ffi", "ok", elapsed,
+                        &format!("{} items fetched — panel={} device={}", item_count, panel_id, sn),
+                        Some(&ffi_detail)).await;
+                    // Store for batch_save step — do NOT call done() yet.
+                    // Before inserting, close any superseded entry for this key and reap
+                    // entries older than 60 s so they don't stay stuck as "running".
+                    {
+                        let mut map = PENDING_REALTIME_FLOWS.lock().await;
+                        // Close the previous entry for the same (panel, sn) if still pending.
+                        if let Some((old_fh, _)) = map.remove(&(panel_id, sn)) {
+                            old_fh.done(&db, "superseded").await;
+                        }
+                        // Reap stale entries (> 60 s old) across all keys.
+                        let timeout = std::time::Duration::from_secs(60);
+                        let stale_keys: Vec<(i32, i32)> = map
+                            .iter()
+                            .filter(|(_, (_, t))| t.elapsed() > timeout)
+                            .map(|(k, _)| *k)
+                            .collect();
+                        for key in stale_keys {
+                            if let Some((stale_fh, _)) = map.remove(&key) {
+                                stale_fh.done(&db, "timeout").await;
+                            }
+                        }
+                        map.insert((panel_id, sn), (fh, std::time::Instant::now()));
+                    }
+                }
+            }
 
             // Try to parse response as JSON, otherwise return as string
             match serde_json::from_str::<JsonValue>(&response) {
                 Ok(json_response) => {
-                    let response_action = json_response.get("action")
-                        .and_then(|a| a.as_str())
-                        .unwrap_or("UNKNOWN");
-                    api_logger.info(&format!("✅ C++ returned action: {}", response_action));
                     Ok(Json(json_response))
                 },
                 Err(_) => Ok(Json(serde_json::json!({
@@ -301,7 +403,19 @@ async fn handle_ffi_call(
             }
         }
         Err(e) => {
-            api_logger.error(&format!("❌ FFI call failed: {:?}", e));
+            // Errors always go to DB regardless of policy
+            {
+                let db = app_state.conn.lock().await;
+                emit_app_log(
+                    &*db,
+                    "error",
+                    "FFI_CALL",
+                    Some("ffi_api_service"),
+                    None,
+                    &format!("FFI call failed action={}: {}", action, e),
+                    None,
+                ).await;
+            }
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({

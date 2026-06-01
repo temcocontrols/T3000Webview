@@ -1,4 +1,4 @@
-// T3000 Main Service - Primary T3000 Building Automation Integration
+﻿// T3000 Main Service - Primary T3000 Building Automation Integration
 // This is the main service that handles all T3000 functionality:
 // - FFI calls to T3000 C++ functions (T3000_GetLoggingData)
 // - Real-time data synchronization
@@ -103,7 +103,9 @@ pub unsafe fn load_t3000_function() -> bool {
     }
 
     if T3000_LOADED {
-        return BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN.is_some();
+        return std::ptr::addr_of!(BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN)
+            .read()
+            .is_some();
     }
 
     // Create logger for initialization operations
@@ -347,6 +349,10 @@ lazy_static::lazy_static! {
         Arc::new(RwLock::new(3600));
 }
 
+/// Delay between devices during one backend sync cycle.
+/// Kept configurable in code for easy tuning during diagnostics.
+const PER_DEVICE_SLEEP_SECS: u64 = 5;
+
 /// Configuration for the main T3000 service
 #[derive(Debug, Clone)]
 pub struct T3000MainConfig {
@@ -370,7 +376,7 @@ impl Default for T3000MainConfig {
 /// PanelInfo structure for lightweight device list from GET_PANELS_LIST
 /// Used to get list of available devices before loading full LOGGING_DATA
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 struct PanelInfo {
     panel_number: i32,
     serial_number: i32,
@@ -610,7 +616,7 @@ impl T3000MainService {
             "center_db=disabled (standalone)".to_string()
         };
         crate::database_management::sync_health::ensure_app_log_table(&self.db).await;
-        crate::database_management::sync_health::write_app_log(
+        crate::logging::service::emit_app_log(
             &self.db,
             "info",
             "STARTUP",
@@ -650,7 +656,7 @@ impl T3000MainService {
             // Activity Log before the first full sync cycle lands in MSSQL.
             // Uses the pre-cloned connection captured before the spawn (avoids
             // re-establishing, which is not Send).
-            crate::database_management::sync_health::write_app_log(
+            crate::logging::service::emit_app_log(
                 &spawn_db,
                 "info",
                 "STARTUP",
@@ -723,7 +729,7 @@ impl T3000MainService {
                     let new_interval = current_sync_interval;
                     tokio::spawn(async move {
                         if let Ok(db) = establish_t3_device_connection().await.map_err(|e| e.to_string()) {
-                            crate::database_management::sync_health::write_app_log(
+                            crate::logging::service::emit_app_log(
                                 &db, "info", "POLL", Some("ffi_sync"), None,
                                 &format!("Sync interval changed: {}s -> {}s", old_interval, new_interval),
                                 None,
@@ -953,6 +959,67 @@ impl T3000MainService {
         let mut last_time = LAST_REDISCOVER_TIME.write().await;
         *last_time = Some(Utc::now());
     }
+
+    fn panel_identity(panel: &PanelInfo) -> String {
+        let oi = panel
+            .object_instance
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "None".to_string());
+        format!(
+            "SN-{} Panel#{} OI={} Name='{}'",
+            panel.serial_number, panel.panel_number, oi, panel.panel_name
+        )
+    }
+
+    /// Compare cached panel mapping to a fresh GET_PANELS_LIST result.
+    /// Returns human-readable drift details that should be treated as hard failures.
+    fn collect_panel_mapping_drift(cached: &[PanelInfo], discovered: &[PanelInfo]) -> Vec<String> {
+        let mut drift: Vec<String> = Vec::new();
+
+        for cached_panel in cached {
+            let discovered_panel = discovered
+                .iter()
+                .find(|p| p.serial_number == cached_panel.serial_number);
+
+            match discovered_panel {
+                Some(found) => {
+                    if found.panel_number != cached_panel.panel_number
+                        || found.object_instance != cached_panel.object_instance
+                    {
+                        drift.push(format!(
+                            "SN-{} mapping drift: cached(panel={}, oi={:?}) -> discovered(panel={}, oi={:?})",
+                            cached_panel.serial_number,
+                            cached_panel.panel_number,
+                            cached_panel.object_instance,
+                            found.panel_number,
+                            found.object_instance
+                        ));
+                    }
+                }
+                None => {
+                    drift.push(format!(
+                        "Cached device missing from discovery: {}",
+                        Self::panel_identity(cached_panel)
+                    ));
+                }
+            }
+        }
+
+        for discovered_panel in discovered {
+            let exists_in_cache = cached
+                .iter()
+                .any(|p| p.serial_number == discovered_panel.serial_number);
+            if !exists_in_cache {
+                drift.push(format!(
+                    "New device found in discovery: {}",
+                    Self::panel_identity(discovered_panel)
+                ));
+            }
+        }
+
+        drift
+    }
+
     /// Sync trendlog configurations for all devices (ONE-TIME operation)
     /// This calls the NEW BacnetWebView_GetTrendlogList/Entry C++ export functions
     async fn sync_all_trendlog_configs() -> Result<(), AppError> {
@@ -1205,18 +1272,45 @@ impl T3000MainService {
     /// Write path is chosen automatically at the start of each cycle:
     /// - MSSQL pool present → writes directly to MSSQL center DB (SyncWriter::MssqlDirect)
     /// - Otherwise         → writes to local SQLite or SeaORM center DB (SyncWriter::Sqlite)
+    async fn try_auto_resume_sampling(local_db: &DatabaseConnection) -> Result<bool, String> {
+        let ini_cfg = crate::ini_config::read_server_db_config_auto();
+
+        // Pause guard only matters for center-DB server sync.
+        if !ini_cfg.enabled || ini_cfg.role != "server" {
+            crate::app_state::set_sampling_active();
+            return Ok(true);
+        }
+
+        // If a pool is already available, we can safely resume.
+        if crate::server_db_writer::get_server_mssql_pool().is_some() {
+            crate::app_state::set_sampling_active();
+            return Ok(true);
+        }
+
+        let active_cfg = crate::database_management::db_backend_config::load_active_config(local_db)
+            .await
+            .map_err(|e| format!("load_active_backend_config failed: {}", e))?;
+
+        match active_cfg.backend_type {
+            crate::database_management::db_backend_config::BackendType::Mssql => {
+                let tib = crate::database_management::db_backend_config::build_mssql_config(&active_cfg)
+                    .map_err(|e| format!("build_mssql_config failed: {}", e))?;
+                let pool = crate::database_management::mssql_queries::create_mssql_pool(tib, 5)
+                    .await
+                    .map_err(|e| format!("create_mssql_pool failed: {}", e))?;
+
+                crate::server_db_writer::set_reconnect_mssql_pool(pool);
+                crate::app_state::set_sampling_active();
+                Ok(true)
+            }
+            _ => Ok(false),
+        }
+    }
+
     async fn sync_logging_data_static(config: T3000MainConfig) -> Result<(), AppError> {
         // Create logger for this sync operation
         let mut sync_logger =
             ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
-
-        // ── CHECK SAMPLING STATE ──────────────────────────────────────────────
-        if crate::app_state::is_sampling_paused() {
-            let reason = crate::app_state::get_pause_reason().unwrap_or_default();
-            sync_logger.warn(&format!("⏸️  Sampling paused — skipping cycle: {}", reason));
-            return Ok(());
-        }
-        // ─────────────────────────────────────────────────────────────────────
 
         sync_logger.info(&format!(
             "⚙️ Config: Timeout {}s, Retry {}x",
@@ -1230,7 +1324,84 @@ impl T3000MainService {
         })?;
 
         crate::database_management::sync_health::ensure_app_log_table(&local_db).await;
-        crate::database_management::sync_health::write_app_log(
+
+        // Start TRENDLOG_BACKEND flow (total_steps=0 = variable; actual count depends on rediscovery path)
+        let t_cycle = std::time::Instant::now();
+        let t_device_loop = std::time::Instant::now();
+        let sync_flow = crate::logging::flow::FlowHandle::start(
+            &local_db, "TRENDLOG_BACKEND", "ffi_sync", 0, None,
+        ).await;
+        sync_flow.step(&local_db, "cycle_start", "info", "ffi_sync", "ok", 0,
+            &format!(
+                "Cycle start: sync_interval_secs={} timeout_secs={} retry_attempts={}",
+                config.sync_interval_secs,
+                config.timeout_seconds,
+                config.retry_attempts
+            ),
+            None,
+        ).await;
+
+        let mut sampling_check_recorded = false;
+
+        // ── CHECK SAMPLING STATE ──────────────────────────────────────────────
+        if crate::app_state::is_sampling_paused() {
+            let reason = crate::app_state::get_pause_reason().unwrap_or_default();
+            sync_logger.warn(&format!(
+                "⏸️  Sampling paused — probing center DB before this cycle: {}",
+                reason
+            ));
+
+            crate::logging::service::emit_app_log(
+                &local_db,
+                "warn",
+                "POLL",
+                Some("ffi_sync"),
+                None,
+                "Sampling paused — attempting auto-resume probe",
+                Some(&format!("reason={}", reason)),
+            )
+            .await;
+
+            match Self::try_auto_resume_sampling(&local_db).await {
+                Ok(true) => {
+                    sync_logger.info("▶️ Sampling auto-resumed after successful center DB probe");
+                    crate::logging::service::emit_app_log(
+                        &local_db,
+                        "info",
+                        "POLL",
+                        Some("ffi_sync"),
+                        None,
+                        "Sampling auto-resumed after center DB probe",
+                        None,
+                    )
+                    .await;
+                    sync_flow.step(&local_db, "sampling_check", "info", "ffi_sync", "ok", 0,
+                        "Sampling auto-resumed", None).await;
+                    sampling_check_recorded = true;
+                    // fall-through: skip the duplicate "Sampling active" step below
+                }
+                Ok(false) => {
+                    sync_logger.warn("⏸️  Sampling remains paused — skipping this cycle");
+                    sync_flow.step(&local_db, "sampling_check", "warn", "ffi_sync", "skip", 0,
+                        "Sampling paused — cycle skipped", None).await;
+                    sync_flow.done(&local_db, "skip").await;
+                    return Ok(());
+                }
+                Err(e) => {
+                    sync_logger.warn(&format!(
+                        "⏸️  Auto-resume probe failed — skipping cycle: {}",
+                        e
+                    ));
+                    sync_flow.step(&local_db, "sampling_check", "warn", "ffi_sync", "skip", 0,
+                        &format!("Auto-resume probe failed: {}", e), None).await;
+                    sync_flow.done(&local_db, "skip").await;
+                    return Ok(());
+                }
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
+        crate::logging::service::emit_app_log(
             &local_db,
             "info",
             "POLL",
@@ -1241,13 +1412,19 @@ impl T3000MainService {
         )
         .await;
 
+        // Only record "Sampling active" step if not already recorded above (paused+auto-resumed).
+        if !sampling_check_recorded {
+            sync_flow.step(&local_db, "sampling_check", "info", "ffi_sync", "ok", 0,
+                "Sampling active", None).await;
+        }
+
         // Decide write target: MSSQL direct (center DB) if pool active, else SQLite/SeaORM
         let writer = super::sync_writer::SyncWriter::from_pool_or_sqlite().await.map_err(|e| {
             sync_logger.error(&format!("❌ Failed to initialize sync writer: {}", e));
             e
         })?;
 
-        let (writer_target_text, writer_target_detail) = match &writer {
+        let (_writer_target_text, writer_target_detail) = match &writer {
             super::sync_writer::SyncWriter::MssqlDirect(_) => (
                 "MSSQL (direct write to center DB)",
                 "target=center_mssql",
@@ -1269,7 +1446,7 @@ impl T3000MainService {
         if !server_cfg.enabled {
             let reason = "Standalone mode — backend interval sync disabled; only realtime writes are active";
             sync_logger.info(&format!("⏭️  {}", reason));
-            crate::database_management::sync_health::write_app_log(
+            crate::logging::service::emit_app_log(
                 &local_db,
                 "info",
                 "POLL",
@@ -1279,6 +1456,7 @@ impl T3000MainService {
                 Some("policy=standalone_skip"),
             )
             .await;
+            sync_flow.done(&local_db, "skip").await;
             return Ok(());
         }
 
@@ -1290,7 +1468,7 @@ impl T3000MainService {
             ) {
                 let reason = "Center DB mode is enabled but center DB is currently unavailable — skipping this cycle, will retry next cycle";
                 sync_logger.warn(&format!("⚠️ {}", reason));
-                crate::database_management::sync_health::write_app_log(
+                crate::logging::service::emit_app_log(
                     &local_db,
                     "warn",
                     "POLL",
@@ -1300,15 +1478,12 @@ impl T3000MainService {
                     Some("policy=center_db_skip_retry"),
                 )
                 .await;
+                sync_flow.done(&local_db, "skip").await;
                 return Ok(());
             }
         }
 
-        sync_logger.info(&format!(
-            "✅ Database connections established — write target: {}",
-            writer_target_text
-        ));
-        crate::database_management::sync_health::write_app_log(
+        crate::logging::service::emit_app_log(
             &local_db,
             "info",
             "CONFIG",
@@ -1323,33 +1498,55 @@ impl T3000MainService {
         let should_do_rediscovery = Self::should_rediscover().await;
         let panels: Vec<PanelInfo>;
 
+        sync_flow.step(&local_db, "rediscover_decision", "info", "ffi_sync", "ok", 0,
+            if should_do_rediscovery { "Full rediscovery" } else { "Using cached device list" },
+            None).await;
+
         if should_do_rediscovery {
             sync_logger
                 .info("🔍 FULL REDISCOVERY: Calling GET_PANELS_LIST to refresh device list...");
+
+            let get_panels_req = serde_json::json!({
+                "action": WebViewMessageType::GET_PANELS_LIST as i32,
+                "reason": "full_rediscovery",
+            })
+            .to_string();
+            sync_flow.step_ffi(&local_db, "get_panels_list_start", "info", "ffi_sync", "ok", 0,
+                "GET_PANELS_LIST start", Some(&get_panels_req)).await;
 
             // Get lightweight device list via GET_PANELS_LIST (Action 4)
             panels = match Self::get_panels_list_via_ffi().await {
                 Ok(p) => p,
                 Err(e) => {
-                    sync_logger.error(&format!("GET_PANELS_LIST FFI failed: {} -- skipping cycle, will retry next cycle", e));
+                    sync_logger.error(&format!("GET_PANELS_LIST FFI failed: {}", e));
                     // Activity Log: T3000.exe load status (once) + timeout event
                     if T3000_LOAD_LOGGED.compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed).is_ok() {
                         let (load_msg, load_level) = unsafe {
-                            if BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN.is_some() {
+                            if std::ptr::addr_of!(BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN)
+                                .read()
+                                .is_some()
+                            {
                                 ("T3000.exe loaded — BacnetWebView_HandleWebViewMsg found", "info")
                             } else {
                                 ("T3000.exe loaded but BacnetWebView_HandleWebViewMsg not found — FFI calls will fail", "error")
                             }
                         };
-                        crate::database_management::sync_health::write_app_log(
+                        crate::logging::service::emit_app_log(
                             &local_db, load_level, "STARTUP", Some("ffi_sync"), None, load_msg, None,
                         ).await;
                     }
-                    crate::database_management::sync_health::write_app_log(
-                        &local_db, "warn", "POLL", Some("ffi_sync"), None,
-                        "GET_PANELS_LIST timed out — sync cycle skipped, will retry next cycle",
-                        Some("action=4"),
-                    ).await;
+
+                    crate::logging::service::emit_app_log(
+                        &local_db,
+                        "error",
+                        "POLL",
+                        Some("ffi_sync"),
+                        None,
+                        "GET_PANELS_LIST failed during full rediscovery — sync cycle skipped",
+                        Some("action=4 policy=strict_no_fallback"),
+                    )
+                    .await;
+                    sync_flow.done(&local_db, "skip").await;
                     return Ok(());
                 }
             };
@@ -1357,13 +1554,16 @@ impl T3000MainService {
             // Activity Log: T3000.exe load status (once) + device list found
             if T3000_LOAD_LOGGED.compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed).is_ok() {
                 let (load_msg, load_level) = unsafe {
-                    if BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN.is_some() {
+                    if std::ptr::addr_of!(BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN)
+                        .read()
+                        .is_some()
+                    {
                         ("T3000.exe loaded — BacnetWebView_HandleWebViewMsg found", "info")
                     } else {
                         ("T3000.exe loaded but BacnetWebView_HandleWebViewMsg not found — FFI calls will fail", "error")
                     }
                 };
-                crate::database_management::sync_health::write_app_log(
+                crate::logging::service::emit_app_log(
                     &local_db, load_level, "STARTUP", Some("ffi_sync"), None, load_msg, None,
                 ).await;
             }
@@ -1373,16 +1573,22 @@ impl T3000MainService {
             ));
             {
                 let sn_list = panels.iter().map(|p| p.serial_number.to_string()).collect::<Vec<_>>().join(", ");
-                crate::database_management::sync_health::write_app_log(
+                crate::logging::service::emit_app_log(
                     &local_db, "info", "POLL", Some("ffi_sync"), None,
                     &format!("GET_PANELS_LIST: {} device(s) found (SN: {})", panels.len(), sn_list),
                     None,
                 ).await;
+                let panels_json = serde_json::to_string_pretty(&panels)
+                    .unwrap_or_else(|_| format!("[{} panels — serialization failed]", panels.len()));
+                sync_flow.step_ffi(&local_db, "get_panels_list_done", "info", "ffi_sync", "ok", 0,
+                    &format!("GET_PANELS_LIST done: {} panel(s)", panels.len()), Some(&panels_json)).await;
+                sync_flow.step_ffi(&local_db, "get_panels_list", "info", "ffi_sync", "ok",
+                    0, &format!("{} device(s): {}", panels.len(), sn_list), Some(&panels_json)).await;
             }
 
             if panels.is_empty() {
                 sync_logger.warn("⚠️ No devices found in GET_PANELS_LIST - skipping sync cycle");
-                crate::database_management::sync_health::write_app_log(
+                crate::logging::service::emit_app_log(
                     &local_db,
                     "warn",
                     "POLL",
@@ -1392,6 +1598,7 @@ impl T3000MainService {
                     None,
                 )
                 .await;
+                sync_flow.done(&local_db, "skip").await;
                 return Ok(());
             }
 
@@ -1479,8 +1686,92 @@ impl T3000MainService {
             // Try to get cached device list
             match Self::get_cached_device_list().await {
                 Ok(cached_panels) => {
-                    panels = cached_panels;
-                    sync_logger.info(&format!("📋 Using {} devices from cache", panels.len()));
+                    sync_logger.info(&format!("📋 Loaded {} cached devices", cached_panels.len()));
+
+                    // Strict validation: refresh mapping via GET_PANELS_LIST and use fresh values.
+                    // This prevents serial/panel drift from stale cache from corrupting action 17 calls.
+                    let validation_req = serde_json::json!({
+                        "action": WebViewMessageType::GET_PANELS_LIST as i32,
+                        "reason": "quick_sync_validation",
+                        "cached_devices": cached_panels.len(),
+                    })
+                    .to_string();
+                    sync_flow.step_ffi(&local_db, "mapping_validation_start", "info", "ffi_sync", "ok", 0,
+                        "Mapping validation start", Some(&validation_req)).await;
+
+                    let discovered_panels = match Self::get_panels_list_via_ffi().await {
+                        Ok(p) => p,
+                        Err(e) => {
+                            sync_logger.error(&format!(
+                                "❌ QUICK SYNC validation failed: GET_PANELS_LIST error: {}",
+                                e
+                            ));
+                            crate::logging::service::emit_app_log(
+                                &local_db,
+                                "error",
+                                "POLL",
+                                Some("ffi_sync"),
+                                None,
+                                "QUICK SYNC validation failed: GET_PANELS_LIST error; cycle skipped",
+                                Some("action=4 policy=strict_no_fallback"),
+                            )
+                            .await;
+                            sync_flow.done(&local_db, "skip").await;
+                            return Ok(());
+                        }
+                    };
+
+                    let discovered_json = serde_json::to_string_pretty(&discovered_panels)
+                        .unwrap_or_else(|_| format!("[{} panels — serialization failed]", discovered_panels.len()));
+                    sync_flow.step_ffi(&local_db, "mapping_validation_done", "info", "ffi_sync", "ok", 0,
+                        &format!("Mapping validation done: {} discovered device(s)", discovered_panels.len()), Some(&discovered_json)).await;
+
+                    if discovered_panels.is_empty() {
+                        sync_logger.warn("⚠️ QUICK SYNC validation returned no devices; skipping cycle");
+                        crate::logging::service::emit_app_log(
+                            &local_db,
+                            "warn",
+                            "POLL",
+                            Some("ffi_sync"),
+                            None,
+                            "QUICK SYNC validation found no devices; cycle skipped",
+                            Some("action=4 policy=strict_no_fallback"),
+                        )
+                        .await;
+                        sync_flow.done(&local_db, "skip").await;
+                        return Ok(());
+                    }
+
+                    let drift = Self::collect_panel_mapping_drift(&cached_panels, &discovered_panels);
+                    if !drift.is_empty() {
+                        let preview = drift.iter().take(8).cloned().collect::<Vec<_>>().join(" | ");
+                        sync_logger.error(&format!(
+                            "❌ Panel mapping drift detected ({} issue(s)): {}",
+                            drift.len(),
+                            preview
+                        ));
+                        crate::logging::service::emit_app_log(
+                            &local_db,
+                            "error",
+                            "POLL",
+                            Some("ffi_sync"),
+                            None,
+                            &format!(
+                                "Panel mapping drift detected ({} issue(s)); using fresh discovery for strict correctness",
+                                drift.len()
+                            ),
+                            Some(&preview),
+                        )
+                        .await;
+                    }
+
+                    panels = discovered_panels;
+                    Self::update_cached_device_list(panels.clone()).await;
+                    Self::update_last_rediscover_time().await;
+                    sync_logger.info(&format!(
+                        "✅ QUICK SYNC validation complete; using {} discovered devices",
+                        panels.len()
+                    ));
                 }
                 Err(_) => {
                     // Cache is empty (should not happen after first run, but handle gracefully)
@@ -1489,18 +1780,19 @@ impl T3000MainService {
                         Ok(p) => p,
                         Err(e) => {
                             sync_logger.error(&format!("❌ Forced rediscovery GET_PANELS_LIST failed: {} — skipping cycle, will retry next cycle", e));
-                            crate::database_management::sync_health::write_app_log(
+                            crate::logging::service::emit_app_log(
                                 &local_db, "warn", "POLL", Some("ffi_sync"), None,
                                 "GET_PANELS_LIST failed (forced rediscovery) — sync cycle skipped, will retry",
                                 Some("action=4"),
                             ).await;
+                            sync_flow.done(&local_db, "skip").await;
                             return Ok(());
                         }
                     };
 
                     if panels.is_empty() {
                         sync_logger.warn("⚠️ No devices found - skipping sync cycle");
-                        crate::database_management::sync_health::write_app_log(
+                        crate::logging::service::emit_app_log(
                             &local_db,
                             "warn",
                             "POLL",
@@ -1510,6 +1802,7 @@ impl T3000MainService {
                             None,
                         )
                         .await;
+                        sync_flow.done(&local_db, "skip").await;
                         return Ok(());
                     }
 
@@ -1518,25 +1811,13 @@ impl T3000MainService {
                     sync_logger.info("✅ Cache initialized with forced rediscovery");
                 }
             }
-        } // Log device list for tracking
-        for (idx, panel) in panels.iter().enumerate() {
-            sync_logger.info(&format!(
-                "  Device {}/{}: Panel #{}, SN: {}, Name: '{}'",
-                idx + 1,
-                panels.len(),
-                panel.panel_number,
-                panel.serial_number,
-                panel.panel_name
-            ));
         }
-
-        sync_logger.info("💾 Recording sync cycle metadata");
 
         // Legacy trendlog_data_sync_metadata stays local for diagnostic continuity.
         let sync_start_time = chrono::Utc::now();
         let sync_metadata = trendlog_data_sync_metadata::ActiveModel {
             sync_time_fmt: Set(sync_start_time.format("%Y-%m-%d %H:%M:%S").to_string()),
-            message_type: Set("LOGGING_DATA".to_string()),
+            message_type: Set("GET_WEBVIEW_LIST".to_string()),
             panel_id: Set(None),            // NULL = all devices
             serial_number: Set(None),       // NULL = all devices
             records_inserted: Set(Some(0)), // Will update later
@@ -1546,7 +1827,7 @@ impl T3000MainService {
             ..Default::default()
         };
 
-        let sync_metadata_id = match trendlog_data_sync_metadata::Entity::insert(sync_metadata)
+        let _sync_metadata_id = match trendlog_data_sync_metadata::Entity::insert(sync_metadata)
             .exec(&local_db)
             .await
         {
@@ -1563,7 +1844,7 @@ impl T3000MainService {
             if let Err(e) = mssql_queries::insert_trendlog_sync_metadata(
                 pool,
                 &ts_fmt,
-                "LOGGING_DATA",
+                "GET_WEBVIEW_LIST",
                 None,
                 None,
                 0,
@@ -1571,20 +1852,15 @@ impl T3000MainService {
                 1,
                 None,
             ).await {
-                sync_logger.error(&format!("❌ Failed to write LOGGING_DATA to MSSQL TRENDLOG_DATA_SYNC_METADATA (non-fatal): {}", e));
+                sync_logger.error(&format!("❌ Failed to write GET_WEBVIEW_LIST to MSSQL TRENDLOG_DATA_SYNC_METADATA (non-fatal): {}", e));
             }
         }
-
-        sync_logger.info(&format!(
-            "📋 LOGGING_DATA sync metadata created - ID: {}",
-            sync_metadata_id
-        ));
 
         // Insert start-of-cycle marker into DATA_SYNC_METADATA using active writer target.
         if let Err(e) = Self::insert_data_sync_metadata(
             &writer,
             &local_db,
-            "LOGGING_DATA_CYCLE",
+            "GET_WEBVIEW_LIST_CYCLE",
             "ALL",
             None,
             0,
@@ -1593,349 +1869,391 @@ impl T3000MainService {
         )
         .await
         {
-            sync_logger.error(&format!("❌ Failed to insert LOGGING_DATA_CYCLE to DATA_SYNC_METADATA: {}", e));
+            sync_logger.error(&format!("❌ Failed to insert GET_WEBVIEW_LIST_CYCLE to DATA_SYNC_METADATA: {}", e));
         }
 
-        // STEP 2: Process each device sequentially with per-device LOGGING_DATA calls
+        // STEP 2: Process each device sequentially with per-device GET_WEBVIEW_LIST calls (Action 17)
         let total_devices = panels.len();
         let mut successful_devices = 0;
         let mut failed_devices = 0;
         let mut skipped_devices = 0;
-        // Track SNs that returned serial=0 (C++ issue) for cycle summary Activity Log
+        // Track SNs that were skipped due to missing object_instance or other issues
         let mut serial_zero_sns: Vec<String> = Vec::new();
+        // Collect per-device summaries for file payload
+        let mut device_raw_responses: Vec<String> = Vec::new();
 
         for (device_index, panel_info) in panels.iter().enumerate() {
             let device_start_time = std::time::Instant::now();
 
-            sync_logger.info(&format!(
-                "📱 ========== Device {}/{} START ==========",
-                device_index + 1,
-                total_devices
-            ));
-            sync_logger.info(&format!(
-                "📱 Device: Panel #{}, SN: {}, Name: '{}'",
-                panel_info.panel_number, panel_info.serial_number, panel_info.panel_name
-            ));
+            sync_flow.step(&local_db, "device_start", "info", "ffi_sync", "ok", 0,
+                &format!(
+                    "device {}/{} start: SN={} Panel#{} OI={:?} Name='{}'",
+                    device_index + 1,
+                    total_devices,
+                    panel_info.serial_number,
+                    panel_info.panel_number,
+                    panel_info.object_instance,
+                    panel_info.panel_name
+                ),
+                None,
+            ).await;
 
-            // Call LOGGING_DATA for this device (C++ will filter based on g_logging_time validation)
-            sync_logger.info(&format!(
-                "🔄 Calling LOGGING_DATA (Action 15) for device {}...",
-                panel_info.serial_number
-            ));
-
-            let json_data = match Self::get_logging_data_via_direct_ffi(
-                &config,
-                panel_info.panel_number,
-                panel_info.serial_number,
-            )
-            .await
-            {
-                Ok(data) => data,
-                Err(e) => {
-                    sync_logger.error(&format!(
-                        "❌ LOGGING_DATA FFI call failed for device {} - Error: {}",
-                        panel_info.serial_number, e
-                    ));
-                    failed_devices += 1;
-                    crate::database_management::sync_health::write_app_log(
-                        &local_db, "error", "DEVICE", Some("ffi_sync"),
-                        Some(&panel_info.serial_number.to_string()),
-                        &format!("SN-{} Panel#{}: FFI call failed — {}", panel_info.serial_number, panel_info.panel_number, e),
-                        None,
-                    ).await;
-                    // Log device failure and continue to next device (Option A: Skip on error)
-                    sync_logger.info(&format!(
-                        "⏭️  Skipping device {} due to FFI error, continuing with next device",
+            // Validate object_instance — required for action 17
+            let object_instance = match panel_info.object_instance {
+                Some(oi) if oi > 0 => oi,
+                _ => {
+                    sync_logger.warn(&format!(
+                        "⚠️ Skipping device SN:{} — object_instance is None or 0 (required for GET_WEBVIEW_LIST action 17)",
                         panel_info.serial_number
                     ));
+                    sync_flow.step(&local_db, "device_skip", "warn", "ffi_sync", "skip", 0,
+                        &format!(
+                            "skip device SN={} Panel#{} — missing object_instance",
+                            panel_info.serial_number,
+                            panel_info.panel_number
+                        ),
+                        None,
+                    ).await;
+                    skipped_devices += 1;
+                    serial_zero_sns.push(format!("SN-{} Panel#{} (no oi)", panel_info.serial_number, panel_info.panel_number));
                     continue;
                 }
             };
 
-            // Parse response - might contain 0-1 devices depending on C++ validation
-            let logging_response = match Self::parse_logging_response(&json_data) {
-                Ok(response) => response,
-                Err(e) => {
-                    sync_logger.error(&format!(
-                        "❌ JSON parse failed for device {} - Error: {}",
-                        panel_info.serial_number, e
-                    ));
-                    failed_devices += 1;
-                    crate::database_management::sync_health::write_app_log(
-                        &local_db, "error", "DEVICE", Some("ffi_sync"),
-                        Some(&panel_info.serial_number.to_string()),
-                        &format!("SN-{} Panel#{}: JSON parse failed — {}", panel_info.serial_number, panel_info.panel_number, e),
+            // Call action 17 for each entry type sequentially and collect points
+            // entryType uses BAC_* values: 0=BAC_OUT/OUTPUT, 1=BAC_IN/INPUT, 2=BAC_VAR/VARIABLE
+            let entry_types: &[(i32, &str)] = &[
+                (0, "OUTPUT"),
+                (1, "INPUT"),
+                (2, "VARIABLE"),
+            ];
+
+            let mut input_points: Vec<PointData> = Vec::new();
+            let mut output_points: Vec<PointData> = Vec::new();
+            let mut variable_points: Vec<PointData> = Vec::new();
+            let mut device_call_failed = false;
+
+            for (entry_type, entry_label) in entry_types {
+                let entry_key = entry_label.to_ascii_lowercase();
+                let step_action17_request = format!("action17_{}_request", entry_key);
+                let step_action17_response = format!("action17_{}_response", entry_key);
+                let step_action17_parse = format!("action17_{}_parse", entry_key);
+
+                let action17_request = serde_json::json!({
+                    "action": WebViewMessageType::GET_WEBVIEW_LIST as i32,
+                    "panelId": panel_info.panel_number,
+                    "serialNumber": panel_info.serial_number,
+                    "objectinstance": object_instance,
+                    "entryType": *entry_type,
+                    "entryIndexStart": 0,
+                    "entryIndexEnd": 63,
+                })
+                .to_string();
+                sync_flow.step_ffi(&local_db, &step_action17_request, "info", "ffi_sync", "ok", 0,
+                    &format!(
+                        "SN={} Panel#{} {} request",
+                        panel_info.serial_number,
+                        panel_info.panel_number,
+                        entry_label
+                    ),
+                    Some(&action17_request),
+                ).await;
+
+                let json_data = match Self::get_webview_list_via_direct_ffi(
+                    &config,
+                    panel_info.panel_number,
+                    panel_info.serial_number,
+                    object_instance,
+                    *entry_type,
+                    0,
+                    63,
+                ).await {
+                    Ok(data) => data,
+                    Err(e) => {
+                        sync_logger.error(&format!(
+                            "❌ GET_WEBVIEW_LIST action 17 ({}) failed for SN:{}: {}",
+                            entry_label, panel_info.serial_number, e
+                        ));
+                        crate::logging::service::emit_app_log(
+                            &local_db, "error", "DEVICE", Some("ffi_sync"),
+                            Some(&panel_info.serial_number.to_string()),
+                            &format!("SN-{} Panel#{}: GET_WEBVIEW_LIST ({}) action 17 FFI call failed — {}", panel_info.serial_number, panel_info.panel_number, entry_label, e),
+                            None,
+                        ).await;
+                        sync_flow.step_ffi(&local_db, &step_action17_response, "error", "ffi_sync", "error", 0,
+                            &format!(
+                                "SN={} Panel#{} {} response failed",
+                                panel_info.serial_number,
+                                panel_info.panel_number,
+                                entry_label
+                            ),
+                            Some(&format!("error={}", e)),
+                        ).await;
+                        device_call_failed = true;
+                        break;
+                    }
+                };
+
+                sync_flow.step_ffi(&local_db, &step_action17_response, "info", "ffi_sync", "ok", 0,
+                    &format!(
+                        "SN={} Panel#{} {} response bytes={}",
+                        panel_info.serial_number,
+                        panel_info.panel_number,
+                        entry_label,
+                        json_data.len()
+                    ),
+                    Some(&json_data),
+                ).await;
+
+                // Record raw response for diagnostics
+                device_raw_responses.push(format!("=== SN-{} Panel#{} ({}) {} ===\n{}",
+                    panel_info.serial_number, panel_info.panel_number, panel_info.panel_name, entry_label, json_data));
+
+                let points = match Self::parse_webview_list_response(&json_data) {
+                    Ok(pts) => pts,
+                    Err(e) => {
+                        sync_logger.error(&format!(
+                            "❌ JSON parse failed for SN:{} {} - Error: {}",
+                            panel_info.serial_number, entry_label, e
+                        ));
+                        crate::logging::service::emit_app_log(
+                            &local_db, "error", "DEVICE", Some("ffi_sync"),
+                            Some(&panel_info.serial_number.to_string()),
+                            &format!("SN-{} Panel#{}: GET_WEBVIEW_LIST ({}) parse failed — {}", panel_info.serial_number, panel_info.panel_number, entry_label, e),
+                            None,
+                        ).await;
+                        sync_flow.step_ffi(&local_db, &step_action17_parse, "error", "ffi_sync", "error", 0,
+                            &format!(
+                                "SN={} Panel#{} {} parse failed",
+                                panel_info.serial_number,
+                                panel_info.panel_number,
+                                entry_label
+                            ),
+                            Some(&format!("error={}", e)),
+                        ).await;
+                        device_call_failed = true;
+                        break;
+                    }
+                };
+
+                sync_flow.step(&local_db, &step_action17_parse, "info", "ffi_sync", "ok", 0,
+                    &format!(
+                        "SN={} Panel#{} {} parsed points={}",
+                        panel_info.serial_number,
+                        panel_info.panel_number,
+                        entry_label,
+                        points.len()
+                    ),
+                    None,
+                ).await;
+
+                match *entry_type {
+                    0 => output_points = points,
+                    1 => input_points = points,
+                    2 => variable_points = points,
+                    _ => {}
+                }
+            }
+
+            if device_call_failed {
+                failed_devices += 1;
+                let device_duration = device_start_time.elapsed();
+                sync_flow.step(&local_db, "device_end", "error", "ffi_sync", "error",
+                    device_duration.as_millis() as i64,
+                    &format!("device failed: SN={} Panel#{}", panel_info.serial_number, panel_info.panel_number),
+                    None,
+                ).await;
+                if device_index < total_devices - 1 {
+                    sync_flow.step(&local_db, "device_sleep", "info", "ffi_sync", "ok", 0,
+                        &format!("sleeping {}s for next device", PER_DEVICE_SLEEP_SECS),
                         None,
                     ).await;
-                    // Log parse failure and continue to next device
-                    sync_logger.info(&format!(
-                        "⏭️  Skipping device {} due to parse error, continuing with next device",
-                        panel_info.serial_number
-                    ));
-                    continue;
+                    tokio::time::sleep(Duration::from_secs(PER_DEVICE_SLEEP_SECS)).await;
                 }
-            };
-
-            sync_logger.info(&format!(
-                "� LOGGING_DATA returned {} device(s), {} characters",
-                logging_response.devices.len(),
-                json_data.len()
-            ));
-
-            // Handle empty response (C++ validation failed - device not ready)
-            if logging_response.devices.is_empty() {
-                sync_logger.warn(&format!("⚠️ Device {} returned 0 devices (C++ validation failed - basic_setting_status != 1 or g_logging_time mismatch)",
-                    panel_info.serial_number));
-                sync_logger.warn(&format!(
-                    "⏭️  Skipping device {} - not ready for logging, will retry next sync cycle",
-                    panel_info.serial_number
-                ));
-                skipped_devices += 1;
                 continue;
             }
 
-            // Process device(s) from response (usually 1 device, but handle multiple just in case)
-            for device_with_points in logging_response.devices.iter() {
-                let serial_number = device_with_points.device_info.panel_serial_number;
+            let serial_number = panel_info.serial_number;
 
-                sync_logger.info(&format!(
-                    "📝 Processing device data - Serial: {}, Name: '{}'",
-                    serial_number, device_with_points.device_info.panel_name
+            // Build DeviceInfo from PanelInfo (action 17 doesn't return device metadata)
+            let device_info = DeviceInfo {
+                panel_id: panel_info.panel_number,
+                panel_name: panel_info.panel_name.clone(),
+                panel_serial_number: serial_number,
+                panel_ipaddress: "0.0.0.0".to_string(),
+                input_logging_time: "".to_string(),
+                output_logging_time: "".to_string(),
+                variable_logging_time: "".to_string(),
+                ip_address: None,
+                port: None,
+                bacnet_mstp_mac_id: Some(object_instance),
+                modbus_address: None,
+                pc_ip_address: None,
+                modbus_port: None,
+                bacnet_ip_port: None,
+                show_label_name: None,
+                connection_type: Some("GET_WEBVIEW_LIST".to_string()),
+            };
+
+            let device_with_points = DeviceWithPoints {
+                device_info,
+                input_points,
+                output_points,
+                variable_points,
+            };
+
+            // UPSERT device basic info (INSERT or UPDATE)
+
+            if let Err(e) =
+                writer.sync_device(&device_with_points.device_info).await
+            {
+                sync_logger.error(&format!(
+                    "❌ Device basic info sync failed - Serial: {}, Error: {}",
+                    serial_number, e
                 ));
+                failed_devices += 1;
+                let device_duration = device_start_time.elapsed();
+                sync_flow.step(&local_db, "device_end", "error", "ffi_sync", "error",
+                    device_duration.as_millis() as i64,
+                    &format!("device db write failed: SN={} Panel#{}", panel_info.serial_number, panel_info.panel_number),
+                    None,
+                ).await;
 
-                // Validate serial number - skip devices with invalid SerialNumber=0
-                if serial_number == 0 {
-                    sync_logger.warn(&format!(
-                        "⚠️ SKIPPING device with invalid SerialNumber=0 - Name: '{}', IP: '{}', Panel ID: {}",
-                        device_with_points.device_info.panel_name,
-                        device_with_points.device_info.ip_address.as_ref().unwrap_or(&"unknown".to_string()),
-                        device_with_points.device_info.panel_id
-                    ));
-                    sync_logger.warn("⚠️ This indicates missing or invalid panel_serial_number in JSON response - check C++ HandleWebViewMsg implementation");
-                    sync_logger.error(&format!(
-                        "🔍 DEBUG INFO for invalid device - Expected Serial: {} (from GET_PANELS_LIST), Got: {} (from LOGGING_DATA)",
-                        panel_info.serial_number, serial_number
-                    ));
-                    sync_logger.error(&format!(
-                        "💡 HINT: Device with Panel#{} probably has records in INPUTS/OUTPUTS/VARIABLES tables but won't show sync status due to SerialNumber=0",
-                        device_with_points.device_info.panel_id
-                    ));
-                    sync_logger.error(&format!(
-                        "💡 FIX: Update C++ code to properly set panel_serial_number field in LOGGING_DATA response for Panel#{}",
-                        device_with_points.device_info.panel_id
-                    ));
-                    skipped_devices += 1;
-                    serial_zero_sns.push(format!("SN-{} Panel#{}", panel_info.serial_number, panel_info.panel_number));
-                    continue;
-                }
-
-                // UPSERT device basic info (INSERT or UPDATE)
-                sync_logger.info(&format!(
-                    "📝 Syncing device basic info - Serial: {}, Name: {}",
-                    serial_number, &device_with_points.device_info.panel_name
-                ));
-
-                if let Err(e) =
-                    writer.sync_device(&device_with_points.device_info).await
-                {
-                    sync_logger.error(&format!(
-                        "❌ Device basic info sync failed - Serial: {}, Error: {}",
-                        serial_number, e
-                    ));
-                    failed_devices += 1;
-                    continue;
-                }
-                sync_logger.info(&format!(
-                    "✅ Device info synced ({})",
-                    if device_with_points.device_info.panel_serial_number > 0 {
-                        "UPDATE"
-                    } else {
-                        "INSERT"
-                    }
-                ));
-
-                // UPSERT input points (INSERT or UPDATE)
-                if !device_with_points.input_points.is_empty() {
-                    sync_logger.info(&format!(
-                        "🔧 Processing {} INPUT points...",
-                        device_with_points.input_points.len()
-                    ));
-
-                    for (point_index, point) in device_with_points.input_points.iter().enumerate() {
-                        if let Err(e) =
-                            writer.sync_input(serial_number, point).await
-                        {
-                            sync_logger.error(&format!(
-                                "❌ INPUT point {}/{} failed - Index: {}, Label: '{}', Error: {}",
-                                point_index + 1,
-                                device_with_points.input_points.len(),
-                                point.index,
-                                point.full_label,
-                                e
-                            ));
-                        }
-                    }
-                    sync_logger.info("✅ INPUT points completed");
-
-                    // Insert DATA_SYNC_METADATA for INPUTS sync
-                    if let Err(e) = Self::insert_data_sync_metadata(
-                        &writer,
-                        &local_db,
-                        "INPUTS",
-                        &serial_number.to_string(),
-                        Some(device_with_points.device_info.panel_id),
-                        device_with_points.input_points.len() as i32,
-                        true,
+                if device_index < total_devices - 1 {
+                    sync_flow.step(&local_db, "device_sleep", "info", "ffi_sync", "ok", 0,
+                        &format!("sleeping {}s for next device", PER_DEVICE_SLEEP_SECS),
                         None,
-                    )
-                    .await
-                    {
-                        sync_logger.error(&format!("❌ Failed to insert INPUTS sync metadata: {}", e));
-                    }
+                    ).await;
+                    tokio::time::sleep(Duration::from_secs(PER_DEVICE_SLEEP_SECS)).await;
                 }
-
-                // UPSERT output points (INSERT or UPDATE)
-                if !device_with_points.output_points.is_empty() {
-                    sync_logger.info(&format!(
-                        "🔧 Processing {} OUTPUT points...",
-                        device_with_points.output_points.len()
-                    ));
-
-                    for (point_index, point) in device_with_points.output_points.iter().enumerate()
-                    {
-                        if let Err(e) =
-                            writer.sync_output(serial_number, point).await
-                        {
-                            sync_logger.error(&format!(
-                                "❌ OUTPUT point {}/{} failed - Index: {}, Label: '{}', Error: {}",
-                                point_index + 1,
-                                device_with_points.output_points.len(),
-                                point.index,
-                                point.full_label,
-                                e
-                            ));
-                        }
-                    }
-                    sync_logger.info("✅ OUTPUT points completed");
-
-                    // Insert DATA_SYNC_METADATA for OUTPUTS sync
-                    if let Err(e) = Self::insert_data_sync_metadata(
-                        &writer,
-                        &local_db,
-                        "OUTPUTS",
-                        &serial_number.to_string(),
-                        Some(device_with_points.device_info.panel_id),
-                        device_with_points.output_points.len() as i32,
-                        true,
-                        None,
-                    )
-                    .await
-                    {
-                        sync_logger.error(&format!("❌ Failed to insert OUTPUTS sync metadata: {}", e));
-                    }
-                }
-
-                // UPSERT variable points (INSERT or UPDATE)
-                if !device_with_points.variable_points.is_empty() {
-                    sync_logger.info(&format!(
-                        "🔧 Processing {} VARIABLE points...",
-                        device_with_points.variable_points.len()
-                    ));
-
-                    for (point_index, point) in
-                        device_with_points.variable_points.iter().enumerate()
-                    {
-                        if let Err(e) =
-                            writer.sync_variable(serial_number, point).await
-                        {
-                            sync_logger.error(&format!("❌ VARIABLE point {}/{} failed - Index: {}, Label: '{}', Error: {}",
-                                point_index + 1, device_with_points.variable_points.len(), point.index, point.full_label, e));
-                        }
-                    }
-                    sync_logger.info("✅ VARIABLE points completed");
-
-                    // Insert DATA_SYNC_METADATA for VARIABLES sync
-                    if let Err(e) = Self::insert_data_sync_metadata(
-                        &writer,
-                        &local_db,
-                        "VARIABLES",
-                        &serial_number.to_string(),
-                        Some(device_with_points.device_info.panel_id),
-                        device_with_points.variable_points.len() as i32,
-                        true,
-                        None,
-                    )
-                    .await
-                    {
-                        sync_logger.error(&format!("❌ Failed to insert VARIABLES sync metadata: {}", e));
-                    }
-                }
-
-                // INSERT trend log data (ALWAYS INSERT for historical data)
-                let total_trend_points = device_with_points.input_points.len()
-                    + device_with_points.output_points.len()
-                    + device_with_points.variable_points.len();
-                if total_trend_points > 0 {
-                    sync_logger.info(&format!(
-                        "📊 Trend logs inserted ({} entries)",
-                        total_trend_points
-                    ));
-
-                    if let Err(e) = writer.insert_trendlogs(
-                        serial_number,
-                        device_with_points,
-                    )
-                    .await
-                    {
-                        sync_logger.error(&format!("❌ Trend log insertion failed - Serial: {}, Error: {}, Total entries: {}",
-                            serial_number, e, total_trend_points));
-                    } else {
-                        // Insert DATA_SYNC_METADATA so the dashboard "Records Today" counts trendlog details
-                        if let Err(e) = Self::insert_data_sync_metadata(
-                            &writer,
-                            &local_db,
-                            "TRENDLOG_DETAIL",
-                            &serial_number.to_string(),
-                            Some(device_with_points.device_info.panel_id),
-                            total_trend_points as i32,
-                            true,
-                            None,
-                        )
-                        .await
-                        {
-                            sync_logger.error(&format!("❌ Failed to insert TRENDLOG_DETAIL sync metadata: {}", e));
-                        }
-                    }
-                }
-
-                successful_devices += 1;
-                sync_logger.info(&format!("✅ Device {} data sync completed", serial_number));
+                continue;
             }
 
-            // Log device processing time
-            let device_duration = device_start_time.elapsed();
-            sync_logger.info(&format!(
-                "⏱️  Device {} completed in {:.2}s",
-                panel_info.serial_number,
-                device_duration.as_secs_f64()
-            ));
-            sync_logger.info(&format!(
-                "📱 ========== Device {}/{} END ==========",
-                device_index + 1,
-                total_devices
-            ));
+            if !device_with_points.input_points.is_empty() {
+                for (point_index, point) in device_with_points.input_points.iter().enumerate() {
+                    if let Err(e) =
+                        writer.sync_input(serial_number, point).await
+                    {
+                        sync_logger.error(&format!(
+                            "❌ INPUT point {}/{} failed - Index: {}, Label: '{}', Error: {}",
+                            point_index + 1,
+                            device_with_points.input_points.len(),
+                            point.index,
+                            point.full_label,
+                            e
+                        ));
+                    }
+                }
+                // Insert DATA_SYNC_METADATA for INPUTS sync
+                if let Err(e) = Self::insert_data_sync_metadata(
+                    &writer,
+                    &local_db,
+                    "INPUTS",
+                    &serial_number.to_string(),
+                    Some(device_with_points.device_info.panel_id),
+                    device_with_points.input_points.len() as i32,
+                    true,
+                    None,
+                )
+                .await
+                {
+                    sync_logger.error(&format!("❌ Failed to insert INPUTS sync metadata: {}", e));
+                }
+            }
 
-            // Add 30-second delay between devices to reduce T3000 load
+            // UPSERT output points (INSERT or UPDATE)
+            if !device_with_points.output_points.is_empty() {
+                for (point_index, point) in device_with_points.output_points.iter().enumerate()
+                {
+                    if let Err(e) =
+                        writer.sync_output(serial_number, point).await
+                    {
+                        sync_logger.error(&format!(
+                            "❌ OUTPUT point {}/{} failed - Index: {}, Label: '{}', Error: {}",
+                            point_index + 1,
+                            device_with_points.output_points.len(),
+                            point.index,
+                            point.full_label,
+                            e
+                        ));
+                    }
+                }
+                // Insert DATA_SYNC_METADATA for OUTPUTS sync
+                if let Err(e) = Self::insert_data_sync_metadata(
+                    &writer,
+                    &local_db,
+                    "OUTPUTS",
+                    &serial_number.to_string(),
+                    Some(device_with_points.device_info.panel_id),
+                    device_with_points.output_points.len() as i32,
+                    true,
+                    None,
+                )
+                .await
+                {
+                    sync_logger.error(&format!("❌ Failed to insert OUTPUTS sync metadata: {}", e));
+                }
+            }
+
+            // UPSERT variable points (INSERT or UPDATE)
+            if !device_with_points.variable_points.is_empty() {
+                for (point_index, point) in
+                    device_with_points.variable_points.iter().enumerate()
+                {
+                    if let Err(e) =
+                        writer.sync_variable(serial_number, point).await
+                    {
+                        sync_logger.error(&format!("❌ VARIABLE point {}/{} failed - Index: {}, Label: '{}', Error: {}",
+                            point_index + 1, device_with_points.variable_points.len(), point.index, point.full_label, e));
+                    }
+                }
+                // Insert DATA_SYNC_METADATA for VARIABLES sync
+                if let Err(e) = Self::insert_data_sync_metadata(
+                    &writer,
+                    &local_db,
+                    "VARIABLES",
+                    &serial_number.to_string(),
+                    Some(device_with_points.device_info.panel_id),
+                    device_with_points.variable_points.len() as i32,
+                    true,
+                    None,
+                )
+                .await
+                {
+                    sync_logger.error(&format!("❌ Failed to insert VARIABLES sync metadata: {}", e));
+                }
+            }
+
+            // INSERT trend log data (ALWAYS INSERT for historical data)
+            let total_trend_points = device_with_points.input_points.len()
+                + device_with_points.output_points.len()
+                + device_with_points.variable_points.len();
+            if total_trend_points > 0 {
+                if let Err(e) = writer.insert_trendlogs(
+                    serial_number,
+                    &device_with_points,
+                )
+                .await
+                {
+                    sync_logger.error(&format!(
+                        "❌ Trendlog insert failed - Serial: {}, Error: {}, Total points: {}",
+                        serial_number, e, total_trend_points
+                    ));
+                }
+            }
+
+            successful_devices += 1;
+
+            // Delay between devices (configurable constant for diagnostics).
             if device_index < total_devices - 1 {
-                sync_logger.info("⏸️  Waiting 30 seconds before next device (load balancing)...");
-                tokio::time::sleep(Duration::from_secs(30)).await;
+                sync_flow.step(&local_db, "device_sleep", "info", "ffi_sync", "ok", 0,
+                    &format!("sleeping {}s for next device", PER_DEVICE_SLEEP_SECS),
+                    None,
+                ).await;
+                tokio::time::sleep(Duration::from_secs(PER_DEVICE_SLEEP_SECS)).await;
             }
         }
 
-        sync_logger.info(&format!(
-            "💾 Sync cycle complete — {} successful, {} failed, {} skipped",
-            successful_devices, failed_devices, skipped_devices
-        ));
         // Activity Log: cycle summary
         if total_devices > 0 {
             if successful_devices == 0 {
@@ -1944,13 +2262,13 @@ impl T3000MainService {
                 } else {
                     format!("failed={} skipped={}", failed_devices, skipped_devices)
                 };
-                crate::database_management::sync_health::write_app_log(
+                crate::logging::service::emit_app_log(
                     &local_db, "error", "POLL", Some("ffi_sync"), None,
-                    &format!("Cycle done: 0/{} devices synced — all returned serial=0 (C++ fix required)", total_devices),
+                    &format!("Cycle done: 0/{} devices synced — all skipped or failed (check object_instance / FFI errors)", total_devices),
                     Some(&detail),
                 ).await;
             } else {
-                crate::database_management::sync_health::write_app_log(
+                crate::logging::service::emit_app_log(
                     &local_db, "info", "POLL", Some("ffi_sync"), None,
                     &format!("Cycle done: {}/{} devices synced", successful_devices, total_devices),
                     Some(&format!("skipped={} failed={}", skipped_devices, failed_devices)),
@@ -1963,10 +2281,9 @@ impl T3000MainService {
         if !writer.is_mssql_direct() {
             // Validate data was actually inserted by doing a quick count check
             let validation_db = establish_device_conn_for_sync().await?;
-            sync_logger.info("🔍 Validation: Checking data persistence");
 
             // Validate only successful devices
-            let mut validation_summary = String::new();
+            let mut _validation_summary = String::new();
             for panel_info in &panels {
                 let serial_number = panel_info.serial_number;
 
@@ -1976,7 +2293,7 @@ impl T3000MainService {
                     .count(&validation_db)
                     .await
                 {
-                    validation_summary.push_str(&format!(
+                    _validation_summary.push_str(&format!(
                         "Device {}: {} record(s) in DEVICES table; ",
                         serial_number, device_count
                     ));
@@ -1988,7 +2305,7 @@ impl T3000MainService {
                     .count(&validation_db)
                     .await
                 {
-                    validation_summary.push_str(&format!("{} INPUT points; ", input_count));
+                    _validation_summary.push_str(&format!("{} INPUT points; ", input_count));
                 }
 
                 // Check output points count
@@ -1997,7 +2314,7 @@ impl T3000MainService {
                     .count(&validation_db)
                     .await
                 {
-                    validation_summary.push_str(&format!("{} OUTPUT points; ", output_count));
+                    _validation_summary.push_str(&format!("{} OUTPUT points; ", output_count));
                 }
 
                 // Check variable points count
@@ -2006,26 +2323,18 @@ impl T3000MainService {
                     .count(&validation_db)
                     .await
                 {
-                    validation_summary.push_str(&format!("{} VARIABLE points; ", variable_count));
+                    _validation_summary.push_str(&format!("{} VARIABLE points; ", variable_count));
                 }
             }
-
-            sync_logger.info(&format!("📊 Validation results: {}", validation_summary));
 
             // ---- SERVER DB REPLICATION (SQLite/SeaORM path only) ----
             // SeaORM path (PG/MySQL) upserts directly; SQLite path replicates here.
             if crate::server_db_writer::is_server_write_active() {
-                sync_logger.info("🌐 Server DB replication: Starting (role=server)...");
                 let serial_numbers: Vec<i32> = panels.iter().map(|p| p.serial_number).collect();
 
                 if crate::server_db_writer::get_server_conn().is_some() {
                     match Self::replicate_basic_data_to_server(&validation_db, &serial_numbers).await {
-                        Ok(stats) => {
-                            sync_logger.info(&format!(
-                                "🌐 Server DB replication (SeaORM) complete: {} devices, {} inputs, {} outputs, {} variables",
-                                stats.0, stats.1, stats.2, stats.3
-                            ));
-                        }
+                        Ok(_stats) => {}
                         Err(e) => {
                             sync_logger.warn(&format!(
                                 "⚠️ Server DB replication (SeaORM) failed (local data is safe): {}",
@@ -2035,20 +2344,47 @@ impl T3000MainService {
                     }
                 }
             }
-        } else {
-            sync_logger.info("🎯 MSSQL direct path — data written straight to center DB, replication skipped");
         }
+        sync_flow.step(&local_db, "interval_sleep", "info", "ffi_sync", "ok", 0,
+            &format!("sleeping {}s for next interval", config.sync_interval_secs),
+            None,
+        ).await;
 
-        sync_logger.info(&format!("🎉 SEQUENTIAL SYNC CYCLE COMPLETED"));
-        sync_logger.info(&format!(
-            "📈 Summary: Total={}, Successful={}, Failed={}, Skipped={}",
-            total_devices, successful_devices, failed_devices, skipped_devices
-        ));
-        sync_logger.info(&format!(
-            "⏰ Next sync cycle in {}s ({}min)",
-            config.sync_interval_secs,
-            config.sync_interval_secs / 60
-        ));
+        let device_sync_level = if !serial_zero_sns.is_empty() { "warn" } else { "info" };
+        // Build file payload: skipped device diagnostics (if any) + all raw GET_WEBVIEW_LIST responses
+        let mut payload_parts: Vec<String> = Vec::new();
+        if !serial_zero_sns.is_empty() {
+            payload_parts.push(format!(
+                "=== skipped devices (no object_instance or FFI error) ({} total) ===\n{}",
+                serial_zero_sns.len(),
+                serial_zero_sns.join(", "),
+            ));
+        }
+        if !device_raw_responses.is_empty() {
+            payload_parts.push(format!("=== GET_WEBVIEW_LIST responses ({} devices) ===\n{}",
+                device_raw_responses.len(),
+                device_raw_responses.join("\n\n")));
+        }
+        let device_sync_details: Option<String> = if payload_parts.is_empty() {
+            None
+        } else {
+            Some(payload_parts.join("\n\n"))
+        };
+        sync_flow.step_ffi(&local_db, "device_sync", device_sync_level, "ffi_sync",
+            if failed_devices == total_devices && total_devices > 0 { "error" } else { "ok" },
+            t_device_loop.elapsed().as_millis() as i64,
+            &format!("{} device(s) processed: ok={} fail={} skip={}",
+                total_devices, successful_devices, failed_devices, skipped_devices),
+            device_sync_details.as_deref()).await;
+
+        sync_flow.step(&local_db, "sync_complete", "info", "ffi_sync",
+            if failed_devices == total_devices && total_devices > 0 { "error" } else { "ok" },
+            t_cycle.elapsed().as_millis() as i64,
+            &format!("total={} ok={} fail={} skip={}",
+                total_devices, successful_devices, failed_devices, skipped_devices),
+            None).await;
+        sync_flow.done(&local_db,
+            if failed_devices == total_devices && total_devices > 0 { "error" } else { "ok" }).await;
 
         Ok(())
     }
@@ -2075,10 +2411,6 @@ impl T3000MainService {
             "🔍 Checking if device {} exists in database...",
             serial_number
         );
-        sync_logger.info(&format!(
-            "🔍 Database lookup for device - Serial: {}, Name: '{}', IP: '{}'",
-            serial_number, device_info.panel_name, device_info.panel_ipaddress
-        ));
 
         // Check if device exists
         let existing = devices::Entity::find()
@@ -2123,10 +2455,6 @@ impl T3000MainService {
                 "🔄 Device {} exists - performing UPDATE with latest info",
                 serial_number
             );
-            sync_logger.info(&format!(
-                "🔄 Device UPDATE operation - Serial: {}, Name: '{}', Status: Online",
-                serial_number, device_info.panel_name
-            ));
 
             // UPDATE existing device
             let _update_result = devices::Entity::update(device_model)
@@ -2143,22 +2471,14 @@ impl T3000MainService {
                 })?;
 
             info!("✅ Device {} info UPDATED successfully", serial_number);
-            sync_logger.info(&format!(
-                "✅ Device UPDATE successful - Serial: {}, Update operation completed",
-                serial_number
-            ));
         } else {
             info!(
                 "➕ Device {} not found - performing INSERT as new device",
                 serial_number
             );
-            sync_logger.info(&format!(
-                "➕ Device INSERT operation - Serial: {}, Name: '{}', New device registration",
-                serial_number, device_info.panel_name
-            ));
 
             // INSERT new device
-            let insert_result = devices::Entity::insert(device_model)
+            let _insert_result = devices::Entity::insert(device_model)
                 .exec(txn)
                 .await
                 .map_err(|e| {
@@ -2171,10 +2491,6 @@ impl T3000MainService {
                 })?;
 
             info!("✅ Device {} info INSERTED successfully", serial_number);
-            sync_logger.info(&format!(
-                "✅ Device INSERT successful - Serial: {}, Last insert ID: {}",
-                serial_number, insert_result.last_insert_id
-            ));
         }
 
         Ok(())
@@ -2252,15 +2568,8 @@ impl T3000MainService {
         device_data: &DeviceWithPoints,
         _sync_metadata_id: i32,
     ) -> Result<(), AppError> {
-        let timestamp = chrono::Utc::now().to_rfc3339();
-
         // Create sync logger for trend log operations
         let mut sync_logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::noop());
-
-        info!(
-            "📊 Starting trend log insertion at timestamp: {}",
-            timestamp
-        );
 
         // Insert trend logs for all input points
         if !device_data.input_points.is_empty() {
@@ -2268,16 +2577,19 @@ impl T3000MainService {
                 "📈 Inserting {} INPUT point trend logs...",
                 device_data.input_points.len()
             );
-            sync_logger.info(&format!(
-                "📈 Starting INPUT trend log insertion - Serial: {}, Count: {}, Timestamp: {}",
-                serial_number,
-                device_data.input_points.len(),
-                timestamp
-            ));
         }
 
-        for (input_index, point) in device_data.input_points.iter().enumerate() {
+        for point in &device_data.input_points {
             let units = Self::derive_units_from_range(point.range);
+
+            // ⚠️ VALIDATION: Skip points with zero value but invalid status (fallback zeros)
+            if point.value == 0.0 && point.status == 0 {
+                sync_logger.warn(&format!(
+                    "⏭️ SKIPPING INPUT fallback zero - Serial: {}, Index: {}, Status: {}",
+                    serial_number, point.index, point.status
+                ));
+                continue; // Skip this point - don't write fallback zero to DB
+            }
 
             // Step 1: Get or create parent record (with caching)
             let parent_key = ParentKey {
@@ -2325,10 +2637,6 @@ impl T3000MainService {
                 ..Default::default()
             };
 
-            sync_logger.info(&format!("📊 Inserting INPUT trend detail {}/{} - Serial: {}, ParentID: {}, Index: {}, Value: {}, Status: {}",
-                input_index + 1, device_data.input_points.len(),
-                serial_number, parent_id, point.index, point.value, point.status));
-
             if let Err(e) = trendlog_data_detail::Entity::insert(trend_detail)
                 .exec(txn)
                 .await
@@ -2350,16 +2658,19 @@ impl T3000MainService {
                 "📈 Inserting {} OUTPUT point trend logs...",
                 device_data.output_points.len()
             );
-            sync_logger.info(&format!(
-                "📈 Starting OUTPUT trend log insertion - Serial: {}, Count: {}, Timestamp: {}",
-                serial_number,
-                device_data.output_points.len(),
-                timestamp
-            ));
         }
 
-        for (output_index, point) in device_data.output_points.iter().enumerate() {
+        for point in &device_data.output_points {
             let units = Self::derive_units_from_range(point.range);
+
+            // ⚠️ VALIDATION: Skip points with zero value but invalid status (fallback zeros)
+            if point.value == 0.0 && point.status == 0 {
+                sync_logger.warn(&format!(
+                    "⏭️ SKIPPING OUTPUT fallback zero - Serial: {}, Index: {}, Status: {}",
+                    serial_number, point.index, point.status
+                ));
+                continue; // Skip this point - don't write fallback zero to DB
+            }
 
             // Step 1: Get or create parent record (with caching)
             let parent_key = ParentKey {
@@ -2407,10 +2718,6 @@ impl T3000MainService {
                 ..Default::default()
             };
 
-            sync_logger.info(&format!("📊 Inserting OUTPUT trend detail {}/{} - Serial: {}, ParentID: {}, Index: {}, Value: {}, Status: {}",
-                output_index + 1, device_data.output_points.len(),
-                serial_number, parent_id, point.index, point.value, point.status));
-
             if let Err(e) = trendlog_data_detail::Entity::insert(trend_detail)
                 .exec(txn)
                 .await
@@ -2432,16 +2739,19 @@ impl T3000MainService {
                 "📈 Inserting {} VARIABLE point trend logs...",
                 device_data.variable_points.len()
             );
-            sync_logger.info(&format!(
-                "📈 Starting VARIABLE trend log insertion - Serial: {}, Count: {}, Timestamp: {}",
-                serial_number,
-                device_data.variable_points.len(),
-                timestamp
-            ));
         }
 
-        for (variable_index, point) in device_data.variable_points.iter().enumerate() {
+        for point in &device_data.variable_points {
             let units = Self::derive_units_from_range(point.range);
+
+            // ⚠️ VALIDATION: Skip points with zero value but invalid status (fallback zeros)
+            if point.value == 0.0 && point.status == 0 {
+                sync_logger.warn(&format!(
+                    "⏭️ SKIPPING VARIABLE fallback zero - Serial: {}, Index: {}, Status: {}",
+                    serial_number, point.index, point.status
+                ));
+                continue; // Skip this point - don't write fallback zero to DB
+            }
 
             // Step 1: Get or create parent record (with caching)
             let parent_key = ParentKey {
@@ -2488,10 +2798,6 @@ impl T3000MainService {
                 ..Default::default()
             };
 
-            sync_logger.info(&format!("📊 Inserting VARIABLE trend detail {}/{} - Serial: {}, ParentID: {}, Index: {}, Value: {}, Status: {}",
-                variable_index + 1, device_data.variable_points.len(),
-                serial_number, parent_id, point.index, point.value, point.status));
-
             if let Err(e) = trendlog_data_detail::Entity::insert(trend_detail)
                 .exec(txn)
                 .await
@@ -2511,10 +2817,171 @@ impl T3000MainService {
             + device_data.output_points.len()
             + device_data.variable_points.len();
         info!(
-            "✅ Inserted {} total trend log entries for device {} at {}",
-            total_inserted, serial_number, timestamp
+            "✅ Inserted {} total trend log entries for device {}",
+            total_inserted, serial_number
         );
         Ok(())
+    }
+
+    /// Call T3000 C++ HandleWebViewMsg via FFI for GET_WEBVIEW_LIST (Action 17).
+    /// Reads directly from device hardware — no FFI cache.
+    /// Parameters match the action 17 JSON payload:
+    ///   entry_type: 0=BAC_OUT/OUTPUT, 1=BAC_IN/INPUT, 2=BAC_VAR/VARIABLE
+    ///   index_start / index_end: 0..63 for all 64 points of a type
+    async fn get_webview_list_via_direct_ffi(
+        config: &T3000MainConfig,
+        panel_id: i32,
+        serial_number: i32,
+        object_instance: i32,
+        entry_type: i32,
+        index_start: i32,
+        index_end: i32,
+    ) -> Result<String, AppError> {
+        info!("🔄 Starting DIRECT FFI call GET_WEBVIEW_LIST (Action 17) - Panel: {}, SN: {}, OI: {}, entryType: {}", panel_id, serial_number, object_instance, entry_type);
+
+        for attempt in 1..=(config.retry_attempts + 1) {
+            let panel_id_clone = panel_id;
+            let serial_number_clone = serial_number;
+            let object_instance_clone = object_instance;
+            let entry_type_clone = entry_type;
+            let index_start_clone = index_start;
+            let index_end_clone = index_end;
+
+            let spawn_result = tokio::time::timeout(
+                Duration::from_secs(config.timeout_seconds),
+                tokio::task::spawn_blocking(move || {
+                    let input_json = serde_json::json!({
+                        "action": WebViewMessageType::GET_WEBVIEW_LIST as i32,  // 17
+                        "panelId": panel_id_clone,
+                        "serialNumber": serial_number_clone,
+                        "objectinstance": object_instance_clone,
+                        "entryType": entry_type_clone,
+                        "entryIndexStart": index_start_clone,
+                        "entryIndexEnd": index_end_clone
+                    });
+                    let input_str = input_json.to_string();
+
+                    info!("📤 Sending JSON to C++ (action 17): {}", input_str);
+
+                    // 2MB buffer is sufficient for 64 points of one type
+                    const BUFFER_SIZE: usize = 2097152;
+                    let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
+
+                    let input_bytes = input_str.as_bytes();
+                    if input_bytes.len() < BUFFER_SIZE {
+                        buffer[..input_bytes.len()].copy_from_slice(input_bytes);
+                        buffer[input_bytes.len()] = 0;
+                    } else {
+                        return Err("Input JSON too large for buffer".to_string());
+                    }
+
+                    let result = match call_handle_webview_msg(WebViewMessageType::GET_WEBVIEW_LIST as i32, &mut buffer) {
+                        Ok(code) => code,
+                        Err(err) => {
+                            error!("❌ Failed to call BacnetWebView_HandleWebViewMsg (action 17): {}", err);
+                            return Err(format!("Failed to call BacnetWebView_HandleWebViewMsg: {}", err));
+                        }
+                    };
+
+                    // Mirror HTTP endpoint semantics: codes >= 0 are success (0 = ok, 1 = partial/offline),
+                    // only negative codes are hard errors. Treating code 1 as an error caused entire
+                    // devices to be skipped during sync cycles, producing data gaps.
+                    if result == -2 {
+                        return Err("MFC application not initialized".to_string());
+                    } else if result < 0 {
+                        let null_pos = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
+                        let error_response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
+                        return Err(format!("BacnetWebView HandleWebViewMsg (action 17) returned error code: {} - Response: {}", result, error_response));
+                    } else if result > 0 {
+                        // Non-zero but non-negative: log as informational (e.g. device offline, partial data)
+                        info!("ℹ️  GET_WEBVIEW_LIST action 17 returned code {} (non-fatal, treating as success)", result);
+                    }
+
+                    let null_pos = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
+                    let result_str = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
+
+                    if result_str.is_empty() || result_str == "{}" {
+                        if result > 0 {
+                            // Code > 0 with no data = device offline / no points for this entry type.
+                            // Return an empty JSON array so the caller saves zero points (not an error).
+                            info!("ℹ️  GET_WEBVIEW_LIST action 17 code {} — empty buffer, returning empty list", result);
+                            return Ok("[]".to_string());
+                        }
+                        return Err("HandleWebViewMsg (action 17) returned empty response".to_string());
+                    }
+                    if result_str.contains("\"error\"") {
+                        return Err(format!("HandleWebViewMsg (action 17) returned error: {}", result_str));
+                    }
+
+                    info!("🎉 SUCCESS: GET_WEBVIEW_LIST action 17 returned data. Preview: {}",
+                          if result_str.len() > 200 { &result_str[..200] } else { &result_str });
+
+                    Ok(result_str)
+                }),
+            ).await;
+
+            match spawn_result {
+                Ok(join_result) => {
+                    match join_result {
+                        Ok(ffi_result) => {
+                            match ffi_result {
+                                Ok(data) => {
+                                    return Ok(data);
+                                }
+                                Err(ffi_error) => {
+                                    if ffi_error.contains("MFC application not initialized") && attempt < config.retry_attempts + 1 {
+                                        warn!("⚠️ MFC not ready on attempt {}, waiting before retry...", attempt);
+                                        let delay_seconds = attempt as u64 * 2;
+                                        tokio::time::sleep(Duration::from_secs(delay_seconds)).await;
+                                        break;
+                                    }
+                                    error!("❌ GET_WEBVIEW_LIST action 17 FFI call failed: {}", ffi_error);
+                                    return Err(AppError::FfiError(format!("GET_WEBVIEW_LIST action 17 FFI call failed: {}", ffi_error)));
+                                }
+                            }
+                        }
+                        Err(join_error) => {
+                            error!("❌ GET_WEBVIEW_LIST action 17 task failed: {}", join_error);
+                            return Err(AppError::FfiError(format!("GET_WEBVIEW_LIST action 17 task failed: {}", join_error)));
+                        }
+                    }
+                }
+                Err(timeout_error) => {
+                    error!("❌ GET_WEBVIEW_LIST action 17 timed out: {}", timeout_error);
+                    if attempt < config.retry_attempts + 1 {
+                        break;
+                    }
+                    return Err(AppError::FfiError(format!("GET_WEBVIEW_LIST action 17 timed out: {}", timeout_error)));
+                }
+            }
+        }
+
+        Err(AppError::FfiError("GET_WEBVIEW_LIST action 17: All FFI attempts failed".to_string()))
+    }
+
+    /// Parse a GET_WEBVIEW_LIST (Action 17) JSON response into a Vec<PointData>.
+    /// Response format: { "data": { "device_data": [ { pid, type, index, ... } ] } }
+    fn parse_webview_list_response(json_data: &str) -> Result<Vec<PointData>, AppError> {
+        let json_value: JsonValue = serde_json::from_str(json_data)
+            .map_err(|e| AppError::ParseError(format!("Failed to parse GET_WEBVIEW_LIST JSON: {}", e)))?;
+
+        let device_data = &json_value["data"]["device_data"];
+        if device_data.is_null() || !device_data.is_array() {
+            // Empty or unexpected shape — return empty (not an error; device may have no points of this type)
+            return Ok(Vec::new());
+        }
+
+        let arr = device_data.as_array().unwrap();
+        let mut points: Vec<PointData> = Vec::with_capacity(arr.len());
+        for point_json in arr {
+            match Self::parse_point_data(point_json) {
+                Ok(pt) => points.push(pt),
+                Err(e) => {
+                    warn!("⚠️ parse_webview_list_response: skipping point due to parse error: {}", e);
+                }
+            }
+        }
+        Ok(points)
     }
 
     /// Call T3000 C++ HandleWebViewMsg function directly via FFI for LOGGING_DATA
@@ -2529,13 +2996,6 @@ impl T3000MainService {
             "📋 FFI Config - Timeout: {}s, Retry: {}",
             config.timeout_seconds, config.retry_attempts
         );
-
-        if let Ok(mut sync_logger) = ServiceLogger::ffi() {
-            sync_logger.info(&format!(
-                "🔄 Starting DIRECT FFI call to HandleWebViewMsg(15) - Panel: {}, Serial: {}",
-                panel_id, serial_number
-            ));
-        }
 
         // Try multiple times with increasing delays to wait for MFC initialization
         for attempt in 1..=(config.retry_attempts + 1) {
@@ -2561,9 +3021,6 @@ impl T3000MainService {
                     // Log FFI call start WITH ACTUAL JSON BEING SENT
                     info!("🔌 About to call HandleWebViewMsg with LOGGING_DATA action - Panel: {}, Serial: {}", panel_id_clone, serial_number_clone);
                     info!("📤 Sending JSON to C++: {}", input_str);
-                    if let Ok(mut sync_logger) = ServiceLogger::ffi() {
-                        sync_logger.info(&format!("📤 LOGGING_DATA JSON sent to C++: {}", input_str));
-                    }
 
                     // Prepare buffer for response - very large buffer for up to 100 devices
                     // Each device can be ~1MB, so 100 devices = ~100MB
@@ -2623,12 +3080,9 @@ impl T3000MainService {
                     if result_str.contains("\"error\"") {
                         error!("❌ HandleWebViewMsg returned error response: {}", result_str);
                         return Err(format!("HandleWebViewMsg returned error: {}", result_str));
-                    } else {
-                        info!("🎉 SUCCESS: Received real device data from direct T3000 integration!");
-                        if let Ok(mut sync_logger) = ServiceLogger::ffi() {
-                            sync_logger.info("🎉 SUCCESS: Direct HandleWebViewMsg call returned real T3000 device data");
-                        }
                     }
+
+                    info!("🎉 SUCCESS: Received real device data from direct T3000 integration!");
 
                     info!("📝 Direct Response Preview: {}",
                           if result_str.len() > 200 { &result_str[..200] } else { &result_str });
@@ -2649,9 +3103,6 @@ impl T3000MainService {
                                         "✅ Direct FFI call completed successfully on attempt {}",
                                         attempt
                                     );
-                                    if let Ok(mut sync_logger) = ServiceLogger::ffi() {
-                                        sync_logger.info("✅ Direct HandleWebViewMsg FFI call completed successfully");
-                                    }
                                     return Ok(data);
                                 }
                                 Err(ffi_error) => {
@@ -2732,162 +3183,229 @@ impl T3000MainService {
         let mut sync_logger =
             ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
 
-        sync_logger.info("🔄 Calling HandleWebViewMsg(4) to get device list");
+        const GET_PANELS_TIMEOUT_SECS: u64 = 45;
+        const GET_PANELS_MAX_ATTEMPTS: u64 = 2;
 
-        // Run FFI call in blocking task with timeout
-        let spawn_result = tokio::time::timeout(
-            Duration::from_secs(30), // 30 second timeout — matches LOGGING_DATA timeout, needed during T3000 startup
-            tokio::task::spawn_blocking(move || {
-                info!("🔌 Calling HandleWebViewMsg(GET_PANELS_LIST) for device list...");
+        let mut last_error: Option<AppError> = None;
 
-                // Prepare buffer for response - increased size for large device lists
-                const BUFFER_SIZE: usize = 1048576; // 1MB buffer for large device lists (was 10KB)
-                let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
+        for attempt in 1..=GET_PANELS_MAX_ATTEMPTS {
+            let telemetry_db = match establish_t3_device_connection().await {
+                Ok(db) => Some(db),
+                Err(_) => None,
+            };
+            if let Some(db) = telemetry_db {
+                crate::logging::service::emit_app_log(
+                    &db,
+                    "info",
+                    "POLL",
+                    Some("ffi_sync"),
+                    None,
+                    &format!(
+                        "GET_PANELS_LIST attempt {}/{} started",
+                        attempt, GET_PANELS_MAX_ATTEMPTS
+                    ),
+                    Some("action=4"),
+                )
+                .await;
+            }
 
-                // Call HandleWebViewMsg with Action 4 (GET_PANELS_LIST)
-                let result = match call_handle_webview_msg(
-                    WebViewMessageType::GET_PANELS_LIST as i32,
-                    &mut buffer,
-                ) {
-                    Ok(code) => code,
-                    Err(err) => {
-                        error!(
-                            "❌ Failed to call HandleWebViewMsg(GET_PANELS_LIST): {}",
-                            err
-                        );
-                        return Err(format!("Failed to call HandleWebViewMsg: {}", err));
-                    }
-                };
+            // Run FFI call in blocking task with timeout
+            let spawn_result = tokio::time::timeout(
+                Duration::from_secs(GET_PANELS_TIMEOUT_SECS),
+                tokio::task::spawn_blocking(move || {
+                    info!("🔌 Calling HandleWebViewMsg(GET_PANELS_LIST) for device list...");
 
-                if result == -2 {
-                    return Err("MFC application not initialized".to_string());
-                } else if result != 0 {
-                    let null_pos = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
-                    let _error_response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-                    error!(
-                        "❌ HandleWebViewMsg(GET_PANELS_LIST) returned error code: {}",
-                        result
-                    );
-                    return Err(format!("HandleWebViewMsg returned error code: {}", result));
-                }
+                    // Prepare buffer for response - increased size for large device lists
+                    const BUFFER_SIZE: usize = 1048576; // 1MB buffer for large device lists (was 10KB)
+                    let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
 
-                // Parse response
-                let null_pos = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
-                let result_str = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-
-                if result_str.is_empty() || result_str == "{}" {
-                    warn!("⚠️ GET_PANELS_LIST returned empty response");
-                    return Err("GET_PANELS_LIST returned empty response".to_string());
-                }
-
-                info!("✅ GET_PANELS_LIST returned {} bytes", result_str.len());
-                Ok(result_str)
-            }),
-        )
-        .await;
-
-        // Handle spawn result
-        match spawn_result {
-            Ok(join_result) => {
-                match join_result {
-                    Ok(ffi_result) => {
-                        match ffi_result {
-                            Ok(json_data) => {
-                                sync_logger.info(&format!(
-                                    "✅ GET_PANELS_LIST completed - {} bytes received",
-                                    json_data.len()
-                                ));
-
-                                // Parse JSON response: {"action":"GET_PANELS_LIST_RES","data":[...]}
-                                let json_value: JsonValue = serde_json::from_str(&json_data)
-                                    .map_err(|e| {
-                                        AppError::ParseError(format!(
-                                            "Failed to parse GET_PANELS_LIST JSON: {}",
-                                            e
-                                        ))
-                                    })?;
-
-                                let panels: Vec<PanelInfo> = json_value
-                                    .get("data")
-                                    .and_then(|v| v.as_array())
-                                    .map(|arr| {
-                                        arr.iter()
-                                            .filter_map(|panel_json| {
-                                                let panel_name = clean_cpp_string(
-                                                    panel_json
-                                                        .get("panel_name")?
-                                                        .as_str()?,
-                                                    "(Unknown)" // Keep "(Unknown)" as-is from C++
-                                                );
-                                                Some(PanelInfo {
-                                                    panel_number: panel_json
-                                                        .get("panel_number")?
-                                                        .as_i64()?
-                                                        as i32,
-                                                    serial_number: panel_json
-                                                        .get("serial_number")?
-                                                        .as_i64()?
-                                                        as i32,
-                                                    panel_name,
-                                                    pid: panel_json
-                                                        .get("pid")
-                                                        .and_then(|v| v.as_i64())
-                                                        .map(|v| v as i32),
-                                                    object_instance: panel_json
-                                                        .get("object_instance")
-                                                        .and_then(|v| v.as_i64())
-                                                        .map(|v| v as i32),
-                                                    online_time: panel_json
-                                                        .get("online_time")
-                                                        .and_then(|v| v.as_i64()),
-                                                })
-                                            })
-                                            .collect()
-                                    })
-                                    .unwrap_or_default();
-
-                                sync_logger.info(&format!(
-                                    "📋 Parsed {} panels from GET_PANELS_LIST",
-                                    panels.len()
-                                ));
-
-                                if panels.is_empty() {
-                                    sync_logger.warn("⚠️ No panels returned from GET_PANELS_LIST");
-                                }
-
-                                Ok(panels)
-                            }
-                            Err(ffi_error) => {
-                                error!("❌ GET_PANELS_LIST FFI call failed: {}", ffi_error);
-                                sync_logger
-                                    .error(&format!("❌ GET_PANELS_LIST failed: {}", ffi_error));
-                                Err(AppError::FfiError(format!(
-                                    "GET_PANELS_LIST failed: {}",
-                                    ffi_error
-                                )))
-                            }
+                    // Call HandleWebViewMsg with Action 4 (GET_PANELS_LIST)
+                    let result = match call_handle_webview_msg(
+                        WebViewMessageType::GET_PANELS_LIST as i32,
+                        &mut buffer,
+                    ) {
+                        Ok(code) => code,
+                        Err(err) => {
+                            error!(
+                                "❌ Failed to call HandleWebViewMsg(GET_PANELS_LIST): {}",
+                                err
+                            );
+                            return Err(format!("Failed to call HandleWebViewMsg: {}", err));
                         }
+                    };
+
+                    if result == -2 {
+                        return Err("MFC application not initialized".to_string());
+                    } else if result != 0 {
+                        let null_pos = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
+                        let _error_response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
+                        error!(
+                            "❌ HandleWebViewMsg(GET_PANELS_LIST) returned error code: {}",
+                            result
+                        );
+                        return Err(format!("HandleWebViewMsg returned error code: {}", result));
                     }
+
+                    // Parse response
+                    let null_pos = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
+                    let result_str = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
+
+                    if result_str.is_empty() || result_str == "{}" {
+                        warn!("⚠️ GET_PANELS_LIST returned empty response");
+                        return Err("GET_PANELS_LIST returned empty response".to_string());
+                    }
+
+                    info!("✅ GET_PANELS_LIST returned {} bytes", result_str.len());
+                    Ok(result_str)
+                }),
+            )
+            .await;
+
+            let attempt_result: Result<Vec<PanelInfo>, AppError> = match spawn_result {
+                Ok(join_result) => match join_result {
+                    Ok(ffi_result) => match ffi_result {
+                        Ok(json_data) => {
+                            // Parse JSON response: {"action":"GET_PANELS_LIST_RES","data":[...]}
+                            let json_value: JsonValue = serde_json::from_str(&json_data).map_err(|e| {
+                                AppError::ParseError(format!(
+                                    "Failed to parse GET_PANELS_LIST JSON: {}",
+                                    e
+                                ))
+                            })?;
+
+                            let panels: Vec<PanelInfo> = json_value
+                                .get("data")
+                                .and_then(|v| v.as_array())
+                                .map(|arr| {
+                                    arr.iter()
+                                        .filter_map(|panel_json| {
+                                            let panel_name = clean_cpp_string(
+                                                panel_json.get("panel_name")?.as_str()?,
+                                                "(Unknown)",
+                                            );
+                                            Some(PanelInfo {
+                                                panel_number: panel_json
+                                                    .get("panel_number")?
+                                                    .as_i64()?
+                                                    as i32,
+                                                serial_number: panel_json
+                                                    .get("serial_number")?
+                                                    .as_i64()?
+                                                    as i32,
+                                                panel_name,
+                                                pid: panel_json
+                                                    .get("pid")
+                                                    .and_then(|v| v.as_i64())
+                                                    .map(|v| v as i32),
+                                                object_instance: panel_json
+                                                    .get("object_instance")
+                                                    .and_then(|v| v.as_i64())
+                                                    .map(|v| v as i32),
+                                                online_time: panel_json
+                                                    .get("online_time")
+                                                    .and_then(|v| v.as_i64()),
+                                            })
+                                        })
+                                        .collect()
+                                })
+                                .unwrap_or_default();
+
+                            if panels.is_empty() {
+                                sync_logger.warn("⚠️ No panels returned from GET_PANELS_LIST");
+                            }
+
+                            Ok(panels)
+                        }
+                        Err(ffi_error) => {
+                            error!("❌ GET_PANELS_LIST FFI call failed: {}", ffi_error);
+                            sync_logger.error(&format!("❌ GET_PANELS_LIST failed: {}", ffi_error));
+                            Err(AppError::FfiError(format!(
+                                "GET_PANELS_LIST failed: {}",
+                                ffi_error
+                            )))
+                        }
+                    },
                     Err(join_error) => {
                         error!("❌ GET_PANELS_LIST task failed: {}", join_error);
-                        sync_logger
-                            .error(&format!("❌ GET_PANELS_LIST task failed: {}", join_error));
+                        sync_logger.error(&format!("❌ GET_PANELS_LIST task failed: {}", join_error));
                         Err(AppError::FfiError(format!(
                             "GET_PANELS_LIST task failed: {}",
                             join_error
                         )))
                     }
+                },
+                Err(timeout_error) => {
+                    error!("❌ GET_PANELS_LIST timed out: {}", timeout_error);
+                    sync_logger.error(&format!("❌ GET_PANELS_LIST timed out: {}", timeout_error));
+                    Err(AppError::FfiError(format!(
+                        "GET_PANELS_LIST timed out: {}",
+                        timeout_error
+                    )))
+                }
+            };
+
+            match attempt_result {
+                Ok(panels) => {
+                    if attempt > 1 {
+                        let telemetry_db = match establish_t3_device_connection().await {
+                            Ok(db) => Some(db),
+                            Err(_) => None,
+                        };
+                        if let Some(db) = telemetry_db {
+                            crate::logging::service::emit_app_log(
+                                &db,
+                                "info",
+                                "POLL",
+                                Some("ffi_sync"),
+                                None,
+                                &format!(
+                                    "GET_PANELS_LIST recovered on attempt {}/{}",
+                                    attempt, GET_PANELS_MAX_ATTEMPTS
+                                ),
+                                Some("action=4 policy=retry_recovered"),
+                            )
+                            .await;
+                        }
+                    }
+                    return Ok(panels);
+                }
+                Err(e) => {
+                    last_error = Some(e);
+                    if attempt < GET_PANELS_MAX_ATTEMPTS {
+                        let backoff_secs = attempt * 2;
+                        sync_logger.warn(&format!(
+                            "⚠️ GET_PANELS_LIST attempt {}/{} failed, retrying in {}s",
+                            attempt, GET_PANELS_MAX_ATTEMPTS, backoff_secs
+                        ));
+                        let telemetry_db = match establish_t3_device_connection().await {
+                            Ok(db) => Some(db),
+                            Err(_) => None,
+                        };
+                        if let Some(db) = telemetry_db {
+                            crate::logging::service::emit_app_log(
+                                &db,
+                                "warn",
+                                "POLL",
+                                Some("ffi_sync"),
+                                None,
+                                &format!(
+                                    "GET_PANELS_LIST attempt {}/{} failed, retrying in {}s",
+                                    attempt, GET_PANELS_MAX_ATTEMPTS, backoff_secs
+                                ),
+                                Some("action=4 policy=retry_pending"),
+                            )
+                            .await;
+                        }
+                        sleep(Duration::from_secs(backoff_secs)).await;
+                        continue;
+                    }
                 }
             }
-            Err(timeout_error) => {
-                error!("❌ GET_PANELS_LIST timed out: {}", timeout_error);
-                sync_logger.error(&format!("❌ GET_PANELS_LIST timed out: {}", timeout_error));
-                Err(AppError::FfiError(format!(
-                    "GET_PANELS_LIST timed out: {}",
-                    timeout_error
-                )))
-            }
         }
+
+        Err(last_error.unwrap_or_else(|| {
+            AppError::FfiError("GET_PANELS_LIST failed with unknown error".to_string())
+        }))
     }
 
     /// Call T3000 C++ LOGGING_DATA function via FFI
@@ -2901,17 +3419,6 @@ impl T3000MainService {
 
         // Create sync logger for FFI operations
         let mut sync_logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::noop());
-
-        // Log FFI call start to structured log
-        sync_logger.info(&format!(
-            "🔄 Starting FFI call to T3000_GetLoggingData (timeout: {}s)",
-            config.timeout_seconds
-        ));
-
-        // Enhanced diagnostic logging for T3000 C++ integration
-        sync_logger.info("🔧 Enhanced T3000 diagnostic and logging system active");
-        sync_logger
-            .info("⚡ Starting enhanced T3000 FFI call with comprehensive response data logging");
 
         // Run FFI call in a blocking task with timeout
         let spawn_result = tokio::time::timeout(
@@ -2991,18 +3498,6 @@ impl T3000MainService {
                                     data.len()
                                 );
 
-                                // Log FFI success to structured log with data size and preview
-                                let preview = if data.len() > 200 {
-                                    format!("{}...", &data[..200])
-                                } else {
-                                    data.clone()
-                                };
-                                sync_logger.info(&format!(
-                                    "✅ FFI call completed - {} bytes received. Preview: {}",
-                                    data.len(),
-                                    preview
-                                ));
-
                                 Ok(data)
                             }
                             Err(e) => {
@@ -3046,15 +3541,8 @@ impl T3000MainService {
             }
         };
 
-        // Log JSON parsing start to structured log
-        sync_logger.info(&format!(
-            "🔍 Starting JSON parsing - {} bytes",
-            json_data.len()
-        ));
-
         // Log full JSON response for diagnostic purposes
         info!("🔍 JSON Content Preview (FULL): {}", json_data);
-        sync_logger.info(&format!("🔍 JSON Content Preview (FULL): {}", json_data));
 
         let json_value: JsonValue = serde_json::from_str(json_data).map_err(|e| {
             error!("❌ JSON parse error: {}", e);
@@ -3063,7 +3551,6 @@ impl T3000MainService {
         })?;
 
         info!("✅ JSON parsed successfully");
-        sync_logger.info("✅ JSON parsed successfully");
 
         let action = json_value
             .get("action")
@@ -3097,34 +3584,12 @@ impl T3000MainService {
         if let Some(data_array) = json_value.get("data").and_then(|v| v.as_array()) {
             info!("📱 Found {} devices in data array", data_array.len());
 
-            sync_logger.info(&format!(
-                "� Processing {} devices from C++ response",
-                data_array.len()
-            ));
-
             for (device_index, device_json) in data_array.iter().enumerate() {
-                // Log raw device JSON for debugging (compact single-line format)
-                let device_json_str = serde_json::to_string(device_json)
-                    .unwrap_or_else(|_| "Invalid JSON".to_string());
-                sync_logger.info(&format!(
-                    "📋 Raw Device {} JSON: {}",
-                    device_index + 1,
-                    device_json_str
-                ));
-
                 // Extract device information from each device object
-                let panel_serial_number_raw = device_json.get("panel_serial_number");
-                let panel_serial_number = panel_serial_number_raw
+                let panel_serial_number = device_json
+                    .get("panel_serial_number")
                     .and_then(|v| v.as_i64())
                     .unwrap_or(0) as i32;
-
-                // Log detailed parsing info
-                sync_logger.info(&format!(
-                    "🔍 Device {} parsing - panel_serial_number field: {:?} -> parsed value: {}",
-                    device_index + 1,
-                    panel_serial_number_raw,
-                    panel_serial_number
-                ));
 
                 let mut device_info = DeviceInfo {
                     panel_id: device_json
@@ -3181,15 +3646,6 @@ impl T3000MainService {
                     device_info.panel_ipaddress
                 );
 
-                sync_logger.info(&format!(
-                    "🏠 Device {} - Panel ID: {}, Serial: {}, Name: '{}', IP: {}",
-                    device_index + 1,
-                    device_info.panel_id,
-                    device_info.panel_serial_number,
-                    device_info.panel_name,
-                    device_info.panel_ipaddress
-                ));
-
                 // Try to get extended device configuration using new FFI functions
                 Self::populate_extended_device_info(&mut device_info);
 
@@ -3206,11 +3662,6 @@ impl T3000MainService {
                         device_index + 1,
                         device_data_array.len()
                     );
-                    sync_logger.info(&format!(
-                        "📊 Device {} has {} data points",
-                        device_index + 1,
-                        device_data_array.len()
-                    ));
 
                     for (point_index, point_json) in device_data_array.iter().enumerate() {
                         if let Some(point_type) = point_json.get("type").and_then(|v| v.as_str()) {
@@ -3282,14 +3733,6 @@ impl T3000MainService {
                     output_points.len(),
                     variable_points.len()
                 );
-
-                sync_logger.info(&format!(
-                    "📈 Device {} Points Summary - INPUT: {}, OUTPUT: {}, VARIABLE: {}",
-                    device_index + 1,
-                    input_points.len(),
-                    output_points.len(),
-                    variable_points.len()
-                ));
 
                 let device_with_points = DeviceWithPoints {
                     device_info,
@@ -3369,11 +3812,6 @@ impl T3000MainService {
             all_devices.len()
         );
 
-        sync_logger.info(&format!(
-            "✅ Multi-device parsing completed - {} devices processed",
-            all_devices.len()
-        ));
-
         Ok(LoggingDataResponse {
             action,
             devices: all_devices,
@@ -3433,7 +3871,9 @@ impl T3000MainService {
             value: point_json
                 .get("value")
                 .and_then(|v| v.as_f64())
-                .unwrap_or(0.0),
+                .ok_or_else(|| AppError::ValidationError(
+                    "Point missing/invalid 'value' field - SKIPPING (fallback zero not written)".to_string()
+                ))?,
             pid: point_json.get("pid").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
             units: point_json
                 .get("unit")
@@ -3531,12 +3971,6 @@ impl T3000MainService {
             Some(_) => {
                 // UPDATE existing input point using update_many + col_expr
                 // (Safe pattern: PK doesn't include Input_Index, so Entity::update() could target wrong rows)
-                if point.index == 0 {
-                    sync_logger.info(&format!(
-                        "🔬 INPUT UPDATE idx=0 calibration fields: cal_h={:?}, cal_l={:?}, sign={}, filter={:?}, control={:?}",
-                        point.calibration_h, point.calibration_l, point.sign, point.filter, point.control
-                    ));
-                }
                 info!(
                     "🔄 Updating existing INPUT point {}:{} - ID: {:?}, Label: '{}'",
                     serial_number, point.index, point.id, point.full_label
@@ -3573,10 +4007,24 @@ impl T3000MainService {
                     })?;
 
                 info!("✅ INPUT point {}:{} UPDATED", serial_number, point.index);
-                sync_logger.info(&format!(
-                    "✅ INPUT UPDATE successful - Serial: {}, ID: {:?}, Index: {}, Label: '{}', Value: {}, Units: '{}'",
-                    serial_number, point.id, point.index, point.full_label, point.value, derived_units
-                ));
+                if let Err(e) = crate::t3_device::haystack_service::upsert_from_point_data(
+                    txn,
+                    "INPUTS",
+                    serial_number,
+                    point.index,
+                    Some(point.full_label.as_str()),
+                    point.digital_analog,
+                    Some(derived_units.as_str()),
+                )
+                .await
+                {
+                    warn!(
+                        "⚠️ Failed to upsert Haystack entity for INPUT {}:{}: {}",
+                        serial_number,
+                        point.index,
+                        e
+                    );
+                }
                 Ok(())
             }
             None => {
@@ -3609,7 +4057,7 @@ impl T3000MainService {
                     control: Set(point.control.map(|c| c.to_string())),
                 };
 
-                let insert_result = input_points::Entity::insert(input_model)
+                let _insert_result = input_points::Entity::insert(input_model)
                     .exec(txn).await
                     .map_err(|e| {
                         sync_logger.error(&format!(
@@ -3620,10 +4068,24 @@ impl T3000MainService {
                     })?;
 
                 info!("✅ INPUT point {}:{} INSERTED", serial_number, point.index);
-                sync_logger.info(&format!(
-                    "✅ INPUT INSERT successful - Serial: {}, ID: {:?}, Index: {}, Label: '{}', Value: {}, Units: '{}', Last insert ID: {}",
-                    serial_number, point.id, point.index, point.full_label, point.value, derived_units, insert_result.last_insert_id
-                ));
+                if let Err(e) = crate::t3_device::haystack_service::upsert_from_point_data(
+                    txn,
+                    "INPUTS",
+                    serial_number,
+                    point.index,
+                    Some(point.full_label.as_str()),
+                    point.digital_analog,
+                    Some(derived_units.as_str()),
+                )
+                .await
+                {
+                    warn!(
+                        "⚠️ Failed to upsert Haystack entity for INPUT {}:{}: {}",
+                        serial_number,
+                        point.index,
+                        e
+                    );
+                }
                 Ok(())
             }
         }
@@ -3689,10 +4151,24 @@ impl T3000MainService {
                     })?;
 
                 info!("✅ OUTPUT point {}:{} UPDATED", serial_number, point.index);
-                sync_logger.info(&format!(
-                    "✅ OUTPUT UPDATE successful - Serial: {}, ID: {:?}, Index: {}, Label: '{}', Value: {}, Units: '{}'",
-                    serial_number, point.id, point.index, point.full_label, point.value, derived_units
-                ));
+                if let Err(e) = crate::t3_device::haystack_service::upsert_from_point_data(
+                    txn,
+                    "OUTPUTS",
+                    serial_number,
+                    point.index,
+                    Some(point.full_label.as_str()),
+                    point.digital_analog,
+                    Some(derived_units.as_str()),
+                )
+                .await
+                {
+                    warn!(
+                        "⚠️ Failed to upsert Haystack entity for OUTPUT {}:{}: {}",
+                        serial_number,
+                        point.index,
+                        e
+                    );
+                }
                 Ok(())
             }
             None => {
@@ -3725,7 +4201,7 @@ impl T3000MainService {
                     control: Set(point.control.map(|c| c.to_string())),
                 };
 
-                let insert_result = output_points::Entity::insert(output_model)
+                let _insert_result = output_points::Entity::insert(output_model)
                     .exec(txn).await
                     .map_err(|e| {
                         sync_logger.error(&format!(
@@ -3736,10 +4212,24 @@ impl T3000MainService {
                     })?;
 
                 info!("✅ OUTPUT point {}:{} INSERTED", serial_number, point.index);
-                sync_logger.info(&format!(
-                    "✅ OUTPUT INSERT successful - Serial: {}, ID: {:?}, Index: {}, Label: '{}', Value: {}, Units: '{}', Last insert ID: {}",
-                    serial_number, point.id, point.index, point.full_label, point.value, derived_units, insert_result.last_insert_id
-                ));
+                if let Err(e) = crate::t3_device::haystack_service::upsert_from_point_data(
+                    txn,
+                    "OUTPUTS",
+                    serial_number,
+                    point.index,
+                    Some(point.full_label.as_str()),
+                    point.digital_analog,
+                    Some(derived_units.as_str()),
+                )
+                .await
+                {
+                    warn!(
+                        "⚠️ Failed to upsert Haystack entity for OUTPUT {}:{}: {}",
+                        serial_number,
+                        point.index,
+                        e
+                    );
+                }
                 Ok(())
             }
         }
@@ -3810,10 +4300,24 @@ impl T3000MainService {
                     "✅ VARIABLE point {}:{} UPDATED",
                     serial_number, point.index
                 );
-                sync_logger.info(&format!(
-                    "✅ VARIABLE UPDATE successful - Serial: {}, ID: {:?}, Index: {}, Label: '{}', Value: {}, Units: '{}'",
-                    serial_number, point.id, point.index, point.full_label, point.value, derived_units
-                ));
+                if let Err(e) = crate::t3_device::haystack_service::upsert_from_point_data(
+                    txn,
+                    "VARIABLES",
+                    serial_number,
+                    point.index,
+                    Some(point.full_label.as_str()),
+                    point.digital_analog,
+                    Some(derived_units.as_str()),
+                )
+                .await
+                {
+                    warn!(
+                        "⚠️ Failed to upsert Haystack entity for VARIABLE {}:{}: {}",
+                        serial_number,
+                        point.index,
+                        e
+                    );
+                }
                 Ok(())
             }
             None => {
@@ -3846,7 +4350,7 @@ impl T3000MainService {
                     control: Set(point.control.map(|c| c.to_string())),
                 };
 
-                let insert_result = variable_points::Entity::insert(variable_model)
+                let _insert_result = variable_points::Entity::insert(variable_model)
                     .exec(txn).await
                     .map_err(|e| {
                         sync_logger.error(&format!(
@@ -3860,10 +4364,24 @@ impl T3000MainService {
                     "✅ VARIABLE point {}:{} INSERTED",
                     serial_number, point.index
                 );
-                sync_logger.info(&format!(
-                    "✅ VARIABLE INSERT successful - Serial: {}, ID: {:?}, Index: {}, Label: '{}', Value: {}, Units: '{}', Last insert ID: {}",
-                    serial_number, point.id, point.index, point.full_label, point.value, derived_units, insert_result.last_insert_id
-                ));
+                if let Err(e) = crate::t3_device::haystack_service::upsert_from_point_data(
+                    txn,
+                    "VARIABLES",
+                    serial_number,
+                    point.index,
+                    Some(point.full_label.as_str()),
+                    point.digital_analog,
+                    Some(derived_units.as_str()),
+                )
+                .await
+                {
+                    warn!(
+                        "⚠️ Failed to upsert Haystack entity for VARIABLE {}:{}: {}",
+                        serial_number,
+                        point.index,
+                        e
+                    );
+                }
                 Ok(())
             }
         }
@@ -4378,11 +4896,6 @@ impl T3000MainService {
         // are not available in the current T3000 export library.
         // The system will use T3000_GetLoggingData() directly, which should work
         // if the T3000 C++ system is already initialized by the main application.
-
-        if let Ok(mut sync_logger) = ServiceLogger::ffi() {
-            sync_logger.info("💡 T3000 initialization functions not available - Using direct T3000_GetLoggingData() call");
-            sync_logger.info("📋 Assuming T3000 C++ system is initialized by main application");
-        }
 
         Ok(())
     }

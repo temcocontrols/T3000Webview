@@ -119,6 +119,27 @@ CREATE TABLE VARIABLES (
     Control NVARCHAR(64)
 );
 
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'HAYSTACK_ENTITY')
+CREATE TABLE HAYSTACK_ENTITY (
+    id NVARCHAR(255) PRIMARY KEY,
+    kind NVARCHAR(64) NOT NULL,
+    dis NVARCHAR(512),
+    tags NVARCHAR(MAX) NOT NULL,
+    serial_number INT,
+    point_table NVARCHAR(32),
+    point_index NVARCHAR(64),
+    updated_at BIGINT
+);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_haystack_entity_kind' AND object_id = OBJECT_ID('HAYSTACK_ENTITY'))
+CREATE INDEX idx_haystack_entity_kind ON HAYSTACK_ENTITY(kind);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_haystack_entity_serial' AND object_id = OBJECT_ID('HAYSTACK_ENTITY'))
+CREATE INDEX idx_haystack_entity_serial ON HAYSTACK_ENTITY(serial_number);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_haystack_entity_point_table' AND object_id = OBJECT_ID('HAYSTACK_ENTITY'))
+CREATE INDEX idx_haystack_entity_point_table ON HAYSTACK_ENTITY(point_table);
+
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'PROGRAMS')
 CREATE TABLE PROGRAMS (
     SerialNumber INT NOT NULL,
@@ -1207,4 +1228,65 @@ CREATE TABLE SERVER_CLIENT_REGISTRY (
     version       NVARCHAR(50) DEFAULT '',
     created_at    DATETIME2 DEFAULT GETDATE(),
     CONSTRAINT UQ_SCR_host_ip UNIQUE (hostname, ip_address)
+);
+
+-- ============================================================================
+-- T3_FLOW / T3_FLOW_STEP / T3_FLOW_PAYLOAD - Flow-based trace logging
+-- NOTE: At runtime these tables live in local SQLite only (webview_t3_device.db).
+-- This MSSQL DDL is kept as a reference schema for future multi-DB deployments.
+-- ============================================================================
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'T3_FLOW')
+CREATE TABLE T3_FLOW (
+    id           INT IDENTITY(1,1) PRIMARY KEY,
+    flow_id      NVARCHAR(36)  NOT NULL UNIQUE,
+    flow_type    NVARCHAR(50)  NOT NULL,
+    trigger_src  NVARCHAR(30)  NOT NULL,
+    started_at   BIGINT        NOT NULL,
+    ended_at     BIGINT,
+    status       NVARCHAR(20)  NOT NULL DEFAULT 'running',
+    hostname     NVARCHAR(100),
+    total_steps  INT           NOT NULL DEFAULT 0,
+    done_steps   INT           NOT NULL DEFAULT 0,
+    error_count  INT           NOT NULL DEFAULT 0,
+    meta         NVARCHAR(MAX)
+);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_t3_flow_type'    AND object_id = OBJECT_ID('T3_FLOW'))
+CREATE INDEX idx_t3_flow_type    ON T3_FLOW (flow_type);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_t3_flow_started' AND object_id = OBJECT_ID('T3_FLOW'))
+CREATE INDEX idx_t3_flow_started ON T3_FLOW (started_at DESC);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_t3_flow_status'  AND object_id = OBJECT_ID('T3_FLOW'))
+CREATE INDEX idx_t3_flow_status  ON T3_FLOW (status);
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'T3_FLOW_STEP')
+CREATE TABLE T3_FLOW_STEP (
+    id           INT IDENTITY(1,1) PRIMARY KEY,
+    flow_id      NVARCHAR(36)  NOT NULL,
+    seq          INT           NOT NULL,
+    step_name    NVARCHAR(100) NOT NULL,
+    level        NVARCHAR(10)  NOT NULL DEFAULT 'info',
+    source       NVARCHAR(100),
+    api_path     NVARCHAR(500),
+    action_type  INT,
+    status       NVARCHAR(20)  NOT NULL DEFAULT 'ok',
+    duration_ms  BIGINT,
+    payload_ref  NVARCHAR(500),
+    message      NVARCHAR(MAX),
+    details      NVARCHAR(MAX),
+    ts_unix      BIGINT        NOT NULL,
+    ts_fmt       NVARCHAR(30)  NOT NULL
+);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_t3_flow_step_flow' AND object_id = OBJECT_ID('T3_FLOW_STEP'))
+CREATE INDEX idx_t3_flow_step_flow ON T3_FLOW_STEP (flow_id);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_t3_flow_step_ts'   AND object_id = OBJECT_ID('T3_FLOW_STEP'))
+CREATE INDEX idx_t3_flow_step_ts   ON T3_FLOW_STEP (ts_unix DESC);
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'T3_FLOW_PAYLOAD')
+CREATE TABLE T3_FLOW_PAYLOAD (
+    id           INT IDENTITY(1,1) PRIMARY KEY,
+    flow_id      NVARCHAR(36)  NOT NULL,
+    step_id      INT           NOT NULL,
+    file_path    NVARCHAR(500) NOT NULL,
+    size_bytes   BIGINT        NOT NULL,
+    created_at   BIGINT        NOT NULL,
+    purged       INT           NOT NULL DEFAULT 0
 );

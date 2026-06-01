@@ -63,6 +63,7 @@ Trend logs automatically collect and store historical data from inputs, outputs,
 
 ## Next Steps
 
+- [Trend Center Unified Design](./trend-center-unified-design.md) - Single-page trend workflow and phased migration plan
 - [Inputs](../data-points/inputs) - Input monitoring
 - [Alarms](./alarms) - Alarm analysis
 - [Monitoring](../device-management/device-monitoring) - Real-time monitoring

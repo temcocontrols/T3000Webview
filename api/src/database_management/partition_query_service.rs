@@ -8,6 +8,19 @@ use chrono::{NaiveDateTime, NaiveDate, Utc, Datelike};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+async fn emit_query_log(db: &DatabaseConnection, level: &str, message: &str) {
+    crate::logging::service::emit_app_log(
+        db,
+        level,
+        "TRENDLOG",
+        Some("partition_query_service"),
+        None,
+        message,
+        None,
+    )
+    .await;
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrendlogDataRecord {
     pub serial_number: i32,
@@ -45,28 +58,29 @@ pub async fn query_trendlog_data(
     end_date: NaiveDateTime,
     filters: TrendlogFilters,
 ) -> Result<Vec<TrendlogDataRecord>> {
-    use crate::logger::ServiceLogger;
-
-    // Create logger for query tracking — non-fatal, fall back to no-op if log dir unavailable
-    let mut logger = ServiceLogger::new("T3_PartitionQuery")
-        .unwrap_or_else(|_| ServiceLogger::noop());
-
-    logger.info(&format!("🔍 Trendlog query: {} to {}",
-        start_date.format("%Y-%m-%d %H:%M:%S"),
-        end_date.format("%Y-%m-%d %H:%M:%S")));
-
-    if let Some(serial) = filters.serial_number {
-        logger.info(&format!("   Filter: SerialNumber = {}", serial));
-    }
-    if let Some(panel) = filters.panel_id {
-        logger.info(&format!("   Filter: PanelId = {}", panel));
-    }
-    if let Some(ref point_id) = filters.point_id {
-        logger.info(&format!("   Filter: PointId = {}", point_id));
-    }
-
     let db = establish_t3_device_connection().await
         .map_err(|e| crate::error::Error::ServerError(format!("Database connection failed: {}", e)))?;
+
+    emit_query_log(
+        &db,
+        "info",
+        &format!(
+            "Trendlog query: {} to {}",
+            start_date.format("%Y-%m-%d %H:%M:%S"),
+            end_date.format("%Y-%m-%d %H:%M:%S")
+        ),
+    )
+    .await;
+
+    if let Some(serial) = filters.serial_number {
+        emit_query_log(&db, "info", &format!("Filter: SerialNumber = {}", serial)).await;
+    }
+    if let Some(panel) = filters.panel_id {
+        emit_query_log(&db, "info", &format!("Filter: PanelId = {}", panel)).await;
+    }
+    if let Some(ref point_id) = filters.point_id {
+        emit_query_log(&db, "info", &format!("Filter: PointId = {}", point_id)).await;
+    }
 
     // If the partition config table is missing (old DB schema) or returns an error,
     // fall back to a direct main-DB query rather than propagating HTTP 500.
@@ -84,8 +98,8 @@ pub async fn query_trendlog_data(
     });
 
     if !config.is_active {
-        logger.info("📊 Partitioning disabled - querying main DB only");
-        return query_main_database(&db, start_date, end_date, &filters, &mut logger).await;
+        emit_query_log(&db, "info", "Partitioning disabled - querying main DB only").await;
+        return query_main_database(&db, start_date, end_date, &filters, &db).await;
     }
 
     // Determine which partitions need to be queried
@@ -96,30 +110,45 @@ pub async fn query_trendlog_data(
         end_date.date()
     ).await?;
 
-    logger.info(&format!("📁 Found {} partition(s) to query", required_partitions.len()));
+    emit_query_log(&db, "info", &format!("Found {} partition(s) to query", required_partitions.len())).await;
 
     let mut all_results = Vec::new();
 
     // Query each partition
     for (idx, partition_info) in required_partitions.iter().enumerate() {
         if partition_info.is_main_db {
-            logger.info(&format!("   [{}/{}] Querying MAIN database (current period)", idx + 1, required_partitions.len()));
-            let results = query_main_database(&db, start_date, end_date, &filters, &mut logger).await?;
-            logger.info(&format!("      ✅ Got {} records from main DB", results.len()));
+            emit_query_log(
+                &db,
+                "info",
+                &format!("[{}/{}] Querying MAIN database (current period)", idx + 1, required_partitions.len()),
+            )
+            .await;
+            let results = query_main_database(&db, start_date, end_date, &filters, &db).await?;
+            emit_query_log(&db, "info", &format!("Got {} records from main DB", results.len())).await;
             all_results.extend(results);
         } else {
-            logger.info(&format!("   [{}/{}] Querying partition: {}", idx + 1, required_partitions.len(), partition_info.partition_id));
-            logger.info(&format!("      Path: {}", partition_info.file_path));
+            emit_query_log(
+                &db,
+                "info",
+                &format!("[{}/{}] Querying partition: {}", idx + 1, required_partitions.len(), partition_info.partition_id),
+            )
+            .await;
+            emit_query_log(&db, "info", &format!("Path: {}", partition_info.file_path)).await;
 
             let results = query_partition_file(
                 &partition_info.file_path,
                 start_date,
                 end_date,
                 &filters,
-                &mut logger
+                &db
             ).await?;
 
-            logger.info(&format!("      ✅ Got {} records from partition {}", results.len(), partition_info.partition_id));
+            emit_query_log(
+                &db,
+                "info",
+                &format!("Got {} records from partition {}", results.len(), partition_info.partition_id),
+            )
+            .await;
             all_results.extend(results);
         }
     }
@@ -127,8 +156,16 @@ pub async fn query_trendlog_data(
     // Sort by timestamp
     all_results.sort_by(|a, b| a.logging_time_fmt.cmp(&b.logging_time_fmt));
 
-    logger.info(&format!("✅ Query complete: {} total records from {} source(s)",
-        all_results.len(), required_partitions.len()));
+    emit_query_log(
+        &db,
+        "info",
+        &format!(
+            "Query complete: {} total records from {} source(s)",
+            all_results.len(),
+            required_partitions.len()
+        ),
+    )
+    .await;
 
     Ok(all_results)
 }
@@ -233,11 +270,11 @@ async fn query_main_database(
     start_date: NaiveDateTime,
     end_date: NaiveDateTime,
     filters: &TrendlogFilters,
-    logger: &mut crate::logger::ServiceLogger,
+    log_db: &DatabaseConnection,
 ) -> Result<Vec<TrendlogDataRecord>> {
     let query_sql = build_trendlog_query("main", start_date, end_date, filters);
 
-    logger.info("   🔎 Executing query on main database...");
+    emit_query_log(log_db, "info", "Executing query on main database...").await;
 
     let results = db.query_all(Statement::from_string(
         DatabaseBackend::Sqlite,
@@ -253,7 +290,7 @@ async fn query_partition_file(
     start_date: NaiveDateTime,
     end_date: NaiveDateTime,
     filters: &TrendlogFilters,
-    logger: &mut crate::logger::ServiceLogger,
+    log_db: &DatabaseConnection,
 ) -> Result<Vec<TrendlogDataRecord>> {
     let db = establish_t3_device_connection().await
         .map_err(|e| crate::error::Error::ServerError(format!("Database connection failed: {}", e)))?;
@@ -262,20 +299,21 @@ async fn query_partition_file(
     let formatted_path = format_path_for_attach(Path::new(partition_path));
     let attach_sql = format!("ATTACH DATABASE '{}' AS partition_db", formatted_path);
 
-    logger.info(&format!("   🔗 Attaching: {}", formatted_path));
+    emit_query_log(log_db, "info", &format!("Attaching: {}", formatted_path)).await;
 
-    db.execute(Statement::from_string(DatabaseBackend::Sqlite, attach_sql.clone()))
+    if let Err(e) = db
+        .execute(Statement::from_string(DatabaseBackend::Sqlite, attach_sql.clone()))
         .await
-        .map_err(|e| {
-            logger.error(&format!("   ❌ ATTACH failed: {}", e));
-            crate::error::Error::ServerError(format!("Failed to attach partition: {}", e))
-        })?;
+    {
+        emit_query_log(log_db, "error", &format!("ATTACH failed: {}", e)).await;
+        return Err(crate::error::Error::ServerError(format!("Failed to attach partition: {}", e)));
+    }
 
-    logger.info("   ✅ Partition attached successfully");
+    emit_query_log(log_db, "info", "Partition attached successfully").await;
 
     // Query with filters
     let query_sql = build_trendlog_query("partition_db", start_date, end_date, filters);
-    logger.info("   🔎 Executing query on partition...");
+    emit_query_log(log_db, "info", "Executing query on partition...").await;
 
     let results = db.query_all(Statement::from_string(
         DatabaseBackend::Sqlite,
@@ -283,7 +321,7 @@ async fn query_partition_file(
     )).await?;
 
     // Detach partition
-    logger.info("   🔌 Detaching partition");
+    emit_query_log(log_db, "info", "Detaching partition").await;
     db.execute(Statement::from_string(
         DatabaseBackend::Sqlite,
         "DETACH DATABASE partition_db".to_string()

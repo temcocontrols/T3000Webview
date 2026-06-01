@@ -87,6 +87,7 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['@t3-vue'] = require('path').resolve(__dirname, 'src/t3-vue');
         viteConf.resolve.alias['@t3-react'] = require('path').resolve(__dirname, 'src/t3-react');
         viteConf.resolve.alias['@common'] = require('path').resolve(__dirname, 'src/lib');
+        viteConf.resolve.alias['@shared'] = require('path').resolve(__dirname, 'src/t3-react/shared');
         // Multi-platform architecture aliases
         viteConf.resolve.alias['@t3-shared'] = require('path').resolve(__dirname, 'src/shared');
         viteConf.resolve.alias['@t3-mobile'] = require('path').resolve(__dirname, 'src/t3-mobile');

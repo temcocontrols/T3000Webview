@@ -609,14 +609,14 @@ async fn update_ffi_sync_interval(
     // Also write to Activity Log (DB_CONFIG category) for operator visibility
     let activity_msg = "Sync interval updated";
     let activity_details = Some(format!(
-        "{}s ({} min) → {}s ({} min), effective on next sync cycle",
+        "{}s ({} min) -> {}s ({} min), effective on next sync cycle",
         old_secs,
         old_secs / 60,
         request.interval_secs,
         request.interval_secs / 60
     ));
 
-    crate::database_management::sync_health::write_app_log(
+    crate::logging::service::emit_app_log(
         db,
         "info",
         "CONFIG",
@@ -767,14 +767,14 @@ async fn update_rediscover_interval(
     // Also write to Activity Log (DB_CONFIG category) for operator visibility
     let activity_msg = "Rediscover interval updated";
     let activity_details = Some(format!(
-        "{}s ({} hours) → {}s ({} hours), effective on next rediscover cycle",
+        "{}s ({} hours) -> {}s ({} hours), effective on next rediscover cycle",
         old_secs,
         old_secs / 3600,
         request.interval_secs,
         request.interval_secs / 3600
     ));
 
-    crate::database_management::sync_health::write_app_log(
+    crate::logging::service::emit_app_log(
         db,
         "info",
         "CONFIG",

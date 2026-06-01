@@ -36,27 +36,26 @@ export function useDeviceStatusMonitor(config: StatusMonitorConfig = {}) {
     intervalMs = 30000, // Default: 30 seconds
   } = config;
 
-  const { devices, checkDeviceStatus } = useDeviceTreeStore();
+  const { selectedDevice, checkDeviceStatus } = useDeviceTreeStore();
   const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!enabled || devices.length === 0) {
+    const serialNumber = selectedDevice?.serialNumber;
+    if (!enabled || !serialNumber) {
       return;
     }
 
-    // Check all devices immediately on mount
-    const checkAllDevices = () => {
-      devices.forEach((device) => {
-        checkDeviceStatus(device.serialNumber);
-      });
+    // Only check the selected device to avoid a startup burst across the entire tree.
+    const checkSelectedDevice = () => {
+      checkDeviceStatus(serialNumber);
     };
 
     // Initial check
-    checkAllDevices();
+    checkSelectedDevice();
 
     // Set up polling interval
     intervalRef.current = window.setInterval(() => {
-      checkAllDevices();
+      checkSelectedDevice();
     }, intervalMs);
 
     // Cleanup on unmount
@@ -66,7 +65,7 @@ export function useDeviceStatusMonitor(config: StatusMonitorConfig = {}) {
         intervalRef.current = null;
       }
     };
-  }, [enabled, intervalMs, devices, checkDeviceStatus]);
+  }, [checkDeviceStatus, enabled, intervalMs, selectedDevice?.serialNumber]);
 }
 
 export default useDeviceStatusMonitor;

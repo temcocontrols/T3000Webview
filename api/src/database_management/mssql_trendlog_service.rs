@@ -101,8 +101,7 @@ pub async fn get_trendlog_history(
                         .collect::<Vec<_>>()
                         .join(",");
                     format!(
-                        "(p.PanelId = {} AND UPPER(p.PointType) IN ({}) AND p.PointId = '{}')",
-                        p.panel_id,
+                        "(UPPER(p.PointType) IN ({}) AND p.PointId = '{}')",
                         type_sql,
                         p.point_id.replace('\'', "''"),
                     )
@@ -247,9 +246,58 @@ pub async fn get_data_statistics(
         .and_then(|r| r.get::<i32, _>("cnt"))
         .unwrap_or(0);
 
+    // Latest detail timestamp
+    let latest_result = conn
+        .query(
+            "SELECT TOP 1 d.LoggingTime_Fmt AS latest_timestamp FROM TRENDLOG_DATA_DETAIL d \
+             INNER JOIN TRENDLOG_DATA p ON d.ParentId = p.id \
+             WHERE p.SerialNumber = @P1 AND p.PanelId = @P2 \
+             ORDER BY d.LoggingTime_Fmt DESC",
+            &[&serial_number, &panel_id],
+        )
+        .await
+        .map_err(|e| format!("MSSQL latest timestamp query failed: {}", e))?;
+
+    let latest_timestamp: Option<String> = latest_result
+        .into_row()
+        .await
+        .map_err(|e| format!("Row fetch failed: {}", e))?
+        .and_then(|r| r.get::<&str, _>("latest_timestamp").map(|s| s.to_string()));
+
+    // Latest sync metadata (records inserted)
+    let latest_sync_result = conn
+        .query(
+            "SELECT TOP 1 RecordsInserted AS latest_sync_records_inserted, SyncTime_Fmt AS latest_sync_time_fmt \
+             FROM TRENDLOG_DATA_SYNC_METADATA \
+             WHERE SerialNumber = @P1 AND (PanelId = @P2 OR PanelId IS NULL) AND (Success = 1 OR Success IS NULL) \
+             ORDER BY id DESC",
+            &[&serial_number, &panel_id],
+        )
+        .await
+        .map_err(|e| format!("MSSQL latest sync metadata query failed: {}", e))?;
+
+    let latest_sync_row = latest_sync_result
+        .into_row()
+        .await
+        .map_err(|e| format!("Row fetch failed: {}", e))?;
+
+    let latest_sync_records_inserted: Option<i32> = latest_sync_row
+        .as_ref()
+        .and_then(|r| r.get::<i32, _>("latest_sync_records_inserted"));
+
+    let latest_sync_time_fmt: Option<String> = latest_sync_row
+        .as_ref()
+        .and_then(|r| r.get::<&str, _>("latest_sync_time_fmt").map(|s| s.to_string()));
+
     Ok(json!({
         "serial_number": serial_number,
         "panel_id": panel_id,
+        "device_id": serial_number,
+        "total_points": parent_count,
+        "total_data_points": detail_count,
+        "latest_timestamp": latest_timestamp,
+        "latest_sync_records_inserted": latest_sync_records_inserted,
+        "latest_sync_time_fmt": latest_sync_time_fmt,
         "parent_records": parent_count,
         "detail_records": detail_count,
         "total_records": parent_count + detail_count,

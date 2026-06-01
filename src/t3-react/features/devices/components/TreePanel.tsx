@@ -20,8 +20,8 @@ import { ProjectPointTree } from './ProjectPointTree';
 import { TreeToolbar } from './TreeToolbar/TreeToolbar';
 import { TreeFilter } from './TreeFilter/TreeFilter';
 import { useDeviceTreeStore } from '../store/deviceTreeStore';
-import { useDeviceStatusMonitor } from '../../../shared/hooks/useDeviceStatusMonitor';
-import { useDeviceSyncService } from '../../../shared/hooks/useDeviceSyncService';
+import { useDeviceStatusMonitor } from '@t3-react/shared/hooks/useDeviceStatusMonitor';
+import { useDeviceSyncService } from '@t3-react/shared/hooks/useDeviceSyncService';
 import { useStatusBarStore } from '../../../store/statusBarStore';
 import styles from './TreePanel.module.css';
 
@@ -34,8 +34,9 @@ export const TreePanel: React.FC = () => {
   const hasInitialized = React.useRef(false);
 
   // Background services
-  // Status monitor: polls device status every 30s (C++ m_pCheck_net_device_online)
-  useDeviceStatusMonitor({ enabled: true, intervalMs: 30000 });
+  // Status monitor is kept off by default to avoid a startup burst of device status calls.
+  // Individual status checks still happen on demand from the tree item context menu.
+  useDeviceStatusMonitor({ enabled: false, intervalMs: 30000 });
 
   // Sync service: refreshes device list every 5 minutes (C++ m_pFreshTree)
   useDeviceSyncService({ enabled: true, intervalMs: 300000 });
@@ -60,7 +61,7 @@ export const TreePanel: React.FC = () => {
       const { devices } = useDeviceTreeStore.getState();
       if (devices.length === 0) {
         //console.log('[TreePanel] No devices in database, auto-syncing from T3000...');
-        await loadDevicesWithSync();
+        await loadDevicesWithSync({ skipInitialFetch: true });
       } else {
         //console.log(`[TreePanel] Found ${devices.length} devices in database, skipping auto-sync`);
       }
@@ -78,7 +79,7 @@ export const TreePanel: React.FC = () => {
   };
 
   const handleLoadDevices = async () => {
-    await loadDevicesWithSync();
+    await loadDevicesWithSync({ skipInitialFetch: true });
   };
 
   return (

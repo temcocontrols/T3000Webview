@@ -39,7 +39,7 @@ import {
 import { API_BASE_URL } from '../../../config/constants';
 import styles from '../../develop/pages/SystemLogsPage.module.css';
 
-const FILE_LOG_BASE = `${API_BASE_URL}/api/t3-develop/logs`;
+const FILE_LOG_BASE = `${API_BASE_URL}/api/develop/logs`;
 
 type LogLevel = 'all' | 'ERROR' | 'WARN' | 'INFO' | 'DEBUG';
 type LogCategory = 'all' | 'api' | 'cpp_msg' | 'handler' | 'database' | 'partition' | 'ffi' | 'initialize' | 'socket';
@@ -48,7 +48,8 @@ interface LogFile {
   name: string;
   category: LogCategory;
   size: number;
-  pid: string;
+  /** 4-digit hour-bucket suffix from filename, e.g. "0003" = 00:00-03:59 */
+  timeBucket: string;
   icon: string;
   displayName: string;
 }
@@ -63,6 +64,8 @@ interface LogEntry {
 interface DateFolder {
   path: string;
   displayDate: string;
+  fileCount: number;
+  totalSize: number;
 }
 
 interface FileLogsTabProps {
@@ -95,12 +98,21 @@ export const FileLogsTab: React.FC<FileLogsTabProps> = ({ headerPrefix }) => {
     if (filename.includes('T3_Webview_FFI_')) return { category: 'ffi', icon: 'plug', displayName: 'FFI Operations' };
     if (filename.includes('T3_Webview_Initialize_')) return { category: 'initialize', icon: 'rocket', displayName: 'Initialize' };
     if (filename.includes('T3_Webview_Socket_')) return { category: 'socket', icon: 'connector', displayName: 'Socket Logs' };
-    return { category: 'all', icon: 'document', displayName: 'Other' };
+    // Unrecognized file — show the actual filename (without .txt extension) instead of a generic "Other" label
+    return { category: 'all', icon: 'document', displayName: filename.replace(/\.txt$/i, '') };
   };
 
-  const extractPid = (filename: string): string => {
-    const match = filename.match(/_([0-9]+)\.txt$/);
-    return match ? match[1] : 'unknown';
+  /**
+   * Extract the 4-digit hour-bucket from the filename (e.g. "T3_Webview_FFI_0003.txt" → "0003").
+   * Format it as a readable time range: "0003" → "00:00-03:59".
+   */
+  const extractTimeBucket = (filename: string): string => {
+    const match = filename.match(/_([0-9]{4})\.txt$/);
+    if (!match) return '';
+    const bucket = match[1];
+    const startH = bucket.slice(0, 2);
+    const endH = bucket.slice(2, 4);
+    return `${startH}:00-${endH}:59`;
   };
 
   const formatSize = (bytes: number): string => {
@@ -115,9 +127,8 @@ export const FileLogsTab: React.FC<FileLogsTabProps> = ({ headerPrefix }) => {
       if (response.ok) {
         const dates: DateFolder[] = await response.json();
         setAvailableDates(dates);
-        if (dates.length > 0 && !selectedDate) {
-          setSelectedDate(dates[0].path);
-        }
+        // Auto-select the most recent date only on first load
+        setSelectedDate(prev => (prev || (dates.length > 0 ? dates[0].path : '')));
       }
     } catch (error) {
       console.error('Failed to load dates:', error);
@@ -126,6 +137,12 @@ export const FileLogsTab: React.FC<FileLogsTabProps> = ({ headerPrefix }) => {
 
   const loadLogFiles = async (datePath: string) => {
     if (!datePath) return;
+    // Reset file state before loading new date
+    setLogFiles([]);
+    setSelectedFile(null);
+    setLogContent('');
+    setParsedLogs([]);
+    setTotalSize(0);
     setLoading(true);
     try {
       const response = await fetch(`${FILE_LOG_BASE}/files?date=${encodeURIComponent(datePath)}`);
@@ -133,11 +150,12 @@ export const FileLogsTab: React.FC<FileLogsTabProps> = ({ headerPrefix }) => {
         const files: { name: string; size: number }[] = await response.json();
         const logFileList: LogFile[] = files.map(file => {
           const { category, icon, displayName } = getLogCategory(file.name);
-          return { name: file.name, category, size: file.size, pid: extractPid(file.name), icon, displayName };
+          return { name: file.name, category, size: file.size, timeBucket: extractTimeBucket(file.name), icon, displayName };
         });
         setLogFiles(logFileList);
         setTotalSize(files.reduce((sum, f) => sum + f.size, 0));
-        if (logFileList.length > 0 && !selectedFile) {
+        // Auto-select first file
+        if (logFileList.length > 0) {
           setSelectedFile(logFileList[0]);
         }
       }
@@ -206,10 +224,10 @@ export const FileLogsTab: React.FC<FileLogsTabProps> = ({ headerPrefix }) => {
     return () => clearInterval(interval);
   }, [autoRefresh, selectedFile, selectedDate]);
 
-  const uniquePids = Array.from(new Set(logFiles.map(f => f.pid))).sort();
+  const uniqueBuckets = Array.from(new Set(logFiles.map(f => f.timeBucket))).sort();
   const filteredFiles = logFiles.filter(file => {
     if (categoryFilter !== 'all' && file.category !== categoryFilter) return false;
-    if (selectedPid !== 'all' && file.pid !== selectedPid) return false;
+    if (selectedPid !== 'all' && file.timeBucket !== selectedPid) return false;
     return true;
   });
 
@@ -245,7 +263,7 @@ export const FileLogsTab: React.FC<FileLogsTabProps> = ({ headerPrefix }) => {
           <div className={styles.headerTitleGroup}>
             <ClipboardTextLtrRegular style={{ fontSize: '18px', marginRight: '4px' }} />
             <Text size={400} weight="semibold">File Logs</Text>
-            <Tag appearance="filled" color="informative" size="extra-small" shape="square" style={{ fontSize: '11px', padding: '2px 6px' }}>
+            <Tag appearance="filled" color="informative" size="extra-small" style={{ fontSize: '11px', padding: '2px 6px' }}>
               {logFiles.length} files • {formatSize(totalSize)}
             </Tag>
           </div>
@@ -268,7 +286,7 @@ export const FileLogsTab: React.FC<FileLogsTabProps> = ({ headerPrefix }) => {
         <Menu>
           <MenuTrigger disableButtonEnhancement>
             <Button appearance="subtle" icon={<CalendarRegular />} size="small" style={{ fontSize: '12px' }}>
-              {availableDates.find(d => d.path === selectedDate)?.displayDate || selectedDate || 'Select Date'}
+              {availableDates.find(d => d.path === selectedDate)?.path.split('/')[0] || selectedDate?.split('/')[0] || 'Select Date'}
             </Button>
           </MenuTrigger>
           <MenuPopover>
@@ -278,7 +296,12 @@ export const FileLogsTab: React.FC<FileLogsTabProps> = ({ headerPrefix }) => {
               ) : (
                 availableDates.map((date) => (
                   <MenuItem key={date.path} onClick={() => setSelectedDate(date.path)} style={{ fontSize: '12px' }}>
-                    {date.displayDate}
+                    {date.path.split('/')[0]}
+                    {date.fileCount > 0 && (
+                      <span style={{ color: '#605e5c', marginLeft: 6 }}>
+                        {date.fileCount} file{date.fileCount !== 1 ? 's' : ''} • {formatSize(date.totalSize)}
+                      </span>
+                    )}
                   </MenuItem>
                 ))
               )}
@@ -324,18 +347,18 @@ export const FileLogsTab: React.FC<FileLogsTabProps> = ({ headerPrefix }) => {
           </MenuPopover>
         </Menu>
 
-        {uniquePids.length > 1 && (
+        {uniqueBuckets.length > 1 && (
           <Menu>
             <MenuTrigger disableButtonEnhancement>
               <Button appearance="subtle" size="small" style={{ fontSize: '12px' }}>
-                PID: {selectedPid === 'all' ? 'All' : selectedPid}
+                Time: {selectedPid === 'all' ? 'All' : selectedPid}
               </Button>
             </MenuTrigger>
             <MenuPopover>
               <MenuList>
-                <MenuItem onClick={() => setSelectedPid('all')} style={{ fontSize: '12px' }}>All PIDs</MenuItem>
-                {uniquePids.map(pid => (
-                  <MenuItem key={pid} onClick={() => setSelectedPid(pid)} style={{ fontSize: '12px' }}>{pid}</MenuItem>
+                <MenuItem onClick={() => setSelectedPid('all')} style={{ fontSize: '12px' }}>All Times</MenuItem>
+                {uniqueBuckets.map(bucket => (
+                  <MenuItem key={bucket} onClick={() => setSelectedPid(bucket)} style={{ fontSize: '12px' }}>{bucket}</MenuItem>
                 ))}
               </MenuList>
             </MenuPopover>
@@ -376,7 +399,7 @@ export const FileLogsTab: React.FC<FileLogsTabProps> = ({ headerPrefix }) => {
                   </div>
                   <div className={styles.fileInfo}>
                     <Text size={200} weight="semibold">{file.displayName}</Text>
-                    <Text size={100} style={{ color: '#605e5c' }}>{formatSize(file.size)} • PID {file.pid}</Text>
+                    <Text size={100} style={{ color: '#605e5c' }}>{formatSize(file.size)}{file.timeBucket ? ` • ${file.timeBucket}` : ''}</Text>
                   </div>
                   <ChevronRightRegular className={styles.fileChevron} />
                 </div>

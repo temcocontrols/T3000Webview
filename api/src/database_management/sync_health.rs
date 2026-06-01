@@ -19,7 +19,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use chrono::{Datelike, Local, TimeZone, Utc};
+use chrono::{Datelike, Local, NaiveDateTime, TimeZone, Utc};
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashMap};
@@ -30,8 +30,8 @@ use tokio::sync::RwLock;
 use tracing::{debug, warn};
 
 use crate::app_state::T3AppState;
+use crate::constants::ACTIVITY_LOG_CATEGORY_DEFS;
 use crate::error::Result;
-use crate::logger::{write_structured_log_with_level, LogLevel as FileLogLevel};
 
 // ============================================================================
 // Sync Health Response
@@ -374,6 +374,18 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         }
     }
 
+    let response = build_sync_health_response(&state).await?;
+    {
+        let mut cache_guard = sync_health_cache().write().await;
+        *cache_guard = Some(CachedSyncHealth {
+            created_at: Instant::now(),
+            payload: response.clone(),
+        });
+    }
+    Ok(Json(response))
+}
+
+async fn build_sync_health_response(state: &T3AppState) -> Result<SyncHealthResponse> {
     let total_started = Instant::now();
 
     let resolve_status_started = Instant::now();
@@ -578,15 +590,7 @@ async fn get_sync_health(State(state): State<T3AppState>) -> Result<Json<SyncHea
         sync_interval_secs,
     };
 
-    {
-        let mut cache_guard = sync_health_cache().write().await;
-        *cache_guard = Some(CachedSyncHealth {
-            created_at: Instant::now(),
-            payload: response.clone(),
-        });
-    }
-
-    Ok(Json(response))
+    Ok(response)
 }
 
 // ============================================================================
@@ -633,63 +637,8 @@ pub async fn ensure_event_log_table(db: &sea_orm::DatabaseConnection) {
     ensure_app_log_table(db).await;
 }
 
-/// Returns `true` for categories that are written at high frequency by the
-/// FFI backend sync loop (one row per cycle / per device).  These should go
-/// to MSSQL when the pool is active so they don't bloat local SQLite.
-///
-/// Group B (high-volume, operational): POLL | DEVICE | TRENDLOG
-/// Group A (low-volume, system/config): STARTUP | AUTH | CONFIG | MAINTENANCE → always SQLite
-fn is_high_volume_category(cat: &str) -> bool {
-    matches!(cat,
-        // New category names (Group B)
-        "POLL" | "DEVICE" | "TRENDLOG" |
-        // Legacy names kept for backwards compatibility
-        "SYNC_CYCLE" | "SAMPLING" | "FFI_POLL" | "DEVICE_SYNC" | "TREND_LOG"
-        | "TD_READ" | "TD_WRITE" | "TD_INPUTS" | "TD_FFI" | "TD_SYNC"
-    )
-}
-
-#[derive(Debug, Clone)]
-struct RuntimeLogPolicy {
-    enabled: bool,
-    detail_mode: String,
-    min_level: String,
-    sink_db: bool,
-    sink_file: bool,
-}
-
-fn normalize_level_upper(level: &str) -> String {
-    match level.trim().to_ascii_uppercase().as_str() {
-        "ERROR" | "ERR" => "ERROR".to_string(),
-        "WARN" | "WARNING" => "WARN".to_string(),
-        "DEBUG" => "DEBUG".to_string(),
-        _ => "INFO".to_string(),
-    }
-}
-
-fn level_rank(level_upper: &str) -> i32 {
-    match level_upper {
-        "DEBUG" => 10,
-        "INFO" => 20,
-        "WARN" => 30,
-        "ERROR" => 40,
-        _ => 20,
-    }
-}
-
-fn level_meets_min(level_upper: &str, min_level: &str) -> bool {
-    level_rank(level_upper) >= level_rank(&normalize_level_upper(min_level))
-}
-
 fn canonical_category(category: &str) -> String {
-    match category.trim().to_ascii_uppercase().as_str() {
-        "SYNC_CYCLE" | "SAMPLING" | "FFI_POLL" => "POLL".to_string(),
-        "DEVICE_SYNC" => "DEVICE".to_string(),
-        "TREND_LOG" | "TD_READ" | "TD_WRITE" | "TD_INPUTS" | "TD_FFI" | "TD_SYNC" => "TRENDLOG".to_string(),
-        "DB_CONFIG" => "CONFIG".to_string(),
-        "SERVER_EVENT" => "STARTUP".to_string(),
-        other => other.to_string(),
-    }
+    crate::logging::policy::canonical_category(category)
 }
 
 fn category_filter_variants(category: &str) -> Vec<String> {
@@ -697,14 +646,30 @@ fn category_filter_variants(category: &str) -> Vec<String> {
     let canonical = canonical_category(&upper);
     match canonical.as_str() {
         "CONFIG" => vec!["CONFIG".to_string(), "DB_CONFIG".to_string()],
-        "STARTUP" => vec!["STARTUP".to_string(), "SERVER_EVENT".to_string()],
+        "STARTUP" => vec![
+            "STARTUP".to_string(),
+            "SERVER_EVENT".to_string(),
+            "T3_WEBVIEW_INITIALIZE".to_string(),
+        ],
+        "MAINTENANCE" => vec![
+            "MAINTENANCE".to_string(),
+            "T3_DATABASE_MIGRATION".to_string(),
+            "T3_PARTITIONMONITOR".to_string(),
+            "T3_DATABASESIZEMONITOR".to_string(),
+            "T3_WEBVIEW_DATABASE".to_string(),
+        ],
         "POLL" => vec![
             "POLL".to_string(),
-            "SYNC_CYCLE".to_string(),
+            "TRENDLOG_BACKEND".to_string(),
             "SAMPLING".to_string(),
             "FFI_POLL".to_string(),
+            "T3_WEBVIEW_POLL".to_string(),
         ],
-        "DEVICE" => vec!["DEVICE".to_string(), "DEVICE_SYNC".to_string()],
+        "DEVICE" => vec![
+            "DEVICE".to_string(),
+            "DEVICE_SYNC".to_string(),
+            "T3_WEBVIEW_DEVICE".to_string(),
+        ],
         "TRENDLOG" => vec![
             "TRENDLOG".to_string(),
             "TREND_LOG".to_string(),
@@ -713,9 +678,147 @@ fn category_filter_variants(category: &str) -> Vec<String> {
             "TD_INPUTS".to_string(),
             "TD_FFI".to_string(),
             "TD_SYNC".to_string(),
+            "T3_WEBVIEW_TRENDLOG".to_string(),
+            "T3_WEBVIEW_TRL_FFI".to_string(),
+            "T3_PARTITIONQUERY".to_string(),
+        ],
+        "API_REQ" => vec!["API_REQ".to_string(), "T3_WEBVIEW_API".to_string()],
+        "WEBSOCKET" => vec!["WEBSOCKET".to_string(), "T3_WEBVIEW_SOCKET".to_string()],
+        "FFI_CALL" => vec![
+            "FFI_CALL".to_string(),
+            "T3_WEBVIEW_FFI".to_string(),
+            "T3_FFI".to_string(),
+        ],
+        "MESSAGE_ACTION" => vec![
+            "MESSAGE_ACTION".to_string(),
+            "T3_WEBVIEW_MSGACTION".to_string(),
         ],
         _ => vec![canonical],
     }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LogValidationAliasItem {
+    raw_category: String,
+    canonical_category: String,
+    count: i64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LogValidationUnknownItem {
+    raw_category: String,
+    count: i64,
+}
+
+async fn get_log_validation(
+    State(state): State<T3AppState>,
+) -> Result<Json<serde_json::Value>> {
+    let db = match get_local_log_db_conn(&state).await {
+        Some(d) => d,
+        None => {
+            return Ok(Json(serde_json::json!({
+                "ok": false,
+                "error": "DB unavailable"
+            })))
+        }
+    };
+
+    ensure_app_log_table(&db).await;
+
+    let canonical_set: BTreeSet<String> = default_log_settings()
+        .into_iter()
+        .map(|cfg| cfg.category)
+        .collect();
+
+    let rows = db
+        .query_all(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            "SELECT category, COUNT(*) AS cnt FROM T3_APP_LOG GROUP BY category ORDER BY cnt DESC"
+                .to_string(),
+        ))
+        .await
+        .unwrap_or_default();
+
+    let mut alias_categories: Vec<LogValidationAliasItem> = Vec::new();
+    let mut unknown_categories: Vec<LogValidationUnknownItem> = Vec::new();
+
+    for row in rows {
+        let raw_category = row.try_get::<String>("", "category").unwrap_or_default();
+        let count = row.try_get::<i64>("", "cnt").unwrap_or(0);
+        if raw_category.is_empty() {
+            continue;
+        }
+
+        let canonical = canonical_category(&raw_category);
+        let raw_upper = raw_category.trim().to_ascii_uppercase();
+
+        if raw_upper != canonical {
+            alias_categories.push(LogValidationAliasItem {
+                raw_category: raw_category.clone(),
+                canonical_category: canonical.clone(),
+                count,
+            });
+        }
+
+        if !canonical_set.contains(&canonical) {
+            unknown_categories.push(LogValidationUnknownItem {
+                raw_category,
+                count,
+            });
+        }
+    }
+
+    let total_rows = db
+        .query_one(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            "SELECT COUNT(*) AS cnt FROM T3_APP_LOG".to_string(),
+        ))
+        .await
+        .ok()
+        .flatten()
+        .and_then(|r| r.try_get::<i64>("", "cnt").ok())
+        .unwrap_or(0);
+
+    let mojibake_rows = db
+        .query_one(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            "SELECT COUNT(*) AS cnt FROM T3_APP_LOG WHERE message LIKE '%鈥%' OR details LIKE '%鈥%' OR message LIKE '%�%' OR details LIKE '%�%'".to_string(),
+        ))
+        .await
+        .ok()
+        .flatten()
+        .and_then(|r| r.try_get::<i64>("", "cnt").ok())
+        .unwrap_or(0);
+
+    let mojibake_samples = db
+        .query_all(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            "SELECT id, category, message FROM T3_APP_LOG WHERE message LIKE '%鈥%' OR details LIKE '%鈥%' OR message LIKE '%�%' OR details LIKE '%�%' ORDER BY id DESC LIMIT 5".to_string(),
+        ))
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .map(|r| {
+            serde_json::json!({
+                "id": r.try_get::<i64>("", "id").unwrap_or(0),
+                "category": r.try_get::<String>("", "category").unwrap_or_default(),
+                "message": r.try_get::<String>("", "message").unwrap_or_default(),
+            })
+        })
+        .collect::<Vec<_>>();
+
+    Ok(Json(serde_json::json!({
+        "ok": true,
+        "totalRows": total_rows,
+        "canonicalCategoryCount": canonical_set.len(),
+        "canonicalCategories": canonical_set.into_iter().collect::<Vec<_>>(),
+        "aliasCategories": alias_categories,
+        "unknownCategories": unknown_categories,
+        "mojibakeRows": mojibake_rows,
+        "mojibakeSamples": mojibake_samples,
+    })))
 }
 
 fn sqlite_category_filter_sql(cat_filter: Option<&str>) -> String {
@@ -733,257 +836,20 @@ fn sqlite_category_filter_sql(cat_filter: Option<&str>) -> String {
     }
 }
 
-fn file_log_base_for_category(category: &str) -> &'static str {
-    match category {
-        "API_REQ" => "T3_Webview_API",
-        "WEBSOCKET" => "T3_Webview_Socket",
-        "FFI_CALL" | "MESSAGE_ACTION" | "POLL" | "DEVICE" | "TRENDLOG" => "T3_Webview_FFI",
-        "MAINTENANCE" => "T3_Webview_Database",
-        _ => "T3_Webview_Initialize",
-    }
-}
-
 fn parse_bool_config(v: &str) -> bool {
     matches!(v.trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on")
-}
-
-async fn load_runtime_log_policy(
-    db: &sea_orm::DatabaseConnection,
-    category: &str,
-) -> RuntimeLogPolicy {
-    let normalized_category = canonical_category(category);
-
-    let mut base_cfg = default_log_settings()
-        .into_iter()
-        .find(|c| c.category == normalized_category)
-        .unwrap_or(LogCategoryConfig {
-            category: normalized_category,
-            display_name: "Custom Category".into(),
-            description: "Runtime category (default policy)".into(),
-            group: "debug".into(),
-            enabled: true,
-            detail_mode: "SUMMARY".into(),
-            min_level: "INFO".into(),
-            target: "sqlite".into(),
-            sink_db: true,
-            sink_file: false,
-        });
-
-    let key_prefix = format!("log.category.{}.", base_cfg.category.replace('\'', "''"));
-    let sql = format!(
-        "SELECT config_key, config_value FROM APPLICATION_CONFIG WHERE config_key LIKE '{}'",
-        format!("{}%", key_prefix)
-    );
-
-    let rows = db
-        .query_all(sea_orm::Statement::from_string(
-            sea_orm::DatabaseBackend::Sqlite,
-            sql,
-        ))
-        .await
-        .unwrap_or_default();
-
-    for row in rows {
-        let key: String = row.try_get("", "config_key").unwrap_or_default();
-        let val: String = row.try_get("", "config_value").unwrap_or_default();
-        if key.ends_with(".enabled") {
-            base_cfg.enabled = parse_bool_config(&val);
-        } else if key.ends_with(".detail_mode") {
-            base_cfg.detail_mode = val;
-        } else if key.ends_with(".min_level") {
-            base_cfg.min_level = val;
-        } else if key.ends_with(".sink_db") {
-            base_cfg.sink_db = parse_bool_config(&val);
-        } else if key.ends_with(".sink_file") {
-            base_cfg.sink_file = parse_bool_config(&val);
-        }
-    }
-
-    RuntimeLogPolicy {
-        enabled: base_cfg.enabled,
-        detail_mode: base_cfg.detail_mode,
-        min_level: base_cfg.min_level,
-        sink_db: base_cfg.sink_db,
-        sink_file: base_cfg.sink_file,
-    }
 }
 
 /// Write one entry to T3_APP_LOG.
 ///
 /// Routing:
-///   • High-volume sync categories (SYNC_CYCLE, SAMPLING, …)
+///   • High-volume sync categories (TRENDLOG_BACKEND, SAMPLING, …)
 ///       – MSSQL pool active → write to MSSQL only (fire-and-forget).
 ///       – MSSQL pool down   → fallback to local SQLite so the Activity Log
 ///                             still shows "MSSQL unavailable" context.
 ///   • All other categories → local SQLite always.
 ///
 /// Best-effort — errors are swallowed to never affect the calling operation.
-pub async fn write_app_log(
-    db: &sea_orm::DatabaseConnection,
-    level: &str,
-    category: &str,
-    source: Option<&str>,
-    device_serial: Option<&str>,
-    message: &str,
-    details: Option<&str>,
-) {
-    let canonical_cat = canonical_category(category);
-    let level_upper = normalize_level_upper(level);
-    let level_lc = level_upper.to_ascii_lowercase();
-    let is_error = level_upper == "ERROR";
-
-    let policy = load_runtime_log_policy(db, &canonical_cat).await;
-
-    // For non-error logs, honor category enable/min-level policy.
-    if !is_error {
-        if !policy.enabled {
-            return;
-        }
-        if !level_meets_min(&level_upper, &policy.min_level) {
-            return;
-        }
-    }
-
-    // Safety invariant: ERROR logs always go to DB.
-    let sink_db = is_error || policy.sink_db;
-    let sink_file = policy.sink_file;
-
-    // Nothing to do if both sinks are disabled for non-error logs.
-    if !sink_db && !sink_file {
-        return;
-    }
-
-    let now = Local::now();
-    let ts_unix = now.timestamp();
-    let ts_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
-
-    let hostname_val = hostname::get()
-        .map(|h| h.to_string_lossy().into_owned())
-        .unwrap_or_else(|_| "unknown".into());
-
-    let mut wrote_mssql = false;
-
-    // DB sink: high-volume categories route to MSSQL when pool is active.
-    if sink_db && is_high_volume_category(&canonical_cat) {
-        if let Some(pool) = crate::server_db_writer::get_server_mssql_pool() {
-            // Fire-and-forget: clone what we need across the spawn boundary.
-            let ts_unix_c = ts_unix;
-            let ts_fmt_c = ts_fmt.clone();
-            let level_c = level_lc.clone();
-            let category_c = canonical_cat.clone();
-            let source_c = source.map(|s| s.to_string());
-            let hostname_c = hostname_val.clone();
-            let device_serial_c = device_serial.map(|s| s.to_string());
-            let message_c = message.to_string();
-            let details_c = details.map(|s| s.to_string());
-
-            tokio::spawn(async move {
-                let _ = crate::database_management::mssql_queries::insert_app_log(
-                    pool,
-                    ts_unix_c,
-                    &ts_fmt_c,
-                    &level_c,
-                    &category_c,
-                    source_c.as_deref(),
-                    &hostname_c,
-                    device_serial_c.as_deref(),
-                    &message_c,
-                    details_c.as_deref(),
-                )
-                .await;
-            });
-            wrote_mssql = true;
-        }
-        // MSSQL unavailable falls through to SQLite when DB sink is enabled.
-    }
-
-    // Local file sink (independent of DB sink).
-    if sink_file {
-        let base_filename = file_log_base_for_category(&canonical_cat);
-        let mut file_message = format!("[{}] {}", canonical_cat, message);
-        if let Some(src) = source {
-            file_message.push_str(&format!(" | source={}", src));
-        }
-        if let Some(serial) = device_serial {
-            file_message.push_str(&format!(" | serial={}", serial));
-        }
-        if policy.detail_mode.eq_ignore_ascii_case("FULL") {
-            if let Some(d) = details {
-                file_message.push_str(&format!(" | details={}", d));
-            }
-        }
-
-        let file_level = match level_upper.as_str() {
-            "ERROR" => FileLogLevel::Error,
-            "WARN" => FileLogLevel::Warn,
-            _ => FileLogLevel::Info,
-        };
-        let _ = write_structured_log_with_level(base_filename, &file_message, file_level);
-    }
-
-    // ── Local SQLite write (DB sink path; or fallback when MSSQL not available) ──
-    if !sink_db || wrote_mssql {
-        return;
-    }
-
-    // When this is a sync-category log but MSSQL was unreachable, annotate the
-    // details field so the Activity Log clearly shows what failed and where it
-    // was saved, e.g.:
-    //   "Starting FFI sync cycle" → details: "[center DB unreachable — saved to local] sync_interval_secs=300"
-    let fallback_detail_storage: String;
-    let detailed_allowed = policy.detail_mode.eq_ignore_ascii_case("FULL") || is_error;
-    let mut selected_details = if detailed_allowed { details } else { None };
-
-    let effective_details: Option<&str> = if is_high_volume_category(&canonical_cat) {
-        // We only reach here when the MSSQL pool was NOT available.
-        fallback_detail_storage = match selected_details {
-            Some(d) => format!("[center DB unreachable — saved to local] {}", d),
-            None    => "[center DB unreachable — saved to local]".to_string(),
-        };
-        Some(fallback_detail_storage.as_str())
-    } else {
-        selected_details.take()
-    };
-
-    let esc = |s: &str| s.replace('\'', "''");
-    let opt_str = |v: Option<&str>| match v {
-        Some(s) => format!("'{}'", esc(s)),
-        None => "NULL".to_string(),
-    };
-
-    let sql = format!(
-        "INSERT INTO T3_APP_LOG \
-         (ts_unix, ts_fmt, level, category, source, hostname, device_serial, message, details) \
-         VALUES ({}, '{}', '{}', '{}', {}, '{}', {}, '{}', {})",
-        ts_unix,
-        esc(&ts_fmt),
-        esc(&level_lc),
-        esc(&canonical_cat),
-        opt_str(source),
-        esc(&hostname_val),
-        opt_str(device_serial),
-        esc(message),
-        opt_str(effective_details),
-    );
-
-    let _ = db
-        .execute(sea_orm::Statement::from_string(
-            sea_orm::DatabaseBackend::Sqlite,
-            sql,
-        ))
-        .await;
-
-    // Keep only the latest 5000 rows in local SQLite.
-    let _ = db
-        .execute(sea_orm::Statement::from_string(
-            sea_orm::DatabaseBackend::Sqlite,
-            "DELETE FROM T3_APP_LOG WHERE id NOT IN \
-             (SELECT id FROM T3_APP_LOG ORDER BY ts_unix DESC LIMIT 5000)"
-                .to_string(),
-        ))
-        .await;
-}
-
 /// Legacy shim: write with category=POLL, source=ffi_sync
 pub async fn write_sync_event(
     db: &sea_orm::DatabaseConnection,
@@ -991,7 +857,16 @@ pub async fn write_sync_event(
     device_serial: Option<&str>,
     message: &str,
 ) {
-    write_app_log(db, level, "POLL", Some("ffi_sync"), device_serial, message, None).await;
+    crate::logging::service::emit_app_log(
+        db,
+        level,
+        "POLL",
+        Some("ffi_sync"),
+        device_serial,
+        message,
+        None,
+    )
+    .await;
 }
 
 // ============================================================================
@@ -1137,6 +1012,33 @@ async fn query_sqlite_log_category_counts(
     counts
 }
 
+async fn query_sqlite_log_level_counts(
+    db: &sea_orm::DatabaseConnection,
+    cat_filter: Option<&str>,
+) -> HashMap<String, i64> {
+    let cat_sql = sqlite_category_filter_sql(cat_filter);
+    let sql = format!(
+        "SELECT level, COUNT(*) AS cnt FROM T3_APP_LOG WHERE 1=1{} GROUP BY level",
+        cat_sql
+    );
+    let rows = db
+        .query_all(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            sql,
+        ))
+        .await
+        .unwrap_or_default();
+    let mut counts = HashMap::new();
+    for row in rows {
+        let level = row.try_get::<String>("", "level").unwrap_or_default().to_lowercase();
+        let count = row.try_get::<i64>("", "cnt").unwrap_or(0);
+        if !level.is_empty() {
+            *counts.entry(level).or_insert(0) += count;
+        }
+    }
+    counts
+}
+
 async fn query_sqlite_log_categories(db: &sea_orm::DatabaseConnection) -> Vec<String> {
     let sql = "SELECT DISTINCT category FROM T3_APP_LOG WHERE category IS NOT NULL AND category <> '' ORDER BY category ASC";
     let rows = db
@@ -1175,7 +1077,7 @@ async fn get_event_log(
     let cat_filter   = q.category.as_deref().filter(|s| !s.is_empty());
 
     // ── When MSSQL pool is active: merge rows from both stores ────────────────
-    // High-volume sync logs (SYNC_CYCLE, SAMPLING, …) live in MSSQL.
+    // High-volume sync logs (TRENDLOG_BACKEND, SAMPLING, …) live in MSSQL.
     // System/config logs (DB_CONFIG, SERVER_EVENT, …) live in local SQLite.
     // The two sets are disjoint, so no deduplication is needed.
     if let Some(pool) = crate::server_db_writer::get_server_mssql_pool() {
@@ -1209,17 +1111,25 @@ async fn get_event_log(
         .await
         .unwrap_or_default();
 
+        let mssql_level_counts = crate::database_management::mssql_queries::query_app_log_level_counts(
+            pool,
+            cat_filter,
+        )
+        .await
+        .unwrap_or_default();
+
         // Fetch from local SQLite
-        let (sqlite_rows, sqlite_total, sqlite_categories, sqlite_category_counts) = if let Some(db) = get_local_log_db_conn(&state).await {
+        let (sqlite_rows, sqlite_total, sqlite_categories, sqlite_category_counts, sqlite_level_counts) = if let Some(db) = get_local_log_db_conn(&state).await {
             ensure_app_log_table(&db).await;
             (
                 query_sqlite_log_raw(&db, level_filter, cat_filter, fetch_count).await,
                 count_sqlite_log_raw(&db, level_filter, cat_filter).await,
                 query_sqlite_log_categories(&db).await,
                 query_sqlite_log_category_counts(&db, level_filter, cat_filter).await,
+                query_sqlite_log_level_counts(&db, cat_filter).await,
             )
         } else {
-            (Vec::new(), 0, Vec::new(), HashMap::new())
+            (Vec::new(), 0, Vec::new(), HashMap::new(), HashMap::new())
         };
 
         // Merge and sort descending by ts_unix
@@ -1250,6 +1160,14 @@ async fn get_event_log(
             category_counts.entry(cat.clone()).or_insert(0);
         }
 
+        let mut level_counts: HashMap<String, i64> = HashMap::new();
+        for (lvl, cnt) in sqlite_level_counts {
+            *level_counts.entry(lvl).or_insert(0) += cnt;
+        }
+        for (lvl, cnt) in mssql_level_counts {
+            *level_counts.entry(lvl).or_insert(0) += cnt;
+        }
+
         let entries: Vec<AppLogEntry> = all_rows
             .into_iter()
             .skip(offset)
@@ -1262,6 +1180,7 @@ async fn get_event_log(
             "total":   total,
             "categories": categories,
             "categoryCounts": category_counts,
+            "levelCounts": level_counts,
             "page":    q.page,
             "limit":   limit,
         })));
@@ -1302,6 +1221,7 @@ async fn get_event_log(
         .unwrap_or_default();
 
     let total = count_sqlite_log_raw(&db, level_filter, cat_filter).await;
+    let level_counts = query_sqlite_log_level_counts(&db, cat_filter).await;
     let mut category_counts = query_sqlite_log_category_counts(&db, level_filter, cat_filter).await;
     let mut category_set: BTreeSet<String> = BTreeSet::new();
     category_set.extend(default_log_settings().into_iter().map(|c| c.category));
@@ -1339,6 +1259,7 @@ async fn get_event_log(
         "total": total,
         "categories": categories,
         "categoryCounts": category_counts,
+        "levelCounts": level_counts,
         "page": q.page,
         "limit": limit,
     })))
@@ -1356,7 +1277,7 @@ async fn post_event(
         ensure_app_log_table(&db).await;
         let level = body.level.as_ref().map(|l| l.as_str()).unwrap_or("info");
         let category = body.category.as_deref().unwrap_or("POLL");
-        write_app_log(
+        crate::logging::service::emit_app_log(
             &db,
             level,
             category,
@@ -1451,7 +1372,7 @@ pub struct UpdateLogSettingsRequest {
     pub settings: Vec<UpdateLogCategoryConfig>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateLogCategoryConfig {
     pub category: String,
@@ -1464,20 +1385,248 @@ pub struct UpdateLogCategoryConfig {
     pub sink_file: Option<bool>,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplyLogProfileRequest {
+    pub profile: String,
+    #[serde(default)]
+    pub ttl_sec: Option<u32>,
+}
+
+fn baseline_profile_settings() -> Vec<UpdateLogCategoryConfig> {
+    default_log_settings()
+        .into_iter()
+        .map(|cfg| UpdateLogCategoryConfig {
+            category: cfg.category,
+            enabled: cfg.enabled,
+            detail_mode: cfg.detail_mode,
+            min_level: cfg.min_level,
+            sink_db: Some(cfg.sink_db),
+            sink_file: Some(cfg.sink_file),
+        })
+        .collect()
+}
+
+fn profile_settings(profile: &str) -> Option<Vec<UpdateLogCategoryConfig>> {
+    let mut settings = baseline_profile_settings();
+    let index_by_category: HashMap<String, usize> = settings
+        .iter()
+        .enumerate()
+        .map(|(idx, cfg)| (canonical_category(&cfg.category), idx))
+        .collect();
+
+    let mut set = |
+        category: &str,
+        enabled: bool,
+        detail_mode: &str,
+        min_level: &str,
+        sink_db: bool,
+        sink_file: bool,
+    | {
+        let canonical = canonical_category(category);
+        if let Some(idx) = index_by_category.get(&canonical) {
+            if let Some(cfg) = settings.get_mut(*idx) {
+                cfg.enabled = enabled;
+                cfg.detail_mode = detail_mode.to_string();
+                cfg.min_level = min_level.to_string();
+                cfg.sink_db = Some(sink_db);
+                cfg.sink_file = Some(sink_file);
+            }
+        }
+    };
+
+    match profile.trim().to_ascii_lowercase().as_str() {
+        "baseline" => {}
+        "trendlog-trace" => {
+            set("MESSAGE_ACTION", true, "FULL", "DEBUG", false, true);
+            set("TRENDLOG", true, "FULL", "INFO", true, true);
+            set("DEVICE", true, "FULL", "INFO", true, true);
+            set("FFI_CALL", true, "FULL", "DEBUG", false, true);
+        }
+        "ffi-stale-trace" => {
+            set("FFI_CALL", true, "FULL", "DEBUG", false, true);
+            set("DEVICE", true, "FULL", "INFO", true, true);
+            set("POLL", true, "FULL", "INFO", true, true);
+            set("MESSAGE_ACTION", true, "FULL", "DEBUG", false, true);
+        }
+        "ui-trace" => {
+            set("MESSAGE_ACTION", true, "FULL", "DEBUG", false, true);
+            set("API_REQ", true, "SUMMARY", "INFO", false, true);
+            set("WEBSOCKET", true, "SUMMARY", "INFO", false, true);
+        }
+        _ => return None,
+    }
+
+    Some(settings)
+}
+
+async fn upsert_application_config(
+    db: &DatabaseConnection,
+    key: &str,
+    value: &str,
+) -> Result<()> {
+    let key_sql = key.replace('\'', "''");
+    let val_sql = value.replace('\'', "''");
+    let ts_sql = chrono::Utc::now().naive_utc().to_string().replace('\'', "''");
+
+    let update_sql = format!(
+        "UPDATE APPLICATION_CONFIG \
+         SET config_value = '{val}', updated_at = '{ts}' \
+         WHERE config_key = '{key}'",
+        key = key_sql,
+        val = val_sql,
+        ts = ts_sql,
+    );
+
+    let update_result = db
+        .execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            update_sql,
+        ))
+        .await
+        .map_err(|e| {
+            crate::error::Error::DbError(format!(
+                "Failed to update config '{}': {}",
+                key, e
+            ))
+        })?;
+
+    if update_result.rows_affected() == 0 {
+        let insert_sql = format!(
+            "INSERT INTO APPLICATION_CONFIG (config_key, config_value, updated_at) \
+             VALUES ('{key}', '{val}', '{ts}')",
+            key = key_sql,
+            val = val_sql,
+            ts = ts_sql,
+        );
+
+        db.execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            insert_sql,
+        ))
+        .await
+        .map_err(|e| {
+            crate::error::Error::DbError(format!(
+                "Failed to insert config '{}': {}",
+                key, e
+            ))
+        })?;
+    }
+
+    Ok(())
+}
+
+async fn load_application_config(
+    db: &DatabaseConnection,
+    key: &str,
+) -> Option<String> {
+    let key_sql = key.replace('\'', "''");
+    let sql = format!(
+        "SELECT config_value FROM APPLICATION_CONFIG WHERE config_key = '{}' LIMIT 1",
+        key_sql
+    );
+
+    db.query_one(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        sql,
+    ))
+    .await
+    .ok()
+    .flatten()
+    .and_then(|row| row.try_get::<String>("", "config_value").ok())
+}
+
+async fn maybe_auto_revert_profile_if_expired(
+    db: &DatabaseConnection,
+) -> Result<bool> {
+    let active_profile = load_application_config(db, "log.profile.active")
+        .await
+        .unwrap_or_else(|| "baseline".to_string())
+        .trim()
+        .to_ascii_lowercase();
+
+    if active_profile == "baseline" {
+        return Ok(false);
+    }
+
+    let expires_at = load_application_config(db, "log.profile.expires_at")
+        .await
+        .unwrap_or_default();
+    if expires_at.trim().is_empty() {
+        return Ok(false);
+    }
+
+    let expires_at_dt = match chrono::DateTime::parse_from_rfc3339(expires_at.trim()) {
+        Ok(v) => v.with_timezone(&chrono::Utc),
+        Err(_) => return Ok(false),
+    };
+
+    if chrono::Utc::now() < expires_at_dt {
+        return Ok(false);
+    }
+
+    let baseline = baseline_profile_settings();
+    apply_log_settings_to_db(db, &baseline).await?;
+    upsert_application_config(db, "log.profile.active", "baseline").await?;
+    upsert_application_config(db, "log.profile.applied_at", &chrono::Utc::now().to_rfc3339()).await?;
+    upsert_application_config(db, "log.profile.ttl_sec", "0").await?;
+    upsert_application_config(db, "log.profile.expires_at", "").await?;
+
+    Ok(true)
+}
+
+async fn apply_log_settings_to_db(
+    db: &DatabaseConnection,
+    settings: &[UpdateLogCategoryConfig],
+) -> Result<()> {
+    let default_sink_by_category: HashMap<String, (bool, bool)> = default_log_settings()
+        .into_iter()
+        .map(|cfg| (cfg.category, (cfg.sink_db, cfg.sink_file)))
+        .collect();
+
+    for cfg in settings {
+        let canonical_cat = canonical_category(&cfg.category);
+        let prefix = format!("log.category.{}", canonical_cat);
+
+        let (default_sink_db, default_sink_file) = default_sink_by_category
+            .get(&canonical_cat)
+            .copied()
+            .unwrap_or((true, false));
+        let sink_db = cfg.sink_db.unwrap_or(default_sink_db);
+        let sink_file = cfg.sink_file.unwrap_or(default_sink_file);
+
+        let updates = [
+            (format!("{}.enabled", prefix), cfg.enabled.to_string()),
+            (format!("{}.detail_mode", prefix), cfg.detail_mode.clone()),
+            (format!("{}.min_level", prefix), cfg.min_level.clone()),
+            (format!("{}.sink_db", prefix), sink_db.to_string()),
+            (format!("{}.sink_file", prefix), sink_file.to_string()),
+        ];
+
+        for (key, value) in updates {
+            upsert_application_config(db, &key, &value).await?;
+        }
+    }
+
+    Ok(())
+}
+
 fn default_log_settings() -> Vec<LogCategoryConfig> {
-    vec![
-        LogCategoryConfig { category: "STARTUP".into(),     display_name: "Service Startup".into(),  description: "DLL load, server init, DB connect, sampling state changes".into(), group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "AUTH".into(),        display_name: "Authentication".into(),    description: "Login, logout, session events".into(),                            group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "CONFIG".into(),      display_name: "Config Changes".into(),    description: "Operator settings: sync interval, rediscover interval".into(),    group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "MAINTENANCE".into(), display_name: "DB Maintenance".into(),    description: "Migration, partition creation, DB size warnings".into(),           group: "system".into(),      enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "POLL".into(),        display_name: "Device Poll".into(),       description: "Sync cycle: device count, ok/fail totals, policy skips".into(),   group: "operational".into(), enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "mssql".into(),  sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "DEVICE".into(),      display_name: "Device Sync".into(),       description: "Per-device: points written, FFI errors, serial=0 skips".into(),   group: "operational".into(), enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "mssql".into(),  sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "TRENDLOG".into(),    display_name: "Trendlog".into(),          description: "Trendlog config sync and data write summary".into(),               group: "operational".into(), enabled: true,  detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "mssql".into(),  sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "API_REQ".into(),     display_name: "API Requests".into(),      description: "HTTP endpoint calls — enable for debugging only".into(),           group: "debug".into(),       enabled: false, detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "WEBSOCKET".into(),   display_name: "WebSocket".into(),         description: "WS connect/disconnect, message types".into(),                      group: "debug".into(),       enabled: false, detail_mode: "SUMMARY".into(), min_level: "INFO".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "FFI_CALL".into(),    display_name: "C++ FFI Calls".into(),     description: "Raw C++ request/response — very high volume".into(),               group: "debug".into(),       enabled: false, detail_mode: "FULL".into(),    min_level: "DEBUG".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
-        LogCategoryConfig { category: "MESSAGE_ACTION".into(), display_name: "Message Action".into(), description: "Message action processing and command dispatch details".into(),      group: "debug".into(),       enabled: false, detail_mode: "FULL".into(),    min_level: "DEBUG".into(), target: "sqlite".into(), sink_db: true,  sink_file: false },
-    ]
+    ACTIVITY_LOG_CATEGORY_DEFS
+        .iter()
+        .map(|def| LogCategoryConfig {
+            category: def.category.into(),
+            display_name: def.display_name.into(),
+            description: def.description.into(),
+            group: def.group.into(),
+            enabled: def.enabled,
+            detail_mode: def.detail_mode.into(),
+            min_level: def.min_level.into(),
+            target: def.target.into(),
+            sink_db: def.sink_db,
+            sink_file: def.sink_file,
+        })
+        .collect()
 }
 
 async fn get_log_settings(
@@ -1487,6 +1636,8 @@ async fn get_log_settings(
         Some(d) => d,
         None => return Ok(Json(default_log_settings())),
     };
+
+    let _ = maybe_auto_revert_profile_if_expired(&db).await;
 
     let defaults = default_log_settings();
     let mut result = Vec::with_capacity(defaults.len());
@@ -1547,89 +1698,557 @@ async fn put_log_settings(
         None => return Ok(Json(serde_json::json!({ "ok": false, "error": "DB unavailable" }))),
     };
 
-    let now = chrono::Utc::now().naive_utc().to_string();
-    let default_sink_by_category: HashMap<String, (bool, bool)> = default_log_settings()
-        .into_iter()
-        .map(|cfg| (cfg.category, (cfg.sink_db, cfg.sink_file)))
-        .collect();
-
-    for cfg in &body.settings {
-        let canonical_cat = canonical_category(&cfg.category);
-        let cat = canonical_cat.replace('\'', "''");
-        let prefix = format!("log.category.{}", cat);
-
-        let (default_sink_db, default_sink_file) = default_sink_by_category
-            .get(&canonical_cat)
-            .copied()
-            .unwrap_or((true, false));
-        let sink_db = cfg.sink_db.unwrap_or(default_sink_db);
-        let sink_file = cfg.sink_file.unwrap_or(default_sink_file);
-
-        let updates = [
-            (format!("{}.enabled", prefix), cfg.enabled.to_string()),
-            (format!("{}.detail_mode", prefix), cfg.detail_mode.clone()),
-            (format!("{}.min_level", prefix), cfg.min_level.clone()),
-            (format!("{}.sink_db", prefix), sink_db.to_string()),
-            (format!("{}.sink_file", prefix), sink_file.to_string()),
-        ];
-
-        for (key, value) in updates {
-            let key_sql = key.replace('\'', "''");
-            let val_sql = value.replace('\'', "''");
-            let ts_sql = now.replace('\'', "''");
-
-            // Some deployments do not enforce a UNIQUE constraint on config_key,
-            // so ON CONFLICT(config_key) fails. Use update-first, insert-if-missing.
-            let update_sql = format!(
-                "UPDATE APPLICATION_CONFIG \
-                 SET config_value = '{val}', updated_at = '{ts}' \
-                 WHERE config_key = '{key}'",
-                key = key_sql,
-                val = val_sql,
-                ts = ts_sql,
-            );
-
-            let update_result = db
-                .execute(sea_orm::Statement::from_string(
-                    sea_orm::DatabaseBackend::Sqlite,
-                    update_sql,
-                ))
-                .await
-                .map_err(|e| {
-                    crate::error::Error::DbError(format!(
-                        "Failed to update log setting '{}': {}",
-                        key, e
-                    ))
-                })?;
-
-            if update_result.rows_affected() == 0 {
-                let insert_sql = format!(
-                    "INSERT INTO APPLICATION_CONFIG (config_key, config_value, updated_at) \
-                     VALUES ('{key}', '{val}', '{ts}')",
-                    key = key_sql,
-                    val = val_sql,
-                    ts = ts_sql,
-                );
-
-                db.execute(sea_orm::Statement::from_string(
-                    sea_orm::DatabaseBackend::Sqlite,
-                    insert_sql,
-                ))
-                .await
-                .map_err(|e| {
-                    crate::error::Error::DbError(format!(
-                        "Failed to insert log setting '{}': {}",
-                        key, e
-                    ))
-                })?;
-            }
-        }
-    }
+    apply_log_settings_to_db(&db, &body.settings).await?;
 
     Ok(Json(serde_json::json!({ "ok": true })))
 }
 
 // ============================================================================
+// GET /api/logs/enabled  |  PUT /api/logs/enabled
+// Global logging on/off switch stored as log.global.enabled in APPLICATION_CONFIG.
+// Does NOT touch per-category settings — categories keep their individual config.
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SetGlobalLoggingRequest {
+    enabled: bool,
+}
+
+async fn get_logging_enabled(
+    State(state): State<T3AppState>,
+) -> Result<Json<serde_json::Value>> {
+    let db = match get_local_log_db_conn(&state).await {
+        Some(d) => d,
+        None => return Ok(Json(serde_json::json!({ "enabled": true }))),
+    };
+    let enabled = crate::logging::service::load_global_logging_enabled(&db).await;
+    Ok(Json(serde_json::json!({ "enabled": enabled })))
+}
+
+async fn put_logging_enabled(
+    State(state): State<T3AppState>,
+    Json(body): Json<SetGlobalLoggingRequest>,
+) -> Result<Json<serde_json::Value>> {
+    let db = match get_local_log_db_conn(&state).await {
+        Some(d) => d,
+        None => return Ok(Json(serde_json::json!({ "ok": false, "error": "DB unavailable" }))),
+    };
+    upsert_application_config(&db, "log.global.enabled", &body.enabled.to_string()).await?;
+    Ok(Json(serde_json::json!({ "ok": true, "enabled": body.enabled })))
+}
+
+async fn get_log_profile_current(
+    State(state): State<T3AppState>,
+) -> Result<Json<serde_json::Value>> {
+    let db = match get_local_log_db_conn(&state).await {
+        Some(d) => d,
+        None => {
+            return Ok(Json(serde_json::json!({
+                "ok": false,
+                "error": "DB unavailable"
+            })))
+        }
+    };
+
+    let auto_reverted = maybe_auto_revert_profile_if_expired(&db).await?;
+
+    let active_profile = load_application_config(&db, "log.profile.active")
+        .await
+        .unwrap_or_else(|| "baseline".to_string());
+    let applied_at = load_application_config(&db, "log.profile.applied_at").await;
+    let ttl_sec = load_application_config(&db, "log.profile.ttl_sec")
+        .await
+        .and_then(|v| v.parse::<u32>().ok())
+        .unwrap_or(0);
+    let expires_at = load_application_config(&db, "log.profile.expires_at")
+        .await
+        .filter(|v| !v.trim().is_empty());
+
+    Ok(Json(serde_json::json!({
+        "ok": true,
+        "profile": active_profile,
+        "ttlSec": ttl_sec,
+        "appliedAt": applied_at,
+        "expiresAt": expires_at,
+        "autoReverted": auto_reverted,
+    })))
+}
+
+async fn apply_log_profile(
+    State(state): State<T3AppState>,
+    Json(body): Json<ApplyLogProfileRequest>,
+) -> Result<Json<serde_json::Value>> {
+    let db = match get_local_log_db_conn(&state).await {
+        Some(d) => d,
+        None => return Ok(Json(serde_json::json!({ "ok": false, "error": "DB unavailable" }))),
+    };
+
+    let profile_name = body.profile.trim().to_ascii_lowercase();
+    let Some(settings) = profile_settings(&profile_name) else {
+        return Ok(Json(serde_json::json!({
+            "ok": false,
+            "error": format!("Unknown profile '{}'", body.profile),
+            "supportedProfiles": ["baseline", "trendlog-trace", "ffi-stale-trace", "ui-trace"]
+        })));
+    };
+
+    apply_log_settings_to_db(&db, &settings).await?;
+
+    let now = chrono::Utc::now();
+    let ttl_sec = body.ttl_sec.unwrap_or(1800);
+    let expires_at = now + chrono::Duration::seconds(ttl_sec as i64);
+
+    upsert_application_config(&db, "log.profile.active", &profile_name).await?;
+    upsert_application_config(&db, "log.profile.applied_at", &now.to_rfc3339()).await?;
+    upsert_application_config(&db, "log.profile.ttl_sec", &ttl_sec.to_string()).await?;
+    upsert_application_config(&db, "log.profile.expires_at", &expires_at.to_rfc3339()).await?;
+
+    Ok(Json(serde_json::json!({
+        "ok": true,
+        "profile": profile_name,
+        "ttlSec": ttl_sec,
+        "expiresAt": expires_at.to_rfc3339(),
+        "appliedSettingsCount": settings.len()
+    })))
+}
+
+async fn disable_log_profile(
+    State(state): State<T3AppState>,
+) -> Result<Json<serde_json::Value>> {
+    let db = match get_local_log_db_conn(&state).await {
+        Some(d) => d,
+        None => return Ok(Json(serde_json::json!({ "ok": false, "error": "DB unavailable" }))),
+    };
+
+    let settings = baseline_profile_settings();
+    apply_log_settings_to_db(&db, &settings).await?;
+
+    upsert_application_config(&db, "log.profile.active", "baseline").await?;
+    upsert_application_config(&db, "log.profile.applied_at", &chrono::Utc::now().to_rfc3339()).await?;
+    upsert_application_config(&db, "log.profile.ttl_sec", "0").await?;
+    upsert_application_config(&db, "log.profile.expires_at", "").await?;
+
+    Ok(Json(serde_json::json!({
+        "ok": true,
+        "profile": "baseline",
+        "appliedSettingsCount": settings.len()
+    })))
+}
+
+// ============================================================================
+// ============================================================================
+// GET /api/sync/diagnostics — structured sync troubleshooting for the dashboard
+// ============================================================================
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DiagnosticCheck {
+    pub severity: String,
+    pub title: String,
+    pub detail: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hint: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncDiagnosticsResponse {
+    /// Runtime role from the running service (same as GET /api/sync/health role).
+    pub role: String,
+    pub hostname: String,
+    /// setting.ini [ServerDatabase] role (read from disk now).
+    pub ini_role: String,
+    pub ini_center_db_enabled: bool,
+    /// True when setting.ini has enabled=1 and role=server (same gate as lib.rs FFI startup).
+    pub sync_runs_on_this_pc: bool,
+    /// True when ini role disagrees with runtime role (restart required).
+    pub role_mismatch: bool,
+    /// Where dashboard sync KPIs / metadata come from.
+    pub metrics_source: String,
+    pub ffi_sync_host: Option<String>,
+    pub event_log_scope: String,
+    pub event_log_note: String,
+    pub checks: Vec<DiagnosticCheck>,
+    pub recent_ffi_events: Vec<AppLogEntry>,
+}
+
+fn last_sync_age_secs(last_sync_time: &Option<String>) -> Option<i64> {
+    let raw = last_sync_time.as_ref()?;
+    let naive = NaiveDateTime::parse_from_str(raw, "%Y-%m-%d %H:%M:%S").ok()?;
+    let local_dt = Local.from_local_datetime(&naive).single()?;
+    Some(Local::now().timestamp() - local_dt.timestamp())
+}
+
+fn build_diagnostic_checks(
+    health: &SyncHealthResponse,
+    ini_cfg: &crate::ini_config::ServerDbIniConfig,
+    sync_runs_on_this_pc: bool,
+    role_mismatch: bool,
+    server_proxy_error: Option<&str>,
+) -> Vec<DiagnosticCheck> {
+    let mut checks: Vec<DiagnosticCheck> = Vec::new();
+
+    if role_mismatch {
+        checks.push(DiagnosticCheck {
+            severity: "error".into(),
+            title: "INI and running service disagree — restart required".into(),
+            detail: format!(
+                "setting.ini: enabled={}, role={}. Running service role={}. FFI startup uses INI at boot; dashboard uses runtime role.",
+                ini_cfg.enabled, ini_cfg.role, health.role
+            ),
+            hint: Some(
+                "Restart the T3000 webview / Rust service after changing setting.ini.".into(),
+            ),
+        });
+    }
+
+    match health.role.as_str() {
+        "standalone" => {
+            checks.push(DiagnosticCheck {
+                severity: "info".into(),
+                title: "This PC: standalone (not Shared DB)".into(),
+                detail: "Background FFI interval sync is disabled. Only realtime device writes are active.".into(),
+                hint: Some("Enable Shared DB + role=server in setting.ini to use interval sync.".into()),
+            });
+        }
+        "client" => {
+            let host = health
+                .center_db_host
+                .clone()
+                .unwrap_or_else(|| "server PC".into());
+            checks.push(DiagnosticCheck {
+                severity: "info".into(),
+                title: "This PC: CLIENT — FFI sync does not run here".into(),
+                detail: format!(
+                    "Dashboard Last Sync / Records Today are proxied from {}:9103 (not this machine).",
+                    host
+                ),
+                hint: Some(
+                    "To debug sync, open the dashboard or Develop → Logs on the server PC.".into(),
+                ),
+            });
+            if let Some(err) = server_proxy_error {
+                checks.push(DiagnosticCheck {
+                    severity: "error".into(),
+                    title: "Cannot reach server sync API".into(),
+                    detail: err.to_string(),
+                    hint: Some(
+                        "Verify the server PC is online, port 9103 is open, and Database Config host matches the server IP.".into(),
+                    ),
+                });
+            }
+        }
+        "server" => {
+            checks.push(DiagnosticCheck {
+                severity: "ok".into(),
+                title: "This PC: SERVER — FFI sync host".into(),
+                detail: format!(
+                    "Dashboard sync KPIs are read from local DATA_SYNC_METADATA on {} (this machine).",
+                    health.hostname
+                ),
+                hint: None,
+            });
+            if sync_runs_on_this_pc {
+                checks.push(DiagnosticCheck {
+                    severity: "ok".into(),
+                    title: "setting.ini allows FFI interval sync".into(),
+                    detail: format!(
+                        "enabled=1, role=server — service should run the FFI loop every {} seconds.",
+                        health.sync_interval_secs
+                    ),
+                    hint: Some(
+                        "If cycles still fail, check Activity Log category POLL (source ffi_sync) below.".into(),
+                    ),
+                });
+            } else {
+                checks.push(DiagnosticCheck {
+                    severity: "error".into(),
+                    title: "setting.ini blocks FFI interval sync".into(),
+                    detail: format!(
+                        "Current INI: enabled={}, role={}. Need enabled=1 and role=server, then restart the service.",
+                        ini_cfg.enabled, ini_cfg.role
+                    ),
+                    hint: Some(
+                        "Activity Log STARTUP may show \"FFI Sync Service DISABLED\".".into(),
+                    ),
+                });
+            }
+        }
+        _ => {}
+    }
+
+    if health.center_db_enabled && !health.center_db_connected {
+        checks.push(DiagnosticCheck {
+            severity: "error".into(),
+            title: "Center database disconnected".into(),
+            detail: health
+                .center_db_message
+                .clone()
+                .unwrap_or_else(|| format!("Status: {}", health.center_db_status)),
+            hint: Some("Use Test Connection on the dashboard or Database Config to fix connectivity.".into()),
+        });
+    }
+
+    if health.writes_blocked {
+        checks.push(DiagnosticCheck {
+            severity: "error".into(),
+            title: "Writes blocked — today counts forced to zero".into(),
+            detail: "Center DB is enabled but unavailable; dashboard zeros Records/Devices Today even if old metadata exists.".into(),
+            hint: None,
+        });
+    }
+
+    if health.sampling_paused {
+        checks.push(DiagnosticCheck {
+            severity: "warn".into(),
+            title: "FFI sampling paused".into(),
+            detail: health
+                .paused_reason
+                .clone()
+                .unwrap_or_else(|| "Sampling paused by policy.".into()),
+            hint: None,
+        });
+    }
+
+    if health.center_db_enabled && health.role == "server" && !health.mssql_pool_active {
+        checks.push(DiagnosticCheck {
+            severity: "warn".into(),
+            title: "MSSQL pool inactive — sync cycles may be skipped".into(),
+            detail: "When center DB mode is on but the pool is down, each cycle logs policy=center_db_skip_retry and writes no metadata.".into(),
+            hint: Some("Restore SQL Server connectivity on this server PC.".into()),
+        });
+    }
+
+    if let Some(age_secs) = last_sync_age_secs(&health.last_sync_time) {
+        let interval = health.sync_interval_secs.max(30) as i64;
+        if age_secs > interval * 3 {
+            let severity = if age_secs > 86_400 { "error" } else { "warn" };
+            checks.push(DiagnosticCheck {
+                severity: severity.into(),
+                title: "Last sync is stale".into(),
+                detail: format!(
+                    "Last successful FFI metadata write was {} ago ({}) — expected about every {}s.",
+                    health.last_sync_ago.clone().unwrap_or_else(|| "?".into()),
+                    health.last_sync_time.clone().unwrap_or_default(),
+                    interval
+                ),
+                hint: Some(
+                    "Open Activity Log, filter POLL, and look for policy= or GET_PANELS_LIST messages.".into(),
+                ),
+            });
+        }
+    } else if health.role == "server" && sync_runs_on_this_pc {
+        checks.push(DiagnosticCheck {
+            severity: "warn".into(),
+            title: "No sync metadata recorded yet".into(),
+            detail: "DATA_SYNC_METADATA has no FFI_BACKEND rows — the service may still be starting (30s delay) or cycles are failing.".into(),
+            hint: None,
+        });
+    }
+
+    if health.center_db_enabled
+        && !health.writes_blocked
+        && health.records_today.total == 0
+        && health.devices_synced_today == 0
+        && health.last_sync_time.is_some()
+    {
+        checks.push(DiagnosticCheck {
+            severity: "warn".into(),
+            title: "No sync activity today".into(),
+            detail: "Last sync exists but Records Today and Devices Today are both zero (local midnight boundary).".into(),
+            hint: Some(
+                "Confirm sync cycles are completing on the server after midnight local time.".into(),
+            ),
+        });
+    }
+
+    if checks.is_empty() {
+        checks.push(DiagnosticCheck {
+            severity: "ok".into(),
+            title: "No issues detected".into(),
+            detail: "Sync health checks passed with current configuration.".into(),
+            hint: None,
+        });
+    }
+
+    checks
+}
+
+async fn fetch_recent_ffi_events(state: &T3AppState, limit: usize) -> Vec<AppLogEntry> {
+    let mut merged: Vec<(i64, AppLogEntry)> = Vec::new();
+
+    if let Some(pool) = crate::server_db_writer::get_server_mssql_pool() {
+        for row in crate::database_management::mssql_queries::query_app_log(pool, None, Some("POLL"), 40)
+            .await
+            .unwrap_or_default()
+        {
+            if row["source"].as_str() != Some("ffi_sync") {
+                continue;
+            }
+            let entry = json_to_log_entry(&row);
+            merged.push((entry.ts_unix, entry));
+        }
+        for row in crate::database_management::mssql_queries::query_app_log(pool, None, Some("DEVICE"), 20)
+            .await
+            .unwrap_or_default()
+        {
+            if row["source"].as_str() != Some("ffi_sync") {
+                continue;
+            }
+            let entry = json_to_log_entry(&row);
+            merged.push((entry.ts_unix, entry));
+        }
+    }
+
+    if let Some(db) = get_local_log_db_conn(state).await {
+        ensure_app_log_table(&db).await;
+        for row in query_sqlite_log_raw(&db, None, Some("POLL"), 40).await {
+            if row["source"].as_str() != Some("ffi_sync") {
+                continue;
+            }
+            let entry = json_to_log_entry(&row);
+            merged.push((entry.ts_unix, entry));
+        }
+        for row in query_sqlite_log_raw(&db, None, Some("STARTUP"), 10).await {
+            if row["source"].as_str() != Some("ffi_sync") {
+                continue;
+            }
+            let entry = json_to_log_entry(&row);
+            merged.push((entry.ts_unix, entry));
+        }
+    }
+
+    merged.sort_unstable_by(|a, b| b.0.cmp(&a.0));
+    merged.dedup_by(|a, b| a.1.id == b.1.id && a.0 == b.0);
+    merged
+        .into_iter()
+        .take(limit)
+        .map(|(_, e)| e)
+        .collect()
+}
+
+async fn build_sync_diagnostics(
+    state: &T3AppState,
+    server_proxy_error: Option<String>,
+) -> Result<SyncDiagnosticsResponse> {
+    let health = build_sync_health_response(state).await?;
+    let ini_cfg = crate::ini_config::read_server_db_config_auto();
+    let sync_runs_on_this_pc = ini_cfg.enabled && ini_cfg.role == "server";
+    let role_mismatch = ini_cfg.enabled
+        && health.role != "standalone"
+        && ini_cfg.role != health.role;
+
+    let metrics_source = if health.role == "client" {
+        let host = health
+            .center_db_host
+            .clone()
+            .unwrap_or_else(|| "server".into());
+        format!("remote_server:{}", host)
+    } else {
+        "this_pc".to_string()
+    };
+
+    let ffi_sync_host = if health.role == "client" {
+        health.center_db_host.clone()
+    } else if sync_runs_on_this_pc {
+        Some(health.hostname.clone())
+    } else {
+        None
+    };
+
+    let mut checks = build_diagnostic_checks(
+        &health,
+        &ini_cfg,
+        sync_runs_on_this_pc,
+        role_mismatch,
+        server_proxy_error.as_deref(),
+    );
+
+    // Surface skip reasons from the latest POLL ffi_sync row when present.
+    let recent_ffi_events = fetch_recent_ffi_events(state, 12).await;
+    if let Some(ev) = recent_ffi_events.first() {
+        if let Some(details) = ev.details.as_deref() {
+            if details.contains("policy=center_db_skip_retry") {
+                checks.push(DiagnosticCheck {
+                    severity: "warn".into(),
+                    title: "Latest cycle: center DB skip".into(),
+                    detail: "Most recent ffi_sync POLL log shows policy=center_db_skip_retry — cycle wrote no metadata.".into(),
+                    hint: Some("Restore MSSQL pool on this PC (server) or fix SQL connectivity.".into()),
+                });
+            } else if details.contains("policy=standalone_skip") {
+                checks.push(DiagnosticCheck {
+                    severity: "warn".into(),
+                    title: "Latest cycle: standalone skip".into(),
+                    detail: "FFI loop is skipping because center DB is disabled in setting.ini at cycle time.".into(),
+                    hint: None,
+                });
+            }
+        }
+        if ev.message.contains("GET_PANELS_LIST timed out") {
+            checks.push(DiagnosticCheck {
+                severity: "warn".into(),
+                title: "Latest cycle: T3000 FFI timeout".into(),
+                detail: ev.message.clone(),
+                hint: Some("Ensure T3000.exe is running and BacnetWebView_HandleWebViewMsg is available.".into()),
+            });
+        }
+    }
+
+    Ok(SyncDiagnosticsResponse {
+        role: health.role,
+        hostname: health.hostname,
+        ini_role: ini_cfg.role,
+        ini_center_db_enabled: ini_cfg.enabled,
+        sync_runs_on_this_pc,
+        role_mismatch,
+        metrics_source,
+        ffi_sync_host,
+        event_log_scope: health.event_log_scope,
+        event_log_note: health.event_log_note,
+        checks,
+        recent_ffi_events,
+    })
+}
+
+async fn get_sync_diagnostics(State(state): State<T3AppState>) -> Result<Json<SyncDiagnosticsResponse>> {
+    let diagnostics = build_sync_diagnostics(&state, None).await?;
+    Ok(Json(diagnostics))
+}
+
+async fn get_server_sync_diagnostics(
+    State(state): State<T3AppState>,
+) -> Json<serde_json::Value> {
+    if !state.server_db_enabled || state.server_db_role != "client" {
+        return Json(serde_json::json!({
+            "ok": false,
+            "error": "Not in client mode"
+        }));
+    }
+
+    let server_ip = if let Some(ref local_conn) = state.local_config_conn {
+        let db = local_conn.lock().await;
+        crate::database_management::db_backend_config::load_active_config(&*db)
+            .await
+            .ok()
+            .and_then(|cfg| cfg.host)
+    } else {
+        None
+    };
+
+    let Some(server_ip) = server_ip else {
+        return Json(serde_json::json!({
+            "ok": false,
+            "error": "Server IP not configured"
+        }));
+    };
+
+    match fetch_server_get_raw(&server_ip, 9103, "/api/sync/diagnostics").await {
+        Ok(body) => Json(serde_json::json!({ "ok": true, "serverIp": server_ip, "diagnostics": body })),
+        Err(e) => Json(serde_json::json!({ "ok": false, "error": e, "serverIp": server_ip })),
+    }
+}
+
 // Router
 // ============================================================================
 
@@ -1637,11 +2256,111 @@ pub fn sync_health_routes() -> Router<T3AppState> {
     Router::new()
         .route("/api/sync/health", get(get_sync_health))
         .route("/api/sync/health/ping", get(ping_center_db))
+        .route("/api/sync/diagnostics", get(get_sync_diagnostics))
+        .route("/api/sync/server-diagnostics", get(get_server_sync_diagnostics))
         .route("/api/sync/server-health", get(get_server_sync_metrics))
         .route("/api/sync/event-log", get(get_event_log))
         .route("/api/sync/event-log", post(post_event))
         .route("/api/logs/settings", get(get_log_settings))
+        .route("/api/logs/validation", get(get_log_validation))
+        .route("/api/logs/profile/current", get(get_log_profile_current))
         .route("/api/logs/settings", axum::routing::put(put_log_settings))
+        .route("/api/logs/profile/apply", post(apply_log_profile))
+        .route("/api/logs/profile/disable", post(disable_log_profile))
+        .route("/api/logs/enabled", get(get_logging_enabled))
+        .route("/api/logs/enabled", axum::routing::put(put_logging_enabled))
+        // FFI sampling control
+        .route("/api/sync/sampling/status", get(get_sampling_status))
+        .route("/api/sync/sampling/pause", post(post_sampling_pause))
+        .route("/api/sync/sampling/resume", post(post_sampling_resume))
+        .route("/api/sync/trigger", post(post_trigger_sync))
+}
+
+// ============================================================================
+// GET /api/sync/sampling/status
+// Returns real-time FFI sampling state: paused/active, pause reason, interval.
+// ============================================================================
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SamplingStatusResponse {
+    paused: bool,
+    pause_reason: Option<String>,
+    sync_interval_secs: u32,
+    service_running: bool,
+}
+
+async fn get_sampling_status() -> Json<SamplingStatusResponse> {
+    use crate::app_state::{get_pause_reason, is_sampling_paused};
+    use crate::t3_device::t3_ffi_sync_service::is_logging_service_running;
+
+    // Read interval from DB config (same path used elsewhere), fallback 300s
+    let sync_interval_secs = crate::t3_device::t3_ffi_sync_service::T3000MainService::get_service()
+        .map(|_| 300u32) // service is opaque; get from config API
+        .unwrap_or(300);
+
+    Json(SamplingStatusResponse {
+        paused: is_sampling_paused(),
+        pause_reason: get_pause_reason(),
+        sync_interval_secs,
+        service_running: is_logging_service_running(),
+    })
+}
+
+// ============================================================================
+// POST /api/sync/sampling/pause
+// Body: { "reason": "optional human-readable reason" }
+// Manually pause FFI sampling.
+// ============================================================================
+
+#[derive(Deserialize, Default)]
+struct PauseBody {
+    reason: Option<String>,
+}
+
+async fn post_sampling_pause(
+    body: Option<Json<PauseBody>>,
+) -> Json<serde_json::Value> {
+    let reason = body
+        .and_then(|b| b.reason.clone())
+        .unwrap_or_else(|| "manually paused via API".to_string());
+    crate::app_state::set_sampling_paused(&reason);
+    Json(serde_json::json!({ "ok": true, "paused": true, "reason": reason }))
+}
+
+// ============================================================================
+// POST /api/sync/sampling/resume
+// Manually resume FFI sampling (clears any pause).
+// ============================================================================
+
+async fn post_sampling_resume() -> Json<serde_json::Value> {
+    crate::app_state::set_sampling_active();
+    Json(serde_json::json!({ "ok": true, "paused": false }))
+}
+
+// ============================================================================
+// POST /api/sync/trigger
+// Fires an immediate sync cycle in the background (non-blocking).
+// Returns immediately; the sync runs concurrently.
+// ============================================================================
+
+async fn post_trigger_sync() -> Json<serde_json::Value> {
+    use crate::t3_device::t3_ffi_sync_service::sync_logging_data_once;
+
+    if crate::app_state::is_sampling_paused() {
+        return Json(serde_json::json!({
+            "ok": false,
+            "error": "sampling is paused — resume before triggering sync"
+        }));
+    }
+
+    tokio::spawn(async move {
+        if let Err(e) = sync_logging_data_once().await {
+            tracing::warn!("manual sync trigger failed: {}", e);
+        }
+    });
+
+    Json(serde_json::json!({ "ok": true, "message": "sync triggered in background" }))
 }
 
 // ============================================================================
@@ -1679,7 +2398,7 @@ async fn get_server_sync_metrics(
         }));
     };
 
-    match fetch_server_health_raw(&server_ip, 9103).await {
+    match fetch_server_get_raw(&server_ip, 9103, "/api/sync/health").await {
         Ok(body) => {
             // Extract only the fields we need.
             // /api/sync/health serialises with rename_all = "camelCase", so
@@ -1704,7 +2423,11 @@ async fn get_server_sync_metrics(
 }
 
 /// Raw HTTP/1.1 GET over a plain TCP stream — no TLS, no extra crates.
-async fn fetch_server_health_raw(host: &str, port: u16) -> std::result::Result<serde_json::Value, String> {
+async fn fetch_server_get_raw(
+    host: &str,
+    port: u16,
+    path: &str,
+) -> std::result::Result<serde_json::Value, String> {
     let addr = format!("{}:{}", host, port);
 
     let mut stream = tokio::time::timeout(
@@ -1716,8 +2439,8 @@ async fn fetch_server_health_raw(host: &str, port: u16) -> std::result::Result<s
     .map_err(|e| format!("TCP connect error: {}", e))?;
 
     let request = format!(
-        "GET /api/sync/health HTTP/1.1\r\nHost: {}\r\nConnection: close\r\nAccept: application/json\r\n\r\n",
-        host
+        "GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\nAccept: application/json\r\n\r\n",
+        path, host
     );
     stream
         .write_all(request.as_bytes())

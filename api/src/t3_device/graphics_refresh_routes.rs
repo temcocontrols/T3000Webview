@@ -13,8 +13,8 @@ use tracing::{error, info, warn};
 
 use crate::app_state::T3AppState;
 use crate::entity::t3_device::{devices, graphics};
+use crate::t3_device::action17_refresh_helper::lookup_action17_target;
 use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
-use crate::logger::{write_structured_log_with_level, LogLevel};
 use sea_orm::*;
 
 // Entry type constants matching C++ defines
@@ -139,28 +139,14 @@ pub async fn refresh_graphics(
         }
     };
 
-    // Find panel_id from devices table
-    let panel_id = match devices::Entity::find()
-        .filter(devices::Column::SerialNumber.eq(serial))
-        .one(&db_connection)
-        .await
-    {
-        Ok(Some(device)) => device.panel_id.unwrap_or(0),
-        Ok(None) => {
-            error!("Device not found for serial: {}", serial);
-            return Err((StatusCode::NOT_FOUND, format!("Device with serial {} not found", serial)));
-        }
-        Err(e) => {
-            error!("Database error querying device: {:?}", e);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)));
-        }
-    };
+    let (panel_id, object_instance) = lookup_action17_target(&db_connection, serial).await?;
 
     // Prepare refresh JSON for GET_WEBVIEW_LIST action
     let mut refresh_json = json!({
         "action": WebViewMessageType::GET_WEBVIEW_LIST as i32,
         "panelId": panel_id,
         "serialNumber": serial,
+        "objectinstance": object_instance,
         "entryType": BAC_GRP,  // 10 = GRAPHICS
     });
 
@@ -407,11 +393,6 @@ pub async fn load_and_save_graphics(
     Json(_payload): Json<Value>,
 ) -> Result<Json<SaveResponse>, (StatusCode, String)> {
     info!("GET_INITIAL_DATA: Loading and saving graphics - Serial: {}", serial);
-    let _ = write_structured_log_with_level(
-        "T3_Webview_API",
-        &format!("📥 POST /graphics/{}/load-and-save - Action 1 (GET_INITIAL_DATA)", serial),
-        LogLevel::Info
-    );
 
     // Get database connection from state
     let db_connection = if let Some(conn) = &state.t3_device_conn {
@@ -425,6 +406,17 @@ pub async fn load_and_save_graphics(
             }
         }
     };
+
+    crate::logging::service::emit_app_log(
+        &db_connection,
+        "info",
+        "T3_Webview_API",
+        Some("graphics_refresh_routes"),
+        None,
+        &format!("📥 POST /graphics/{}/load-and-save - Action 1 (GET_INITIAL_DATA)", serial),
+        None,
+    )
+    .await;
 
     // Find panel_id from devices table
     let device = match devices::Entity::find()
@@ -456,29 +448,44 @@ pub async fn load_and_save_graphics(
     });
 
     info!("📤 Calling GET_PANEL_DATA (Action 0) for graphic screens - Panel: {}, Serial: {}", panel_id, serial);
-    let _ = write_structured_log_with_level(
+    crate::logging::service::emit_app_log(
+        &db_connection,
+        "info",
         "T3_Webview_API",
+        Some("graphics_refresh_routes"),
+        None,
         &format!("📤 Calling FFI Action 0 (GET_PANEL_DATA for screens) - Panel: {}, Serial: {}", panel_id, serial),
-        LogLevel::Info
-    );
+        None,
+    )
+    .await;
 
     // Call FFI to get graphics list using Action 0 (from prog file cache)
     let response_str = match call_refresh_ffi(0, request_json).await {
         Ok(resp) => {
-            let _ = write_structured_log_with_level(
+            crate::logging::service::emit_app_log(
+                &db_connection,
+                "info",
                 "T3_Webview_API",
+                Some("graphics_refresh_routes"),
+                None,
                 &format!("📥 FFI Response received - Length: {} bytes", resp.len()),
-                LogLevel::Info
-            );
+                None,
+            )
+            .await;
             resp
         }
         Err(e) => {
             error!("❌ FFI call failed: {}", e);
-            let _ = write_structured_log_with_level(
+            crate::logging::service::emit_app_log(
+                &db_connection,
+                "error",
                 "T3_Webview_API",
+                Some("graphics_refresh_routes"),
+                None,
                 &format!("❌ FFI call failed: {}", e),
-                LogLevel::Error
-            );
+                None,
+            )
+            .await;
             return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("FFI error: {}", e)));
         }
     };
@@ -488,11 +495,16 @@ pub async fn load_and_save_graphics(
         Ok(val) => val,
         Err(e) => {
             error!("❌ Failed to parse FFI response: {}", e);
-            let _ = write_structured_log_with_level(
+            crate::logging::service::emit_app_log(
+                &db_connection,
+                "error",
                 "T3_Webview_API",
+                Some("graphics_refresh_routes"),
+                None,
                 &format!("❌ Failed to parse FFI response: {} | Raw: {}", e, &response_str.chars().take(200).collect::<String>()),
-                LogLevel::Error
-            );
+                None,
+            )
+            .await;
             return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to parse response: {}", e)));
         }
     };
@@ -500,11 +512,16 @@ pub async fn load_and_save_graphics(
     // Check for error in response
     if let Some(error) = response_value.get("error") {
         error!("❌ C++ returned error: {}", error);
-        let _ = write_structured_log_with_level(
+        crate::logging::service::emit_app_log(
+            &db_connection,
+            "error",
             "T3_Webview_API",
+            Some("graphics_refresh_routes"),
+            None,
             &format!("❌ C++ returned error: {}", error),
-            LogLevel::Error
-        );
+            None,
+        )
+        .await;
         return Err((StatusCode::BAD_REQUEST, format!("C++ error: {}", error)));
     }
 
@@ -533,43 +550,63 @@ pub async fn load_and_save_graphics(
             else {
                 error!("❌ Graphics data field has unexpected type: {:?}", data_value);
                 error!("❌ Full response: {}", serde_json::to_string_pretty(&response_value).unwrap_or_default());
-                let _ = write_structured_log_with_level(
+                crate::logging::service::emit_app_log(
+                    &db_connection,
+                    "error",
                     "T3_Webview_API",
+                    Some("graphics_refresh_routes"),
+                    None,
                     &format!("❌ Invalid 'data' field type | Response keys: {:?}", response_value.as_object().map(|o| o.keys().collect::<Vec<_>>())),
-                    LogLevel::Error
-                );
+                    None,
+                )
+                .await;
                 return Err((StatusCode::INTERNAL_SERVER_ERROR, "Invalid data field type in response".to_string()));
             }
         }
         None => {
             error!("❌ No 'data' field in response");
             error!("❌ Full response: {}", serde_json::to_string_pretty(&response_value).unwrap_or_default());
-            let _ = write_structured_log_with_level(
+            crate::logging::service::emit_app_log(
+                &db_connection,
+                "error",
                 "T3_Webview_API",
+                Some("graphics_refresh_routes"),
+                None,
                 &format!("❌ Missing 'data' field | Response keys: {:?}", response_value.as_object().map(|o| o.keys().collect::<Vec<_>>())),
-                LogLevel::Error
-            );
+                None,
+            )
+            .await;
             return Err((StatusCode::INTERNAL_SERVER_ERROR, "No data field in response".to_string()));
         }
     };
 
     info!("📄 Graphic data string (first 500 chars): {}", &data_str.chars().take(500).collect::<String>());
-    let _ = write_structured_log_with_level(
+    crate::logging::service::emit_app_log(
+        &db_connection,
+        "info",
         "T3_Webview_API",
+        Some("graphics_refresh_routes"),
+        None,
         &format!("📄 Graphic data preview: {}", &data_str.chars().take(200).collect::<String>()),
-        LogLevel::Info
-    );
+        None,
+    )
+    .await;
 
     let graphic_data: Value = match serde_json::from_str(data_str) {
         Ok(val) => val,
         Err(e) => {
             error!("❌ Failed to parse graphic data JSON: {}", e);
             error!("❌ Data string: {}", data_str);
-            let _ = write_structured_log_with_level(
+            crate::logging::service::emit_app_log(
+                &db_connection,
+                "error",
                 "T3_Webview_API",
+                Some("graphics_refresh_routes"),
+                None,
                 &format!("❌ Failed to parse graphic data JSON: {} | Data: {}", e, &data_str.chars().take(200).collect::<String>()),
-                LogLevel::Error
-            );
+                None,
+            )
+            .await;
             return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to parse graphic data: {}", e)));
         }
     };
@@ -583,29 +620,44 @@ pub async fn load_and_save_graphics(
     let items = if graphic_data.is_array() {
         // Direct array format from C++
         info!("📊 Graphic data is a direct array with {} items", graphic_data.as_array().unwrap().len());
-        let _ = write_structured_log_with_level(
+        crate::logging::service::emit_app_log(
+            &db_connection,
+            "info",
             "T3_Webview_API",
+            Some("graphics_refresh_routes"),
+            None,
             &format!("📊 Graphic data is direct array - {} items", graphic_data.as_array().unwrap().len()),
-            LogLevel::Info
-        );
+            None,
+        )
+        .await;
         graphic_data.as_array().unwrap()
     } else if let Some(items_array) = graphic_data.get("items").and_then(|v| v.as_array()) {
         // Object with "items" field
         info!("📊 Graphic data has 'items' field with {} items", items_array.len());
-        let _ = write_structured_log_with_level(
+        crate::logging::service::emit_app_log(
+            &db_connection,
+            "info",
             "T3_Webview_API",
+            Some("graphics_refresh_routes"),
+            None,
             &format!("📊 Graphic data has 'items' field - {} items", items_array.len()),
-            LogLevel::Info
-        );
+            None,
+        )
+        .await;
         items_array
     } else if let Some(myitems_array) = graphic_data.get("myitems").and_then(|v| v.as_array()) {
         // Object with "myitems" field (legacy format)
         info!("📊 Graphic data has 'myitems' field with {} items", myitems_array.len());
-        let _ = write_structured_log_with_level(
+        crate::logging::service::emit_app_log(
+            &db_connection,
+            "info",
             "T3_Webview_API",
+            Some("graphics_refresh_routes"),
+            None,
             &format!("📊 Graphic data has 'myitems' field - {} items", myitems_array.len()),
-            LogLevel::Info
-        );
+            None,
+        )
+        .await;
         myitems_array
     } else {
         // Unknown format
@@ -614,23 +666,33 @@ pub async fn load_and_save_graphics(
         if graphic_data.is_object() {
             error!("❌ Available keys: {:?}", graphic_data.as_object().map(|o| o.keys().collect::<Vec<_>>()));
         }
-        let _ = write_structured_log_with_level(
+        crate::logging::service::emit_app_log(
+            &db_connection,
+            "error",
             "T3_Webview_API",
+            Some("graphics_refresh_routes"),
+            None,
             &format!("❌ Invalid graphic data format | Type: {} | Preview: {}",
                 if graphic_data.is_object() { "object" } else if graphic_data.is_null() { "null" } else { "unknown" },
                 serde_json::to_string_pretty(&graphic_data).unwrap_or_default().chars().take(500).collect::<String>()
             ),
-            LogLevel::Error
-        );
+            None,
+        )
+        .await;
         return Err((StatusCode::INTERNAL_SERVER_ERROR, "Graphic data is not in expected format".to_string()));
     };
 
     info!("📊 Found {} items in response, filtering for type='GRP'", items.len());
-    let _ = write_structured_log_with_level(
+    crate::logging::service::emit_app_log(
+        &db_connection,
+        "info",
         "T3_Webview_API",
+        Some("graphics_refresh_routes"),
+        None,
         &format!("📊 Found {} items total, filtering for GRP type only", items.len()),
-        LogLevel::Info
-    );
+        None,
+    )
+    .await;
 
     // Filter items to only include type="GRP" (graphics)
     let grp_items: Vec<&Value> = items.iter()
@@ -643,11 +705,16 @@ pub async fn load_and_save_graphics(
         .collect();
 
     info!("📊 Filtered to {} GRP items (graphics only)", grp_items.len());
-    let _ = write_structured_log_with_level(
+    crate::logging::service::emit_app_log(
+        &db_connection,
+        "info",
         "T3_Webview_API",
+        Some("graphics_refresh_routes"),
+        None,
         &format!("📊 Filtered {} GRP items from {} total items", grp_items.len(), items.len()),
-        LogLevel::Info
-    );
+        None,
+    )
+    .await;
 
     // Save each GRP item to database
     let mut saved_count = 0;

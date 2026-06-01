@@ -123,42 +123,82 @@ pub async fn sync_trendlogs_handler(
     let db_connection = app_state.t3_device_conn
         .ok_or_else(|| AppError::DatabaseError("T3 device database not available".to_string()))?;
 
+    // Open local SQLite for flow logging (best-effort)
+    let flow_db_opt = crate::db_connection::establish_t3_device_connection().await
+        .map_err(|e| e.to_string()).ok();
+    let flow_opt = if let Some(ref fdb) = flow_db_opt {
+        Some(crate::logging::flow::FlowHandle::start(fdb, "TRENDLOG_SYNC", "api", 2, None).await)
+    } else {
+        None
+    };
+    let t0 = std::time::Instant::now();
+
     // Look up serial_number from devices table using panel_id
-    // Try Panel_Number first (populated), then PanelId (often NULL)
     let db = db_connection.lock().await;
-    let device = devices::Entity::find()
-        .filter(devices::Column::PanelNumber.eq(panel_id))
-        .one(&*db)
-        .await?
-        .or({
-            devices::Entity::find()
+    let device_lookup: Result<_, AppError> = async {
+        let d1 = devices::Entity::find()
+            .filter(devices::Column::PanelNumber.eq(panel_id))
+            .one(&*db)
+            .await?;
+        match d1 {
+            Some(d) => Ok(d),
+            None => devices::Entity::find()
                 .filter(devices::Column::PanelId.eq(panel_id))
                 .one(&*db)
                 .await?
-        })
-        .ok_or_else(|| AppError::DatabaseError(format!("Device with panel_id {} not found", panel_id)))?;
-
-    let serial_number = device.serial_number;
-    drop(db); // Release the lock    // Create service instance
-    let service = TrendlogMonitorService::new(db_connection);
-
-    // Sync trendlogs to database
-    let synced_count = service.sync_trendlogs_to_database(panel_id, serial_number).await?;
-
-    let response = TrendlogSyncResponse {
-        success: true,
-        panel_id: Some(panel_id),
-        synced_count,
-        message: format!("Successfully synced {} trendlogs for panel_id {} (device {})", synced_count, panel_id, serial_number),
-        timestamp: chrono::Utc::now().timestamp(),
+                .ok_or_else(|| AppError::DatabaseError(format!("Device with panel_id {} not found", panel_id))),
+        }
+    }.await;
+    let device = match device_lookup {
+        Ok(d) => d,
+        Err(e) => {
+            if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
+                fh.step(fdb, "lookup_device", "error", "db", "error",
+                    t0.elapsed().as_millis() as i64, &e.to_string(), None).await;
+                fh.done(fdb, "error").await;
+            }
+            return Err(e);
+        }
     };
+    let serial_number = device.serial_number;
+    drop(db);
 
-    Ok(Json(ApiResponse {
-        success: true,
-        data: Some(response),
-        error: None,
-        timestamp: chrono::Utc::now().timestamp(),
-    }))
+    if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
+        fh.step(fdb, "lookup_device", "info", "api", "ok",
+            t0.elapsed().as_millis() as i64,
+            &format!("panel_id={} serial={}", panel_id, serial_number), None).await;
+    }
+
+    let service = TrendlogMonitorService::new(db_connection);
+    let t1 = std::time::Instant::now();
+    let sync_result = service.sync_trendlogs_to_database(panel_id, serial_number).await;
+
+    match sync_result {
+        Ok(synced_count) => {
+            if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
+                fh.step(fdb, "sync_trendlogs", "info", "ffi", "ok",
+                    t1.elapsed().as_millis() as i64,
+                    &format!("synced={}", synced_count), None).await;
+                fh.done(fdb, "ok").await;
+            }
+            let response = TrendlogSyncResponse {
+                success: true, panel_id: Some(panel_id), synced_count,
+                message: format!("Successfully synced {} trendlogs for panel_id {} (device {})",
+                    synced_count, panel_id, serial_number),
+                timestamp: chrono::Utc::now().timestamp(),
+            };
+            Ok(Json(ApiResponse { success: true, data: Some(response), error: None,
+                timestamp: chrono::Utc::now().timestamp() }))
+        }
+        Err(e) => {
+            if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
+                fh.step(fdb, "sync_trendlogs", "error", "ffi", "error",
+                    t1.elapsed().as_millis() as i64, &e.to_string(), None).await;
+                fh.done(fdb, "error").await;
+            }
+            Err(e)
+        }
+    }
 }
 
 /// Sync all trendlogs for all devices
@@ -168,26 +208,45 @@ pub async fn sync_all_devices_handler(
     let db_connection = app_state.t3_device_conn
         .ok_or_else(|| AppError::DatabaseError("T3 device database not available".to_string()))?;
 
-    // Create service instance
-    let service = TrendlogMonitorService::new(db_connection);
-
-    // Sync all devices
-    let total_synced = service.sync_all_devices().await?;
-
-    let response = TrendlogSyncResponse {
-        success: true,
-        panel_id: None,
-        synced_count: total_synced,
-        message: format!("Successfully synced {} trendlogs across all devices", total_synced),
-        timestamp: chrono::Utc::now().timestamp(),
+    // Open local SQLite for flow logging (best-effort)
+    let flow_db_opt = crate::db_connection::establish_t3_device_connection().await
+        .map_err(|e| e.to_string()).ok();
+    let flow_opt = if let Some(ref fdb) = flow_db_opt {
+        Some(crate::logging::flow::FlowHandle::start(fdb, "TRENDLOG_SYNC_ALL", "api", 1, None).await)
+    } else {
+        None
     };
+    let t0 = std::time::Instant::now();
 
-    Ok(Json(ApiResponse {
-        success: true,
-        data: Some(response),
-        error: None,
-        timestamp: chrono::Utc::now().timestamp(),
-    }))
+    let service = TrendlogMonitorService::new(db_connection);
+    let sync_result = service.sync_all_devices().await;
+
+    match sync_result {
+        Ok(total_synced) => {
+            if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
+                fh.step(fdb, "sync_all_devices", "info", "ffi", "ok",
+                    t0.elapsed().as_millis() as i64,
+                    &format!("total_synced={}", total_synced), None).await;
+                fh.done(fdb, "ok").await;
+            }
+            let response = TrendlogSyncResponse {
+                success: true,
+                panel_id: None,
+                synced_count: total_synced,
+                message: format!("Successfully synced {} trendlogs across all devices", total_synced),
+                timestamp: chrono::Utc::now().timestamp(),
+            };
+            Ok(Json(ApiResponse { success: true, data: Some(response), error: None, timestamp: chrono::Utc::now().timestamp() }))
+        }
+        Err(e) => {
+            if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
+                fh.step(fdb, "sync_all_devices", "error", "ffi", "error",
+                    t0.elapsed().as_millis() as i64, &e.to_string(), None).await;
+                fh.done(fdb, "error").await;
+            }
+            Err(e)
+        }
+    }
 }
 
 /// Test FFI connectivity to new C++ export functions

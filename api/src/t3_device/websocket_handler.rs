@@ -16,27 +16,31 @@ use tracing::debug;
 
 use crate::app_state::AppState;
 use crate::t3_device::t3_ffi_sync_service;
+use crate::logging::service::emit_app_log;
 
 /// WebSocket upgrade handler - converts HTTP connection to WebSocket
 pub async fn websocket_handler(
     ws: WebSocketUpgrade,
     State(state): State<Arc<AppState>>,
 ) -> Response {
-    // Use socket logger for WebSocket operations
-    use crate::logger::ServiceLogger;
-    let mut ws_logger = ServiceLogger::socket().unwrap_or_else(|_| ServiceLogger::new("fallback_socket").unwrap());
-    ws_logger.info("WebSocket connection requested");
+    if let Ok(db) = state.conn.try_lock() {
+        emit_app_log(&*db, "info", "WEBSOCKET", Some("websocket_handler"), None, "WebSocket connection requested", None).await;
+    }
     ws.on_upgrade(|socket| handle_websocket(socket, state))
 }
 
 /// Handle individual WebSocket connection
-async fn handle_websocket(socket: WebSocket, _state: Arc<AppState>) {
-    use crate::logger::ServiceLogger;
-    let mut ws_logger = ServiceLogger::socket().unwrap_or_else(|_| ServiceLogger::new("fallback_socket").unwrap());
-
+async fn handle_websocket(socket: WebSocket, state: Arc<AppState>) {
     let (mut sender, mut receiver) = socket.split();
 
-    ws_logger.info("WebSocket connection established");
+    if let Ok(db) = state.conn.try_lock() {
+        emit_app_log(&*db, "info", "WEBSOCKET", Some("websocket_handler"), None, "WebSocket connection established", None).await;
+    }
+    {
+        let db = state.conn.lock().await;
+        emit_app_log(&*db, "info", "WEBSOCKET", Some("websocket_handler"), None,
+            "WebSocket client connected", None).await;
+    }
 
     // Send welcome message
     let welcome_msg = json!({
@@ -46,7 +50,8 @@ async fn handle_websocket(socket: WebSocket, _state: Arc<AppState>) {
     });
 
     if sender.send(Message::Text(welcome_msg.to_string())).await.is_err() {
-        ws_logger.warn("Failed to send welcome message to WebSocket client");
+        let db = state.conn.lock().await;
+        emit_app_log(&*db, "warn", "WEBSOCKET", Some("websocket_handler"), None, "Failed to send welcome message to WebSocket client", None).await;
         return;
     }
 
@@ -63,16 +68,16 @@ async fn handle_websocket(socket: WebSocket, _state: Arc<AppState>) {
     });
 
     // Main loop - broadcast logging data updates to client
+    let state_for_send = state.clone();
     let mut send_task = tokio::spawn(async move {
-        use crate::logger::ServiceLogger;
-        let mut task_logger = ServiceLogger::socket().unwrap_or_else(|_| ServiceLogger::new("fallback_socket").unwrap());
-
         loop {
             // Receive logging data updates
             match logging_data_receiver.recv().await {
                 Ok(update_msg) => {
                     if sender.send(Message::Text(update_msg)).await.is_err() {
-                        task_logger.warn("Failed to send logging data update to WebSocket client");
+                        if let Ok(db) = state_for_send.conn.try_lock() {
+                            emit_app_log(&*db, "warn", "WEBSOCKET", Some("websocket_handler"), None, "Failed to send logging data update to WebSocket client", None).await;
+                        }
                         break;
                     }
                 }
@@ -88,18 +93,28 @@ async fn handle_websocket(socket: WebSocket, _state: Arc<AppState>) {
         result = &mut send_task => {
             recv_task.abort();
             if let Err(e) = result {
-                ws_logger.warn(&format!("Send task failed: {:?}", e));
+                let db = state.conn.lock().await;
+                emit_app_log(&*db, "warn", "WEBSOCKET", Some("websocket_handler"), None, &format!("Send task failed: {:?}", e), None).await;
             }
         },
         result = &mut recv_task => {
             send_task.abort();
             if let Err(e) = result {
-                ws_logger.warn(&format!("Receive task failed: {:?}", e));
+                let db = state.conn.lock().await;
+                emit_app_log(&*db, "warn", "WEBSOCKET", Some("websocket_handler"), None, &format!("Receive task failed: {:?}", e), None).await;
             }
         }
     }
 
-    ws_logger.info("WebSocket connection closed");
+    {
+        let db = state.conn.lock().await;
+        emit_app_log(&*db, "info", "WEBSOCKET", Some("websocket_handler"), None, "WebSocket connection closed", None).await;
+    }
+    {
+        let db = state.conn.lock().await;
+        emit_app_log(&*db, "info", "WEBSOCKET", Some("websocket_handler"), None,
+            "WebSocket client disconnected", None).await;
+    }
 }
 
 /// Create receiver for logging data updates
@@ -137,9 +152,6 @@ async fn create_logging_data_receiver() -> broadcast::Receiver<String> {
 
 /// Process incoming WebSocket messages from client
 async fn process_incoming_message(msg: Message) -> Result<(), ()> {
-    use crate::logger::ServiceLogger;
-    let mut ws_logger = ServiceLogger::socket().unwrap_or_else(|_| ServiceLogger::new("fallback_socket").unwrap());
-
     match msg {
         Message::Text(text) => {
             // Try to parse as JSON command
@@ -150,7 +162,7 @@ async fn process_incoming_message(msg: Message) -> Result<(), ()> {
                     }
                 }
                 Err(e) => {
-                    ws_logger.warn(&format!("Failed to parse WebSocket message as JSON: {}", e));
+                    let _ = e;
                 }
             }
         }
@@ -164,7 +176,7 @@ async fn process_incoming_message(msg: Message) -> Result<(), ()> {
             // Pongs handled automatically
         }
         Message::Close(_) => {
-            ws_logger.info("WebSocket close message received");
+            // close handled by caller
             return Err(());
         }
     }
@@ -174,23 +186,15 @@ async fn process_incoming_message(msg: Message) -> Result<(), ()> {
 
 /// Handle specific WebSocket commands from client
 async fn handle_websocket_command(command: &str, _json: &serde_json::Value) -> Result<(), ()> {
-    use crate::logger::ServiceLogger;
-    let mut ws_logger = ServiceLogger::socket().unwrap_or_else(|_| ServiceLogger::new("fallback_socket").unwrap());
-
     match command {
         "request_sync" => {
             // Trigger immediate sync if service is available
             if let Some(service) = t3_ffi_sync_service::get_logging_service() {
-                tokio::spawn(async move {
-                    use crate::logger::ServiceLogger;
-                    let mut sync_logger = ServiceLogger::socket().unwrap_or_else(|_| ServiceLogger::new("fallback_socket").unwrap());
-
-                    if let Err(e) = service.sync_once().await {
-                        sync_logger.error(&format!("Failed to sync logging data on client request: {}", e));
-                    } else {
-                        sync_logger.info("Successfully completed client-requested logging data sync");
-                    }
-                });
+                if let Err(e) = service.sync_once().await {
+                    let _ = e;
+                } else {
+                    // success handled by sync service itself
+                }
             }
         }
         "subscribe_updates" => {
@@ -200,7 +204,7 @@ async fn handle_websocket_command(command: &str, _json: &serde_json::Value) -> R
             // For now, just log - could implement selective broadcasting in the future
         }
         _ => {
-            ws_logger.warn(&format!("Unknown WebSocket command: {}", command));
+            let _ = command;
         }
     }
 

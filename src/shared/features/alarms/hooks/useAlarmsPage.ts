@@ -5,9 +5,9 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useDeviceTreeStore } from '../../../../t3-react/features/devices/store/deviceTreeStore';
-import { API_BASE_URL } from '../../../../t3-react/config/constants';
-import { AlarmRefreshApi } from '../../../../t3-react/features/alarms/services/alarmRefreshApi';
+import { useDeviceTreeStore } from '@t3-react/features/devices/store/deviceTreeStore';
+import { API_BASE_URL } from '@t3-react/config/constants';
+import { AlarmRefreshApi } from '@t3-react/features/alarms/services/alarmRefreshApi';
 import { Alarm } from '../types/alarm.types';
 
 export const useAlarmsPage = () => {

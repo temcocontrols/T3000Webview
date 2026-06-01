@@ -114,6 +114,21 @@ CREATE TABLE IF NOT EXISTS VARIABLES (
     Control TEXT
 );
 
+CREATE TABLE IF NOT EXISTS HAYSTACK_ENTITY (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    dis TEXT,
+    tags TEXT NOT NULL,
+    serial_number INTEGER,
+    point_table TEXT,
+    point_index TEXT,
+    updated_at BIGINT
+);
+
+CREATE INDEX IF NOT EXISTS idx_haystack_entity_kind ON HAYSTACK_ENTITY(kind);
+CREATE INDEX IF NOT EXISTS idx_haystack_entity_serial ON HAYSTACK_ENTITY(serial_number);
+CREATE INDEX IF NOT EXISTS idx_haystack_entity_point_table ON HAYSTACK_ENTITY(point_table);
+
 CREATE TABLE IF NOT EXISTS PROGRAMS (
     SerialNumber INTEGER NOT NULL,
     Program_ID TEXT,
@@ -1061,4 +1076,57 @@ CREATE TABLE IF NOT EXISTS SERVER_CLIENT_REGISTRY (
     version       VARCHAR(50) DEFAULT '',
     created_at    TIMESTAMP DEFAULT NOW(),
     UNIQUE(hostname, ip_address)
+);
+
+-- ============================================================================
+-- T3_FLOW / T3_FLOW_STEP / T3_FLOW_PAYLOAD - Flow-based trace logging
+-- NOTE: At runtime these tables live in local SQLite only (webview_t3_device.db).
+-- This PostgreSQL DDL is kept as a reference schema for future multi-DB deployments.
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS T3_FLOW (
+    id           SERIAL  PRIMARY KEY,
+    flow_id      TEXT    NOT NULL UNIQUE,
+    flow_type    TEXT    NOT NULL,
+    trigger_src  TEXT    NOT NULL,
+    started_at   BIGINT  NOT NULL,
+    ended_at     BIGINT,
+    status       TEXT    NOT NULL DEFAULT 'running',
+    hostname     TEXT,
+    total_steps  INTEGER NOT NULL DEFAULT 0,
+    done_steps   INTEGER NOT NULL DEFAULT 0,
+    error_count  INTEGER NOT NULL DEFAULT 0,
+    meta         TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_t3_flow_type    ON T3_FLOW (flow_type);
+CREATE INDEX IF NOT EXISTS idx_t3_flow_started ON T3_FLOW (started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_t3_flow_status  ON T3_FLOW (status);
+
+CREATE TABLE IF NOT EXISTS T3_FLOW_STEP (
+    id           SERIAL  PRIMARY KEY,
+    flow_id      TEXT    NOT NULL,
+    seq          INTEGER NOT NULL,
+    step_name    TEXT    NOT NULL,
+    level        TEXT    NOT NULL DEFAULT 'info',
+    source       TEXT,
+    api_path     TEXT,
+    action_type  INTEGER,
+    status       TEXT    NOT NULL DEFAULT 'ok',
+    duration_ms  BIGINT,
+    payload_ref  TEXT,
+    message      TEXT,
+    details      TEXT,
+    ts_unix      BIGINT  NOT NULL,
+    ts_fmt       TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_t3_flow_step_flow ON T3_FLOW_STEP (flow_id);
+CREATE INDEX IF NOT EXISTS idx_t3_flow_step_ts   ON T3_FLOW_STEP (ts_unix DESC);
+
+CREATE TABLE IF NOT EXISTS T3_FLOW_PAYLOAD (
+    id           SERIAL  PRIMARY KEY,
+    flow_id      TEXT    NOT NULL,
+    step_id      INTEGER NOT NULL,
+    file_path    TEXT    NOT NULL,
+    size_bytes   BIGINT  NOT NULL,
+    created_at   BIGINT  NOT NULL,
+    purged       INTEGER NOT NULL DEFAULT 0
 );
