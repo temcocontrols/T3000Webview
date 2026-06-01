@@ -46,6 +46,64 @@
   color: #334155;
 }
 
+/* ── Top status / info bar ── */
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  margin-bottom: 4px;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.statusBar_info {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.statusBar_success {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+
+.statusBar_error {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.statusBarIcon {
+  font-size: 13px;
+  flex-shrink: 0;
+  font-weight: 700;
+}
+
+.statusBarMessage {
+  flex: 1;
+  min-width: 0;
+}
+
+.statusBarDismiss {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 2px;
+  color: inherit;
+  opacity: 0.6;
+  transition: opacity 0.1s;
+}
+
+.statusBarDismiss:hover { opacity: 1; }
+
 .validationBanner {
   display: flex;
   flex-wrap: wrap;
@@ -943,34 +1001,6 @@
   cursor: not-allowed;
 }
 
-/* ── Panel title row (title + save status) ── */
-.panelTitleRow {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  min-width: 0;
-}
-
-.saveStatusSaving {
-  font-size: 10px;
-  color: #0f6cbd;
-  white-space: nowrap;
-}
-
-.saveStatusSaved {
-  font-size: 10px;
-  color: #15803d;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.saveStatusError {
-  font-size: 10px;
-  color: #b91c1c;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
 /* ── Tag-state pill tabs (All / Tagged / Untagged) ── */
 .tagStateTabs {
   display: inline-flex;
@@ -1005,32 +1035,6 @@
   color: #0f6cbd;
   font-weight: 600;
 }
-
-/* ── Rebuild status bar ── */
-.rebuildStatus {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 5px 12px;
-  background: #f0fdf4;
-  border-bottom: 1px solid #bbf7d0;
-  font-size: 11px;
-  color: #15803d;
-  flex-shrink: 0;
-}
-
-.dismissStatus {
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-size: 15px;
-  line-height: 1;
-  color: #15803d;
-  opacity: 0.55;
-  padding: 0 0 0 8px;
-}
-
-.dismissStatus:hover { opacity: 1; }
 
 /* ── Workflow step hint ── */
 .workflowHint {

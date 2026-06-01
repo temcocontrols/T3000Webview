@@ -162,9 +162,8 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
   const [pointSearch, setPointSearch] = useState('');
   const [filterTags, setFilterTags] = useState<string[]>([]);
   const [pointTags, setPointTags] = useState<Record<string, string[]>>({});
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [statusBar, setStatusBar] = useState<{ type: 'info' | 'success' | 'error'; message: string } | null>(null);
   const [rebuildInProgress, setRebuildInProgress] = useState(false);
-  const [rebuildStatusMessage, setRebuildStatusMessage] = useState('');
   const [loadRevision, setLoadRevision] = useState(0);
 
   useEffect(() => {
@@ -426,6 +425,11 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
     });
   };
 
+  const showStatusBar = (type: 'info' | 'success' | 'error', message: string, autoHideMs = 4000) => {
+    setStatusBar({ type, message });
+    if (autoHideMs > 0) setTimeout(() => setStatusBar(null), autoHideMs);
+  };
+
   const clearTagsOnSelected = async () => {
     if (selectedPointKeys.size === 0) return;
     const snapshot: Record<string, string[]> = {};
@@ -435,15 +439,13 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
       selectedPointKeys.forEach((key) => { next[key] = []; });
       return next;
     });
+    showStatusBar('info', `Clearing tags on ${selectedPointKeys.size} point(s)…`, 0);
     try {
-      setSaveStatus('saving');
       await saveTagsToBackend(snapshot);
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 2500);
+      showStatusBar('success', `Tags cleared on ${snapshot ? Object.keys(snapshot).length : 0} point(s).`);
     } catch (e) {
       console.warn('Failed to clear selected tags in backend:', e);
-      setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 3000);
+      showStatusBar('error', 'Failed to clear tags — check the console for details.');
     }
   };
 
@@ -455,15 +457,13 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
       Object.keys(next).forEach((key) => { next[key] = []; });
       return next;
     });
+    showStatusBar('info', 'Clearing all tags…', 0);
     try {
-      setSaveStatus('saving');
       await saveTagsToBackend(snapshot);
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 2500);
+      showStatusBar('success', `All tags cleared (${allPoints.length} point(s)).`);
     } catch (e) {
       console.warn('Failed to clear all tags in backend:', e);
-      setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 3000);
+      showStatusBar('error', 'Failed to clear all tags — check the console for details.');
     }
   };
 
@@ -473,15 +473,13 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
     }
 
     setRebuildInProgress(true);
-    setRebuildStatusMessage('');
+    showStatusBar('info', 'Auto-Tag running — re-deriving tags from device metadata…', 0);
 
     try {
       const serialNumbers = Array.from(selectedDeviceSerials);
       const response = await fetch(`${API_BASE_URL}/api/haystack/rebuild`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ serialNumbers }),
       });
 
@@ -491,11 +489,11 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
 
       const payload = await response.json();
       const updated = Number(payload?.updated ?? serialNumbers.length);
-      setRebuildStatusMessage(`Rebuilt Haystack tags for ${updated} device(s).`);
+      showStatusBar('success', `Auto-Tag complete — rebuilt tags for ${updated} device(s).`);
       setLoadRevision((prev) => prev + 1);
     } catch (error) {
       console.warn('Failed to rebuild Haystack tags from backend:', error);
-      setRebuildStatusMessage('Failed to rebuild Haystack tags from backend.');
+      showStatusBar('error', 'Auto-Tag failed — could not reach the backend. Check that the server is running.');
     } finally {
       setRebuildInProgress(false);
     }
@@ -528,15 +526,13 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
   };
 
   const handleSaveTags = async () => {
+    showStatusBar('info', 'Saving tags to database…', 0);
     try {
-      setSaveStatus('saving');
       await saveTagsToBackend(pointTags);
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 2500);
+      showStatusBar('success', `Tags saved — ${allPoints.length} point(s) updated.`);
     } catch (e) {
       console.warn('Failed to save tags to backend:', e);
-      setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 3000);
+      showStatusBar('error', 'Save failed — could not reach the backend. Check that the server is running.');
     }
   };
 
@@ -567,32 +563,42 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
 
   const validationSummary = useMemo(() => {
     let selectedWithoutTags = 0;
-    let selectedInsufficientTags = 0;
     let selectedSemanticConflicts = 0;
 
     selectedPointKeys.forEach((key) => {
       const tags = pointTags[key] ?? [];
       if (tags.length === 0) selectedWithoutTags += 1;
-      if (tags.length < 2) selectedInsufficientTags += 1;
       const semanticCount = tags.filter(tag => SEMANTIC_TAGS.has(tag)).length;
       if (semanticCount > 1) selectedSemanticConflicts += 1;
     });
 
     return {
       selectedWithoutTags,
-      selectedInsufficientTags,
       selectedSemanticConflicts,
     };
   }, [pointTags, selectedPointKeys]);
 
   return (
     <div className={styles.page}>
-      {(validationSummary.selectedWithoutTags > 0 || validationSummary.selectedSemanticConflicts > 0 || validationSummary.selectedInsufficientTags > 0) && (
+      {/* ── Top status / info bar ── */}
+      {statusBar && (
+        <div className={`${styles.statusBar} ${styles[`statusBar_${statusBar.type}`]}`}>
+          <span className={styles.statusBarIcon}>
+            {statusBar.type === 'success' ? '✓' : statusBar.type === 'error' ? '⚠' : 'ℹ'}
+          </span>
+          <span className={styles.statusBarMessage}>{statusBar.message}</span>
+          <button className={styles.statusBarDismiss} onClick={() => setStatusBar(null)}>×</button>
+        </div>
+      )}
+      {(validationSummary.selectedWithoutTags > 0 || validationSummary.selectedSemanticConflicts > 0) && (
         <div className={styles.validationBanner}>
           <strong>Tag Validation:</strong>
-          <span>{validationSummary.selectedWithoutTags} selected point(s) untagged.</span>
-          <span>{validationSummary.selectedInsufficientTags} selected point(s) have fewer than 2 tags.</span>
-          <span>{validationSummary.selectedSemanticConflicts} selected point(s) have semantic tag conflicts.</span>
+          {validationSummary.selectedWithoutTags > 0 && (
+            <span>{validationSummary.selectedWithoutTags} selected point(s) have no tags.</span>
+          )}
+          {validationSummary.selectedSemanticConflicts > 0 && (
+            <span>{validationSummary.selectedSemanticConflicts} selected point(s) have conflicting semantic tags.</span>
+          )}
         </div>
       )}
 
@@ -601,14 +607,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
         <aside className={styles.leftPanel}>
           {/* ── Panel header with action buttons ── */}
           <div className={styles.panelHeader}>
-            <div className={styles.panelTitleRow}>
-              <span className={styles.panelTitle}>Tag Workspace</span>
-              {saveStatus !== 'idle' && (
-                <span className={saveStatus === 'saved' ? styles.saveStatusSaved : saveStatus === 'saving' ? styles.saveStatusSaving : styles.saveStatusError}>
-                  {saveStatus === 'saving' ? '⟳ Saving…' : saveStatus === 'saved' ? '✓ Saved' : '⚠ Error'}
-                </span>
-              )}
-            </div>
+            <span className={styles.panelTitle}>Tag Workspace</span>
             <div className={styles.panelHeaderActions}>
               <button
                 className={styles.headerActionBtn}
@@ -621,7 +620,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
               <button
                 className={styles.headerActionBtnPrimary}
                 onClick={handleSaveTags}
-                disabled={allPoints.length === 0 || saveStatus === 'saving'}
+                disabled={allPoints.length === 0 || rebuildInProgress}
                 title="Save Tags: push all current tag edits to the database"
               >
                 Save Tags
@@ -644,13 +643,6 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
               </button>
             </div>
           </div>
-
-          {rebuildStatusMessage && (
-            <div className={styles.rebuildStatus}>
-              <span>{rebuildStatusMessage}</span>
-              <button className={styles.dismissStatus} onClick={() => setRebuildStatusMessage('')}>×</button>
-            </div>
-          )}
 
           <div className={styles.panelBody}>
             {/* Workflow hint */}
