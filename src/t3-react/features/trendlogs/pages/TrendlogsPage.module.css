@@ -1774,9 +1774,33 @@
   white-space: nowrap;
 }
 
-.pointPickerLabel {
+.watchlistLabelBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   min-width: 0;
   flex: 1;
+}
+
+.pointFullLabel {
+  font-size: 11px;
+  color: #8a8886;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pointPickerLabelBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.pointPickerLabel {
+  min-width: 0;
   white-space: normal;
   overflow: visible;
   text-overflow: unset;

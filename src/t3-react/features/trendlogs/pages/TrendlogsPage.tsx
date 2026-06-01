@@ -128,6 +128,7 @@ interface PointSetPointItem {
   type: 'INPUT' | 'OUTPUT' | 'VARIABLE';
   index: string;
   label: string;
+  shortLabel?: string;
   fullLabel?: string;
 }
 
@@ -1823,12 +1824,13 @@ export const TrendLogsPage: React.FC = () => {
               row.displayLabel,
               row.display_label,
             );
-            const label = fullLabel || shortLabel || `${type} ${index}`;
+            const label = shortLabel || `${type} ${index}`;
             return {
               key: `${type}:${index}`,
               type,
               index,
               label,
+              shortLabel: shortLabel || undefined,
               fullLabel: fullLabel || undefined,
             };
           });
@@ -3030,13 +3032,12 @@ export const TrendLogsPage: React.FC = () => {
                                 <Text size={200}>{index + 1}.</Text>
                                 <Badge appearance="outline">{point.type}</Badge>
                                 <Text size={200}>{point.index}</Text>
-                                <Text
-                                  size={200}
-                                  weight="semibold"
-                                  className={`${styles.globalPointLabel} ${draggingPointKey === point.key ? styles.draggingPointLabel : ''}`}
-                                >
-                                  {point.label}
-                                </Text>
+                                <div className={`${styles.watchlistLabelBlock} ${draggingPointKey === point.key ? styles.draggingPointLabel : ''}`}>
+                                  <Text size={200} weight="semibold" className={styles.globalPointLabel}>{point.label}</Text>
+                                  {point.fullLabel && (
+                                    <span className={styles.pointFullLabel}>{point.fullLabel}</span>
+                                  )}
+                                </div>
                                 <div className={styles.reorderButtonsGroup}>
                                   <button
                                     type="button"
@@ -3157,7 +3158,12 @@ export const TrendLogsPage: React.FC = () => {
                                 <div className={styles.globalPointMain}>
                                   <Badge appearance="outline">{point.type}</Badge>
                                   <Text size={200}>{point.index}</Text>
-                                  <Text size={200} className={styles.pointPickerLabel} title={point.label}>{point.label}</Text>
+                                  <div className={styles.pointPickerLabelBlock}>
+                                    <Text size={200} className={styles.pointPickerLabel} title={point.fullLabel || point.label}>{point.label}</Text>
+                                    {point.fullLabel && (
+                                      <span className={styles.pointFullLabel}>{point.fullLabel}</span>
+                                    )}
+                                  </div>
                                   <Text size={200} className={styles.pointPickerSelectState}>{selected ? 'Selected' : 'Tap to add'}</Text>
                                 </div>
                                 <div className={styles.globalPointTags}>
