@@ -3075,7 +3075,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           disabled={loading || timeBase === 'custom' || timeBaseOrder.indexOf(timeBase) === 0}
           size="small"
           style={{ fontSize: '11px', padding: '2px 6px', fontWeight: 'normal' }}
-          title="Zoom In (鈫?"
+          title="Zoom In"
         >
           Zoom In
         </Button>
@@ -3086,7 +3086,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           disabled={loading || timeBase === 'custom' || timeBaseOrder.indexOf(timeBase) === timeBaseOrder.length - 1}
           size="small"
           style={{ fontSize: '11px', padding: '2px 6px', fontWeight: 'normal' }}
-          title="Zoom Out (鈫?"
+          title="Zoom Out"
         >
           Zoom Out
         </Button>
