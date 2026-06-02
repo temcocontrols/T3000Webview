@@ -2893,7 +2893,7 @@ export const TrendLogsPage: React.FC = () => {
               )}
 
               {/* ── Info banner (backend sampling notice) ── */}
-              {activeTab === 'default' && !infoBannerDismissed && selectedDevice && (
+              {activeTab === 'default' /*&& !infoBannerDismissed*/ && selectedDevice && (
                 <div className={styles.infoBanner}>
                   <InfoRegular className={styles.infoBannerIcon} />
                   <span className={styles.infoBannerText}>
@@ -2914,8 +2914,10 @@ export const TrendLogsPage: React.FC = () => {
                     className={styles.infoBannerDismiss}
                     aria-label="Dismiss"
                     onClick={() => {
+                      /* Comment out for now since this banner is meant to be persistent until user clicks the "View Backend" button. If we want to allow dismissal without navigating, we can uncomment this code.
                       setInfoBannerDismissed(true);
                       sessionStorage.setItem('tl-infobanner-v1', '1');
+                      */
                     }}
                   >
                     ×
