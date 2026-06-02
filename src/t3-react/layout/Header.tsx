@@ -117,7 +117,8 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     backgroundColor: 'var(--t3-color-header-background)',
-    borderBottom: '1px solid var(--t3-color-header-border)',
+    // borderBottom: '1px solid var(--t3-color-header-border)',
+    borderBottom: '1px solid #c4c8ca',
   },
   menuBar: {
     display: 'flex',
@@ -164,7 +165,9 @@ const useStyles = makeStyles({
   toolbarSection: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0px',
+    gap: '5px',
+    // backgroundColor: 'red',
+    marginLeft: '8px',
   },
   toolbarIconBtn: {
     display: 'inline-flex',
@@ -236,6 +239,17 @@ const useStyles = makeStyles({
   },
   menuItemWide: {
     minWidth: '300px',
+  },
+  wideTooltipContent: {
+    maxWidth: '500px !important',
+    width: 'auto !important',
+    whiteSpace: 'normal !important',
+
+    // background bubble
+    '& .fui-Tooltip__surface': {
+      maxWidth: '500px !important',
+      width: 'auto !important',
+    },
   },
 });
 
@@ -668,8 +682,8 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
                       onClick={() => handleMenuClick(item.action)}
                       disabled={
                         item.action === MenuAction.ExportToCsv ? !isExportAvailable :
-                        item.action === MenuAction.ImportFromCsv ? !isImportAvailable :
-                        item.disabled
+                          item.action === MenuAction.ImportFromCsv ? !isImportAvailable :
+                            item.disabled
                       }
                       icon={IconComponent ? <IconComponent /> : undefined}
                       className={menu.id === 'tools' ? styles.menuItemWide : undefined}
@@ -763,44 +777,54 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
 
       {/* Row 2: Toolbar with icon-only buttons + hover tooltips */}
       {showToolbar && (
-      <div className={styles.toolbarContainer}>
-        <div className={styles.toolbarSection}>
-          {toolbarConfig.map((item, index) => {
-            if (item.divider) {
-              return <div key={`divider-${index}`} className={styles.toolbarDivider} />;
-            }
+        <div className={styles.toolbarContainer}>
+          <div className={styles.toolbarSection}>
+            {toolbarConfig.map((item, index) => {
+              if (item.divider) {
+                return <div key={`divider-${index}`} className={styles.toolbarDivider} />;
+              }
 
-            // Map toolbar id to SVG icon filename
-            const svgId = item.id.replace('toolbar-', '');
-            const svgSrc = `/assets/t3icon/toolbar/${svgId}.svg`;
+              // Map toolbar id to SVG icon filename
+              const svgId = item.id.replace('toolbar-', '');
+              const svgSrc = `/assets/t3icon/toolbar/${svgId}.svg`;
 
-            const isActive = !!(item.route && location.pathname === item.route);
+              const isActive = !!(item.route && location.pathname === item.route);
 
-            return (
-              <Tooltip
-                key={item.id}
-                content={item.tooltip || item.label}
-                relationship="label"
-                positioning="below"
-              >
-                <button
-                  className={isActive ? styles.toolbarIconBtnActive : styles.toolbarIconBtn}
-                  disabled={item.disabled}
-                  onClick={() => handleToolbarClick(item)}
-                  aria-label={item.label}
-                  type="button"
+              return (
+                <Tooltip
+                  key={item.id}
+                  //content={<div style={{ width: '500px' }}>{item.tooltip || item.label} <br /> {item.description}</div>}
+                  content={{
+                    children: (
+                      <>
+                        {item.tooltip || item.label}
+                        <br />
+                        {item.description}
+                      </>
+                    ),
+                    className: styles.wideTooltipContent,
+                  }}
+                  relationship="description"
+                  positioning="below-end"
                 >
-                  <img
-                    src={svgSrc}
-                    alt={item.label}
-                    className={styles.toolbarIconImg}
-                  />
-                </button>
-              </Tooltip>
-            );
-          })}
+                  <button
+                    className={isActive ? styles.toolbarIconBtnActive : styles.toolbarIconBtn}
+                    disabled={item.disabled}
+                    onClick={() => handleToolbarClick(item)}
+                    aria-label={item.label}
+                    type="button"
+                  >
+                    <img
+                      src={svgSrc}
+                      alt={item.label}
+                      className={styles.toolbarIconImg}
+                    />
+                  </button>
+                </Tooltip>
+              );
+            })}
+          </div>
         </div>
-      </div>
       )}
     </div>
   );
