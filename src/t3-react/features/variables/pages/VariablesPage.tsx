@@ -43,6 +43,8 @@ import {
   ErrorCircleRegular,
   SaveRegular,
   InfoRegular,
+  Gauge20Regular,
+  DatabaseRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '@t3-react/features/devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
@@ -593,6 +595,16 @@ const VariablesPageDesktop: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
 
+  // VAR / PVAR / BOTH filter — three mutually exclusive options
+  const [activeFilter, setActiveFilter] = useState<'VARS' | 'PVARS' | 'BOTH'>('BOTH');
+
+  // Determine if a variable is a PVAR by its id or typeField
+  const isPvar = (item: VariablePoint): boolean => {
+    const id = (item.variableId || '').toUpperCase();
+    const tf = (item.typeField || '').toUpperCase();
+    return id.startsWith('PVAR') || tf.includes('PVAR');
+  };
+
   // Inline editing state
   const [editingCell, setEditingCell] = useState<{ serialNumber: number; variableIndex: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -681,7 +693,11 @@ const VariablesPageDesktop: React.FC = () => {
     }
   };
 
-  // Display data with 10 empty rows when no variables
+  // Counts for badge labels
+  const varCount  = React.useMemo(() => variables.filter(v => !isPvar(v)).length, [variables]);
+  const pvarCount = React.useMemo(() => variables.filter(v =>  isPvar(v)).length, [variables]);
+
+  // Display data with 18 empty rows when no variables
   const displayVariables = React.useMemo(() => {
     if (variables.length === 0) {
       return Array(18).fill(null).map((_, index) => ({
@@ -707,8 +723,11 @@ const VariablesPageDesktop: React.FC = () => {
         typeField: '',
       }));
     }
-    return variables;
-  }, [variables, selectedDevice]);
+    // Apply VAR / PVARS / BOTH filter
+    if (activeFilter === 'VARS')  return variables.filter(v => !isPvar(v));
+    if (activeFilter === 'PVARS') return variables.filter(v =>  isPvar(v));
+    return variables; // BOTH
+  }, [variables, selectedDevice, activeFilter]);
 
   // Helper to identify empty rows
   const isEmptyRow = (item: VariablePoint) => !item.variableIndex && !item.variableId && variables.length === 0;
@@ -749,10 +768,12 @@ const VariablesPageDesktop: React.FC = () => {
 
         const isRefreshing = refreshingItems.has(item.variableIndex || '');
 
+        const isItemPvar = isPvar(item);
+
         return (
           <TableCellLayout>
             <div className={styles.cellFlexContainer}>
-              <button
+              {/* <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleRefreshSingleVariable(item.variableIndex || '');
@@ -764,7 +785,15 @@ const VariablesPageDesktop: React.FC = () => {
                 <ArrowSyncRegular
                   className={`${styles.iconSmall} ${isRefreshing ? styles.rotating : ''}`}
                 />
-              </button>
+              </button> */}
+              <span
+                className={isItemPvar ? styles.pvarTypeIcon : styles.varTypeIcon}
+                title={isItemPvar ? 'Panel Variable (PVAR)' : 'Variable (VAR)'}
+              >
+                {isItemPvar
+                  ? <DatabaseRegular style={{ width: 11, height: 11 }} />
+                  : <Gauge20Regular style={{ width: 11, height: 11 }} />}
+              </span>
               <Text size={200} weight="regular">
                 {item.variableId || (item.variableIndex ? `VAR${parseInt(item.variableIndex) + 1}` : '---')}
               </Text>
@@ -1146,6 +1175,40 @@ const VariablesPageDesktop: React.FC = () => {
                     />
                   </div>
 
+                  <div className={styles.toolbarSeparator} role="separator" />
+
+                  {/* VAR / PVARS / BOTH underline tab filter */}
+                  <div className={styles.varTabBar} role="group" aria-label="Variable type filter">
+                    <button
+                      className={`${styles.varTab} ${activeFilter === 'VARS' ? styles.varTabActive : ''}`}
+                      onClick={() => setActiveFilter('VARS')}
+                      title="Show only Variables (VARs)"
+                    >
+                      <Gauge20Regular className={styles.varTabIcon} />
+                      VARS
+                      <span className={styles.varTabCount}>{varCount}</span>
+                    </button>
+                    <button
+                      className={`${styles.varTab} ${activeFilter === 'PVARS' ? styles.varTabActive : ''}`}
+                      onClick={() => setActiveFilter('PVARS')}
+                      title="Show only Panel Variables (PVARs)"
+                    >
+                      <DatabaseRegular className={styles.varTabIcon} />
+                      PVARS
+                      <span className={styles.varTabCount}>{pvarCount}</span>
+                    </button>
+                    <button
+                      className={`${styles.varTab} ${activeFilter === 'BOTH' ? styles.varTabActive : ''}`}
+                      onClick={() => setActiveFilter('BOTH')}
+                      title="Show all variables (VARs + PVARs)"
+                    >
+                      BOTH
+                      <span className={styles.varTabCount}>{varCount + pvarCount}</span>
+                    </button>
+                  </div>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
+
                   {/* Refresh Button */}
                   <button
                     className={styles.toolbarButton}
@@ -1166,7 +1229,8 @@ const VariablesPageDesktop: React.FC = () => {
                     relationship="description"
                   >
                     <button
-                      className={`${styles.toolbarButton} ${styles.marginLeft8}`}
+                      // className={`${styles.toolbarButton} ${styles.marginLeft8}`}
+                      className={`${styles.toolbarButton}`}
                       title="Information"
                       aria-label="Information about this page"
                     >
