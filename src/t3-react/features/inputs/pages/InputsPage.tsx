@@ -823,7 +823,7 @@ const InputsPageDesktop: React.FC = () => {
           <TableCellLayout>
             {!isEmptyRow(item) && (
               <div className={styles.cellFlexContainer}>
-                <button
+                {/* <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleRefreshSingleInput(inputIndex);
@@ -835,7 +835,7 @@ const InputsPageDesktop: React.FC = () => {
                   <ArrowSyncRegular
                     className={`${styles.iconSmall} ${isRefreshingThis ? styles.rotating : ''}`}
                   />
-                </button>
+                </button> */}
                 <Text size={200} weight="regular">
                   {item.inputId || (item.inputIndex ? `IN${parseInt(item.inputIndex) + 1}` : '---')}
                 </Text>

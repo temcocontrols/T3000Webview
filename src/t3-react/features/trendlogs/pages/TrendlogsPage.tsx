@@ -2322,7 +2322,7 @@ export const TrendLogsPage: React.FC = () => {
           <TableCellLayout>
             {!isEmptyRow(item) && (
               <div className={styles.refreshContainer}>
-                <button
+                {/* <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleRefreshSingleTrendlog(trendlogIndex);
@@ -2334,7 +2334,7 @@ export const TrendLogsPage: React.FC = () => {
                   <ArrowSyncRegular
                     className={`${styles.iconSmall} ${isRefreshingThis ? styles.rotating : ''}`}
                   />
-                </button>
+                </button> */}
                 <Text size={200} weight="regular">{trendlogIndex || '---'}</Text>
               </div>
             )}

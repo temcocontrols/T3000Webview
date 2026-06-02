@@ -425,7 +425,7 @@ export const ProgramsPage: React.FC = () => {
         return (
           <TableCellLayout>
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <button
+              {/* <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleRefreshSingleProgram(programId);
@@ -438,7 +438,7 @@ export const ProgramsPage: React.FC = () => {
                   style={{ fontSize: '14px' }}
                   className={isRefreshingThis ? styles.rotating : ''}
                 />
-              </button>
+              </button> */}
               <Text size={200} weight="regular">{item.programId || '---'}</Text>
             </div>
           </TableCellLayout>

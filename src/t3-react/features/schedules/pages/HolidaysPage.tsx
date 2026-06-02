@@ -403,7 +403,7 @@ export const HolidaysPage: React.FC = () => {
           <TableCellLayout>
             {!isEmptyRow(item) && (
               <div className={styles.flexCenter8Gap}>
-                <button
+                {/* <button
                   className={`${styles.refreshIconButton} ${isRefreshing ? styles.rotating : ''}`}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -414,7 +414,7 @@ export const HolidaysPage: React.FC = () => {
                   aria-label="Refresh holiday"
                 >
                   <ArrowSyncRegular fontSize={16} />
-                </button>
+                </button> */}
                 <span>{item.holidayId || '---'}</span>
               </div>
             )}

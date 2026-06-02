@@ -763,7 +763,7 @@ const OutputsPageDesktop: React.FC = () => {
           <TableCellLayout>
             {!isEmptyRow(item) && (
               <div className={styles.cellFlexContainer}>
-                <button
+                {/* <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleRefreshSingleOutput(item.outputIndex || '');
@@ -775,7 +775,7 @@ const OutputsPageDesktop: React.FC = () => {
                   <ArrowSyncRegular
                     className={`${styles.iconSmall} ${isRefreshing ? styles.rotating : ''}`}
                   />
-                </button>
+                </button> */}
                 <Text size={200} weight="regular">
                   {item.outputId || (item.outputIndex ? `OUT${parseInt(item.outputIndex) + 1}` : '---')}
                 </Text>
