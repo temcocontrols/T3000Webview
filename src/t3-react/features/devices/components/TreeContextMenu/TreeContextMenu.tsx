@@ -93,49 +93,49 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
   };
 
   return (
-    <>
-      <div
-        onContextMenu={handleContextMenu}
-        style={{ width: '100%', height: '100%' }}
-      >
-        {children}
-      </div>
+    <Menu
+      openOnContext
+      open={open}
+      onOpenChange={(_e, data) => setOpen(data.open)}
+    >
+      <MenuTrigger disableButtonEnhancement>
+        <div
+          onContextMenu={(e) => {
+            e.stopPropagation();
+            handleContextMenu(e);
+          }}
+          style={{ width: '100%', height: '100%' }}
+        >
+          {children}
+        </div>
+      </MenuTrigger>
 
-      <Menu
-        open={open}
-        onOpenChange={(_e, data) => setOpen(data.open)}
-      >
-        <MenuTrigger disableButtonEnhancement>
-          <div style={{ display: 'none' }} />
-        </MenuTrigger>
+      <MenuPopover>
+        <MenuList>
+          <MenuItem icon={<Open20Regular />} onClick={handleOpen}>
+            Open Device
+          </MenuItem>
 
-        <MenuPopover>
-          <MenuList>
-            <MenuItem icon={<Open20Regular />} onClick={handleOpen}>
-              Open Device
+          <MenuItem icon={<Edit20Regular />} onClick={handleEdit}>
+            Edit Label
+          </MenuItem>
+
+          {device.ipAddress && (
+            <MenuItem icon={<Copy20Regular />} onClick={handleCopyIP}>
+              Copy IP Address
             </MenuItem>
+          )}
 
-            <MenuItem icon={<Edit20Regular />} onClick={handleEdit}>
-              Edit Label
-            </MenuItem>
+          <MenuItem icon={<WifiSettings20Regular />} onClick={handleCheckStatus}>
+            Check Status
+          </MenuItem>
 
-            {device.ipAddress && (
-              <MenuItem icon={<Copy20Regular />} onClick={handleCopyIP}>
-                Copy IP Address
-              </MenuItem>
-            )}
-
-            <MenuItem icon={<WifiSettings20Regular />} onClick={handleCheckStatus}>
-              Check Status
-            </MenuItem>
-
-            <MenuItem icon={<Delete20Regular />} onClick={handleDelete}>
-              Delete Device
-            </MenuItem>
-          </MenuList>
-        </MenuPopover>
-      </Menu>
-    </>
+          <MenuItem icon={<Delete20Regular />} onClick={handleDelete}>
+            Delete Device
+          </MenuItem>
+        </MenuList>
+      </MenuPopover>
+    </Menu>
   );
 };
 
