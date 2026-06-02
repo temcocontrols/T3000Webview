@@ -32,8 +32,8 @@ function transformDeviceData(device: any): DeviceInfo {
   return {
     ...source,
     serialNumber,
-    panelId: source.panelId ?? source.PanelId,
     panelNumber: source.panelNumber ?? source.Panel_Number,
+    panelId: source.panelId ?? source.PanelId ?? source.panelNumber ?? source.Panel_Number,
     mainBuildingName: source.mainBuildingName ?? source.MainBuilding_Name,
     buildingName: source.buildingName ?? source.Building_Name,
     floorName: source.floorName ?? source.Floor_Name,
