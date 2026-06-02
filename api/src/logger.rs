@@ -123,7 +123,7 @@ impl ServiceLogger {
         Self::new("T3_Webview_Database_Variables")
     }
 
-    pub fn log(&mut self, level: LogLevel, message: &str) {
+    pub async fn log(&mut self, level: LogLevel, message: &str) {
         if self.base_filename.is_empty() {
             return;
         }
@@ -132,24 +132,22 @@ impl ServiceLogger {
         let level_text = level.as_str().to_string();
         let message_text = message.to_string();
 
-        tokio::spawn(async move {
-            let db = match crate::db_connection::establish_t3_device_connection().await {
-                Ok(db) => db,
-                Err(_) => return,
-            };
+        let db = match crate::db_connection::establish_t3_device_connection().await {
+            Ok(db) => db,
+            Err(_) => return,
+        };
 
-            let category = legacy_category_for_base_filename(&base_filename);
-            crate::logging::service::emit_app_log(
-                &db,
-                &level_text,
-                category,
-                Some(&base_filename),
-                None,
-                &message_text,
-                None,
-            )
-            .await;
-        });
+        let category = legacy_category_for_base_filename(&base_filename);
+        crate::logging::service::emit_app_log(
+            &db,
+            &level_text,
+            category,
+            Some(&base_filename),
+            None,
+            &message_text,
+            None,
+        )
+        .await;
     }
 
     pub fn info(&mut self, message: &str) {
