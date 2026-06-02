@@ -1,12 +1,13 @@
-//! SyncWriter — write FFI sync data directly to the right target DB.
+//! SyncWriter — write FFI sync data to the right target DB(s).
 //!
 //! Decision is **automatic** at the start of each sync cycle:
-//! - MSSQL pool present → `MssqlDirect`: writes straight to center DB via tiberius
-//! - Otherwise → `Sqlite`: writes to local SQLite (or SeaORM center DB for PG/MySQL)
+//! - MSSQL pool present → `Both`: FFI sync writes to MSSQL center DB **only**.
+//!   CRUD routes (UI-triggered) still write to SQLite + MSSQL.
+//! - Otherwise → `Sqlite`: writes everything to local SQLite only.
+//!   FFI sync is DISABLED in standalone mode (no pool, no FFI cycle).
 //!
 //! The caller (`sync_logging_data_static`) just calls `writer.*()` methods;
-//! it does NOT need to know which backend is active.  No intermediate SQLite step
-//! occurs in the MSSQL path.
+//! it does NOT need to know which backend is active.
 
 use crate::database_management::mssql_queries::{self, MssqlPool};
 use crate::db_connection::establish_device_conn_for_sync;
@@ -18,31 +19,31 @@ use super::t3_ffi_sync_service::{DeviceInfo, DeviceWithPoints, PointData, T3000M
 /// Controls where FFI sync data is written.
 pub enum SyncWriter {
     /// Local SQLite or SeaORM-connected center DB (PG/MySQL).
-    /// Uses existing `T3000MainService` static methods; each call is its own transaction.
     Sqlite(DatabaseConnection),
 
-    /// MSSQL center DB via tiberius pool.
-    /// No local SQLite intermediate step — data goes straight to center DB.
-    MssqlDirect(&'static MssqlPool),
+    /// MSSQL center DB is active **and** local SQLite is available.
+    /// ALL data (device, points, trendlog detail) is written to **both** stores.
+    Both(DatabaseConnection, &'static MssqlPool),
 }
 
 impl SyncWriter {
     /// Decide the write target for this sync cycle.
     ///
-    /// If the global MSSQL pool is available (center DB is MSSQL and we are the server
-    /// role), use `MssqlDirect`.  Otherwise fall back to the standard
-    /// `establish_device_conn_for_sync()` which returns the appropriate SeaORM connection.
+    /// If the global MSSQL pool is available we open a local SQLite connection too so
+    /// device/point basic info is written to both stores.
     pub async fn from_pool_or_sqlite() -> Result<Self, AppError> {
         if let Some(pool) = crate::server_db_writer::get_server_mssql_pool() {
-            return Ok(SyncWriter::MssqlDirect(pool));
+            let db = establish_device_conn_for_sync().await?;
+            return Ok(SyncWriter::Both(db, pool));
         }
         let db = establish_device_conn_for_sync().await?;
         Ok(SyncWriter::Sqlite(db))
     }
 
-    /// Returns `true` when `MssqlDirect` is the active path.
+    /// Returns `true` only for the legacy `MssqlDirect`-only path.
+    /// `Both` writes SQLite too, so validation should still run.
     pub fn is_mssql_direct(&self) -> bool {
-        matches!(self, SyncWriter::MssqlDirect(_))
+        false // Both and Sqlite always populate local SQLite
     }
 
     // -----------------------------------------------------------------------
@@ -50,40 +51,45 @@ impl SyncWriter {
     // -----------------------------------------------------------------------
 
     /// Upsert one device's basic information.
+    /// Center DB mode: MSSQL only (FFI sync). Standalone: SQLite only.
     pub async fn sync_device(&self, device_info: &DeviceInfo) -> Result<(), AppError> {
         match self {
             SyncWriter::Sqlite(db) => {
                 T3000MainService::sync_device_basic_info(db, device_info).await
             }
-            SyncWriter::MssqlDirect(pool) => mssql_queries::upsert_device(
-                pool,
-                device_info.panel_serial_number,
-                Some(device_info.panel_id),
-                None,                                       // main_building_name
-                Some(device_info.panel_name.as_str()),      // building_name
-                None,                                       // floor_name
-                None,                                       // room_name
-                None,                                       // panel_number
-                None,                                       // network_number
-                Some(device_info.panel_name.as_str()),      // product_name
-                None,                                       // product_class_id
-                None,                                       // product_id
-                None,                                       // bautrate
-                Some(device_info.panel_ipaddress.as_str()), // address
-                None,                                       // description
-                Some("Online"),                             // status
-                device_info.ip_address.as_deref(),
-                device_info.port,
-                device_info.bacnet_mstp_mac_id,
-                device_info.modbus_address,
-                device_info.pc_ip_address.as_deref(),
-                device_info.modbus_port,
-                device_info.bacnet_ip_port,
-                device_info.show_label_name.as_deref(),
-                device_info.connection_type.as_deref(),
-            )
-            .await
-            .map_err(AppError::DatabaseError),
+            SyncWriter::Both(_db, pool) => {
+                // Center DB mode — FFI sync writes MSSQL only.
+                // CRUD routes handle SQLite writes independently.
+                mssql_queries::upsert_device(
+                    pool,
+                    device_info.panel_serial_number,
+                    Some(device_info.panel_id),
+                    None,
+                    Some(device_info.panel_name.as_str()),
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(device_info.panel_name.as_str()),
+                    None,
+                    None,
+                    None,
+                    Some(device_info.panel_ipaddress.as_str()),
+                    None,
+                    Some("Online"),
+                    device_info.ip_address.as_deref(),
+                    device_info.port,
+                    device_info.bacnet_mstp_mac_id,
+                    device_info.modbus_address,
+                    device_info.pc_ip_address.as_deref(),
+                    device_info.modbus_port,
+                    device_info.bacnet_ip_port,
+                    device_info.show_label_name.as_deref(),
+                    device_info.connection_type.as_deref(),
+                )
+                .await
+                .map_err(AppError::DatabaseError)
+            }
         }
     }
 
@@ -92,12 +98,14 @@ impl SyncWriter {
     // -----------------------------------------------------------------------
 
     /// Upsert one input point.
+    /// Center DB mode: MSSQL only (FFI sync). Standalone: SQLite only.
     pub async fn sync_input(&self, serial_number: i32, point: &PointData) -> Result<(), AppError> {
         match self {
             SyncWriter::Sqlite(db) => {
                 T3000MainService::sync_input_point_static(db, serial_number, point).await
             }
-            SyncWriter::MssqlDirect(pool) => {
+            SyncWriter::Both(_db, pool) => {
+                // Center DB mode — FFI sync writes MSSQL only.
                 let units = T3000MainService::derive_units_from_range(point.range);
                 let idx_str = point.index.to_string();
                 let panel_str = point.panel.to_string();
@@ -106,25 +114,14 @@ impl SyncWriter {
                 let range_str = point.range.to_string();
                 let status_str = point.status.to_string();
                 let da_str = point.digital_analog.map(|da| da.to_string());
-                let point_id =
-                    point.id.clone().unwrap_or_else(|| format!("IN{}", point.index));
-
+                let point_id = point.id.clone().unwrap_or_else(|| format!("IN{}", point.index));
                 mssql_queries::upsert_point(
-                    pool,
-                    "INPUTS",
-                    "InputId",
-                    serial_number,
-                    &point_id,
-                    Some(idx_str.as_str()),
-                    Some(panel_str.as_str()),
-                    Some(point.full_label.as_str()),
-                    Some(am_str.as_str()),
-                    Some(val_str.as_str()),
-                    Some(units.as_str()),
-                    Some(range_str.as_str()),
-                    Some(status_str.as_str()),
-                    da_str.as_deref(),
-                    point.label.as_deref(),
+                    pool, "INPUTS", "InputId", serial_number, &point_id,
+                    Some(idx_str.as_str()), Some(panel_str.as_str()),
+                    Some(point.full_label.as_str()), Some(am_str.as_str()),
+                    Some(val_str.as_str()), Some(units.as_str()),
+                    Some(range_str.as_str()), Some(status_str.as_str()),
+                    da_str.as_deref(), point.label.as_deref(),
                 )
                 .await
                 .map_err(AppError::DatabaseError)
@@ -133,6 +130,7 @@ impl SyncWriter {
     }
 
     /// Upsert one output point.
+    /// Center DB mode: MSSQL only (FFI sync). Standalone: SQLite only.
     pub async fn sync_output(
         &self,
         serial_number: i32,
@@ -142,7 +140,8 @@ impl SyncWriter {
             SyncWriter::Sqlite(db) => {
                 T3000MainService::sync_output_point_static(db, serial_number, point).await
             }
-            SyncWriter::MssqlDirect(pool) => {
+            SyncWriter::Both(_db, pool) => {
+                // Center DB mode — FFI sync writes MSSQL only.
                 let units = T3000MainService::derive_units_from_range(point.range);
                 let idx_str = point.index.to_string();
                 let panel_str = point.panel.to_string();
@@ -151,25 +150,14 @@ impl SyncWriter {
                 let range_str = point.range.to_string();
                 let status_str = point.status.to_string();
                 let da_str = point.digital_analog.map(|da| da.to_string());
-                let point_id =
-                    point.id.clone().unwrap_or_else(|| format!("OUT{}", point.index));
-
+                let point_id = point.id.clone().unwrap_or_else(|| format!("OUT{}", point.index));
                 mssql_queries::upsert_point(
-                    pool,
-                    "OUTPUTS",
-                    "OutputId",
-                    serial_number,
-                    &point_id,
-                    Some(idx_str.as_str()),
-                    Some(panel_str.as_str()),
-                    Some(point.full_label.as_str()),
-                    Some(am_str.as_str()),
-                    Some(val_str.as_str()),
-                    Some(units.as_str()),
-                    Some(range_str.as_str()),
-                    Some(status_str.as_str()),
-                    da_str.as_deref(),
-                    point.label.as_deref(),
+                    pool, "OUTPUTS", "OutputId", serial_number, &point_id,
+                    Some(idx_str.as_str()), Some(panel_str.as_str()),
+                    Some(point.full_label.as_str()), Some(am_str.as_str()),
+                    Some(val_str.as_str()), Some(units.as_str()),
+                    Some(range_str.as_str()), Some(status_str.as_str()),
+                    da_str.as_deref(), point.label.as_deref(),
                 )
                 .await
                 .map_err(AppError::DatabaseError)
@@ -178,6 +166,7 @@ impl SyncWriter {
     }
 
     /// Upsert one variable point.
+    /// Center DB mode: MSSQL only (FFI sync). Standalone: SQLite only.
     pub async fn sync_variable(
         &self,
         serial_number: i32,
@@ -187,7 +176,8 @@ impl SyncWriter {
             SyncWriter::Sqlite(db) => {
                 T3000MainService::sync_variable_point_static(db, serial_number, point).await
             }
-            SyncWriter::MssqlDirect(pool) => {
+            SyncWriter::Both(_db, pool) => {
+                // Center DB mode — FFI sync writes MSSQL only.
                 let units = T3000MainService::derive_units_from_range(point.range);
                 let idx_str = point.index.to_string();
                 let panel_str = point.panel.to_string();
@@ -196,25 +186,14 @@ impl SyncWriter {
                 let range_str = point.range.to_string();
                 let status_str = point.status.to_string();
                 let da_str = point.digital_analog.map(|da| da.to_string());
-                let point_id =
-                    point.id.clone().unwrap_or_else(|| format!("VAR{}", point.index));
-
+                let point_id = point.id.clone().unwrap_or_else(|| format!("VAR{}", point.index));
                 mssql_queries::upsert_point(
-                    pool,
-                    "VARIABLES",
-                    "VariableId",
-                    serial_number,
-                    &point_id,
-                    Some(idx_str.as_str()),
-                    Some(panel_str.as_str()),
-                    Some(point.full_label.as_str()),
-                    Some(am_str.as_str()),
-                    Some(val_str.as_str()),
-                    Some(units.as_str()),
-                    Some(range_str.as_str()),
-                    Some(status_str.as_str()),
-                    da_str.as_deref(),
-                    point.label.as_deref(),
+                    pool, "VARIABLES", "VariableId", serial_number, &point_id,
+                    Some(idx_str.as_str()), Some(panel_str.as_str()),
+                    Some(point.full_label.as_str()), Some(am_str.as_str()),
+                    Some(val_str.as_str()), Some(units.as_str()),
+                    Some(range_str.as_str()), Some(status_str.as_str()),
+                    da_str.as_deref(), point.label.as_deref(),
                 )
                 .await
                 .map_err(AppError::DatabaseError)
@@ -223,11 +202,12 @@ impl SyncWriter {
     }
 
     // -----------------------------------------------------------------------
-    // Trend logs
+    // Trend logs — center DB mode: MSSQL only. Standalone: SQLite only.
     // -----------------------------------------------------------------------
 
     /// Insert trend log detail rows for all points in the device snapshot.
     /// Parent rows (TRENDLOG_DATA) are get-or-created; detail rows are always inserted.
+    /// Center DB mode: MSSQL only. Standalone: SQLite only.
     pub async fn insert_trendlogs(
         &self,
         serial_number: i32,
@@ -237,7 +217,8 @@ impl SyncWriter {
             SyncWriter::Sqlite(db) => {
                 T3000MainService::insert_trend_logs(db, serial_number, device_data, 0).await
             }
-            SyncWriter::MssqlDirect(pool) => {
+            SyncWriter::Both(_db, pool) => {
+                // Center DB mode — trendlog FFI sync writes MSSQL only.
                 mssql_insert_trendlogs(pool, serial_number, device_data).await
             }
         }
