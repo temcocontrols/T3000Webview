@@ -23,6 +23,7 @@ import {
   Popover,
   PopoverTrigger,
   PopoverSurface,
+  Tooltip,
   makeStyles,
 } from '@fluentui/react-components';
 import {
@@ -153,17 +154,60 @@ const useStyles = makeStyles({
   toolbarContainer: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'flex-start', // Align left
-    padding: '2px 8px', // All padding 8px
-    minHeight: '36px', // Reduced from 48px
-    gap: '4px', // Small gap
-    backgroundColor: '#fff', // White background
+    justifyContent: 'flex-start',
+    padding: '2px 4px',
+    minHeight: '44px',
+    gap: '0px',
+    backgroundColor: '#f0f0f0',
     borderBottom: '1px solid var(--t3-color-border)',
   },
   toolbarSection: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0px', // No gap between toolbar items
+    gap: '0px',
+  },
+  toolbarIconBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '36px',
+    height: '36px',
+    padding: '2px',
+    border: 'none',
+    borderRadius: '3px',
+    background: 'transparent',
+    cursor: 'pointer',
+    '&:hover': {
+      backgroundColor: 'rgba(0,0,0,0.08)',
+    },
+  },
+  toolbarIconBtnActive: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '36px',
+    height: '36px',
+    padding: '2px',
+    border: '1px solid #0078d4',
+    borderRadius: '3px',
+    background: 'rgba(0,120,212,0.08)',
+    cursor: 'pointer',
+    '&:hover': {
+      backgroundColor: 'rgba(0,120,212,0.15)',
+    },
+  },
+  toolbarIconImg: {
+    width: '28px',
+    height: '28px',
+    display: 'block',
+    imageRendering: 'pixelated',
+  },
+  toolbarDivider: {
+    width: '1px',
+    height: '28px',
+    backgroundColor: '#c8c8c8',
+    margin: '0 3px',
+    flexShrink: 0,
   },
   activeToolbarButton: {
     color: '#0078d4 !important',
@@ -717,47 +761,44 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
         </div>
       </div>
 
-      {/* Row 2: Toolbar with icon buttons */}
+      {/* Row 2: Toolbar with icon-only buttons + hover tooltips */}
       {showToolbar && (
       <div className={styles.toolbarContainer}>
         <div className={styles.toolbarSection}>
-          <Toolbar>
-            {toolbarConfig.map((item, index) => {
-              if (item.divider) {
-                return <ToolbarDivider key={`divider-${index}`} />;
-              }
+          {toolbarConfig.map((item, index) => {
+            if (item.divider) {
+              return <div key={`divider-${index}`} className={styles.toolbarDivider} />;
+            }
 
-              // Get icon component (handle both FluentIcon and string)
-              const IconComponent = typeof item.icon === 'string'
-                ? getIconComponent(item.icon)
-                : item.icon;
+            // Map toolbar id to SVG icon filename
+            const svgId = item.id.replace('toolbar-', '');
+            const svgSrc = `/assets/t3icon/toolbar/${svgId}.svg`;
 
-              // Check if this button is active (current route matches)
-              const isActive = item.route && location.pathname === item.route;
+            const isActive = !!(item.route && location.pathname === item.route);
 
-              return (
-                <ToolbarButton
-                  key={item.id}
-                  appearance="subtle"
-                  icon={IconComponent ? <IconComponent /> : undefined}
+            return (
+              <Tooltip
+                key={item.id}
+                content={item.tooltip || item.label}
+                relationship="label"
+                positioning="below"
+              >
+                <button
+                  className={isActive ? styles.toolbarIconBtnActive : styles.toolbarIconBtn}
                   disabled={item.disabled}
                   onClick={() => handleToolbarClick(item)}
-                  title={item.tooltip || item.label}
-                  className={isActive ? styles.activeToolbarButton : ''}
-                  style={{
-                    color: theme.colors.text,
-                    fontSize: '11px', // Smaller font
-                    fontWeight: '400', // Thinner/normal weight
-                    padding: '1px 4px', // Even smaller padding
-                    minHeight: '24px', // Smaller height
-                    minWidth: 'auto', // Remove minimum width
-                  }}
+                  aria-label={item.label}
+                  type="button"
                 >
-                  {item.label}
-                </ToolbarButton>
-              );
-            })}
-          </Toolbar>
+                  <img
+                    src={svgSrc}
+                    alt={item.label}
+                    className={styles.toolbarIconImg}
+                  />
+                </button>
+              </Tooltip>
+            );
+          })}
         </div>
       </div>
       )}

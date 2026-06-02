@@ -146,7 +146,7 @@ export const toolbarConfig: ToolbarButton[] = [
     shortcut: 'Alt+H',
   },
   {
-    id: 'toolbar-trends',
+    id: 'toolbar-trendlogs',
     icon: ChartMultipleRegular,
     label: 'Trend Logs',
     tooltip: 'Trend Logs (Alt+T)',
