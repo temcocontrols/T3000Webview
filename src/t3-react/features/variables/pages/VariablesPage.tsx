@@ -45,6 +45,7 @@ import {
   InfoRegular,
   Gauge20Regular,
   DatabaseRegular,
+  EditSettings24Regular
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '@t3-react/features/devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
@@ -557,13 +558,13 @@ const VariablesPageDesktop: React.FC = () => {
       setVariables(prevVariables =>
         prevVariables.map(variable =>
           variable.serialNumber === editingCell.serialNumber &&
-          variable.variableIndex === editingCell.variableIndex
+            variable.variableIndex === editingCell.variableIndex
             ? {
-                ...variable,
-                [editingCell.field]: editingCell.field === 'fValue'
-                  ? (parseFloat(editValue || '0') * 1000).toString()  // Convert back to raw value for storage
-                  : editValue
-              }
+              ...variable,
+              [editingCell.field]: editingCell.field === 'fValue'
+                ? (parseFloat(editValue || '0') * 1000).toString()  // Convert back to raw value for storage
+                : editValue
+            }
             : variable
         )
       );
@@ -664,7 +665,7 @@ const VariablesPageDesktop: React.FC = () => {
       setVariables(prevVariables =>
         prevVariables.map(variable =>
           variable.serialNumber === selectedVariableForRange.serialNumber &&
-          variable.variableIndex === selectedVariableForRange.variableIndex
+            variable.variableIndex === selectedVariableForRange.variableIndex
             ? { ...variable, rangeField: newRange.toString(), digitalAnalog: newDigitalAnalog.toString() }
             : variable
         )
@@ -694,8 +695,8 @@ const VariablesPageDesktop: React.FC = () => {
   };
 
   // Counts for badge labels
-  const varCount  = React.useMemo(() => variables.filter(v => !isPvar(v)).length, [variables]);
-  const pvarCount = React.useMemo(() => variables.filter(v =>  isPvar(v)).length, [variables]);
+  const varCount = React.useMemo(() => variables.filter(v => !isPvar(v)).length, [variables]);
+  const pvarCount = React.useMemo(() => variables.filter(v => isPvar(v)).length, [variables]);
 
   // Display data with 18 empty rows when no variables
   const displayVariables = React.useMemo(() => {
@@ -724,8 +725,8 @@ const VariablesPageDesktop: React.FC = () => {
       }));
     }
     // Apply VAR / PVARS / BOTH filter
-    if (activeFilter === 'VARS')  return variables.filter(v => !isPvar(v));
-    if (activeFilter === 'PVARS') return variables.filter(v =>  isPvar(v));
+    if (activeFilter === 'VARS') return variables.filter(v => !isPvar(v));
+    if (activeFilter === 'PVARS') return variables.filter(v => isPvar(v));
     return variables; // BOTH
   }, [variables, selectedDevice, activeFilter]);
 
@@ -791,8 +792,9 @@ const VariablesPageDesktop: React.FC = () => {
                 title={isItemPvar ? 'Panel Variable (PVAR)' : 'Variable (VAR)'}
               >
                 {isItemPvar
-                  ? <DatabaseRegular style={{ width: 11, height: 11 }} />
-                  : <Gauge20Regular style={{ width: 11, height: 11 }} />}
+                  ? <EditSettings24Regular style={{ width: 11, height: 11 }} />
+                  // : <Gauge20Regular style={{ width: 11, height: 11 }} />}
+                  : <></>}
               </span>
               <Text size={200} weight="regular">
                 {item.variableId || (item.variableIndex ? `VAR${parseInt(item.variableIndex) + 1}` : '---')}
@@ -821,8 +823,8 @@ const VariablesPageDesktop: React.FC = () => {
         }
 
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.variableIndex === item.variableIndex &&
-                          editingCell?.field === 'fullLabel';
+          editingCell?.variableIndex === item.variableIndex &&
+          editingCell?.field === 'fullLabel';
 
         return (
           <TableCellLayout>
@@ -884,8 +886,8 @@ const VariablesPageDesktop: React.FC = () => {
         }
 
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.variableIndex === item.variableIndex &&
-                          editingCell?.field === 'label';
+          editingCell?.variableIndex === item.variableIndex &&
+          editingCell?.field === 'label';
 
         return (
           <TableCellLayout>
@@ -947,8 +949,8 @@ const VariablesPageDesktop: React.FC = () => {
         }
 
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.variableIndex === item.variableIndex &&
-                          editingCell?.field === 'fValue';
+          editingCell?.variableIndex === item.variableIndex &&
+          editingCell?.field === 'fValue';
 
         return (
           <TableCellLayout>
@@ -1157,97 +1159,97 @@ const VariablesPageDesktop: React.FC = () => {
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
               {selectedDevice && (
-              <>
-              <div className={styles.toolbar}>
-                <div className={styles.toolbarContainer}>
-                  {/* Search Input Box */}
-                  <div className={styles.searchInputWrapper}>
-                    <SearchRegular className={styles.searchIcon} />
-                    <input
-                      className={styles.searchInput}
-                      type="text"
-                      placeholder="Search variables..."
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                      spellCheck="false"
-                      role="searchbox"
-                      aria-label="Search variables"
-                    />
+                <>
+                  <div className={styles.toolbar}>
+                    <div className={styles.toolbarContainer}>
+                      {/* Search Input Box */}
+                      <div className={styles.searchInputWrapper}>
+                        <SearchRegular className={styles.searchIcon} />
+                        <input
+                          className={styles.searchInput}
+                          type="text"
+                          placeholder="Search variables..."
+                          value={searchQuery}
+                          onChange={handleSearchChange}
+                          spellCheck="false"
+                          role="searchbox"
+                          aria-label="Search variables"
+                        />
+                      </div>
+
+                      <div className={styles.toolbarSeparator} role="separator" />
+
+                      {/* VAR / PVARS / BOTH underline tab filter */}
+                      <div className={styles.varTabBar} role="group" aria-label="Variable type filter">
+                        <button
+                          className={`${styles.varTab} ${activeFilter === 'VARS' ? styles.varTabActive : ''}`}
+                          onClick={() => setActiveFilter('VARS')}
+                          title="Show only Variables (VARs)"
+                        >
+                          {/* <Gauge20Regular className={styles.varTabIcon} /> */}
+                          VARS
+                          <span className={styles.varTabCount}>{varCount}</span>
+                        </button>
+                        <button
+                          className={`${styles.varTab} ${activeFilter === 'PVARS' ? styles.varTabActive : ''}`}
+                          onClick={() => setActiveFilter('PVARS')}
+                          title="Show only Panel Variables (PVARs)"
+                        >
+                          <EditSettings24Regular className={styles.varTabIcon} />
+                          PVARS
+                          <span className={styles.varTabCount}>{pvarCount}</span>
+                        </button>
+                        <button
+                          className={`${styles.varTab} ${activeFilter === 'BOTH' ? styles.varTabActive : ''}`}
+                          onClick={() => setActiveFilter('BOTH')}
+                          title="Show all variables (VARs + PVARs)"
+                        >
+                          BOTH
+                          <span className={styles.varTabCount}>{varCount + pvarCount}</span>
+                        </button>
+                      </div>
+
+                      <div className={styles.toolbarSeparator} role="separator" />
+
+                      {/* Refresh Button */}
+                      <button
+                        className={styles.toolbarButton}
+                        onClick={handleRefreshFromDevice}
+                        disabled={refreshing}
+                        title="Refresh all variables from device"
+                        aria-label="Refresh from Device"
+                      >
+                        <ArrowSyncRegular />
+                        <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                      </button>
+
+                      <div className={styles.toolbarSeparator} role="separator" />
+
+                      {/* Info Button with Tooltip */}
+                      <Tooltip
+                        content={`Showing variable points for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). This table displays all configured variable points used for internal calculations, logic operations, and data storage within the building automation system.`}
+                        relationship="description"
+                      >
+                        <button
+                          // className={`${styles.toolbarButton} ${styles.marginLeft8}`}
+                          className={`${styles.toolbarButton}`}
+                          title="Information"
+                          aria-label="Information about this page"
+                        >
+                          <InfoRegular />
+                        </button>
+                      </Tooltip>
+                    </div>
                   </div>
 
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  {/* VAR / PVARS / BOTH underline tab filter */}
-                  <div className={styles.varTabBar} role="group" aria-label="Variable type filter">
-                    <button
-                      className={`${styles.varTab} ${activeFilter === 'VARS' ? styles.varTabActive : ''}`}
-                      onClick={() => setActiveFilter('VARS')}
-                      title="Show only Variables (VARs)"
-                    >
-                      <Gauge20Regular className={styles.varTabIcon} />
-                      VARS
-                      <span className={styles.varTabCount}>{varCount}</span>
-                    </button>
-                    <button
-                      className={`${styles.varTab} ${activeFilter === 'PVARS' ? styles.varTabActive : ''}`}
-                      onClick={() => setActiveFilter('PVARS')}
-                      title="Show only Panel Variables (PVARs)"
-                    >
-                      <DatabaseRegular className={styles.varTabIcon} />
-                      PVARS
-                      <span className={styles.varTabCount}>{pvarCount}</span>
-                    </button>
-                    <button
-                      className={`${styles.varTab} ${activeFilter === 'BOTH' ? styles.varTabActive : ''}`}
-                      onClick={() => setActiveFilter('BOTH')}
-                      title="Show all variables (VARs + PVARs)"
-                    >
-                      BOTH
-                      <span className={styles.varTabCount}>{varCount + pvarCount}</span>
-                    </button>
-                  </div>
-
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  {/* Refresh Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleRefreshFromDevice}
-                    disabled={refreshing}
-                    title="Refresh all variables from device"
-                    aria-label="Refresh from Device"
-                  >
-                    <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                  </button>
-
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  {/* Info Button with Tooltip */}
-                  <Tooltip
-                    content={`Showing variable points for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). This table displays all configured variable points used for internal calculations, logic operations, and data storage within the building automation system.`}
-                    relationship="description"
-                  >
-                    <button
-                      // className={`${styles.toolbarButton} ${styles.marginLeft8}`}
-                      className={`${styles.toolbarButton}`}
-                      title="Information"
-                      aria-label="Information about this page"
-                    >
-                      <InfoRegular />
-                    </button>
-                  </Tooltip>
-                </div>
-              </div>
-
-              {/* ========================================
+                  {/* ========================================
                   HORIZONTAL DIVIDER
                   Matches: ext-overview-hr
                   ======================================== */}
-              <div className={styles.noPadding}>
-                <hr className={styles.overviewHr} />
-              </div>
-              </>
+                  <div className={styles.noPadding}>
+                    <hr className={styles.overviewHr} />
+                  </div>
+                </>
               )}
 
               {/* ========================================
@@ -1283,39 +1285,39 @@ const VariablesPageDesktop: React.FC = () => {
                     onScroll={handleScroll}
                     onWheel={handleWheel}
                   >
-                  <DataGrid
-                    items={displayVariables}
-                    columns={columns}
-                    sortable
-                  >
-                    <DataGridHeader>
-                      <DataGridRow>
-                        {({ renderHeaderCell }) => (
-                          <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
-                        )}
-                      </DataGridRow>
-                    </DataGridHeader>
-                    <DataGridBody<VariablePoint>>
-                      {({ item, rowId }) => (
-                        <DataGridRow<VariablePoint> key={rowId}>
-                          {({ renderCell }) => (
-                            <DataGridCell>{renderCell(item)}</DataGridCell>
+                    <DataGrid
+                      items={displayVariables}
+                      columns={columns}
+                      sortable
+                    >
+                      <DataGridHeader>
+                        <DataGridRow>
+                          {({ renderHeaderCell }) => (
+                            <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
                           )}
                         </DataGridRow>
-                      )}
-                    </DataGridBody>
-                  </DataGrid>
+                      </DataGridHeader>
+                      <DataGridBody<VariablePoint>>
+                        {({ item, rowId }) => (
+                          <DataGridRow<VariablePoint> key={rowId}>
+                            {({ renderCell }) => (
+                              <DataGridCell>{renderCell(item)}</DataGridCell>
+                            )}
+                          </DataGridRow>
+                        )}
+                      </DataGridBody>
+                    </DataGrid>
 
-                  {/* Loading Next Device Indicator */}
-                  {isLoadingNextDevice && (
-                    <div className={styles.autoLoadIndicator}>
-                      <Spinner size="tiny" />
-                      <Text size={200} weight="regular">Loading next device...</Text>
-                    </div>
-                  )}
+                    {/* Loading Next Device Indicator */}
+                    {isLoadingNextDevice && (
+                      <div className={styles.autoLoadIndicator}>
+                        <Spinner size="tiny" />
+                        <Text size={200} weight="regular">Loading next device...</Text>
+                      </div>
+                    )}
 
-                  {/* No Data Message - Show below grid when empty */}
-                  {/* {variables.length === 0 && (
+                    {/* No Data Message - Show below grid when empty */}
+                    {/* {variables.length === 0 && (
                     <div className={styles.emptyStateContainer}>
                       <div className={styles.emptyStateHeader}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={styles.emptyStateIcon}>
