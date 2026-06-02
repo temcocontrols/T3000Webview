@@ -533,7 +533,7 @@ impl T3000MainService {
                     .await
                     .map_err(|e| AppError::DatabaseError(e.to_string()))?;
             }
-            super::sync_writer::SyncWriter::MssqlDirect(pool) => {
+            super::sync_writer::SyncWriter::Both(_, pool) => {
                 mssql_queries::insert_sync_metadata(
                     pool,
                     sync_time_i32,
@@ -1425,9 +1425,9 @@ impl T3000MainService {
         })?;
 
         let (_writer_target_text, writer_target_detail) = match &writer {
-            super::sync_writer::SyncWriter::MssqlDirect(_) => (
-                "MSSQL (direct write to center DB)",
-                "target=center_mssql",
+            super::sync_writer::SyncWriter::Both(_, _) => (
+                "SQLite + MSSQL (basic info both, trendlog MSSQL only)",
+                "target=sqlite_and_mssql",
             ),
             super::sync_writer::SyncWriter::Sqlite(db) => match db.get_database_backend() {
                 sea_orm::DatabaseBackend::Sqlite => ("Local SQLite", "target=local_sqlite"),
@@ -1635,7 +1635,7 @@ impl T3000MainService {
             }
 
             // Mirror to MSSQL TRENDLOG_DATA_SYNC_METADATA
-            if let super::sync_writer::SyncWriter::MssqlDirect(pool) = &writer {
+            if let super::sync_writer::SyncWriter::Both(_, pool) = &writer {
                 let ts_fmt = rediscover_start_time.format("%Y-%m-%d %H:%M:%S").to_string();
                 if let Err(e) = mssql_queries::insert_trendlog_sync_metadata(
                     pool,
@@ -1839,7 +1839,7 @@ impl T3000MainService {
         };
 
         // Mirror to MSSQL TRENDLOG_DATA_SYNC_METADATA
-        if let super::sync_writer::SyncWriter::MssqlDirect(pool) = &writer {
+        if let super::sync_writer::SyncWriter::Both(_, pool) = &writer {
             let ts_fmt = sync_start_time.format("%Y-%m-%d %H:%M:%S").to_string();
             if let Err(e) = mssql_queries::insert_trendlog_sync_metadata(
                 pool,
@@ -2327,12 +2327,16 @@ impl T3000MainService {
                 }
             }
 
-            // ---- SERVER DB REPLICATION (SQLite/SeaORM path only) ----
-            // SeaORM path (PG/MySQL) upserts directly; SQLite path replicates here.
+            // ---- SERVER DB REPLICATION (SQLite → center DB) ----
+            // When center DB is MSSQL (Both writer), device/point data was already
+            // written to MSSQL above by sync_device/sync_input/sync_output/sync_variable,
+            // so no additional replication is needed for MSSQL.
+            // For SeaORM center DB (PG/MySQL), replicate from local SQLite now.
             if crate::server_db_writer::is_server_write_active() {
                 let serial_numbers: Vec<i32> = panels.iter().map(|p| p.serial_number).collect();
 
                 if crate::server_db_writer::get_server_conn().is_some() {
+                    // SeaORM center DB (PG / MySQL) replication
                     match Self::replicate_basic_data_to_server(&validation_db, &serial_numbers).await {
                         Ok(_stats) => {}
                         Err(e) => {
@@ -2343,6 +2347,7 @@ impl T3000MainService {
                         }
                     }
                 }
+                // MSSQL: already written by SyncWriter::Both — no second pass needed.
             }
         }
         sync_flow.step(&local_db, "interval_sleep", "info", "ffi_sync", "ok", 0,

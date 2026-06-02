@@ -35,6 +35,9 @@ export interface TrendDataPoint {
   point_index: number;
   timestamp: string;
   value: number;
+  original_value?: number;
+  raw_value?: string;
+  is_analog?: boolean;
   unit?: string;
   units?: string;
   range_field?: string;

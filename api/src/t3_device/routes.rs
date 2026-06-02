@@ -705,20 +705,8 @@ async fn import_table(
 async fn get_devices_with_stats(
     State(state): State<T3AppState>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
-    if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_queries;
-        let devices = mssql_queries::list_devices_with_stats(pool)
-            .await
-            .map_err(|e| { eprintln!("MSSQL devices error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return Ok(Json(json!({
-            "devices": devices,
-            "total": devices.len(),
-            "message": "Devices retrieved successfully"
-        })));
-    }
-
-    // ── SeaORM branch ──
+    // Always read from local SQLite — it is kept in sync by the FFI sync cycle
+    // and is the canonical local device list regardless of center DB mode.
     let db = get_t3_device_conn!(state);
 
     match T3DeviceService::get_all_devices_with_stats(&*db).await {
@@ -735,7 +723,16 @@ async fn create_device(
     State(state): State<T3AppState>,
     Json(payload): Json<CreateDeviceRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
+    // ── Local SQLite write (always) ──
+    // SQLite is the canonical local cache.  Write here first so the device tree
+    // is populated regardless of whether a center DB is also enabled.
+    let local_db = get_t3_device_conn!(state);
+    let sqlite_result = T3DeviceService::create_device(&*local_db, payload.clone()).await;
+    if let Err(ref e) = sqlite_result {
+        eprintln!("⚠️ [create_device] SQLite write error (non-fatal if MSSQL follows): {:?}", e);
+    }
+
+    // ── MSSQL replication (if center DB is MSSQL) ──
     if let Some(pool) = &state.mssql_pool {
         use crate::database_management::mssql_queries;
         let serial_number = payload.serial_number.unwrap_or(0);
@@ -777,10 +774,8 @@ async fn create_device(
         })));
     }
 
-    // ── SeaORM branch ──
-    let db = get_t3_device_conn!(state);
-
-    match T3DeviceService::create_device(&*db, payload).await {
+    // ── SQLite-only path response ──
+    match sqlite_result {
         Ok(device) => Ok(Json(json!({
             "device": device,
             "message": "Device created successfully"
@@ -796,19 +791,7 @@ async fn get_device_by_id(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
-    if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
-        let device = mssql_generic_crud::select_by_id(pool, "DEVICES", device_id)
-            .await
-            .map_err(|e| { eprintln!("MSSQL get device error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return match device {
-            Some(d) => Ok(Json(json!({ "device": d, "message": "Device found" }))),
-            None => Err(StatusCode::NOT_FOUND),
-        };
-    }
-
-    // ── SeaORM branch ──
+    // Always read from local SQLite — kept in sync by the FFI cycle.
     let db = get_t3_device_conn!(state);
 
     match T3DeviceService::get_device_by_id(&*db, device_id).await {
@@ -826,24 +809,24 @@ async fn update_device(
     Path(device_id): Path<i32>,
     Json(payload): Json<UpdateDeviceRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
-    if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
-        let json_payload = serde_json::to_value(&payload)
-            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        mssql_generic_crud::update_row(pool, "DEVICES", device_id, &json_payload)
-            .await
-            .map_err(|e| { eprintln!("MSSQL update device error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return Ok(Json(json!({
-            "device": json_payload,
-            "message": "Device updated successfully"
-        })));
+    // Serialize first so both SQLite and MSSQL can use the data.
+    let json_payload = serde_json::to_value(&payload)
+        .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+
+    // ── SQLite write (always) ──
+    let db = get_t3_device_conn!(state);
+    let sqlite_result = T3DeviceService::update_device(&*db, device_id, payload).await;
+    if let Err(ref e) = sqlite_result {
+        eprintln!("⚠️ [update_device] SQLite write error: {:?}", e);
     }
 
-    // ── SeaORM branch ──
-    let db = get_t3_device_conn!(state);
+    // ── MSSQL write (if center DB active) ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let _ = mssql_generic_crud::update_row(pool, "DEVICES", device_id, &json_payload).await;
+    }
 
-    match T3DeviceService::update_device(&*db, device_id, payload).await {
+    match sqlite_result {
         Ok(Some(device)) => Ok(Json(json!({
             "device": device,
             "message": "Device updated successfully"
@@ -857,26 +840,18 @@ async fn delete_device(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
+    // ── SQLite delete (always) ──
+    let db = get_t3_device_conn!(state);
+    let sqlite_result = T3DeviceService::delete_device(&*db, device_id).await;
+
+    // ── MSSQL delete (if center DB active) ──
     if let Some(pool) = &state.mssql_pool {
         use crate::database_management::mssql_generic_crud;
-        let rows = mssql_generic_crud::delete_row(pool, "DEVICES", device_id)
-            .await
-            .map_err(|e| { eprintln!("MSSQL delete device error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return if rows > 0 {
-            Ok(Json(json!({ "message": "Device deleted successfully" })))
-        } else {
-            Err(StatusCode::NOT_FOUND)
-        };
+        let _ = mssql_generic_crud::delete_row(pool, "DEVICES", device_id).await;
     }
 
-    // ── SeaORM branch ──
-    let db = get_t3_device_conn!(state);
-
-    match T3DeviceService::delete_device(&*db, device_id).await {
-        Ok(true) => Ok(Json(json!({
-            "message": "Device deleted successfully"
-        }))),
+    match sqlite_result {
+        Ok(true) => Ok(Json(json!({ "message": "Device deleted successfully" }))),
         Ok(false) => Err(StatusCode::NOT_FOUND),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
     }
@@ -885,25 +860,18 @@ async fn delete_device(
 async fn delete_all_devices(
     State(state): State<T3AppState>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
+    // ── SQLite delete all (always) ──
+    let db = get_t3_device_conn!(state);
+    let query = Statement::from_string(db.get_database_backend(), "DELETE FROM DEVICES".to_string());
+    let sqlite_result = db.execute(query).await;
+
+    // ── MSSQL delete all (if center DB active) ──
     if let Some(pool) = &state.mssql_pool {
         use crate::database_management::mssql_generic_crud;
-        let rows = mssql_generic_crud::delete_all(pool, "DEVICES")
-            .await
-            .map_err(|e| { eprintln!("MSSQL delete all devices error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return Ok(Json(json!({
-            "message": "All devices deleted successfully",
-            "rows_affected": rows
-        })));
+        let _ = mssql_generic_crud::delete_all(pool, "DEVICES").await;
     }
 
-    // ── SeaORM branch ──
-    let db = get_t3_device_conn!(state);
-
-    // Delete all devices using raw SQL for efficiency
-    let query = Statement::from_string(db.get_database_backend(), "DELETE FROM DEVICES".to_string());
-
-    match db.execute(query).await {
+    match sqlite_result {
         Ok(result) => Ok(Json(json!({
             "message": "All devices deleted successfully",
             "rows_affected": result.rows_affected()
@@ -1077,25 +1045,20 @@ async fn create_input_point(
     State(state): State<T3AppState>,
     Json(payload): Json<CreateInputPointRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
+    let json_payload = serde_json::to_value(&payload)
+        .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+
+    // ── SQLite write (always) ──
+    let db = get_t3_device_conn!(state);
+    let sqlite_result = T3PointsService::create_input_point(&*db, payload).await;
+
+    // ── MSSQL write (if center DB active) ──
     if let Some(pool) = &state.mssql_pool {
         use crate::database_management::mssql_generic_crud;
-        let json_payload = serde_json::to_value(&payload)
-            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        let id = mssql_generic_crud::insert_row(pool, "INPUTS", &json_payload)
-            .await
-            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return Ok(Json(json!({
-            "input_point": json_payload,
-            "id": id,
-            "message": "Input point created successfully"
-        })));
+        let _ = mssql_generic_crud::insert_row(pool, "INPUTS", &json_payload).await;
     }
 
-    // ── SeaORM branch ──
-    let db = get_t3_device_conn!(state);
-
-    match T3PointsService::create_input_point(&*db, payload).await {
+    match sqlite_result {
         Ok(point) => Ok(Json(json!({
             "input_point": point,
             "message": "Input point created successfully"
@@ -1108,25 +1071,20 @@ async fn create_output_point(
     State(state): State<T3AppState>,
     Json(payload): Json<CreateOutputPointRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
+    let json_payload = serde_json::to_value(&payload)
+        .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+
+    // ── SQLite write (always) ──
+    let db = get_t3_device_conn!(state);
+    let sqlite_result = T3PointsService::create_output_point(&*db, payload).await;
+
+    // ── MSSQL write (if center DB active) ──
     if let Some(pool) = &state.mssql_pool {
         use crate::database_management::mssql_generic_crud;
-        let json_payload = serde_json::to_value(&payload)
-            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        let id = mssql_generic_crud::insert_row(pool, "OUTPUTS", &json_payload)
-            .await
-            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return Ok(Json(json!({
-            "output_point": json_payload,
-            "id": id,
-            "message": "Output point created successfully"
-        })));
+        let _ = mssql_generic_crud::insert_row(pool, "OUTPUTS", &json_payload).await;
     }
 
-    // ── SeaORM branch ──
-    let db = get_t3_device_conn!(state);
-
-    match T3PointsService::create_output_point(&*db, payload).await {
+    match sqlite_result {
         Ok(point) => Ok(Json(json!({
             "output_point": point,
             "message": "Output point created successfully"
@@ -1139,25 +1097,20 @@ async fn create_variable_point(
     State(state): State<T3AppState>,
     Json(payload): Json<CreateVariablePointRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
+    let json_payload = serde_json::to_value(&payload)
+        .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+
+    // ── SQLite write (always) ──
+    let db = get_t3_device_conn!(state);
+    let sqlite_result = T3PointsService::create_variable_point(&*db, payload).await;
+
+    // ── MSSQL write (if center DB active) ──
     if let Some(pool) = &state.mssql_pool {
         use crate::database_management::mssql_generic_crud;
-        let json_payload = serde_json::to_value(&payload)
-            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        let id = mssql_generic_crud::insert_row(pool, "VARIABLES", &json_payload)
-            .await
-            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return Ok(Json(json!({
-            "variable_point": json_payload,
-            "id": id,
-            "message": "Variable point created successfully"
-        })));
+        let _ = mssql_generic_crud::insert_row(pool, "VARIABLES", &json_payload).await;
     }
 
-    // ── SeaORM branch ──
-    let db = get_t3_device_conn!(state);
-
-    match T3PointsService::create_variable_point(&*db, payload).await {
+    match sqlite_result {
         Ok(point) => Ok(Json(json!({
             "variable_point": point,
             "message": "Variable point created successfully"
@@ -1222,25 +1175,20 @@ async fn create_schedule(
     State(state): State<T3AppState>,
     Json(payload): Json<CreateScheduleRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
+    let json_payload = serde_json::to_value(&payload)
+        .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+
+    // ── SQLite write (always) ──
+    let db = get_t3_device_conn!(state);
+    let sqlite_result = T3ScheduleService::create_schedule(&*db, payload).await;
+
+    // ── MSSQL write (if center DB active) ──
     if let Some(pool) = &state.mssql_pool {
         use crate::database_management::mssql_generic_crud;
-        let json_payload = serde_json::to_value(&payload)
-            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        let id = mssql_generic_crud::insert_row(pool, "SCHEDULES", &json_payload)
-            .await
-            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return Ok(Json(json!({
-            "schedule": json_payload,
-            "id": id,
-            "message": "Schedule created successfully"
-        })));
+        let _ = mssql_generic_crud::insert_row(pool, "SCHEDULES", &json_payload).await;
     }
 
-    // ── SeaORM branch ──
-    let db = get_t3_device_conn!(state);
-
-    match T3ScheduleService::create_schedule(&*db, payload).await {
+    match sqlite_result {
         Ok(schedule) => Ok(Json(json!({
             "schedule": schedule,
             "message": "Schedule created successfully"
@@ -1279,35 +1227,29 @@ async fn update_schedule(
     Path((device_id, schedule_id)): Path<(i32, String)>,
     Json(payload): Json<UpdateScheduleRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
+    let json_payload = serde_json::to_value(&payload)
+        .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+
+    // ── SQLite write (always, primary) ──
+    let db = get_t3_device_conn!(state);
+    let sqlite_result = T3ScheduleService::update_schedule(&*db, device_id, schedule_id.clone(), payload).await;
+
+    // ── MSSQL write (if center DB active, best-effort) ──
     if let Some(pool) = &state.mssql_pool {
         use crate::database_management::mssql_generic_crud;
-        let all = mssql_generic_crud::select_by_device(pool, "SCHEDULES", device_id)
-            .await
-            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        let found = all.iter().find(|s| {
-            s.get("Schedule_ID").and_then(|v| v.as_str()) == Some(&schedule_id)
-                || s.get("schedule_id").and_then(|v| v.as_str()) == Some(&schedule_id)
-        });
-        let row_id = match found {
-            Some(s) => s.get("id").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
-            None => return Err(StatusCode::NOT_FOUND),
-        };
-        let json_payload = serde_json::to_value(&payload)
-            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        mssql_generic_crud::update_row(pool, "SCHEDULES", row_id, &json_payload)
-            .await
-            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return Ok(Json(json!({
-            "schedule": json_payload,
-            "message": "Schedule updated successfully"
-        })));
+        if let Ok(all) = mssql_generic_crud::select_by_device(pool, "SCHEDULES", device_id).await {
+            let found = all.iter().find(|s| {
+                s.get("Schedule_ID").and_then(|v| v.as_str()) == Some(&schedule_id)
+                    || s.get("schedule_id").and_then(|v| v.as_str()) == Some(&schedule_id)
+            });
+            if let Some(s) = found {
+                let row_id = s.get("id").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+                let _ = mssql_generic_crud::update_row(pool, "SCHEDULES", row_id, &json_payload).await;
+            }
+        }
     }
 
-    // ── SeaORM branch ──
-    let db = get_t3_device_conn!(state);
-
-    match T3ScheduleService::update_schedule(&*db, device_id, schedule_id, payload).await {
+    match sqlite_result {
         Ok(Some(schedule)) => Ok(Json(json!({
             "schedule": schedule,
             "message": "Schedule updated successfully"
@@ -1321,37 +1263,27 @@ async fn delete_schedule(
     State(state): State<T3AppState>,
     Path((device_id, schedule_id)): Path<(i32, String)>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
+    // ── SQLite delete (always, primary) ──
+    let db = get_t3_device_conn!(state);
+    let sqlite_result = T3ScheduleService::delete_schedule(&*db, device_id, schedule_id.clone()).await;
+
+    // ── MSSQL delete (if center DB active, best-effort) ──
     if let Some(pool) = &state.mssql_pool {
         use crate::database_management::mssql_generic_crud;
-        let all = mssql_generic_crud::select_by_device(pool, "SCHEDULES", device_id)
-            .await
-            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        let found = all.iter().find(|s| {
-            s.get("Schedule_ID").and_then(|v| v.as_str()) == Some(&schedule_id)
-                || s.get("schedule_id").and_then(|v| v.as_str()) == Some(&schedule_id)
-        });
-        let row_id = match found {
-            Some(s) => s.get("id").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
-            None => return Err(StatusCode::NOT_FOUND),
-        };
-        let rows = mssql_generic_crud::delete_row(pool, "SCHEDULES", row_id)
-            .await
-            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return if rows > 0 {
-            Ok(Json(json!({ "message": "Schedule deleted successfully" })))
-        } else {
-            Err(StatusCode::NOT_FOUND)
-        };
+        if let Ok(all) = mssql_generic_crud::select_by_device(pool, "SCHEDULES", device_id).await {
+            let found = all.iter().find(|s| {
+                s.get("Schedule_ID").and_then(|v| v.as_str()) == Some(&schedule_id)
+                    || s.get("schedule_id").and_then(|v| v.as_str()) == Some(&schedule_id)
+            });
+            if let Some(s) = found {
+                let row_id = s.get("id").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+                let _ = mssql_generic_crud::delete_row(pool, "SCHEDULES", row_id).await;
+            }
+        }
     }
 
-    // ── SeaORM branch ──
-    let db = get_t3_device_conn!(state);
-
-    match T3ScheduleService::delete_schedule(&*db, device_id, schedule_id).await {
-        Ok(true) => Ok(Json(json!({
-            "message": "Schedule deleted successfully"
-        }))),
+    match sqlite_result {
+        Ok(true) => Ok(Json(json!({ "message": "Schedule deleted successfully" }))),
         Ok(false) => Err(StatusCode::NOT_FOUND),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
     }
@@ -1429,25 +1361,20 @@ async fn create_program(
     State(state): State<T3AppState>,
     Json(payload): Json<CreateProgramRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
+    let json_payload = serde_json::to_value(&payload)
+        .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+
+    // ── SQLite write (always) ──
+    let db = get_t3_device_conn!(state);
+    let sqlite_result = T3ProgramService::create_program(&*db, payload).await;
+
+    // ── MSSQL write (if center DB active) ──
     if let Some(pool) = &state.mssql_pool {
         use crate::database_management::mssql_generic_crud;
-        let json_payload = serde_json::to_value(&payload)
-            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        let id = mssql_generic_crud::insert_row(pool, "PROGRAMS", &json_payload)
-            .await
-            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return Ok(Json(json!({
-            "program": json_payload,
-            "id": id,
-            "message": "Program created successfully"
-        })));
+        let _ = mssql_generic_crud::insert_row(pool, "PROGRAMS", &json_payload).await;
     }
 
-    // ── SeaORM branch ──
-    let db = get_t3_device_conn!(state);
-
-    match T3ProgramService::create_program(&*db, payload).await {
+    match sqlite_result {
         Ok(program) => Ok(Json(json!({
             "program": program,
             "message": "Program created successfully"
@@ -1478,35 +1405,29 @@ async fn update_program(
     Path((device_id, program_id)): Path<(i32, String)>,
     Json(payload): Json<UpdateProgramRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
+    let json_payload = serde_json::to_value(&payload)
+        .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+
+    // ── SQLite write (always, primary) ──
+    let db = get_t3_device_conn!(state);
+    let sqlite_result = T3ProgramService::update_program(&*db, device_id, program_id.clone(), payload).await;
+
+    // ── MSSQL write (if center DB active, best-effort) ──
     if let Some(pool) = &state.mssql_pool {
         use crate::database_management::mssql_generic_crud;
-        let all = mssql_generic_crud::select_by_device(pool, "PROGRAMS", device_id)
-            .await
-            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        let found = all.iter().find(|p| {
-            p.get("Program_ID").and_then(|v| v.as_str()) == Some(&program_id)
-                || p.get("program_id").and_then(|v| v.as_str()) == Some(&program_id)
-        });
-        let row_id = match found {
-            Some(p) => p.get("id").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
-            None => return Err(StatusCode::NOT_FOUND),
-        };
-        let json_payload = serde_json::to_value(&payload)
-            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        mssql_generic_crud::update_row(pool, "PROGRAMS", row_id, &json_payload)
-            .await
-            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return Ok(Json(json!({
-            "program": json_payload,
-            "message": "Program updated successfully"
-        })));
+        if let Ok(all) = mssql_generic_crud::select_by_device(pool, "PROGRAMS", device_id).await {
+            let found = all.iter().find(|p| {
+                p.get("Program_ID").and_then(|v| v.as_str()) == Some(&program_id)
+                    || p.get("program_id").and_then(|v| v.as_str()) == Some(&program_id)
+            });
+            if let Some(p) = found {
+                let row_id = p.get("id").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+                let _ = mssql_generic_crud::update_row(pool, "PROGRAMS", row_id, &json_payload).await;
+            }
+        }
     }
 
-    // ── SeaORM branch ──
-    let db = get_t3_device_conn!(state);
-
-    match T3ProgramService::update_program(&*db, device_id, program_id, payload).await {
+    match sqlite_result {
         Ok(Some(program)) => Ok(Json(json!({
             "program": program,
             "message": "Program updated successfully"
@@ -1520,37 +1441,27 @@ async fn delete_program(
     State(state): State<T3AppState>,
     Path((device_id, program_id)): Path<(i32, String)>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
+    // ── SQLite delete (always, primary) ──
+    let db = get_t3_device_conn!(state);
+    let sqlite_result = T3ProgramService::delete_program(&*db, device_id, program_id.clone()).await;
+
+    // ── MSSQL delete (if center DB active, best-effort) ──
     if let Some(pool) = &state.mssql_pool {
         use crate::database_management::mssql_generic_crud;
-        let all = mssql_generic_crud::select_by_device(pool, "PROGRAMS", device_id)
-            .await
-            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        let found = all.iter().find(|p| {
-            p.get("Program_ID").and_then(|v| v.as_str()) == Some(&program_id)
-                || p.get("program_id").and_then(|v| v.as_str()) == Some(&program_id)
-        });
-        let row_id = match found {
-            Some(p) => p.get("id").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
-            None => return Err(StatusCode::NOT_FOUND),
-        };
-        let rows = mssql_generic_crud::delete_row(pool, "PROGRAMS", row_id)
-            .await
-            .map_err(|e| { eprintln!("MSSQL error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return if rows > 0 {
-            Ok(Json(json!({ "message": "Program deleted successfully" })))
-        } else {
-            Err(StatusCode::NOT_FOUND)
-        };
+        if let Ok(all) = mssql_generic_crud::select_by_device(pool, "PROGRAMS", device_id).await {
+            let found = all.iter().find(|p| {
+                p.get("Program_ID").and_then(|v| v.as_str()) == Some(&program_id)
+                    || p.get("program_id").and_then(|v| v.as_str()) == Some(&program_id)
+            });
+            if let Some(p) = found {
+                let row_id = p.get("id").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+                let _ = mssql_generic_crud::delete_row(pool, "PROGRAMS", row_id).await;
+            }
+        }
     }
 
-    // ── SeaORM branch ──
-    let db = get_t3_device_conn!(state);
-
-    match T3ProgramService::delete_program(&*db, device_id, program_id).await {
-        Ok(true) => Ok(Json(json!({
-            "message": "Program deleted successfully"
-        }))),
+    match sqlite_result {
+        Ok(true) => Ok(Json(json!({ "message": "Program deleted successfully" }))),
         Ok(false) => Err(StatusCode::NOT_FOUND),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
     }
@@ -1770,25 +1681,20 @@ async fn create_trendlog(
     State(state): State<T3AppState>,
     Json(payload): Json<CreateTrendlogRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
+    let json_payload = serde_json::to_value(&payload)
+        .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+
+    // ── SQLite write (always) ──
+    let db = get_t3_device_conn!(state);
+    let sqlite_result = T3TrendlogService::create_trendlog(&*db, payload).await;
+
+    // ── MSSQL write (if center DB active) ──
     if let Some(pool) = &state.mssql_pool {
         use crate::database_management::mssql_generic_crud;
-        let json_payload = serde_json::to_value(&payload)
-            .map_err(|e| { eprintln!("Serialize error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        let id = mssql_generic_crud::insert_row(pool, "TRENDLOGS", &json_payload)
-            .await
-            .map_err(|e| { eprintln!("MSSQL create trendlog error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return Ok(Json(json!({
-            "trendlog": json_payload,
-            "id": id,
-            "message": "Trendlog created successfully"
-        })));
+        let _ = mssql_generic_crud::insert_row(pool, "TRENDLOGS", &json_payload).await;
     }
 
-    // ── SeaORM branch ──
-    let db = get_t3_device_conn!(state);
-
-    match T3TrendlogService::create_trendlog(&*db, payload).await {
+    match sqlite_result {
         Ok(trendlog) => Ok(Json(json!({
             "trendlog": trendlog,
             "message": "Trendlog created successfully"
@@ -2128,24 +2034,9 @@ async fn create_table_record(
     Path(table): Path<String>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
-    if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
-
-        let id = mssql_generic_crud::insert_row(pool, &table, &payload)
-            .await
-            .map_err(|e| { eprintln!("MSSQL insert error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return Ok(Json(json!({
-            "message": format!("Record created successfully in {}", table),
-            "id": id,
-            "table": table
-        })));
-    }
-
-    // ── SeaORM branch ──
+    // ── SQLite write (always, primary) ──
     let db = get_t3_device_conn!(state);
-
-    if let Some(obj) = payload.as_object() {
+    let sqlite_result = if let Some(obj) = payload.as_object() {
         let columns: Vec<String> = obj.keys().cloned().collect();
         let values: Vec<String> = obj.values().map(|v| {
             match v {
@@ -2155,29 +2046,31 @@ async fn create_table_record(
                 _ => "NULL".to_string(),
             }
         }).collect();
-
         let query = format!(
             "INSERT INTO {} ({}) VALUES ({})",
-            table,
-            columns.join(", "),
-            values.join(", ")
+            table, columns.join(", "), values.join(", ")
         );
-
-        match db.execute(Statement::from_string(db.get_database_backend(), query)).await {
-            Ok(result) => {
-                Ok(Json(json!({
-                    "message": format!("Record created successfully in {}", table),
-                    "id": result.last_insert_id(),
-                    "table": table
-                })))
-            }
-            Err(e) => {
-                eprintln!("Database error: {}", e);
-                Err(StatusCode::INTERNAL_SERVER_ERROR)
-            }
-        }
+        db.execute(Statement::from_string(db.get_database_backend(), query)).await
     } else {
-        Err(StatusCode::BAD_REQUEST)
+        return Err(StatusCode::BAD_REQUEST);
+    };
+
+    // ── MSSQL write (if center DB active, best-effort) ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let _ = mssql_generic_crud::insert_row(pool, &table, &payload).await;
+    }
+
+    match sqlite_result {
+        Ok(result) => Ok(Json(json!({
+            "message": format!("Record created successfully in {}", table),
+            "id": result.last_insert_id(),
+            "table": table
+        }))),
+        Err(e) => {
+            eprintln!("Database error: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 
@@ -2187,25 +2080,9 @@ async fn update_table_record(
     Path((table, id)): Path<(String, i32)>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
-    if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
-
-        let rows_affected = mssql_generic_crud::update_row(pool, &table, id, &payload)
-            .await
-            .map_err(|e| { eprintln!("MSSQL update error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return Ok(Json(json!({
-            "message": format!("Record {} updated successfully in {}", id, table),
-            "id": id,
-            "table": table,
-            "rows_affected": rows_affected
-        })));
-    }
-
-    // ── SeaORM branch ──
+    // ── SQLite write (always, primary) ──
     let db = get_t3_device_conn!(state);
-
-    if let Some(obj) = payload.as_object() {
+    let sqlite_result = if let Some(obj) = payload.as_object() {
         let updates: Vec<String> = obj.iter().map(|(key, value)| {
             let val_str = match value {
                 Value::String(s) => format!("'{}'", s.replace("'", "''")),
@@ -2215,29 +2092,28 @@ async fn update_table_record(
             };
             format!("{} = {}", key, val_str)
         }).collect();
-
-        let query = format!(
-            "UPDATE {} SET {} WHERE id = {}",
-            table,
-            updates.join(", "),
-            id
-        );
-
-        match db.execute(Statement::from_string(db.get_database_backend(), query)).await {
-            Ok(_) => {
-                Ok(Json(json!({
-                    "message": format!("Record {} updated successfully in {}", id, table),
-                    "id": id,
-                    "table": table
-                })))
-            }
-            Err(e) => {
-                eprintln!("Database error: {}", e);
-                Err(StatusCode::INTERNAL_SERVER_ERROR)
-            }
-        }
+        let query = format!("UPDATE {} SET {} WHERE id = {}", table, updates.join(", "), id);
+        db.execute(Statement::from_string(db.get_database_backend(), query)).await
     } else {
-        Err(StatusCode::BAD_REQUEST)
+        return Err(StatusCode::BAD_REQUEST);
+    };
+
+    // ── MSSQL write (if center DB active, best-effort) ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_generic_crud;
+        let _ = mssql_generic_crud::update_row(pool, &table, id, &payload).await;
+    }
+
+    match sqlite_result {
+        Ok(_) => Ok(Json(json!({
+            "message": format!("Record {} updated successfully in {}", id, table),
+            "id": id,
+            "table": table
+        }))),
+        Err(e) => {
+            eprintln!("Database error: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 
@@ -2246,34 +2122,23 @@ async fn delete_table_record(
     State(state): State<T3AppState>,
     Path((table, id)): Path<(String, i32)>,
 ) -> Result<Json<Value>, StatusCode> {
-    // ── MSSQL branch ──
+    // ── SQLite delete (always, primary) ──
+    let db = get_t3_device_conn!(state);
+    let query = format!("DELETE FROM {} WHERE id = {}", table, id);
+    let sqlite_result = db.execute(Statement::from_string(db.get_database_backend(), query)).await;
+
+    // ── MSSQL delete (if center DB active, best-effort) ──
     if let Some(pool) = &state.mssql_pool {
         use crate::database_management::mssql_generic_crud;
-
-        let rows_affected = mssql_generic_crud::delete_row(pool, &table, id)
-            .await
-            .map_err(|e| { eprintln!("MSSQL delete error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        return Ok(Json(json!({
-            "message": format!("Record {} deleted successfully from {}", id, table),
-            "id": id,
-            "table": table,
-            "rows_affected": rows_affected
-        })));
+        let _ = mssql_generic_crud::delete_row(pool, &table, id).await;
     }
 
-    // ── SeaORM branch ──
-    let db = get_t3_device_conn!(state);
-
-    let query = format!("DELETE FROM {} WHERE id = {}", table, id);
-
-    match db.execute(Statement::from_string(db.get_database_backend(), query)).await {
-        Ok(_) => {
-            Ok(Json(json!({
-                "message": format!("Record {} deleted successfully from {}", id, table),
-                "id": id,
-                "table": table
-            })))
-        }
+    match sqlite_result {
+        Ok(_) => Ok(Json(json!({
+            "message": format!("Record {} deleted successfully from {}", id, table),
+            "id": id,
+            "table": table
+        }))),
         Err(e) => {
             eprintln!("Database error: {}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)

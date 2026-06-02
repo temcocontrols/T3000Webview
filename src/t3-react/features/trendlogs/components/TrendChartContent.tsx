@@ -1702,6 +1702,9 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             }
           } else if (typeof rawDa === 'number') {
             updatedSeries[seriesIndex].digitalAnalog = rawDa === 0 ? 'Digital' : 'Analog';
+          } else if (typeof point.is_analog === 'boolean') {
+            // API returns is_analog boolean when digitalAnalog/digital_analog fields are absent
+            updatedSeries[seriesIndex].digitalAnalog = point.is_analog ? 'Analog' : 'Digital';
           }
 
           // Off/On-like unit labels imply digital state mapping.
@@ -1714,9 +1717,20 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           // Check if this timestamp already exists (deduplication)
           const exists = updatedSeries[seriesIndex].data.some((d) => d.timestamp === timestamp);
           if (!exists) {
+            // T3000 storage convention:
+            //   Analog points (digital_analog=1, is_analog=true): stored as actual × 1000
+            //     → API `value` field (÷1000) is correct for display
+            //   Counter/accumulator VARIABLE points (digital_analog=0, is_analog=false):
+            //     stored as raw integer count, no ×1000 scaling
+            //     → must use `original_value` to match T3000 native display
+            //   INPUT/OUTPUT: always use scaled `value` regardless of digital_analog
+            const pt = String(point.point_type ?? '').toUpperCase();
+            const isVarType = pt === 'VAR' || pt === 'VARIABLE' || pt.startsWith('VAR');
+            // is_analog=false means counter/accumulator; default to true (analog) when unknown
+            const isAnalogPoint = point.is_analog !== false;
             updatedSeries[seriesIndex].data.push({
               timestamp,
-              value: point.value,
+              value: (isVarType && !isAnalogPoint) ? (point.original_value ?? point.value) : point.value,
             });
           }
 
@@ -1873,12 +1887,18 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             });
           }
 
+          // Preserve existing data to prevent flash-to-blank when parent re-renders
+          // and passes a new props.monitorInputs reference with same content
+          const existingData = seriesRef.current.find(
+            (s) => s.pointId === pointId && s.pointType === pointTypeStr
+          )?.data ?? [];
+
           return {
             name: input.pointLabel || point?.label || point?.fullLabel || pointId,
             pointId,
             pointType: pointTypeStr,
             pointIndex: pointIndex,
-            data: [],
+            data: existingData,
             color: CHART_COLORS[index % CHART_COLORS.length],
             unit: resolvedUnit,
             digitalAnalog,
@@ -1941,12 +1961,16 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             digitalAnalog = 'Digital';
           }
 
+          const existingItemData = seriesRef.current.find(
+            (s) => s.pointId === pointId && s.pointType === pointTypeStr
+          )?.data ?? [];
+
           generatedSeries.push({
             name: pointId,
             pointId,
             pointType: pointTypeStr,
             pointIndex: pointNumber + 1, // Convert to 1-based for API
-            data: [],
+            data: existingItemData,
             color: CHART_COLORS[index % CHART_COLORS.length],
             unit: rangeUnit,
             digitalAnalog: digitalAnalog as 'Analog' | 'Digital',
@@ -2021,7 +2045,9 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
    * Matches items by item.id === series.pointId and item.pid === series.panelId,
    * then pushes { timestamp, value } directly to the chart — no DB read.
    */
-  const pollRealtimeData = useCallback(async () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // @ts-ignore -- kept for FFI re-enable; replace setInterval(() => loadHistoricalData(true), ...) calls when Action=15 is stable
+  const _pollRealtimeData = useCallback(async () => {
     const currentSeries = seriesRef.current;
     if (!serialNumber || !panelId || currentSeries.length === 0) return;
 
@@ -2482,12 +2508,12 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       // Step 3: Mark as initialized
       hasLoadedInitialDataRef.current = true;
 
-      // Step 4: Start realtime polling interval (Vue: startRealTimeUpdates)
-      // Mirrors Vue's addRealtimeDataPoint interval — polls history API for new points
+      // Step 4: Periodic history reload (FFI realtime polling via Action=15 disabled — history API only)
+      // TODO: re-enable pollRealtimeData when FFI Action=15 is stable
       if (!realtimeIntervalRef.current) {
         const intervalMs = calcPollIntervalMs();
-        console.log(`📡 TrendChartContent: Starting realtime poll every ${intervalMs / 1000}s`);
-        realtimeIntervalRef.current = setInterval(pollRealtimeData, intervalMs);
+        console.log(`📡 TrendChartContent: Starting history reload poll every ${intervalMs / 1000}s`);
+        realtimeIntervalRef.current = setInterval(() => loadHistoricalData(true), intervalMs);
       }
 
       console.log('TrendChartContent: Initialization completed');
@@ -2576,7 +2602,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           console.log('馃搳 TrendChartContent: Auto Scroll ON - Loading historical + starting real-time');
           await loadHistoricalData();
 
-          // Ensure real-time updates are active
+          // Ensure periodic history reload is active (FFI realtime polling disabled)
+          // TODO: re-enable setInterval(pollRealtimeData, ...) when FFI Action=15 is stable
           if (!realtimeIntervalRef.current) {
             const entry = props.itemData?.t3Entry;
             const totalSecs = entry
@@ -2585,8 +2612,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                 + (Number(entry.second_interval_time) || 0)
               : 0;
             const intervalMs = totalSecs > 0 ? Math.max(totalSecs * 1000, 15000) : 15000;
-            console.log(`📡 TrendChartContent: Starting real-time updates every ${intervalMs / 1000}s`);
-            realtimeIntervalRef.current = setInterval(pollRealtimeData, intervalMs);
+            console.log(`📡 TrendChartContent: Starting history reload poll every ${intervalMs / 1000}s`);
+            realtimeIntervalRef.current = setInterval(() => loadHistoricalData(true), intervalMs);
           }
         } else {
           // Auto Scroll OFF: Load historical data only
@@ -2642,17 +2669,18 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     console.log('馃攧 TrendChartContent: Auto Scroll state changed', { isRealtime });
 
     if (isRealtime) {
-      // Start real-time updates
+      // Start periodic history reload (FFI realtime polling disabled)
+      // TODO: replace with setInterval(pollRealtimeData, 5000) when FFI Action=15 is stable
       if (!realtimeIntervalRef.current) {
-        console.log('鈻讹笍 TrendChartContent: Starting real-time updates interval');
+        console.log('TrendChartContent: Starting history reload interval');
         realtimeIntervalRef.current = setInterval(() => {
-          pollRealtimeData();
-        }, 5000);
+          loadHistoricalData(true);
+        }, 15000);
       }
     } else {
-      // Stop real-time updates
+      // Stop interval
       if (realtimeIntervalRef.current) {
-        console.log('鈴革笍 TrendChartContent: Stopping real-time updates interval');
+        console.log('TrendChartContent: Stopping reload interval');
         clearInterval(realtimeIntervalRef.current);
         realtimeIntervalRef.current = null;
       }
@@ -3075,7 +3103,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           disabled={loading || timeBase === 'custom' || timeBaseOrder.indexOf(timeBase) === 0}
           size="small"
           style={{ fontSize: '11px', padding: '2px 6px', fontWeight: 'normal' }}
-          title="Zoom In (鈫?"
+          title="Zoom In"
         >
           Zoom In
         </Button>
@@ -3086,7 +3114,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           disabled={loading || timeBase === 'custom' || timeBaseOrder.indexOf(timeBase) === timeBaseOrder.length - 1}
           size="small"
           style={{ fontSize: '11px', padding: '2px 6px', fontWeight: 'normal' }}
-          title="Zoom Out (鈫?"
+          title="Zoom Out"
         >
           Zoom Out
         </Button>

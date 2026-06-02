@@ -31,6 +31,60 @@
   border-left-color: #8a8886;
 }
 
+.deviceRowWrapper {
+  width: 100%;
+  position: relative;
+}
+
+.deviceInfoIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.deviceInfoTooltip {
+  min-width: 260px;
+  max-width: 360px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.deviceInfoPopover {
+  position: fixed;
+  z-index: 12000;
+  min-width: 260px;
+  max-width: 360px;
+  background: #ffffff;
+  border: 1px solid #d1d1d1;
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  padding: 8px 10px;
+  pointer-events: auto;
+}
+
+.deviceInfoRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 2px;
+}
+
+.deviceInfoRow span {
+  color: #605e5c;
+}
+
+.deviceInfoRow strong {
+  color: #201f1e;
+  font-weight: 600;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.deviceInfoSpacer {
+  height: 6px;
+}
+
 /* Override Fluent UI Tree defaults for Azure Portal look */
 :global(.fui-Tree) {
   background-color: transparent !important;
@@ -88,6 +142,11 @@
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
+}
+
+:global(.fui-TreeItemLayout__iconAfter),
+:global(.fui-TreeItemLayout__iconAfter *) {
+  pointer-events: auto !important;
 }
 
 /* Azure Portal scrollbar styling */

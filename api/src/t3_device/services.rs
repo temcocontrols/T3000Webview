@@ -23,7 +23,7 @@ pub struct DeviceWithPoints {
     pub point_count: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateDeviceRequest {
     #[serde(rename = "SerialNumber", alias = "serialNumber")]
     pub serial_number: Option<i32>,                // T3000: SerialNumber (primary key, renamed from Serial_ID)

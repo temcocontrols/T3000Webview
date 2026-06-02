@@ -58,7 +58,7 @@ pub struct TrendlogDataPoint {
     pub units: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateTrendlogDataRequest {
     pub serial_number: i32,
     pub panel_id: i32,
