@@ -799,7 +799,7 @@ const InputsPageDesktop: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && (item.panel || '---')}
+          {!isEmptyRow(item) && (item.panel || '')}
         </TableCellLayout>
       ),
     }),
@@ -838,7 +838,7 @@ const InputsPageDesktop: React.FC = () => {
                   />
                 </button> */}
                 <Text size={200} weight="regular">
-                  {item.inputId || (item.inputIndex ? `IN${parseInt(item.inputIndex) + 1}` : '---')}
+                  {item.inputId || (item.inputIndex ? `IN${parseInt(item.inputIndex) + 1}` : '')}
                 </Text>
               </div>
             )}
@@ -899,7 +899,7 @@ const InputsPageDesktop: React.FC = () => {
                   onDoubleClick={() => handleCellDoubleClick(item, 'fullLabel', item.fullLabel || '')}
                   title="Double-click to edit"
                 >
-                  <Text size={200} weight="regular">{item.fullLabel || 'Unnamed'}</Text>
+                  <Text size={200} weight="regular">{item.fullLabel || ''}</Text>
                 </div>
               )
             )}
@@ -960,7 +960,7 @@ const InputsPageDesktop: React.FC = () => {
                   onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
                   title="Double-click to edit"
                 >
-                  <Text size={200} weight="regular">{item.label || '---'}</Text>
+                  <Text size={200} weight="regular">{item.label || ''}</Text>
                 </div>
               )
             )}
@@ -1113,7 +1113,7 @@ const InputsPageDesktop: React.FC = () => {
                   title="Double-click to edit"
                 >
                   <span className={styles.valueBadge}>
-                    {item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}
+                    {item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : ''}
                   </span>
                 </div>
               )
@@ -1469,7 +1469,7 @@ const InputsPageDesktop: React.FC = () => {
           currentRange={parseInt(selectedInputForRange.rangeField || selectedInputForRange.range || '0', 10)}
           digitalAnalog={parseInt(selectedInputForRange.digitalAnalog || '0', 10)}
           onSave={handleRangeSave}
-          inputLabel={`Input ${selectedInputForRange.inputIndex || selectedInputForRange.inputId} - ${selectedInputForRange.fullLabel || 'Unnamed'}`}
+          inputLabel={`Input ${selectedInputForRange.inputIndex || selectedInputForRange.inputId} - ${selectedInputForRange.fullLabel || ''}`}
         />
       )}
     </div>

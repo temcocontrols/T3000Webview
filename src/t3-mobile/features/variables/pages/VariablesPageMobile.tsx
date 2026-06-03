@@ -278,7 +278,7 @@ export const VariablesPageMobile: React.FC = () => {
           currentRange={parseInt(selectedVariableForRange.rangeField || '0', 10)}
           digitalAnalog={parseInt(selectedVariableForRange.digitalAnalog || '0', 10)}
           onSave={handleRangeSave}
-          inputLabel={`Variable ${parseInt(selectedVariableForRange.variableIndex || '0') + 1} - ${selectedVariableForRange.fullLabel || 'Unnamed'}`}
+          inputLabel={`Variable ${parseInt(selectedVariableForRange.variableIndex || '0') + 1} - ${selectedVariableForRange.fullLabel || ''}`}
         />
       )}
     </div>

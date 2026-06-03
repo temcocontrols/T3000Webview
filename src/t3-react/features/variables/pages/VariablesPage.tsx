@@ -833,7 +833,7 @@ const VariablesPageDesktop: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && (item.panel || '---')}
+          {!isEmptyRow(item) && (item.panel || '')}
         </TableCellLayout>
       ),
     }),
@@ -884,7 +884,7 @@ const VariablesPageDesktop: React.FC = () => {
                   : null}
               </span>
               <Text size={200} weight="regular">
-                {item.variableId || (item.variableIndex ? `VAR${parseInt(item.variableIndex) + 1}` : '---')}
+                {item.variableId || (item.variableIndex ? `VAR${parseInt(item.variableIndex) + 1}` : '')}
               </Text>
             </div>
           </TableCellLayout>
@@ -947,7 +947,7 @@ const VariablesPageDesktop: React.FC = () => {
                 onDoubleClick={() => handleCellDoubleClick(item, 'fullLabel', item.fullLabel || '')}
                 title="Double-click to edit"
               >
-                <Text size={200} weight="regular">{item.fullLabel || 'Unnamed'}</Text>
+                <Text size={200} weight="regular">{item.fullLabel || ''}</Text>
               </div>
             )}
           </TableCellLayout>
@@ -1010,7 +1010,7 @@ const VariablesPageDesktop: React.FC = () => {
                 onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
                 title="Double-click to edit"
               >
-                <Text size={200} weight="regular">{item.label || '---'}</Text>
+                <Text size={200} weight="regular">{item.label || ''}</Text>
               </div>
             )}
           </TableCellLayout>
@@ -1074,7 +1074,7 @@ const VariablesPageDesktop: React.FC = () => {
                 onDoubleClick={() => handleCellDoubleClick(item, 'fValue', item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '0')}
                 title="Double-click to edit"
               >
-                <span className={styles.valueBadge}>{item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}</span>
+                <span className={styles.valueBadge}>{item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : ''}</span>
               </div>
             )}
           </TableCellLayout>

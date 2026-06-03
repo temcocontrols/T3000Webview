@@ -440,7 +440,7 @@ export const ProgramsPage: React.FC = () => {
                   className={isRefreshingThis ? styles.rotating : ''}
                 />
               </button> */}
-              <Text size={200} weight="regular">{item.programId || '---'}</Text>
+              <Text size={200} weight="regular">{item.programId || ''}</Text>
             </div>
           </TableCellLayout>
         );
@@ -618,7 +618,7 @@ export const ProgramsPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && (item.programPointer || '---')}
+          {!isEmptyRow(item) && (item.programPointer || '')}
         </TableCellLayout>
       ),
     }),
@@ -665,7 +665,7 @@ export const ProgramsPage: React.FC = () => {
                 onDoubleClick={() => handleCellDoubleClick(item, 'programList', item.programList || '')}
                 title="Double-click to edit"
               >
-                <Text size={200} weight="regular">{item.programList || '---'}</Text>
+                <Text size={200} weight="regular">{item.programList || ''}</Text>
               </div>
             )}
           </TableCellLayout>

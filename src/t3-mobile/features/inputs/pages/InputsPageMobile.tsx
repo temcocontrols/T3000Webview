@@ -290,7 +290,7 @@ export const InputsPageMobile: React.FC = () => {
           currentRange={parseInt(selectedInputForRange.rangeField || selectedInputForRange.range || '0', 10)}
           digitalAnalog={parseInt(selectedInputForRange.digitalAnalog || '0', 10)}
           onSave={handleRangeSave}
-          inputLabel={`Input ${parseInt(selectedInputForRange.inputIndex || '0') + 1} - ${selectedInputForRange.fullLabel || 'Unnamed'}`}
+          inputLabel={`Input ${parseInt(selectedInputForRange.inputIndex || '0') + 1} - ${selectedInputForRange.fullLabel || ''}`}
         />
       )}
     </div>

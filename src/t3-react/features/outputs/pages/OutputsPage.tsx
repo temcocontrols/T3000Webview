@@ -740,7 +740,7 @@ const OutputsPageDesktop: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && (item.panel || '---')}
+          {!isEmptyRow(item) && (item.panel || '')}
         </TableCellLayout>
       ),
     }),
@@ -778,7 +778,7 @@ const OutputsPageDesktop: React.FC = () => {
                   />
                 </button> */}
                 <Text size={200} weight="regular">
-                  {item.outputId || (item.outputIndex ? `OUT${parseInt(item.outputIndex) + 1}` : '---')}
+                  {item.outputId || (item.outputIndex ? `OUT${parseInt(item.outputIndex) + 1}` : '')}
                 </Text>
               </div>
             )}
@@ -839,7 +839,7 @@ const OutputsPageDesktop: React.FC = () => {
                   onDoubleClick={() => handleCellDoubleClick(item, 'fullLabel', item.fullLabel || '')}
                   title="Double-click to edit"
                 >
-                  <Text size={200} weight="regular">{item.fullLabel || 'Unnamed'}</Text>
+                  <Text size={200} weight="regular">{item.fullLabel || ''}</Text>
                 </div>
               )
             )}
@@ -900,7 +900,7 @@ const OutputsPageDesktop: React.FC = () => {
                   onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
                   title="Double-click to edit"
                 >
-                  <Text size={200} weight="regular">{item.label || '---'}</Text>
+                  <Text size={200} weight="regular">{item.label || ''}</Text>
                 </div>
               )
             )}
@@ -1092,7 +1092,7 @@ const OutputsPageDesktop: React.FC = () => {
                   title="Double-click to edit"
                 >
                   <span className={styles.valueBadge}>
-                    {item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}
+                    {item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : ''}
                   </span>
                 </div>
               )
@@ -1517,7 +1517,7 @@ const OutputsPageDesktop: React.FC = () => {
           currentRange={parseInt(selectedOutput.rangeField || selectedOutput.range || '0', 10)}
           digitalAnalog={parseInt(selectedOutput.digitalAnalog || '0', 10)}
           onSave={handleRangeSave}
-          inputLabel={`Output ${selectedOutput.outputIndex || selectedOutput.outputId} - ${selectedOutput.fullLabel || 'Unnamed'}`}
+          inputLabel={`Output ${selectedOutput.outputIndex || selectedOutput.outputId} - ${selectedOutput.fullLabel || ''}`}
         />
       )}
     </div>

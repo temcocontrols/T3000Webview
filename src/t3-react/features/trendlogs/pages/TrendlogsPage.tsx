@@ -2335,7 +2335,7 @@ export const TrendLogsPage: React.FC = () => {
                     className={`${styles.iconSmall} ${isRefreshingThis ? styles.rotating : ''}`}
                   />
                 </button> */}
-                <Text size={200} weight="regular">{trendlogIndex || '---'}</Text>
+                <Text size={200} weight="regular">{trendlogIndex || ''}</Text>
               </div>
             )}
           </TableCellLayout>
@@ -2348,7 +2348,7 @@ export const TrendLogsPage: React.FC = () => {
       renderHeaderCell: () => <span>Label</span>,
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && <Text size={200}>{item.trendlogLabel || '---'}</Text>}
+          {!isEmptyRow(item) && <Text size={200}>{item.trendlogLabel || ''}</Text>}
         </TableCellLayout>
       ),
     }),
@@ -2357,7 +2357,7 @@ export const TrendLogsPage: React.FC = () => {
       renderHeaderCell: () => <span>Interval</span>,
       renderCell: (item) => {
         const sec = item.intervalSeconds;
-        let display = '---';
+        let display = '';
         if (sec != null) {
           const h = Math.floor(sec / 3600);
           const m = Math.floor((sec % 3600) / 60);
@@ -2376,7 +2376,7 @@ export const TrendLogsPage: React.FC = () => {
       renderHeaderCell: () => <span>Buffer Size</span>,
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && <Text size={200}>{item.bufferSize ?? '---'}</Text>}
+          {!isEmptyRow(item) && <Text size={200}>{item.bufferSize ?? ''}</Text>}
         </TableCellLayout>
       ),
       compare: (a, b) => (a.bufferSize || 0) - (b.bufferSize || 0),
@@ -2401,7 +2401,7 @@ export const TrendLogsPage: React.FC = () => {
           <TableCellLayout>
             {!isEmptyRow(item) && (
               <Badge appearance={isAuto ? 'filled' : 'outline'} color="informative">
-                {isAuto ? 'Auto' : isManual ? 'Manual' : '---'}
+                {isAuto ? 'Auto' : isManual ? 'Manual' : ''}
               </Badge>
             )}
           </TableCellLayout>

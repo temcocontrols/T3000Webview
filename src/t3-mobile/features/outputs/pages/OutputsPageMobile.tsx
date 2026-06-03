@@ -284,7 +284,7 @@ export const OutputsPageMobile: React.FC = () => {
           currentRange={parseInt(selectedOutputForRange.rangeField || selectedOutputForRange.range || '0', 10)}
           digitalAnalog={parseInt(selectedOutputForRange.digitalAnalog || '0', 10)}
           onSave={handleRangeSave}
-          inputLabel={`Output ${parseInt(selectedOutputForRange.outputIndex || '0') + 1} - ${selectedOutputForRange.fullLabel || 'Unnamed'}`}
+          inputLabel={`Output ${parseInt(selectedOutputForRange.outputIndex || '0') + 1} - ${selectedOutputForRange.fullLabel || ''}`}
         />
       )}
     </div>
