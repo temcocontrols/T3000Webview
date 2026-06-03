@@ -176,15 +176,17 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             // Clean device names from database (remove null bytes and garbage from C++ buffers)
             // Also filter out (Unknown) devices — they are not real/discoverable devices
             const cleanedDevices = response.devices
-              .filter(device => {
-                const name = (device.nameShowOnTree || '').trim();
-                return name !== '(Unknown)' && name !== 'Unknown' && name !== '';
-              })
-              .map(device => ({
-                ...device,
-                nameShowOnTree: cleanDeviceName(device.nameShowOnTree, `Device ${device.serialNumber}`),
-                productName: cleanDeviceName(device.productName, ''),
-              }));
+              .map(device => {
+                const rawName = cleanDeviceName(device.nameShowOnTree, `Device ${device.serialNumber}`);
+                const isUnknown = rawName === '(Unknown)' || rawName === 'Unknown' || rawName === '';
+                return {
+                  ...device,
+                  nameShowOnTree: isUnknown
+                    ? `Panel ${device.panelNumber ?? '?'} (SN ${device.serialNumber})`
+                    : rawName,
+                  productName: cleanDeviceName(device.productName, ''),
+                };
+              });
 
             set({
               devices: cleanedDevices,
