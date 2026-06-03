@@ -324,30 +324,36 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             });
             console.log(`[loadDevicesWithSync] Known panels after filter: ${knownPanels.length} (filtered ${panels.length - knownPanels.length})`);
 
-            // Save to database (best effort)
+            // Save ALL panels to database (including Unknown ones)
+            // Tree display will filter them out later via buildTreeFromDevices
             let savedCount = 0;
             let failedCount = 0;
             try {
               const db = new T3Database(`${API_BASE_URL}/api`);
 
-              for (const panel of knownPanels) {
+              for (const panel of panels) {
                 let serialNumber: number | undefined;
                 let deviceData: any = undefined;
                 try {
                   serialNumber = panel.serial_number || panel.serialNumber;
 
-                  // Clean panel name - keep "(Unknown)" as-is, don't generate fake names
+                  // Keep original name in Product_Name, use meaningful fallback for show_label_name
                   const rawPanelName = panel.panel_name || panel.panelName;
                   const panelName = cleanDeviceName(rawPanelName, '(Unknown)');
+                  const panelNumber = panel.panel_number || panel.Panel_Number;
+                  const isUnknown = panelName === '(Unknown)' || panelName === 'Unknown' || panelName === '';
+                  const displayName = isUnknown
+                    ? `Panel ${panelNumber ?? '?'} (SN ${serialNumber})`
+                    : panelName;
 
                   deviceData = {
                     SerialNumber: serialNumber,
                     Product_Name: panelName,
                     Product_ID: panel.pid || panel.Product_ID || null,
-                    Panel_Number: panel.panel_number || panel.Panel_Number || null,
+                    Panel_Number: panelNumber,
                     MainBuilding_Name: 'Default_Building',
                     Building_Name: 'Local View',
-                    show_label_name: panelName,
+                    show_label_name: displayName,
                     // Don't set description - let backend handle it or leave null
                   };
 
