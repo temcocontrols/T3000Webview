@@ -2694,39 +2694,89 @@ export const TrendLogsPage: React.FC = () => {
                             </span>
                           </div>
                           <div className={styles.overviewSnapshotTile}>
-                            <span className={styles.overviewSnapshotKey}>Mode</span>
-                            <span className={styles.overviewSnapshotVal}>
-                              {((selectedMonitor.autoManual || '').toUpperCase() === 'AUTO' || selectedMonitor.autoManual === '1') ? 'Auto' : 'Manual'}
-                            </span>
-                          </div>
-                          <div className={styles.overviewSnapshotTile}>
                             <span className={styles.overviewSnapshotKey}>Interval</span>
                             <span className={styles.overviewSnapshotVal}>{formatSeconds(selectedMonitor.intervalSeconds ?? null)}</span>
                           </div>
                           <div className={styles.overviewSnapshotTile}>
-                            <span className={styles.overviewSnapshotKey}>Buffer</span>
-                            <span className={styles.overviewSnapshotVal}>{selectedMonitor.bufferSize ?? 'N/A'}</span>
-                          </div>
-                          <div className={styles.overviewSnapshotTile}>
                             <span className={styles.overviewSnapshotKey}>Inputs</span>
-                            <span className={styles.overviewSnapshotVal}>{monitorInputs.length}</span>
-                          </div>
-                          <div className={styles.overviewSnapshotTile}>
-                            <span className={styles.overviewSnapshotKey}>Slot #</span>
-                            <span className={styles.overviewSnapshotVal}>{selectedMonitor.trendlogIndex ?? 'N/A'}</span>
+                            <span className={styles.overviewSnapshotVal}>
+                              {monitorInputs.length}
+                              {monitorInputs.length > 0 && (
+                                <Tooltip
+                                  content={
+                                    <div style={{ maxHeight: 200, overflowY: 'auto', fontSize: 11, lineHeight: '18px' }}>
+                                      {monitorInputs.map((input, i) => {
+                                        const ptShort =
+                                          input.pointType === 'INPUT' ? 'IN' :
+                                          input.pointType === 'OUTPUT' ? 'OUT' :
+                                          input.pointType === 'VARIABLE' ? 'VAR' :
+                                          input.pointType;
+                                        const pointId = input.pointPanel
+                                          ? `${input.pointPanel}${ptShort}${input.pointIndex}`
+                                          : `${ptShort}${input.pointIndex}`;
+                                        const label = input.pointLabel || '-';
+                                        return (
+                                          <div key={i}>{label} — {pointId}</div>
+                                        );
+                                      })}
+                                    </div>
+                                  }
+                                  relationship="label"
+                                >
+                                  <InfoRegular className={styles.overviewInfoIcon} />
+                                </Tooltip>
+                              )}
+                            </span>
                           </div>
                           <div className={styles.overviewSnapshotTile}>
                             <span className={styles.overviewSnapshotKey}>Label</span>
-                            <span className={styles.overviewSnapshotVal}>{selectedMonitor.trendlogLabel?.trim() || <em style={{ color: '#8a8886', fontStyle: 'normal' }}>No label</em>}</span>
+                            <span className={styles.overviewSnapshotVal}>
+                              {selectedMonitor.trendlogId || 'N/A'}
+                              {selectedMonitor.trendlogLabel?.trim() ? ` - ${selectedMonitor.trendlogLabel.trim()}` : ''}
+                            </span>
                           </div>
-                          <div className={styles.overviewSnapshotTile}>
-                            <span className={styles.overviewSnapshotKey}>Mon ID</span>
-                            <span className={styles.overviewSnapshotVal}>{selectedMonitor.trendlogId || 'N/A'}</span>
-                          </div>
-                          <div className={styles.overviewSnapshotTile}>
-                            <span className={styles.overviewSnapshotKey}>Data size</span>
-                            <span className={styles.overviewSnapshotVal}>{selectedMonitor.dataSizeKb != null ? `${selectedMonitor.dataSizeKb} KB` : 'N/A'}</span>
-                          </div>
+                          {((): React.ReactNode => {
+                            const dataKb = parseFloat(selectedMonitor.dataSizeKb || '0');
+                            const intervalSec = selectedMonitor.intervalSeconds || 0;
+                            const inputsCount = monitorInputs.length;
+                            const recordsPerDay = intervalSec > 0 ? Math.round(86400 / intervalSec) : 0;
+                            const kbPerRecord = inputsCount > 0 && recordsPerDay > 0
+                              ? Math.max(0.2, dataKb / Math.max(recordsPerDay, 1))
+                              : 0.5;
+                            const kbPerDay = recordsPerDay * kbPerRecord;
+                            const kbPerDayFmt = kbPerDay >= 1024
+                              ? `${(kbPerDay / 1024).toFixed(1)} MB/day`
+                              : `${kbPerDay.toFixed(1)} KB/day`;
+                            const rpdStr = recordsPerDay > 0 ? `~${recordsPerDay} records/day` : 'N/A';
+                            return (
+                              <div className={`${styles.overviewSnapshotTile} ${styles.overviewSnapshotTileFull}`}>
+                                <span className={styles.overviewSnapshotKey}>
+                                  Resources
+                                  <Tooltip
+                                    content={
+                                      <div style={{ fontSize: 11, lineHeight: '16px' }}>
+                                        <div>{rpdStr} ({inputsCount} input{inputsCount !== 1 ? 's' : ''})</div>
+                                        <div>~{kbPerRecord.toFixed(1)} KB per record</div>
+                                        <div style={{ marginTop: 4, color: '#8a8886' }}>Increase interval to reduce rate</div>
+                                      </div>
+                                    }
+                                    relationship="label"
+                                  >
+                                    <InfoRegular className={styles.overviewInfoIcon} />
+                                  </Tooltip>
+                                </span>
+                                <div className={styles.overviewSnapshotRich}>
+                                  <div className={styles.overviewSnapshotRichLine}>
+                                    Data: {selectedMonitor.dataSizeKb != null ? `${selectedMonitor.dataSizeKb} KB` : '0 KB'}
+                                    {inputsCount > 0 ? ` | ${inputsCount} pt${inputsCount !== 1 ? 's' : ''}` : ''}
+                                  </div>
+                                  <div className={styles.overviewSnapshotRichLine}>
+                                    Rate: {recordsPerDay > 0 ? `${kbPerDayFmt} | ${rpdStr}` : 'N/A'}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       ) : (
                         <Text size={200} style={{ color: '#8a8886' }}>Select a monitor in the Default tab to see its snapshot here.</Text>
@@ -2740,22 +2790,6 @@ export const TrendLogsPage: React.FC = () => {
                       </div>
                       <div className={styles.overviewSnapshotGrid}>
                         <div className={styles.overviewSnapshotTile}>
-                          <span className={styles.overviewSnapshotKey}>Active monitors</span>
-                          <span className={styles.overviewSnapshotVal}>{activeMonitorCount}</span>
-                        </div>
-                        <div className={styles.overviewSnapshotTile}>
-                          <span className={styles.overviewSnapshotKey}>Avg interval</span>
-                          <span className={styles.overviewSnapshotVal}>{formatSeconds(avgIntervalSeconds)}</span>
-                        </div>
-                        <div className={styles.overviewSnapshotTile}>
-                          <span className={styles.overviewSnapshotKey}>Labeled monitors</span>
-                          <span className={styles.overviewSnapshotVal}>{monitorsWithLabel} / {trendLogs.length}</span>
-                        </div>
-                        <div className={styles.overviewSnapshotTile}>
-                          <span className={styles.overviewSnapshotKey}>Auto mode</span>
-                          <span className={styles.overviewSnapshotVal}>{autoModeCount}</span>
-                        </div>
-                        <div className={styles.overviewSnapshotTile}>
                           <span className={styles.overviewSnapshotKey}>Last synced</span>
                           <span className={styles.overviewSnapshotVal}>{pointSummaryLoading ? '…' : lastSyncedAgo}</span>
                         </div>
@@ -2764,16 +2798,8 @@ export const TrendLogsPage: React.FC = () => {
                           <span className={styles.overviewSnapshotVal}>{pointSummaryLoading ? '…' : syncSourceLabel}</span>
                         </div>
                         <div className={styles.overviewSnapshotTile}>
-                          <span className={styles.overviewSnapshotKey}>Slots free</span>
-                          <span className={styles.overviewSnapshotVal}>{Math.max(12 - trendLogs.length, 0)} / 12</span>
-                        </div>
-                        <div className={styles.overviewSnapshotTile}>
                           <span className={styles.overviewSnapshotKey}>Sync time</span>
                           <span className={`${styles.overviewSnapshotVal} ${styles.overviewSnapshotValSm}`}>{pointSummaryLoading ? '…' : (lastSyncedFmt || 'N/A')}</span>
-                        </div>
-                        <div className={styles.overviewSnapshotTile}>
-                          <span className={styles.overviewSnapshotKey}>Mon. inputs</span>
-                          <span className={styles.overviewSnapshotVal}>{selectedMonitor ? monitorInputs.length : '—'}</span>
                         </div>
                       </div>
                     </div>

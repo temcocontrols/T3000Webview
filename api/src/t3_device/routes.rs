@@ -1837,6 +1837,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         // T3000 Trendlog Data endpoints (TRENDLOG_DATA table - Historical Data)
         .route("/devices/:device_id/trendlogs/:trendlog_id/history", post(get_trendlog_history))
         .route("/devices/:device_id/trendlog-data/stats", get(get_trendlog_data_stats))
+        .route("/devices/:device_id/trendlog-data/usage", get(get_trendlog_data_usage))
         .route("/devices/:device_id/trendlog-data/recent", get(get_recent_trendlog_data))
         .route("/devices/:device_id/trendlog-data/smart", post(get_smart_trendlog_data))
         .route("/trendlog-data/realtime", post(save_realtime_trendlog_data))
@@ -2279,6 +2280,37 @@ async fn get_trendlog_data_stats(
     match T3TrendlogDataService::get_data_statistics(&*db, device_id, panel_id).await {
         Ok(stats) => Ok(Json(stats)),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+/// Get per-trendlog storage usage metrics (disk space, rate, estimates)
+async fn get_trendlog_data_usage(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<Value>, StatusCode> {
+    let panel_id = params.get("panel_id")
+        .and_then(|p| p.parse::<i32>().ok())
+        .unwrap_or(1);
+
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_trendlog_service;
+        let usage = mssql_trendlog_service::get_data_usage(pool, device_id, panel_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL usage error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(usage));
+    }
+
+    // ── SeaORM branch ──
+    let db = get_t3_device_conn!(state);
+
+    match T3TrendlogDataService::get_data_usage(&*db, device_id, panel_id).await {
+        Ok(usage) => Ok(Json(usage)),
+        Err(e) => {
+            eprintln!("Trendlog usage error: {:?}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 

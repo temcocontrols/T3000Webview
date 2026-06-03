@@ -615,6 +615,10 @@
   background: #faf9f8;
 }
 
+.overviewSnapshotTileFull {
+  grid-column: span 2;
+}
+
 .overviewSnapshotKey {
   font-size: 11px;
   color: #8a8886;
@@ -627,6 +631,27 @@
   font-size: 12px;
   font-weight: 600;
   color: #201f1e;
+}
+
+.overviewSnapshotRich {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.overviewSnapshotRichLine {
+  font-size: 11px;
+  font-weight: 500;
+  color: #201f1e;
+  line-height: 16px;
+}
+
+.overviewInfoIcon {
+  font-size: 12px;
+  color: #605e5c;
+  margin-left: 6px;
+  vertical-align: middle;
+  cursor: pointer;
 }
 
 .overviewSnapshotValSm {
