@@ -232,6 +232,14 @@ export const TrendLogsPage: React.FC = () => {
   const requestedTrendlogId = searchParams.get('trendlogId');
   const requestedPointSetName = searchParams.get('pointSetName');
 
+  // Refs to prevent stale closure in fetchTrendLogs (deps are only [selectedPanelId, selectedSerial])
+  const requestedMonitorIdRef = useRef(requestedMonitorId);
+  requestedMonitorIdRef.current = requestedMonitorId;
+  const requestedTrendlogIdRef = useRef(requestedTrendlogId);
+  requestedTrendlogIdRef.current = requestedTrendlogId;
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+
   const normalizeMonitorToken = useCallback((value?: string | null) => {
     return (value || '').toUpperCase().replace(/^(MON|TLOG)/, '');
   }, []);
@@ -935,8 +943,11 @@ export const TrendLogsPage: React.FC = () => {
 
       // Auto-select trendlog from query (if provided), else select first trendlog
       if (trendlogsWithIndex.length > 0) {
-        const requestedNormalized = normalizeMonitorToken(requestedMonitorId || requestedTrendlogId);
-        const isChartContext = activeTab === 'chart';
+        // Use refs to avoid stale closure — fetchTrendLogs deps are only [selectedPanelId, selectedSerial]
+        const reqMonId = requestedMonitorIdRef.current;
+        const reqTrendId = requestedTrendlogIdRef.current;
+        const requestedNormalized = normalizeMonitorToken(reqMonId || reqTrendId);
+        const isChartContext = activeTabRef.current === 'chart';
 
         // Point Sets chart mode uses a synthetic GLOBAL monitor with specific_points.
         // Do not auto-fallback to first physical monitor (MON1), or history calls will use MON1 path.
@@ -960,8 +971,8 @@ export const TrendLogsPage: React.FC = () => {
         // In chart context with an explicit requested monitor, never fallback to MON1.
         if (isChartContext && requestedNormalized && !queriedTrendlog) {
           console.warn('[TrendLogsPage] Requested monitor not found in chart context; skipping fallback selection.', {
-            requestedMonitorId,
-            requestedTrendlogId,
+            requestedMonitorId: reqMonId,
+            requestedTrendlogId: reqTrendId,
           });
           setSelectedMonitor(null);
           setMonitorInputs([]);
