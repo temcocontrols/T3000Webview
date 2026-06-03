@@ -236,13 +236,19 @@ pub unsafe fn load_t3000_function() -> bool {
     false
 }
 
+/// Maximum time to wait for the FFI global lock before giving up.
+const FFI_LOCK_TIMEOUT_SECS: u64 = 60;
+
+// Re-export the timeout-based lock from t3_ffi_api_service for sync service use.
+use crate::t3_device::t3_ffi_api_service::ffi_call_lock_timeout as try_acquire_ffi_lock;
+
 // Safe wrapper to call BacnetWebView_HandleWebViewMsg
 fn call_handle_webview_msg(action: i32, buffer: &mut [u8]) -> Result<i32, String> {
-    // Acquire the global FFI serialization lock (shared with HTTP endpoint and trendlog refresh).
-    // This prevents concurrent C++ calls which crash the non-reentrant T3000 FFI.
-    let _guard = crate::t3_device::t3_ffi_api_service::ffi_call_lock()
-        .lock()
-        .unwrap_or_else(|p| p.into_inner());
+    // Acquire the global FFI serialization lock with TIMEOUT.
+    // Previously used .lock() which blocks forever — if a prior spawn_blocking
+    // FFI call hangs, all subsequent calls deadlock waiting for the lock.
+    let _guard = try_acquire_ffi_lock(FFI_LOCK_TIMEOUT_SECS)
+        .ok_or_else(|| "FFI lock acquisition timed out — prior C++ FFI call may be stuck".to_string())?;
     unsafe {
         if !load_t3000_function() {
             return Err(
@@ -265,11 +271,8 @@ fn call_handle_webview_msg(action: i32, buffer: &mut [u8]) -> Result<i32, String
 
 // Safe wrapper to call GetDeviceBasicSettings (new function)
 fn call_get_device_basic_settings(panel_id: i32, buffer: &mut [u8]) -> Result<i32, String> {
-    // Share the same global lock used by all HandleWebViewMsg entry points.
-    // These FFI functions are also non-reentrant in T3000.exe.
-    let _guard = crate::t3_device::t3_ffi_api_service::ffi_call_lock()
-        .lock()
-        .unwrap_or_else(|p| p.into_inner());
+    let _guard = try_acquire_ffi_lock(FFI_LOCK_TIMEOUT_SECS)
+        .ok_or_else(|| "FFI lock acquisition timed out".to_string())?;
     unsafe {
         if !load_t3000_function() {
             return Err("T3000 functions not loaded".to_string());
@@ -291,11 +294,8 @@ fn call_get_device_basic_settings(panel_id: i32, buffer: &mut [u8]) -> Result<i3
 
 // Safe wrapper to call GetDeviceNetworkConfig (new function)
 fn call_get_device_network_config(panel_id: i32, buffer: &mut [u8]) -> Result<i32, String> {
-    // Share the same global lock used by all HandleWebViewMsg entry points.
-    // These FFI functions are also non-reentrant in T3000.exe.
-    let _guard = crate::t3_device::t3_ffi_api_service::ffi_call_lock()
-        .lock()
-        .unwrap_or_else(|p| p.into_inner());
+    let _guard = try_acquire_ffi_lock(FFI_LOCK_TIMEOUT_SECS)
+        .ok_or_else(|| "FFI lock acquisition timed out".to_string())?;
     unsafe {
         if !load_t3000_function() {
             return Err("T3000 functions not loaded".to_string());
@@ -682,12 +682,15 @@ impl T3000MainService {
             };
 
             // Sync trendlog configurations for all devices (ONE-TIME at startup)
-            task_logger.info("📊 Syncing trendlog configurations for all devices...");
-            if let Err(e) = Self::sync_all_trendlog_configs().await {
-                task_logger.error(&format!("❌ Trendlog config sync failed: {}", e));
-            } else {
-                task_logger.info("✅ Trendlog config sync completed successfully");
-            }
+            // Spawned as a background task so it never blocks the periodic sync loop.
+            task_logger.info("📊 Spawning one-time trendlog configuration sync in background...");
+            tokio::spawn(async move {
+                if let Err(e) = Self::sync_all_trendlog_configs().await {
+                    let mut bg_logger = ServiceLogger::ffi()
+                        .unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
+                    bg_logger.error(&format!("❌ Background trendlog config sync failed: {}", e));
+                }
+            });
 
             // If startup sync failed, retry once after a short delay before entering the normal 900s cycle.
             // This avoids waiting 900s when T3000 just needed a bit more time to initialize.
@@ -705,7 +708,18 @@ impl T3000MainService {
             }
 
             // Continue with periodic sync loop (TWO-TIER sync)
+            let mut cycle_count: u64 = 0;
             while is_running.load(Ordering::Relaxed) {
+                cycle_count += 1;
+                task_logger.info(&format!("🔄 [CYCLE #{}] Periodic sync loop iteration started", cycle_count));
+
+                // Write heartbeat to SQLite so we can confirm the loop is alive
+                crate::logging::service::emit_app_log(
+                    &spawn_db, "info", "POLL", Some("ffi_sync"), None,
+                    &format!("[CYCLE #{}] Loop iteration started", cycle_count),
+                    None,
+                ).await;
+
                 // Reload sync intervals from database before each sleep cycle (dynamic configuration)
                 let current_sync_interval = Self::reload_sync_interval_from_db()
                     .await
@@ -760,15 +774,39 @@ impl T3000MainService {
                 ));
                 sleep(Duration::from_secs(config.sync_interval_secs)).await;
 
+                crate::logging::service::emit_app_log(
+                    &spawn_db, "info", "POLL", Some("ffi_sync"), None,
+                    &format!("[CYCLE #{}] Sleep done, calling sync", cycle_count),
+                    None,
+                ).await;
+
                 // Perform periodic logging data sync — errors are logged but never stop the service
                 if is_running.load(Ordering::Relaxed) {
+                    crate::logging::service::emit_app_log(
+                        &spawn_db, "info", "POLL", Some("ffi_sync"), None,
+                        &format!("[CYCLE #{}] Calling sync_logging_data_static", cycle_count),
+                        None,
+                    ).await;
                     if let Err(e) = Self::sync_logging_data_static(config.clone()).await {
-                        task_logger.error(&format!("❌ Periodic sync failed: {} — will retry next cycle", e));
+                        task_logger.error(&format!("❌ [CYCLE #{}] Periodic sync failed: {} — will retry next cycle", cycle_count, e));
+                    } else {
+                        task_logger.info(&format!("✅ [CYCLE #{}] Sync cycle completed — sleeping {}s", cycle_count, config.sync_interval_secs));
                     }
+                } else {
+                    crate::logging::service::emit_app_log(
+                        &spawn_db, "warn", "POLL", Some("ffi_sync"), None,
+                        &format!("[CYCLE #{}] is_running became false — exiting loop", cycle_count),
+                        None,
+                    ).await;
                 }
             }
 
-            task_logger.info("🛑 T3000 LOGGING_DATA sync service stopped");
+            crate::logging::service::emit_app_log(
+                &spawn_db, "warn", "POLL", Some("ffi_sync"), None,
+                "FFI sync service loop exited",
+                None,
+            ).await;
+            task_logger.info("🛑 T3000 LOGGING_DATA sync service stopped (is_running=false)");
         });
 
         Ok(())
@@ -1441,25 +1479,10 @@ impl T3000MainService {
         // resolved write target is local SQLite. Skip this cycle; service keeps running.
         let server_cfg = crate::ini_config::read_server_db_config_auto();
 
-        // Standalone mode: center DB is disabled — backend interval sync is skipped entirely.
-        // Only realtime writes (from device push) are active in this mode.
-        if !server_cfg.enabled {
-            let reason = "Standalone mode — backend interval sync disabled; only realtime writes are active";
-            sync_logger.info(&format!("⏭️  {}", reason));
-            crate::logging::service::emit_app_log(
-                &local_db,
-                "info",
-                "POLL",
-                Some("ffi_sync"),
-                None,
-                reason,
-                Some("policy=standalone_skip"),
-            )
-            .await;
-            sync_flow.done(&local_db, "skip").await;
-            return Ok(());
-        }
-
+        // Center DB mode is enabled but unreachable — skip to avoid writing stale data
+        // to local SQLite when the intent is to sync to center DB.
+        // In standalone mode (server_cfg.enabled == false) we always continue and
+        // write directly to local SQLite.
         if server_cfg.enabled {
             if matches!(
                 &writer,
@@ -1606,7 +1629,11 @@ impl T3000MainService {
             Self::update_cached_device_list(panels.clone()).await;
             Self::update_last_rediscover_time().await;
 
-            sync_logger.info("✅ Device list cache updated");
+            sync_logger.info(&format!(
+                "✅ FULL REDISCOVERY: {} device(s) cached — SNs: {}",
+                panels.len(),
+                panels.iter().map(|p| p.serial_number.to_string()).collect::<Vec<_>>().join(", ")
+            ));
 
             // Create GET_PANELS_LIST sync metadata record
             let rediscover_start_time = chrono::Utc::now();
@@ -1772,6 +1799,13 @@ impl T3000MainService {
                         "✅ QUICK SYNC validation complete; using {} discovered devices",
                         panels.len()
                     ));
+                    // Log each discovered device for diagnostics
+                    for (i, p) in panels.iter().enumerate() {
+                        sync_logger.info(&format!(
+                            "  [{}/{}] SN={} Panel#{} OI={:?} Name='{}'",
+                            i + 1, panels.len(), p.serial_number, p.panel_number, p.object_instance, p.panel_name
+                        ));
+                    }
                 }
                 Err(_) => {
                     // Cache is empty (should not happen after first run, but handle gracefully)
@@ -1877,6 +1911,21 @@ impl T3000MainService {
         let mut successful_devices = 0;
         let mut failed_devices = 0;
         let mut skipped_devices = 0;
+
+        // ── DIAGNOSTIC: Log full device list before processing ──
+        sync_logger.info(&format!(
+            "🔄 DEVICE LOOP START: {} total device(s) to process",
+            total_devices
+        ));
+        for (i, p) in panels.iter().enumerate() {
+            sync_logger.info(&format!(
+                "  [{}/{}] SN={} Panel#{} OI={:?} Name='{}'",
+                i + 1, total_devices, p.serial_number, p.panel_number, p.object_instance, p.panel_name
+            ));
+        }
+        sync_flow.step(&local_db, "device_loop_start", "info", "ffi_sync", "ok", 0,
+            &format!("Starting device loop: {} device(s)", total_devices), None).await;
+
         // Track SNs that were skipped due to missing object_instance or other issues
         let mut serial_zero_sns: Vec<String> = Vec::new();
         // Collect per-device summaries for file payload
@@ -2243,6 +2292,16 @@ impl T3000MainService {
             }
 
             successful_devices += 1;
+            let device_duration = device_start_time.elapsed();
+            sync_logger.info(&format!(
+                "✅ [{}/{}] Device SN={} Panel#{} '{}' done in {:?} — IN={} OUT={} VAR={}",
+                successful_devices, total_devices,
+                serial_number, panel_info.panel_number, panel_info.panel_name,
+                device_duration,
+                device_with_points.input_points.len(),
+                device_with_points.output_points.len(),
+                device_with_points.variable_points.len(),
+            ));
 
             // Delay between devices (configurable constant for diagnostics).
             if device_index < total_devices - 1 {
@@ -2262,12 +2321,20 @@ impl T3000MainService {
                 } else {
                     format!("failed={} skipped={}", failed_devices, skipped_devices)
                 };
+                sync_logger.error(&format!(
+                    "❌ CYCLE SUMMARY: 0/{} devices synced — ALL FAILED (skipped={} failed={})",
+                    total_devices, skipped_devices, failed_devices
+                ));
                 crate::logging::service::emit_app_log(
                     &local_db, "error", "POLL", Some("ffi_sync"), None,
                     &format!("Cycle done: 0/{} devices synced — all skipped or failed (check object_instance / FFI errors)", total_devices),
                     Some(&detail),
                 ).await;
             } else {
+                sync_logger.info(&format!(
+                    "✅ CYCLE SUMMARY: {}/{} devices synced (ok={} skipped={} failed={})",
+                    successful_devices, total_devices, successful_devices, skipped_devices, failed_devices
+                ));
                 crate::logging::service::emit_app_log(
                     &local_db, "info", "POLL", Some("ffi_sync"), None,
                     &format!("Cycle done: {}/{} devices synced", successful_devices, total_devices),

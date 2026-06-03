@@ -62,6 +62,29 @@ pub fn ffi_call_lock() -> &'static Mutex<()> {
     FFI_CALL_LOCK.get_or_init(|| Mutex::new(()))
 }
 
+/// Try to acquire the FFI lock with a timeout (default 60s).
+/// Prevents deadlock when a prior C++ FFI call in spawn_blocking hangs.
+pub fn ffi_call_lock_timeout(timeout_secs: u64) -> Option<std::sync::MutexGuard<'static, ()>> {
+    let lock = ffi_call_lock();
+    let deadline = Instant::now() + Duration::from_secs(timeout_secs);
+    loop {
+        match lock.try_lock() {
+            Ok(guard) => return Some(guard),
+            Err(std::sync::TryLockError::WouldBlock) => {
+                if Instant::now() > deadline {
+                    eprintln!("❌ FFI lock acquisition timed out after {}s — prior C++ call may be stuck", timeout_secs);
+                    return None;
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
+            Err(std::sync::TryLockError::Poisoned(p)) => {
+                eprintln!("⚠️ FFI lock was poisoned — recovering");
+                return Some(p.into_inner());
+            }
+        }
+    }
+}
+
 /// Simple FFI API Service - middleware only
 pub struct T3000FfiApiService {
     pub max_buffer_size: usize,
@@ -164,7 +187,8 @@ impl T3000FfiApiService {
 
         // Run heavy FFI work on blocking pool so request handling threads stay responsive.
         let ffi_result = tokio::task::spawn_blocking(move || {
-            let _guard = ffi_call_lock().lock().unwrap_or_else(|p| p.into_inner());
+            let _guard = ffi_call_lock_timeout(60)
+                .ok_or_else(|| Error::ServerError("FFI lock timed out — prior C++ call may be stuck".to_string()))?;
 
             unsafe {
                 if !Self::load_t3000_function() {
