@@ -2395,14 +2395,13 @@ export const TrendLogsPage: React.FC = () => {
         return (
           <TableCellLayout>
             {!isEmptyRow(item) && (
-              <div className={styles.switchContainer}>
+              <div
+                className={styles.switchContainer}
+                onClick={(e) => e.stopPropagation()}
+              >
                 <Switch
-                  checked={isOn}
+                  defaultChecked={isOn}
                   className={styles.switchScale}
-                  onChange={(ev) => {
-                    ev.stopPropagation();
-                    // Toggle status logic can be wired here
-                  }}
                 />
                 <Text size={200}>{isOn ? 'ON' : 'OFF'}</Text>
               </div>
