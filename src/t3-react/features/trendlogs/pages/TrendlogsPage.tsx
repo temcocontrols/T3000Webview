@@ -231,7 +231,7 @@ export const TrendLogsPage: React.FC = () => {
   const requestedPointSetName = searchParams.get('pointSetName');
 
   const normalizeMonitorToken = useCallback((value?: string | null) => {
-    return (value || '').toUpperCase().replace(/^MON/, '');
+    return (value || '').toUpperCase().replace(/^(MON|TLOG)/, '');
   }, []);
 
   const isPointSetChartMode = React.useMemo(() => {
@@ -614,9 +614,16 @@ export const TrendLogsPage: React.FC = () => {
       if (fallbackResponse.ok) {
         const inputsData = await fallbackResponse.json();
 
+        // Normalize trendlog ID for matching (API returns MON, display uses TLOG)
+        const trendlogNum = (trendlog.trendlogId || trendlog.trendlogIndex || '')
+          .replace(/^(MON|TLOG)/i, '');
+
         const trendlogInputs = (inputsData.data || []).filter(
           (input: any) => {
-            const trendlogMatch = input.trendlogId === trendlog.trendlogId || input.Trendlog_ID === trendlog.trendlogId;
+            const inputId = (input.trendlogId || input.Trendlog_ID || '').replace(/^(MON|TLOG)/i, '');
+            const trendlogMatch = inputId === trendlogNum
+              || input.trendlogId === trendlog.trendlogId
+              || input.Trendlog_ID === trendlog.trendlogId;
             const viewMatch = input.viewType === 'MAIN' || input.view_type === 'MAIN' ||
                              input.viewType === 'VIEW' || input.view_type === 'VIEW' ||
                              !input.viewType;
@@ -961,19 +968,20 @@ export const TrendLogsPage: React.FC = () => {
         }
 
         const initialTrendlog = queriedTrendlog || trendlogsWithIndex[0];
+        // Normalize to TLOG for display matching
+        const displayTrendlog = {
+          ...initialTrendlog,
+          trendlogId: `TLOG${normalizeMonitorToken(initialTrendlog.trendlogId || initialTrendlog.trendlogIndex || '1')}`,
+          trendlogIndex: `TLOG${normalizeMonitorToken(initialTrendlog.trendlogId || initialTrendlog.trendlogIndex || '1')}`,
+        };
+        console.log('🎯 [TrendLogsPage] Auto-selecting trendlog:', displayTrendlog);
+        setSelectedMonitor(displayTrendlog);
 
-        console.log('🎯 [TrendLogsPage] Auto-selecting trendlog:', initialTrendlog);
-
-        // Use loadTrendlogInputs to handle the loading with deduplication
-        setSelectedMonitor(initialTrendlog);
-
-        // Select the first row's radio button
-        const firstRowId = `${initialTrendlog.serialNumber}-${initialTrendlog.trendlogId || initialTrendlog.trendlogIndex}-${initialTrendlog._uniqueIndex}`;
+        // Select the first row's radio button using display format
+        const firstRowId = `${displayTrendlog.serialNumber}-${displayTrendlog.trendlogId}-${displayTrendlog._uniqueIndex}`;
         setSelectedItems(new Set([firstRowId]));
 
-        if (initialTrendlog.trendlogId) {
-          await loadTrendlogInputsInternal(initialTrendlog);
-        }
+        await loadTrendlogInputsInternal(displayTrendlog);
       }
     } catch (err) {
       if (requestId !== fetchRequestIdRef.current) {
@@ -990,7 +998,7 @@ export const TrendLogsPage: React.FC = () => {
       setDbChecked(true);
       hasEverLoadedData.current = true;
     }
-  }, [activeTab, normalizeMonitorToken, requestedMonitorId, requestedTrendlogId, selectedPanelId, selectedSerial]);
+  }, [selectedPanelId, selectedSerial]);
 
   // Load inputs for a specific trendlog
   const loadTrendlogInputs = useCallback(async (trendlog: TrendLogData) => {
@@ -1090,6 +1098,7 @@ export const TrendLogsPage: React.FC = () => {
     if (!selectedDevice) return;
 
     setRefreshing(true);
+    setError(null);
     try {
       const serial = selectedDevice.serialNumber;
       // Pre-refresh inputs/outputs/variables so label resolution uses current names
@@ -1188,16 +1197,13 @@ export const TrendLogsPage: React.FC = () => {
   useRegisterCsvHandlers(handleExport, handleImport);
 
   const handleMonitorSelect = useCallback(async (monitor: TrendLogData) => {
-    console.log('🔵 [TrendLogsPage] handleMonitorSelect called with:', monitor);
-    console.log('🔵 [TrendLogsPage] VERSION: 2026-04-14-v3 - FIXED loading spinner');
-
-    // Update radio button selection
     const rowId = getRowIdForItem(monitor);
     setSelectedItems(new Set([rowId]));
+    setSelectedMonitor(monitor);
+    // Persist selection in URL (safe now — fetchTrendLogs no longer depends on URL params)
     syncMonitorQuery(monitor);
-
-    await loadTrendlogInputs(monitor);
-  }, [loadTrendlogInputs, getRowIdForItem, syncMonitorQuery]);
+    await loadTrendlogInputsInternal(monitor);
+  }, [getRowIdForItem, syncMonitorQuery]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
