@@ -1904,7 +1904,7 @@ export const TrendLogsPage: React.FC = () => {
         className={`${styles.tabButton} ${activeTab === 'haystack-tags' ? styles.tabButtonActive : ''}`}
         onClick={() => setActiveTab('haystack-tags')}
       >
-        Haystack Tags
+       Haystack Tags
       </button>
       <button
         className={`${styles.tabButton} ${activeTab === 'backend' ? styles.tabButtonActive : ''}`}
@@ -3055,7 +3055,7 @@ export const TrendLogsPage: React.FC = () => {
                     <div className={styles.subGrid}>
                       <div className={styles.subGridHeader}>
                         <Text size={300} weight="semibold">
-                          Monitor Inputs {loadingInputs && <Spinner size="tiny" className={styles.marginLeft8} />}
+                          Trend Log Items {loadingInputs && <Spinner size="tiny" className={styles.marginLeft8} />}
                         </Text>
                         {monitorInputs.length > 0 && (
                           <Badge appearance="filled" color="informative" size="small">
@@ -3069,31 +3069,41 @@ export const TrendLogsPage: React.FC = () => {
                             <Spinner size="small" label="Loading inputs..." />
                           </div>
                         ) : monitorInputs.length > 0 ? (
-                          monitorInputs.map((input, index) => {
-                            const pointTypeShort =
-                              input.pointType === 'INPUT' ? 'IN' :
-                              input.pointType === 'OUTPUT' ? 'OUT' :
-                              input.pointType === 'VARIABLE' ? 'VAR' :
-                              input.pointType === 'IN' ? 'IN' :
-                              input.pointType === 'OUT' ? 'OUT' :
-                              input.pointType === 'VAR' ? 'VAR' :
-                              input.pointType;
+                          <>
+                            <div className={styles.inputHeaderRow}>
+                              <div className={styles.inputHeaderNum}>#</div>
+                              <div className={styles.inputHeaderName}>Name</div>
+                              <div className={styles.inputHeaderId}>Point ID</div>
+                            </div>
+                            {monitorInputs.map((input, index) => {
+                              const pointTypeShort =
+                                input.pointType === 'INPUT' ? 'IN' :
+                                input.pointType === 'OUTPUT' ? 'OUT' :
+                                input.pointType === 'VARIABLE' ? 'VAR' :
+                                input.pointType === 'IN' ? 'IN' :
+                                input.pointType === 'OUT' ? 'OUT' :
+                                input.pointType === 'VAR' ? 'VAR' :
+                                input.pointType;
 
-                            const displayLabel = input.pointLabel ||
-                              `${pointTypeShort}${input.pointIndex}`;
+                              const displayLabel = input.pointLabel || '';
+                              const pointId = input.pointPanel
+                                ? `${input.pointPanel}${pointTypeShort}${input.pointIndex}`
+                                : `${pointTypeShort}${input.pointIndex}`;
 
-                            return (
-                              <div key={`${input.pointType}-${input.pointIndex}-${index}`} className={styles.inputRow}>
-                                <div className={styles.inputNum}>{index + 1}</div>
-                                <Tooltip
-                                  content={`${pointTypeShort}${input.pointIndex}: ${input.pointLabel || 'No label'}`}
-                                  relationship="label"
-                                >
-                                  <div className={styles.inputValue}>{displayLabel}</div>
-                                </Tooltip>
-                              </div>
-                            );
-                          })
+                              return (
+                                <div key={`${input.pointType}-${input.pointIndex}-${index}`} className={styles.inputRow}>
+                                  <div className={styles.inputNum}>{index + 1}</div>
+                                  <Tooltip
+                                    content={displayLabel || pointId}
+                                    relationship="label"
+                                  >
+                                    <div className={styles.inputName}>{displayLabel || '-'}</div>
+                                  </Tooltip>
+                                  <div className={styles.inputPointId}>{pointId}</div>
+                                </div>
+                              );
+                            })}
+                          </>
                         ) : (
                           <div className={styles.centerPaddingMuted}>
                             <Text size={200}>No inputs configured</Text>
