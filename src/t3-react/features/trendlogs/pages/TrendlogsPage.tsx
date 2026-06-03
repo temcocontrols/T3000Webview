@@ -230,7 +230,7 @@ export const TrendLogsPage: React.FC = () => {
   const requestedPointSetName = searchParams.get('pointSetName');
 
   const normalizeMonitorToken = useCallback((value?: string | null) => {
-    return (value || '').toUpperCase().replace(/^MON/, '');
+    return (value || '').toUpperCase().replace(/^(MON|TLOG)/, '');
   }, []);
 
   const isPointSetChartMode = React.useMemo(() => {
@@ -684,10 +684,10 @@ export const TrendLogsPage: React.FC = () => {
       const buildItemData = () => ({
         title,
         t3Entry: {
-          id: `MON${monitorIndex}`,
+          id: `TLOG${monitorIndex}`,
           pid: selectedDevice.panelId || 1,
           label: title,
-          command: `${selectedDevice.panelId || 1}MON${monitorIndex}`,
+          command: `${selectedDevice.panelId || 1}TLOG${monitorIndex}`,
         },
       });
 
@@ -929,7 +929,7 @@ export const TrendLogsPage: React.FC = () => {
         const isChartContext = activeTab === 'chart';
 
         // Point Sets chart mode uses a synthetic GLOBAL monitor with specific_points.
-        // Do not auto-fallback to first physical monitor (MON1), or history calls will use MON1 path.
+        // Do not auto-fallback to first physical monitor (TLOG1), or history calls will use TLOG1 path.
         if (requestedNormalized === 'GLOBAL') {
           console.log('[TrendLogsPage] GLOBAL chart context detected; skipping trendlog auto-select fallback.');
           // Clear stale physical monitor state while GLOBAL hydration resolves selected point set.
@@ -947,7 +947,7 @@ export const TrendLogsPage: React.FC = () => {
             })
           : null;
 
-        // In chart context with an explicit requested monitor, never fallback to MON1.
+        // In chart context with an explicit requested monitor, never fallback to TLOG1.
         if (isChartContext && requestedNormalized && !queriedTrendlog) {
           console.warn('[TrendLogsPage] Requested monitor not found in chart context; skipping fallback selection.', {
             requestedMonitorId,
@@ -1292,10 +1292,10 @@ export const TrendLogsPage: React.FC = () => {
     ? {
       title: selectedMonitorTitle,
       t3Entry: {
-        id: `MON${selectedMonitorIndex}`,
+        id: `TLOG${selectedMonitorIndex}`,
         pid: selectedDevice?.panelId || 1,
         label: selectedMonitorTitle,
-        command: `${selectedDevice?.panelId || 1}MON${selectedMonitorIndex}`,
+        command: `${selectedDevice?.panelId || 1}TLOG${selectedMonitorIndex}`,
       },
     }
     : undefined;
@@ -2270,13 +2270,13 @@ export const TrendLogsPage: React.FC = () => {
         slots.push({
           ...existing,
           // Guarantee trendlogIndex is always populated — API sometimes omits it
-          trendlogIndex: existing.trendlogIndex || existing.trendlogId || `MON${i}`,
+          trendlogIndex: existing.trendlogIndex || existing.trendlogId || `TLOG${i}`,
         });
       } else {
         slots.push({
           serialNumber: serial,
-          trendlogId: `MON${i}`,
-          trendlogIndex: `MON${i}`,
+          trendlogId: `TLOG${i}`,
+          trendlogIndex: `TLOG${i}`,
           trendlogLabel: '',
           intervalSeconds: 900, // Default 00:15:00 like T3000
           bufferSize: undefined,
