@@ -29,6 +29,7 @@ import {
   DialogContent,
   DialogActions,
   Input,
+  Switch,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
@@ -40,6 +41,7 @@ import {
   InfoRegular,
   ChevronUpRegular,
   ChevronDownRegular,
+  ArrowRightRegular,
   OpenRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
@@ -1171,7 +1173,7 @@ export const TrendLogsPage: React.FC = () => {
       { header: 'Label', accessor: t => t.trendlogLabel },
       { header: 'Interval (sec)', accessor: t => t.intervalSeconds },
       { header: 'Buffer Size', accessor: t => t.bufferSize },
-      { header: 'Data Size', accessor: t => t.dataSizeKb },
+      { header: 'Data Size (KB)', accessor: t => t.dataSizeKb },
       { header: 'Auto/Manual', accessor: t => t.autoManual },
       { header: 'Status', accessor: t => t.status },
     ];
@@ -2377,42 +2379,13 @@ export const TrendLogsPage: React.FC = () => {
       },
     }),
     createTableColumn<TrendLogData>({
-      columnId: 'bufferSize',
-      renderHeaderCell: () => <span>Buffer Size</span>,
-      renderCell: (item) => (
-        <TableCellLayout>
-          {!isEmptyRow(item) && <Text size={200}>{item.bufferSize ?? ''}</Text>}
-        </TableCellLayout>
-      ),
-      compare: (a, b) => (a.bufferSize || 0) - (b.bufferSize || 0),
-    }),
-    createTableColumn<TrendLogData>({
       columnId: 'dataSizeKb',
-      renderHeaderCell: () => <span>Data Size</span>,
+      renderHeaderCell: () => <span>Data Size (KB)</span>,
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && <Text size={200}>{item.dataSizeKb || '0KB'}</Text>}
+          {!isEmptyRow(item) && <Text size={200}>{item.dataSizeKb || '0'}</Text>}
         </TableCellLayout>
       ),
-    }),
-    createTableColumn<TrendLogData>({
-      columnId: 'autoManual',
-      renderHeaderCell: () => <div className={styles.noWrapHeader}>Auto/Manual</div>,
-      renderCell: (item) => {
-        const val = (item.autoManual || '').toUpperCase();
-        const isAuto = val === 'AUTO' || val === '1';
-        const isManual = val === 'MANUAL' || val === '0';
-        return (
-          <TableCellLayout>
-            {!isEmptyRow(item) && (
-              <Badge appearance={isAuto ? 'filled' : 'outline'} color="informative">
-                {isAuto ? 'Auto' : isManual ? 'Manual' : ''}
-              </Badge>
-            )}
-          </TableCellLayout>
-        );
-      },
-      compare: (a, b) => (a.autoManual || '').localeCompare(b.autoManual || ''),
     }),
     createTableColumn<TrendLogData>({
       columnId: 'status',
@@ -2422,33 +2395,40 @@ export const TrendLogsPage: React.FC = () => {
         return (
           <TableCellLayout>
             {!isEmptyRow(item) && (
-              <Badge appearance="tint" color={isOn ? 'success' : 'subtle'}>
-                {isOn ? 'ON' : 'OFF'}
-              </Badge>
+              <div className={styles.switchContainer}>
+                <Switch
+                  checked={isOn}
+                  className={styles.switchScale}
+                  onChange={(ev) => {
+                    ev.stopPropagation();
+                    // Toggle status logic can be wired here
+                  }}
+                />
+                <Text size={200}>{isOn ? 'ON' : 'OFF'}</Text>
+              </div>
             )}
           </TableCellLayout>
         );
       },
       compare: (a, b) => (a.status || '').localeCompare(b.status || ''),
     }),
-    // Actions column - View Chart (moved to last)
+    // View column
     createTableColumn<TrendLogData>({
       columnId: 'actions',
-      renderHeaderCell: () => <span>Actions</span>,
+      renderHeaderCell: () => <span>View</span>,
       renderCell: (item) => (
         <TableCellLayout>
           {!isEmptyRow(item) && (
-            <Button
-              size="small"
-              icon={<ChartMultipleRegular className={styles.iconSmall} />}
+            <button
+              className={styles.viewArrowButton}
               onClick={async () => {
                 await handleMonitorSelect(item);
                 setActiveTab('chart', item);
               }}
-              title="View trend chart for this trendlog"
+              title="View trend chart"
             >
-              View Graphic
-            </Button>
+              <ArrowRightRegular fontSize={18} className={styles.viewArrowIcon} />
+            </button>
           )}
         </TableCellLayout>
       ),

@@ -2371,11 +2371,9 @@
  * nth-child(2)  = Trendlog ID
  * nth-child(3)  = Label
  * nth-child(4)  = Interval
- * nth-child(5)  = Buffer Size
- * nth-child(6)  = Data Size
- * nth-child(7)  = Auto/Manual
- * nth-child(8)  = Status
- * nth-child(9)  = Actions
+ * nth-child(5)  = Data Size (KB)
+ * nth-child(6)  = Status
+ * nth-child(7)  = View
  */
 
 /* Selection column — force empty header cell to match body radio button width */
@@ -2406,54 +2404,36 @@
   min-width: 80px;
   flex: 0 0 10%;
 }
-/* 4. Buffer Size */
+/* 4. Data Size (KB) — wider to fit header text */
 .container :global(.fui-DataGridHeaderCell):nth-child(5),
 .container :global(.fui-DataGridCell):nth-child(5) {
-  width: 9%;
-  min-width: 65px;
-  flex: 0 0 9%;
+  width: 12%;
+  min-width: 105px;
+  flex: 0 0 12%;
 }
-/* 5. Data Size */
+/* 5. Status */
 .container :global(.fui-DataGridHeaderCell):nth-child(6),
 .container :global(.fui-DataGridCell):nth-child(6) {
-  width: 9%;
-  min-width: 65px;
-  flex: 0 0 9%;
-}
-/* 6. Auto/Manual — wide enough for "Auto/Manual" on one line */
-.container :global(.fui-DataGridHeaderCell):nth-child(7),
-.container :global(.fui-DataGridCell):nth-child(7) {
   width: 12%;
   min-width: 110px;
   flex: 0 0 12%;
-  justify-content: center;
-  text-align: center;
 }
-/* 7. Status */
-.container :global(.fui-DataGridHeaderCell):nth-child(8),
-.container :global(.fui-DataGridCell):nth-child(8) {
-  width: 7%;
-  min-width: 70px;
-  flex: 0 0 7%;
-  justify-content: center;
-  text-align: center;
-}
-/* 8. Actions */
-.container :global(.fui-DataGridHeaderCell):nth-child(9),
-.container :global(.fui-DataGridCell):nth-child(9) {
-  flex: 0 0 130px;
-  min-width: 130px;
-}
-.container :global(.fui-DataGridCell):nth-child(9) :global(.fui-Button) {
-  white-space: nowrap;
+/* 6. View */
+.container :global(.fui-DataGridHeaderCell):nth-child(7),
+.container :global(.fui-DataGridCell):nth-child(7) {
+  flex: 0 0 60px;
+  min-width: 60px;
 }
 
-/* Center TableCellLayout in Auto/Manual and Status columns */
-.container :global(.fui-DataGridHeaderCell):nth-child(7) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridHeaderCell):nth-child(8) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridCell):nth-child(8) :global(.fui-TableCellLayout) {
-  justify-content: center;
-  text-align: center;
-  width: 100%;
+/* Status column Switch (matching InputsPage pattern) */
+.switchScale {
+  transform: scale(0.8);
+}
+
+.switchContainer {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  /* gap: 4px; */
+  margin-left: -10px; /* visually compensate for gap */
 }
