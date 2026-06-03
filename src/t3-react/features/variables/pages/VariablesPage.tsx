@@ -43,8 +43,6 @@ import {
   ErrorCircleRegular,
   SaveRegular,
   InfoRegular,
-  Gauge20Regular,
-  DatabaseRegular,
   EditSettings24Regular
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '@t3-react/features/devices/store/deviceTreeStore';
@@ -87,13 +85,16 @@ const VariablesPageDesktop: React.FC = () => {
   const setMessage = useStatusBarStore((state) => state.setMessage);
 
   const [variables, setVariables] = useState<VariablePoint[]>([]);
+  const [pvariables, setPvariables] = useState<VariablePoint[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingPvars, setLoadingPvars] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
   const [dbChecked, setDbChecked] = useState(false);
   const deviceRefreshedRef = useRef<number | null>(null);
+  const hasEverLoadedData = useRef(false);
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -153,6 +154,9 @@ const VariablesPageDesktop: React.FC = () => {
     } finally {
       setLoading(false);
       setDbChecked(true);
+      if (selectedDevice) {
+        hasEverLoadedData.current = true;
+      }
     }
   }, [selectedDevice]);
 
@@ -160,31 +164,110 @@ const VariablesPageDesktop: React.FC = () => {
     fetchVariables();
   }, [fetchVariables]);
 
+  // ── PVARS: Program Variables via Action 19 (mock until backend is ready) ──
+  const generateMockPvars = useCallback((sn: number, count: number): VariablePoint[] => {
+    const mockLabels = ['RunHours', 'StartCount', 'CycleTime', 'LastFault', 'RuntimeAcc', 'SetpointAdj', 'PID_Kp', 'PID_Ki', 'PID_Kd', 'Deadband', 'Hysteresis', 'MinOnTime', 'MinOffTime', 'Interstage', 'CompStaging', 'DefrostInterval'];
+    return Array.from({ length: Math.min(count, mockLabels.length) }, (_, i) => ({
+      serialNumber: sn,
+      variableId: `PVAR${i + 1}`,
+      variableIndex: `${80 + i}`,        // offset to avoid collision with VAR indexes
+      panel: '1',
+      fullLabel: mockLabels[i] || `PVAR_${i + 1}`,
+      label: mockLabels[i] || `PV${i + 1}`,
+      autoManual: '0',
+      fValue: `${(Math.random() * 1000).toFixed(0)}`,
+      units: '',
+      rangeField: '0',
+      calibration: '',
+      sign: '',
+      calibrationH: 0,
+      calibrationL: 0,
+      calibrationSign: '',
+      control: '0',
+      filterField: '0',
+      status: '',
+      digitalAnalog: '0',
+      typeField: 'PVAR',
+    }));
+  }, []);
+
+  const fetchPvariables = useCallback(async () => {
+    if (!selectedDevice) {
+      setPvariables([]);
+      return;
+    }
+
+    setLoadingPvars(true);
+
+    try {
+      try {
+        // Try Action 19 via FFI
+        const response = await fetch(`${API_BASE_URL}/api/t3000/ffi/call`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 19,
+            panelId: selectedDevice.panelId || 1,
+            serialNumber: selectedDevice.serialNumber,
+            entryType: 6,   // BAC_PRG
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.program_variables?.length) {
+            setPvariables(data.program_variables);
+            console.log('[VariablesPage] PVARs fetched via Action 19:', data.program_variables.length);
+            return;
+          }
+        }
+        // Fall through to mock if empty or failed
+        console.log('[VariablesPage] Action 19 returned no data, using mock PVARs');
+      } catch (_err) {
+        console.log('[VariablesPage] Action 19 not available, using mock PVARs:', _err);
+      }
+
+      // Mock fallback
+      setPvariables(generateMockPvars(selectedDevice.serialNumber, 8));
+    } finally {
+      setLoadingPvars(false);
+      if (selectedDevice) {
+        hasEverLoadedData.current = true;
+      }
+    }
+  }, [selectedDevice, generateMockPvars]);
+
+  // Fetch PVARs when device changes
+  useEffect(() => {
+    fetchPvariables();
+  }, [fetchPvariables]);
+
   // Reset auto-refresh state when device changes (don't clear variables to avoid visual flash)
   useEffect(() => {
     setAutoRefreshed(false);
     setDbChecked(false);
+    hasEverLoadedData.current = false;
   }, [selectedDevice?.serialNumber]);
 
-  // Auto-refresh once per device - ONLY if database is empty after initial DB fetch
+  // Auto-refresh once per device — ONLY if both VARs AND PVARs are empty
   useEffect(() => {
-    if (!dbChecked || loading || !selectedDevice || autoRefreshed) return;
+    if (!dbChecked || loading || loadingPvars || !selectedDevice || autoRefreshed) return;
     if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
 
     const checkAndRefresh = async () => {
       deviceRefreshedRef.current = selectedDevice.serialNumber;
 
-      if (variables.length > 0) {
-        console.log('[VariablesPage] Database has data, skipping auto-refresh');
+      // Skip auto-refresh if we already have any data (VARs or PVARs)
+      if (variables.length > 0 || pvariables.length > 0) {
+        console.log('[VariablesPage] Data already present, skipping auto-refresh');
         setAutoRefreshed(true);
         return;
       }
 
-      console.log('[VariablesPage] Database empty, auto-refreshing from device...');
+      console.log('[VariablesPage] No data at all, auto-refreshing from device...');
       setLoading(true);
 
       try {
-        // Pass loading callback to show loading state during Action 17 FFI call
         const result = await PanelDataRefreshService.refreshFromDevice({
           serialNumber: selectedDevice.serialNumber,
           type: 'variable',
@@ -195,20 +278,20 @@ const VariablesPageDesktop: React.FC = () => {
           }
         });
         console.log('[VariablesPage] Auto-refresh result:', result);
-        setMessage(`✓ Synced ${result.itemCount} variables from ${selectedDevice.nameShowOnTree}`, 'success');
-      } catch (error) {
-        console.error('[VariablesPage] Auto-refresh failed:', error);
-        setMessage(`Failed to sync variables: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+        setMessage(`\u2713 Synced ${result.itemCount} variables from ${selectedDevice.nameShowOnTree}`, 'success');
+      } catch (err) {
+        console.error('[VariablesPage] Auto-refresh failed:', err);
+        // Only log — don't set error bar for auto-refresh failures
       } finally {
-        // Always reload from database to show what was actually saved
         await fetchVariables();
+        await fetchPvariables();
         setAutoRefreshed(true);
         setLoading(false);
       }
     };
 
     checkAndRefresh();
-  }, [dbChecked, loading, selectedDevice, autoRefreshed, fetchVariables, variables.length, setMessage]);
+  }, [dbChecked, loading, loadingPvars, selectedDevice, autoRefreshed]);
 
   // Handlers
   const handleRefresh = async () => {
@@ -246,6 +329,7 @@ const VariablesPageDesktop: React.FC = () => {
     } finally {
       // Always reload from database to show what was actually saved
       await fetchVariables();
+      await fetchPvariables();
       setRefreshing(false);
     }
   };
@@ -694,13 +778,16 @@ const VariablesPageDesktop: React.FC = () => {
     }
   };
 
+  // Merged VARs + PVARs for unified display
+  const allVariables = React.useMemo(() => [...variables, ...pvariables], [variables, pvariables]);
+
   // Counts for badge labels
-  const varCount = React.useMemo(() => variables.filter(v => !isPvar(v)).length, [variables]);
-  const pvarCount = React.useMemo(() => variables.filter(v => isPvar(v)).length, [variables]);
+  const varCount  = React.useMemo(() => allVariables.filter(v => !isPvar(v)).length, [allVariables]);
+  const pvarCount = React.useMemo(() => allVariables.filter(v =>  isPvar(v)).length, [allVariables]);
 
   // Display data with 18 empty rows when no variables
   const displayVariables = React.useMemo(() => {
-    if (variables.length === 0) {
+    if (allVariables.length === 0) {
       return Array(18).fill(null).map((_, index) => ({
         serialNumber: selectedDevice?.serialNumber || 0,
         variableId: '',
@@ -725,13 +812,13 @@ const VariablesPageDesktop: React.FC = () => {
       }));
     }
     // Apply VAR / PVARS / BOTH filter
-    if (activeFilter === 'VARS') return variables.filter(v => !isPvar(v));
-    if (activeFilter === 'PVARS') return variables.filter(v => isPvar(v));
-    return variables; // BOTH
-  }, [variables, selectedDevice, activeFilter]);
+    if (activeFilter === 'VARS')  return allVariables.filter(v => !isPvar(v));
+    if (activeFilter === 'PVARS') return allVariables.filter(v =>  isPvar(v));
+    return allVariables; // BOTH
+  }, [allVariables, selectedDevice, activeFilter]);
 
   // Helper to identify empty rows
-  const isEmptyRow = (item: VariablePoint) => !item.variableIndex && !item.variableId && variables.length === 0;
+  const isEmptyRow = (item: VariablePoint) => !item.variableIndex && !item.variableId && allVariables.length === 0;
 
   // Column definitions matching the sequence: Panel, Variable, Full Label, Label, Value, Units, Auto/Manual
   const columns: TableColumnDefinition<VariablePoint>[] = [
@@ -789,12 +876,11 @@ const VariablesPageDesktop: React.FC = () => {
               </button> */}
               <span
                 className={isItemPvar ? styles.pvarTypeIcon : styles.varTypeIcon}
-                title={isItemPvar ? 'Panel Variable (PVAR)' : 'Variable (VAR)'}
+                title={isItemPvar ? 'Program Variable (PVAR)' : 'Variable (VAR)'}
               >
                 {isItemPvar
                   ? <EditSettings24Regular style={{ width: 11, height: 11 }} />
-                  // : <Gauge20Regular style={{ width: 11, height: 11 }} />}
-                  : <></>}
+                  : null}
               </span>
               <Text size={200} weight="regular">
                 {item.variableId || (item.variableIndex ? `VAR${parseInt(item.variableIndex) + 1}` : '---')}
@@ -1186,7 +1272,6 @@ const VariablesPageDesktop: React.FC = () => {
                           onClick={() => setActiveFilter('VARS')}
                           title="Show only Variables (VARs)"
                         >
-                          {/* <Gauge20Regular className={styles.varTabIcon} /> */}
                           VARS
                           <span className={styles.varTabCount}>{varCount}</span>
                         </button>
@@ -1258,8 +1343,8 @@ const VariablesPageDesktop: React.FC = () => {
                   ======================================== */}
               <div className={styles.dockingBody}>
 
-                {/* Loading State */}
-                {loading && variables.length === 0 && (
+                {/* Loading State — only on first load */}
+                {(loading || loadingPvars) && !hasEverLoadedData.current && (
                   <div className={styles.loadingBar}>
                     <Spinner size="tiny" />
                     <Text size={200} weight="regular">Loading variables...</Text>
@@ -1267,7 +1352,7 @@ const VariablesPageDesktop: React.FC = () => {
                 )}
 
                 {/* No Device Selected */}
-                {!selectedDevice && !loading && (
+                {!selectedDevice && !loading && !loadingPvars && (
                   <div className={styles.noData}>
                     <div className={styles.centerText}>
                       <Text size={400} weight="semibold">No device selected</Text>
@@ -1277,8 +1362,8 @@ const VariablesPageDesktop: React.FC = () => {
                   </div>
                 )}
 
-                {/* Data Grid - Always show with header (even when there's an error) */}
-                {selectedDevice && !loading && (
+                {/* Data Grid — show once device is selected AND initial load is done OR we have data */ }
+                {selectedDevice && (!loading || hasEverLoadedData.current) && (!loadingPvars || hasEverLoadedData.current) && (
                   <div
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}
