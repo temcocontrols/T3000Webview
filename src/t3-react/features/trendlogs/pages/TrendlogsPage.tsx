@@ -204,6 +204,7 @@ export const TrendLogsPage: React.FC = () => {
   const [autoRefreshed, setAutoRefreshed] = useState(false);
   const [dbChecked, setDbChecked] = useState(false);
   const deviceRefreshedRef = useRef<number | null>(null);
+  const hasEverLoadedData = useRef(false);
   const autoRefreshInProgressRef = useRef(false);
   const fetchRequestIdRef = useRef(0);
   const embeddedChartTimeBaseRef = useRef<string>('5m');
@@ -230,7 +231,7 @@ export const TrendLogsPage: React.FC = () => {
   const requestedPointSetName = searchParams.get('pointSetName');
 
   const normalizeMonitorToken = useCallback((value?: string | null) => {
-    return (value || '').toUpperCase().replace(/^(MON|TLOG)/, '');
+    return (value || '').toUpperCase().replace(/^MON/, '');
   }, []);
 
   const isPointSetChartMode = React.useMemo(() => {
@@ -679,15 +680,15 @@ export const TrendLogsPage: React.FC = () => {
 
       const monitorIndex = trendlog.trendlogIndex || trendlog.trendlogId || '0';
       // Label is already available in the row data — no extra API call needed
-      const title = trendlog.trendlogLabel || `Monitor ${monitorIndex}`;
+      const title = trendlog.trendlogLabel || `TrendLog ${monitorIndex}`;
 
       const buildItemData = () => ({
         title,
         t3Entry: {
-          id: `TLOG${monitorIndex}`,
+          id: `MON${monitorIndex}`,
           pid: selectedDevice.panelId || 1,
           label: title,
-          command: `${selectedDevice.panelId || 1}TLOG${monitorIndex}`,
+          command: `${selectedDevice.panelId || 1}MON${monitorIndex}`,
         },
       });
 
@@ -929,7 +930,7 @@ export const TrendLogsPage: React.FC = () => {
         const isChartContext = activeTab === 'chart';
 
         // Point Sets chart mode uses a synthetic GLOBAL monitor with specific_points.
-        // Do not auto-fallback to first physical monitor (TLOG1), or history calls will use TLOG1 path.
+        // Do not auto-fallback to first physical monitor (MON1), or history calls will use MON1 path.
         if (requestedNormalized === 'GLOBAL') {
           console.log('[TrendLogsPage] GLOBAL chart context detected; skipping trendlog auto-select fallback.');
           // Clear stale physical monitor state while GLOBAL hydration resolves selected point set.
@@ -947,7 +948,7 @@ export const TrendLogsPage: React.FC = () => {
             })
           : null;
 
-        // In chart context with an explicit requested monitor, never fallback to TLOG1.
+        // In chart context with an explicit requested monitor, never fallback to MON1.
         if (isChartContext && requestedNormalized && !queriedTrendlog) {
           console.warn('[TrendLogsPage] Requested monitor not found in chart context; skipping fallback selection.', {
             requestedMonitorId,
@@ -987,6 +988,7 @@ export const TrendLogsPage: React.FC = () => {
       }
       setLoading(false);
       setDbChecked(true);
+      hasEverLoadedData.current = true;
     }
   }, [activeTab, normalizeMonitorToken, requestedMonitorId, requestedTrendlogId, selectedPanelId, selectedSerial]);
 
@@ -1029,6 +1031,7 @@ export const TrendLogsPage: React.FC = () => {
   useEffect(() => {
     setAutoRefreshed(false);
     setDbChecked(false);
+    hasEverLoadedData.current = false;
   }, [selectedDevice?.serialNumber]);
 
   // Auto-refresh once per device - ONLY after initial DB fetch completes
@@ -1292,10 +1295,10 @@ export const TrendLogsPage: React.FC = () => {
     ? {
       title: selectedMonitorTitle,
       t3Entry: {
-        id: `TLOG${selectedMonitorIndex}`,
+        id: `MON${selectedMonitorIndex}`,
         pid: selectedDevice?.panelId || 1,
         label: selectedMonitorTitle,
-        command: `${selectedDevice?.panelId || 1}TLOG${selectedMonitorIndex}`,
+        command: `${selectedDevice?.panelId || 1}MON${selectedMonitorIndex}`,
       },
     }
     : undefined;
@@ -2252,26 +2255,22 @@ export const TrendLogsPage: React.FC = () => {
     const serial = selectedDevice?.serialNumber || 0;
     const panel = selectedDevice?.panelId;
 
-    // Build a map of actual trendlog data keyed by MON index (1-12)
+    // Build a map keyed by MON index (1-12). Display normalized to TLOG.
     const dataMap = new Map<number, TrendLogData>();
     for (const log of trendLogs) {
       const id = log.trendlogId || log.trendlogIndex || '';
       const match = id.match(/^MON(\d+)$/i);
       if (match) {
-        dataMap.set(parseInt(match[1], 10), log);
+        const idx = parseInt(match[1], 10);
+        dataMap.set(idx, { ...log, trendlogId: `TLOG${idx}`, trendlogIndex: `TLOG${idx}` });
       }
     }
 
-    // Generate all 12 slots, merging actual data where available
     const slots: TrendLogData[] = [];
     for (let i = 1; i <= totalSlots; i++) {
       const existing = dataMap.get(i);
       if (existing) {
-        slots.push({
-          ...existing,
-          // Guarantee trendlogIndex is always populated — API sometimes omits it
-          trendlogIndex: existing.trendlogIndex || existing.trendlogId || `TLOG${i}`,
-        });
+        slots.push({ ...existing, trendlogIndex: existing.trendlogIndex || `TLOG${i}` });
       } else {
         slots.push({
           serialNumber: serial,
@@ -3007,8 +3006,8 @@ export const TrendLogsPage: React.FC = () => {
               {activeTab === 'default' && (
               <div className={styles.dockingBody}>
 
-                {/* Loading State */}
-                {loading && trendLogs.length === 0 && (
+                {/* Loading State — only on first load */}
+                {loading && !hasEverLoadedData.current && trendLogs.length === 0 && (
                   <div className={styles.loadingBar}>
                     <Spinner size="tiny" />
                     <Text size={200} weight="regular">Loading trendlogs...</Text>
@@ -3026,8 +3025,8 @@ export const TrendLogsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Dual Grid Layout - Main Grid (80%) + Input Grid (20%) */}
-                {selectedDevice && !loading && !error && (
+                {/* Dual Grid — show once device selected & data ever loaded */}
+                {selectedDevice && (hasEverLoadedData.current || !loading) && (
                   <div className={styles.gridContainer}>
                     {/* Main Monitor List - Left Side (80%) */}
                     <div className={styles.mainGrid}>
