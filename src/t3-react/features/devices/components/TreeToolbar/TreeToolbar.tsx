@@ -106,6 +106,7 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
         <div className={styles.title}>Devices</div>
       </div>
       <Toolbar aria-label="Device tree toolbar" size="small">
+        {/* Remove all devices button — temporarily disabled
         <Tooltip
           content="Remove all devices from list"
           relationship="label"
@@ -119,6 +120,7 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
             appearance="subtle"
           />
         </Tooltip>
+        */}
 
         <Tooltip content="Refresh" relationship="label" positioning="below-start" size="small">
           <ToolbarButton
