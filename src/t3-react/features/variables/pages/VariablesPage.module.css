@@ -350,10 +350,10 @@
   min-width: 120px;
   flex: 0 0 22%;
 }
-/* 5. Value - 13% (center header) */
+/* 5. Value - 13% (right align with values) */
 .container :global(.fui-DataGridHeaderCell):nth-child(5) {
-  justify-content: center;
-  text-align: center;
+  justify-content: flex-end;
+  text-align: right;
 }
 .container :global(.fui-DataGridHeaderCell):nth-child(5),
 .container :global(.fui-DataGridCell):nth-child(5) {
@@ -771,8 +771,9 @@
 .valueBadge {
   display: block;
   width: 100%;
-  text-align: left;
-  padding: 1px 10px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 16px;
   border-radius: 2px;
   background-color: #dff6dd;
   color: #107c10;

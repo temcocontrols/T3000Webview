@@ -1021,7 +1021,7 @@ const VariablesPageDesktop: React.FC = () => {
     createTableColumn<VariablePoint>({
       columnId: 'value',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('value')}>
+        <div className={styles.headerCellSort} style={{ justifyContent: 'flex-end', width: '100%' }} onClick={() => handleSort('value')}>
           <span>Value</span>
           {sortColumn === 'value' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
