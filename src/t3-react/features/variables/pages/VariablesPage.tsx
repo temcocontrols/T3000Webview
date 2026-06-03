@@ -52,6 +52,7 @@ import { API_BASE_URL } from '@t3-react/config/constants';
 import { PanelDataRefreshService } from '@t3-react/shared/services/panelDataRefreshService';
 import { useStatusBarStore } from '@t3-react/store/statusBarStore';
 import { SyncStatusBar } from '@t3-react/shared/components/SyncStatusBar';
+import { PageSyncStatus } from '@t3-react/shared/components/PageSyncStatus';
 import styles from './VariablesPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
@@ -1324,6 +1325,14 @@ const VariablesPageDesktop: React.FC = () => {
                           <InfoRegular />
                         </button>
                       </Tooltip>
+
+                      <div className={styles.toolbarSeparator} role="separator" />
+
+                      <PageSyncStatus
+                        dataType="VARIABLES"
+                        serialNumber={selectedDevice.serialNumber.toString()}
+                        onRefresh={handleRefreshFromDevice}
+                      />
                     </div>
                   </div>
 

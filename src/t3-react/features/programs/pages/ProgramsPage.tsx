@@ -50,6 +50,7 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '@t3-react/config/constants';
 import { PanelDataRefreshService } from '@t3-react/shared/services/panelDataRefreshService';
 import { SyncStatusBar } from '@t3-react/shared/components/SyncStatusBar';
+import { PageSyncStatus } from '@t3-react/shared/components/PageSyncStatus';
 import { ProgrammingDrawer } from '../components/ProgrammingDrawer';
 import styles from './ProgramsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
@@ -776,6 +777,14 @@ export const ProgramsPage: React.FC = () => {
                       <InfoRegular />
                     </button>
                   </Tooltip>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
+
+                  <PageSyncStatus
+                    dataType="PROGRAMS"
+                    serialNumber={selectedDevice.serialNumber.toString()}
+                    onRefresh={handleRefreshFromDevice}
+                  />
                 </div>
               </div>
 

@@ -53,6 +53,7 @@ import { API_BASE_URL } from '../../../config/constants';
 import { T3Database } from '../../../../lib/t3-database';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import { useStatusBarStore } from '../../../store/statusBarStore';
+import { PageSyncStatus } from '@t3-react/shared/components/PageSyncStatus';
 import { useResponsive } from '@t3-shared/core/hooks/useResponsive';
 import { InputsPageMobile } from '@t3-mobile/features/inputs/pages/InputsPageMobile';
 import styles from './InputsPage.module.css';
@@ -1357,6 +1358,14 @@ const InputsPageDesktop: React.FC = () => {
                       <InfoRegular />
                     </button>
                   </Tooltip>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
+
+                  <PageSyncStatus
+                    dataType="INPUTS"
+                    serialNumber={selectedDevice.serialNumber.toString()}
+                    onRefresh={handleRefreshFromDevice}
+                  />
                 </div>
               </div>
 
