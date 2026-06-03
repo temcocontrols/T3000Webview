@@ -25,6 +25,8 @@ import {
   Dismiss24Regular,
   CheckmarkCircle20Filled,
   ErrorCircle20Filled,
+  ArrowSync20Regular,
+  Clock20Regular,
 } from '@fluentui/react-icons';
 import { SyncStatus } from '../hooks/useSyncStatus';
 import { useAutoRefresh, AutoRefreshConfig } from '../hooks/useAutoRefresh';
@@ -193,6 +195,36 @@ const useStyles = makeStyles({
     fontWeight: tokens.fontWeightMedium,
     fontSize: tokens.fontSizeBase200,
   },
+  statusOverview: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    padding: '10px 12px',
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusSmall,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    flexShrink: 0,
+  },
+  statusOverviewRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  statusOverviewIcon: {
+    flexShrink: 0,
+  },
+  statusOverviewText: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground1,
+  },
+  statusOverviewSub: {
+    fontSize: tokens.fontSizeBase100,
+    color: tokens.colorNeutralForeground3,
+  },
+  refreshNowBtn: {
+    marginTop: '4px',
+    width: '100%',
+  },
 });
 
 export interface SyncSettingsDrawerProps {
@@ -200,6 +232,12 @@ export interface SyncSettingsDrawerProps {
   onClose: () => void;
   dataType: string;
   serialNumber: string;
+  /** Live sync status from the parent page */
+  syncStatus?: SyncStatus | null;
+  /** Human-readable relative time (e.g. "18 hours ago") */
+  timeAgo?: string;
+  /** Callback to trigger a manual refresh */
+  onRefresh?: () => Promise<void>;
 }
 
 export const SyncSettingsDrawer: React.FC<SyncSettingsDrawerProps> = ({
@@ -207,6 +245,9 @@ export const SyncSettingsDrawer: React.FC<SyncSettingsDrawerProps> = ({
   onClose,
   dataType,
   serialNumber,
+  syncStatus,
+  timeAgo,
+  onRefresh,
 }) => {
   const styles = useStyles();
   const [syncHistory, setSyncHistory] = useState<SyncStatus[]>([]);
@@ -218,6 +259,7 @@ export const SyncSettingsDrawer: React.FC<SyncSettingsDrawerProps> = ({
     refreshIntervalSecs: 30,
   });
   const [hasChanges, setHasChanges] = useState(false);
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   const { config, updateConfig, loading: configLoading } = useAutoRefresh({
     pageName: dataType.toLowerCase(),
@@ -337,6 +379,48 @@ export const SyncSettingsDrawer: React.FC<SyncSettingsDrawerProps> = ({
       </DrawerHeader>
 
       <DrawerBody className={styles.drawerBody}>
+        {/* Status Overview — shows current sync state at a glance */}
+        <div className={styles.statusOverview}>
+          <div className={styles.statusOverviewRow}>
+            {syncStatus?.success === false ? (
+              <ErrorCircle20Filled className={styles.statusOverviewIcon} primaryFill={tokens.colorPaletteRedForeground1} />
+            ) : syncStatus ? (
+              <CheckmarkCircle20Filled className={styles.statusOverviewIcon} primaryFill={tokens.colorPaletteGreenForeground1} />
+            ) : (
+              <Clock20Regular className={styles.statusOverviewIcon} />
+            )}
+            <Text className={styles.statusOverviewText}>
+              {syncStatus
+                ? <>Last synced: <strong>{timeAgo || 'Unknown'}</strong></>
+                : 'No sync data available'}
+            </Text>
+          </div>
+          {syncStatus && (
+            <>
+              <Text className={styles.statusOverviewSub}>
+                {syncStatus.syncTimeFmt && `${syncStatus.syncTimeFmt}  ·  `}
+                {syncStatus.syncMethod === 'FFI_BACKEND' ? 'Backend Service' : 'Manual Refresh'}
+                {syncStatus.recordsSynced > 0 && `  ·  ${syncStatus.recordsSynced} records`}
+              </Text>
+              <Button
+                appearance="primary"
+                size="small"
+                icon={isManualRefreshing ? undefined : <ArrowSync20Regular />}
+                onClick={async () => {
+                  setIsManualRefreshing(true);
+                  try { await onRefresh?.(); } finally { setIsManualRefreshing(false); }
+                }}
+                disabled={isManualRefreshing || !onRefresh}
+                className={styles.refreshNowBtn}
+              >
+                {isManualRefreshing ? 'Refreshing...' : 'Refresh Now'}
+              </Button>
+            </>
+          )}
+        </div>
+
+        <Divider />
+
         {/* Sync History Section */}
         <div className={styles.sectionHistory}>
           <Text className={styles.sectionTitle}>Sync History</Text>

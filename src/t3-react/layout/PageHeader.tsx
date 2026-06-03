@@ -9,7 +9,7 @@
  * Azure Portal style with light gray background
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Breadcrumb,
@@ -21,9 +21,14 @@ import {
   Text,
   Button,
 } from '@fluentui/react-components';
-import { ChevronRight20Regular, ChevronLeftRegular } from '@fluentui/react-icons';
+import {
+  ChevronRight20Regular,
+  ChevronLeftRegular,
+  Clock20Regular,
+} from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../features/devices/store/deviceTreeStore';
-import { SyncStatusBar } from '../shared/components/SyncStatusBar';
+import { SyncSettingsDrawer } from '../shared/components/SyncSettingsDrawer';
+import { useSyncStatus } from '../shared/hooks/useSyncStatus';
 import { InputRefreshApi } from '../features/inputs/services/inputRefreshApi';
 import { OutputRefreshApi } from '../features/outputs/services/outputRefreshApi';
 import { VariableRefreshApi } from '../features/variables/services/variableRefreshApi';
@@ -78,9 +83,27 @@ const useStyles = makeStyles({
   },
   syncSection: {
     flexShrink: 0,
-    paddingLeft: '16px',
-    marginLeft: '16px',
-    borderLeft: '1px solid #d1d1d1',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  statusButton: {
+    fontSize: '12px',
+    fontWeight: 500,
+    color: '#0078d4',
+    padding: '4px 8px',
+    borderRadius: '2px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    border: 'none',
+    background: 'transparent',
+  },
+  statusDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    flexShrink: 0,
   },
 });
 
@@ -153,6 +176,14 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => 
   };
   const dataType = dataTypeByRoute[location.pathname];
   const shouldShowSync = !!dataType && !!selectedDevice;
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  const { syncStatus, timeAgo, refresh: refreshStatus } = useSyncStatus({
+    serialNumber: selectedDevice?.serialNumber?.toString() || '',
+    dataType: dataType || '',
+    autoRefresh: shouldShowSync,
+    refreshIntervalMs: 30000,
+  });
 
   const handleBreadcrumbClick = (index: number) => {
     if (index === 0) {
@@ -221,10 +252,29 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => 
       )}
       {shouldShowSync && (
         <div className={styles.syncSection}>
-          <SyncStatusBar
+          <button
+            className={styles.statusButton}
+            onClick={() => setIsDrawerOpen(true)}
+            title="View sync status and settings"
+          >
+            {syncStatus?.success === false
+              ? <span className={styles.statusDot} style={{ backgroundColor: '#d13438' }} />
+              : syncStatus?.success === true
+                ? <span className={styles.statusDot} style={{ backgroundColor: '#107c10' }} />
+                : <Clock20Regular style={{ width: 14, height: 14, color: '#605e5c' }} />}
+            Status
+          </button>
+          <SyncSettingsDrawer
+            isOpen={isDrawerOpen}
+            onClose={() => setIsDrawerOpen(false)}
             dataType={dataType}
             serialNumber={selectedDevice.serialNumber.toString()}
-            onRefresh={handleRefreshFromDevice}
+            syncStatus={syncStatus}
+            timeAgo={timeAgo}
+            onRefresh={async () => {
+              await handleRefreshFromDevice();
+              await refreshStatus();
+            }}
           />
         </div>
       )}
