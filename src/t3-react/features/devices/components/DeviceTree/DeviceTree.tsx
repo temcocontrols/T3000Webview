@@ -22,6 +22,7 @@ import {
   Checkmark20Regular,
   Dismiss20Regular,
   Info20Regular,
+  Warning20Regular,
   Desktop20Regular,
 } from '@fluentui/react-icons';
 import type { TreeNode } from '../../../../shared/types/device';
@@ -56,7 +57,7 @@ const DeviceDetailsTooltip: React.FC<{ device: NonNullable<TreeNode['data']> }> 
 /**
  * Status icon component - Azure Portal style
  */
-const StatusIcon: React.FC<{ status: 'online' | 'offline' | 'unknown'; isSelected?: boolean }> = ({ status, isSelected }) => {
+const StatusIcon: React.FC<{ status: 'online' | 'offline' | 'unknown'; isSelected?: boolean; isUnknownDevice?: boolean }> = ({ status, isSelected, isUnknownDevice }) => {
   const iconStyle = {
     width: '16px',
     height: '16px',
@@ -66,6 +67,11 @@ const StatusIcon: React.FC<{ status: 'online' | 'offline' | 'unknown'; isSelecte
   };
 
   const color = isSelected ? '#0078d4' : undefined;
+  const warningColor = isUnknownDevice ? '#d29200' : undefined;
+
+  if (isUnknownDevice) {
+    return <Info20Regular style={{ ...iconStyle, color: warningColor || '#d29200' }} />;
+  }
 
   switch (status) {
     case 'online':
@@ -139,6 +145,7 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
 
   const isSelected = selectedNodeId === node.id;
   const hasDeviceInfo = !!node.data;
+  const isUnknownDevice = node.data?.productName === '(Unknown)';
 
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsPos, setDetailsPos] = useState<{ top: number; left: number } | null>(null);
@@ -183,7 +190,7 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
   // Show info icon for ALL selected devices with data; online/offline keep their status icon too
   const asideContent = isSelected ? (
     <span className={styles.deviceInfoIcon}>
-      <StatusIcon status={node.status ?? 'unknown'} isSelected={isSelected} />
+      <StatusIcon status={node.status ?? 'unknown'} isSelected={isSelected} isUnknownDevice={isUnknownDevice} />
     </span>
   ) : undefined;
 
