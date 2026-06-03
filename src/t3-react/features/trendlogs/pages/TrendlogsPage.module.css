@@ -1280,7 +1280,7 @@
 }
 
 .mainGrid {
-  flex: 1 1 60%;
+  flex: 1 1 65%;
   min-width: 0;
   overflow-y: auto;
   overflow-x: auto;
@@ -1307,9 +1307,9 @@
 }
 
 .subGrid {
-  flex: 0 0 calc(40% - 12px);
-  min-width: 280px;
-  max-width: 480px;
+  flex: 0 0 calc(35% - 12px);
+  min-width: 260px;
+  max-width: 420px;
   border: 1px solid #edebe9;
   border-radius: 2px;
   background-color: #ffffff;
@@ -1384,12 +1384,13 @@
 .inputHeaderName {
   flex: 1;
   min-width: 0;
+  max-width: 300px;
 }
 
 .inputHeaderId {
-  width: 75px;
-  flex-shrink: 0;
-  text-align: right;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
 }
 
 .inputNum {
@@ -1401,6 +1402,7 @@
 
 .inputName {
   flex: 1;
+  max-width: 300px;
   color: #292827;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1409,11 +1411,11 @@
 }
 
 .inputPointId {
-  width: 75px;
-  flex-shrink: 0;
+  flex: 1;
+  min-width: 0;
   color: #605e5c;
   font-size: 11px;
-  text-align: right;
+  text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2440,35 +2442,35 @@
 /* 2. Label */
 .container :global(.fui-DataGridHeaderCell):nth-child(3),
 .container :global(.fui-DataGridCell):nth-child(3) {
-  width: 18%;
-  min-width: 120px;
-  flex: 0 0 18%;
+  width: 26%;
+  min-width: 160px;
+  flex: 0 0 26%;
 }
 /* 3. Interval */
 .container :global(.fui-DataGridHeaderCell):nth-child(4),
 .container :global(.fui-DataGridCell):nth-child(4) {
-  width: 10%;
-  min-width: 80px;
-  flex: 0 0 10%;
+  width: 14%;
+  min-width: 105px;
+  flex: 0 0 14%;
 }
-/* 4. Data Size (KB) — wider to fit header text */
+/* 4. Data Size (KB) */
 .container :global(.fui-DataGridHeaderCell):nth-child(5),
 .container :global(.fui-DataGridCell):nth-child(5) {
-  width: 12%;
-  min-width: 105px;
-  flex: 0 0 12%;
+  width: 14%;
+  min-width: 115px;
+  flex: 0 0 14%;
 }
 /* 5. Status */
 .container :global(.fui-DataGridHeaderCell):nth-child(6),
 .container :global(.fui-DataGridCell):nth-child(6) {
-  width: 12%;
-  min-width: 110px;
-  flex: 0 0 12%;
+  width: 14%;
+  min-width: 120px;
+  flex: 0 0 14%;
 }
-/* 6. View */
+/* 6. View — fills remaining width */
 .container :global(.fui-DataGridHeaderCell):nth-child(7),
 .container :global(.fui-DataGridCell):nth-child(7) {
-  flex: 0 0 60px;
+  flex: 1 1 auto;
   min-width: 60px;
 }
 
