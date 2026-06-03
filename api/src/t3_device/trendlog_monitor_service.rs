@@ -264,7 +264,7 @@ impl TrendlogMonitorService {
             monitor_index,
             trendlog: TrendlogMonitorData {
                 num: monitor_index,
-                id: format!("MON{}", monitor_index + 1),
+                id: format!("TLOG{}", monitor_index + 1),
                 label: format!("Monitor {} (Fallback)", monitor_index + 1),
                 interval_seconds: 300,
                 interval_text: "5 min".to_string(),
@@ -329,7 +329,7 @@ impl TrendlogMonitorService {
 
                     // Also save the related inputs to TRENDLOG_INPUTS table
                     if let Ok(entry) = trendlog_entry {
-                        let trendlog_id = format!("MON{}", trendlog_data.num + 1);
+                        let trendlog_id = format!("TLOG{}", trendlog_data.num + 1);
                         let inputs_result = self.save_trendlog_inputs_to_database(&*db, serial_number, panel_id, &trendlog_id, &entry.inputs).await;
                         match inputs_result {
                             Ok(count) => {
@@ -370,15 +370,33 @@ impl TrendlogMonitorService {
         // PanelId should store the device's actual panel ID, not the monitor index
         // trendlog.num is the monitor index (0-11), trendlog.id SHOULD be "MON1"-"MON12" but might be unreliable
         // SOLUTION: Generate consistent Trendlog_ID from monitor index (trendlog.num)
-        let trendlog_id = format!("MON{}", trendlog.num + 1);  // MON1-MON12 (0-based to 1-based)
+        let trendlog_id = format!("TLOG{}", trendlog.num + 1);  // TLOG1-TLOG12 (0-based to 1-based)
+        let legacy_id = format!("MON{}", trendlog.num + 1);      // old format, for migration
 
-        // Find ALL existing records for this (SerialNumber, TrendlogId) combo
-        // There may be duplicates from old code that used different panelIds
-        let existing_records = trendlogs::Entity::find()
+        // Find existing records by new ID first, then try legacy MON ID
+        let mut existing_records = trendlogs::Entity::find()
             .filter(trendlogs::Column::SerialNumber.eq(device_id))
             .filter(trendlogs::Column::TrendlogId.eq(&trendlog_id))
             .all(db)
             .await?;
+
+        // Fallback: find legacy MON records and rename them
+        if existing_records.is_empty() {
+            let legacy_records = trendlogs::Entity::find()
+                .filter(trendlogs::Column::SerialNumber.eq(device_id))
+                .filter(trendlogs::Column::TrendlogId.eq(&legacy_id))
+                .all(db)
+                .await?;
+            if !legacy_records.is_empty() {
+                emit_monitor_log(db, "info", &format!("Migrating legacy MON record to TLOG: {} -> {}", legacy_id, trendlog_id)).await;
+                for rec in &legacy_records {
+                    let mut am: trendlogs::ActiveModel = rec.clone().into();
+                    am.trendlog_id = Set(trendlog_id.clone());
+                    am.update(db).await?;
+                }
+                existing_records = legacy_records;
+            }
+        }
 
         let now = Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
 

@@ -109,7 +109,7 @@ export const TreePanel: React.FC = () => {
           <div className={styles.errorContainer}>
             <div className={styles.errorTitle}>No devices to display</div>
             <div className={styles.errorMessage}>
-              There was a problem connecting to the server. Please check your connection and try again.
+              There was a problem connecting to the server (T3000). Please check whether the T3000 application is running and try again.
             </div>
             <button
               className={styles.retryButton}
