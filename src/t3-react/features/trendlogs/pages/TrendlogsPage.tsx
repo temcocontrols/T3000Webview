@@ -1905,12 +1905,12 @@ export const TrendLogsPage: React.FC = () => {
       >
         Default
       </button>
-      <button
+      {/* <button
         className={`${styles.tabButton} ${activeTab === 'point-sets' ? styles.tabButtonActive : ''}`}
         onClick={() => setActiveTab('point-sets')}
       >
         Point Sets
-      </button>
+      </button> */}
       <button
         className={`${styles.tabButton} ${activeTab === 'haystack-tags' ? styles.tabButtonActive : ''}`}
         onClick={() => setActiveTab('haystack-tags')}
@@ -2508,7 +2508,7 @@ export const TrendLogsPage: React.FC = () => {
                   <div className={styles.overviewStatGrid}>
 
                     {/* Monitors */}
-                    <div className={styles.overviewStatCard}>
+                    {/* <div className={styles.overviewStatCard}>
                       <div className={styles.overviewStatHeader}>
                         <span className={styles.overviewStatLabel}>Configured Monitors</span>
                         <Tooltip content="Total monitors detected from database/device sync. ON/OFF shows runtime state split." relationship="description">
@@ -2526,7 +2526,7 @@ export const TrendLogsPage: React.FC = () => {
                           <span className={styles.overviewStatSlots}>avg {formatSeconds(avgIntervalSeconds)}</span>
                         )}
                       </div>
-                    </div>
+                    </div> */}
 
                     {/* Sensor Inventory */}
                     <div className={styles.overviewStatCard}>

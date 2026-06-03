@@ -3081,7 +3081,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           disabled={loading}
           size="small"
           style={{ minWidth: '20px', padding: '2px', width: '20px' }}
-          title="Scroll Left (鈫?"
+          title="Scroll Left"
         />
         <Button
           appearance="subtle"
@@ -3090,7 +3090,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           disabled={isRealtime || loading}
           size="small"
           style={{ minWidth: '20px', padding: '2px', width: '20px' }}
-          title="Scroll Right (鈫?"
+          title="Scroll Right"
         />
       </div>
 
