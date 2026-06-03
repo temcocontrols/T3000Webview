@@ -805,21 +805,19 @@
 .varTabBar {
   display: flex;
   align-items: center;
-  gap: 0;
+  gap: 16px;
   flex-shrink: 0;
 }
 
-.varTab {
+.varRadio {
   border: none;
   background: transparent;
-  color: #605e5c;
-  padding: 6px 12px;
+  color: #201f1e;
+  padding: 2px 0;
   font-family: 'Segoe UI', sans-serif;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
+  font-size: 12px;
+  font-weight: 400;
   cursor: pointer;
-  position: relative;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -827,38 +825,51 @@
   white-space: nowrap;
 }
 
-.varTab::after {
+.varRadio:hover {
+  color: #0f6cbd;
+}
+
+.varRadio:hover .varRadioCircle {
+  border-color: #0f6cbd;
+}
+
+.varRadioActive {
+  color: #0f6cbd;
+  font-weight: 600;
+}
+
+.varRadioCircle {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #8a8886;
+  flex-shrink: 0;
+  position: relative;
+  transition: border-color 0.16s ease;
+}
+
+.varRadioCircle::after {
   content: '';
   position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 0;
-  height: 2px;
-  border-radius: 2px;
+  top: 2px;
+  left: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   background: #0f6cbd;
-  transform: scaleX(0);
-  transform-origin: center;
-  transition: transform 0.18s ease;
+  transform: scale(0);
+  transition: transform 0.16s ease;
 }
 
-.varTab:hover {
-  color: #201f1e;
+.varRadioActive .varRadioCircle {
+  border-color: #0f6cbd;
 }
 
-.varTab:hover::after {
-  transform: scaleX(0.45);
+.varRadioActive .varRadioCircle::after {
+  transform: scale(1);
 }
 
-.varTabActive {
-  color: #0f6cbd;
-  font-weight: 700;
-}
-
-.varTabActive::after {
-  transform: scaleX(1);
-}
-
-.varTabCount {
+.varRadioCount {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -873,21 +884,9 @@
   line-height: 1;
 }
 
-.varTabActive .varTabCount {
+.varRadioActive .varRadioCount {
   background-color: #cce0f5;
   color: #0f6cbd;
-}
-
-/* Icon inside tab */
-.varTabIcon {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  opacity: 1;
-}
-
-.varTabActive .varTabIcon {
-  opacity: 1;
 }
 
 /* Type icons in the Variable column rows */

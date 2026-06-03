@@ -42,8 +42,7 @@ import {
   ArrowSortRegular,
   ErrorCircleRegular,
   SaveRegular,
-  InfoRegular,
-  EditSettings24Regular
+  InfoRegular
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '@t3-react/features/devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
@@ -681,8 +680,8 @@ const VariablesPageDesktop: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
 
-  // VAR / PVAR / BOTH filter — three mutually exclusive options
-  const [activeFilter, setActiveFilter] = useState<'VARS' | 'PVARS' | 'BOTH'>('BOTH');
+  // VAR / PVAR filter — two mutually exclusive options
+  const [activeFilter, setActiveFilter] = useState<'VARS' | 'PVARS'>('VARS');
 
   // Determine if a variable is a PVAR by its id or typeField
   const isPvar = (item: VariablePoint): boolean => {
@@ -812,10 +811,9 @@ const VariablesPageDesktop: React.FC = () => {
         typeField: '',
       }));
     }
-    // Apply VAR / PVARS / BOTH filter
+    // Apply VAR / PVAR filter
     if (activeFilter === 'VARS')  return allVariables.filter(v => !isPvar(v));
-    if (activeFilter === 'PVARS') return allVariables.filter(v =>  isPvar(v));
-    return allVariables; // BOTH
+    return allVariables.filter(v => isPvar(v)); // PVARS
   }, [allVariables, selectedDevice, activeFilter]);
 
   // Helper to identify empty rows
@@ -875,14 +873,6 @@ const VariablesPageDesktop: React.FC = () => {
                   className={`${styles.iconSmall} ${isRefreshing ? styles.rotating : ''}`}
                 />
               </button> */}
-              <span
-                className={isItemPvar ? styles.pvarTypeIcon : styles.varTypeIcon}
-                title={isItemPvar ? 'Program Variable (PVAR)' : 'Variable (VAR)'}
-              >
-                {isItemPvar
-                  ? <EditSettings24Regular style={{ width: 11, height: 11 }} />
-                  : null}
-              </span>
               <Text size={200} weight="regular">
                 {item.variableId || (item.variableIndex ? `VAR${parseInt(item.variableIndex) + 1}` : '')}
               </Text>
@@ -1266,32 +1256,29 @@ const VariablesPageDesktop: React.FC = () => {
 
                       <div className={styles.toolbarSeparator} role="separator" />
 
-                      {/* VAR / PVARS / BOTH underline tab filter */}
-                      <div className={styles.varTabBar} role="group" aria-label="Variable type filter">
+                      {/* VAR / PVAR radio filter */}
+                      <div className={styles.varTabBar} role="radiogroup" aria-label="Variable type filter">
                         <button
-                          className={`${styles.varTab} ${activeFilter === 'VARS' ? styles.varTabActive : ''}`}
+                          role="radio"
+                          aria-checked={activeFilter === 'VARS'}
+                          className={`${styles.varRadio} ${activeFilter === 'VARS' ? styles.varRadioActive : ''}`}
                           onClick={() => setActiveFilter('VARS')}
-                          title="Show only Variables (VARs)"
+                          title="Vars: Regular system variables. These are global values used across the device."
                         >
-                          VARS
-                          <span className={styles.varTabCount}>{varCount}</span>
+                          <span className={styles.varRadioCircle} />
+                          Vars
+                          <span className={styles.varRadioCount}>{varCount}</span>
                         </button>
                         <button
-                          className={`${styles.varTab} ${activeFilter === 'PVARS' ? styles.varTabActive : ''}`}
+                          role="radio"
+                          aria-checked={activeFilter === 'PVARS'}
+                          className={`${styles.varRadio} ${activeFilter === 'PVARS' ? styles.varRadioActive : ''}`}
                           onClick={() => setActiveFilter('PVARS')}
-                          title="Show only Panel Variables (PVARs)"
+                          title="PVars: Program variables. These are local values used inside control programs (e.g., timers, counters, setpoints)."
                         >
-                          <EditSettings24Regular className={styles.varTabIcon} />
-                          PVARS
-                          <span className={styles.varTabCount}>{pvarCount}</span>
-                        </button>
-                        <button
-                          className={`${styles.varTab} ${activeFilter === 'BOTH' ? styles.varTabActive : ''}`}
-                          onClick={() => setActiveFilter('BOTH')}
-                          title="Show all variables (VARs + PVARs)"
-                        >
-                          BOTH
-                          <span className={styles.varTabCount}>{varCount + pvarCount}</span>
+                          <span className={styles.varRadioCircle} />
+                          PVars
+                          <span className={styles.varRadioCount}>{pvarCount}</span>
                         </button>
                       </div>
 

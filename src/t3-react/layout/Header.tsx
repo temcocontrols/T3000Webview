@@ -722,7 +722,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
           <span style={{ fontSize: '12px', color: 'var(--t3-color-header-text)', marginRight: '8px' }}>
             {devVersion.value}
           </span>
-          <ThemeSelector appearance="subtle" size="small" />
+          {/* <ThemeSelector appearance="subtle" size="small" /> */}
 
           <Popover>
             <PopoverTrigger>
