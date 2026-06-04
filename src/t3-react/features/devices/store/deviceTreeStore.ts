@@ -173,20 +173,16 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           try {
             const response = await DeviceApiService.getAllDevices();
 
-            // Clean device names from database (remove null bytes and garbage from C++ buffers)
-            // Also filter out (Unknown) devices — they are not real/discoverable devices
+            // Clean device names (remove null bytes and garbage from C++ buffers).
+            // Unknown devices are kept in the store (saved to DB) but hidden from the tree
+            // by buildTreeStructure.  Their name is left as-is — do NOT format them as
+            // "Panel X (SN YYYY)" since they don't have real discovery data.
             const cleanedDevices = response.devices
-              .map(device => {
-                const rawName = cleanDeviceName(device.nameShowOnTree, `Device ${device.serialNumber}`);
-                const isUnknown = rawName === '(Unknown)' || rawName === 'Unknown' || rawName === '';
-                return {
-                  ...device,
-                  nameShowOnTree: isUnknown
-                    ? `Panel ${device.panelNumber ?? '?'} (SN ${device.serialNumber})`
-                    : rawName,
-                  productName: cleanDeviceName(device.productName, ''),
-                };
-              });
+              .map(device => ({
+                ...device,
+                nameShowOnTree: cleanDeviceName(device.nameShowOnTree, ''),
+                productName: cleanDeviceName(device.productName, ''),
+              }));
 
             set({
               devices: cleanedDevices,
@@ -213,16 +209,17 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             console.log(`[fetchDevices] Current selectedDevice:`, selectedDevice?.nameShowOnTree || 'none');
 
             if (!selectedDevice && devices.length > 0) {
-              // Sort devices alphabetically, pushing (Unknown) devices to the bottom
-              const sortedDevices = [...devices].sort((a, b) => {
-                const aUnknown = a.nameShowOnTree === '(Unknown)' || a.nameShowOnTree === 'Unknown';
-                const bUnknown = b.nameShowOnTree === '(Unknown)' || b.nameShowOnTree === 'Unknown';
-                if (aUnknown !== bUnknown) return aUnknown ? 1 : -1;
-                return a.nameShowOnTree.localeCompare(b.nameShowOnTree);
-              });
-              const firstDevice = sortedDevices[0];
-              console.log(`[fetchDevices] Auto-selecting first device (alphabetically): ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
-              selectDevice(firstDevice);
+              // Skip unknown devices for auto-select — they are hidden from tree.
+              const isUnknown = (d: DeviceInfo) =>
+                !d.nameShowOnTree || d.nameShowOnTree === 'Unknown' || d.nameShowOnTree === '(Unknown)';
+              const knownDevices = devices.filter(d => !isUnknown(d));
+              const firstDevice = knownDevices.length > 0 ? knownDevices[0] : null;
+              if (firstDevice) {
+                console.log(`[fetchDevices] Auto-selecting first known device: ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
+                selectDevice(firstDevice);
+              } else {
+                console.log('[fetchDevices] No known devices to auto-select');
+              }
             }
 
             // Update status bar with success message
@@ -333,14 +330,11 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
                 try {
                   serialNumber = panel.serial_number || panel.serialNumber;
 
-                  // Keep original name in Product_Name, use meaningful fallback for show_label_name
+                  // Keep raw panel_name (including "(Unknown)") — do NOT format as
+                  // "Panel X (SN YYYY)" since unknown devices should be hidden.
                   const rawPanelName = panel.panel_name || panel.panelName;
-                  const panelName = cleanDeviceName(rawPanelName, '(Unknown)');
+                  const panelName = cleanDeviceName(rawPanelName, '');
                   const panelNumber = panel.panel_number || panel.Panel_Number;
-                  const isUnknown = panelName === '(Unknown)' || panelName === 'Unknown' || panelName === '';
-                  const displayName = isUnknown
-                    ? `Panel ${panelNumber ?? '?'} (SN ${serialNumber})`
-                    : panelName;
 
                   deviceData = {
                     SerialNumber: serialNumber,
@@ -349,7 +343,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
                     Panel_Number: panelNumber,
                     MainBuilding_Name: 'Default_Building',
                     Building_Name: 'Local View',
-                    show_label_name: displayName,
+                    show_label_name: panelName,
                     // Don't set description - let backend handle it or leave null
                   };
 
@@ -633,13 +627,14 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           );
         }
 
-        // Sort devices by name (alphabetically), pushing (Unknown) devices to the bottom
-        filteredDevices.sort((a, b) => {
-          const aUnknown = a.nameShowOnTree === '(Unknown)' || a.nameShowOnTree === 'Unknown';
-          const bUnknown = b.nameShowOnTree === '(Unknown)' || b.nameShowOnTree === 'Unknown';
-          if (aUnknown !== bUnknown) return aUnknown ? 1 : -1;
-          return a.nameShowOnTree.localeCompare(b.nameShowOnTree);
-        });
+        // Hide unknown devices from the tree — they are saved to DB but have no
+        // real discovery data and would clutter the UI with empty entries.
+        const isUnknownDevice = (d: DeviceInfo) =>
+          !d.nameShowOnTree || d.nameShowOnTree === 'Unknown' || d.nameShowOnTree === '(Unknown)';
+        filteredDevices = filteredDevices.filter(d => !isUnknownDevice(d));
+
+        // Sort devices by name (alphabetically)
+        filteredDevices.sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
 
         // Use treeBuilder utility to construct tree
         const treeNodes = buildTreeFromDevices(filteredDevices, expandedNodes, deviceStatuses);
