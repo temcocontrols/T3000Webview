@@ -10,15 +10,28 @@
   padding: 0;
 }
 
-/* Tree Item Selection States - Match Equipment View */
+/* ── Fluent overrides — scoped to .container so Equipment View is unaffected ── */
+.container :global(.fui-Tree) {
+  background-color: transparent !important;
+  font-size: 13px !important;
+}
+
+.container :global(.fui-TreeItemLayout) {
+  min-height: 32px !important;
+  font-size: 13px !important;
+  padding-left: calc(var(--tree-level, 0) * 8px) !important;
+}
+
+.container :global(.fui-TreeItemLayout__main) {
+  flex-wrap: nowrap !important;
+  overflow: hidden !important;
+}
+
 .treeItemSelected {
   font-weight: 400;
   color: #0078d4;
   background-color: #e1dfdd;
   border-left: 2px solid #0078d4;
-  border-radius: 0;
-  transition: all 0.1s ease-in-out;
-  padding-left: 6px;
 }
 
 .treeItemNormal {
@@ -26,9 +39,6 @@
   color: #201f1e;
   background-color: transparent;
   border-left: 2px solid transparent;
-  border-radius: 0;
-  transition: all 0.1s ease-in-out;
-  padding-left: 6px;
 }
 
 .treeItemNormal:hover {
@@ -55,12 +65,62 @@
   text-overflow: ellipsis;
 }
 
-/* Icons */
+/* Uppercase label + aligned count — matches C++ project view */
+.pointTypeLabel {
+  font-size: 13px;
+  font-weight: 400;
+  color: #201f1e;
+  min-width: 75px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pointTypeCount {
+  font-size: 13px;
+  color: #605e5c;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Per-level targeting ────────────────────────────────── */
+/* Target Fluent's internal fui-TreeItemLayout__main per level */
+
+.level0 :global(.fui-TreeItemLayout__main) {
+  /* Point List root — override here */
+}
+
+.level1 :global(.fui-TreeItemLayout__main) {
+  /* Device branch — override here */
+}
+
+.level2 :global(.fui-TreeItemLayout__main) {
+  /* Input, Output, etc. — override here */
+}
+
+.level3 :global(.fui-TreeItemLayout__main) {
+  width: 100%;
+  display: flex;
+  /* background-color: gray; */
+  margin-left: 20px !important; /* Override Fluent's default indent for level 3 */
+
+  img{
+    margin-right: 4px;
+  }
+}
+
+/* Also by node type */
+.nodeRoot :global(.fui-TreeItemLayout__main) {}
+
+.nodeDevice :global(.fui-TreeItemLayout__main) {}
+
+.nodePointType :global(.fui-TreeItemLayout__main) {}
+
+/* Icons — match toolbar SVG sizing */
 .icon {
   width: 20px;
   height: 20px;
-  color: #605e5c;
   flex-shrink: 0;
+  image-rendering: pixelated;
 }
 
 /* Status Icons */
@@ -147,5 +207,3 @@
   font-size: 13px;
   line-height: 1.5;
 }
-
-
