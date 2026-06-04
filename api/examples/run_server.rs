@@ -3,5 +3,7 @@ use t3_webview_api;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Load .env file from current directory (allows overriding DB paths etc.)
+    dotenvy::dotenv().ok();
     t3_webview_api::start_all_services_t3_migrations_only().await
 }
