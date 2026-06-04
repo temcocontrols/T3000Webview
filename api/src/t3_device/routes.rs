@@ -3193,87 +3193,94 @@ pub struct ProjectTreeNode {
 async fn get_project_point_tree(
     State(state): State<T3AppState>,
 ) -> Result<Json<ProjectTreeNode>, StatusCode> {
-    // MSSQL branch
-    if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
-
-        let devices = mssql_generic_crud::select_all(pool, "DEVICES", 1, 10000).await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-        let mut device_nodes = Vec::new();
-
-        for device in &devices {
-            let serial_str = device.get("SerialNumber")
-                .and_then(|v| v.as_i64()).map(|v| v.to_string())
-                .or_else(|| device.get("Serial_ID").and_then(|v| v.as_str()).map(|s| s.to_string()))
-                .unwrap_or_default();
-
-            let show_label = device.get("show_label_name").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
-            let screen_name = device.get("Screen_Name").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
-            let product_name = device.get("Product_Name").or(device.get("Product_name")).and_then(|v| v.as_str());
-            let device_name = show_label.or(screen_name).or(product_name)
-                .unwrap_or("Unknown Device").to_string();
-
-            let product_class_id = device.get("Product_Class_ID").or(device.get("Product_class_ID"))
-                .and_then(|v| v.as_i64()).unwrap_or(0) as i32;
-
-            let (input_total, output_total, var_total) = match product_class_id {
-                74 | 88 => (64, 64, 128),
-                35 => (32, 32, 64),
-                _ => (64, 64, 128),
-            };
-
-            let serial_num: i32 = serial_str.parse().unwrap_or(0);
-            let input_count = mssql_generic_crud::count_by_device(pool, "INPUTS", serial_num).await.unwrap_or(0) as i32;
-            let output_count = mssql_generic_crud::count_by_device(pool, "OUTPUTS", serial_num).await.unwrap_or(0) as i32;
-            let var_count = mssql_generic_crud::count_by_device(pool, "VARIABLES", serial_num).await.unwrap_or(0) as i32;
-            let program_count = mssql_generic_crud::count_by_device(pool, "PROGRAMS", serial_num).await.unwrap_or(0) as i32;
-            let schedule_count = mssql_generic_crud::count_by_device(pool, "SCHEDULES", serial_num).await.unwrap_or(0) as i32;
-            let holiday_count = mssql_generic_crud::count_by_device(pool, "HOLIDAYS", serial_num).await.unwrap_or(0) as i32;
-            let pid_count = mssql_generic_crud::count_by_device(pool, "PID_TABLE", serial_num).await.unwrap_or(0) as i32;
-            let graphic_count = mssql_generic_crud::count_by_device(pool, "GRAPHICS", serial_num).await.unwrap_or(0) as i32;
-            let trendlog_count = mssql_generic_crud::count_by_device(pool, "TRENDLOGS", serial_num).await.unwrap_or(0) as i32;
-
-            let calc_percentage = |used: i32, total: i32| -> f32 {
-                if total == 0 { 0.0 } else { (used as f32 / total as f32) * 100.0 }
-            };
-
-            let point_children = vec![
-                ProjectTreeNode { name: format!("Input ({}/{})", input_count, input_total), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("inputs".to_string()), used: Some(input_count), total: Some(input_total), percentage: Some(calc_percentage(input_count, input_total)), children: vec![] },
-                ProjectTreeNode { name: format!("Output ({}/{})", output_count, output_total), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("outputs".to_string()), used: Some(output_count), total: Some(output_total), percentage: Some(calc_percentage(output_count, output_total)), children: vec![] },
-                ProjectTreeNode { name: format!("Variable ({}/{})", var_count, var_total), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("variables".to_string()), used: Some(var_count), total: Some(var_total), percentage: Some(calc_percentage(var_count, var_total)), children: vec![] },
-                ProjectTreeNode { name: format!("Program ({}/16)", program_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("programs".to_string()), used: Some(program_count), total: Some(16), percentage: Some(calc_percentage(program_count, 16)), children: vec![] },
-                ProjectTreeNode { name: format!("PID Loop ({}/16)", pid_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("pidloops".to_string()), used: Some(pid_count), total: Some(16), percentage: Some(calc_percentage(pid_count, 16)), children: vec![] },
-                ProjectTreeNode { name: format!("Schedule ({}/8)", schedule_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("schedules".to_string()), used: Some(schedule_count), total: Some(8), percentage: Some(calc_percentage(schedule_count, 8)), children: vec![] },
-                ProjectTreeNode { name: format!("Holiday ({}/4)", holiday_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("holidays".to_string()), used: Some(holiday_count), total: Some(4), percentage: Some(calc_percentage(holiday_count, 4)), children: vec![] },
-                ProjectTreeNode { name: format!("Graphic ({}/16)", graphic_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("graphics".to_string()), used: Some(graphic_count), total: Some(16), percentage: Some(calc_percentage(graphic_count, 16)), children: vec![] },
-                ProjectTreeNode { name: format!("Trendlog ({}/12)", trendlog_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("trendlogs".to_string()), used: Some(trendlog_count), total: Some(12), percentage: Some(calc_percentage(trendlog_count, 12)), children: vec![] },
-            ];
-
-            device_nodes.push(ProjectTreeNode {
-                name: device_name,
-                node_type: "device".to_string(),
-                serial_number: Some(serial_str),
-                status: Some("offline".to_string()),
-                point_type: None, used: None, total: None, percentage: None,
-                children: point_children,
-            });
-        }
-
-        let root_node = ProjectTreeNode {
-            name: "Point List".to_string(),
-            node_type: "root".to_string(),
-            serial_number: None, status: None, point_type: None, used: None, total: None, percentage: None,
-            children: vec![ProjectTreeNode {
-                name: "System List".to_string(),
-                node_type: "system".to_string(),
-                serial_number: None, status: None, point_type: None, used: None, total: None, percentage: None,
-                children: device_nodes,
-            }],
-        };
-
-        return Ok(Json(root_node));
-    }
+    // ── MSSQL branch (COMMENTED OUT) ──────────────────────────────────────
+    // Reads from MSSQL center DB but panics when columns have I32(None)
+    // values that tiberius can't convert to f64. SQLite is the canonical
+    // device cache (kept in sync by FFI), so we use that instead.
+    //
+    // When the MSSQL schema or tiberius handling is fixed, uncomment below.
+    // ═══════════════════════════════════════════════════════════════════════
+    // if let Some(pool) = &state.mssql_pool {
+    //     use crate::database_management::mssql_generic_crud;
+    //
+    //     let devices = mssql_generic_crud::select_all(pool, "DEVICES", 1, 10000).await
+    //         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    //
+    //     let mut device_nodes = Vec::new();
+    //
+    //     for device in &devices {
+    //         let serial_str = device.get("SerialNumber")
+    //             .and_then(|v| v.as_i64()).map(|v| v.to_string())
+    //             .or_else(|| device.get("Serial_ID").and_then(|v| v.as_str()).map(|s| s.to_string()))
+    //             .unwrap_or_default();
+    //
+    //         let show_label = device.get("show_label_name").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
+    //         let screen_name = device.get("Screen_Name").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
+    //         let product_name = device.get("Product_Name").or(device.get("Product_name")).and_then(|v| v.as_str());
+    //         let device_name = show_label.or(screen_name).or(product_name)
+    //             .unwrap_or("Unknown Device").to_string();
+    //
+    //         let product_class_id = device.get("Product_Class_ID").or(device.get("Product_class_ID"))
+    //             .and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+    //
+    //         let (input_total, output_total, var_total) = match product_class_id {
+    //             74 | 88 => (64, 64, 128),
+    //             35 => (32, 32, 64),
+    //             _ => (64, 64, 128),
+    //         };
+    //
+    //         let serial_num: i32 = serial_str.parse().unwrap_or(0);
+    //         let input_count = mssql_generic_crud::count_by_device(pool, "INPUTS", serial_num).await.unwrap_or(0) as i32;
+    //         let output_count = mssql_generic_crud::count_by_device(pool, "OUTPUTS", serial_num).await.unwrap_or(0) as i32;
+    //         let var_count = mssql_generic_crud::count_by_device(pool, "VARIABLES", serial_num).await.unwrap_or(0) as i32;
+    //         let program_count = mssql_generic_crud::count_by_device(pool, "PROGRAMS", serial_num).await.unwrap_or(0) as i32;
+    //         let schedule_count = mssql_generic_crud::count_by_device(pool, "SCHEDULES", serial_num).await.unwrap_or(0) as i32;
+    //         let holiday_count = mssql_generic_crud::count_by_device(pool, "HOLIDAYS", serial_num).await.unwrap_or(0) as i32;
+    //         let pid_count = mssql_generic_crud::count_by_device(pool, "PID_TABLE", serial_num).await.unwrap_or(0) as i32;
+    //         let graphic_count = mssql_generic_crud::count_by_device(pool, "GRAPHICS", serial_num).await.unwrap_or(0) as i32;
+    //         let trendlog_count = mssql_generic_crud::count_by_device(pool, "TRENDLOGS", serial_num).await.unwrap_or(0) as i32;
+    //
+    //         let calc_percentage = |used: i32, total: i32| -> f32 {
+    //             if total == 0 { 0.0 } else { (used as f32 / total as f32) * 100.0 }
+    //         };
+    //
+    //         let point_children = vec![
+    //             ProjectTreeNode { name: format!("Input ({}/{})", input_count, input_total), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("inputs".to_string()), used: Some(input_count), total: Some(input_total), percentage: Some(calc_percentage(input_count, input_total)), children: vec![] },
+    //             ProjectTreeNode { name: format!("Output ({}/{})", output_count, output_total), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("outputs".to_string()), used: Some(output_count), total: Some(output_total), percentage: Some(calc_percentage(output_count, output_total)), children: vec![] },
+    //             ProjectTreeNode { name: format!("Variable ({}/{})", var_count, var_total), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("variables".to_string()), used: Some(var_count), total: Some(var_total), percentage: Some(calc_percentage(var_count, var_total)), children: vec![] },
+    //             ProjectTreeNode { name: format!("Program ({}/16)", program_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("programs".to_string()), used: Some(program_count), total: Some(16), percentage: Some(calc_percentage(program_count, 16)), children: vec![] },
+    //             ProjectTreeNode { name: format!("PID Loop ({}/16)", pid_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("pidloops".to_string()), used: Some(pid_count), total: Some(16), percentage: Some(calc_percentage(pid_count, 16)), children: vec![] },
+    //             ProjectTreeNode { name: format!("Schedule ({}/8)", schedule_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("schedules".to_string()), used: Some(schedule_count), total: Some(8), percentage: Some(calc_percentage(schedule_count, 8)), children: vec![] },
+    //             ProjectTreeNode { name: format!("Holiday ({}/4)", holiday_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("holidays".to_string()), used: Some(holiday_count), total: Some(4), percentage: Some(calc_percentage(holiday_count, 4)), children: vec![] },
+    //             ProjectTreeNode { name: format!("Graphic ({}/16)", graphic_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("graphics".to_string()), used: Some(graphic_count), total: Some(16), percentage: Some(calc_percentage(graphic_count, 16)), children: vec![] },
+    //             ProjectTreeNode { name: format!("Trendlog ({}/12)", trendlog_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("trendlogs".to_string()), used: Some(trendlog_count), total: Some(12), percentage: Some(calc_percentage(trendlog_count, 12)), children: vec![] },
+    //         ];
+    //
+    //         device_nodes.push(ProjectTreeNode {
+    //             name: device_name,
+    //             node_type: "device".to_string(),
+    //             serial_number: Some(serial_str),
+    //             status: Some("offline".to_string()),
+    //             point_type: None, used: None, total: None, percentage: None,
+    //             children: point_children,
+    //         });
+    //     }
+    //
+    //     let root_node = ProjectTreeNode {
+    //         name: "Point List".to_string(),
+    //         node_type: "root".to_string(),
+    //         serial_number: None, status: None, point_type: None, used: None, total: None, percentage: None,
+    //         children: vec![ProjectTreeNode {
+    //             name: "System List".to_string(),
+    //             node_type: "system".to_string(),
+    //             serial_number: None, status: None, point_type: None, used: None, total: None, percentage: None,
+    //             children: device_nodes,
+    //         }],
+    //     };
+    //
+    //     return Ok(Json(root_node));
+    // }
+    // ═══════════════════════════════════════════════════════════════════════
 
     let db = get_t3_device_conn!(state);
 
