@@ -28,33 +28,125 @@ Getting started is simple:
 ## 🔀 What’s the Same, What’s New, and What’s Next
 
 ### Kept the Same
-WebView preserves the familiar T3000 layout and workflow:  
-- **Left panel** for building view and device tree  
-- **Top menu** for navigation  
-- **Second bar** for quick actions  
-- **Right area** for detail views such as trend logs and inputs  
-- **Bottom status bar** for system health and alarms  
 
-This means users can continue operating WebView just as they did in T3000, without relearning the interface. Some features are not yet fully built in WebView but are actively being developed to ensure full parity with the desktop application. *(You can add screenshots here later to show each area.)*
+WebView preserves the familiar T3000 layout and workflow. Users can continue operating WebView just as they did in T3000, without relearning the interface. Some features are not yet fully built in WebView but are actively being developed to ensure full parity with the desktop application.
+
+---
+
+**1. Left Panel — Building View & Device Tree**  
+Provides a hierarchical view of buildings and devices.  
+
+![Left Panel](./pic/03.png)
+
+---
+
+**2. Top Menu — Navigation**  
+Contains the main functions, organized into sub‑menus grouped just like in T3000.  
+This grouping ensures users can quickly find related commands under familiar categories.
+
+---
+
+**3. Second Bar — Quick Actions**  
+Shortcut bar for frequently used commands.  
+When hovering the mouse over an icon, a tooltip appears with more description, making it easier for new users to understand each function.  
+
+![Shortcut Bar](./pic/04.png)
+
+---
+
+**4. Right Area — Detail Views**  
+This section displays the main working pages, each with a similar layout to T3000.  
+Pages include: Inputs, Outputs, Variables, Programs, Trend Logs, Alarms, Schedules, Configuration.  
+
+![Detail View](./pic/05.png)  
+
+![Detail View](./pic/06.png) 
+
+![Detail View](./pic/07.png)  
+
+![Detail View](./pic/08.png) 
+
+![Detail View](./pic/09.png)
+
+---
+
+**5. Bottom Status Bar — System Health**  
+Shows alarms, SD card/device indicators, and overall system health. 
 
 ---
 
 ### Newly Added
-WebView introduces several new features beyond the desktop version:  
-- **Shared Center DB** — multi‑PC synchronization via SQL Server  
-- **Dashboard panel** — live monitoring of network, DB sync, and trends  
-- **Mobile responsive design** — works seamlessly on phones and tablets  
-- **New event log** — enhanced logging for debugging and system analysis  
-- **Built‑in documentation** — integrated help and guides (screenshots can be added here)  
+
+WebView introduces several new features beyond the desktop version. These enhancements extend the familiar T3000 workflow with modern capabilities:
 
 ---
 
-### Future Direction
-This WebView edition will act as the **center platform** for adding more features over time. While not all enhancements are defined yet, users can expect continuous improvements and expansions to automation, analytics, and integration capabilities.
+**1. Shared Center DB**  
+Summary: Shared Center DB changes T3000 from isolated PCs to one shared system.  
+Instead of each PC keeping separate data, all PCs connect to one central SQL Server database so users see the same building view.  
+
+For more details, view the documentation here:  
+http://localhost:9103/#/t3000/documentation/shared-db/shared-center-db-summary
+
+![Detail View](./pic/10.png)
+
+![Detail View](./pic/11.png)
+
+![Detail View](./pic/12.png)
 
 ---
 
-## ⚙️ How It Works (Simplified)
+**2. Dashboard Panel**  
+Live monitoring of network status, database sync, and trend activity.
+
+![Detail View](./pic/13.png)
+
+![Detail View](./pic/14.png)
+
+---
+
+**3. Mobile Responsive Design**  
+Optimized layout for phones and tablets, ensuring smooth operation across devices.
+
+![Detail View](./pic/15.png)
+
+![Detail View](./pic/16.png)
+
+![Detail View](./pic/17.png)
+
+![Detail View](./pic/18.png)
+
+![Detail View](./pic/19.png)
+
+---
+
+**4. Event Log**  
+Enhanced logging for debugging and system analysis, with filters for easier tracking.
+
+![Detail View](./pic/20.png)
+
+![Detail View](./pic/21.png)
+
+![Detail View](./pic/22.png) 
+
+---
+
+**5. Built‑in & Development Documentation**  
+Integrated help and guides directly within the interface. *
+
+![Detail View](./pic/23.png) 
+
+![Detail View](./pic/24.png) 
+
+![Detail View](./pic/25.png) 
+
+![Detail View](./pic/26.png)  
+
+---
+
+---
+
+## ⚙️ How It Works
 
 The general flow is straightforward:  
 - **Field devices** send data and events.  
@@ -69,13 +161,7 @@ The general flow is straightforward:
 - **Frontend**: React 18 + Fluent UI v9  
 - **Backend**: Rust (Axum) + WebSocket  
 - **Database**: SQLite (fast local cache), MSSQL (optional center DB)  
-- **Device Interface**: FFI calls into T3000.exe BACnet engine  
-
-Source code and API documentation are available in the `/api/doc` folder.
+- **Device Interface**: FFI calls into T3000.exe BACnet engine   
 
 ---
 
-## 📢 Feedback & Contributions
-
-We welcome **recommendations, feedback, and contributions** from the community.  
-Your input helps us refine WebView and ensure it meets real‑world needs.
