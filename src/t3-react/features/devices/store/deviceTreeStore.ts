@@ -940,6 +940,10 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
       },
 
       fetchProjectPointTree: async () => {
+        // Guard against concurrent calls — return early if already fetching
+        const { isLoading } = get();
+        if (isLoading) return;
+
         set({ isLoading: true, error: null });
         try {
           const response = await fetch(`${API_BASE_URL}/api/t3_device/tree/project-view`);

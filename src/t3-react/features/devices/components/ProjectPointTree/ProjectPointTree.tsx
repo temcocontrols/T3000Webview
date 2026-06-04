@@ -97,7 +97,8 @@ const StatusIcon: React.FC<{ status: string }> = ({ status }) => {
   if (status === 'online') {
     return <Checkmark20Regular className={styles.statusOnline} />;
   }
-  return <CircleFilled className={styles.statusOffline} />;
+  // return <CircleFilled className={styles.statusOffline} />;
+  return <></>;
 };
 
 /**
@@ -235,10 +236,10 @@ export const ProjectPointTree: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!projectTreeData) {
+    if (!projectTreeData && !isLoading) {
       fetchProjectPointTree();
     }
-  }, [projectTreeData, fetchProjectPointTree]);
+  }, [projectTreeData, isLoading]);
 
   // Auto-expand first device when tree data loads
   useEffect(() => {
