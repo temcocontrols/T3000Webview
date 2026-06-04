@@ -130,11 +130,16 @@ const OutputsPageDesktop: React.FC = () => {
   */
 
   // Fetch outputs for selected device
+  const fetchingRef = useRef(false);
+
   const fetchOutputs = useCallback(async () => {
     if (!selectedDevice) {
       setOutputs([]);
       return;
     }
+
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
 
     setLoading(true);
     setError(null);
@@ -154,10 +159,10 @@ const OutputsPageDesktop: React.FC = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load outputs';
       setError(errorMessage);
       console.error('Error fetching outputs:', err);
-      // DON'T clear outputs on database fetch error - preserve what we have
     } finally {
       setLoading(false);
       setDbChecked(true);
+      fetchingRef.current = false;
     }
   }, [selectedDevice]);
 

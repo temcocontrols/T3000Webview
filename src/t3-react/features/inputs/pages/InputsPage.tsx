@@ -130,11 +130,16 @@ const InputsPageDesktop: React.FC = () => {
   */
 
   // Fetch inputs for selected device
+  const fetchingRef = useRef(false);
+
   const fetchInputs = useCallback(async () => {
     if (!selectedDevice) {
       setInputs([]);
       return;
     }
+
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
 
     setLoading(true);
     setError(null);
@@ -154,10 +159,10 @@ const InputsPageDesktop: React.FC = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load inputs';
       setError(errorMessage);
       console.error('Error fetching inputs:', err);
-      // DON'T clear inputs on database fetch error - preserve what we have
     } finally {
       setLoading(false);
-      setDbChecked(true); // signal that DB fetch for current device is complete
+      setDbChecked(true);
+      fetchingRef.current = false;
     }
   }, [selectedDevice]);
 
