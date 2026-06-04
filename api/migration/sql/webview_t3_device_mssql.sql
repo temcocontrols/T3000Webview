@@ -1,9 +1,10 @@
 -- ==========================================================================
--- T3000 WebView Device Database Schema �?Microsoft SQL Server (T-SQL)
+-- T3000 WebView Device Database Schema — Microsoft SQL Server (T-SQL)
 -- Translated from webview_t3_device_schema.sql (SQLite)
--- Date: 2026-04-15
--- Purpose: Create 46 device tables on a centralized SQL Server instance.
---          DB_BACKEND_CONFIG is NOT included (local SQLite only).
+-- Date: 2026-06-04 (updated — sync with SQLite schema at 54 tables)
+-- Purpose: Create all 54 device + logging tables on a centralized SQL Server instance.
+--          All tables are included for schema parity, even those typically written
+--          only to local SQLite (T3_FLOW*, T3_APP_LOG, DB_BACKEND_CONFIG).
 -- Compatible with: SQL Server 2012+
 -- ==========================================================================
 
@@ -1290,3 +1291,23 @@ CREATE TABLE T3_FLOW_PAYLOAD (
     created_at   BIGINT        NOT NULL,
     purged       INT           NOT NULL DEFAULT 0
 );
+
+-- ============================================================================
+-- TRENDLOG_POINT_SETS - Named saved point set selections for trendlog views
+-- ============================================================================
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'TRENDLOG_POINT_SETS')
+CREATE TABLE TRENDLOG_POINT_SETS (
+    id            INT IDENTITY(1,1) PRIMARY KEY,
+    serial_number INT            NOT NULL,
+    set_name      NVARCHAR(255)  NOT NULL,
+    selected_keys NVARCHAR(MAX)  NOT NULL,
+    point_tags    NVARCHAR(MAX)  NOT NULL,
+    created_at    BIGINT,
+    updated_at    BIGINT
+);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'uq_trendpointsets_serial_name' AND object_id = OBJECT_ID('TRENDLOG_POINT_SETS'))
+CREATE UNIQUE INDEX uq_trendpointsets_serial_name ON TRENDLOG_POINT_SETS (serial_number, set_name);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_trendpointsets_serial' AND object_id = OBJECT_ID('TRENDLOG_POINT_SETS'))
+CREATE INDEX idx_trendpointsets_serial ON TRENDLOG_POINT_SETS (serial_number);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_trendpointsets_updated_at' AND object_id = OBJECT_ID('TRENDLOG_POINT_SETS'))
+CREATE INDEX idx_trendpointsets_updated_at ON TRENDLOG_POINT_SETS (updated_at DESC);
