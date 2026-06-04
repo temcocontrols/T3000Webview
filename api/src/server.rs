@@ -340,6 +340,10 @@ pub async fn server_start(
 
     logger.info(&format!("T3000 WebView Service listening on {:?}", listener.local_addr()));
 
+    // Print visible confirmation so user knows server is ready
+    println!("✅ Server is READY — listening on {:?}", listener.local_addr());
+    println!("   Open http://localhost:{} in your browser", server_port);
+
     // Start the server with graceful shutdown
     match axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal_t3(state))

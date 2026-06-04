@@ -63,9 +63,16 @@ pub async fn start_websocket_server(clients: Clients) {
 
 /// Start the WebSocket server on port 9104 (blocking version)
 pub async fn start_websocket_server_blocking(clients: Clients) {
-    let ws_listener = TcpListener::bind(format!("0.0.0.0:{}", WS_PORT))
-        .await
-        .unwrap();
+    let ws_listener = match TcpListener::bind(format!("0.0.0.0:{}", WS_PORT)).await {
+        Ok(listener) => listener,
+        Err(e) => {
+            log_socket_message(
+                &format!("⚠️ WebSocket port {} already in use (T3000.exe running?): {}", WS_PORT, e),
+                LogLevel::Warn
+            );
+            return; // Don't crash — HTTP server can still work without WebSocket
+        }
+    };
 
     log_socket_message(
         &format!("🌐 WebSocket server listening on {:?}", ws_listener.local_addr()),
