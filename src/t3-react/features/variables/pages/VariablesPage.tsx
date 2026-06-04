@@ -1315,11 +1315,11 @@ const VariablesPageDesktop: React.FC = () => {
 
                       <div className={styles.toolbarSeparator} role="separator" />
 
-                      <PageSyncStatus
+                      {/* <PageSyncStatus
                         dataType="VARIABLES"
                         serialNumber={selectedDevice.serialNumber.toString()}
                         onRefresh={handleRefreshFromDevice}
-                      />
+                      /> */}
                     </div>
                   </div>
 

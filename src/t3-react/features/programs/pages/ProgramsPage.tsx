@@ -780,11 +780,11 @@ export const ProgramsPage: React.FC = () => {
 
                   <div className={styles.toolbarSeparator} role="separator" />
 
-                  <PageSyncStatus
+                  {/* <PageSyncStatus
                     dataType="PROGRAMS"
                     serialNumber={selectedDevice.serialNumber.toString()}
                     onRefresh={handleRefreshFromDevice}
-                  />
+                  /> */}
                 </div>
               </div>
 

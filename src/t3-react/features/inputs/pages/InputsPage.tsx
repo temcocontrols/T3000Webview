@@ -1361,11 +1361,11 @@ const InputsPageDesktop: React.FC = () => {
 
                   <div className={styles.toolbarSeparator} role="separator" />
 
-                  <PageSyncStatus
+                  {/* <PageSyncStatus
                     dataType="INPUTS"
                     serialNumber={selectedDevice.serialNumber.toString()}
                     onRefresh={handleRefreshFromDevice}
-                  />
+                  /> */}
                 </div>
               </div>
 
