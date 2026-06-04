@@ -1,10 +1,9 @@
 /**
  * TreeToolbar Component
  *
- * Compact toolbar with essential device tree actions
- * - Removed: Refresh (auto-refresh every 60s handles this)
- * - Removed: Scan (moved to empty state CTA button)
- * - Kept: Expand/Collapse (icon-only for compact width)
+ * Compact toolbar with essential device tree actions:
+ * - Refresh: full FFI sync (load devices → save to DB → update tree)
+ * - Expand/Collapse / Filter / View Mode toggle
  */
 
 import React from 'react';
@@ -12,14 +11,6 @@ import {
   Toolbar,
   ToolbarButton,
   Tooltip,
-  Dialog,
-  DialogTrigger,
-  DialogSurface,
-  DialogTitle,
-  DialogBody,
-  DialogActions,
-  DialogContent,
-  Button,
 } from '@fluentui/react-components';
 import {
   ChevronDoubleDown20Regular,
@@ -28,7 +19,6 @@ import {
   BuildingRegular,
   DatabaseRegular,
   ArrowSyncRegular,
-  DeleteRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../store/deviceTreeStore';
 import { useStatusBarStore } from '@t3-react/store/statusBarStore';
@@ -46,16 +36,14 @@ interface TreeToolbarProps {
  * TreeToolbar Component
  */
 export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFilter }) => {
-  const { expandAll, collapseAll, viewMode, setViewMode, loadDevicesWithSync, syncDatabaseWithCpp } = useDeviceTreeStore();
+  const { expandAll, collapseAll, viewMode, setViewMode, loadDevicesWithSync } = useDeviceTreeStore();
   const setMessage = useStatusBarStore((state) => state.setMessage);
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      // Use the same full sync as "Load Devices" button
       await loadDevicesWithSync({ skipInitialFetch: true });
     } catch (err) {
       console.error('Failed to refresh devices:', err);
@@ -82,22 +70,6 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
     }
   };
 
-  const handleCleanDatabase = () => {
-    setShowDeleteConfirm(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    setShowDeleteConfirm(false);
-    try {
-      console.log('[TreeToolbar] Starting clear all devices...');
-      await syncDatabaseWithCpp();
-      console.log('[TreeToolbar] Clear all devices completed');
-    } catch (error) {
-      console.error('[TreeToolbar] Clear all devices failed:', error);
-      setMessage('Failed to clear devices', 'error');
-    }
-  };
-
   const isProjectMode = viewMode === 'projectPoint';
 
   return (
@@ -106,25 +78,10 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
         <div className={styles.title}>Devices</div>
       </div>
       <Toolbar aria-label="Device tree toolbar" size="small">
-        {/* Remove all devices button — temporarily disabled */}
-        <Tooltip
-          content="Remove all devices from list"
-          relationship="label"
-          positioning="below-start"
-          size="small"
-        >
-          <ToolbarButton
-            aria-label="Remove all devices from list"
-            icon={<DeleteRegular fontSize={18} />}
-            onClick={handleCleanDatabase}
-            appearance="subtle"
-          />
-        </Tooltip>
-       
 
-        <Tooltip content="Refresh" relationship="label" positioning="below-start" size="small">
+        <Tooltip content="Sync devices from T3000" relationship="label" positioning="below-start" size="small">
           <ToolbarButton
-            aria-label="Refresh devices"
+            aria-label="Sync devices from T3000"
             icon={<ArrowSyncRegular fontSize={18} />}
             onClick={handleRefresh}
             appearance="subtle"
@@ -177,25 +134,6 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
           />
         </Tooltip>
       </Toolbar>
-
-      <Dialog open={showDeleteConfirm} onOpenChange={(e, data) => setShowDeleteConfirm(data.open)}>
-        <DialogSurface>
-          <DialogBody>
-            <DialogTitle style={{ fontSize: '16px', fontWeight: 'normal' }}>Remove all devices?</DialogTitle>
-            <DialogContent>
-              This will remove all devices from the device list. Your physical devices will not be affected. Click Refresh afterwards to reload devices from the network.
-            </DialogContent>
-            <DialogActions>
-              <Button appearance="secondary" onClick={() => setShowDeleteConfirm(false)} style={{ fontSize: '14px', fontWeight: 'normal' }}>
-                Cancel
-              </Button>
-              <Button appearance="primary" onClick={handleConfirmDelete} style={{ fontSize: '14px', fontWeight: 'normal' }}>
-                Remove all
-              </Button>
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
     </div>
   );
 };
