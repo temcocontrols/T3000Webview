@@ -6638,6 +6638,14 @@
       timestamp: new Date().toISOString()
     })
 
+    // Unique ID for this sampling interval — correlates all parallel action=17 FFI calls
+    // with the batch_save step so the backend can build a proper TRENDLOG_POLL flow.
+    // Uses crypto.randomUUID() when available (secure contexts), falls back to a
+    // timestamp+random suffix otherwise (e.g. HTTP dev environments).
+    const pollCycleId: string = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+
     try {
       const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : 0
       const panelsList = T3000_Data.value.panelsList || []
@@ -6721,7 +6729,8 @@
             objectInstance,
             entryType,
             0,
-            63
+            63,
+            pollCycleId
           )
           const rawItems: any[] = resp?.data?.device_data ?? []
           // Normalize pid=0: action 17 may return pid=0 for local panel items.
@@ -6777,12 +6786,12 @@
           if (isRealTime.value) {
             // Live mode: update chart AND save to DB
             LogUtil.Debug('🔍 Calling updateChartWithNewData with', validDataItems.length, 'items (action=17, no cache skip)')
-            updateChartWithNewData(validDataItems)
+            updateChartWithNewData(validDataItems, false, pollCycleId)
             // Batch save is done inside updateChartWithNewData - no duplicate call needed
           } else {
             // Custom date mode: save to DB only — don't touch chart display
             LogUtil.Debug('🔍 Background save only (custom mode):', validDataItems.length, 'items')
-            storeRealtimeDataToDatabase(validDataItems).catch(err => {
+            storeRealtimeDataToDatabase(validDataItems, pollCycleId).catch(err => {
               LogUtil.Warn('Background batch save (custom mode) failed (non-critical)', err)
             })
           }
@@ -8377,10 +8386,11 @@
   }/**
  * Store real-time data to database for historical usage
  */
-  const storeRealtimeDataToDatabase = async (validDataItems: any[]) => {
+  const storeRealtimeDataToDatabase = async (validDataItems: any[], pollCycleId?: string) => {
     LogUtil.Debug('🔥 storeRealtimeDataToDatabase ENTRY', {
       itemsCount: validDataItems.length,
-      firstItem: validDataItems[0]
+      firstItem: validDataItems[0],
+      pollCycleId: pollCycleId || '(none)',
     })
 
     try {
@@ -8567,7 +8577,9 @@
           // Enhanced source tracking
           data_source: 'REALTIME',
           created_by: 'FRONTEND',
-          sync_interval: syncInterval // Use user-configured interval
+          sync_interval: syncInterval, // Use user-configured interval
+          // Unique per-interval ID linking this batch to the action=17 FFI calls.
+          poll_cycle_id: pollCycleId || undefined,
         })
 
         return acc
@@ -8659,7 +8671,7 @@
   /**
    * Update chart with new data from GET_ENTRIES response
    */
-  const updateChartWithNewData = (validDataItems: any[], skipDbSave = false) => {
+  const updateChartWithNewData = (validDataItems: any[], skipDbSave = false, pollCycleId?: string) => {
     const traceId = trendlogTrace.getTraceId()
 
     LogUtil.Debug('🔥 updateChartWithNewData CALLED', {
@@ -9037,7 +9049,7 @@
     // skipDbSave=true when called from T3000_Data watcher (action=0 snapshot data — must NOT be saved)
     if (!skipDbSave && isRealTime.value && validDataItems.length > 0) {
       // Fire and forget - don't await, don't block chart updates
-      storeRealtimeDataToDatabase(validDataItems).catch(err => {
+      storeRealtimeDataToDatabase(validDataItems, pollCycleId).catch(err => {
         LogUtil.Warn('Background batch save failed (non-critical)', err)
       })
     }
@@ -14393,6 +14405,8 @@
       if (error.message && !error.message.includes('timeout')) {
         hasConnectionError.value = true
       }
+      // Always close the flow so it doesn't stay stuck as "running".
+      await _flowDone('error').catch(() => {})
       // Otherwise keep loading state - data might still be loading
     }
 
@@ -14415,7 +14429,8 @@
 
     // Initialize multi-canvas charts
     nextTick(async () => {
-      LogUtil.Info('🔍 DIAGNOSTIC: nextTick callback STARTED', {
+      try {
+        LogUtil.Info('🔍 DIAGNOSTIC: nextTick callback STARTED', {
         hasMonitorConfig: !!monitorConfig.value,
         monitorConfigInputItems: monitorConfig.value?.inputItems?.length || 0,
         dataSeriesLength: dataSeries.value.length,
@@ -14439,6 +14454,7 @@
         // Don't return - show error message instead of blank page
         hasConnectionError.value = true
         stopLoading()
+        await _flowDone('canvas_unavailable').catch(() => {})
         return
       }
 
@@ -14512,7 +14528,11 @@
         }
       )
       await _flowDone()
-    })
+    } catch (nextTickErr: any) {
+      LogUtil.Error('TrendLogChart: nextTick initialization failed:', nextTickErr)
+      await _flowDone(typeof nextTickErr?.message === 'string' ? 'error' : 'error').catch(() => {})
+    }
+  })
   })
 
   // Trendlog Configuration methods

@@ -86,6 +86,9 @@ export interface RealtimeDataRequest {
   data_source?: string     // 'REALTIME', 'FFI_SYNC', 'HISTORICAL', 'MANUAL'
   sync_interval?: number   // Sync interval in seconds
   created_by?: string      // 'FRONTEND', 'BACKEND', 'API'
+  // Unique ID that ties all action=17 FFI calls to their batch_save step in TRENDLOG_POLL.
+  // Generated once per sendPeriodicBatchRequest interval.
+  poll_cycle_id?: string
 }
 
 export function useTrendlogDataAPI() {

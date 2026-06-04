@@ -384,7 +384,8 @@ export function useT3000FfiApi() {
     objectinstance: number,
     entryType: number,
     indexStart: number = 0,
-    indexEnd: number = 63
+    indexEnd: number = 63,
+    pollCycleId?: string
   ): Promise<any> => {
     isLoading.value = true
     error.value = null
@@ -401,7 +402,10 @@ export function useT3000FfiApi() {
         objectinstance,
         entryType,
         entryIndexStart: indexStart,
-        entryIndexEnd: indexEnd
+        entryIndexEnd: indexEnd,
+        // Unique per-interval ID so the backend can group all parallel action=17 calls
+        // from one sendPeriodicBatchRequest cycle into a single TRENDLOG_POLL flow.
+        ...(pollCycleId ? { poll_cycle_id: pollCycleId } : {}),
       }
       LogUtil.Debug('📡 FFI API Call - Action 17 (GET_WEBVIEW_LIST)', {
         action: 17,
