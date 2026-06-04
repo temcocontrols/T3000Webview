@@ -2584,28 +2584,77 @@ async fn save_realtime_trendlog_batch(
     }
 
     // Flow logging (best-effort)
-    // Try to resume the pending TRENDLOG_POLL flow started by the preceding
-    // FFI action=15 call. Falls back to a new standalone flow if none is found.
+    // Build a TRENDLOG_POLL flow for this realtime batch.
+    // sendPeriodicBatchRequest (TrendLogChart.vue) fires up to 3 parallel action=17
+    // calls per interval (OUT / IN / VAR), then sends one batch here.  Each action=17
+    // call is stored in PENDING_ACTION17_STEPS keyed by serial_number; we drain them
+    // here so the flow reflects the actual number of FFI calls made (up to 3), plus
+    // one batch_save step.
+    //
+    // If an HTTP action=15 pending flow exists (rare path), use that instead.
     let t0 = std::time::Instant::now();
-    let flow_device  = payload.first().map(|p| p.serial_number).unwrap_or(0);
-    let flow_panel   = payload.first().map(|p| p.panel_id).unwrap_or(0);
-    let flow_pts     = payload.len();
+    let flow_device   = payload.first().map(|p| p.serial_number).unwrap_or(0);
+    let flow_panel    = payload.first().map(|p| p.panel_id).unwrap_or(0);
+    let flow_pts      = payload.len();
     let flow_interval = payload.first().and_then(|p| p.sync_interval).unwrap_or(0);
 
-    // Retrieve (and remove) the pending flow left by the FFI call
+    // Drain captured action=17 steps for this poll cycle (drained = removed from map).
+    // poll_cycle_id is generated per interval by sendPeriodicBatchRequest and attached
+    // to every action=17 call AND to every data point in the batch, so the correlation
+    // is exact even when two chart pages are open on the same device simultaneously.
+    let poll_cycle_id: String = payload.first()
+        .and_then(|p| p.poll_cycle_id.as_deref())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| flow_device.to_string()); // fallback for older frontend builds
+    let pending_ffi_steps: Vec<crate::t3_device::t3_ffi_api_service::PendingFfiPollStep> = {
+        let mut map = crate::t3_device::t3_ffi_api_service::PENDING_ACTION17_STEPS.lock().await;
+        map.remove(&poll_cycle_id).unwrap_or_default()
+    };
+
+    // Check for a pending flow left by an HTTP action=15 call (rare).
     let pending_fh: Option<crate::logging::flow::FlowHandle> = {
         let mut map = crate::t3_device::t3_ffi_api_service::PENDING_REALTIME_FLOWS.lock().await;
         map.remove(&(flow_panel, flow_device)).map(|(fh, _)| fh)
     };
-    // Fallback: create standalone 1-step flow when batch arrives without FFI
+
     let flow_opt: Option<crate::logging::flow::FlowHandle> = if pending_fh.is_some() {
+        // HTTP action=15 path — flow already has ffi_poll step, just add batch_save.
         pending_fh
     } else if let Some(ref db) = log_db {
-        Some(crate::logging::flow::FlowHandle::start(
-            db, "TRENDLOG_POLL", "batch", 1,
-            Some(&format!("device={} panel={} pts={} interval={}s",
-                flow_device, flow_panel, flow_pts, flow_interval)),
-        ).await)
+        let polled_panels: Vec<i32> = {
+            let mut seen = std::collections::HashSet::new();
+            payload.iter().filter_map(|p| {
+                if seen.insert(p.panel_id) { Some(p.panel_id) } else { None }
+            }).collect()
+        };
+        if !pending_ffi_steps.is_empty() {
+            // Normal path: we have one ffi_poll_* step per action=17 call (up to 3).
+            let total_steps = (pending_ffi_steps.len() + 1) as i64; // ffi_poll_* × N + batch_save
+            let fh = crate::logging::flow::FlowHandle::start(
+                db, "TRENDLOG_POLL", "realtime", total_steps,
+                Some(&format!("device={} panels={:?} pts={} interval={}s ffi_calls={}",
+                    flow_device, polled_panels, flow_pts, flow_interval, pending_ffi_steps.len())),
+            ).await;
+            // Replay each captured action=17 step with its full response detail.
+            for step in &pending_ffi_steps {
+                fh.step_ffi(db, &step.step_name, "info", "ffi", "ok",
+                    step.elapsed_ms, &step.message, Some(&step.detail)).await;
+            }
+            Some(fh)
+        } else {
+            // Fallback: batch arrived before any action=17 step was captured.
+            // Create a 2-step flow with a synthetic ffi_poll step.
+            let fh = crate::logging::flow::FlowHandle::start(
+                db, "TRENDLOG_POLL", "realtime", 2,
+                Some(&format!("device={} panels={:?} pts={} interval={}s",
+                    flow_device, polled_panels, flow_pts, flow_interval)),
+            ).await;
+            fh.step(db, "ffi_poll", "info", "vue_frontend", "ok", 0,
+                &format!("action=17 GET_WEBVIEW_LIST — device={} panels={:?} pts={} (steps not captured)",
+                    flow_device, polled_panels, flow_pts),
+                None).await;
+            Some(fh)
+        }
     } else { None };
 
     if state.server_db_enabled && !state.server_db_connected {

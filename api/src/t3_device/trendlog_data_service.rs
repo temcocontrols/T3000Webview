@@ -73,6 +73,9 @@ pub struct CreateTrendlogDataRequest {
     pub data_source: Option<String>,     // 'REALTIME', 'FFI_SYNC', 'HISTORICAL', 'MANUAL'
     pub sync_interval: Option<i32>,      // Sync interval in seconds
     pub created_by: Option<String>,      // 'FRONTEND', 'BACKEND', 'API'
+    /// Unique ID generated once per sendPeriodicBatchRequest interval on the frontend.
+    /// Ties the action=17 FFI calls to the batch_save step in TRENDLOG_POLL.
+    pub poll_cycle_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
