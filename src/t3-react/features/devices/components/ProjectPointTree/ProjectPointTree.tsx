@@ -16,7 +16,7 @@ import {
 import {
   BuildingRegular,
   Checkmark20Regular,
-  Dismiss20Regular,
+  CircleFilled,
 } from '@fluentui/react-icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDeviceTreeStore } from '../../store/deviceTreeStore';
@@ -97,7 +97,7 @@ const StatusIcon: React.FC<{ status: string }> = ({ status }) => {
   if (status === 'online') {
     return <Checkmark20Regular className={styles.statusOnline} />;
   }
-  return <Dismiss20Regular className={styles.statusOffline} />;
+  return <CircleFilled className={styles.statusOffline} />;
 };
 
 /**

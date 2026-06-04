@@ -133,9 +133,9 @@
 }
 
 .statusOffline {
-  width: 16px;
-  height: 16px;
-  color: #a80000;
+  width: 10px;
+  height: 10px;
+  color: #a19f9d;
   margin-left: auto;
   flex-shrink: 0;
 }
