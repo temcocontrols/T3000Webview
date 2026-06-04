@@ -126,11 +126,16 @@ const VariablesPageDesktop: React.FC = () => {
   */
 
   // Fetch variables for selected device
+  const fetchingRef = useRef(false);
+
   const fetchVariables = useCallback(async () => {
     if (!selectedDevice) {
       setVariables([]);
       return;
     }
+
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
 
     setLoading(true);
     setError(null);
@@ -146,23 +151,32 @@ const VariablesPageDesktop: React.FC = () => {
       const data = await response.json();
       const fetchedVariables = data.variable_points || [];
       setVariables(fetchedVariables);
+
+      // Auto-refresh decision: if DB is empty, trigger FFI right here
+      if (fetchedVariables.length === 0 && !autoRefreshed) {
+        // Check pvariables too (they load in parallel)
+        // We'll defer to the auto-refresh effect which checks both
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load variables';
       setError(errorMessage);
       console.error('Error fetching variables:', err);
-      // DON'T clear variables on database fetch error - preserve what we have
     } finally {
       setLoading(false);
       setDbChecked(true);
+      fetchingRef.current = false;
       if (selectedDevice) {
         hasEverLoadedData.current = true;
       }
     }
-  }, [selectedDevice]);
+  }, [selectedDevice, autoRefreshed]);
+
+  const fetchVariablesRef = useRef(fetchVariables);
+  fetchVariablesRef.current = fetchVariables;
 
   useEffect(() => {
-    fetchVariables();
-  }, [fetchVariables]);
+    fetchVariablesRef.current();
+  }, [selectedDevice?.serialNumber]);
 
   // ── PVARS: Program Variables via Action 19 (mock until backend is ready) ──
   const generateMockPvars = useCallback((sn: number, count: number): VariablePoint[] => {
@@ -249,7 +263,7 @@ const VariablesPageDesktop: React.FC = () => {
     hasEverLoadedData.current = false;
   }, [selectedDevice?.serialNumber]);
 
-  // Auto-refresh once per device — ONLY if both VARs AND PVARs are empty
+  // Auto-refresh once per device — matches InputsPage pattern exactly
   useEffect(() => {
     if (!dbChecked || loading || loadingPvars || !selectedDevice || autoRefreshed) return;
     if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
@@ -257,7 +271,6 @@ const VariablesPageDesktop: React.FC = () => {
     const checkAndRefresh = async () => {
       deviceRefreshedRef.current = selectedDevice.serialNumber;
 
-      // Skip auto-refresh if we already have any data (VARs or PVARs)
       if (variables.length > 0 || pvariables.length > 0) {
         console.log('[VariablesPage] Data already present, skipping auto-refresh');
         setAutoRefreshed(true);
@@ -271,17 +284,12 @@ const VariablesPageDesktop: React.FC = () => {
         const result = await PanelDataRefreshService.refreshFromDevice({
           serialNumber: selectedDevice.serialNumber,
           type: 'variable',
-          onLoadingChange: (loading) => {
-            if (loading) {
-              setMessage(`Loading variables from ${selectedDevice.nameShowOnTree} (Action 17)...`, 'info');
-            }
-          }
+          onLoadingChange: (l) => { if (l) setMessage(`Loading variables from ${selectedDevice.nameShowOnTree} (Action 17)...`, 'info'); }
         });
         console.log('[VariablesPage] Auto-refresh result:', result);
         setMessage(`\u2713 Synced ${result.itemCount} variables from ${selectedDevice.nameShowOnTree}`, 'success');
       } catch (err) {
         console.error('[VariablesPage] Auto-refresh failed:', err);
-        // Only log — don't set error bar for auto-refresh failures
       } finally {
         await fetchVariables();
         await fetchPvariables();
@@ -291,7 +299,7 @@ const VariablesPageDesktop: React.FC = () => {
     };
 
     checkAndRefresh();
-  }, [dbChecked, loading, loadingPvars, selectedDevice, autoRefreshed]);
+  }, [dbChecked, loading, loadingPvars, selectedDevice, autoRefreshed, fetchVariables, fetchPvariables, variables.length, pvariables.length, setMessage]);
 
   // Handlers
   const handleRefresh = async () => {
