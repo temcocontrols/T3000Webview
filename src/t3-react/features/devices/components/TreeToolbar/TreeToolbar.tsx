@@ -79,7 +79,12 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
       </div>
       <Toolbar aria-label="Device tree toolbar" size="small">
 
-        <Tooltip content="Sync devices from T3000" relationship="label" positioning="below-start" size="small">
+        <Tooltip
+          content="Sync devices from T3000 — fetches the device list via FFI, saves all devices to the database, and refreshes the tree"
+          relationship="label"
+          positioning="below-start"
+          size="small"
+        >
           <ToolbarButton
             aria-label="Sync devices from T3000"
             icon={<ArrowSyncRegular fontSize={18} />}
@@ -104,6 +109,7 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
           />
         </Tooltip>
 
+        {/* Filter and Expand/Collapse disabled for now
         <Tooltip
           content={showFilter ? 'Hide Filter' : 'Show Filter'}
           relationship="label"
@@ -133,6 +139,7 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
             className={isExpanded ? styles.activeButton : ''}
           />
         </Tooltip>
+        */}
       </Toolbar>
     </div>
   );
