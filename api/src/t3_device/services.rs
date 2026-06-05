@@ -296,12 +296,18 @@ impl T3DeviceService {
             if device_data.bacnet_ip_port.is_some() {
                 device.bacnet_ip_port = Set(device_data.bacnet_ip_port);
             }
-            // Only set show_label_name if the device has no existing name saved.
+            // Only set show_label_name if the device has no existing name saved,
+            // or if the existing name is just a placeholder like "(Unknown)".
             // The user-set name (written by PUT /devices/:id) must never be
             // overwritten by the C++ scan UPSERT which calls this create path.
             let has_existing_label = existing_show_label
                 .as_deref()
-                .map(|s| !s.trim().is_empty())
+                .map(|s| {
+                    let trimmed = s.trim();
+                    !trimmed.is_empty()
+                        && trimmed != "Unknown"
+                        && trimmed != "(Unknown)"
+                })
                 .unwrap_or(false);
             if device_data.show_label_name.is_some() && !has_existing_label {
                 device.show_label_name = Set(device_data.show_label_name);

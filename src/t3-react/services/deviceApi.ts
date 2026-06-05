@@ -53,8 +53,11 @@ function transformDeviceData(device: any): DeviceInfo {
     status: source.status ?? source.Status ?? 'unknown',
     statusHistory: source.statusHistory ?? [false, false, false, false, false],
     protocol: source.protocol ?? 'Native',
-    // Compute nameShowOnTree from showLabelName or fallback to productName
-    nameShowOnTree: showLabelName || productName || `Device ${serialNumber}`,
+    // Compute nameShowOnTree: prefer showLabelName unless it's an unknown placeholder
+    nameShowOnTree:
+      (showLabelName && showLabelName !== 'Unknown' && showLabelName !== '(Unknown)'
+        ? showLabelName
+        : productName) || `Device ${serialNumber}`,
     inputCount: device?.inputCount ?? device?.input_count ?? 0,
     outputCount: device?.outputCount ?? device?.output_count ?? 0,
     variableCount: device?.variableCount ?? device?.variable_count ?? 0,

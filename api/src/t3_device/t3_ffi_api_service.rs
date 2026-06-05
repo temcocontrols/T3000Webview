@@ -65,9 +65,7 @@ fn action17_warmup_active() -> bool {
 
 fn action4_warmup_active() -> bool {
     if let Some(loaded_at) = T3000_LOADED_AT.get() {
-        // GET_PANELS_LIST may touch C++ vectors before OnInitialUpdate has
-        // fully populated per-panel caches.
-        return loaded_at.elapsed() < Duration::from_secs(90);
+        return loaded_at.elapsed() < Duration::from_secs(3);
     }
     false
 }
