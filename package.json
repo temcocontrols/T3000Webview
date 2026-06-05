@@ -13,7 +13,7 @@
     "client-dev": "quasar dev",
     "api-dev": "cd api && cargo watch -x \"run --example run_server\"",
     "api": "cd api && cargo run --example run_server",
-    "api-t3000-debug": "cd api && cargo build --example run_server && copy .\\target\\debug\\examples\\run_server.exe \"C:\\QN\\temcocontrols\\T3000_Building_Automation_System\\T3000 Output\\Debug\\\" && cd \"C:\\QN\\temcocontrols\\T3000_Building_Automation_System\\T3000 Output\\Debug\" && run_server.exe",
+    "api-t3000-debug": "cd api && cargo build --example run_server && copy .\\target\\debug\\examples\\run_server.exe \"C:\\QN\\temcocontrols\\T3000_Building_Automation_System\\T3000 Output\\Debug\\\" && powershell -Command \"[Console]::OutputEncoding = [Text.Encoding]::UTF8; & 'C:\\QN\\temcocontrols\\T3000_Building_Automation_System\\T3000 Output\\Debug\\run_server.exe' 2>&1 | Tee-Object 'C:\\QN\\temcocontrols\\T3Copilot\\Debug-Log\\api-t3000-debug-server.log'\"",
     "api-t3000-build": "cd api && cargo build --example run_server && copy .\\target\\debug\\examples\\run_server.exe \"C:\\QN\\temcocontrols\\T3000_Building_Automation_System\\T3000 Output\\Debug\\\"",
     "dev": "concurrently \"npm run api-dev\" \"npm run client-dev\"",
     "deploy:t3000": "node scripts/deploy-to-t3000.bat",

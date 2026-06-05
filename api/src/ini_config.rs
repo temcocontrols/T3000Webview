@@ -139,6 +139,23 @@ fn parse_server_db_section(content: &str) -> ServerDbIniConfig {
     }
 }
 
+/// Quick check: is `debug_log=1` set anywhere in setting.ini?
+/// Used for runtime debugging — no section parsing needed.
+pub fn read_debug_log_flag() -> bool {
+    let path = find_setting_ini_path();
+    let content = match std::fs::read_to_string(&path) {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+    // Match any line like "debug_log=1" or "debug_log = 1" in any section
+    content
+        .lines()
+        .any(|line| {
+            let trimmed = line.trim().to_lowercase();
+            trimmed == "debug_log=1" || trimmed == "debug_log = 1" || trimmed == "debug_log=true"
+        })
+}
+
 /// Write the [ServerDatabase] section to setting.ini.
 /// Preserves all other sections and content in the file.
 pub fn write_server_db_config(
@@ -239,6 +256,7 @@ key=val
 ";
         let config = parse_server_db_section(content);
         assert!(config.enabled);
+        assert_eq!(config.role, "server");
         assert_eq!(config.role, "server");
     }
 

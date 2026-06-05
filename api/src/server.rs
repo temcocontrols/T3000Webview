@@ -28,6 +28,30 @@ use crate::{
 use super::modbus_register::routes::modbus_register_routes;
 use super::user::routes::user_routes;
 
+/// Writes to two outputs simultaneously — console + file.
+struct TeeWriter<A: std::io::Write, B: std::io::Write> {
+    a: A,
+    b: B,
+}
+
+impl<A: std::io::Write, B: std::io::Write> TeeWriter<A, B> {
+    fn new(a: A, b: B) -> Self {
+        Self { a, b }
+    }
+}
+
+impl<A: std::io::Write, B: std::io::Write> std::io::Write for TeeWriter<A, B> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let n = self.a.write(buf)?;
+        let _ = self.b.write_all(&buf[..n]);
+        Ok(n)
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.a.flush()?;
+        self.b.flush()
+    }
+}
+
 /// Axum middleware that propagates an incoming `X-Flow-Id` header to the response.
 /// If the request carries no such header, the response is unchanged.
 async fn propagate_flow_id(req: Request, next: Next) -> Response {
@@ -174,13 +198,41 @@ pub async fn server_start(
 
     logger.info("T3000 WebView HTTP API Service Starting on port 9103...");
 
-    // Initialize basic tracing
-    if let Err(_) = tracing_subscriber::fmt()
-        .with_ansi(false)
-        .try_init() {
-        logger.warn("Tracing already initialized");
+    // Initialize basic tracing — always console, optionally + file.
+    // Set debug_log=1 in setting.ini (any section) to enable file logging.
+    let enable_debug_log = crate::ini_config::read_debug_log_flag();
+
+    if enable_debug_log {
+        match std::fs::File::create("t3-webview-api-dll.log") {
+            Ok(log_file) => {
+                let tee = TeeWriter::new(std::io::stdout(), log_file);
+                tracing_subscriber::fmt()
+                    .with_ansi(false)
+                    .with_writer(std::sync::Mutex::new(tee))
+                    .try_init()
+                    .ok();
+                logger.info("Tracing initialized — console + t3-webview-api-dll.log");
+            }
+            Err(e) => {
+                // File log failed — fall back to console only, do not crash
+                tracing_subscriber::fmt()
+                    .with_ansi(false)
+                    .with_writer(std::io::stdout)
+                    .try_init()
+                    .ok();
+                logger.warn(&format!(
+                    "File log unavailable ({}), tracing initialized — console only",
+                    e
+                ));
+            }
+        }
     } else {
-        logger.info("Tracing initialized");
+        tracing_subscriber::fmt()
+            .with_ansi(false)
+            .with_writer(std::io::stdout)
+            .try_init()
+            .ok();
+        logger.info("Tracing initialized — console only");
     }
 
     // Load environment variables from .env file
