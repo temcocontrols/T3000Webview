@@ -23,6 +23,7 @@ import {
   Popover,
   PopoverTrigger,
   PopoverSurface,
+  Tooltip,
   makeStyles,
 } from '@fluentui/react-components';
 import {
@@ -91,6 +92,7 @@ import {
   ListRegular,
   NetworkCheckRegular,
   HistoryRegular,
+  CalendarDataBar28Regular,
 } from '@fluentui/react-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { menuConfig } from '@t3-react/config/menuConfig';
@@ -116,7 +118,8 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     backgroundColor: 'var(--t3-color-header-background)',
-    borderBottom: '1px solid var(--t3-color-header-border)',
+    // borderBottom: '1px solid var(--t3-color-header-border)',
+    borderBottom: '1px solid #c4c8ca',
   },
   menuBar: {
     display: 'flex',
@@ -153,17 +156,62 @@ const useStyles = makeStyles({
   toolbarContainer: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'flex-start', // Align left
-    padding: '2px 8px', // All padding 8px
-    minHeight: '36px', // Reduced from 48px
-    gap: '4px', // Small gap
-    backgroundColor: '#fff', // White background
+    justifyContent: 'flex-start',
+    padding: '2px 4px',
+    minHeight: '44px',
+    gap: '0px',
+    backgroundColor: '#f0f0f0',
     borderBottom: '1px solid var(--t3-color-border)',
   },
   toolbarSection: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0px', // No gap between toolbar items
+    gap: '5px',
+    // backgroundColor: 'red',
+    marginLeft: '8px',
+  },
+  toolbarIconBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '36px',
+    height: '36px',
+    padding: '2px',
+    border: 'none',
+    borderRadius: '3px',
+    background: 'transparent',
+    cursor: 'pointer',
+    '&:hover': {
+      backgroundColor: 'rgba(0,0,0,0.08)',
+    },
+  },
+  toolbarIconBtnActive: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '36px',
+    height: '36px',
+    padding: '2px',
+    border: '1px solid #0078d4',
+    borderRadius: '3px',
+    background: 'rgba(0,120,212,0.08)',
+    cursor: 'pointer',
+    '&:hover': {
+      backgroundColor: 'rgba(0,120,212,0.15)',
+    },
+  },
+  toolbarIconImg: {
+    width: '28px',
+    height: '28px',
+    display: 'block',
+    imageRendering: 'pixelated',
+  },
+  toolbarDivider: {
+    width: '1px',
+    height: '28px',
+    backgroundColor: '#c8c8c8',
+    margin: '0 3px',
+    flexShrink: 0,
   },
   activeToolbarButton: {
     color: '#0078d4 !important',
@@ -192,6 +240,17 @@ const useStyles = makeStyles({
   },
   menuItemWide: {
     minWidth: '300px',
+  },
+  wideTooltipContent: {
+    maxWidth: '500px !important',
+    width: 'auto !important',
+    whiteSpace: 'normal !important',
+
+    // background bubble
+    '& .fui-Tooltip__surface': {
+      maxWidth: '500px !important',
+      width: 'auto !important',
+    },
   },
 });
 
@@ -571,6 +630,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
       'List': ListRegular,
       'NetworkCheck': NetworkCheckRegular,
       'History': HistoryRegular,
+      'CalendarDataBar': CalendarDataBar28Regular,
     };
     return iconMap[icon];
   };
@@ -624,8 +684,8 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
                       onClick={() => handleMenuClick(item.action)}
                       disabled={
                         item.action === MenuAction.ExportToCsv ? !isExportAvailable :
-                        item.action === MenuAction.ImportFromCsv ? !isImportAvailable :
-                        item.disabled
+                          item.action === MenuAction.ImportFromCsv ? !isImportAvailable :
+                            item.disabled
                       }
                       icon={IconComponent ? <IconComponent /> : undefined}
                       className={menu.id === 'tools' ? styles.menuItemWide : undefined}
@@ -662,7 +722,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
           <span style={{ fontSize: '12px', color: 'var(--t3-color-header-text)', marginRight: '8px' }}>
             {devVersion.value}
           </span>
-          <ThemeSelector appearance="subtle" size="small" />
+          {/* <ThemeSelector appearance="subtle" size="small" /> */}
 
           <Popover>
             <PopoverTrigger>
@@ -717,49 +777,56 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
         </div>
       </div>
 
-      {/* Row 2: Toolbar with icon buttons */}
+      {/* Row 2: Toolbar with icon-only buttons + hover tooltips */}
       {showToolbar && (
-      <div className={styles.toolbarContainer}>
-        <div className={styles.toolbarSection}>
-          <Toolbar>
+        <div className={styles.toolbarContainer}>
+          <div className={styles.toolbarSection}>
             {toolbarConfig.map((item, index) => {
               if (item.divider) {
-                return <ToolbarDivider key={`divider-${index}`} />;
+                return <div key={`divider-${index}`} className={styles.toolbarDivider} />;
               }
 
-              // Get icon component (handle both FluentIcon and string)
-              const IconComponent = typeof item.icon === 'string'
-                ? getIconComponent(item.icon)
-                : item.icon;
+              // Map toolbar id to SVG icon filename
+              const svgId = item.id.replace('toolbar-', '');
+              const svgSrc = `/assets/t3icon/toolbar/${svgId}.svg`;
 
-              // Check if this button is active (current route matches)
-              const isActive = item.route && location.pathname === item.route;
+              const isActive = !!(item.route && location.pathname === item.route);
 
               return (
-                <ToolbarButton
+                <Tooltip
                   key={item.id}
-                  appearance="subtle"
-                  icon={IconComponent ? <IconComponent /> : undefined}
-                  disabled={item.disabled}
-                  onClick={() => handleToolbarClick(item)}
-                  title={item.tooltip || item.label}
-                  className={isActive ? styles.activeToolbarButton : ''}
-                  style={{
-                    color: theme.colors.text,
-                    fontSize: '11px', // Smaller font
-                    fontWeight: '400', // Thinner/normal weight
-                    padding: '1px 4px', // Even smaller padding
-                    minHeight: '24px', // Smaller height
-                    minWidth: 'auto', // Remove minimum width
+                  //content={<div style={{ width: '500px' }}>{item.tooltip || item.label} <br /> {item.description}</div>}
+                  content={{
+                    children: (
+                      <>
+                        {item.tooltip || item.label}
+                        <br />
+                        {item.description}
+                      </>
+                    ),
+                    className: styles.wideTooltipContent,
                   }}
+                  relationship="description"
+                  positioning="below-end"
                 >
-                  {item.label}
-                </ToolbarButton>
+                  <button
+                    className={isActive ? styles.toolbarIconBtnActive : styles.toolbarIconBtn}
+                    disabled={item.disabled}
+                    onClick={() => handleToolbarClick(item)}
+                    aria-label={item.label}
+                    type="button"
+                  >
+                    <img
+                      src={svgSrc}
+                      alt={item.label}
+                      className={styles.toolbarIconImg}
+                    />
+                  </button>
+                </Tooltip>
               );
             })}
-          </Toolbar>
+          </div>
         </div>
-      </div>
       )}
     </div>
   );

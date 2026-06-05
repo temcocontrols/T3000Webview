@@ -1837,6 +1837,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         // T3000 Trendlog Data endpoints (TRENDLOG_DATA table - Historical Data)
         .route("/devices/:device_id/trendlogs/:trendlog_id/history", post(get_trendlog_history))
         .route("/devices/:device_id/trendlog-data/stats", get(get_trendlog_data_stats))
+        .route("/devices/:device_id/trendlog-data/usage", get(get_trendlog_data_usage))
         .route("/devices/:device_id/trendlog-data/recent", get(get_recent_trendlog_data))
         .route("/devices/:device_id/trendlog-data/smart", post(get_smart_trendlog_data))
         .route("/trendlog-data/realtime", post(save_realtime_trendlog_data))
@@ -2282,6 +2283,37 @@ async fn get_trendlog_data_stats(
     }
 }
 
+/// Get per-trendlog storage usage metrics (disk space, rate, estimates)
+async fn get_trendlog_data_usage(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<Value>, StatusCode> {
+    let panel_id = params.get("panel_id")
+        .and_then(|p| p.parse::<i32>().ok())
+        .unwrap_or(1);
+
+    // ── MSSQL branch ──
+    if let Some(pool) = &state.mssql_pool {
+        use crate::database_management::mssql_trendlog_service;
+        let usage = mssql_trendlog_service::get_data_usage(pool, device_id, panel_id)
+            .await
+            .map_err(|e| { eprintln!("MSSQL usage error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        return Ok(Json(usage));
+    }
+
+    // ── SeaORM branch ──
+    let db = get_t3_device_conn!(state);
+
+    match T3TrendlogDataService::get_data_usage(&*db, device_id, panel_id).await {
+        Ok(usage) => Ok(Json(usage)),
+        Err(e) => {
+            eprintln!("Trendlog usage error: {:?}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
 /// Get recent trendlog data for realtime display
 async fn get_recent_trendlog_data(
     State(state): State<T3AppState>,
@@ -2552,28 +2584,77 @@ async fn save_realtime_trendlog_batch(
     }
 
     // Flow logging (best-effort)
-    // Try to resume the pending TRENDLOG_POLL flow started by the preceding
-    // FFI action=15 call. Falls back to a new standalone flow if none is found.
+    // Build a TRENDLOG_POLL flow for this realtime batch.
+    // sendPeriodicBatchRequest (TrendLogChart.vue) fires up to 3 parallel action=17
+    // calls per interval (OUT / IN / VAR), then sends one batch here.  Each action=17
+    // call is stored in PENDING_ACTION17_STEPS keyed by serial_number; we drain them
+    // here so the flow reflects the actual number of FFI calls made (up to 3), plus
+    // one batch_save step.
+    //
+    // If an HTTP action=15 pending flow exists (rare path), use that instead.
     let t0 = std::time::Instant::now();
-    let flow_device  = payload.first().map(|p| p.serial_number).unwrap_or(0);
-    let flow_panel   = payload.first().map(|p| p.panel_id).unwrap_or(0);
-    let flow_pts     = payload.len();
+    let flow_device   = payload.first().map(|p| p.serial_number).unwrap_or(0);
+    let flow_panel    = payload.first().map(|p| p.panel_id).unwrap_or(0);
+    let flow_pts      = payload.len();
     let flow_interval = payload.first().and_then(|p| p.sync_interval).unwrap_or(0);
 
-    // Retrieve (and remove) the pending flow left by the FFI call
+    // Drain captured action=17 steps for this poll cycle (drained = removed from map).
+    // poll_cycle_id is generated per interval by sendPeriodicBatchRequest and attached
+    // to every action=17 call AND to every data point in the batch, so the correlation
+    // is exact even when two chart pages are open on the same device simultaneously.
+    let poll_cycle_id: String = payload.first()
+        .and_then(|p| p.poll_cycle_id.as_deref())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| flow_device.to_string()); // fallback for older frontend builds
+    let pending_ffi_steps: Vec<crate::t3_device::t3_ffi_api_service::PendingFfiPollStep> = {
+        let mut map = crate::t3_device::t3_ffi_api_service::PENDING_ACTION17_STEPS.lock().await;
+        map.remove(&poll_cycle_id).unwrap_or_default()
+    };
+
+    // Check for a pending flow left by an HTTP action=15 call (rare).
     let pending_fh: Option<crate::logging::flow::FlowHandle> = {
         let mut map = crate::t3_device::t3_ffi_api_service::PENDING_REALTIME_FLOWS.lock().await;
         map.remove(&(flow_panel, flow_device)).map(|(fh, _)| fh)
     };
-    // Fallback: create standalone 1-step flow when batch arrives without FFI
+
     let flow_opt: Option<crate::logging::flow::FlowHandle> = if pending_fh.is_some() {
+        // HTTP action=15 path — flow already has ffi_poll step, just add batch_save.
         pending_fh
     } else if let Some(ref db) = log_db {
-        Some(crate::logging::flow::FlowHandle::start(
-            db, "TRENDLOG_POLL", "batch", 1,
-            Some(&format!("device={} panel={} pts={} interval={}s",
-                flow_device, flow_panel, flow_pts, flow_interval)),
-        ).await)
+        let polled_panels: Vec<i32> = {
+            let mut seen = std::collections::HashSet::new();
+            payload.iter().filter_map(|p| {
+                if seen.insert(p.panel_id) { Some(p.panel_id) } else { None }
+            }).collect()
+        };
+        if !pending_ffi_steps.is_empty() {
+            // Normal path: we have one ffi_poll_* step per action=17 call (up to 3).
+            let total_steps = (pending_ffi_steps.len() + 1) as i64; // ffi_poll_* × N + batch_save
+            let fh = crate::logging::flow::FlowHandle::start(
+                db, "TRENDLOG_POLL", "realtime", total_steps,
+                Some(&format!("device={} panels={:?} pts={} interval={}s ffi_calls={}",
+                    flow_device, polled_panels, flow_pts, flow_interval, pending_ffi_steps.len())),
+            ).await;
+            // Replay each captured action=17 step with its full response detail.
+            for step in &pending_ffi_steps {
+                fh.step_ffi(db, &step.step_name, "info", "ffi", "ok",
+                    step.elapsed_ms, &step.message, Some(&step.detail)).await;
+            }
+            Some(fh)
+        } else {
+            // Fallback: batch arrived before any action=17 step was captured.
+            // Create a 2-step flow with a synthetic ffi_poll step.
+            let fh = crate::logging::flow::FlowHandle::start(
+                db, "TRENDLOG_POLL", "realtime", 2,
+                Some(&format!("device={} panels={:?} pts={} interval={}s",
+                    flow_device, polled_panels, flow_pts, flow_interval)),
+            ).await;
+            fh.step(db, "ffi_poll", "info", "vue_frontend", "ok", 0,
+                &format!("action=17 GET_WEBVIEW_LIST — device={} panels={:?} pts={} (steps not captured)",
+                    flow_device, polled_panels, flow_pts),
+                None).await;
+            Some(fh)
+        }
     } else { None };
 
     if state.server_db_enabled && !state.server_db_connected {
@@ -3112,87 +3193,94 @@ pub struct ProjectTreeNode {
 async fn get_project_point_tree(
     State(state): State<T3AppState>,
 ) -> Result<Json<ProjectTreeNode>, StatusCode> {
-    // MSSQL branch
-    if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
-
-        let devices = mssql_generic_crud::select_all(pool, "DEVICES", 1, 10000).await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-        let mut device_nodes = Vec::new();
-
-        for device in &devices {
-            let serial_str = device.get("SerialNumber")
-                .and_then(|v| v.as_i64()).map(|v| v.to_string())
-                .or_else(|| device.get("Serial_ID").and_then(|v| v.as_str()).map(|s| s.to_string()))
-                .unwrap_or_default();
-
-            let show_label = device.get("show_label_name").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
-            let screen_name = device.get("Screen_Name").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
-            let product_name = device.get("Product_Name").or(device.get("Product_name")).and_then(|v| v.as_str());
-            let device_name = show_label.or(screen_name).or(product_name)
-                .unwrap_or("Unknown Device").to_string();
-
-            let product_class_id = device.get("Product_Class_ID").or(device.get("Product_class_ID"))
-                .and_then(|v| v.as_i64()).unwrap_or(0) as i32;
-
-            let (input_total, output_total, var_total) = match product_class_id {
-                74 | 88 => (64, 64, 128),
-                35 => (32, 32, 64),
-                _ => (64, 64, 128),
-            };
-
-            let serial_num: i32 = serial_str.parse().unwrap_or(0);
-            let input_count = mssql_generic_crud::count_by_device(pool, "INPUTS", serial_num).await.unwrap_or(0) as i32;
-            let output_count = mssql_generic_crud::count_by_device(pool, "OUTPUTS", serial_num).await.unwrap_or(0) as i32;
-            let var_count = mssql_generic_crud::count_by_device(pool, "VARIABLES", serial_num).await.unwrap_or(0) as i32;
-            let program_count = mssql_generic_crud::count_by_device(pool, "PROGRAMS", serial_num).await.unwrap_or(0) as i32;
-            let schedule_count = mssql_generic_crud::count_by_device(pool, "SCHEDULES", serial_num).await.unwrap_or(0) as i32;
-            let holiday_count = mssql_generic_crud::count_by_device(pool, "HOLIDAYS", serial_num).await.unwrap_or(0) as i32;
-            let pid_count = mssql_generic_crud::count_by_device(pool, "PID_TABLE", serial_num).await.unwrap_or(0) as i32;
-            let graphic_count = mssql_generic_crud::count_by_device(pool, "GRAPHICS", serial_num).await.unwrap_or(0) as i32;
-            let trendlog_count = mssql_generic_crud::count_by_device(pool, "TRENDLOGS", serial_num).await.unwrap_or(0) as i32;
-
-            let calc_percentage = |used: i32, total: i32| -> f32 {
-                if total == 0 { 0.0 } else { (used as f32 / total as f32) * 100.0 }
-            };
-
-            let point_children = vec![
-                ProjectTreeNode { name: format!("Input ({}/{})", input_count, input_total), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("inputs".to_string()), used: Some(input_count), total: Some(input_total), percentage: Some(calc_percentage(input_count, input_total)), children: vec![] },
-                ProjectTreeNode { name: format!("Output ({}/{})", output_count, output_total), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("outputs".to_string()), used: Some(output_count), total: Some(output_total), percentage: Some(calc_percentage(output_count, output_total)), children: vec![] },
-                ProjectTreeNode { name: format!("Variable ({}/{})", var_count, var_total), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("variables".to_string()), used: Some(var_count), total: Some(var_total), percentage: Some(calc_percentage(var_count, var_total)), children: vec![] },
-                ProjectTreeNode { name: format!("Program ({}/16)", program_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("programs".to_string()), used: Some(program_count), total: Some(16), percentage: Some(calc_percentage(program_count, 16)), children: vec![] },
-                ProjectTreeNode { name: format!("PID Loop ({}/16)", pid_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("pidloops".to_string()), used: Some(pid_count), total: Some(16), percentage: Some(calc_percentage(pid_count, 16)), children: vec![] },
-                ProjectTreeNode { name: format!("Schedule ({}/8)", schedule_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("schedules".to_string()), used: Some(schedule_count), total: Some(8), percentage: Some(calc_percentage(schedule_count, 8)), children: vec![] },
-                ProjectTreeNode { name: format!("Holiday ({}/4)", holiday_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("holidays".to_string()), used: Some(holiday_count), total: Some(4), percentage: Some(calc_percentage(holiday_count, 4)), children: vec![] },
-                ProjectTreeNode { name: format!("Graphic ({}/16)", graphic_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("graphics".to_string()), used: Some(graphic_count), total: Some(16), percentage: Some(calc_percentage(graphic_count, 16)), children: vec![] },
-                ProjectTreeNode { name: format!("Trendlog ({}/12)", trendlog_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("trendlogs".to_string()), used: Some(trendlog_count), total: Some(12), percentage: Some(calc_percentage(trendlog_count, 12)), children: vec![] },
-            ];
-
-            device_nodes.push(ProjectTreeNode {
-                name: device_name,
-                node_type: "device".to_string(),
-                serial_number: Some(serial_str),
-                status: Some("offline".to_string()),
-                point_type: None, used: None, total: None, percentage: None,
-                children: point_children,
-            });
-        }
-
-        let root_node = ProjectTreeNode {
-            name: "Point List".to_string(),
-            node_type: "root".to_string(),
-            serial_number: None, status: None, point_type: None, used: None, total: None, percentage: None,
-            children: vec![ProjectTreeNode {
-                name: "System List".to_string(),
-                node_type: "system".to_string(),
-                serial_number: None, status: None, point_type: None, used: None, total: None, percentage: None,
-                children: device_nodes,
-            }],
-        };
-
-        return Ok(Json(root_node));
-    }
+    // ── MSSQL branch (COMMENTED OUT) ──────────────────────────────────────
+    // Reads from MSSQL center DB but panics when columns have I32(None)
+    // values that tiberius can't convert to f64. SQLite is the canonical
+    // device cache (kept in sync by FFI), so we use that instead.
+    //
+    // When the MSSQL schema or tiberius handling is fixed, uncomment below.
+    // ═══════════════════════════════════════════════════════════════════════
+    // if let Some(pool) = &state.mssql_pool {
+    //     use crate::database_management::mssql_generic_crud;
+    //
+    //     let devices = mssql_generic_crud::select_all(pool, "DEVICES", 1, 10000).await
+    //         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    //
+    //     let mut device_nodes = Vec::new();
+    //
+    //     for device in &devices {
+    //         let serial_str = device.get("SerialNumber")
+    //             .and_then(|v| v.as_i64()).map(|v| v.to_string())
+    //             .or_else(|| device.get("Serial_ID").and_then(|v| v.as_str()).map(|s| s.to_string()))
+    //             .unwrap_or_default();
+    //
+    //         let show_label = device.get("show_label_name").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
+    //         let screen_name = device.get("Screen_Name").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
+    //         let product_name = device.get("Product_Name").or(device.get("Product_name")).and_then(|v| v.as_str());
+    //         let device_name = show_label.or(screen_name).or(product_name)
+    //             .unwrap_or("Unknown Device").to_string();
+    //
+    //         let product_class_id = device.get("Product_Class_ID").or(device.get("Product_class_ID"))
+    //             .and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+    //
+    //         let (input_total, output_total, var_total) = match product_class_id {
+    //             74 | 88 => (64, 64, 128),
+    //             35 => (32, 32, 64),
+    //             _ => (64, 64, 128),
+    //         };
+    //
+    //         let serial_num: i32 = serial_str.parse().unwrap_or(0);
+    //         let input_count = mssql_generic_crud::count_by_device(pool, "INPUTS", serial_num).await.unwrap_or(0) as i32;
+    //         let output_count = mssql_generic_crud::count_by_device(pool, "OUTPUTS", serial_num).await.unwrap_or(0) as i32;
+    //         let var_count = mssql_generic_crud::count_by_device(pool, "VARIABLES", serial_num).await.unwrap_or(0) as i32;
+    //         let program_count = mssql_generic_crud::count_by_device(pool, "PROGRAMS", serial_num).await.unwrap_or(0) as i32;
+    //         let schedule_count = mssql_generic_crud::count_by_device(pool, "SCHEDULES", serial_num).await.unwrap_or(0) as i32;
+    //         let holiday_count = mssql_generic_crud::count_by_device(pool, "HOLIDAYS", serial_num).await.unwrap_or(0) as i32;
+    //         let pid_count = mssql_generic_crud::count_by_device(pool, "PID_TABLE", serial_num).await.unwrap_or(0) as i32;
+    //         let graphic_count = mssql_generic_crud::count_by_device(pool, "GRAPHICS", serial_num).await.unwrap_or(0) as i32;
+    //         let trendlog_count = mssql_generic_crud::count_by_device(pool, "TRENDLOGS", serial_num).await.unwrap_or(0) as i32;
+    //
+    //         let calc_percentage = |used: i32, total: i32| -> f32 {
+    //             if total == 0 { 0.0 } else { (used as f32 / total as f32) * 100.0 }
+    //         };
+    //
+    //         let point_children = vec![
+    //             ProjectTreeNode { name: format!("Input ({}/{})", input_count, input_total), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("inputs".to_string()), used: Some(input_count), total: Some(input_total), percentage: Some(calc_percentage(input_count, input_total)), children: vec![] },
+    //             ProjectTreeNode { name: format!("Output ({}/{})", output_count, output_total), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("outputs".to_string()), used: Some(output_count), total: Some(output_total), percentage: Some(calc_percentage(output_count, output_total)), children: vec![] },
+    //             ProjectTreeNode { name: format!("Variable ({}/{})", var_count, var_total), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("variables".to_string()), used: Some(var_count), total: Some(var_total), percentage: Some(calc_percentage(var_count, var_total)), children: vec![] },
+    //             ProjectTreeNode { name: format!("Program ({}/16)", program_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("programs".to_string()), used: Some(program_count), total: Some(16), percentage: Some(calc_percentage(program_count, 16)), children: vec![] },
+    //             ProjectTreeNode { name: format!("PID Loop ({}/16)", pid_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("pidloops".to_string()), used: Some(pid_count), total: Some(16), percentage: Some(calc_percentage(pid_count, 16)), children: vec![] },
+    //             ProjectTreeNode { name: format!("Schedule ({}/8)", schedule_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("schedules".to_string()), used: Some(schedule_count), total: Some(8), percentage: Some(calc_percentage(schedule_count, 8)), children: vec![] },
+    //             ProjectTreeNode { name: format!("Holiday ({}/4)", holiday_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("holidays".to_string()), used: Some(holiday_count), total: Some(4), percentage: Some(calc_percentage(holiday_count, 4)), children: vec![] },
+    //             ProjectTreeNode { name: format!("Graphic ({}/16)", graphic_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("graphics".to_string()), used: Some(graphic_count), total: Some(16), percentage: Some(calc_percentage(graphic_count, 16)), children: vec![] },
+    //             ProjectTreeNode { name: format!("Trendlog ({}/12)", trendlog_count), node_type: "point_type".to_string(), serial_number: None, status: None, point_type: Some("trendlogs".to_string()), used: Some(trendlog_count), total: Some(12), percentage: Some(calc_percentage(trendlog_count, 12)), children: vec![] },
+    //         ];
+    //
+    //         device_nodes.push(ProjectTreeNode {
+    //             name: device_name,
+    //             node_type: "device".to_string(),
+    //             serial_number: Some(serial_str),
+    //             status: Some("offline".to_string()),
+    //             point_type: None, used: None, total: None, percentage: None,
+    //             children: point_children,
+    //         });
+    //     }
+    //
+    //     let root_node = ProjectTreeNode {
+    //         name: "Point List".to_string(),
+    //         node_type: "root".to_string(),
+    //         serial_number: None, status: None, point_type: None, used: None, total: None, percentage: None,
+    //         children: vec![ProjectTreeNode {
+    //             name: "System List".to_string(),
+    //             node_type: "system".to_string(),
+    //             serial_number: None, status: None, point_type: None, used: None, total: None, percentage: None,
+    //             children: device_nodes,
+    //         }],
+    //     };
+    //
+    //     return Ok(Json(root_node));
+    // }
+    // ═══════════════════════════════════════════════════════════════════════
 
     let db = get_t3_device_conn!(state);
 

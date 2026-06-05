@@ -603,7 +603,14 @@ fn result_sets_to_json(
 }
 
 /// Extract a tiberius column value as serde_json::Value.
+///
+/// ⚠️  tiberius `Row::get::<f64,_>()` panics internally when a column is
+/// typed as INT (I32) with a NULL value — see `I32(None) → f64` panic.
+/// We wrap float conversions in `catch_unwind` so one bad cell never
+/// crashes the server.
 fn extract_column_value(row: &tiberius::Row, index: usize) -> Value {
+    use std::panic::{catch_unwind, AssertUnwindSafe};
+
     // Try integer types first
     if let Some(v) = row.get::<i32, _>(index) {
         return json!(v);
@@ -614,16 +621,14 @@ fn extract_column_value(row: &tiberius::Row, index: usize) -> Value {
     if let Some(v) = row.get::<i16, _>(index) {
         return json!(v);
     }
-    // Try float
-    if let Some(v) = row.get::<f64, _>(index) {
-        // serde_json rejects NaN/Infinity; map non-finite values to null
-        // so API responses stay valid JSON and do not panic.
+    // Try float — guarded with catch_unwind (tiberius panics on type-mismatched NULLs)
+    if let Ok(Some(v)) = catch_unwind(AssertUnwindSafe(|| row.get::<f64, _>(index))) {
         if v.is_finite() {
             return json!(v);
         }
         return Value::Null;
     }
-    if let Some(v) = row.get::<f32, _>(index) {
+    if let Ok(Some(v)) = catch_unwind(AssertUnwindSafe(|| row.get::<f32, _>(index))) {
         if v.is_finite() {
             return json!(v);
         }

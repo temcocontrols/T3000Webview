@@ -53,6 +53,7 @@ import { API_BASE_URL } from '../../../config/constants';
 import { T3Database } from '../../../../lib/t3-database';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import { useStatusBarStore } from '../../../store/statusBarStore';
+import { PageSyncStatus } from '@t3-react/shared/components/PageSyncStatus';
 import { useResponsive } from '@t3-shared/core/hooks/useResponsive';
 import { InputsPageMobile } from '@t3-mobile/features/inputs/pages/InputsPageMobile';
 import styles from './InputsPage.module.css';
@@ -129,11 +130,16 @@ const InputsPageDesktop: React.FC = () => {
   */
 
   // Fetch inputs for selected device
+  const fetchingRef = useRef(false);
+
   const fetchInputs = useCallback(async () => {
     if (!selectedDevice) {
       setInputs([]);
       return;
     }
+
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
 
     setLoading(true);
     setError(null);
@@ -153,10 +159,10 @@ const InputsPageDesktop: React.FC = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load inputs';
       setError(errorMessage);
       console.error('Error fetching inputs:', err);
-      // DON'T clear inputs on database fetch error - preserve what we have
     } finally {
       setLoading(false);
-      setDbChecked(true); // signal that DB fetch for current device is complete
+      setDbChecked(true);
+      fetchingRef.current = false;
     }
   }, [selectedDevice]);
 
@@ -798,7 +804,7 @@ const InputsPageDesktop: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && (item.panel || '---')}
+          {!isEmptyRow(item) && (item.panel || '')}
         </TableCellLayout>
       ),
     }),
@@ -823,7 +829,7 @@ const InputsPageDesktop: React.FC = () => {
           <TableCellLayout>
             {!isEmptyRow(item) && (
               <div className={styles.cellFlexContainer}>
-                <button
+                {/* <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleRefreshSingleInput(inputIndex);
@@ -835,9 +841,9 @@ const InputsPageDesktop: React.FC = () => {
                   <ArrowSyncRegular
                     className={`${styles.iconSmall} ${isRefreshingThis ? styles.rotating : ''}`}
                   />
-                </button>
+                </button> */}
                 <Text size={200} weight="regular">
-                  {item.inputId || (item.inputIndex ? `IN${parseInt(item.inputIndex) + 1}` : '---')}
+                  {item.inputId || (item.inputIndex ? `IN${parseInt(item.inputIndex) + 1}` : '')}
                 </Text>
               </div>
             )}
@@ -898,7 +904,7 @@ const InputsPageDesktop: React.FC = () => {
                   onDoubleClick={() => handleCellDoubleClick(item, 'fullLabel', item.fullLabel || '')}
                   title="Double-click to edit"
                 >
-                  <Text size={200} weight="regular">{item.fullLabel || 'Unnamed'}</Text>
+                  <Text size={200} weight="regular">{item.fullLabel || ''}</Text>
                 </div>
               )
             )}
@@ -959,7 +965,7 @@ const InputsPageDesktop: React.FC = () => {
                   onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
                   title="Double-click to edit"
                 >
-                  <Text size={200} weight="regular">{item.label || '---'}</Text>
+                  <Text size={200} weight="regular">{item.label || ''}</Text>
                 </div>
               )
             )}
@@ -1061,7 +1067,7 @@ const InputsPageDesktop: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'value',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('value')}>
+        <div className={styles.headerCellSort} style={{ justifyContent: 'flex-end', width: '100%' }} onClick={() => handleSort('value')}>
           <span>Value</span>
           {sortColumn === 'value' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
@@ -1112,7 +1118,7 @@ const InputsPageDesktop: React.FC = () => {
                   title="Double-click to edit"
                 >
                   <span className={styles.valueBadge}>
-                    {item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}
+                    {item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : ''}
                   </span>
                 </div>
               )
@@ -1357,6 +1363,14 @@ const InputsPageDesktop: React.FC = () => {
                       <InfoRegular />
                     </button>
                   </Tooltip>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
+
+                  {/* <PageSyncStatus
+                    dataType="INPUTS"
+                    serialNumber={selectedDevice.serialNumber.toString()}
+                    onRefresh={handleRefreshFromDevice}
+                  /> */}
                 </div>
               </div>
 
@@ -1460,7 +1474,7 @@ const InputsPageDesktop: React.FC = () => {
           currentRange={parseInt(selectedInputForRange.rangeField || selectedInputForRange.range || '0', 10)}
           digitalAnalog={parseInt(selectedInputForRange.digitalAnalog || '0', 10)}
           onSave={handleRangeSave}
-          inputLabel={`Input ${selectedInputForRange.inputIndex || selectedInputForRange.inputId} - ${selectedInputForRange.fullLabel || 'Unnamed'}`}
+          inputLabel={`Input ${selectedInputForRange.inputIndex || selectedInputForRange.inputId} - ${selectedInputForRange.fullLabel || ''}`}
         />
       )}
     </div>

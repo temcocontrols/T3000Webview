@@ -14,7 +14,7 @@
 
 import React, { useEffect } from 'react';
 import { Spinner } from '@fluentui/react-components';
-import { ArrowClockwise16Regular, RouterRegular } from '@fluentui/react-icons';
+import { ArrowClockwise16Regular, ArrowSyncRegular, ArrowRoutingRectangleMultiple24Regular } from '@fluentui/react-icons';
 import { DeviceTree } from './DeviceTree/DeviceTree';
 import { ProjectPointTree } from './ProjectPointTree';
 import { TreeToolbar } from './TreeToolbar/TreeToolbar';
@@ -78,10 +78,6 @@ export const TreePanel: React.FC = () => {
     fetchDevices();
   };
 
-  const handleLoadDevices = async () => {
-    await loadDevicesWithSync({ skipInitialFetch: true });
-  };
-
   return (
     <div className={styles.container}>
       {/* Toolbar with actions */}
@@ -109,7 +105,7 @@ export const TreePanel: React.FC = () => {
           <div className={styles.errorContainer}>
             <div className={styles.errorTitle}>No devices to display</div>
             <div className={styles.errorMessage}>
-              There was a problem connecting to the server. Please check your connection and try again.
+              There was a problem connecting to the server (T3000). Please check whether the T3000 application is running and try again.
             </div>
             <button
               className={styles.retryButton}
@@ -125,18 +121,15 @@ export const TreePanel: React.FC = () => {
         {!isLoading && !error && devices.length === 0 && (
           <div className={styles.emptyContainer}>
             <div className={styles.emptyIconWrapper}>
-              <RouterRegular className={styles.emptyIcon} fontSize={32} />
+              <ArrowRoutingRectangleMultiple24Regular className={styles.emptyIcon} fontSize={32} />
             </div>
             <div className={styles.emptyTitle}>No Devices Found</div>
             <div className={styles.emptyMessage}>
-              Load your devices to get started
+              Click the{' '}
+              <span className={styles.inlineRefreshHint}>
+                <ArrowSyncRegular fontSize={14} /> 
+              </span>{' '}button above to load your devices from the network.
             </div>
-            <button
-              className={styles.scanButton}
-              onClick={handleLoadDevices}
-            >
-              Load Devices
-            </button>
           </div>
         )}
 

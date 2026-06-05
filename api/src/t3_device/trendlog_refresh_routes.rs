@@ -500,16 +500,28 @@ async fn save_trendlogs_to_db(db: &DatabaseConnection, serial: i32, items: &[Val
         }
         let trendlog_index = trendlog_index.unwrap();
 
-        let existing_trendlog = trendlogs::Entity::find()
+        let existing_trendlogs = trendlogs::Entity::find()
             .filter(trendlogs::Column::SerialNumber.eq(serial))
             .filter(trendlogs::Column::TrendlogId.eq(&trendlog_index))
-            .one(db)
+            .all(db)
             .await
             .map_err(|e| format!("Database query error: {}", e))?;
 
-        if let Some(trendlog_model) = existing_trendlog {
-            // UPDATE existing record
-            let mut active_model: trendlogs::ActiveModel = trendlog_model.into();
+        // Deduplicate: delete extras, keep the first record
+        if existing_trendlogs.len() > 1 {
+            info!("🧹 Deduplicating {} records for trendlog_id={}", existing_trendlogs.len(), trendlog_index);
+            for dup in &existing_trendlogs[1..] {
+                trendlogs::Entity::delete_by_id(dup.id)
+                    .exec(db)
+                    .await
+                    .map_err(|e| format!("Failed to delete duplicate: {}", e))?;
+            }
+        }
+
+        if let Some(trendlog_model) = existing_trendlogs.first() {
+            // UPDATE — fix panel_id to match device's actual panel
+            let mut active_model: trendlogs::ActiveModel = trendlog_model.clone().into();
+            active_model.panel_id = Set(panel_id); // Always correct to device's panel_id
 
             if let Some(val) = get_string_value(item, "trendlogLabel", "trendlog_label") {
                 active_model.trendlog_label = Set(Some(val));
@@ -539,7 +551,7 @@ async fn save_trendlogs_to_db(db: &DatabaseConnection, serial: i32, items: &[Val
             let new_trendlog = trendlogs::ActiveModel {
                 id: NotSet,
                 serial_number: Set(serial),
-                panel_id: Set(item.get("panelId").and_then(|v| v.as_i64()).unwrap_or(panel_id as i64) as i32),
+                panel_id: Set(panel_id),
                 trendlog_id: Set(trendlog_index.clone()),
                 switch_node: Set(Some(trendlog_index.clone())),
                 trendlog_label: Set(get_string_value(item, "trendlogLabel", "trendlog_label")),
@@ -559,7 +571,7 @@ async fn save_trendlogs_to_db(db: &DatabaseConnection, serial: i32, items: &[Val
         }
 
         // Save monitor input points to TRENDLOG_INPUTS
-        let item_panel_id = item.get("panelId").and_then(|v| v.as_i64()).unwrap_or(panel_id as i64) as i32;
+        let item_panel_id = panel_id;
         let raw_inputs = item.get("inputs");
         info!("🔍 Trendlog {} inputs field type: is_array={}, is_object={}, numInputs={}, raw={:?}",
             trendlog_index,

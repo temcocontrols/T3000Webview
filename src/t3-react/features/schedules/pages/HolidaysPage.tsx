@@ -403,7 +403,7 @@ export const HolidaysPage: React.FC = () => {
           <TableCellLayout>
             {!isEmptyRow(item) && (
               <div className={styles.flexCenter8Gap}>
-                <button
+                {/* <button
                   className={`${styles.refreshIconButton} ${isRefreshing ? styles.rotating : ''}`}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -414,8 +414,8 @@ export const HolidaysPage: React.FC = () => {
                   aria-label="Refresh holiday"
                 >
                   <ArrowSyncRegular fontSize={16} />
-                </button>
-                <span>{item.holidayId || '---'}</span>
+                </button> */}
+                <span>{item.holidayId || ''}</span>
               </div>
             )}
           </TableCellLayout>
@@ -460,7 +460,7 @@ export const HolidaysPage: React.FC = () => {
                   onDoubleClick={() => handleCellDoubleClick(item, 'fullLabel', item.fullLabel || '')}
                   className={styles.editableCell}
                 >
-                  <Text size={200}>{item.fullLabel || 'Unnamed'}</Text>
+                  <Text size={200}>{item.fullLabel || ''}</Text>
                 </div>
               )
             )}
@@ -511,7 +511,7 @@ export const HolidaysPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && (item.value || '---')}
+          {!isEmptyRow(item) && (item.value || '')}
         </TableCellLayout>
       ),
     }),
@@ -553,7 +553,7 @@ export const HolidaysPage: React.FC = () => {
                   onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
                   className={styles.editableCell}
                 >
-                  <Text size={200}>{item.label || '---'}</Text>
+                  <Text size={200}>{item.label || ''}</Text>
                 </div>
               )
             )}

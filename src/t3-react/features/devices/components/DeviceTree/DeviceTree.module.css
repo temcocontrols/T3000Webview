@@ -43,6 +43,23 @@
   pointer-events: none;
 }
 
+/* Warning badge for (Unknown) devices with generated names */
+.unknownDeviceBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: #d29200;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
 .deviceInfoTooltip {
   min-width: 260px;
   max-width: 360px;

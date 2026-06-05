@@ -3081,7 +3081,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           disabled={loading}
           size="small"
           style={{ minWidth: '20px', padding: '2px', width: '20px' }}
-          title="Scroll Left (鈫?"
+          title="Shortcut:  ←"
         />
         <Button
           appearance="subtle"
@@ -3090,7 +3090,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           disabled={isRealtime || loading}
           size="small"
           style={{ minWidth: '20px', padding: '2px', width: '20px' }}
-          title="Scroll Right (鈫?"
+          title="Shortcut:  →"
         />
       </div>
 
@@ -3103,7 +3103,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           disabled={loading || timeBase === 'custom' || timeBaseOrder.indexOf(timeBase) === 0}
           size="small"
           style={{ fontSize: '11px', padding: '2px 6px', fontWeight: 'normal' }}
-          title="Zoom In"
+          title="Shortcut:  +"
         >
           Zoom In
         </Button>
@@ -3114,7 +3114,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           disabled={loading || timeBase === 'custom' || timeBaseOrder.indexOf(timeBase) === timeBaseOrder.length - 1}
           size="small"
           style={{ fontSize: '11px', padding: '2px 6px', fontWeight: 'normal' }}
-          title="Zoom Out"
+          title="Shortcut:  -"
         >
           Zoom Out
         </Button>
@@ -3129,6 +3129,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           disabled={loading}
           size="small"
           style={{ fontSize: '11px', padding: '2px 6px', fontWeight: 'normal' }}
+          title="Shortcut:  Esc"
         >
           Reset
         </Button>

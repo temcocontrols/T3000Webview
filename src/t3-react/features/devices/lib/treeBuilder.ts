@@ -199,42 +199,26 @@ function createSubnetNode(
  */
 function createRootBuildingNode(
   buildingName: string,
-  subnetMap: Map<string, DeviceInfo[]>,
+  devices: DeviceInfo[],
   expandedNodes: Set<string>,
   deviceStatuses: Map<number, DeviceStatus>
 ): TreeNode {
   const nodeId = `building-${buildingName}`;
 
-  // Create subnet nodes
-  const subnetNodes: TreeNode[] = [];
-  const sortedSubnets = Array.from(subnetMap.keys()).sort();
-
-  sortedSubnets.forEach((subnetName) => {
-    const devicesInSubnet = subnetMap.get(subnetName)!;
-    const subnetNode = createSubnetNode(
-      subnetName,
-      devicesInSubnet,
-      expandedNodes,
-      deviceStatuses,
-      buildingName
-    );
-    subnetNodes.push(subnetNode);
-  });
-
-  // Count total devices
-  const totalDevices = Array.from(subnetMap.values()).reduce(
-    (sum, devices) => sum + devices.length,
-    0
+  // Create device nodes directly (no subnet level)
+  const sortedDevices = [...devices].sort(sortDevices);
+  const deviceNodes: TreeNode[] = sortedDevices.map((device) =>
+    createDeviceNode(device, expandedNodes, deviceStatuses)
   );
 
   return {
     id: nodeId,
     type: 'building',
-    label: `${buildingName} (${totalDevices})`,
+    label: `${buildingName} (${devices.length})`,
     icon: 'Home',
-    children: subnetNodes,
+    children: deviceNodes,
     expanded: expandedNodes.has(nodeId),
-    level: 0,  // Level 0: Root building
+    level: 0,
   };
 }
 
@@ -257,7 +241,7 @@ function createDeviceNode(
     data: device,
     status: deviceStatuses.get(device.serialNumber) || device.status || 'unknown',
     expanded: expandedNodes.has(nodeId),
-    level: 2,  // Level 2: Device (under subnet)
+    level: 1,  // Level 1: Device (directly under building)
     // Explicitly set children to undefined to ensure it's a leaf
     children: undefined,
   };
@@ -286,20 +270,24 @@ export function buildTreeFromDevices(
     return [];
   }
 
-  // Group devices by building (3-level: root building → subnet → devices)
-  const rootMap = groupByBuilding(devices);
+  // Flatten to 2-level: building → devices (skip subnet)
+  const buildingMap = new Map<string, DeviceInfo[]>();
+  devices.forEach((device) => {
+    const building = device.mainBuildingName || 'Default_Building';
+    if (!buildingMap.has(building)) {
+      buildingMap.set(building, []);
+    }
+    buildingMap.get(building)!.push(device);
+  });
 
-  // Create root building nodes with subnet children
   const treeNodes: TreeNode[] = [];
-
-  // Sort root buildings alphabetically
-  const sortedBuildings = Array.from(rootMap.keys()).sort();
+  const sortedBuildings = Array.from(buildingMap.keys()).sort();
 
   sortedBuildings.forEach((buildingName) => {
-    const subnetMap = rootMap.get(buildingName)!;
+    const buildingDevices = buildingMap.get(buildingName)!;
     const rootNode = createRootBuildingNode(
       buildingName,
-      subnetMap,
+      buildingDevices,
       expandedNodes,
       deviceStatuses
     );

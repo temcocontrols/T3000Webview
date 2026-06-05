@@ -388,7 +388,7 @@ export const SchedulesPage: React.FC = () => {
           <TableCellLayout>
             {!isEmptyRow(item) && (
               <div className={styles.headerCellWith8Gap}>
-                <button
+                {/* <button
                   className={`${styles.refreshIconButton} ${isRefreshing ? styles.rotating : ''}`}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -399,7 +399,7 @@ export const SchedulesPage: React.FC = () => {
                   aria-label="Refresh schedule"
                 >
                   <ArrowSyncRegular fontSize={16} />
-                </button>
+                </button> */}
                 <span>{item.scheduleId || '---'}</span>
               </div>
             )}

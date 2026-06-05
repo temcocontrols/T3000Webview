@@ -24,11 +24,28 @@ use crate::app_state::T3AppState;
 use crate::logging::service::emit_app_log;
 use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA};
 
-/// Pending TRENDLOG_POLL flows: FFI action=15 starts the flow (step 0),
-/// batch save continues it (step 1 + done). Keyed by (panel_id, serial_number).
-/// The Instant is the insertion time; entries older than 60 s are reaped on
+/// Pending realtime trendlog flows awaiting their batch_save step.
+/// action=15 (LOGGING_DATA) stores a TRENDLOG_POLL flow here when called via HTTP.
+/// Keyed by (panel_id, serial_number). Entries older than 60 s are reaped on
 /// the next insert so they don't stay stuck as "running" forever.
 pub static PENDING_REALTIME_FLOWS: Lazy<tokio::sync::Mutex<HashMap<(i32, i32), (crate::logging::flow::FlowHandle, std::time::Instant)>>> =
+    Lazy::new(|| tokio::sync::Mutex::new(HashMap::new()));
+
+/// One captured action=17 GET_WEBVIEW_LIST call, waiting to be replayed as a
+/// `ffi_poll_*` step in the next TRENDLOG_POLL flow for this serial_number.
+/// `sendPeriodicBatchRequest` in TrendLogChart.vue fires up to 3 parallel
+/// action=17 calls per interval (one per entry type: OUT / IN / VAR).
+pub struct PendingFfiPollStep {
+    pub step_name: String,   // "ffi_poll_out" | "ffi_poll_in" | "ffi_poll_var"
+    pub elapsed_ms: i64,
+    pub message: String,
+    pub detail: String,      // full prettified request + response written to disk via step_ffi
+    pub inserted_at: std::time::Instant,
+}
+
+/// Accumulated action=17 steps per poll_cycle_id, drained by
+/// `save_realtime_trendlog_batch` when it builds the TRENDLOG_POLL flow.
+pub static PENDING_ACTION17_STEPS: Lazy<tokio::sync::Mutex<HashMap<String, Vec<PendingFfiPollStep>>>> =
     Lazy::new(|| tokio::sync::Mutex::new(HashMap::new()));
 
 // FFI function type
@@ -60,6 +77,29 @@ fn action4_warmup_active() -> bool {
 pub fn ffi_call_lock() -> &'static Mutex<()> {
     static FFI_CALL_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
     FFI_CALL_LOCK.get_or_init(|| Mutex::new(()))
+}
+
+/// Try to acquire the FFI lock with a timeout (default 60s).
+/// Prevents deadlock when a prior C++ FFI call in spawn_blocking hangs.
+pub fn ffi_call_lock_timeout(timeout_secs: u64) -> Option<std::sync::MutexGuard<'static, ()>> {
+    let lock = ffi_call_lock();
+    let deadline = Instant::now() + Duration::from_secs(timeout_secs);
+    loop {
+        match lock.try_lock() {
+            Ok(guard) => return Some(guard),
+            Err(std::sync::TryLockError::WouldBlock) => {
+                if Instant::now() > deadline {
+                    eprintln!("❌ FFI lock acquisition timed out after {}s — prior C++ call may be stuck", timeout_secs);
+                    return None;
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
+            Err(std::sync::TryLockError::Poisoned(p)) => {
+                eprintln!("⚠️ FFI lock was poisoned — recovering");
+                return Some(p.into_inner());
+            }
+        }
+    }
 }
 
 /// Simple FFI API Service - middleware only
@@ -164,7 +204,8 @@ impl T3000FfiApiService {
 
         // Run heavy FFI work on blocking pool so request handling threads stay responsive.
         let ffi_result = tokio::task::spawn_blocking(move || {
-            let _guard = ffi_call_lock().lock().unwrap_or_else(|p| p.into_inner());
+            let _guard = ffi_call_lock_timeout(60)
+                .ok_or_else(|| Error::ServerError("FFI lock timed out — prior C++ call may be stuck".to_string()))?;
 
             unsafe {
                 if !Self::load_t3000_function() {
@@ -334,21 +375,28 @@ async fn handle_ffi_call(
             if action == 15 {
                 let panel_id = payload.get("panelId").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
                 let sn       = payload.get("serialNumber").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+                // Count points returned: response may use { data: { device_data: [...] } } or
+                // { data: [...] } depending on the action=17 response shape.
                 let item_count: usize = serde_json::from_str::<serde_json::Value>(&response)
                     .ok()
-                    .and_then(|j| j.get("data").and_then(|d| d.as_array()).map(|devs| {
-                        devs.iter()
-                            .filter_map(|d| d.get("device_data").and_then(|dd| dd.as_array()).map(|a| a.len()))
-                            .sum::<usize>()
-                    }))
+                    .map(|j| {
+                        // Shape 1: { data: { device_data: [...] } }
+                        j.get("data")
+                            .and_then(|d| d.get("device_data"))
+                            .and_then(|dd| dd.as_array())
+                            .map(|a| a.len())
+                            // Shape 2: { data: [...] } (array of panels each with device_data)
+                            .or_else(|| j.get("data").and_then(|d| d.as_array()).map(|devs| {
+                                devs.iter()
+                                    .filter_map(|d| d.get("device_data").and_then(|dd| dd.as_array()).map(|a| a.len()))
+                                    .sum::<usize>()
+                            }))
+                            .unwrap_or(0)
+                    })
                     .unwrap_or(0);
                 let elapsed = t0.elapsed().as_millis() as i64;
-                // Use a fresh direct connection to local SQLite (same pattern as TRENDLOG_CHART)
-                // so this works even when app_state.t3_device_conn is None (e.g. MSSQL backend).
                 if let Some(db) = crate::db_connection::establish_t3_device_connection().await
                     .map_err(|e| e.to_string()).ok() {
-                    // Build a readable detail block: request summary line + full prettified response.
-                    // Written to disk via step_ffi(); the DB row stores only the short message.
                     let response_pretty = serde_json::from_str::<serde_json::Value>(&response)
                         .ok()
                         .and_then(|v| serde_json::to_string_pretty(&v).ok())
@@ -358,22 +406,18 @@ async fn handle_ffi_call(
                         message, item_count, response_pretty,
                     );
                     let fh = crate::logging::flow::FlowHandle::start(
-                        &db, "TRENDLOG_POLL", "realtime", 2,
+                        &db, "TRENDLOG_CHART", "realtime", 2,
                         Some(&format!("panel={} device={} items={}", panel_id, sn, item_count)),
                     ).await;
                     fh.step_ffi(&db, "ffi_poll", "info", "ffi", "ok", elapsed,
-                        &format!("{} items fetched — panel={} device={}", item_count, panel_id, sn),
+                        &format!("{} items fetched (action=17) — panel={} device={}", item_count, panel_id, sn),
                         Some(&ffi_detail)).await;
-                    // Store for batch_save step — do NOT call done() yet.
-                    // Before inserting, close any superseded entry for this key and reap
-                    // entries older than 60 s so they don't stay stuck as "running".
+                    // Store for batch_save step; share the same PENDING_REALTIME_FLOWS map.
                     {
                         let mut map = PENDING_REALTIME_FLOWS.lock().await;
-                        // Close the previous entry for the same (panel, sn) if still pending.
                         if let Some((old_fh, _)) = map.remove(&(panel_id, sn)) {
                             old_fh.done(&db, "superseded").await;
                         }
-                        // Reap stale entries (> 60 s old) across all keys.
                         let timeout = std::time::Duration::from_secs(60);
                         let stale_keys: Vec<(i32, i32)> = map
                             .iter()
@@ -388,6 +432,61 @@ async fn handle_ffi_call(
                         map.insert((panel_id, sn), (fh, std::time::Instant::now()));
                     }
                 }
+            }
+
+            // Flow logging for action=17 (GET_WEBVIEW_LIST — TrendLogChart.vue realtime sampling)
+            // sendPeriodicBatchRequest fires up to 3 parallel action=17 calls per interval
+            // (one each for entry types OUT=0, IN=1, VAR=2).  Each call is captured here;
+            // save_realtime_trendlog_batch drains them and builds a TRENDLOG_POLL flow with
+            // one ffi_poll_* step per call + one batch_save step.
+            if action == 17 {
+                let panel_id  = payload.get("panelId").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+                let sn        = payload.get("serialNumber").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+                let entry_type = payload.get("entryType").and_then(|v| v.as_i64()).unwrap_or(-1);
+                // poll_cycle_id is generated by sendPeriodicBatchRequest in TrendLogChart.vue
+                // and passed with every action=17 call in the same interval batch.
+                // Fall back to sn if absent (older frontend builds).
+                let poll_cycle_id: String = payload.get("poll_cycle_id")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| sn.to_string());
+                let step_name = match entry_type {
+                    0 => "ffi_poll_out",
+                    1 => "ffi_poll_in",
+                    2 => "ffi_poll_var",
+                    _ => "ffi_poll",
+                };
+                // Count device_data items in response: { data: { device_data: [...] } }
+                let item_count: usize = serde_json::from_str::<serde_json::Value>(&response)
+                    .ok()
+                    .and_then(|j| j.get("data").and_then(|d| d.get("device_data"))
+                        .and_then(|dd| dd.as_array()).map(|a| a.len()))
+                    .unwrap_or(0);
+                let elapsed = t0.elapsed().as_millis() as i64;
+                let response_pretty = serde_json::from_str::<serde_json::Value>(&response)
+                    .ok()
+                    .and_then(|v| serde_json::to_string_pretty(&v).ok())
+                    .unwrap_or_else(|| response.clone());
+                let detail = format!(
+                    "// request: {}\n// response ({} items):\n{}",
+                    message, item_count, response_pretty,
+                );
+                let step_msg = format!(
+                    "{} items — panel={} device={} entryType={}",
+                    item_count, panel_id, sn, entry_type,
+                );
+                let mut map = PENDING_ACTION17_STEPS.lock().await;
+                let steps = map.entry(poll_cycle_id).or_insert_with(Vec::new);
+                // Reap stale slots (> 60 s) from a prior interval that never got a batch.
+                let now = std::time::Instant::now();
+                steps.retain(|s| now.duration_since(s.inserted_at).as_secs() < 60);
+                steps.push(PendingFfiPollStep {
+                    step_name: step_name.to_string(),
+                    elapsed_ms: elapsed,
+                    message: step_msg,
+                    detail,
+                    inserted_at: std::time::Instant::now(),
+                });
             }
 
             // Try to parse response as JSON, otherwise return as string

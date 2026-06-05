@@ -373,8 +373,7 @@ impl TrendlogMonitorService {
         let trendlog_id = format!("MON{}", trendlog.num + 1);  // MON1-MON12 (0-based to 1-based)
 
         // Find ALL existing records for this (SerialNumber, TrendlogId) combo
-        // There may be duplicates from old code that used different panelIds
-        let existing_records = trendlogs::Entity::find()
+        let mut existing_records = trendlogs::Entity::find()
             .filter(trendlogs::Column::SerialNumber.eq(device_id))
             .filter(trendlogs::Column::TrendlogId.eq(&trendlog_id))
             .all(db)

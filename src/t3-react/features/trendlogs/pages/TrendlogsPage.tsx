@@ -29,6 +29,7 @@ import {
   DialogContent,
   DialogActions,
   Input,
+  Switch,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
@@ -40,6 +41,7 @@ import {
   InfoRegular,
   ChevronUpRegular,
   ChevronDownRegular,
+  ArrowRightRegular,
   OpenRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
@@ -204,6 +206,7 @@ export const TrendLogsPage: React.FC = () => {
   const [autoRefreshed, setAutoRefreshed] = useState(false);
   const [dbChecked, setDbChecked] = useState(false);
   const deviceRefreshedRef = useRef<number | null>(null);
+  const hasEverLoadedData = useRef(false);
   const autoRefreshInProgressRef = useRef(false);
   const fetchRequestIdRef = useRef(0);
   const embeddedChartTimeBaseRef = useRef<string>('5m');
@@ -229,8 +232,16 @@ export const TrendLogsPage: React.FC = () => {
   const requestedTrendlogId = searchParams.get('trendlogId');
   const requestedPointSetName = searchParams.get('pointSetName');
 
+  // Refs to prevent stale closure in fetchTrendLogs (deps are only [selectedPanelId, selectedSerial])
+  const requestedMonitorIdRef = useRef(requestedMonitorId);
+  requestedMonitorIdRef.current = requestedMonitorId;
+  const requestedTrendlogIdRef = useRef(requestedTrendlogId);
+  requestedTrendlogIdRef.current = requestedTrendlogId;
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+
   const normalizeMonitorToken = useCallback((value?: string | null) => {
-    return (value || '').toUpperCase().replace(/^MON/, '');
+    return (value || '').toUpperCase().replace(/^(MON|TLOG)/, '');
   }, []);
 
   const isPointSetChartMode = React.useMemo(() => {
@@ -613,9 +624,16 @@ export const TrendLogsPage: React.FC = () => {
       if (fallbackResponse.ok) {
         const inputsData = await fallbackResponse.json();
 
+        // Normalize trendlog ID for matching (API returns MON, display uses TLOG)
+        const trendlogNum = (trendlog.trendlogId || trendlog.trendlogIndex || '')
+          .replace(/^(MON|TLOG)/i, '');
+
         const trendlogInputs = (inputsData.data || []).filter(
           (input: any) => {
-            const trendlogMatch = input.trendlogId === trendlog.trendlogId || input.Trendlog_ID === trendlog.trendlogId;
+            const inputId = (input.trendlogId || input.Trendlog_ID || '').replace(/^(MON|TLOG)/i, '');
+            const trendlogMatch = inputId === trendlogNum
+              || input.trendlogId === trendlog.trendlogId
+              || input.Trendlog_ID === trendlog.trendlogId;
             const viewMatch = input.viewType === 'MAIN' || input.view_type === 'MAIN' ||
                              input.viewType === 'VIEW' || input.view_type === 'VIEW' ||
                              !input.viewType;
@@ -679,7 +697,7 @@ export const TrendLogsPage: React.FC = () => {
 
       const monitorIndex = trendlog.trendlogIndex || trendlog.trendlogId || '0';
       // Label is already available in the row data — no extra API call needed
-      const title = trendlog.trendlogLabel || `Monitor ${monitorIndex}`;
+      const title = trendlog.trendlogLabel || `TrendLog ${monitorIndex}`;
 
       const buildItemData = () => ({
         title,
@@ -925,8 +943,11 @@ export const TrendLogsPage: React.FC = () => {
 
       // Auto-select trendlog from query (if provided), else select first trendlog
       if (trendlogsWithIndex.length > 0) {
-        const requestedNormalized = normalizeMonitorToken(requestedMonitorId || requestedTrendlogId);
-        const isChartContext = activeTab === 'chart';
+        // Use refs to avoid stale closure — fetchTrendLogs deps are only [selectedPanelId, selectedSerial]
+        const reqMonId = requestedMonitorIdRef.current;
+        const reqTrendId = requestedTrendlogIdRef.current;
+        const requestedNormalized = normalizeMonitorToken(reqMonId || reqTrendId);
+        const isChartContext = activeTabRef.current === 'chart';
 
         // Point Sets chart mode uses a synthetic GLOBAL monitor with specific_points.
         // Do not auto-fallback to first physical monitor (MON1), or history calls will use MON1 path.
@@ -950,8 +971,8 @@ export const TrendLogsPage: React.FC = () => {
         // In chart context with an explicit requested monitor, never fallback to MON1.
         if (isChartContext && requestedNormalized && !queriedTrendlog) {
           console.warn('[TrendLogsPage] Requested monitor not found in chart context; skipping fallback selection.', {
-            requestedMonitorId,
-            requestedTrendlogId,
+            requestedMonitorId: reqMonId,
+            requestedTrendlogId: reqTrendId,
           });
           setSelectedMonitor(null);
           setMonitorInputs([]);
@@ -960,19 +981,20 @@ export const TrendLogsPage: React.FC = () => {
         }
 
         const initialTrendlog = queriedTrendlog || trendlogsWithIndex[0];
+        // Normalize to TLOG for display matching
+        const displayTrendlog = {
+          ...initialTrendlog,
+          trendlogId: `TLOG${normalizeMonitorToken(initialTrendlog.trendlogId || initialTrendlog.trendlogIndex || '1')}`,
+          trendlogIndex: `TLOG${normalizeMonitorToken(initialTrendlog.trendlogId || initialTrendlog.trendlogIndex || '1')}`,
+        };
+        console.log('🎯 [TrendLogsPage] Auto-selecting trendlog:', displayTrendlog);
+        setSelectedMonitor(displayTrendlog);
 
-        console.log('🎯 [TrendLogsPage] Auto-selecting trendlog:', initialTrendlog);
-
-        // Use loadTrendlogInputs to handle the loading with deduplication
-        setSelectedMonitor(initialTrendlog);
-
-        // Select the first row's radio button
-        const firstRowId = `${initialTrendlog.serialNumber}-${initialTrendlog.trendlogId || initialTrendlog.trendlogIndex}-${initialTrendlog._uniqueIndex}`;
+        // Select the first row's radio button using display format
+        const firstRowId = `${displayTrendlog.serialNumber}-${displayTrendlog.trendlogId}-${displayTrendlog._uniqueIndex}`;
         setSelectedItems(new Set([firstRowId]));
 
-        if (initialTrendlog.trendlogId) {
-          await loadTrendlogInputsInternal(initialTrendlog);
-        }
+        await loadTrendlogInputsInternal(displayTrendlog);
       }
     } catch (err) {
       if (requestId !== fetchRequestIdRef.current) {
@@ -987,8 +1009,9 @@ export const TrendLogsPage: React.FC = () => {
       }
       setLoading(false);
       setDbChecked(true);
+      hasEverLoadedData.current = true;
     }
-  }, [activeTab, normalizeMonitorToken, requestedMonitorId, requestedTrendlogId, selectedPanelId, selectedSerial]);
+  }, [selectedPanelId, selectedSerial]);
 
   // Load inputs for a specific trendlog
   const loadTrendlogInputs = useCallback(async (trendlog: TrendLogData) => {
@@ -1029,6 +1052,7 @@ export const TrendLogsPage: React.FC = () => {
   useEffect(() => {
     setAutoRefreshed(false);
     setDbChecked(false);
+    hasEverLoadedData.current = false;
   }, [selectedDevice?.serialNumber]);
 
   // Auto-refresh once per device - ONLY after initial DB fetch completes
@@ -1087,6 +1111,7 @@ export const TrendLogsPage: React.FC = () => {
     if (!selectedDevice) return;
 
     setRefreshing(true);
+    setError(null);
     try {
       const serial = selectedDevice.serialNumber;
       // Pre-refresh inputs/outputs/variables so label resolution uses current names
@@ -1159,7 +1184,7 @@ export const TrendLogsPage: React.FC = () => {
       { header: 'Label', accessor: t => t.trendlogLabel },
       { header: 'Interval (sec)', accessor: t => t.intervalSeconds },
       { header: 'Buffer Size', accessor: t => t.bufferSize },
-      { header: 'Data Size', accessor: t => t.dataSizeKb },
+      { header: 'Data Size (KB)', accessor: t => t.dataSizeKb },
       { header: 'Auto/Manual', accessor: t => t.autoManual },
       { header: 'Status', accessor: t => t.status },
     ];
@@ -1185,16 +1210,13 @@ export const TrendLogsPage: React.FC = () => {
   useRegisterCsvHandlers(handleExport, handleImport);
 
   const handleMonitorSelect = useCallback(async (monitor: TrendLogData) => {
-    console.log('🔵 [TrendLogsPage] handleMonitorSelect called with:', monitor);
-    console.log('🔵 [TrendLogsPage] VERSION: 2026-04-14-v3 - FIXED loading spinner');
-
-    // Update radio button selection
     const rowId = getRowIdForItem(monitor);
     setSelectedItems(new Set([rowId]));
+    setSelectedMonitor(monitor);
+    // Persist selection in URL (safe now — fetchTrendLogs no longer depends on URL params)
     syncMonitorQuery(monitor);
-
-    await loadTrendlogInputs(monitor);
-  }, [loadTrendlogInputs, getRowIdForItem, syncMonitorQuery]);
+    await loadTrendlogInputsInternal(monitor);
+  }, [getRowIdForItem, syncMonitorQuery]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -1883,17 +1905,17 @@ export const TrendLogsPage: React.FC = () => {
       >
         Default
       </button>
-      <button
+      {/* <button
         className={`${styles.tabButton} ${activeTab === 'point-sets' ? styles.tabButtonActive : ''}`}
         onClick={() => setActiveTab('point-sets')}
       >
         Point Sets
-      </button>
+      </button> */}
       <button
         className={`${styles.tabButton} ${activeTab === 'haystack-tags' ? styles.tabButtonActive : ''}`}
         onClick={() => setActiveTab('haystack-tags')}
       >
-        Haystack Tags
+       Haystack Tags
       </button>
       <button
         className={`${styles.tabButton} ${activeTab === 'backend' ? styles.tabButtonActive : ''}`}
@@ -2252,31 +2274,27 @@ export const TrendLogsPage: React.FC = () => {
     const serial = selectedDevice?.serialNumber || 0;
     const panel = selectedDevice?.panelId;
 
-    // Build a map of actual trendlog data keyed by MON index (1-12)
+    // Build a map keyed by MON index (1-12). Display normalized to TLOG.
     const dataMap = new Map<number, TrendLogData>();
     for (const log of trendLogs) {
       const id = log.trendlogId || log.trendlogIndex || '';
       const match = id.match(/^MON(\d+)$/i);
       if (match) {
-        dataMap.set(parseInt(match[1], 10), log);
+        const idx = parseInt(match[1], 10);
+        dataMap.set(idx, { ...log, trendlogId: `TLOG${idx}`, trendlogIndex: `TLOG${idx}` });
       }
     }
 
-    // Generate all 12 slots, merging actual data where available
     const slots: TrendLogData[] = [];
     for (let i = 1; i <= totalSlots; i++) {
       const existing = dataMap.get(i);
       if (existing) {
-        slots.push({
-          ...existing,
-          // Guarantee trendlogIndex is always populated — API sometimes omits it
-          trendlogIndex: existing.trendlogIndex || existing.trendlogId || `MON${i}`,
-        });
+        slots.push({ ...existing, trendlogIndex: existing.trendlogIndex || `TLOG${i}` });
       } else {
         slots.push({
           serialNumber: serial,
-          trendlogId: `MON${i}`,
-          trendlogIndex: `MON${i}`,
+          trendlogId: `TLOG${i}`,
+          trendlogIndex: `TLOG${i}`,
           trendlogLabel: '',
           intervalSeconds: 900, // Default 00:15:00 like T3000
           bufferSize: undefined,
@@ -2322,7 +2340,7 @@ export const TrendLogsPage: React.FC = () => {
           <TableCellLayout>
             {!isEmptyRow(item) && (
               <div className={styles.refreshContainer}>
-                <button
+                {/* <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleRefreshSingleTrendlog(trendlogIndex);
@@ -2334,8 +2352,8 @@ export const TrendLogsPage: React.FC = () => {
                   <ArrowSyncRegular
                     className={`${styles.iconSmall} ${isRefreshingThis ? styles.rotating : ''}`}
                   />
-                </button>
-                <Text size={200} weight="regular">{trendlogIndex || '---'}</Text>
+                </button> */}
+                <Text size={200} weight="regular">{trendlogIndex || ''}</Text>
               </div>
             )}
           </TableCellLayout>
@@ -2348,7 +2366,7 @@ export const TrendLogsPage: React.FC = () => {
       renderHeaderCell: () => <span>Label</span>,
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && <Text size={200}>{item.trendlogLabel || '---'}</Text>}
+          {!isEmptyRow(item) && <Text size={200}>{item.trendlogLabel || ''}</Text>}
         </TableCellLayout>
       ),
     }),
@@ -2357,7 +2375,7 @@ export const TrendLogsPage: React.FC = () => {
       renderHeaderCell: () => <span>Interval</span>,
       renderCell: (item) => {
         const sec = item.intervalSeconds;
-        let display = '---';
+        let display = '';
         if (sec != null) {
           const h = Math.floor(sec / 3600);
           const m = Math.floor((sec % 3600) / 60);
@@ -2372,42 +2390,13 @@ export const TrendLogsPage: React.FC = () => {
       },
     }),
     createTableColumn<TrendLogData>({
-      columnId: 'bufferSize',
-      renderHeaderCell: () => <span>Buffer Size</span>,
-      renderCell: (item) => (
-        <TableCellLayout>
-          {!isEmptyRow(item) && <Text size={200}>{item.bufferSize ?? '---'}</Text>}
-        </TableCellLayout>
-      ),
-      compare: (a, b) => (a.bufferSize || 0) - (b.bufferSize || 0),
-    }),
-    createTableColumn<TrendLogData>({
       columnId: 'dataSizeKb',
-      renderHeaderCell: () => <span>Data Size</span>,
+      renderHeaderCell: () => <span>Data Size (KB)</span>,
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && <Text size={200}>{item.dataSizeKb || '0KB'}</Text>}
+          {!isEmptyRow(item) && <Text size={200}>{item.dataSizeKb || '0'}</Text>}
         </TableCellLayout>
       ),
-    }),
-    createTableColumn<TrendLogData>({
-      columnId: 'autoManual',
-      renderHeaderCell: () => <div className={styles.noWrapHeader}>Auto/Manual</div>,
-      renderCell: (item) => {
-        const val = (item.autoManual || '').toUpperCase();
-        const isAuto = val === 'AUTO' || val === '1';
-        const isManual = val === 'MANUAL' || val === '0';
-        return (
-          <TableCellLayout>
-            {!isEmptyRow(item) && (
-              <Badge appearance={isAuto ? 'filled' : 'outline'} color="informative">
-                {isAuto ? 'Auto' : isManual ? 'Manual' : '---'}
-              </Badge>
-            )}
-          </TableCellLayout>
-        );
-      },
-      compare: (a, b) => (a.autoManual || '').localeCompare(b.autoManual || ''),
     }),
     createTableColumn<TrendLogData>({
       columnId: 'status',
@@ -2417,33 +2406,39 @@ export const TrendLogsPage: React.FC = () => {
         return (
           <TableCellLayout>
             {!isEmptyRow(item) && (
-              <Badge appearance="tint" color={isOn ? 'success' : 'subtle'}>
-                {isOn ? 'ON' : 'OFF'}
-              </Badge>
+              <div
+                className={styles.switchContainer}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Switch
+                  defaultChecked={isOn}
+                  className={styles.switchScale}
+                />
+                <Text size={200}>{isOn ? 'ON' : 'OFF'}</Text>
+              </div>
             )}
           </TableCellLayout>
         );
       },
       compare: (a, b) => (a.status || '').localeCompare(b.status || ''),
     }),
-    // Actions column - View Chart (moved to last)
+    // View column
     createTableColumn<TrendLogData>({
       columnId: 'actions',
-      renderHeaderCell: () => <span>Actions</span>,
+      renderHeaderCell: () => <span>View</span>,
       renderCell: (item) => (
         <TableCellLayout>
           {!isEmptyRow(item) && (
-            <Button
-              size="small"
-              icon={<ChartMultipleRegular className={styles.iconSmall} />}
+            <button
+              className={styles.viewArrowButton}
               onClick={async () => {
                 await handleMonitorSelect(item);
                 setActiveTab('chart', item);
               }}
-              title="View trend chart for this trendlog"
+              title="View trend chart"
             >
-              View Graphic
-            </Button>
+              <ArrowRightRegular fontSize={18} className={styles.viewArrowIcon} />
+            </button>
           )}
         </TableCellLayout>
       ),
@@ -2513,7 +2508,7 @@ export const TrendLogsPage: React.FC = () => {
                   <div className={styles.overviewStatGrid}>
 
                     {/* Monitors */}
-                    <div className={styles.overviewStatCard}>
+                    {/* <div className={styles.overviewStatCard}>
                       <div className={styles.overviewStatHeader}>
                         <span className={styles.overviewStatLabel}>Configured Monitors</span>
                         <Tooltip content="Total monitors detected from database/device sync. ON/OFF shows runtime state split." relationship="description">
@@ -2531,7 +2526,7 @@ export const TrendLogsPage: React.FC = () => {
                           <span className={styles.overviewStatSlots}>avg {formatSeconds(avgIntervalSeconds)}</span>
                         )}
                       </div>
-                    </div>
+                    </div> */}
 
                     {/* Sensor Inventory */}
                     <div className={styles.overviewStatCard}>
@@ -2699,39 +2694,89 @@ export const TrendLogsPage: React.FC = () => {
                             </span>
                           </div>
                           <div className={styles.overviewSnapshotTile}>
-                            <span className={styles.overviewSnapshotKey}>Mode</span>
-                            <span className={styles.overviewSnapshotVal}>
-                              {((selectedMonitor.autoManual || '').toUpperCase() === 'AUTO' || selectedMonitor.autoManual === '1') ? 'Auto' : 'Manual'}
-                            </span>
-                          </div>
-                          <div className={styles.overviewSnapshotTile}>
                             <span className={styles.overviewSnapshotKey}>Interval</span>
                             <span className={styles.overviewSnapshotVal}>{formatSeconds(selectedMonitor.intervalSeconds ?? null)}</span>
                           </div>
                           <div className={styles.overviewSnapshotTile}>
-                            <span className={styles.overviewSnapshotKey}>Buffer</span>
-                            <span className={styles.overviewSnapshotVal}>{selectedMonitor.bufferSize ?? 'N/A'}</span>
-                          </div>
-                          <div className={styles.overviewSnapshotTile}>
                             <span className={styles.overviewSnapshotKey}>Inputs</span>
-                            <span className={styles.overviewSnapshotVal}>{monitorInputs.length}</span>
-                          </div>
-                          <div className={styles.overviewSnapshotTile}>
-                            <span className={styles.overviewSnapshotKey}>Slot #</span>
-                            <span className={styles.overviewSnapshotVal}>{selectedMonitor.trendlogIndex ?? 'N/A'}</span>
+                            <span className={styles.overviewSnapshotVal}>
+                              {monitorInputs.length}
+                              {monitorInputs.length > 0 && (
+                                <Tooltip
+                                  content={
+                                    <div style={{ maxHeight: 200, overflowY: 'auto', fontSize: 11, lineHeight: '18px' }}>
+                                      {monitorInputs.map((input, i) => {
+                                        const ptShort =
+                                          input.pointType === 'INPUT' ? 'IN' :
+                                          input.pointType === 'OUTPUT' ? 'OUT' :
+                                          input.pointType === 'VARIABLE' ? 'VAR' :
+                                          input.pointType;
+                                        const pointId = input.pointPanel
+                                          ? `${input.pointPanel}${ptShort}${input.pointIndex}`
+                                          : `${ptShort}${input.pointIndex}`;
+                                        const label = input.pointLabel || '-';
+                                        return (
+                                          <div key={i}>{label} — {pointId}</div>
+                                        );
+                                      })}
+                                    </div>
+                                  }
+                                  relationship="label"
+                                >
+                                  <InfoRegular className={styles.overviewInfoIcon} />
+                                </Tooltip>
+                              )}
+                            </span>
                           </div>
                           <div className={styles.overviewSnapshotTile}>
                             <span className={styles.overviewSnapshotKey}>Label</span>
-                            <span className={styles.overviewSnapshotVal}>{selectedMonitor.trendlogLabel?.trim() || <em style={{ color: '#8a8886', fontStyle: 'normal' }}>No label</em>}</span>
+                            <span className={styles.overviewSnapshotVal}>
+                              {selectedMonitor.trendlogId || 'N/A'}
+                              {selectedMonitor.trendlogLabel?.trim() ? ` - ${selectedMonitor.trendlogLabel.trim()}` : ''}
+                            </span>
                           </div>
-                          <div className={styles.overviewSnapshotTile}>
-                            <span className={styles.overviewSnapshotKey}>Mon ID</span>
-                            <span className={styles.overviewSnapshotVal}>{selectedMonitor.trendlogId || 'N/A'}</span>
-                          </div>
-                          <div className={styles.overviewSnapshotTile}>
-                            <span className={styles.overviewSnapshotKey}>Data size</span>
-                            <span className={styles.overviewSnapshotVal}>{selectedMonitor.dataSizeKb != null ? `${selectedMonitor.dataSizeKb} KB` : 'N/A'}</span>
-                          </div>
+                          {((): React.ReactNode => {
+                            const dataKb = parseFloat(selectedMonitor.dataSizeKb || '0');
+                            const intervalSec = selectedMonitor.intervalSeconds || 0;
+                            const inputsCount = monitorInputs.length;
+                            const recordsPerDay = intervalSec > 0 ? Math.round(86400 / intervalSec) : 0;
+                            const kbPerRecord = inputsCount > 0 && recordsPerDay > 0
+                              ? Math.max(0.2, dataKb / Math.max(recordsPerDay, 1))
+                              : 0.5;
+                            const kbPerDay = recordsPerDay * kbPerRecord;
+                            const kbPerDayFmt = kbPerDay >= 1024
+                              ? `${(kbPerDay / 1024).toFixed(1)} MB/day`
+                              : `${kbPerDay.toFixed(1)} KB/day`;
+                            const rpdStr = recordsPerDay > 0 ? `~${recordsPerDay} records/day` : 'N/A';
+                            return (
+                              <div className={`${styles.overviewSnapshotTile} ${styles.overviewSnapshotTileFull}`}>
+                                <span className={styles.overviewSnapshotKey}>
+                                  Resources
+                                  <Tooltip
+                                    content={
+                                      <div style={{ fontSize: 11, lineHeight: '16px' }}>
+                                        <div>{rpdStr} ({inputsCount} input{inputsCount !== 1 ? 's' : ''})</div>
+                                        <div>~{kbPerRecord.toFixed(1)} KB per record</div>
+                                        <div style={{ marginTop: 4, color: '#8a8886' }}>Increase interval to reduce rate</div>
+                                      </div>
+                                    }
+                                    relationship="label"
+                                  >
+                                    <InfoRegular className={styles.overviewInfoIcon} />
+                                  </Tooltip>
+                                </span>
+                                <div className={styles.overviewSnapshotRich}>
+                                  <div className={styles.overviewSnapshotRichLine}>
+                                    Data: {selectedMonitor.dataSizeKb != null ? `${selectedMonitor.dataSizeKb} KB` : '0 KB'}
+                                    {inputsCount > 0 ? ` | ${inputsCount} pt${inputsCount !== 1 ? 's' : ''}` : ''}
+                                  </div>
+                                  <div className={styles.overviewSnapshotRichLine}>
+                                    Rate: {recordsPerDay > 0 ? `${kbPerDayFmt} | ${rpdStr}` : 'N/A'}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       ) : (
                         <Text size={200} style={{ color: '#8a8886' }}>Select a monitor in the Default tab to see its snapshot here.</Text>
@@ -2745,22 +2790,6 @@ export const TrendLogsPage: React.FC = () => {
                       </div>
                       <div className={styles.overviewSnapshotGrid}>
                         <div className={styles.overviewSnapshotTile}>
-                          <span className={styles.overviewSnapshotKey}>Active monitors</span>
-                          <span className={styles.overviewSnapshotVal}>{activeMonitorCount}</span>
-                        </div>
-                        <div className={styles.overviewSnapshotTile}>
-                          <span className={styles.overviewSnapshotKey}>Avg interval</span>
-                          <span className={styles.overviewSnapshotVal}>{formatSeconds(avgIntervalSeconds)}</span>
-                        </div>
-                        <div className={styles.overviewSnapshotTile}>
-                          <span className={styles.overviewSnapshotKey}>Labeled monitors</span>
-                          <span className={styles.overviewSnapshotVal}>{monitorsWithLabel} / {trendLogs.length}</span>
-                        </div>
-                        <div className={styles.overviewSnapshotTile}>
-                          <span className={styles.overviewSnapshotKey}>Auto mode</span>
-                          <span className={styles.overviewSnapshotVal}>{autoModeCount}</span>
-                        </div>
-                        <div className={styles.overviewSnapshotTile}>
                           <span className={styles.overviewSnapshotKey}>Last synced</span>
                           <span className={styles.overviewSnapshotVal}>{pointSummaryLoading ? '…' : lastSyncedAgo}</span>
                         </div>
@@ -2769,16 +2798,8 @@ export const TrendLogsPage: React.FC = () => {
                           <span className={styles.overviewSnapshotVal}>{pointSummaryLoading ? '…' : syncSourceLabel}</span>
                         </div>
                         <div className={styles.overviewSnapshotTile}>
-                          <span className={styles.overviewSnapshotKey}>Slots free</span>
-                          <span className={styles.overviewSnapshotVal}>{Math.max(12 - trendLogs.length, 0)} / 12</span>
-                        </div>
-                        <div className={styles.overviewSnapshotTile}>
                           <span className={styles.overviewSnapshotKey}>Sync time</span>
                           <span className={`${styles.overviewSnapshotVal} ${styles.overviewSnapshotValSm}`}>{pointSummaryLoading ? '…' : (lastSyncedFmt || 'N/A')}</span>
-                        </div>
-                        <div className={styles.overviewSnapshotTile}>
-                          <span className={styles.overviewSnapshotKey}>Mon. inputs</span>
-                          <span className={styles.overviewSnapshotVal}>{selectedMonitor ? monitorInputs.length : '—'}</span>
                         </div>
                       </div>
                     </div>
@@ -3007,8 +3028,8 @@ export const TrendLogsPage: React.FC = () => {
               {activeTab === 'default' && (
               <div className={styles.dockingBody}>
 
-                {/* Loading State */}
-                {loading && trendLogs.length === 0 && (
+                {/* Loading State — only on first load */}
+                {loading && !hasEverLoadedData.current && trendLogs.length === 0 && (
                   <div className={styles.loadingBar}>
                     <Spinner size="tiny" />
                     <Text size={200} weight="regular">Loading trendlogs...</Text>
@@ -3026,8 +3047,8 @@ export const TrendLogsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Dual Grid Layout - Main Grid (80%) + Input Grid (20%) */}
-                {selectedDevice && !loading && !error && (
+                {/* Dual Grid — show once device selected & data ever loaded */}
+                {selectedDevice && (hasEverLoadedData.current || !loading) && (
                   <div className={styles.gridContainer}>
                     {/* Main Monitor List - Left Side (80%) */}
                     <div className={styles.mainGrid}>
@@ -3071,7 +3092,7 @@ export const TrendLogsPage: React.FC = () => {
                     <div className={styles.subGrid}>
                       <div className={styles.subGridHeader}>
                         <Text size={300} weight="semibold">
-                          Monitor Inputs {loadingInputs && <Spinner size="tiny" className={styles.marginLeft8} />}
+                          Trend Log Items {loadingInputs && <Spinner size="tiny" className={styles.marginLeft8} />}
                         </Text>
                         {monitorInputs.length > 0 && (
                           <Badge appearance="filled" color="informative" size="small">
@@ -3085,31 +3106,41 @@ export const TrendLogsPage: React.FC = () => {
                             <Spinner size="small" label="Loading inputs..." />
                           </div>
                         ) : monitorInputs.length > 0 ? (
-                          monitorInputs.map((input, index) => {
-                            const pointTypeShort =
-                              input.pointType === 'INPUT' ? 'IN' :
-                              input.pointType === 'OUTPUT' ? 'OUT' :
-                              input.pointType === 'VARIABLE' ? 'VAR' :
-                              input.pointType === 'IN' ? 'IN' :
-                              input.pointType === 'OUT' ? 'OUT' :
-                              input.pointType === 'VAR' ? 'VAR' :
-                              input.pointType;
+                          <>
+                            <div className={styles.inputHeaderRow}>
+                              <div className={styles.inputHeaderNum}>#</div>
+                              <div className={styles.inputHeaderName}>Name</div>
+                              <div className={styles.inputHeaderId}>Point ID</div>
+                            </div>
+                            {monitorInputs.map((input, index) => {
+                              const pointTypeShort =
+                                input.pointType === 'INPUT' ? 'IN' :
+                                input.pointType === 'OUTPUT' ? 'OUT' :
+                                input.pointType === 'VARIABLE' ? 'VAR' :
+                                input.pointType === 'IN' ? 'IN' :
+                                input.pointType === 'OUT' ? 'OUT' :
+                                input.pointType === 'VAR' ? 'VAR' :
+                                input.pointType;
 
-                            const displayLabel = input.pointLabel ||
-                              `${pointTypeShort}${input.pointIndex}`;
+                              const displayLabel = input.pointLabel || '';
+                              const pointId = input.pointPanel
+                                ? `${input.pointPanel}${pointTypeShort}${input.pointIndex}`
+                                : `${pointTypeShort}${input.pointIndex}`;
 
-                            return (
-                              <div key={`${input.pointType}-${input.pointIndex}-${index}`} className={styles.inputRow}>
-                                <div className={styles.inputNum}>{index + 1}</div>
-                                <Tooltip
-                                  content={`${pointTypeShort}${input.pointIndex}: ${input.pointLabel || 'No label'}`}
-                                  relationship="label"
-                                >
-                                  <div className={styles.inputValue}>{displayLabel}</div>
-                                </Tooltip>
-                              </div>
-                            );
-                          })
+                              return (
+                                <div key={`${input.pointType}-${input.pointIndex}-${index}`} className={styles.inputRow}>
+                                  <div className={styles.inputNum}>{index + 1}</div>
+                                  <Tooltip
+                                    content={displayLabel || pointId}
+                                    relationship="label"
+                                  >
+                                    <div className={styles.inputName}>{displayLabel || '-'}</div>
+                                  </Tooltip>
+                                  <div className={styles.inputPointId}>{pointId}</div>
+                                </div>
+                              );
+                            })}
+                          </>
                         ) : (
                           <div className={styles.centerPaddingMuted}>
                             <Text size={200}>No inputs configured</Text>

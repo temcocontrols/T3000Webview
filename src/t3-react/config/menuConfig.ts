@@ -658,7 +658,7 @@ const developerMenu: MenuItem = {
       label: 'T3000 Logs',
       type: 'item',
       action: () => window.location.hash = '#/t3000/develop/logs',
-      icon: 'DocumentText',
+      icon: 'CalendarDataBar',
     },
   ],
 };

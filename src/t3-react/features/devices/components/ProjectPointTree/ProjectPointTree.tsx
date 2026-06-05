@@ -14,51 +14,46 @@ import {
   TreeItemLayout,
 } from '@fluentui/react-components';
 import {
-  FolderRegular,
-  ServerRegular,
+  BuildingRegular,
   Checkmark20Regular,
-  Dismiss20Regular,
-  WrenchRegular,
-  OptionsRegular,
-  CircleMultipleConcentricRegular,
-  DeveloperBoardRegular,
-  FlowRegular,
-  CalendarRegular,
-  CalendarDateRegular,
-  ImageRegular,
-  ChartMultipleRegular,
+  CircleFilled,
 } from '@fluentui/react-icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDeviceTreeStore } from '../../store/deviceTreeStore';
-import { CapacityBar } from './CapacityBar';
 import styles from './ProjectPointTree.module.css';
 
 /**
- * Get icon for point type (matching toolbar icons)
+ * Title-case labels matching C++ project view
+ */
+const POINT_TYPE_LABELS: Record<string, string> = {
+  inputs: 'Input',
+  outputs: 'Output',
+  variables: 'Variable',
+  programs: 'Program',
+  pidloops: 'PID',
+  schedules: 'Schedule',
+  holidays: 'Holiday',
+  graphics: 'Graphic',
+  trendlogs: 'Trendlog',
+};
+
+/**
+ * Get SVG icon for point type (matches toolbar SVG icons)
  */
 const getPointTypeIcon = (pointType: string) => {
-  switch (pointType) {
-    case 'inputs':
-      return <WrenchRegular className={styles.icon} />;
-    case 'outputs':
-      return <OptionsRegular className={styles.icon} />;
-    case 'variables':
-      return <CircleMultipleConcentricRegular className={styles.icon} />;
-    case 'programs':
-      return <DeveloperBoardRegular className={styles.icon} />;
-    case 'pidloops':
-      return <FlowRegular className={styles.icon} />;
-    case 'schedules':
-      return <CalendarRegular className={styles.icon} />;
-    case 'holidays':
-      return <CalendarDateRegular className={styles.icon} />;
-    case 'graphics':
-      return <ImageRegular className={styles.icon} />;
-    case 'trendlogs':
-      return <ChartMultipleRegular className={styles.icon} />;
-    default:
-      return <WrenchRegular className={styles.icon} />;
-  }
+  const svgMap: Record<string, string> = {
+    inputs: 'inputs',
+    outputs: 'outputs',
+    variables: 'variables',
+    programs: 'programs',
+    pidloops: 'pidloops',
+    schedules: 'schedules',
+    holidays: 'holidays',
+    graphics: 'graphics',
+    trendlogs: 'trendlogs',
+  };
+  const name = svgMap[pointType] || 'inputs';
+  return <img src={`/assets/t3icon/toolbar/${name}.svg`} className={styles.icon} alt={pointType} />;
 };
 
 /**
@@ -102,7 +97,8 @@ const StatusIcon: React.FC<{ status: string }> = ({ status }) => {
   if (status === 'online') {
     return <Checkmark20Regular className={styles.statusOnline} />;
   }
-  return <Dismiss20Regular className={styles.statusOffline} />;
+  // return <CircleFilled className={styles.statusOffline} />;
+  return <></>;
 };
 
 /**
@@ -117,9 +113,12 @@ const ProjectTreeNode: React.FC<{
   ({ node, level, selectedPointType, onNavigate }) => {
     const hasChildren = node.children && node.children.length > 0;
 
-    // Point type node with capacity bar
+    // Point type node — uppercase label, aligned count, no percent bar
     if (node.node_type === 'point_type') {
       const isSelected = node.point_type === selectedPointType;
+      const label = POINT_TYPE_LABELS[node.point_type] || node.name;
+      const used = node.used ?? 0;
+      const total = node.total ?? 0;
 
       const handleClick = () => {
         if (node.point_type) {
@@ -130,32 +129,31 @@ const ProjectTreeNode: React.FC<{
       return (
         <TreeItem itemType="leaf" value={node.name}>
           <TreeItemLayout
-            className={isSelected ? styles.treeItemSelected : styles.treeItemNormal}
+            className={`${isSelected ? styles.treeItemSelected : styles.treeItemNormal} ${styles.nodePointType} ${styles[`level${level}`] || ''}`}
             style={{ '--tree-level': level, cursor: 'pointer' } as React.CSSProperties}
             onClick={handleClick}
           >
             {getPointTypeIcon(node.point_type)}
-            <span className={styles.pointTypeName}>{node.name}</span>
-            {node.used !== undefined && node.total !== undefined && (
-              <CapacityBar
-                used={node.used}
-                total={node.total}
-                percentage={node.percentage || 0}
-              />
-            )}
+            <span className={styles.pointTypeLabel}>{label}</span>
+            <span className={styles.pointTypeCount}>({used}/{total})</span>
           </TreeItemLayout>
         </TreeItem>
       );
     }
 
-    // Device node with status
+    // Device node — skip Unknown / empty / placeholder names
     if (node.node_type === 'device') {
+      const deviceName = node.name || '';
+      if (!deviceName || deviceName.toLowerCase().includes('unknown') || deviceName.startsWith('Device ')) {
+        return null;
+      }
+
       return (
         <TreeItem itemType="branch" value={node.name}>
           <TreeItemLayout
-            className={styles.treeItemNormal}
+            className={`${styles.treeItemNormal} ${styles.nodeDevice} ${styles[`level${level}`] || ''}`}
             style={{ '--tree-level': level } as React.CSSProperties}
-            iconBefore={<ServerRegular style={{ color: '#605e5c', width: '20px', height: '20px' }} />}
+            iconBefore={<BuildingRegular style={{ color: '#605e5c', width: '20px', height: '20px' }} />}
             aside={node.status ? <StatusIcon status={node.status} /> : undefined}
           >
             {node.name}
@@ -177,13 +175,30 @@ const ProjectTreeNode: React.FC<{
       );
     }
 
-    // System or root nodes
+    // System node — skip "System List", render children directly
+    if (node.node_type === 'system') {
+      return (
+        <>
+          {hasChildren &&
+            node.children.map((child: any, index: number) => (
+              <ProjectTreeNode
+                key={`${child.name}-${index}`}
+                node={child}
+                level={level + 1}
+                selectedPointType={selectedPointType}
+                onNavigate={onNavigate}
+              />
+            ))}
+        </>
+      );
+    }
+
+    // Root node (Point List)
     return (
       <TreeItem itemType="branch" value={node.name}>
         <TreeItemLayout
-          className={styles.treeItemNormal}
+          className={`${styles.treeItemNormal} ${styles.nodeRoot} ${styles[`level${level}`] || ''}`}
           style={{ '--tree-level': level } as React.CSSProperties}
-          iconBefore={<FolderRegular style={{ color: '#605e5c', width: '20px', height: '20px' }} />}
         >
           {node.name}
         </TreeItemLayout>
@@ -221,10 +236,10 @@ export const ProjectPointTree: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!projectTreeData) {
+    if (!projectTreeData && !isLoading) {
       fetchProjectPointTree();
     }
-  }, [projectTreeData, fetchProjectPointTree]);
+  }, [projectTreeData, isLoading]);
 
   // Auto-expand first device when tree data loads
   useEffect(() => {
@@ -234,16 +249,19 @@ export const ProjectPointTree: React.FC = () => {
       // Expand root "Point List"
       itemsToExpand.push(projectTreeData.name);
 
-      // Expand "System List" (first child)
-      if (projectTreeData.children && projectTreeData.children.length > 0) {
-        const systemList = projectTreeData.children[0];
-        itemsToExpand.push(systemList.name);
-
-        // Expand first device
-        if (systemList.children && systemList.children.length > 0) {
-          const firstDevice = systemList.children[0];
-          itemsToExpand.push(firstDevice.name);
+      // Flatten: skip "System List" → go directly to first device
+      const children = projectTreeData.children || [];
+      const systemList = children.find((c: any) => c.node_type === 'system');
+      const deviceChildren = systemList?.children || children;
+      const validDevices = deviceChildren.filter(
+        (d: any) => {
+          const name = d.name || '';
+          return d.node_type === 'device' && name && !name.toLowerCase().includes('unknown') && !name.startsWith('Device ');
         }
+      );
+
+      if (validDevices.length > 0) {
+        itemsToExpand.push(validDevices[0].name);
       }
 
       setOpenItems(itemsToExpand);

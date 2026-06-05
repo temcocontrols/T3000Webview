@@ -351,7 +351,7 @@ const AlarmsPageDesktop: React.FC = () => {
           <TableCellLayout className={styles.numCell}>
             {!isEmptyRow(alarm) && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
+                {/* <button
                   className={`${styles.refreshIconButton} ${isRefreshing ? styles.rotating : ''}`}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -362,7 +362,7 @@ const AlarmsPageDesktop: React.FC = () => {
                   aria-label="Refresh alarm"
                 >
                   <ArrowSyncRegular fontSize={16} />
-                </button>
+                </button> */}
                 <span>{alarm.alarm_id}</span>
               </div>
             )}

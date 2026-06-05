@@ -376,6 +376,73 @@ pub async fn get_data_statistics(
     }))
 }
 
+/// Get per-trendlog storage usage metrics (record counts, estimated sizes).
+///
+/// Mirrors `T3TrendlogDataService::get_data_usage()`.
+pub async fn get_data_usage(
+    pool: &MssqlPool,
+    serial_number: i32,
+    panel_id: i32,
+) -> Result<Value, String> {
+    let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
+
+    // Per-trendlog record counts
+    let result = conn
+        .query(
+            "SELECT \
+                CAST(td.Trendlog_ID AS VARCHAR(20)) AS trendlog_id, \
+                CAST(COUNT(td.id) AS INT) AS record_count, \
+                CAST(COUNT(DISTINCT ti.id) AS INT) AS point_count \
+             FROM TRENDLOG_DATA td \
+             LEFT JOIN TRENDLOG_INPUTS ti ON ti.SerialNumber = td.SerialNumber \
+                AND CAST(ti.Trendlog_ID AS VARCHAR(20)) = CAST(td.Trendlog_ID AS VARCHAR(20)) \
+             WHERE td.SerialNumber = @P1 AND td.PanelId = @P2 \
+             GROUP BY CAST(td.Trendlog_ID AS VARCHAR(20)) \
+             ORDER BY CAST(td.Trendlog_ID AS VARCHAR(20))",
+            &[&serial_number, &panel_id],
+        )
+        .await
+        .map_err(|e| format!("MSSQL usage query failed: {}", e))?;
+
+    let rows = result
+        .into_results()
+        .await
+        .map_err(|e| format!("Result fetch failed: {}", e))?;
+
+    const EST_BYTES_PER_RECORD: i64 = 200;
+    let mut trendlogs: Vec<Value> = Vec::new();
+    let mut total_records: i64 = 0;
+
+    for result_set in &rows {
+        for row in result_set {
+            let trendlog_id: &str = row.get("trendlog_id").unwrap_or_default();
+            let record_count: i32 = row.get("record_count").unwrap_or(0);
+            let point_count: i32 = row.get("point_count").unwrap_or(0);
+            let rc = record_count as i64;
+            total_records += rc;
+            let est_kb = ((rc * EST_BYTES_PER_RECORD) as f64 / 1024.0).round() as u64;
+
+            trendlogs.push(serde_json::json!({
+                "trendlogId": trendlog_id,
+                "recordCount": rc,
+                "pointCount": point_count,
+                "estimatedSizeKb": est_kb,
+            }));
+        }
+    }
+
+    let total_est_kb = ((total_records * EST_BYTES_PER_RECORD) as f64 / 1024.0).round() as u64;
+
+    Ok(serde_json::json!({
+        "serialNumber": serial_number,
+        "panelId": panel_id,
+        "trendlogs": trendlogs,
+        "totalRecords": total_records,
+        "totalEstimatedSizeKb": total_est_kb,
+        "estimatedBytesPerRecord": EST_BYTES_PER_RECORD,
+    }))
+}
+
 // ============================================================================
 // Trendlog Recent Data — SELECT latest N detail rows
 // ============================================================================

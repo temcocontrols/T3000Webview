@@ -1,5 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FilterRegular } from '@fluentui/react-icons';
+import {
+  Dialog,
+  DialogSurface,
+  DialogBody,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Text,
+} from '@fluentui/react-components';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './TrendPolicyPage.module.css';
@@ -165,6 +175,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
   const [statusBar, setStatusBar] = useState<{ type: 'info' | 'success' | 'error'; message: string } | null>(null);
   const [rebuildInProgress, setRebuildInProgress] = useState(false);
   const [loadRevision, setLoadRevision] = useState(0);
+  const [confirmDialog, setConfirmDialog] = useState<'clearAll' | 'clearSel' | null>(null);
 
   useEffect(() => {
     try {
@@ -468,6 +479,15 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
     }
   };
 
+  const handleConfirmClearAll = () => setConfirmDialog('clearAll');
+  const handleConfirmClearSel = () => setConfirmDialog('clearSel');
+
+  const executeConfirmedAction = () => {
+    if (confirmDialog === 'clearAll') clearAllTags();
+    if (confirmDialog === 'clearSel') clearTagsOnSelected();
+    setConfirmDialog(null);
+  };
+
   const rebuildHaystackFromBackend = async () => {
     if (selectedDeviceSerials.size === 0 || rebuildInProgress) {
       return;
@@ -628,7 +648,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
               </button>
               <button
                 className={styles.headerActionBtnDanger}
-                onClick={clearAllTags}
+                onClick={handleConfirmClearAll}
                 disabled={allPoints.length === 0}
                 title="Clear All Tags: remove all tags from every point on this device"
               >
@@ -636,7 +656,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
               </button>
               <button
                 className={styles.headerActionBtnDanger}
-                onClick={clearTagsOnSelected}
+                onClick={handleConfirmClearSel}
                 disabled={selectedPointKeys.size === 0}
                 title="Clear Selected: remove all tags from the currently checked rows only"
               >
@@ -948,6 +968,37 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
           </div>
         </section>
       </div>
+
+      {/* Confirmation Dialog for Clear operations */}
+      <Dialog open={confirmDialog !== null} onOpenChange={() => setConfirmDialog(null)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>
+              <Text size={300} weight="semibold">
+                {confirmDialog === 'clearAll' ? 'Clear All Tags' : 'Clear Selected Tags'}
+              </Text>
+            </DialogTitle>
+            <DialogContent>
+              <Text size={200}>
+                {confirmDialog === 'clearAll'
+                  ? `Are you sure you want to remove all tags from every point on this device (${allPoints.length} point(s))? This action cannot be undone.`
+                  : `Are you sure you want to remove all tags from the ${selectedPointKeys.size} selected point(s)? This action cannot be undone.`
+                }
+              </Text>
+            </DialogContent>
+            <DialogActions>
+              <Button size="small" appearance="secondary" onClick={() => setConfirmDialog(null)}>Cancel</Button>
+              <Button
+                size="small"
+                style={{ backgroundColor: '#b91c1c', color: '#fff', border: '1px solid #b91c1c' }}
+                onClick={executeConfirmedAction}
+              >
+                Clear
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 };

@@ -1478,3 +1478,20 @@ CREATE TABLE IF NOT EXISTS T3_FLOW_PAYLOAD (
     created_at   INTEGER NOT NULL,               -- unix epoch ms
     purged       INTEGER NOT NULL DEFAULT 0      -- 0=file exists, 1=file deleted
 );
+
+-- ============================================================================
+-- TRENDLOG_POINT_SETS - Named saved point set selections for trendlog views
+-- Each row stores a snapshot of which points a user selected for a device.
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS TRENDLOG_POINT_SETS (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    serial_number INTEGER NOT NULL,
+    set_name      TEXT    NOT NULL,
+    selected_keys TEXT    NOT NULL,
+    point_tags    TEXT    NOT NULL,
+    created_at    INTEGER,
+    updated_at    INTEGER
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_trendpointsets_serial_name ON TRENDLOG_POINT_SETS (serial_number, set_name);
+CREATE INDEX IF NOT EXISTS idx_trendpointsets_serial     ON TRENDLOG_POINT_SETS (serial_number);
+CREATE INDEX IF NOT EXISTS idx_trendpointsets_updated_at ON TRENDLOG_POINT_SETS (updated_at);

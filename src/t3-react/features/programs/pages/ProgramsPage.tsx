@@ -50,6 +50,7 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '@t3-react/config/constants';
 import { PanelDataRefreshService } from '@t3-react/shared/services/panelDataRefreshService';
 import { SyncStatusBar } from '@t3-react/shared/components/SyncStatusBar';
+import { PageSyncStatus } from '@t3-react/shared/components/PageSyncStatus';
 import { ProgrammingDrawer } from '../components/ProgrammingDrawer';
 import styles from './ProgramsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
@@ -425,7 +426,7 @@ export const ProgramsPage: React.FC = () => {
         return (
           <TableCellLayout>
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <button
+              {/* <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleRefreshSingleProgram(programId);
@@ -438,8 +439,8 @@ export const ProgramsPage: React.FC = () => {
                   style={{ fontSize: '14px' }}
                   className={isRefreshingThis ? styles.rotating : ''}
                 />
-              </button>
-              <Text size={200} weight="regular">{item.programId || '---'}</Text>
+              </button> */}
+              <Text size={200} weight="regular">{item.programId || ''}</Text>
             </div>
           </TableCellLayout>
         );
@@ -617,7 +618,7 @@ export const ProgramsPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && (item.programPointer || '---')}
+          {!isEmptyRow(item) && (item.programPointer || '')}
         </TableCellLayout>
       ),
     }),
@@ -664,7 +665,7 @@ export const ProgramsPage: React.FC = () => {
                 onDoubleClick={() => handleCellDoubleClick(item, 'programList', item.programList || '')}
                 title="Double-click to edit"
               >
-                <Text size={200} weight="regular">{item.programList || '---'}</Text>
+                <Text size={200} weight="regular">{item.programList || ''}</Text>
               </div>
             )}
           </TableCellLayout>
@@ -776,6 +777,14 @@ export const ProgramsPage: React.FC = () => {
                       <InfoRegular />
                     </button>
                   </Tooltip>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
+
+                  {/* <PageSyncStatus
+                    dataType="PROGRAMS"
+                    serialNumber={selectedDevice.serialNumber.toString()}
+                    onRefresh={handleRefreshFromDevice}
+                  /> */}
                 </div>
               </div>
 

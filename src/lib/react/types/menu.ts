@@ -41,16 +41,17 @@ export interface TopMenuConfig {
 export interface ToolbarButton {
   id: string;
   label: string;
-  icon: FluentIcon | string; // Support both component and string name
+  icon: FluentIcon | string;      // Support both component and string name
   tooltip: string;
   shortcut?: string;
-  windowId?: number;          // Window ID for navigation
-  route?: string;             // Route path
-  dialog?: string;            // Dialog name for opening dialogs
-  dialogId?: string;          // Dialog ID (alternative name)
-  divider?: boolean;          // Is this a divider?
+  windowId?: number;              // Window ID for navigation
+  route?: string;                 // Route path
+  dialog?: string;                // Dialog name for opening dialogs
+  dialogId?: string;              // Dialog ID (alternative name)
+  divider?: boolean;              // Is this a divider?
   action?: string | (() => void); // Action identifier or function
   disabled?: boolean;
+  description?: string;           // Optional description for the button
 }
 
 // Toolbar configuration

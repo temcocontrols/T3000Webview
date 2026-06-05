@@ -12,22 +12,13 @@
 import React from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbButton,
-  BreadcrumbDivider,
   makeStyles,
-  Divider,
-  Text,
   Button,
 } from '@fluentui/react-components';
-import { ChevronRight20Regular, ChevronLeftRegular } from '@fluentui/react-icons';
+import {
+  ChevronLeftRegular,
+} from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../features/devices/store/deviceTreeStore';
-import { SyncStatusBar } from '../shared/components/SyncStatusBar';
-import { InputRefreshApi } from '../features/inputs/services/inputRefreshApi';
-import { OutputRefreshApi } from '../features/outputs/services/outputRefreshApi';
-import { VariableRefreshApi } from '../features/variables/services/variableRefreshApi';
-import { ProgramRefreshApi } from '../features/programs/services/programRefreshApi';
 
 const useStyles = makeStyles({
   container: {
@@ -78,9 +69,27 @@ const useStyles = makeStyles({
   },
   syncSection: {
     flexShrink: 0,
-    paddingLeft: '16px',
-    marginLeft: '16px',
-    borderLeft: '1px solid #d1d1d1',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  statusButton: {
+    fontSize: '12px',
+    fontWeight: 500,
+    color: '#0078d4',
+    padding: '4px 8px',
+    borderRadius: '2px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    border: 'none',
+    background: 'transparent',
+  },
+  statusDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    flexShrink: 0,
   },
 });
 
@@ -144,7 +153,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => 
   const pageTitle = title || breadcrumbInfo?.label || 'T3000';
   const segments = breadcrumbInfo?.segments || ['T3000'];
 
-  // Determine if current page should show sync status
+  // Determine page data type (for breadcrumb / title only)
   const dataTypeByRoute: Record<string, string> = {
     '/t3000/inputs': 'INPUTS',
     '/t3000/outputs': 'OUTPUTS',
@@ -152,7 +161,6 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => 
     '/t3000/programs': 'PROGRAMS',
   };
   const dataType = dataTypeByRoute[location.pathname];
-  const shouldShowSync = !!dataType && !!selectedDevice;
 
   const handleBreadcrumbClick = (index: number) => {
     if (index === 0) {
@@ -160,43 +168,6 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => 
       navigate('/t3000/dashboard');
     }
     // Could add more navigation logic for intermediate segments if needed
-  };
-
-  const handleRefreshFromDevice = async () => {
-    if (!selectedDevice || !dataType) return;
-
-    try {
-      console.log(`[PageHeader] Refreshing ${dataType} from device ${selectedDevice.serialNumber}...`);
-
-      let refreshResponse;
-
-      // Call the appropriate refresh API based on data type
-      switch (dataType) {
-        case 'INPUTS':
-          refreshResponse = await InputRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);
-          break;
-        case 'OUTPUTS':
-          refreshResponse = await OutputRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);
-          break;
-        case 'VARIABLES':
-          refreshResponse = await VariableRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);
-          break;
-        case 'PROGRAMS':
-          refreshResponse = await ProgramRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);
-          break;
-        default:
-          console.warn(`[PageHeader] No refresh handler for data type: ${dataType}`);
-          return;
-      }
-
-      console.log(`[PageHeader] Refresh completed - ${refreshResponse.savedCount} records saved`);
-
-      // Trigger page reload via custom event
-      window.dispatchEvent(new CustomEvent('data-refreshed', { detail: { dataType } }));
-    } catch (error) {
-      console.error('[PageHeader] Refresh failed:', error);
-      throw error;
-    }
   };
 
   return (
@@ -219,15 +190,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => 
           Back
         </Button>
       )}
-      {shouldShowSync && (
-        <div className={styles.syncSection}>
-          <SyncStatusBar
-            dataType={dataType}
-            serialNumber={selectedDevice.serialNumber.toString()}
-            onRefresh={handleRefreshFromDevice}
-          />
-        </div>
-      )}
+      {/* Status moved to per-page toolbars via PageSyncStatus */}
     </div>
   );
 };

@@ -73,6 +73,9 @@ pub struct CreateTrendlogDataRequest {
     pub data_source: Option<String>,     // 'REALTIME', 'FFI_SYNC', 'HISTORICAL', 'MANUAL'
     pub sync_interval: Option<i32>,      // Sync interval in seconds
     pub created_by: Option<String>,      // 'FRONTEND', 'BACKEND', 'API'
+    /// Unique ID generated once per sendPeriodicBatchRequest interval on the frontend.
+    /// Ties the action=17 FFI calls to the batch_save step in TRENDLOG_POLL.
+    pub poll_cycle_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -989,6 +992,85 @@ impl T3TrendlogDataService {
             "latest_sync_records_inserted": latest_sync_meta.as_ref().and_then(|m| m.records_inserted),
             "latest_sync_time_fmt": latest_sync_meta.as_ref().and_then(|m| m.sync_time_fmt.clone()),
             "message": "Trendlog data statistics retrieved successfully (split-table optimized)"
+        }))
+    }
+
+    /// Get per-trendlog storage usage metrics
+    /// Queries record counts and estimates storage per trendlog slot
+    pub async fn get_data_usage(
+        db: &DatabaseConnection,
+        serial_number: i32,
+        panel_id: i32
+    ) -> Result<serde_json::Value, AppError> {
+        let usage_info = format!(
+            "📊 [TrendlogDataService] Getting data usage - Device: {}, Panel: {}",
+            serial_number, panel_id
+        );
+        emit_api_log(db, "info", &usage_info).await;
+
+        // Per-trendlog record counts from parent table
+        #[derive(Debug, sea_orm::FromQueryResult)]
+        struct TrendlogUsageRow {
+            trendlog_id: String,
+            record_count: i64,
+            point_count: i64,
+        }
+
+        let per_trendlog_sql = r#"
+            SELECT
+                CAST(td.Trendlog_ID AS TEXT) as trendlog_id,
+                COUNT(td.id) as record_count,
+                COUNT(DISTINCT ti.id) as point_count
+            FROM TRENDLOG_DATA td
+            LEFT JOIN TRENDLOG_INPUTS ti ON ti.SerialNumber = td.SerialNumber
+                AND CAST(ti.Trendlog_ID AS TEXT) = CAST(td.Trendlog_ID AS TEXT)
+            WHERE td.SerialNumber = ? AND td.PanelId = ?
+            GROUP BY td.Trendlog_ID
+            ORDER BY td.Trendlog_ID
+        "#;
+
+        let rows: Vec<TrendlogUsageRow> = TrendlogUsageRow::find_by_statement(
+            Statement::from_sql_and_values(
+                db.get_database_backend(),
+                &adapt_placeholders(db.get_database_backend(), per_trendlog_sql),
+                vec![serial_number.into(), panel_id.into()],
+            )
+        )
+        .all(db)
+        .await?;
+
+        // Estimate: ~200 bytes per detail record (timestamp + value + metadata)
+        const EST_BYTES_PER_RECORD: i64 = 200;
+        let trendlogs: Vec<serde_json::Value> = rows.iter().map(|r| {
+            let est_kb = ((r.record_count * EST_BYTES_PER_RECORD) as f64 / 1024.0).round() as u64;
+            serde_json::json!({
+                "trendlogId": r.trendlog_id,
+                "recordCount": r.record_count,
+                "pointCount": r.point_count,
+                "estimatedSizeKb": est_kb,
+            })
+        }).collect();
+
+        // Total trendlog data size across all slots
+        let total_records: i64 = rows.iter().map(|r| r.record_count).sum();
+        let total_est_kb = ((total_records * EST_BYTES_PER_RECORD) as f64 / 1024.0).round() as u64;
+
+        // Try to get DB file size (SQLite only)
+        let db_size_kb: Option<u64> = std::env::var("T3_DB_PATH").ok()
+            .or_else(|| std::env::var("DATABASE_URL").ok())
+            .and_then(|path| {
+                let clean = path.trim_start_matches("sqlite://");
+                std::fs::metadata(clean).ok().map(|m| (m.len() / 1024) as u64)
+            });
+
+        Ok(serde_json::json!({
+            "serialNumber": serial_number,
+            "panelId": panel_id,
+            "trendlogs": trendlogs,
+            "totalRecords": total_records,
+            "totalEstimatedSizeKb": total_est_kb,
+            "dbFileSizeKb": db_size_kb,
+            "estimatedBytesPerRecord": EST_BYTES_PER_RECORD,
         }))
     }
 

@@ -55,6 +55,7 @@ import { API_BASE_URL } from '@t3-react/config/constants';
 import { PanelDataRefreshService } from '@t3-react/shared/services/panelDataRefreshService';
 import { useStatusBarStore } from '@t3-react/store/statusBarStore';
 import { SyncStatusBar } from '@t3-react/shared/components/SyncStatusBar';
+import { PageSyncStatus } from '@t3-react/shared/components/PageSyncStatus';
 import styles from './OutputsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
@@ -129,11 +130,16 @@ const OutputsPageDesktop: React.FC = () => {
   */
 
   // Fetch outputs for selected device
+  const fetchingRef = useRef(false);
+
   const fetchOutputs = useCallback(async () => {
     if (!selectedDevice) {
       setOutputs([]);
       return;
     }
+
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
 
     setLoading(true);
     setError(null);
@@ -153,10 +159,10 @@ const OutputsPageDesktop: React.FC = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load outputs';
       setError(errorMessage);
       console.error('Error fetching outputs:', err);
-      // DON'T clear outputs on database fetch error - preserve what we have
     } finally {
       setLoading(false);
       setDbChecked(true);
+      fetchingRef.current = false;
     }
   }, [selectedDevice]);
 
@@ -739,7 +745,7 @@ const OutputsPageDesktop: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && (item.panel || '---')}
+          {!isEmptyRow(item) && (item.panel || '')}
         </TableCellLayout>
       ),
     }),
@@ -763,7 +769,7 @@ const OutputsPageDesktop: React.FC = () => {
           <TableCellLayout>
             {!isEmptyRow(item) && (
               <div className={styles.cellFlexContainer}>
-                <button
+                {/* <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleRefreshSingleOutput(item.outputIndex || '');
@@ -775,9 +781,9 @@ const OutputsPageDesktop: React.FC = () => {
                   <ArrowSyncRegular
                     className={`${styles.iconSmall} ${isRefreshing ? styles.rotating : ''}`}
                   />
-                </button>
+                </button> */}
                 <Text size={200} weight="regular">
-                  {item.outputId || (item.outputIndex ? `OUT${parseInt(item.outputIndex) + 1}` : '---')}
+                  {item.outputId || (item.outputIndex ? `OUT${parseInt(item.outputIndex) + 1}` : '')}
                 </Text>
               </div>
             )}
@@ -838,7 +844,7 @@ const OutputsPageDesktop: React.FC = () => {
                   onDoubleClick={() => handleCellDoubleClick(item, 'fullLabel', item.fullLabel || '')}
                   title="Double-click to edit"
                 >
-                  <Text size={200} weight="regular">{item.fullLabel || 'Unnamed'}</Text>
+                  <Text size={200} weight="regular">{item.fullLabel || ''}</Text>
                 </div>
               )
             )}
@@ -899,7 +905,7 @@ const OutputsPageDesktop: React.FC = () => {
                   onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
                   title="Double-click to edit"
                 >
-                  <Text size={200} weight="regular">{item.label || '---'}</Text>
+                  <Text size={200} weight="regular">{item.label || ''}</Text>
                 </div>
               )
             )}
@@ -1040,7 +1046,7 @@ const OutputsPageDesktop: React.FC = () => {
     createTableColumn<OutputPoint>({
       columnId: 'value',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('value')}>
+        <div className={styles.headerCellSort} style={{ justifyContent: 'flex-end', width: '100%' }} onClick={() => handleSort('value')}>
           <span>Value</span>
           {sortColumn === 'value' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
@@ -1091,7 +1097,7 @@ const OutputsPageDesktop: React.FC = () => {
                   title="Double-click to edit"
                 >
                   <span className={styles.valueBadge}>
-                    {item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : '---'}
+                    {item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(2) : ''}
                   </span>
                 </div>
               )
@@ -1394,6 +1400,14 @@ const OutputsPageDesktop: React.FC = () => {
                       <InfoRegular />
                     </button>
                   </Tooltip>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
+
+                  {/* <PageSyncStatus
+                    dataType="OUTPUTS"
+                    serialNumber={selectedDevice.serialNumber.toString()}
+                    onRefresh={handleRefreshFromDevice}
+                  /> */}
                 </div>
               </div>
 
@@ -1508,7 +1522,7 @@ const OutputsPageDesktop: React.FC = () => {
           currentRange={parseInt(selectedOutput.rangeField || selectedOutput.range || '0', 10)}
           digitalAnalog={parseInt(selectedOutput.digitalAnalog || '0', 10)}
           onSave={handleRangeSave}
-          inputLabel={`Output ${selectedOutput.outputIndex || selectedOutput.outputId} - ${selectedOutput.fullLabel || 'Unnamed'}`}
+          inputLabel={`Output ${selectedOutput.outputIndex || selectedOutput.outputId} - ${selectedOutput.fullLabel || ''}`}
         />
       )}
     </div>
