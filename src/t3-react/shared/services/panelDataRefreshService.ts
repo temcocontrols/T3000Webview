@@ -307,7 +307,7 @@ export class PanelDataRefreshService {
       'variable': db.variables,
       'program': db.programs,
       'schedule': db.schedules,
-      'pidloop': db.pidLoops,
+      'pidloop': db.pids,
       'holiday': db.holidays,
       'graphic': db.graphics,
     };

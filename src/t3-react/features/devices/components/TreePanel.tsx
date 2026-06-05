@@ -136,10 +136,15 @@ export const TreePanel: React.FC = () => {
         {/* No results state - filtered out */}
         {!isLoading && !error && devices.length > 0 && treeData.length === 0 && (
           <div className={styles.emptyContainer}>
-            <div className={styles.emptyIcon}>🔍</div>
-            <div className={styles.emptyTitle}>No Results Found</div>
+            <div className={styles.emptyIconWrapper}>
+              <ArrowRoutingRectangleMultiple24Regular className={styles.emptyIcon} fontSize={32} />
+            </div>
+            <div className={styles.emptyTitle}>No Devices Found</div>
             <div className={styles.emptyMessage}>
-              Try adjusting your filters
+              Click the{' '}
+              <span className={styles.inlineRefreshHint}>
+                <ArrowSyncRegular fontSize={14} /> 
+              </span>{' '}button above to load your devices from the network.
             </div>
           </div>
         )}
