@@ -586,28 +586,28 @@ pub fn validate_config(config: &BackendConfig) -> Result<(), String> {
         BackendType::Sqlite => Ok(()),
         BackendType::Mssql => {
             if config.host.as_ref().map_or(true, |h| h.is_empty()) {
-                return Err("MSSQL host is required".to_string());
+                return Err("MSSQL host is required. Please save the configuration first.".to_string());
             }
             if config.database_name.as_ref().map_or(true, |d| d.is_empty()) {
-                return Err("MSSQL database name is required".to_string());
+                return Err("MSSQL database name is required. Please save the configuration first.".to_string());
             }
             Ok(())
         }
         BackendType::Postgres => {
             if config.host.as_ref().map_or(true, |h| h.is_empty()) {
-                return Err("PostgreSQL host is required".to_string());
+                return Err("PostgreSQL host is required. Please save the configuration first.".to_string());
             }
             if config.database_name.as_ref().map_or(true, |d| d.is_empty()) {
-                return Err("PostgreSQL database name is required".to_string());
+                return Err("PostgreSQL database name is required. Please save the configuration first.".to_string());
             }
             Ok(())
         }
         BackendType::Mysql => {
             if config.host.as_ref().map_or(true, |h| h.is_empty()) {
-                return Err("MySQL host is required".to_string());
+                return Err("MySQL host is required. Please save the configuration first.".to_string());
             }
             if config.database_name.as_ref().map_or(true, |d| d.is_empty()) {
-                return Err("MySQL database name is required".to_string());
+                return Err("MySQL database name is required. Please save the configuration first.".to_string());
             }
             Ok(())
         }
