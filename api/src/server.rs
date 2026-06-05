@@ -203,7 +203,11 @@ pub async fn server_start(
     let enable_debug_log = crate::ini_config::read_debug_log_flag();
 
     if enable_debug_log {
-        match std::fs::File::create("t3-webview-api-dll.log") {
+        match std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("t3-webview-api-dll.log")
+        {
             Ok(log_file) => {
                 let tee = TeeWriter::new(std::io::stdout(), log_file);
                 tracing_subscriber::fmt()
