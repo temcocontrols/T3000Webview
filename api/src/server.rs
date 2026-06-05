@@ -28,6 +28,24 @@ use crate::{
 use super::modbus_register::routes::modbus_register_routes;
 use super::user::routes::user_routes;
 
+const DEBUG_LOG_NAME: &str = "t3-webview-api-dll.log";
+
+/// Write a line to both console and the debug log file (if enabled).
+/// Used for messages that bypass the tracing subscriber (e.g. ServiceLogger, println!).
+pub(crate) fn debug_log(msg: &str) {
+    println!("{}", msg);
+    if crate::ini_config::read_debug_log_flag() {
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(DEBUG_LOG_NAME)
+        {
+            let _ = std::io::Write::write_all(&mut f, msg.as_bytes());
+            let _ = std::io::Write::write_all(&mut f, b"\n");
+        }
+    }
+}
+
 /// Writes to two outputs simultaneously — console + file.
 struct TeeWriter<A: std::io::Write, B: std::io::Write> {
     a: A,
@@ -197,6 +215,7 @@ pub async fn server_start(
         .unwrap_or_else(|_| ServiceLogger::new("fallback_service").unwrap());
 
     logger.info("T3000 WebView HTTP API Service Starting on port 9103...");
+    debug_log("T3000 WebView HTTP API Service Starting on port 9103...");
 
     // Initialize basic tracing — always console, optionally + file.
     // Set debug_log=1 in setting.ini (any section) to enable file logging.
@@ -206,7 +225,7 @@ pub async fn server_start(
         match std::fs::OpenOptions::new()
             .create(true)
             .append(true)
-            .open("t3-webview-api-dll.log")
+            .open(DEBUG_LOG_NAME)
         {
             Ok(log_file) => {
                 let tee = TeeWriter::new(std::io::stdout(), log_file);
@@ -215,7 +234,7 @@ pub async fn server_start(
                     .with_writer(std::sync::Mutex::new(tee))
                     .try_init()
                     .ok();
-                logger.info("Tracing initialized — console + t3-webview-api-dll.log");
+                logger.info(&format!("Tracing initialized — console + {}", DEBUG_LOG_NAME));
             }
             Err(e) => {
                 // File log failed — fall back to console only, do not crash
@@ -398,7 +417,9 @@ pub async fn server_start(
 
     // Print visible confirmation so user knows server is ready
     println!("✅ Server is READY — listening on {:?}", listener.local_addr());
+    debug_log(&format!("✅ Server is READY — listening on {:?}", listener.local_addr()));
     println!("   Open http://localhost:{} in your browser", server_port);
+    debug_log(&format!("   Open http://localhost:{} in your browser", server_port));
 
     // Start the server with graceful shutdown
     match axum::serve(listener, app)
