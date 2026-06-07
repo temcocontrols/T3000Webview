@@ -470,8 +470,9 @@ pub async fn start_all_services_with_options(run_migrations: bool) -> Result<(),
 /// This mode avoids touching the general webview_database migration path.
 pub async fn start_all_services_t3_migrations_only() -> Result<(), Box<dyn std::error::Error>> {
     println!("[RELOAD] Force running T3 device migrations only...");
+    crate::server::debug_log("[RELOAD] Force running T3 device migrations only...");
     match utils::run_t3_device_migrations().await {
-        Ok(_) => println!("[OK] T3 device migrations completed"),
+        Ok(_) => { println!("[OK] T3 device migrations completed"); crate::server::debug_log("[OK] T3 device migrations completed"); },
         Err(e) => {
             eprintln!("[ERROR] T3 device migration failed: {:?}", e);
             return Err(e);
@@ -495,10 +496,12 @@ pub extern "C" fn run_t3_server() -> RustError {
 
         runtime.block_on(async {
             println!("[LINK] T3000 DLL Entry Point: Starting all services...");
+            crate::server::debug_log("[LINK] T3000 DLL Entry Point: Starting all services...");
 
             match start_all_services().await {
                 Ok(_) => {
                     println!("[OK] T3000 WebView API services started from DLL");
+                    crate::server::debug_log("[OK] T3000 WebView API services started from DLL");
                     RustError::Ok
                 }
                 Err(err) => {
