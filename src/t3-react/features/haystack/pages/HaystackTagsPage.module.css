@@ -5,13 +5,37 @@
   overflow: hidden;
 }
 
+/* ── Sync Progress / Result Bar ── */
+.syncBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  background: #f0f6ff;
+  color: #0078d4;
+  border-bottom: 1px solid #c7e0f4;
+  flex-shrink: 0;
+}
+.syncSuccess {
+  background: #e8f5e9;
+  color: #1e7e34;
+  border-bottom-color: #b7dfb9;
+}
+.syncError {
+  background: #fef0f0;
+  color: #a81a23;
+  border-bottom-color: #f5c6cb;
+}
+
 /* ── Info Bar ── */
 .infoBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
-  margin-bottom: 1px;
+  margin-bottom: 0;
   background: var(--colorBrandBackground2, #deecf9);
   flex-shrink: 0;
   gap: 12px;
@@ -56,6 +80,9 @@
   display: flex;
   flex: 1;
   overflow: hidden;
+  margin-top: 8px;
+  border: 1px solid var(--colorNeutralStroke2, #e0e0e0);
+  border-radius: 2px;
 }
 
 /* ── Left Panel ── */
@@ -137,10 +164,12 @@
   padding: 48px 16px;
   color: var(--colorNeutralForeground2);
   font-size: 14px;
-  gap: 6px;
+  gap: 8px;
 }
+.emptyState p { margin: 0; }
 .emptyHint { font-size: 12px; color: var(--colorNeutralForeground3); }
 .emptyTree { padding: 16px; font-size: 12px; color: var(--colorNeutralForeground3); text-align: center; }
+.emptyTree p { margin: 0; }
 
 /* ── Sync Dialog ── */
 .syncDialogContent {

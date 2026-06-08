@@ -12,6 +12,7 @@ export const HaystackTagsPage: React.FC = () => {
   const { tags, tagTree, isLoading, error, fetchTags, fetchTagTree } = useHaystackStore();
   const [search, setSearch] = useState('');
   const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ ok: boolean; count?: number; msg?: string } | null>(null);
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
   const [selectedTreeNode, setSelectedTreeNode] = useState<string>('');
 
@@ -37,12 +38,15 @@ export const HaystackTagsPage: React.FC = () => {
   const handleSync = async () => {
     setSyncDialogOpen(false);
     setSyncing(true);
+    setSyncResult(null);
     try {
-      await fetch(`${API_BASE_URL}/api/haystack/sync`, { method: 'POST' });
+      const res = await fetch(`${API_BASE_URL}/api/haystack/sync`, { method: 'POST' });
+      const data = await res.json();
+      setSyncResult({ ok: true, count: data.count ?? data.inserted });
       await fetchTags();
       await fetchTagTree();
-    } catch (e) {
-      console.warn('[Haystack] Sync failed:', e);
+    } catch (e: any) {
+      setSyncResult({ ok: false, msg: e.message || 'Sync failed' });
     } finally {
       setSyncing(false);
     }
@@ -63,6 +67,22 @@ export const HaystackTagsPage: React.FC = () => {
 
   return (
     <div className={styles.container}>
+      {/* ── Sync Progress Bar ── */}
+      {syncing && (
+        <div className={styles.syncBar}>
+          <Spinner size="extra-tiny" /> Syncing official tags from project-haystack.org…
+        </div>
+      )}
+
+      {/* ── Sync Result Bar ── */}
+      {syncResult && !syncing && (
+        <div className={`${styles.syncBar} ${syncResult.ok ? styles.syncSuccess : styles.syncError}`}>
+          {syncResult.ok
+            ? `✓ Successfully synced ${syncResult.count} standard tags from project-haystack.org.`
+            : `✗ Sync failed: ${syncResult.msg}`}
+        </div>
+      )}
+
       {/* ── Info Bar ── */}
       <div className={styles.infoBar}>
         <div className={styles.infoBarLeft}>
@@ -108,7 +128,7 @@ export const HaystackTagsPage: React.FC = () => {
       <div className={styles.main}>
         {/* ── Left Panel: Tag Tree ── */}
         <aside className={styles.leftPanel}>
-          <div className={styles.leftHeader}>Tree</div>
+          <div className={styles.leftHeader}>Tags Tree</div>
           <Input
             placeholder="Filter tags…"
             value={search}
@@ -121,8 +141,7 @@ export const HaystackTagsPage: React.FC = () => {
               <Spinner size="tiny" label="Loading…" />
             ) : tagTree.length === 0 ? (
               <div className={styles.emptyTree}>
-                <p>No tag tree loaded</p>
-                <p className={styles.emptyHint}>Start the backend and run migrations.</p>
+                <p>No tag tree loaded.</p>
               </div>
             ) : (
               tagTree.map((n) => renderTreeNode(n))
@@ -144,11 +163,13 @@ export const HaystackTagsPage: React.FC = () => {
           ) : filteredTags.length === 0 ? (
             <div className={styles.emptyState}>
               <p>No tags found</p>
-              <p className={styles.emptyHint}>
-                {standardTags.length === 0
-                  ? 'Restart the backend to run migrations and seed the standard tag library.'
-                  : 'No tags match your filter.'}
-              </p>
+              {standardTags.length === 0 ? (
+                <p className={styles.emptyHint}>
+                  Click 'Sync official tags' above to pull the standard tag library from project-haystack.org.
+                </p>
+              ) : (
+                <p className={styles.emptyHint}>No tags match your filter.</p>
+              )}
             </div>
           ) : (
             <table className={styles.tagTable}>
