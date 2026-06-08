@@ -30,19 +30,23 @@ use super::user::routes::user_routes;
 
 const DEBUG_LOG_NAME: &str = "t3-webview-api-dll.log";
 
-/// Write a line to both console and the debug log file (if enabled).
-/// Used for messages that bypass the tracing subscriber (e.g. ServiceLogger, println!).
+/// Write a line to both console and the debug log file — only when debug_log=1 in setting.ini.
+/// In production (debug_log=0), this is a complete no-op — zero overhead.
+/// Uses tracing-compatible format: YYYY-MM-DDTHH:MM:SS.ffffffZ  INFO t3_webview_api: msg
 pub(crate) fn debug_log(msg: &str) {
-    println!("{}", msg);
-    if crate::ini_config::read_debug_log_flag() {
-        if let Ok(mut f) = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(DEBUG_LOG_NAME)
-        {
-            let _ = std::io::Write::write_all(&mut f, msg.as_bytes());
-            let _ = std::io::Write::write_all(&mut f, b"\n");
-        }
+    if !crate::ini_config::read_debug_log_flag() {
+        return;
+    }
+    let ts = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.6fZ");
+    let line = format!("{}  INFO t3_webview_api: {}", ts, msg);
+    println!("{}", line);
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(DEBUG_LOG_NAME)
+    {
+        let _ = std::io::Write::write_all(&mut f, line.as_bytes());
+        let _ = std::io::Write::write_all(&mut f, b"\n");
     }
 }
 

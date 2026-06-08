@@ -673,27 +673,76 @@ pub async fn start_database_service_dynamic() -> Result<(), Box<dyn std::error::
 /// Unified database initialization function
 /// Automatically selects Option 1 (copy) or Option 2 (dynamic) based on USE_DYNAMIC_DATABASE_CREATION
 pub async fn initialize_t3_device_database() -> Result<(), Box<dyn std::error::Error>> {
+    crate::server::debug_log("initialize_t3_device_database: START");
     if USE_DYNAMIC_DATABASE_CREATION {
-        // Option 2: Dynamic creation from embedded SQL
         t3_enhanced_logging("[GEAR] Using Option 2: Dynamic database creation from embedded SQL");
         start_database_service_dynamic().await?;
     } else {
-        // Option 1: Copy pre-built database from ResourceFile
         t3_enhanced_logging("[GEAR] Using Option 1: Copy pre-built database from ResourceFile");
         start_database_service().await?;
     }
-
-    // Run T3 device migrations (applies only unapplied ones, tracked in seaql_migrations)
+    crate::server::debug_log("initialize_t3_device_database: DB init done, running migrations...");
     run_t3_device_migrations().await?;
+    crate::server::debug_log("initialize_t3_device_database: DONE");
+    Ok(())
+}
 
+/// Remove seaql_migrations records for T3 device migrations whose files no longer exist.
+/// Prevents "Migration file of version 'X' is missing" errors from SeaORM.
+async fn cleanup_t3_device_orphaned_migrations(
+    conn: &sea_orm::DatabaseConnection,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use sea_orm::*;
+    let rows = conn.query_all(Statement::from_string(
+        DatabaseBackend::Sqlite,
+        "SELECT version FROM seaql_migrations ORDER BY applied_at".to_owned(),
+    )).await?;
+    let applied: Vec<String> = rows.iter()
+        .map(|r| r.try_get::<String>("", "version").unwrap_or_default())
+        .collect();
+    let available: std::collections::HashSet<String> = T3DeviceMigrator::migrations()
+        .iter().map(|m| m.name().to_string()).collect();
+    for v in &applied {
+        if !available.contains(v) {
+            crate::server::debug_log(&format!("removing orphaned migration: {}", v));
+            conn.execute(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                format!("DELETE FROM seaql_migrations WHERE version = '{}'", v),
+            )).await?;
+        }
+    }
     Ok(())
 }
 
 /// Run SeaORM migrations against webview_t3_device.db
 pub async fn run_t3_device_migrations() -> Result<(), Box<dyn std::error::Error>> {
-    let conn = crate::db_connection::establish_t3_device_connection().await?;
+    crate::server::debug_log("run_t3_device_migrations: opening connection...");
+    let conn = match crate::db_connection::establish_t3_device_connection().await {
+        Ok(c) => {
+            crate::server::debug_log("run_t3_device_migrations: connection OK");
+            c
+        }
+        Err(e) => {
+            crate::server::debug_log(&format!("run_t3_device_migrations: connection FAILED: {:?}", e));
+            return Err(e);
+        }
+    };
     t3_enhanced_logging("[RELOAD] Running T3 device database migrations...");
-    T3DeviceMigrator::up(&conn, None).await?;
+    crate::server::debug_log("run_t3_device_migrations: cleaning orphaned records...");
+    // Remove records for migration files that no longer exist (e.g. renamed/deleted)
+    if let Err(e) = cleanup_t3_device_orphaned_migrations(&conn).await {
+        crate::server::debug_log(&format!("orphan cleanup warning: {:?}", e));
+    }
+    crate::server::debug_log("run_t3_device_migrations: calling T3DeviceMigrator::up...");
+    match T3DeviceMigrator::up(&conn, None).await {
+        Ok(_) => {
+            crate::server::debug_log("run_t3_device_migrations: T3DeviceMigrator::up OK");
+        }
+        Err(e) => {
+            crate::server::debug_log(&format!("run_t3_device_migrations: T3DeviceMigrator::up FAILED: {:?}", e));
+            return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())));
+        }
+    };
     t3_enhanced_logging("[OK] T3 device database migrations complete");
     drop(conn);
     Ok(())
