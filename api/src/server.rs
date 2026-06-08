@@ -222,7 +222,6 @@ pub async fn server_start(
     debug_log("T3000 WebView HTTP API Service Starting on port 9103...");
 
     // Initialize basic tracing — always console, optionally + file.
-    // Set debug_log=1 in setting.ini (any section) to enable file logging.
     let enable_debug_log = crate::ini_config::read_debug_log_flag();
 
     if enable_debug_log {
@@ -241,7 +240,6 @@ pub async fn server_start(
                 logger.info(&format!("Tracing initialized — console + {}", DEBUG_LOG_NAME));
             }
             Err(e) => {
-                // File log failed — fall back to console only, do not crash
                 tracing_subscriber::fmt()
                     .with_ansi(false)
                     .with_writer(std::io::stdout)

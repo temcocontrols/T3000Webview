@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use migration::{Migrator, T3DeviceMigrator, MigratorTrait};
+use sea_orm::ConnectionTrait;
 use std::{env, fs, path::Path, sync::Arc};
 use tokio::sync::{mpsc, Mutex};
 
@@ -701,18 +702,12 @@ pub async fn run_t3_device_migrations() -> Result<(), Box<dyn std::error::Error>
         }
     };
     t3_enhanced_logging("[RELOAD] Running T3 device database migrations...");
-    // Always run every migration — idempotent (CREATE IF NOT EXISTS, INSERT OR IGNORE, DROP IF EXISTS)
-    let migrations = T3DeviceMigrator::migrations();
-    for m in &migrations {
-        let name = m.name();
-        crate::server::debug_log(&format!("running migration: {}", name));
-        if let Err(e) = m.up(&conn).await {
-            crate::server::debug_log(&format!("migration {} FAILED: {:?}", name, e));
-            return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other,
-                format!("{}: {}", name, e))));
-        }
-        crate::server::debug_log(&format!("migration {} OK", name));
-    }
+    // Wipe migration tracking so all migrations always run (each is idempotent)
+    conn.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "DROP TABLE IF EXISTS seaql_migrations".to_owned(),
+    )).await?;
+    T3DeviceMigrator::up(&conn, None).await?;
     t3_enhanced_logging("[OK] T3 device database migrations complete");
     drop(conn);
     Ok(())
