@@ -673,7 +673,7 @@ const haystackMenu: MenuItem = {
   children: [
     {
       id: 'haystack-tag-library',
-      label: 'Open Tag Library',
+      label: 'Standard Tags',
       type: 'item',
       action: () => { window.location.hash = '#/t3000/haystack-tags'; },
       icon: 'Tag',

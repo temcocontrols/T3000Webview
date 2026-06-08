@@ -128,6 +128,7 @@ const routeToBreadcrumb: Record<string, { label: string; segments?: string[] }> 
   '/t3000/users': { label: 'Users', segments: ['Users'] },
   '/t3000/custom-units': { label: 'Custom Units', segments: ['Custom Units'] },
   '/t3000/tstat10-simulator': { label: 'Tstat10 Simulator', segments: ['Simulator'] },
+  '/t3000/haystack-tags': { label: 'Standard Tags', segments: ['Haystack'] },
   '/t3000/hvac-designer': { label: 'HVAC Designer', segments: ['HVAC Designer'] },
   '/t3000/documentation': { label: 'Documentation', segments: ['Documentation'] },
   '/t3000/database/config': { label: 'Database Configuration', segments: ['Database', 'Configuration'] },
