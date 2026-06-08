@@ -141,3 +141,12 @@
 }
 .emptyHint { font-size: 12px; color: var(--colorNeutralForeground3); }
 .emptyTree { padding: 16px; font-size: 12px; color: var(--colorNeutralForeground3); text-align: center; }
+
+/* ── Sync Dialog ── */
+.syncDialogContent {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--colorNeutralForeground1);
+}
+.syncDialogContent p { margin: 0 0 10px; }
+.syncDialogContent a { color: var(--colorBrandForeground1); }

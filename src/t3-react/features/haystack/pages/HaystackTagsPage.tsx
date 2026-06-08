@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Spinner, Button, Input } from '@fluentui/react-components';
+import {
+  Spinner, Button, Input,
+  Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions,
+} from '@fluentui/react-components';
 import { SearchRegular, ArrowSyncRegular, InfoRegular } from '@fluentui/react-icons';
 import { useHaystackStore } from '../store/haystackStore';
 import styles from './HaystackTagsPage.module.css';
@@ -8,6 +11,7 @@ export const HaystackTagsPage: React.FC = () => {
   const { tags, tagTree, isLoading, error, fetchTags, fetchTagTree } = useHaystackStore();
   const [search, setSearch] = useState('');
   const [syncing, setSyncing] = useState(false);
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
   const [selectedTreeNode, setSelectedTreeNode] = useState<string>('');
 
   useEffect(() => { fetchTags(); fetchTagTree(); }, []);
@@ -30,6 +34,7 @@ export const HaystackTagsPage: React.FC = () => {
   }, [standardTags, search, selectedTreeNode]);
 
   const handleSync = async () => {
+    setSyncDialogOpen(false);
     setSyncing(true);
     try {
       await fetchTags();
@@ -81,7 +86,7 @@ export const HaystackTagsPage: React.FC = () => {
           size="small"
           appearance="transparent"
           icon={<ArrowSyncRegular style={{ fontSize: 14 }} />}
-          onClick={handleSync}
+          onClick={() => setSyncDialogOpen(true)}
           disabled={syncing}
           className={styles.syncButton}
         >
@@ -93,7 +98,6 @@ export const HaystackTagsPage: React.FC = () => {
       {error && (
         <div className={styles.errorBanner}>
           {error}
-          <Button size="small" appearance="subtle" onClick={() => { fetchTags(); fetchTagTree(); }}>Retry</Button>
         </div>
       )}
 
@@ -164,6 +168,35 @@ export const HaystackTagsPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* ── Sync Dialog ── */}
+      <Dialog open={syncDialogOpen} onOpenChange={(_, data) => setSyncDialogOpen(data.open)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle style={{ fontSize: 15, fontWeight: 600 }}>Sync Official Tags</DialogTitle>
+            <DialogContent>
+              <div className={styles.syncDialogContent}>
+                <p>
+                  This will refresh the standard tag library from the official{' '}
+                  <a href="https://github.com/Project-Haystack/haystack-defs" target="_blank" rel="noopener noreferrer">
+                    Project Haystack haystack-defs
+                  </a>
+                  {' '}v4 specification.
+                </p>
+                <p>
+                  Project Haystack is an open source standard that defines semantic data models
+                  for IoT, HVAC, lighting, and building automation systems. These tags help you
+                  consistently label your points across the entire system.
+                </p>
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" size="small" style={{ fontWeight: 400 }} onClick={() => setSyncDialogOpen(false)}>Cancel</Button>
+              <Button appearance="primary" size="small" style={{ fontWeight: 400 }} onClick={handleSync}>Sync Now</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 };
