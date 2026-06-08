@@ -664,6 +664,24 @@ const developerMenu: MenuItem = {
 };
 
 /**
+ * Haystack Menu
+ */
+const haystackMenu: MenuItem = {
+  id: 'haystack',
+  label: 'Haystack',
+  type: 'submenu',
+  children: [
+    {
+      id: 'haystack-tag-library',
+      label: 'Open Tag Library',
+      type: 'item',
+      action: () => { window.location.hash = '#/t3000/haystack-tags'; },
+      icon: 'Tag',
+    },
+  ],
+};
+
+/**
  * Simulator Menu
  */
 const simulatorMenu: MenuItem = {
@@ -720,6 +738,7 @@ export const topMenuConfig: MenuItem[] = [
   miscMenu,
   helpMenu,
   developerMenu,
+  haystackMenu,
   simulatorMenu,
 ];
 
