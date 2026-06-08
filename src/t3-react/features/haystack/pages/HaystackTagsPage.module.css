@@ -81,8 +81,6 @@
   flex: 1;
   overflow: hidden;
   margin-top: 8px;
-  border: 1px solid var(--colorNeutralStroke2, #e0e0e0);
-  border-radius: 2px;
 }
 
 /* ── Left Panel ── */
@@ -94,16 +92,21 @@
   flex-direction: column;
   background: var(--colorNeutralBackground1);
   flex-shrink: 0;
+  margin-right: 6px;
 }
 .leftHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 14px;
+  padding: 6px 14px;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 11px;
   color: var(--colorNeutralForeground2);
-  border-bottom: 1px solid var(--colorNeutralStroke2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--colorNeutralStroke1);
+  min-height: 30px;
+  box-sizing: border-box;
 }
 .treeActions {
   display: flex;
@@ -114,7 +117,12 @@
   padding: 0 4px !important;
   min-height: 20px !important;
 }
-.searchInput { margin: 8px 10px; }
+.searchInput {
+  margin: 8px 10px;
+  font-size: 12px;
+}
+.searchInput input { font-size: 12px; height: 28px; }
+.searchInput svg { width: 14px; height: 14px; }
 .treeContainer {
   flex: 1;
   overflow-y: auto;
@@ -162,13 +170,32 @@
 .treeLabelActive { color: var(--colorBrandForeground1); font-weight: 600; }
 .treeLabelCustom { opacity: 0.4; }
 .treeCount { color: var(--colorNeutralForeground3); font-size: 11px; margin-left: 4px; }
-.treeClear { padding: 6px 10px; border-top: 1px solid var(--colorNeutralStroke2); }
 
 /* ── Right Panel ── */
 .rightPanel {
   flex: 1;
   overflow-y: auto;
   min-width: 0;
+}
+
+/* ── Thin scrollbars ── */
+.treeContainer::-webkit-scrollbar,
+.rightPanel::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.treeContainer::-webkit-scrollbar-track,
+.rightPanel::-webkit-scrollbar-track {
+  background: transparent;
+}
+.treeContainer::-webkit-scrollbar-thumb,
+.rightPanel::-webkit-scrollbar-thumb {
+  background: var(--colorNeutralStroke2, #d0d0d0);
+  border-radius: 3px;
+}
+.treeContainer::-webkit-scrollbar-thumb:hover,
+.rightPanel::-webkit-scrollbar-thumb:hover {
+  background: var(--colorNeutralStroke1, #b0b0b0);
 }
 
 /* ── Tag Table ── */

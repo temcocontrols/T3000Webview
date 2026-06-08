@@ -3,7 +3,7 @@ import {
   Spinner, Button, Input,
   Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions,
 } from '@fluentui/react-components';
-import { SearchRegular, ArrowSyncRegular, InfoRegular, AddRegular, SubtractRegular } from '@fluentui/react-icons';
+import { SearchRegular, ArrowSyncRegular, InfoRegular, AddRegular, SubtractRegular, DismissRegular } from '@fluentui/react-icons';
 import { useHaystackStore } from '../store/haystackStore';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './HaystackTagsPage.module.css';
@@ -185,10 +185,12 @@ export const HaystackTagsPage: React.FC = () => {
             </span>
           </div>
           <Input
+            size="small"
             placeholder="Filter tags…"
             value={search}
             onChange={(_, d) => { setSearch(d.value); setSelectedTreeNode(''); }}
-            contentBefore={<SearchRegular />}
+            contentBefore={<SearchRegular style={{ fontSize: 14 }} />}
+            contentAfter={search ? <DismissRegular style={{ fontSize: 12, cursor: 'pointer', color: '#888' }} onClick={() => setSearch('')} /> : undefined}
             className={styles.searchInput}
           />
           <div className={styles.treeContainer}>
@@ -202,13 +204,6 @@ export const HaystackTagsPage: React.FC = () => {
               tagTree.map((n) => renderTreeNode(n))
             )}
           </div>
-          {selectedTreeNode && (
-            <div className={styles.treeClear}>
-              <Button size="small" appearance="subtle" onClick={() => setSelectedTreeNode('')}>
-                Clear filter
-              </Button>
-            </div>
-          )}
         </aside>
 
         {/* ── Right Panel: Tag Table ── */}
