@@ -59,6 +59,7 @@ import { PageSyncStatus } from '@t3-react/shared/components/PageSyncStatus';
 import styles from './OutputsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import { TagsColumnCell } from '../../inputs/components/TagsColumnCell';
 
 // Types based on Rust entity (output_points.rs)
 interface OutputPoint {
@@ -1318,6 +1319,29 @@ const OutputsPageDesktop: React.FC = () => {
               </span>
             )}
           </TableCellLayout>
+        );
+      },
+    }),
+    // TAGS
+    createTableColumn<OutputPoint>({
+      columnId: 'tags',
+      renderHeaderCell: () => (
+        <div className={styles.headerCell}><span>TAGS</span></div>
+      ),
+      renderCell: (item) => {
+        if (isEmptyRow(item)) return <TableCellLayout>—</TableCellLayout>;
+        const idx = item.outputIndex || '';
+        const pid = `dev${item.serialNumber}.out${idx}`;
+        return (
+          <TagsColumnCell
+            serialNumber={item.serialNumber}
+            pointType="OUTPUT"
+            pointIndex={idx}
+            pointId={pid}
+            pointLabel={item.label || item.fullLabel || `OUT${idx}`}
+            deviceName={selectedDevice?.nameShowOnTree || selectedDevice?.productName}
+            isEmpty={isEmptyRow(item)}
+          />
         );
       },
     }),

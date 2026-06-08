@@ -50,17 +50,6 @@ const POLICY_STORAGE_KEY = 't3000.trend.policy.state.v2';
 const SEMANTIC_TAGS = new Set(['temp', 'humidity', 'pressure', 'flow', 'co2', 'occupancy', 'volt', 'current', 'elec']);
 const QUICK_TAGS = ['temp', 'humidity', 'pressure', 'flow', 'co2', 'occupancy', 'zone', 'site', 'equip'];
 
-/** Convert ["point", "kind:Number", "unit:F"] to {"point":"M","kind":"Number","unit":"F"} */
-const tagsArrayToObject = (tags: string[]): Record<string, string> => {
-  const obj: Record<string, string> = {};
-  tags.forEach(tag => {
-    const colonIdx = tag.indexOf(':');
-    if (colonIdx === -1) obj[tag] = 'M';
-    else obj[tag.slice(0, colonIdx)] = tag.slice(colonIdx + 1);
-  });
-  return obj;
-};
-
 const HAYSTACK_UNIT_TAGS: Record<string, string[]> = {
   f: ['temp'],
   c: ['temp'],
@@ -86,51 +75,6 @@ const mergeTagLists = (...tagLists: string[][]): string[] => {
   });
 
   return merged;
-};
-
-const pointTypeFromHaystackTable = (pointTable: string): PointType | null => {
-  const table = pointTable.trim().toUpperCase();
-  if (table === 'INPUTS') return 'input';
-  if (table === 'OUTPUTS') return 'output';
-  if (table === 'VARIABLES') return 'variable';
-  return null;
-};
-
-const parseHaystackTagList = (rawTags: unknown): string[] => {
-  if (!rawTags || typeof rawTags !== 'object' || Array.isArray(rawTags)) {
-    return [];
-  }
-
-  const tagsObj = rawTags as Record<string, unknown>;
-  // Exclude curVal — it is a live sensor reading, not a static semantic tag
-  return Object.entries(tagsObj).filter(([key]) => key !== 'curVal').map(([key, value]) => {
-    if (value === 'M') {
-      return key;
-    }
-
-    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-      return `${key}:${String(value)}`;
-    }
-
-    return `${key}:${JSON.stringify(value)}`;
-  });
-};
-
-const buildPolicyKeyFromHaystack = (row: any): string | null => {
-  const serial = Number(row?.serialNumber ?? row?.serial_number ?? 0);
-  const pointTable = String(row?.pointTable ?? row?.point_table ?? '').trim();
-  const pointIndex = String(row?.pointIndex ?? row?.point_index ?? '').trim();
-
-  if (!serial || !pointTable || !pointIndex) {
-    return null;
-  }
-
-  const pointType = pointTypeFromHaystackTable(pointTable);
-  if (!pointType) {
-    return null;
-  }
-
-  return `${serial}:${pointType}:${pointIndex}`;
 };
 
 const deriveHaystackTagsForPoint = (point: UnifiedPoint): string[] => {
@@ -283,25 +227,33 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
 
         const haystackByPointKey: Record<string, string[]> = {};
         try {
-          const haystackResponse = await fetch(`${API_BASE_URL}/api/haystack/read`, {
+          const haystackResponse = await fetch(`${API_BASE_URL}/api/haystack/point-tags/read`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              serialNumbers: selectedDevices.map((dev) => dev.serialNumber),
+              serialNumbers: selectedDevices.map((dev) => String(dev.serialNumber)).join(','),
             }),
           });
 
           if (haystackResponse.ok) {
             const haystackPayload = await haystackResponse.json();
-            const rows: any[] = Array.isArray(haystackPayload?.rows) ? haystackPayload.rows : [];
-            rows.forEach((row) => {
-              const key = buildPolicyKeyFromHaystack(row);
-              if (!key) {
-                return;
-              }
-              haystackByPointKey[key] = parseHaystackTagList(row?.tags);
+            const entries: any[] = Array.isArray(haystackPayload?.entries) ? haystackPayload.entries : [];
+            entries.forEach((entry) => {
+              const sn = Number(entry?.serial_number ?? 0);
+              const pt = String(entry?.point_type ?? '').trim().toUpperCase();
+              const pi = String(entry?.point_index ?? '').trim();
+              const tag = String(entry?.tag_name ?? '').trim();
+              if (!sn || !pt || !pi || !tag) return;
+              const mappedType =
+                pt === 'INPUT' ? 'input' :
+                pt === 'OUTPUT' ? 'output' :
+                pt === 'VARIABLE' ? 'variable' : null;
+              if (!mappedType) return;
+              const key = `${sn}:${mappedType}:${pi}`;
+              if (!haystackByPointKey[key]) haystackByPointKey[key] = [];
+              if (!haystackByPointKey[key].includes(tag)) haystackByPointKey[key].push(tag);
             });
           }
         } catch (error) {
@@ -532,16 +484,17 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
     const updates = allPoints
       .filter(p => p.key in tagsSnapshot)
       .map(p => ({
-        serial: p.serial,
-        pointTable: p.type === 'input' ? 'INPUTS' : p.type === 'output' ? 'OUTPUTS' : 'VARIABLES',
-        pointIndex: p.index,
-        tags: tagsArrayToObject(tagsSnapshot[p.key] ?? []),
+        serial_number: p.serial,
+        point_type: p.type === 'input' ? 'INPUT' : p.type === 'output' ? 'OUTPUT' : 'VARIABLE',
+        point_index: p.index,
+        point_id: `dev${p.serial}.${p.type === 'input' ? 'in' : p.type === 'output' ? 'out' : 'var'}${p.index}`,
+        set_tags: tagsSnapshot[p.key] ?? [],
       }));
     if (updates.length === 0) return;
-    const response = await fetch(`${API_BASE_URL}/api/haystack/update-tags`, {
+    const response = await fetch(`${API_BASE_URL}/api/haystack/point-tags/write`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ updates }),
+      body: JSON.stringify(updates),
     });
     if (!response.ok) throw new Error(`Save tags failed: ${response.status}`);
   };

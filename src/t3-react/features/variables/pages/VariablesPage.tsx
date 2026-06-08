@@ -55,6 +55,7 @@ import { PageSyncStatus } from '@t3-react/shared/components/PageSyncStatus';
 import styles from './VariablesPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import { TagsColumnCell } from '../../inputs/components/TagsColumnCell';
 
 // Types based on Rust entity (variable_points.rs)
 interface VariablePoint {
@@ -1207,6 +1208,29 @@ const VariablesPageDesktop: React.FC = () => {
               />
             </div>
           </TableCellLayout>
+        );
+      },
+    }),
+    // TAGS
+    createTableColumn<VariablePoint>({
+      columnId: 'tags',
+      renderHeaderCell: () => (
+        <div className={styles.headerCell}><span>TAGS</span></div>
+      ),
+      renderCell: (item) => {
+        if (isEmptyRow(item)) return <TableCellLayout>—</TableCellLayout>;
+        const idx = item.variableIndex || '';
+        const pid = `dev${item.serialNumber}.var${idx}`;
+        return (
+          <TagsColumnCell
+            serialNumber={item.serialNumber}
+            pointType="VARIABLE"
+            pointIndex={idx}
+            pointId={pid}
+            pointLabel={item.label || item.fullLabel || `VAR${idx}`}
+            deviceName={selectedDevice?.nameShowOnTree || selectedDevice?.productName}
+            isEmpty={isEmptyRow(item)}
+          />
         );
       },
     }),

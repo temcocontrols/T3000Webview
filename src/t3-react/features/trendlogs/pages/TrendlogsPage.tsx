@@ -152,7 +152,7 @@ const EMPTY_POINT_SYNC_SUMMARY: DevicePointSyncSummary = {
 
 const TRACKED_POINT_SYNC_TYPES = ['INPUTS', 'OUTPUTS', 'VARIABLES'] as const;
 
-type TrendCenterTab = 'overview' | 'default' | 'point-sets' | 'haystack-tags' | 'chart' | 'backend';
+type TrendCenterTab = 'overview' | 'default' | 'point-sets' | 'chart' | 'backend';
 
 interface PointSetPointItem {
   key: string;
@@ -187,11 +187,10 @@ interface PromptDialogState {
   placeholder: string;
 }
 
-const COMMON_HAYSTACK_TAGS = ['ahu', 'temp', 'critical', 'floor1'] as const;
 const TREND_POLICY_STORAGE_KEY = 't3000.trend.policy.state.v2';
 
 const isTrendCenterTab = (value: string | null): value is TrendCenterTab => {
-  return value === 'overview' || value === 'default' || value === 'point-sets' || value === 'haystack-tags' || value === 'chart' || value === 'backend';
+  return value === 'overview' || value === 'default' || value === 'point-sets' || value === 'chart' || value === 'backend';
 };
 
 export const TrendLogsPage: React.FC = () => {
@@ -1912,12 +1911,6 @@ export const TrendLogsPage: React.FC = () => {
         Point Sets
       </button> */}
       <button
-        className={`${styles.tabButton} ${activeTab === 'haystack-tags' ? styles.tabButtonActive : ''}`}
-        onClick={() => setActiveTab('haystack-tags')}
-      >
-       Haystack Tags
-      </button>
-      <button
         className={`${styles.tabButton} ${activeTab === 'backend' ? styles.tabButtonActive : ''}`}
         onClick={() => setActiveTab('backend')}
       >
@@ -2030,75 +2023,29 @@ export const TrendLogsPage: React.FC = () => {
 
         // Import backend Haystack tags first so Watchlist reflects Rust-generated entities.
         try {
-          const haystackResponse = await fetch(`${API_BASE_URL}/api/haystack/read`, {
+          const haystackResponse = await fetch(`${API_BASE_URL}/api/haystack/point-tags/read`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              serialNumbers: [selectedDevice.serialNumber],
+              serialNumbers: String(selectedDevice.serialNumber),
             }),
           });
 
           if (haystackResponse.ok) {
             const haystackPayload = await haystackResponse.json();
-            const rows: any[] = Array.isArray(haystackPayload?.rows) ? haystackPayload.rows : [];
+            const entries: any[] = Array.isArray(haystackPayload?.entries) ? haystackPayload.entries : [];
 
-            rows.forEach((row) => {
-              const pointTable = String(row?.pointTable ?? row?.point_table ?? '').trim().toUpperCase();
-              const normalizePointIndex = (rawValue: unknown): string => {
-                const source = String(rawValue ?? '').trim();
-                if (!source) return '';
-                const numericMatch = source.match(/(\d+)/);
-                if (numericMatch) {
-                  const parsed = Number.parseInt(numericMatch[1], 10);
-                  if (!Number.isNaN(parsed)) {
-                    return String(parsed);
-                  }
-                }
-                return source.toUpperCase();
-              };
+            entries.forEach((entry) => {
+              const pointType = String(entry?.point_type ?? '').trim().toUpperCase();
+              const pointIndex = String(entry?.point_index ?? '').trim();
+              const tagName = String(entry?.tag_name ?? '').trim();
+              if (!pointType || !pointIndex || !tagName) return;
 
-              const pointIndex = normalizePointIndex(row?.pointIndex ?? row?.point_index);
-              if (!pointTable || !pointIndex) return;
-
-              const mappedType =
-                pointTable === 'INPUTS' ? 'INPUT' :
-                pointTable === 'OUTPUTS' ? 'OUTPUT' :
-                pointTable === 'VARIABLES' ? 'VARIABLE' :
-                '';
-              if (!mappedType) return;
-
-              const pointTagKey = `${mappedType}:${pointIndex}`;
-              const parseTagsObject = (value: unknown): Record<string, unknown> | null => {
-                if (value && typeof value === 'object' && !Array.isArray(value)) {
-                  return value as Record<string, unknown>;
-                }
-                if (typeof value === 'string' && value.trim()) {
-                  try {
-                    const parsed = JSON.parse(value);
-                    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-                      ? parsed as Record<string, unknown>
-                      : null;
-                  } catch {
-                    return null;
-                  }
-                }
-                return null;
-              };
-
-              const tagsObj = parseTagsObject(row?.tags);
-              if (!tagsObj) return;
-
+              const pointTagKey = `${pointType}:${pointIndex}`;
               const existing = new Set(seededTags[pointTagKey] || []);
-              Object.entries(tagsObj).forEach(([tagKey, tagValue]) => {
-                if (!tagKey) return;
-                if (typeof tagValue === 'string' && tagValue.toUpperCase() === 'M') {
-                  existing.add(tagKey.toLowerCase());
-                } else if (typeof tagValue === 'string' || typeof tagValue === 'number' || typeof tagValue === 'boolean') {
-                  existing.add(`${tagKey.toLowerCase()}:${String(tagValue).toLowerCase()}`);
-                }
-              });
+              existing.add(tagName);
               seededTags[pointTagKey] = Array.from(existing);
             });
           }
@@ -2808,12 +2755,6 @@ export const TrendLogsPage: React.FC = () => {
                 </div>
               )}
 
-              {activeTab === 'haystack-tags' && (
-                <div className={styles.embeddedPolicyWrap}>
-                  <TrendPolicyPage embedded />
-                </div>
-              )}
-
               {/* ── Backend tab ── */}
               {activeTab === 'backend' && (
                 <div className={styles.backendTabWrap}>
@@ -3009,12 +2950,12 @@ export const TrendLogsPage: React.FC = () => {
                       <Text size={200} className={styles.globalInfoBarText}>Open</Text>
                       <button
                         className={styles.infoBarLinkButton}
-                        onClick={() => setActiveTab('haystack-tags')}
-                        title="Open the dedicated Haystack page to manage tags"
+                        onClick={() => { window.location.hash = '#/t3000/haystack-tags'; }}
+                        title="Open the Haystack Tags page"
                       >
                         Haystack Tags
                       </button>
-                      <Text size={200} className={styles.globalInfoBarText}>to manage semantic tags. Rebuild Tags is available inside that page.</Text>
+                      <Text size={200} className={styles.globalInfoBarText}>to manage semantic tags.</Text>
                     </div>
                   </div>
                 </div>
