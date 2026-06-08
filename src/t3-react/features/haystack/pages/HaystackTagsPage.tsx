@@ -5,6 +5,7 @@ import {
 } from '@fluentui/react-components';
 import { SearchRegular, ArrowSyncRegular, InfoRegular } from '@fluentui/react-icons';
 import { useHaystackStore } from '../store/haystackStore';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './HaystackTagsPage.module.css';
 
 export const HaystackTagsPage: React.FC = () => {
@@ -37,8 +38,11 @@ export const HaystackTagsPage: React.FC = () => {
     setSyncDialogOpen(false);
     setSyncing(true);
     try {
+      await fetch(`${API_BASE_URL}/api/haystack/sync`, { method: 'POST' });
       await fetchTags();
       await fetchTagTree();
+    } catch (e) {
+      console.warn('[Haystack] Sync failed:', e);
     } finally {
       setSyncing(false);
     }

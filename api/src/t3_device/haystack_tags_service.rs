@@ -634,3 +634,73 @@ pub async fn rebuild_tags_for_serials(
 
     Ok(tagged)
 }
+
+/// Parse official Project Haystack defs.json and re-seed standard tags.
+pub async fn reseed_standard_tags(db: &impl ConnectionTrait, defs_json: &serde_json::Value) -> Result<usize, String> {
+    // Clear existing standard tags and relations
+    db.execute(Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "DELETE FROM haystack_tag_relations WHERE tag_name IN (SELECT tag_name FROM haystack_tags WHERE category = 'haystack')",
+    ))
+    .await
+    .map_err(|e| format!("Failed to clear relations: {}", e))?;
+
+    db.execute(Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "DELETE FROM haystack_tags WHERE category = 'haystack'",
+    ))
+    .await
+    .map_err(|e| format!("Failed to clear standard tags: {}", e))?;
+
+    let rows = defs_json["rows"].as_array()
+        .ok_or("Invalid defs.json: missing rows array")?;
+
+    let mut count = 0usize;
+    let mut relations: Vec<(String, String)> = Vec::new();
+
+    for row in rows {
+        let def_val = row["def"]["val"].as_str()
+            .or_else(|| row["def"].as_str())
+            .unwrap_or("");
+        if def_val.is_empty() { continue; }
+
+        let doc = row["doc"].as_str().unwrap_or("");
+
+        // Insert tag
+        let escaped_name = def_val.replace('\'', "''");
+        let escaped_doc = doc.replace('\'', "''");
+        db.execute(Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            &format!("INSERT OR IGNORE INTO haystack_tags (tag_name, doc, category, deprecated, source) VALUES ('{}', '{}', 'haystack', 0, 'v4')", escaped_name, escaped_doc),
+        ))
+        .await
+        .map_err(|e| format!("Failed to insert '{}': {}", def_val, e))?;
+        count += 1;
+
+        // Collect parent relations from "is" array
+        if let Some(parents) = row["is"].as_array() {
+            for parent in parents {
+                let p = parent["val"].as_str()
+                    .or_else(|| parent.as_str())
+                    .unwrap_or("");
+                if !p.is_empty() {
+                    relations.push((def_val.to_string(), p.to_string()));
+                }
+            }
+        }
+    }
+
+    // Insert relations
+    for (child, parent) in &relations {
+        let c = child.replace('\'', "''");
+        let p = parent.replace('\'', "''");
+        db.execute(Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            &format!("INSERT OR IGNORE INTO haystack_tag_relations (tag_name, parent_tag) VALUES ('{}', '{}')", c, p),
+        ))
+        .await
+        .map_err(|e| format!("Failed to insert relation {}→{}: {}", child, parent, e))?;
+    }
+
+    Ok(count)
+}

@@ -51,6 +51,8 @@ pub fn create_haystack_tags_routes() -> Router<T3AppState> {
         .route("/api/haystack/replace-tag", post(replace_tag))
         // Rebuild (re-derive tags from device metadata)
         .route("/api/haystack/rebuild", post(rebuild_tags))
+        // Sync: fetch official defs.json + reseed
+        .route("/api/haystack/sync", post(sync_official_tags))
 }
 
 // ── Handlers ──
@@ -58,15 +60,16 @@ pub fn create_haystack_tags_routes() -> Router<T3AppState> {
 async fn list_tags(
     State(state): State<T3AppState>,
     Query(query): Query<ListTagsQuery>,
-) -> Result<Json<Value>, StatusCode> {
-    let db = state.t3_device_conn.as_ref().ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let db = state.t3_device_conn.as_ref()
+        .ok_or((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "T3 device database connection not available"}))))?;
     let db = db.lock().await;
 
     let tags = haystack_tags_service::list_tags(&*db, query.filter.as_deref())
         .await
         .map_err(|e| {
             tracing::error!("list_tags failed: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Failed to list tags: {}", e)})))
         })?;
 
     Ok(Json(json!({ "tags": tags, "total": tags.len() })))
@@ -244,5 +247,41 @@ async fn rebuild_tags(
         "message": "Haystack tags rebuilt from device metadata",
         "updated": payload.serial_numbers.len(),
         "pointsTagged": tagged
+    })))
+}
+
+async fn sync_official_tags(
+    State(state): State<T3AppState>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let db = state.t3_device_conn.as_ref()
+        .ok_or((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Database unavailable"}))))?;
+    let db = db.lock().await;
+
+    // Fetch official defs.json from Project Haystack
+    let resp = reqwest::get("https://project-haystack.org/download/defs.json")
+        .await
+        .map_err(|e| (
+            StatusCode::BAD_GATEWAY,
+            Json(json!({"error": format!("Failed to fetch official defs: {}", e)}))
+        ))?;
+
+    let defs: Value = resp.json()
+        .await
+        .map_err(|e| (
+            StatusCode::BAD_GATEWAY,
+            Json(json!({"error": format!("Failed to parse defs JSON: {}", e)}))
+        ))?;
+
+    let count = haystack_tags_service::reseed_standard_tags(&*db, &defs)
+        .await
+        .map_err(|e| (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e })),
+        ))?;
+
+    Ok(Json(json!({
+        "success": true,
+        "message": "Standard tags synced from official Project Haystack specification",
+        "count": count
     })))
 }
