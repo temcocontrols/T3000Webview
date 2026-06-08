@@ -190,6 +190,7 @@ async fn run_flow_cleanup() {
 
 pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     crate::server::debug_log("start_all_services: ENTERED");
+    crate::server::init_tracing();
 
     // Log to file for headless service
     let startup_msg = format!("T3000 WebView Service initializing - HTTP (9103) + WebSocket (9104) + Auto-Sync (T3000.db → webview_t3_device.db)");

@@ -28,7 +28,7 @@ use crate::{
 use super::modbus_register::routes::modbus_register_routes;
 use super::user::routes::user_routes;
 
-const DEBUG_LOG_NAME: &str = "t3-webview-api-dll.log";
+pub(crate) const DEBUG_LOG_NAME: &str = "t3-webview-api-dll.log";
 
 /// Write a line to both console and the debug log file — only when debug_log=1 in setting.ini.
 /// In production (debug_log=0), this is a complete no-op — zero overhead.
@@ -51,7 +51,7 @@ pub(crate) fn debug_log(msg: &str) {
 }
 
 /// Writes to two outputs simultaneously — console + file.
-struct TeeWriter<A: std::io::Write, B: std::io::Write> {
+pub(crate) struct TeeWriter<A: std::io::Write, B: std::io::Write> {
     a: A,
     b: B,
 }
@@ -71,6 +71,25 @@ impl<A: std::io::Write, B: std::io::Write> std::io::Write for TeeWriter<A, B> {
     fn flush(&mut self) -> std::io::Result<()> {
         self.a.flush()?;
         self.b.flush()
+    }
+}
+
+/// Initialize tracing subscriber — console (always), plus file if debug_log=1 in setting.ini.
+/// Safe to call multiple times; subsequent calls are no-ops.
+pub(crate) fn init_tracing() {
+    let enable = crate::ini_config::read_debug_log_flag();
+    if enable {
+        if let Ok(f) = std::fs::OpenOptions::new().create(true).append(true).open(DEBUG_LOG_NAME) {
+            let tee = TeeWriter::new(std::io::stdout(), f);
+            tracing_subscriber::fmt().with_ansi(false)
+                .with_writer(std::sync::Mutex::new(tee)).try_init().ok();
+        } else {
+            tracing_subscriber::fmt().with_ansi(false)
+                .with_writer(std::io::stdout).try_init().ok();
+        }
+    } else {
+        tracing_subscriber::fmt().with_ansi(false)
+            .with_writer(std::io::stdout).try_init().ok();
     }
 }
 
@@ -220,45 +239,7 @@ pub async fn server_start(
 
     logger.info("T3000 WebView HTTP API Service Starting on port 9103...");
     debug_log("T3000 WebView HTTP API Service Starting on port 9103...");
-
-    // Initialize basic tracing — always console, optionally + file.
-    let enable_debug_log = crate::ini_config::read_debug_log_flag();
-
-    if enable_debug_log {
-        match std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(DEBUG_LOG_NAME)
-        {
-            Ok(log_file) => {
-                let tee = TeeWriter::new(std::io::stdout(), log_file);
-                tracing_subscriber::fmt()
-                    .with_ansi(false)
-                    .with_writer(std::sync::Mutex::new(tee))
-                    .try_init()
-                    .ok();
-                logger.info(&format!("Tracing initialized — console + {}", DEBUG_LOG_NAME));
-            }
-            Err(e) => {
-                tracing_subscriber::fmt()
-                    .with_ansi(false)
-                    .with_writer(std::io::stdout)
-                    .try_init()
-                    .ok();
-                logger.warn(&format!(
-                    "File log unavailable ({}), tracing initialized — console only",
-                    e
-                ));
-            }
-        }
-    } else {
-        tracing_subscriber::fmt()
-            .with_ansi(false)
-            .with_writer(std::io::stdout)
-            .try_init()
-            .ok();
-        logger.info("Tracing initialized — console only");
-    }
+    init_tracing();
 
     // Load environment variables from .env file
     dotenvy::dotenv().ok();
