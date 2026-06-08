@@ -11,6 +11,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
+  margin-bottom: 6px;
   font-size: 13px;
   font-weight: 500;
   background: #f0f6ff;
@@ -127,6 +128,22 @@
   flex: 1;
   overflow-y: auto;
   padding: 6px 0;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 transparent;
+}
+.treeContainer::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.treeContainer::-webkit-scrollbar-track {
+  background: transparent;
+}
+.treeContainer::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+.treeContainer::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
 }
 .treeItem {
   display: flex;
@@ -176,6 +193,22 @@
   flex: 1;
   overflow-y: auto;
   min-width: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 transparent;
+}
+.rightPanel::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.rightPanel::-webkit-scrollbar-track {
+  background: transparent;
+}
+.rightPanel::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+.rightPanel::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
 }
 
 /* ── Thin scrollbars ── */

@@ -18,6 +18,14 @@ export const HaystackTagsPage: React.FC = () => {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
 
+  // Auto-dismiss success message after 5 seconds
+  useEffect(() => {
+    if (syncResult?.ok) {
+      const timer = setTimeout(() => setSyncResult(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [syncResult]);
+
   useEffect(() => { fetchTags(); fetchTagTree(); }, []);
 
   const collectAllIds = (nodes: any[]): string[] => {
@@ -146,6 +154,12 @@ export const HaystackTagsPage: React.FC = () => {
               </a>
               {' '}v4 specification. Use these tags to semantically label your points (Inputs, Outputs, Variables)
               for consistent data modeling across the building automation system.
+            </div>
+            <div className={styles.infoMeta}>
+              See how tags are applied in practice —{' '}
+              <a href="https://project-haystack.org/example" target="_blank" rel="noopener noreferrer" className={styles.infoLink}>
+                view official examples ↗
+              </a>
             </div>
           </div>
         </div>
