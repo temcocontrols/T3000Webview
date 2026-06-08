@@ -211,6 +211,7 @@ export const TrendLogsPage: React.FC = () => {
   const embeddedChartTimeBaseRef = useRef<string>('5m');
   const [selectedMonitor, setSelectedMonitor] = useState<TrendLogData | null>(null);
   const [monitorInputs, setMonitorInputs] = useState<TrendLogInput[]>([]);
+  const [monitorInputTags, setMonitorInputTags] = useState<Record<string, string[]>>({});
   const [loadingInputs, setLoadingInputs] = useState(false);
   const [pointSummaryLoading, setPointSummaryLoading] = useState(false);
   const [devicePointSyncSummary, setDevicePointSyncSummary] = useState<DevicePointSyncSummary>(EMPTY_POINT_SYNC_SUMMARY);
@@ -678,6 +679,25 @@ export const TrendLogsPage: React.FC = () => {
         }));
 
         setMonitorInputs(formattedInputs);
+
+        // Load tags for these inputs
+        try {
+          const tagRes = await fetch(`${API_BASE_URL}/api/haystack/point-tags/read`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ serialNumbers: String(selectedDevice.serialNumber) }),
+          });
+          if (tagRes.ok) {
+            const tagData = await tagRes.json();
+            const tagMap: Record<string, string[]> = {};
+            for (const e of (tagData.entries || [])) {
+              const k = `${e.point_type}:${e.point_index}`;
+              if (!tagMap[k]) tagMap[k] = [];
+              tagMap[k].push(e.tag_name);
+            }
+            setMonitorInputTags(tagMap);
+          }
+        } catch { /* ignore tag load errors */ }
       } else {
         setMonitorInputs([]);
       }
@@ -3052,6 +3072,7 @@ export const TrendLogsPage: React.FC = () => {
                               <div className={styles.inputHeaderNum}>#</div>
                               <div className={styles.inputHeaderName}>Name</div>
                               <div className={styles.inputHeaderId}>Point ID</div>
+                              <div className={styles.inputHeaderTags}>Tags</div>
                             </div>
                             {monitorInputs.map((input, index) => {
                               const pointTypeShort =
@@ -3067,6 +3088,10 @@ export const TrendLogsPage: React.FC = () => {
                               const pointId = input.pointPanel
                                 ? `${input.pointPanel}${pointTypeShort}${input.pointIndex}`
                                 : `${pointTypeShort}${input.pointIndex}`;
+                              const tagKey = `${input.pointType}:${input.pointIndex}`;
+                              const tags = monitorInputTags[tagKey] || [];
+                              const displayTags = tags.slice(0, 2);
+                              const extra = tags.length - 2;
 
                               return (
                                 <div key={`${input.pointType}-${input.pointIndex}-${index}`} className={styles.inputRow}>
@@ -3078,6 +3103,18 @@ export const TrendLogsPage: React.FC = () => {
                                     <div className={styles.inputName}>{displayLabel || '-'}</div>
                                   </Tooltip>
                                   <div className={styles.inputPointId}>{pointId}</div>
+                                  <div className={styles.inputTags}>
+                                    {tags.length === 0 ? (
+                                      <span className={styles.inputTagEmpty}>—</span>
+                                    ) : (
+                                      <>
+                                        {displayTags.map(t => (
+                                          <span key={t} className={styles.inputTagChip}>{t}</span>
+                                        ))}
+                                        {extra > 0 && <span className={styles.inputTagMore}>+{extra}</span>}
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
                               );
                             })}
