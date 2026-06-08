@@ -687,33 +687,6 @@ pub async fn initialize_t3_device_database() -> Result<(), Box<dyn std::error::E
     Ok(())
 }
 
-/// Remove seaql_migrations records for T3 device migrations whose files no longer exist.
-/// Prevents "Migration file of version 'X' is missing" errors from SeaORM.
-async fn cleanup_t3_device_orphaned_migrations(
-    conn: &sea_orm::DatabaseConnection,
-) -> Result<(), Box<dyn std::error::Error>> {
-    use sea_orm::*;
-    let rows = conn.query_all(Statement::from_string(
-        DatabaseBackend::Sqlite,
-        "SELECT version FROM seaql_migrations ORDER BY applied_at".to_owned(),
-    )).await?;
-    let applied: Vec<String> = rows.iter()
-        .map(|r| r.try_get::<String>("", "version").unwrap_or_default())
-        .collect();
-    let available: std::collections::HashSet<String> = T3DeviceMigrator::migrations()
-        .iter().map(|m| m.name().to_string()).collect();
-    for v in &applied {
-        if !available.contains(v) {
-            crate::server::debug_log(&format!("removing orphaned migration: {}", v));
-            conn.execute(Statement::from_string(
-                DatabaseBackend::Sqlite,
-                format!("DELETE FROM seaql_migrations WHERE version = '{}'", v),
-            )).await?;
-        }
-    }
-    Ok(())
-}
-
 /// Run SeaORM migrations against webview_t3_device.db
 pub async fn run_t3_device_migrations() -> Result<(), Box<dyn std::error::Error>> {
     crate::server::debug_log("run_t3_device_migrations: opening connection...");
@@ -728,21 +701,18 @@ pub async fn run_t3_device_migrations() -> Result<(), Box<dyn std::error::Error>
         }
     };
     t3_enhanced_logging("[RELOAD] Running T3 device database migrations...");
-    crate::server::debug_log("run_t3_device_migrations: cleaning orphaned records...");
-    // Remove records for migration files that no longer exist (e.g. renamed/deleted)
-    if let Err(e) = cleanup_t3_device_orphaned_migrations(&conn).await {
-        crate::server::debug_log(&format!("orphan cleanup warning: {:?}", e));
+    // Always run every migration — idempotent (CREATE IF NOT EXISTS, INSERT OR IGNORE, DROP IF EXISTS)
+    let migrations = T3DeviceMigrator::migrations();
+    for m in &migrations {
+        let name = m.name();
+        crate::server::debug_log(&format!("running migration: {}", name));
+        if let Err(e) = m.up(&conn).await {
+            crate::server::debug_log(&format!("migration {} FAILED: {:?}", name, e));
+            return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other,
+                format!("{}: {}", name, e))));
+        }
+        crate::server::debug_log(&format!("migration {} OK", name));
     }
-    crate::server::debug_log("run_t3_device_migrations: calling T3DeviceMigrator::up...");
-    match T3DeviceMigrator::up(&conn, None).await {
-        Ok(_) => {
-            crate::server::debug_log("run_t3_device_migrations: T3DeviceMigrator::up OK");
-        }
-        Err(e) => {
-            crate::server::debug_log(&format!("run_t3_device_migrations: T3DeviceMigrator::up FAILED: {:?}", e));
-            return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())));
-        }
-    };
     t3_enhanced_logging("[OK] T3 device database migrations complete");
     drop(conn);
     Ok(())
