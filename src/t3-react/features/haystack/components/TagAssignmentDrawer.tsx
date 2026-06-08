@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Input, Spinner } from '@fluentui/react-components';
-import { DismissRegular, AddRegular, SearchRegular } from '@fluentui/react-icons';
+import { DismissRegular, SearchRegular } from '@fluentui/react-icons';
 import { useHaystackStore, TagDefinition } from '../store/haystackStore';
 import styles from './TagAssignmentDrawer.module.css';
 
@@ -27,11 +27,9 @@ export const TagAssignmentDrawer: React.FC<Props> = ({
   onClose,
   onSave,
 }) => {
-  const { tags, isLoading, fetchTags, createTag } = useHaystackStore();
+  const { tags, isLoading, fetchTags } = useHaystackStore();
   const [selectedTags, setSelectedTags] = useState<string[]>(currentTags);
   const [search, setSearch] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
-  const [newTagName, setNewTagName] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -62,15 +60,6 @@ export const TagAssignmentDrawer: React.FC<Props> = ({
     await onSave({ add_tags: added, remove_tags: removed });
     setSaving(false);
     onClose();
-  };
-
-  const handleCreateTag = async () => {
-    if (newTagName) {
-      await createTag(newTagName);
-      setSelectedTags([...selectedTags, newTagName]);
-      setNewTagName('');
-      setShowCreate(false);
-    }
   };
 
   return (
@@ -110,13 +99,15 @@ export const TagAssignmentDrawer: React.FC<Props> = ({
         </div>
 
         {/* Add Tag Autocomplete */}
-        <div className={styles.section}>
+        <div className={styles.sectionSearch}>
           <div className={styles.sectionTitle}>Add Tag</div>
           <Input
             placeholder="Search tags..."
             value={search}
             onChange={(_, d) => setSearch(d.value)}
-            contentBefore={<SearchRegular />}
+            contentBefore={<SearchRegular style={{ fontSize: 14 }} />}
+            contentAfter={search ? <DismissRegular style={{ fontSize: 12, cursor: 'pointer', color: '#888' }} onClick={() => setSearch('')} /> : undefined}
+            className={styles.searchInput}
           />
           {search && (
             <div className={styles.suggestions}>
@@ -135,29 +126,10 @@ export const TagAssignmentDrawer: React.FC<Props> = ({
           )}
         </div>
 
-        {/* Create Custom Tag */}
-        <div className={styles.section}>
-          {!showCreate ? (
-            <Button appearance="subtle" icon={<AddRegular />} onClick={() => setShowCreate(true)}>
-              + Create Custom Tag
-            </Button>
-          ) : (
-            <div className={styles.createForm}>
-              <Input
-                placeholder="New tag name"
-                value={newTagName}
-                onChange={(_, d) => setNewTagName(d.value)}
-              />
-              <Button size="small" onClick={handleCreateTag}>Create</Button>
-              <Button size="small" appearance="subtle" onClick={() => setShowCreate(false)}>Cancel</Button>
-            </div>
-          )}
-        </div>
-
         {/* Actions */}
         <div className={styles.actions}>
-          <Button appearance="secondary" onClick={onClose}>Cancel</Button>
-          <Button appearance="primary" onClick={handleSave} disabled={saving}>
+          <Button appearance="secondary" size="small" style={{ fontWeight: 400 }} onClick={onClose}>Cancel</Button>
+          <Button appearance="primary" size="small" style={{ fontWeight: 400 }} onClick={handleSave} disabled={saving}>
             {saving ? 'Saving...' : 'Save'}
           </Button>
         </div>

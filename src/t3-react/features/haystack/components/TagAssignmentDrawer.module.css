@@ -17,7 +17,12 @@
   flex-direction: column;
   overflow-y: auto;
   box-shadow: -4px 0 16px rgba(0,0,0,0.1);
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 transparent;
 }
+.drawer::-webkit-scrollbar { width: 5px; }
+.drawer::-webkit-scrollbar-track { background: transparent; }
+.drawer::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
 
 .header {
   padding: 16px 20px;
@@ -25,7 +30,7 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  h3 { margin: 0 0 4px; }
+  h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; }
   p { margin: 2px 0; font-size: 13px; color: var(--colorNeutralForeground2); }
 }
 
@@ -40,12 +45,26 @@
   border-bottom: 1px solid var(--colorNeutralStroke2);
 }
 
+.sectionSearch {
+  padding: 12px 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .sectionTitle {
   font-weight: 600;
   font-size: 13px;
   margin-bottom: 8px;
   color: var(--colorNeutralForeground2);
 }
+
+.searchInput {
+  width: 100%;
+}
+.searchInput input { font-size: 12px; height: 28px; }
+.searchInput svg { width: 14px; height: 14px; }
 
 .tagChips {
   display: flex;
@@ -92,11 +111,16 @@
 
 .suggestions {
   margin-top: 6px;
-  max-height: 200px;
+  flex: 1;
   overflow-y: auto;
   border: 1px solid var(--colorNeutralStroke2);
   border-radius: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 transparent;
 }
+.suggestions::-webkit-scrollbar { width: 5px; }
+.suggestions::-webkit-scrollbar-track { background: transparent; }
+.suggestions::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
 
 .suggestionItem {
   padding: 6px 10px;
