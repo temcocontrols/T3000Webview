@@ -94,6 +94,9 @@ const DiscoverPage = React.lazy(() =>
 const BuildingsPage = React.lazy(() =>
   import('../features/buildings/pages/BuildingsPage').then((m) => ({ default: m.BuildingsPage }))
 );
+const HaystackTagsPage = React.lazy(() =>
+  import('../features/haystack/pages/HaystackTagsPage').then((m) => ({ default: m.HaystackTagsPage }))
+);
 const Tstat10SimulatorPage = React.lazy(() =>
   Promise.all([
     import('../features/tstat10-simulator/pages/Tstat10SimulatorPage').then(m => m.Tstat10SimulatorPage),
@@ -379,6 +382,14 @@ export const App: React.FC = () => {
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <Tstat10SimulatorPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="haystack-tags"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <HaystackTagsPage />
                     </React.Suspense>
                   }
                 />
