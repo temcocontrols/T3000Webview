@@ -120,26 +120,38 @@ CREATE TABLE VARIABLES (
     Control NVARCHAR(64)
 );
 
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'HAYSTACK_ENTITY')
-CREATE TABLE HAYSTACK_ENTITY (
-    id NVARCHAR(255) PRIMARY KEY,
-    kind NVARCHAR(64) NOT NULL,
-    dis NVARCHAR(512),
-    tags NVARCHAR(MAX) NOT NULL,
-    serial_number INT,
-    point_table NVARCHAR(32),
-    point_index NVARCHAR(64),
-    updated_at BIGINT
+-- HAYSTACK_TAGS — standard Haystack v4 semantic tagging (replaces old HAYSTACK_ENTITY)
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'HAYSTACK_TAGS')
+CREATE TABLE HAYSTACK_TAGS (
+    tag_name   NVARCHAR(255) PRIMARY KEY,
+    doc        NVARCHAR(MAX),
+    category   NVARCHAR(64) NOT NULL DEFAULT 'custom',
+    deprecated INT NOT NULL DEFAULT 0,
+    source     NVARCHAR(64) DEFAULT 'user'
 );
 
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_haystack_entity_kind' AND object_id = OBJECT_ID('HAYSTACK_ENTITY'))
-CREATE INDEX idx_haystack_entity_kind ON HAYSTACK_ENTITY(kind);
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'HAYSTACK_TAG_RELATIONS')
+CREATE TABLE HAYSTACK_TAG_RELATIONS (
+    tag_name   NVARCHAR(255) NOT NULL,
+    parent_tag NVARCHAR(255) NOT NULL,
+    PRIMARY KEY (tag_name, parent_tag)
+);
 
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_haystack_entity_serial' AND object_id = OBJECT_ID('HAYSTACK_ENTITY'))
-CREATE INDEX idx_haystack_entity_serial ON HAYSTACK_ENTITY(serial_number);
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'HAYSTACK_POINT_TAGS')
+CREATE TABLE HAYSTACK_POINT_TAGS (
+    serial_number INT NOT NULL,
+    point_type    NVARCHAR(32) NOT NULL,
+    point_index   NVARCHAR(64) NOT NULL,
+    point_id      NVARCHAR(255) NOT NULL,
+    tag_name      NVARCHAR(255) NOT NULL,
+    PRIMARY KEY (serial_number, point_type, point_index, tag_name)
+);
 
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_haystack_entity_point_table' AND object_id = OBJECT_ID('HAYSTACK_ENTITY'))
-CREATE INDEX idx_haystack_entity_point_table ON HAYSTACK_ENTITY(point_table);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_hpt_serial' AND object_id = OBJECT_ID('HAYSTACK_POINT_TAGS'))
+CREATE INDEX idx_hpt_serial ON HAYSTACK_POINT_TAGS (serial_number);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_hpt_tag' AND object_id = OBJECT_ID('HAYSTACK_POINT_TAGS'))
+CREATE INDEX idx_hpt_tag ON HAYSTACK_POINT_TAGS (tag_name);
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'PROGRAMS')
 CREATE TABLE PROGRAMS (

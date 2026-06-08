@@ -8,9 +8,9 @@ impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let db = manager.get_connection();
 
-        // ── haystack_tags: tag definitions ──
+        // ── HAYSTACK_TAGS: tag definitions ──
         db.execute_unprepared(
-            "CREATE TABLE IF NOT EXISTS haystack_tags (
+            "CREATE TABLE IF NOT EXISTS HAYSTACK_TAGS (
                 tag_name   TEXT PRIMARY KEY,
                 doc        TEXT,
                 category   TEXT NOT NULL DEFAULT 'custom',
@@ -20,9 +20,9 @@ impl MigrationTrait for Migration {
         )
         .await?;
 
-        // ── haystack_tag_relations: multi-parent inheritance ──
+        // ── HAYSTACK_TAG_RELATIONS: multi-parent inheritance ──
         db.execute_unprepared(
-            "CREATE TABLE IF NOT EXISTS haystack_tag_relations (
+            "CREATE TABLE IF NOT EXISTS HAYSTACK_TAG_RELATIONS (
                 tag_name   TEXT NOT NULL,
                 parent_tag TEXT NOT NULL,
                 PRIMARY KEY (tag_name, parent_tag)
@@ -30,9 +30,9 @@ impl MigrationTrait for Migration {
         )
         .await?;
 
-        // ── haystack_point_tags: point ↔ tag mapping ──
+        // ── HAYSTACK_POINT_TAGS: point ↔ tag mapping ──
         db.execute_unprepared(
-            "CREATE TABLE IF NOT EXISTS haystack_point_tags (
+            "CREATE TABLE IF NOT EXISTS HAYSTACK_POINT_TAGS (
                 serial_number INTEGER NOT NULL,
                 point_type    TEXT NOT NULL,
                 point_index   TEXT NOT NULL,
@@ -44,11 +44,11 @@ impl MigrationTrait for Migration {
         .await?;
 
         db.execute_unprepared(
-            "CREATE INDEX IF NOT EXISTS idx_hpt_serial ON haystack_point_tags (serial_number)",
+            "CREATE INDEX IF NOT EXISTS idx_hpt_serial ON HAYSTACK_POINT_TAGS (serial_number)",
         )
         .await?;
         db.execute_unprepared(
-            "CREATE INDEX IF NOT EXISTS idx_hpt_tag ON haystack_point_tags (tag_name)",
+            "CREATE INDEX IF NOT EXISTS idx_hpt_tag ON HAYSTACK_POINT_TAGS (tag_name)",
         )
         .await?;
 
@@ -60,9 +60,9 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let db = manager.get_connection();
-        db.execute_unprepared("DROP TABLE IF EXISTS haystack_point_tags").await?;
-        db.execute_unprepared("DROP TABLE IF EXISTS haystack_tag_relations").await?;
-        db.execute_unprepared("DROP TABLE IF EXISTS haystack_tags").await?;
+        db.execute_unprepared("DROP TABLE IF EXISTS HAYSTACK_POINT_TAGS").await?;
+        db.execute_unprepared("DROP TABLE IF EXISTS HAYSTACK_TAG_RELATIONS").await?;
+        db.execute_unprepared("DROP TABLE IF EXISTS HAYSTACK_TAGS").await?;
         Ok(())
     }
 }

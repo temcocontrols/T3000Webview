@@ -104,13 +104,11 @@ pub fn copy_database_if_not_exists() -> Result<(), Box<dyn std::error::Error>> {
 
 // Asynchronously runs the database migrations.
 pub async fn run_migrations() -> Result<(), Box<dyn std::error::Error>> {
-    let conn = establish_connection().await?; // Establish a database connection.
-    Migrator::up(&conn, None).await?; // Run the migrations.
+    let conn = establish_connection().await?;
+    Migrator::up(&conn, None).await?;
     drop(conn);
     Ok(())
 }
-
-// ============================================================================
 // ABSTRACTED FUNCTIONS - All new functionality separated from original code
 // ============================================================================
 

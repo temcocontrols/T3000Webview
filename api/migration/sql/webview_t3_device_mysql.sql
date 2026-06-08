@@ -114,20 +114,32 @@ CREATE TABLE IF NOT EXISTS VARIABLES (
     Control TEXT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS HAYSTACK_ENTITY (
-    id TEXT PRIMARY KEY,
-    kind TEXT NOT NULL,
-    dis TEXT,
-    tags TEXT NOT NULL,
-    serial_number INTEGER,
-    point_table TEXT,
-    point_index TEXT,
-    updated_at BIGINT
-);
+-- HAYSTACK_TAGS — standard Haystack v4 semantic tagging (replaces old HAYSTACK_ENTITY)
+CREATE TABLE IF NOT EXISTS HAYSTACK_TAGS (
+    tag_name   VARCHAR(255) PRIMARY KEY,
+    doc        TEXT,
+    category   VARCHAR(64) NOT NULL DEFAULT 'custom',
+    deprecated INT NOT NULL DEFAULT 0,
+    source     VARCHAR(64) DEFAULT 'user'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE INDEX idx_haystack_entity_kind ON HAYSTACK_ENTITY(kind);
-CREATE INDEX idx_haystack_entity_serial ON HAYSTACK_ENTITY(serial_number);
-CREATE INDEX idx_haystack_entity_point_table ON HAYSTACK_ENTITY(point_table);
+CREATE TABLE IF NOT EXISTS HAYSTACK_TAG_RELATIONS (
+    tag_name   VARCHAR(255) NOT NULL,
+    parent_tag VARCHAR(255) NOT NULL,
+    PRIMARY KEY (tag_name, parent_tag)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS HAYSTACK_POINT_TAGS (
+    serial_number INT NOT NULL,
+    point_type    VARCHAR(32) NOT NULL,
+    point_index   VARCHAR(64) NOT NULL,
+    point_id      VARCHAR(255) NOT NULL,
+    tag_name      VARCHAR(255) NOT NULL,
+    PRIMARY KEY (serial_number, point_type, point_index, tag_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE INDEX idx_hpt_serial ON HAYSTACK_POINT_TAGS (serial_number);
+CREATE INDEX idx_hpt_tag ON HAYSTACK_POINT_TAGS (tag_name);
 
 CREATE TABLE IF NOT EXISTS PROGRAMS (
     SerialNumber INT NOT NULL,

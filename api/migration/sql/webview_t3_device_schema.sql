@@ -121,22 +121,35 @@ CREATE TABLE IF NOT EXISTS VARIABLES (
     Control TEXT                               -- C++ control (0=OFF, 1=ON)
 );
 
--- HAYSTACK_ENTITY table
--- Normalized Haystack entities generated from INPUTS/OUTPUTS/VARIABLES metadata.
-CREATE TABLE IF NOT EXISTS HAYSTACK_ENTITY (
-    id TEXT PRIMARY KEY,                       -- e.g. dev1001.in0
-    kind TEXT NOT NULL,                        -- site | equip | point
-    dis TEXT,                                  -- display name
-    tags TEXT NOT NULL,                        -- JSON object as string
-    serial_number INTEGER,                     -- DEVICES.SerialNumber
-    point_table TEXT,                          -- INPUTS | OUTPUTS | VARIABLES
-    point_index TEXT,                          -- Input_Index / Output_Index / Variable_Index
-    updated_at INTEGER                         -- epoch millis
+-- HAYSTACK_TAGS — standard Haystack v4 semantic tagging (replaces old HAYSTACK_ENTITY)
+-- Tag definitions (marker, sensor, temp, etc.)
+CREATE TABLE IF NOT EXISTS HAYSTACK_TAGS (
+    tag_name   TEXT PRIMARY KEY,
+    doc        TEXT,
+    category   TEXT NOT NULL DEFAULT 'custom',
+    deprecated INTEGER NOT NULL DEFAULT 0,
+    source     TEXT DEFAULT 'user'
 );
 
-CREATE INDEX IF NOT EXISTS idx_haystack_entity_kind ON HAYSTACK_ENTITY(kind);
-CREATE INDEX IF NOT EXISTS idx_haystack_entity_serial ON HAYSTACK_ENTITY(serial_number);
-CREATE INDEX IF NOT EXISTS idx_haystack_entity_point_table ON HAYSTACK_ENTITY(point_table);
+-- Multi-parent tag inheritance (e.g. "temp" has parents "sensor", "point")
+CREATE TABLE IF NOT EXISTS HAYSTACK_TAG_RELATIONS (
+    tag_name   TEXT NOT NULL,
+    parent_tag TEXT NOT NULL,
+    PRIMARY KEY (tag_name, parent_tag)
+);
+
+-- Point-to-tag mapping (which tags apply to which controller points)
+CREATE TABLE IF NOT EXISTS HAYSTACK_POINT_TAGS (
+    serial_number INTEGER NOT NULL,
+    point_type    TEXT NOT NULL,
+    point_index   TEXT NOT NULL,
+    point_id      TEXT NOT NULL,
+    tag_name      TEXT NOT NULL,
+    PRIMARY KEY (serial_number, point_type, point_index, tag_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_hpt_serial ON HAYSTACK_POINT_TAGS (serial_number);
+CREATE INDEX IF NOT EXISTS idx_hpt_tag ON HAYSTACK_POINT_TAGS (tag_name);
 
 -- PROGRAMS table (Original T3000 programs table)
 -- Optimized schema - removed unused BinaryArray field

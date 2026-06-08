@@ -10,7 +10,8 @@ mod m20260521_add_flow_log_tables;
 mod m20260529_add_trendlog_point_sets_table;
 mod m20260604_add_backend_and_registry_tables;
 mod m20260604_add_app_log_table;
-mod m20260607_haystack_v2;
+mod m20260607_add_haystack_v2;
+mod m20260607_remove_haystack_v1;
 
 /// Migrator for webview_database.db (users, files, app config, LCD options)
 pub struct Migrator;
@@ -40,7 +41,8 @@ impl MigratorTrait for T3DeviceMigrator {
             Box::new(m20260529_add_trendlog_point_sets_table::Migration),
             Box::new(m20260604_add_backend_and_registry_tables::Migration),
             Box::new(m20260604_add_app_log_table::Migration),
-            Box::new(m20260607_haystack_v2::Migration),
+            Box::new(m20260607_add_haystack_v2::Migration),
+            Box::new(m20260607_remove_haystack_v1::Migration),
         ]
     }
 }
