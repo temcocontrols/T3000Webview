@@ -678,6 +678,13 @@ const haystackMenu: MenuItem = {
       action: () => { window.location.hash = '#/t3000/haystack-tags'; },
       icon: 'Tag',
     },
+    {
+      id: 'haystack-custom-tags',
+      label: 'Custom Tags',
+      type: 'item',
+      action: () => { window.location.hash = '#/t3000/custom-tags'; },
+      icon: 'Tag',
+    },
   ],
 };
 
