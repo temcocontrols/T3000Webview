@@ -3,7 +3,7 @@ import {
   Spinner, Button, Input,
   Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions,
 } from '@fluentui/react-components';
-import { SearchRegular, ArrowSyncRegular, InfoRegular } from '@fluentui/react-icons';
+import { SearchRegular, ArrowSyncRegular, InfoRegular, AddRegular, SubtractRegular } from '@fluentui/react-icons';
 import { useHaystackStore } from '../store/haystackStore';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './HaystackTagsPage.module.css';
@@ -15,8 +15,32 @@ export const HaystackTagsPage: React.FC = () => {
   const [syncResult, setSyncResult] = useState<{ ok: boolean; count?: number; msg?: string } | null>(null);
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
   const [selectedTreeNode, setSelectedTreeNode] = useState<string>('');
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [allExpanded, setAllExpanded] = useState(false);
 
   useEffect(() => { fetchTags(); fetchTagTree(); }, []);
+
+  const collectAllIds = (nodes: any[]): string[] => {
+    const ids: string[] = [];
+    const walk = (n: any) => { ids.push(n.tag_name); n.children?.forEach(walk); };
+    nodes.forEach(walk);
+    return ids;
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpanded(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  };
+
+  const expandAll = () => {
+    const ids = collectAllIds(tagTree);
+    setExpanded(new Set(ids));
+    setAllExpanded(true);
+  };
+
+  const collapseAll = () => {
+    setExpanded(new Set());
+    setAllExpanded(false);
+  };
 
   const standardTags = useMemo(() =>
     tags.filter(t => t.category === 'haystack'),
@@ -52,18 +76,37 @@ export const HaystackTagsPage: React.FC = () => {
     }
   };
 
-  const renderTreeNode = (node: any, depth: number = 0): React.ReactNode => (
-    <div key={node.tag_name} className={styles.treeItem} style={{ paddingLeft: 8 + depth * 14 }}>
-      <span
-        className={`${styles.treeLabel} ${selectedTreeNode === node.tag_name ? styles.treeLabelActive : ''} ${node.category !== 'haystack' ? styles.treeLabelCustom : ''}`}
-        onClick={() => setSelectedTreeNode(selectedTreeNode === node.tag_name ? '' : node.tag_name)}
-      >
-        {node.tag_name}
-        {node.children?.length > 0 && <span className={styles.treeCount}> ({node.children.length})</span>}
-      </span>
-      {node.children?.map((c: any) => renderTreeNode(c, depth + 1))}
-    </div>
-  );
+  const renderTreeNode = (node: any, depth: number = 0): React.ReactNode => {
+    const hasChildren = node.children?.length > 0;
+    const isExpanded = expanded.has(node.tag_name);
+    const isSelected = selectedTreeNode === node.tag_name;
+
+    return (
+      <div key={node.tag_name}>
+        <div
+          className={`${styles.treeItem} ${isSelected ? styles.treeItemActive : ''}`}
+          style={{ paddingLeft: 8 + depth * 16 }}
+          onClick={() => {
+            setSelectedTreeNode(isSelected ? '' : node.tag_name);
+            if (hasChildren) toggleExpand(node.tag_name);
+          }}
+        >
+          <span className={styles.treeToggle}>
+            {hasChildren ? (
+              <span className={styles.toggleIcon}>{isExpanded ? '−' : '+'}</span>
+            ) : (
+              <span className={styles.togglePlaceholder} />
+            )}
+          </span>
+          <span className={`${styles.treeLabel} ${isSelected ? styles.treeLabelActive : ''} ${node.category !== 'haystack' ? styles.treeLabelCustom : ''}`}>
+            {node.tag_name}
+            {hasChildren && <span className={styles.treeCount}>{node.children.length}</span>}
+          </span>
+        </div>
+        {hasChildren && isExpanded && node.children.map((c: any) => renderTreeNode(c, depth + 1))}
+      </div>
+    );
+  };
 
   return (
     <div className={styles.container}>
@@ -128,7 +171,19 @@ export const HaystackTagsPage: React.FC = () => {
       <div className={styles.main}>
         {/* ── Left Panel: Tag Tree ── */}
         <aside className={styles.leftPanel}>
-          <div className={styles.leftHeader}>Tags Tree</div>
+          <div className={styles.leftHeader}>
+            <span>Tags Tree</span>
+            <span className={styles.treeActions}>
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={allExpanded ? <AddRegular style={{ fontSize: 11 }} /> : <SubtractRegular style={{ fontSize: 11 }} />}
+                onClick={() => allExpanded ? collapseAll() : expandAll()}
+              >
+                {allExpanded ? 'Collapse' : 'Expand'}
+              </Button>
+            </span>
+          </div>
           <Input
             placeholder="Filter tags…"
             value={search}
