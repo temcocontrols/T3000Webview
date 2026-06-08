@@ -1,0 +1,128 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+  z-index: 1000;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawer {
+  width: 420px;
+  max-width: 90vw;
+  height: 100%;
+  background: var(--colorNeutralBackground1);
+  border-left: 1px solid var(--colorNeutralStroke1);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  box-shadow: -4px 0 16px rgba(0,0,0,0.1);
+}
+
+.header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--colorNeutralStroke2);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  h3 { margin: 0 0 4px; }
+  p { margin: 2px 0; font-size: 13px; color: var(--colorNeutralForeground2); }
+}
+
+.pointId {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--colorNeutralForeground3);
+}
+
+.section {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--colorNeutralStroke2);
+}
+
+.sectionTitle {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: var(--colorNeutralForeground2);
+}
+
+.tagChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tagChip {
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chipStandard {
+  background: var(--colorBrandBackground2);
+  color: var(--colorBrandForeground1);
+}
+
+.chipCustom {
+  background: #e6f4ea;
+  color: #0d652b;
+}
+
+.chipDeprecated {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.chipRemove {
+  cursor: pointer;
+  font-weight: bold;
+  margin-left: 2px;
+  &:hover { opacity: 0.7; }
+}
+
+.noTags {
+  color: var(--colorNeutralForeground3);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.suggestions {
+  margin-top: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: 4px;
+}
+
+.suggestionItem {
+  padding: 6px 10px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  &:hover { background: var(--colorNeutralBackground2); }
+}
+
+.suggestionMeta {
+  color: var(--colorNeutralForeground3);
+  font-size: 11px;
+}
+
+.createForm {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.actions {
+  padding: 16px 20px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: auto;
+}
