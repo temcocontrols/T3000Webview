@@ -1174,7 +1174,7 @@ const VariablesPageDesktop: React.FC = () => {
     createTableColumn<VariablePoint>({
       columnId: 'tags',
       renderHeaderCell: () => (
-        <div className={styles.headerCell}><span>TAGS</span></div>
+        <div className={styles.headerCell}><span>Tags</span></div>
       ),
       renderCell: (item) => {
         if (isEmptyRow(item)) return <TableCellLayout>—</TableCellLayout>;

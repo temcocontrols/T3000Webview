@@ -66,6 +66,8 @@ export const useHaystackStore = create<HaystackState>((set, get) => ({
   selectedTag: null,
 
   fetchTags: async (filter?: string) => {
+    const { isLoading } = get();
+    if (isLoading) return;
     set({ isLoading: true, error: null });
     try {
       const url = new URL(`${API_BASE_URL}/api/haystack/tags`);

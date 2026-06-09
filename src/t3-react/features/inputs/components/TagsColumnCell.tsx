@@ -84,30 +84,16 @@ export const TagsColumnCell: React.FC<Props> = ({
   }, [serialNumber, pointType, pointIndex, isEmpty]);
 
   const handleSave = useCallback(
-    async (updates: { add_tags?: string[]; remove_tags?: string[] }) => {
-      const updatePayload = {
-        serial_number: serialNumber,
-        point_type: pointType,
-        point_index: pointIndex,
-        point_id: pointId,
-        add_tags: updates.add_tags,
-        remove_tags: updates.remove_tags,
-      };
-      await fetch(`${API_BASE_URL}/api/haystack/point-tags/write`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify([updatePayload]),
-      });
-      // Invalidate cache
+    async () => {
+      // Drawer already handled the POST; just invalidate cache & re-fetch
       tagCache.delete(String(serialNumber));
-      // Re-fetch
       const all = await fetchTagsForDevice(serialNumber);
       const mine = all.filter(
         (t) => t.point_type === pointType && t.point_index === pointIndex
       );
       setTags(mine.map((t) => t.tag_name));
     },
-    [serialNumber, pointType, pointIndex, pointId]
+    [serialNumber, pointType, pointIndex]
   );
 
   if (isEmpty) {
@@ -163,7 +149,7 @@ export const TagsColumnCell: React.FC<Props> = ({
           pointIndex={pointIndex}
           currentTags={tags}
           onClose={() => setDrawerOpen(false)}
-          onSave={handleSave}
+          onSaved={handleSave}
         />
       )}
     </>

@@ -87,8 +87,9 @@
 }
 
 .chipCustom {
-  background: #e6f4ea;
-  color: #0d652b;
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffc107;
 }
 
 .chipDeprecated {
