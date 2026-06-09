@@ -601,7 +601,7 @@
   font-variant-numeric: tabular-nums;
   padding: 1px 16px;
   border-radius: 2px;
-  background-color: #dff6dd;
+  /* background-color: #dff6dd; */
   color: #107c10;
   font-size: 12px;
   font-weight: 600;

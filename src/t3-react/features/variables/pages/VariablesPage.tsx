@@ -1006,7 +1006,7 @@ const VariablesPageDesktop: React.FC = () => {
           editingCell?.field === 'fValue';
 
         return (
-          <TableCellLayout>
+          <TableCellLayout  style={{backgroundColor:'#dff6dd'}}>
             {isEditing ? (
               <div className={styles.editInputContainer}>
                 <input
@@ -1374,7 +1374,7 @@ const VariablesPageDesktop: React.FC = () => {
                         label: { idealWidth: 190, minWidth: 110 },
                         value: { idealWidth: 120, minWidth: 80 },
                         units: { idealWidth: 90, minWidth: 60 },
-                        autoManual: { idealWidth: 110, minWidth: 75 },
+                        autoManual: { idealWidth: 100, minWidth: 75 },
                         tags: { idealWidth: 300, minWidth: 80 },
                       }}
                     >
