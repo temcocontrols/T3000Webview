@@ -1455,22 +1455,6 @@ const InputsPageDesktop: React.FC = () => {
                       items={displayInputs}
                       columns={columns}
                       sortable
-                      resizableColumns
-                      columnSizingOptions={{
-                        panel: { minWidth: 60, idealWidth: 80 },
-                        input: { minWidth: 80, idealWidth: 100 },
-                        fullLabel: { minWidth: 120, idealWidth: 200 },
-                        label: { minWidth: 80, idealWidth: 120 },
-                        autoManual: { minWidth: 60, idealWidth: 90 },
-                        value: { minWidth: 70, idealWidth: 90 },
-                        units: { minWidth: 60, idealWidth: 80 },
-                        range: { minWidth: 80, idealWidth: 120 },
-                        calibration_sign: { minWidth: 60, idealWidth: 90 },
-                        filter: { minWidth: 60, idealWidth: 80 },
-                        status: { minWidth: 60, idealWidth: 80 },
-                        type: { minWidth: 60, idealWidth: 90 },
-                        tags: { minWidth: 100, idealWidth: 150 },
-                      }}
                     >
                     <DataGridHeader>
                       <DataGridRow>

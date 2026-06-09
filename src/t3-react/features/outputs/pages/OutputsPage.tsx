@@ -1482,23 +1482,6 @@ const OutputsPageDesktop: React.FC = () => {
                       items={displayOutputs}
                       columns={columns}
                       sortable
-                      resizableColumns
-                      columnSizingOptions={{
-                        panel: { minWidth: 60, idealWidth: 80 },
-                        output: { minWidth: 80, idealWidth: 100 },
-                        fullLabel: { minWidth: 120, idealWidth: 200 },
-                        label: { minWidth: 80, idealWidth: 120 },
-                        autoManual: { minWidth: 60, idealWidth: 90 },
-                        hoaSwitch: { minWidth: 70, idealWidth: 100 },
-                        value: { minWidth: 70, idealWidth: 90 },
-                        units: { minWidth: 60, idealWidth: 80 },
-                        range: { minWidth: 80, idealWidth: 120 },
-                        lowVoltage: { minWidth: 70, idealWidth: 100 },
-                        highVoltage: { minWidth: 70, idealWidth: 100 },
-                        status: { minWidth: 60, idealWidth: 80 },
-                        signalType: { minWidth: 70, idealWidth: 100 },
-                        tags: { minWidth: 100, idealWidth: 150 },
-                      }}
                     >
                       <DataGridHeader>
                         <DataGridRow>
