@@ -1375,7 +1375,7 @@ const VariablesPageDesktop: React.FC = () => {
                         value: { idealWidth: 120, minWidth: 80 },
                         units: { idealWidth: 90, minWidth: 60 },
                         autoManual: { idealWidth: 110, minWidth: 75 },
-                        tags: { idealWidth: 120, minWidth: 80 },
+                        tags: { idealWidth: 300, minWidth: 80 },
                       }}
                     >
                       <DataGridHeader style={{ backgroundColor: '#e0e0e0' }}>
