@@ -121,7 +121,7 @@
   width: 1px;
   height: 24px;
   background-color: #edebe9;
-  margin: 0 4px;
+  margin: 0 10px;
 }
 
 /* Search Input - Azure Portal Style */
@@ -636,7 +636,7 @@
 .varTabBar {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
   flex-shrink: 0;
 }
 

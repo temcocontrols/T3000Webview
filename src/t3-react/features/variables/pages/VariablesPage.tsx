@@ -36,6 +36,7 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SearchRegular,
   ErrorCircleRegular,
   SaveRegular,
@@ -1281,10 +1282,10 @@ const VariablesPageDesktop: React.FC = () => {
                         onClick={handleRefreshFromDevice}
                         disabled={refreshing}
                         title="Refresh all variables from device"
-                        aria-label="Refresh from Device"
+                        aria-label="Refresh"
                       >
-                        <ArrowSyncRegular />
-                        <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                        <ArrowClockwiseRegular />
+                        <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                       </button>
 
                       <div className={styles.toolbarSeparator} role="separator" />
