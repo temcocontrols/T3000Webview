@@ -1370,11 +1370,11 @@ const VariablesPageDesktop: React.FC = () => {
                       columnSizingOptions={{
                         panel: { idealWidth: 60, minWidth: 40 },
                         variable: { idealWidth: 90, minWidth: 60 },
-                        fullLabel: { idealWidth: 180, minWidth: 100 },
-                        label: { idealWidth: 100, minWidth: 60 },
-                        value: { idealWidth: 80, minWidth: 55 },
-                        units: { idealWidth: 60, minWidth: 40 },
-                        autoManual: { idealWidth: 80, minWidth: 55 },
+                        fullLabel: { idealWidth: 250, minWidth: 140 },
+                        label: { idealWidth: 190, minWidth: 110 },
+                        value: { idealWidth: 120, minWidth: 80 },
+                        units: { idealWidth: 90, minWidth: 60 },
+                        autoManual: { idealWidth: 110, minWidth: 75 },
                         tags: { idealWidth: 120, minWidth: 80 },
                       }}
                     >
