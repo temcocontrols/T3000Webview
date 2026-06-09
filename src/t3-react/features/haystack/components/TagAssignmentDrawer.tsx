@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Input, Spinner } from '@fluentui/react-components';
 import { DismissRegular, SearchRegular } from '@fluentui/react-icons';
-import { useHaystackStore, TagDefinition } from '../store/haystackStore';
+import { useHaystackStore } from '../store/haystackStore';
 import styles from './TagAssignmentDrawer.module.css';
 
 interface Props {
@@ -13,7 +13,7 @@ interface Props {
   pointIndex: string;
   currentTags: string[];
   onClose: () => void;
-  onSave: (updates: { add_tags?: string[]; remove_tags?: string[]; set_tags?: string[] }) => Promise<void>;
+  onSaved?: () => void;
 }
 
 export const TagAssignmentDrawer: React.FC<Props> = ({
@@ -25,9 +25,9 @@ export const TagAssignmentDrawer: React.FC<Props> = ({
   pointIndex,
   currentTags,
   onClose,
-  onSave,
+  onSaved,
 }) => {
-  const { tags, isLoading, fetchTags } = useHaystackStore();
+  const { tags, isLoading, fetchTags, batchUpdatePointTags } = useHaystackStore();
   const [selectedTags, setSelectedTags] = useState<string[]>(currentTags);
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
@@ -57,8 +57,16 @@ export const TagAssignmentDrawer: React.FC<Props> = ({
     setSaving(true);
     const added = selectedTags.filter((t) => !currentTags.includes(t));
     const removed = currentTags.filter((t) => !selectedTags.includes(t));
-    await onSave({ add_tags: added, remove_tags: removed });
+    await batchUpdatePointTags([{
+      serialNumber: serialNumber,
+      pointType: pointType,
+      pointIndex: pointIndex,
+      pointId: pointId || `${serialNumber}.${pointType.toLowerCase()}.${pointIndex}`,
+      addTags: added.length > 0 ? added : undefined,
+      removeTags: removed.length > 0 ? removed : undefined,
+    }]);
     setSaving(false);
+    onSaved?.();
     onClose();
   };
 
