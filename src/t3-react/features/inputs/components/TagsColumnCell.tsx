@@ -25,7 +25,7 @@ interface Props {
 const tagCache = new Map<string, PointTagInfo[]>();
 let pendingFetch: Promise<void> | null = null;
 
-async function fetchTagsForDevice(serialNumber: number): Promise<PointTagInfo[]> {
+export async function fetchTagsForDevice(serialNumber: number): Promise<PointTagInfo[]> {
   const key = String(serialNumber);
   if (tagCache.has(key)) return tagCache.get(key)!;
 

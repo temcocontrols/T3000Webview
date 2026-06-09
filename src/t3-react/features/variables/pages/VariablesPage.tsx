@@ -53,7 +53,7 @@ import { PageSyncStatus } from '@t3-react/shared/components/PageSyncStatus';
 import styles from './VariablesPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
-import { TagsColumnCell } from '../../inputs/components/TagsColumnCell';
+import { TagsColumnCell, fetchTagsForDevice } from '../../inputs/components/TagsColumnCell';
 
 // Types based on Rust entity (variable_points.rs)
 interface VariablePoint {
@@ -687,6 +687,24 @@ const VariablesPageDesktop: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Point tags for tag-based search filtering
+  const [pointTags, setPointTags] = useState<{ pointType: string; pointIndex: string; tagName: string }[]>([]);
+
+  // Fetch point tags when device changes
+  useEffect(() => {
+    if (!selectedDevice?.serialNumber) return;
+    let cancelled = false;
+    fetchTagsForDevice(selectedDevice.serialNumber).then((all) => {
+      if (cancelled) return;
+      setPointTags(all.map(t => ({
+        pointType: t.point_type,
+        pointIndex: t.point_index,
+        tagName: t.tag_name,
+      })));
+    });
+    return () => { cancelled = true; };
+  }, [selectedDevice?.serialNumber]);
+
   // VAR / PVAR filter — two mutually exclusive options
   const [activeFilter, setActiveFilter] = useState<'VARS' | 'PVARS'>('VARS');
 
@@ -796,34 +814,47 @@ const VariablesPageDesktop: React.FC = () => {
 
   // Display data with 18 empty rows when no variables
   const displayVariables = React.useMemo(() => {
-    if (allVariables.length === 0) {
-      return Array(18).fill(null).map((_, index) => ({
-        serialNumber: selectedDevice?.serialNumber || 0,
-        variableId: '',
-        variableIndex: '',
-        panel: '',
-        fullLabel: '',
-        autoManual: '',
-        fValue: '',
-        units: '',
-        rangeField: '',
-        calibration: '',
-        sign: '',
-        calibrationH: '',
-        calibrationL: '',
-        calibrationSign: '',
-        control: '',
-        filterField: '',
-        status: '',
-        digitalAnalog: '',
-        label: '',
-        typeField: '',
-      }));
+    const emptyTemplate = {
+      serialNumber: selectedDevice?.serialNumber || 0,
+      variableId: '', variableIndex: '', panel: '', fullLabel: '', autoManual: '',
+      fValue: '', units: '', rangeField: '', calibration: '', sign: '',
+      calibrationH: '', calibrationL: '', calibrationSign: '', control: '',
+      filterField: '', status: '', digitalAnalog: '', label: '', typeField: '',
+    };
+
+    // Apply VAR / PVAR filter first
+    let filtered = activeFilter === 'VARS'
+      ? allVariables.filter(v => !isPvar(v))
+      : allVariables.filter(v => isPvar(v));
+
+    // Search filter — match against label, full label, ID, value, and tags
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(v => {
+        // Match variable fields
+        if (
+          (v.label || '').toLowerCase().includes(q) ||
+          (v.fullLabel || '').toLowerCase().includes(q) ||
+          String(v.variableId || '').toLowerCase().includes(q) ||
+          String(v.variableIndex || '').toLowerCase().includes(q) ||
+          (v.fValue ? (parseFloat(v.fValue) / 1000).toFixed(2) : '').includes(q)
+        ) return true;
+        // Match tags assigned to this variable
+        const varTags = pointTags.filter(
+          t => t.pointType === 'VARIABLE' && t.pointIndex === (v.variableIndex || '')
+        );
+        return varTags.some(t => t.tagName.toLowerCase().includes(q));
+      });
     }
-    // Apply VAR / PVAR filter
-    if (activeFilter === 'VARS')  return allVariables.filter(v => !isPvar(v));
-    return allVariables.filter(v => isPvar(v)); // PVARS
-  }, [allVariables, selectedDevice, activeFilter]);
+
+    if (filtered.length === 0 && allVariables.length > 0) {
+      return []; // No results — show empty but not placeholder rows
+    }
+    if (allVariables.length === 0) {
+      return Array(18).fill(null).map(() => ({ ...emptyTemplate }));
+    }
+    return filtered;
+  }, [allVariables, selectedDevice, activeFilter, searchQuery, pointTags]);
 
   // Helper to identify empty rows
   const isEmptyRow = (item: VariablePoint) => !item.variableIndex && !item.variableId && allVariables.length === 0;
@@ -1237,12 +1268,12 @@ const VariablesPageDesktop: React.FC = () => {
                         <input
                           className={styles.searchInput}
                           type="text"
-                          placeholder="Search variables..."
+                          placeholder="Search variables by label, value, tags ..."
                           value={searchQuery}
                           onChange={handleSearchChange}
                           spellCheck="false"
                           role="searchbox"
-                          aria-label="Search variables"
+                          aria-label="Search variables by label, value, tags ..."
                         />
                       </div>
 
