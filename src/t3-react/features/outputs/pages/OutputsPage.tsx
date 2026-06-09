@@ -1226,43 +1226,34 @@ const OutputsPageDesktop: React.FC = () => {
         );
       },
     }),
-    // 13. Status
-    createTableColumn<OutputPoint>({
-      columnId: 'status',
-      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.status || ''), String(b.status || '')),
-      renderHeaderCell: () => <span>Status</span>,
-      renderCell: (item) => {
-        // Map status codes to readable text
-        // Common status codes: 0 = Normal/OK, 64 = Normal, other values may indicate errors
-        let statusText = 'Normal';
-        let statusColor: 'success' | 'danger' | 'warning' = 'success';
-
-        const statusValue = item.status?.toString();
-        if (statusValue === '0' || statusValue === '64') {
-          statusText = 'Normal';
-          statusColor = 'success';
-        } else if (statusValue && statusValue !== 'online' && statusValue !== 'normal') {
-          statusText = `Code ${statusValue}`;
-          statusColor = 'warning';
-        } else if (statusValue?.toLowerCase() === 'online' || statusValue?.toLowerCase() === 'normal') {
-          statusText = 'Normal';
-          statusColor = 'success';
-        }
-
-        return (
-          <TableCellLayout>
-            {!isEmptyRow(item) && (
-              <Badge
-                appearance="filled"
-                color={statusColor}
-              >
-                {statusText}
-              </Badge>
-            )}
-          </TableCellLayout>
-        );
-      },
-    }),
+    // 13. Status — commented out
+    // createTableColumn<OutputPoint>({
+    //   columnId: 'status',
+    //   compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.status || ''), String(b.status || '')),
+    //   renderHeaderCell: () => <span>Status</span>,
+    //   renderCell: (item) => {
+    //     let statusText = 'Normal';
+    //     let statusColor: 'success' | 'danger' | 'warning' = 'success';
+    //     const statusValue = item.status?.toString();
+    //     if (statusValue === '0' || statusValue === '64') {
+    //       statusText = 'Normal';
+    //       statusColor = 'success';
+    //     } else if (statusValue && statusValue !== 'online' && statusValue !== 'normal') {
+    //       statusText = `Code ${statusValue}`;
+    //       statusColor = 'warning';
+    //     } else if (statusValue?.toLowerCase() === 'online' || statusValue?.toLowerCase() === 'normal') {
+    //       statusText = 'Normal';
+    //       statusColor = 'success';
+    //     }
+    //     return (
+    //       <TableCellLayout>
+    //         {!isEmptyRow(item) && (
+    //           <Badge appearance="filled" color={statusColor}>{statusText}</Badge>
+    //         )}
+    //       </TableCellLayout>
+    //     );
+    //   },
+    // }),
     // 14. Type
     createTableColumn<OutputPoint>({
       columnId: 'signalType',
@@ -1453,18 +1444,17 @@ const OutputsPageDesktop: React.FC = () => {
                       columnSizingOptions={{
                         panel: { idealWidth: 50, minWidth: 40 },
                         output: { idealWidth: 65, minWidth: 55 },
-                        fullLabel: { idealWidth: 160, minWidth: 80 },
-                        label: { idealWidth: 120, minWidth: 50 },
+                        fullLabel: { idealWidth: 165, minWidth: 80 },
+                        label: { idealWidth: 125, minWidth: 50 },
                         autoManual: { idealWidth: 82, minWidth: 60  },
                         hoaSwitch: { idealWidth: 90, minWidth: 65 },
-                        value: { idealWidth: 130, minWidth: 80 },
-                        units: { idealWidth: 80, minWidth: 50 },
-                        range: { idealWidth: 90, minWidth: 65 },
+                        value: { idealWidth: 120, minWidth: 80 },
+                        units: { idealWidth: 105, minWidth: 50 },
+                        range: { idealWidth: 100, minWidth: 65 },
                         lowVoltage: { idealWidth: 65, minWidth: 50 },
                         highVoltage: { idealWidth: 65, minWidth: 50 },
-                        status: { idealWidth: 60, minWidth: 45 },
                         signalType: { idealWidth: 70, minWidth: 55 },
-                        tags: { idealWidth: 170, minWidth: 80 },
+                        tags: { idealWidth: 180, minWidth: 80 },
                       }}
                     >
                       <DataGridHeader style={{ backgroundColor: '#e0e0e0' }}>

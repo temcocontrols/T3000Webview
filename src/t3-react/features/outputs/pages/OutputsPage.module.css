@@ -93,6 +93,8 @@
   cursor: pointer;
   border-radius: 2px;
   transition: background-color 0.1s ease;
+  margin-left:10px;
+  margin-right:5px;
 }
 
   .toolbarButton svg {
@@ -488,7 +490,7 @@
   font-size: 12px;
   font-weight: 400;
   color: #292827;
-  padding: 0 12px;
+  /* padding: 0 12px; */
   min-height: 32px;
   border-right: 1px solid #ebebeb;
   display: flex;
@@ -862,7 +864,7 @@
   display: block;
   width: 100%;
   text-align: left;
-  padding: 1px 8px;
+  padding: 1px 3px;
   border-radius: 2px;
   background-color: #f0f0f0;
   color: #424242;
@@ -878,7 +880,7 @@
   display: block;
   width: 100%;
   text-align: left;
-  padding: 1px 8px;
+  padding: 1px 3px;
   border-radius: 2px;
   background-color: #fdf2f8;
   color: #c4317c;
