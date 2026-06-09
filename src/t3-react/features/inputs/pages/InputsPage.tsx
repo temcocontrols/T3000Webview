@@ -1447,7 +1447,7 @@ const InputsPageDesktop: React.FC = () => {
                         filter: { idealWidth: 55, minWidth: 40 },
                         status: { idealWidth: 60, minWidth: 45 },
                         type: { idealWidth: 65, minWidth: 50 },
-                        tags: { idealWidth: 200, minWidth: 80 },
+                        tags: { idealWidth: 190, minWidth: 80 },
                       }}
                     >
                     <DataGridHeader style={{ backgroundColor: '#e0e0e0' }}>
