@@ -1262,7 +1262,7 @@ const InputsPageDesktop: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'tags',
       renderHeaderCell: () => (
-        <div className={styles.headerCell}><span>TAGS</span></div>
+        <div className={styles.headerCell}><span>Tags</span></div>
       ),
       renderCell: (item) => {
         if (isEmptyRow(item)) return <TableCellLayout>—</TableCellLayout>;
@@ -1436,18 +1436,18 @@ const InputsPageDesktop: React.FC = () => {
                       style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
                       columnSizingOptions={{
                         panel: { idealWidth: 50, minWidth: 40 },
-                        input: { idealWidth: 90, minWidth: 65 },
-                        fullLabel: { idealWidth: 220, minWidth: 120 },
-                        label: { idealWidth: 170, minWidth: 90 },
-                        autoManual: { idealWidth: 100, minWidth: 65 },
+                        input: { idealWidth: 60, minWidth: 50 },
+                        fullLabel: { idealWidth: 180, minWidth: 100 },
+                        label: { idealWidth: 140, minWidth: 70 },
+                        autoManual: { idealWidth: 85, minWidth: 60 },
                         value: { idealWidth: 130, minWidth: 80 },
                         units: { idealWidth: 80, minWidth: 50 },
                         range: { idealWidth: 90, minWidth: 65 },
-                        calibration_sign: { idealWidth: 70, minWidth: 50 },
+                        calibration_sign: { idealWidth: 95, minWidth: 65 },
                         filter: { idealWidth: 55, minWidth: 40 },
                         status: { idealWidth: 60, minWidth: 45 },
                         type: { idealWidth: 65, minWidth: 50 },
-                        tags: { idealWidth: 300, minWidth: 80 },
+                        tags: { idealWidth: 200, minWidth: 80 },
                       }}
                     >
                     <DataGridHeader style={{ backgroundColor: '#e0e0e0' }}>

@@ -548,8 +548,7 @@
 .container :global(.fui-DataGridCell):nth-child(9) :global(.fui-TableCellLayout),
 .container :global(.fui-DataGridCell):nth-child(10) :global(.fui-TableCellLayout),
 .container :global(.fui-DataGridCell):nth-child(11) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridCell):nth-child(12) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridCell):nth-child(13) :global(.fui-TableCellLayout) {
+.container :global(.fui-DataGridCell):nth-child(12) :global(.fui-TableCellLayout) {
   justify-content: center;
   text-align: center;
   width: 100%;
@@ -560,8 +559,7 @@
 .container :global(.fui-DataGridHeaderCell):nth-child(9) :global(.fui-TableCellLayout),
 .container :global(.fui-DataGridHeaderCell):nth-child(10) :global(.fui-TableCellLayout),
 .container :global(.fui-DataGridHeaderCell):nth-child(11) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridHeaderCell):nth-child(12) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridHeaderCell):nth-child(13) :global(.fui-TableCellLayout) {
+.container :global(.fui-DataGridHeaderCell):nth-child(12) :global(.fui-TableCellLayout) {
   justify-content: center;
   text-align: center;
   width: 100%;

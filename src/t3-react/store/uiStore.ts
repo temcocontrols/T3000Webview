@@ -109,7 +109,7 @@ const initialState: Omit<UiState, keyof {
   windowHistory: [WINDOW_IDS.HOME],
   isLeftPanelVisible: true,
   isRightPanelVisible: false,
-  leftPanelWidth: 250,
+  leftPanelWidth: 210,
   rightPanelWidth: 300,
   activeDialog: null,
   dialogStack: [],
