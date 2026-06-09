@@ -331,6 +331,13 @@
 .container :global(.fui-TableCellLayout) > * {
   width: 100%;
 }
+
+/* Value column - right-align header */
+.container :global(.fui-DataGridHeaderCell):nth-child(5),
+.container :global(.fui-DataGridHeaderCell):nth-child(5) > * {
+  justify-content: flex-end !important;
+  text-align: right !important;
+}
 .container :global(.fui-DataGridHeaderCell):last-child,
 .container :global(.fui-DataGridCell):last-child {
   border-right: none;
@@ -600,19 +607,21 @@
   margin-left: 4px;
 }
 
-/* Value badge - green background like InputsPage */
+/* Value badge - green background matching InputsPage */
 .valueBadge {
-  flex: 1;
+  display: block;
+  width: 100%;
   text-align: right;
   font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
+  padding: 1px 16px;
+  border-radius: 2px;
+  background-color: #dff6dd;
   color: #107c10;
   font-size: 12px;
   font-weight: 600;
   line-height: 20px;
   white-space: nowrap;
   box-sizing: border-box;
-  padding-right: 16px;
 }
 
 /* Unit badge - gray background like InputsPage */

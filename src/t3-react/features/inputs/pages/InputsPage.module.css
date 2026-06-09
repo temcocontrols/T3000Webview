@@ -377,9 +377,10 @@
   flex: 0 0 7%;
 }
 /* 6. Value - 9% (right align with values) */
-.container :global(.fui-DataGridHeaderCell):nth-child(6) {
-  justify-content: flex-end;
-  text-align: right;
+.container :global(.fui-DataGridHeaderCell):nth-child(6),
+.container :global(.fui-DataGridHeaderCell):nth-child(6) > * {
+  justify-content: flex-end !important;
+  text-align: right !important;
 }
 
 .container :global(.fui-DataGridHeaderCell):nth-child(6),
