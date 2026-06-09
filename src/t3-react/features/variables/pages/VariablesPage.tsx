@@ -778,12 +778,18 @@ const VariablesPageDesktop: React.FC = () => {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
 
-  const handleSort = (columnId: string) => {
-    if (sortColumn === columnId) {
-      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
+  // Controlled sort state for asc→desc→clear
+  const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
+  const [sortKey, setSortKey] = useState(0);
+  const prevSortRef = React.useRef<{ sortColumn: string; sortDirection: string } | undefined>();
+  const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
+    const prev = prevSortRef.current;
+    prevSortRef.current = newState;
+    if (prev?.sortColumn === newState.sortColumn && prev?.sortDirection === 'descending' && newState.sortDirection === 'ascending') {
+      setSortState(undefined);
+      setSortKey(k => k + 1);
     } else {
-      setSortColumn(columnId);
-      setSortDirection('ascending');
+      setSortState(newState);
     }
   };
 
@@ -847,16 +853,8 @@ const VariablesPageDesktop: React.FC = () => {
     // 2. Variable (Index/ID)
     createTableColumn<VariablePoint>({
       columnId: 'variable',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('variable')}>
-          <span>Variable</span>
-          {sortColumn === 'variable' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => String(a.variableId || '').localeCompare(String(b.variableId || '')),
+      renderHeaderCell: () => <span>Variable</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {
           return <TableCellLayout></TableCellLayout>;
@@ -893,16 +891,8 @@ const VariablesPageDesktop: React.FC = () => {
     // 3. Full Label
     createTableColumn<VariablePoint>({
       columnId: 'fullLabel',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('fullLabel')}>
-          <span>Full Label</span>
-          {sortColumn === 'fullLabel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => String(a.fullLabel || '').localeCompare(String(b.fullLabel || '')),
+      renderHeaderCell: () => <span>Full Label</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {
           return <TableCellLayout></TableCellLayout>;
@@ -956,16 +946,8 @@ const VariablesPageDesktop: React.FC = () => {
     // 3. Label (short label)
     createTableColumn<VariablePoint>({
       columnId: 'label',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('label')}>
-          <span>Label</span>
-          {sortColumn === 'label' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => String(a.label || '').localeCompare(String(b.label || '')),
+      renderHeaderCell: () => <span>Label</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {
           return <TableCellLayout></TableCellLayout>;
@@ -1019,16 +1001,8 @@ const VariablesPageDesktop: React.FC = () => {
     // 5. Value
     createTableColumn<VariablePoint>({
       columnId: 'value',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} style={{ justifyContent: 'flex-end', width: '100%' }} onClick={() => handleSort('value')}>
-          <span>Value</span>
-          {sortColumn === 'value' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => { const av = parseFloat(a.fValue||'0'); const bv = parseFloat(b.fValue||'0'); return av - bv; },
+      renderHeaderCell: () => <span>Value</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {
           return <TableCellLayout></TableCellLayout>;
@@ -1083,16 +1057,8 @@ const VariablesPageDesktop: React.FC = () => {
     // 6. Units
     createTableColumn<VariablePoint>({
       columnId: 'units',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('units')}>
-          <span>Units</span>
-          {sortColumn === 'units' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => String(a.units || '').localeCompare(String(b.units || '')),
+      renderHeaderCell: () => <span>Units</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {
           return <TableCellLayout></TableCellLayout>;
@@ -1399,11 +1365,14 @@ const VariablesPageDesktop: React.FC = () => {
                     onWheel={handleWheel}
                   >
                     <DataGrid
+                      key={sortKey}
                       items={displayVariables}
                       columns={columns}
-                      sortable
                       resizableColumns
                       resizableColumnsOptions={{ autoFitColumns: false }}
+                      sortable
+                      sortState={sortState}
+                      onSortChange={handleSortChange}
                       style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
                       columnSizingOptions={{
                         panel: { idealWidth: 60, minWidth: 40 },
