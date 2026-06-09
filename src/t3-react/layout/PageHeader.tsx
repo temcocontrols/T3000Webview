@@ -138,6 +138,7 @@ const routeToBreadcrumb: Record<string, { label: string; segments?: string[] }> 
   '/t3000/develop/database': { label: 'Database Viewer', segments: ['Developer', 'Database Viewer'] },
   '/t3000/develop/transport': { label: 'Transport Tester', segments: ['Developer', 'Transport Tester'] },
   '/t3000/develop/logs': { label: 'T3000 Logs', segments: ['Developer', 'T3000 Logs'] },
+  '/t3000/developer/fluentui-v9': { label: 'FluentUI v9', segments: ['Developer', 'FluentUI v9'] },
 };
 
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => {

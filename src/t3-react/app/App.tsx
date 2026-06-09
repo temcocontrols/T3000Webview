@@ -123,6 +123,9 @@ const HvacDesignerPage = React.lazy(() =>
 const DocumentationPage = React.lazy(() =>
   import('../features/documentation/pages/DocumentationPage').then((m) => ({ default: m.DocumentationPage }))
 );
+const FluentUIV9Page = React.lazy(() =>
+  import('../features/developer/pages/FluentUIV9Page').then((m) => ({ default: m.FluentUIV9Page }))
+);
 
 // Develop section - special layout
 const DevelopLayoutWrapper = React.lazy(() =>
@@ -368,6 +371,14 @@ export const App: React.FC = () => {
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <SyncConfigurationPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="developer/fluentui-v9"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <FluentUIV9Page />
                     </React.Suspense>
                   }
                 />

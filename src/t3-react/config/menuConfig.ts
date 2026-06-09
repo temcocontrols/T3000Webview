@@ -660,6 +660,17 @@ const developerMenu: MenuItem = {
       action: () => window.location.hash = '#/t3000/develop/logs',
       icon: 'CalendarDataBar',
     },
+    {
+      id: 'dev-divider-2',
+      type: 'divider',
+    },
+    {
+      id: 'dev-fluentui-v9',
+      label: 'FluentUI v9',
+      type: 'item',
+      action: () => window.location.hash = '#/t3000/developer/fluentui-v9',
+      icon: 'WindowDevTools',
+    },
   ],
 };
 
