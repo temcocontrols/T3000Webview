@@ -1402,6 +1402,17 @@ const VariablesPageDesktop: React.FC = () => {
                       items={displayVariables}
                       columns={columns}
                       sortable
+                      resizableColumns
+                      columnSizingOptions={{
+                        panel: { minWidth: 60, idealWidth: 80 },
+                        variable: { minWidth: 80, idealWidth: 100 },
+                        fullLabel: { minWidth: 120, idealWidth: 200 },
+                        label: { minWidth: 80, idealWidth: 120 },
+                        value: { minWidth: 70, idealWidth: 90 },
+                        units: { minWidth: 60, idealWidth: 80 },
+                        autoManual: { minWidth: 60, idealWidth: 90 },
+                        tags: { minWidth: 100, idealWidth: 150 },
+                      }}
                     >
                       <DataGridHeader>
                         <DataGridRow>

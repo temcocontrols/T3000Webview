@@ -324,110 +324,27 @@
  *              lowVoltage, highVoltage, pwmPeriod, status, signalType
  */
 
-/* 1. Panel - 4% (center) */
+/* Column alignment only — sizing is handled by FluentUI DataGrid columnSizingOptions */
+/* 1. Panel (center) */
 .container :global(.fui-DataGridHeaderCell):nth-child(1),
 .container :global(.fui-DataGridCell):nth-child(1) {
-  width: 4%;
-  min-width: 40px;
-  flex: 0 0 4%;
   justify-content: center;
   text-align: center;
 }
-/* 2. Output - 5% */
-.container :global(.fui-DataGridHeaderCell):nth-child(2),
-.container :global(.fui-DataGridCell):nth-child(2) {
-  width: 5%;
-  min-width: 50px;
-  flex: 0 0 5%;
-}
-/* 3. Full Label - fills remaining space */
-.container :global(.fui-DataGridHeaderCell):nth-child(3),
-.container :global(.fui-DataGridCell):nth-child(3) {
-  width: 11%;
-  min-width: 100px;
-  flex: 1 0 11%;
-}
-/* 4. Label - 9% */
-.container :global(.fui-DataGridHeaderCell):nth-child(4),
-.container :global(.fui-DataGridCell):nth-child(4) {
-  width: 9%;
-  min-width: 65px;
-  flex: 0 0 9%;
-}
-/* 5. Auto/Man - 7% */
-.container :global(.fui-DataGridHeaderCell):nth-child(5),
-.container :global(.fui-DataGridCell):nth-child(5) {
-  width: 7%;
-  min-width: 60px;
-  flex: 0 0 7%;
-}
-/* 6. HOA Switch - 8% */
-.container :global(.fui-DataGridHeaderCell):nth-child(6),
-.container :global(.fui-DataGridCell):nth-child(6) {
-  width: 8%;
-  min-width: 90px;
-  flex: 0 0 8%;
-}
-/* 7. Value - 9% (right align with values) */
+/* 7. Value (right align) */
 .container :global(.fui-DataGridHeaderCell):nth-child(7) {
   justify-content: flex-end;
   text-align: right;
 }
-.container :global(.fui-DataGridHeaderCell):nth-child(7),
-.container :global(.fui-DataGridCell):nth-child(7) {
-  width: 10%;
-  min-width: 80px;
-  flex: 0 0 10%;
-}
-/* 8. Units - 9% (center header) */
+/* 8. Units (center) */
 .container :global(.fui-DataGridHeaderCell):nth-child(8) {
   justify-content: center;
   text-align: center;
 }
-.container :global(.fui-DataGridHeaderCell):nth-child(8),
-.container :global(.fui-DataGridCell):nth-child(8) {
-  width: 9%;
-  min-width: 75px;
-  flex: 0 0 9%;
-}
-/* 9. Range - 12% (center header) */
+/* 9. Range (center) */
 .container :global(.fui-DataGridHeaderCell):nth-child(9) {
   justify-content: center;
   text-align: center;
-}
-.container :global(.fui-DataGridHeaderCell):nth-child(9),
-.container :global(.fui-DataGridCell):nth-child(9) {
-  width: 12%;
-  min-width: 110px;
-  flex: 0 0 12%;
-}
-/* 10. Low V - 5% */
-.container :global(.fui-DataGridHeaderCell):nth-child(10),
-.container :global(.fui-DataGridCell):nth-child(10) {
-  width: 5%;
-  min-width: 50px;
-  flex: 0 0 5%;
-}
-/* 11. High V - 5% */
-.container :global(.fui-DataGridHeaderCell):nth-child(11),
-.container :global(.fui-DataGridCell):nth-child(11) {
-  width: 5%;
-  min-width: 50px;
-  flex: 0 0 5%;
-}
-/* 12. Status - 6% */
-.container :global(.fui-DataGridHeaderCell):nth-child(12),
-.container :global(.fui-DataGridCell):nth-child(12) {
-  width: 6%;
-  min-width: 55px;
-  flex: 0 0 6%;
-}
-/* 13. Type - fixed 6% */
-.container :global(.fui-DataGridHeaderCell):nth-child(13),
-.container :global(.fui-DataGridCell):nth-child(13) {
-  width: 6%;
-  min-width: 80px;
-  flex: 0 0 6%;
 }
 
 /* Header cell styling - modern clean design */
@@ -518,32 +435,6 @@
   font-family: inherit;
   line-height: normal;
   white-space: nowrap;
-}
-
-/* Force TableCellLayout to full width for badge columns: Value(7), Units(8), Range(9), Type(13) */
-.container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout) > *,
-.container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout__content) {
-  width: 100% !important;
-  flex: 1 1 100% !important;
-}
-.container :global(.fui-DataGridCell):nth-child(8) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridCell):nth-child(8) :global(.fui-TableCellLayout) > *,
-.container :global(.fui-DataGridCell):nth-child(8) :global(.fui-TableCellLayout__content) {
-  width: 100% !important;
-  flex: 1 1 100% !important;
-}
-.container :global(.fui-DataGridCell):nth-child(9) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridCell):nth-child(9) :global(.fui-TableCellLayout) > *,
-.container :global(.fui-DataGridCell):nth-child(9) :global(.fui-TableCellLayout__content) {
-  width: 100% !important;
-  flex: 1 1 100% !important;
-}
-.container :global(.fui-DataGridCell):nth-child(13) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridCell):nth-child(13) :global(.fui-TableCellLayout) > *,
-.container :global(.fui-DataGridCell):nth-child(13) :global(.fui-TableCellLayout__content) {
-  width: 100% !important;
-  flex: 1 1 100% !important;
 }
 
 /* Links in grid - Azure Portal link color */

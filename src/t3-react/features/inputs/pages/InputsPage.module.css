@@ -339,127 +339,45 @@
  *              calibration_sign, filter, status, type
  */
 
-/* 1. Panel - 4% (center) */
+/* Column alignment only — sizing is handled by FluentUI DataGrid columnSizingOptions */
+/* 1. Panel (center) */
 .container :global(.fui-DataGridHeaderCell):nth-child(1),
 .container :global(.fui-DataGridCell):nth-child(1) {
-  width: 4%;
-  min-width: 40px;
-  flex: 0 0 4%;
   justify-content: center;
   text-align: center;
 }
-/* 2. Input - 6% (left) */
-.container :global(.fui-DataGridHeaderCell):nth-child(2),
-.container :global(.fui-DataGridCell):nth-child(2) {
-  width: 6%;
-  min-width: 55px;
-  flex: 0 0 6%;
-}
-/* 3. Full Label - 18% (left) */
-.container :global(.fui-DataGridHeaderCell):nth-child(3),
-.container :global(.fui-DataGridCell):nth-child(3) {
-  width: 18%;
-  min-width: 120px;
-  flex: 0 0 18%;
-}
-/* 4. Label - 11% (left) */
-.container :global(.fui-DataGridHeaderCell):nth-child(4),
-.container :global(.fui-DataGridCell):nth-child(4) {
-  width: 11%;
-  min-width: 75px;
-  flex: 0 0 11%;
-}
-/* 5. Auto/Man - 7% (left) */
-.container :global(.fui-DataGridHeaderCell):nth-child(5),
-.container :global(.fui-DataGridCell):nth-child(5) {
-  width: 7%;
-  min-width: 65px;
-  flex: 0 0 7%;
-}
-/* 6. Value - 9% (right align with values) */
+/* 6. Value (right align) */
 .container :global(.fui-DataGridHeaderCell):nth-child(6) {
   justify-content: flex-end;
   text-align: right;
 }
-.container :global(.fui-DataGridHeaderCell):nth-child(6),
-.container :global(.fui-DataGridCell):nth-child(6) {
-  width: 9%;
-  min-width: 75px;
-  flex: 0 0 9%;
-}
-.container :global(.fui-DataGridCell):nth-child(6) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridCell):nth-child(6) :global(.fui-TableCellLayout) > *,
-.container :global(.fui-DataGridCell):nth-child(6) :global(.fui-TableCellLayout__content) {
-  width: 100% !important;
-  flex: 1 1 100% !important;
-}
-/* 7. Units - 7% (center header) */
+/* 7. Units (center) */
 .container :global(.fui-DataGridHeaderCell):nth-child(7) {
   justify-content: center;
   text-align: center;
 }
-.container :global(.fui-DataGridHeaderCell):nth-child(7),
-.container :global(.fui-DataGridCell):nth-child(7) {
-  width: 7%;
-  min-width: 55px;
-  flex: 0 0 7%;
-}
-.container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout) > *,
-.container :global(.fui-DataGridCell):nth-child(7) :global(.fui-TableCellLayout__content) {
-  width: 100% !important;
-  flex: 1 1 100% !important;
-}
-/* 8. Range - 13% (center header) */
+/* 8. Range (center) */
 .container :global(.fui-DataGridHeaderCell):nth-child(8) {
   justify-content: center;
   text-align: center;
 }
-.container :global(.fui-DataGridHeaderCell):nth-child(8),
-.container :global(.fui-DataGridCell):nth-child(8) {
-  width: 13%;
-  min-width: 120px;
-  flex: 0 0 13%;
-}
-.container :global(.fui-DataGridCell):nth-child(8) :global(.fui-TableCellLayout),
-.container :global(.fui-DataGridCell):nth-child(8) :global(.fui-TableCellLayout) > *,
-.container :global(.fui-DataGridCell):nth-child(8) :global(.fui-TableCellLayout__content) {
-  width: 100% !important;
-  flex: 1 1 100% !important;
-}
-/* 9. Cal/Sign - 8% (center) */
+/* 9. Cal/Sign (center) */
 .container :global(.fui-DataGridHeaderCell):nth-child(9),
 .container :global(.fui-DataGridCell):nth-child(9) {
-  width: 8%;
-  min-width: 65px;
-  flex: 0 0 8%;
   justify-content: center;
   text-align: center;
 }
-/* 10. Filter - 5% (center) */
+/* 10. Filter (center) */
 .container :global(.fui-DataGridHeaderCell):nth-child(10),
 .container :global(.fui-DataGridCell):nth-child(10) {
-  width: 5%;
-  min-width: 40px;
-  flex: 0 0 5%;
   justify-content: center;
   text-align: center;
 }
-/* 11. Status - 6% (center) */
+/* 11. Status (center) */
 .container :global(.fui-DataGridHeaderCell):nth-child(11),
 .container :global(.fui-DataGridCell):nth-child(11) {
-  width: 6%;
-  min-width: 55px;
-  flex: 0 0 6%;
   justify-content: center;
   text-align: center;
-}
-/* 12. Type - fills remaining space (left) */
-.container :global(.fui-DataGridHeaderCell):nth-child(12),
-.container :global(.fui-DataGridCell):nth-child(12) {
-  width: 5%;
-  min-width: 50px;
-  flex: 1 0 5%;
 }
 
 /* Header cell styling - modern clean design */
@@ -544,7 +462,6 @@
 .container :global(.fui-DataGridCell):nth-child(13) :global(.fui-TableCellLayout) {
   justify-content: center;
   text-align: center;
-  width: 100%;
 }
 
 /* TableCellLayout inside centered header columns */
@@ -556,7 +473,6 @@
 .container :global(.fui-DataGridHeaderCell):nth-child(13) :global(.fui-TableCellLayout) {
   justify-content: center;
   text-align: center;
-  width: 100%;
 }
 
 /* All nested elements in centered header columns - force center */
@@ -568,7 +484,6 @@
 .container :global(.fui-DataGridHeaderCell):nth-child(13) * {
   justify-content: center !important;
   text-align: center !important;
-  flex: 0 0 auto !important;
 }
 
 /* All nested elements in centered columns */
@@ -580,7 +495,6 @@
 .container :global(.fui-DataGridCell):nth-child(13) * {
   justify-content: center !important;
   text-align: center !important;
-  flex: 0 0 auto !important;
 }
 
 /* Links in grid - Azure Portal link color */
