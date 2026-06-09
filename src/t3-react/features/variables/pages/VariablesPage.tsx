@@ -1006,7 +1006,7 @@ const VariablesPageDesktop: React.FC = () => {
           editingCell?.field === 'fValue';
 
         return (
-          <TableCellLayout  style={{backgroundColor:'#dff6dd'}}>
+          <TableCellLayout style={{backgroundColor:'#dff6dd'}}>
             {isEditing ? (
               <div className={styles.editInputContainer}>
                 <input
