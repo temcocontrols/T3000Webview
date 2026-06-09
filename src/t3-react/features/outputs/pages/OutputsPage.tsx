@@ -1482,8 +1482,27 @@ const OutputsPageDesktop: React.FC = () => {
                       items={displayOutputs}
                       columns={columns}
                       sortable
+                      resizableColumns
+                      resizableColumnsOptions={{ autoFitColumns: false }}
+                      style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
+                      columnSizingOptions={{
+                        panel: { idealWidth: 50, minWidth: 40 },
+                        output: { idealWidth: 70, minWidth: 55 },
+                        fullLabel: { idealWidth: 130, minWidth: 80 },
+                        label: { idealWidth: 80, minWidth: 55 },
+                        autoManual: { idealWidth: 60, minWidth: 50 },
+                        hoaSwitch: { idealWidth: 70, minWidth: 55 },
+                        value: { idealWidth: 60, minWidth: 50 },
+                        units: { idealWidth: 50, minWidth: 40 },
+                        range: { idealWidth: 80, minWidth: 60 },
+                        lowVoltage: { idealWidth: 60, minWidth: 45 },
+                        highVoltage: { idealWidth: 60, minWidth: 45 },
+                        status: { idealWidth: 50, minWidth: 40 },
+                        signalType: { idealWidth: 70, minWidth: 55 },
+                        tags: { idealWidth: 100, minWidth: 70 },
+                      }}
                     >
-                      <DataGridHeader>
+                      <DataGridHeader style={{ backgroundColor: '#e0e0e0' }}>
                         <DataGridRow>
                           {({ renderHeaderCell }) => (
                             <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>

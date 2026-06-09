@@ -1402,8 +1402,21 @@ const VariablesPageDesktop: React.FC = () => {
                       items={displayVariables}
                       columns={columns}
                       sortable
+                      resizableColumns
+                      resizableColumnsOptions={{ autoFitColumns: false }}
+                      style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
+                      columnSizingOptions={{
+                        panel: { idealWidth: 60, minWidth: 40 },
+                        variable: { idealWidth: 90, minWidth: 60 },
+                        fullLabel: { idealWidth: 180, minWidth: 100 },
+                        label: { idealWidth: 100, minWidth: 60 },
+                        value: { idealWidth: 80, minWidth: 55 },
+                        units: { idealWidth: 60, minWidth: 40 },
+                        autoManual: { idealWidth: 80, minWidth: 55 },
+                        tags: { idealWidth: 120, minWidth: 80 },
+                      }}
                     >
-                      <DataGridHeader>
+                      <DataGridHeader style={{ backgroundColor: '#e0e0e0' }}>
                         <DataGridRow>
                           {({ renderHeaderCell }) => (
                             <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>

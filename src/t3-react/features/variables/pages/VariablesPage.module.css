@@ -276,129 +276,16 @@
   margin-top: auto;
 }
 
-/* Azure Portal Grid - fxc-gc-dataGrid styling - SCOPED to VariablesPage only */
-.container :global(.fui-DataGrid) {
-  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
-  font-size: 12px;
-  font-weight: 400;
-  color: #292827;
-  border: none;
-  background-color: #ffffff;
-  display: flex;
-  flex-direction: column;
-  min-height: fit-content;
-  width: 100%;
-}
-
-/* Header row styling - modern clean design */
+/* Grid visual styling — no width/sizing (handled by FluentUI) */
 .container :global(.fui-DataGridHeader) {
   background-color: #d6e4f7;
   border-bottom: 2px solid #b8cce4;
-  flex-shrink: 0;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  width: 100%;
 }
-
-  /* Header row inside DataGridHeader */
-  .container :global(.fui-DataGridHeader) :global(.fui-DataGridRow) {
-    background-color: #d6e4f7;
-    width: 100%;
-  }
-
-    .container :global(.fui-DataGridHeader) :global(.fui-DataGridRow):hover {
-      background-color: #d6e4f7;
-    }
-
-/* Data body - scrollable area */
-.container :global(.fui-DataGridBody) {
-  flex: 1 1 auto;
-  min-height: 0;
+.container :global(.fui-DataGridHeader) :global(.fui-DataGridRow) {
+  background-color: #d6e4f7;
 }
-
-/*
- * Percentage-based column widths (total = 100%)
- * Column order: panel, variable, fullLabel, label, autoManual, value, units
- */
-
-/* 1. Panel - 4% */
-.container :global(.fui-DataGridHeaderCell):nth-child(1),
-.container :global(.fui-DataGridCell):nth-child(1) {
-  width: 4%;
-  min-width: 40px;
-  flex: 0 0 4%;
-}
-/* 2. Variable - 6% */
-.container :global(.fui-DataGridHeaderCell):nth-child(2),
-.container :global(.fui-DataGridCell):nth-child(2) {
-  width: 6%;
-  min-width: 55px;
-  flex: 0 0 6%;
-}
-/* 3. Full Label - 14% */
-.container :global(.fui-DataGridHeaderCell):nth-child(3),
-.container :global(.fui-DataGridCell):nth-child(3) {
-  width: 14%;
-  min-width: 100px;
-  flex: 1 0 14%;
-}
-/* 4. Label - 22% */
-.container :global(.fui-DataGridHeaderCell):nth-child(4),
-.container :global(.fui-DataGridCell):nth-child(4) {
-  width: 22%;
-  min-width: 120px;
-  flex: 0 0 22%;
-}
-/* 5. Value - 13% (right align with values) */
-.container :global(.fui-DataGridHeaderCell):nth-child(5) {
-  justify-content: flex-end;
-  text-align: right;
-}
-
-.container :global(.fui-DataGridHeaderCell):nth-child(5),
-.container :global(.fui-DataGridCell):nth-child(5) {
-  width: 13%;
-  min-width: 80px;
-  flex: 0 0 13%;
-}
-
-  .container :global(.fui-DataGridCell):nth-child(5) :global(.fui-TableCellLayout),
-  .container :global(.fui-DataGridCell):nth-child(5) :global(.fui-TableCellLayout) > *,
-  .container :global(.fui-DataGridCell):nth-child(5) :global(.fui-TableCellLayout__content) {
-    width: 100% !important;
-    flex: 1 1 100% !important;
-  }
-/* 6. Units - 9% (center header) */
-.container :global(.fui-DataGridHeaderCell):nth-child(6) {
-  justify-content: center;
-  text-align: center;
-}
-
-.container :global(.fui-DataGridHeaderCell):nth-child(6),
-.container :global(.fui-DataGridCell):nth-child(6) {
-  width: 9%;
-  min-width: 60px;
-  flex: 0 0 9%;
-}
-
-  .container :global(.fui-DataGridCell):nth-child(6) :global(.fui-TableCellLayout),
-  .container :global(.fui-DataGridCell):nth-child(6) :global(.fui-TableCellLayout) > *,
-  .container :global(.fui-DataGridCell):nth-child(6) :global(.fui-TableCellLayout__content) {
-    width: 100% !important;
-    flex: 1 1 100% !important;
-  }
-/* 7. Auto/Manual - 8% */
-.container :global(.fui-DataGridHeaderCell):nth-child(7),
-.container :global(.fui-DataGridCell):nth-child(7) {
-  width: 8%;
-  min-width: 65px;
-  flex: 0 0 8%;
-}
-
-/* Header cell styling - modern clean design */
 .container :global(.fui-DataGridHeaderCell) {
-  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  font-family: 'Segoe UI', sans-serif;
   font-size: 12px;
   font-weight: 600;
   color: #2c4c7c;
@@ -410,104 +297,37 @@
   border-bottom: none;
   cursor: pointer;
   transition: color 0.15s ease, background-color 0.15s ease;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  box-sizing: border-box;
 }
-
-  /* Header cell hover */
-  .container :global(.fui-DataGridHeaderCell):hover {
-    background-color: #c8d9f0;
-    color: #1b3a5c;
-  }
-
-  /* Sort icon styling */
-  .container :global(.fui-DataGridHeaderCell) svg {
-    width: 12px;
-    height: 12px;
-    color: #5b7da5;
-    flex-shrink: 0;
-  }
-
-/* Data row styling - matches fxc-gc-row */
+.container :global(.fui-DataGridHeaderCell):hover {
+  background-color: #c8d9f0;
+  color: #1b3a5c;
+}
+.container :global(.fui-DataGridHeaderCell) svg {
+  width: 12px;
+  height: 12px;
+  color: #5b7da5;
+  flex-shrink: 0;
+}
 .container :global(.fui-DataGridRow) {
   border-bottom: 1px solid #e5e5e5;
   min-height: 32px;
-  background-color: #ffffff;
-  transition: background-color 0.1s ease;
-  display: flex;
-  width: 100%;
+  background-color: #fff;
 }
-
-  /* Row hover - matches fxs-portal-hover */
-  .container :global(.fui-DataGridRow):hover {
-    background-color: #f3f2f1;
-  }
-
-/* Data cell styling - matches fxc-gc-cell */
+.container :global(.fui-DataGridRow):hover {
+  background-color: #f3f2f1;
+}
 .container :global(.fui-DataGridCell) {
-  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  font-family: 'Segoe UI', sans-serif;
   font-size: 12px;
   font-weight: 400;
   color: #292827;
   padding: 0 12px;
   min-height: 32px;
   border-right: 1px solid #ebebeb;
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  box-sizing: border-box;
 }
-
-/* Remove right border from last header cell and last data cell */
-.container :global(.fui-DataGridHeaderCell):last-child {
-  border-right: none;
-}
-
+.container :global(.fui-DataGridHeaderCell):last-child,
 .container :global(.fui-DataGridCell):last-child {
   border-right: none;
-}
-
-/* Badge styling - compact badges */
-.container :global(.fui-Badge) {
-  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
-  font-size: 11px;
-  font-weight: 400;
-  padding: 1px 5px;
-  border-radius: 2px;
-}
-
-/* TableCellLayout - inherits cell font */
-.container :global(.fui-TableCellLayout) {
-  font-size: 12px;
-  font-family: inherit;
-  line-height: normal;
-}
-
-/* Links in grid - Azure Portal link color */
-.container :global(.fui-DataGridCell) a {
-  color: #0078d4;
-  text-decoration: none;
-}
-
-  .container :global(.fui-DataGridCell) a:hover {
-    color: #004578;
-    text-decoration: underline;
-  }
-
-/* Remove any default Fluent UI styles that conflict */
-.container :global(.fui-DataGridHeaderCell) > * {
-  line-height: normal;
-}
-
-.container :global(.fui-DataGridCell) > * {
-  line-height: normal;
-}
-
-/* Grid border wrapper */
-.container :global(.fui-DataGrid-root) {
-  border: 1px solid #edebe9;
 }
 
 /* Editable cell styles */

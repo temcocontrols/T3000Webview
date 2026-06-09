@@ -1455,8 +1455,26 @@ const InputsPageDesktop: React.FC = () => {
                       items={displayInputs}
                       columns={columns}
                       sortable
+                      resizableColumns
+                      resizableColumnsOptions={{ autoFitColumns: false }}
+                      style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
+                      columnSizingOptions={{
+                        panel: { idealWidth: 50, minWidth: 40 },
+                        input: { idealWidth: 70, minWidth: 55 },
+                        fullLabel: { idealWidth: 130, minWidth: 80 },
+                        label: { idealWidth: 80, minWidth: 55 },
+                        autoManual: { idealWidth: 60, minWidth: 50 },
+                        value: { idealWidth: 60, minWidth: 50 },
+                        units: { idealWidth: 50, minWidth: 40 },
+                        range: { idealWidth: 80, minWidth: 60 },
+                        calibration_sign: { idealWidth: 60, minWidth: 45 },
+                        filter: { idealWidth: 50, minWidth: 40 },
+                        status: { idealWidth: 50, minWidth: 40 },
+                        type: { idealWidth: 60, minWidth: 50 },
+                        tags: { idealWidth: 100, minWidth: 70 },
+                      }}
                     >
-                    <DataGridHeader>
+                    <DataGridHeader style={{ backgroundColor: '#e0e0e0' }}>
                       <DataGridRow>
                         {({ renderHeaderCell }) => (
                           <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
