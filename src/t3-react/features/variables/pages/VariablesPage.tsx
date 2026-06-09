@@ -37,9 +37,6 @@ import {
 import {
   ArrowSyncRegular,
   SearchRegular,
-  ArrowSortUpRegular,
-  ArrowSortDownRegular,
-  ArrowSortRegular,
   ErrorCircleRegular,
   SaveRegular,
   InfoRegular
@@ -774,10 +771,6 @@ const VariablesPageDesktop: React.FC = () => {
     console.log('Search query:', e.target.value);
   };
 
-  // Sorting state
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
-
   // Controlled sort state for asc→desc→clear
   const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
   const [sortKey, setSortKey] = useState(0);
@@ -853,7 +846,7 @@ const VariablesPageDesktop: React.FC = () => {
     // 2. Variable (Index/ID)
     createTableColumn<VariablePoint>({
       columnId: 'variable',
-      compare: (a, b) => String(a.variableId || '').localeCompare(String(b.variableId || '')),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.variableId || ''), String(b.variableId || '')),
       renderHeaderCell: () => <span>Variable</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {
@@ -891,7 +884,7 @@ const VariablesPageDesktop: React.FC = () => {
     // 3. Full Label
     createTableColumn<VariablePoint>({
       columnId: 'fullLabel',
-      compare: (a, b) => String(a.fullLabel || '').localeCompare(String(b.fullLabel || '')),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.fullLabel || ''), String(b.fullLabel || '')),
       renderHeaderCell: () => <span>Full Label</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {
@@ -946,7 +939,7 @@ const VariablesPageDesktop: React.FC = () => {
     // 3. Label (short label)
     createTableColumn<VariablePoint>({
       columnId: 'label',
-      compare: (a, b) => String(a.label || '').localeCompare(String(b.label || '')),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.label || ''), String(b.label || '')),
       renderHeaderCell: () => <span>Label</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {
@@ -1057,7 +1050,7 @@ const VariablesPageDesktop: React.FC = () => {
     // 6. Units
     createTableColumn<VariablePoint>({
       columnId: 'units',
-      compare: (a, b) => String(a.units || '').localeCompare(String(b.units || '')),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.units || ''), String(b.units || '')),
       renderHeaderCell: () => <span>Units</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {

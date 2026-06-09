@@ -39,9 +39,6 @@ import {
 import {
   ArrowSyncRegular,
   SearchRegular,
-  ArrowSortUpRegular,
-  ArrowSortDownRegular,
-  ArrowSortRegular,
   ErrorCircleRegular,
   SaveRegular,
   InfoRegular,
@@ -748,16 +745,18 @@ const InputsPageDesktop: React.FC = () => {
     console.log('Search query:', e.target.value);
   };
 
-  // Sorting state
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
-
-  const handleSort = (columnId: string) => {
-    if (sortColumn === columnId) {
-      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
+  // Controlled sort state for asc→desc→clear
+  const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
+  const [sortKey, setSortKey] = useState(0);
+  const prevSortRef = React.useRef<{ sortColumn: string; sortDirection: string } | undefined>();
+  const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
+    const prev = prevSortRef.current;
+    prevSortRef.current = newState;
+    if (prev?.sortColumn === newState.sortColumn && prev?.sortDirection === 'descending' && newState.sortDirection === 'ascending') {
+      setSortState(undefined);
+      setSortKey(k => k + 1);
     } else {
-      setSortColumn(columnId);
-      setSortDirection('ascending');
+      setSortState(newState);
     }
   };
 
@@ -812,16 +811,8 @@ const InputsPageDesktop: React.FC = () => {
     // 2. Input (Index/ID)
     createTableColumn<InputPoint>({
       columnId: 'input',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('input')}>
-          <span>Input</span>
-          {sortColumn === 'input' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.inputId || a.inputIndex || ''), String(b.inputId || b.inputIndex || '')),
+      renderHeaderCell: () => <span>Input</span>,
       renderCell: (item) => {
         const inputIndex = item.inputIndex || '';
         const isRefreshingThis = refreshingItems.has(inputIndex);
@@ -855,16 +846,8 @@ const InputsPageDesktop: React.FC = () => {
     // 3. Full Label
     createTableColumn<InputPoint>({
       columnId: 'fullLabel',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('fullLabel')}>
-          <span>Full Label</span>
-          {sortColumn === 'fullLabel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.fullLabel || ''), String(b.fullLabel || '')),
+      renderHeaderCell: () => <span>Full Label</span>,
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
                           editingCell?.inputIndex === item.inputIndex &&
@@ -916,16 +899,8 @@ const InputsPageDesktop: React.FC = () => {
     // 4. Label (short label)
     createTableColumn<InputPoint>({
       columnId: 'label',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('label')}>
-          <span>Label</span>
-          {sortColumn === 'label' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.label || ''), String(b.label || '')),
+      renderHeaderCell: () => <span>Label</span>,
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
                           editingCell?.inputIndex === item.inputIndex &&
@@ -1067,16 +1042,8 @@ const InputsPageDesktop: React.FC = () => {
     // 5. Value
     createTableColumn<InputPoint>({
       columnId: 'value',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} style={{ justifyContent: 'flex-end', width: '100%' }} onClick={() => handleSort('value')}>
-          <span>Value</span>
-          {sortColumn === 'value' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => { const av = parseFloat(a.fValue || '0'); const bv = parseFloat(b.fValue || '0'); return av - bv; },
+      renderHeaderCell: () => <span>Value</span>,
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
                           editingCell?.inputIndex === item.inputIndex &&
@@ -1131,16 +1098,8 @@ const InputsPageDesktop: React.FC = () => {
     // 6. Units
     createTableColumn<InputPoint>({
       columnId: 'units',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('units')}>
-          <span>Units</span>
-          {sortColumn === 'units' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.units || ''), String(b.units || '')),
+      renderHeaderCell: () => <span>Units</span>,
       renderCell: (item) => {
         const rangeValue = parseInt(item.rangeField || item.range || '0', 10);
         const digitalAnalog = parseInt(item.digitalAnalog || '0', 10);
@@ -1157,16 +1116,8 @@ const InputsPageDesktop: React.FC = () => {
     // 7. Range
     createTableColumn<InputPoint>({
       columnId: 'range',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('range')}>
-          <span>Range</span>
-          {sortColumn === 'range' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.range || ''), String(b.range || '')),
+      renderHeaderCell: () => <span>Range</span>,
       renderCell: (item) => {
         // Parse range value and digital_analog type
         const rangeValue = parseInt(item.rangeField || item.range || '0', 10);
@@ -1452,9 +1403,12 @@ const InputsPageDesktop: React.FC = () => {
                     onWheel={handleWheel}
                   >
                     <DataGrid
+                      key={sortKey}
                       items={displayInputs}
                       columns={columns}
                       sortable
+                      sortState={sortState}
+                      onSortChange={handleSortChange}
                       resizableColumns
                       resizableColumnsOptions={{ autoFitColumns: false }}
                       style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
