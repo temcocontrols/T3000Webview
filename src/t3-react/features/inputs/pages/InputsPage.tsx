@@ -38,6 +38,7 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SearchRegular,
   ErrorCircleRegular,
   SaveRegular,
@@ -56,7 +57,7 @@ import { InputsPageMobile } from '@t3-mobile/features/inputs/pages/InputsPageMob
 import styles from './InputsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
-import { TagsColumnCell } from '../components/TagsColumnCell';
+import { TagsColumnCell, fetchTagsForDevice } from '../components/TagsColumnCell';
 
 // Types based on Rust entity (input_points.rs)
 interface InputPoint {
@@ -665,6 +666,23 @@ const InputsPageDesktop: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Point tags for tag-based search filtering
+  const [pointTags, setPointTags] = useState<{ pointType: string; pointIndex: string; tagName: string }[]>([]);
+
+  useEffect(() => {
+    if (!selectedDevice?.serialNumber) return;
+    let cancelled = false;
+    fetchTagsForDevice(selectedDevice.serialNumber).then((all) => {
+      if (cancelled) return;
+      setPointTags(all.map(t => ({
+        pointType: t.point_type,
+        pointIndex: t.point_index,
+        tagName: t.tag_name,
+      })));
+    });
+    return () => { cancelled = true; };
+  }, [selectedDevice?.serialNumber]);
+
   // Inline editing state
   const [editingCell, setEditingCell] = useState<{ serialNumber: number; inputIndex: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -760,36 +778,40 @@ const InputsPageDesktop: React.FC = () => {
     }
   };
 
-  // Display data with 10 empty rows when no inputs
+  // Display data with search and tag filtering
   const displayInputs = React.useMemo(() => {
+    let filtered = inputs;
+
+    // Search filter — match against label, full label, ID, value, and tags
+    if (searchQuery.trim() && inputs.length > 0) {
+      const q = searchQuery.toLowerCase();
+      filtered = inputs.filter(v => {
+        if (
+          (v.label || '').toLowerCase().includes(q) ||
+          (v.fullLabel || '').toLowerCase().includes(q) ||
+          String(v.inputId || '').toLowerCase().includes(q) ||
+          String(v.inputIndex || '').toLowerCase().includes(q) ||
+          (v.fValue ? (parseFloat(v.fValue) / 1000).toFixed(2) : '').includes(q)
+        ) return true;
+        const inputTags = pointTags.filter(
+          t => t.pointType === 'INPUT' && t.pointIndex === (v.inputIndex || '')
+        );
+        return inputTags.some(t => t.tagName.toLowerCase().includes(q));
+      });
+    }
+
     if (inputs.length === 0) {
-      return Array(18).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map(() => ({
         serialNumber: selectedDevice?.serialNumber || 0,
-        inputId: '',
-        inputIndex: '',
-        panel: '',
-        fullLabel: '',
-        autoManual: '',
-        fValue: '',
-        units: '',
-        range: '',
-        rangeField: '',
-        calibration: '',
-        sign: '',
-        calibrationH: '',
-        calibrationL: '',
-        calibrationSign: '',
-        control: '',
-        filterField: '',
-        status: '',
-        signalType: '',
-        digitalAnalog: '',
-        label: '',
-        typeField: '',
+        inputId: '', inputIndex: '', panel: '', fullLabel: '', autoManual: '',
+        fValue: '', units: '', range: '', rangeField: '', calibration: '',
+        sign: '', calibrationH: '', calibrationL: '', calibrationSign: '',
+        control: '', filterField: '', status: '', signalType: '',
+        digitalAnalog: '', label: '', typeField: '',
       }));
     }
-    return inputs;
-  }, [inputs, selectedDevice]);
+    return filtered;
+  }, [inputs, selectedDevice, searchQuery, pointTags]);
 
   // Helper to identify empty rows
   const isEmptyRow = (item: InputPoint) => !item.inputIndex && !item.inputId && inputs.length === 0;
@@ -1302,12 +1324,12 @@ const InputsPageDesktop: React.FC = () => {
                     <input
                       className={styles.searchInput}
                       type="text"
-                      placeholder="Search inputs..."
+                      placeholder="Search by label, value, ID, tag…"
                       value={searchQuery}
                       onChange={handleSearchChange}
                       spellCheck="false"
                       role="searchbox"
-                      aria-label="Search inputs"
+                      aria-label="Search inputs by label, value, ID, tag"
                     />
                   </div>
 
@@ -1317,10 +1339,10 @@ const InputsPageDesktop: React.FC = () => {
                     onClick={handleRefreshFromDevice}
                     disabled={refreshing}
                     title="Refresh all inputs from device"
-                    aria-label="Refresh from Device"
+                    aria-label="Refresh"
                   >
-                    <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                    <ArrowClockwiseRegular />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />
@@ -1414,18 +1436,18 @@ const InputsPageDesktop: React.FC = () => {
                       style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
                       columnSizingOptions={{
                         panel: { idealWidth: 50, minWidth: 40 },
-                        input: { idealWidth: 70, minWidth: 55 },
-                        fullLabel: { idealWidth: 130, minWidth: 80 },
-                        label: { idealWidth: 80, minWidth: 55 },
-                        autoManual: { idealWidth: 60, minWidth: 50 },
-                        value: { idealWidth: 60, minWidth: 50 },
-                        units: { idealWidth: 50, minWidth: 40 },
-                        range: { idealWidth: 80, minWidth: 60 },
-                        calibration_sign: { idealWidth: 60, minWidth: 45 },
-                        filter: { idealWidth: 50, minWidth: 40 },
-                        status: { idealWidth: 50, minWidth: 40 },
-                        type: { idealWidth: 60, minWidth: 50 },
-                        tags: { idealWidth: 100, minWidth: 70 },
+                        input: { idealWidth: 90, minWidth: 65 },
+                        fullLabel: { idealWidth: 220, minWidth: 120 },
+                        label: { idealWidth: 170, minWidth: 90 },
+                        autoManual: { idealWidth: 100, minWidth: 65 },
+                        value: { idealWidth: 130, minWidth: 80 },
+                        units: { idealWidth: 80, minWidth: 50 },
+                        range: { idealWidth: 90, minWidth: 65 },
+                        calibration_sign: { idealWidth: 70, minWidth: 50 },
+                        filter: { idealWidth: 55, minWidth: 40 },
+                        status: { idealWidth: 60, minWidth: 45 },
+                        type: { idealWidth: 65, minWidth: 50 },
+                        tags: { idealWidth: 300, minWidth: 80 },
                       }}
                     >
                     <DataGridHeader style={{ backgroundColor: '#e0e0e0' }}>

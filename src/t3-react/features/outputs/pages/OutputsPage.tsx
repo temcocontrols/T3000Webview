@@ -40,6 +40,7 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SearchRegular,
   ErrorCircleRegular,
   SaveRegular,
@@ -56,7 +57,7 @@ import { PageSyncStatus } from '@t3-react/shared/components/PageSyncStatus';
 import styles from './OutputsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
-import { TagsColumnCell } from '../../inputs/components/TagsColumnCell';
+import { TagsColumnCell, fetchTagsForDevice } from '../../inputs/components/TagsColumnCell';
 
 // Types based on Rust entity (output_points.rs)
 interface OutputPoint {
@@ -608,6 +609,23 @@ const OutputsPageDesktop: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Point tags for tag-based search filtering
+  const [pointTags, setPointTags] = useState<{ pointType: string; pointIndex: string; tagName: string }[]>([]);
+
+  useEffect(() => {
+    if (!selectedDevice?.serialNumber) return;
+    let cancelled = false;
+    fetchTagsForDevice(selectedDevice.serialNumber).then((all) => {
+      if (cancelled) return;
+      setPointTags(all.map(t => ({
+        pointType: t.point_type,
+        pointIndex: t.point_index,
+        tagName: t.tag_name,
+      })));
+    });
+    return () => { cancelled = true; };
+  }, [selectedDevice?.serialNumber]);
+
   // Inline editing state
   const [editingCell, setEditingCell] = useState<{ serialNumber: number; outputIndex: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -700,37 +718,39 @@ const OutputsPageDesktop: React.FC = () => {
     }
   };
 
-  // Display data with 10 empty rows when no outputs
+  // Display data with search and tag filtering
   const displayOutputs = React.useMemo(() => {
+    let filtered = outputs;
+
+    if (searchQuery.trim() && outputs.length > 0) {
+      const q = searchQuery.toLowerCase();
+      filtered = outputs.filter(v => {
+        if (
+          (v.label || '').toLowerCase().includes(q) ||
+          (v.fullLabel || '').toLowerCase().includes(q) ||
+          String(v.outputId || '').toLowerCase().includes(q) ||
+          String(v.outputIndex || '').toLowerCase().includes(q) ||
+          (v.fValue ? (parseFloat(v.fValue) / 1000).toFixed(2) : '').includes(q)
+        ) return true;
+        const outTags = pointTags.filter(
+          t => t.pointType === 'OUTPUT' && t.pointIndex === (v.outputIndex || '')
+        );
+        return outTags.some(t => t.tagName.toLowerCase().includes(q));
+      });
+    }
+
     if (outputs.length === 0) {
-      return Array(18).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map(() => ({
         serialNumber: selectedDevice?.serialNumber || 0,
-        outputId: '',
-        outputIndex: '',
-        panel: '',
-        fullLabel: '',
-        autoManual: '',
-        hwSwitchStatus: '',
-        fValue: '',
-        units: '',
-        range: '',
-        rangeField: '',
-        lowVoltage: '',
-        highVoltage: '',
-        pwmPeriod: '',
-        calibrationH: '',
-        calibrationL: '',
-        calibrationSign: '',
-        control: '',
-        status: '',
-        signalType: '',
-        digitalAnalog: '',
-        label: '',
-        typeField: '',
+        outputId: '', outputIndex: '', panel: '', fullLabel: '', autoManual: '',
+        hwSwitchStatus: '', fValue: '', units: '', range: '', rangeField: '',
+        lowVoltage: '', highVoltage: '', pwmPeriod: '', calibrationH: '',
+        calibrationL: '', calibrationSign: '', control: '', status: '',
+        signalType: '', digitalAnalog: '', label: '', typeField: '',
       }));
     }
-    return outputs;
-  }, [outputs, selectedDevice]);
+    return filtered;
+  }, [outputs, selectedDevice, searchQuery, pointTags]);
 
   // Helper to identify empty rows
   const isEmptyRow = (item: OutputPoint) => !item.outputIndex && !item.outputId && outputs.length === 0;
@@ -1330,12 +1350,12 @@ const OutputsPageDesktop: React.FC = () => {
                     <input
                       className={styles.searchInput}
                       type="text"
-                      placeholder="Search outputs..."
+                      placeholder="Search by label, value, ID, tag…"
                       value={searchQuery}
                       onChange={handleSearchChange}
                       spellCheck="false"
                       role="searchbox"
-                      aria-label="Search outputs"
+                      aria-label="Search outputs by label, value, ID, tag"
                     />
                   </div>
 
@@ -1345,10 +1365,10 @@ const OutputsPageDesktop: React.FC = () => {
                     onClick={handleRefreshFromDevice}
                     disabled={refreshing}
                     title="Refresh all outputs from device"
-                    aria-label="Refresh from Device"
+                    aria-label="Refresh"
                   >
-                    <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                    <ArrowClockwiseRegular />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />
@@ -1432,19 +1452,19 @@ const OutputsPageDesktop: React.FC = () => {
                       style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
                       columnSizingOptions={{
                         panel: { idealWidth: 50, minWidth: 40 },
-                        output: { idealWidth: 70, minWidth: 55 },
-                        fullLabel: { idealWidth: 130, minWidth: 80 },
-                        label: { idealWidth: 80, minWidth: 55 },
-                        autoManual: { idealWidth: 60, minWidth: 50 },
-                        hoaSwitch: { idealWidth: 70, minWidth: 55 },
-                        value: { idealWidth: 60, minWidth: 50 },
-                        units: { idealWidth: 50, minWidth: 40 },
-                        range: { idealWidth: 80, minWidth: 60 },
-                        lowVoltage: { idealWidth: 60, minWidth: 45 },
-                        highVoltage: { idealWidth: 60, minWidth: 45 },
-                        status: { idealWidth: 50, minWidth: 40 },
+                        output: { idealWidth: 90, minWidth: 65 },
+                        fullLabel: { idealWidth: 220, minWidth: 120 },
+                        label: { idealWidth: 170, minWidth: 90 },
+                        autoManual: { idealWidth: 100, minWidth: 65 },
+                        hoaSwitch: { idealWidth: 80, minWidth: 60 },
+                        value: { idealWidth: 130, minWidth: 80 },
+                        units: { idealWidth: 80, minWidth: 50 },
+                        range: { idealWidth: 90, minWidth: 65 },
+                        lowVoltage: { idealWidth: 65, minWidth: 50 },
+                        highVoltage: { idealWidth: 65, minWidth: 50 },
+                        status: { idealWidth: 60, minWidth: 45 },
                         signalType: { idealWidth: 70, minWidth: 55 },
-                        tags: { idealWidth: 100, minWidth: 70 },
+                        tags: { idealWidth: 300, minWidth: 80 },
                       }}
                     >
                       <DataGridHeader style={{ backgroundColor: '#e0e0e0' }}>
