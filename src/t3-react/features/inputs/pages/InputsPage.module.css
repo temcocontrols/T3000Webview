@@ -23,7 +23,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: clip;
+  overflow: hidden;
 }
 
 /* Blade Content Container */
@@ -31,7 +31,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: clip;
+  overflow: hidden;
   min-height: 0;
 }
 
@@ -39,7 +39,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: clip;
+  overflow: hidden;
   min-height: 0;
 }
 
@@ -47,7 +47,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: clip;
+  overflow: hidden;
   min-height: 0;
 }
 
@@ -55,7 +55,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: clip;
+  overflow: hidden;
   min-height: 0;
 }
 
@@ -571,20 +571,18 @@
 .container :global(.fui-DataGridHeaderCell):nth-child(9) *,
 .container :global(.fui-DataGridHeaderCell):nth-child(10) *,
 .container :global(.fui-DataGridHeaderCell):nth-child(11) *,
-.container :global(.fui-DataGridHeaderCell):nth-child(12) *,
-.container :global(.fui-DataGridHeaderCell):nth-child(13) * {
+.container :global(.fui-DataGridHeaderCell):nth-child(12) * {
   justify-content: center !important;
   text-align: center !important;
   flex: 0 0 auto !important;
 }
 
-/* All nested elements in centered columns */
+/* All nested elements in centered columns (exclude tags column 13 to avoid affecting drawer) */
 .container :global(.fui-DataGridCell):nth-child(1) *,
 .container :global(.fui-DataGridCell):nth-child(9) *,
 .container :global(.fui-DataGridCell):nth-child(10) *,
 .container :global(.fui-DataGridCell):nth-child(11) *,
-.container :global(.fui-DataGridCell):nth-child(12) *,
-.container :global(.fui-DataGridCell):nth-child(13) * {
+.container :global(.fui-DataGridCell):nth-child(12) * {
   justify-content: center !important;
   text-align: center !important;
   flex: 0 0 auto !important;
