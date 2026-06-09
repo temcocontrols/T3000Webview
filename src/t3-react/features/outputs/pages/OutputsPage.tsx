@@ -571,13 +571,13 @@ const OutputsPageDesktop: React.FC = () => {
       setOutputs(prevOutputs =>
         prevOutputs.map(output =>
           output.serialNumber === editingCell.serialNumber &&
-          output.outputIndex === editingCell.outputIndex
+            output.outputIndex === editingCell.outputIndex
             ? {
-                ...output,
-                [editingCell.field]: editingCell.field === 'fValue'
-                  ? (parseFloat(editValue || '0') * 1000).toString()  // Convert back to raw value for storage
-                  : editValue
-              }
+              ...output,
+              [editingCell.field]: editingCell.field === 'fValue'
+                ? (parseFloat(editValue || '0') * 1000).toString()  // Convert back to raw value for storage
+                : editValue
+            }
             : output
         )
       );
@@ -687,7 +687,7 @@ const OutputsPageDesktop: React.FC = () => {
       setOutputs(prevOutputs =>
         prevOutputs.map(output =>
           output.serialNumber === selectedOutput.serialNumber &&
-          output.outputIndex === selectedOutput.outputIndex
+            output.outputIndex === selectedOutput.outputIndex
             ? { ...output, range: newRange.toString(), rangeField: newRange.toString(), digitalAnalog: newDigitalAnalog.toString() }
             : output
         )
@@ -810,8 +810,8 @@ const OutputsPageDesktop: React.FC = () => {
       renderHeaderCell: () => <span>Full Label</span>,
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.outputIndex === item.outputIndex &&
-                          editingCell?.field === 'fullLabel';
+          editingCell?.outputIndex === item.outputIndex &&
+          editingCell?.field === 'fullLabel';
 
         return (
           <TableCellLayout>
@@ -863,8 +863,8 @@ const OutputsPageDesktop: React.FC = () => {
       renderHeaderCell: () => <span>Label</span>,
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.outputIndex === item.outputIndex &&
-                          editingCell?.field === 'label';
+          editingCell?.outputIndex === item.outputIndex &&
+          editingCell?.field === 'label';
 
         return (
           <TableCellLayout>
@@ -1045,8 +1045,8 @@ const OutputsPageDesktop: React.FC = () => {
       renderHeaderCell: () => <span>Value</span>,
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.outputIndex === item.outputIndex &&
-                          editingCell?.field === 'fValue';
+          editingCell?.outputIndex === item.outputIndex &&
+          editingCell?.field === 'fValue';
 
         return (
           <TableCellLayout>
@@ -1150,8 +1150,8 @@ const OutputsPageDesktop: React.FC = () => {
       ),
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.outputIndex === item.outputIndex &&
-                          editingCell?.field === 'lowVoltage';
+          editingCell?.outputIndex === item.outputIndex &&
+          editingCell?.field === 'lowVoltage';
 
         return (
           <TableCellLayout>
@@ -1192,8 +1192,8 @@ const OutputsPageDesktop: React.FC = () => {
       ),
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.outputIndex === item.outputIndex &&
-                          editingCell?.field === 'highVoltage';
+          editingCell?.outputIndex === item.outputIndex &&
+          editingCell?.field === 'highVoltage';
 
         return (
           <TableCellLayout>
@@ -1341,70 +1341,70 @@ const OutputsPageDesktop: React.FC = () => {
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
               {selectedDevice && (
-              <>
-              <div className={styles.toolbar}>
-                <div className={styles.toolbarContainer}>
-                  {/* Search Input Box */}
-                  <div className={styles.searchInputWrapper}>
-                    <SearchRegular className={styles.searchIcon} />
-                    <input
-                      className={styles.searchInput}
-                      type="text"
-                      placeholder="Search by label, value, ID, tag…"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                      spellCheck="false"
-                      role="searchbox"
-                      aria-label="Search outputs by label, value, ID, tag"
-                    />
-                  </div>
+                <>
+                  <div className={styles.toolbar}>
+                    <div className={styles.toolbarContainer}>
+                      {/* Search Input Box */}
+                      <div className={styles.searchInputWrapper}>
+                        <SearchRegular className={styles.searchIcon} />
+                        <input
+                          className={styles.searchInput}
+                          type="text"
+                          placeholder="Search by label, value, ID, tag…"
+                          value={searchQuery}
+                          onChange={handleSearchChange}
+                          spellCheck="false"
+                          role="searchbox"
+                          aria-label="Search outputs by label, value, ID, tag"
+                        />
+                      </div>
 
-                  {/* Refresh Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleRefreshFromDevice}
-                    disabled={refreshing}
-                    title="Refresh all outputs from device"
-                    aria-label="Refresh"
-                  >
-                    <ArrowClockwiseRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
-                  </button>
+                      {/* Refresh Button */}
+                      <button
+                        className={styles.toolbarButton}
+                        onClick={handleRefreshFromDevice}
+                        disabled={refreshing}
+                        title="Refresh all outputs from device"
+                        aria-label="Refresh"
+                      >
+                        <ArrowClockwiseRegular />
+                        <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+                      </button>
 
-                  <div className={styles.toolbarSeparator} role="separator" />
+                      <div className={styles.toolbarSeparator} role="separator" />
 
-                  {/* Info Button with Tooltip */}
-                  <Tooltip
-                    content={`Showing output points for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). This table displays all configured output points including digital and analog outputs, their current values, voltage settings, and operational status.`}
-                    relationship="description"
-                  >
-                    <button
-                      className={`${styles.toolbarButton} ${styles.marginLeft8}`}
-                      title="Information"
-                      aria-label="Information about this page"
-                    >
-                      <InfoRegular />
-                    </button>
-                  </Tooltip>
+                      {/* Info Button with Tooltip */}
+                      <Tooltip
+                        content={`Showing output points for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). This table displays all configured output points including digital and analog outputs, their current values, voltage settings, and operational status.`}
+                        relationship="description"
+                      >
+                        <button
+                          className={`${styles.toolbarButton} ${styles.marginLeft8}`}
+                          title="Information"
+                          aria-label="Information about this page"
+                        >
+                          <InfoRegular />
+                        </button>
+                      </Tooltip>
 
-                  <div className={styles.toolbarSeparator} role="separator" />
+                      <div className={styles.toolbarSeparator} role="separator" />
 
-                  {/* <PageSyncStatus
+                      {/* <PageSyncStatus
                     dataType="OUTPUTS"
                     serialNumber={selectedDevice.serialNumber.toString()}
                     onRefresh={handleRefreshFromDevice}
                   /> */}
-                </div>
-              </div>
+                    </div>
+                  </div>
 
-              {/* ========================================
+                  {/* ========================================
                   HORIZONTAL DIVIDER
                   Matches: ext-overview-hr
                   ======================================== */}
-              <div className={styles.noPadding}>
-                <hr className={styles.overviewHr} />
-              </div>
-              </>
+                  <div className={styles.noPadding}>
+                    <hr className={styles.overviewHr} />
+                  </div>
+                </>
               )}
 
               {/* ========================================
@@ -1452,11 +1452,11 @@ const OutputsPageDesktop: React.FC = () => {
                       style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
                       columnSizingOptions={{
                         panel: { idealWidth: 50, minWidth: 40 },
-                        output: { idealWidth: 90, minWidth: 65 },
-                        fullLabel: { idealWidth: 220, minWidth: 120 },
-                        label: { idealWidth: 170, minWidth: 90 },
-                        autoManual: { idealWidth: 100, minWidth: 65 },
-                        hoaSwitch: { idealWidth: 80, minWidth: 60 },
+                        output: { idealWidth: 65, minWidth: 55 },
+                        fullLabel: { idealWidth: 160, minWidth: 80 },
+                        label: { idealWidth: 120, minWidth: 50 },
+                        autoManual: { idealWidth: 82, minWidth: 60  },
+                        hoaSwitch: { idealWidth: 90, minWidth: 65 },
                         value: { idealWidth: 130, minWidth: 80 },
                         units: { idealWidth: 80, minWidth: 50 },
                         range: { idealWidth: 90, minWidth: 65 },
@@ -1464,7 +1464,7 @@ const OutputsPageDesktop: React.FC = () => {
                         highVoltage: { idealWidth: 65, minWidth: 50 },
                         status: { idealWidth: 60, minWidth: 45 },
                         signalType: { idealWidth: 70, minWidth: 55 },
-                        tags: { idealWidth: 300, minWidth: 80 },
+                        tags: { idealWidth: 170, minWidth: 80 },
                       }}
                     >
                       <DataGridHeader style={{ backgroundColor: '#e0e0e0' }}>
