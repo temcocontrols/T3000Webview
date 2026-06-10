@@ -35,10 +35,8 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SearchRegular,
-  ArrowSortUpRegular,
-  ArrowSortDownRegular,
-  ArrowSortRegular,
   ErrorCircleRegular,
   InfoRegular,
 } from '@fluentui/react-icons';
@@ -70,8 +68,9 @@ export const HolidaysPage: React.FC = () => {
   const [editingCell, setEditingCell] = useState<{ serialNumber: number; holidayId: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
+  const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
+  const [sortKey, setSortKey] = useState(0);
+  const prevSortRef = React.useRef<{ sortColumn: string; sortDirection: string } | undefined>();
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
   const [dbChecked, setDbChecked] = useState(false);
@@ -250,12 +249,14 @@ export const HolidaysPage: React.FC = () => {
     setSearchQuery(event.target.value);
   };
 
-  const handleSort = (columnId: string) => {
-    if (sortColumn === columnId) {
-      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
+  const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
+    const prev = prevSortRef.current;
+    prevSortRef.current = newState;
+    if (prev?.sortColumn === newState.sortColumn && prev?.sortDirection === 'descending' && newState.sortDirection === 'ascending') {
+      setSortState(undefined);
+      setSortKey(k => k + 1);
     } else {
-      setSortColumn(columnId);
-      setSortDirection('ascending');
+      setSortState(newState);
     }
   };
 
@@ -304,20 +305,25 @@ export const HolidaysPage: React.FC = () => {
     }
   }, [selectedDevice, isLoadingNextDevice]);
 
-  // Display holidays with empty rows when no data (show 10 empty rows)
+  // Display holidays with search filtering
   const displayHolidays = React.useMemo(() => {
+    let filtered = holidays;
+    if (searchQuery.trim() && holidays.length > 0) {
+      const q = searchQuery.toLowerCase();
+      filtered = holidays.filter(h =>
+        (h.holidayId || '').toLowerCase().includes(q) ||
+        (h.fullLabel || '').toLowerCase().includes(q) ||
+        (h.label || '').toLowerCase().includes(q) ||
+        (h.value || '').toLowerCase().includes(q)
+      );
+    }
     if (holidays.length === 0) {
-      return Array(18).fill(null).map((_, index) => ({
-        serialNumber: 0,
-        holidayId: '',
-        fullLabel: '',
-        autoManual: '',
-        value: '',
-        label: '',
+      return Array(18).fill(null).map(() => ({
+        serialNumber: 0, holidayId: '', fullLabel: '', autoManual: '', value: '', label: '',
       } as HolidayPoint));
     }
-    return holidays;
-  }, [holidays]);
+    return filtered;
+  }, [holidays, searchQuery]);
 
   // Helper to check if row is an empty placeholder
   const isEmptyRow = (holiday: HolidayPoint) => {
@@ -388,14 +394,7 @@ export const HolidaysPage: React.FC = () => {
     createTableColumn<HolidayPoint>({
       columnId: 'holidayId',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('holidayId')}>
-          <span>Holiday</span>
-          {sortColumn === 'holidayId' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>NUM</span>
       ),
       renderCell: (item) => {
         const isRefreshing = item.holidayId && refreshingItems.has(item.holidayId);
@@ -427,14 +426,7 @@ export const HolidaysPage: React.FC = () => {
     createTableColumn<HolidayPoint>({
       columnId: 'fullLabel',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('fullLabel')}>
-          <span>Full Label</span>
-          {sortColumn === 'fullLabel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Full Label</span>
       ),
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
@@ -500,14 +492,7 @@ export const HolidaysPage: React.FC = () => {
     createTableColumn<HolidayPoint>({
       columnId: 'value',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('value')}>
-          <span>Value</span>
-          {sortColumn === 'value' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Value</span>
       ),
       renderCell: (item) => (
         <TableCellLayout>
@@ -520,14 +505,7 @@ export const HolidaysPage: React.FC = () => {
     createTableColumn<HolidayPoint>({
       columnId: 'label',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('label')}>
-          <span>Label</span>
-          {sortColumn === 'label' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Label</span>
       ),
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
@@ -671,9 +649,15 @@ export const HolidaysPage: React.FC = () => {
                   onWheel={handleWheel}
                 >
                   <DataGrid
+                    key={sortKey}
                     items={displayHolidays}
                     columns={columns}
                     sortable
+                    sortState={sortState}
+                    onSortChange={handleSortChange}
+                    resizableColumns
+                    resizableColumnsOptions={{ autoFitColumns: false }}
+                    style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
                   >
                     <DataGridHeader>
                       <DataGridRow>

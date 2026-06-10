@@ -221,6 +221,9 @@ export const TrendLogsPage: React.FC = () => {
     sessionStorage.getItem('tl-infobanner-v1') === '1'
   );
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
+  const [sortKey, setSortKey] = useState(0);
+  const prevSortRef = React.useRef<{ sortColumn: string; sortDirection: string } | undefined>();
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const selectedSerial = selectedDevice?.serialNumber;
   const selectedPanelId = selectedDevice?.panelId;
@@ -1239,6 +1242,17 @@ export const TrendLogsPage: React.FC = () => {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
+  };
+
+  const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
+    const prev = prevSortRef.current;
+    prevSortRef.current = newState;
+    if (prev?.sortColumn === newState.sortColumn && prev?.sortDirection === 'descending' && newState.sortDirection === 'ascending') {
+      setSortState(undefined);
+      setSortKey(k => k + 1);
+    } else {
+      setSortState(newState);
+    }
   };
 
   const selectedMonitorIndex = selectedMonitor?.trendlogIndex || selectedMonitor?.trendlogId || '0';
@@ -3014,10 +3028,14 @@ export const TrendLogsPage: React.FC = () => {
                     {/* Main Monitor List - Left Side (80%) */}
                     <div className={styles.mainGrid}>
                       <DataGrid
-                        key="trendlogs-grid-v5"
+                        key={`trendlogs-grid-${sortKey}`}
                         items={filteredDisplayTrendLogs}
                         columns={columns}
                         sortable
+                        sortState={sortState}
+                        onSortChange={handleSortChange}
+                        resizableColumns
+                        resizableColumnsOptions={{ autoFitColumns: false }}
                         selectionMode="single"
                         selectedItems={selectedItems}
                         onSelectionChange={(_e, data) => {

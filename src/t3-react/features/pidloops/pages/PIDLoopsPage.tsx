@@ -21,13 +21,10 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SettingsRegular,
   SearchRegular,
-  ArrowSortUpRegular,
-  ArrowSortDownRegular,
-  ArrowSortRegular,
   ErrorCircleRegular,
-  ArrowClockwise24Regular,
   Save24Regular,
   Dismiss24Regular,
   InfoRegular,
@@ -73,8 +70,9 @@ const PIDLoopsPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [editedValues, setEditedValues] = useState<Record<string, Partial<PIDController>>>({});
   const [hasChanges, setHasChanges] = useState(false);
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
+  const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
+  const [sortKey, setSortKey] = useState(0);
+  const prevSortRef = React.useRef<{ sortColumn: string; sortDirection: string } | undefined>();
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
@@ -366,13 +364,14 @@ const PIDLoopsPage: React.FC = () => {
     handleFieldEdit(controller.loop_field, 'auto_manual', newValue);
   };
 
-  // Sort handler
-  const handleSort = (columnId: string) => {
-    if (sortColumn === columnId) {
-      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
+  const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
+    const prev = prevSortRef.current;
+    prevSortRef.current = newState;
+    if (prev?.sortColumn === newState.sortColumn && prev?.sortDirection === 'descending' && newState.sortDirection === 'ascending') {
+      setSortState(undefined);
+      setSortKey(k => k + 1);
     } else {
-      setSortColumn(columnId);
-      setSortDirection('ascending');
+      setSortState(newState);
     }
   };
 
@@ -427,16 +426,7 @@ const PIDLoopsPage: React.FC = () => {
     createTableColumn<PIDController>({
       columnId: 'loop_field',
       compare: (a, b) => Number(a.loop_field) - Number(b.loop_field),
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('loop_field')}>
-          <span>NUM</span>
-          {sortColumn === 'loop_field' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
+      renderHeaderCell: () => <span>NUM</span>,
       renderCell: (controller) => {
         if (isEmptyRow(controller)) {
           return <TableCellLayout></TableCellLayout>;
@@ -728,7 +718,7 @@ const PIDLoopsPage: React.FC = () => {
         </TableCellLayout>
       ),
     }),
-  ], [editedValues, sortColumn, sortDirection, handleSort, handleFieldEdit, handleAutoManualToggle, getCurrentValue, isEmptyRow]);
+  ], [editedValues, handleFieldEdit, handleAutoManualToggle, getCurrentValue, isEmptyRow]);
 
   return (
     <div className={styles.container}>
@@ -780,7 +770,7 @@ const PIDLoopsPage: React.FC = () => {
               title="Refresh all PID loops from device"
               aria-label="Refresh from Device"
             >
-              <ArrowClockwise24Regular />
+              <ArrowClockwiseRegular />
               <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
             </button>
 
@@ -866,9 +856,15 @@ const PIDLoopsPage: React.FC = () => {
             onWheel={handleWheel}
           >
             <DataGrid
+              key={sortKey}
               items={displayPidLoops}
               columns={columns}
               sortable
+              sortState={sortState}
+              onSortChange={handleSortChange}
+              resizableColumns
+              resizableColumnsOptions={{ autoFitColumns: false }}
+              style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
             >
               <DataGridHeader>
                 <DataGridRow>
@@ -901,7 +897,7 @@ const PIDLoopsPage: React.FC = () => {
                 <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>This device has no PID loops configured</Text>
                 <Button
                   appearance="subtle"
-                  icon={<ArrowClockwise24Regular />}
+                  icon={<ArrowClockwiseRegular />}
                   onClick={handleRefresh}
                   style={{ minWidth: '120px', fontWeight: 'normal' }}
                 >

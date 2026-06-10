@@ -30,10 +30,8 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SearchRegular,
-  ArrowSortUpRegular,
-  ArrowSortDownRegular,
-  ArrowSortRegular,
   ErrorCircleRegular,
   InfoRegular,
 } from '@fluentui/react-icons';
@@ -72,8 +70,9 @@ export const SchedulesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortColumn, setSortColumn] = useState<string>('scheduleId');
-  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
+  const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
+  const [sortKey, setSortKey] = useState(0);
+  const prevSortRef = React.useRef<{ sortColumn: string; sortDirection: string } | undefined>();
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
   const [dbChecked, setDbChecked] = useState(false);
@@ -265,13 +264,14 @@ export const SchedulesPage: React.FC = () => {
     setSearchQuery(event.target.value);
   };
 
-  // Sort handler
-  const handleSort = (columnId: string) => {
-    if (sortColumn === columnId) {
-      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
+  const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
+    const prev = prevSortRef.current;
+    prevSortRef.current = newState;
+    if (prev?.sortColumn === newState.sortColumn && prev?.sortDirection === 'descending' && newState.sortDirection === 'ascending') {
+      setSortState(undefined);
+      setSortKey(k => k + 1);
     } else {
-      setSortColumn(columnId);
-      setSortDirection('ascending');
+      setSortState(newState);
     }
   };
 
@@ -373,14 +373,7 @@ export const SchedulesPage: React.FC = () => {
     createTableColumn<SchedulePoint>({
       columnId: 'scheduleId',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('scheduleId')}>
-          <span>Schedule</span>
-          {sortColumn === 'scheduleId' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Schedule</span>
       ),
       renderCell: (item) => {
         const isRefreshing = item.scheduleId && refreshingItems.has(item.scheduleId);
@@ -438,14 +431,7 @@ export const SchedulesPage: React.FC = () => {
     createTableColumn<SchedulePoint>({
       columnId: 'outputField',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('outputField')}>
-          <span>Output</span>
-          {sortColumn === 'outputField' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Output</span>
       ),
       renderCell: (item) => (
         <TableCellLayout>
@@ -458,14 +444,7 @@ export const SchedulesPage: React.FC = () => {
     createTableColumn<SchedulePoint>({
       columnId: 'variableField',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('variableField')}>
-          <span>Variable</span>
-          {sortColumn === 'variableField' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Variable</span>
       ),
       renderCell: (item) => (
         <TableCellLayout>
@@ -478,14 +457,7 @@ export const SchedulesPage: React.FC = () => {
     createTableColumn<SchedulePoint>({
       columnId: 'holiday1',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('holiday1')}>
-          <span>Holiday1</span>
-          {sortColumn === 'holiday1' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Holiday1</span>
       ),
       renderCell: (item) => (
         <TableCellLayout>
@@ -513,14 +485,7 @@ export const SchedulesPage: React.FC = () => {
     createTableColumn<SchedulePoint>({
       columnId: 'holiday2',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('holiday2')}>
-          <span>Holiday2</span>
-          {sortColumn === 'holiday2' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Holiday2</span>
       ),
       renderCell: (item) => (
         <TableCellLayout>
@@ -545,20 +510,13 @@ export const SchedulesPage: React.FC = () => {
     }),
   ];
 
-  // Filtered and sorted schedules (use displaySchedules to include empty rows)
+  // Filtered schedules (sorting handled by DataGrid built-in sort)
   const filteredSchedules = displaySchedules.filter(schedule =>
     searchQuery === '' ||
     schedule.scheduleId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     schedule.outputField?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     schedule.variableField?.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const sortedSchedules = [...filteredSchedules].sort((a, b) => {
-    const aValue = (a[sortColumn as keyof SchedulePoint] || '').toString();
-    const bValue = (b[sortColumn as keyof SchedulePoint] || '').toString();
-    const comparison = aValue.localeCompare(bValue);
-    return sortDirection === 'ascending' ? comparison : -comparison;
-  });
 
   return (
     <div className={styles.container}>
@@ -680,9 +638,15 @@ export const SchedulesPage: React.FC = () => {
                     onWheel={handleWheel}
                   >
                   <DataGrid
-                    items={sortedSchedules}
+                    key={sortKey}
+                    items={filteredSchedules}
                     columns={columns}
                     sortable
+                    sortState={sortState}
+                    onSortChange={handleSortChange}
+                    resizableColumns
+                    resizableColumnsOptions={{ autoFitColumns: false }}
+                    style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
                   >
                     <DataGridHeader>
                       <DataGridRow>

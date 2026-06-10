@@ -62,6 +62,25 @@ export const NetworkPage: React.FC = () => {
   const [networks, setNetworks] = useState<NetworkItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
+  const [sortKey, setSortKey] = useState(0);
+  const prevSortRef = React.useRef<{ sortColumn: string; sortDirection: string } | undefined>();
+
+  const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
+    const prev = prevSortRef.current;
+    prevSortRef.current = newState;
+    if (prev?.sortColumn === newState.sortColumn && prev?.sortDirection === 'descending' && newState.sortDirection === 'ascending') {
+      setSortState(undefined);
+      setSortKey(k => k + 1);
+    } else {
+      setSortState(newState);
+    }
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
 
   // Auto-select first device on page load if none selected
   useEffect(() => {
@@ -154,27 +173,26 @@ export const NetworkPage: React.FC = () => {
     console.log('Settings clicked');
   };
 
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  };
-
   // Display networks with empty rows when no data (show 10 empty rows)
   const displayNetworks = React.useMemo(() => {
+    let filtered = networks;
+    if (searchQuery.trim() && networks.length > 0) {
+      const q = searchQuery.toLowerCase();
+      filtered = networks.filter(n =>
+        (n.networkId || '').toLowerCase().includes(q) ||
+        (n.buildingName || '').toLowerCase().includes(q) ||
+        (n.protocol || '').toLowerCase().includes(q) ||
+        (n.description || '').toLowerCase().includes(q)
+      );
+    }
     if (networks.length === 0) {
-      return Array(18).fill(null).map((_, index) => ({
-        networkId: '',
-        networkNumber: undefined,
-        buildingName: '',
-        deviceCount: undefined,
-        status: '',
-        protocol: '',
-        description: '',
+      return Array(18).fill(null).map(() => ({
+        networkId: '', networkNumber: undefined, buildingName: '',
+        deviceCount: undefined, status: '', protocol: '', description: '',
       } as NetworkItem));
     }
-    return networks;
-  }, [networks]);
+    return filtered;
+  }, [networks, searchQuery]);
 
   // Helper to check if row is an empty placeholder
   const isEmptyRow = (network: NetworkItem) => {
@@ -382,9 +400,15 @@ export const NetworkPage: React.FC = () => {
                 {selectedDevice && !loading && (
                   <>
                     <DataGrid
+                      key={sortKey}
                       items={displayNetworks}
                       columns={columns}
                       sortable
+                      sortState={sortState}
+                      onSortChange={handleSortChange}
+                      resizableColumns
+                      resizableColumnsOptions={{ autoFitColumns: false }}
+                      style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
                     >
                       <DataGridHeader>
                         <DataGridRow>
