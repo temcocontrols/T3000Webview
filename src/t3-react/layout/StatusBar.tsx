@@ -195,14 +195,14 @@ export const StatusBar: React.FC<StatusBarProps> = ({
       </div>
 
       {/* Pane 1: Building/Device Info */}
-      <div className={`${styles.pane} ${styles.connectionPane}`}>
+      {/* <div className={`${styles.pane} ${styles.connectionPane}`}>
         {connectionInfo}
-      </div>
+      </div> */}
 
       {/* Pane 2: Protocol Info (stretches) */}
-      <div className={`${styles.pane} ${styles.protocolPane}`}>
+      {/* <div className={`${styles.pane} ${styles.protocolPane}`}>
         {protocolInfo}
-      </div>
+      </div> */}
 
       {/* Pane 3: Messages - colored based on type */}
       <div className={messagePaneClass}>
