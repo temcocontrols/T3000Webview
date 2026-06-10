@@ -771,7 +771,7 @@ const PIDLoopsPage: React.FC = () => {
               aria-label="Refresh from Device"
             >
               <ArrowClockwiseRegular />
-              <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+              <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
             </button>
 
             <div className={styles.toolbarSeparator} role="separator" />

@@ -521,7 +521,7 @@ const AlarmsPageDesktop: React.FC = () => {
                     aria-label="Refresh from Device"
                   >
                     <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />

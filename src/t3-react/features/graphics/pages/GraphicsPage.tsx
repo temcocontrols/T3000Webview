@@ -465,7 +465,7 @@ export const GraphicsPage: React.FC = () => {
                     title="Refresh all graphics from device"
                   >
                     <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />

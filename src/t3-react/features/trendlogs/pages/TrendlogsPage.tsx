@@ -2952,7 +2952,7 @@ export const TrendLogsPage: React.FC = () => {
                     aria-label="Refresh from Device"
                   >
                     <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
                   {/* Info Button with Tooltip */}
