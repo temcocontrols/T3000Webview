@@ -3036,6 +3036,14 @@ export const TrendLogsPage: React.FC = () => {
                         onSortChange={handleSortChange}
                         resizableColumns
                         resizableColumnsOptions={{ autoFitColumns: false }}
+                        columnSizingOptions={{
+                          trendlogId: { idealWidth: 90, minWidth: 60 },
+                          trendlogLabel: { idealWidth: 200, minWidth: 120 },
+                          intervalSeconds: { idealWidth: 120, minWidth: 70 },
+                          dataSizeKb: { idealWidth: 130, minWidth: 80 },
+                          status: { idealWidth: 110, minWidth: 70 },
+                          actions: { idealWidth: 120, minWidth: 40 },
+                        }}
                         selectionMode="single"
                         selectedItems={selectedItems}
                         onSelectionChange={(_e, data) => {
