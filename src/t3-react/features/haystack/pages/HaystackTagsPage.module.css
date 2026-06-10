@@ -257,8 +257,8 @@
 }
 .tagTable tbody tr:hover { background: var(--colorNeutralBackground1); }
 .tagName { font-weight: 500; }
-.parents { color: var(--colorNeutralForeground2); font-size: 12px; }
-.description { color: var(--colorNeutralForeground2); font-size: 12px; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.parents { color: var(--colorNeutralForeground2); font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.description { color: var(--colorNeutralForeground2); font-size: 12px; }
 
 /* ── Empty state ── */
 .emptyState {

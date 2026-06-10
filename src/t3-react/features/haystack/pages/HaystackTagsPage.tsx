@@ -85,6 +85,8 @@ export const HaystackTagsPage: React.FC = () => {
   };
 
   const renderTreeNode = (node: any, depth: number = 0): React.ReactNode => {
+    // Skip custom tags — only show standard haystack tags
+    if (node.category !== 'haystack') return null;
     const hasChildren = node.children?.length > 0;
     const isExpanded = expanded.has(node.tag_name);
     const isSelected = selectedTreeNode === node.tag_name;
@@ -106,7 +108,7 @@ export const HaystackTagsPage: React.FC = () => {
               <span className={styles.togglePlaceholder} />
             )}
           </span>
-          <span className={`${styles.treeLabel} ${isSelected ? styles.treeLabelActive : ''} ${node.category !== 'haystack' ? styles.treeLabelCustom : ''}`}>
+          <span className={`${styles.treeLabel} ${isSelected ? styles.treeLabelActive : ''}`}>
             {node.tag_name}
             {hasChildren && <span className={styles.treeCount}>{node.children.length}</span>}
           </span>
@@ -215,7 +217,36 @@ export const HaystackTagsPage: React.FC = () => {
                 <p>No tag tree loaded.</p>
               </div>
             ) : (
-              tagTree.map((n) => renderTreeNode(n))
+              (() => {
+                // Filter tree nodes based on search
+                const q = search.toLowerCase();
+                const filterTree = (nodes: any[]): any[] => {
+                  if (!q) return nodes;
+                  return nodes.reduce((acc: any[], node: any) => {
+                    const matchesName = node.tag_name.toLowerCase().includes(q);
+                    const filteredChildren = node.children ? filterTree(node.children) : [];
+                    if (matchesName || filteredChildren.length > 0) {
+                      acc.push({ ...node, children: filteredChildren.length > 0 ? filteredChildren : node.children });
+                    }
+                    return acc;
+                  }, []);
+                };
+                // Auto-expand matching paths when searching
+                if (q && !allExpanded) {
+                  const expandMatching = (nodes: any[]) => {
+                    for (const n of nodes) {
+                      if (n.tag_name.toLowerCase().includes(q)) {
+                        let parent = n;
+                        // We can't walk up, so just ensure visible nodes are expanded
+                        expanded.add(n.tag_name);
+                      }
+                      if (n.children) expandMatching(n.children);
+                    }
+                  };
+                  expandMatching(tagTree);
+                }
+                return filterTree(tagTree).map((n) => renderTreeNode(n));
+              })()
             )}
           </div>
         </aside>
@@ -239,8 +270,8 @@ export const HaystackTagsPage: React.FC = () => {
             <table className={styles.tagTable}>
               <thead>
                 <tr>
-                  <th>Tag Name</th>
-                  <th>Parents</th>
+                  <th style={{ width: '28%' }}>Tag Name</th>
+                  <th style={{ width: '22%' }}>Parents</th>
                   <th>Description</th>
                 </tr>
               </thead>
