@@ -185,3 +185,11 @@
 :global(.fui-Tree::-webkit-scrollbar-thumb:hover) {
   background-color: #a19f9d;
 }
+
+/* Remove default padding/gap from Fluent UI TreeItemLayout aside to align custom info icon */
+.deviceTreeItem :global(.fui-TreeItemLayout__aside) {
+  /* padding: 0 var(--spacingHorizontalM);
+   gap: var(--spacingHorizontalXS); */
+  padding: 0 0px !important;
+  gap: 0px !important;
+}
