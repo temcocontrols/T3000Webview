@@ -16,6 +16,8 @@ export interface StatusBarState {
   // Connection info
   buildingName: string;
   deviceName: string;
+  deviceSerialNumber: number | null;
+  devicePanelId: number | null;
 
   // Protocol info
   protocol: string;
@@ -30,6 +32,7 @@ export interface StatusBarState {
   incrementTx: () => void;
   setRxTx: (rx: number, tx: number) => void;
   setConnection: (building: string, device: string) => void;
+  setDeviceLabel: (name: string, serialNumber: number, panelId?: number) => void;
   setProtocol: (protocol: string, connectionType: string) => void;
   setMessage: (message: string, type?: MessageType) => void;
   reset: () => void;
@@ -41,6 +44,8 @@ export const useStatusBarStore = create<StatusBarState>((set) => ({
   txCount: 0,
   buildingName: '',
   deviceName: '',
+  deviceSerialNumber: null,
+  devicePanelId: null,
   protocol: '',
   connectionType: '',
   message: 'Ready',
@@ -51,6 +56,11 @@ export const useStatusBarStore = create<StatusBarState>((set) => ({
   incrementTx: () => set((state) => ({ txCount: state.txCount + 1 })),
   setRxTx: (rx, tx) => set({ rxCount: rx, txCount: tx }),
   setConnection: (building, device) => set({ buildingName: building, deviceName: device }),
+  setDeviceLabel: (name, serialNumber, panelId) => set({
+    deviceName: name,
+    deviceSerialNumber: serialNumber,
+    devicePanelId: panelId ?? null,
+  }),
   setProtocol: (protocol, connectionType) => set({ protocol, connectionType }),
   setMessage: (message, type = 'info') => set({ message, messageType: type }),
   reset: () => set({
@@ -58,6 +68,8 @@ export const useStatusBarStore = create<StatusBarState>((set) => ({
     txCount: 0,
     buildingName: '',
     deviceName: '',
+    deviceSerialNumber: null,
+    devicePanelId: null,
     protocol: '',
     connectionType: '',
     message: 'Ready',

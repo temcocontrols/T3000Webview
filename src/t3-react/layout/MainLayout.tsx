@@ -117,8 +117,9 @@ const DesktopLayout: React.FC = () => {
   // Status bar state
   const rxCount = useStatusBarStore((state) => state.rxCount);
   const txCount = useStatusBarStore((state) => state.txCount);
-  const buildingName = useStatusBarStore((state) => state.buildingName);
-  const deviceName = useStatusBarStore((state) => state.deviceName);
+  const statusDeviceName = useStatusBarStore((state) => state.deviceName);
+  const statusDeviceSerial = useStatusBarStore((state) => state.deviceSerialNumber);
+  const statusDevicePanel = useStatusBarStore((state) => state.devicePanelId);
   const protocol = useStatusBarStore((state) => state.protocol);
   const connectionType = useStatusBarStore((state) => state.connectionType);
   const statusMessage = useStatusBarStore((state) => state.message);
@@ -246,8 +247,9 @@ const DesktopLayout: React.FC = () => {
         <StatusBar
           rxCount={rxCount}
           txCount={txCount}
-          buildingName={buildingName}
-          deviceName={deviceName}
+          deviceName={statusDeviceName}
+          deviceSerialNumber={statusDeviceSerial}
+          devicePanelId={statusDevicePanel}
           protocol={protocol}
           connectionType={connectionType}
           message={statusMessage}

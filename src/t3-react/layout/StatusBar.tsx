@@ -48,8 +48,8 @@ const useStyles = makeStyles({
     flexShrink: 0,
   },
   connectionPane: {
-    width: '200px',
-    minWidth: '200px',
+    width: '220px',
+    minWidth: '220px',
     flexShrink: 0,
   },
   protocolPane: {
@@ -105,8 +105,9 @@ const useStyles = makeStyles({
 export interface StatusBarProps {
   rxCount?: number;
   txCount?: number;
-  buildingName?: string;
   deviceName?: string;
+  deviceSerialNumber?: number | null;
+  devicePanelId?: number | null;
   protocol?: string;
   connectionType?: string;
   message?: string;
@@ -120,8 +121,9 @@ export interface StatusBarProps {
 export const StatusBar: React.FC<StatusBarProps> = ({
   rxCount = 0,
   txCount = 0,
-  buildingName = '',
   deviceName = '',
+  deviceSerialNumber = null,
+  devicePanelId = null,
   protocol = '',
   connectionType = '',
   message = 'Ready',
@@ -132,29 +134,14 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   // Check if message is long (more than 100 characters)
   const isLongMessage = message.length > 100;
 
-  // Format connection info
-  const connectionInfo = React.useMemo(() => {
-    if (buildingName && deviceName) {
-      return `${buildingName} / ${deviceName}`;
-    } else if (deviceName) {
-      return deviceName;
-    } else if (buildingName) {
-      return buildingName;
-    }
-    return 'No device selected';
-  }, [buildingName, deviceName]);
-
-  // Format protocol info
-  const protocolInfo = React.useMemo(() => {
-    if (protocol && connectionType) {
-      return `${protocol} / ${connectionType}`;
-    } else if (protocol) {
-      return protocol;
-    } else if (connectionType) {
-      return connectionType;
-    }
-    return 'Not connected';
-  }, [protocol, connectionType]);
+  // Format device label for Pane 1
+  const deviceLabel = React.useMemo(() => {
+    if (!deviceName) return 'No device selected';
+    const sn = deviceSerialNumber != null ? `SN:${deviceSerialNumber}` : '';
+    const panel = devicePanelId != null ? `Panel:${devicePanelId}` : '';
+    const detail = [sn, panel].filter(Boolean).join(', ');
+    return detail ? `${deviceName} (${detail})` : deviceName;
+  }, [deviceName, deviceSerialNumber, devicePanelId]);
 
   // Get message pane class based on message type
   const messagePaneClass = React.useMemo(() => {
@@ -194,10 +181,10 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         <span>{txCount}</span>
       </div>
 
-      {/* Pane 1: Building/Device Info */}
-      {/* <div className={`${styles.pane} ${styles.connectionPane}`}>
-        {connectionInfo}
-      </div> */}
+      {/* Pane 1: Device Info — device name, serial number, panel ID */}
+      <div className={`${styles.pane} ${styles.connectionPane}`}>
+        {deviceLabel}
+      </div>
 
       {/* Pane 2: Protocol Info (stretches) */}
       {/* <div className={`${styles.pane} ${styles.protocolPane}`}>
