@@ -47,6 +47,7 @@ import {
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '@t3-react/config/constants';
 import { PanelDataRefreshService } from '@t3-react/shared/services/panelDataRefreshService';
+import { useStatusBarStore } from '@t3-react/store/statusBarStore';
 import { SyncStatusBar } from '@t3-react/shared/components/SyncStatusBar';
 import { PageSyncStatus } from '@t3-react/shared/components/PageSyncStatus';
 import { ProgrammingDrawer } from '../components/ProgrammingDrawer';
@@ -82,6 +83,9 @@ export const ProgramsPage: React.FC = () => {
   // Programming drawer state
   const [isProgrammingOpen, setIsProgrammingOpen] = useState(false);
   const [selectedProgramForProgramming, setSelectedProgramForProgramming] = useState<ProgramPoint | null>(null);
+
+  // Status bar messages
+  const setMessage = useStatusBarStore((state) => state.setMessage);
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -156,14 +160,17 @@ export const ProgramsPage: React.FC = () => {
         }
 
         console.log('[ProgramsPage] Database empty, auto-refreshing from device...');
+        setMessage(`Loading programs from ${selectedDevice.nameShowOnTree} (Action 17)...`, 'info');
         const result = await PanelDataRefreshService.refreshAllPrograms(selectedDevice.serialNumber);
         console.log('[ProgramsPage] Auto-refresh result:', result);
+        setMessage(`✓ Synced ${result.itemCount} programs from ${selectedDevice.nameShowOnTree}`, 'success');
 
         // Reload from database (data already saved by service)
         await fetchPrograms();
         setAutoRefreshed(true);
       } catch (error) {
         console.error('[ProgramsPage] Auto-refresh failed:', error);
+        setMessage('Failed to load programs from device', 'error');
         // Don't reload from database on error - preserve existing programs
         setAutoRefreshed(true); // Mark as attempted to prevent retry loops
       }
@@ -184,16 +191,20 @@ export const ProgramsPage: React.FC = () => {
     if (!selectedDevice) return;
 
     setRefreshing(true);
+    setMessage('Refreshing programs from device...', 'info');
     try {
       console.log('[ProgramsPage] Refreshing all programs from device...');
       const result = await PanelDataRefreshService.refreshAllPrograms(selectedDevice.serialNumber);
       console.log('[ProgramsPage] Refresh result:', result);
+      setMessage(`✓ Synced ${result.itemCount} programs from ${selectedDevice.nameShowOnTree}`, 'success');
 
       // Reload from database (data already saved by service)
       await fetchPrograms();
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to refresh from device';
       console.error('[ProgramsPage] Failed to refresh from device:', error);
-      setError(error instanceof Error ? error.message : 'Failed to refresh from device');
+      setError(errorMsg);
+      setMessage(errorMsg, 'error');
       // Don't call fetchPrograms() on error - preserve existing programs in UI
     } finally {
       setRefreshing(false);

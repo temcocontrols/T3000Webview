@@ -456,16 +456,17 @@ export class PanelDataRefreshService {
       transformed.digitalAnalog = item.digital_analog?.toString() || item.digitalAnalog;
     } else if (type === 'program') {
       // Program transformation - map C++ fields to database format
+      // NOTE: Keys must be camelCase to match Rust ProgramUpdate deserializer (#[serde(rename_all = "camelCase")])
       const indexValue = item.index?.toString() || item.programIndex;
       transformed.Program_ID = indexValue ? `PRG${parseInt(indexValue) + 1}` : undefined;
       transformed.panel = item.pid?.toString() || item.panel;
       transformed.label = item.label ?? '';  // Use nullish coalescing to preserve empty strings
-      transformed.full_label = item.description ?? item.full_label ?? item.fullLabel ?? '';  // Preserve empty strings
+      transformed.fullLabel = item.description ?? item.full_label ?? item.fullLabel ?? '';  // Preserve empty strings
       transformed.status = item.status?.toString() ?? '';  // Convert integer to string
-      transformed.auto_manual = item.auto_manual?.toString() ?? item.autoManual?.toString() ?? '';
+      transformed.autoManual = item.auto_manual?.toString() ?? item.autoManual?.toString() ?? '';
       transformed.size = item.size?.toString() ?? '';
-      transformed.execution_time = item.execution_time?.toString() ?? '';
-      transformed.program_code = item.program_code ?? item.programCode ?? '';
+      transformed.executionTime = item.execution_time?.toString() ?? '';
+      transformed.programCode = item.program_code ?? item.programCode ?? '';
     } else if (type === 'schedule') {
       // Schedule transformation - map C++ fields to database format
       const indexValue = item.index?.toString() || item.scheduleIndex;
