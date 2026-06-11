@@ -815,6 +815,16 @@ export const ProgramsPage: React.FC = () => {
                     resizableColumns
                     resizableColumnsOptions={{ autoFitColumns: false }}
                     style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
+                    columnSizingOptions={{
+                      program: { idealWidth: 80, minWidth: 50 },
+                      fullLabel: { idealWidth: 300, minWidth: 100 },
+                      status: { idealWidth: 100, minWidth: 50 },
+                      autoManual: { idealWidth: 120, minWidth: 70 },
+                      size: { idealWidth: 100, minWidth: 40 },
+                      executionTime: { idealWidth: 150, minWidth: 70 },
+                      label: { idealWidth: 180, minWidth: 70 },
+                      programming: { idealWidth: 120, minWidth: 55 },
+                    }}
                   >
                     <DataGridHeader>
                       <DataGridRow>
