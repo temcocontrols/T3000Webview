@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::app_state::T3AppState;
+use crate::server::debug_log;
 use crate::t3_device::services::{T3DeviceService, CreateDeviceRequest, UpdateDeviceRequest};
 use crate::t3_device::points_service::{T3PointsService, CreateInputPointRequest, CreateOutputPointRequest, CreateVariablePointRequest};
 use crate::entity::t3_device::{input_points, output_points, variable_points, trendlogs};
@@ -971,40 +972,64 @@ async fn batch_update_device_online_status(
     State(state): State<T3AppState>,
     Json(payload): Json<BatchOnlineStatusRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    use crate::entity::t3_device::devices;
-    use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, Set};
-
-    let db = get_t3_device_conn!(state);
+    let db_guard = get_t3_device_conn!(state);
+    let db: &sea_orm::DatabaseConnection = &*db_guard;
     let now = chrono::Utc::now().to_rfc3339();
     let mut updated = 0i32;
+    let mut errors: Vec<String> = Vec::new();
+
+    debug_log(&format!("[batch-online] Payload: onlineSerials={:?}, offlineSerials={:?}",
+        payload.online_serials, payload.offline_serials));
 
     // Mark online devices
     for serial in &payload.online_serials {
-        let result = devices::Entity::update_many()
-            .filter(devices::Column::SerialNumber.eq(*serial))
-            .col_expr(devices::Column::IsOnline, sea_orm::sea_query::Expr::value(1))
-            .col_expr(devices::Column::LastChecked, sea_orm::sea_query::Expr::value(now.clone()))
-            .exec(&*db)
-            .await;
-        if let Ok(res) = result { updated += res.rows_affected as i32; }
+        let sql = format!(
+            "UPDATE DEVICES SET is_online = 1, last_checked = '{}' WHERE SerialNumber = {}",
+            now, serial
+        );
+        debug_log(&format!("[batch-online] SQL: {}", sql));
+        match db.execute_unprepared(&sql).await {
+            Ok(res) => {
+                let rows = res.rows_affected();
+                debug_log(&format!("[batch-online] Marked SN {} as online (rows: {})", serial, rows));
+                updated += rows as i32;
+            }
+            Err(e) => {
+                let msg = format!("Failed to update SN {}: {}", serial, e);
+                debug_log(&format!("[batch-online] ERROR: {}", msg));
+                errors.push(msg);
+            }
+        }
     }
 
     // Mark offline devices
     for serial in &payload.offline_serials {
-        let result = devices::Entity::update_many()
-            .filter(devices::Column::SerialNumber.eq(*serial))
-            .col_expr(devices::Column::IsOnline, sea_orm::sea_query::Expr::value(0))
-            .col_expr(devices::Column::LastChecked, sea_orm::sea_query::Expr::value(now.clone()))
-            .exec(&*db)
-            .await;
-        if let Ok(res) = result { updated += res.rows_affected as i32; }
+        let sql = format!(
+            "UPDATE DEVICES SET is_online = 0, last_checked = '{}' WHERE SerialNumber = {}",
+            now, serial
+        );
+        match db.execute_unprepared(&sql).await {
+            Ok(res) => {
+                let rows = res.rows_affected();
+                debug_log(&format!("[batch-online] Marked SN {} as offline (rows: {})", serial, rows));
+                updated += rows as i32;
+            }
+            Err(e) => {
+                let msg = format!("Failed to update SN {}: {}", serial, e);
+                debug_log(&format!("[batch-online] ERROR: {}", msg));
+                errors.push(msg);
+            }
+        }
     }
 
+    debug_log(&format!("[batch-online] Done: {} updated, {} errors", updated, errors.len()));
+
     Ok(Json(json!({
-        "success": true,
+        "success": errors.is_empty(),
         "updated": updated,
         "onlineCount": payload.online_serials.len(),
         "offlineCount": payload.offline_serials.len(),
+        "errors": errors,
     })))
 }
 
@@ -1837,7 +1862,6 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .route("/devices", get(get_devices_with_stats))
         .route("/devices", post(create_device))
         .route("/devices", delete(delete_all_devices))  // DELETE all devices
-        .route("/devices/batch-online-status", post(batch_update_device_online_status))
         .route("/devices/:id", get(get_device_by_id))
         .route("/devices/:id", put(update_device))
         .route("/devices/:id", delete(delete_device))

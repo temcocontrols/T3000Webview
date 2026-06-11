@@ -76,11 +76,11 @@ pub struct CreateDeviceRequest {
     #[serde(rename = "Connection_Type", alias = "connectionType", alias = "protocol")]
     pub connection_type: Option<String>,           // T3000: Connection_Type (String type)
 
-    // Additional fields from frontend that may be sent but not stored
-    #[serde(skip_deserializing)]
-    pub last_online_time: Option<i64>,             // Timestamp - not in DEVICES table yet
-    #[serde(skip_deserializing)]
-    pub is_online: Option<bool>,                   // Online status - not in DEVICES table yet
+    // Additional fields from frontend
+    #[serde(rename = "is_online", alias = "isOnline")]
+    pub is_online: Option<i32>,                    // 0 = offline, 1 = online (set by FFI scan)
+    #[serde(rename = "last_checked", alias = "lastChecked")]
+    pub last_checked: Option<String>,              // ISO 8601 timestamp
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -125,6 +125,10 @@ pub struct UpdateDeviceRequest {
     pub show_label_name: Option<String>,           // T3000: Show_Label_Name (String type)
     #[serde(rename = "Connection_Type")]
     pub connection_type: Option<String>,           // T3000: Connection_Type (String type)
+    #[serde(rename = "is_online")]
+    pub is_online: Option<i32>,                    // 0 = offline, 1 = online
+    #[serde(rename = "last_checked")]
+    pub last_checked: Option<String>,              // ISO 8601 timestamp
 }
 
 pub struct T3DeviceService;
@@ -315,6 +319,13 @@ impl T3DeviceService {
             if device_data.connection_type.is_some() {
                 device.connection_type = Set(device_data.connection_type);
             }
+            // Always update online status when called from FFI scan
+            if device_data.is_online.is_some() {
+                device.is_online = Set(device_data.is_online);
+            }
+            if device_data.last_checked.is_some() {
+                device.last_checked = Set(device_data.last_checked);
+            }
 
             let mut updated_device = device.update(db).await?;
             updated_device.clean_all_fields();
@@ -356,6 +367,8 @@ impl T3DeviceService {
                 bacnet_ip_port: Set(device_data.bacnet_ip_port),
                 show_label_name: Set(device_data.show_label_name),
                 connection_type: Set(device_data.connection_type),
+                is_online: Set(device_data.is_online),
+                last_checked: Set(device_data.last_checked),
                 ..Default::default()
             };
 
@@ -433,6 +446,12 @@ impl T3DeviceService {
         }
         if let Some(connection_type) = device_data.connection_type {
             device.connection_type = Set(Some(connection_type));
+        }
+        if let Some(is_online) = device_data.is_online {
+            device.is_online = Set(Some(is_online));
+        }
+        if let Some(last_checked) = device_data.last_checked {
+            device.last_checked = Set(Some(last_checked));
         }
 
         let updated_device = device.update(db).await?;
