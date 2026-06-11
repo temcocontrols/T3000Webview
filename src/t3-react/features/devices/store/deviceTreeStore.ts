@@ -215,12 +215,24 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
                 !d.nameShowOnTree || d.nameShowOnTree === 'Unknown' || d.nameShowOnTree === '(Unknown)';
               const knownDevices = devices.filter(d => !isUnknown(d));
               knownDevices.sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
-              const firstDevice = knownDevices.length > 0 ? knownDevices[0] : null;
-              if (firstDevice) {
-                console.log(`[fetchDevices] Auto-selecting first device (sorted): ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
-                selectDevice(firstDevice);
+
+              // Try to restore last-selected device from localStorage first
+              const lastSerial = localStorage.getItem('t3.lastSelectedDevice');
+              const lastDevice = lastSerial
+                ? knownDevices.find(d => String(d.serialNumber) === lastSerial)
+                : null;
+
+              if (lastDevice) {
+                console.log(`[fetchDevices] Restoring last-selected device: ${lastDevice.nameShowOnTree} (SN: ${lastDevice.serialNumber})`);
+                selectDevice(lastDevice);
               } else {
-                console.log('[fetchDevices] No known devices to auto-select');
+                const firstDevice = knownDevices.length > 0 ? knownDevices[0] : null;
+                if (firstDevice) {
+                  console.log(`[fetchDevices] Auto-selecting first device: ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
+                  selectDevice(firstDevice);
+                } else {
+                  console.log('[fetchDevices] No known devices to auto-select');
+                }
               }
             }
 
@@ -725,6 +737,11 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           selectedNodeId: nodeId,
           selectedDevice: node?.data || null,
         });
+
+        // Persist selection so it survives page refresh
+        if (node?.data) {
+          localStorage.setItem('t3.lastSelectedDevice', String(node.data.serialNumber));
+        }
       },
 
       // Select device directly
@@ -734,6 +751,13 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           selectedDevice: device,
           selectedNodeId: device ? `device-${device.serialNumber}` : null,
         });
+
+        // Persist selection so it survives page refresh
+        if (device) {
+          localStorage.setItem('t3.lastSelectedDevice', String(device.serialNumber));
+        } else {
+          localStorage.removeItem('t3.lastSelectedDevice');
+        }
 
         // Smart auto-sync: Check if device needs sync (DB is empty)
         if (device) {
