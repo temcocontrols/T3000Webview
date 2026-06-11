@@ -660,6 +660,42 @@ const developerMenu: MenuItem = {
       action: () => window.location.hash = '#/t3000/develop/logs',
       icon: 'CalendarDataBar',
     },
+    {
+      id: 'dev-divider-2',
+      type: 'divider',
+    },
+    {
+      id: 'dev-fluentui-v9',
+      label: 'FluentUI v9',
+      type: 'item',
+      action: () => window.location.hash = '#/t3000/developer/fluentui-v9',
+      icon: 'WindowDevTools',
+    },
+  ],
+};
+
+/**
+ * Haystack Menu
+ */
+const haystackMenu: MenuItem = {
+  id: 'haystack',
+  label: 'Haystack',
+  type: 'submenu',
+  children: [
+    {
+      id: 'haystack-tag-library',
+      label: 'Standard Tags',
+      type: 'item',
+      action: () => { window.location.hash = '#/t3000/haystack-tags'; },
+      icon: 'Tag',
+    },
+    {
+      id: 'haystack-custom-tags',
+      label: 'Custom Tags',
+      type: 'item',
+      action: () => { window.location.hash = '#/t3000/custom-tags'; },
+      icon: 'Tag',
+    },
   ],
 };
 
@@ -720,6 +756,7 @@ export const topMenuConfig: MenuItem[] = [
   miscMenu,
   helpMenu,
   developerMenu,
+  haystackMenu,
   simulatorMenu,
 ];
 

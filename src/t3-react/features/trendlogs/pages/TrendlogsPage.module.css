@@ -813,6 +813,8 @@
   cursor: pointer;
   border-radius: 2px;
   transition: background-color 0.1s ease;
+  margin-left:10px;
+  margin-right:5px;
 }
 
 .toolbarButton svg {
@@ -1444,6 +1446,38 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.inputHeaderTags {
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.inputTags {
+  width: 100px;
+  flex-shrink: 0;
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+
+.inputTagChip {
+  padding: 0 5px;
+  border-radius: 6px;
+  font-size: 10px;
+  background: var(--colorBrandBackground2, #deecf9);
+  color: var(--colorBrandForeground1, #0078d4);
+  white-space: nowrap;
+}
+
+.inputTagMore {
+  font-size: 10px;
+  color: #605e5c;
+}
+
+.inputTagEmpty {
+  font-size: 10px;
+  color: #a19f9d;
 }
 
 .inputValue {

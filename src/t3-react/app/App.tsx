@@ -94,6 +94,12 @@ const DiscoverPage = React.lazy(() =>
 const BuildingsPage = React.lazy(() =>
   import('../features/buildings/pages/BuildingsPage').then((m) => ({ default: m.BuildingsPage }))
 );
+const HaystackTagsPage = React.lazy(() =>
+  import('../features/haystack/pages/HaystackTagsPage').then((m) => ({ default: m.HaystackTagsPage }))
+);
+const CustomTagsPage = React.lazy(() =>
+  import('../features/haystack/pages/CustomTagsPage').then((m) => ({ default: m.CustomTagsPage }))
+);
 const Tstat10SimulatorPage = React.lazy(() =>
   Promise.all([
     import('../features/tstat10-simulator/pages/Tstat10SimulatorPage').then(m => m.Tstat10SimulatorPage),
@@ -116,6 +122,9 @@ const HvacDesignerPage = React.lazy(() =>
 );
 const DocumentationPage = React.lazy(() =>
   import('../features/documentation/pages/DocumentationPage').then((m) => ({ default: m.DocumentationPage }))
+);
+const FluentUIV9Page = React.lazy(() =>
+  import('../features/developer/pages/FluentUIV9Page').then((m) => ({ default: m.FluentUIV9Page }))
 );
 
 // Develop section - special layout
@@ -366,6 +375,14 @@ export const App: React.FC = () => {
                   }
                 />
                 <Route
+                  path="developer/fluentui-v9"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <FluentUIV9Page />
+                    </React.Suspense>
+                  }
+                />
+                <Route
                   path="database/config"
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
@@ -379,6 +396,22 @@ export const App: React.FC = () => {
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <Tstat10SimulatorPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="haystack-tags"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <HaystackTagsPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="custom-tags"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <CustomTagsPage />
                     </React.Suspense>
                   }
                 />

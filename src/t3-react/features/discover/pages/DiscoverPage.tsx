@@ -388,8 +388,8 @@ export const DiscoverPage: React.FC = () => {
                     className={styles.toolbarButton}
                     onClick={handleRefresh}
                     disabled={refreshing}
-                    title="Refresh"
-                    aria-label="Refresh"
+                    title="Refresh from Device"
+                    aria-label="Refresh from Device"
                   >
                     <ArrowSyncRegular />
                     <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>

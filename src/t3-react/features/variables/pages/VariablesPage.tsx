@@ -36,10 +36,8 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SearchRegular,
-  ArrowSortUpRegular,
-  ArrowSortDownRegular,
-  ArrowSortRegular,
   ErrorCircleRegular,
   SaveRegular,
   InfoRegular
@@ -55,6 +53,7 @@ import { PageSyncStatus } from '@t3-react/shared/components/PageSyncStatus';
 import styles from './VariablesPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import { TagsColumnCell, fetchTagsForDevice } from '../../inputs/components/TagsColumnCell';
 
 // Types based on Rust entity (variable_points.rs)
 interface VariablePoint {
@@ -688,6 +687,24 @@ const VariablesPageDesktop: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Point tags for tag-based search filtering
+  const [pointTags, setPointTags] = useState<{ pointType: string; pointIndex: string; tagName: string }[]>([]);
+
+  // Fetch point tags when device changes
+  useEffect(() => {
+    if (!selectedDevice?.serialNumber) return;
+    let cancelled = false;
+    fetchTagsForDevice(selectedDevice.serialNumber).then((all) => {
+      if (cancelled) return;
+      setPointTags(all.map(t => ({
+        pointType: t.point_type,
+        pointIndex: t.point_index,
+        tagName: t.tag_name,
+      })));
+    });
+    return () => { cancelled = true; };
+  }, [selectedDevice?.serialNumber]);
+
   // VAR / PVAR filter — two mutually exclusive options
   const [activeFilter, setActiveFilter] = useState<'VARS' | 'PVARS'>('VARS');
 
@@ -773,16 +790,18 @@ const VariablesPageDesktop: React.FC = () => {
     console.log('Search query:', e.target.value);
   };
 
-  // Sorting state
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
-
-  const handleSort = (columnId: string) => {
-    if (sortColumn === columnId) {
-      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
+  // Controlled sort state for asc→desc→clear
+  const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
+  const [sortKey, setSortKey] = useState(0);
+  const prevSortRef = React.useRef<{ sortColumn: string; sortDirection: string } | undefined>();
+  const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
+    const prev = prevSortRef.current;
+    prevSortRef.current = newState;
+    if (prev?.sortColumn === newState.sortColumn && prev?.sortDirection === 'descending' && newState.sortDirection === 'ascending') {
+      setSortState(undefined);
+      setSortKey(k => k + 1);
     } else {
-      setSortColumn(columnId);
-      setSortDirection('ascending');
+      setSortState(newState);
     }
   };
 
@@ -795,34 +814,47 @@ const VariablesPageDesktop: React.FC = () => {
 
   // Display data with 18 empty rows when no variables
   const displayVariables = React.useMemo(() => {
-    if (allVariables.length === 0) {
-      return Array(18).fill(null).map((_, index) => ({
-        serialNumber: selectedDevice?.serialNumber || 0,
-        variableId: '',
-        variableIndex: '',
-        panel: '',
-        fullLabel: '',
-        autoManual: '',
-        fValue: '',
-        units: '',
-        rangeField: '',
-        calibration: '',
-        sign: '',
-        calibrationH: '',
-        calibrationL: '',
-        calibrationSign: '',
-        control: '',
-        filterField: '',
-        status: '',
-        digitalAnalog: '',
-        label: '',
-        typeField: '',
-      }));
+    const emptyTemplate = {
+      serialNumber: selectedDevice?.serialNumber || 0,
+      variableId: '', variableIndex: '', panel: '', fullLabel: '', autoManual: '',
+      fValue: '', units: '', rangeField: '', calibration: '', sign: '',
+      calibrationH: '', calibrationL: '', calibrationSign: '', control: '',
+      filterField: '', status: '', digitalAnalog: '', label: '', typeField: '',
+    };
+
+    // Apply VAR / PVAR filter first
+    let filtered = activeFilter === 'VARS'
+      ? allVariables.filter(v => !isPvar(v))
+      : allVariables.filter(v => isPvar(v));
+
+    // Search filter — match against label, full label, ID, value, and tags
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(v => {
+        // Match variable fields
+        if (
+          (v.label || '').toLowerCase().includes(q) ||
+          (v.fullLabel || '').toLowerCase().includes(q) ||
+          String(v.variableId || '').toLowerCase().includes(q) ||
+          String(v.variableIndex || '').toLowerCase().includes(q) ||
+          (v.fValue ? (parseFloat(v.fValue) / 1000).toFixed(2) : '').includes(q)
+        ) return true;
+        // Match tags assigned to this variable
+        const varTags = pointTags.filter(
+          t => t.pointType === 'VARIABLE' && t.pointIndex === (v.variableIndex || '')
+        );
+        return varTags.some(t => t.tagName.toLowerCase().includes(q));
+      });
     }
-    // Apply VAR / PVAR filter
-    if (activeFilter === 'VARS')  return allVariables.filter(v => !isPvar(v));
-    return allVariables.filter(v => isPvar(v)); // PVARS
-  }, [allVariables, selectedDevice, activeFilter]);
+
+    if (filtered.length === 0 && allVariables.length > 0) {
+      return []; // No results — show empty but not placeholder rows
+    }
+    if (allVariables.length === 0) {
+      return Array(18).fill(null).map(() => ({ ...emptyTemplate }));
+    }
+    return filtered;
+  }, [allVariables, selectedDevice, activeFilter, searchQuery, pointTags]);
 
   // Helper to identify empty rows
   const isEmptyRow = (item: VariablePoint) => !item.variableIndex && !item.variableId && allVariables.length === 0;
@@ -846,16 +878,8 @@ const VariablesPageDesktop: React.FC = () => {
     // 2. Variable (Index/ID)
     createTableColumn<VariablePoint>({
       columnId: 'variable',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('variable')}>
-          <span>Variable</span>
-          {sortColumn === 'variable' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.variableId || ''), String(b.variableId || '')),
+      renderHeaderCell: () => <span>Variable</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {
           return <TableCellLayout></TableCellLayout>;
@@ -892,16 +916,8 @@ const VariablesPageDesktop: React.FC = () => {
     // 3. Full Label
     createTableColumn<VariablePoint>({
       columnId: 'fullLabel',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('fullLabel')}>
-          <span>Full Label</span>
-          {sortColumn === 'fullLabel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.fullLabel || ''), String(b.fullLabel || '')),
+      renderHeaderCell: () => <span>Full Label</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {
           return <TableCellLayout></TableCellLayout>;
@@ -955,16 +971,8 @@ const VariablesPageDesktop: React.FC = () => {
     // 3. Label (short label)
     createTableColumn<VariablePoint>({
       columnId: 'label',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('label')}>
-          <span>Label</span>
-          {sortColumn === 'label' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.label || ''), String(b.label || '')),
+      renderHeaderCell: () => <span>Label</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {
           return <TableCellLayout></TableCellLayout>;
@@ -1018,16 +1026,8 @@ const VariablesPageDesktop: React.FC = () => {
     // 5. Value
     createTableColumn<VariablePoint>({
       columnId: 'value',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} style={{ justifyContent: 'flex-end', width: '100%' }} onClick={() => handleSort('value')}>
-          <span>Value</span>
-          {sortColumn === 'value' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => { const av = parseFloat(a.fValue||'0'); const bv = parseFloat(b.fValue||'0'); return av - bv; },
+      renderHeaderCell: () => <span>Value</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {
           return <TableCellLayout></TableCellLayout>;
@@ -1082,16 +1082,8 @@ const VariablesPageDesktop: React.FC = () => {
     // 6. Units
     createTableColumn<VariablePoint>({
       columnId: 'units',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('units')}>
-          <span>Units</span>
-          {sortColumn === 'units' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.units || ''), String(b.units || '')),
+      renderHeaderCell: () => <span>Units</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {
           return <TableCellLayout></TableCellLayout>;
@@ -1210,6 +1202,29 @@ const VariablesPageDesktop: React.FC = () => {
         );
       },
     }),
+    // TAGS
+    createTableColumn<VariablePoint>({
+      columnId: 'tags',
+      renderHeaderCell: () => (
+        <div className={styles.headerCell}><span>Tags</span></div>
+      ),
+      renderCell: (item) => {
+        if (isEmptyRow(item)) return <TableCellLayout>—</TableCellLayout>;
+        const idx = item.variableIndex || '';
+        const pid = `dev${item.serialNumber}.var${idx}`;
+        return (
+          <TagsColumnCell
+            serialNumber={item.serialNumber}
+            pointType="VARIABLE"
+            pointIndex={idx}
+            pointId={pid}
+            pointLabel={item.label || item.fullLabel || `VAR${idx}`}
+            deviceName={selectedDevice?.nameShowOnTree || selectedDevice?.productName}
+            isEmpty={isEmptyRow(item)}
+          />
+        );
+      },
+    }),
   ];
 
   // ========================================
@@ -1253,12 +1268,12 @@ const VariablesPageDesktop: React.FC = () => {
                         <input
                           className={styles.searchInput}
                           type="text"
-                          placeholder="Search variables..."
+                          placeholder="Search variables by label, value, tags ..."
                           value={searchQuery}
                           onChange={handleSearchChange}
                           spellCheck="false"
                           role="searchbox"
-                          aria-label="Search variables"
+                          aria-label="Search variables by label, value, tags ..."
                         />
                       </div>
 
@@ -1298,10 +1313,10 @@ const VariablesPageDesktop: React.FC = () => {
                         onClick={handleRefreshFromDevice}
                         disabled={refreshing}
                         title="Refresh all variables from device"
-                        aria-label="Refresh from Device"
+                        aria-label="Refresh"
                       >
-                        <ArrowSyncRegular />
-                        <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                        <ArrowClockwiseRegular />
+                        <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                       </button>
 
                       <div className={styles.toolbarSeparator} role="separator" />
@@ -1375,11 +1390,27 @@ const VariablesPageDesktop: React.FC = () => {
                     onWheel={handleWheel}
                   >
                     <DataGrid
+                      key={sortKey}
                       items={displayVariables}
                       columns={columns}
+                      resizableColumns
+                      resizableColumnsOptions={{ autoFitColumns: false }}
                       sortable
+                      sortState={sortState}
+                      onSortChange={handleSortChange}
+                      style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
+                      columnSizingOptions={{
+                        panel: { idealWidth: 60, minWidth: 40 },
+                        variable: { idealWidth: 90, minWidth: 60 },
+                        fullLabel: { idealWidth: 250, minWidth: 140 },
+                        label: { idealWidth: 190, minWidth: 110 },
+                        value: { idealWidth: 120, minWidth: 80 },
+                        units: { idealWidth: 90, minWidth: 60 },
+                        autoManual: { idealWidth: 100, minWidth: 75 },
+                        tags: { idealWidth: 300, minWidth: 80 },
+                      }}
                     >
-                      <DataGridHeader>
+                      <DataGridHeader style={{ backgroundColor: '#e0e0e0' }}>
                         <DataGridRow>
                           {({ renderHeaderCell }) => (
                             <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>

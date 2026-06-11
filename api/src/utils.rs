@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use migration::{Migrator, T3DeviceMigrator, MigratorTrait};
+use sea_orm::ConnectionTrait;
 use std::{env, fs, path::Path, sync::Arc};
 use tokio::sync::{mpsc, Mutex};
 
@@ -104,13 +105,11 @@ pub fn copy_database_if_not_exists() -> Result<(), Box<dyn std::error::Error>> {
 
 // Asynchronously runs the database migrations.
 pub async fn run_migrations() -> Result<(), Box<dyn std::error::Error>> {
-    let conn = establish_connection().await?; // Establish a database connection.
-    Migrator::up(&conn, None).await?; // Run the migrations.
+    let conn = establish_connection().await?;
+    Migrator::up(&conn, None).await?;
     drop(conn);
     Ok(())
 }
-
-// ============================================================================
 // ABSTRACTED FUNCTIONS - All new functionality separated from original code
 // ============================================================================
 
@@ -675,26 +674,39 @@ pub async fn start_database_service_dynamic() -> Result<(), Box<dyn std::error::
 /// Unified database initialization function
 /// Automatically selects Option 1 (copy) or Option 2 (dynamic) based on USE_DYNAMIC_DATABASE_CREATION
 pub async fn initialize_t3_device_database() -> Result<(), Box<dyn std::error::Error>> {
+    crate::server::debug_log("initialize_t3_device_database: START");
     if USE_DYNAMIC_DATABASE_CREATION {
-        // Option 2: Dynamic creation from embedded SQL
         t3_enhanced_logging("[GEAR] Using Option 2: Dynamic database creation from embedded SQL");
         start_database_service_dynamic().await?;
     } else {
-        // Option 1: Copy pre-built database from ResourceFile
         t3_enhanced_logging("[GEAR] Using Option 1: Copy pre-built database from ResourceFile");
         start_database_service().await?;
     }
-
-    // Run T3 device migrations (applies only unapplied ones, tracked in seaql_migrations)
+    crate::server::debug_log("initialize_t3_device_database: DB init done, running migrations...");
     run_t3_device_migrations().await?;
-
+    crate::server::debug_log("initialize_t3_device_database: DONE");
     Ok(())
 }
 
 /// Run SeaORM migrations against webview_t3_device.db
 pub async fn run_t3_device_migrations() -> Result<(), Box<dyn std::error::Error>> {
-    let conn = crate::db_connection::establish_t3_device_connection().await?;
+    crate::server::debug_log("run_t3_device_migrations: opening connection...");
+    let conn = match crate::db_connection::establish_t3_device_connection().await {
+        Ok(c) => {
+            crate::server::debug_log("run_t3_device_migrations: connection OK");
+            c
+        }
+        Err(e) => {
+            crate::server::debug_log(&format!("run_t3_device_migrations: connection FAILED: {:?}", e));
+            return Err(e);
+        }
+    };
     t3_enhanced_logging("[RELOAD] Running T3 device database migrations...");
+    // Wipe migration tracking so all migrations always run (each is idempotent)
+    conn.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "DROP TABLE IF EXISTS seaql_migrations".to_owned(),
+    )).await?;
     T3DeviceMigrator::up(&conn, None).await?;
     t3_enhanced_logging("[OK] T3 device database migrations complete");
     drop(conn);

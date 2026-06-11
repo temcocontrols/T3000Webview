@@ -40,10 +40,8 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SearchRegular,
-  ArrowSortUpRegular,
-  ArrowSortDownRegular,
-  ArrowSortRegular,
   ErrorCircleRegular,
   SaveRegular,
   InfoRegular,
@@ -59,6 +57,7 @@ import { PageSyncStatus } from '@t3-react/shared/components/PageSyncStatus';
 import styles from './OutputsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import { TagsColumnCell, fetchTagsForDevice } from '../../inputs/components/TagsColumnCell';
 
 // Types based on Rust entity (output_points.rs)
 interface OutputPoint {
@@ -572,13 +571,13 @@ const OutputsPageDesktop: React.FC = () => {
       setOutputs(prevOutputs =>
         prevOutputs.map(output =>
           output.serialNumber === editingCell.serialNumber &&
-          output.outputIndex === editingCell.outputIndex
+            output.outputIndex === editingCell.outputIndex
             ? {
-                ...output,
-                [editingCell.field]: editingCell.field === 'fValue'
-                  ? (parseFloat(editValue || '0') * 1000).toString()  // Convert back to raw value for storage
-                  : editValue
-              }
+              ...output,
+              [editingCell.field]: editingCell.field === 'fValue'
+                ? (parseFloat(editValue || '0') * 1000).toString()  // Convert back to raw value for storage
+                : editValue
+            }
             : output
         )
       );
@@ -609,6 +608,23 @@ const OutputsPageDesktop: React.FC = () => {
   };
 
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Point tags for tag-based search filtering
+  const [pointTags, setPointTags] = useState<{ pointType: string; pointIndex: string; tagName: string }[]>([]);
+
+  useEffect(() => {
+    if (!selectedDevice?.serialNumber) return;
+    let cancelled = false;
+    fetchTagsForDevice(selectedDevice.serialNumber).then((all) => {
+      if (cancelled) return;
+      setPointTags(all.map(t => ({
+        pointType: t.point_type,
+        pointIndex: t.point_index,
+        tagName: t.tag_name,
+      })));
+    });
+    return () => { cancelled = true; };
+  }, [selectedDevice?.serialNumber]);
 
   // Inline editing state
   const [editingCell, setEditingCell] = useState<{ serialNumber: number; outputIndex: string; field: string } | null>(null);
@@ -671,7 +687,7 @@ const OutputsPageDesktop: React.FC = () => {
       setOutputs(prevOutputs =>
         prevOutputs.map(output =>
           output.serialNumber === selectedOutput.serialNumber &&
-          output.outputIndex === selectedOutput.outputIndex
+            output.outputIndex === selectedOutput.outputIndex
             ? { ...output, range: newRange.toString(), rangeField: newRange.toString(), digitalAnalog: newDigitalAnalog.toString() }
             : output
         )
@@ -687,50 +703,54 @@ const OutputsPageDesktop: React.FC = () => {
     console.log('Search query:', e.target.value);
   };
 
-  // Sorting state
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
-
-  const handleSort = (columnId: string) => {
-    if (sortColumn === columnId) {
-      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
+  // Controlled sort state for asc→desc→clear
+  const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
+  const [sortKey, setSortKey] = useState(0);
+  const prevSortRef = React.useRef<{ sortColumn: string; sortDirection: string } | undefined>();
+  const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
+    const prev = prevSortRef.current;
+    prevSortRef.current = newState;
+    if (prev?.sortColumn === newState.sortColumn && prev?.sortDirection === 'descending' && newState.sortDirection === 'ascending') {
+      setSortState(undefined);
+      setSortKey(k => k + 1);
     } else {
-      setSortColumn(columnId);
-      setSortDirection('ascending');
+      setSortState(newState);
     }
   };
 
-  // Display data with 10 empty rows when no outputs
+  // Display data with search and tag filtering
   const displayOutputs = React.useMemo(() => {
+    let filtered = outputs;
+
+    if (searchQuery.trim() && outputs.length > 0) {
+      const q = searchQuery.toLowerCase();
+      filtered = outputs.filter(v => {
+        if (
+          (v.label || '').toLowerCase().includes(q) ||
+          (v.fullLabel || '').toLowerCase().includes(q) ||
+          String(v.outputId || '').toLowerCase().includes(q) ||
+          String(v.outputIndex || '').toLowerCase().includes(q) ||
+          (v.fValue ? (parseFloat(v.fValue) / 1000).toFixed(2) : '').includes(q)
+        ) return true;
+        const outTags = pointTags.filter(
+          t => t.pointType === 'OUTPUT' && t.pointIndex === (v.outputIndex || '')
+        );
+        return outTags.some(t => t.tagName.toLowerCase().includes(q));
+      });
+    }
+
     if (outputs.length === 0) {
-      return Array(18).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map(() => ({
         serialNumber: selectedDevice?.serialNumber || 0,
-        outputId: '',
-        outputIndex: '',
-        panel: '',
-        fullLabel: '',
-        autoManual: '',
-        hwSwitchStatus: '',
-        fValue: '',
-        units: '',
-        range: '',
-        rangeField: '',
-        lowVoltage: '',
-        highVoltage: '',
-        pwmPeriod: '',
-        calibrationH: '',
-        calibrationL: '',
-        calibrationSign: '',
-        control: '',
-        status: '',
-        signalType: '',
-        digitalAnalog: '',
-        label: '',
-        typeField: '',
+        outputId: '', outputIndex: '', panel: '', fullLabel: '', autoManual: '',
+        hwSwitchStatus: '', fValue: '', units: '', range: '', rangeField: '',
+        lowVoltage: '', highVoltage: '', pwmPeriod: '', calibrationH: '',
+        calibrationL: '', calibrationSign: '', control: '', status: '',
+        signalType: '', digitalAnalog: '', label: '', typeField: '',
       }));
     }
-    return outputs;
-  }, [outputs, selectedDevice]);
+    return filtered;
+  }, [outputs, selectedDevice, searchQuery, pointTags]);
 
   // Helper to identify empty rows
   const isEmptyRow = (item: OutputPoint) => !item.outputIndex && !item.outputId && outputs.length === 0;
@@ -752,16 +772,8 @@ const OutputsPageDesktop: React.FC = () => {
     // 2. Output (Index/ID)
     createTableColumn<OutputPoint>({
       columnId: 'output',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('output')}>
-          <span>Output</span>
-          {sortColumn === 'output' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.outputId || a.outputIndex || ''), String(b.outputId || b.outputIndex || '')),
+      renderHeaderCell: () => <span>Output</span>,
       renderCell: (item) => {
         const isRefreshing = refreshingItems.has(item.outputIndex || '');
 
@@ -794,20 +806,12 @@ const OutputsPageDesktop: React.FC = () => {
     // 3. Full Label
     createTableColumn<OutputPoint>({
       columnId: 'fullLabel',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('fullLabel')}>
-          <span>Full Label</span>
-          {sortColumn === 'fullLabel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.fullLabel || ''), String(b.fullLabel || '')),
+      renderHeaderCell: () => <span>Full Label</span>,
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.outputIndex === item.outputIndex &&
-                          editingCell?.field === 'fullLabel';
+          editingCell?.outputIndex === item.outputIndex &&
+          editingCell?.field === 'fullLabel';
 
         return (
           <TableCellLayout>
@@ -855,20 +859,12 @@ const OutputsPageDesktop: React.FC = () => {
     // 4. Label (short label)
     createTableColumn<OutputPoint>({
       columnId: 'label',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('label')}>
-          <span>Label</span>
-          {sortColumn === 'label' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.label || ''), String(b.label || '')),
+      renderHeaderCell: () => <span>Label</span>,
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.outputIndex === item.outputIndex &&
-                          editingCell?.field === 'label';
+          editingCell?.outputIndex === item.outputIndex &&
+          editingCell?.field === 'label';
 
         return (
           <TableCellLayout>
@@ -1045,20 +1041,12 @@ const OutputsPageDesktop: React.FC = () => {
     // 7. Value
     createTableColumn<OutputPoint>({
       columnId: 'value',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} style={{ justifyContent: 'flex-end', width: '100%' }} onClick={() => handleSort('value')}>
-          <span>Value</span>
-          {sortColumn === 'value' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => { const av = parseFloat(a.fValue || '0'); const bv = parseFloat(b.fValue || '0'); return av - bv; },
+      renderHeaderCell: () => <span>Value</span>,
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.outputIndex === item.outputIndex &&
-                          editingCell?.field === 'fValue';
+          editingCell?.outputIndex === item.outputIndex &&
+          editingCell?.field === 'fValue';
 
         return (
           <TableCellLayout>
@@ -1109,16 +1097,8 @@ const OutputsPageDesktop: React.FC = () => {
     // 8. Units
     createTableColumn<OutputPoint>({
       columnId: 'units',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('units')}>
-          <span>Units</span>
-          {sortColumn === 'units' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.units || ''), String(b.units || '')),
+      renderHeaderCell: () => <span>Units</span>,
       renderCell: (item) => {
         const rangeValue = parseInt(item.rangeField || item.range || '0', 10);
         const digitalAnalog = parseInt(item.digitalAnalog || '0', 10);
@@ -1138,18 +1118,9 @@ const OutputsPageDesktop: React.FC = () => {
       compare: (a, b) => {
         const aVal = a.range || '';
         const bVal = b.range || '';
-        return aVal.localeCompare(bVal);
+        return new Intl.Collator(undefined, { numeric: true }).compare(aVal, bVal);
       },
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('range')}>
-          <span>Range</span>
-          {sortColumn === 'range' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      renderHeaderCell: () => <span>Range</span>,
       renderCell: (item) => {
         // Parse range value and digital_analog type
         const rangeValue = parseInt(item.rangeField || item.range || '0', 10);
@@ -1179,8 +1150,8 @@ const OutputsPageDesktop: React.FC = () => {
       ),
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.outputIndex === item.outputIndex &&
-                          editingCell?.field === 'lowVoltage';
+          editingCell?.outputIndex === item.outputIndex &&
+          editingCell?.field === 'lowVoltage';
 
         return (
           <TableCellLayout>
@@ -1221,8 +1192,8 @@ const OutputsPageDesktop: React.FC = () => {
       ),
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.outputIndex === item.outputIndex &&
-                          editingCell?.field === 'highVoltage';
+          editingCell?.outputIndex === item.outputIndex &&
+          editingCell?.field === 'highVoltage';
 
         return (
           <TableCellLayout>
@@ -1255,51 +1226,34 @@ const OutputsPageDesktop: React.FC = () => {
         );
       },
     }),
-    // 13. Status
-    createTableColumn<OutputPoint>({
-      columnId: 'status',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('status')}>
-          <span>Status</span>
-          {sortColumn === 'status' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
-      renderCell: (item) => {
-        // Map status codes to readable text
-        // Common status codes: 0 = Normal/OK, 64 = Normal, other values may indicate errors
-        let statusText = 'Normal';
-        let statusColor: 'success' | 'danger' | 'warning' = 'success';
-
-        const statusValue = item.status?.toString();
-        if (statusValue === '0' || statusValue === '64') {
-          statusText = 'Normal';
-          statusColor = 'success';
-        } else if (statusValue && statusValue !== 'online' && statusValue !== 'normal') {
-          statusText = `Code ${statusValue}`;
-          statusColor = 'warning';
-        } else if (statusValue?.toLowerCase() === 'online' || statusValue?.toLowerCase() === 'normal') {
-          statusText = 'Normal';
-          statusColor = 'success';
-        }
-
-        return (
-          <TableCellLayout>
-            {!isEmptyRow(item) && (
-              <Badge
-                appearance="filled"
-                color={statusColor}
-              >
-                {statusText}
-              </Badge>
-            )}
-          </TableCellLayout>
-        );
-      },
-    }),
+    // 13. Status — commented out
+    // createTableColumn<OutputPoint>({
+    //   columnId: 'status',
+    //   compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.status || ''), String(b.status || '')),
+    //   renderHeaderCell: () => <span>Status</span>,
+    //   renderCell: (item) => {
+    //     let statusText = 'Normal';
+    //     let statusColor: 'success' | 'danger' | 'warning' = 'success';
+    //     const statusValue = item.status?.toString();
+    //     if (statusValue === '0' || statusValue === '64') {
+    //       statusText = 'Normal';
+    //       statusColor = 'success';
+    //     } else if (statusValue && statusValue !== 'online' && statusValue !== 'normal') {
+    //       statusText = `Code ${statusValue}`;
+    //       statusColor = 'warning';
+    //     } else if (statusValue?.toLowerCase() === 'online' || statusValue?.toLowerCase() === 'normal') {
+    //       statusText = 'Normal';
+    //       statusColor = 'success';
+    //     }
+    //     return (
+    //       <TableCellLayout>
+    //         {!isEmptyRow(item) && (
+    //           <Badge appearance="filled" color={statusColor}>{statusText}</Badge>
+    //         )}
+    //       </TableCellLayout>
+    //     );
+    //   },
+    // }),
     // 14. Type
     createTableColumn<OutputPoint>({
       columnId: 'signalType',
@@ -1318,6 +1272,29 @@ const OutputsPageDesktop: React.FC = () => {
               </span>
             )}
           </TableCellLayout>
+        );
+      },
+    }),
+    // TAGS
+    createTableColumn<OutputPoint>({
+      columnId: 'tags',
+      renderHeaderCell: () => (
+        <div className={styles.headerCell}><span>TAGS</span></div>
+      ),
+      renderCell: (item) => {
+        if (isEmptyRow(item)) return <TableCellLayout>—</TableCellLayout>;
+        const idx = item.outputIndex || '';
+        const pid = `dev${item.serialNumber}.out${idx}`;
+        return (
+          <TagsColumnCell
+            serialNumber={item.serialNumber}
+            pointType="OUTPUT"
+            pointIndex={idx}
+            pointId={pid}
+            pointLabel={item.label || item.fullLabel || `OUT${idx}`}
+            deviceName={selectedDevice?.nameShowOnTree || selectedDevice?.productName}
+            isEmpty={isEmptyRow(item)}
+          />
         );
       },
     }),
@@ -1355,70 +1332,70 @@ const OutputsPageDesktop: React.FC = () => {
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
               {selectedDevice && (
-              <>
-              <div className={styles.toolbar}>
-                <div className={styles.toolbarContainer}>
-                  {/* Search Input Box */}
-                  <div className={styles.searchInputWrapper}>
-                    <SearchRegular className={styles.searchIcon} />
-                    <input
-                      className={styles.searchInput}
-                      type="text"
-                      placeholder="Search outputs..."
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                      spellCheck="false"
-                      role="searchbox"
-                      aria-label="Search outputs"
-                    />
-                  </div>
+                <>
+                  <div className={styles.toolbar}>
+                    <div className={styles.toolbarContainer}>
+                      {/* Search Input Box */}
+                      <div className={styles.searchInputWrapper}>
+                        <SearchRegular className={styles.searchIcon} />
+                        <input
+                          className={styles.searchInput}
+                          type="text"
+                          placeholder="Search by label, value, ID, tag…"
+                          value={searchQuery}
+                          onChange={handleSearchChange}
+                          spellCheck="false"
+                          role="searchbox"
+                          aria-label="Search outputs by label, value, ID, tag"
+                        />
+                      </div>
 
-                  {/* Refresh Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleRefreshFromDevice}
-                    disabled={refreshing}
-                    title="Refresh all outputs from device"
-                    aria-label="Refresh from Device"
-                  >
-                    <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                  </button>
+                      {/* Refresh Button */}
+                      <button
+                        className={styles.toolbarButton}
+                        onClick={handleRefreshFromDevice}
+                        disabled={refreshing}
+                        title="Refresh all outputs from device"
+                        aria-label="Refresh"
+                      >
+                        <ArrowClockwiseRegular />
+                        <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+                      </button>
 
-                  <div className={styles.toolbarSeparator} role="separator" />
+                      <div className={styles.toolbarSeparator} role="separator" />
 
-                  {/* Info Button with Tooltip */}
-                  <Tooltip
-                    content={`Showing output points for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). This table displays all configured output points including digital and analog outputs, their current values, voltage settings, and operational status.`}
-                    relationship="description"
-                  >
-                    <button
-                      className={`${styles.toolbarButton} ${styles.marginLeft8}`}
-                      title="Information"
-                      aria-label="Information about this page"
-                    >
-                      <InfoRegular />
-                    </button>
-                  </Tooltip>
+                      {/* Info Button with Tooltip */}
+                      <Tooltip
+                        content={`Showing output points for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). This table displays all configured output points including digital and analog outputs, their current values, voltage settings, and operational status.`}
+                        relationship="description"
+                      >
+                        <button
+                          className={`${styles.toolbarButton} ${styles.marginLeft8}`}
+                          title="Information"
+                          aria-label="Information about this page"
+                        >
+                          <InfoRegular />
+                        </button>
+                      </Tooltip>
 
-                  <div className={styles.toolbarSeparator} role="separator" />
+                      <div className={styles.toolbarSeparator} role="separator" />
 
-                  {/* <PageSyncStatus
+                      {/* <PageSyncStatus
                     dataType="OUTPUTS"
                     serialNumber={selectedDevice.serialNumber.toString()}
                     onRefresh={handleRefreshFromDevice}
                   /> */}
-                </div>
-              </div>
+                    </div>
+                  </div>
 
-              {/* ========================================
+                  {/* ========================================
                   HORIZONTAL DIVIDER
                   Matches: ext-overview-hr
                   ======================================== */}
-              <div className={styles.noPadding}>
-                <hr className={styles.overviewHr} />
-              </div>
-              </>
+                  <div className={styles.noPadding}>
+                    <hr className={styles.overviewHr} />
+                  </div>
+                </>
               )}
 
               {/* ========================================
@@ -1455,11 +1432,32 @@ const OutputsPageDesktop: React.FC = () => {
                     onWheel={handleWheel}
                   >
                     <DataGrid
+                      key={sortKey}
                       items={displayOutputs}
                       columns={columns}
                       sortable
+                      sortState={sortState}
+                      onSortChange={handleSortChange}
+                      resizableColumns
+                      resizableColumnsOptions={{ autoFitColumns: false }}
+                      style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
+                      columnSizingOptions={{
+                        panel: { idealWidth: 50, minWidth: 40 },
+                        output: { idealWidth: 65, minWidth: 55 },
+                        fullLabel: { idealWidth: 165, minWidth: 80 },
+                        label: { idealWidth: 125, minWidth: 50 },
+                        autoManual: { idealWidth: 82, minWidth: 60  },
+                        hoaSwitch: { idealWidth: 90, minWidth: 65 },
+                        value: { idealWidth: 120, minWidth: 80 },
+                        units: { idealWidth: 105, minWidth: 50 },
+                        range: { idealWidth: 100, minWidth: 65 },
+                        lowVoltage: { idealWidth: 65, minWidth: 50 },
+                        highVoltage: { idealWidth: 65, minWidth: 50 },
+                        signalType: { idealWidth: 70, minWidth: 55 },
+                        tags: { idealWidth: 180, minWidth: 80 },
+                      }}
                     >
-                      <DataGridHeader>
+                      <DataGridHeader style={{ backgroundColor: '#e0e0e0' }}>
                         <DataGridRow>
                           {({ renderHeaderCell }) => (
                             <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>

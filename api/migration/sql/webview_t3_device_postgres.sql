@@ -114,20 +114,32 @@ CREATE TABLE IF NOT EXISTS VARIABLES (
     Control TEXT
 );
 
-CREATE TABLE IF NOT EXISTS HAYSTACK_ENTITY (
-    id TEXT PRIMARY KEY,
-    kind TEXT NOT NULL,
-    dis TEXT,
-    tags TEXT NOT NULL,
-    serial_number INTEGER,
-    point_table TEXT,
-    point_index TEXT,
-    updated_at BIGINT
+-- HAYSTACK_TAGS — standard Haystack v4 semantic tagging (replaces old HAYSTACK_ENTITY)
+CREATE TABLE IF NOT EXISTS HAYSTACK_TAGS (
+    tag_name   TEXT PRIMARY KEY,
+    doc        TEXT,
+    category   TEXT NOT NULL DEFAULT 'custom',
+    deprecated INTEGER NOT NULL DEFAULT 0,
+    source     TEXT DEFAULT 'user'
 );
 
-CREATE INDEX IF NOT EXISTS idx_haystack_entity_kind ON HAYSTACK_ENTITY(kind);
-CREATE INDEX IF NOT EXISTS idx_haystack_entity_serial ON HAYSTACK_ENTITY(serial_number);
-CREATE INDEX IF NOT EXISTS idx_haystack_entity_point_table ON HAYSTACK_ENTITY(point_table);
+CREATE TABLE IF NOT EXISTS HAYSTACK_TAG_RELATIONS (
+    tag_name   TEXT NOT NULL,
+    parent_tag TEXT NOT NULL,
+    PRIMARY KEY (tag_name, parent_tag)
+);
+
+CREATE TABLE IF NOT EXISTS HAYSTACK_POINT_TAGS (
+    serial_number INTEGER NOT NULL,
+    point_type    TEXT NOT NULL,
+    point_index   TEXT NOT NULL,
+    point_id      TEXT NOT NULL,
+    tag_name      TEXT NOT NULL,
+    PRIMARY KEY (serial_number, point_type, point_index, tag_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_hpt_serial ON HAYSTACK_POINT_TAGS (serial_number);
+CREATE INDEX IF NOT EXISTS idx_hpt_tag ON HAYSTACK_POINT_TAGS (tag_name);
 
 CREATE TABLE IF NOT EXISTS PROGRAMS (
     SerialNumber INTEGER NOT NULL,

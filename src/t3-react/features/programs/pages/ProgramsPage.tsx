@@ -38,10 +38,8 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SearchRegular,
-  ArrowSortUpRegular,
-  ArrowSortDownRegular,
-  ArrowSortRegular,
   ErrorCircleRegular,
   InfoRegular,
   CodeRegular,
@@ -49,6 +47,7 @@ import {
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '@t3-react/config/constants';
 import { PanelDataRefreshService } from '@t3-react/shared/services/panelDataRefreshService';
+import { useStatusBarStore } from '@t3-react/store/statusBarStore';
 import { SyncStatusBar } from '@t3-react/shared/components/SyncStatusBar';
 import { PageSyncStatus } from '@t3-react/shared/components/PageSyncStatus';
 import { ProgrammingDrawer } from '../components/ProgrammingDrawer';
@@ -84,6 +83,17 @@ export const ProgramsPage: React.FC = () => {
   // Programming drawer state
   const [isProgrammingOpen, setIsProgrammingOpen] = useState(false);
   const [selectedProgramForProgramming, setSelectedProgramForProgramming] = useState<ProgramPoint | null>(null);
+
+  // Status bar messages
+  const setMessage = useStatusBarStore((state) => state.setMessage);
+  const setDeviceLabel = useStatusBarStore((state) => state.setDeviceLabel);
+
+  // Set device info on the status bar whenever the selected device changes
+  useEffect(() => {
+    if (selectedDevice) {
+      setDeviceLabel(selectedDevice.nameShowOnTree, selectedDevice.serialNumber, selectedDevice.panelId);
+    }
+  }, [selectedDevice?.serialNumber, selectedDevice?.nameShowOnTree, selectedDevice?.panelId, setDeviceLabel]);
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -158,14 +168,18 @@ export const ProgramsPage: React.FC = () => {
         }
 
         console.log('[ProgramsPage] Database empty, auto-refreshing from device...');
+        setMessage('Loading programs...', 'info');
         const result = await PanelDataRefreshService.refreshAllPrograms(selectedDevice.serialNumber);
         console.log('[ProgramsPage] Auto-refresh result:', result);
+        setMessage(`✓ Synced ${result.itemCount} programs`, 'success');
 
         // Reload from database (data already saved by service)
         await fetchPrograms();
         setAutoRefreshed(true);
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Failed to load programs';
         console.error('[ProgramsPage] Auto-refresh failed:', error);
+        setMessage(`✗ ${errorMsg}`, 'error');
         // Don't reload from database on error - preserve existing programs
         setAutoRefreshed(true); // Mark as attempted to prevent retry loops
       }
@@ -186,16 +200,20 @@ export const ProgramsPage: React.FC = () => {
     if (!selectedDevice) return;
 
     setRefreshing(true);
+    setMessage('Refreshing programs...', 'info');
     try {
       console.log('[ProgramsPage] Refreshing all programs from device...');
       const result = await PanelDataRefreshService.refreshAllPrograms(selectedDevice.serialNumber);
       console.log('[ProgramsPage] Refresh result:', result);
+      setMessage(`✓ Synced ${result.itemCount} programs`, 'success');
 
       // Reload from database (data already saved by service)
       await fetchPrograms();
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to refresh from device';
       console.error('[ProgramsPage] Failed to refresh from device:', error);
-      setError(error instanceof Error ? error.message : 'Failed to refresh from device');
+      setError(errorMsg);
+      setMessage('✗ Refresh failed', 'error');
       // Don't call fetchPrograms() on error - preserve existing programs in UI
     } finally {
       setRefreshing(false);
@@ -359,16 +377,18 @@ export const ProgramsPage: React.FC = () => {
     console.log('Search query:', e.target.value);
   };
 
-  // Sorting state
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
-
-  const handleSort = (columnId: string) => {
-    if (sortColumn === columnId) {
-      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
+  // Controlled sort state for asc→desc→clear
+  const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
+  const [sortKey, setSortKey] = useState(0);
+  const prevSortRef = React.useRef<{ sortColumn: string; sortDirection: string } | undefined>();
+  const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
+    const prev = prevSortRef.current;
+    prevSortRef.current = newState;
+    if (prev?.sortColumn === newState.sortColumn && prev?.sortDirection === 'descending' && newState.sortDirection === 'ascending') {
+      setSortState(undefined);
+      setSortKey(k => k + 1);
     } else {
-      setSortColumn(columnId);
-      setSortDirection('ascending');
+      setSortState(newState);
     }
   };
 
@@ -379,23 +399,26 @@ export const ProgramsPage: React.FC = () => {
     console.log('📝 [ProgramsPage] Opening programming for program:', program.programId);
   }, []);
 
-  // Display data with 10 empty rows when no programs
+  // Display data with search filtering
   const displayPrograms = React.useMemo(() => {
+    let filtered = programs;
+    if (searchQuery.trim() && programs.length > 0) {
+      const q = searchQuery.toLowerCase();
+      filtered = programs.filter(p =>
+        (p.programLabel || '').toLowerCase().includes(q) ||
+        String(p.programId || '').toLowerCase().includes(q) ||
+        (p.programList || '').toLowerCase().includes(q)
+      );
+    }
     if (programs.length === 0) {
-      return Array(18).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map(() => ({
         serialNumber: selectedDevice?.serialNumber || 0,
-        programId: '',
-        switchNode: '',
-        programLabel: '',
-        programList: '',
-        programSize: '',
-        programPointer: '',
-        programStatus: '',
-        autoManual: '',
+        programId: '', switchNode: '', programLabel: '', programList: '',
+        programSize: '', programPointer: '', programStatus: '', autoManual: '',
       }));
     }
-    return programs;
-  }, [programs, selectedDevice]);
+    return filtered;
+  }, [programs, selectedDevice, searchQuery]);
 
   // Helper to identify empty rows
   const isEmptyRow = (item: ProgramPoint) => !item.programId && programs.length === 0;
@@ -405,16 +428,8 @@ export const ProgramsPage: React.FC = () => {
     // 1. Program (ID) with refresh icon
     createTableColumn<ProgramPoint>({
       columnId: 'program',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('program')}>
-          <span>Program</span>
-          {sortColumn === 'program' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.programId || ''), String(b.programId || '')),
+      renderHeaderCell: () => <span>Program</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {
           return <TableCellLayout></TableCellLayout>;
@@ -449,16 +464,8 @@ export const ProgramsPage: React.FC = () => {
     // 2. Full Label (editable)
     createTableColumn<ProgramPoint>({
       columnId: 'fullLabel',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('fullLabel')}>
-          <span>Full Label</span>
-          {sortColumn === 'fullLabel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.programLabel || ''), String(b.programLabel || '')),
+      renderHeaderCell: () => <span>Full Label</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {
           return <TableCellLayout></TableCellLayout>;
@@ -499,16 +506,8 @@ export const ProgramsPage: React.FC = () => {
     // 3. Status (ON/OFF)
     createTableColumn<ProgramPoint>({
       columnId: 'status',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('status')}>
-          <span>Status</span>
-          {sortColumn === 'status' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.programStatus || ''), String(b.programStatus || '')),
+      renderHeaderCell: () => <span>Status</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {
           return <TableCellLayout></TableCellLayout>;
@@ -592,16 +591,8 @@ export const ProgramsPage: React.FC = () => {
     // 5. Size
     createTableColumn<ProgramPoint>({
       columnId: 'size',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('size')}>
-          <span>Size</span>
-          {sortColumn === 'size' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => { const av = parseFloat(a.programSize || '0'); const bv = parseFloat(b.programSize || '0'); return av - bv; },
+      renderHeaderCell: () => <span>Size</span>,
       renderCell: (item) => (
         <TableCellLayout>
           {!isEmptyRow(item) && (item.programSize || '0')}
@@ -625,16 +616,8 @@ export const ProgramsPage: React.FC = () => {
     // 7. Label (short label, editable)
     createTableColumn<ProgramPoint>({
       columnId: 'label',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
-          <span>Label</span>
-          {sortColumn === 'label' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.programList || ''), String(b.programList || '')),
+      renderHeaderCell: () => <span>Label</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {
           return <TableCellLayout></TableCellLayout>;
@@ -758,7 +741,7 @@ export const ProgramsPage: React.FC = () => {
                     aria-label="Refresh from Device"
                   >
                     <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />
@@ -823,9 +806,15 @@ export const ProgramsPage: React.FC = () => {
                     onWheel={handleWheel}
                   >
                   <DataGrid
+                    key={sortKey}
                     items={displayPrograms}
                     columns={columns}
                     sortable
+                    sortState={sortState}
+                    onSortChange={handleSortChange}
+                    resizableColumns
+                    resizableColumnsOptions={{ autoFitColumns: false }}
+                    style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
                   >
                     <DataGridHeader>
                       <DataGridRow>

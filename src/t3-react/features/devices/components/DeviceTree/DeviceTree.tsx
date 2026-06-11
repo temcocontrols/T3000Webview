@@ -189,7 +189,7 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
 
   // Show info icon for ALL selected devices with data; online/offline keep their status icon too
   const asideContent = isSelected ? (
-    <span className={styles.deviceInfoIcon}>
+    <span className={`${styles.deviceInfoIcon}`}>
       <StatusIcon status={node.status ?? 'unknown'} isSelected={isSelected} isUnknownDevice={isUnknownDevice} />
     </span>
   ) : undefined;
@@ -244,7 +244,7 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
               onClick={handleClick}
               iconBefore={<Desktop20Regular style={{ color: '#605e5c', width: '16px', height: '16px' }} />}
               aside={asideContent}
-              className={isSelected ? styles.treeItemSelected : styles.treeItemNormal}
+              className={`${isSelected ? styles.treeItemSelected : styles.treeItemNormal} ${styles.deviceTreeItem}`}
               style={{ '--tree-level': level } as React.CSSProperties}
             >
               {node.label}

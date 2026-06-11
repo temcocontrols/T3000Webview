@@ -152,7 +152,7 @@ const EMPTY_POINT_SYNC_SUMMARY: DevicePointSyncSummary = {
 
 const TRACKED_POINT_SYNC_TYPES = ['INPUTS', 'OUTPUTS', 'VARIABLES'] as const;
 
-type TrendCenterTab = 'overview' | 'default' | 'point-sets' | 'haystack-tags' | 'chart' | 'backend';
+type TrendCenterTab = 'overview' | 'default' | 'point-sets' | 'chart' | 'backend';
 
 interface PointSetPointItem {
   key: string;
@@ -187,11 +187,10 @@ interface PromptDialogState {
   placeholder: string;
 }
 
-const COMMON_HAYSTACK_TAGS = ['ahu', 'temp', 'critical', 'floor1'] as const;
 const TREND_POLICY_STORAGE_KEY = 't3000.trend.policy.state.v2';
 
 const isTrendCenterTab = (value: string | null): value is TrendCenterTab => {
-  return value === 'overview' || value === 'default' || value === 'point-sets' || value === 'haystack-tags' || value === 'chart' || value === 'backend';
+  return value === 'overview' || value === 'default' || value === 'point-sets' || value === 'chart' || value === 'backend';
 };
 
 export const TrendLogsPage: React.FC = () => {
@@ -212,6 +211,7 @@ export const TrendLogsPage: React.FC = () => {
   const embeddedChartTimeBaseRef = useRef<string>('5m');
   const [selectedMonitor, setSelectedMonitor] = useState<TrendLogData | null>(null);
   const [monitorInputs, setMonitorInputs] = useState<TrendLogInput[]>([]);
+  const [monitorInputTags, setMonitorInputTags] = useState<Record<string, string[]>>({});
   const [loadingInputs, setLoadingInputs] = useState(false);
   const [pointSummaryLoading, setPointSummaryLoading] = useState(false);
   const [devicePointSyncSummary, setDevicePointSyncSummary] = useState<DevicePointSyncSummary>(EMPTY_POINT_SYNC_SUMMARY);
@@ -221,6 +221,9 @@ export const TrendLogsPage: React.FC = () => {
     sessionStorage.getItem('tl-infobanner-v1') === '1'
   );
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
+  const [sortKey, setSortKey] = useState(0);
+  const prevSortRef = React.useRef<{ sortColumn: string; sortDirection: string } | undefined>();
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const selectedSerial = selectedDevice?.serialNumber;
   const selectedPanelId = selectedDevice?.panelId;
@@ -679,6 +682,25 @@ export const TrendLogsPage: React.FC = () => {
         }));
 
         setMonitorInputs(formattedInputs);
+
+        // Load tags for these inputs
+        try {
+          const tagRes = await fetch(`${API_BASE_URL}/api/haystack/point-tags/read`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ serialNumbers: String(selectedDevice.serialNumber) }),
+          });
+          if (tagRes.ok) {
+            const tagData = await tagRes.json();
+            const tagMap: Record<string, string[]> = {};
+            for (const e of (tagData.entries || [])) {
+              const k = `${e.point_type}:${e.point_index}`;
+              if (!tagMap[k]) tagMap[k] = [];
+              tagMap[k].push(e.tag_name);
+            }
+            setMonitorInputTags(tagMap);
+          }
+        } catch { /* ignore tag load errors */ }
       } else {
         setMonitorInputs([]);
       }
@@ -1220,6 +1242,17 @@ export const TrendLogsPage: React.FC = () => {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
+  };
+
+  const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
+    const prev = prevSortRef.current;
+    prevSortRef.current = newState;
+    if (prev?.sortColumn === newState.sortColumn && prev?.sortDirection === 'descending' && newState.sortDirection === 'ascending') {
+      setSortState(undefined);
+      setSortKey(k => k + 1);
+    } else {
+      setSortState(newState);
+    }
   };
 
   const selectedMonitorIndex = selectedMonitor?.trendlogIndex || selectedMonitor?.trendlogId || '0';
@@ -1912,12 +1945,6 @@ export const TrendLogsPage: React.FC = () => {
         Point Sets
       </button> */}
       <button
-        className={`${styles.tabButton} ${activeTab === 'haystack-tags' ? styles.tabButtonActive : ''}`}
-        onClick={() => setActiveTab('haystack-tags')}
-      >
-       Haystack Tags
-      </button>
-      <button
         className={`${styles.tabButton} ${activeTab === 'backend' ? styles.tabButtonActive : ''}`}
         onClick={() => setActiveTab('backend')}
       >
@@ -2030,75 +2057,29 @@ export const TrendLogsPage: React.FC = () => {
 
         // Import backend Haystack tags first so Watchlist reflects Rust-generated entities.
         try {
-          const haystackResponse = await fetch(`${API_BASE_URL}/api/haystack/read`, {
+          const haystackResponse = await fetch(`${API_BASE_URL}/api/haystack/point-tags/read`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              serialNumbers: [selectedDevice.serialNumber],
+              serialNumbers: String(selectedDevice.serialNumber),
             }),
           });
 
           if (haystackResponse.ok) {
             const haystackPayload = await haystackResponse.json();
-            const rows: any[] = Array.isArray(haystackPayload?.rows) ? haystackPayload.rows : [];
+            const entries: any[] = Array.isArray(haystackPayload?.entries) ? haystackPayload.entries : [];
 
-            rows.forEach((row) => {
-              const pointTable = String(row?.pointTable ?? row?.point_table ?? '').trim().toUpperCase();
-              const normalizePointIndex = (rawValue: unknown): string => {
-                const source = String(rawValue ?? '').trim();
-                if (!source) return '';
-                const numericMatch = source.match(/(\d+)/);
-                if (numericMatch) {
-                  const parsed = Number.parseInt(numericMatch[1], 10);
-                  if (!Number.isNaN(parsed)) {
-                    return String(parsed);
-                  }
-                }
-                return source.toUpperCase();
-              };
+            entries.forEach((entry) => {
+              const pointType = String(entry?.point_type ?? '').trim().toUpperCase();
+              const pointIndex = String(entry?.point_index ?? '').trim();
+              const tagName = String(entry?.tag_name ?? '').trim();
+              if (!pointType || !pointIndex || !tagName) return;
 
-              const pointIndex = normalizePointIndex(row?.pointIndex ?? row?.point_index);
-              if (!pointTable || !pointIndex) return;
-
-              const mappedType =
-                pointTable === 'INPUTS' ? 'INPUT' :
-                pointTable === 'OUTPUTS' ? 'OUTPUT' :
-                pointTable === 'VARIABLES' ? 'VARIABLE' :
-                '';
-              if (!mappedType) return;
-
-              const pointTagKey = `${mappedType}:${pointIndex}`;
-              const parseTagsObject = (value: unknown): Record<string, unknown> | null => {
-                if (value && typeof value === 'object' && !Array.isArray(value)) {
-                  return value as Record<string, unknown>;
-                }
-                if (typeof value === 'string' && value.trim()) {
-                  try {
-                    const parsed = JSON.parse(value);
-                    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-                      ? parsed as Record<string, unknown>
-                      : null;
-                  } catch {
-                    return null;
-                  }
-                }
-                return null;
-              };
-
-              const tagsObj = parseTagsObject(row?.tags);
-              if (!tagsObj) return;
-
+              const pointTagKey = `${pointType}:${pointIndex}`;
               const existing = new Set(seededTags[pointTagKey] || []);
-              Object.entries(tagsObj).forEach(([tagKey, tagValue]) => {
-                if (!tagKey) return;
-                if (typeof tagValue === 'string' && tagValue.toUpperCase() === 'M') {
-                  existing.add(tagKey.toLowerCase());
-                } else if (typeof tagValue === 'string' || typeof tagValue === 'number' || typeof tagValue === 'boolean') {
-                  existing.add(`${tagKey.toLowerCase()}:${String(tagValue).toLowerCase()}`);
-                }
-              });
+              existing.add(tagName);
               seededTags[pointTagKey] = Array.from(existing);
             });
           }
@@ -2808,12 +2789,6 @@ export const TrendLogsPage: React.FC = () => {
                 </div>
               )}
 
-              {activeTab === 'haystack-tags' && (
-                <div className={styles.embeddedPolicyWrap}>
-                  <TrendPolicyPage embedded />
-                </div>
-              )}
-
               {/* ── Backend tab ── */}
               {activeTab === 'backend' && (
                 <div className={styles.backendTabWrap}>
@@ -2977,7 +2952,7 @@ export const TrendLogsPage: React.FC = () => {
                     aria-label="Refresh from Device"
                   >
                     <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
                   {/* Info Button with Tooltip */}
@@ -3009,12 +2984,12 @@ export const TrendLogsPage: React.FC = () => {
                       <Text size={200} className={styles.globalInfoBarText}>Open</Text>
                       <button
                         className={styles.infoBarLinkButton}
-                        onClick={() => setActiveTab('haystack-tags')}
-                        title="Open the dedicated Haystack page to manage tags"
+                        onClick={() => { window.location.hash = '#/t3000/haystack-tags'; }}
+                        title="Open the Haystack Tags page"
                       >
                         Haystack Tags
                       </button>
-                      <Text size={200} className={styles.globalInfoBarText}>to manage semantic tags. Rebuild Tags is available inside that page.</Text>
+                      <Text size={200} className={styles.globalInfoBarText}>to manage semantic tags.</Text>
                     </div>
                   </div>
                 </div>
@@ -3053,10 +3028,22 @@ export const TrendLogsPage: React.FC = () => {
                     {/* Main Monitor List - Left Side (80%) */}
                     <div className={styles.mainGrid}>
                       <DataGrid
-                        key="trendlogs-grid-v5"
+                        key={`trendlogs-grid-${sortKey}`}
                         items={filteredDisplayTrendLogs}
                         columns={columns}
                         sortable
+                        sortState={sortState}
+                        onSortChange={handleSortChange}
+                        resizableColumns
+                        resizableColumnsOptions={{ autoFitColumns: false }}
+                        columnSizingOptions={{
+                          trendlogId: { idealWidth: 90, minWidth: 60 },
+                          trendlogLabel: { idealWidth: 200, minWidth: 120 },
+                          intervalSeconds: { idealWidth: 120, minWidth: 70 },
+                          dataSizeKb: { idealWidth: 130, minWidth: 80 },
+                          status: { idealWidth: 110, minWidth: 70 },
+                          actions: { idealWidth: 120, minWidth: 40 },
+                        }}
                         selectionMode="single"
                         selectedItems={selectedItems}
                         onSelectionChange={(_e, data) => {
@@ -3111,6 +3098,7 @@ export const TrendLogsPage: React.FC = () => {
                               <div className={styles.inputHeaderNum}>#</div>
                               <div className={styles.inputHeaderName}>Name</div>
                               <div className={styles.inputHeaderId}>Point ID</div>
+                              <div className={styles.inputHeaderTags}>Tags</div>
                             </div>
                             {monitorInputs.map((input, index) => {
                               const pointTypeShort =
@@ -3126,6 +3114,10 @@ export const TrendLogsPage: React.FC = () => {
                               const pointId = input.pointPanel
                                 ? `${input.pointPanel}${pointTypeShort}${input.pointIndex}`
                                 : `${pointTypeShort}${input.pointIndex}`;
+                              const tagKey = `${input.pointType}:${input.pointIndex}`;
+                              const tags = monitorInputTags[tagKey] || [];
+                              const displayTags = tags.slice(0, 2);
+                              const extra = tags.length - 2;
 
                               return (
                                 <div key={`${input.pointType}-${input.pointIndex}-${index}`} className={styles.inputRow}>
@@ -3137,6 +3129,18 @@ export const TrendLogsPage: React.FC = () => {
                                     <div className={styles.inputName}>{displayLabel || '-'}</div>
                                   </Tooltip>
                                   <div className={styles.inputPointId}>{pointId}</div>
+                                  <div className={styles.inputTags}>
+                                    {tags.length === 0 ? (
+                                      <span className={styles.inputTagEmpty}>—</span>
+                                    ) : (
+                                      <>
+                                        {displayTags.map(t => (
+                                          <span key={t} className={styles.inputTagChip}>{t}</span>
+                                        ))}
+                                        {extra > 0 && <span className={styles.inputTagMore}>+{extra}</span>}
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
                               );
                             })}

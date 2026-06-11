@@ -38,10 +38,8 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SearchRegular,
-  ArrowSortUpRegular,
-  ArrowSortDownRegular,
-  ArrowSortRegular,
   ErrorCircleRegular,
   SaveRegular,
   InfoRegular,
@@ -59,6 +57,7 @@ import { InputsPageMobile } from '@t3-mobile/features/inputs/pages/InputsPageMob
 import styles from './InputsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import { TagsColumnCell, fetchTagsForDevice } from '../components/TagsColumnCell';
 
 // Types based on Rust entity (input_points.rs)
 interface InputPoint {
@@ -667,6 +666,23 @@ const InputsPageDesktop: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Point tags for tag-based search filtering
+  const [pointTags, setPointTags] = useState<{ pointType: string; pointIndex: string; tagName: string }[]>([]);
+
+  useEffect(() => {
+    if (!selectedDevice?.serialNumber) return;
+    let cancelled = false;
+    fetchTagsForDevice(selectedDevice.serialNumber).then((all) => {
+      if (cancelled) return;
+      setPointTags(all.map(t => ({
+        pointType: t.point_type,
+        pointIndex: t.point_index,
+        tagName: t.tag_name,
+      })));
+    });
+    return () => { cancelled = true; };
+  }, [selectedDevice?.serialNumber]);
+
   // Inline editing state
   const [editingCell, setEditingCell] = useState<{ serialNumber: number; inputIndex: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -747,49 +763,55 @@ const InputsPageDesktop: React.FC = () => {
     console.log('Search query:', e.target.value);
   };
 
-  // Sorting state
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
-
-  const handleSort = (columnId: string) => {
-    if (sortColumn === columnId) {
-      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
+  // Controlled sort state for asc→desc→clear
+  const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
+  const [sortKey, setSortKey] = useState(0);
+  const prevSortRef = React.useRef<{ sortColumn: string; sortDirection: string } | undefined>();
+  const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
+    const prev = prevSortRef.current;
+    prevSortRef.current = newState;
+    if (prev?.sortColumn === newState.sortColumn && prev?.sortDirection === 'descending' && newState.sortDirection === 'ascending') {
+      setSortState(undefined);
+      setSortKey(k => k + 1);
     } else {
-      setSortColumn(columnId);
-      setSortDirection('ascending');
+      setSortState(newState);
     }
   };
 
-  // Display data with 10 empty rows when no inputs
+  // Display data with search and tag filtering
   const displayInputs = React.useMemo(() => {
+    let filtered = inputs;
+
+    // Search filter — match against label, full label, ID, value, and tags
+    if (searchQuery.trim() && inputs.length > 0) {
+      const q = searchQuery.toLowerCase();
+      filtered = inputs.filter(v => {
+        if (
+          (v.label || '').toLowerCase().includes(q) ||
+          (v.fullLabel || '').toLowerCase().includes(q) ||
+          String(v.inputId || '').toLowerCase().includes(q) ||
+          String(v.inputIndex || '').toLowerCase().includes(q) ||
+          (v.fValue ? (parseFloat(v.fValue) / 1000).toFixed(2) : '').includes(q)
+        ) return true;
+        const inputTags = pointTags.filter(
+          t => t.pointType === 'INPUT' && t.pointIndex === (v.inputIndex || '')
+        );
+        return inputTags.some(t => t.tagName.toLowerCase().includes(q));
+      });
+    }
+
     if (inputs.length === 0) {
-      return Array(18).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map(() => ({
         serialNumber: selectedDevice?.serialNumber || 0,
-        inputId: '',
-        inputIndex: '',
-        panel: '',
-        fullLabel: '',
-        autoManual: '',
-        fValue: '',
-        units: '',
-        range: '',
-        rangeField: '',
-        calibration: '',
-        sign: '',
-        calibrationH: '',
-        calibrationL: '',
-        calibrationSign: '',
-        control: '',
-        filterField: '',
-        status: '',
-        signalType: '',
-        digitalAnalog: '',
-        label: '',
-        typeField: '',
+        inputId: '', inputIndex: '', panel: '', fullLabel: '', autoManual: '',
+        fValue: '', units: '', range: '', rangeField: '', calibration: '',
+        sign: '', calibrationH: '', calibrationL: '', calibrationSign: '',
+        control: '', filterField: '', status: '', signalType: '',
+        digitalAnalog: '', label: '', typeField: '',
       }));
     }
-    return inputs;
-  }, [inputs, selectedDevice]);
+    return filtered;
+  }, [inputs, selectedDevice, searchQuery, pointTags]);
 
   // Helper to identify empty rows
   const isEmptyRow = (item: InputPoint) => !item.inputIndex && !item.inputId && inputs.length === 0;
@@ -811,16 +833,8 @@ const InputsPageDesktop: React.FC = () => {
     // 2. Input (Index/ID)
     createTableColumn<InputPoint>({
       columnId: 'input',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('input')}>
-          <span>Input</span>
-          {sortColumn === 'input' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.inputId || a.inputIndex || ''), String(b.inputId || b.inputIndex || '')),
+      renderHeaderCell: () => <span>Input</span>,
       renderCell: (item) => {
         const inputIndex = item.inputIndex || '';
         const isRefreshingThis = refreshingItems.has(inputIndex);
@@ -854,16 +868,8 @@ const InputsPageDesktop: React.FC = () => {
     // 3. Full Label
     createTableColumn<InputPoint>({
       columnId: 'fullLabel',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('fullLabel')}>
-          <span>Full Label</span>
-          {sortColumn === 'fullLabel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.fullLabel || ''), String(b.fullLabel || '')),
+      renderHeaderCell: () => <span>Full Label</span>,
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
                           editingCell?.inputIndex === item.inputIndex &&
@@ -915,16 +921,8 @@ const InputsPageDesktop: React.FC = () => {
     // 4. Label (short label)
     createTableColumn<InputPoint>({
       columnId: 'label',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('label')}>
-          <span>Label</span>
-          {sortColumn === 'label' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.label || ''), String(b.label || '')),
+      renderHeaderCell: () => <span>Label</span>,
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
                           editingCell?.inputIndex === item.inputIndex &&
@@ -1066,16 +1064,8 @@ const InputsPageDesktop: React.FC = () => {
     // 5. Value
     createTableColumn<InputPoint>({
       columnId: 'value',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} style={{ justifyContent: 'flex-end', width: '100%' }} onClick={() => handleSort('value')}>
-          <span>Value</span>
-          {sortColumn === 'value' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => { const av = parseFloat(a.fValue || '0'); const bv = parseFloat(b.fValue || '0'); return av - bv; },
+      renderHeaderCell: () => <span>Value</span>,
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
                           editingCell?.inputIndex === item.inputIndex &&
@@ -1130,16 +1120,8 @@ const InputsPageDesktop: React.FC = () => {
     // 6. Units
     createTableColumn<InputPoint>({
       columnId: 'units',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('units')}>
-          <span>Units</span>
-          {sortColumn === 'units' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.units || ''), String(b.units || '')),
+      renderHeaderCell: () => <span>Units</span>,
       renderCell: (item) => {
         const rangeValue = parseInt(item.rangeField || item.range || '0', 10);
         const digitalAnalog = parseInt(item.digitalAnalog || '0', 10);
@@ -1156,16 +1138,8 @@ const InputsPageDesktop: React.FC = () => {
     // 7. Range
     createTableColumn<InputPoint>({
       columnId: 'range',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('range')}>
-          <span>Range</span>
-          {sortColumn === 'range' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.range || ''), String(b.range || '')),
+      renderHeaderCell: () => <span>Range</span>,
       renderCell: (item) => {
         // Parse range value and digital_analog type
         const rangeValue = parseInt(item.rangeField || item.range || '0', 10);
@@ -1284,6 +1258,29 @@ const InputsPageDesktop: React.FC = () => {
         );
       },
     }),
+    // 12. TAGS
+    createTableColumn<InputPoint>({
+      columnId: 'tags',
+      renderHeaderCell: () => (
+        <div className={styles.headerCell}><span>Tags</span></div>
+      ),
+      renderCell: (item) => {
+        if (isEmptyRow(item)) return <TableCellLayout>—</TableCellLayout>;
+        const idx = item.inputIndex || '';
+        const pid = `dev${item.serialNumber}.in${idx}`;
+        return (
+          <TagsColumnCell
+            serialNumber={item.serialNumber}
+            pointType="INPUT"
+            pointIndex={idx}
+            pointId={pid}
+            pointLabel={item.label || item.fullLabel || `IN${idx}`}
+            deviceName={selectedDevice?.nameShowOnTree || selectedDevice?.productName}
+            isEmpty={isEmptyRow(item)}
+          />
+        );
+      },
+    }),
   ];
 
   // ========================================
@@ -1327,12 +1324,12 @@ const InputsPageDesktop: React.FC = () => {
                     <input
                       className={styles.searchInput}
                       type="text"
-                      placeholder="Search inputs..."
+                      placeholder="Search by label, value, ID, tag…"
                       value={searchQuery}
                       onChange={handleSearchChange}
                       spellCheck="false"
                       role="searchbox"
-                      aria-label="Search inputs"
+                      aria-label="Search inputs by label, value, ID, tag"
                     />
                   </div>
 
@@ -1342,10 +1339,10 @@ const InputsPageDesktop: React.FC = () => {
                     onClick={handleRefreshFromDevice}
                     disabled={refreshing}
                     title="Refresh all inputs from device"
-                    aria-label="Refresh from Device"
+                    aria-label="Refresh"
                   >
-                    <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                    <ArrowClockwiseRegular />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />
@@ -1428,11 +1425,32 @@ const InputsPageDesktop: React.FC = () => {
                     onWheel={handleWheel}
                   >
                     <DataGrid
+                      key={sortKey}
                       items={displayInputs}
                       columns={columns}
                       sortable
+                      sortState={sortState}
+                      onSortChange={handleSortChange}
+                      resizableColumns
+                      resizableColumnsOptions={{ autoFitColumns: false }}
+                      style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
+                      columnSizingOptions={{
+                        panel: { idealWidth: 50, minWidth: 40 },
+                        input: { idealWidth: 60, minWidth: 50 },
+                        fullLabel: { idealWidth: 180, minWidth: 100 },
+                        label: { idealWidth: 140, minWidth: 70 },
+                        autoManual: { idealWidth: 85, minWidth: 60 },
+                        value: { idealWidth: 130, minWidth: 80 },
+                        units: { idealWidth: 80, minWidth: 50 },
+                        range: { idealWidth: 90, minWidth: 65 },
+                        calibration_sign: { idealWidth: 95, minWidth: 65 },
+                        filter: { idealWidth: 55, minWidth: 40 },
+                        status: { idealWidth: 60, minWidth: 45 },
+                        type: { idealWidth: 65, minWidth: 50 },
+                        tags: { idealWidth: 190, minWidth: 80 },
+                      }}
                     >
-                    <DataGridHeader>
+                    <DataGridHeader style={{ backgroundColor: '#e0e0e0' }}>
                       <DataGridRow>
                         {({ renderHeaderCell }) => (
                           <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>

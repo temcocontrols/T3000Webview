@@ -22,16 +22,13 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SettingsRegular,
   SearchRegular,
-  ArrowClockwise24Regular,
   Save24Regular,
   Dismiss24Regular,
   CheckmarkCircle24Regular,
   ErrorCircleRegular,
-  ArrowSortUpRegular,
-  ArrowSortDownRegular,
-  ArrowSortRegular,
   InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
@@ -71,8 +68,9 @@ const AlarmsPageDesktop: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [editedValues, setEditedValues] = useState<Record<string, Partial<Alarm>>>({});
   const [hasChanges, setHasChanges] = useState(false);
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
+  const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
+  const [sortKey, setSortKey] = useState(0);
+  const prevSortRef = React.useRef<{ sortColumn: string; sortDirection: string } | undefined>();
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
@@ -299,13 +297,14 @@ const AlarmsPageDesktop: React.FC = () => {
     console.log('Delete alarm:', alarm.alarm_id);
   };
 
-  // Sort handler
-  const handleSort = (columnId: string) => {
-    if (sortColumn === columnId) {
-      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
+  const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
+    const prev = prevSortRef.current;
+    prevSortRef.current = newState;
+    if (prev?.sortColumn === newState.sortColumn && prev?.sortDirection === 'descending' && newState.sortDirection === 'ascending') {
+      setSortState(undefined);
+      setSortKey(k => k + 1);
     } else {
-      setSortColumn(columnId);
-      setSortDirection('ascending');
+      setSortState(newState);
     }
   };
 
@@ -335,16 +334,7 @@ const AlarmsPageDesktop: React.FC = () => {
     createTableColumn<Alarm>({
       columnId: 'alarm_id',
       compare: (a, b) => Number(a.alarm_id) - Number(b.alarm_id),
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('alarm_id')}>
-          <span>NUM</span>
-          {sortColumn === 'alarm_id' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
+      renderHeaderCell: () => <span>NUM</span>,
       renderCell: (alarm) => {
         const isRefreshing = alarm.alarm_id && refreshingItems.has(alarm.alarm_id);
         return (
@@ -531,7 +521,7 @@ const AlarmsPageDesktop: React.FC = () => {
                     aria-label="Refresh from Device"
                   >
                     <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />
@@ -617,9 +607,15 @@ const AlarmsPageDesktop: React.FC = () => {
                 {selectedDevice && !isLoading && !error && (
                   <>
                     <DataGrid
+                      key={sortKey}
                       items={displayAlarms}
                       columns={columns}
                       sortable
+                      sortState={sortState}
+                      onSortChange={handleSortChange}
+                      resizableColumns
+                      resizableColumnsOptions={{ autoFitColumns: false }}
+                      style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
                     >
                       <DataGridHeader>
                         <DataGridRow>

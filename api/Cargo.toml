@@ -60,6 +60,7 @@ tokio-util = { version = "0.7", features = ["compat"] }
 aes-gcm = "0.10"
 base64 = "0.22"
 hostname = "0.4"
+reqwest = { version = "0.12", features = ["json"] }
 
 [dependencies.sea-orm]
 version = "1.0.0"

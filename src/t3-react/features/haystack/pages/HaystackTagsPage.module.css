@@ -1,0 +1,286 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Sync Progress / Result Bar ── */
+.syncBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  background: #f0f6ff;
+  color: #0078d4;
+  border-bottom: 1px solid #c7e0f4;
+  flex-shrink: 0;
+}
+.syncSuccess {
+  background: #e8f5e9;
+  color: #1e7e34;
+  border-bottom-color: #b7dfb9;
+}
+.syncError {
+  background: #fef0f0;
+  color: #a81a23;
+  border-bottom-color: #f5c6cb;
+}
+
+/* ── Info Bar ── */
+.infoBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  margin-bottom: 0;
+  background: var(--colorBrandBackground2, #deecf9);
+  flex-shrink: 0;
+  gap: 12px;
+}
+.infoBarLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+.infoIcon { color: var(--colorBrandForeground1, #0078d4); font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.infoText { line-height: 1.4; }
+.infoTitle { font-weight: 600; font-size: 13px; color: var(--colorBrandForeground1, #0078d4); }
+.infoDesc { font-size: 11px; color: var(--colorNeutralForeground2); line-height: 1.5; }
+.infoMeta { font-size: 11px; color: var(--colorNeutralForeground3); margin-top: 2px; }
+.infoLink {
+  color: var(--colorBrandForeground1, #0078d4);
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
+}
+.syncButton {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--colorBrandForeground1, #0078d4);
+}
+
+/* ── Error ── */
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: #fef0f0;
+  color: #a81a23;
+  font-size: 12px;
+  border-bottom: 1px solid #f5c6cb;
+  flex-shrink: 0;
+}
+
+/* ── Main: left tree + right table ── */
+.main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+/* ── Left Panel ── */
+.leftPanel {
+  width: 300px;
+  min-width: 220px;
+  border-right: 1px solid var(--colorNeutralStroke1);
+  display: flex;
+  flex-direction: column;
+  background: var(--colorNeutralBackground1);
+  flex-shrink: 0;
+  margin-right: 6px;
+}
+.leftHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--colorNeutralForeground2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--colorNeutralStroke1);
+  min-height: 30px;
+  box-sizing: border-box;
+}
+.treeActions {
+  display: flex;
+  gap: 2px;
+}
+.treeActions button {
+  font-size: 11px !important;
+  padding: 0 4px !important;
+  min-height: 20px !important;
+}
+.searchInput {
+  margin: 8px 10px;
+  font-size: 12px;
+}
+.searchInput input { font-size: 12px; height: 28px; }
+.searchInput svg { width: 14px; height: 14px; }
+.treeContainer {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 0;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 transparent;
+}
+.treeContainer::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.treeContainer::-webkit-scrollbar-track {
+  background: transparent;
+}
+.treeContainer::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+.treeContainer::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+.treeItem {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 3px 8px;
+  margin: 0 6px;
+  border-radius: 3px;
+  transition: background 0.1s;
+  user-select: none;
+}
+.treeItem:hover { background: var(--colorNeutralBackground2); }
+.treeItemActive { background: var(--colorBrandBackground2, #deecf9); }
+.treeToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+.toggleIcon {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--colorNeutralForeground3);
+}
+.togglePlaceholder {
+  width: 14px;
+  display: inline-block;
+}
+.treeLabel {
+  font-size: 12px;
+  color: var(--colorNeutralForeground1);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.treeLabelActive { color: var(--colorBrandForeground1); font-weight: 600; }
+.treeLabelCustom { opacity: 0.4; }
+.treeCount { color: var(--colorNeutralForeground3); font-size: 11px; margin-left: 4px; }
+
+/* ── Right Panel ── */
+.rightPanel {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 transparent;
+}
+.rightPanel::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.rightPanel::-webkit-scrollbar-track {
+  background: transparent;
+}
+.rightPanel::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+.rightPanel::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* ── Thin scrollbars ── */
+.treeContainer::-webkit-scrollbar,
+.rightPanel::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.treeContainer::-webkit-scrollbar-track,
+.rightPanel::-webkit-scrollbar-track {
+  background: transparent;
+}
+.treeContainer::-webkit-scrollbar-thumb,
+.rightPanel::-webkit-scrollbar-thumb {
+  background: var(--colorNeutralStroke2, #d0d0d0);
+  border-radius: 3px;
+}
+.treeContainer::-webkit-scrollbar-thumb:hover,
+.rightPanel::-webkit-scrollbar-thumb:hover {
+  background: var(--colorNeutralStroke1, #b0b0b0);
+}
+
+/* ── Tag Table ── */
+.tagTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.tagTable th {
+  position: sticky;
+  top: 0;
+  background: var(--colorNeutralBackground2);
+  text-align: left;
+  padding: 7px 14px;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--colorNeutralForeground2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--colorNeutralStroke1);
+  z-index: 1;
+}
+.tagTable td {
+  padding: 5px 14px;
+  border-bottom: 1px solid var(--colorNeutralStroke2);
+}
+.tagTable tbody tr:hover { background: var(--colorNeutralBackground1); }
+.tagName { font-weight: 500; }
+.parents { color: var(--colorNeutralForeground2); font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.description { color: var(--colorNeutralForeground2); font-size: 12px; }
+
+/* ── Empty state ── */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  color: var(--colorNeutralForeground2);
+  font-size: 14px;
+  gap: 8px;
+}
+.emptyState p { margin: 0; }
+.emptyHint { font-size: 12px; color: var(--colorNeutralForeground3); }
+.emptyTree { padding: 16px; font-size: 12px; color: var(--colorNeutralForeground3); text-align: center; }
+.emptyTree p { margin: 0; }
+
+/* ── Sync Dialog ── */
+.syncDialogContent {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--colorNeutralForeground1);
+}
+.syncDialogContent p { margin: 0 0 10px; }
+.syncDialogContent a { color: var(--colorBrandForeground1); }

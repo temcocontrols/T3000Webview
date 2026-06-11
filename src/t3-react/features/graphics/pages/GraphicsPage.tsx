@@ -22,11 +22,9 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SettingsRegular,
   SearchRegular,
-  ArrowSortUpRegular,
-  ArrowSortDownRegular,
-  ArrowSortRegular,
   ErrorCircleRegular,
   InfoRegular,
   ImageRegular,
@@ -292,19 +290,22 @@ export const GraphicsPage: React.FC = () => {
   }, [selectedDevice]);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
+  const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
+  const [sortKey, setSortKey] = useState(0);
+  const prevSortRef = React.useRef<{ sortColumn: string; sortDirection: string } | undefined>();
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   };
 
-  const handleSort = (column: string) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
+  const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
+    const prev = prevSortRef.current;
+    prevSortRef.current = newState;
+    if (prev?.sortColumn === newState.sortColumn && prev?.sortDirection === 'descending' && newState.sortDirection === 'ascending') {
+      setSortState(undefined);
+      setSortKey(k => k + 1);
     } else {
-      setSortColumn(column);
-      setSortDirection('ascending');
+      setSortState(newState);
     }
   };
 
@@ -317,38 +318,21 @@ export const GraphicsPage: React.FC = () => {
     (g.graphicPictureFile?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const sortedGraphics = [...filteredGraphics].sort((a, b) => {
-    if (!sortColumn) return 0;
-
-    const aVal = (a as any)[sortColumn] || '';
-    const bVal = (b as any)[sortColumn] || '';
-
-    if (sortDirection === 'ascending') {
-      return aVal.toString().localeCompare(bVal.toString());
-    } else {
-      return bVal.toString().localeCompare(aVal.toString());
-    }
-  });
-
-  // Display data with 10 empty rows when no graphics
+  // Display data with search filtering (sorting handled by DataGrid built-in)
   const displayGraphics = React.useMemo(() => {
-    if (sortedGraphics.length === 0) {
+    if (filteredGraphics.length === 0 && graphics.length === 0) {
       return Array(18).fill(null).map((_, index) => ({
-        GraphicId: -(index + 1), // Negative IDs for empty rows
+        GraphicId: -(index + 1),
         serialNumber: selectedDevice?.serialNumber || 0,
-        graphicId: '',
-        switchNode: '',
-        graphicLabel: '',
-        graphicFullLabel: '',
-        graphicPictureFile: '',
-        graphicTotalPoint: '0',
+        graphicId: '', switchNode: '', graphicLabel: '', graphicFullLabel: '',
+        graphicPictureFile: '', graphicTotalPoint: '0',
       }));
     }
-    return sortedGraphics;
-  }, [sortedGraphics, selectedDevice]);
+    return filteredGraphics;
+  }, [filteredGraphics, selectedDevice, graphics.length]);
 
   // Helper to identify empty rows
-  const isEmptyRow = (item: Graphic) => !item.graphicId && sortedGraphics.length === 0;
+  const isEmptyRow = (item: Graphic) => !item.graphicId && graphics.length === 0;
 
   // Define columns matching C++ BacnetScreen columns
   const columns: TableColumnDefinition<Graphic>[] = [
@@ -356,14 +340,7 @@ export const GraphicsPage: React.FC = () => {
     createTableColumn<Graphic>({
       columnId: 'Graphic_ID',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('graphicId')}>
-          <span>Graphic</span>
-          {sortColumn === 'graphicId' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>ID</span>
       ),
       renderCell: (item) => (
         <TableCellLayout>
@@ -375,14 +352,7 @@ export const GraphicsPage: React.FC = () => {
     createTableColumn<Graphic>({
       columnId: 'Full_Label',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('graphicFullLabel')}>
-          <span>Full Label</span>
-          {sortColumn === 'graphicFullLabel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Full Label</span>
       ),
       renderCell: (item) => (
         <TableCellLayout>
@@ -394,14 +364,7 @@ export const GraphicsPage: React.FC = () => {
     createTableColumn<Graphic>({
       columnId: 'Label',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('graphicLabel')}>
-          <span>Label</span>
-          {sortColumn === 'graphicLabel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Label</span>
       ),
       renderCell: (item) => (
         <TableCellLayout>
@@ -413,14 +376,7 @@ export const GraphicsPage: React.FC = () => {
     createTableColumn<Graphic>({
       columnId: 'Picture_File',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('graphicPictureFile')}>
-          <span>Picture File</span>
-          {sortColumn === 'graphicPictureFile' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Picture File</span>
       ),
       renderCell: (item) => (
         <TableCellLayout>
@@ -431,14 +387,7 @@ export const GraphicsPage: React.FC = () => {
     createTableColumn<Graphic>({
       columnId: 'Element_Count',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('graphicTotalPoint')}>
-          <span>Element Count</span>
-          {sortColumn === 'graphicTotalPoint' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Total Points</span>
       ),
       renderCell: (item) => (
         <TableCellLayout>
@@ -516,7 +465,7 @@ export const GraphicsPage: React.FC = () => {
                     title="Refresh all graphics from device"
                   >
                     <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />
@@ -581,9 +530,15 @@ export const GraphicsPage: React.FC = () => {
                     onWheel={handleWheel}
                   >
                   <DataGrid
+                      key={sortKey}
                       items={displayGraphics}
                       columns={columns}
                       sortable
+                      sortState={sortState}
+                      onSortChange={handleSortChange}
+                      resizableColumns
+                      resizableColumnsOptions={{ autoFitColumns: false }}
+                      style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
                       getRowId={(item) => {
                         const id = item.GraphicId ?? item.graphicId ?? `empty-${displayGraphics.indexOf(item)}`;
                         return `${item.serialNumber ?? 'unknown'}-${id}`;

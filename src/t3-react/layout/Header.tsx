@@ -93,6 +93,7 @@ import {
   NetworkCheckRegular,
   HistoryRegular,
   CalendarDataBar28Regular,
+  TagRegular,
 } from '@fluentui/react-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { menuConfig } from '@t3-react/config/menuConfig';
@@ -631,6 +632,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
       'NetworkCheck': NetworkCheckRegular,
       'History': HistoryRegular,
       'CalendarDataBar': CalendarDataBar28Regular,
+      'Tag': TagRegular,
     };
     return iconMap[icon];
   };
