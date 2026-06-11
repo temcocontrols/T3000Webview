@@ -82,6 +82,8 @@
   cursor: pointer;
   border-radius: 2px;
   transition: background-color 0.1s ease;
+  margin-left: 10px;
+  margin-right: 5px;
 }
 
 .toolbarButton svg {
@@ -339,6 +341,7 @@
 .container :global(.fui-DataGridHeaderCell):last-child {
   border-right: none;
 }
+
 .container :global(.fui-DataGridCell):last-child {
   border-right: none;
 }
@@ -371,11 +374,11 @@
 }
 
 /* Remove any default Fluent UI styles that conflict */
-.container :global(.fui-DataGridHeaderCell) > * {
+.container :global(.fui-DataGridHeaderCell)>* {
   line-height: normal;
 }
 
-.container :global(.fui-DataGridCell) > * {
+.container :global(.fui-DataGridCell)>* {
   line-height: normal;
 }
 

@@ -677,10 +677,16 @@ export const SettingsPage: React.FC = () => {
   const [lcdDelaySeconds, setLcdDelaySeconds] = useState<number>(0);
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo>({});
 
-  // Auto-select first device if none is selected
+  // Auto-select first device if none is selected (use same filter+sort as tree)
   useEffect(() => {
     if (!selectedDevice && devices.length > 0) {
-      selectDevice(devices[0]);
+      const isUnknown = (d: typeof devices[number]) =>
+        !d.nameShowOnTree || d.nameShowOnTree === 'Unknown' || d.nameShowOnTree === '(Unknown)';
+      const knownDevices = devices.filter(d => !isUnknown(d));
+      knownDevices.sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
+      if (knownDevices.length > 0) {
+        selectDevice(knownDevices[0]);
+      }
     }
   }, [selectedDevice, devices, selectDevice]);
 

@@ -204,18 +204,20 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             get().buildTreeStructure();
 
             // Auto-select first device if none is selected
+            // Use same filtering & sorting as buildTreeStructure so selection matches the tree
             const { selectedDevice, selectDevice, devices } = get();
             console.log(`[fetchDevices] Devices loaded:`, response.devices.map((d, idx) => `[${idx}] ${d.nameShowOnTree} (SN: ${d.serialNumber})`));
             console.log(`[fetchDevices] Current selectedDevice:`, selectedDevice?.nameShowOnTree || 'none');
 
             if (!selectedDevice && devices.length > 0) {
-              // Skip unknown devices for auto-select — they are hidden from tree.
+              // Match buildTreeStructure: filter unknown + sort alphabetically
               const isUnknown = (d: DeviceInfo) =>
                 !d.nameShowOnTree || d.nameShowOnTree === 'Unknown' || d.nameShowOnTree === '(Unknown)';
               const knownDevices = devices.filter(d => !isUnknown(d));
+              knownDevices.sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
               const firstDevice = knownDevices.length > 0 ? knownDevices[0] : null;
               if (firstDevice) {
-                console.log(`[fetchDevices] Auto-selecting first known device: ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
+                console.log(`[fetchDevices] Auto-selecting first device (sorted): ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
                 selectDevice(firstDevice);
               } else {
                 console.log('[fetchDevices] No known devices to auto-select');
