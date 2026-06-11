@@ -956,6 +956,58 @@ async fn get_device_points_count(
     })))
 }
 
+/// Batch update device online status from FFI Action 4 scan
+/// POST /api/t3_device/devices/batch-online-status
+/// Body: { "onlineSerials": [237219], "offlineSerials": [240488] }
+#[derive(Deserialize)]
+struct BatchOnlineStatusRequest {
+    #[serde(default)]
+    online_serials: Vec<i32>,
+    #[serde(default)]
+    offline_serials: Vec<i32>,
+}
+
+async fn batch_update_device_online_status(
+    State(state): State<T3AppState>,
+    Json(payload): Json<BatchOnlineStatusRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    use crate::entity::t3_device::devices;
+    use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, Set};
+
+    let db = get_t3_device_conn!(state);
+    let now = chrono::Utc::now().to_rfc3339();
+    let mut updated = 0i32;
+
+    // Mark online devices
+    for serial in &payload.online_serials {
+        let result = devices::Entity::update_many()
+            .filter(devices::Column::SerialNumber.eq(*serial))
+            .col_expr(devices::Column::IsOnline, sea_orm::sea_query::Expr::value(1))
+            .col_expr(devices::Column::LastChecked, sea_orm::sea_query::Expr::value(now.clone()))
+            .exec(&*db)
+            .await;
+        if let Ok(res) = result { updated += res.rows_affected as i32; }
+    }
+
+    // Mark offline devices
+    for serial in &payload.offline_serials {
+        let result = devices::Entity::update_many()
+            .filter(devices::Column::SerialNumber.eq(*serial))
+            .col_expr(devices::Column::IsOnline, sea_orm::sea_query::Expr::value(0))
+            .col_expr(devices::Column::LastChecked, sea_orm::sea_query::Expr::value(now.clone()))
+            .exec(&*db)
+            .await;
+        if let Ok(res) = result { updated += res.rows_affected as i32; }
+    }
+
+    Ok(Json(json!({
+        "success": true,
+        "updated": updated,
+        "onlineCount": payload.online_serials.len(),
+        "offlineCount": payload.offline_serials.len(),
+    })))
+}
+
 /// Check device online status
 /// GET /api/t3_device/devices/:id/status
 async fn check_device_status(
@@ -1785,6 +1837,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .route("/devices", get(get_devices_with_stats))
         .route("/devices", post(create_device))
         .route("/devices", delete(delete_all_devices))  // DELETE all devices
+        .route("/devices/batch-online-status", post(batch_update_device_online_status))
         .route("/devices/:id", get(get_device_by_id))
         .route("/devices/:id", put(update_device))
         .route("/devices/:id", delete(delete_device))

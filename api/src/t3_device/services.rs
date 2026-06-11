@@ -356,6 +356,7 @@ impl T3DeviceService {
                 bacnet_ip_port: Set(device_data.bacnet_ip_port),
                 show_label_name: Set(device_data.show_label_name),
                 connection_type: Set(device_data.connection_type),
+                ..Default::default()
             };
 
             let mut device = new_device.insert(db).await?;
