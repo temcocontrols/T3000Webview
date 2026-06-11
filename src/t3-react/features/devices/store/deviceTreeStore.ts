@@ -190,6 +190,17 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
               lastSyncTime: new Date(),
             });
 
+            // Seed deviceStatuses from persisted isOnline field (survives refresh)
+            const newStatuses = new Map<number, DeviceStatus>();
+            cleanedDevices.forEach((d) => {
+              if (d.isOnline === true || d.isOnline === (1 as any)) {
+                newStatuses.set(d.serialNumber, 'online');
+              } else if (d.isOnline === false || d.isOnline === (0 as any)) {
+                newStatuses.set(d.serialNumber, 'offline');
+              }
+            });
+            set({ deviceStatuses: newStatuses });
+
             // Auto-expand root building on first load (devices directly under building, no subnet level)
             const { expandedNodes } = get();
             if (expandedNodes.size === 0) {
@@ -309,6 +320,22 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           // Check if response has data
           if (response && response.data && response.data.data) {
             const panels = response.data.data;
+
+            // Batch-update online status: FFI panels are online, DB-only devices are offline
+            const onlineSerials = panels.map((p: any) => p.serial_number || p.serialNumber).filter(Boolean);
+            const allDbSerials = get().devices.map(d => d.serialNumber);
+            const offlineSerials = allDbSerials.filter(s => !onlineSerials.includes(s));
+            try {
+              await fetch(`${API_BASE_URL}/api/t3_device/devices/batch-online-status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ onlineSerials, offlineSerials }),
+              });
+              console.log('[loadDevicesWithSync] Updated online status:', { online: onlineSerials.length, offline: offlineSerials.length });
+            } catch (e) {
+              console.warn('[loadDevicesWithSync] Failed to update online status:', e);
+            }
+
             console.log('[loadDevicesWithSync] FFI returned panels:', panels);
             console.log(`[loadDevicesWithSync] Total panels: ${panels.length}`);
 

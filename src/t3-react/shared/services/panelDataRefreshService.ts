@@ -14,6 +14,7 @@ import { T3Transport } from '@common/t3-transport/core/T3Transport';
 import { EntryType, WebViewMessageType } from '@common/t3-transport/types/message-enums';
 import { T3Database } from '@common/t3-database';
 import { API_BASE_URL } from '@t3-react/config/constants';
+import { useDeviceTreeStore } from '@t3-react/features/devices/store/deviceTreeStore';
 import LogUtil from '@common/t3-hvac/Util/LogUtil';
 
 export type PointType = 'input' | 'output' | 'variable' | 'program' | 'schedule' | 'pidloop' | 'holiday' | 'trendlog' | 'alarm' | 'graphic';
@@ -54,6 +55,15 @@ export class PanelDataRefreshService {
     const timestamp = new Date().toISOString();
 
     try {
+      // Gate: skip FFI for offline devices — DB has cached data
+      const deviceStatuses = useDeviceTreeStore.getState().deviceStatuses;
+      const status = deviceStatuses.get(serialNumber);
+      if (status === 'offline') {
+        const msg = `Device ${serialNumber} is offline — showing cached data`;
+        LogUtil.Warn(`[PanelDataRefreshService] ${msg}`);
+        return { success: true, message: msg, itemCount: 0, savedCount: 0, timestamp };
+      }
+
       // Set loading state to true before FFI call
       onLoadingChange?.(true);
 
@@ -119,6 +129,19 @@ export class PanelDataRefreshService {
 
       // Set loading state to false after FFI call completes
       onLoadingChange?.(false);
+
+      // FFI call succeeded → device is online, update persisted status
+      try {
+        await fetch(`${API_BASE_URL}/api/t3_device/devices/batch-online-status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ onlineSerials: [serialNumber], offlineSerials: [] }),
+        });
+        // Also update in-memory map so next refresh doesn't need the HTTP round-trip
+        useDeviceTreeStore.getState().deviceStatuses?.set(serialNumber, 'online');
+      } catch (e) {
+        // Non-critical — status update is best-effort
+      }
 
       // Check if response has data
       if (!response || !response.data) {
