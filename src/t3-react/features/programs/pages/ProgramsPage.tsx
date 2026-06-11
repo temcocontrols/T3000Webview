@@ -740,7 +740,7 @@ export const ProgramsPage: React.FC = () => {
                     title="Refresh all programs from device"
                     aria-label="Refresh from Device"
                   >
-                    <ArrowSyncRegular />
+                    <ArrowClockwiseRegular />
                     <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 

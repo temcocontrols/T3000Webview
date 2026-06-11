@@ -21,7 +21,7 @@ import {
   Text,
 } from '@fluentui/react-components';
 import {
-  ArrowSyncRegular,
+  ArrowClockwiseRegular,
   AddRegular,
   DeleteRegular,
   SearchRegular,
@@ -252,8 +252,8 @@ export const BuildingsPage: React.FC = () => {
                     disabled={refreshing}
                     aria-label="Refresh"
                   >
-                    <ArrowSyncRegular />
-                    <span>Refresh</span>
+                    <ArrowClockwiseRegular className={refreshing ? styles.rotating : ''} />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />

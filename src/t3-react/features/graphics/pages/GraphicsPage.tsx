@@ -464,7 +464,7 @@ export const GraphicsPage: React.FC = () => {
                     disabled={refreshing}
                     title="Refresh all graphics from device"
                   >
-                    <ArrowSyncRegular />
+                    <ArrowClockwiseRegular />
                     <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 

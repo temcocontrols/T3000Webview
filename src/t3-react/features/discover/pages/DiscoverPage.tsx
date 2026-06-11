@@ -15,7 +15,7 @@ import {
   Badge,
 } from '@fluentui/react-components';
 import {
-  ArrowSyncRegular,
+  ArrowClockwiseRegular,
   AddRegular,
   DeleteRegular,
   SearchRegular,
@@ -391,7 +391,7 @@ export const DiscoverPage: React.FC = () => {
                     title="Refresh from Device"
                     aria-label="Refresh from Device"
                   >
-                    <ArrowSyncRegular />
+                    <ArrowClockwiseRegular className={refreshing ? styles.rotating : ''} />
                     <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 

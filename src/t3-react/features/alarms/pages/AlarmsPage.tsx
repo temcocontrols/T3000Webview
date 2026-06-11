@@ -520,7 +520,7 @@ const AlarmsPageDesktop: React.FC = () => {
                     title="Refresh from Device"
                     aria-label="Refresh from Device"
                   >
-                    <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
+                    <ArrowClockwiseRegular className={refreshing ? styles.rotating : ''} />
                     <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 

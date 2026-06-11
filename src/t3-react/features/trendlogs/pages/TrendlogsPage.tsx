@@ -32,7 +32,7 @@ import {
   Switch,
 } from '@fluentui/react-components';
 import {
-  ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SearchRegular,
   DismissRegular,
   ErrorCircleRegular,
@@ -2951,7 +2951,7 @@ export const TrendLogsPage: React.FC = () => {
                     title="Refresh all trendlogs from device"
                     aria-label="Refresh from Device"
                   >
-                    <ArrowSyncRegular />
+                    <ArrowClockwiseRegular className={refreshing ? styles.rotating : ''} />
                     <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
