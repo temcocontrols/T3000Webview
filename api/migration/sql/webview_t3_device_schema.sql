@@ -43,7 +43,9 @@ CREATE TABLE IF NOT EXISTS DEVICES (
     modbus_port INTEGER,                       -- C++ Modbus port from reg[25] (MODBUS_PORT)
     bacnet_ip_port INTEGER,                    -- C++ BACnet IP port from reg[23] (BACNET_IP_PORT)
     show_label_name TEXT,                      -- C++ Device display name (panel_name from LOGGING_DATA)
-    connection_type TEXT                       -- C++ Connection type (Serial/Ethernet/BACnet/Modbus)
+    connection_type TEXT,                      -- C++ Connection type (Serial/Ethernet/BACnet/Modbus)
+    is_online INTEGER DEFAULT 0,              -- Online status (0=offline/unknown, 1=online, set by FFI Action 4)
+    last_checked TEXT                          -- ISO 8601 timestamp of last online-status check
 );
 
 -- INPUTS table (Original T3000 input points table)

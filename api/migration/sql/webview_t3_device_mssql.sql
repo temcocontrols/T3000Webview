@@ -45,7 +45,9 @@ CREATE TABLE DEVICES (
     modbus_port INT,
     bacnet_ip_port INT,
     show_label_name NVARCHAR(255),
-    connection_type NVARCHAR(64)
+    connection_type NVARCHAR(64),
+    is_online INT DEFAULT 0,
+    last_checked NVARCHAR(64)
 );
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'INPUTS')

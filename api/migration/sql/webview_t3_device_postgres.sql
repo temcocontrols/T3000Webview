@@ -42,7 +42,9 @@ CREATE TABLE IF NOT EXISTS DEVICES (
     modbus_port INTEGER,
     bacnet_ip_port INTEGER,
     show_label_name TEXT,
-    connection_type TEXT
+    connection_type TEXT,
+    is_online INTEGER DEFAULT 0,
+    last_checked TEXT
 );
 
 CREATE TABLE IF NOT EXISTS INPUTS (

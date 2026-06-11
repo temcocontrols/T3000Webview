@@ -42,7 +42,9 @@ CREATE TABLE IF NOT EXISTS DEVICES (
     modbus_port INT,
     bacnet_ip_port INT,
     show_label_name TEXT,
-    connection_type TEXT
+    connection_type TEXT,
+    is_online INT DEFAULT 0,
+    last_checked TEXT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS INPUTS (
