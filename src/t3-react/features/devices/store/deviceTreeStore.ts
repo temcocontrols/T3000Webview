@@ -251,8 +251,29 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
               }
             }
 
-            // Update status bar with success message
-            useStatusBarStore.getState().setMessage(`Loaded ${response.devices.length} devices`, 'success');
+            // Update status bar with device counts from DB
+            const allDevices = response.devices;
+            const isUnknownDevice = (d: any) => {
+              const name = (d.productName || d.showLabelName || '').trim();
+              return !name || name === '(Unknown)' || name === 'Unknown';
+            };
+            const visible = allDevices.filter((d: any) => !isUnknownDevice(d));
+            const hidden = allDevices.filter((d: any) => isUnknownDevice(d));
+            const onlineList = visible.filter((d: any) => d.isOnline === 1 || d.isOnline === true);
+            const offlineList = visible.filter((d: any) => !(d.isOnline === 1 || d.isOnline === true));
+            const parts: string[] = [];
+            if (onlineList.length > 0) {
+              parts.push(`${onlineList.length} online (${onlineList.map((d: any) => d.productName).join(', ')})`);
+            }
+            if (offlineList.length > 0) {
+              const names = offlineList.map((d: any) => d.productName).join(', ');
+              parts.push(`${offlineList.length} offline (${names})`);
+            }
+            if (hidden.length > 0) {
+              const sns = hidden.map((d: any) => `SN${d.serialNumber}`).join(', ');
+              parts.push(`${hidden.length} unknown (${sns})`);
+            }
+            useStatusBarStore.getState().setMessage(parts.join(' | '), 'success');
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to fetch devices';
             set({
@@ -447,8 +468,23 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             // Step 3: Reload from DB to get updated list
             await get().fetchDevices();
 
-            // Step 4: Auto-select first device (point sync handled by each page)
-            const { devices: updatedDevices, selectDevice } = get();
+            // Show final summary: FFI result vs DB state (with device names)
+            const { devices: updatedDevices, selectDevice, deviceStatuses: finalStatuses } = get();
+            const ffiNames = panels.map((p: any) => p.panel_name || p.panelName || '').filter(Boolean);
+            const isUnknown = (d: DeviceInfo) => {
+              const name = (d.productName || d.showLabelName || '').trim();
+              return !name || name === '(Unknown)' || name === 'Unknown';
+            };
+            const visibleDevs = updatedDevices.filter(d => !isUnknown(d));
+            const hiddenDevs = updatedDevices.filter(d => isUnknown(d));
+            const onlineList = visibleDevs.filter(d => finalStatuses.get(d.serialNumber) === 'online');
+            const offlineList = visibleDevs.filter(d => finalStatuses.get(d.serialNumber) === 'offline');
+            const summaryParts: string[] = [];
+            if (ffiNames.length > 0) summaryParts.push(`FFI: ${ffiNames.join(', ')}`);
+            if (onlineList.length > 0) summaryParts.push(`${onlineList.length} online (${onlineList.map(d => d.nameShowOnTree).join(', ')})`);
+            if (offlineList.length > 0) summaryParts.push(`${offlineList.length} offline (${offlineList.map(d => d.nameShowOnTree).join(', ')})`);
+            if (hiddenDevs.length > 0) summaryParts.push(`${hiddenDevs.length} unknown (${hiddenDevs.map(d => `SN${d.serialNumber}`).join(', ')})`);
+            setMessage(summaryParts.join(' | '), offlineList.length > 0 ? 'warning' : 'success');
             console.log(`[loadDevicesWithSync] Devices after reload:`, updatedDevices.map((d, idx) => `[${idx}] ${d.nameShowOnTree} (SN: ${d.serialNumber})`));
 
             if (updatedDevices.length > 0) {
