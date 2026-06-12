@@ -17,12 +17,12 @@ import {
 import {
   ArrowClockwiseRegular,
   AddRegular,
-  DeleteRegular,
   SearchRegular,
   ArrowSortUpRegular,
   ArrowSortDownRegular,
   ArrowSortRegular,
   ErrorCircleRegular,
+  InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '@t3-react/config/constants';
@@ -55,6 +55,12 @@ export const DiscoverPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
+
+  // Scan drawer state
+  const [scanDrawerOpen, setScanDrawerOpen] = useState(false);
+  const [scanStatus, setScanStatus] = useState<'scanning' | 'done' | 'error'>('scanning');
+  const [scanMessage, setScanMessage] = useState('');
+  const [scanSteps, setScanSteps] = useState<{ mode: string; status: string; reply: string; notes: string }[]>([]);
 
 
   // Load from DB on mount
@@ -92,25 +98,34 @@ export const DiscoverPage: React.FC = () => {
     }
   };
 
-  // Start Scan: trigger FFI scan (C++ equivalent: OnBnClickedButtonScanall)
+  // Start Scan: trigger FFI scan with progress drawer (C++ equivalent: CScanDbWaitDlg)
   const handleStartScan = async () => {
-    setLoading(true);
+    setScanDrawerOpen(true);
+    setScanStatus('scanning');
+    setScanMessage('T3000 is scanning, please wait...');
+    setScanSteps([
+      { mode: 'Ethernet Scan', status: 'In Progress', reply: '---', notes: 'Scanning network...' },
+      { mode: 'BACnet MSTP', status: 'Waiting', reply: '---', notes: '' },
+    ]);
     setError(null);
     try {
       await loadDevicesWithSync();
-      await handleRefresh(); // reload from DB after scan
+      setScanStatus('done');
+      setScanMessage('Scan complete!');
+      setScanSteps([
+        { mode: 'Ethernet Scan', status: 'Completed', reply: `${devices.length} found`, notes: 'Devices saved to database' },
+        { mode: 'BACnet MSTP', status: 'Completed', reply: 'N/A', notes: 'Via FFI GET_PANELS_LIST (Action 4)' },
+      ]);
+      await handleRefresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Scan failed');
-    } finally {
-      setLoading(false);
+      setScanStatus('error');
+      setScanMessage(err instanceof Error ? err.message : 'Scan failed');
+      setScanSteps(prev => prev.map(s => s.status === 'In Progress' ? { ...s, status: 'Failed' } : s));
     }
   };
 
-  // Delete device handler
-  const handleDeleteDevice = () => {
-    console.log('Delete device clicked');
-    // TODO: Implement delete device functionality
-  };
+  // Delete device handler - not in C++ ScanDlg, removed
+  // Delete is handled via the device tree
 
   // Search handler
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -380,6 +395,16 @@ export const DiscoverPage: React.FC = () => {
                 </div>
               )}
 
+              {/* Description bar — what this feature does */}
+              <div className={styles.infoStrip}>
+                <InfoRegular className={styles.infoStripIcon} />
+                <span>
+                  Discover T3000 devices on your network. Click <strong>Start Scan</strong> to search
+                  for BACnet and Modbus devices. Found devices are automatically saved to the database
+                  and appear in the device tree.
+                </span>
+              </div>
+
               {/* Toolbar */}
               {selectedDevice && (
               <>
@@ -423,17 +448,6 @@ export const DiscoverPage: React.FC = () => {
                     <span>Start Scan</span>
                   </button>
 
-                  <div className={styles.toolbarSeparator} role="separator" />
-
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleDeleteDevice}
-                    title="Delete Device"
-                    aria-label="Delete Device"
-                  >
-                    <DeleteRegular />
-                    <span>Delete Device</span>
-                  </button>
                 </div>
               </div>
 
@@ -516,6 +530,55 @@ export const DiscoverPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+      {/* Scan Status Drawer — C++ equivalent: CScanDbWaitDlg */}
+      {scanDrawerOpen && (
+        <div className={styles.scanOverlay}>
+          <div className={styles.scanDrawer}>
+            <div className={styles.scanDrawerHeader}>
+              <Text size={400} weight="semibold">Device Scan</Text>
+            </div>
+
+            {/* Info bar showing current status */}
+            <div className={styles.scanInfoBar}>
+              {scanStatus === 'scanning' && <Spinner size="tiny" />}
+              <Text size={200} weight="semibold">{scanMessage}</Text>
+            </div>
+
+            {/* Steps table — always visible */}
+            <div className={styles.scanDrawerBody}>
+              <table className={styles.scanTable}>
+                <thead>
+                  <tr>
+                    <th>Scanning Mode</th><th>Status</th><th>Reply</th><th>Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scanSteps.map((step, i) => (
+                    <tr key={i}>
+                      <td>{step.mode}</td>
+                      <td>
+                        <Badge appearance="filled" color={step.status === 'Completed' ? 'success' : step.status === 'Failed' ? 'danger' : 'warning'} size="small">
+                          {step.status}
+                        </Badge>
+                      </td>
+                      <td>{step.reply}</td>
+                      <td>{step.notes}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className={styles.scanDrawerFooter}>
+              <Button size="small" appearance="primary" onClick={() => setScanDrawerOpen(false)}
+                disabled={scanStatus === 'scanning'}>
+                {scanStatus === 'scanning' ? 'Scanning...' : 'Close'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );
