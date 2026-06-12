@@ -847,8 +847,8 @@ const PIDLoopsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Data Grid - Always show with header */}
-        {selectedDevice && !isLoading && !error && (
+        {/* Data Grid - Always show with header, even on error */}
+        {selectedDevice && !isLoading && (
           <div
             ref={scrollContainerRef}
             className={styles.scrollContainer}
