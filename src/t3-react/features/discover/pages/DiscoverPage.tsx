@@ -25,26 +25,29 @@ import {
   ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
-import { API_BASE_URL } from '../../../config/constants';
+import { API_BASE_URL } from '@t3-react/config/constants';
 import styles from './DiscoverPage.module.css';
 
-// Device interface matching C++ Scan dialog structure
+// Device interface matching C++ ScanDlg columns:
+// SCAN_TABLE_TYPE=0, BUILDING=1, FLOOR=2, ROOM=3, SUBNET=4, SERIALID=5, IPADDRESS=6, COMPORT=7, PROTOCOL=8, MODBUSID=9
 interface Device {
   id: string;
-  model: string;           // SCAN_TABLE_TYPE (Model)
-  building: string;        // SCAN_TABLE_BUILDING
-  floor: string;           // SCAN_TABLE_FLOOR
-  room: string;            // SCAN_TABLE_ROOM
-  subnet: string;          // SCAN_TABLE_SUBNET (Sub_net)
-  serialNumber: string;    // SCAN_TABLE_SERIALID (Serial#)
-  ipAddress: string;       // SCAN_TABLE_IPADDRESS (IP Address)
-  port: string;            // SCAN_TABLE_COMPORT (Port)
-  protocol: string;        // SCAN_TABLE_PROTOCOL (Protocol)
-  modbusId: string;        // SCAN_TABLE_MODBUSID (ID)
+  model: string;
+  building: string;
+  floor: string;
+  room: string;
+  subnet: string;
+  serialNumber: string;
+  ipAddress: string;
+  port: string;
+  protocol: string;
+  modbusId: string;
+  isOnline: boolean;
+  lastChecked: string;
 }
 
 export const DiscoverPage: React.FC = () => {
-  const { selectedDevice } = useDeviceTreeStore();
+  const { selectedDevice, loadDevicesWithSync } = useDeviceTreeStore();
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,41 +56,54 @@ export const DiscoverPage: React.FC = () => {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
 
-  // Fetch devices - only called manually
-  const fetchDevices = useCallback(async () => {
+
+  // Load from DB on mount
+  useEffect(() => {
+    handleRefresh();
+  }, []);
+
+  // Refresh: reload from DB
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/t3_device/devices`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      setDevices((data.devices || []).map((d: any, i: number) => ({
+        id: String(i),
+        model: d.productName || d.showLabelName || '',
+        building: d.mainBuildingName || '',
+        floor: d.floorName || '',
+        room: d.roomName || '',
+        subnet: d.buildingName || '',
+        serialNumber: String(d.serialNumber),
+        ipAddress: d.ipAddress || '',
+        port: String(d.port || ''),
+        protocol: d.connectionType || 'BACnet',
+        modbusId: String(d.modbusAddress || ''),
+        isOnline: d.isOnline === 1 || d.isOnline === true,
+        lastChecked: d.lastChecked || '',
+      })));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load devices');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Start Scan: trigger FFI scan (C++ equivalent: OnBnClickedButtonScanall)
+  const handleStartScan = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/discover/devices`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      setDevices(data);
+      await loadDevicesWithSync();
+      await handleRefresh(); // reload from DB after scan
     } catch (err) {
-      console.error('Error fetching devices:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch devices');
+      setError(err instanceof Error ? err.message : 'Scan failed');
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  // DO NOT auto-fetch on mount - wait for user to click "Start Scan"
-  // useEffect(() => {
-  //   fetchDevices();
-  // }, [fetchDevices]);
-
-  // Refresh handler
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchDevices();
-    setRefreshing(false);
-  };
-
-  // Start Scan handler
-  const handleAddDevice = () => {
-    console.log('Start scan clicked');
-    fetchDevices();
   };
 
   // Delete device handler
@@ -399,7 +415,7 @@ export const DiscoverPage: React.FC = () => {
 
                   <button
                     className={styles.toolbarButton}
-                    onClick={handleAddDevice}
+                    onClick={handleStartScan}
                     title="Start Scan"
                     aria-label="Start Scan"
                   >
