@@ -190,14 +190,18 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
               lastSyncTime: new Date(),
             });
 
-            // Seed deviceStatuses from persisted isOnline field (survives refresh)
+            // Seed deviceStatuses from persisted isOnline field (only if scan has run)
             const newStatuses = new Map<number, DeviceStatus>();
             cleanedDevices.forEach((d) => {
-              if (d.isOnline === true || d.isOnline === (1 as any)) {
-                newStatuses.set(d.serialNumber, 'online');
-              } else if (d.isOnline === false || d.isOnline === (0 as any)) {
-                newStatuses.set(d.serialNumber, 'offline');
+              // Only trust persisted status if last_checked is set (scan actually ran)
+              if (d.lastChecked) {
+                if (d.isOnline === true || d.isOnline === (1 as any)) {
+                  newStatuses.set(d.serialNumber, 'online');
+                } else {
+                  newStatuses.set(d.serialNumber, 'offline');
+                }
               }
+              // No last_checked → stays 'unknown' (info icon)
             });
             set({ deviceStatuses: newStatuses });
 
@@ -417,6 +421,27 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
               setMessage(`Found ${panels.length} device(s), saved ${savedCount} successfully${failedCount > 0 ? `, ${failedCount} failed` : ''}`, savedCount === panels.length ? 'success' : 'warning');
             } else {
               setMessage(`Found ${panels.length} device(s) but failed to save any to database`, 'error');
+            }
+
+            // Mark offline devices: update last_checked for all DB devices not in FFI response,
+            // so the frontend can trust their isOnline=0 status (otherwise they stay "unknown")
+            try {
+              const onlineSerials = panels.map((p: any) => p.serial_number || p.serialNumber).filter(Boolean);
+              const allDbSerials = get().devices.map(d => d.serialNumber);
+              const offlineSerials = allDbSerials.filter(s => !onlineSerials.includes(s));
+              if (offlineSerials.length > 0) {
+                const now = new Date().toISOString();
+                await Promise.all(offlineSerials.map(s =>
+                  fetch(`${API_BASE_URL}/api/t3_device/devices/${s}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_online: 0, last_checked: now }),
+                  }).catch(() => {})
+                ));
+                console.log('[loadDevicesWithSync] Marked offline:', offlineSerials);
+              }
+            } catch (e) {
+              console.warn('[loadDevicesWithSync] Failed to mark offline:', e);
             }
 
             // Step 3: Reload from DB to get updated list

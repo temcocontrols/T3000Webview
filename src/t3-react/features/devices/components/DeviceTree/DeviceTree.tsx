@@ -19,10 +19,8 @@ import {
   TreeItemLayout,
 } from '@fluentui/react-components';
 import {
-  Checkmark20Regular,
   Dismiss20Regular,
   Info20Regular,
-  Warning20Regular,
   Desktop20Regular,
 } from '@fluentui/react-icons';
 import type { TreeNode } from '../../../../shared/types/device';
@@ -53,35 +51,6 @@ const DeviceDetailsTooltip: React.FC<{ device: NonNullable<TreeNode['data']> }> 
     <div className={styles.deviceInfoRow}><span>PC IP address:</span> <strong>{renderDetailValue(device.pcIpAddress)}</strong></div>
   </div>
 );
-
-/**
- * Status icon component - Azure Portal style
- */
-const StatusIcon: React.FC<{ status: 'online' | 'offline' | 'unknown'; isSelected?: boolean; isUnknownDevice?: boolean }> = ({ status, isSelected, isUnknownDevice }) => {
-  const iconStyle = {
-    width: '16px',
-    height: '16px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  };
-
-  const color = isSelected ? '#0078d4' : undefined;
-  const warningColor = isUnknownDevice ? '#d29200' : undefined;
-
-  if (isUnknownDevice) {
-    return <Info20Regular style={{ ...iconStyle, color: warningColor || '#d29200' }} />;
-  }
-
-  switch (status) {
-    case 'online':
-      return <Checkmark20Regular style={{ ...iconStyle, color: color || '#107C10' }} />;
-    case 'offline':
-      return <Dismiss20Regular style={{ ...iconStyle, color: color || '#a80000' }} />;
-    default:
-      return <Info20Regular style={{ ...iconStyle, color: color || '#0f6cbd' }} />;
-  }
-};
 
 /**
  * Recursive tree node renderer
@@ -187,12 +156,18 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
     };
   }, []);
 
-  // Show info icon for ALL selected devices with data; online/offline keep their status icon too
+  // Aside: info icon only when selected (right side, triggers tooltip on hover)
   const asideContent = isSelected ? (
-    <span className={`${styles.deviceInfoIcon}`}>
-      <StatusIcon status={node.status ?? 'unknown'} isSelected={isSelected} isUnknownDevice={isUnknownDevice} />
+    <span className={styles.deviceInfoIcon}>
+      <Info20Regular style={{ width: '16px', height: '16px', color: '#0f6cbd' }} />
     </span>
   ) : undefined;
+
+  // Prefix icon: red X for offline (always red, even when selected), default desktop for others
+  const isOffline = node.status === 'offline';
+  const prefixIcon = isOffline
+    ? <Dismiss20Regular data-offline="true" style={{ color: '#a80000', width: '16px', height: '16px', flexShrink: 0 }} />
+    : <Desktop20Regular style={{ color: '#605e5c', width: '16px', height: '16px' }} />;
 
   // Building/subnet node
   if (node.type === 'building' && node.children) {
@@ -242,7 +217,7 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
           >
             <TreeItemLayout
               onClick={handleClick}
-              iconBefore={<Desktop20Regular style={{ color: '#605e5c', width: '16px', height: '16px' }} />}
+              iconBefore={prefixIcon}
               aside={asideContent}
               className={`${isSelected ? styles.treeItemSelected : styles.treeItemNormal} ${styles.deviceTreeItem}`}
               style={{ '--tree-level': level } as React.CSSProperties}
