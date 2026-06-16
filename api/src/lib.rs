@@ -12,6 +12,7 @@ pub mod db_schema;  // Embedded SQL schema for dynamic database creation
 pub mod device_db_conn; // Multi-backend device DB connection adapter
 pub mod ini_config; // setting.ini [ServerDatabase] reader for server/client config
 pub mod web_routing; // Web routing helpers for server/client DB mode
+pub mod t3_eez_studio; // EEZ Studio bridge API for web frontend
 pub mod entity;
 pub mod error;
 pub mod file;
