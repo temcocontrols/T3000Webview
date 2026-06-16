@@ -107,6 +107,9 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['db-services'] = eezPath('db-services');
         viteConf.resolve.alias['pdf-services'] = eezPath('pdf-services');
 
+        // Alias for EEZ Studio build artifacts (CSS, etc.) from the fork
+        viteConf.resolve.alias['@eez-studio-build'] = require('path').resolve(__dirname, '../eez-studio/build');
+
         // Redirect Electron/Node.js to browser stubs
         const stub = (name) => require('path').resolve(__dirname, 'src/stubs', name);
         viteConf.resolve.alias['electron'] = stub('electron-kitchen.ts');
@@ -157,6 +160,8 @@ module.exports = configure(function (/* ctx */) {
         viteConf.optimizeDeps.include.push('vue', '@vue/runtime-dom');
         // Include Uppy dependencies to ensure proper pre-bundling
         viteConf.optimizeDeps.include.push('@uppy/core', '@uppy/vue', '@uppy/dashboard', '@uppy/image-editor', '@uppy/xhr-upload');
+        // Include moment.js from eez-studio fork for CJS interop in Vite ESM mode
+        viteConf.optimizeDeps.include.push('moment');
 
         // Ensure React and Vue are properly resolved to prevent initialization issues
         viteConf.resolve = viteConf.resolve || {};
@@ -172,6 +177,7 @@ module.exports = configure(function (/* ctx */) {
         viteConf.server.fs.allow = [
             require('path').resolve(__dirname),
             require('path').resolve(__dirname, '../eez-studio'),
+            require('path').resolve(__dirname, '../eez-studio/node_modules'),
         ];
 
         // Disable manual chunking completely - let Vite handle everything automatically

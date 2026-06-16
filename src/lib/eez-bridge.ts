@@ -8,7 +8,14 @@ const noBackend = () => { console.warn("[EEZ Bridge] No Rust backend — using m
 async function api(path: string, init?: RequestInit): Promise<any> {
     try {
         const res = await fetch(`${BASE}${path}`, { ...init, credentials: "include" });
-        if (res.ok) return res;
+        if (res.ok) {
+            // If the backend returns HTML (e.g. an error page), treat as empty
+            const ct = res.headers.get("content-type") || "";
+            if (ct.includes("text/html")) {
+                return { ok: true, json: () => ({}), text: () => "", arrayBuffer: () => new ArrayBuffer(0) } as any;
+            }
+            return res;
+        }
     } catch {}
     noBackend();
     return { ok: false, json: () => ({}), text: () => "", arrayBuffer: () => new ArrayBuffer(0) } as any;

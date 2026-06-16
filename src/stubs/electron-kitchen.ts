@@ -38,6 +38,42 @@ export const powerMonitor = { on:noop, getSystemIdleTime:()=>0, getSystemIdleSta
 export const net = { fetch:fetch.bind(window), request:()=>({on:noop,end:noop}), resolveHost:noopAsync };
 export const process = { type:"browser", versions:{node:"",chrome:"",electron:""}, platform:"browser", arch:"x64" };
 export const contextBridge = { exposeInMainWorld:noop };
+
+// @electron/remote stubs — used by EEZ Studio UI components (tabs, context menus, etc.)
+export class MenuItem {
+    label: string = "";
+    click?: () => void;
+    constructor(options?: { label?: string; click?: () => void }) {
+        if (options) {
+            this.label = options.label ?? "";
+            this.click = options.click;
+        }
+    }
+}
+export class Menu {
+    items: MenuItem[] = [];
+    append(item: MenuItem) { this.items.push(item); }
+    popup(_options?: any) { /* no-op in browser */ }
+    closePopup() { /* no-op in browser */ }
+}
+export const getCurrentWindow = () => ({
+    id: 0,
+    show: noop,
+    close: noop,
+    minimize: noop,
+    maximize: noop,
+    isMaximized: () => false,
+    isMinimized: () => false,
+    isFocused: () => true,
+    focus: noop,
+    restore: noop,
+    webContents: { send: noop, on: noop, removeListener: noop },
+});
+export const getCurrentWebContents = () => ({
+    send: noop,
+    on: noop,
+    removeListener: noop,
+});
 export const crashReporter = { start:noop, addExtraParameter:noop, removeExtraParameter:noop, getParameters:noopObj };
 export const desktopCapturer = { getSources:()=>Promise.resolve([]) };
 export const inAppPurchase = { purchaseProduct:noopAsync, getProducts:()=>Promise.resolve([]), canMakePayments:()=>false, restoreCompletedTransactions:noop };
@@ -50,7 +86,6 @@ export const autoUpdater = { checkForUpdates:noop, getFeedURL:()=>"", setFeedURL
 export const contentTracing = { startRecording:noopAsync, stopRecording:noopAsync, getTraceBufferUsage:noopAsync, getCategories:noopAsync };
 export const globalShortcut = { register:noop, unregister:noop, unregisterAll:noop, isRegistered:()=>false };
 export const webUtils = { getPathForFile:()=>"" };
-export const getCurrentWindow = () => new BrowserWindow();
 export const nativeImage = {
     createEmpty: () => ({ isEmpty: () => true, getSize: () => ({ width: 0, height: 0 }), resize: () => ({}), toDataURL: () => "", toJPEG: () => Buffer.alloc(0), toPNG: () => Buffer.alloc(0), toBitmap: () => Buffer.alloc(0), getBitmap: () => Buffer.alloc(0), getNativeHandle: () => Buffer.alloc(0), crop: () => ({}), addRepresentation: () => ({}) }),
     createFromPath: () => ({}),
@@ -83,8 +118,7 @@ export class BrowserWindow {
     getPosition() { return [0, 0]; }
     center() {}
 }
-export const Menu = { buildFromTemplate:()=>({popup:noop,closePopup:noop,items:[]}), setApplicationMenu:noop, getApplicationMenu:()=>null, sendActionToFirstResponder:noop };
-export const MenuItem = class { constructor(_o?:any){} get enabled(){return true} set enabled(_:boolean){} click(){} };
+// Menu and MenuItem are defined above with browser-compatible stubs
 export const Tray = class { constructor(_icon:any){} setToolTip(){} setTitle(){} setImage(){} on(){} displayBalloon(){} popUpContextMenu(){} closeContextMenu(){} destroy(){} };
 export const Notification = class { constructor(_o?:any){} show(){} close(){} on(){} static isSupported(){return false} };
 export const ShareMenu = class { constructor(_o?:any){} };
