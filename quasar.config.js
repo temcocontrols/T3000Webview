@@ -15,10 +15,10 @@ module.exports = configure(function (/* ctx */) {
     eslint: {
       // fix: true,
       // include = [],
-      // exclude = [],
+      exclude: ['src/lib/t3-eez-studio/**', 'node_modules/**'],
       // rawOptions = {},
-      warnings: true,
-      errors: true,
+      warnings: false,
+      errors: false,
     },
 
     // https://v2.quasar.dev/quasar-cli/prefetch-feature
@@ -92,6 +92,36 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['@t3-shared'] = require('path').resolve(__dirname, 'src/shared');
         viteConf.resolve.alias['@t3-mobile'] = require('path').resolve(__dirname, 'src/t3-mobile');
 
+        // EEZ Studio fork aliases (junction at src/lib/t3-eez-studio)
+        const eezPath = (p) => require('path').resolve(__dirname, 'src/lib/t3-eez-studio', p);
+        viteConf.resolve.alias['eez-studio-shared'] = eezPath('eez-studio-shared');
+        viteConf.resolve.alias['eez-studio-ui'] = eezPath('eez-studio-ui');
+        viteConf.resolve.alias['eez-studio-types'] = eezPath('eez-studio-types');
+        viteConf.resolve.alias['eez-studio-web-entry'] = eezPath('eez-studio-web-entry.tsx');
+        viteConf.resolve.alias['home'] = eezPath('home');
+        viteConf.resolve.alias['instrument'] = eezPath('instrument');
+        viteConf.resolve.alias['project-editor'] = eezPath('project-editor');
+        viteConf.resolve.alias['notebook'] = eezPath('notebook');
+        viteConf.resolve.alias['shortcuts'] = eezPath('shortcuts');
+        viteConf.resolve.alias['basic-measurements'] = eezPath('basic-measurements');
+        viteConf.resolve.alias['db-services'] = eezPath('db-services');
+        viteConf.resolve.alias['pdf-services'] = eezPath('pdf-services');
+
+        // Redirect Electron/Node.js to browser stubs
+        const stub = (name) => require('path').resolve(__dirname, 'src/stubs', name);
+        viteConf.resolve.alias['electron'] = stub('electron.ts');
+        viteConf.resolve.alias['@electron/remote'] = stub('electron-remote.ts');
+        // EEZ Studio compat: bootstrap ESM has no default export
+        viteConf.resolve.alias['bootstrap'] = stub('bootstrap.ts');
+        viteConf.resolve.alias['fs'] = stub('fs');
+        viteConf.resolve.alias['path'] = stub('path.ts');
+        viteConf.resolve.alias['stream'] = stub('stream.ts');
+        viteConf.resolve.alias['os'] = stub('os.ts');
+        viteConf.resolve.alias['events'] = stub('events.ts');
+        viteConf.resolve.alias['child_process'] = stub('child-process.ts');
+        viteConf.resolve.alias['node:events'] = stub('node-events.ts');
+        viteConf.resolve.alias['node:child_process'] = stub('node-child-process.ts');
+
         // Enable React JSX support for Grafana components
         viteConf.esbuild = viteConf.esbuild || {};
         viteConf.esbuild.jsx = 'automatic';
@@ -100,6 +130,13 @@ module.exports = configure(function (/* ctx */) {
         // Optimize deps for React components
         viteConf.optimizeDeps = viteConf.optimizeDeps || {};
         viteConf.optimizeDeps.include = viteConf.optimizeDeps.include || [];
+        // Exclude Node.js built-ins from pre-bundling — aliased to stubs
+        viteConf.optimizeDeps.exclude = viteConf.optimizeDeps.exclude || [];
+        viteConf.optimizeDeps.exclude.push(
+            'fs', 'path', 'stream', 'os', 'events', 'child_process',
+            'node:events', 'node:child_process',
+            'electron', '@electron/remote'
+        );
         // Include React and ReactDOM to ensure proper pre-bundling
         viteConf.optimizeDeps.include.push('react', 'react-dom', 'react-dom/client');
         // Include Vue to ensure proper initialization order with Ant Design

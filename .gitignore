@@ -8,6 +8,9 @@ node_modules
 
 # Rust build artifacts
 /target
+
+# EEZ Studio fork (junction — not part of this repo)
+src/lib/t3-eez-studio/
 target/
 
 # .NET build artifacts

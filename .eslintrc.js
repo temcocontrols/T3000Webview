@@ -82,4 +82,11 @@ module.exports = {
     // does not work with type definitions
     "no-unused-vars": "off",
   },
+
+  overrides: [
+    {
+      files: ["*.ts", "*.tsx"],
+      parser: "@typescript-eslint/parser",
+    },
+  ],
 };

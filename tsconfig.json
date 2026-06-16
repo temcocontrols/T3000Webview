@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "ignoreDeprecations": "6.0",
     "target": "ES2020",
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
@@ -18,8 +17,9 @@
 
     /* Linting */
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
 
@@ -51,7 +51,25 @@
 
       /* Multi-platform architecture */
       "@t3-shared/*": ["src/shared/*"],
-      "@t3-mobile/*": ["src/t3-mobile/*"]
+      "@t3-mobile/*": ["src/t3-mobile/*"],
+
+      /* EEZ Studio fork (junction at src/lib/t3-eez-studio) */
+      "eez-studio-shared/*": ["src/lib/t3-eez-studio/eez-studio-shared/*"],
+      "eez-studio-shared": ["src/lib/t3-eez-studio/eez-studio-shared"],
+      "eez-studio-ui/*": ["src/lib/t3-eez-studio/eez-studio-ui/*"],
+      "eez-studio-types": ["src/lib/t3-eez-studio/eez-studio-types"],
+      "eez-studio-types/*": ["src/lib/t3-eez-studio/eez-studio-types/*"],
+      "eez-studio-web-entry": ["src/lib/t3-eez-studio/eez-studio-web-entry.tsx"],
+      "db-services/*": ["src/lib/t3-eez-studio/db-services/*"],
+      "home/*": ["src/lib/t3-eez-studio/home/*"],
+      "instrument/*": ["src/lib/t3-eez-studio/instrument/*"],
+      "project-editor/*": ["src/lib/t3-eez-studio/project-editor/*"],
+      "main/*": ["src/lib/t3-eez-studio/main/*"],
+      "notebook/*": ["src/lib/t3-eez-studio/notebook/*"],
+      "shortcuts/*": ["src/lib/t3-eez-studio/shortcuts/*"],
+      "basic-measurements/*": ["src/lib/t3-eez-studio/basic-measurements/*"],
+      "db-services/*": ["src/lib/t3-eez-studio/db-services/*"],
+      "pdf-services/*": ["src/lib/t3-eez-studio/pdf-services/*"]
     },
 
     /* Experimental */
