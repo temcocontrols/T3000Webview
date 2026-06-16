@@ -1,4 +1,6 @@
-// Browser stub for Node.js 'fs' module
+// Browser stub for Node.js 'fs' module — sync ops are no-ops, async ops use bridge API
+import { getBridgeAPI } from "eez-studio-shared/bridge";
+
 export const readFileSync = (_p: string, _enc?: string) => "";
 export const writeFileSync = () => {};
 export const existsSync = () => false;
@@ -22,17 +24,36 @@ export const unwatchFile = () => {};
 export const watch = () => {};
 export const stat = () => { throw new Error("fs.stat: not available in browser") };
 
+function _bridge() {
+    try { return getBridgeAPI(); } catch { return null; }
+}
+
 const _promises = {
-    readFile: () => Promise.reject(new Error("fs.promises: not available")),
-    writeFile: () => Promise.reject(new Error("fs.promises: not available")),
+    readFile: (p: string) => {
+        const b = _bridge();
+        return b ? b.readTextFile(p) : Promise.resolve("");
+    },
+    writeFile: (p: string, data: string | Uint8Array) => {
+        const b = _bridge();
+        return b ? b.writeFile(p, typeof data === "string" ? new TextEncoder().encode(data) : data) : Promise.resolve();
+    },
     readdir: () => Promise.resolve([]),
-    mkdir: () => Promise.resolve(),
-    unlink: () => Promise.resolve(),
+    mkdir: (p: string) => {
+        const b = _bridge();
+        return b ? b.makeFolder(p) : Promise.resolve();
+    },
+    unlink: (p: string) => {
+        const b = _bridge();
+        return b ? b.deleteFile(p) : Promise.resolve();
+    },
     rmdir: () => Promise.resolve(),
-    rename: () => Promise.resolve(),
+    rename: (oldP: string, newP: string) => {
+        const b = _bridge();
+        return b ? b.readFile(oldP).then((d: any) => b.writeFile(newP, d)).then(() => b.deleteFile(oldP)) : Promise.resolve();
+    },
     stat: () => Promise.resolve({ size: 0, isFile: () => true, isDirectory: () => false }),
     lstat: () => Promise.resolve({ size: 0, isFile: () => true, isDirectory: () => false }),
-    access: () => Promise.reject(new Error("fs.promises: not available")),
+    access: (_p: string) => Promise.resolve(),
 };
 export const promises = _promises;
 
