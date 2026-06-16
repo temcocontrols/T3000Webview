@@ -17,66 +17,42 @@ let isInitialized = false;
  * Only mounts React app when on /t3000/* routes
  */
 export function initializeReactApp() {
-  // Check if current route should be handled by React
-  if (!isReactRoute()) {
-    //console.log('📘 Vue route detected - skipping React initialization');
-    return;
-  }
+  if (!isReactRoute()) return;
+  if (isInitialized) return;
 
-  //console.log('⚛️ React route detected - initializing React app...');
-
-  // Prevent multiple initializations
-  if (isInitialized) {
-    //console.log('⚠️ React already initialized, skipping...');
-    return;
-  }
-
-  // Check if React root element exists
   const rootElement = document.getElementById('t3000-react-root');
-
   if (!rootElement) {
-    console.warn('T3000 React root element not found. React app will not be initialized.');
+    console.warn('T3000 React root element not found.');
     return;
   }
+
+  // Determine which React app to load
+  const hash = window.location.hash.replace('#', '');
+  const path = hash || window.location.pathname;
+  const isEez = path.startsWith('/t3000/eez');
 
   try {
-    // Lazy load React app (code splitting)
-    import('../t3-react/app/App').then(({ App }) => {
-      //console.log('📦 React App module loaded, rootElement:', rootElement);
-      //console.log('📦 rootElement innerHTML before mount:', rootElement.innerHTML);
-      //console.log('📦 rootElement parent:', rootElement.parentElement);
-
-      // Create React root and render app
-      reactRoot = ReactDOM.createRoot(rootElement);
-
-      //console.log('📦 React root created:', reactRoot);
-
-      reactRoot.render(
-        <React.StrictMode>
-          <App />
-        </React.StrictMode>
-      );
-
-      isInitialized = true;
-      //console.log('📦 React render called');
-
-      // Check after a brief delay
-      setTimeout(() => {
-        //console.log('📦 rootElement innerHTML after mount:', rootElement.innerHTML);
-        //console.log('📦 rootElement children count:', rootElement.children.length);
-      }, 100);
-
-      // Check again after 500ms to see if Vue cleared it
-      setTimeout(() => {
-        //console.log('🔍 rootElement innerHTML after 500ms:', rootElement.innerHTML);
-        //console.log('🔍 rootElement children count after 500ms:', rootElement.children.length);
-        //console.log('🔍 rootElement still in DOM?', document.contains(rootElement));
-      }, 500);
-
-      //console.log('✅ T3000 React application initialized');
-    }).catch((error) => {
-      console.error('Failed to load React application:', error);
-    });
+    if (isEez) {
+      import('../t3-react/app/EezStudioApp').then(({ EezStudioApp }) => {
+        reactRoot = ReactDOM.createRoot(rootElement);
+        reactRoot.render(<EezStudioApp />);
+        isInitialized = true;
+      }).catch((error) => {
+        console.error('Failed to load EEZ Studio:', error);
+      });
+    } else {
+      import('../t3-react/app/App').then(({ App }) => {
+        reactRoot = ReactDOM.createRoot(rootElement);
+        reactRoot.render(
+          <React.StrictMode>
+            <App />
+          </React.StrictMode>
+        );
+        isInitialized = true;
+      }).catch((error) => {
+        console.error('Failed to load React application:', error);
+      });
+    }
   } catch (error) {
     console.error('Failed to initialize T3000 React application:', error);
   }
