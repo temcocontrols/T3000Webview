@@ -23,9 +23,9 @@ async function api(path: string, init?: RequestInit): Promise<any> {
 
 const t3: BridgeAPI = {
     readFile: p => api(`/read-file?path=${enc(p)}`).then(r=>r.arrayBuffer()),
-    writeFile: (p,d) => api("/write-file",{method:"POST",body:new Uint8Array(d)}).then(noop),
+    writeFile: (p,d) => api(`/write-file?path=${enc(p)}`,{method:"POST",body:new Uint8Array(d)}).then(noop),
     readTextFile: p => api(`/read-text-file?path=${enc(p)}`).then(r=>r.text()),
-    writeTextFile: (p,d) => api("/write-text-file",{method:"POST",body:d}).then(noop),
+    writeTextFile: (p,d) => api(`/write-text-file?path=${enc(p)}`,{method:"POST",body:d}).then(noop),
     makeFolder: p => api("/make-folder",{method:"POST",body:JSON.stringify({path:p})}).then(noop),
     fileExists: p => api(`/file-exists?path=${enc(p)}`).then(r=>r.json()),
     deleteFile: p => api(`/delete-file?path=${enc(p)}`,{method:"DELETE"}).then(noop),
@@ -39,7 +39,7 @@ const t3: BridgeAPI = {
     getAppVersion: () => "0.28.0",
     isDev: () => (import.meta as any).env?.DEV ?? false,
     openProject: p => api(`/read-text-file?path=${enc(p)}`).then(r=>r.json()),
-    saveProject: (p,d) => api("/write-text-file",{method:"POST",body:JSON.stringify(d,null,2)}).then(noop),
+    saveProject: (p,d) => api(`/write-text-file?path=${enc(p)}`,{method:"POST",body:JSON.stringify(d,null,2)}).then(noop),
     buildProject: (p,cb) => api("/build-project",{method:"POST",body:JSON.stringify({filePath:p})}).then(noop),
 };
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { initEezBridge } from "src/lib/eez-bridge";
-import "src/lib/browser-polyfill";
+import { initEezBridge } from "src/t3-eez-studio/bridge/eez-bridge";
+import "src/t3-eez-studio/bridge/browser-polyfill";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 export function EezStudioApp() {

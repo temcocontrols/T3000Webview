@@ -111,7 +111,7 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['@eez-studio-build'] = require('path').resolve(__dirname, '../eez-studio/build');
 
         // Redirect Electron/Node.js to browser stubs
-        const stub = (name) => require('path').resolve(__dirname, 'src/stubs', name);
+        const stub = (name) => require('path').resolve(__dirname, 'src/t3-eez-studio/stubs', name);
         viteConf.resolve.alias['electron'] = stub('electron-kitchen.ts');
         viteConf.resolve.alias['@electron/remote'] = stub('electron-kitchen.ts');
         // EEZ Studio compat: bootstrap ESM has no default export
@@ -133,6 +133,7 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['node:child_process'] = stub('node-child-process.ts');
         viteConf.resolve.alias['url'] = stub('url.ts');
         viteConf.resolve.alias['util'] = stub('util.ts');
+        viteConf.resolve.alias['crypto'] = stub('crypto.ts');
 
         // Enable React JSX support for Grafana components
         viteConf.esbuild = viteConf.esbuild || {};
@@ -152,7 +153,7 @@ module.exports = configure(function (/* ctx */) {
             'fs', 'path', 'stream', 'os', 'events', 'child_process',
             'node:events', 'node:child_process', 'url', 'util',
             'electron', '@electron/remote',
-            'better-sqlite3', 'sqlite3'
+            'better-sqlite3', 'sqlite3', 'crypto'
         );
         // Include React and ReactDOM to ensure proper pre-bundling
         viteConf.optimizeDeps.include.push('react', 'react-dom', 'react-dom/client');
@@ -252,7 +253,7 @@ module.exports = configure(function (/* ctx */) {
     devServer: {
       // https: true
       port: 3003,
-      open: true, // opens browser window automatically
+      open: true, // opens browser window automatically 
     },
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#framework
