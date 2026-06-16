@@ -109,10 +109,15 @@ module.exports = configure(function (/* ctx */) {
 
         // Redirect Electron/Node.js to browser stubs
         const stub = (name) => require('path').resolve(__dirname, 'src/stubs', name);
-        viteConf.resolve.alias['electron'] = stub('electron.ts');
-        viteConf.resolve.alias['@electron/remote'] = stub('electron-remote.ts');
+        viteConf.resolve.alias['electron'] = stub('electron-kitchen.ts');
+        viteConf.resolve.alias['@electron/remote'] = stub('electron-kitchen.ts');
         // EEZ Studio compat: bootstrap ESM has no default export
         viteConf.resolve.alias['bootstrap'] = stub('bootstrap.ts');
+        viteConf.resolve.alias['better-sqlite3'] = stub('better-sqlite3.ts');
+        viteConf.resolve.alias['sqlite3'] = stub('better-sqlite3.ts');
+        // Force mobx/mobx-react to our version (not fork's node_modules)
+        viteConf.resolve.alias['mobx'] = require('path').resolve(__dirname, 'node_modules/mobx');
+        viteConf.resolve.alias['mobx-react'] = require('path').resolve(__dirname, 'node_modules/mobx-react');
         viteConf.resolve.alias['fs'] = stub('fs');
         viteConf.resolve.alias['path'] = stub('path.ts');
         viteConf.resolve.alias['stream'] = stub('stream.ts');
@@ -121,11 +126,17 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['child_process'] = stub('child-process.ts');
         viteConf.resolve.alias['node:events'] = stub('node-events.ts');
         viteConf.resolve.alias['node:child_process'] = stub('node-child-process.ts');
+        viteConf.resolve.alias['url'] = stub('url.ts');
+        viteConf.resolve.alias['util'] = stub('util.ts');
 
         // Enable React JSX support for Grafana components
         viteConf.esbuild = viteConf.esbuild || {};
         viteConf.esbuild.jsx = 'automatic';
         viteConf.esbuild.jsxImportSource = 'react';
+        // Match tsconfig: class fields on instance (required by MobX makeObservable)
+        viteConf.esbuild.tsconfigRaw = JSON.stringify({
+            compilerOptions: { useDefineForClassFields: true, target: "es2020" }
+        });
 
         // Optimize deps for React components
         viteConf.optimizeDeps = viteConf.optimizeDeps || {};
@@ -134,8 +145,9 @@ module.exports = configure(function (/* ctx */) {
         viteConf.optimizeDeps.exclude = viteConf.optimizeDeps.exclude || [];
         viteConf.optimizeDeps.exclude.push(
             'fs', 'path', 'stream', 'os', 'events', 'child_process',
-            'node:events', 'node:child_process',
-            'electron', '@electron/remote'
+            'node:events', 'node:child_process', 'url', 'util',
+            'electron', '@electron/remote',
+            'better-sqlite3', 'sqlite3'
         );
         // Include React and ReactDOM to ensure proper pre-bundling
         viteConf.optimizeDeps.include.push('react', 'react-dom', 'react-dom/client');
@@ -148,6 +160,8 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve = viteConf.resolve || {};
         viteConf.resolve.dedupe = viteConf.resolve.dedupe || [];
         viteConf.resolve.dedupe.push('react', 'react-dom', 'vue');
+        // Force single copy of mobx (prevent fork's node_modules from shadowing)
+        viteConf.resolve.dedupe.push('mobx', 'mobx-react');
 
         // Disable manual chunking completely - let Vite handle everything automatically
         // This eliminates all chunking-related dependency issues like:
