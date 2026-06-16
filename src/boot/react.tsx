@@ -17,19 +17,14 @@ let isInitialized = false;
  * Only mounts React app when on /t3000/* routes
  */
 export function initializeReactApp() {
-  if (!isReactRoute()) return;
-  if (isInitialized) return;
+  if (!isReactRoute() || isInitialized) return;
 
   const rootElement = document.getElementById('t3000-react-root');
-  if (!rootElement) {
-    console.warn('T3000 React root element not found.');
-    return;
-  }
+  if (!rootElement) return;
 
-  // Determine which React app to load
   const hash = window.location.hash.replace('#', '');
   const path = hash || window.location.pathname;
-  const isEez = path.startsWith('/t3000/eez');
+  const isEez = hash.startsWith('/t3000/eez');
 
   try {
     if (isEez) {
@@ -37,8 +32,6 @@ export function initializeReactApp() {
         reactRoot = ReactDOM.createRoot(rootElement);
         reactRoot.render(<EezStudioApp />);
         isInitialized = true;
-      }).catch((error) => {
-        console.error('Failed to load EEZ Studio:', error);
       });
     } else {
       import('../t3-react/app/App').then(({ App }) => {
@@ -49,13 +42,9 @@ export function initializeReactApp() {
           </React.StrictMode>
         );
         isInitialized = true;
-      }).catch((error) => {
-        console.error('Failed to load React application:', error);
       });
     }
-  } catch (error) {
-    console.error('Failed to initialize T3000 React application:', error);
-  }
+  } catch (error) {}
 }
 
 /**

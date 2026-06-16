@@ -112,6 +112,8 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['electron'] = stub('electron-kitchen.ts');
         viteConf.resolve.alias['@electron/remote'] = stub('electron-kitchen.ts');
         // EEZ Studio compat: bootstrap ESM has no default export
+        // Must add CSS alias BEFORE the general 'bootstrap' alias so it takes precedence
+        viteConf.resolve.alias['bootstrap/dist/css/bootstrap.min.css'] = require('path').resolve(__dirname, 'node_modules/bootstrap/dist/css/bootstrap.min.css');
         viteConf.resolve.alias['bootstrap'] = stub('bootstrap.ts');
         viteConf.resolve.alias['better-sqlite3'] = stub('better-sqlite3.ts');
         viteConf.resolve.alias['sqlite3'] = stub('better-sqlite3.ts');
@@ -162,6 +164,15 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.dedupe.push('react', 'react-dom', 'vue');
         // Force single copy of mobx (prevent fork's node_modules from shadowing)
         viteConf.resolve.dedupe.push('mobx', 'mobx-react');
+
+        // Allow Vite to serve files from external eez-studio path
+        // Must include project root since setting fs.allow replaces Vite defaults
+        viteConf.server = viteConf.server || {};
+        viteConf.server.fs = viteConf.server.fs || {};
+        viteConf.server.fs.allow = [
+            require('path').resolve(__dirname),
+            require('path').resolve(__dirname, '../eez-studio'),
+        ];
 
         // Disable manual chunking completely - let Vite handle everything automatically
         // This eliminates all chunking-related dependency issues like:

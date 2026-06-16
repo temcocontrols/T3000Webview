@@ -4,6 +4,13 @@
 // global
 (globalThis as any).global = globalThis;
 
+// Safe JSON.parse — returns {} for empty/invalid input (localStorage rehydration)
+const _origParse = JSON.parse;
+JSON.parse = function safeParse(text: string, ...args: any[]) {
+    if (!text || typeof text !== "string" || text.trim().length === 0) return {};
+    try { return _origParse.call(JSON, text, ...args); } catch { return {}; }
+};
+
 // Buffer polyfill
 (globalThis as any).Buffer = (globalThis as any).Buffer || {
     alloc(size: number) { return new Uint8Array(size); },

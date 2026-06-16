@@ -1,31 +1,23 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { initEezBridge } from "src/lib/eez-bridge";
 import "src/lib/browser-polyfill";
+import "bootstrap/dist/css/bootstrap.min.css";
 
 export function EezStudioApp() {
-    const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
     const done = useRef(false);
+    const rootRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (done.current) return;
         done.current = true;
         (async () => {
-            try {
-                initEezBridge();
-                await import("eez-studio-web-entry");
-                setLoading(false);
-            } catch (e: any) {
-                console.error("EEZ Studio boot failed:", e);
-                setError(e.message || String(e));
-                setLoading(false);
-            }
+            initEezBridge();
+            const entry = await import("eez-studio-web-entry");
+            await entry.createEezStudioApp(rootRef.current!);
         })();
     }, []);
 
-    if (error) return <div style={{padding:40,color:"red",fontFamily:"sans-serif"}}><h2>EEZ Studio Error</h2><pre>{error}</pre></div>;
-    if (loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",fontFamily:"sans-serif"}}>Loading EEZ Studio...</div>;
-    return null;
+    return <div ref={rootRef} style={{ width: "100%", height: "100vh" }} />;
 }
 
 export default EezStudioApp;

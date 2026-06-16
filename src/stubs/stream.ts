@@ -4,5 +4,7 @@ export class Readable extends EventEmitter {}
 export class Writable extends EventEmitter {}
 export class Transform extends EventEmitter {}
 export class Stream extends EventEmitter {}
+export class PassThrough extends Transform {}
+export class Duplex extends EventEmitter {}
 export const pipeline = () => {};
-export default { Readable, Writable, Transform, Stream, pipeline };
+export default { Readable, Writable, Transform, Stream, PassThrough, Duplex, pipeline };
