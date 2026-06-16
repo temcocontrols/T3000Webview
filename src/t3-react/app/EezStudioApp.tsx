@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { initEezBridge } from "src/lib/eez-bridge";
+import "src/lib/browser-polyfill";
 
 export function EezStudioApp() {
     const [error, setError] = useState<string | null>(null);
