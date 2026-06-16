@@ -45,14 +45,29 @@
     if (path === "url") return { pathToFileURL:(p:string)=>new URL("file://"+p), fileURLToPath:()=>"" };
     if (path === "util") return { promisify:(f:Function)=>f, inspect:()=>"", format:()=>"" };
     if (path === "electron" || path === "@electron/remote") return {
-        BrowserWindow: class { static getAllWindows(){return[]} static fromId(){return null} }, app:{}, dialog:{}, shell:{}, clipboard:{}, getCurrentWindow:()=>({id:1}),
+        BrowserWindow: class { static getAllWindows(){return[]} static fromId(){return null} },
+        ipcRenderer: {
+            on:()=>{}, send:()=>{},
+            sendSync: (ch:string) => {
+                if (ch === "getDbPaths") return [];
+                if (ch === "getActiveDbPath") return "/eez-user-data/databases/active.db";
+                if (ch === "getSettings") return {};
+                if (ch === "getMRU") return [];
+                return {};
+            },
+            invoke:()=>Promise.resolve({}), removeAllListeners:()=>{}
+        },
+        app:{}, dialog:{}, shell:{}, clipboard:{}, getCurrentWindow:()=>({id:1}),
     };
     if (path === "tmp") return { tmpName:()=>{}, dir:()=>{} };
     if (path === "python-shell") return { PythonShell: { runString:()=>{} } };
     if (path === "rimraf") return () => {};
     if (path === "fs-extra") return { copy:()=>{}, remove:()=>{} };
     if (path === "archiver") return function() { return { on:()=>{}, pipe:()=>{}, finalize:()=>{}, glob:()=>{} }; };
-    if (path === "better-sqlite3") return class { constructor(){} prepare(){return{run:()=>({}),get:()=>({}),all:()=>[]}} exec(){} close(){} };
+    if (path === "better-sqlite3") return class {
+        constructor(){} prepare(){return{run:()=>({}),get:()=>({}),all:()=>[],bind:()=>this.prepare()}}
+        exec(){} close(){} pragma(){} defaultSafeIntegers(){return this} transaction(fn:Function){return fn}
+    };
     if (path.includes("electron-context-menu")) return () => {};
     if (path === "mousetrap") return { bind:()=>{}, unbind:()=>{}, reset:()=>{} };
     return {};

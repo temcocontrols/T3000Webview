@@ -1,5 +1,4 @@
 // Browser stub for Node.js 'fs' module
-export default {};
 export const readFileSync = (_p: string, _enc?: string) => "";
 export const writeFileSync = () => {};
 export const existsSync = () => false;
@@ -22,7 +21,8 @@ export const watchFile = () => {};
 export const unwatchFile = () => {};
 export const watch = () => {};
 export const stat = () => { throw new Error("fs.stat: not available in browser") };
-export const promises = {
+
+const _promises = {
     readFile: () => Promise.reject(new Error("fs.promises: not available")),
     writeFile: () => Promise.reject(new Error("fs.promises: not available")),
     readdir: () => Promise.resolve([]),
@@ -30,7 +30,16 @@ export const promises = {
     unlink: () => Promise.resolve(),
     rmdir: () => Promise.resolve(),
     rename: () => Promise.resolve(),
-    stat: () => Promise.reject(new Error("fs.promises: not available")),
-    lstat: () => Promise.reject(new Error("fs.promises: not available")),
+    stat: () => Promise.resolve({ size: 0, isFile: () => true, isDirectory: () => false }),
+    lstat: () => Promise.resolve({ size: 0, isFile: () => true, isDirectory: () => false }),
     access: () => Promise.reject(new Error("fs.promises: not available")),
+};
+export const promises = _promises;
+
+export default {
+    readFileSync, writeFileSync, existsSync, statSync, lstatSync, readdirSync,
+    mkdirSync, unlinkSync, rmdirSync, renameSync, copyFileSync,
+    createWriteStream, createReadStream, openSync, closeSync, readSync, writeSync,
+    fstatSync, watchFile, unwatchFile, watch, stat,
+    promises: _promises,
 };

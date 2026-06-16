@@ -3,7 +3,28 @@ const noop = () => {};
 const noopAsync = () => Promise.resolve();
 const noopObj = () => ({});
 
-export const ipcRenderer = { on:noop, once:noop, send:noop, sendSync:noopObj, invoke:noopAsync, removeListener:noop, removeAllListeners:noop, postMessage:noop, sendToHost:noop };
+const ipcSyncDefaults: Record<string, any> = {
+    getDbPaths: [],
+    getActiveDbPath: "/eez-user-data/databases/active.db",
+    getSettings: {},
+    getMRU: [],
+    getReservedKeybindings: [],
+    getIsDarkTheme: false,
+    getShowComponentsPaletteInProjectEditor: false,
+    getHomePath: "/eez-home",
+    getExtensionsFolderPath: "/eez-user-data/extensions",
+    getLocale: "en",
+    getDateFormat: "YYYY-MM-DD",
+    getTimeFormat: "HH:mm:ss",
+};
+
+export const ipcRenderer = {
+    on: noop, once: noop, removeListener: noop, removeAllListeners: noop,
+    send: noop,
+    sendSync: (ch: string) => ipcSyncDefaults[ch] ?? [],
+    invoke: (ch: string) => Promise.resolve(ipcSyncDefaults[ch] ?? {}),
+    sendToHost: noop, postMessage: noop,
+};
 export const ipcMain = { on:noop, handle:noop, handleOnce:noop, removeHandler:noop, removeAllListeners:noop };
 export const app = { getPath:()=>"/eez-user-data", getVersion:()=>"0.0.0", relaunch:noop, exit:noop, whenReady:noopAsync, on:noop, getName:()=>"EEZ Studio", getAppPath:()=>"/", isPackaged:false, commandLine:{appendSwitch:noop} };
 export const dialog = { showOpenDialog:()=>Promise.resolve({filePaths:[],canceled:false}), showSaveDialog:()=>Promise.resolve({filePath:void 0,canceled:false}), showMessageBox:()=>Promise.resolve({response:0}) };
