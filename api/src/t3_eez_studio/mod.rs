@@ -212,9 +212,9 @@ async fn is_directory(
 // Router
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn bridge_routes(router: Router<T3AppState>) -> Router<T3AppState> {
+pub fn bridge_routes() -> Router<T3AppState> {
     info!("bridge_api: registering /api/bridge/* routes");
-    router
+    Router::new()
         .route("/api/bridge/read-text-file", get(read_text_file))
         .route("/api/bridge/read-file", get(read_file))
         .route("/api/bridge/write-file", post(write_file))

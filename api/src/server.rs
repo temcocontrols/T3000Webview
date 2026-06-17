@@ -180,6 +180,10 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
     crate::database_management::registry_service::start_heartbeat_task(app_state.clone());
 
     Ok(Router::new()
+        // Bridge API for EEZ Studio web frontend file operations
+        // MUST register specific /api/bridge/* routes BEFORE the /api nest,
+        // otherwise the nest greedily catches all /api/* and returns 404.
+        .merge(crate::t3_eez_studio::bridge_routes())
         .nest(
             "/api",
             // Original routes with original AppState
@@ -207,8 +211,6 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         .merge(crate::database_management::db_backend_routes::db_backend_routes())
         // Server DB Status route (server/client mode)
         .merge(crate::web_routing::server_db_routes())
-        // Bridge API for EEZ Studio web frontend file operations
-        .merge(crate::t3_eez_studio::bridge_routes(Router::<T3AppState>::new()))
         // Server/Client Registry routes (heartbeat + listing)
         .merge(crate::database_management::registry_service::registry_routes())
         // Sync Health + Event Log routes

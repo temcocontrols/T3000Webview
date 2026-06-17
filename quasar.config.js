@@ -118,19 +118,21 @@ module.exports = configure(function (/* ctx */) {
         // Must add CSS alias BEFORE the general 'bootstrap' alias so it takes precedence
         viteConf.resolve.alias['bootstrap/dist/css/bootstrap.min.css'] = require('path').resolve(__dirname, 'node_modules/bootstrap/dist/css/bootstrap.min.css');
         viteConf.resolve.alias['bootstrap'] = stub('bootstrap.ts');
+        // CSS files imported by eez-studio LESS → Vite CSS @import resolution:
+        // these packages use restrictive "exports" fields that block deep CSS
+        // subpath imports. Explicit aliases bypass the exports resolution.
+        viteConf.resolve.alias['tabulator-tables/dist/css/tabulator.min.css'] = require('path').resolve(__dirname, 'node_modules/tabulator-tables/dist/css/tabulator.min.css');
+        viteConf.resolve.alias['react-toastify/dist/ReactToastify.css'] = require('path').resolve(__dirname, 'node_modules/react-toastify/dist/ReactToastify.css');
+        viteConf.resolve.alias['quill/dist/quill.snow.css'] = require('path').resolve(__dirname, 'node_modules/quill/dist/quill.snow.css');
         viteConf.resolve.alias['chokidar'] = stub('chokidar.ts');
         // Force mobx/mobx-react to our version (not fork's node_modules)
         viteConf.resolve.alias['mobx'] = require('path').resolve(__dirname, 'node_modules/mobx');
         viteConf.resolve.alias['mobx-react'] = require('path').resolve(__dirname, 'node_modules/mobx-react');
 
         // Resolve packages that only exist in eez-studio's node_modules.
-        // Vite's LESS handler uses its own module resolution for ~ imports;
-        // without these aliases, ~quill / ~react-toastify / ~tabulator-tables
-        // fail because they are not installed in the project's node_modules.
+        // Since ~ prefix is removed from LESS files, quill/react-toastify/tabulator-tables
+        // resolve natively from project node_modules. Only immutability-helper needs aliasing.
         const eezNm = (p) => require('path').resolve(__dirname, '../eez-studio/node_modules', p);
-        viteConf.resolve.alias['quill'] = eezNm('quill');
-        viteConf.resolve.alias['react-toastify'] = eezNm('react-toastify');
-        viteConf.resolve.alias['tabulator-tables'] = eezNm('tabulator-tables');
         viteConf.resolve.alias['immutability-helper'] = eezNm('immutability-helper');
         viteConf.resolve.alias['fs'] = stub('fs');
         viteConf.resolve.alias['path'] = stub('path.ts');
@@ -254,6 +256,8 @@ module.exports = configure(function (/* ctx */) {
                 enforce: 'pre',
                 async resolveId(id, importer) {
                     if (!importer || !importer.startsWith(eezRoot.replace(/\\/g, '/'))) return;
+                    // Skip CSS/preprocessor files — let Vite's built-in plugins handle them
+                    if (id.replace(/[?#].*/, '').match(/\.(less|scss|sass|css)$/)) return;
                     // Strip Vite query suffix (?raw, ?url, ?worker, etc.) and hash
                     // so filesystem checks work; reattach on return.
                     const qIdx = id.indexOf('?');
@@ -314,70 +318,6 @@ module.exports = configure(function (/* ctx */) {
             });
         })();
 
-        // Plugin: Compile eez-studio .less files to CSS+JS before Vite's
-        // LESS handler. Vite's built-in LESS pipeline fails on ~ imports
-        // from these files (NS_ERROR_CORRUPTED_CONTENT). We intercept the
-        // HTTP request, compile LESS→CSS ourselves, resolve ~ imports to
-        // absolute paths, and return a JS module that injects the CSS.
-        (() => {
-            const less = require('less');
-            const fs = require('fs');
-            const path = require('path');
-            const eezNm = path.resolve(__dirname, '../eez-studio/node_modules');
-            const projNm = path.resolve(__dirname, 'node_modules');
-            const eezRoot = path.resolve(__dirname, 'src/lib/t3-eez-studio');
-
-            viteConf.plugins = viteConf.plugins || [];
-            viteConf.plugins.push({
-                name: 'eez-studio-less-compiler',
-                enforce: 'pre',
-                configureServer(server) {
-                    const handler = async (req, res, next) => {
-                        const url = (req.url || '').split('?')[0];
-                        if (!url.includes('t3-eez-studio') || !url.endsWith('.less')) return next();
-                        try {
-                            const relPath = url.startsWith('/@fs/')
-                                ? '/' + decodeURIComponent(url.slice(5))
-                                : path.resolve(__dirname, url.replace(/^\//, ''));
-                            if (!fs.existsSync(relPath)) return next();
-
-                            let code = fs.readFileSync(relPath, 'utf-8');
-                            // Resolve ~pkg/file imports to absolute paths
-                            code = code.replace(
-                                /@import\s+(\([^)]*\)\s+)?(["'])~([^"']+)\2\s*;/g,
-                                (m, opts, q, ip) => {
-                                    for (const nm of [projNm, eezNm]) {
-                                        const abs = path.resolve(nm, ip);
-                                        if (fs.existsSync(abs))
-                                            return `@import ${opts || ''}${q}${abs}${q};`;
-                                    }
-                                    return m;
-                                },
-                            );
-                            const r = await less.render(code, {
-                                filename: relPath,
-                                paths: [path.dirname(relPath), eezNm, projNm],
-                            });
-                            // Serve as JS that injects CSS (browser expects a module)
-                            const js =
-                                `const d=document.createElement('style');d.innerHTML=${JSON.stringify(r.css)};document.head.appendChild(d);export default ${JSON.stringify(r.css)};`;
-                            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-                            res.setHeader('Cache-Control', 'no-cache');
-                            res.statusCode = 200;
-                            res.end(js);
-                        } catch (err) {
-                            console.error('[eez-less]', url, err.message);
-                            res.statusCode = 500;
-                            res.setHeader('Content-Type', 'application/javascript');
-                            res.end('console.error(' + JSON.stringify('LESS error: ' + err.message) + ')');
-                        }
-                    };
-                    // Prepend so we run before Vite's internal LESS handler
-                    server.middlewares.stack.unshift({ route: '', handle: handler });
-                },
-            });
-        })();
-
         // Disable manual chunking completely - let Vite handle everything automatically
         // This eliminates all chunking-related dependency issues like:
         // - "undefined is not a function" in drawing-components
@@ -417,6 +357,37 @@ module.exports = configure(function (/* ctx */) {
             drop_debugger: process.env.NODE_ENV === 'production'
           }
         };
+
+        viteConf.css = viteConf.css || {};
+        viteConf.css.preprocessorOptions = viteConf.css.preprocessorOptions || {};
+        viteConf.css.preprocessorOptions.less = {
+            javascriptEnabled: true,
+        };
+
+          // Plugin: Compile .less files from the t3-eez-studio junction
+          // using Node's less package directly, bypassing Vite's built-in
+          // LESS pipeline which fails for files inside Windows junctions
+          // (NS_ERROR_CORRUPTED_CONTENT / empty MIME type).
+          viteConf.plugins.push({
+            name: 'eez-studio-less-compile',
+            enforce: 'pre',
+            async transform(code, id) {
+              const normalized = id.replace(/\\/g, '/');
+              if (!normalized.includes('/t3-eez-studio/') || !normalized.endsWith('.less')) return;
+              const less = require('less');
+              const path = require('path');
+              const result = await less.render(code, {
+                filename: id,
+                javascriptEnabled: true,
+                paths: [
+                  path.dirname(id),
+                  path.resolve(__dirname, 'node_modules'),
+                  path.resolve(__dirname, '../eez-studio/node_modules'),
+                ],
+              });
+              return { code: result.css, map: null };
+            },
+          });
       },
       viteVuePluginOptions: {
         template: {
