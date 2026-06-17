@@ -114,6 +114,7 @@
     "eslint-plugin-vue": "^9.8.0",
     "events": "^3.3.0",
     "flexlayout-react": "^0.9.1",
+    "less": "^4.6.6",
     "mobx": "^6.5.0",
     "mobx-react": "^7.6.0",
     "postcss": "^8.4.17",

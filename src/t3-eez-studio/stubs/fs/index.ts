@@ -24,6 +24,29 @@ export const unwatchFile = () => {};
 export const watch = () => {};
 export const stat = () => { throw new Error("fs.stat: not available in browser") };
 
+// Callback-based writeFile — used by EEZ Studio project save
+export function writeFile(p: string, data: string, _enc: string, cb: (err: any) => void) {
+    const b = _bridge();
+    if (b) {
+        b.writeFile(p, typeof data === "string" ? new TextEncoder().encode(data) : data)
+            .then(() => cb(null))
+            .catch((e: any) => cb(e));
+    } else {
+        cb(null);
+    }
+}
+// Callback-based readFile
+export function readFile(p: string, _enc: string, cb: (err: any, data?: string) => void) {
+    const b = _bridge();
+    if (b) {
+        b.readTextFile(p)
+            .then((d: string) => cb(null, d))
+            .catch((e: any) => cb(e));
+    } else {
+        cb(null, "");
+    }
+}
+
 function _bridge() {
     try { return getBridgeAPI(); } catch { return null; }
 }
@@ -62,5 +85,6 @@ export default {
     mkdirSync, unlinkSync, rmdirSync, renameSync, copyFileSync,
     createWriteStream, createReadStream, openSync, closeSync, readSync, writeSync,
     fstatSync, watchFile, unwatchFile, watch, stat,
+    writeFile, readFile,
     promises: _promises,
 };

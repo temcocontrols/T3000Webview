@@ -79,7 +79,8 @@ impl<A: std::io::Write, B: std::io::Write> std::io::Write for TeeWriter<A, B> {
 pub(crate) fn init_tracing() {
     let enable = crate::ini_config::read_debug_log_flag();
     if enable {
-        if let Ok(f) = std::fs::OpenOptions::new().create(true).append(true).open(DEBUG_LOG_NAME) {
+        let log_path = crate::constants::get_t3000_runtime_path().join(DEBUG_LOG_NAME);
+        if let Ok(f) = std::fs::OpenOptions::new().create(true).append(true).open(&log_path) {
             let tee = TeeWriter::new(std::io::stdout(), f);
             tracing_subscriber::fmt().with_ansi(false)
                 .with_writer(std::sync::Mutex::new(tee)).try_init().ok();
