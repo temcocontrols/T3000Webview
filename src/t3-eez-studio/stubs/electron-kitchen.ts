@@ -26,7 +26,7 @@ export const ipcRenderer = {
     sendToHost: noop, postMessage: noop,
 };
 export const ipcMain = { on:noop, handle:noop, handleOnce:noop, removeHandler:noop, removeAllListeners:noop };
-export const app = { getPath:()=>"/eez-user-data", getVersion:()=>"0.0.0", relaunch:noop, exit:noop, whenReady:noopAsync, on:noop, getName:()=>"EEZ Studio", getAppPath:()=>"/", isPackaged:false, commandLine:{appendSwitch:noop} };
+export const app = { getPath:()=>"/eez-user-data", getVersion:()=>"0.0.0", relaunch:noop, exit:noop, whenReady:noopAsync, on:noop, getName:()=>"EEZ Studio", getAppPath:()=>"/", isPackaged:false, commandLine:{appendSwitch:noop}, getLocale:()=>"en" };
 export const dialog = { showOpenDialog:()=>Promise.resolve({filePaths:[],canceled:false}), showSaveDialog:()=>Promise.resolve({filePath:void 0,canceled:false}), showMessageBox:()=>Promise.resolve({response:0}) };
 export const shell = { openPath:()=>Promise.resolve(""), openExternal:()=>Promise.resolve(), showItemInFolder:noop, beep:noop, moveItemToTrash:()=>Promise.resolve(), openPathAsync:()=>Promise.resolve("") };
 export const clipboard = { writeText:noop, readText:()=>"", writeBuffer:noop, readBuffer:()=>Buffer.alloc(0), writeHTML:noop, readHTML:()=>"", writeImage:noop, readImage:()=>({}), write:noop, read:()=>"", clear:noop, availableFormats:()=>[] };

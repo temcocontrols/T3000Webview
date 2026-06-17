@@ -92,7 +92,7 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['@t3-shared'] = require('path').resolve(__dirname, 'src/shared');
         viteConf.resolve.alias['@t3-mobile'] = require('path').resolve(__dirname, 'src/t3-mobile');
 
-        // EEZ Studio fork aliases (junction at src/lib/t3-eez-studio)
+        // EEZ Studio source aliases (copied into src/lib/t3-eez-studio)
         const eezPath = (p) => require('path').resolve(__dirname, 'src/lib/t3-eez-studio', p);
         viteConf.resolve.alias['eez-studio-shared'] = eezPath('eez-studio-shared');
         viteConf.resolve.alias['eez-studio-ui'] = eezPath('eez-studio-ui');
@@ -106,34 +106,21 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['basic-measurements'] = eezPath('basic-measurements');
         viteConf.resolve.alias['db-services'] = eezPath('db-services');
         viteConf.resolve.alias['pdf-services'] = eezPath('pdf-services');
-
-        // Alias for EEZ Studio build artifacts (CSS, etc.) from the fork
-        viteConf.resolve.alias['@eez-studio-build'] = require('path').resolve(__dirname, '../eez-studio/build');
+        // main/settings is imported via require() at runtime by i10n.ts
+        viteConf.resolve.alias['main/settings'] = eezPath('main/settings.ts');
+        // EEZ Studio imports material-icons from @eez-studio-build (Electron build dir).
+        // In the web, serve from public/eez-studio-assets/.
+        viteConf.resolve.alias['@eez-studio-build/eez-studio-ui/_stylesheets/material-icons.css'] = require('path').resolve(__dirname, 'public/eez-studio-assets/material-icons.css');
 
         // Redirect Electron/Node.js to browser stubs
         const stub = (name) => require('path').resolve(__dirname, 'src/t3-eez-studio/stubs', name);
         viteConf.resolve.alias['electron'] = stub('electron-kitchen.ts');
         viteConf.resolve.alias['@electron/remote'] = stub('electron-kitchen.ts');
-        // EEZ Studio compat: bootstrap ESM has no default export
-        // Must add CSS alias BEFORE the general 'bootstrap' alias so it takes precedence
         viteConf.resolve.alias['bootstrap/dist/css/bootstrap.min.css'] = require('path').resolve(__dirname, 'node_modules/bootstrap/dist/css/bootstrap.min.css');
         viteConf.resolve.alias['bootstrap'] = stub('bootstrap.ts');
-        // CSS files imported by eez-studio LESS → Vite CSS @import resolution:
-        // these packages use restrictive "exports" fields that block deep CSS
-        // subpath imports. Explicit aliases bypass the exports resolution.
-        viteConf.resolve.alias['tabulator-tables/dist/css/tabulator.min.css'] = require('path').resolve(__dirname, 'node_modules/tabulator-tables/dist/css/tabulator.min.css');
-        viteConf.resolve.alias['react-toastify/dist/ReactToastify.css'] = require('path').resolve(__dirname, 'node_modules/react-toastify/dist/ReactToastify.css');
-        viteConf.resolve.alias['quill/dist/quill.snow.css'] = require('path').resolve(__dirname, 'node_modules/quill/dist/quill.snow.css');
         viteConf.resolve.alias['chokidar'] = stub('chokidar.ts');
-        // Force mobx/mobx-react to our version (not fork's node_modules)
         viteConf.resolve.alias['mobx'] = require('path').resolve(__dirname, 'node_modules/mobx');
         viteConf.resolve.alias['mobx-react'] = require('path').resolve(__dirname, 'node_modules/mobx-react');
-
-        // Resolve packages that only exist in eez-studio's node_modules.
-        // Since ~ prefix is removed from LESS files, quill/react-toastify/tabulator-tables
-        // resolve natively from project node_modules. Only immutability-helper needs aliasing.
-        const eezNm = (p) => require('path').resolve(__dirname, '../eez-studio/node_modules', p);
-        viteConf.resolve.alias['immutability-helper'] = eezNm('immutability-helper');
         viteConf.resolve.alias['fs'] = stub('fs');
         viteConf.resolve.alias['path'] = stub('path.ts');
         viteConf.resolve.alias['stream'] = stub('stream.ts');
@@ -146,19 +133,17 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['util'] = stub('util.ts');
         viteConf.resolve.alias['crypto'] = stub('crypto.ts');
 
-        // Enable React JSX support for Grafana components
+        // Enable React JSX support
         viteConf.esbuild = viteConf.esbuild || {};
         viteConf.esbuild.jsx = 'automatic';
         viteConf.esbuild.jsxImportSource = 'react';
-        // Match tsconfig: class fields on instance (required by MobX makeObservable)
         viteConf.esbuild.tsconfigRaw = JSON.stringify({
             compilerOptions: { useDefineForClassFields: true, target: "es2020" }
         });
 
-        // Optimize deps for React components
+        // Optimize deps
         viteConf.optimizeDeps = viteConf.optimizeDeps || {};
         viteConf.optimizeDeps.include = viteConf.optimizeDeps.include || [];
-        // Exclude Node.js built-ins from pre-bundling — aliased to stubs
         viteConf.optimizeDeps.exclude = viteConf.optimizeDeps.exclude || [];
         viteConf.optimizeDeps.exclude.push(
             'fs', 'path', 'stream', 'os', 'events', 'child_process',
@@ -166,171 +151,18 @@ module.exports = configure(function (/* ctx */) {
             'electron', '@electron/remote',
             'better-sqlite3', 'sqlite3', 'crypto', 'lz4', 'file-type', 'chokidar'
         );
-        // Include React and ReactDOM to ensure proper pre-bundling
         viteConf.optimizeDeps.include.push('react', 'react-dom', 'react-dom/client');
-        // Include Vue to ensure proper initialization order with Ant Design
         viteConf.optimizeDeps.include.push('vue', '@vue/runtime-dom');
-        // Include Uppy dependencies to ensure proper pre-bundling
         viteConf.optimizeDeps.include.push('@uppy/core', '@uppy/vue', '@uppy/dashboard', '@uppy/image-editor', '@uppy/xhr-upload');
 
-        // Auto-include ALL eez-studio dependencies so CJS packages get
-        // proper ESM interop. Without this, each CJS import from the
-        // fork fails one at a time with "doesn't provide an export named".
-        (() => {
-            const fs = require('fs');
-            const path = require('path');
-            const eezPkgPath = path.resolve(__dirname, '../eez-studio/package.json');
-            if (fs.existsSync(eezPkgPath)) {
-                const eezDeps = Object.keys(JSON.parse(fs.readFileSync(eezPkgPath, 'utf-8')).dependencies || {});
-                // Native/Electron packages that can't be pre-bundled for browser
-                const skip = new Set([
-                    'electron', 'better-sqlite3', 'sqlite3', 'serialport',
-                    'usb', 'koffi', 'python-shell', 'lv_font_conv',
-                    'pngquant-bin', '@electron/notarize', '@electron/remote',
-                    'electron-context-menu', 'chokidar', 'fs-extra',
-                    'rimraf', 'simple-git', 'tmp', 'archiver', 'adm-zip',
-                    'decompress', 'app-module-path', 'command-exists',
-                    'lz4', 'file-type',
-                ]);
-                for (const dep of eezDeps) {
-                    if (!skip.has(dep) && !dep.startsWith('@types/')) {
-                        viteConf.optimizeDeps.include.push(dep);
-                    }
-                }
-            }
-        })();
-
-        // Scan eez-studio source for dependencies so Vite pre-bundles all
-        // CJS packages it discovers (preserveSymlinks prevents auto-discovery).
-        viteConf.optimizeDeps.entries = viteConf.optimizeDeps.entries || [];
-        viteConf.optimizeDeps.entries.push(
-            require('path').resolve(__dirname, 'src/lib/t3-eez-studio/eez-studio-web-entry.tsx')
-        );
-
-        // Ensure React and Vue are properly resolved to prevent initialization issues
         viteConf.resolve = viteConf.resolve || {};
         viteConf.resolve.dedupe = viteConf.resolve.dedupe || [];
-        viteConf.resolve.dedupe.push('react', 'react-dom', 'vue');
-        // Force single copy of mobx (prevent fork's node_modules from shadowing)
-        viteConf.resolve.dedupe.push('mobx', 'mobx-react');
+        viteConf.resolve.dedupe.push('react', 'react-dom', 'vue', 'mobx', 'mobx-react');
 
-        // Allow Vite to serve files from external eez-studio path
-        // Must include project root since setting fs.allow replaces Vite defaults
-        viteConf.server = viteConf.server || {};
-        viteConf.server.fs = viteConf.server.fs || {};
-        viteConf.server.fs.allow = [
-            require('path').resolve(__dirname),
-            require('path').resolve(__dirname, '../eez-studio'),
-            require('path').resolve(__dirname, '../eez-studio/node_modules'),
-        ];
-
-        // Don't follow the t3-eez-studio junction to its external target.
-        // When symlinks are preserved Vite keeps all resolved paths inside
-        // the project boundary, so the LESS pipeline runs normally instead
-        // of serving raw files via @fs (NS_ERROR_CORRUPTED_CONTENT).
-        // Combined with the quill / react-toastify / tabulator-tables aliases
-        // above, ~ imports resolve correctly through Vite's module system.
-        viteConf.resolve.preserveSymlinks = true;
-
-        // Plugin: Resolve imports from eez-studio source through
-        // eez-studio's node_modules and source tree.
-        // With preserveSymlinks:true Vite keeps paths in-project but loses
-        // access to the external node_modules and the original directory
-        // structure (e.g. ../../package.json no longer points to the root
-        // of eez-studio since the junction renames "packages" to "t3-eez-studio"
-        // and places it under src/lib/).
-        // This resolveId plugin handles:
-        // 1. Bare imports (e.g. "immutability-helper") → eez-studio node_modules
-        // 2. Relative imports that fail with preserveSymlinks → original path
-        (() => {
-            const fs = require('fs');
-            const path = require('path');
-            const eezNm = path.resolve(__dirname, '../eez-studio/node_modules');
-            const projNm = path.resolve(__dirname, 'node_modules');
-            const eezRoot = path.resolve(__dirname, 'src/lib/t3-eez-studio');
-            const eezPackages = path.resolve(__dirname, '../eez-studio/packages');
-
-            viteConf.plugins = viteConf.plugins || [];
-            viteConf.plugins.push({
-                name: 'eez-studio-resolve',
-                enforce: 'pre',
-                async resolveId(id, importer) {
-                    if (!importer || !importer.startsWith(eezRoot.replace(/\\/g, '/'))) return;
-                    // Skip CSS/preprocessor files — let Vite's built-in plugins handle them
-                    if (id.replace(/[?#].*/, '').match(/\.(less|scss|sass|css)$/)) return;
-                    // Strip Vite query suffix (?raw, ?url, ?worker, etc.) and hash
-                    // so filesystem checks work; reattach on return.
-                    const qIdx = id.indexOf('?');
-                    const hIdx = id.indexOf('#');
-                    let suffix = '';
-                    if (qIdx >= 0) suffix = id.slice(qIdx);
-                    else if (hIdx >= 0) suffix = id.slice(hIdx);
-                    const idClean = suffix ? id.slice(0, suffix.length ? id.indexOf(suffix) : id.length) : id;
-
-                    // Packages with browser stubs — resolve directly to stub files
-                    const stubMap = {
-                        'fs': 'fs', 'path': 'path.ts', 'stream': 'stream.ts',
-                        'os': 'os.ts', 'events': 'events.ts', 'crypto': 'crypto.ts',
-                        'url': 'url.ts', 'util': 'util.ts',
-                        'electron': 'electron-kitchen.ts', '@electron/remote': 'electron-kitchen.ts',
-                        'better-sqlite3': 'better-sqlite3.ts', 'sqlite3': 'better-sqlite3.ts',
-                        'child_process': 'child-process.ts', 'node:events': 'node-events.ts',
-                        'node:child_process': 'node-child-process.ts', 'chokidar': 'chokidar.ts',
-                    };
-                    if (stubMap[idClean]) {
-                        return path.resolve(__dirname, 'src/t3-eez-studio/stubs', stubMap[idClean]) + suffix;
-                    }
-
-                    // --- Relative imports (. or ..) ---
-                    if (idClean.startsWith('.')) {
-                        // Compute the target path in-project (preserveSymlinks)
-                        const projTarget = path.resolve(path.dirname(importer), idClean);
-                        if (fs.existsSync(projTarget)) return projTarget + suffix;
-
-                        // Not found in-project: translate to original eez-studio path.
-                        // Junction: src/lib/t3-eez-studio → ../eez-studio/packages
-                        // So eezRoot/foo/bar.ts → eezPackages/foo/bar.ts
-                        const relImporter = path.relative(eezRoot, importer);
-                        const origDir = path.dirname(path.join(eezPackages, relImporter));
-                        const origTarget = path.resolve(origDir, idClean);
-                        if (fs.existsSync(origTarget)) return origTarget + suffix;
-
-                        return null; // Let Vite try its own resolution
-                    }
-
-                    // --- Bare imports (no / or \) ---
-                    if (idClean.startsWith('/') || idClean.startsWith('\\')) return;
-
-                    // Try project node_modules first (CJS interop works),
-                    // then fall back to eez-studio node_modules
-                    for (const nm of [projNm, eezNm]) {
-                        if (idClean.startsWith('@')) {
-                            const parts = idClean.split('/');
-                            const scoped = path.join(nm, parts[0], parts[1]);
-                            if (fs.existsSync(scoped)) return scoped + suffix;
-                        } else {
-                            const pkg = path.join(nm, idClean);
-                            if (fs.existsSync(pkg)) return pkg + suffix;
-                        }
-                    }
-                    return null; // Let Vite try its own resolution
-                },
-            });
-        })();
-
-        // Disable manual chunking completely - let Vite handle everything automatically
-        // This eliminates all chunking-related dependency issues like:
-        // - "undefined is not a function" in drawing-components
-        // - "Object.setPrototypeOf: expected an object or null, got undefined" in moveable
-        // - Vue/React initialization issues
-        // - Circular dependency problems
+        // Build config
         viteConf.build = viteConf.build || {};
         viteConf.build.rollupOptions = viteConf.build.rollupOptions || {};
         viteConf.build.rollupOptions.output = viteConf.build.rollupOptions.output || {};
-
-        // Remove manual chunking entirely - let Vite's automatic chunking handle everything
-        // This will create larger but more stable bundles without dependency initialization issues
-        // viteConf.build.rollupOptions.output.manualChunks = undefined;        // Bundle analyzer configuration
         if (process.env.ANALYZE === 'true') {
           const { visualizer } = require('rollup-plugin-visualizer');
           viteConf.build.rollupOptions.plugins = viteConf.build.rollupOptions.plugins || [];
@@ -340,16 +172,12 @@ module.exports = configure(function (/* ctx */) {
               open: true,
               gzipSize: true,
               brotliSize: true,
-              template: 'treemap' // Use treemap for better visualization
+              template: 'treemap'
             })
           );
         }
-
-        // Performance optimizations - adjusted for no manual chunking
-        viteConf.build.chunkSizeWarningLimit = 1000; // Increased to 1MB since we'll have larger but more stable bundles
-        viteConf.build.cssCodeSplit = true; // Split CSS into separate files
-
-        // Minification settings
+        viteConf.build.chunkSizeWarningLimit = 1000;
+        viteConf.build.cssCodeSplit = true;
         viteConf.build.minify = 'terser';
         viteConf.build.terserOptions = {
           compress: {
@@ -363,31 +191,6 @@ module.exports = configure(function (/* ctx */) {
         viteConf.css.preprocessorOptions.less = {
             javascriptEnabled: true,
         };
-
-          // Plugin: Compile .less files from the t3-eez-studio junction
-          // using Node's less package directly, bypassing Vite's built-in
-          // LESS pipeline which fails for files inside Windows junctions
-          // (NS_ERROR_CORRUPTED_CONTENT / empty MIME type).
-          viteConf.plugins.push({
-            name: 'eez-studio-less-compile',
-            enforce: 'pre',
-            async transform(code, id) {
-              const normalized = id.replace(/\\/g, '/');
-              if (!normalized.includes('/t3-eez-studio/') || !normalized.endsWith('.less')) return;
-              const less = require('less');
-              const path = require('path');
-              const result = await less.render(code, {
-                filename: id,
-                javascriptEnabled: true,
-                paths: [
-                  path.dirname(id),
-                  path.resolve(__dirname, 'node_modules'),
-                  path.resolve(__dirname, '../eez-studio/node_modules'),
-                ],
-              });
-              return { code: result.css, map: null };
-            },
-          });
       },
       viteVuePluginOptions: {
         template: {
