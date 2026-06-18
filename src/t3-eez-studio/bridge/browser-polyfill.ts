@@ -10,7 +10,12 @@ import "jquery";
 
 // ace editor — exposed globally for code-editor.tsx
 import * as ace from "ace-builds";
-import "ace-builds/webpack-resolver";
+import "ace-builds/src-noconflict/theme-dracula";
+import "ace-builds/src-noconflict/theme-github";
+import "ace-builds/src-noconflict/mode-c_cpp";
+import "ace-builds/src-noconflict/mode-javascript";
+import "ace-builds/src-noconflict/mode-json";
+import "ace-builds/src-noconflict/mode-python";
 (globalThis as any).ace = ace;
 
 // global
