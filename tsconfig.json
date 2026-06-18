@@ -59,7 +59,6 @@
       "eez-studio-ui/*": ["src/lib/t3-eez-studio/eez-studio-ui/*"],
       "eez-studio-types": ["src/lib/t3-eez-studio/eez-studio-types"],
       "eez-studio-types/*": ["src/lib/t3-eez-studio/eez-studio-types/*"],
-      "eez-studio-web-entry": ["src/lib/t3-eez-studio/eez-studio-web-entry.tsx"],
       "db-services/*": ["src/lib/t3-eez-studio/db-services/*"],
       "home/*": ["src/lib/t3-eez-studio/home/*"],
       "instrument/*": ["src/lib/t3-eez-studio/instrument/*"],
@@ -67,7 +66,6 @@
       "main/*": ["src/lib/t3-eez-studio/main/*"],
       "notebook/*": ["src/lib/t3-eez-studio/notebook/*"],
       "shortcuts/*": ["src/lib/t3-eez-studio/shortcuts/*"],
-      "basic-measurements/*": ["src/lib/t3-eez-studio/basic-measurements/*"],
       "db-services/*": ["src/lib/t3-eez-studio/db-services/*"],
       "pdf-services/*": ["src/lib/t3-eez-studio/pdf-services/*"]
     },

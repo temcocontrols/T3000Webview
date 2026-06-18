@@ -1,8 +1,32 @@
 // Browser polyfill for Node.js globals (Buffer, require, global)
 // Injected before any EEZ Studio code loads
 
+// mousetrap is CJS — no default ESM export
+import * as MousetrapNS from "mousetrap";
+const Mousetrap = (MousetrapNS as any).default || MousetrapNS;
+
+// jQuery stub — exposed globally for drag-and-drop etc.
+import "jquery";
+
+// ace editor — exposed globally for code-editor.tsx
+import * as ace from "ace-builds";
+import "ace-builds/webpack-resolver";
+(globalThis as any).ace = ace;
+
 // global
 (globalThis as any).global = globalThis;
+(globalThis as any).__dirname = "/";
+(globalThis as any).__filename = "/index.js";
+(globalThis as any).process = (globalThis as any).process || {
+    env: {},
+    platform: "browser",
+    type: "renderer",
+    execPath: "/usr/bin/node",
+    cwd: () => "/",
+    argv: [],
+    version: "",
+    versions: { node: "" },
+};
 
 // Safe JSON.parse — returns {} for empty/invalid input (localStorage rehydration)
 const _origParse = JSON.parse;
@@ -11,24 +35,9 @@ JSON.parse = function safeParse(text: string, ...args: any[]) {
     try { return _origParse.call(JSON, text, ...args); } catch { return {}; }
 };
 
-// Buffer polyfill
-(globalThis as any).Buffer = (globalThis as any).Buffer || {
-    alloc(size: number) { return new Uint8Array(size); },
-    from(data: any) {
-        if (typeof data === "string") return new TextEncoder().encode(data);
-        if (data instanceof ArrayBuffer) return new Uint8Array(data);
-        if (data instanceof Uint8Array) return data;
-        return new Uint8Array(data || 0);
-    },
-    concat(buffers: Uint8Array[]) {
-        const total = buffers.reduce((s, b) => s + b.length, 0);
-        const result = new Uint8Array(total);
-        let offset = 0;
-        for (const b of buffers) { result.set(b, offset); offset += b.length; }
-        return result;
-    },
-    isBuffer(_x: any) { return false; },
-};
+// Buffer polyfill — use real 'buffer' npm package for full Node.js Buffer API
+import { Buffer as NodeBuffer } from "buffer";
+(globalThis as any).Buffer = NodeBuffer;
 
 // Global require() polyfill — returns browser-compatible mocks
 (globalThis as any).require = ((globalThis as any).require || function require(path: string) {
@@ -48,11 +57,24 @@ JSON.parse = function safeParse(text: string, ...args: any[]) {
     if (path === "os") return { platform:()=>"browser", type:()=>"browser", homedir:()=>"/", tmpdir:()=>"/tmp" };
     if (path === "stream") return { Readable: class {}, Writable: class {}, Stream: class {} };
     if (path === "events") return { EventEmitter: class {} };
-    if (path === "child_process") return { spawn: ()=>({on:()=>{},stdout:{on:()=>{}},stderr:{on:()=>{}}}), exec: ()=>{} };
+    if (path === "child_process") return { spawn: ()=>({on:()=>{},stdout:{on:()=>{}},stderr:{on:()=>{}}}), exec:()=>{}, execFile:()=>{} };
     if (path === "url") return { pathToFileURL:(p:string)=>new URL("file://"+p), fileURLToPath:()=>"" };
     if (path === "util") return { promisify:(f:Function)=>f, inspect:()=>"", format:()=>"" };
-    if (path === "electron" || path === "@electron/remote") return {
-        BrowserWindow: class { static getAllWindows(){return[]} static fromId(){return null} },
+    if (path === "electron" || path.includes("@electron/remote")) return {
+        BrowserWindow: class {
+            webContents: any;
+            constructor(_opts?: any) {
+                this.webContents = { getURL:()=>"", send:()=>{}, on:()=>{}, session:{loadExtension:()=>Promise.resolve(),clearCache:()=>Promise.resolve()} };
+            }
+            static getAllWindows(){return[]}
+            static fromId(){return null}
+            loadURL(_url: string) {}
+            loadFile(_path: string) {}
+            show() {}
+            close() {}
+            on() {}
+            once() {}
+        },
         ipcRenderer: {
             on:()=>{}, send:()=>{},
             sendSync: (ch:string) => {
@@ -64,7 +86,26 @@ JSON.parse = function safeParse(text: string, ...args: any[]) {
             },
             invoke:()=>Promise.resolve({}), removeAllListeners:()=>{}
         },
-        app:{}, dialog:{}, shell:{}, clipboard:{}, getCurrentWindow:()=>({id:1}),
+        ipcMain: {
+            on:()=>{}, handle:()=>{}, handleOnce:()=>{}, removeHandler:()=>{}, removeAllListeners:()=>{}
+        },
+        enable: () => {},
+        getCurrentWindow:()=>({id:1, webContents:{getURL:()=>""}}),
+        app: {
+            getPath: () => "/eez-user-data",
+            getVersion: () => "0.0.0",
+            getName: () => "EEZ Studio",
+            getAppPath: () => "/",
+            getLocale: () => "en",
+            isPackaged: false,
+            relaunch: () => {},
+            exit: () => {},
+            whenReady: () => Promise.resolve(),
+            on: () => {},
+            commandLine: { appendSwitch: () => {} },
+        },
+        dialog:{}, shell:{},
+        clipboard: { writeText:()=>{}, readText:()=>"", writeBuffer:()=>{}, readBuffer:()=>new ArrayBuffer(0), write:()=>{}, read:()=>"", clear:()=>{}, availableFormats:()=>[] },
     };
     if (path === "tmp") return { tmpName:()=>{}, dir:()=>{} };
     if (path === "python-shell") return { PythonShell: { runString:()=>{} } };
@@ -75,7 +116,25 @@ JSON.parse = function safeParse(text: string, ...args: any[]) {
         constructor(){} prepare(){return{run:()=>({}),get:()=>({}),all:()=>[],bind:()=>this.prepare()}}
         exec(){} close(){} pragma(){} defaultSafeIntegers(){return this} transaction(fn:Function){return fn}
     };
+    if (path === "main/settings") return {
+        getActiveDbPath: () => "/eez-user-data/databases/active.db",
+        getDbPaths: () => [],
+        setDbPaths: () => {},
+        getSettings: () => ({}),
+        getMRU: () => [],
+        getIsDarkTheme: () => false,
+        getHomePath: () => "/eez-home",
+        getExtensionsFolderPath: () => "/eez-user-data/extensions",
+    };
     if (path.includes("electron-context-menu")) return () => {};
-    if (path === "mousetrap") return { bind:()=>{}, unbind:()=>{}, reset:()=>{} };
+    if (path === "mousetrap") return Mousetrap;
+    if (path === "simple-git") return { simpleGit: () => ({ init:()=>Promise.resolve(), status:()=>Promise.resolve({files:[],isClean:()=>true}), log:()=>Promise.resolve({all:[],latest:null,total:0}), diff:()=>Promise.resolve(""), add:()=>Promise.resolve(), commit:()=>Promise.resolve(), push:()=>Promise.resolve(), pull:()=>Promise.resolve(), checkout:()=>Promise.resolve(), branch:()=>Promise.resolve({all:[],current:""}), fetch:()=>Promise.resolve(), remote:()=>Promise.resolve([]) }) };
+    if (path === "decompress") return () => Promise.resolve([]);
+    if (path === "showdown") return { Converter: class { makeHtml(s:string){return s} } };
+    if (path === "command-exists") return { sync: () => false };
+    if (path === "sha256") return function sha256(s: string) { let h=0; for(let i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;} return Math.abs(h).toString(16).padStart(8,'0'); };
+    // EEZ Studio module registry — populated by app.tsx and others at import time
+    const reg = (globalThis as any).__eezModules;
+    if (reg && reg[path]) return reg[path];
     return {};
 });

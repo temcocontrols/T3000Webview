@@ -97,28 +97,22 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['eez-studio-shared'] = eezPath('eez-studio-shared');
         viteConf.resolve.alias['eez-studio-ui'] = eezPath('eez-studio-ui');
         viteConf.resolve.alias['eez-studio-types'] = eezPath('eez-studio-types');
-        viteConf.resolve.alias['eez-studio-web-entry'] = eezPath('eez-studio-web-entry.tsx');
         viteConf.resolve.alias['home'] = eezPath('home');
         viteConf.resolve.alias['instrument'] = eezPath('instrument');
         viteConf.resolve.alias['project-editor'] = eezPath('project-editor');
         viteConf.resolve.alias['notebook'] = eezPath('notebook');
         viteConf.resolve.alias['shortcuts'] = eezPath('shortcuts');
-        viteConf.resolve.alias['basic-measurements'] = eezPath('basic-measurements');
         viteConf.resolve.alias['db-services'] = eezPath('db-services');
         viteConf.resolve.alias['pdf-services'] = eezPath('pdf-services');
-        // main/settings is imported via require() at runtime by i10n.ts
         viteConf.resolve.alias['main/settings'] = eezPath('main/settings.ts');
-        // EEZ Studio imports material-icons from @eez-studio-build (Electron build dir).
-        // In the web, serve from public/eez-studio-assets/.
-        viteConf.resolve.alias['@eez-studio-build/eez-studio-ui/_stylesheets/material-icons.css'] = require('path').resolve(__dirname, 'public/eez-studio-assets/material-icons.css');
 
         // Redirect Electron/Node.js to browser stubs
         const stub = (name) => require('path').resolve(__dirname, 'src/t3-eez-studio/stubs', name);
         viteConf.resolve.alias['electron'] = stub('electron-kitchen.ts');
         viteConf.resolve.alias['@electron/remote'] = stub('electron-kitchen.ts');
+        viteConf.resolve.alias['chokidar'] = stub('chokidar.ts');
         viteConf.resolve.alias['bootstrap/dist/css/bootstrap.min.css'] = require('path').resolve(__dirname, 'node_modules/bootstrap/dist/css/bootstrap.min.css');
         viteConf.resolve.alias['bootstrap'] = stub('bootstrap.ts');
-        viteConf.resolve.alias['chokidar'] = stub('chokidar.ts');
         viteConf.resolve.alias['mobx'] = require('path').resolve(__dirname, 'node_modules/mobx');
         viteConf.resolve.alias['mobx-react'] = require('path').resolve(__dirname, 'node_modules/mobx-react');
         viteConf.resolve.alias['fs'] = stub('fs');
@@ -127,33 +121,31 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['os'] = stub('os.ts');
         viteConf.resolve.alias['events'] = stub('events.ts');
         viteConf.resolve.alias['child_process'] = stub('child-process.ts');
-        viteConf.resolve.alias['node:events'] = stub('node-events.ts');
-        viteConf.resolve.alias['node:child_process'] = stub('node-child-process.ts');
         viteConf.resolve.alias['url'] = stub('url.ts');
-        viteConf.resolve.alias['util'] = stub('util.ts');
         viteConf.resolve.alias['crypto'] = stub('crypto.ts');
+        viteConf.resolve.alias['mousetrap'] = stub('mousetrap.ts');
+        viteConf.resolve.alias['sha256'] = stub('sha256.ts');
+        viteConf.resolve.alias['jquery'] = stub('jquery.ts');
+        viteConf.resolve.alias['better-sqlite3'] = stub('better-sqlite3.ts');
+        viteConf.resolve.alias['simple-git'] = stub('simple-git.ts');
+        viteConf.resolve.alias['archiver'] = stub('archiver.ts');
 
         // Enable React JSX support
         viteConf.esbuild = viteConf.esbuild || {};
         viteConf.esbuild.jsx = 'automatic';
         viteConf.esbuild.jsxImportSource = 'react';
         viteConf.esbuild.tsconfigRaw = JSON.stringify({
-            compilerOptions: { useDefineForClassFields: true, target: "es2020" }
+            compilerOptions: {
+                useDefineForClassFields: true,
+                target: "es2020",
+                allowSyntheticDefaultImports: true,
+                esModuleInterop: true,
+            }
         });
 
-        // Optimize deps
+        // Optimize deps — noDiscovery prevents scanning the massive EEZ tree
         viteConf.optimizeDeps = viteConf.optimizeDeps || {};
-        viteConf.optimizeDeps.include = viteConf.optimizeDeps.include || [];
-        viteConf.optimizeDeps.exclude = viteConf.optimizeDeps.exclude || [];
-        viteConf.optimizeDeps.exclude.push(
-            'fs', 'path', 'stream', 'os', 'events', 'child_process',
-            'node:events', 'node:child_process', 'url', 'util',
-            'electron', '@electron/remote',
-            'better-sqlite3', 'sqlite3', 'crypto', 'lz4', 'file-type', 'chokidar'
-        );
-        viteConf.optimizeDeps.include.push('react', 'react-dom', 'react-dom/client');
-        viteConf.optimizeDeps.include.push('vue', '@vue/runtime-dom');
-        viteConf.optimizeDeps.include.push('@uppy/core', '@uppy/vue', '@uppy/dashboard', '@uppy/image-editor', '@uppy/xhr-upload');
+        viteConf.optimizeDeps.noDiscovery = true;
 
         viteConf.resolve = viteConf.resolve || {};
         viteConf.resolve.dedupe = viteConf.resolve.dedupe || [];
@@ -190,6 +182,9 @@ module.exports = configure(function (/* ctx */) {
         viteConf.css.preprocessorOptions = viteConf.css.preprocessorOptions || {};
         viteConf.css.preprocessorOptions.less = {
             javascriptEnabled: true,
+            paths: [
+                require('path').resolve(__dirname, 'src/lib/t3-eez-studio/eez-studio-ui/_stylesheets'),
+            ],
         };
       },
       viteVuePluginOptions: {

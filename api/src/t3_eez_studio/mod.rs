@@ -50,7 +50,14 @@ struct IsDirectoryResponse {
 /// Resolve a user-supplied path to an absolute path under the data root.
 fn resolve_path(base: &str, user_path: &str) -> PathBuf {
     let cleaned = user_path.trim_start_matches('/').trim_start_matches('\\');
-    PathBuf::from(base).join(cleaned)
+    // If the path starts with "eez-user-data", resolve from the workspace root
+    // (parent of the eez-data dir), not from under eez-data/.
+    let workspace_root = PathBuf::from(base).parent().map(|p| p.to_path_buf()).unwrap_or_else(|| PathBuf::from(base));
+    if cleaned.starts_with("eez-user-data") || cleaned.starts_with("eez-projects") {
+        workspace_root.join(cleaned)
+    } else {
+        PathBuf::from(base).join(cleaned)
+    }
 }
 
 fn data_root() -> PathBuf {
@@ -151,7 +158,7 @@ async fn file_exists(
     Query(q): Query<PathQuery>,
 ) -> Json<FileExistsResponse> {
     let full_path = resolve_path(&data_root().to_string_lossy(), &q.path);
-    let exists = fs::metadata(&full_path).await.map(|m| m.is_file()).unwrap_or(false);
+    let exists = fs::metadata(&full_path).await.map(|m| m.is_file() || m.is_dir()).unwrap_or(false);
     Json(FileExistsResponse { exists })
 }
 
@@ -209,6 +216,34 @@ async fn is_directory(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Proxy fetch — bypasses browser CORS by fetching server-side
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Deserialize)]
+struct ProxyFetchQuery {
+    url: String,
+}
+
+async fn proxy_fetch(
+    Query(q): Query<ProxyFetchQuery>,
+) -> Result<String, StatusCode> {
+    let client = reqwest::Client::new();
+    match client.get(&q.url).send().await {
+        Ok(resp) => match resp.text().await {
+            Ok(body) => Ok(body),
+            Err(e) => {
+                error!("proxy_fetch read failed: {} — {:?}", q.url, e);
+                Err(StatusCode::BAD_GATEWAY)
+            }
+        },
+        Err(e) => {
+            error!("proxy_fetch failed: {} — {:?}", q.url, e);
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Router
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -225,4 +260,5 @@ pub fn bridge_routes() -> Router<T3AppState> {
         .route("/api/bridge/list-files", get(list_files))
         .route("/api/bridge/file-size", get(file_size))
         .route("/api/bridge/is-directory", get(is_directory))
+        .route("/api/bridge/proxy-fetch", get(proxy_fetch))
 }

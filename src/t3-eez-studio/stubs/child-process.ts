@@ -1,6 +1,13 @@
 // Browser stub for Node.js 'child_process'
-export const spawn = () => { throw new Error("child_process.spawn: not available in browser") };
-export const exec = () => { throw new Error("child_process.exec: not available in browser") };
-export const execSync = () => { throw new Error("child_process.execSync: not available in browser") };
-export const fork = () => { throw new Error("child_process.fork: not available in browser") };
-export default { spawn, exec, execSync, fork };
+const noop = () => { throw new Error("child_process: not available in browser") };
+export const spawn = noop;
+export const spawnSync = noop;
+export const exec = noop;
+export const execSync = noop;
+export const execFile = noop;
+export const fork = noop;
+
+export interface ChildProcess {}
+export interface ChildProcessWithoutNullStreams {}
+
+export default { spawn, spawnSync, exec, execSync, execFile, fork };

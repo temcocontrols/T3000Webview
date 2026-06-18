@@ -3,11 +3,26 @@ const noop = () => {};
 const noopAsync = () => Promise.resolve();
 const noopObj = () => ({});
 
+const MRU_STORAGE_KEY = "eez-studio-mru";
+
+function readMRU(): any[] {
+    try {
+        const raw = window.localStorage.getItem(MRU_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+}
+
+function writeMRU(value: any[]) {
+    try {
+        window.localStorage.setItem(MRU_STORAGE_KEY, JSON.stringify(value));
+    } catch { /* noop */ }
+}
+
 const ipcSyncDefaults: Record<string, any> = {
     getDbPaths: [],
     getActiveDbPath: "/eez-user-data/databases/active.db",
     getSettings: {},
-    getMRU: [],
+    getMRU: [], // fallback if localStorage is empty
     getReservedKeybindings: [],
     getIsDarkTheme: false,
     getShowComponentsPaletteInProjectEditor: false,
@@ -20,8 +35,27 @@ const ipcSyncDefaults: Record<string, any> = {
 
 export const ipcRenderer = {
     on: noop, once: noop, removeListener: noop, removeAllListeners: noop,
-    send: noop,
-    sendSync: (ch: string) => ipcSyncDefaults[ch] ?? [],
+    send: (ch: string, ...args: any[]) => {
+        if (ch === "setMRU") { writeMRU(args[0]); }
+        if (ch === "setMruFilePath") {
+            const item = args[0] as { filePath: string; projectType?: string; hasFlowSupport?: boolean };
+            if (item?.filePath) {
+                const mru = readMRU();
+                const existing = mru.findIndex((m: any) => m.filePath === item.filePath);
+                if (existing !== -1) mru.splice(existing, 1);
+                mru.unshift({ filePath: item.filePath, projectType: item.projectType || "", hasFlowSupport: item.hasFlowSupport ?? false });
+                writeMRU(mru);
+            }
+        }
+        if (ch === "open-file") {
+            const filePath: string = args[0] || "";
+            window.dispatchEvent(new CustomEvent("eez-open-project", { detail: filePath }));
+        }
+    },
+    sendSync: (ch: string) => {
+        if (ch === "getMRU") { return readMRU(); }
+        return ipcSyncDefaults[ch] ?? [];
+    },
     invoke: (ch: string) => Promise.resolve(ipcSyncDefaults[ch] ?? {}),
     sendToHost: noop, postMessage: noop,
 };

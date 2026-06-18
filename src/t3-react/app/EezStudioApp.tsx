@@ -1,27 +1,28 @@
 import { useEffect, useRef } from "react";
 import { initEezBridge } from "src/t3-eez-studio/bridge/eez-bridge";
 import "src/t3-eez-studio/bridge/browser-polyfill";
+import "src/t3-eez-studio/bridge/eez-registry";
 import "bootstrap/dist/css/bootstrap.min.css";
-// EEZ Studio styles — imported statically so Vite can process .less as CSS
-import "src/lib/t3-eez-studio/eez-studio.less";
+
+// EEZ Studio stylesheets
+import "eez-studio-ui/_stylesheets/main.less";
+import "flexlayout-react/style/light.css";
 
 export function EezStudioApp() {
-    const done = useRef(false);
-    const rootRef = useRef<HTMLDivElement>(null);
+    const started = useRef(false);
 
     useEffect(() => {
-        if (done.current) return;
-        done.current = true;
-        (async () => {
-            initEezBridge();
-            const entry = await import("eez-studio-web-entry");
-            await entry.createEezStudioApp(rootRef.current!);
-        })();
+        if (started.current) return;
+        started.current = true;
+        initEezBridge();
+        // home/main.tsx auto-executes main() on import — it renders <App /> into
+        // #EezStudio_Content (the div rendered below with that id)
+        import("home/main").catch(err => console.error("[EEZ] Failed to load home/main:", err));
     }, []);
 
     return (
         <div
-            ref={rootRef}
+            id="EezStudio_Content"
             style={{
                 width: "100%",
                 height: "100vh",
