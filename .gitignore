@@ -11,18 +11,6 @@ node_modules
 
 # EEZ Studio fork (junction — not part of this repo)
 target/
-src/lib/t3-eez-studio/basic-measurements/
-src/lib/t3-eez-studio/db-services/
-src/lib/t3-eez-studio/eez-studio-shared/
-src/lib/t3-eez-studio/eez-studio-types/
-src/lib/t3-eez-studio/eez-studio-ui/
-src/lib/t3-eez-studio/home/
-src/lib/t3-eez-studio/instrument/
-src/lib/t3-eez-studio/main/
-src/lib/t3-eez-studio/notebook/
-src/lib/t3-eez-studio/pdf-services/
-src/lib/t3-eez-studio/project-editor/
-src/lib/t3-eez-studio/shortcuts/
 
 # .NET build artifacts
 **/bin/
