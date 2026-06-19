@@ -34,17 +34,14 @@ export const isDev: boolean =
 ////////////////////////////////////////////////////////////////////////////////
 
 export function getUserDataPath(relativePath: string): string {
-    // During module-init time the bridge may not be set up yet,
-    // so use a fallback default path. The hosting app will set
-    // the bridge before any actual file I/O happens.
     if (isBridgeInitialized()) {
         return getBridgeAPI().getUserDataPath(relativePath);
     }
-    return "/eez-user-data/" + relativePath;
+    return "/userData/" + relativePath;
 }
 
 export function getHomePath(relativePath: string): string {
-    return "/eez-home/" + relativePath;
+    return "/project/" + relativePath;
 }
 
 export function localPathToFileUrl(localPath: string): string {

@@ -38,6 +38,7 @@ export function getUserDataPath(relativePath: string) {
 }
 
 export function getHomePath(relativePath: string) {
+    console.log('getHomePath'+relativePath+","+app.getPath("home")+','+app.getPath("userData"));
     return app.getPath("home") + path.sep + relativePath;
 }
 

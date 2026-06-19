@@ -40,7 +40,7 @@ const t3: BridgeAPI = {
     showOpenDialog: (o) => new Promise(r=>{const i=document.createElement("input");i.type="file";if(o.properties?.includes("openDirectory"))(i as any).webkitdirectory=true;i.onchange=()=>r(Array.from(i.files||[]).map((f:any)=>f.webkitRelativePath||f.name));i.oncancel=()=>r([]);i.click()}),
     showSaveDialog: (o) => Promise.resolve(prompt("Save as:",o.defaultPath||"untitled")||undefined),
     showMessageBox: (o) => Promise.resolve({response:confirm(o.message+(o.detail?"\n\n"+o.detail:""))?0:o.cancelId??1}),
-    getUserDataPath: s => `/eez-user-data/${s}`,
+    getUserDataPath: s => `/userData/${s}`,
     getAppVersion: () => "0.28.0",
     isDev: () => (import.meta as any).env?.DEV ?? false,
     openProject: p => api(`/read-text-file?path=${enc(p)}`).then(r=>r.json()),

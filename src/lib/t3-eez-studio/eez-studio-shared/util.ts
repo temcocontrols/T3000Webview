@@ -220,7 +220,7 @@ export function sourceRootDir() {
     // causing readFolder to list the Rust project directory (hundreds of entries).
     // Return a safe empty path inside the bridge data space instead.
     if (typeof process === "undefined" || !!(process as any).type) {
-        return "/eez-user-data/_preinstalled";
+        return "/_preinstalled";
     }
     return __dirname + "/..";
 }

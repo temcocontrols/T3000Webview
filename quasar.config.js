@@ -130,6 +130,11 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['simple-git'] = stub('simple-git.ts');
         viteConf.resolve.alias['archiver'] = stub('archiver.ts');
 
+        // Replace Electron-only util-electron.ts with browser-safe util-web.ts
+        const utilWeb = require('path').resolve(__dirname, 'src/lib/t3-eez-studio/eez-studio-shared/util-web.ts');
+        viteConf.resolve.alias['eez-studio-shared/util-electron'] = utilWeb;
+        viteConf.resolve.alias['eez-studio-shared/util-electron.ts'] = utilWeb;
+
         // Enable React JSX support
         viteConf.esbuild = viteConf.esbuild || {};
         viteConf.esbuild.jsx = 'automatic';

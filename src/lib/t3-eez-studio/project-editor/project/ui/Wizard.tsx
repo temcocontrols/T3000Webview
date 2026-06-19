@@ -168,7 +168,7 @@ async function loadTemplateFile(
     return fetchUrlOrReadFromCache(pathOrUrl, resultType);
 }
 
-const SAVED_OPTIONS_VERSION = 12;
+const SAVED_OPTIONS_VERSION = 13;
 
 enum SaveOptionsFlags {
     All,
@@ -187,7 +187,7 @@ export class WizardModel {
         wizardModel.folder = "_allTemplates";
         wizardModel.type = "dashboard";
 
-        wizardModel.location = getHomePath("eez-projects");
+        wizardModel.location = getHomePath("");
 
         return wizardModel;
     }
@@ -199,9 +199,7 @@ export class WizardModel {
         wizardModel.folder = "_allExamples";
         wizardModel.type = undefined;
 
-        wizardModel.location = getHomePath(
-            "eez-projects" + path.sep + "examples"
-        );
+        wizardModel.location = getHomePath("examples");
 
         return wizardModel;
     }
@@ -224,7 +222,7 @@ export class WizardModel {
 
     nameError: string | undefined;
 
-    location: string | undefined = getHomePath("eez-projects");
+    location: string | undefined = getHomePath("");
     locationError: string | undefined;
 
     createDirectory: boolean = true;
@@ -2231,6 +2229,7 @@ const ProjectProperties = observer(
 
         render() {
             const { wizardModel } = this.props;
+            console.log(this.props);
 
             if (wizardModel.type == undefined) {
                 return (

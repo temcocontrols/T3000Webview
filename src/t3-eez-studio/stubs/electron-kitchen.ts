@@ -20,14 +20,14 @@ function writeMRU(value: any[]) {
 
 const ipcSyncDefaults: Record<string, any> = {
     getDbPaths: [],
-    getActiveDbPath: "/eez-user-data/databases/active.db",
+    getActiveDbPath: "/userData/storage.db",
     getSettings: {},
-    getMRU: [], // fallback if localStorage is empty
+    getMRU: [],
     getReservedKeybindings: [],
     getIsDarkTheme: false,
     getShowComponentsPaletteInProjectEditor: false,
-    getHomePath: "/eez-home",
-    getExtensionsFolderPath: "/eez-user-data/extensions",
+    getHomePath: "/project",
+    getExtensionsFolderPath: "/userData/extensions",
     getLocale: "en",
     getDateFormat: "YYYY-MM-DD",
     getTimeFormat: "HH:mm:ss",
@@ -51,6 +51,37 @@ export const ipcRenderer = {
             const filePath: string = args[0] || "";
             window.dispatchEvent(new CustomEvent("eez-open-project", { detail: filePath }));
         }
+        if (ch === "open-project") {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = ".eez-project,.eez-dashboard";
+            input.style.display = "none";
+            document.body.appendChild(input);
+            input.onchange = async () => {
+                const file = input.files?.[0];
+                document.body.removeChild(input);
+                if (!file) return;
+                const text = await file.text();
+                const baseName = file.name.replace(/\.(eez-project|eez-dashboard)$/, '');
+                const folderPath = `/project/${baseName}`;
+                const projPath = `${folderPath}/${file.name}`;
+                try {
+                    await fetch("http://localhost:9103/api/bridge/make-folder", {
+                        method: "POST",
+                        body: JSON.stringify({path: folderPath}),
+                        headers: { "Content-Type": "application/json" }
+                    });
+                    const resp = await fetch("http://localhost:9103/api/bridge/write-text-file?path=" + encodeURIComponent(projPath), {
+                        method: "POST",
+                        body: text,
+                        headers: { "Content-Type": "text/plain" }
+                    });
+                    if (!resp.ok) console.error("Upload failed:", resp.status);
+                } catch(e) { console.error("Upload error:", e); }
+                window.dispatchEvent(new CustomEvent("eez-open-project", { detail: projPath }));
+            };
+            input.click();
+        }
     },
     sendSync: (ch: string) => {
         if (ch === "getMRU") { return readMRU(); }
@@ -60,7 +91,7 @@ export const ipcRenderer = {
     sendToHost: noop, postMessage: noop,
 };
 export const ipcMain = { on:noop, handle:noop, handleOnce:noop, removeHandler:noop, removeAllListeners:noop };
-export const app = { getPath:()=>"/eez-user-data", getVersion:()=>"0.0.0", relaunch:noop, exit:noop, whenReady:noopAsync, on:noop, getName:()=>"EEZ Studio", getAppPath:()=>"/", isPackaged:false, commandLine:{appendSwitch:noop}, getLocale:()=>"en" };
+export const app = { getPath:(p:string)=>{ if (p==="userData") return "/userData"; return "/"; }, getVersion:()=>"0.0.0", relaunch:noop, exit:noop, whenReady:noopAsync, on:noop, getName:()=>"EEZ Studio", getAppPath:()=>"/", isPackaged:false, commandLine:{appendSwitch:noop}, getLocale:()=>"en" };
 export const dialog = { showOpenDialog:()=>Promise.resolve({filePaths:[],canceled:false}), showSaveDialog:()=>Promise.resolve({filePath:void 0,canceled:false}), showMessageBox:()=>Promise.resolve({response:0}) };
 export const shell = { openPath:()=>Promise.resolve(""), openExternal:()=>Promise.resolve(), showItemInFolder:noop, beep:noop, moveItemToTrash:()=>Promise.resolve(), openPathAsync:()=>Promise.resolve("") };
 export const clipboard = { writeText:noop, readText:()=>"", writeBuffer:noop, readBuffer:()=>Buffer.alloc(0), writeHTML:noop, readHTML:()=>"", writeImage:noop, readImage:()=>({}), write:noop, read:()=>"", clear:noop, availableFormats:()=>[] };

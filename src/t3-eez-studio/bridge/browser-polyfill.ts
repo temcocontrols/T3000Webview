@@ -44,6 +44,36 @@ JSON.parse = function safeParse(text: string, ...args: any[]) {
 import { Buffer as NodeBuffer } from "buffer";
 (globalThis as any).Buffer = NodeBuffer;
 
+// MRU helpers — mirrors electron-kitchen.ts via localStorage
+const MRU_STORAGE_KEY = "eez-studio-mru";
+function readMRU(): any[] {
+    try {
+        const raw = window.localStorage.getItem(MRU_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+}
+function writeMRU(value: any[]) {
+    try {
+        window.localStorage.setItem(MRU_STORAGE_KEY, JSON.stringify(value));
+    } catch { /* noop */ }
+}
+
+// ipcSyncDefaults — shared fallback values for sendSync
+const ipcSyncDefaults: Record<string, any> = {
+    getDbPaths: [],
+    getActiveDbPath: "/userData/storage.db",
+    getSettings: {},
+    getMRU: [],
+    getReservedKeybindings: [],
+    getIsDarkTheme: false,
+    getShowComponentsPaletteInProjectEditor: false,
+    getHomePath: "/project",
+    getExtensionsFolderPath: "/userData/extensions",
+    getLocale: "en",
+    getDateFormat: "YYYY-MM-DD",
+    getTimeFormat: "HH:mm:ss",
+};
+
 // Global require() polyfill — returns browser-compatible mocks
 (globalThis as any).require = ((globalThis as any).require || function require(path: string) {
     if (path === "fs") return {
@@ -81,15 +111,26 @@ import { Buffer as NodeBuffer } from "buffer";
             once() {}
         },
         ipcRenderer: {
-            on:()=>{}, send:()=>{},
-            sendSync: (ch:string) => {
-                if (ch === "getDbPaths") return [];
-                if (ch === "getActiveDbPath") return "/eez-user-data/databases/active.db";
-                if (ch === "getSettings") return {};
-                if (ch === "getMRU") return [];
-                return {};
+            on: ()=>{}, once: ()=>{}, removeListener: ()=>{}, removeAllListeners: ()=>{},
+            send: (ch: string, ...args: any[]) => {
+                if (ch === "setMRU") { writeMRU(args[0]); }
+                if (ch === "setMruFilePath") {
+                    const item = args[0] as { filePath: string; projectType?: string; hasFlowSupport?: boolean };
+                    if (item?.filePath) {
+                        const mru = readMRU();
+                        const existing = mru.findIndex((m: any) => m.filePath === item.filePath);
+                        if (existing !== -1) mru.splice(existing, 1);
+                        mru.unshift({ filePath: item.filePath, projectType: item.projectType || "", hasFlowSupport: item.hasFlowSupport ?? false });
+                        writeMRU(mru);
+                    }
+                }
             },
-            invoke:()=>Promise.resolve({}), removeAllListeners:()=>{}
+            sendSync: (ch:string) => {
+                if (ch === "getMRU") { return readMRU(); }
+                return ipcSyncDefaults[ch] ?? [];
+            },
+            invoke: (ch:string) => Promise.resolve(ipcSyncDefaults[ch] ?? {}),
+            sendToHost: ()=>{}, postMessage: ()=>{},
         },
         ipcMain: {
             on:()=>{}, handle:()=>{}, handleOnce:()=>{}, removeHandler:()=>{}, removeAllListeners:()=>{}
@@ -97,7 +138,7 @@ import { Buffer as NodeBuffer } from "buffer";
         enable: () => {},
         getCurrentWindow:()=>({id:1, webContents:{getURL:()=>""}}),
         app: {
-            getPath: () => "/eez-user-data",
+            getPath: (p:string) => p === "userData" ? "/userData" : "/",
             getVersion: () => "0.0.0",
             getName: () => "EEZ Studio",
             getAppPath: () => "/",
@@ -122,14 +163,14 @@ import { Buffer as NodeBuffer } from "buffer";
         exec(){} close(){} pragma(){} defaultSafeIntegers(){return this} transaction(fn:Function){return fn}
     };
     if (path === "main/settings") return {
-        getActiveDbPath: () => "/eez-user-data/databases/active.db",
+        getActiveDbPath: () => "/userData/storage.db",
         getDbPaths: () => [],
         setDbPaths: () => {},
         getSettings: () => ({}),
         getMRU: () => [],
         getIsDarkTheme: () => false,
-        getHomePath: () => "/eez-home",
-        getExtensionsFolderPath: () => "/eez-user-data/extensions",
+        getHomePath: () => "/project",
+        getExtensionsFolderPath: () => "/userData/extensions",
     };
     if (path.includes("electron-context-menu")) return () => {};
     if (path === "mousetrap") return Mousetrap;

@@ -47,24 +47,16 @@ struct IsDirectoryResponse {
 // Helpers
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Resolve a user-supplied path to an absolute path under the data root.
+/// Resolve a user-supplied path to an absolute path under T3Web/t3-eez
 fn resolve_path(base: &str, user_path: &str) -> PathBuf {
     let cleaned = user_path.trim_start_matches('/').trim_start_matches('\\');
-    // If the path starts with "eez-user-data", resolve from the workspace root
-    // (parent of the eez-data dir), not from under eez-data/.
-    let workspace_root = PathBuf::from(base).parent().map(|p| p.to_path_buf()).unwrap_or_else(|| PathBuf::from(base));
-    if cleaned.starts_with("eez-user-data") || cleaned.starts_with("eez-projects") {
-        workspace_root.join(cleaned)
-    } else {
-        PathBuf::from(base).join(cleaned)
-    }
+    PathBuf::from(base).join(cleaned)
 }
 
 fn data_root() -> PathBuf {
-    // Store files under a local data directory
     std::env::current_dir()
         .unwrap_or_else(|_| PathBuf::from("."))
-        .join("eez-data")
+        .join("T3Web").join("t3-eez")
 }
 
 ////////////////////////////////////////////////////////////////////////////////

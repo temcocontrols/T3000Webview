@@ -17,11 +17,11 @@ import { allStores } from "eez-studio-shared/store";
 
 ////////////////////////////////////////////////////////////////////////////////
 
-export let getActiveDbPath: () => string = () => "/eez-user-data/databases/active.db";
+export let getActiveDbPath: () => string = () => "/userData/storage.db";
 export let getDbPaths: () => MainSettingsModule.IDbPath[] = () => [];
 export let setDbPaths: (dbPaths: MainSettingsModule.IDbPath[]) => void = () => {};
 // Always use renderer path in browser
-getActiveDbPath = function () { try { return ipcRenderer.sendSync("getActiveDbPath"); } catch { return "/eez-user-data/databases/active.db"; } };
+getActiveDbPath = function () { try { return ipcRenderer.sendSync("getActiveDbPath"); } catch { return "/userData/storage.db"; } };
 getDbPaths = function () { try { return ipcRenderer.sendSync("getDbPaths"); } catch { return []; } };
 setDbPaths = function (dbPaths: MainSettingsModule.IDbPath[]) { try { ipcRenderer.send("setDbPaths", dbPaths); } catch {} };
 
