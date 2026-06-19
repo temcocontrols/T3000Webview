@@ -138,7 +138,7 @@ const ipcSyncDefaults: Record<string, any> = {
         enable: () => {},
         getCurrentWindow:()=>({id:1, webContents:{getURL:()=>""}}),
         app: {
-            getPath: (p:string) => p === "userData" ? "/userData" : "/",
+            getPath: (p:string) => p === "userData" ? "/userData" : p === "home" ? "/project" : "/",
             getVersion: () => "0.0.0",
             getName: () => "EEZ Studio",
             getAppPath: () => "/",
