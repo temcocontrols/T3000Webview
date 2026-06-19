@@ -97,7 +97,7 @@ class OpenProjectsStore {
             removeFromList: action
         });
 
-        autorun(async () => {
+        autorun(() => {
             const mruItem = this.selectedMruItem;
 
             if (mruItem) {
@@ -117,28 +117,32 @@ class OpenProjectsStore {
                     };
                 });
 
-                try {
-                    const jsonStr = await fs.promises.readFile(
-                        mruItem.filePath,
-                        "utf8"
-                    );
+                // Load project metadata asynchronously, outside the autorun tracking
+                (async () => {
+                    try {
+                        const jsonStr = await fs.promises.readFile(
+                            mruItem.filePath,
+                            "utf8"
+                        );
 
-                    await initProjectEditor(tabs, ProjectEditorTab);
-                    const projectStore = ProjectStore.create({
-                        type: "read-only"
-                    });
-                    const project = loadProject(projectStore, jsonStr, false);
-                    projectStore.setProject(project, "");
+                        await initProjectEditor(tabs, ProjectEditorTab);
+                        const projectStore = ProjectStore.create({
+                            type: "read-only"
+                        });
+                        const project = loadProject(projectStore, jsonStr, false);
+                        projectStore.setProject(project, "");
 
-                    runInAction(() => {
-                        if (this.selectedProjectInfo) {
-                            this.selectedProjectInfo.hasFlowSupport =
-                                projectStore.projectTypeTraits.hasFlowSupport;
-                        }
-                    });
-                } catch (err) {
-                    console.error(err);
-                }
+                        runInAction(() => {
+                            // Only update if the user hasn't selected a different item
+                            if (this.selectedMruItem === mruItem && this.selectedProjectInfo) {
+                                this.selectedProjectInfo.hasFlowSupport =
+                                    projectStore.projectTypeTraits.hasFlowSupport;
+                            }
+                        });
+                    } catch (err) {
+                        console.error("Failed to load project info:", mruItem.filePath, err);
+                    }
+                })();
             } else {
                 runInAction(() => {
                     this.selectedProjectInfo = undefined;

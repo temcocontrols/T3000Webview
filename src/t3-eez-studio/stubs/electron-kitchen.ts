@@ -33,8 +33,34 @@ const ipcSyncDefaults: Record<string, any> = {
     getTimeFormat: "HH:mm:ss",
 };
 
+// Simple event emitter so ipcRenderer.on actually works in browser
+const ipcListeners: Record<string, Array<(...args: any[]) => void>> = {};
+function emitIPC(ch: string, ...args: any[]) {
+    (ipcListeners[ch] || []).forEach(fn => fn(...args));
+}
+
 export const ipcRenderer = {
-    on: noop, once: noop, removeListener: noop, removeAllListeners: noop,
+    on: (ch: string, handler: (...args: any[]) => void) => {
+        if (!ipcListeners[ch]) ipcListeners[ch] = [];
+        ipcListeners[ch].push(handler);
+    },
+    once: (ch: string, handler: (...args: any[]) => void) => {
+        const wrapper = (...args: any[]) => {
+            handler(...args);
+            const arr = ipcListeners[ch];
+            if (arr) { const i = arr.indexOf(wrapper); if (i !== -1) arr.splice(i, 1); }
+        };
+        if (!ipcListeners[ch]) ipcListeners[ch] = [];
+        ipcListeners[ch].push(wrapper);
+    },
+    removeListener: (ch: string, handler: (...args: any[]) => void) => {
+        const arr = ipcListeners[ch];
+        if (arr) { const i = arr.indexOf(handler); if (i !== -1) arr.splice(i, 1); }
+    },
+    removeAllListeners: (ch?: string) => {
+        if (ch) { delete ipcListeners[ch]; }
+        else { for (const k of Object.keys(ipcListeners)) delete ipcListeners[k]; }
+    },
     send: (ch: string, ...args: any[]) => {
         if (ch === "setMRU") { writeMRU(args[0]); }
         if (ch === "setMruFilePath") {
@@ -45,6 +71,7 @@ export const ipcRenderer = {
                 if (existing !== -1) mru.splice(existing, 1);
                 mru.unshift({ filePath: item.filePath, projectType: item.projectType || "", hasFlowSupport: item.hasFlowSupport ?? false });
                 writeMRU(mru);
+                emitIPC("mru-changed", null, mru);
             }
         }
         if (ch === "open-file") {
