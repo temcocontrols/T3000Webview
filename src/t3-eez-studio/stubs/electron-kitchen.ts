@@ -62,7 +62,7 @@ export const ipcRenderer = {
         else { for (const k of Object.keys(ipcListeners)) delete ipcListeners[k]; }
     },
     send: (ch: string, ...args: any[]) => {
-        if (ch === "setMRU") { writeMRU(args[0]); }
+        if (ch === "setMRU") { writeMRU(args[0]); emitIPC("mru-changed", null, readMRU()); }
         if (ch === "setMruFilePath") {
             const item = args[0] as { filePath: string; projectType?: string; hasFlowSupport?: boolean };
             if (item?.filePath) {
