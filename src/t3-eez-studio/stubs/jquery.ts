@@ -88,10 +88,18 @@ function createJQueryObj(elements: any[]) {
         },
         is(selector: string) {
             if (selector === ":visible") {
-                return elements.some(el => el && el.offsetParent !== null);
+                return elements.some(el => {
+                    if (!el) return false;
+                    const style = window.getComputedStyle(el);
+                    return style.display !== "none" && style.visibility !== "hidden" && parseFloat(style.opacity) > 0;
+                });
             }
             if (selector === ":hidden") {
-                return elements.some(el => el && el.offsetParent === null);
+                return elements.some(el => {
+                    if (!el) return true;
+                    const style = window.getComputedStyle(el);
+                    return style.display === "none" || style.visibility === "hidden" || parseFloat(style.opacity) === 0;
+                });
             }
             return elements.some(el => el && el.matches && el.matches(selector));
         },

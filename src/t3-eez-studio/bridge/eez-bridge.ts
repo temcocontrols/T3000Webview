@@ -3,7 +3,7 @@ import { setBridgeAPI, BridgeAPI } from "eez-studio-shared/bridge";
 const BASE = "http://localhost:9103/api/bridge";
 const enc = encodeURIComponent;
 const noop = () => {};
-const noBackend = () => { console.warn("[EEZ Bridge] No Rust backend — using mock"); };
+const noBackend = () => {};
 
 async function api(path: string, init?: RequestInit): Promise<any> {
     try {

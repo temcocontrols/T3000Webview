@@ -340,6 +340,13 @@ export class EditorsStore {
 
         this.saveState();
 
+        // Prevent onModelChange (triggered during doAction in openEditor)
+        // from scheduling a setTimeout that nukes activeEditor after
+        // openEditor finishes setting it.
+        if (!showActiveEditor && editors.length === 0 && this.activeEditor) {
+            return editors;
+        }
+
         setTimeout(() => {
             let changed =
                 this.activeEditor != activeEditor ||

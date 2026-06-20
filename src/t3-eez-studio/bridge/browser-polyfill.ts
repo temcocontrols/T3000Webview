@@ -33,10 +33,10 @@ import "ace-builds/src-noconflict/mode-python";
     versions: { node: "" },
 };
 
-// Safe JSON.parse — returns {} for empty/invalid input (localStorage rehydration)
+// Safe JSON.parse
 const _origParse = JSON.parse;
 JSON.parse = function safeParse(text: string, ...args: any[]) {
-    if (!text || typeof text !== "string" || text.trim().length === 0) return {};
+    if (!text || typeof text !== "string") return {};
     try { return _origParse.call(JSON, text, ...args); } catch { return {}; }
 };
 

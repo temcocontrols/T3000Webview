@@ -1,5 +1,7 @@
-const _parse = (_expr: string) => { throw new Error("Grammar not available in browser"); };
-const peggyParser = { parse: _parse };
+import { parse as expressionParse } from "src/t3-eez-studio/resources/expression-parser.js";
+import { parse as identifierParse } from "src/t3-eez-studio/resources/expression-identifier-parser.js";
+
+console.log("[EEZ] Expression parser loaded (pre-generated)");
 
 const cache = new Map<string, any>();
 
@@ -11,7 +13,7 @@ export const expressionParser = {
         if (resultJSONStr != undefined) {
             result = JSON.parse(resultJSONStr);
         } else {
-            result = peggyParser.parse(expr, {
+            result = expressionParse(expr, {
                 grammarSource: expr
             });
             resultJSONStr = JSON.stringify(result);
@@ -22,4 +24,10 @@ export const expressionParser = {
     }
 };
 
-export const identifierParser = { parse: _parse };
+export const identifierParser = {
+    parse(expr: string) {
+        return identifierParse(expr, {
+            grammarSource: expr
+        });
+    }
+};
