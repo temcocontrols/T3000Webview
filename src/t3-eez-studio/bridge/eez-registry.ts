@@ -13,6 +13,8 @@ import * as _shortcuts from "home/shortcuts";
 import * as _extensions from "eez-studio-shared/extensions/extensions";
 // instrument/import-instrument-definition — used by IPC handler
 import * as _importInstrument from "instrument/import-instrument-definition";
+// instrument/instrument-object — used by message event listener in instruments/index.tsx
+import * as _instrumentObject from "instrument/instrument-object";
 // shortcuts/shortcuts-store — used by extensions.ts
 import * as _shortcutsStore from "shortcuts/shortcuts-store";
 // moment — used by getMoment() in util.ts for date formatting
@@ -29,6 +31,7 @@ reg["home/history"] = _history;
 reg["home/shortcuts"] = _shortcuts;
 reg["eez-studio-shared/extensions/extensions"] = _extensions;
 reg["instrument/import-instrument-definition"] = _importInstrument;
+reg["instrument/instrument-object"] = _instrumentObject;
 reg["shortcuts/shortcuts-store"] = _shortcutsStore;
 reg["moment"] = _moment;
 reg["moment-duration-format"] = function install(m: any) { /* already applied via import */ };

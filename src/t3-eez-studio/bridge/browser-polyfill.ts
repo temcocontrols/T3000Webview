@@ -32,6 +32,8 @@ import "ace-builds/src-noconflict/mode-python";
     version: "",
     versions: { node: "" },
 };
+// Empscripten-generated WASM JS files use CommonJS `module`
+(globalThis as any).module = (globalThis as any).module || { exports: {} };
 
 // Safe JSON.parse
 const _origParse = JSON.parse;
