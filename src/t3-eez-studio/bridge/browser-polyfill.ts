@@ -22,10 +22,11 @@ import "ace-builds/src-noconflict/mode-python";
 (globalThis as any).global = globalThis;
 (globalThis as any).__dirname = "/";
 (globalThis as any).__filename = "/index.js";
-(globalThis as any).process = (globalThis as any).process || {
-    env: {},
+(globalThis as any).process = {
+    ...(globalThis as any).process,   // keep existing fields
+    env: (globalThis as any).process?.env || {},
     platform: "browser",
-    type: "renderer",
+    type: "renderer1",                 // <-- always set
     execPath: "/usr/bin/node",
     cwd: () => "/",
     argv: [],
@@ -173,6 +174,12 @@ const ipcSyncDefaults: Record<string, any> = {
         getIsDarkTheme: () => false,
         getHomePath: () => "/project",
         getExtensionsFolderPath: () => "/userData/extensions",
+        getLocale: () => localStorage.getItem("locale") || "en",
+        setLocale: (value: string) => localStorage.setItem("locale", value),
+        getDateFormat: () => "YYYY-MM-DD",
+        setDateFormat: (value: string) => {},
+        getTimeFormat: () => "HH:mm:ss",
+        setTimeFormat: (value: string) => {},
     };
     if (path.includes("electron-context-menu")) return () => {};
     if (path === "mousetrap") return Mousetrap;
