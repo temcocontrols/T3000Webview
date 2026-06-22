@@ -26,7 +26,7 @@ import "ace-builds/src-noconflict/mode-python";
     ...(globalThis as any).process,   // keep existing fields
     env: (globalThis as any).process?.env || {},
     platform: "browser",
-    type: "renderer1",                 // <-- always set
+    type: "renderer",                 // <-- always set
     execPath: "/usr/bin/node",
     cwd: () => "/",
     argv: [],
