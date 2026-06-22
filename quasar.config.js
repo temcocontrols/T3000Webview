@@ -53,7 +53,7 @@ module.exports = configure(function (/* ctx */) {
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#build
     build: {
       target: {
-        browser: ["es2019", "edge88", "firefox78", "chrome87", "safari13.1"],
+        browser: ["es2020", "edge88", "firefox78", "chrome87", "safari14"],
         node: "node16",
       },
 
@@ -129,6 +129,7 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['better-sqlite3'] = stub('better-sqlite3.ts');
         viteConf.resolve.alias['simple-git'] = stub('simple-git.ts');
         viteConf.resolve.alias['archiver'] = stub('archiver.ts');
+        viteConf.resolve.alias['serialport'] = stub('serialport.ts');
 
         // Replace Electron-only util-electron.ts with browser-safe util-web.ts
         const utilWeb = require('path').resolve(__dirname, 'src/lib/t3-eez-studio/eez-studio-shared/util-web.ts');
@@ -192,6 +193,7 @@ module.exports = configure(function (/* ctx */) {
             ],
         };
       },
+
       viteVuePluginOptions: {
         template: {
           compilerOptions: {

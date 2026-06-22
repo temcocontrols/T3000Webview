@@ -32,17 +32,33 @@ const t3: BridgeAPI = {
     readTextFile: p => api(`/read-text-file?path=${enc(p)}`).then(r=>r.text()),
     writeTextFile: (p,d) => api(`/write-text-file?path=${enc(p)}`,{method:"POST",body:d}).then(noop),
     makeFolder: p => api("/make-folder",{method:"POST",body:JSON.stringify({path:p})}).then(noop),
-    fileExists: p => api(`/file-exists?path=${enc(p)}`).then(r=>r.json()).then((j: any) => j?.exists ?? false),
+    fileExists: p => api(`/file-exists?path=${enc(p)}`).then(r=>r.json()).then(function(j: any) { return (j && j.exists) || false; }),
     deleteFile: p => api(`/delete-file?path=${enc(p)}`,{method:"DELETE"}).then(noop),
     listFiles: p => api(`/list-files?path=${enc(p)}`).then(r=>r.json()),
-    getFileSize: p => api(`/file-size?path=${enc(p)}`).then(r=>r.json()).then((j: any) => j?.size ?? 0),
-    isDirectory: p => api(`/is-directory?path=${enc(p)}`).then(r=>r.json()).then((j: any) => j?.is_directory ?? false),
-    showOpenDialog: (o) => new Promise(r=>{const i=document.createElement("input");i.type="file";if(o.properties?.includes("openDirectory"))(i as any).webkitdirectory=true;i.onchange=()=>r(Array.from(i.files||[]).map((f:any)=>f.webkitRelativePath||f.name));i.oncancel=()=>r([]);i.click()}),
-    showSaveDialog: (o) => Promise.resolve(prompt("Save as:",o.defaultPath||"untitled")||undefined),
-    showMessageBox: (o) => Promise.resolve({response:confirm(o.message+(o.detail?"\n\n"+o.detail:""))?0:o.cancelId??1}),
+    getFileSize: p => api(`/file-size?path=${enc(p)}`).then(r=>r.json()).then(function(j: any) { return (j && j.size) || 0; }),
+    isDirectory: p => api(`/is-directory?path=${enc(p)}`).then(r=>r.json()).then(function(j: any) { return (j && j.is_directory) || false; }),
+    showOpenDialog: (o) => new Promise(r => {
+        const i = document.createElement("input");
+        i.type = "file";
+        if (o.properties && o.properties.includes("openDirectory")) {
+            (i as any).webkitdirectory = true;
+        }
+        i.onchange = () => r(Array.from(i.files || []).map((f: any) => f.webkitRelativePath || f.name));
+        i.oncancel = () => r([]);
+        i.click();
+    }),
+    showSaveDialog: function (o: any) {
+        return Promise.resolve(prompt("Save as:", o.defaultPath || "untitled") || undefined);
+    },
+    showMessageBox: function (o: any) {
+        var msg = o.message;
+        if (o.detail) { msg = msg + "\n\n" + o.detail; }
+        var response = confirm(msg) ? 0 : (o.cancelId != null ? o.cancelId : 1);
+        return Promise.resolve({ response: response });
+    },
     getUserDataPath: s => `/userData/${s}`,
     getAppVersion: () => "0.28.0",
-    isDev: () => (import.meta as any).env?.DEV ?? false,
+    isDev: function() { var env = (import.meta as any).env; return env && env.DEV; },
     openProject: p => api(`/read-text-file?path=${enc(p)}`).then(r=>r.json()),
     saveProject: (p,d) => api(`/write-text-file?path=${enc(p)}`,{method:"POST",body:JSON.stringify(d,null,2)}).then(noop),
     buildProject: (p, _cb) => api("/build-project",{method:"POST",body:JSON.stringify({filePath:p})}).then(noop),
