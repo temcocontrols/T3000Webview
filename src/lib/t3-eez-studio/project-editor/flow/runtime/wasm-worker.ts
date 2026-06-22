@@ -26,7 +26,13 @@ import { runInAction } from "mobx";
 import deepEqual from "fast-deep-equal";
 import { LVGLVersion } from "project-editor/project/project";
 
-const eez_flow_runtime_constructor = require("project-editor/flow/runtime/wasm/eez_runtime.js");
+let eez_flow_runtime_constructor: any;
+// Empscripten-generated WASM JS uses CommonJS module.exports.
+// Provide a module object so the import doesn't throw "module is not defined".
+(globalThis as any).module = (globalThis as any).module || { exports: {} };
+import("project-editor/flow/runtime/wasm/eez_runtime.js").then(m => {
+    eez_flow_runtime_constructor = m.default || m || (globalThis as any).module.exports;
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 

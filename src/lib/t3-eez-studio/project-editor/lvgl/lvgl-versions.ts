@@ -466,7 +466,26 @@ export function getLvglWasmFlowRuntimeConstructor(
     let wasmFlowRuntimeConstructor =
         wasmFlowRuntimeConstructors[wasmFlowRuntime];
     if (!wasmFlowRuntimeConstructor) {
-        wasmFlowRuntimeConstructor = require(wasmFlowRuntime);
+        // WASM runtime not available in browser — dummy Proxy catches all method calls
+        wasmFlowRuntimeConstructor = (callback: any) => {
+            let nextId = 1;
+            const wasm = new Proxy({} as any, {
+                get(_target, prop: string) {
+                    if (prop === "then") return undefined;
+                    // Return incrementing ID for create methods so each widget gets a unique _lvglObj
+                    if (prop.startsWith("_lvglCreate") || prop.startsWith("_create") || prop === "_mainLoop") {
+                        return () => nextId++;
+                    }
+                    if (prop.includes("Width") || prop.includes("width")) return () => 100;
+                    if (prop.includes("Height") || prop.includes("height")) return () => 30;
+                    if (prop.includes("Size")) return () => 100;
+                    if (prop.startsWith("_lvglGet") || prop.startsWith("_get")) return () => 0;
+                    return () => {};
+                }
+            });
+            setTimeout(() => callback(), 0);
+            return wasm;
+        };
         wasmFlowRuntimeConstructors[wasmFlowRuntime] =
             wasmFlowRuntimeConstructor;
     }
