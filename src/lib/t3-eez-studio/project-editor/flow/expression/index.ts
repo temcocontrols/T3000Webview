@@ -12,12 +12,15 @@ export {
 } from "project-editor/flow/expression/build";
 
 export {
+    // IExpressionContext,
     evalConstantExpression,
     evalExpression,
     evalExpressionGetValueType,
     evalAssignableExpression,
     ExpressionEvalError
 } from "project-editor/flow/expression/eval";
+
+export type { IExpressionContext } from "project-editor/flow/expression/eval";
 
 export {
     parseIdentifier,
