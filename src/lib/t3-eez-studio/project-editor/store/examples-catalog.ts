@@ -17,8 +17,20 @@ export const EEZ_PROJECT_EXAMPLES_REPOSITORY =
 // const CATALOG_VERSION_DOWNLOAD_URL =
 //     "https://github.com/eez-open/eez-project-examples/raw/master/build/catalog-version.json";
 
-const CATALOG_DOWNLOAD_URL =
-    "https://github.com/eez-open/eez-project-examples/raw/master/build/catalog.zip";
+// const CATALOG_DOWNLOAD_URL =
+//     "https://github.com/eez-open/eez-project-examples/raw/master/build/catalog.zip";
+
+// export const CATALOG_VERSION_DOWNLOAD_URL =
+//   "https://raw.githubusercontent.com/eez-open/eez-project-examples/master/build/catalog-version.json";
+
+// export const CATALOG_DOWNLOAD_URL =
+//   "https://raw.githubusercontent.com/eez-open/eez-project-examples/master/build/catalog.zip";
+
+export const CATALOG_VERSION_DOWNLOAD_URL =
+  "/ghraw-examples/catalog-version.json";
+
+export const CATALOG_DOWNLOAD_URL =
+  "/ghraw-examples/catalog.zip";
 
 interface ICatalogVersion {
     lastModified: Date;
@@ -77,14 +89,8 @@ class ExamplesCatalog {
         return [] as ExampleProject[];
     }
 
-    /*
     get catalogVersionPath() {
         return getUserDataPath("examples-catalog-version.json");
-    }
-    */
-
-    get catalogVersionPath() {
-        return "examples-catalog-version.json"; //override with local file
     }
 
     async _loadCatalogVersion() {
@@ -129,7 +135,6 @@ class ExamplesCatalog {
         return true;
     }
 
-    /*
     downloadCatalogVersion() {
         return new Promise<ICatalogVersion>((resolve, reject) => {
             var req = new XMLHttpRequest();
@@ -159,30 +164,6 @@ class ExamplesCatalog {
             req.send();
         });
     }
-    */
-
-    async downloadCatalogVersion(): Promise<ICatalogVersion> {
-        try {
-            // Directly read the local JSON file
-            const catalogVersion = await readJsObjectFromFile(
-                this.catalogVersionPath
-            );
-
-            // Normalize the lastModified field
-            catalogVersion.lastModified = new Date(catalogVersion.lastModified);
-
-            console.log("Loaded catalog-version.json from local folder", catalogVersion);
-
-            // Optionally still write it back if you want consistency
-            await writeJsObjectToFile(this.catalogVersionPath, catalogVersion);
-
-            return catalogVersion;
-        } catch (e) {
-            console.error("Failed to read local catalog-version.json", e);
-            throw e;
-        }
-    }
-
 
     downloadCatalog() {
         console.log("downloadCatalog");

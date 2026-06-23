@@ -94,14 +94,14 @@ export const ipcRenderer = {
                 const projPath = `/project/${file.name}`;
                 try {
                     // await fetch("http://localhost:9103/api/bridge/make-folder",
-                    await fetch("make-folder",
+                    await fetch("/api/bridge/make-folder",
                         {
                             method: "POST",
                             body: JSON.stringify({ path: folderPath }),
                             headers: { "Content-Type": "application/json" }
                         });
                     // const resp = await fetch("http://localhost:9103/api/bridge/write-text-file?path=" + encodeURIComponent(projPath), {
-                    const resp = await fetch("write-text-file?path=" + encodeURIComponent(projPath), {
+                    const resp = await fetch("/api/bridge/write-text-file?path=" + encodeURIComponent(projPath), {
                         method: "POST",
                         body: text,
                         headers: { "Content-Type": "text/plain" }

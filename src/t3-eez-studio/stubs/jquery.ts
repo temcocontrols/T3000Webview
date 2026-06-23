@@ -18,6 +18,15 @@ function createJQueryObj(elements: any[]) {
         elements,
         length: elements.length,
         0: elements[0] || null,
+        // Element access
+        get(index: number) {
+            return elements[index] || null;
+        },
+        eq(index: number) {
+            return index >= 0 && index < elements.length
+                ? createJQueryObj([elements[index]])
+                : createJQueryObj([]);
+        },
         // Events
         on(event: string, handler: any) {
             elements.forEach(el => {

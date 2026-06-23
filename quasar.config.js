@@ -219,7 +219,22 @@ module.exports = configure(function (/* ctx */) {
             changeOrigin: true,
             secure: true,
             rewrite: path => path.replace(/^\/gitea-hr/, "")
+          },
+
+          "/ghraw": {
+            target: "https://raw.githubusercontent.com/eez-open/studio-extensions/master/build",
+            changeOrigin: true,
+            secure: true,
+            rewrite: path => path.replace(/^\/ghraw/, "")
+          },
+
+          "/ghraw-examples": {
+            target: "https://raw.githubusercontent.com/eez-open/eez-project-examples/master/build",
+            changeOrigin: true,
+            secure: true,
+            rewrite: path => path.replace(/^\/ghraw-examples/, "")
           }
+
         };
       },
 

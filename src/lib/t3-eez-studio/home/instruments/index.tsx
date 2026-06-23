@@ -261,6 +261,7 @@ function openEditor(
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 window.addEventListener("message", (message: any) => {
     const { instruments } =
         require("instrument/instrument-object") as typeof import("instrument/instrument-object");
@@ -277,6 +278,25 @@ window.addEventListener("message", (message: any) => {
             return;
         }
     }
+});
+*/
+
+window.addEventListener("message", (message: any) => {
+  if (!instruments) return; // guard against undefined
+
+  for (let key of instruments.keys()) {
+    const instrument = instruments.get(key);
+    if (instrument && instrument.id === message.data.instrumentId) {
+      if (message.data.type === "open-instrument-editor") {
+        openEditor(instrument, message.data.target);
+      } else if (message.data.type === "delete-instrument") {
+        beginTransaction("Delete instrument");
+        deleteInstrument(instrument);
+        commitTransaction();
+      }
+      return;
+    }
+  }
 });
 
 const TabButton = observer(function ({ tab }: { tab: ITabDefinition }) {

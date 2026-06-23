@@ -11,18 +11,26 @@ import * as notification from "eez-studio-ui/notification";
 
 import { IExtension } from "eez-studio-shared/extensions/extension";
 
-import localCatalogVersion from "./catalog-version.json";
+// import localCatalogVersion from "./catalog-version.json";
 
 import JSZip from "jszip";
 
-// export let DEFAULT_EXTENSIONS_CATALOG_VERSION_DOWNLOAD_URL =
-//     "https://github.com/eez-open/studio-extensions/raw/master/build/catalog-version.json";
+/*
+export let DEFAULT_EXTENSIONS_CATALOG_VERSION_DOWNLOAD_URL =
+    "https://github.com/eez-open/studio-extensions/raw/master/build/catalog-version.json";
 
-// export const DEFAULT_EXTENSIONS_CATALOG_DOWNLOAD_URL =
-//     "https://github.com/eez-open/studio-extensions/raw/master/build/catalog.zip";
+export const DEFAULT_EXTENSIONS_CATALOG_DOWNLOAD_URL =
+    "https://github.com/eez-open/studio-extensions/raw/master/build/catalog.zip";
+*/
 
-export const DEFAULT_EXTENSIONS_CATALOG_VERSION_DOWNLOAD_URL = "catalog-version.json"; //override with local file
-export const DEFAULT_EXTENSIONS_CATALOG_DOWNLOAD_URL = "catalog.zip";
+export let DEFAULT_EXTENSIONS_CATALOG_VERSION_DOWNLOAD_URL =
+    "/ghraw/catalog-version.json";
+
+export const DEFAULT_EXTENSIONS_CATALOG_DOWNLOAD_URL =
+    "/ghraw/catalog.zip";
+
+// export const DEFAULT_EXTENSIONS_CATALOG_VERSION_DOWNLOAD_URL = "catalog-version.json"; //override with local file
+// export const DEFAULT_EXTENSIONS_CATALOG_DOWNLOAD_URL = "catalog.zip";
 
 interface ICatalogVersion {
     lastModified: Date;
@@ -79,8 +87,8 @@ class ExtensionsCatalog {
     */
 
     get catalogVersionPath() {
-        // return getUserDataPath("catalog-version.json");
-        return DEFAULT_EXTENSIONS_CATALOG_VERSION_DOWNLOAD_URL;
+        return getUserDataPath("catalog-version.json");
+        // return DEFAULT_EXTENSIONS_CATALOG_VERSION_DOWNLOAD_URL;
     }
 
     async _loadCatalogVersion() {
@@ -125,9 +133,8 @@ class ExtensionsCatalog {
         }
 
         return true;
-    }
-
-    /*
+    } 
+  
     downloadCatalogVersion() {
         return new Promise<ICatalogVersion>((resolve, reject) => {
             var req = new XMLHttpRequest();
@@ -156,9 +163,9 @@ class ExtensionsCatalog {
 
             req.send();
         });
-    }
-    */
+    } 
 
+    /*
     async downloadCatalogVersion(): Promise<ICatalogVersion> {
         try {
 
@@ -173,8 +180,8 @@ class ExtensionsCatalog {
             throw e;
         }
     }
+    */
 
-    /*
     downloadCatalog() {
         var req = new XMLHttpRequest();
         req.responseType = "arraybuffer";
@@ -197,7 +204,6 @@ class ExtensionsCatalog {
         });
 
         req.addEventListener("load", async () => {
-            debugger;
             const decompress = require("decompress");
 
             const files = await decompress(Buffer.from(req.response));
@@ -226,8 +232,8 @@ class ExtensionsCatalog {
 
         req.send();
     }
-    */
 
+    /*
     async downloadCatalog(): Promise<void> {
         return new Promise<void>((resolve, reject) => {
             const req = new XMLHttpRequest();
@@ -259,7 +265,7 @@ class ExtensionsCatalog {
                     const catalog = JSON.parse(catalogJson);
 
                     runInAction(() => (this.catalog = catalog));
-                    try { await writeJsObjectToFile(this.catalogPath, this.catalog); } catch { /* cache only */ }
+                    try { await writeJsObjectToFile(this.catalogPath, this.catalog); } catch {   }
 
                     notification.update(progressToastId, {
                         type: notification.SUCCESS,
@@ -291,7 +297,7 @@ class ExtensionsCatalog {
             req.send();
         });
     } 
-
+    */
 }
 
 export const extensionsCatalog = new ExtensionsCatalog();
