@@ -105,12 +105,6 @@ export const App = observer(
                         model={layoutModels.app}
                         factory={this.factory}
                         iconFactory={this.iconFactory}
-                        onRenderTab={(node, renderValues) => {
-                            const iconStr = node.getIcon();
-                            if (typeof iconStr === "string") {
-                                renderValues.leading = <Icon icon={iconStr} size={20} />;
-                            }
-                        }}
                     />
                 );
             }

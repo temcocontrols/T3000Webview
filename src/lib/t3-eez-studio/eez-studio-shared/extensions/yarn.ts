@@ -8,14 +8,7 @@ import { extensionsFolderPath } from "eez-studio-shared/extensions/extension-fol
 
 import type { IExtension } from "eez-studio-shared/extensions/extension";
 
-import { getBridgeAPI } from "eez-studio-shared/bridge";
-
 function yarnFn(args: string[]) {
-    // Browser: yarn is a Node.js CLI tool, not available
-    if (typeof process === "undefined" || !!(process as any).type) {
-        console.log("[EEZ] yarn skipped in browser:", args.join(" "));
-        return Promise.resolve();
-    }
     const yarn = sourceRootDir() + "/../libs/yarn-1.22.10.js";
     const cp = require("child_process");
 
@@ -81,23 +74,10 @@ export async function yarnUninstall(moduleName: string) {
 export async function getNodeModuleFolders() {
     const packageJsonPath = `${extensionsFolderPath}/package.json`;
     if (!(await fileExists(packageJsonPath))) {
-        // In browser: yarn is unavailable; seed a minimal package.json via bridge
-        const bridge = getBridgeAPI();
-        if (bridge) {
-            try {
-                await bridge.writeTextFile(
-                    packageJsonPath,
-                    JSON.stringify({ name: "eez-extensions", version: "1.0.0", private: true, dependencies: {} }, null, 2)
-                );
-            } catch (err) {
-                console.log("[EEZ] Failed to seed extensions package.json:", err);
-            }
-        } else {
-            try {
-                await yarnFn(["init", "-y"]);
-            } catch (err) {
-                console.log("yarn", err);
-            }
+        try {
+            await yarnFn(["init", "-y"]);
+        } catch (err) {
+            console.log("yarn", err);
         }
     }
 
@@ -106,19 +86,7 @@ export async function getNodeModuleFolders() {
         await makeFolder(cacheFolderPath);
     }
 
-    // In browser: use bridge to read the JSON file instead of require()
-    let packageJson: any;
-    const bridge = getBridgeAPI();
-    if (bridge) {
-        try {
-            const text = await bridge.readTextFile(packageJsonPath);
-            packageJson = JSON.parse(text);
-        } catch {
-            packageJson = {};
-        }
-    } else {
-        packageJson = require(packageJsonPath);
-    }
+    const packageJson = require(packageJsonPath);
 
     return Object.keys(packageJson.dependencies || []).map(plugin =>
         path.resolve(extensionsFolderPath, "node_modules", plugin.split("#")[0])

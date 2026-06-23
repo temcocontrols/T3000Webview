@@ -10,7 +10,7 @@ import {
     activityLogStore,
     log,
     logUpdate,
-    type IActivityLogEntry
+    IActivityLogEntry
 } from "instrument/window/history/activity-log";
 
 import type { FileState } from "instrument/connection/file-state";

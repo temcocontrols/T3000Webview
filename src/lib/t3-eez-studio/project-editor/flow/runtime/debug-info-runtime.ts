@@ -8,9 +8,9 @@ import {
 } from "project-editor/flow/runtime/runtime";
 import { ConnectionLine } from "project-editor/flow/connection-line";
 import {
-    evalExpression
+    evalExpression,
+    IExpressionContext
 } from "project-editor/flow/expression";
-import type { IExpressionContext } from "project-editor/flow/expression/eval";
 import type { IFlowContext } from "project-editor/flow/flow-interfaces";
 import type { ValueType } from "eez-studio-types";
 import { getProperty } from "project-editor/core/object";

@@ -126,6 +126,7 @@ const setShowComponentsPaletteInProjectEditor = function (value: boolean) {
 ////////////////////////////////////////////////////////////////////////////////
 
 class SettingsController {
+    
     activetLocale = getLocale();
     activeDateFormat = getDateFormat();
     activeTimeFormat = getTimeFormat();
@@ -261,9 +262,8 @@ class SettingsController {
         const content = document.getElementById(
             "EezStudio_Content"
         ) as HTMLDivElement;
-        if (content) {
-            content.style.opacity = "0";
-        }
+        if (!content) return; // element not yet mounted
+        content.style.opacity = "0";
 
         const body = document.querySelector("#EezStudio_Content>.EezStudio_HeaderWithBody>.EezStudio_Body");
         if (body && body instanceof HTMLDivElement && body.style) {
@@ -280,12 +280,19 @@ class SettingsController {
 
         if (this.isDarkTheme) {
             document.body.parentElement?.setAttribute("data-bs-theme", "dark");
-            if (mainLinkElement) mainLinkElement.href = "../eez-studio-ui/_stylesheets/main-dark.css";
-            if (flexlayoutLinkElement) flexlayoutLinkElement.href = "../../node_modules/flexlayout-react/style/dark.css";
+
+            mainLinkElement.href =
+                "../eez-studio-ui/_stylesheets/main-dark.css";
+
+            flexlayoutLinkElement.href =
+                "../../node_modules/flexlayout-react/style/dark.css";
         } else {
             document.body.parentElement?.setAttribute("data-bs-theme", "light");
-            if (mainLinkElement) mainLinkElement.href = "../eez-studio-ui/_stylesheets/main.css";
-            if (flexlayoutLinkElement) flexlayoutLinkElement.href = "../../node_modules/flexlayout-react/style/light.css";
+
+            mainLinkElement.href = "../eez-studio-ui/_stylesheets/main.css";
+
+            flexlayoutLinkElement.href =
+                "../../node_modules/flexlayout-react/style/light.css";
         }
 
         this.onThemeSwitchedTimeout = setTimeout(() => {
@@ -294,7 +301,7 @@ class SettingsController {
             }
 
             this.onThemeSwitchedTimeout = undefined;
-            if (content) content.style.opacity = "";
+            content.style.opacity = "";
         }, 50);
     }
 
@@ -1046,7 +1053,7 @@ export const Settings = observer(
                                     value={dateFormat.format}
                                 >
                                     {getMoment()(new Date())
-                                        .locale(settingsController.locale)
+                                        .locale(settingsController.locale|| "en")
                                         .format(dateFormat.format)}
                                 </option>
                             ))}
@@ -1062,7 +1069,7 @@ export const Settings = observer(
                                     value={timeFormat.format}
                                 >
                                     {getMoment()(new Date())
-                                        .locale(settingsController.locale)
+                                        .locale(settingsController.locale|| "en")
                                         .format(timeFormat.format)}
                                 </option>
                             ))}

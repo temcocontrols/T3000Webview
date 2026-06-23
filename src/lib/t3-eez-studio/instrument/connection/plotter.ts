@@ -1,9 +1,9 @@
 import {
+    IActivityLogEntry,
     activityLogStore,
     log,
     logDelete,
-    logUpdate,
-    type IActivityLogEntry
+    logUpdate
 } from "instrument/window/history/activity-log";
 import { LongOperation } from "instrument/connection/connection-base";
 

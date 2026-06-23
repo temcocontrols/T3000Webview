@@ -4,7 +4,7 @@ import {
     commitTransaction,
     IStore
 } from "eez-studio-shared/store";
-import type { IActivityLogEntry } from "instrument/window/history/activity-log-interfaces";
+import { IActivityLogEntry } from "instrument/window/history/activity-log-interfaces";
 
 import {
     createStore,

@@ -39,9 +39,9 @@ import {
 } from "project-editor/flow/debugger/logs";
 import { LogItemType } from "project-editor/flow/flow-interfaces";
 import {
-    evalExpression
+    evalExpression,
+    IExpressionContext
 } from "project-editor/flow/expression";
-import type { IExpressionContext } from "project-editor/flow/expression/eval";
 import type {
     IObjectVariableValue,
     ValueType,

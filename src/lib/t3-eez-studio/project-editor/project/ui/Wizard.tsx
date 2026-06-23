@@ -24,7 +24,6 @@ import {
     getHomePath,
     readJsObjectFromFile
 } from "eez-studio-shared/util-electron";
-import { getBridgeAPI } from "eez-studio-shared/bridge";
 import { guid } from "eez-studio-shared/guid";
 import { stringCompare } from "eez-studio-shared/string";
 
@@ -168,7 +167,7 @@ async function loadTemplateFile(
     return fetchUrlOrReadFromCache(pathOrUrl, resultType);
 }
 
-const SAVED_OPTIONS_VERSION = 13;
+const SAVED_OPTIONS_VERSION = 12;
 
 enum SaveOptionsFlags {
     All,
@@ -187,7 +186,7 @@ export class WizardModel {
         wizardModel.folder = "_allTemplates";
         wizardModel.type = "dashboard";
 
-        wizardModel.location = getHomePath("");
+        wizardModel.location = getHomePath("eez-projects");
 
         return wizardModel;
     }
@@ -199,7 +198,9 @@ export class WizardModel {
         wizardModel.folder = "_allExamples";
         wizardModel.type = undefined;
 
-        wizardModel.location = getHomePath("examples");
+        wizardModel.location = getHomePath(
+            "eez-projects" + path.sep + "examples"
+        );
 
         return wizardModel;
     }
@@ -222,7 +223,7 @@ export class WizardModel {
 
     nameError: string | undefined;
 
-    location: string | undefined = getHomePath("");
+    location: string | undefined = getHomePath("eez-projects");
     locationError: string | undefined;
 
     createDirectory: boolean = true;
@@ -422,20 +423,10 @@ export class WizardModel {
     }
 
     async fetchTemplateProjects() {
-        const bridgeAPI = getBridgeAPI();
-
-        const proxiedFetchJson = async (url: string): Promise<any> => {
-            if (bridgeAPI) {
-                const text = await bridgeAPI.proxyFetch(url);
-                return JSON.parse(text);
-            }
-            const response = await fetch(url);
-            return response.json();
-        };
-
-        const data = await proxiedFetchJson(
+        const result = await fetch(
             "https://envox.eu/gitea/api/v1/repos/search?q=eez-flow-template&topic=true"
         );
+        const data = await result.json();
         const templateProjects = data.data.map(
             (templateProject: TemplateProject) =>
                 Object.assign({}, templateProject, {
@@ -459,11 +450,9 @@ export class WizardModel {
                     templateProject.html_url +
                     "/raw/branch/master/template/manifest.json";
 
-                const manifestJson = await proxiedFetchJson(manifestJsonUrl);
-
-                if (!manifestJson || !manifestJson["eez-project-path"]) {
-                    continue;
-                }
+                const manifestJson = await (
+                    await fetch(manifestJsonUrl)
+                ).json();
 
                 const eezProjectUrl =
                     templateProject.html_url +
@@ -473,7 +462,9 @@ export class WizardModel {
                         templateProject.name
                     );
 
-                const eezProjectJson = await proxiedFetchJson(eezProjectUrl);
+                const eezProjectJson = await (
+                    await fetch(eezProjectUrl, { cache: "no-store" })
+                ).json();
 
                 const general = eezProjectJson.settings?.general;
 
@@ -2229,7 +2220,6 @@ const ProjectProperties = observer(
 
         render() {
             const { wizardModel } = this.props;
-            console.log(this.props);
 
             if (wizardModel.type == undefined) {
                 return (

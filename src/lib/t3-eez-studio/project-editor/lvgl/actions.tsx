@@ -1746,10 +1746,10 @@ export function generateLVGLActionsMarkdown() {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// Dynamic import avoids circular dependency: actionDefinitions must be initialized first
-import("./actions-catalog");
+import "./actions-catalog";
 
 /*
+
 ////////////////////////////////////////////////////////////////////////////////
 
 const LVGL_ACTIONS = {

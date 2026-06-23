@@ -216,12 +216,6 @@ export function remap(
 }
 
 export function sourceRootDir() {
-    // Browser: __dirname is "/" so "/.." would resolve to filesystem root,
-    // causing readFolder to list the Rust project directory (hundreds of entries).
-    // Return a safe empty path inside the bridge data space instead.
-    if (typeof process === "undefined" || !!(process as any).type) {
-        return "/_preinstalled";
-    }
     return __dirname + "/..";
 }
 

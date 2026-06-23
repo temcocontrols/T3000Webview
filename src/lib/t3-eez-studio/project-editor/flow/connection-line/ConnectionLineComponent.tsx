@@ -13,9 +13,6 @@ import { getValueLabel } from "project-editor/features/variable/value-type";
 import type { ComponentInput } from "project-editor/flow/component";
 
 import { getConnectionLineShape } from "project-editor/flow/connection-line/connection-line-shape";
-
-// Vite-compatible image import — resolves via eez-studio-ui alias
-import imageBackground from "eez-studio-ui/_images/image_background.png";
 import {
     registerPath,
     unregisterPath
@@ -371,7 +368,7 @@ export const LineMarkers = () => (
                 height="16"
             >
                 <image
-                    href={imageBackground}
+                    href="../eez-studio-ui/_images/image_background.png"
                     x="0"
                     y="0"
                     width="16"

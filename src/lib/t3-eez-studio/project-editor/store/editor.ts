@@ -340,13 +340,6 @@ export class EditorsStore {
 
         this.saveState();
 
-        // Prevent onModelChange (triggered during doAction in openEditor)
-        // from scheduling a setTimeout that nukes activeEditor after
-        // openEditor finishes setting it.
-        if (!showActiveEditor && editors.length === 0 && this.editors.length > 0) {
-            return editors;
-        }
-
         setTimeout(() => {
             let changed =
                 this.activeEditor != activeEditor ||
@@ -487,23 +480,6 @@ export class EditorsStore {
                     editorFound.tabId
                 ) as FlexLayout.TabNode;
             } else {
-                // Resolve the actual tabset ID at runtime.
-                // FlexLayout 0.9.x may produce a different internal ID
-                // than the "EDITORS" specified in the layout JSON.
-                let tabsetId: string = this.tabsetID;
-                const model = this.tabsModel;
-                if (model) {
-                    const found = model.getNodeById(this.tabsetID);
-                    if (found instanceof FlexLayout.TabSetNode) {
-                        tabsetId = found.getId();
-                    } else {
-                        model.visitNodes(n => {
-                            if (n instanceof FlexLayout.TabSetNode && n.getChildren().length === 0) {
-                                tabsetId = n.getId();
-                            }
-                        });
-                    }
-                }
                 tabNode = this.tabsModel.doAction(
                     FlexLayout.Actions.addNode(
                         {
@@ -513,7 +489,7 @@ export class EditorsStore {
                             config: editor.getConfig(),
                             icon
                         },
-                        tabsetId,
+                        this.tabsetID,
                         FlexLayout.DockLocation.CENTER,
                         0,
                         true

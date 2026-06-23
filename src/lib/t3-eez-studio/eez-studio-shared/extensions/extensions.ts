@@ -187,45 +187,26 @@ export async function reloadExtension(folder: string) {
 ///////////////////////////////////////////////////////////////////////////////
 
 export async function loadExtensions(nodeModuleFolders: string[]) {
-    let preinstalledExtensionFolders: string[];
-    try {
-        preinstalledExtensionFolders = await readFolder(
-            preInstalledExtensionsFolderPath
-        );
-    } catch (err) {
-        console.info(
-            `Preinstalled extensions folder "${preInstalledExtensionsFolderPath}" doesn't exist.`
-        );
-        preinstalledExtensionFolders = [];
-    }
+    let preinstalledExtensionFolders = await readFolder(
+        preInstalledExtensionsFolderPath
+    );
 
     let installedExtensionFolders: string[];
     try {
         installedExtensionFolders = await readFolder(extensionsFolderPath);
 
-        // Async filter: use bridge-backed isDirectory in browser, lstatSync in Electron
-        const keepFlags: boolean[] = [];
-        for (const extensionFolderPath of installedExtensionFolders) {
-            const basename = path.basename(extensionFolderPath);
-            if (basename === "node_modules" || basename === "cache") {
-                keepFlags.push(false);
-                continue;
-            }
-            // In browser: fs.lstatSync is stubbed; prefer async isDirectory check
-            try {
-                const { getBridgeAPI } = await import("eez-studio-shared/bridge");
-                const bridge = getBridgeAPI();
-                if (bridge) {
-                    const isDir = await bridge.isDirectory(extensionFolderPath);
-                    keepFlags.push(isDir);
-                } else {
-                    keepFlags.push(!fs.lstatSync(extensionFolderPath).isFile());
+        installedExtensionFolders = installedExtensionFolders.filter(
+            extensionFolderPath => {
+                if (fs.lstatSync(extensionFolderPath).isFile()) {
+                    return false;
                 }
-            } catch {
-                keepFlags.push(!fs.lstatSync(extensionFolderPath).isFile());
+                const basename = path.basename(extensionFolderPath);
+                if (basename == "node_modules" || basename == "cache") {
+                    return false;
+                }
+                return true;
             }
-        }
-        installedExtensionFolders = installedExtensionFolders.filter((_, i) => keepFlags[i]);
+        );
     } catch (err) {
         console.info(
             `Extensions folder "${extensionsFolderPath}" doesn't exists.`

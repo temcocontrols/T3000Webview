@@ -138,16 +138,22 @@ export const LOCALES = {
     zu: "Zulu"
 };
 
-export let getLocale: () => string = () => "en";
-export let setLocale: (value: string) => void = () => {};
+export let getLocale: () => string;
+export let setLocale: (value: string) => void;
 
-// Always use renderer path in browser (isRenderer() may race with process.type polyfill)
-getLocale = function () {
-    try { return ipcRenderer.sendSync("getLocale"); } catch { return "en"; }
-};
-setLocale = function (value: string) {
-    try { ipcRenderer.send("setLocale", value); } catch {}
-};
+if (isRenderer()) {
+    debugger;
+    getLocale = function () {
+        return ipcRenderer.sendSync("getLocale");
+    };
+
+    setLocale = function (value: string) {
+        ipcRenderer.send("setLocale", value);
+    };
+} else {
+    debugger;
+    ({ getLocale, setLocale } = require("main/settings") as any);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -158,18 +164,38 @@ export const DATE_FORMATS = [
     { format: "ll", description: "Locale default #4" }
 ];
 
-export let getDateFormat: () => string = () => "YYYY-MM-DD";
-export let setDateFormat: (value: string) => void = () => {};
-getDateFormat = function () { try { return ipcRenderer.sendSync("getDateFormat"); } catch { return "YYYY-MM-DD"; } };
-setDateFormat = function (value: string) { try { ipcRenderer.send("setDateFormat", value); } catch {} };
+export let getDateFormat: () => string;
+export let setDateFormat: (value: string) => void;
+
+if (isRenderer()) {
+    getDateFormat = function () {
+        return ipcRenderer.sendSync("getDateFormat");
+    };
+
+    setDateFormat = function (value: string) {
+        ipcRenderer.send("setDateFormat", value);
+    };
+} else {
+    ({ getDateFormat, setDateFormat } = require("main/settings") as any);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
 export const TIME_FORMATS = [{ format: "LTS", description: "Locale default" }];
 
-export let getTimeFormat: () => string = () => "HH:mm:ss";
-export let setTimeFormat: (value: string) => void = () => {};
-getTimeFormat = function () { try { return ipcRenderer.sendSync("getTimeFormat"); } catch { return "HH:mm:ss"; } };
-setTimeFormat = function (value: string) { try { ipcRenderer.send("setTimeFormat", value); } catch {} };
+export let getTimeFormat: () => string;
+export let setTimeFormat: (value: string) => void;
+
+if (isRenderer()) {
+    getTimeFormat = function () {
+        return ipcRenderer.sendSync("getTimeFormat");
+    };
+
+    setTimeFormat = function (value: string) {
+        ipcRenderer.send("setTimeFormat", value);
+    };
+} else {
+    ({ getTimeFormat, setTimeFormat } = require("main/settings") as any);
+}
 
 ////////////////////////////////////////////////////////////////////////////////

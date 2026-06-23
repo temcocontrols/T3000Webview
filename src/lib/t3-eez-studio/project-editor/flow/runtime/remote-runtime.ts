@@ -33,9 +33,9 @@ import { ProjectStore } from "project-editor/store";
 
 import { getObjectFromStringPath } from "project-editor/store";
 import {
-    evalExpression
+    evalExpression,
+    IExpressionContext
 } from "project-editor/flow/expression";
-import type { IExpressionContext } from "project-editor/flow/expression/eval";
 import { ProjectEditor } from "project-editor/project-editor-interface";
 import { ExecuteComponentLogItem } from "project-editor/flow/debugger/logs";
 import { InputActionComponent } from "project-editor/flow/components/actions";

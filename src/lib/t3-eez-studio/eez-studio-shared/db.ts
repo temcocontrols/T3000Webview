@@ -17,13 +17,25 @@ import { allStores } from "eez-studio-shared/store";
 
 ////////////////////////////////////////////////////////////////////////////////
 
-export let getActiveDbPath: () => string = () => "/userData/storage.db";
-export let getDbPaths: () => MainSettingsModule.IDbPath[] = () => [];
-export let setDbPaths: (dbPaths: MainSettingsModule.IDbPath[]) => void = () => {};
-// Always use renderer path in browser
-getActiveDbPath = function () { try { return ipcRenderer.sendSync("getActiveDbPath"); } catch { return "/userData/storage.db"; } };
-getDbPaths = function () { try { return ipcRenderer.sendSync("getDbPaths"); } catch { return []; } };
-setDbPaths = function (dbPaths: MainSettingsModule.IDbPath[]) { try { ipcRenderer.send("setDbPaths", dbPaths); } catch {} };
+export let getActiveDbPath: () => string;
+export let getDbPaths: () => MainSettingsModule.IDbPath[];
+export let setDbPaths: (dbPaths: MainSettingsModule.IDbPath[]) => void;
+if (isRenderer()) {
+    getActiveDbPath = function () {
+        return ipcRenderer.sendSync("getActiveDbPath");
+    };
+
+    getDbPaths = function () {
+        return ipcRenderer.sendSync("getDbPaths");
+    };
+
+    setDbPaths = function (dbPaths: MainSettingsModule.IDbPath[]) {
+        ipcRenderer.send("setDbPaths", dbPaths);
+    };
+} else {
+    ({ getActiveDbPath, getDbPaths, setDbPaths } =
+        require("main/settings") as typeof MainSettingsModule);
+}
 
 export let db = new DatabaseConstructor(getActiveDbPath());
 db.defaultSafeIntegers();

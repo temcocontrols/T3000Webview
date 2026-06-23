@@ -7,7 +7,7 @@ import * as notification from "eez-studio-ui/notification";
 import { getFileNameExtension } from "eez-studio-shared/util-electron";
 import { UNITS, PREFIXES } from "eez-studio-shared/units";
 
-import type { IActivityLogEntry } from "instrument/window/history/activity-log";
+import { IActivityLogEntry } from "instrument/window/history/activity-log";
 import type { FileState } from "instrument/connection/file-state";
 import { decodeDlog } from "instrument/window/waveform/dlog-file";
 
