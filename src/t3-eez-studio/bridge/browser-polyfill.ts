@@ -185,29 +185,66 @@ const ipcSyncDefaults: Record<string, any> = {
     if (path === "mousetrap") return Mousetrap;
     if (path === "simple-git") return { simpleGit: () => ({ init:()=>Promise.resolve(), status:()=>Promise.resolve({files:[],isClean:()=>true}), log:()=>Promise.resolve({all:[],latest:null,total:0}), diff:()=>Promise.resolve(""), add:()=>Promise.resolve(), commit:()=>Promise.resolve(), push:()=>Promise.resolve(), pull:()=>Promise.resolve(), checkout:()=>Promise.resolve(), branch:()=>Promise.resolve({all:[],current:""}), fetch:()=>Promise.resolve(), remote:()=>Promise.resolve([]) }) };
     if (path === "decompress") return async function decompress(buf: Buffer) {
-        // Browser-compatible zip decompressor for single-file archives
+        // Browser-compatible zip decompressor using central directory
         const data = new Uint8Array(buf);
         const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+        const textDecoder = new TextDecoder();
+
+        // Find EOCD signature PK\x05\x06 at the end of the file
+        let eocdOffset = -1;
+        for (let i = Math.max(0, data.length - 65557); i <= data.length - 22; i++) {
+            if (dv.getUint32(i, true) === 0x06054b50) {
+                eocdOffset = i;
+                break;
+            }
+        }
+        if (eocdOffset < 0) return [];
+
+        const cdOffset = dv.getUint32(eocdOffset + 16, true);
+        const cdSize = dv.getUint32(eocdOffset + 12, true);
+
+        // Read central directory entries to get file offsets, sizes, names
+        interface CDEntry { offset: number; name: string; }
+        const entries: CDEntry[] = [];
+        let cdPos = cdOffset;
+        const cdEnd = cdOffset + cdSize;
+        while (cdPos < cdEnd - 46) {
+            if (dv.getUint32(cdPos, true) !== 0x02014b50) break;
+            const nameLen = dv.getUint16(cdPos + 28, true);
+            const extraLen = dv.getUint16(cdPos + 30, true);
+            const commentLen = dv.getUint16(cdPos + 32, true);
+            const localOffset = dv.getUint32(cdPos + 42, true);
+            const name = textDecoder.decode(data.slice(cdPos + 46, cdPos + 46 + nameLen));
+            entries.push({ offset: localOffset, name });
+            cdPos += 46 + nameLen + extraLen + commentLen;
+        }
+
+        // Sort by local header offset so we can calculate boundaries
+        entries.sort((a, b) => a.offset - b.offset);
+
+        // Decompress each file
         const files: any[] = [];
-        let offset = 0;
-        while (offset < data.length - 4) {
-            const sig = dv.getUint32(offset, true);
-            if (sig !== 0x04034b50) break; // "PK\x03\x04"
-            offset += 4;
-            const compression = dv.getUint16(offset + 4, true);
-            const fileNameLen = dv.getUint16(offset + 22, true);
-            const extraLen = dv.getUint16(offset + 24, true);
-            const compressedSize = dv.getUint32(offset + 14, true);
-            const name = new TextDecoder().decode(data.slice(offset + 26, offset + 26 + fileNameLen));
-            const fileStart = offset + 26 + fileNameLen + extraLen;
+        for (let e = 0; e < entries.length; e++) {
+            const entry = entries[e];
+            let lhOffset = entry.offset;
+            if (dv.getUint32(lhOffset, true) !== 0x04034b50) continue;
+            lhOffset += 4;
+            const compression = dv.getUint16(lhOffset + 4, true);
+            const fileNameLen = dv.getUint16(lhOffset + 22, true);
+            const extraLen = dv.getUint16(lhOffset + 24, true);
+            const fileStart = lhOffset + 26 + fileNameLen + extraLen;
+
+            // Boundary is next file's local header, or central directory
+            const fileEnd = (e + 1 < entries.length) ? entries[e + 1].offset : cdOffset;
+
             let fileData: Uint8Array;
             if (compression === 0) {
-                fileData = data.slice(fileStart, fileStart + compressedSize);
+                fileData = data.slice(fileStart, fileEnd);
             } else {
-                const ds = new DecompressionStream("deflate");
+                const ds = new DecompressionStream("deflate-raw");
                 const writer = ds.writable.getWriter();
                 const reader = ds.readable.getReader();
-                writer.write(data.slice(fileStart, fileStart + compressedSize));
+                writer.write(data.slice(fileStart, fileEnd));
                 writer.close();
                 const chunks: Uint8Array[] = [];
                 while (true) {
@@ -215,12 +252,12 @@ const ipcSyncDefaults: Record<string, any> = {
                     if (done) break;
                     chunks.push(value);
                 }
-                fileData = new Uint8Array(chunks.reduce((acc, c) => acc + c.length, 0));
+                const totalLen = chunks.reduce((acc, c) => acc + c.length, 0);
+                fileData = new Uint8Array(totalLen);
                 let pos = 0;
                 for (const c of chunks) { fileData.set(c, pos); pos += c.length; }
             }
-            files.push({ data: fileData, path: name });
-            offset = fileStart + compressedSize;
+            files.push({ data: fileData, path: entry.name });
         }
         return files;
     };

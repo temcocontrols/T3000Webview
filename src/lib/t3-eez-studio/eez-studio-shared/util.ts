@@ -107,27 +107,27 @@ var defaultDateTimeFormat: string;
 export function getMoment() {
     debugger;
     if (!moment) {
-    moment = require("moment") as typeof MomentModule;
-    require("moment-duration-format")(moment);
+        moment = require("moment") as typeof MomentModule;
+        require("moment-duration-format")(moment);
 
-    const { getLocale, getDateFormat, getTimeFormat } =
-      require("eez-studio-shared/i10n") as typeof I10nModule;
+        const { getLocale, getDateFormat, getTimeFormat } =
+            require("eez-studio-shared/i10n") as typeof I10nModule;
 
-    let userLocale = getLocale();
-    if (typeof userLocale !== "string") {
-      userLocale = "en"; // fallback
+        let userLocale = getLocale();
+        if (typeof userLocale !== "string") {
+            userLocale = "en"; // fallback
+        }
+
+        moment.locale(userLocale);
+
+        const localeData = moment.localeData(userLocale);
+        const localeWeekdays = localeData.weekdays();
+
+        defaultDateFormat = getDateFormat();
+        defaultTimeFormat = getTimeFormat();
+        defaultDateTimeFormat = defaultDateFormat + " " + defaultTimeFormat;
     }
-
-    moment.locale(userLocale);
-
-    const localeData = moment.localeData(userLocale);
-    const localeWeekdays = localeData.weekdays();
-
-    defaultDateFormat = getDateFormat();
-    defaultTimeFormat = getTimeFormat();
-    defaultDateTimeFormat = defaultDateFormat + " " + defaultTimeFormat;
-  }
-  return moment;
+    return moment;
 }
 
 export function formatDateTimeLong(date: Date) {
@@ -178,6 +178,13 @@ export async function delay(time: number) {
 export const studioVersion = require("../../package.json").version;
 
 export function compareVersions(v1: string, v2: string) {
+
+    if (!v1 || !v2) {
+        return 0; // treat missing values as equal
+    }
+
+    console.log("compareVersions", v1, v2);
+
     const v1Parts = v1.toString().split(".");
     const v2Parts = v2.toString().split(".");
 
@@ -190,8 +197,8 @@ export function compareVersions(v1: string, v2: string) {
                 return v1Parts[i] < v2Parts[i]
                     ? -1
                     : v1Parts[i] > v2Parts[i]
-                    ? 1
-                    : 0;
+                        ? 1
+                        : 0;
             }
             return -1;
         }

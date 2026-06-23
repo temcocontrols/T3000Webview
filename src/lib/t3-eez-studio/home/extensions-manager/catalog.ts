@@ -13,6 +13,8 @@ import { IExtension } from "eez-studio-shared/extensions/extension";
 
 import localCatalogVersion from "./catalog-version.json";
 
+import JSZip from "jszip";
+
 // export let DEFAULT_EXTENSIONS_CATALOG_VERSION_DOWNLOAD_URL =
 //     "https://github.com/eez-open/studio-extensions/raw/master/build/catalog-version.json";
 
@@ -172,6 +174,7 @@ class ExtensionsCatalog {
         }
     }
 
+    /*
     downloadCatalog() {
         var req = new XMLHttpRequest();
         req.responseType = "arraybuffer";
@@ -194,6 +197,7 @@ class ExtensionsCatalog {
         });
 
         req.addEventListener("load", async () => {
+            debugger;
             const decompress = require("decompress");
 
             const files = await decompress(Buffer.from(req.response));
@@ -222,7 +226,72 @@ class ExtensionsCatalog {
 
         req.send();
     }
-     
+    */
+
+    async downloadCatalog(): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            const req = new XMLHttpRequest();
+            req.responseType = "arraybuffer";
+            req.open("GET", "/catalog.zip"); // ✅ served from public folder
+
+            const progressToastId = notification.info("Loading local catalog.zip ...", {
+                autoClose: false,
+                hideProgressBar: false
+            });
+
+            req.addEventListener("load", async () => {
+                try {
+                    const arrayBuffer = req.response as ArrayBuffer;
+                    console.log("Response byte length:", arrayBuffer.byteLength);
+
+                    // Quick sanity check: zip files start with "PK" (0x50 0x4B)
+                    const bytes = new Uint8Array(arrayBuffer);
+                    if (bytes[0] !== 0x50 || bytes[1] !== 0x4B) {
+                        throw new Error("Not a valid zip file, got wrong content");
+                    }
+
+                    // ✅ Use JSZip instead of decompress
+                    const zip = await JSZip.loadAsync(arrayBuffer);
+
+                    // Assume the first file is your catalog.json
+                    const fileNames = Object.keys(zip.files);
+                    const catalogJson = await zip.files[fileNames[0]].async("string");
+                    const catalog = JSON.parse(catalogJson);
+
+                    runInAction(() => (this.catalog = catalog));
+                    await writeJsObjectToFile(this.catalogPath, this.catalog);
+
+                    notification.update(progressToastId, {
+                        type: notification.SUCCESS,
+                        render: "Local extensions catalog successfully loaded.",
+                        autoClose: 5000
+                    });
+                    resolve();
+                } catch (err) {
+                    console.error("JSZip error", err);
+                    notification.update(progressToastId, {
+                        type: notification.ERROR,
+                        render: "Failed to parse local catalog.zip.",
+                        autoClose: 5000
+                    });
+                    reject(err);
+                }
+            });
+
+            req.addEventListener("error", error => {
+                console.error("ExtensionsCatalog load error", error);
+                notification.update(progressToastId, {
+                    type: notification.ERROR,
+                    render: "Failed to load local catalog.zip.",
+                    autoClose: 5000
+                });
+                reject(error);
+            });
+
+            req.send();
+        });
+    } 
+
 }
 
 export const extensionsCatalog = new ExtensionsCatalog();

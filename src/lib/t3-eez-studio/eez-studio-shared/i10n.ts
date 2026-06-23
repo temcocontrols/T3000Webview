@@ -142,7 +142,7 @@ export let getLocale: () => string;
 export let setLocale: (value: string) => void;
 
 if (isRenderer()) {
-    debugger;
+    // debugger;
     getLocale = function () {
         return ipcRenderer.sendSync("getLocale");
     };
