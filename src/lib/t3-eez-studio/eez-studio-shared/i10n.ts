@@ -151,7 +151,7 @@ if (isRenderer()) {
         ipcRenderer.send("setLocale", value);
     };
 } else {
-    debugger;
+    // debugger;
     ({ getLocale, setLocale } = require("main/settings") as any);
 }
 

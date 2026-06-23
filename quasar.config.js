@@ -141,12 +141,12 @@ module.exports = configure(function (/* ctx */) {
         viteConf.esbuild.jsx = 'automatic';
         viteConf.esbuild.jsxImportSource = 'react';
         viteConf.esbuild.tsconfigRaw = JSON.stringify({
-            compilerOptions: {
-                useDefineForClassFields: true,
-                target: "es2020",
-                allowSyntheticDefaultImports: true,
-                esModuleInterop: true,
-            }
+          compilerOptions: {
+            useDefineForClassFields: true,
+            target: "es2020",
+            allowSyntheticDefaultImports: true,
+            esModuleInterop: true,
+          }
         });
 
         // Optimize deps — noDiscovery prevents scanning the massive EEZ tree
@@ -187,10 +187,39 @@ module.exports = configure(function (/* ctx */) {
         viteConf.css = viteConf.css || {};
         viteConf.css.preprocessorOptions = viteConf.css.preprocessorOptions || {};
         viteConf.css.preprocessorOptions.less = {
-            javascriptEnabled: true,
-            paths: [
-                require('path').resolve(__dirname, 'src/lib/t3-eez-studio/eez-studio-ui/_stylesheets'),
-            ],
+          javascriptEnabled: true,
+          paths: [
+            require('path').resolve(__dirname, 'src/lib/t3-eez-studio/eez-studio-ui/_stylesheets'),
+          ],
+        };
+
+        // Add dev server proxy to avoid CORS
+        viteConf.server = viteConf.server || {};
+        viteConf.server.proxy = {
+          ...(viteConf.server.proxy || {}),
+          // Local backend proxy
+          "/api/bridge": {
+            target: "http://localhost:9103",
+            changeOrigin: true,
+            secure: false,
+            rewrite: path => path.replace(/^\/api\/bridge/, "/api/bridge")
+          },
+
+          // Remote Gitea (envox.eu)
+          "/gitea-eu": {
+            target: "https://envox.eu/gitea",
+            changeOrigin: true,
+            secure: true,
+            rewrite: path => path.replace(/^\/gitea-eu/, "")
+          },
+
+          // Remote Gitea (envox.hr)
+          "/gitea-hr": {
+            target: "https://envox.hr/gitea",
+            changeOrigin: true,
+            secure: true,
+            rewrite: path => path.replace(/^\/gitea-hr/, "")
+          }
         };
       },
 

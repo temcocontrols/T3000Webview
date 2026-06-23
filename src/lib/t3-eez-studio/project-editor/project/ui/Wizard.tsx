@@ -182,7 +182,7 @@ export class WizardModel {
     static makeTemplatesWizardModel() {
         const wizardModel = new WizardModel();
 
-        debugger;
+        // debugger;
         wizardModel.section = "templates";
         wizardModel.folder = "_allTemplates";
         wizardModel.type = "dashboard";
@@ -196,7 +196,7 @@ export class WizardModel {
     static makeExamplesWizardModel() {
         const wizardModel = new WizardModel();
 
-        debugger;
+        // debugger;
 
         wizardModel.section = "examples";
         wizardModel.folder = "_allExamples";
@@ -231,7 +231,7 @@ export class WizardModel {
 
     // location: string | undefined = getHomePath("eez-projects");
     location: string | undefined = getHomePath("");
-    
+
     locationError: string | undefined;
 
     createDirectory: boolean = true;
@@ -432,8 +432,11 @@ export class WizardModel {
 
     async fetchTemplateProjects() {
         const result = await fetch(
-            "https://envox.eu/gitea/api/v1/repos/search?q=eez-flow-template&topic=true"
+            // "https://envox.eu/gitea/api/v1/repos/search?q=eez-flow-template&topic=true"
+            "/gitea/api/v1/repos/search?q=eez-flow-template&topic=true"
         );
+
+        console.log("Wizard.tsx=> fetchTemplateProjects result", result);
         const data = await result.json();
         const templateProjects = data.data.map(
             (templateProject: TemplateProject) =>

@@ -259,7 +259,7 @@ class ExtensionsCatalog {
                     const catalog = JSON.parse(catalogJson);
 
                     runInAction(() => (this.catalog = catalog));
-                    await writeJsObjectToFile(this.catalogPath, this.catalog);
+                    try { await writeJsObjectToFile(this.catalogPath, this.catalog); } catch { /* cache only */ }
 
                     notification.update(progressToastId, {
                         type: notification.SUCCESS,

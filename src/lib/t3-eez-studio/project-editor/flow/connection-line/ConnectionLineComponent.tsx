@@ -19,6 +19,9 @@ import {
 } from "project-editor/flow/connection-line/real-time-traffic-visualizer";
 import { ProjectEditor } from "project-editor/project-editor-interface";
 
+// Vite-compatible image import — resolves via eez-studio-ui alias
+import imageBackground from "eez-studio-ui/_images/image_background.png";
+
 ////////////////////////////////////////////////////////////////////////////////
 
 const lineColor = () => theme().connectionLineColor;
@@ -368,7 +371,7 @@ export const LineMarkers = () => (
                 height="16"
             >
                 <image
-                    href="../eez-studio-ui/_images/image_background.png"
+                    href={imageBackground}
                     x="0"
                     y="0"
                     width="16"

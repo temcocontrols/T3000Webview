@@ -105,7 +105,7 @@ var defaultTimeFormat: string;
 var defaultDateTimeFormat: string;
 
 export function getMoment() {
-    debugger;
+    // debugger;
     if (!moment) {
         moment = require("moment") as typeof MomentModule;
         require("moment-duration-format")(moment);

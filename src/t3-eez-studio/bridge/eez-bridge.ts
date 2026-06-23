@@ -1,18 +1,39 @@
 import { setBridgeAPI, BridgeAPI } from "eez-studio-shared/bridge";
 
-const BASE = "http://localhost:9103/api/bridge";
+// const BASE = "http://localhost:9103/api/bridge";
+const BASE = "/api/bridge";
 const enc = encodeURIComponent;
 const noop = () => {};
-const noBackend = () => {};
+
+let backendOnline = true;
+let backendChecked = false;
+
+async function checkBackend(): Promise<boolean> {
+    if (backendChecked) return backendOnline;
+    try {
+        const res = await fetch(`${BASE}/file-exists?path=%2F`, { method: "GET" });
+        backendOnline = res.ok;
+    } catch {
+        backendOnline = false;
+    }
+    backendChecked = true;
+    if (!backendOnline) console.info("[bridge] Rust backend not available at", BASE, "— running with in-memory data only");
+    return backendOnline;
+}
 
 async function api(path: string, init?: RequestInit): Promise<any> {
+    // Skip fetch if backend is known to be offline
+    if (backendChecked && !backendOnline) {
+        return { ok: false, json: () => ({}), text: () => "", arrayBuffer: () => new ArrayBuffer(0) } as any;
+    }
     try {
         const opts = { ...init };
-        // Auto-set Content-Type for JSON string bodies (Axum requires it)
         if (opts.body && typeof opts.body === "string") {
             (opts as any).headers = { ...(opts.headers || {}), "Content-Type": "application/json" };
         }
         const res = await fetch(`${BASE}${path}`, opts);
+        backendOnline = true;
+        backendChecked = true;
         if (res.ok) {
             const ct = res.headers.get("content-type") || "";
             if (ct.includes("text/html")) {
@@ -20,10 +41,10 @@ async function api(path: string, init?: RequestInit): Promise<any> {
             }
             return res;
         }
-    } catch (e) {
-        console.warn("[bridge] Backend unreachable:", (e as Error).message || e);
+    } catch {
+        backendOnline = false;
+        backendChecked = true;
     }
-    noBackend();
     return { ok: false, json: () => ({}), text: () => "", arrayBuffer: () => new ArrayBuffer(0) } as any;
 }
 
