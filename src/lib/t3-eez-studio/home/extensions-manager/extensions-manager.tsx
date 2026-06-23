@@ -352,20 +352,23 @@ export class ExtensionsManagerStore {
             builder.addExtension(extension);
         });
 
-        extensionsCatalog.catalog.forEach((extension: any) => {
-            const extensionMinStudioVersion = (extension as any)["eez-studio"]
-                .minVersion;
-            if (extensionMinStudioVersion !== undefined) {
-                if (
-                    compareVersions(studioVersion, extensionMinStudioVersion) <
-                    0
-                ) {
-                    return;
+        const catalog = extensionsCatalog.catalog;
+        if (Array.isArray(catalog)) {
+            catalog.forEach((extension: any) => {
+                const extensionMinStudioVersion = (extension as any)["eez-studio"]
+                    .minVersion;
+                if (extensionMinStudioVersion !== undefined) {
+                    if (
+                        compareVersions(studioVersion, extensionMinStudioVersion) <
+                        0
+                    ) {
+                        return;
+                    }
                 }
-            }
 
-            builder.addExtension(extension);
-        });
+                builder.addExtension(extension);
+            });
+        }
 
         return builder;
     }

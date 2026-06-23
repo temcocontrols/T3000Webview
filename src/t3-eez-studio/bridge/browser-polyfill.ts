@@ -184,7 +184,46 @@ const ipcSyncDefaults: Record<string, any> = {
     if (path.includes("electron-context-menu")) return () => {};
     if (path === "mousetrap") return Mousetrap;
     if (path === "simple-git") return { simpleGit: () => ({ init:()=>Promise.resolve(), status:()=>Promise.resolve({files:[],isClean:()=>true}), log:()=>Promise.resolve({all:[],latest:null,total:0}), diff:()=>Promise.resolve(""), add:()=>Promise.resolve(), commit:()=>Promise.resolve(), push:()=>Promise.resolve(), pull:()=>Promise.resolve(), checkout:()=>Promise.resolve(), branch:()=>Promise.resolve({all:[],current:""}), fetch:()=>Promise.resolve(), remote:()=>Promise.resolve([]) }) };
-    if (path === "decompress") return () => Promise.resolve([]);
+    if (path === "decompress") return async function decompress(buf: Buffer) {
+        // Browser-compatible zip decompressor for single-file archives
+        const data = new Uint8Array(buf);
+        const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+        const files: any[] = [];
+        let offset = 0;
+        while (offset < data.length - 4) {
+            const sig = dv.getUint32(offset, true);
+            if (sig !== 0x04034b50) break; // "PK\x03\x04"
+            offset += 4;
+            const compression = dv.getUint16(offset + 4, true);
+            const fileNameLen = dv.getUint16(offset + 22, true);
+            const extraLen = dv.getUint16(offset + 24, true);
+            const compressedSize = dv.getUint32(offset + 14, true);
+            const name = new TextDecoder().decode(data.slice(offset + 26, offset + 26 + fileNameLen));
+            const fileStart = offset + 26 + fileNameLen + extraLen;
+            let fileData: Uint8Array;
+            if (compression === 0) {
+                fileData = data.slice(fileStart, fileStart + compressedSize);
+            } else {
+                const ds = new DecompressionStream("deflate");
+                const writer = ds.writable.getWriter();
+                const reader = ds.readable.getReader();
+                writer.write(data.slice(fileStart, fileStart + compressedSize));
+                writer.close();
+                const chunks: Uint8Array[] = [];
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    chunks.push(value);
+                }
+                fileData = new Uint8Array(chunks.reduce((acc, c) => acc + c.length, 0));
+                let pos = 0;
+                for (const c of chunks) { fileData.set(c, pos); pos += c.length; }
+            }
+            files.push({ data: fileData, path: name });
+            offset = fileStart + compressedSize;
+        }
+        return files;
+    };
     if (path === "showdown") return { Converter: class { makeHtml(s:string){return s} } };
     if (path === "command-exists") return { sync: () => false };
     if (path === "sha256") return function sha256(s: string) { let h=0; for(let i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;} return Math.abs(h).toString(16).padStart(8,'0'); };

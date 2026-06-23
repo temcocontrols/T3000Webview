@@ -20,7 +20,7 @@ import localCatalogVersion from "./catalog-version.json";
 //     "https://github.com/eez-open/studio-extensions/raw/master/build/catalog.zip";
 
 export const DEFAULT_EXTENSIONS_CATALOG_VERSION_DOWNLOAD_URL = "catalog-version.json"; //override with local file
-export const DEFAULT_EXTENSIONS_CATALOG_DOWNLOAD_URL = "catalog.json"; //override with local file
+export const DEFAULT_EXTENSIONS_CATALOG_DOWNLOAD_URL = "catalog.json";
 
 interface ICatalogVersion {
     lastModified: Date;
@@ -235,8 +235,15 @@ class ExtensionsCatalog {
         );
 
         fetch(DEFAULT_EXTENSIONS_CATALOG_DOWNLOAD_URL)
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            })
             .then(async catalog => {
+                if (!Array.isArray(catalog)) {
+                    throw new Error("Catalog data is not an array");
+                }
+
                 runInAction(() => (this.catalog = catalog));
 
                 await writeJsObjectToFile(this.catalogPath, this.catalog);
