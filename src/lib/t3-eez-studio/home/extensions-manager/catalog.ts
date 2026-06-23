@@ -11,11 +11,16 @@ import * as notification from "eez-studio-ui/notification";
 
 import { IExtension } from "eez-studio-shared/extensions/extension";
 
-export const DEFAULT_EXTENSIONS_CATALOG_VERSION_DOWNLOAD_URL =
-    "https://github.com/eez-open/studio-extensions/raw/master/build/catalog-version.json";
+import localCatalogVersion from "./catalog-version.json";
 
-export const DEFAULT_EXTENSIONS_CATALOG_DOWNLOAD_URL =
-    "https://github.com/eez-open/studio-extensions/raw/master/build/catalog.zip";
+// export let DEFAULT_EXTENSIONS_CATALOG_VERSION_DOWNLOAD_URL =
+//     "https://github.com/eez-open/studio-extensions/raw/master/build/catalog-version.json";
+
+// export const DEFAULT_EXTENSIONS_CATALOG_DOWNLOAD_URL =
+//     "https://github.com/eez-open/studio-extensions/raw/master/build/catalog.zip";
+
+export const DEFAULT_EXTENSIONS_CATALOG_VERSION_DOWNLOAD_URL = "catalog-version.json"; //override with local file
+export const DEFAULT_EXTENSIONS_CATALOG_DOWNLOAD_URL = "catalog.json"; //override with local file
 
 interface ICatalogVersion {
     lastModified: Date;
@@ -65,8 +70,15 @@ class ExtensionsCatalog {
         return (await readJsObjectFromFile(catalogPath)) as IExtension[];
     }
 
+    /*
     get catalogVersionPath() {
         return getUserDataPath("catalog-version.json");
+    }
+    */
+
+    get catalogVersionPath() {
+        // return getUserDataPath("catalog-version.json");
+        return DEFAULT_EXTENSIONS_CATALOG_VERSION_DOWNLOAD_URL;
     }
 
     async _loadCatalogVersion() {
@@ -113,6 +125,7 @@ class ExtensionsCatalog {
         return true;
     }
 
+    /*
     downloadCatalogVersion() {
         return new Promise<ICatalogVersion>((resolve, reject) => {
             var req = new XMLHttpRequest();
@@ -142,7 +155,24 @@ class ExtensionsCatalog {
             req.send();
         });
     }
+    */
 
+    async downloadCatalogVersion(): Promise<ICatalogVersion> {
+        try {
+
+            //override with local version
+            // DEFAULT_EXTENSIONS_CATALOG_VERSION_DOWNLOAD_URL = "catalog-version.json";
+            const catalogVersion = await readJsObjectFromFile(this.catalogVersionPath);
+            catalogVersion.lastModified = new Date(catalogVersion.lastModified);
+            console.log("downloadCatalogVersion=>Loaded catalog-version.json from local folder", catalogVersion);
+            return catalogVersion;
+        } catch (e) {
+            console.error("downloadCatalogVersion=>Failed to read local catalog-version.json", e);
+            throw e;
+        }
+    }
+
+    /*
     downloadCatalog() {
         var req = new XMLHttpRequest();
         req.responseType = "arraybuffer";
@@ -192,6 +222,39 @@ class ExtensionsCatalog {
         });
 
         req.send();
+    }
+    */
+
+    downloadCatalog() {
+        const progressToastId = notification.info(
+            "Downloading extensions catalog ...",
+            {
+                autoClose: false,
+                hideProgressBar: false
+            }
+        );
+
+        fetch(DEFAULT_EXTENSIONS_CATALOG_DOWNLOAD_URL)
+            .then(res => res.json())
+            .then(async catalog => {
+                runInAction(() => (this.catalog = catalog));
+
+                await writeJsObjectToFile(this.catalogPath, this.catalog);
+
+                notification.update(progressToastId, {
+                    type: notification.SUCCESS,
+                    render: `The latest extensions catalog successfully downloaded.`,
+                    autoClose: 5000
+                });
+            })
+            .catch(error => {
+                console.error("ExtensionsCatalog download error", error);
+                notification.update(progressToastId, {
+                    type: notification.ERROR,
+                    render: `Failed to download extensions catalog.`,
+                    autoClose: 5000
+                });
+            });
     }
 }
 
