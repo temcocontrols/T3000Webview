@@ -1746,7 +1746,8 @@ export function generateLVGLActionsMarkdown() {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-import "./actions-catalog";
+// Dynamic import to break circular dependency with actions-catalog
+import("./actions-catalog");
 
 /*
 

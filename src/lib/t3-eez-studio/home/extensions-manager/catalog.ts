@@ -20,7 +20,7 @@ import localCatalogVersion from "./catalog-version.json";
 //     "https://github.com/eez-open/studio-extensions/raw/master/build/catalog.zip";
 
 export const DEFAULT_EXTENSIONS_CATALOG_VERSION_DOWNLOAD_URL = "catalog-version.json"; //override with local file
-export const DEFAULT_EXTENSIONS_CATALOG_DOWNLOAD_URL = "catalog.json";
+export const DEFAULT_EXTENSIONS_CATALOG_DOWNLOAD_URL = "catalog.zip";
 
 interface ICatalogVersion {
     lastModified: Date;
@@ -172,7 +172,6 @@ class ExtensionsCatalog {
         }
     }
 
-    /*
     downloadCatalog() {
         var req = new XMLHttpRequest();
         req.responseType = "arraybuffer";
@@ -223,46 +222,7 @@ class ExtensionsCatalog {
 
         req.send();
     }
-    */
-
-    downloadCatalog() {
-        const progressToastId = notification.info(
-            "Downloading extensions catalog ...",
-            {
-                autoClose: false,
-                hideProgressBar: false
-            }
-        );
-
-        fetch(DEFAULT_EXTENSIONS_CATALOG_DOWNLOAD_URL)
-            .then(res => {
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                return res.json();
-            })
-            .then(async catalog => {
-                if (!Array.isArray(catalog)) {
-                    throw new Error("Catalog data is not an array");
-                }
-
-                runInAction(() => (this.catalog = catalog));
-
-                await writeJsObjectToFile(this.catalogPath, this.catalog);
-
-                notification.update(progressToastId, {
-                    type: notification.SUCCESS,
-                    render: `The latest extensions catalog successfully downloaded.`,
-                    autoClose: 5000
-                });
-            })
-            .catch(error => {
-                console.error("ExtensionsCatalog download error", error);
-                notification.update(progressToastId, {
-                    type: notification.ERROR,
-                    render: `Failed to download extensions catalog.`,
-                    autoClose: 5000
-                });
-            });
-    }
+     
 }
 
 export const extensionsCatalog = new ExtensionsCatalog();
