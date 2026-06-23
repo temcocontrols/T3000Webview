@@ -105,20 +105,29 @@ var defaultTimeFormat: string;
 var defaultDateTimeFormat: string;
 
 export function getMoment() {
+    debugger;
     if (!moment) {
-        moment = require("moment") as typeof MomentModule;
-        require("moment-duration-format")(moment);
-        const { getLocale, getDateFormat, getTimeFormat } =
-            require("eez-studio-shared/i10n") as typeof I10nModule;
-        userLocale = getLocale();
-        localeData = getMoment().localeData(userLocale);
-        localeWeekdays = localeData.weekdays();
-        moment.locale(userLocale);
-        defaultDateFormat = getDateFormat();
-        defaultTimeFormat = getTimeFormat();
-        defaultDateTimeFormat = defaultDateFormat + " " + defaultTimeFormat;
+    moment = require("moment") as typeof MomentModule;
+    require("moment-duration-format")(moment);
+
+    const { getLocale, getDateFormat, getTimeFormat } =
+      require("eez-studio-shared/i10n") as typeof I10nModule;
+
+    let userLocale = getLocale();
+    if (typeof userLocale !== "string") {
+      userLocale = "en"; // fallback
     }
-    return moment;
+
+    moment.locale(userLocale);
+
+    const localeData = moment.localeData(userLocale);
+    const localeWeekdays = localeData.weekdays();
+
+    defaultDateFormat = getDateFormat();
+    defaultTimeFormat = getTimeFormat();
+    defaultDateTimeFormat = defaultDateFormat + " " + defaultTimeFormat;
+  }
+  return moment;
 }
 
 export function formatDateTimeLong(date: Date) {

@@ -126,7 +126,7 @@ const setShowComponentsPaletteInProjectEditor = function (value: boolean) {
 ////////////////////////////////////////////////////////////////////////////////
 
 class SettingsController {
-    
+
     activetLocale = getLocale();
     activeDateFormat = getDateFormat();
     activeTimeFormat = getTimeFormat();
@@ -224,7 +224,7 @@ class SettingsController {
     get restartRequired() {
         return (
             instrumentDatabases.activeDatabase?.filePath !==
-                instrumentDatabases.activeDatabasePath ||
+            instrumentDatabases.activeDatabasePath ||
             this.locale !== this.activetLocale ||
             this.dateFormat !== this.activeDateFormat ||
             this.timeFormat !== this.activeTimeFormat
@@ -410,7 +410,7 @@ class SettingsController {
         if (
             instrumentDatabases.activeDatabase &&
             instrumentDatabases.activeDatabase.filePath !=
-                instrumentDatabases.activeDatabasePath
+            instrumentDatabases.activeDatabasePath
         ) {
             confirm(
                 "Do you want to restart the application?",
@@ -874,8 +874,8 @@ const PythonSettings = observer(
                                 value={settingsController.pythonUseCustomPath}
                                 onChange={action(
                                     value =>
-                                        (settingsController.pythonUseCustomPath =
-                                            value)
+                                    (settingsController.pythonUseCustomPath =
+                                        value)
                                 )}
                                 checkboxStyleSwitch={true}
                             />
@@ -954,8 +954,8 @@ const TemplateSettings = observer(
                                 value={settingsController.useLocalTemplates}
                                 onChange={action(
                                     value =>
-                                        (settingsController.useLocalTemplates =
-                                            value)
+                                    (settingsController.useLocalTemplates =
+                                        value)
                                 )}
                                 checkboxStyleSwitch={true}
                             />
@@ -1047,16 +1047,27 @@ export const Settings = observer(
                             value={settingsController.dateFormat}
                             onChange={settingsController.onDateFormatChanged}
                         >
-                            {DATE_FORMATS.map(dateFormat => (
-                                <option
-                                    key={dateFormat.format}
-                                    value={dateFormat.format}
-                                >
-                                    {getMoment()(new Date())
-                                        .locale(settingsController.locale|| "en")
-                                        .format(dateFormat.format)}
-                                </option>
-                            ))}
+                            {DATE_FORMATS.map(dateFormat => {
+                                const safeLocale =
+                                    typeof settingsController.locale === "string"
+                                        ? settingsController.locale
+                                        : "en";
+
+                                // Add log here
+                                console.log("Locale value in map:", settingsController.locale);
+
+                                return (
+                                    <option
+                                        key={dateFormat.format}
+                                        value={dateFormat.format}
+                                    >
+                                        {getMoment()(new Date())
+                                            .locale(safeLocale)
+                                            .format(dateFormat.format)}
+                                    </option>
+                                );
+                            })}
+
                         </SelectProperty>
                         <SelectProperty
                             name="Time format"
@@ -1069,7 +1080,7 @@ export const Settings = observer(
                                     value={timeFormat.format}
                                 >
                                     {getMoment()(new Date())
-                                        .locale(settingsController.locale|| "en")
+                                        .locale(settingsController.locale || "en")
                                         .format(timeFormat.format)}
                                 </option>
                             ))}

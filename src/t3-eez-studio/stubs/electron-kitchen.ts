@@ -28,7 +28,7 @@ const ipcSyncDefaults: Record<string, any> = {
     getShowComponentsPaletteInProjectEditor: false,
     getHomePath: "/project",
     getExtensionsFolderPath: "/userData/extensions",
-    getLocale: () => navigator.language || "en",
+    getLocale: navigator.language || "en",
     getDateFormat: "YYYY-MM-DD",
     getTimeFormat: "HH:mm:ss",
 };
