@@ -72,6 +72,11 @@ export async function yarnUninstall(moduleName: string) {
 }
 
 export async function getNodeModuleFolders() {
+    // Yarn is not available in the browser — return empty
+    if (typeof window !== "undefined") {
+        return [];
+    }
+
     const packageJsonPath = `${extensionsFolderPath}/package.json`;
     if (!(await fileExists(packageJsonPath))) {
         try {

@@ -9,19 +9,20 @@ async function api(path: string, init?: RequestInit): Promise<any> {
     try {
         const opts = { ...init };
         // Auto-set Content-Type for JSON string bodies (Axum requires it)
-        if (opts.body && typeof opts.body === "string" && opts.body.startsWith("{")) {
+        if (opts.body && typeof opts.body === "string") {
             (opts as any).headers = { ...(opts.headers || {}), "Content-Type": "application/json" };
         }
         const res = await fetch(`${BASE}${path}`, opts);
         if (res.ok) {
-            // If the backend returns HTML (e.g. an error page), treat as empty
             const ct = res.headers.get("content-type") || "";
             if (ct.includes("text/html")) {
                 return { ok: true, json: () => ({}), text: () => "", arrayBuffer: () => new ArrayBuffer(0) } as any;
             }
             return res;
         }
-    } catch {}
+    } catch (e) {
+        console.warn("[bridge] Backend unreachable:", (e as Error).message || e);
+    }
     noBackend();
     return { ok: false, json: () => ({}), text: () => "", arrayBuffer: () => new ArrayBuffer(0) } as any;
 }
