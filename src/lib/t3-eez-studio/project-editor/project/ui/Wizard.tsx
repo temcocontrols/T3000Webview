@@ -182,11 +182,13 @@ export class WizardModel {
     static makeTemplatesWizardModel() {
         const wizardModel = new WizardModel();
 
+        debugger;
         wizardModel.section = "templates";
         wizardModel.folder = "_allTemplates";
         wizardModel.type = "dashboard";
 
-        wizardModel.location = getHomePath("eez-projects");
+        // wizardModel.location = getHomePath("eez-projects");
+        wizardModel.location = getHomePath("");
 
         return wizardModel;
     }
@@ -194,13 +196,17 @@ export class WizardModel {
     static makeExamplesWizardModel() {
         const wizardModel = new WizardModel();
 
+        debugger;
+
         wizardModel.section = "examples";
         wizardModel.folder = "_allExamples";
         wizardModel.type = undefined;
 
-        wizardModel.location = getHomePath(
-            "eez-projects" + path.sep + "examples"
-        );
+        // wizardModel.location = getHomePath(
+        //     "eez-projects" + path.sep + "examples"
+        // );
+
+        wizardModel.location = getHomePath("examples");
 
         return wizardModel;
     }
@@ -223,7 +229,9 @@ export class WizardModel {
 
     nameError: string | undefined;
 
-    location: string | undefined = getHomePath("eez-projects");
+    // location: string | undefined = getHomePath("eez-projects");
+    location: string | undefined = getHomePath("");
+    
     locationError: string | undefined;
 
     createDirectory: boolean = true;

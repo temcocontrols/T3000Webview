@@ -188,6 +188,11 @@ async function main() {
     }
 
     ipcRenderer.send("open-command-line-project");
+
+    // Browser polyfill: listen for project-open events from the electron-kitchen stub
+    window.addEventListener("eez-open-project", ((e: CustomEvent) => {
+        openProject(e.detail, false);
+    }) as EventListener);
 }
 
 main();

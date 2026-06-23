@@ -90,8 +90,8 @@ export const ipcRenderer = {
                 if (!file) return;
                 const text = await file.text();
                 const baseName = file.name.replace(/\.(eez-project|eez-dashboard)$/, '');
-                const folderPath = `/project/${baseName}`;
-                const projPath = `${folderPath}/${file.name}`;
+                const folderPath = "/project";
+                const projPath = `/project/${file.name}`;
                 try {
                     await fetch("http://localhost:9103/api/bridge/make-folder", {
                         method: "POST",

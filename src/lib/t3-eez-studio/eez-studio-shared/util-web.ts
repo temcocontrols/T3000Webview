@@ -152,7 +152,7 @@ export async function createEmptyFile(filePath: string): Promise<void> {
 export function sourceRootDir(): string {
     // In the browser, the "source root" is the virtual file system root
     // managed by the Rust backend.
-    return "/eez-projects";
+    return "/project";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
