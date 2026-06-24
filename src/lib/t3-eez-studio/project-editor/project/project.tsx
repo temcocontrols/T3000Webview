@@ -1242,7 +1242,7 @@ export class General extends EezObject {
 
             if (jsObject.projectType == "lvgl") {
                 if (jsObject.lvglVersion == undefined) {
-                    jsObject.lvglVersion = "8.4.0";
+                    jsObject.lvglVersion = "9.5.0";
                 }
                 if (jsObject.lvglVersion == "8.3") {
                     jsObject.lvglVersion = "8.4.0";

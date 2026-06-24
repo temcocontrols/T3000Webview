@@ -478,7 +478,10 @@ export function getLvglWasmFlowRuntimeConstructor(
     // In browser, require() returns {} — load WASM directly via WebAssembly
     if (typeof wasmFlowRuntimeConstructor !== "function" && typeof window !== "undefined") {
         const fileName = wasmFlowRuntime.replace(/^.*[/\\]/, "");
-        const jsUrl = `/t3-eez-studio/wasm/lvgl/${fileName}`;
+        // Extract version from filename, e.g. lvgl_runtime_v8.4.0.js → 8.4.0
+        const versionMatch = fileName.match(/v?(\d+\.\d+\.\d+)/);
+        const version = versionMatch ? versionMatch[1] : "9.5.0";
+        const jsUrl = `/t3-eez-studio/wasm/lvgl/${version}/${fileName}`;
         const wasmUrl = jsUrl.replace(/\.js$/, ".wasm");
         return function DirectWasmRuntime(this: any, initCb: any) {
             if (!(this instanceof DirectWasmRuntime)) {
