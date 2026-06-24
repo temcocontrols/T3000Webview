@@ -232,7 +232,18 @@ module.exports = configure(function (/* ctx */) {
             target: "https://raw.githubusercontent.com/eez-open/eez-project-examples/master/build",
             changeOrigin: true,
             secure: true,
-            rewrite: path => path.replace(/^\/ghraw-examples/, "")
+            rewrite: path => path.replace(/^\/ghraw-examples/, ""),
+            configure: (proxy, options) => {
+              proxy.on("proxyReq", (proxyReq, req) => {
+                console.log("[ProxyReq]", req.url, "→", proxyReq.path);
+              });
+              proxy.on("proxyRes", (proxyRes, req) => {
+                console.log("[ProxyRes]", req.url, "→", proxyRes.statusCode);
+              });
+              proxy.on("error", (err, req) => {
+                console.error("[ProxyError]", req.url, err);
+              });
+            }
           }
 
         };
