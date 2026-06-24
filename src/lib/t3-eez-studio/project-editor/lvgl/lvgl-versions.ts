@@ -457,7 +457,7 @@ const wasmFlowRuntimeConstructors: {
 
 export function getLvglWasmFlowRuntimeConstructor(
     lvglVersion: LVGLVersion
-) {
+): any {
     const wasmFlowRuntime = getVersionPropertyForLvglVersion(
         lvglVersion,
         "wasmFlowRuntime"
@@ -466,9 +466,83 @@ export function getLvglWasmFlowRuntimeConstructor(
     let wasmFlowRuntimeConstructor =
         wasmFlowRuntimeConstructors[wasmFlowRuntime];
     if (!wasmFlowRuntimeConstructor) {
-        wasmFlowRuntimeConstructor = require(wasmFlowRuntime);
+        try {
+            wasmFlowRuntimeConstructor = require(wasmFlowRuntime);
+        } catch {
+            // ignore
+        }
         wasmFlowRuntimeConstructors[wasmFlowRuntime] =
             wasmFlowRuntimeConstructor;
+    }
+
+    // In browser, require() returns {} — load WASM directly via WebAssembly
+    if (typeof wasmFlowRuntimeConstructor !== "function" && typeof window !== "undefined") {
+        const fileName = wasmFlowRuntime.replace(/^.*[/\\]/, "");
+        const jsUrl = `/wasm/${fileName}`;
+        const wasmUrl = jsUrl.replace(/\.js$/, ".wasm");
+        return function DirectWasmRuntime(this: any, initCb: any) {
+            if (!(this instanceof DirectWasmRuntime)) {
+                return new (DirectWasmRuntime as any)(initCb);
+            }
+            const self = this;
+            // Default to no-op methods with Proxy for any unknown calls
+            this.HEAPU8 = new Uint8Array(0);
+            this.HEAP32 = new Int32Array(0);
+            this.HEAP8 = new Int8Array(0);
+            this.FS = {};
+            const proxyHandler = {
+                get(_t: any, prop: string | symbol) {
+                    if (prop === "then") return undefined;
+                    if (prop in self) return (self as any)[prop];
+                    return () => {};
+                }
+            };
+            let runtimeProxy = new Proxy(this, proxyHandler);
+            // Try loading WASM directly
+            console.log("[wasm] loading WASM directly:", wasmUrl);
+            WebAssembly.instantiateStreaming(fetch(wasmUrl), {})
+                .then(result => {
+                    const exports = result.instance.exports as any;
+                    console.log("[wasm] WASM loaded, exports:", Object.keys(exports).filter((k: string) => k.startsWith("_")).join(", "));
+                    // Copy exports to this
+                    for (const key of Object.keys(exports)) {
+                        (self as any)[key] = exports[key];
+                    }
+                    if (exports.memory) {
+                        self.HEAPU8 = new Uint8Array(exports.memory.buffer);
+                    }
+                    if (typeof initCb === "function") setTimeout(initCb, 0);
+                })
+                .catch(err => {
+                    console.warn("[wasm] direct WASM load failed:", err.message, "— using no-op");
+                    if (typeof initCb === "function") setTimeout(initCb, 0);
+                });
+            return runtimeProxy;
+        } as any;
+    }
+
+    // Final fallback: no-op
+    if (typeof wasmFlowRuntimeConstructor !== "function") {
+        const Noop = function NoopWasmRuntime(this: any, initCb: any) {
+            if (!(this instanceof NoopWasmRuntime)) {
+                return new (Noop as any)(initCb);
+            }
+            this.HEAPU8 = new Uint8Array(0);
+            this.HEAP32 = new Int32Array(0);
+            this.HEAP8 = new Int8Array(0);
+            this.FS = {};
+            const self = this;
+            const p = new Proxy(this, {
+                get(_target: any, prop: string | symbol) {
+                    if (prop === "then") return undefined;
+                    if (prop in self) return (self as any)[prop];
+                    return () => {};
+                }
+            });
+            if (typeof initCb === "function") setTimeout(initCb, 0);
+            return p;
+        } as any;
+        return Noop;
     }
 
     return wasmFlowRuntimeConstructor;

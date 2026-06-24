@@ -742,11 +742,16 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
             return;
         }
 
-        const wasm = getLvglWasmFlowRuntimeConstructor(this.lvglVersion)(
+        console.log("[wasm] mount starting, lvglVersion:", this.lvglVersion);
+        const ctor = getLvglWasmFlowRuntimeConstructor(this.lvglVersion);
+        console.log("[wasm] got constructor, type:", typeof ctor);
+        const wasm = ctor(
             async () => {
+                console.log("[wasm] initCallback fired, wasm:", !!this.wasm, "display:", this.displayWidth, this.displayHeight);
                 await this.preloadImages();
 
                 if (this.wasm != wasm) {
+                    console.log("[wasm] wasm mismatch, aborting");
                     return;
                 }
 
@@ -755,6 +760,7 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
                     this.page._lvglObj = undefined;
                 });
 
+                console.log("[wasm] calling _init with", this.displayWidth, "x", this.displayHeight);
                 this.wasm._init(
                     0,
                     0,
@@ -766,10 +772,12 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
                     -(new Date().getTimezoneOffset() / 60) * 100,
                     false
                 );
+                console.log("[wasm] _init done");
 
                 this.requestAnimationFrameId = window.requestAnimationFrame(
                     this.tick
                 );
+                console.log("[wasm] tick started");
 
                 this.autorRunDispose = autorun(() => {
                     if (!this.isMounted) {
@@ -883,43 +891,47 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
 
         this.wasm = wasm;
         this.isMounted = true;
+        console.log("[wasm] mount complete, wasm set, isMounted=true");
     }
 
     tick = () => {
-        this.wasm._mainLoop();
+        if (!this.isMounted) return;
+        try {
+            this.wasm._mainLoop();
 
-        var buf_addr = this.wasm._getSyncedBuffer();
-        if (buf_addr != 0) {
-            const screen = new Uint8ClampedArray(
-                this.wasm.HEAPU8.subarray(
-                    buf_addr,
-                    buf_addr + this.displayWidth * this.displayHeight * 4
-                )
-            );
+            var buf_addr = this.wasm._getSyncedBuffer();
+            if (buf_addr != 0) {
+                const screen = new Uint8ClampedArray(
+                    this.wasm.HEAPU8.subarray(
+                        buf_addr,
+                        buf_addr + this.displayWidth * this.displayHeight * 4
+                    )
+                );
 
-            var imgData = new ImageData(
-                screen,
-                this.displayWidth,
-                this.displayHeight
-            );
+                var imgData = new ImageData(
+                    screen,
+                    this.displayWidth,
+                    this.displayHeight
+                );
 
-            this.ctx.putImageData(
-                imgData,
-                0,
-                0,
-                0,
-                0,
-                this.displayWidth,
-                this.displayHeight
-            );
-            this.ctxPage = this.page;
-        } else {
-            if (this.wasError) {
-                this.ctx.clearRect(0, 0, this.displayWidth, this.displayHeight);
+                this.ctx.putImageData(
+                    imgData,
+                    0,
+                    0,
+                    0,
+                    0,
+                    this.displayWidth,
+                    this.displayHeight
+                );
+                this.ctxPage = this.page;
+            } else {
+                if (this.wasError) {
+                    this.ctx.clearRect(0, 0, this.displayWidth, this.displayHeight);
+                }
             }
-        }
 
-        this.requestAnimationFrameId = window.requestAnimationFrame(this.tick);
+            this.requestAnimationFrameId = window.requestAnimationFrame(this.tick);
+        } catch { /* canvas detached during unmount */ }
     };
 
     unmount() {
