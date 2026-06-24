@@ -37,6 +37,7 @@ import type { IEditorOptions } from "project-editor/flow/flow-interfaces";
 import type { Flow } from "project-editor/flow/flow";
 import type { FlowTabState } from "project-editor/flow/flow-tab-state";
 import type { Component } from "project-editor/flow/component";
+import { LVGLPage } from "project-editor/lvgl/Page";
 
 import { ProjectContext } from "project-editor/project/context";
 import { ProjectEditor } from "project-editor/project-editor-interface";
@@ -1280,6 +1281,15 @@ export const FlowEditor = observer(
                     >
                         {this.flowContext.document && (
                             <>
+                                {
+                                    // LVGL live canvas
+                                    this.flowContext.projectStore.projectTypeTraits.isLVGL && (
+                                        <LVGLPage
+                                            page={ProjectEditor.getPage(flow)}
+                                            flowContext={this.flowContext}
+                                        />
+                                    )
+                                }
                                 {
                                     // render widget components
                                     <div

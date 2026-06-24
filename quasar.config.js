@@ -193,8 +193,16 @@ module.exports = configure(function (/* ctx */) {
           ],
         };
 
-        // Add dev server proxy to avoid CORS
+        // Add MIME type for .wasm files (required by WebAssembly.instantiateStreaming)
         viteConf.server = viteConf.server || {};
+        viteConf.server.headers = viteConf.server.headers || {};
+        if (typeof viteConf.server.headers === "function") {
+          const orig = viteConf.server.headers;
+          viteConf.server.headers = () => ({ ...orig(), "*.wasm": { "Content-Type": "application/wasm" } });
+        } else {
+          viteConf.server.headers["*.wasm"] = { "Content-Type": "application/wasm" };
+        }
+
         viteConf.server.proxy = {
           ...(viteConf.server.proxy || {}),
           // Local backend proxy
