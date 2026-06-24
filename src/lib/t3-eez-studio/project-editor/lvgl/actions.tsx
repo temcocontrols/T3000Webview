@@ -67,6 +67,8 @@ import { IListNode, List, ListContainer, ListItem } from "eez-studio-ui/list";
 import { ColorFormat, ColorFormatType } from "project-editor/features/style/color-format";
 import { lvglProperties, LVGLPropertiesGroup, LVGLPropertyInfo } from "project-editor/lvgl/style-catalog";
 
+// import { actionDefinitions, IActionDefinition } from "./action-definitions";
+
 ////////////////////////////////////////////////////////////////////////////////
 
 type LvglActionPropertyType =
@@ -142,6 +144,7 @@ export interface IActionDefinition {
 }
 
 export const actionDefinitions: IActionDefinition[] = [];
+
 const actionClasses = new Map<string, typeof LVGLActionType>();
 const actionNameToActionId = new Map<string, number>();
 const actionIdToActionName = new Map<number, string>();
@@ -182,19 +185,19 @@ function getStyleProperties(actionType: LVGLActionType): EnumItem[] {
     return styleProperties;
 }
 
-function findStyleProperty(actionType: LVGLActionType, name: string): {propertiesGroup: LVGLPropertiesGroup | undefined, styleProperty: LVGLPropertyInfo | undefined, code: number| undefined} {
+function findStyleProperty(actionType: LVGLActionType, name: string): { propertiesGroup: LVGLPropertiesGroup | undefined, styleProperty: LVGLPropertyInfo | undefined, code: number | undefined } {
     const lvglVersion = ProjectEditor.getProject(actionType).settings.general.lvglVersion;
 
     for (const propertiesGroup of lvglProperties) {
         for (const styleProperty of propertiesGroup.properties) {
             if (styleProperty.name == name) {
                 const code = styleProperty.lvglStyleProp.code[lvglVersion];
-                return {propertiesGroup, styleProperty, code};
+                return { propertiesGroup, styleProperty, code };
             }
         }
     }
 
-    return {propertiesGroup: undefined, styleProperty: undefined, code: undefined};
+    return { propertiesGroup: undefined, styleProperty: undefined, code: undefined };
 }
 
 function getStyleProperty(actionType: LVGLActionType) {
@@ -379,8 +382,8 @@ export function registerAction(actionDefinition: IActionDefinition) {
                             expressionType == "double"
                             ? PropertyType.Number
                             : expressionType == "boolean"
-                            ? PropertyType.Boolean
-                            : PropertyType.MultilineText;
+                                ? PropertyType.Boolean
+                                : PropertyType.MultilineText;
                     },
                     enumItems,
                     enumDisallowUndefined,
@@ -539,7 +542,7 @@ export function registerAction(actionDefinition: IActionDefinition) {
                             oldStyleProperty.styleProperty.type != newStyleProperty.styleProperty.type
                         ) {
                             projectStore.updateObject(object, {
-                                 value: undefined   
+                                value: undefined
                             });
                         }
                     }
@@ -587,7 +590,7 @@ export function registerAction(actionDefinition: IActionDefinition) {
                                     const propertyName = getObjectPropertyDisplayName(
                                         object,
                                         styleProperty
-                                    );                                    
+                                    );
                                     messages.push(
                                         new Message(
                                             MessageType.ERROR,
@@ -1103,7 +1106,7 @@ export class LVGLActionType extends EezObject {
                 if (!styleProperty) {
                     return 0;
                 }
-                
+
                 const projectStore = ProjectEditor.getProjectStore(this);
 
                 if (styleProperty.lvglStyleProp.valueToNum) {
@@ -1724,16 +1727,14 @@ export function generateLVGLActionsMarkdown() {
         "List of actions to be executed. The following actions are available:\n\n";
 
     for (const actionDefinition of actionDefinitions) {
-        result += `- **${getActionDisplayName(actionDefinition)}**: ${
-            actionDefinition.helpText
-        }\n`;
+        result += `- **${getActionDisplayName(actionDefinition)}**: ${actionDefinition.helpText
+            }\n`;
 
         for (const actionProperty of actionDefinition.properties) {
-            result += `  - *${
-                actionProperty.isAssignable
-                    ? `Store ${actionProperty.name} into`
-                    : humanize(actionProperty.name)
-            }*: ${actionProperty.helpText}\n`;
+            result += `  - *${actionProperty.isAssignable
+                ? `Store ${actionProperty.name} into`
+                : humanize(actionProperty.name)
+                }*: ${actionProperty.helpText}\n`;
         }
 
         result += "\n";
@@ -1746,7 +1747,7 @@ export function generateLVGLActionsMarkdown() {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// Dynamic import to break circular dependency with actions-catalog
+// Dynamically import the actions catalog to ensure that all action types are registered before they are used.
 import("./actions-catalog");
 
 /*

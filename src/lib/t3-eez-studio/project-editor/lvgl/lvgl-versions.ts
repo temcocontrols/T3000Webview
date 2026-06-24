@@ -467,24 +467,6 @@ export function getLvglWasmFlowRuntimeConstructor(
         wasmFlowRuntimeConstructors[wasmFlowRuntime];
     if (!wasmFlowRuntimeConstructor) {
         wasmFlowRuntimeConstructor = require(wasmFlowRuntime);
-        // In browser, WASM modules may not be available — provide a no-op fallback
-        if (typeof wasmFlowRuntimeConstructor !== "function") {
-            return function NoopWasmRuntime(_initCallback: any) {
-                this.mount = () => {};
-                this.unmount = () => {};
-                this.pageWasClicked = () => {};
-                this.panelWasClicked = () => {};
-                this.uploadFile = () => {};
-                this.downloadFile = () => {};
-                this.readFile = () => {};
-                this.writeFile = () => {};
-                this.deleteFile = () => {};
-                this.getFileList = () => {};
-                this.readConfig = () => {};
-                this.writeConfig = () => {};
-                _initCallback();
-            } as any;
-        }
         wasmFlowRuntimeConstructors[wasmFlowRuntime] =
             wasmFlowRuntimeConstructor;
     }
