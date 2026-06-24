@@ -148,6 +148,11 @@ export class OpenProjectsManager {
     }
 
     getProjectFromFilePath(relativeFilePath: string) {
+        // If the path matches the current project, return it directly
+        const currentPath = normalizeFilePath(this.projectStore.filePath || "");
+        if (normalizeFilePath(relativeFilePath) === currentPath) {
+            return this.projectStore.project;
+        }
         const absoluteFilePath = this.getAbsoluteFilePath(
             this.projectStore.filePath!,
             relativeFilePath

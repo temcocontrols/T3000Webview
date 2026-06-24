@@ -268,6 +268,7 @@ export const ListNavigation = observer(
             }
 
             const result = ProjectEditor.getEditorComponent(object, undefined);
+            console.log("[editors] ListNavigation.onClickItem result:", !!result);
             if (result) {
                 this.context.editorsStore.openEditor(
                     result.object,

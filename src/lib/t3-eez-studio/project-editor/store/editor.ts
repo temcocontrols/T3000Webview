@@ -162,6 +162,31 @@ export class EditorsStore {
 
     dispose1: mobx.IReactionDisposer;
 
+    // Find the actual internal ID of the tabset with our JSON id.
+    // flexlayout 0.7.15 auto-generates internal IDs that may differ from JSON ids.
+    get actualTabsetID(): string {
+        const model = this.getLayoutModel();
+        if (!model) return this.tabsetID;
+        // Try the JSON id directly first (works in original Electron + 0.7.15)
+        const direct = model.getNodeById(this.tabsetID);
+        if (direct instanceof FlexLayout.TabSetNode) {
+            console.log("[editors] tabset found by JSON id:", this.tabsetID);
+            return direct.getId();
+        }
+        // Fallback: find by _attributes (0.7.15 stores JSON id in attributes)
+        let found = "";
+        model.visitNodes(node => {
+            if (node instanceof FlexLayout.TabSetNode && !found) {
+                const attrs = (node as any)._attributes;
+                if (attrs && attrs.id === this.tabsetID) {
+                    found = node.getId();
+                    console.log("[editors] tabset found by _attributes.id:", this.tabsetID, "-> internal:", found);
+                }
+            }
+        });
+        return found || this.tabsetID;
+    }
+
     openInitialEditorsAtStart: boolean = false;
 
     constructor(
@@ -182,9 +207,11 @@ export class EditorsStore {
             this.projectStore.lastRevision;
             this.editors.slice().forEach(editor => {
                 if (!editor.object) {
+                    console.log("[editors] autorun closeEditor (no object)", editor.title);
                     this.closeEditor(editor);
                 } else {
                     if (!isObjectExists(editor.object)) {
+                        console.log("[editors] autorun closeEditor (!exists)", editor.title);
                         this.closeEditor(editor);
                     } else {
                         if (editor.subObject) {
@@ -264,7 +291,11 @@ export class EditorsStore {
         return tabs;
     }
 
+    _refreshTimer: any = null;
+
     refresh(showActiveEditor: boolean) {
+        const model = this.getLayoutModel();
+        console.log("[editors] refresh showActiveEditor=", showActiveEditor, "tabs=", this.tabs.length, "model=", !!model, "tabsetID=", this.tabsetID);
         const editors: Editor[] = [];
         const tabIdToEditorMap = new Map<string, Editor>();
 
@@ -279,6 +310,7 @@ export class EditorsStore {
             let params: any;
             let permanent: boolean;
             if (typeof tabConfig == "string") {
+                console.log("[editors] refresh tab config string:", tabConfig);
                 object = getObjectFromStringPath(
                     this.projectStore.project,
                     tabConfig
@@ -287,6 +319,7 @@ export class EditorsStore {
                 params = undefined;
                 permanent = false;
             } else {
+                console.log("[editors] refresh tab config objectPath:", tabConfig.objectPath);
                 object = getObjectFromStringPath(
                     this.projectStore.project,
                     tabConfig.objectPath
@@ -302,6 +335,7 @@ export class EditorsStore {
             }
 
             if (!object) {
+                console.log("[editors] refresh DELETING tab — objectPath:", tabConfig.objectPath, "— NOT FOUND");
                 this.tabsModel.doAction(FlexLayout.Actions.deleteTab(tabId));
                 continue;
             }
@@ -340,7 +374,9 @@ export class EditorsStore {
 
         this.saveState();
 
-        setTimeout(() => {
+        if (this._refreshTimer) clearTimeout(this._refreshTimer);
+        this._refreshTimer = setTimeout(() => {
+            console.log("[editors] refresh timer fired, editors.length:", editors.length, "activeEditor:", !!activeEditor);
             let changed =
                 this.activeEditor != activeEditor ||
                 this.editors.length != editors.length ||
@@ -391,7 +427,9 @@ export class EditorsStore {
         params?: any,
         permanent?: boolean
     ) {
-        const editors = this.refresh(false);
+        console.log("[editors] openEditor object=", objectToString(object), "editors:", this.editors.length);
+
+        const editors = this.editors;
 
         let editorFound: Editor | undefined;
 
@@ -429,6 +467,7 @@ export class EditorsStore {
         }
 
         let editor = new Editor(this.projectStore);
+        console.log("[editors] new Editor created");
         runInAction(() => {
             this.editors.push(editor);
         });
@@ -436,12 +475,16 @@ export class EditorsStore {
         editor.object = object;
         editor.subObject = subObject;
         editor.params = params;
+        console.log("[editors] calling createEditorState...");
         editor.state = ProjectEditor.createEditorState(object);
+        console.log("[editors] createEditorState done, state:", !!editor.state);
         if (permanent != undefined) {
             editor.permanent = permanent;
         }
 
+        console.log("[editors] entering try block...");
         try {
+            console.log("[editors] getting icon...");
             let icon = getObjectIcon(object);
             if (typeof icon == "string") {
                 if (!icon.startsWith("material:") && !icon.startsWith("svg:")) {
@@ -450,6 +493,8 @@ export class EditorsStore {
             }
 
             for (let i = 0; i < editors.length; i++) {
+                // Skip the editor we just created — it has no tabId yet
+                if (editors[i] === editor) continue;
                 if (
                     !editors[i].permanent &&
                     getClassInfo(editors[i].object) == getClassInfo(object) &&
@@ -480,6 +525,7 @@ export class EditorsStore {
                     editorFound.tabId
                 ) as FlexLayout.TabNode;
             } else {
+                console.log("[editors] addNode to actualTabsetID:", this.actualTabsetID);
                 tabNode = this.tabsModel.doAction(
                     FlexLayout.Actions.addNode(
                         {
@@ -489,15 +535,17 @@ export class EditorsStore {
                             config: editor.getConfig(),
                             icon
                         },
-                        this.tabsetID,
+                        this.actualTabsetID,
                         FlexLayout.DockLocation.CENTER,
                         0,
                         true
                     )
                 ) as FlexLayout.TabNode;
+                console.log("[editors] addNode result:", !!tabNode, tabNode ? "tabId=" + tabNode.getId() : "NULL");
             }
 
             editor.tabId = tabNode.getId();
+            console.log("[editors] new tabId:", editor.tabId);
 
             this.tabIdToEditorMap.set(editor.tabId, editor);
 
@@ -508,7 +556,9 @@ export class EditorsStore {
             });
 
             this.refresh(true);
-        } catch (err) {}
+        } catch (err) {
+            console.error("[editors] openEditor error:", err);
+        }
 
         return editor;
     }

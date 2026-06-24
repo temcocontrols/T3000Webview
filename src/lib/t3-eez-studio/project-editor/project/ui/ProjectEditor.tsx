@@ -105,7 +105,6 @@ const Content = observer(
 
         factory = (node: FlexLayout.TabNode) => {
             var component = node.getComponent();
-
             if (component === "pages") {
                 return (
                     <ListNavigation
@@ -464,6 +463,7 @@ const Content = observer(
             model: FlexLayout.Model,
             action: FlexLayout.Action
         ) => {
+            console.log("[editors] onModelChange action:", action.type, "tabs:", model.getActiveTabset()?.getChildren().length);
             this.context.editorsStore.refresh(false);
         };
 

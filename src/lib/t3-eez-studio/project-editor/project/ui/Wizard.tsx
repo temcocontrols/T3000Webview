@@ -452,7 +452,7 @@ export class WizardModel {
 
         const templateProjects = data.data.map(
             (templateProject: TemplateProject) => {
-                const relativePath = templateProject.html_url.replace(/^https:\/\/envox\.hr\/gitea\//, "");
+                let relativePath = templateProject.html_url.replace(/^https:\/\/envox\.hr\/gitea\//, "");
                 return Object.assign({}, templateProject, {
                     _image_url: "/gitea-hr/" + relativePath + "/raw/branch/master/template/image.png"
                 });

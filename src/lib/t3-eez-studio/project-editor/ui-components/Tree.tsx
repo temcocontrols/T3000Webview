@@ -709,6 +709,7 @@ export const Tree = observer(
         };
 
         onRowClick = (event: React.MouseEvent<HTMLDivElement>) => {
+            console.log("[tree] onRowClick target:", (event.target as any).tagName, (event.target as any).className);
             if (!(event.nativeEvent.target instanceof HTMLInputElement)) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -717,9 +718,9 @@ export const Tree = observer(
             const $rowDiv = $(event.target).closest(
                 ".tree-row[data-object-id]"
             );
-            let item = this.props.treeAdapter.getItemFromId(
-                $rowDiv.attr("data-object-id")!
-            )!;
+            const itemId = $rowDiv.attr("data-object-id");
+            console.log("[tree] onRowClick rowDiv:", !!$rowDiv.length, "itemId:", itemId);
+            let item = this.props.treeAdapter.getItemFromId(itemId)!;
             if (event.shiftKey) {
                 const $treeDiv = $rowDiv.parent();
                 const $selectedItems = $treeDiv.find(".tree-row.selected");
