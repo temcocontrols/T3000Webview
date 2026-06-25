@@ -17,8 +17,7 @@ const path = require('path');
 const os = require('os');
 const { PNG } = require('pngjs');
 const child_process = require('child_process');
-let lz4 = null;
-try { lz4 = require('lz4'); } catch (e) { lz4 = null; }
+const lz4 = require('lz4js');
 let quantize = null;
 try { quantize = require('quantize'); } catch (e) { quantize = null; }
 
@@ -220,10 +219,9 @@ class LVGLCompressData {
       return Buffer.concat([uint32_t(0x01), uint32_t(this.compressed_len), uint32_t(this.raw_data_len), compressed]);
     }
     if (this.method === 'LZ4') {
-      if (!lz4) throw new Error('LZ4 compression requested but "lz4" package is not installed. Install it with `npm install lz4`.');
-      const maxSize = lz4.encodeBound(raw_data.length);
+      const maxSize = lz4.compressBound(raw_data.length);
       const compressed = Buffer.alloc(maxSize);
-      const compressedSize = lz4.encodeBlock(raw_data, compressed);
+      const compressedSize = lz4.compressBlock(raw_data, compressed);
       const out = compressed.slice(0, compressedSize);
       this.compressed_len = out.length;
       return Buffer.concat([uint32_t(0x02), uint32_t(this.compressed_len), uint32_t(this.raw_data_len), out]);

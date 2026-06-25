@@ -152,6 +152,10 @@ module.exports = configure(function (/* ctx */) {
         // Optimize deps — noDiscovery prevents scanning the massive EEZ tree
         viteConf.optimizeDeps = viteConf.optimizeDeps || {};
         viteConf.optimizeDeps.noDiscovery = true;
+        // Native Node.js modules that can't be bundled for browser
+        viteConf.optimizeDeps.exclude = (viteConf.optimizeDeps.exclude || []).concat([
+          'quantize', 'pngjs'
+        ]);
 
         viteConf.resolve = viteConf.resolve || {};
         viteConf.resolve.dedupe = viteConf.resolve.dedupe || [];
