@@ -25,7 +25,7 @@ const ipcSyncDefaults: Record<string, any> = {
     getMRU: [],
     getReservedKeybindings: [],
     getIsDarkTheme: false,
-    getShowComponentsPaletteInProjectEditor: false,
+    getShowComponentsPaletteInProjectEditor: true,
     getHomePath: "/project",
     getExtensionsFolderPath: "/userData/extensions",
     getLocale: navigator.language || "en",
