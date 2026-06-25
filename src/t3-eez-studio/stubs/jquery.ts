@@ -27,6 +27,17 @@ function createJQueryObj(elements: any[]) {
                 ? createJQueryObj([elements[index]])
                 : createJQueryObj([]);
         },
+        index(subject?: any) {
+            if (!subject) {
+                // No argument: return index of first element among siblings
+                const el = firstEl();
+                if (!el || !el.parentNode) return -1;
+                return Array.from(el.parentNode.children).indexOf(el);
+            }
+            // Subject is an element or jQuery object
+            const targetEl = subject.elements ? subject.elements[0] : subject;
+            return elements.indexOf(targetEl);
+        },
         // Events
         on(event: string, handler: any) {
             elements.forEach(el => {

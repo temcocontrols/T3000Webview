@@ -529,6 +529,9 @@ export function getLvglWasmFlowRuntimeConstructor(
                     Object.defineProperty(self, "HEAPU8", {
                         get() { return Module.HEAPU8; }, configurable: true
                     });
+                    Object.defineProperty(self, "HEAPU32", {
+                        get() { return Module.HEAPU32; }, configurable: true
+                    });
                     Object.defineProperty(self, "HEAP32", {
                         get() { return Module.HEAP32; }, configurable: true
                     });
