@@ -125,7 +125,6 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['crypto'] = stub('crypto.ts');
         viteConf.resolve.alias['mousetrap'] = stub('mousetrap.ts');
         viteConf.resolve.alias['sha256'] = stub('sha256.ts');
-        viteConf.resolve.alias['jquery'] = stub('jquery.ts');
         viteConf.resolve.alias['better-sqlite3'] = stub('better-sqlite3.ts');
         viteConf.resolve.alias['simple-git'] = stub('simple-git.ts');
         viteConf.resolve.alias['archiver'] = stub('archiver.ts');

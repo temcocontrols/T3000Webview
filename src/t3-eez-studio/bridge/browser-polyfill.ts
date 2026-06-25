@@ -5,8 +5,9 @@
 import * as MousetrapNS from "mousetrap";
 const Mousetrap = (MousetrapNS as any).default || MousetrapNS;
 
-// jQuery stub — exposed globally for drag-and-drop etc.
-import "jquery";
+// jQuery — expose globally for drag-and-drop and HVAC components
+import $ from "jquery";
+(globalThis as any).$ = (globalThis as any).jQuery = $;
 
 // ace editor — exposed globally for code-editor.tsx
 import * as ace from "ace-builds";
