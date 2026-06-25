@@ -3,7 +3,6 @@ import {
     IReactionDisposer,
     autorun,
     runInAction,
-    untracked,
     makeObservable,
     computed,
     observable,
@@ -119,7 +118,6 @@ export abstract class LVGLPageRuntime {
         ctrlMapBuffer: number;
     }[];
     _isInsideUserWidget: number;
-    _firstAutorunDone: boolean;
 
     constructor(public page: Page) {
         this.lvglVersion = this.project.settings.general.lvglVersion;
@@ -160,7 +158,6 @@ export abstract class LVGLPageRuntime {
         this.postCreateCallbacks = [];
         this.buttonMatrixBuffers = [];
         this._isInsideUserWidget = 0;
-        this._firstAutorunDone = false;
     }
 
     get projectStore() {
@@ -798,6 +795,11 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
                         return;
                     }
 
+                    if (this.dispose2) {
+                        this.dispose2();
+                        this.dispose2 = undefined;
+                    }
+
                     try {
                         // set all _lvglObj to undefined
                         runInAction(() => {
@@ -806,15 +808,7 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
                             );
                         });
 
-                        // Skip _lvglClearTimeline on the first autorun cycle:
-                        // LVGL was just initialized and only has the default
-                        // theme screen. Clearing the timeline before any user
-                        // screen exists can trigger deleteObjectIndex on the
-                        // default screen, causing "delete current screen" /
-                        // "No screen found" / "disp != NULL" crashes.
-                        if (this._firstAutorunDone) {
-                            this.wasm._lvglClearTimeline();
-                        }
+                        this.wasm._lvglClearTimeline();
 
                         const pointers = this.pointers.slice();
                         this.pointers = [];
@@ -848,10 +842,6 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
 
                         this.wasm._lvglScreenLoad(-1, pageObj);
 
-                        this._firstAutorunDone = true;
-
-                        // Single runInAction (matches Electron) — avoids
-                        // double autorun trigger that causes infinite loop.
                         runInAction(() => {
                             if (this.page._lvglObj != undefined) {
                                 this.wasm._lvglDeleteObject(this.page._lvglObj);
@@ -863,6 +853,30 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
 
                         this.deleteStyles();
 
+                        this.dispose2 = autorun(() => {
+                            for (const objectAdapter of this.flowContext
+                                .viewState.selectedObjects) {
+                                const tabWidget =
+                                    getAncestorOfType<LVGLTabWidget>(
+                                        objectAdapter.object,
+                                        ProjectEditor.LVGLTabWidgetClass
+                                            .classInfo
+                                    );
+                                if (tabWidget) {
+                                    const tabviewWidget = tabWidget.tabview;
+                                    if (tabviewWidget) {
+                                        const tabIndex = tabWidget.tabIndex;
+                                        if (tabIndex != -1) {
+                                            runInAction(() => {
+                                                tabviewWidget._selectedTabIndex =
+                                                    tabIndex;
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        });
+
                         if (this.ctxPage != undefined && this.ctxPage != this.page) {
                             this.ctx.fillStyle = "#FFFFFF";
                             this.ctx.fillRect(0, 0, this.displayWidth, this.displayHeight);
@@ -870,40 +884,6 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
                     } catch (e) {
                         console.error(e);
                         this.wasError = true;
-                    }
-                });
-
-                // Create dispose2 ONCE (outside the autorun loop) to
-                // prevent an infinite reaction cycle: dispose2 changes
-                // _selectedTabIndex → increments lastRevision → triggers
-                // main autorun → disposes dispose2 → creates new dispose2
-                // → infinite loop ("Reaction doesn't converge").
-                this.dispose2 = autorun(() => {
-                    for (const objectAdapter of this.flowContext
-                        .viewState.selectedObjects) {
-                        const tabWidget =
-                            getAncestorOfType<LVGLTabWidget>(
-                                objectAdapter.object,
-                                ProjectEditor.LVGLTabWidgetClass
-                                    .classInfo
-                            );
-                        if (tabWidget) {
-                            const tabviewWidget = tabWidget.tabview;
-                            if (tabviewWidget) {
-                                const tabIndex = tabWidget.tabIndex;
-                                if (tabIndex != -1 &&
-                                    tabviewWidget._selectedTabIndex !== tabIndex) {
-                                    // Use untracked so this change does NOT
-                                    // increment lastRevision and trigger the
-                                    // main autorun, preventing the infinite
-                                    // "Reaction doesn't converge" loop.
-                                    untracked(() => {
-                                        tabviewWidget._selectedTabIndex =
-                                            tabIndex;
-                                    });
-                                }
-                            }
-                        }
                     }
                 });
             }

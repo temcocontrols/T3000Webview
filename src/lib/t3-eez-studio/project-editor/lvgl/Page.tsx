@@ -22,15 +22,8 @@ export const LVGLPage = observer(
 
         canvasRef = React.createRef<HTMLCanvasElement>();
         runtime: LVGLPageRuntime | undefined;
-        _runtimeCreated = false;
 
         createPageRuntime() {
-            if (this._runtimeCreated) {
-                console.log("[wasm] createPageRuntime skipped, already created");
-                return;
-            }
-            this._runtimeCreated = true;
-
             if (this.context.runtime) {
                 this.runtime = new LVGLNonActivePageViewerRuntime(
                     this.props.page,
@@ -54,28 +47,20 @@ export const LVGLPage = observer(
         }
 
         componentDidUpdate() {
-            if (this.runtime && this.runtime.isMounted) {
-                return;
-            }
             if (this.runtime) {
                 this.runtime.unmount();
                 this.runtime = undefined;
-                this._runtimeCreated = false;
             }
 
             this.createPageRuntime();
         }
 
         componentWillUnmount() {
-            const runtime = this.runtime;
-            // Unmount synchronously — setTimeout causes the old runtime
-            // to stay alive when the component quickly remounts (e.g. tab
-            // deactivate/reactivate), creating two concurrent WASM instances.
-            if (runtime) {
-                runtime.unmount();
-                this.runtime = undefined;
-                this._runtimeCreated = false;
-            }
+            setTimeout(() => {
+                if (this.runtime) {
+                    this.runtime.unmount();
+                }
+            });
         }
 
         render() {
