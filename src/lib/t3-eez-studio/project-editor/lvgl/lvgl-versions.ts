@@ -475,20 +475,31 @@ export function getLvglWasmFlowRuntimeConstructor(
             wasmFlowRuntimeConstructor;
     }
 
-    // In browser, require() returns {} — load WASM directly via WebAssembly
+    // In browser, require() returns {} — load the Emscripten JS glue via
+    // a script tag for proper Module with emscripten_set_main_loop & locateFile
     if (typeof wasmFlowRuntimeConstructor !== "function" && typeof window !== "undefined") {
         const fileName = wasmFlowRuntime.replace(/^.*[/\\]/, "");
-        // Extract version from filename, e.g. lvgl_runtime_v8.4.0.js → 8.4.0
         const versionMatch = fileName.match(/v?(\d+\.\d+\.\d+)/);
         const version = versionMatch ? versionMatch[1] : "9.5.0";
         const jsUrl = `/t3-eez-studio/wasm/lvgl/${version}/${fileName}`;
-        const wasmUrl = jsUrl.replace(/\.js$/, ".wasm");
+
+        // Load the JS glue once (sets globalThis.LVGLWasmRuntime)
+        const loadPromise = (() => {
+            if ((globalThis as any).LVGLWasmRuntime) return Promise.resolve();
+            return new Promise<void>((resolve, reject) => {
+                const script = document.createElement("script");
+                script.src = jsUrl;
+                script.onload = () => resolve();
+                script.onerror = () => reject(new Error("Failed to load " + jsUrl));
+                document.head.appendChild(script);
+            });
+        })();
+
         return function DirectWasmRuntime(this: any, initCb: any) {
             if (!(this instanceof DirectWasmRuntime)) {
                 return new (DirectWasmRuntime as any)(initCb);
             }
             const self = this;
-            // Default to no-op methods with Proxy for any unknown calls
             this.HEAPU8 = new Uint8Array(0);
             this.HEAP32 = new Int32Array(0);
             this.HEAP8 = new Int8Array(0);
@@ -500,26 +511,43 @@ export function getLvglWasmFlowRuntimeConstructor(
                     return () => {};
                 }
             };
-            let runtimeProxy = new Proxy(this, proxyHandler);
-            // Try loading WASM directly
-            console.log("[wasm] loading WASM directly:", wasmUrl);
-            WebAssembly.instantiateStreaming(fetch(wasmUrl), {})
-                .then(result => {
-                    const exports = result.instance.exports as any;
-                    console.log("[wasm] WASM loaded, exports:", Object.keys(exports).filter((k: string) => k.startsWith("_")).join(", "));
-                    // Copy exports to this
-                    for (const key of Object.keys(exports)) {
-                        (self as any)[key] = exports[key];
-                    }
-                    if (exports.memory) {
-                        self.HEAPU8 = new Uint8Array(exports.memory.buffer);
+            const runtimeProxy = new Proxy(this, proxyHandler);
+
+            loadPromise.then(() => {
+                const factory = (globalThis as any).LVGLWasmRuntime;
+                if (!factory) {
+                    console.warn("[wasm] LVGLWasmRuntime not found — using no-op");
+                    if (typeof initCb === "function") setTimeout(initCb, 0);
+                    return;
+                }
+                const wasmUrl = jsUrl.replace(/\.js$/, ".wasm");
+                (globalThis as any).__lvglWasmUrl = wasmUrl;
+                const Module = factory(undefined);
+                delete (globalThis as any).__lvglWasmUrl;
+                Module.onRuntimeInitialized = () => {
+                    // Use getters so HEAP stays in sync with WASM memory growth
+                    Object.defineProperty(self, "HEAPU8", {
+                        get() { return Module.HEAPU8; }, configurable: true
+                    });
+                    Object.defineProperty(self, "HEAP32", {
+                        get() { return Module.HEAP32; }, configurable: true
+                    });
+                    Object.defineProperty(self, "HEAP8", {
+                        get() { return Module.HEAP8; }, configurable: true
+                    });
+                    if (Module.FS) self.FS = Module.FS;
+                    for (const key of Object.keys(Module)) {
+                        if (key.startsWith("_") && typeof Module[key] === "function") {
+                            (self as any)[key] = Module[key].bind(Module);
+                        }
                     }
                     if (typeof initCb === "function") setTimeout(initCb, 0);
-                })
-                .catch(err => {
-                    console.warn("[wasm] direct WASM load failed:", err.message, "— using no-op");
-                    if (typeof initCb === "function") setTimeout(initCb, 0);
-                });
+                };
+            }).catch(err => {
+                console.warn("[wasm] failed to load JS glue:", err.message);
+                if (typeof initCb === "function") setTimeout(initCb, 0);
+            });
+
             return runtimeProxy;
         } as any;
     }

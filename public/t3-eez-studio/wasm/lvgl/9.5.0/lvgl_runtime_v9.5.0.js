@@ -72,13 +72,17 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
 // include: C:/QN/temcocontrols/studio-wasm-libs/lvgl-runtime/v9.5.0/../common/pre.js
-module["exports"] = function (postWorkerToRendererMessage) {
+// Export the factory function for both CommonJS (Electron/Node) and
+// browser environments (globalThis fallback for script-tag loading).
+var LVGLWasmRuntime = function (postWorkerToRendererMessage) {
     var Module = {};
 
     Module.postWorkerToRendererMessage = postWorkerToRendererMessage;
 
     Module.onRuntimeInitialized = function () {
-        postWorkerToRendererMessage({ init: {} });
+        if (postWorkerToRendererMessage) {
+            postWorkerToRendererMessage({ init: {} });
+        }
     }
 
     Module.print = function (args) {
@@ -90,13 +94,28 @@ module["exports"] = function (postWorkerToRendererMessage) {
     };
 
     Module.locateFile = function (path, scriptDirectory) {
-        if (scriptDirectory) return scriptDirectory + path;
-        return new URL(path, import.meta.url).href;
+        // Prefer the explicit URL set by the host (handles Vite/Quasar path rewriting)
+        if (typeof globalThis !== "undefined" && globalThis.__lvglWasmUrl && path.endsWith(".wasm")) {
+            return globalThis.__lvglWasmUrl;
+        }
+        // Fallback: locate next to the loading script
+        var scripts = document.getElementsByTagName("script");
+        var src = scripts[scripts.length - 1].src;
+        return src.substring(0, src.lastIndexOf("/") + 1) + path;
     };
 
     runWasmModule(Module);
 
     return Module;
+};
+
+// CommonJS export (Electron/Node)
+if (typeof module !== "undefined" && module["exports"]) {
+    module["exports"] = LVGLWasmRuntime;
+}
+// Browser global (script-tag loading)
+if (typeof globalThis !== "undefined") {
+    globalThis.LVGLWasmRuntime = LVGLWasmRuntime;
 }
 
 function runWasmModule(Module) {
@@ -5341,6 +5360,8 @@ var _lv_indev_set_read_cb = Module['_lv_indev_set_read_cb'] = makeInvalidEarlyAc
 var _lv_fs_drv_init = Module['_lv_fs_drv_init'] = makeInvalidEarlyAccess('_lv_fs_drv_init');
 var _lv_fs_drv_register = Module['_lv_fs_drv_register'] = makeInvalidEarlyAccess('_lv_fs_drv_register');
 var _init = Module['_init'] = makeInvalidEarlyAccess('_init');
+var _free = Module['_free'] = makeInvalidEarlyAccess('_free');
+var _lv_deinit = Module['_lv_deinit'] = makeInvalidEarlyAccess('_lv_deinit');
 var _lv_init = Module['_lv_init'] = makeInvalidEarlyAccess('_lv_init');
 var _lv_display_get_default = Module['_lv_display_get_default'] = makeInvalidEarlyAccess('_lv_display_get_default');
 var _lv_palette_main = Module['_lv_palette_main'] = makeInvalidEarlyAccess('_lv_palette_main');
@@ -6478,7 +6499,6 @@ var _lv_sqrt32 = Module['_lv_sqrt32'] = makeInvalidEarlyAccess('_lv_sqrt32');
 var _lv_point_swap = Module['_lv_point_swap'] = makeInvalidEarlyAccess('_lv_point_swap');
 var _lv_fs_get_ext = Module['_lv_fs_get_ext'] = makeInvalidEarlyAccess('_lv_fs_get_ext');
 var _lv_snprintf = Module['_lv_snprintf'] = makeInvalidEarlyAccess('_lv_snprintf');
-var _lv_deinit = Module['_lv_deinit'] = makeInvalidEarlyAccess('_lv_deinit');
 var _lv_ll_clear_custom = Module['_lv_ll_clear_custom'] = makeInvalidEarlyAccess('_lv_ll_clear_custom');
 var _lv_span_stack_deinit = Module['_lv_span_stack_deinit'] = makeInvalidEarlyAccess('_lv_span_stack_deinit');
 var _lv_theme_default_deinit = Module['_lv_theme_default_deinit'] = makeInvalidEarlyAccess('_lv_theme_default_deinit');
@@ -6883,7 +6903,6 @@ var _lv_mem_remove_pool = Module['_lv_mem_remove_pool'] = makeInvalidEarlyAccess
 var _lv_malloc_core = Module['_lv_malloc_core'] = makeInvalidEarlyAccess('_lv_malloc_core');
 var _lv_realloc_core = Module['_lv_realloc_core'] = makeInvalidEarlyAccess('_lv_realloc_core');
 var _lv_free_core = Module['_lv_free_core'] = makeInvalidEarlyAccess('_lv_free_core');
-var _free = Module['_free'] = makeInvalidEarlyAccess('_free');
 var _lv_mem_monitor_core = Module['_lv_mem_monitor_core'] = makeInvalidEarlyAccess('_lv_mem_monitor_core');
 var _lv_mem_test_core = Module['_lv_mem_test_core'] = makeInvalidEarlyAccess('_lv_mem_test_core');
 var _lv_calloc = Module['_lv_calloc'] = makeInvalidEarlyAccess('_lv_calloc');
@@ -7381,6 +7400,8 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['lv_fs_drv_init'] != 'undefined', 'missing Wasm export: lv_fs_drv_init');
   assert(typeof wasmExports['lv_fs_drv_register'] != 'undefined', 'missing Wasm export: lv_fs_drv_register');
   assert(typeof wasmExports['init'] != 'undefined', 'missing Wasm export: init');
+  assert(typeof wasmExports['free'] != 'undefined', 'missing Wasm export: free');
+  assert(typeof wasmExports['lv_deinit'] != 'undefined', 'missing Wasm export: lv_deinit');
   assert(typeof wasmExports['lv_init'] != 'undefined', 'missing Wasm export: lv_init');
   assert(typeof wasmExports['lv_display_get_default'] != 'undefined', 'missing Wasm export: lv_display_get_default');
   assert(typeof wasmExports['lv_palette_main'] != 'undefined', 'missing Wasm export: lv_palette_main');
@@ -8518,7 +8539,6 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['lv_point_swap'] != 'undefined', 'missing Wasm export: lv_point_swap');
   assert(typeof wasmExports['lv_fs_get_ext'] != 'undefined', 'missing Wasm export: lv_fs_get_ext');
   assert(typeof wasmExports['lv_snprintf'] != 'undefined', 'missing Wasm export: lv_snprintf');
-  assert(typeof wasmExports['lv_deinit'] != 'undefined', 'missing Wasm export: lv_deinit');
   assert(typeof wasmExports['lv_ll_clear_custom'] != 'undefined', 'missing Wasm export: lv_ll_clear_custom');
   assert(typeof wasmExports['lv_span_stack_deinit'] != 'undefined', 'missing Wasm export: lv_span_stack_deinit');
   assert(typeof wasmExports['lv_theme_default_deinit'] != 'undefined', 'missing Wasm export: lv_theme_default_deinit');
@@ -8923,7 +8943,6 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['lv_malloc_core'] != 'undefined', 'missing Wasm export: lv_malloc_core');
   assert(typeof wasmExports['lv_realloc_core'] != 'undefined', 'missing Wasm export: lv_realloc_core');
   assert(typeof wasmExports['lv_free_core'] != 'undefined', 'missing Wasm export: lv_free_core');
-  assert(typeof wasmExports['free'] != 'undefined', 'missing Wasm export: free');
   assert(typeof wasmExports['lv_mem_monitor_core'] != 'undefined', 'missing Wasm export: lv_mem_monitor_core');
   assert(typeof wasmExports['lv_mem_test_core'] != 'undefined', 'missing Wasm export: lv_mem_test_core');
   assert(typeof wasmExports['lv_calloc'] != 'undefined', 'missing Wasm export: lv_calloc');
@@ -9418,6 +9437,8 @@ function assignWasmExports(wasmExports) {
   _lv_fs_drv_init = Module['_lv_fs_drv_init'] = createExportWrapper('lv_fs_drv_init', 1);
   _lv_fs_drv_register = Module['_lv_fs_drv_register'] = createExportWrapper('lv_fs_drv_register', 1);
   _init = Module['_init'] = createExportWrapper('init', 9);
+  _free = Module['_free'] = createExportWrapper('free', 1);
+  _lv_deinit = Module['_lv_deinit'] = createExportWrapper('lv_deinit', 0);
   _lv_init = Module['_lv_init'] = createExportWrapper('lv_init', 0);
   _lv_display_get_default = Module['_lv_display_get_default'] = createExportWrapper('lv_display_get_default', 0);
   _lv_palette_main = Module['_lv_palette_main'] = createExportWrapper('lv_palette_main', 2);
@@ -10555,7 +10576,6 @@ function assignWasmExports(wasmExports) {
   _lv_point_swap = Module['_lv_point_swap'] = createExportWrapper('lv_point_swap', 2);
   _lv_fs_get_ext = Module['_lv_fs_get_ext'] = createExportWrapper('lv_fs_get_ext', 1);
   _lv_snprintf = Module['_lv_snprintf'] = createExportWrapper('lv_snprintf', 4);
-  _lv_deinit = Module['_lv_deinit'] = createExportWrapper('lv_deinit', 0);
   _lv_ll_clear_custom = Module['_lv_ll_clear_custom'] = createExportWrapper('lv_ll_clear_custom', 2);
   _lv_span_stack_deinit = Module['_lv_span_stack_deinit'] = createExportWrapper('lv_span_stack_deinit', 0);
   _lv_theme_default_deinit = Module['_lv_theme_default_deinit'] = createExportWrapper('lv_theme_default_deinit', 0);
@@ -10960,7 +10980,6 @@ function assignWasmExports(wasmExports) {
   _lv_malloc_core = Module['_lv_malloc_core'] = createExportWrapper('lv_malloc_core', 1);
   _lv_realloc_core = Module['_lv_realloc_core'] = createExportWrapper('lv_realloc_core', 2);
   _lv_free_core = Module['_lv_free_core'] = createExportWrapper('lv_free_core', 1);
-  _free = Module['_free'] = createExportWrapper('free', 1);
   _lv_mem_monitor_core = Module['_lv_mem_monitor_core'] = createExportWrapper('lv_mem_monitor_core', 1);
   _lv_mem_test_core = Module['_lv_mem_test_core'] = createExportWrapper('lv_mem_test_core', 0);
   _lv_calloc = Module['_lv_calloc'] = createExportWrapper('lv_calloc', 2);
