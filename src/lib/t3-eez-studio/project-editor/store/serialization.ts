@@ -100,7 +100,17 @@ export function objectToJson(
     delete (object as any)._eez_id;
     delete (object as any)._eez_key;
 
-    let jsObject = toJS(object);
+    // Create a clean shallow copy excluding runtime _-prefixed
+    // MobX observables (e.g. _lvglRuntime, _lvglObj) that hold
+    // non-observable class instances which toJS cannot process.
+    const cleanObj: any = {};
+    for (const key of Object.keys(object as any)) {
+        if (key[0] !== "_") {
+            cleanObj[key] = (object as any)[key];
+        }
+    }
+
+    let jsObject = toJS(cleanObj);
 
     Object.assign(object, saved);
 
