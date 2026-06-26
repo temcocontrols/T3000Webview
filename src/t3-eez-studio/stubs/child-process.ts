@@ -38,6 +38,15 @@ async function runViaBackend(cmd: string, args: string[]): Promise<SpawnResult> 
 }
 
 function runSync(cmd: string, args: string[] = []): SpawnResult {
+    try {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/eez-studio/exec", false); // false = synchronous
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.send(JSON.stringify({ cmd, args }));
+        if (xhr.status === 200) {
+            return JSON.parse(xhr.responseText) as SpawnResult;
+        }
+    } catch {}
     const msg = UNAVAILABLE[cmd] || `${cmd}: command not available`;
     return { status: 1, stdout: "", stderr: msg };
 }
