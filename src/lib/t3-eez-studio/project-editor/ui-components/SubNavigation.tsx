@@ -69,7 +69,7 @@ export const SubNavigation = observer(
                                     className={classNames("nav-link", {
                                         active: this.selectedItem == item.name
                                     })}
-                                    href="#"
+                                    href="javascript:void(0)"
                                 >
                                     {item.name}
                                     {item.numItems > 0 ? (
