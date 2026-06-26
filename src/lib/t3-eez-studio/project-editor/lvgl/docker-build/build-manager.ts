@@ -115,6 +115,10 @@ export class DockerBuildManager {
      * Check if the Docker build resources exist
      */
     private checkDockerBuildResources(): boolean {
+        // In browser, skip filesystem check — let checkDocker() handle detection
+        if (typeof (globalThis as any).process?.versions?.electron === "undefined") {
+            return true;
+        }
         const dockerBuildPath = this.getDockerBuildPath();
         const dockerfilePath = path.join(dockerBuildPath, "Dockerfile");
         const composePath = path.join(dockerBuildPath, "docker-compose.yml");

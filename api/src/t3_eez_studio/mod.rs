@@ -9,6 +9,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::process::Command;
 use tokio::fs;
 use tracing::{error, info};
 
@@ -249,6 +250,45 @@ async fn health() -> Json<HealthResponse> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Command execution — proxies child_process calls from browser to real OS
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Deserialize)]
+struct ExecRequest {
+    cmd: String,
+    args: Vec<String>,
+    #[serde(default)]
+    cwd: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct ExecResponse {
+    status: i32,
+    stdout: String,
+    stderr: String,
+}
+
+async fn exec_command(Json(req): Json<ExecRequest>) -> Json<ExecResponse> {
+    let mut cmd = Command::new(&req.cmd);
+    cmd.args(&req.args);
+    if let Some(ref cwd) = req.cwd {
+        cmd.current_dir(cwd);
+    }
+    match cmd.output() {
+        Ok(output) => Json(ExecResponse {
+            status: output.status.code().unwrap_or(-1),
+            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+        }),
+        Err(e) => Json(ExecResponse {
+            status: -1,
+            stdout: String::new(),
+            stderr: format!("Failed to execute {}: {}", req.cmd, e),
+        }),
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Router
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -256,6 +296,7 @@ pub fn bridge_routes() -> Router<T3AppState> {
     info!("bridge_api: registering /api/eez-studio/* routes");
     Router::new()
         .route("/api/eez-studio/health", get(health))
+        .route("/api/eez-studio/exec", post(exec_command))
         .route("/api/eez-studio/read-text-file", get(read_text_file))
         .route("/api/eez-studio/read-file", get(read_file))
         .route("/api/eez-studio/write-file", post(write_file))
