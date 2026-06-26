@@ -185,12 +185,12 @@ export class Assets {
     lvglBuild: LVGLBuild;
 
     get projectStore() {
-        console.log("[DIAG-Electron] assets.ts::projectStore");
+        // console.log("[DIAG-Browser] assets.ts::projectStore");
         return this.rootProject._store;
     }
 
     collectProjects(project: Project) {
-        console.log("[DIAG-Electron] assets.ts::collectProjects");
+        // console.log("[DIAG-Browser] assets.ts::collectProjects");
         if (this.projects.indexOf(project) === -1) {
             this.projects.push(project);
             for (const importDirective of project.settings.general.imports) {
@@ -511,7 +511,7 @@ export class Assets {
     }
 
     get utf8Support() {
-        console.log("[DIAG-Electron] assets.ts::utf8Support");
+        console.log("[DIAG-Browser] assets.ts::utf8Support");
         return this.projectStore.projectTypeTraits.hasFlowSupport;
     }
 
@@ -586,7 +586,7 @@ export class Assets {
     }
 
     getWidgetDataItemIndex(object: any, propertyName: string) {
-        console.log("[DIAG-Electron] assets.ts::getWidgetDataItemIndex");
+        console.log("[DIAG-Browser] assets.ts::getWidgetDataItemIndex");
         if (this.projectStore.projectTypeTraits.hasFlowSupport) {
             return this.getFlowWidgetDataItemIndex(object, propertyName);
         }
@@ -604,7 +604,7 @@ export class Assets {
     }
 
     getWidgetActionIndex(object: any, propertyName: string) {
-        console.log("[DIAG-Electron] assets.ts::getWidgetActionIndex");
+        console.log("[DIAG-Browser] assets.ts::getWidgetActionIndex");
         if (this.projectStore.projectTypeTraits.hasFlowSupport) {
             return this.getFlowWidgetActionIndex(object, propertyName);
         }
@@ -622,7 +622,7 @@ export class Assets {
     }
 
     getPageIndex(object: any, propertyName: string) {
-        console.log("[DIAG-Electron] assets.ts::getPageIndex");
+        console.log("[DIAG-Browser] assets.ts::getPageIndex");
         return this.getAssetIndex(object, propertyName, findPage, this.pages);
     }
 
@@ -748,7 +748,7 @@ export class Assets {
     }
 
     getFontIndex(object: any, propertyName: string) {
-        console.log("[DIAG-Electron] assets.ts::getFontIndex");
+        console.log("[DIAG-Browser] assets.ts::getFontIndex");
         let fontName: string | undefined = object[propertyName];
 
         const project = getProject(object);
@@ -790,7 +790,7 @@ export class Assets {
     }
 
     getBitmapIndex(object: any, propertyName: string) {
-        console.log("[DIAG-Electron] assets.ts::getBitmapIndex");
+        console.log("[DIAG-Browser] assets.ts::getBitmapIndex");
         let bitmapName: string | undefined = object[propertyName];
 
         const project = getProject(object);
@@ -832,7 +832,7 @@ export class Assets {
     }
 
     getColorIndexFromColorValue(color: string) {
-        console.log("[DIAG-Electron] assets.ts::getColorIndexFromColorValue");
+        console.log("[DIAG-Browser] assets.ts::getColorIndexFromColorValue");
         if (color == "transparent") {
             return 65535;
         }
@@ -899,7 +899,7 @@ export class Assets {
     }
 
     getTypeIndex(valueType: ValueType) {
-        console.log("[DIAG-Electron] assets.ts::getTypeIndex");
+        console.log("[DIAG-Browser] assets.ts::getTypeIndex");
         const index = this.projectStore.typesStore.getValueTypeIndex(valueType);
         if (index == undefined) {
             return -1;
@@ -908,22 +908,22 @@ export class Assets {
     }
 
     markBitmapUsed(bitmap: Bitmap) {
-        console.log("[DIAG-Electron] assets.ts::markBitmapUsed");
+        console.log("[DIAG-Browser] assets.ts::markBitmapUsed");
         this.bitmaps.push(bitmap);
     }
 
     markFontUsed(font: Font) {
-        console.log("[DIAG-Electron] assets.ts::markFontUsed");
+        console.log("[DIAG-Browser] assets.ts::markFontUsed");
         this.fonts.push(font);
     }
 
     markLvglStyleUsed(style: LVGLStyle) {
-        console.log("[DIAG-Electron] assets.ts::markLvglStyleUsed");
+        console.log("[DIAG-Browser] assets.ts::markLvglStyleUsed");
         this.lvglStyles.push(style);
     }
 
     reportUnusedAssets() {
-        console.log("[DIAG-Electron] assets.ts::reportUnusedAssets");
+        console.log("[DIAG-Browser] assets.ts::reportUnusedAssets");
         this.projects.forEach(project => {
             if (this.projectStore.projectTypeTraits.isLVGL) {
                 if (project.allLvglStyles?.length > 0) {
@@ -1022,7 +1022,7 @@ export class Assets {
     }
 
     getFlowState(flow: Flow) {
-        console.log("[DIAG-Electron] assets.ts::getFlowState");
+        console.log("[DIAG-Browser] assets.ts::getFlowState");
         let flowState = this.flowStates.get(flow);
         if (flowState == undefined) {
             flowState = {
@@ -1055,12 +1055,12 @@ export class Assets {
     }
 
     getFlowIndex(flow: Flow) {
-        console.log("[DIAG-Electron] assets.ts::getFlowIndex");
+        console.log("[DIAG-Browser] assets.ts::getFlowIndex");
         return this.getFlowState(flow).index;
     }
 
     getFlowIndexFromEventHandler(component: Component, eventName: string) {
-        console.log("[DIAG-Electron] assets.ts::getFlowIndexFromEventHandler");
+        console.log("[DIAG-Browser] assets.ts::getFlowIndexFromEventHandler");
         const eventHandlers = component.getEventHandlers();
         const actionName = eventHandlers?.find(
             eventHandler =>
@@ -1078,13 +1078,13 @@ export class Assets {
     }
 
     registerJSONValue(value: any) {
-        console.log("[DIAG-Electron] assets.ts::registerJSONValue");
+        console.log("[DIAG-Browser] assets.ts::registerJSONValue");
         this.jsonValues.push(value);
         return this.jsonValues.length;
     }
 
     getConstantIndex(value: any, valueType: ValueType) {
-        console.log("[DIAG-Electron] assets.ts::getConstantIndex");
+        console.log("[DIAG-Browser] assets.ts::getConstantIndex");
         const key = `${valueType}:${value}`;
 
         let index = this.constantsMap.get(key);
@@ -1101,7 +1101,7 @@ export class Assets {
     }
 
     getComponentIndex(component: Component) {
-        console.log("[DIAG-Electron] assets.ts::getComponentIndex");
+        console.log("[DIAG-Browser] assets.ts::getComponentIndex");
         const flowState = this.getFlowState(ProjectEditor.getFlow(component));
         let index = flowState.componentIndexes.get(component);
         if (index == undefined) {
@@ -1112,7 +1112,7 @@ export class Assets {
     }
 
     getComponentInputIndex(component: Component, inputName: string) {
-        console.log("[DIAG-Electron] assets.ts::getComponentInputIndex");
+        console.log("[DIAG-Browser] assets.ts::getComponentInputIndex");
         const flowState = this.getFlowState(ProjectEditor.getFlow(component));
         const path =
             getObjectPathAsString(component) + PATH_SEPARATOR + inputName;
@@ -1128,7 +1128,7 @@ export class Assets {
     }
 
     findComponentInputIndex(component: Component, inputName: string) {
-        console.log("[DIAG-Electron] assets.ts::findComponentInputIndex");
+        console.log("[DIAG-Browser] assets.ts::findComponentInputIndex");
         const flowState = this.getFlowState(ProjectEditor.getFlow(component));
         const path =
             getObjectPathAsString(component) + PATH_SEPARATOR + inputName;
@@ -1140,7 +1140,7 @@ export class Assets {
     }
 
     getFlowWidgetDataItemIndex(widget: Widget, propertyName: string) {
-        console.log("[DIAG-Electron] assets.ts::getFlowWidgetDataItemIndex");
+        console.log("[DIAG-Browser] assets.ts::getFlowWidgetDataItemIndex");
         if (!getProperty(widget, propertyName)) {
             return 0;
         }
@@ -1166,7 +1166,7 @@ export class Assets {
     }
 
     getComponentProperties(component: Component) {
-        console.log("[DIAG-Electron] assets.ts::getComponentProperties");
+        console.log("[DIAG-Browser] assets.ts::getComponentProperties");
         const classInfo = getClassInfo(component);
 
         let properties;
@@ -1202,7 +1202,7 @@ export class Assets {
     }
 
     getComponentPropertyIndex(component: Component, propertyName: string) {
-        console.log("[DIAG-Electron] assets.ts::getComponentPropertyIndex");
+        console.log("[DIAG-Browser] assets.ts::getComponentPropertyIndex");
         const properties = this.getComponentProperties(component);
         return properties.findIndex(
             propertyInfo => propertyInfo.name == propertyName
@@ -1210,7 +1210,7 @@ export class Assets {
     }
 
     getFlowWidgetActionIndex(widget: Widget | Component, propertyName: string) {
-        console.log("[DIAG-Electron] assets.ts::getFlowWidgetActionIndex");
+        console.log("[DIAG-Browser] assets.ts::getFlowWidgetActionIndex");
         if (widget instanceof ProjectEditor.WidgetClass) {
             if (propertyName == "action") {
                 propertyName = widget.getDefaultActionEventName();
@@ -1320,14 +1320,14 @@ export class Assets {
     }
 
     getComponentOutputIndex(component: Component, outputName: string) {
-        console.log("[DIAG-Electron] assets.ts::getComponentOutputIndex");
+        console.log("[DIAG-Browser] assets.ts::getComponentOutputIndex");
         return component.buildOutputs.findIndex(
             output => output.name == outputName
         );
     }
 
     finalizeMap() {
-        console.log("[DIAG-Electron] assets.ts::finalizeMap");
+        console.log("[DIAG-Browser] assets.ts::finalizeMap");
         this.map.jsonValues = this.jsonValues;
 
         this.map.constants = this.constants;
@@ -1408,7 +1408,7 @@ export class Assets {
     }
 
     get displayWidth() {
-        console.log("[DIAG-Electron] assets.ts::displayWidth");
+        console.log("[DIAG-Browser] assets.ts::displayWidth");
         if (this.projectStore.projectTypeTraits.isDashboard) {
             return 1;
         }
@@ -1432,7 +1432,7 @@ export class Assets {
     }
 
     get displayHeight() {
-        console.log("[DIAG-Electron] assets.ts::displayHeight");
+        console.log("[DIAG-Browser] assets.ts::displayHeight");
         if (this.projectStore.projectTypeTraits.isDashboard) {
             return 1;
         }
@@ -1620,6 +1620,8 @@ export async function buildGuiAssetsData(
         MessageType.INFO,
         "Compressed size: " + compressedSize
     );
+
+
 
     return { uncompressedData, compressedData };
 }

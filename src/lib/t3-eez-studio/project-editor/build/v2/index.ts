@@ -205,18 +205,18 @@ export class DataBuffer {
     offset: number;
 
     constructor() {
-        console.log("[DIAG-Electron] index.ts::constructor");
+        console.log("[DIAG-Browser] index.ts::constructor");
         this.buffer = new Uint8Array(10 * 1024 * 1024);
         this.offset = 0;
     }
 
     packUInt8(value: number) {
-        console.log("[DIAG-Electron] index.ts::packUInt8");
+        console.log("[DIAG-Browser] index.ts::packUInt8");
         this.buffer[this.offset++] = value;
     }
 
     packInt8(value: number) {
-        console.log("[DIAG-Electron] index.ts::packInt8");
+        console.log("[DIAG-Browser] index.ts::packInt8");
         if (value < 0) {
             this.buffer[this.offset++] = 256 + value;
         } else {
@@ -225,13 +225,13 @@ export class DataBuffer {
     }
 
     packUInt16(value: number) {
-        console.log("[DIAG-Electron] index.ts::packUInt16");
+        console.log("[DIAG-Browser] index.ts::packUInt16");
         this.packUInt8(value & 0xff);
         this.packUInt8(value >> 8);
     }
 
     packInt16(value: number) {
-        console.log("[DIAG-Electron] index.ts::packInt16");
+        console.log("[DIAG-Browser] index.ts::packInt16");
         if (value < 0) {
             value = 65536 + value;
         }
@@ -240,7 +240,7 @@ export class DataBuffer {
     }
 
     packUInt32(value: number) {
-        console.log("[DIAG-Electron] index.ts::packUInt32");
+        console.log("[DIAG-Browser] index.ts::packUInt32");
         this.packUInt8(value & 0xff);
         this.packUInt8((value >> 8) & 0xff);
         this.packUInt8((value >> 16) & 0xff);
@@ -248,12 +248,12 @@ export class DataBuffer {
     }
 
     packUInt8AtOffset(offset: number, value: number) {
-        console.log("[DIAG-Electron] index.ts::packUInt8AtOffset");
+        console.log("[DIAG-Browser] index.ts::packUInt8AtOffset");
         this.buffer[offset] = value;
     }
 
     packUInt32AtOffset(offset: number, value: number) {
-        console.log("[DIAG-Electron] index.ts::packUInt32AtOffset");
+        console.log("[DIAG-Browser] index.ts::packUInt32AtOffset");
         this.packUInt8AtOffset(offset + 0, value & 0xff);
         this.packUInt8AtOffset(offset + 1, (value >> 8) & 0xff);
         this.packUInt8AtOffset(offset + 2, (value >> 16) & 0xff);
@@ -261,13 +261,13 @@ export class DataBuffer {
     }
 
     packArray(array: Uint8Array | number[]) {
-        console.log("[DIAG-Electron] index.ts::packArray");
+        console.log("[DIAG-Browser] index.ts::packArray");
         this.buffer.set(array, this.offset);
         this.offset += array.length;
     }
 
     addPadding(dataLength: number, length: number) {
-        console.log("[DIAG-Electron] index.ts::addPadding");
+        console.log("[DIAG-Browser] index.ts::addPadding");
         if (length === 2) {
             if (dataLength % 2) {
                 this.packUInt8(0);
@@ -327,23 +327,23 @@ class Struct extends ObjectField {
     fields: Field[] = [];
 
     constructor() {
-        console.log("[DIAG-Electron] index.ts::constructor");
+        console.log("[DIAG-Browser] index.ts::constructor");
         super();
         this.size = 4;
     }
 
     addField(field: Field) {
-        console.log("[DIAG-Electron] index.ts::addField");
+        console.log("[DIAG-Browser] index.ts::addField");
         this.fields.push(field);
     }
 
     enumObjects(objects: ObjectField[]) {
-        console.log("[DIAG-Electron] index.ts::enumObjects");
+        console.log("[DIAG-Browser] index.ts::enumObjects");
         this.fields.forEach(field => field.enumObjects(objects));
     }
 
     finish() {
-        console.log("[DIAG-Electron] index.ts::finish");
+        console.log("[DIAG-Browser] index.ts::finish");
         this.objectSize = this.fields.reduce((offset, field) => {
             if (field.size === 2) {
                 if (offset % 2 === 1) {
@@ -366,12 +366,12 @@ class Struct extends ObjectField {
     }
 
     pack(dataBuffer: DataBuffer) {
-        console.log("[DIAG-Electron] index.ts::pack");
+        console.log("[DIAG-Browser] index.ts::pack");
         return dataBuffer.packUInt32(this.objectOffset);
     }
 
     packObject(dataBuffer: DataBuffer) {
-        console.log("[DIAG-Electron] index.ts::packObject");
+        console.log("[DIAG-Browser] index.ts::packObject");
         const offsetAtStart = dataBuffer.offset;
 
         this.fields.forEach(field => {
@@ -388,20 +388,20 @@ class Struct extends ObjectField {
 
 class ObjectPtr extends Field {
     constructor(public value: ObjectField | undefined) {
-        console.log("[DIAG-Electron] index.ts::constructor");
+        console.log("[DIAG-Browser] index.ts::constructor");
         super();
         this.size = 4;
     }
 
     enumObjects(objects: ObjectField[]) {
-        console.log("[DIAG-Electron] index.ts::enumObjects");
+        console.log("[DIAG-Browser] index.ts::enumObjects");
         if (this.value) {
             objects.push(this.value);
         }
     }
 
     pack(dataBuffer: DataBuffer) {
-        console.log("[DIAG-Electron] index.ts::pack");
+        console.log("[DIAG-Browser] index.ts::pack");
         return dataBuffer.packUInt32(this.value ? this.value.objectOffset : 0);
     }
 }
@@ -410,23 +410,23 @@ class ObjectList extends Field {
     items: ObjectField[] = [];
 
     constructor() {
-        console.log("[DIAG-Electron] index.ts::constructor");
+        console.log("[DIAG-Browser] index.ts::constructor");
         super();
         this.size = 8;
     }
 
     addItem(item: ObjectField) {
-        console.log("[DIAG-Electron] index.ts::addItem");
+        console.log("[DIAG-Browser] index.ts::addItem");
         this.items.push(item);
     }
 
     enumObjects(objects: ObjectField[]) {
-        console.log("[DIAG-Electron] index.ts::enumObjects");
+        console.log("[DIAG-Browser] index.ts::enumObjects");
         this.items.forEach(item => objects.push(item));
     }
 
     pack(dataBuffer: DataBuffer) {
-        console.log("[DIAG-Electron] index.ts::pack");
+        console.log("[DIAG-Browser] index.ts::pack");
         dataBuffer.packUInt32(this.items.length);
         dataBuffer.packUInt32(
             this.items.length > 0 ? this.items[0].objectOffset : 0
@@ -438,24 +438,24 @@ class StringList extends Field {
     items: ObjectField[] = [];
 
     constructor() {
-        console.log("[DIAG-Electron] index.ts::constructor");
+        console.log("[DIAG-Browser] index.ts::constructor");
         super();
         this.size = 8;
     }
 
     addItem(item: ObjectField) {
-        console.log("[DIAG-Electron] index.ts::addItem");
+        console.log("[DIAG-Browser] index.ts::addItem");
         this.items.push(item);
         this.size += 4;
     }
 
     enumObjects(objects: ObjectField[]) {
-        console.log("[DIAG-Electron] index.ts::enumObjects");
+        console.log("[DIAG-Browser] index.ts::enumObjects");
         this.items.forEach(item => objects.push(item));
     }
 
     pack(dataBuffer: DataBuffer) {
-        console.log("[DIAG-Electron] index.ts::pack");
+        console.log("[DIAG-Browser] index.ts::pack");
         dataBuffer.packUInt32(this.items.length);
         dataBuffer.packUInt32(8);
         this.items.forEach(item => dataBuffer.packUInt32(item.objectOffset));
@@ -464,7 +464,7 @@ class StringList extends Field {
 
 class String extends ObjectField {
     constructor(public value: string) {
-        console.log("[DIAG-Electron] index.ts::constructor");
+        console.log("[DIAG-Browser] index.ts::constructor");
         super();
         this.size = 4;
 
@@ -475,17 +475,17 @@ class String extends ObjectField {
     }
 
     enumObjects(objects: ObjectField[]) {
-        console.log("[DIAG-Electron] index.ts::enumObjects");
+        console.log("[DIAG-Browser] index.ts::enumObjects");
         objects.push(this);
     }
 
     pack(dataBuffer: DataBuffer) {
-        console.log("[DIAG-Electron] index.ts::pack");
+        console.log("[DIAG-Browser] index.ts::pack");
         dataBuffer.packUInt32(this.objectOffset);
     }
 
     packObject(dataBuffer: DataBuffer) {
-        console.log("[DIAG-Electron] index.ts::packObject");
+        console.log("[DIAG-Browser] index.ts::packObject");
         const offsetAtStart = dataBuffer.offset;
 
         for (let i = 0; i < this.value.length; i++) {
@@ -499,65 +499,65 @@ class String extends ObjectField {
 
 class Color extends ObjectField {
     constructor(public value: number) {
-        console.log("[DIAG-Electron] index.ts::constructor");
+        console.log("[DIAG-Browser] index.ts::constructor");
         super();
         this.value = value;
         this.objectSize = 2;
     }
 
     pack(dataBuffer: DataBuffer) {
-        console.log("[DIAG-Electron] index.ts::pack");
+        console.log("[DIAG-Browser] index.ts::pack");
         dataBuffer.packUInt32(this.objectOffset);
     }
 
     packObject(dataBuffer: DataBuffer) {
-        console.log("[DIAG-Electron] index.ts::packObject");
+        console.log("[DIAG-Browser] index.ts::packObject");
         dataBuffer.packUInt16(this.value);
     }
 }
 
 class UInt8 extends Field {
     constructor(public value: number) {
-        console.log("[DIAG-Electron] index.ts::constructor");
+        console.log("[DIAG-Browser] index.ts::constructor");
         super();
         this.size = 1;
     }
 
     pack(dataBuffer: DataBuffer) {
-        console.log("[DIAG-Electron] index.ts::pack");
+        console.log("[DIAG-Browser] index.ts::pack");
         dataBuffer.packUInt8(this.value);
     }
 }
 
 class UInt16 extends Field {
     constructor(public value: number) {
-        console.log("[DIAG-Electron] index.ts::constructor");
+        console.log("[DIAG-Browser] index.ts::constructor");
         super();
         this.size = 2;
     }
 
     pack(dataBuffer: DataBuffer) {
-        console.log("[DIAG-Electron] index.ts::pack");
+        console.log("[DIAG-Browser] index.ts::pack");
         dataBuffer.packUInt16(this.value);
     }
 }
 
 class Int16 extends Field {
     constructor(public value: number) {
-        console.log("[DIAG-Electron] index.ts::constructor");
+        console.log("[DIAG-Browser] index.ts::constructor");
         super();
         this.size = 2;
     }
 
     pack(dataBuffer: DataBuffer) {
-        console.log("[DIAG-Electron] index.ts::pack");
+        console.log("[DIAG-Browser] index.ts::pack");
         dataBuffer.packInt16(this.value);
     }
 }
 
 class UInt8ArrayField extends Field {
     constructor(public value: Uint8Array) {
-        console.log("[DIAG-Electron] index.ts::constructor");
+        console.log("[DIAG-Browser] index.ts::constructor");
         super();
         this.size = value.length;
         if (this.size % 4 > 0) {
@@ -566,7 +566,7 @@ class UInt8ArrayField extends Field {
     }
 
     pack(dataBuffer: DataBuffer) {
-        console.log("[DIAG-Electron] index.ts::pack");
+        console.log("[DIAG-Browser] index.ts::pack");
         dataBuffer.packArray(this.value);
         dataBuffer.addPadding(this.value.length, 4);
     }
@@ -1581,12 +1581,12 @@ class Assets {
     colors: string[] = [];
 
     get projectStore() {
-        console.log("[DIAG-Electron] index.ts::projectStore");
+        console.log("[DIAG-Browser] index.ts::projectStore");
         return this.rootProject._store;
     }
 
     collectProjects(project: Project) {
-        console.log("[DIAG-Electron] index.ts::collectProjects");
+        console.log("[DIAG-Browser] index.ts::collectProjects");
         if (this.projects.indexOf(project) === -1) {
             this.projects.push(project);
             for (const importDirective of this.rootProject.settings.general
@@ -1704,7 +1704,7 @@ class Assets {
     }
 
     getGlobalVariableIndex(object: any, propertyName: string) {
-        console.log("[DIAG-Electron] index.ts::getGlobalVariableIndex");
+        console.log("[DIAG-Browser] index.ts::getGlobalVariableIndex");
         return this.getAssetIndex(
             object,
             propertyName,
@@ -1714,7 +1714,7 @@ class Assets {
     }
 
     getActionIndex(object: any, propertyName: string) {
-        console.log("[DIAG-Electron] index.ts::getActionIndex");
+        console.log("[DIAG-Browser] index.ts::getActionIndex");
         return this.getAssetIndex(
             object,
             propertyName,
@@ -1724,12 +1724,12 @@ class Assets {
     }
 
     getPageIndex(object: any, propertyName: string) {
-        console.log("[DIAG-Electron] index.ts::getPageIndex");
+        console.log("[DIAG-Browser] index.ts::getPageIndex");
         return this.getAssetIndex(object, propertyName, findPage, this.pages);
     }
 
     addStyle(style: Style) {
-        console.log("[DIAG-Electron] index.ts::addStyle");
+        console.log("[DIAG-Browser] index.ts::addStyle");
         if (style.id != undefined) {
             this.styles[style.id] = style;
             return style.id;
@@ -1830,12 +1830,12 @@ class Assets {
     }
 
     getFontIndex(object: any, propertyName: string) {
-        console.log("[DIAG-Electron] index.ts::getFontIndex");
+        console.log("[DIAG-Browser] index.ts::getFontIndex");
         return this.getAssetIndex(object, propertyName, findFont, this.fonts);
     }
 
     getBitmapIndex(object: any, propertyName: string) {
-        console.log("[DIAG-Electron] index.ts::getBitmapIndex");
+        console.log("[DIAG-Browser] index.ts::getBitmapIndex");
         return this.getAssetIndex(
             object,
             propertyName,
@@ -1881,7 +1881,7 @@ class Assets {
     }
 
     reportUnusedAssets() {
-        console.log("[DIAG-Electron] index.ts::reportUnusedAssets");
+        console.log("[DIAG-Browser] index.ts::reportUnusedAssets");
         this.projects.forEach(project => {
             project.allStyles?.forEach(style => {
                 if (

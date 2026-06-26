@@ -39,18 +39,18 @@ export class Build {
     indentation: string;
 
     startBuild() {
-        console.log("[DIAG-Electron] helper.ts::startBuild");
+        // console.log("[DIAG-Browser] helper.ts::startBuild");
         this.result = "";
         this.indentation = "";
     }
 
     indent() {
-        console.log("[DIAG-Electron] helper.ts::indent");
+        // console.log("[DIAG-Browser] helper.ts::indent");
         this.indentation += TAB;
     }
 
     unindent() {
-        console.log("[DIAG-Electron] helper.ts::unindent");
+        // console.log("[DIAG-Browser] helper.ts::unindent");
         this.indentation = this.indentation.substring(
             0,
             this.indentation.length - TAB.length
@@ -58,23 +58,23 @@ export class Build {
     }
 
     line(line: string) {
-        console.log("[DIAG-Electron] helper.ts::line");
+        // console.log("[DIAG-Browser] helper.ts::line");
         this.result += this.indentation + line + "\n";
     }
 
     text(text: string) {
-        console.log("[DIAG-Electron] helper.ts::text");
+        // console.log("[DIAG-Browser] helper.ts::text");
         this.result += text;
     }
 
     blockStart(line: string) {
-        console.log("[DIAG-Electron] helper.ts::blockStart");
+        // console.log("[DIAG-Browser] helper.ts::blockStart");
         this.line(line);
         this.indent();
     }
 
     blockEnd(line: string) {
-        console.log("[DIAG-Electron] helper.ts::blockEnd");
+        // console.log("[DIAG-Browser] helper.ts::blockEnd");
         this.unindent();
         this.line(line);
     }

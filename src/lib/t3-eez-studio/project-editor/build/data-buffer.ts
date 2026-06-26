@@ -19,13 +19,13 @@ export class DataBuffer {
     constructor(public utf8Support: boolean) {}
 
     writeInt8(value: number) {
-        console.log("[DIAG-Electron] data-buffer.ts::writeInt8");
+        console.log("[DIAG-Browser] data-buffer.ts::writeInt8");
         this.buffer.writeInt8(value, this.currentOffset);
         this.currentOffset += 1;
     }
 
     writeUint8(value: number) {
-        console.log("[DIAG-Electron] data-buffer.ts::writeUint8");
+        console.log("[DIAG-Browser] data-buffer.ts::writeUint8");
         try {
             this.buffer.writeUInt8(value, this.currentOffset);
         } catch (err) {
@@ -35,7 +35,7 @@ export class DataBuffer {
     }
 
     writeInt16(value: number) {
-        console.log("[DIAG-Electron] data-buffer.ts::writeInt16");
+        console.log("[DIAG-Browser] data-buffer.ts::writeInt16");
         if (this.currentOffset % 2) {
             throw "invalid offset 1";
         }
@@ -44,7 +44,7 @@ export class DataBuffer {
     }
 
     writeUint16(value: number) {
-        console.log("[DIAG-Electron] data-buffer.ts::writeUint16");
+        console.log("[DIAG-Browser] data-buffer.ts::writeUint16");
         if (this.currentOffset % 2) {
             throw "invalid offset 2";
         }
@@ -53,13 +53,13 @@ export class DataBuffer {
     }
 
     writeUint16NonAligned(value: number) {
-        console.log("[DIAG-Electron] data-buffer.ts::writeUint16NonAligned");
+        console.log("[DIAG-Browser] data-buffer.ts::writeUint16NonAligned");
         this.buffer.writeUInt16LE(value, this.currentOffset);
         this.currentOffset += 2;
     }
 
     writeInt32(value: number) {
-        console.log("[DIAG-Electron] data-buffer.ts::writeInt32");
+        console.log("[DIAG-Browser] data-buffer.ts::writeInt32");
         if (this.currentOffset % 4) {
             throw "invalid offset 3";
         }
@@ -68,7 +68,7 @@ export class DataBuffer {
     }
 
     writeUint32(value: number) {
-        console.log("[DIAG-Electron] data-buffer.ts::writeUint32");
+        console.log("[DIAG-Browser] data-buffer.ts::writeUint32");
         if (this.currentOffset % 4) {
             throw "invalid offset 4";
         }
@@ -77,7 +77,7 @@ export class DataBuffer {
     }
 
     writeUint64(value: number) {
-        console.log("[DIAG-Electron] data-buffer.ts::writeUint64");
+        console.log("[DIAG-Browser] data-buffer.ts::writeUint64");
         if (this.currentOffset % 8) {
             throw "invalid offset 5";
         }
@@ -86,7 +86,7 @@ export class DataBuffer {
     }
 
     writeFloat(value: number) {
-        console.log("[DIAG-Electron] data-buffer.ts::writeFloat");
+        console.log("[DIAG-Browser] data-buffer.ts::writeFloat");
         if (this.currentOffset % 4) {
             throw "invalid offset 6";
         }
@@ -95,7 +95,7 @@ export class DataBuffer {
     }
 
     writeDouble(value: number) {
-        console.log("[DIAG-Electron] data-buffer.ts::writeDouble");
+        console.log("[DIAG-Browser] data-buffer.ts::writeDouble");
         if (this.currentOffset % 8) {
             throw "invalid offset 7";
         }
@@ -104,7 +104,7 @@ export class DataBuffer {
     }
 
     writeUint8Array(array: Uint8Array | number[]) {
-        console.log("[DIAG-Electron] data-buffer.ts::writeUint8Array");
+        console.log("[DIAG-Browser] data-buffer.ts::writeUint8Array");
         if (this.currentOffset % 4) {
             throw "invalid offset 8";
         }
@@ -114,7 +114,7 @@ export class DataBuffer {
     }
 
     writeString(str: string) {
-        console.log("[DIAG-Electron] data-buffer.ts::writeString");
+        console.log("[DIAG-Browser] data-buffer.ts::writeString");
         if (this.currentOffset % 4) {
             throw "invalid offset 9";
         }
@@ -192,7 +192,7 @@ export class DataBuffer {
     }
 
     addPadding() {
-        console.log("[DIAG-Electron] data-buffer.ts::addPadding");
+        console.log("[DIAG-Browser] data-buffer.ts::addPadding");
         if (this.currentOffset % 4) {
             const n = 4 - (this.currentOffset % 4);
             for (let i = 0; i < n; ++i) {
@@ -202,7 +202,7 @@ export class DataBuffer {
     }
 
     addPadding8() {
-        console.log("[DIAG-Electron] data-buffer.ts::addPadding8");
+        console.log("[DIAG-Browser] data-buffer.ts::addPadding8");
         if (this.currentOffset % 8) {
             const n = 8 - (this.currentOffset % 8);
             for (let i = 0; i < n; ++i) {
@@ -212,12 +212,12 @@ export class DataBuffer {
     }
 
     get size() {
-        console.log("[DIAG-Electron] data-buffer.ts::size");
+        console.log("[DIAG-Browser] data-buffer.ts::size");
         return this.currentOffset;
     }
 
     finalizeObjectList() {
-        console.log("[DIAG-Electron] data-buffer.ts::finalizeObjectList");
+        console.log("[DIAG-Browser] data-buffer.ts::finalizeObjectList");
         for (let i = 0; i < this.writeLaterObjectList.length; i++) {
             const writeLater = this.writeLaterObjectList[i];
 
@@ -245,7 +245,7 @@ export class DataBuffer {
     }
 
     finalize() {
-        console.log("[DIAG-Electron] data-buffer.ts::finalize");
+        console.log("[DIAG-Browser] data-buffer.ts::finalize");
         this.addPadding();
 
         this.finalizeObjectList();
@@ -267,7 +267,7 @@ export class DataBuffer {
     }
 
     async compress(compressionLevel: number) {
-        console.log("[DIAG-Electron] data-buffer.ts::compress");
+        console.log("[DIAG-Browser] data-buffer.ts::compress");
         return compress(this.buffer, compressionLevel);
     }
 }
@@ -351,12 +351,12 @@ export class DummyDataBuffer {
     finalize() {}
 
     get size() {
-        console.log("[DIAG-Electron] data-buffer.ts::size");
+        console.log("[DIAG-Browser] data-buffer.ts::size");
         return 0;
     }
 
     async compress(compressionLevel: number) {
-        console.log("[DIAG-Electron] data-buffer.ts::compress");
+        console.log("[DIAG-Browser] data-buffer.ts::compress");
         return { compressedBuffer: this.buffer, compressedSize: 0 };
     }
 }

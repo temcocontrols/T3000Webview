@@ -306,7 +306,7 @@ class PageTransparencyGrid {
     }[];
 
     constructor(rect: Rect) {
-        console.log("[DIAG-Electron] index.ts::constructor");
+        console.log("[DIAG-Browser] index.ts::constructor");
         this.cols = [
             {
                 x: rect.left,
@@ -323,7 +323,7 @@ class PageTransparencyGrid {
     }
 
     private addCol(x: number) {
-        console.log("[DIAG-Electron] index.ts::addCol");
+        console.log("[DIAG-Browser] index.ts::addCol");
         for (let iCol = 0; iCol < this.cols.length; iCol++) {
             let col = this.cols[iCol];
 
@@ -347,7 +347,7 @@ class PageTransparencyGrid {
     }
 
     private addRow(y: number) {
-        console.log("[DIAG-Electron] index.ts::addRow");
+        console.log("[DIAG-Browser] index.ts::addRow");
         for (let iCol = 0; iCol < this.cols.length; iCol++) {
             let col = this.cols[iCol];
 
@@ -375,7 +375,7 @@ class PageTransparencyGrid {
     }
 
     private addRect(rect: Rect) {
-        console.log("[DIAG-Electron] index.ts::addRect");
+        console.log("[DIAG-Browser] index.ts::addRect");
         this.addCol(rect.left);
         this.addCol(rect.left + rect.width);
         this.addRow(rect.top);
@@ -383,7 +383,7 @@ class PageTransparencyGrid {
     }
 
     addOpaqueRect(rect: Rect) {
-        console.log("[DIAG-Electron] index.ts::addOpaqueRect");
+        console.log("[DIAG-Browser] index.ts::addOpaqueRect");
         if (rect.width > 0 || rect.height > 0) {
             this.addRect(rect);
 
@@ -881,17 +881,17 @@ class Struct extends ObjectField {
     fields: Field[] = [];
 
     addField(field: Field) {
-        console.log("[DIAG-Electron] index.ts::addField");
+        console.log("[DIAG-Browser] index.ts::addField");
         this.fields.push(field);
     }
 
     enumObjects(objects: ObjectField[]) {
-        console.log("[DIAG-Electron] index.ts::enumObjects");
+        console.log("[DIAG-Browser] index.ts::enumObjects");
         this.fields.forEach(field => field.enumObjects(objects));
     }
 
     finish() {
-        console.log("[DIAG-Electron] index.ts::finish");
+        console.log("[DIAG-Browser] index.ts::finish");
         this.objectSize = this.fields.reduce((offset, field) => {
             field.offset = offset;
             return offset + field.size;
@@ -912,13 +912,13 @@ class Struct extends ObjectField {
 
 class ObjectPtr extends Field {
     constructor(public value: ObjectField | undefined) {
-        console.log("[DIAG-Electron] index.ts::constructor");
+        console.log("[DIAG-Browser] index.ts::constructor");
         super();
         this.size = 2;
     }
 
     enumObjects(objects: ObjectField[]) {
-        console.log("[DIAG-Electron] index.ts::enumObjects");
+        console.log("[DIAG-Browser] index.ts::enumObjects");
         if (this.value) {
             objects.push(this.value);
         }
@@ -933,18 +933,18 @@ class ObjectList extends Field {
     items: ObjectField[] = [];
 
     constructor() {
-        console.log("[DIAG-Electron] index.ts::constructor");
+        console.log("[DIAG-Browser] index.ts::constructor");
         super();
         this.size = 3;
     }
 
     addItem(item: ObjectField) {
-        console.log("[DIAG-Electron] index.ts::addItem");
+        console.log("[DIAG-Browser] index.ts::addItem");
         this.items.push(item);
     }
 
     enumObjects(objects: ObjectField[]) {
-        console.log("[DIAG-Electron] index.ts::enumObjects");
+        console.log("[DIAG-Browser] index.ts::enumObjects");
         this.items.forEach(item => objects.push(item));
     }
 
@@ -959,14 +959,14 @@ class ObjectList extends Field {
 
 class String extends ObjectField {
     constructor(public value: string) {
-        console.log("[DIAG-Electron] index.ts::constructor");
+        console.log("[DIAG-Browser] index.ts::constructor");
         super();
         this.size = 2;
         this.objectSize = this.value.length + 1;
     }
 
     enumObjects(objects: ObjectField[]) {
-        console.log("[DIAG-Electron] index.ts::enumObjects");
+        console.log("[DIAG-Browser] index.ts::enumObjects");
         objects.push(this);
     }
 
@@ -986,7 +986,7 @@ class String extends ObjectField {
 
 class UInt8 extends Field {
     constructor(public value: number) {
-        console.log("[DIAG-Electron] index.ts::constructor");
+        console.log("[DIAG-Browser] index.ts::constructor");
         super();
         this.size = 1;
     }
@@ -998,7 +998,7 @@ class UInt8 extends Field {
 
 class UInt16 extends Field {
     constructor(public value: number) {
-        console.log("[DIAG-Electron] index.ts::constructor");
+        console.log("[DIAG-Browser] index.ts::constructor");
         super();
         this.size = 2;
     }
@@ -1010,7 +1010,7 @@ class UInt16 extends Field {
 
 class Int16 extends Field {
     constructor(public value: number) {
-        console.log("[DIAG-Electron] index.ts::constructor");
+        console.log("[DIAG-Browser] index.ts::constructor");
         super();
         this.size = 2;
     }
