@@ -2,7 +2,7 @@
 import "src/t3-eez-studio/bridge/browser-polyfill";
 
 import { useEffect, useRef, useState } from "react";
-import { initEezBridge, checkBackendHealth } from "src/t3-eez-studio/bridge/eez-bridge";
+import { initEezBridge, checkBackendHealth } from "src/t3-eez-studio/bridge/eez-studio-api";
 import "src/t3-eez-studio/bridge/eez-registry";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { makeStyles, mergeClasses, Spinner, FluentProvider, webLightTheme } from "@fluentui/react-components";

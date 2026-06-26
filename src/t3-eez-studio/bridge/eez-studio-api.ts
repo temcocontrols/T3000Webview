@@ -1,3 +1,32 @@
+/**
+ * EEZ Studio Bridge API — HTTP client for the T3000 Rust backend.
+ *
+ * All file-system and project operations go through the BridgeAPI interface
+ * (defined in eez-studio-shared/bridge). This module:
+ *
+ *   1. Registers the bridge via {@link initEezBridge} (called once at boot).
+ *   2. Proxies every filesystem call through `GET/POST /api/eez-studio/*`.
+ *   3. Runs a one-shot health check via {@link checkBackendHealth} which
+ *      hits `GET /api/eez-studio/health` (3s timeout) and caches the
+ *      result so multiple callers share a single HTTP request.
+ *
+ * When the backend is *known* to be offline (`backendHealth === false`),
+ * all API calls short-circuit with a fake error response — no network
+ * requests are made.
+ *
+ * ## Exports
+ *   - `initEezBridge()`        — register bridge, fire health check
+ *   - `checkBackendHealth()`   — returns `Promise<boolean>` (cached)
+ *
+ * ## Backend routes (Rust – axum)
+ *   - `GET  /api/eez-studio/health`         → `{"status":"ok"}`
+ *   - `GET  /api/eez-studio/read-file?path=`
+ *   - `POST /api/eez-studio/write-file?path=`
+ *   - … (see `api/src/t3_eez_studio/mod.rs`)
+ *
+ * @module eez-studio-api
+ */
+
 import { setBridgeAPI, BridgeAPI } from "eez-studio-shared/bridge";
 
 // const BASE = "http://localhost:9103/api/eez-studio";
