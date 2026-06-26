@@ -488,6 +488,22 @@ export class ProjectEditorTab implements IHomeTab {
                 runInAction(() => {
                     this.projectStore = projectStore;
                 });
+                // Browser: FlexLayout model may not be ready when
+                // Content.componentDidMount fires and consumes the
+                // openInitialEditorsAtStart flag. Open the first page
+                // directly after the model settles.
+                setTimeout(() => {
+                    const store = projectStore.editorsStore;
+                    if (store && store.editors.length === 0) {
+                        const pages = projectStore.project.userPages;
+                        if (pages && pages.length > 0) {
+                            store.openEditor(pages[0]);
+                            projectStore.navigationStore.showObjects(
+                                [pages[0]], false, false, true
+                            );
+                        }
+                    }
+                }, 100);
             }
         } catch (err) {
             console.log(err);
