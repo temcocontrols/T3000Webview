@@ -1356,24 +1356,18 @@ export class ProjectStore {
     };
 
     onSetFullSimulatorMode = async () => {
-        // Import and use the build manager
         const { dockerBuildManager } = await import(
             "project-editor/lvgl/docker-build/build-manager"
         );
 
-        // Exit any existing runtime mode first
         if (this.runtime) {
             await this.setEditorMode(true);
         }
 
-        // Toggle the mode
         runInAction(() => {
             this.layoutModels.isDockerSimulatorMode = true;
         });
 
-        // Start the full simulator build and preview
-        // Note: Multiple projects can show preview simultaneously,
-        // but only one can build at a time (handled inside startFullSimulator)
         await dockerBuildManager.startFullSimulator(this);
     };
 

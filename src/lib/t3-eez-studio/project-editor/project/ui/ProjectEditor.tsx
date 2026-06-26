@@ -46,6 +46,9 @@ import {
     extensionsManagerStore
 } from "home/extensions-manager/extensions-manager";
 import { LVGLGroupsTab } from "project-editor/lvgl/groups";
+import { DockerSimulatorPreviewPanel } from "project-editor/lvgl/docker-build/DockerSimulatorPreviewPanel";
+import { DockerSimulatorLogsPanel } from "project-editor/lvgl/docker-build/DockerSimulatorLogsPanel";
+import { PreviewLogsPanel } from "project-editor/lvgl/docker-build/PreviewLogsPanel";
 import { settingsController } from "home/settings";
 import { PageStructure } from "project-editor/features/page/PagesNavigation";
 
@@ -278,23 +281,14 @@ const Content = observer(
             }
 
             if (component === "dockerSimulatorPreview") {
-                const {
-                    DockerSimulatorPreviewPanel
-                } = require("project-editor/lvgl/docker-build/DockerSimulatorPreviewPanel");
                 return <DockerSimulatorPreviewPanel />;
             }
 
             if (component === "dockerSimulatorLogs") {
-                const {
-                    DockerSimulatorLogsPanel
-                } = require("project-editor/lvgl/docker-build/DockerSimulatorLogsPanel");
                 return <DockerSimulatorLogsPanel />;
             }
 
             if (component === "dockerSimulatorPreviewLogs") {
-                const {
-                    PreviewLogsPanel
-                } = require("project-editor/lvgl/docker-build/PreviewLogsPanel");
                 return <PreviewLogsPanel />;
             }
 
