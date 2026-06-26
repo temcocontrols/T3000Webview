@@ -22,6 +22,7 @@ target/
 # CMake build artifacts and native module builds
 /build
 build/
+!src/lib/t3-eez-studio/**/build/
 *.vcxproj
 *.vcxproj.filters
 *.sln
