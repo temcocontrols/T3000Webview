@@ -8,17 +8,18 @@ const noop = () => {};
 let backendOnline = true;
 let backendChecked = false;
 
-async function checkBackend(): Promise<boolean> {
-    if (backendChecked) return backendOnline;
-    try {
-        const res = await fetch(`${BASE}/file-exists?path=%2F`, { method: "GET" });
-        backendOnline = res.ok;
-    } catch {
-        backendOnline = false;
-    }
-    backendChecked = true;
-    if (!backendOnline) console.info("[bridge] Rust backend not available at", BASE, "— running with in-memory data only");
-    return backendOnline;
+export function getBackendStatus() {
+    return { online: backendOnline, checked: backendChecked };
+}
+
+function checkBackend() {
+    const xhr = new XMLHttpRequest();
+    xhr.timeout = 3000;
+    xhr.open("GET", "http://localhost:9103");
+    xhr.onload = () => { backendOnline = true; backendChecked = true; };
+    xhr.ontimeout = () => { backendOnline = false; backendChecked = true; };
+    xhr.onerror = () => { backendOnline = false; backendChecked = true; };
+    xhr.send();
 }
 
 async function api(path: string, init?: RequestInit): Promise<any> {
@@ -87,4 +88,7 @@ const t3: BridgeAPI = {
     proxyFetch: url => api(`/proxy-fetch?url=${enc(url)}`).then(r=>r.text()),
 };
 
-export function initEezBridge() { setBridgeAPI(t3); }
+export function initEezBridge() {
+    setBridgeAPI(t3);
+    checkBackend(); // fire-and-forget: detect backend status early
+}
