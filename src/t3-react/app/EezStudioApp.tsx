@@ -93,7 +93,7 @@ function BackendStatusBar() {
     const text = !checked
         ? "Establishing connection to T3000 services..."
         : online
-        ? "T3000 services available"
+        ? "T3000 services connected — loading workspace"
         : "T3000 services unavailable — verify T3000 is running, then reload the page";
 
     return (

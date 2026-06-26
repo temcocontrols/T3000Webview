@@ -13,13 +13,12 @@ export function getBackendStatus() {
 }
 
 function checkBackend() {
-    const xhr = new XMLHttpRequest();
-    xhr.timeout = 3000;
-    xhr.open("GET", "http://localhost:9103");
-    xhr.onload = () => { backendOnline = true; backendChecked = true; };
-    xhr.ontimeout = () => { backendOnline = false; backendChecked = true; };
-    xhr.onerror = () => { backendOnline = false; backendChecked = true; };
-    xhr.send();
+    Promise.race([
+        fetch(`${BASE}`),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 3000))
+    ])
+    .then(res => { backendOnline = res.status < 500; backendChecked = true; })
+    .catch(()  => { backendOnline = false; backendChecked = true; });
 }
 
 async function api(path: string, init?: RequestInit): Promise<any> {
