@@ -130,6 +130,9 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['archiver'] = stub('archiver.ts');
         viteConf.resolve.alias['serialport'] = stub('serialport.ts');
 
+        // Buffer polyfill for browser (DataBuffer, lz4 compression)
+        viteConf.resolve.alias['buffer'] = require('path').resolve(__dirname, 'node_modules/buffer/index.js');
+
         // Replace Electron-only util-electron.ts with browser-safe util-web.ts
         const utilWeb = require('path').resolve(__dirname, 'src/lib/t3-eez-studio/eez-studio-shared/util-web.ts');
         viteConf.resolve.alias['eez-studio-shared/util-electron'] = utilWeb;

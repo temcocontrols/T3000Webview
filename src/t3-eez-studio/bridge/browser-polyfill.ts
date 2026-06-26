@@ -1,5 +1,57 @@
 // Browser polyfill for Node.js globals (Buffer, require, global)
 // Injected before any EEZ Studio code loads
+// Minimal Buffer polyfill for the build pipeline (DataBuffer + lz4 compress).
+// Covers only the methods used by: data-buffer.ts, lz4.ts, assets.ts
+class Buffer extends Uint8Array {
+    static alloc(size: number) {
+        return new Buffer(new Uint8Array(size));
+    }
+    static from(data: any, encoding?: string): Buffer {
+        if (typeof data === "string" && encoding === "base64") {
+            const binary = atob(data);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            return new Buffer(bytes);
+        }
+        if (data instanceof Uint8Array) return new Buffer(data);
+        return new Buffer(new Uint8Array(data ?? 0));
+    }
+    static isBuffer(_obj: any) { return _obj instanceof Buffer; }
+
+    writeInt8(v: number, o: number) { new DataView(this.buffer).setInt8(o, v); }
+    writeUInt8(v: number, o: number) { new DataView(this.buffer).setUint8(o, v); }
+    writeInt16LE(v: number, o: number) { new DataView(this.buffer).setInt16(o, v, true); }
+    writeUInt16LE(v: number, o: number) { new DataView(this.buffer).setUint16(o, v, true); }
+    writeInt32LE(v: number, o: number) { new DataView(this.buffer).setInt32(o, v, true); }
+    writeUInt32LE(v: number, o: number) { new DataView(this.buffer).setUint32(o, v, true); }
+    writeBigUInt64LE(v: bigint, o: number) { new DataView(this.buffer).setBigUint64(o, v, true); }
+    writeFloatLE(v: number, o: number) { new DataView(this.buffer).setFloat32(o, v, true); }
+    writeDoubleLE(v: number, o: number) { new DataView(this.buffer).setFloat64(o, v, true); }
+
+    writeString(v: string, o: number, _len: number, _enc: string) {
+        for (let i = 0; i < v.length; i++) this[o + i] = v.charCodeAt(i);
+    }
+
+    subarray(start?: number, end?: number): Buffer {
+        return new Buffer(super.subarray(start, end));
+    }
+
+    copy(target: Uint8Array, targetStart?: number, sourceStart?: number, sourceEnd?: number) {
+        const src = this.subarray(sourceStart ?? 0, sourceEnd ?? this.length);
+        (target instanceof Buffer ? target : new Uint8Array(target.buffer, target.byteOffset, target.byteLength))
+            .set(src, targetStart ?? 0);
+    }
+}
+
+(globalThis as any).Buffer = Buffer;
+(globalThis as any).global = globalThis;
+(globalThis as any).process = (globalThis as any).process || {
+    env: {},
+    versions: {},
+    platform: "browser",
+    nextTick: (fn: Function, ...args: any[]) => Promise.resolve().then(() => fn(...args)),
+    cwd: () => "/",
+};
 
 // mousetrap is CJS — no default ESM export
 import * as MousetrapNS from "mousetrap";
@@ -43,10 +95,6 @@ JSON.parse = function safeParse(text: string, ...args: any[]) {
     if (!text || typeof text !== "string") return {};
     try { return _origParse.call(JSON, text, ...args); } catch { return {}; }
 };
-
-// Buffer polyfill — use real 'buffer' npm package for full Node.js Buffer API
-import { Buffer as NodeBuffer } from "buffer";
-(globalThis as any).Buffer = NodeBuffer;
 
 // MRU helpers — mirrors electron-kitchen.ts via localStorage
 const MRU_STORAGE_KEY = "eez-studio-mru";
