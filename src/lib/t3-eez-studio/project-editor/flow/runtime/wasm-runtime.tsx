@@ -355,9 +355,8 @@ export class WasmRuntime extends RemoteRuntime {
         super.onDebuggerActiveChanged();
     }
 
-    ////////////////////////////////////////////////////////////////////////////////
-
     onWorkerMessage = (workerToRenderMessage: WorkerToRenderMessage) => {
+
         if (workerToRenderMessage.getObjectVariableMemberValue) {
             const arrayValue = getValue(
                 this.worker.wasm,
@@ -614,13 +613,13 @@ export class WasmRuntime extends RemoteRuntime {
             this.screen = workerToRenderMessage.screen;
 
             runInAction(() => {
-                if (
-                    workerToRenderMessage.isRTL != undefined &&
-                    this.isRTL !== workerToRenderMessage.isRTL
-                ) {
-                    this.isRTL = workerToRenderMessage.isRTL ? true : false;
-                }
-            });
+                    if (
+                        workerToRenderMessage.isRTL != undefined &&
+                        this.isRTL !== workerToRenderMessage.isRTL
+                    ) {
+                        this.isRTL = workerToRenderMessage.isRTL ? true : false;
+                    }
+                });
 
             this.workerPostMessageTimeoutId = setTimeout(
                 this.animationFrameLoop
@@ -641,6 +640,11 @@ export class WasmRuntime extends RemoteRuntime {
     animationFrameLoop = () => {
         if (this.isStopped) {
             return;
+        }
+
+        if (!this._animLogged) {
+            console.log("[runtime] animationFrameLoop running, screen:", this.screen ? this.screen.length : "null", "ctx:", !!this.ctx);
+            this._animLogged = true;
         }
 
         if (this.componentProperties.selectedPage != this.selectedPage) {
@@ -700,15 +704,20 @@ export class WasmRuntime extends RemoteRuntime {
         const height = this.selectedPage.height;
 
         this.ctx.clearRect(0, 0, this.displayWidth, this.displayHeight);
-        this.ctx.putImageData(
-            imgData,
-            this.isDebuggerActive ? 0 : left + (this.displayWidth - width) / 2,
-            this.isDebuggerActive ? 0 : top + (this.displayHeight - height) / 2,
-            left,
-            top,
-            width,
-            height
-        );
+        if (this.projectStore.projectTypeTraits.isLVGL) {
+            // LVGL renders the full screen buffer — no per-page centering
+            this.ctx.putImageData(imgData, 0, 0);
+        } else {
+            this.ctx.putImageData(
+                imgData,
+                this.isDebuggerActive ? 0 : left + (this.displayWidth - width) / 2,
+                this.isDebuggerActive ? 0 : top + (this.displayHeight - height) / 2,
+                left,
+                top,
+                width,
+                height
+            );
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////

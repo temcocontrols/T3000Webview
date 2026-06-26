@@ -504,6 +504,13 @@ export function getLvglWasmFlowRuntimeConstructor(
             this.HEAP32 = new Int32Array(0);
             this.HEAP8 = new Int8Array(0);
             this.FS = {};
+            self.postWorkerToRendererMessage = (data: any) => {
+                // DirectWasmRuntime runs WASM on the main thread, so
+                // _mainLoop() → postWorkerToRendererMessage() would be
+                // synchronous and starve setTimeout callbacks. Defer to
+                // let the event loop process animationFrameLoop.
+                setTimeout(() => initCb(data), 0);
+            };
             const proxyHandler = {
                 get(_t: any, prop: string | symbol) {
                     if (prop === "then") return undefined;
@@ -517,7 +524,7 @@ export function getLvglWasmFlowRuntimeConstructor(
                 const factory = (globalThis as any).LVGLWasmRuntime;
                 if (!factory) {
                     console.warn("[wasm] LVGLWasmRuntime not found — using no-op");
-                    if (typeof initCb === "function") setTimeout(initCb, 0);
+                    if (typeof initCb === "function") setTimeout(() => initCb({ init: true }), 0);
                     return;
                 }
                 const wasmUrl = jsUrl.replace(/\.js$/, ".wasm");
@@ -544,11 +551,11 @@ export function getLvglWasmFlowRuntimeConstructor(
                             (self as any)[key] = Module[key].bind(Module);
                         }
                     }
-                    if (typeof initCb === "function") setTimeout(initCb, 0);
+                    if (typeof initCb === "function") setTimeout(() => initCb({ init: true }), 0);
                 };
             }).catch(err => {
                 console.warn("[wasm] failed to load JS glue:", err.message);
-                if (typeof initCb === "function") setTimeout(initCb, 0);
+                if (typeof initCb === "function") setTimeout(() => initCb({ init: true }), 0);
             });
 
             return runtimeProxy;

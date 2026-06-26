@@ -1115,6 +1115,7 @@ export function createWasmWorker(
                             4
                 )
             );
+
         }
 
         workerToRenderMessage.isRTL = WasmFlowRuntime._isRTL();

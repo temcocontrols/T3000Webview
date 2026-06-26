@@ -4,7 +4,6 @@ import {
     readFile,
     closeFile
 } from "eez-studio-shared/util-electron";
-import { Buffer } from "buffer";
 
 import {
     activityLogStore,
