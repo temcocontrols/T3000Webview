@@ -1968,7 +1968,7 @@ export class Project extends EezObject {
     _themeColors = new Map<string, string>();
 
     getThemeColor(themeId: string, colorId: string) {
-        return this._themeColors.get(themeId + colorId) || "#000000";
+        return this._themeColors.get(themeId + colorId) || "#f0f0f0";
     }
 
     setThemeColor(themeId: string, colorId: string, color: string) {

@@ -69,6 +69,10 @@ import "ace-builds/src-noconflict/mode-c_cpp";
 import "ace-builds/src-noconflict/mode-javascript";
 import "ace-builds/src-noconflict/mode-json";
 import "ace-builds/src-noconflict/mode-python";
+import "ace-builds/src-noconflict/mode-css";
+import "ace-builds/src-noconflict/mode-scss";
+import "ace-builds/src-noconflict/mode-html";
+ace.config.set("basePath", "/node_modules/ace-builds/src-noconflict");
 (globalThis as any).ace = ace;
 
 // global

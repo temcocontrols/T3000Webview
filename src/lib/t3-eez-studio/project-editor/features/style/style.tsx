@@ -1,6 +1,8 @@
 import React from "react";
 import path from "path";
 import { observable, computed, makeObservable } from "mobx";
+import { css } from "@emotion/css";
+import { Global, css as emotionCss } from "@emotion/react";
 
 import { isValid, strToColor16 } from "eez-studio-shared/color";
 
@@ -2220,9 +2222,6 @@ export class Style extends EezObject {
                     return undefined;
                 }
 
-                const { css } =
-                    require("@emotion/css") as typeof import("@emotion/css");
-
                 return css`
                     &&&&& {
                         ${value}
@@ -2243,13 +2242,10 @@ export class Style extends EezObject {
         // .EezStudio_FlowCanvasContainer.EezStudio_FlowEditorCanvasContainer .EezStudio_ComponentEnclosure.ButtonWidget button
         const selector = `.${this.globalClassName}.${this.globalClassName}.${this.globalClassName}.${this.globalClassName}`;
 
-        const { Global, css } =
-            require("@emotion/react") as typeof import("@emotion/react");
-
         return (
             <Global
                 key={this.objID}
-                styles={css`
+                styles={emotionCss`
                     ${selector} {
                         ${this.cssDeclarations}
                     }
