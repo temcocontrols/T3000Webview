@@ -59,7 +59,7 @@ export function close(fd: number, cb: (err: any) => void) { cb(null); }
 export function read(fd: number, buf: Buffer, _off: number, _len: number, _pos: number, cb: (err: any, bytesRead?: number, buf?: Buffer) => void) { cb(null, 0, buf); }
 export function readdir(p: string, cb: (err: any, files?: string[]) => void) {
     const b = _bridge();
-    b ? b.listFiles(p).then((f: string[]) => cb(null, f)).catch((e: any) => cb(e)) : cb(null, []);
+    b ? b.listFiles(p).then((f: string[]) => cb(null, Array.isArray(f) ? f : [])).catch(() => cb(null, [])) : cb(null, []);
 }
 export function writeFile(p: string, data: string | Buffer, encOrCb: string | ((err: any) => void), maybeCb?: (err: any) => void) {
     const cb: (err: any) => void = typeof encOrCb === "function" ? encOrCb : (maybeCb || (() => {}));

@@ -232,6 +232,9 @@ export function remap(
 }
 
 export function sourceRootDir() {
+    if (typeof window !== "undefined") {
+        return "/project";
+    }
     return __dirname + "/..";
 }
 

@@ -868,7 +868,7 @@ export class ProjectEditorTab implements IHomeTab {
                 }
 
                 const json = JSON.parse(jsonStr);
-                const projectType = json.settings.general.projectType;
+                const projectType = json.settings?.general?.projectType;
                 const icon = getProjectIcon(
                     this.filePath,
                     projectType,
