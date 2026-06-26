@@ -1,29 +1,26 @@
 import { setBridgeAPI, BridgeAPI } from "eez-studio-shared/bridge";
 
-// const BASE = "http://localhost:9103/api/bridge";
-const BASE = "/api/bridge";
+// const BASE = "http://localhost:9103/api/eez-studio";
+const BASE = "/api/eez-studio";
 const enc = encodeURIComponent;
 const noop = () => {};
 
-let backendOnline = true;
-let backendChecked = false;
+let backendHealth: boolean | undefined = undefined;
+let healthPromise: Promise<boolean> | undefined = undefined;
 
-export function getBackendStatus() {
-    return { online: backendOnline, checked: backendChecked };
-}
-
-function checkBackend() {
-    Promise.race([
-        fetch(`${BASE}`),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 3000))
+export function checkBackendHealth(): Promise<boolean> {
+    if (healthPromise) return healthPromise;
+    healthPromise = Promise.race([
+        fetch(`${BASE}/health`),
+        new Promise<Response>((_, reject) => setTimeout(() => reject(new Error("timeout")), 3000))
     ])
-    .then(res => { backendOnline = res.status < 500; backendChecked = true; })
-    .catch(()  => { backendOnline = false; backendChecked = true; });
+    .then(res => { backendHealth = res.ok; return res.ok; })
+    .catch(() => { backendHealth = false; return false; });
+    return healthPromise;
 }
 
 async function api(path: string, init?: RequestInit): Promise<any> {
-    // Skip fetch if backend is known to be offline
-    if (backendChecked && !backendOnline) {
+    if (backendHealth === false) {
         return { ok: false, json: () => ({}), text: () => "", arrayBuffer: () => new ArrayBuffer(0) } as any;
     }
     try {
@@ -31,9 +28,10 @@ async function api(path: string, init?: RequestInit): Promise<any> {
         if (opts.body && typeof opts.body === "string") {
             (opts as any).headers = { ...(opts.headers || {}), "Content-Type": "application/json" };
         }
-        const res = await fetch(`${BASE}${path}`, opts);
-        backendOnline = true;
-        backendChecked = true;
+        const res = await Promise.race([
+            fetch(`${BASE}${path}`, opts),
+            new Promise<Response>((_, reject) => setTimeout(() => reject(new Error("timeout")), 10000))
+        ]);
         if (res.ok) {
             const ct = res.headers.get("content-type") || "";
             if (ct.includes("text/html")) {
@@ -42,8 +40,7 @@ async function api(path: string, init?: RequestInit): Promise<any> {
             return res;
         }
     } catch {
-        backendOnline = false;
-        backendChecked = true;
+        // fetch failed — let checkBackendHealth() own the status
     }
     return { ok: false, json: () => ({}), text: () => "", arrayBuffer: () => new ArrayBuffer(0) } as any;
 }
@@ -89,5 +86,5 @@ const t3: BridgeAPI = {
 
 export function initEezBridge() {
     setBridgeAPI(t3);
-    checkBackend(); // fire-and-forget: detect backend status early
+    checkBackendHealth(); // fire-and-forget: detect backend status early
 }

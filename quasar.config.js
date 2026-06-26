@@ -209,11 +209,11 @@ module.exports = configure(function (/* ctx */) {
         viteConf.server.proxy = {
           ...(viteConf.server.proxy || {}),
           // Local backend proxy
-          "/api/bridge": {
+          "/api/eez-studio": {
             target: "http://localhost:9103",
             changeOrigin: true,
             secure: false,
-            rewrite: path => path.replace(/^\/api\/bridge/, "/api/bridge")
+            rewrite: path => path.replace(/^\/api\/eez-studio/, "/api/eez-studio")
           },
 
           // Remote Gitea (envox.eu)

@@ -2,7 +2,7 @@
 import "src/t3-eez-studio/bridge/browser-polyfill";
 
 import { useEffect, useRef, useState } from "react";
-import { initEezBridge, getBackendStatus } from "src/t3-eez-studio/bridge/eez-bridge";
+import { initEezBridge, checkBackendHealth } from "src/t3-eez-studio/bridge/eez-bridge";
 import "src/t3-eez-studio/bridge/eez-registry";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { makeStyles, mergeClasses, Spinner, FluentProvider, webLightTheme } from "@fluentui/react-components";
@@ -57,42 +57,35 @@ const useBackendStyles = makeStyles({
 
 function BackendStatusBar() {
     const s = useBackendStyles();
-    const [status, setStatus] = useState({ checked: false, online: false });
+    const [health, setHealth] = useState<boolean | undefined>(undefined);
     const [visible, setVisible] = useState(true);
 
     useEffect(() => {
-        const poll = setInterval(() => {
-            const st = getBackendStatus();
-            setStatus({ ...st });
-            if (st.checked) {
-                clearInterval(poll);
-                if (st.online) {
-                    setTimeout(() => setVisible(false), 3000);
-                }
+        checkBackendHealth().then(h => {
+            setHealth(h);
+            if (h) {
+                setTimeout(() => setVisible(false), 3000);
             }
-        }, 300);
-        return () => clearInterval(poll);
+        });
     }, []);
-
-    const { checked, online } = status;
 
     const barClass = mergeClasses(
         s.bar,
-        !checked ? s.barChecking : online ? s.barOnline : s.barOffline,
+        health === undefined ? s.barChecking : health ? s.barOnline : s.barOffline,
         !visible && s.barHidden
     );
 
-    const icon = !checked ? (
+    const icon = health === undefined ? (
         <Spinner size="extra-tiny" className={s.icon} />
-    ) : online ? (
+    ) : health ? (
         <CheckmarkCircleRegular className={mergeClasses(s.icon, s.iconOnline)} />
     ) : (
         <ErrorCircleRegular className={mergeClasses(s.icon, s.iconOffline)} />
     );
 
-    const text = !checked
+    const text = health === undefined
         ? "Establishing connection to T3000 services..."
-        : online
+        : health
         ? "T3000 services connected — loading workspace"
         : "T3000 services unavailable — verify T3000 is running, then reload the page";
 
@@ -106,14 +99,19 @@ function BackendStatusBar() {
 
 export function EezStudioApp() {
     const started = useRef(false);
+    const [showContent, setShowContent] = useState(false);
 
     useEffect(() => {
         if (started.current) return;
         started.current = true;
         initEezBridge();
-        // home/main.tsx auto-executes main() on import — it renders <App /> into
-        // #EezStudio_Content (the div rendered below with that id)
-        import("home/main").catch(err => console.error("[EEZ] Failed to load home/main:", err));
+
+        checkBackendHealth().then(h => {
+            if (h) {
+                setShowContent(true);
+                import("home/main").catch(err => console.error("[EEZ] Failed to load home/main:", err));
+            }
+        });
     }, []);
 
     return (
@@ -121,16 +119,18 @@ export function EezStudioApp() {
             <FluentProvider theme={webLightTheme}>
                 <BackendStatusBar />
             </FluentProvider>
-            <div
-                id="EezStudio_Content"
-                style={{
-                    width: "100%",
-                    height: "100vh",
-                    display: "flex",
-                    flexDirection: "column",
-                    overflow: "hidden",
-                }}
-            />
+            {showContent && (
+                <div
+                    id="EezStudio_Content"
+                    style={{
+                        width: "100%",
+                        height: "100vh",
+                        display: "flex",
+                        flexDirection: "column",
+                        overflow: "hidden",
+                    }}
+                />
+            )}
         </>
     );
 }

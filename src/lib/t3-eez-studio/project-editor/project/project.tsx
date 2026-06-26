@@ -1451,7 +1451,7 @@ function getProjectClassInfo() {
             properties: projectProperties,
             beforeLoadHook: (project: Project, projectJs: any) => {
                 if (
-                    projectJs.settings.general.projectType == ProjectType.LVGL
+                    projectJs.settings?.general?.projectType == ProjectType.LVGL
                 ) {
                     if (projectJs.themesVersion == undefined) {
                         projectJs.themesVersion = 1;

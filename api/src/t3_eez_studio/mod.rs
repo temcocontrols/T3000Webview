@@ -236,21 +236,35 @@ async fn proxy_fetch(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Health check — used by browser frontend to detect backend availability
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Serialize)]
+struct HealthResponse {
+    status: &'static str,
+}
+
+async fn health() -> Json<HealthResponse> {
+    Json(HealthResponse { status: "ok" })
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Router
 ////////////////////////////////////////////////////////////////////////////////
 
 pub fn bridge_routes() -> Router<T3AppState> {
-    info!("bridge_api: registering /api/bridge/* routes");
+    info!("bridge_api: registering /api/eez-studio/* routes");
     Router::new()
-        .route("/api/bridge/read-text-file", get(read_text_file))
-        .route("/api/bridge/read-file", get(read_file))
-        .route("/api/bridge/write-file", post(write_file))
-        .route("/api/bridge/write-text-file", post(write_text_file))
-        .route("/api/bridge/make-folder", post(make_folder))
-        .route("/api/bridge/file-exists", get(file_exists))
-        .route("/api/bridge/delete-file", delete(delete_file))
-        .route("/api/bridge/list-files", get(list_files))
-        .route("/api/bridge/file-size", get(file_size))
-        .route("/api/bridge/is-directory", get(is_directory))
-        .route("/api/bridge/proxy-fetch", get(proxy_fetch))
+        .route("/api/eez-studio/health", get(health))
+        .route("/api/eez-studio/read-text-file", get(read_text_file))
+        .route("/api/eez-studio/read-file", get(read_file))
+        .route("/api/eez-studio/write-file", post(write_file))
+        .route("/api/eez-studio/write-text-file", post(write_text_file))
+        .route("/api/eez-studio/make-folder", post(make_folder))
+        .route("/api/eez-studio/file-exists", get(file_exists))
+        .route("/api/eez-studio/delete-file", delete(delete_file))
+        .route("/api/eez-studio/list-files", get(list_files))
+        .route("/api/eez-studio/file-size", get(file_size))
+        .route("/api/eez-studio/is-directory", get(is_directory))
+        .route("/api/eez-studio/proxy-fetch", get(proxy_fetch))
 }

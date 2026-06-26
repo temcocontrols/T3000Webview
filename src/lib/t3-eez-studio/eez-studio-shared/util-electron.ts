@@ -16,7 +16,7 @@ export const isDev = /[\\/]node_modules[\\/]electron[\\/]/.test(
 
 export function isRenderer() {
 
-    console.log("process in isRenderer:", process);
+    // console.log("process in isRenderer:", process);
     // running in a web browser
     if (typeof process === "undefined") {
         return true;
