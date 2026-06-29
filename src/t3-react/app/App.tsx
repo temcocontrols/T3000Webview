@@ -156,6 +156,11 @@ const TrendChartPage = React.lazy(() =>
   import('../features/trendlogs/pages/TrendChartPage').then((m) => ({ default: m.TrendChartPage }))
 );
 
+// EEZ Studio — full-page embedded app
+const EezStudioPage = React.lazy(() =>
+  import('./EezStudioApp').then((m) => ({ default: m.EezStudioApp }))
+);
+
 /**
  * Protected Route Wrapper
  * Redirects to login if not authenticated
@@ -452,6 +457,14 @@ export const App: React.FC = () => {
                       </div>
                     }>
                       <DocumentationPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="eez"
+                  element={
+                    <React.Suspense fallback={<div>Loading EEZ Studio...</div>}>
+                      <EezStudioPage />
                     </React.Suspense>
                   }
                 />

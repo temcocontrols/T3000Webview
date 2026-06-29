@@ -98,6 +98,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { menuConfig } from '@t3-react/config/menuConfig';
 import { MenuAction } from '@common/react/types/menu';
+import type { MenuItem as MenuItemConfig } from '@common/react/types/menu';
 import { toolbarConfig } from '@t3-react/config/toolbarConfig';
 import { useAuthStore } from '@t3-react/store';
 import { t3000Routes } from '@t3-react/app/router/routes';
@@ -119,8 +120,9 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     backgroundColor: 'var(--t3-color-header-background)',
-    // borderBottom: '1px solid var(--t3-color-header-border)',
     borderBottom: '1px solid #c4c8ca',
+    position: 'relative',
+    zIndex: 100,
   },
   menuBar: {
     display: 'flex',
@@ -546,6 +548,142 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
         case MenuAction.OpenQuickStart:
           navigate('/t3000/documentation'); // Will open to quick start section
           break;
+
+        // ── EEZ Studio menu actions ──
+        // Navigation
+        case MenuAction.EezOpenStudio:
+          navigate('/t3000/eez');
+          break;
+        // All other EEZ actions send a postMessage into the EEZ Studio content
+        case MenuAction.EezNewProject:
+          handleEezAction('new-project');
+          break;
+        case MenuAction.EezAddInstrument:
+          handleEezAction('add-instrument');
+          break;
+        case MenuAction.EezNewWindow:
+          handleEezAction('new-window');
+          break;
+        case MenuAction.EezOpen:
+          handleEezAction('open');
+          break;
+        case MenuAction.EezReloadProject:
+          handleEezAction('reload-project');
+          break;
+        case MenuAction.EezImportInstrumentDef:
+          handleEezAction('import-instrument-def');
+          break;
+        case MenuAction.EezSave:
+          handleEezAction('save');
+          break;
+        case MenuAction.EezSaveAs:
+          handleEezAction('save-as');
+          break;
+        case MenuAction.EezCheck:
+          handleEezAction('check');
+          break;
+        case MenuAction.EezBuild:
+          handleEezAction('build');
+          break;
+        case MenuAction.EezBuildExtensions:
+          handleEezAction('build-extensions');
+          break;
+        case MenuAction.EezBuildInstallExtensions:
+          handleEezAction('build-and-install-extensions');
+          break;
+        case MenuAction.EezCloseWindow:
+          handleEezAction('close-window');
+          break;
+        case MenuAction.EezExit:
+          handleEezAction('exit');
+          break;
+        // Edit
+        case MenuAction.EezUndo:
+          handleEezAction('undo');
+          break;
+        case MenuAction.EezRedo:
+          handleEezAction('redo');
+          break;
+        case MenuAction.EezCut:
+          handleEezAction('cut');
+          break;
+        case MenuAction.EezCopy:
+          handleEezAction('copy');
+          break;
+        case MenuAction.EezPaste:
+          handleEezAction('paste');
+          break;
+        case MenuAction.EezDelete:
+          handleEezAction('delete');
+          break;
+        case MenuAction.EezSelectAll:
+          handleEezAction('select-all');
+          break;
+        case MenuAction.EezFindComponent:
+          handleEezAction('find-project-component');
+          break;
+        // View
+        case MenuAction.EezHome:
+          handleEezAction('openTab-home');
+          break;
+        case MenuAction.EezHistory:
+          handleEezAction('openTab-history');
+          break;
+        case MenuAction.EezShortcuts:
+          handleEezAction('openTab-shortcutsAndGroups');
+          break;
+        case MenuAction.EezNotebooks:
+          handleEezAction('openTab-homeSection_notebooks');
+          break;
+        case MenuAction.EezExtensions:
+          handleEezAction('openTab-extensions');
+          break;
+        case MenuAction.EezSettings:
+          handleEezAction('openTab-settings');
+          break;
+        case MenuAction.EezScrapbook:
+          handleEezAction('showScrapbookManager');
+          break;
+        case MenuAction.EezToggleFullScreen:
+          handleEezAction('toggle-fullscreen');
+          break;
+        case MenuAction.EezToggleDevTools:
+          handleEezAction('toggle-devtools');
+          break;
+        case MenuAction.EezSwitchTheme:
+          handleEezAction('switch-theme');
+          break;
+        case MenuAction.EezZoomIn:
+          handleEezAction('zoom-in');
+          break;
+        case MenuAction.EezZoomOut:
+          handleEezAction('zoom-out');
+          break;
+        case MenuAction.EezResetZoom:
+          handleEezAction('reset-zoom');
+          break;
+        case MenuAction.EezToggleComponentsPalette:
+          handleEezAction('toggle-components-palette');
+          break;
+        case MenuAction.EezResetLayout:
+          handleEezAction('reset-layout');
+          break;
+        case MenuAction.EezNextTab:
+          handleEezAction('show-next-tab');
+          break;
+        case MenuAction.EezPreviousTab:
+          handleEezAction('show-previous-tab');
+          break;
+        case MenuAction.EezReload:
+          handleEezAction('reload');
+          break;
+        // Help
+        case MenuAction.EezDocumentation:
+          handleEezAction('show-documentation-browser');
+          break;
+        case MenuAction.EezAbout:
+          handleEezAction('show-about-box');
+          break;
         // Add other menu actions as needed
         default:
           console.log('Unhandled menu action:', action);
@@ -661,6 +799,87 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
     navigate('/login');
   };
 
+  // ── EEZ Studio menu action handler ──
+  // Sends a message into the EEZ Studio iframe/content to trigger the action.
+  // Falls back to navigating to the EEZ Studio tab first if not already there.
+  const handleEezAction = (channel: string) => {
+    // Post to the EEZ Studio content window
+    window.postMessage({ source: 't3000-menu', action: channel }, window.location.origin);
+    // Also try dispatching a custom event as fallback
+    window.dispatchEvent(new CustomEvent('eez-studio-action', { detail: channel }));
+  };
+
+  // ── Recursive menu item renderer ──
+  // Supports nested submenus by rendering a Fluent UI <Menu> for items with type 'submenu'.
+  const renderMenuItem = (item: MenuItemConfig, parentMenuId: string): React.ReactNode => {
+    if (item.type === 'divider') {
+      return <MenuDivider key={item.id} />;
+    }
+
+    const IconComponent = typeof item.icon === 'string'
+      ? getIconComponent(item.icon)
+      : item.icon;
+
+    // Nested submenu
+    if (item.type === 'submenu' && item.children && item.children.length > 0) {
+      return (
+        <Menu key={item.id}>
+          <MenuTrigger disableButtonEnhancement>
+            <MenuItem
+              icon={IconComponent ? <IconComponent /> : undefined}
+              style={{
+                fontSize: 'var(--t3-font-size-small)',
+                padding: '8px 16px',
+                minHeight: '32px',
+                justifyContent: 'space-between',
+              }}
+            >
+              {item.label}
+            </MenuItem>
+          </MenuTrigger>
+          <MenuPopover>
+            <MenuList>
+              {item.children.map((child) => renderMenuItem(child, item.id!))}
+            </MenuList>
+          </MenuPopover>
+        </Menu>
+      );
+    }
+
+    // Regular item
+    return (
+      <MenuItem
+        key={item.id}
+        onClick={() => handleMenuClick(item.action)}
+        disabled={
+          item.action === MenuAction.ExportToCsv ? !isExportAvailable :
+            item.action === MenuAction.ImportFromCsv ? !isImportAvailable :
+              item.disabled
+        }
+        icon={IconComponent ? <IconComponent /> : undefined}
+        className={parentMenuId === 'tools' ? styles.menuItemWide : undefined}
+        style={{
+          fontSize: 'var(--t3-font-size-small)',
+          padding: '8px 16px',
+          minHeight: '32px',
+        }}
+      >
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          width: '100%',
+          gap: '24px'
+        }}>
+          <span>{item.label}</span>
+          {item.shortcut && (
+            <span className={styles.menuShortcut}>{item.shortcut}</span>
+          )}
+        </div>
+      </MenuItem>
+    );
+  };
+
   return (
     <div className={styles.header}>
       {/* Row 1: Menu Bar with File, Edit, View, Tools, Help */}
@@ -672,48 +891,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
             </MenuTrigger>
             <MenuPopover className={menu.id === 'tools' ? styles.menuPopover : undefined}>
               <MenuList>
-                {menu.children?.map((item) => {
-                  if (item.type === 'divider') {
-                    return <MenuDivider key={item.id} />;
-                  }
-                  // Handle icon: could be a string or FluentIcon component
-                  const IconComponent = typeof item.icon === 'string'
-                    ? getIconComponent(item.icon)
-                    : item.icon;
-                  return (
-                    <MenuItem
-                      key={item.id}
-                      onClick={() => handleMenuClick(item.action)}
-                      disabled={
-                        item.action === MenuAction.ExportToCsv ? !isExportAvailable :
-                          item.action === MenuAction.ImportFromCsv ? !isImportAvailable :
-                            item.disabled
-                      }
-                      icon={IconComponent ? <IconComponent /> : undefined}
-                      className={menu.id === 'tools' ? styles.menuItemWide : undefined}
-                      style={{
-                        fontSize: 'var(--t3-font-size-small)', // 12px for dropdown items
-                        padding: '8px 16px',
-                        minHeight: '32px',
-                      }}
-                    >
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        width: '100%',
-                        gap: '24px'
-                      }}>
-                        <span>{item.label}</span>
-                        {item.shortcut && (
-                          <span className={styles.menuShortcut}>
-                            {item.shortcut}
-                          </span>
-                        )}
-                      </div>
-                    </MenuItem>
-                  );
-                })}
+                {menu.children?.map((item) => renderMenuItem(item, menu.id))}
               </MenuList>
             </MenuPopover>
           </Menu>

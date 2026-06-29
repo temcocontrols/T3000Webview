@@ -1,7 +1,7 @@
 
 import "src/t3-eez-studio/bridge/browser-polyfill";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { initEezBridge, checkBackendHealth } from "src/t3-eez-studio/bridge/eez-studio-api";
 import "src/t3-eez-studio/bridge/eez-registry";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -98,40 +98,48 @@ function BackendStatusBar() {
 }
 
 export function EezStudioApp() {
-    const started = useRef(false);
     const [showContent, setShowContent] = useState(false);
 
     useEffect(() => {
-        if (started.current) return;
-        started.current = true;
+        let cancelled = false;
         initEezBridge();
 
         checkBackendHealth().then(h => {
+            if (cancelled) return;
             if (h) {
                 setShowContent(true);
-                import("home/main").catch(err => console.error("[EEZ] Failed to load home/main:", err));
+                // home/main is side-effect driven (cached import won't re-run).
+                // Import it first if not already loaded, then call initEezMain() to re-render.
+                import("home/main").then(m => {
+                    if (!cancelled && m.initEezMain) {
+                        m.initEezMain();
+                    }
+                }).catch(err => console.error("[EEZ] Failed to load home/main:", err));
             }
         });
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     return (
-        <>
-            <FluentProvider theme={webLightTheme}>
+        <FluentProvider theme={webLightTheme}>
+            <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
                 <BackendStatusBar />
-            </FluentProvider>
-            {showContent && (
-                <div
-                    id="EezStudio_Content"
-                    style={{
-                        width: "100%",
-                        height: "100vh",
-                        display: "flex",
-                        flexDirection: "column",
-                        overflow: "hidden",
-                    }}
-                />
-            )}
-        </>
+                {showContent && (
+                    <div
+                        id="EezStudio_Content"
+                        style={{
+                            flex: 1,
+                            display: "flex",
+                            flexDirection: "column",
+                            overflow: "hidden",
+                        }}
+                    />
+                )}
+            </div>
+        </FluentProvider>
     );
 }
 

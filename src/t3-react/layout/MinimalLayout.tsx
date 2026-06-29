@@ -15,6 +15,12 @@ import { Header } from './Header';
 import { GlobalMessageBar } from '../shared/components/GlobalMessageBar';
 import { useUIStore } from '../store/uiStore';
 
+// Force Fluent UI menu popovers above EEZ Studio content
+const menuZIndexFix = `
+  .fui-MenuPopover { z-index: 10000 !important; }
+  .fui-PopoverSurface { z-index: 10000 !important; }
+`;
+
 const useStyles = makeStyles({
   container: {
     display: 'flex',
@@ -34,6 +40,7 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     overflow: 'hidden',
     backgroundColor: '#ffffff',
+    position: 'relative',
   },
 });
 
@@ -44,6 +51,7 @@ export const MinimalLayout: React.FC = () => {
 
   return (
     <div className={styles.container}>
+      <style>{menuZIndexFix}</style>
       {/* Top area with header and global message */}
       <div className={styles.topArea}>
         <Header showToolbar={false} />
