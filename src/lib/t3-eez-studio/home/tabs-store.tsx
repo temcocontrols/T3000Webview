@@ -31,7 +31,7 @@ import * as notification from "eez-studio-ui/notification";
 import type { InstrumentObject } from "instrument/instrument-object";
 import type * as InstrumentObjectModule from "instrument/instrument-object";
 import type { HistoryViewComponent } from "instrument/window/history/history-view";
-import type * as HistoryViewModule from "instrument/window/history/history-view";
+import { showSessionsList } from "instrument/window/history/history-view";
 
 import type * as HomeTabModule from "home/home-tab";
 import type * as HistoryModule from "home/history";
@@ -1307,8 +1307,6 @@ export class Tabs {
         } else {
             this.openTabById("history", true);
             this.viewDeletedHistory = false;
-            const { showSessionsList } =
-                require("instrument/window/history/history-view") as typeof HistoryViewModule;
             showSessionsList(this);
         }
     }

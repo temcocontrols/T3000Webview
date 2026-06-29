@@ -3,6 +3,7 @@ import { computed, makeObservable } from "mobx";
 import { observer } from "mobx-react";
 import classNames from "classnames";
 import { dialog, getCurrentWindow } from "@electron/remote";
+import Quill from "quill";
 
 import { formatBytes } from "eez-studio-shared/formatBytes";
 import { guid } from "eez-studio-shared/guid";
@@ -356,11 +357,6 @@ export const RichTextProperty = observer(
         quill: any;
 
         componentDidMount() {
-            let Quill = (window as any).Quill;
-            if (!Quill && (window as any).require) {
-                Quill = (window as any).require("quill");
-            }
-
             this.quill = new Quill(this.div, {
                 theme: "snow"
             });
@@ -414,11 +410,6 @@ export const StaticRichTextProperty = observer(
         quill: any;
 
         componentDidMount() {
-            let Quill = (window as any).Quill;
-            if (!Quill && (window as any).require) {
-                Quill = (window as any).require("quill");
-            }
-
             this.quill = new Quill(this.div, {
                 modules: {
                     toolbar: false

@@ -16,7 +16,14 @@ import { ToolbarHeader } from "eez-studio-ui/header-with-body";
 import { ButtonAction } from "eez-studio-ui/action";
 import { Icon } from "eez-studio-ui/icon";
 
-import { instruments, InstrumentObject } from "instrument/instrument-object";
+import { instruments, InstrumentObject, instrumentStore } from "instrument/instrument-object";
+import { showAddInstrumentDialog } from "instrument/add-instrument-dialog";
+import {
+    installExtension,
+    InstrumentToolbar,
+    InstrumentProperties,
+    InstrumentConnection
+} from "home/instruments/instrument-object-details";
 
 import { stringCompare } from "eez-studio-shared/string";
 import { beginTransaction, commitTransaction } from "eez-studio-shared/store";
@@ -117,8 +124,6 @@ export class InstrumentsStore {
                 new MenuItem({
                     label: "Install Extension",
                     click: () => {
-                        const { installExtension } =
-                            require("home/instruments/instrument-object-details") as typeof import("home/instruments/instrument-object-details");
                         installExtension(instrument);
                     }
                 })
@@ -208,8 +213,6 @@ export const defaultInstrumentsStore = new InstrumentsStore(false);
 ////////////////////////////////////////////////////////////////////////////////
 
 function deleteInstrument(instrument: InstrumentObject) {
-    const { instrumentStore } =
-        require("instrument/instrument-object") as typeof import("instrument/instrument-object");
     instrumentStore.deleteObject({
         id: instrument.id
     });
@@ -348,9 +351,6 @@ const Toolbar = observer(
                               }
                             : undefined,
                     onClick: () => {
-                        const { showAddInstrumentDialog } =
-                            require("instrument/add-instrument-dialog") as typeof import("instrument/add-instrument-dialog");
-
                         showAddInstrumentDialog(instrumentId => {
                             setTimeout(() => {
                                 this.props.instrumentsStore.selectedInstrumentId =
@@ -469,18 +469,12 @@ const InstrumentToolbarEnclosure = observer(
             return null;
         }
 
-        const { instruments } =
-            require("instrument/instrument-object") as typeof import("instrument/instrument-object");
-
         const instrument = instruments.get(
             instrumentsStore.selectedInstrumentId
         );
         if (!instrument) {
             return null;
         }
-
-        const { InstrumentToolbar } =
-            require("home/instruments/instrument-object-details") as typeof import("home/instruments/instrument-object-details");
 
         return (
             <div className="EezStudio_InstrumentToolbarEnclosure">
@@ -499,18 +493,12 @@ const InstrumentPropertiesEnclosure = observer(
             return null;
         }
 
-        const { instruments } =
-            require("instrument/instrument-object") as typeof import("instrument/instrument-object");
-
         const instrument = instruments.get(
             instrumentsStore.selectedInstrumentId
         );
         if (!instrument) {
             return null;
         }
-
-        const { InstrumentProperties } =
-            require("home/instruments/instrument-object-details") as typeof import("home/instruments/instrument-object-details");
 
         return (
             <div className="EezStudio_HomeTab_Instruments_SelectedInstrument_Properties_Section">
@@ -531,18 +519,12 @@ const InstrumentConnectionEnclosure = observer(
             return null;
         }
 
-        const { instruments } =
-            require("instrument/instrument-object") as typeof import("instrument/instrument-object");
-
         const instrument = instruments.get(
             instrumentsStore.selectedInstrumentId
         );
         if (!instrument) {
             return null;
         }
-
-        const { InstrumentConnection } =
-            require("home/instruments/instrument-object-details") as typeof import("home/instruments/instrument-object-details");
 
         return (
             <div className="EezStudio_HomeTab_Instruments_SelectedInstrument_Properties_Section">

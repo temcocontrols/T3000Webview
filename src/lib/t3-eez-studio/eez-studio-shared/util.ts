@@ -1,10 +1,11 @@
 import { toJS, isObservableArray } from "mobx";
-import type MomentModule from "moment";
+import moment from "moment";
+import momentDurationFormat from "moment-duration-format";
 import stringify from "json-stable-stringify";
 
-import type * as GeometryModule from "eez-studio-shared/geometry";
+import { BoundingRectBuilder } from "eez-studio-shared/geometry";
 
-import type * as I10nModule from "eez-studio-shared/i10n";
+import { getLocale, getDateFormat, getTimeFormat } from "eez-studio-shared/i10n";
 
 export function parseXmlString(xmlString: string) {
     // remove UTF-8 BOM
@@ -16,8 +17,6 @@ export function parseXmlString(xmlString: string) {
 }
 
 export function getBoundingClientRectOfChildNodes(element: Element) {
-    const { BoundingRectBuilder } =
-        require("eez-studio-shared/geometry") as typeof GeometryModule;
     let boundingRectBuilder = new BoundingRectBuilder();
     element.childNodes.forEach(node => {
         if (node instanceof Element) {
@@ -30,8 +29,6 @@ export function getBoundingClientRectOfChildNodes(element: Element) {
 }
 
 export function getBoundingClientRectIncludingChildNodes(element: Element) {
-    const { BoundingRectBuilder } =
-        require("eez-studio-shared/geometry") as typeof GeometryModule;
     let boundingRectBuilder = new BoundingRectBuilder();
     boundingRectBuilder.addRect(element.getBoundingClientRect());
     boundingRectBuilder.addRect(getBoundingClientRectOfChildNodes(element));
@@ -96,32 +93,28 @@ export function clamp(value: number, min: number, max: number) {
     return value;
 }
 
-var moment: typeof MomentModule | undefined;
+var _momentInitialized = false;
 var userLocale: string;
-var localeData: MomentModule.Locale;
+var localeData: moment.Locale;
 var localeWeekdays: string[];
 var defaultDateFormat: string;
 var defaultTimeFormat: string;
 var defaultDateTimeFormat: string;
 
 export function getMoment() {
-    // debugger;
-    if (!moment) {
-        moment = require("moment") as typeof MomentModule;
-        require("moment-duration-format")(moment);
+    if (!_momentInitialized) {
+        _momentInitialized = true;
+        momentDurationFormat(moment);
 
-        const { getLocale, getDateFormat, getTimeFormat } =
-            require("eez-studio-shared/i10n") as typeof I10nModule;
-
-        let userLocale = getLocale();
+        userLocale = getLocale();
         if (typeof userLocale !== "string") {
             userLocale = "en"; // fallback
         }
 
         moment.locale(userLocale);
 
-        const localeData = moment.localeData(userLocale);
-        const localeWeekdays = localeData.weekdays();
+        localeData = moment.localeData(userLocale);
+        localeWeekdays = localeData.weekdays();
 
         defaultDateFormat = getDateFormat();
         defaultTimeFormat = getTimeFormat();
