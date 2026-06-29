@@ -144,7 +144,7 @@ const ipcSyncDefaults: Record<string, any> = {
         watchFile: () => {}, unwatchFile: () => {}, watch: () => {},
         promises: { readdir:()=>Promise.resolve([]), mkdir:()=>Promise.resolve(), stat:()=>Promise.resolve({}) },
     };
-    if (path === "path") return { resolve:(...p:string[])=>p.join("/"), relative:(f:string,t:string)=>t, join:(...p:string[])=>p.join("/"), sep:"/", basename:()=>"", dirname:()=>".", extname:()=>"" };
+    if (path === "path") return { isAbsolute:(p:string)=>p.startsWith("/"), resolve:(...p:string[])=>p.join("/"), relative:(f:string,t:string)=>t, join:(...p:string[])=>p.join("/"), sep:"/", basename:()=>"", dirname:()=>".", extname:()=>"" };
     if (path === "os") return { platform:()=>"browser", type:()=>"browser", homedir:()=>"/", tmpdir:()=>"/tmp" };
     if (path === "stream") return { Readable: class {}, Writable: class {}, Stream: class {} };
     if (path === "events") return { EventEmitter: class {} };
