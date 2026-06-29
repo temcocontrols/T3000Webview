@@ -601,7 +601,7 @@ export class WizardModel {
             version: string;
         } = require("../../../../package.json");
 
-        const examples = examplesCatalog.catalog
+        const examples = (Array.isArray(examplesCatalog.catalog) ? examplesCatalog.catalog : [])
             .slice()
             .filter(
                 example =>
