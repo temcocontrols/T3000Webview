@@ -176,7 +176,12 @@ async function main() {
     if (!buildProject) {
         loadTabs();
 
-        const root = createRoot(document.getElementById("EezStudio_Content")!);
+        const contentEl = document.getElementById("EezStudio_Content")!;
+        // Clean up any previous root (supports client-side remount)
+        const prevRoot = (contentEl as any)._eezRoot;
+        if (prevRoot) { prevRoot.unmount(); }
+        const root = createRoot(contentEl);
+        (contentEl as any)._eezRoot = root;
         root.render(
             <Main>
                 <App />
@@ -196,6 +201,8 @@ async function main() {
 }
 
 main();
+
+export { main as initEezMain };
 
 // setTimeout(() => {
 //     require("eez-studio-shared/module-stat");
