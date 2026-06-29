@@ -54,10 +54,8 @@ class ExamplesCatalog {
     }
 
     async load() {
-        console.log("[catalog] load() start");
         try {
             const catalog = await this._loadCatalog();
-            console.log("[catalog] _loadCatalog result:", catalog?.length, "items");
             runInAction(() => {
                 if (!this.catalogAtStart) {
                     this.catalogAtStart = catalog;
@@ -73,7 +71,6 @@ class ExamplesCatalog {
 
         try {
             const catalogVersion = await this._loadCatalogVersion();
-            console.log("[catalog] _loadCatalogVersion result:", catalogVersion);
             runInAction(() => (this.catalogVersion = catalogVersion));
             this.checkNewVersionOfCatalog();
         } catch (error) {
@@ -120,21 +117,19 @@ class ExamplesCatalog {
     }
 
     async checkNewVersionOfCatalog() {
-        console.log("[catalog] checkNewVersionOfCatalog()");
         try {
             const catalogVersion = await this.downloadCatalogVersion();
-            console.log("[catalog] downloaded version:", catalogVersion);
 
             if (!catalogVersion) {
-                console.warn("[catalog] no catalog version — skipping download");
                 return false;
             }
 
-            if (
+            const needDownload =
                 this.catalog.length === 0 ||
                 !this.catalogVersion ||
-                catalogVersion.lastModified > this.catalogVersion.lastModified
-            ) {
+                catalogVersion.lastModified > this.catalogVersion.lastModified;
+
+            if (needDownload) {
                 runInAction(() => (this.catalogVersion = catalogVersion));
                 this.downloadCatalog();
             } else {
@@ -151,17 +146,14 @@ class ExamplesCatalog {
     }
 
     downloadCatalogVersion() {
-        console.log("[catalog] downloadCatalogVersion() — fetching", CATALOG_VERSION_DOWNLOAD_URL);
         return new Promise<ICatalogVersion>((resolve, reject) => {
             var req = new XMLHttpRequest();
             req.responseType = "json";
             req.open("GET", CATALOG_VERSION_DOWNLOAD_URL);
 
             req.addEventListener("load", async () => {
-                console.log("[catalog] downloadCatalogVersion response:", req.status, req.response);
                 const catalogVersion = req.response;
                 if (!catalogVersion) {
-                    console.warn("[catalog] downloadCatalogVersion — response is null");
                     resolve(null as any);
                     return;
                 }
@@ -185,8 +177,6 @@ class ExamplesCatalog {
     }
 
     downloadCatalog() {
-        console.log("[catalog] downloadCatalog() — fetching", CATALOG_DOWNLOAD_URL);
-
         var req = new XMLHttpRequest();
         req.responseType = "arraybuffer";
         req.open("GET", CATALOG_DOWNLOAD_URL);
@@ -219,12 +209,13 @@ class ExamplesCatalog {
                 if (names.length === 0) throw new Error("Zip is empty");
                 const data = await zip.files[names[0]].async("uint8array");
                 const catalogJson = new TextDecoder("utf-8").decode(data);
-                console.log("[catalog] extracted JSON (first 200 chars):", catalogJson.substring(0, 200));
                 const catalog = JSON.parse(catalogJson);
-                console.log("[catalog] parsed type:", Array.isArray(catalog) ? "array" : typeof catalog);
                 if (!Array.isArray(catalog)) {
                     throw new Error("Catalog is not an array");
                 }
+
+                // Clone before mobx wraps it — Proxy breaks JSON.stringify
+                const rawCatalog = JSON.parse(JSON.stringify(catalog));
 
                 runInAction(() => {
                     this.catalog = catalog;
@@ -234,7 +225,7 @@ class ExamplesCatalog {
                     this.onNewCatalog();
                 }
 
-                await writeJsObjectToFile(this.catalogPath, this.catalog);
+                await writeJsObjectToFile(this.catalogPath, rawCatalog);
 
                 notification.update(progressToastId, {
                     type: notification.SUCCESS,

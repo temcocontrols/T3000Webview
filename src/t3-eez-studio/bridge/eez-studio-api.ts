@@ -74,14 +74,20 @@ async function api(path: string, init?: RequestInit): Promise<any> {
     return { ok: false, json: () => ({}), text: () => "", arrayBuffer: () => new ArrayBuffer(0) } as any;
 }
 
+// Helper: raise on non-2xx so write failures propagate to caller
+async function apiOK(path: string, init?: RequestInit): Promise<void> {
+    const res = await api(path, init);
+    if (!res.ok) throw new Error(`API ${init?.method || "GET"} ${path} failed: ${res.status}`);
+}
+
 const t3: BridgeAPI = {
     readFile: p => api(`/read-file?path=${enc(p)}`).then(r=>r.arrayBuffer()),
-    writeFile: (p,d) => api(`/write-file?path=${enc(p)}`,{method:"POST",body:new Uint8Array(d)}).then(noop),
+    writeFile: (p,d) => apiOK(`/write-file?path=${enc(p)}`,{method:"POST",body:new Uint8Array(d)}),
     readTextFile: p => api(`/read-text-file?path=${enc(p)}`).then(r=>r.text()),
-    writeTextFile: (p,d) => api(`/write-text-file?path=${enc(p)}`,{method:"POST",body:d}).then(noop),
-    makeFolder: p => api("/make-folder",{method:"POST",body:JSON.stringify({path:p})}).then(noop),
+    writeTextFile: (p,d) => apiOK(`/write-text-file?path=${enc(p)}`,{method:"POST",body:d}),
+    makeFolder: p => apiOK("/make-folder",{method:"POST",body:JSON.stringify({path:p})}),
     fileExists: p => api(`/file-exists?path=${enc(p)}`).then(r=>r.json()).then(function(j: any) { return (j && j.exists) || false; }),
-    deleteFile: p => api(`/delete-file?path=${enc(p)}`,{method:"DELETE"}).then(noop),
+    deleteFile: p => apiOK(`/delete-file?path=${enc(p)}`,{method:"DELETE"}),
     listFiles: p => api(`/list-files?path=${enc(p)}`).then(r=>r.json()),
     getFileSize: p => api(`/file-size?path=${enc(p)}`).then(r=>r.json()).then(function(j: any) { return (j && j.size) || 0; }),
     isDirectory: p => api(`/is-directory?path=${enc(p)}`).then(r=>r.json()).then(function(j: any) { return (j && j.is_directory) || false; }),

@@ -308,4 +308,5 @@ pub fn bridge_routes() -> Router<T3AppState> {
         .route("/api/eez-studio/file-size", get(file_size))
         .route("/api/eez-studio/is-directory", get(is_directory))
         .route("/api/eez-studio/proxy-fetch", get(proxy_fetch))
+        .layer(axum::extract::DefaultBodyLimit::max(50 * 1024 * 1024)) // 50 MB — catalog JSON ~6 MB
 }
