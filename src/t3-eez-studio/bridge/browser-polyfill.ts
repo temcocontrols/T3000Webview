@@ -77,7 +77,7 @@ ace.config.set("basePath", "/node_modules/ace-builds/src-noconflict");
 
 // global
 (globalThis as any).global = globalThis;
-(globalThis as any).__dirname = "/";
+(globalThis as any).__dirname = "/wasm";
 (globalThis as any).__filename = "/index.js";
 (globalThis as any).process = {
     ...(globalThis as any).process,   // keep existing fields

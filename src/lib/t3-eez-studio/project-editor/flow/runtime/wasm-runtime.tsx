@@ -228,8 +228,8 @@ export class WasmRuntime extends RemoteRuntime {
         console.log("Assets map:", this.assetsMap);
 
         runInAction(() => {
-            this.displayWidth = this.assetsMap.displayWidth;
-            this.displayHeight = this.assetsMap.displayHeight;
+            this.displayWidth = this.assetsMap.displayWidth || 900;
+            this.displayHeight = this.assetsMap.displayHeight || 600;
         });
 
         this.assetsData = result.GUI_ASSETS_DATA;
@@ -253,7 +253,7 @@ export class WasmRuntime extends RemoteRuntime {
             await preloadAllBitmaps(this.projectStore);
         }
 
-        this.worker = createWasmWorker(
+        this.worker = await createWasmWorker(
             this.wasmModuleId,
             isDebuggerActive
                 ? 0xffffffff
@@ -632,7 +632,7 @@ export class WasmRuntime extends RemoteRuntime {
             return;
         }
 
-        this.worker.wasm._mainLoop(); // should run max. 5 ms so it doesn't block the UI
+        this.worker.wasm._mainLoop();
 
         this.mainLoopTimeoutId = setTimeout(this.runMainLoop);
     };
@@ -640,11 +640,6 @@ export class WasmRuntime extends RemoteRuntime {
     animationFrameLoop = () => {
         if (this.isStopped) {
             return;
-        }
-
-        if (!this._animLogged) {
-            console.log("[runtime] animationFrameLoop running, screen:", this.screen ? this.screen.length : "null", "ctx:", !!this.ctx);
-            this._animLogged = true;
         }
 
         if (this.componentProperties.selectedPage != this.selectedPage) {
@@ -689,6 +684,12 @@ export class WasmRuntime extends RemoteRuntime {
 
     updateCanvasContext() {
         if (!this.lastScreen || !this.ctx) {
+            // Diagnostic: fill canvas red to confirm it's reachable even without screen data
+            if (this.ctx && !this._diagFilled) {
+                this._diagFilled = true;
+                this.ctx.fillStyle = "red";
+                this.ctx.fillRect(0, 0, this.displayWidth, this.displayHeight);
+            }
             return;
         }
 
@@ -704,8 +705,8 @@ export class WasmRuntime extends RemoteRuntime {
         const height = this.selectedPage.height;
 
         this.ctx.clearRect(0, 0, this.displayWidth, this.displayHeight);
-        if (this.projectStore.projectTypeTraits.isLVGL) {
-            // LVGL renders the full screen buffer — no per-page centering
+        if (this.projectStore.projectTypeTraits.isLVGL || this.projectStore.projectTypeTraits.isDashboard) {
+            // LVGL and Dashboard render the full screen buffer — no per-page centering
             this.ctx.putImageData(imgData, 0, 0);
         } else {
             this.ctx.putImageData(

@@ -26,7 +26,74 @@ import { runInAction } from "mobx";
 import deepEqual from "fast-deep-equal";
 import { LVGLVersion } from "project-editor/project/project";
 
-const eez_flow_runtime_constructor = require("project-editor/flow/runtime/wasm/eez_runtime.js");
+// Dashboard runtime loader — Electron uses require(), browser loads via script tag
+let eez_flow_runtime_constructor: any = undefined;
+let _eezRuntimeLoading: Promise<any> | null = null;
+
+async function loadEezRuntimeBrowser(): Promise<any> {
+    // eez_runtime.js is a CommonJS module: it sets module.exports to a factory
+    // function(postWorkerToRendererMessage) that creates+returns the real Module.
+    // We load via script tag, then return module.exports (the factory).
+    return new Promise((resolve, reject) => {
+        function getFactory() {
+            const exports = (globalThis as any).module?.exports;
+            if (typeof exports === "function") {
+                resolve(exports);
+                return true;
+            }
+            return false;
+        }
+
+        // Module already loaded?
+        if (getFactory()) return;
+
+        // Scrub Emscripten globals leftover from prior WASM loads (e.g. LVGL).
+        // eez_runtime.js uses `var wasmBinaryFile` which won't redeclare, and
+        // `??=` won't overwrite a stale URL, causing the wrong .wasm to load.
+        // Set wasmBinaryFile to the CORRECT dashboard WASM URL explicitly.
+        const g = globalThis as any;
+        g.wasmBinary = undefined;
+        g.wasmBinaryFile = "/wasm/eez_runtime.wasm";
+        g.wasmMemory = undefined;
+        g.wasmExports = undefined;
+
+        const s = document.createElement("script");
+        s.src = "/wasm/eez_runtime.js";
+        s.onload = () => {
+            if (!getFactory()) {
+                reject(new Error("module.exports not found after script load"));
+            }
+        };
+        s.onerror = (e) => {
+            console.error("[dash:worker] failed to load eez_runtime.js", e);
+            reject(new Error("Failed to load eez_runtime.js"));
+        };
+        document.head.appendChild(s);
+    });
+}
+
+async function loadEezRuntime(): Promise<any> {
+    if (typeof eez_flow_runtime_constructor === "function") {
+        return eez_flow_runtime_constructor;
+    }
+    if (!_eezRuntimeLoading) {
+        _eezRuntimeLoading = (async () => {
+            // Electron: try CJS require
+            try {
+                const mod = require("project-editor/flow/runtime/wasm/eez_runtime.js");
+                const ctor = mod.default || mod;
+                if (typeof ctor === "function") {
+                    eez_flow_runtime_constructor = ctor;
+                    return ctor;
+                }
+            } catch {}
+            // Browser: script tag injection
+            eez_flow_runtime_constructor = await loadEezRuntimeBrowser();
+            return eez_flow_runtime_constructor;
+        })();
+    }
+    return _eezRuntimeLoading;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -723,7 +790,7 @@ function lvglOnEventHandler(
 
 ////////////////////////////////////////////////////////////////////////////////
 
-export function createWasmWorker(
+export async function createWasmWorker(
     wasmModuleId: number,
     debuggerMessageSubsciptionFilter: number,
     postWorkerToRenderMessage: (data: WorkerToRenderMessage) => void,
@@ -754,9 +821,13 @@ export function createWasmWorker(
             postWorkerToRenderMessage
         );
     } else {
-        WasmFlowRuntime = eez_flow_runtime_constructor(
-            postWorkerToRenderMessage
-        );
+        // Dashboard runtime: await async load if needed
+        if (typeof eez_flow_runtime_constructor !== "function") {
+            const ctor = await loadEezRuntime();
+            WasmFlowRuntime = ctor(postWorkerToRenderMessage);
+        } else {
+            WasmFlowRuntime = eez_flow_runtime_constructor(postWorkerToRenderMessage);
+        }
     }
 
     WasmFlowRuntime.wasmModuleId = wasmModuleId;
@@ -960,6 +1031,9 @@ export function createWasmWorker(
 
         if (rendererToWorkerMessage.init) {
             WasmFlowRuntime.assetsMap = rendererToWorkerMessage.init.assetsMap;
+            // Ensure display dimensions are available (sent separately from assetsMap)
+            WasmFlowRuntime.assetsMap.displayWidth = WasmFlowRuntime.assetsMap.displayWidth || displayWidth;
+            WasmFlowRuntime.assetsMap.displayHeight = WasmFlowRuntime.assetsMap.displayHeight || displayHeight;
 
             //
             const assets = rendererToWorkerMessage.init.assetsData;
@@ -1106,16 +1180,15 @@ export function createWasmWorker(
 
         var buf_addr = WasmFlowRuntime._getSyncedBuffer();
         if (buf_addr != 0) {
+            const w = WasmFlowRuntime.assetsMap.displayWidth;
+            const h = WasmFlowRuntime.assetsMap.displayHeight;
+            const size = w * h * 4;
             workerToRenderMessage.screen = new Uint8ClampedArray(
                 WasmFlowRuntime.HEAPU8.subarray(
                     buf_addr,
-                    buf_addr +
-                        WasmFlowRuntime.assetsMap.displayWidth *
-                            WasmFlowRuntime.assetsMap.displayHeight *
-                            4
+                    buf_addr + size
                 )
             );
-
         }
 
         workerToRenderMessage.isRTL = WasmFlowRuntime._isRTL();

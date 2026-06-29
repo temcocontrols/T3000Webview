@@ -772,7 +772,8 @@ export const FlowViewer = observer(
                 this.flowContext.flowState ||
                 this.flowContext.flow instanceof ProjectEditor.ActionClass ||
                 this.flowContext.projectStore.projectTypeTraits.isLVGL ||
-                this.flowContext.projectStore.projectTypeTraits.isEezGuiLite;
+                this.flowContext.projectStore.projectTypeTraits.isEezGuiLite ||
+                this.flowContext.projectStore.projectTypeTraits.isDashboard;
 
             const lvglCreateInProgress = isLVGLCreateInProgress(
                 this.flowContext.flow
