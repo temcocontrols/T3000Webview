@@ -63,13 +63,16 @@ export const SubNavigation = observer(
                             <li
                                 key={item.name}
                                 className="nav-item"
-                                onClick={() => this.selectItem(item.name)}
                             >
                                 <a
                                     className={classNames("nav-link", {
                                         active: this.selectedItem == item.name
                                     })}
-                                    href="javascript:void(0)"
+                                    href=""
+                                    onClick={e => {
+                                        e.preventDefault();
+                                        this.selectItem(item.name);
+                                    }}
                                 >
                                     {item.name}
                                     {item.numItems > 0 ? (
