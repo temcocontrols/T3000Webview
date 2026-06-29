@@ -22,28 +22,16 @@ export function initializeReactApp() {
   const rootElement = document.getElementById('t3000-react-root');
   if (!rootElement) return;
 
-  const hash = window.location.hash.replace('#', '');
-  const path = hash || window.location.pathname;
-  const isEez = hash.startsWith('/t3000/eez');
-
   try {
-    if (isEez) {
-      import('../t3-react/app/EezStudioApp').then(({ EezStudioApp }) => {
-        reactRoot = ReactDOM.createRoot(rootElement);
-        reactRoot.render(<EezStudioApp />);
-        isInitialized = true;
-      });
-    } else {
-      import('../t3-react/app/App').then(({ App }) => {
-        reactRoot = ReactDOM.createRoot(rootElement);
-        reactRoot.render(
-          <React.StrictMode>
-            <App />
-          </React.StrictMode>
-        );
-        isInitialized = true;
-      });
-    }
+    import('../t3-react/app/App').then(({ App }) => {
+      reactRoot = ReactDOM.createRoot(rootElement);
+      reactRoot.render(
+        <React.StrictMode>
+          <App />
+        </React.StrictMode>
+      );
+      isInitialized = true;
+    });
   } catch (error) {}
 }
 
