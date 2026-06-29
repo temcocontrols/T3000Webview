@@ -13,6 +13,12 @@ import * as notification from "eez-studio-ui/notification";
 import { logUpdate } from "instrument/window/history/activity-log";
 
 import type { IAppStore } from "instrument/window/history/history";
+
+let _plotlyModule: typeof import("plotly.js-dist-min");
+async function getPlotly() {
+    if (!_plotlyModule) _plotlyModule = await import("plotly.js-dist-min");
+    return _plotlyModule;
+}
 import { HistoryItem } from "instrument/window/history/item";
 
 import { HistoryItemInstrumentInfo } from "../HistoryItemInstrumentInfo";
@@ -98,12 +104,11 @@ export const PlotterHistoryItemComponent = observer(
             return layout;
         }
 
-        updateChart() {
+        async updateChart() {
             if (this.chartDivRef.current) {
-                if (!this.plotlyInitialized) {
-                    const Plotly =
-                        require("plotly.js-dist-min") as typeof import("plotly.js-dist-min");
+                const Plotly = await getPlotly();
 
+                if (!this.plotlyInitialized) {
                     this.plotlyInitialized = true;
 
                     Plotly.newPlot(
@@ -113,9 +118,6 @@ export const PlotterHistoryItemComponent = observer(
                         this.props.historyItem.plotlyMessage.config
                     );
                 } else {
-                    const Plotly =
-                        require("plotly.js-dist-min") as typeof import("plotly.js-dist-min");
-
                     Plotly.react(
                         this.chartDivRef.current!,
                         this.data,

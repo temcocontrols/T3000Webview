@@ -32,7 +32,8 @@ import {
 import { IFlowContext } from "project-editor/flow/flow-interfaces";
 import { observer } from "mobx-react";
 
-import type * as PlotlyModule from "plotly.js-dist-min";
+import { shell } from "electron";
+import type { PlotlyHTMLElement, Data, Layout, Shape, Dash, Config } from "plotly.js-dist-min";
 import classNames from "classnames";
 import { specificGroup } from "project-editor/ui-components/PropertyGrid/groups";
 import {
@@ -60,18 +61,16 @@ import { getThemedColor } from "project-editor/features/style/theme";
 
 ////////////////////////////////////////////////////////////////////////////////
 
-let plotlyModule: typeof PlotlyModule;
+let plotlyModule: typeof import("plotly.js-dist-min");
 
-function Plotly() {
+async function loadPlotly() {
     if (!plotlyModule) {
-        plotlyModule =
-            require("plotly.js-dist-min/plotly.min.js") as typeof PlotlyModule;
+        plotlyModule = await import("plotly.js-dist-min");
     }
     return plotlyModule;
 }
 
 function openLink(url: string) {
-    const { shell } = require("electron");
     shell.openExternal(url);
 }
 
@@ -100,7 +99,7 @@ const PlotlyElement = observer(
     }> {
         ref = React.createRef<HTMLDivElement>();
 
-        plotly: PlotlyModule.PlotlyHTMLElement | undefined;
+        plotly: PlotlyHTMLElement | undefined;
         plotlyEl: HTMLDivElement | undefined;
         plotlyWidth: number;
         plotlyHeight: number;
@@ -185,10 +184,10 @@ const PlotlyElement = observer(
             this.createChartState = "create";
 
             if (this.plotlyEl) {
-                Plotly().purge(this.plotlyEl);
+                loadPlotly().then(m => m.purge(this.plotlyEl));
             }
 
-            this.plotly = await Plotly().newPlot(
+            this.plotly = await (await loadPlotly()).newPlot(
                 el,
                 this.data,
                 this.layout,
@@ -274,7 +273,7 @@ const PlotlyElement = observer(
                 ) {
                     this.createChart(this.ref.current);
                 } else {
-                    this.plotly = await Plotly().react(
+                    this.plotly = await (await loadPlotly()).react(
                         this.ref.current,
                         this.data,
                         this.layout,
@@ -293,7 +292,7 @@ const PlotlyElement = observer(
             this.createChartState = "stop";
 
             if (this.plotlyEl) {
-                Plotly().purge(this.plotlyEl);
+                loadPlotly().then(m => m.purge(this.plotlyEl));
             }
         }
 
@@ -521,7 +520,7 @@ const LineChartElement = observer(
     }> {
         ref = React.createRef<HTMLDivElement>();
 
-        plotly: PlotlyModule.PlotlyHTMLElement | undefined;
+        plotly: PlotlyHTMLElement | undefined;
         plotlyEl: HTMLDivElement | undefined;
         plotlyWidth: number;
         plotlyHeight: number;
@@ -544,7 +543,7 @@ const LineChartElement = observer(
             });
         }
 
-        get data(): PlotlyModule.Data[] {
+        get data(): Data[] {
             const { widget, flowContext } = this.props;
 
             const executionState =
@@ -580,7 +579,7 @@ const LineChartElement = observer(
                 });
             }
 
-            const data: (PlotlyModule.Data | undefined)[] = widget.lines.map(
+            const data: (Data | undefined)[] = widget.lines.map(
                 (line, i) => {
                     let name: string;
 
@@ -609,10 +608,10 @@ const LineChartElement = observer(
 
             return data.filter(
                 line => line != undefined
-            ) as PlotlyModule.Data[];
+            ) as Data[];
         }
 
-        get emptyData(): PlotlyModule.Data[] {
+        get emptyData(): Data[] {
             const { widget, flowContext } = this.props;
 
             const executionState =
@@ -657,7 +656,7 @@ const LineChartElement = observer(
             });
         }
 
-        get layout(): Partial<PlotlyModule.Layout> {
+        get layout(): Partial<Layout> {
             const { widget, flowContext } = this.props;
 
             let xRange;
@@ -702,7 +701,7 @@ const LineChartElement = observer(
                 yRange = [yAxisRangeFrom, yAxisRangeTo];
             }
 
-            let shapes: Array<Partial<PlotlyModule.Shape>> | undefined;
+            let shapes: Array<Partial<Shape>> | undefined;
             if (this.props.widget.marker) {
                 // this is calculated from expression
                 let marker = getAnyValue(flowContext, widget, "marker", null);
@@ -722,10 +721,10 @@ const LineChartElement = observer(
                             widget.markerStyle.borderSize) as any as number) ||
                         1;
 
-                    const dash: PlotlyModule.Dash =
+                    const dash: Dash =
                         ((widget.markerStyle &&
                             widget.markerStyle
-                                .borderStyle) as PlotlyModule.Dash) || "solid";
+                                .borderStyle) as Dash) || "solid";
 
                     shapes = [
                         {
@@ -782,7 +781,7 @@ const LineChartElement = observer(
             };
         }
 
-        get config(): Partial<PlotlyModule.Config> {
+        get config(): Partial<Config> {
             return {
                 autosizable: false,
                 displayModeBar:
@@ -814,10 +813,10 @@ const LineChartElement = observer(
             }
 
             if (this.plotlyEl) {
-                Plotly().purge(this.plotlyEl);
+                loadPlotly().then(m => m.purge(this.plotlyEl));
             }
 
-            this.plotly = await Plotly().newPlot(
+            this.plotly = await (await loadPlotly()).newPlot(
                 el,
                 this.data,
                 this.layout,
@@ -863,7 +862,7 @@ const LineChartElement = observer(
                 },
                 async params => {
                     try {
-                        this.plotly = await Plotly().react(
+                        this.plotly = await (await loadPlotly()).react(
                             el,
                             this.data,
                             params.layout,
@@ -893,7 +892,7 @@ const LineChartElement = observer(
                     executionState.updated;
 
                     (async () => {
-                        this.plotly = await Plotly().react(
+                        this.plotly = await (await loadPlotly()).react(
                             el,
                             this.data,
                             this.layout,
@@ -954,7 +953,7 @@ const LineChartElement = observer(
                 ) {
                     this.createChart(this.ref.current);
                 } else {
-                    this.plotly = await Plotly().react(
+                    this.plotly = await (await loadPlotly()).react(
                         this.ref.current,
                         this.data,
                         this.layout,
@@ -973,7 +972,7 @@ const LineChartElement = observer(
             this.createChartState = "stop";
 
             if (this.plotlyEl) {
-                Plotly().purge(this.plotlyEl);
+                loadPlotly().then(m => m.purge(this.plotlyEl));
             }
 
             if (this.dispose1) {
@@ -1623,7 +1622,7 @@ const GaugeElement = observer(
     }> {
         ref = React.createRef<HTMLDivElement>();
 
-        plotly: PlotlyModule.PlotlyHTMLElement | undefined;
+        plotly: PlotlyHTMLElement | undefined;
         plotlyEl: HTMLDivElement | undefined;
         plotlyWidth: number;
         plotlyHeight: number;
@@ -1646,7 +1645,7 @@ const GaugeElement = observer(
             });
         }
 
-        get data(): PlotlyModule.Data[] {
+        get data(): Data[] {
             const minRange = this.props.flowContext.flowState
                 ? evalProperty(
                       this.props.flowContext,
@@ -1691,7 +1690,7 @@ const GaugeElement = observer(
             ];
         }
 
-        get layout(): Partial<PlotlyModule.Layout> {
+        get layout(): Partial<Layout> {
             return {
                 margin: {
                     t: this.props.widget.margin.top,
@@ -1702,7 +1701,7 @@ const GaugeElement = observer(
             };
         }
 
-        get config(): Partial<PlotlyModule.Config> {
+        get config(): Partial<Config> {
             return {
                 displayModeBar: false,
                 autosizable: false
@@ -1729,10 +1728,10 @@ const GaugeElement = observer(
             }
 
             if (this.plotlyEl) {
-                Plotly().purge(this.plotlyEl);
+                loadPlotly().then(m => m.purge(this.plotlyEl));
             }
 
-            this.plotly = await Plotly().newPlot(
+            this.plotly = await (await loadPlotly()).newPlot(
                 el,
                 this.data,
                 this.layout,
@@ -1761,7 +1760,7 @@ const GaugeElement = observer(
                 },
                 async params => {
                     try {
-                        this.plotly = await Plotly().react(
+                        this.plotly = await (await loadPlotly()).react(
                             el,
                             this.data,
                             params.layout,
@@ -1799,7 +1798,7 @@ const GaugeElement = observer(
                         : undefined;
 
                     if (inputData != undefined) {
-                        Plotly().update(
+                        loadPlotly().then(m => m.update(
                             el,
                             {
                                 value: inputData.value,
@@ -1820,7 +1819,7 @@ const GaugeElement = observer(
                                 }
                             },
                             {}
-                        );
+                        ));
                     }
                 },
                 {
@@ -1881,7 +1880,7 @@ const GaugeElement = observer(
             this.createChartState = "stop";
 
             if (this.plotlyEl) {
-                Plotly().purge(this.plotlyEl);
+                loadPlotly().then(m => m.purge(this.plotlyEl));
             }
 
             if (this.dispose1) {
