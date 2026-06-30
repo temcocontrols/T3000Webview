@@ -1,6 +1,8 @@
 //! Bridge API — file system operations for the EEZ Studio web frontend.
 //! Replaces Node.js `fs` in the browser by routing through the Rust backend.
 
+pub mod font_extract;
+
 use axum::{
     extract::Query,
     http::StatusCode,
@@ -269,7 +271,7 @@ async fn proxy_fetch_binary(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Font extraction — runs lv_font_conv via Node.js child process
+// Font extraction — pure Rust TTF → LVGL binary (replaces lv_font_conv)
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Deserialize)]
@@ -281,62 +283,77 @@ struct FontExtractRequest {
 async fn extract_font(
     Json(req): Json<FontExtractRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    let script_path = std::env::current_dir()
-        .unwrap_or_else(|_| PathBuf::from("."))
-        .join("extract-font.mjs");
+    let font_entries = req.args["font"].as_array().ok_or(StatusCode::BAD_REQUEST)?;
+    let size = req.args["size"].as_f64().unwrap_or(16.0) as f32;
+    let bpp = req.args["bpp"].as_u64().unwrap_or(4) as u8;
+    let no_compress = req.args["no_compress"].as_bool().unwrap_or(true);
+    let lcd = req.args["lcd"].as_bool().unwrap_or(false);
+    let lcd_v = req.args["lcd_v"].as_bool().unwrap_or(false);
+    let no_kerning = req.args["no_kerning"].as_bool().unwrap_or(true);
+    let no_prefilter = req.args["no_prefilter"].as_bool().unwrap_or(false);
 
-    if !script_path.exists() {
-        error!("extract_font: script not found at {}", script_path.display());
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
-    }
+    let mut all_glyphs: Vec<serde_json::Value> = Vec::new();
+    let mut font_ascent: u16 = 0;
+    let mut font_descent: i16 = 0;
+    let mut last_bin = String::new();
+    let mut last_source = String::new();
 
-    let input = serde_json::to_string(&serde_json::json!({
-        "args": req.args,
-        "output": req.output,
-    })).map_err(|_| StatusCode::BAD_REQUEST)?;
+    for entry in font_entries {
+        let source_bin_base64 = entry["source_bin_base64"]
+            .as_str()
+            .ok_or(StatusCode::BAD_REQUEST)?;
 
-    let mut child = Command::new("node")
-        .arg(&script_path)
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn()
-        .map_err(|e| {
-            error!("extract_font: failed to spawn node: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+        // Diagnostic: log first 80 chars to see what format the data is in
+        let preview: String = source_bin_base64.chars().take(80).collect();
+        info!("extract_font: source_bin_base64 preview: {}", preview);
 
-    // Write input to stdin
-    if let Some(ref mut stdin) = child.stdin {
-        use std::io::Write;
-        stdin.write_all(input.as_bytes()).map_err(|e| {
-            error!("extract_font: failed to write stdin: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-    }
-
-    let result = child.wait_with_output().map_err(|e| {
-        error!("extract_font: node process error: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    if !result.status.success() {
-        let stderr = String::from_utf8_lossy(&result.stderr);
-        error!("extract_font: node exited with {}: {}", result.status, stderr);
-        // Try to parse error from stderr (might be JSON or plain text)
-        if let Ok(err_val) = serde_json::from_str::<Value>(&stderr) {
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        let mut codepoints: Vec<u32> = Vec::new();
+        if let Some(ranges) = entry["ranges"].as_array() {
+            for range_item in ranges {
+                if let Some(range_arr) = range_item["range"].as_array() {
+                    for chunk in range_arr.chunks(3) {
+                        if chunk.len() >= 2 {
+                            let from = chunk[0].as_u64().unwrap_or(0) as u32;
+                            let to = chunk[1].as_u64().unwrap_or(0) as u32;
+                            for c in from..=to { codepoints.push(c); }
+                        }
+                    }
+                }
+                if let Some(symbols) = range_item["symbols"].as_str() {
+                    for c in symbols.chars() { codepoints.push(c as u32); }
+                }
+            }
         }
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        codepoints.sort();
+        codepoints.dedup();
+
+        let result = font_extract::process_font(
+            source_bin_base64, size, bpp, &codepoints, &req.output,
+            no_compress, lcd, lcd_v, no_kerning, no_prefilter,
+        ).map_err(|e| {
+            error!("extract_font: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+        for g in &result.font_data.glyphs {
+            all_glyphs.push(serde_json::json!({
+                "code": g.code,
+                "advanceWidth": g.advance_width,
+                "bbox": {"x": g.bbox.x, "y": g.bbox.y, "width": g.bbox.width, "height": g.bbox.height},
+                "pixels": g.pixels
+            }));
+        }
+        font_ascent = result.font_data.ascent;
+        font_descent = result.font_data.descent;
+        last_bin = result.lvgl_bin_file;
+        last_source = result.lvgl_source_file;
     }
 
-    let stdout = String::from_utf8_lossy(&result.stdout);
-    let parsed: Value = serde_json::from_str(&stdout).map_err(|e| {
-        error!("extract_font: failed to parse output: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    Ok(Json(parsed))
+    Ok(Json(serde_json::json!({
+        "fontData": { "ascent": font_ascent, "descent": font_descent, "glyphs": all_glyphs },
+        "lvglBinFile": last_bin,
+        "lvglSourceFile": last_source
+    })))
 }
 
 ////////////////////////////////////////////////////////////////////////////////

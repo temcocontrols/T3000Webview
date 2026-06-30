@@ -20,9 +20,16 @@ export class ExtractFont implements IFontExtract {
     constructor(private params: ExtractFontParams) {}
 
     async start() {
-        let source_bin = this.params.embeddedFontFile
-            ? Buffer.from(this.params.embeddedFontFile, "base64")
-            : fs.readFileSync(this.params.absoluteFilePath);
+        // embeddedFontFile is already base64-encoded TTF/OTF data.
+        // Use it directly to avoid Buffer.from().toString() round-trip
+        // which can break in browser polyfills.
+        let source_bin_base64: string;
+        if (this.params.embeddedFontFile) {
+            source_bin_base64 = this.params.embeddedFontFile;
+        } else {
+            const source_bin = fs.readFileSync(this.params.absoluteFilePath);
+            source_bin_base64 = Buffer.from(source_bin).toString("base64");
+        }
 
         const range: number[] = [];
         this.params.encodings!.map(encodingRange =>
@@ -38,7 +45,7 @@ export class ExtractFont implements IFontExtract {
         const font: any[] = [
             {
                 source_path: this.params.absoluteFilePath,
-                source_bin_base64: source_bin.toString("base64"),
+                source_bin_base64,
                 ranges: [
                     {
                         range,
@@ -50,9 +57,13 @@ export class ExtractFont implements IFontExtract {
 
         if (this.params.additionalSources) {
             for (const additionalSource of this.params.additionalSources) {
-                const addSourceBin = additionalSource.embeddedFontFile
-                    ? Buffer.from(additionalSource.embeddedFontFile, "base64")
-                    : fs.readFileSync(additionalSource.absoluteFilePath);
+                let addSourceB64: string;
+                if (additionalSource.embeddedFontFile) {
+                    addSourceB64 = additionalSource.embeddedFontFile;
+                } else {
+                    const addSourceBin = fs.readFileSync(additionalSource.absoluteFilePath);
+                    addSourceB64 = Buffer.from(addSourceBin).toString("base64");
+                }
 
                 const addRange: number[] = [];
                 if (additionalSource.encodings) {
@@ -69,7 +80,7 @@ export class ExtractFont implements IFontExtract {
 
                 font.push({
                     source_path: additionalSource.absoluteFilePath,
-                    source_bin_base64: addSourceBin.toString("base64"),
+                    source_bin_base64: addSourceB64,
                     ranges: [
                         {
                             range: addRange,
@@ -141,18 +152,20 @@ export class ExtractFont implements IFontExtract {
             let workerResult: any;
 
             if (typeof window !== "undefined") {
-                // Browser: use backend API for font extraction
+                // Browser: font extraction via Rust backend API (pure Rust,
+                // self-contained in the DLL — no Node.js needed).
                 const resp = await fetch("/api/eez-studio/extract-font", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ args, output })
                 });
                 if (!resp.ok) {
-                    throw new Error(`Font extraction failed (HTTP ${resp.status})`);
+                    const text = await resp.text().catch(() => "");
+                    throw new Error(`Font extraction failed (HTTP ${resp.status}): ${text}`);
                 }
                 workerResult = await resp.json();
             } else {
-                // Electron: use Worker
+                // Electron: use Worker with lv_font_conv
                 workerResult = await new Promise<any>((resolve, reject) => {
                     const workerPath = path.join(
                         __dirname,
