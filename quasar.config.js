@@ -117,6 +117,7 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['electron'] = stub('electron-kitchen.ts');
         viteConf.resolve.alias['@electron/remote'] = stub('electron-kitchen.ts');
         viteConf.resolve.alias['chokidar'] = stub('chokidar.ts');
+        viteConf.resolve.alias['path'] = stub('path.ts');
         viteConf.resolve.alias['bootstrap/dist/css/bootstrap.min.css'] = require('path').resolve(__dirname, 'node_modules/bootstrap/dist/css/bootstrap.min.css');
         viteConf.resolve.alias['bootstrap'] = stub('bootstrap.ts');
         viteConf.resolve.alias['mobx'] = require('path').resolve(__dirname, 'node_modules/mobx');

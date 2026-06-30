@@ -985,13 +985,13 @@ class UndoManager {
 
         let transaction = this.undoStack[this.undoStack.length - 1];
 
-        (db as any).beginDeferred();
+        db.exec(`BEGIN IMMEDIATE TRANSACTION`);
 
         for (let i = transaction.commands.length - 1; i >= 0; i--) {
             transaction.commands[i].undo.exec();
         }
 
-        (db as any).commitDeferred();
+        db.exec(`COMMIT TRANSACTION`);
 
         for (let i = transaction.commands.length - 1; i >= 0; i--) {
             sendMessage(
@@ -1016,13 +1016,13 @@ class UndoManager {
 
         let transaction = this.redoStack[this.redoStack.length - 1];
 
-        (db as any).beginDeferred();
+        db.exec(`BEGIN IMMEDIATE TRANSACTION`);
 
         for (let i = 0; i < transaction.commands.length; i++) {
             transaction.commands[i].redo.exec();
         }
 
-        (db as any).commitDeferred();
+        db.exec(`COMMIT TRANSACTION`);
 
         for (let i = 0; i < transaction.commands.length; i++) {
             sendMessage(
@@ -1046,8 +1046,7 @@ class UndoManager {
             label: label,
             commands: []
         };
-        // Deferred: BEGIN is folded into the first prepare().run() call to save an HTTP round-trip
-        (db as any).beginDeferred();
+        db.exec(`BEGIN IMMEDIATE TRANSACTION`);
     }
 
     execCommand(command: ICommand) {
@@ -1065,8 +1064,7 @@ class UndoManager {
             return;
         }
 
-        // Deferred: COMMIT piggybacks on the next exec() or prepare().run() call
-        (db as any).commitDeferred();
+        db.exec(`COMMIT TRANSACTION`);
 
         this.undoStack.push(this.currentTransaction);
 

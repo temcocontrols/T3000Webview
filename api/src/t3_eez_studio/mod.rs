@@ -432,10 +432,13 @@ async fn store_handler(
                     StatusCode::INTERNAL_SERVER_ERROR
                 })?;
             }
-            let mut stmt = db.prepare(&req.sql).map_err(|e| {
-                error!("store run prepare: {}", e);
-                StatusCode::INTERNAL_SERVER_ERROR
-            })?;
+            let mut stmt = match db.prepare(&req.sql) {
+                Ok(s) => s,
+                Err(e) => {
+                    warn!("store run prepare: {}", e);
+                    return Ok(Json(serde_json::json!({"lastInsertRowid": 0, "changes": 0, "error": e.to_string()})));
+                }
+            };
             let params: Vec<rusqlite::types::Value> = req.params.iter().map(|v| match v {
                 Value::Null => rusqlite::types::Value::Null,
                 Value::Number(n) => {
@@ -458,10 +461,13 @@ async fn store_handler(
             })))
         }
         "get" => {
-            let mut stmt = db.prepare(&req.sql).map_err(|e| {
-                error!("store get prepare: {}", e);
-                StatusCode::INTERNAL_SERVER_ERROR
-            })?;
+            let mut stmt = match db.prepare(&req.sql) {
+                Ok(s) => s,
+                Err(e) => {
+                    warn!("store get prepare: {}", e);
+                    return Ok(Json(serde_json::Value::Null));
+                }
+            };
             let params: Vec<rusqlite::types::Value> = req.params.iter().map(|v| match v {
                 Value::Null => rusqlite::types::Value::Null,
                 Value::Number(n) => {
@@ -488,10 +494,13 @@ async fn store_handler(
             Ok(Json(result.unwrap_or(serde_json::Value::Null)))
         }
         "all" => {
-            let mut stmt = db.prepare(&req.sql).map_err(|e| {
-                error!("store all prepare: {}", e);
-                StatusCode::INTERNAL_SERVER_ERROR
-            })?;
+            let mut stmt = match db.prepare(&req.sql) {
+                Ok(s) => s,
+                Err(e) => {
+                    warn!("store all prepare: {}", e);
+                    return Ok(Json(serde_json::Value::Array(vec![])));
+                }
+            };
             let params: Vec<rusqlite::types::Value> = req.params.iter().map(|v| match v {
                 Value::Null => rusqlite::types::Value::Null,
                 Value::Number(n) => {
@@ -520,10 +529,10 @@ async fn store_handler(
         }
         "exec" => {
             info!("store exec: {:.100}", req.sql);
-            db.execute_batch(&req.sql).map_err(|e| {
-                error!("store exec: {}", e);
-                StatusCode::INTERNAL_SERVER_ERROR
-            })?;
+            if let Err(e) = db.execute_batch(&req.sql) {
+                warn!("store exec: {}", e);
+                return Ok(Json(serde_json::json!({"ok": false, "error": e.to_string()})));
+            }
             Ok(Json(serde_json::json!({"ok": true})))
         }
         _ => Err(StatusCode::BAD_REQUEST),
