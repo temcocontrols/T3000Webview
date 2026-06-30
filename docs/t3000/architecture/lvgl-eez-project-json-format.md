@@ -47,7 +47,7 @@ flowchart LR
     "general": {
       "projectVersion": "v3",          // project format version
       "projectType": "lvgl",          // "lvgl" | "dashboard" | "lvgl+flow"
-      "lvglVersion": "9.5.0",        // "8.4.0" | "9.2.2" | "9.3.0" | "9.4.0" | "9.5.0"
+      "lvglVersion": "9.5.0",             // "8.4.0" | "9.0" | "9.2.2" | "9.3.0" | "9.4.0" | "9.5.0"
       "flowSupport": true,            // enables flow engine for widget bindings
       "displayWidth": 800,            // target display width in px
       "displayHeight": 480,           // target display height in px
@@ -721,35 +721,89 @@ References used in styles:
 
 ## 9. Fonts & Bitmaps
 
+### Fonts
+
+Font files are embedded as raw base64 strings (no data URI prefix). Each font entry specifies:
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | string | Font name referenced by `text_font` in styles |
+| `renderingEngine` | string | `"LVGL"` (LVGL rasterizer) |
+| `source` | object | `{ objID, filePath, size }` — original source font file metadata |
+| `embeddedFontFile` | string | **Raw base64** of the OTF/TTF font file (no `data:` prefix) |
+| `lvglBinFile` | string | **Raw base64** of the LVGL pre-rasterized binary font blob |
+| `bpp` | number | Bits per pixel: `1`, `2`, `4`, or `8` |
+| `threshold` | number | Binarization threshold (typically `128`) |
+| `height` | number | Font height in px |
+| `ascent` | number | Ascent in px |
+| `descent` | number | Descent in px |
+| `glyphs` | array | Custom glyph overrides (usually empty) |
+| `lvglRanges` | string | Unicode ranges, e.g. `"32 - 127,176"` |
+| `lvglSymbols` | string | Extra symbol characters |
+
 ```json
 {
   "fonts": [
     {
-      "name": "roboto_16",
-      "size": 16,                  // font size in px
-      "bpp": 4,                    // bits per pixel: 1 | 2 | 4 | 8
-      "data": "base64..."          // embedded TTF/OTF data (base64)
-    },
-    {
-      "name": "roboto_24",
-      "size": 24,
-      "bpp": 4
+      "name": "regular_16",
+      "renderingEngine": "LVGL",
+      "source": {
+        "objID": "7132b131-8d39-...",
+        "filePath": "MyriadPro-Regular.otf",
+        "size": 16
+      },
+      "embeddedFontFile": "T1RUTwANAIAAAwBQQkFTRWUlXb0AAXGYAAAA...",
+      "lvglBinFile": "MAAAAGhlYWQBAAAABAAQAAwA/P8MAPz/AwD8/wwA...",
+      "bpp": 4,
+      "threshold": 128,
+      "height": 16,
+      "ascent": 12,
+      "descent": 4,
+      "glyphs": [],
+      "lvglRanges": "32 - 127,176",
+      "lvglSymbols": ""
     }
-  ],
+  ]
+}
+```
+
+### Bitmaps (Images)
+
+Images are stored as **data URIs** with PNG base64 encoding:
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | string | Image name referenced by `src` in widgets or `bg_img_src` in styles |
+| `image` | string | **Data URI**: `"data:image/png;base64,<base64_string>"` |
+| `bpp` | number | Bits per pixel of the source image (usually `32` for RGBA PNG) |
+| `alwaysBuild` | boolean | Force rebuild on every export |
+| `lvglBinaryOutputFormat` | number | Target LVGL color format enum (see table below) |
+| `lvglDither` | boolean | Apply dithering when converting to lower BPP |
+
+**`lvglBinaryOutputFormat` values:**
+
+| Value | LVGL Constant | Description |
+|---|---|---|
+| `1` | `LVGL_COLOR_FORMAT_I1` | 1-bit indexed |
+| `2` | `LVGL_COLOR_FORMAT_I2` | 2-bit indexed |
+| `3` | `LVGL_COLOR_FORMAT_ARGB8888` | 32-bit ARGB |
+| `4` | `LVGL_COLOR_FORMAT_I4` | 4-bit indexed |
+| `5` | `LVGL_COLOR_FORMAT_I8` | 8-bit indexed |
+| `6` | `LVGL_COLOR_FORMAT_RGB565` | 16-bit RGB565 |
+| `7` | `LVGL_COLOR_FORMAT_RGB888` | 24-bit RGB |
+| `8` | `LVGL_COLOR_FORMAT_XRGB8888` | 32-bit XRGB (no alpha) |
+| `9` | `LVGL_COLOR_FORMAT_A8` | 8-bit alpha only |
+
+```json
+{
   "bitmaps": [
     {
-      "name": "logo",
-      "width": 64,                 // image width in px
-      "height": 64,                // image height in px
-      "format": "ARGB8888",        // "ARGB8888" | "RGB565" | "INDEXED_4BIT" | "INDEXED_1BIT" | "ALPHA_8BIT"
-      "data": "base64..."          // embedded image data (base64)
-    },
-    {
-      "name": "background_image",
-      "width": 800,
-      "height": 480,
-      "format": "RGB565",
-      "data": "base64..."
+      "name": "background_1",
+      "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAA...",
+      "bpp": 32,
+      "alwaysBuild": false,
+      "lvglBinaryOutputFormat": 3,
+      "lvglDither": false
     }
   ]
 }
@@ -899,12 +953,12 @@ void update_widget_recursive(cJSON *w) {
 
 ---
 
-## 12. Real-World Example: Smart Home (LVGL 9.x)
+## 12. Real-World Example: Smart Home (LVGL 9.0)
 
 **File:** `project/examples/Smart Home (LVGL 9.x)/Smart Home (LVGL 9.x).eez-project`  
 **Size:** 1.8 MB JSON  
-**Target:** LVGL 9.5.0, 800×480 display  
-**Contents:** 3 pages, 6 fonts, 36 bitmaps, named styles & colors
+**Target:** LVGL 9.0, 800×480 display  
+**Contents:** 3 pages, 6 fonts (2 typefaces × multiple sizes), 36 bitmaps (all ARGB8888), 2 named styles, 2 widget groups, 1 theme, 4 global variables, 0 actions
 
 ### 12.1 Project Settings (Actual)
 
@@ -914,13 +968,13 @@ void update_widget_recursive(cJSON *w) {
     "general": {
       "projectVersion": "v3",
       "projectType": "lvgl",
-      "lvglVersion": "9.5.0",
-      "flowSupport": false,
+      "lvglVersion": "9.0",
+      "flowSupport": true,
       "displayWidth": 800,
       "displayHeight": 480,
-      "colorFormat": "RGB",
-      "darkTheme": true,
-      "cacheFonts": true
+      "colorFormat": "BGR",
+      "description": "Smart home example for the LVGL version 9.x",
+      "keywords": "smart-home lvgl9"
     }
   }
 }
@@ -929,9 +983,9 @@ void update_widget_recursive(cJSON *w) {
 ### 12.2 Page Structure
 
 The project has 3 pages defined in `userPages`:
-- `heating_screen` — main thermostat panel
-- `cooling_main` — AC control panel
-- `fan_coil_settings` — fan & schedule settings
+- `heating_screen` — main thermostat panel (createAtStart: `true`)
+- `security_screen` — security/lock control (createAtStart: `true`)
+- `lighting_screen` — lighting control panel (createAtStart: `true`)
 
 **Widget tree for `heating_screen` (simplified):**
 
@@ -957,37 +1011,91 @@ heating_screen (Page)
 
 ### 12.3 Fonts
 
-Fonts are embedded as base64 strings in the project JSON. Each font entry specifies a name, pixel size, and bits-per-pixel value. The actual TTF/OTF data is stored in the `embeddedFontFile` field.
+Fonts are embedded as raw base64 OTF files in `embeddedFontFile` and pre-rasterized LVGL binary fonts in `lvglBinFile`. Each font entry specifies its source metadata in a nested `source` object.
 
 **Actual font entries from the project:**
 ```json
 {
   "fonts": [
-    { "name": "regular_16", "size": 16, "bpp": 4 },
-    { "name": "regular_21", "size": 21, "bpp": 4 },
-    { "name": "regular_28", "size": 28, "bpp": 4 },
-    { "name": "bold_16",    "size": 16, "bpp": 4 },
-    { "name": "bold_24",    "size": 24, "bpp": 4 },
-    { "name": "icons_32",   "size": 32, "bpp": 4 }
+    { "name": "regular_16", "bpp": 4, "height": 16, "ascent": 12, "descent": 4, "renderingEngine": "LVGL",
+      "source": { "filePath": "MyriadPro-Regular.otf", "size": 16 },
+      "embeddedFontFile": "T1RUTwANAIAAAwBQQkFTRWUlXb0AAXGYAAAA..." },
+    { "name": "regular_21", "bpp": 4, "height": 22, "ascent": 16, "descent": 6, "renderingEngine": "LVGL",
+      "source": { "filePath": "MyriadPro-Regular.otf", "size": 21 },
+      "embeddedFontFile": "T1RUTwANAIAAAwBQQkFTRWUlXb0AAXGYAAAA..." },
+    { "name": "regular_36", "bpp": 4, "height": 37, "ascent": 28, "descent": 9, "renderingEngine": "LVGL",
+      "source": { "filePath": "MyriadPro-Regular.otf", "size": 36 },
+      "embeddedFontFile": "T1RUTwANAIAAAwBQQkFTRWUlXb0AAXGYAAAA..." },
+    { "name": "bold_17",    "bpp": 4, "height": 18, "ascent": 14, "descent": 4, "renderingEngine": "LVGL",
+      "source": { "filePath": "MyriadPro-Bold.otf", "size": 17 },
+      "embeddedFontFile": "T1RUTwANAIAAAwBQQkFTRWUlXb0AAXhkAAAA..." },
+    { "name": "bold_21",    "bpp": 4, "height": 22, "ascent": 17, "descent": 5, "renderingEngine": "LVGL",
+      "source": { "filePath": "MyriadPro-Bold.otf", "size": 21 },
+      "embeddedFontFile": "T1RUTwANAIAAAwBQQkFTRWUlXb0AAXhkAAAA..." },
+    { "name": "bold_23",    "bpp": 4, "height": 24, "ascent": 18, "descent": 6, "renderingEngine": "LVGL",
+      "source": { "filePath": "MyriadPro-Bold.otf", "size": 23 },
+      "embeddedFontFile": "T1RUTwANAIAAAwBQQkFTRWUlXb0AAXhkAAAA..." }
   ]
 }
 ```
 
+> **Note:** The same OTF file (e.g., `MyriadPro-Regular.otf`) is embedded in multiple font entries at different sizes. EEZ Studio rasterizes each size independently, producing unique `lvglBinFile` blobs.
+
 ### 12.4 Bitmaps / Images
 
-36 images are embedded in the project. Each bitmap entry specifies a name, dimensions, and color format, with the image data stored as base64:
+36 images are embedded in the project. Each bitmap uses a **data URI** (`data:image/png;base64,...`) with an `lvglBinaryOutputFormat` of `3` (ARGB8888). All source images are 32 BPP RGBA PNGs.
 
 ```json
 {
   "bitmaps": [
-    { "name": "wifi_icon",    "width": 24, "height": 24, "format": "ARGB8888" },
-    { "name": "battery_icon", "width": 24, "height": 24, "format": "ARGB8888" },
-    { "name": "bg_gradient",  "width": 800, "height": 480, "format": "RGB565" }
+    { "name": "background_1",   "bpp": 32, "lvglBinaryOutputFormat": 3, "lvglDither": false,
+      "image": "data:image/png;base64,iVBORw0KGgoAAAA..." },
+    { "name": "background_2",   "bpp": 32, "lvglBinaryOutputFormat": 3, "lvglDither": false,
+      "image": "data:image/png;base64,iVBORw0KGgoAAAA..." },
+    { "name": "heating_button", "bpp": 32, "lvglBinaryOutputFormat": 3, "lvglDither": false,
+      "image": "data:image/png;base64,iVBORw0KGgoAAAA..." },
+    { "name": "switch_on",      "bpp": 32, "lvglBinaryOutputFormat": 3, "lvglDither": false,
+      "image": "data:image/png;base64,iVBORw0KGgoAAAA..." }
   ]
 }
 ```
 
-### 12.5 Navigation
+### 12.5 Variables
+
+The project defines 4 global variables with struct-backed array types:
+
+```json
+{
+  "variables": {
+    "globalVariables": [
+      { "name": "users",         "type": "array:struct:User" },
+      { "name": "zones",         "type": "array:struct:Zone" },
+      { "name": "selected_user", "type": "integer", "defaultValue": "0" },
+      { "name": "selected_zone", "type": "integer", "defaultValue": "0" }
+    ],
+    "structures": [
+      {
+        "name": "User",
+        "fields": [{ "name": "name", "type": "string" }]
+      },
+      {
+        "name": "Zone",
+        "fields": [
+          { "name": "name", "type": "string" },
+          { "name": "temperature", "type": "float" },
+          { "name": "power", "type": "float" },
+          { "name": "locked", "type": "boolean" },
+          { "name": "lighting_percent", "type": "float" },
+          { "name": "heating_saved", "type": "boolean" },
+          { "name": "lighting_saved", "type": "boolean" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### 12.6 Navigation
 
 Page switching is defined through `gotoPage` events on widgets. Example from a button on `heating_screen`:
 
@@ -998,8 +1106,160 @@ Page switching is defined through `gotoPage` events on widgets. Example from a b
     {
       "trigger": "CLICKED",
       "action": "gotoPage",
-      "page": "cooling_main"
+      "page": "security_screen"
     }
   ]
 }
 ```
+
+---
+
+## Appendix A: Base64-Encoded Data Types
+
+This appendix documents every base64-encoded field found in real `.eez-project` files, based on analysis of the **Smart Home (LVGL 9.x)** project (1.8 MB, 36 bitmaps, 6 fonts, 3 pages).
+
+### A.1 Summary of Base64 Types
+
+There are **three distinct base64 encoding patterns** used in the JSON:
+
+| # | Field | Location | Encoding | What It Contains |
+|---|---|---|---|---|
+| 1 | `image` | `bitmaps[].image` | Data URI | PNG image → `data:image/png;base64,...` |
+| 2 | `image` | `settings.general.image` | Data URI | PNG preview icon → `data:image/png;base64,...` |
+| 3 | `embeddedFontFile` | `fonts[].embeddedFontFile` | Raw base64 | OTF/TTF font binary (no `data:` prefix) |
+| 4 | `lvglBinFile` | `fonts[].lvglBinFile` | Raw base64 | LVGL pre-rasterized binary font blob |
+
+### A.2 Type 1 & 2: PNG Data URIs (`image`)
+
+**Used in:** `bitmaps[].image` and `settings.general.image`
+
+**Format:** `"data:image/png;base64,<base64_encoded_png>"`
+
+This is a standard [RFC 2397 Data URI](https://datatracker.ietf.org/doc/html/rfc2397). The base64 payload decodes to a valid PNG file. The MIME type is always `image/png` (even if the source was JPEG or BMP — EEZ Studio converts all images to PNG before embedding).
+
+**Decoding:** Strip the `data:image/png;base64,` prefix, base64-decode the remainder to get the raw PNG bytes.
+
+**Example (truncated):**
+```
+data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAAAHgCAYAAABdBwn1AAAgAElEQVR4nO...
+```
+
+**Real project statistics (36 bitmaps):**
+
+| Name | Image Length | BPP | LVGL Output Format |
+|---|---|---|---|
+| `background_1` | 102,598 | 32 | ARGB8888 (3) |
+| `background_2` | 138,406 | 32 | ARGB8888 (3) |
+| `background_3` | 109,454 | 32 | ARGB8888 (3) |
+| `heating_button` | 7,390 | 32 | ARGB8888 (3) |
+| `heating_button_hoover` | 12,122 | 32 | ARGB8888 (3) |
+| `security_button` | 6,718 | 32 | ARGB8888 (3) |
+| `security_button_hoover` | 11,290 | 32 | ARGB8888 (3) |
+| `lighting_button` | 7,246 | 32 | ARGB8888 (3) |
+| `lighting_button_hoover` | 11,774 | 32 | ARGB8888 (3) |
+| `face_0` | 11,490 | 32 | ARGB8888 (3) |
+| `face_1` | 11,182 | 32 | ARGB8888 (3) |
+| `face_2` | 10,446 | 32 | ARGB8888 (3) |
+| `header_menu` | 7,498 | 32 | ARGB8888 (3) |
+| `button_main` | 7,658 | 32 | ARGB8888 (3) |
+| `save` | 918 | 32 | ARGB8888 (3) |
+| `saved` | 1,398 | 32 | ARGB8888 (3) |
+| `temperature_background` | 15,786 | 32 | ARGB8888 (3) |
+| `power_background` | 16,090 | 32 | ARGB8888 (3) |
+| `watch` | 4,374 | 32 | ARGB8888 (3) |
+| `slider_indicator` | 8,638 | 32 | ARGB8888 (3) |
+| `slider_knob` | 598 | 32 | ARGB8888 (3) |
+| `garage_arrows` | 730 | 32 | ARGB8888 (3) |
+| `garage_arrows_hoover` | 770 | 32 | ARGB8888 (3) |
+| `account_box` | 5,734 | 32 | ARGB8888 (3) |
+| `arrow_account_hoover` | 538 | 32 | ARGB8888 (3) |
+| `arrow_account` | 462 | 32 | ARGB8888 (3) |
+| `checkmark` | 4,438 | 32 | ARGB8888 (3) |
+| `big_checkmark` | 7,422 | 32 | ARGB8888 (3) |
+| `switch_off` | 1,582 | 32 | ARGB8888 (3) |
+| `switch_on` | 1,978 | 32 | ARGB8888 (3) |
+| `light_bulb` | 12,030 | 32 | ARGB8888 (3) |
+| `slider_lighting` | 1,234 | 32 | ARGB8888 (3) |
+| `arrow_next_hover` | 594 | 32 | ARGB8888 (3) |
+| `arrow_prev_hoover` | 618 | 32 | ARGB8888 (3) |
+| `arrow_next` | 578 | 32 | ARGB8888 (3) |
+| `arrow_prev` | 602 | 32 | ARGB8888 (3) |
+
+### A.3 Type 3: Raw Base64 Font File (`embeddedFontFile`)
+
+**Used in:** `fonts[].embeddedFontFile`
+
+**Format:** Raw base64 string (no `data:` prefix, no MIME type). Decodes to a complete OTF or TTF binary font file.
+
+**Magic bytes:** The first 5 bytes of the base64 string `"T1RUTwA..."` decode to `OTTO\x00` (0x4F54544F00), the standard [OpenType magic number](https://learn.microsoft.com/en-us/typography/opentype/spec/otff).
+
+**Decoding:** Base64-decode the entire string to get the raw OTF/TTF bytes.
+
+**Real project statistics (6 fonts):**
+
+| Name | Source File | Source Size | Font File Length | LVGL Bin Length | BPP |
+|---|---|---|---|---|---|
+| `regular_16` | MyriadPro-Regular.otf | 16 px | 135,644 | 7,584 | 4 |
+| `regular_21` | MyriadPro-Regular.otf | 21 px | 135,644 | 11,080 | 4 |
+| `regular_36` | MyriadPro-Regular.otf | 36 px | 135,644 | 24,800 | 4 |
+| `bold_17` | MyriadPro-Bold.otf | 17 px | 137,964 | 8,928 | 4 |
+| `bold_21` | MyriadPro-Bold.otf | 21 px | 137,964 | 11,816 | 4 |
+| `bold_23` | MyriadPro-Bold.otf | 23 px | 137,964 | 13,436 | 4 |
+
+> **Note:** The same OTF file is reused across multiple font sizes (e.g., `regular_16`, `regular_21`, and `regular_36` all embed the same 135,644-byte `MyriadPro-Regular.otf`). EEZ Studio rasterizes at the target `bpp` and generates the `lvglBinFile`.
+
+### A.4 Type 4: Raw Base64 LVGL Binary Font (`lvglBinFile`)
+
+**Used in:** `fonts[].lvglBinFile`
+
+**Format:** Raw base64 string (no `data:` prefix). Decodes to the LVGL internal binary font format — a pre-rasterized font blob that LVGL can load directly via `lv_binfont_create()`.
+
+**Magic bytes:** The first 4 bytes (`"MAAA..."` → `0x30000000`) identify it as an LVGL binary font with glyph bitmaps and kerning data already baked in.
+
+**Decoding:** Base64-decode the entire string → pass the resulting byte array to `lv_binfont_create()`.
+
+### A.5 How the Embedded Runtime Handles Base64
+
+```c
+// Image loading (data URI → LVGL image descriptor)
+const char *img_field = cJSON_GetObjectItem(bmp, "image")->valuestring;
+
+// 1. Strip the "data:image/png;base64," prefix
+const char *prefix = "data:image/png;base64,";
+const char *b64 = strstr(img_field, prefix);
+if (b64) b64 += strlen(prefix);
+else b64 = img_field;  // fallback: raw base64
+
+// 2. Base64 decode → PNG bytes
+size_t png_len;
+uint8_t *png_data = base64_decode(b64, &png_len);
+
+// 3. PNG decode → raw pixels (RGBA8888)
+lv_image_dsc_t *img = png_to_lvgl_image(png_data, png_len);
+
+// 4. Convert to target format if needed (ARGB8888, RGB565, etc.)
+if (bmp->lvglBinaryOutputFormat == 6)  // RGB565
+    img = convert_to_rgb565(img);
+
+// 5. Register image for use in styles/widgets
+register_image(bmp->name, img);
+
+
+// Font loading (raw base64 → LVGL binary font)
+const char *font_b64 = cJSON_GetObjectItem(font, "lvglBinFile")->valuestring;
+size_t bin_len;
+uint8_t *bin_data = base64_decode(font_b64, &bin_len);
+lv_font_t *lvgl_font = lv_binfont_create_from_buffer(bin_data, bin_len);
+register_font(font->name, lvgl_font);
+```
+
+### A.6 Key Differences from Earlier EEZ Versions
+
+| Aspect | EEZ Studio v2 / LVGL 8.x | EEZ Studio v3 / LVGL 9.x |
+|---|---|---|
+| Font storage | `data` field containing raw base64 TTF | `embeddedFontFile` (OTF) + `lvglBinFile` (rasterized) |
+| Font source metadata | `size`, `bpp` at top level | `source: { filePath, size }` nested object |
+| Image fields | `width`, `height`, `format`, `data` | `image` (data URI), `bpp`, `lvglBinaryOutputFormat`, `lvglDither` |
+| Image encoding | Raw base64, format specified via `format` string | `data:image/png;base64,...` data URI, always PNG |
+| LVGL version | `"8.4.0"` | `"9.0"`, `"9.2.2"`, `"9.3.0"`, `"9.4.0"`, `"9.5.0"` |
+| Rendering engine field | Not present | `renderingEngine: "LVGL"` |
