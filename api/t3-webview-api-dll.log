@@ -1,9 +1,0 @@
-[ENV] Loaded .env from: C:\QN\temcocontrols\T3000Webview-EEZ-Studio\api\.env
-══════════════════════════════════════════════
-  T3000 WebView API Server
-══════════════════════════════════════════════
-  DATABASE_URL           = sqlite://C:/QN/temcocontrols/T3000_Building_Automation_System/T3000 Output/Debug/Database/webview_database.db
-  T3_DEVICE_DATABASE_URL = sqlite://C:/QN/temcocontrols/T3000_Building_Automation_System/T3000 Output/Debug/Database/webview_t3_device.db
-  HTTP API               → http://localhost:9103
-  WebSocket              → ws://localhost:9104
-══════════════════════════════════════════════
