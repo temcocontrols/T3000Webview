@@ -93,3 +93,23 @@ Make all grid columns draggable and resizable
 EEZ‑Studio
 
 Haystack tags — new design
+
+## 2026-06-30
+
+Consolidate hardcoded `http://localhost:9103` → relative `/api/...` URLs.
+
+> These files bypass the Vite dev proxy by using absolute URLs to port 9103. Changing to relative paths would route everything through one consistent path (proxy in dev, same-origin in prod).
+
+### Files
+
+- `src/lib/vue/T3000/Hvac/Util/T3DeviceApi.ts:263` — singleton `new T3DeviceApi('http://localhost:9103')`
+- `src/shared/core/logging/frontendLogger.ts:22` — returns `'http://localhost:9103'`
+- `src/t3-react/config/constants.ts:14` — returns `'http://localhost:9103'`
+- `src/t3-vue/components/NewUI/TrendLogChart.vue:1728` — `fetch('http://localhost:9103/api/sync/health')`
+- `src/t3-vue/components/NewUI/TrendLogChart.vue:8614` — `apiEndpoint: 'localhost:9103/api/trendlog/realtime/batch'`
+- `src/t3-mobile/features/settings/pages/SettingsPageMobile.tsx` — 6× `fetch('http://localhost:9103/api/...')`
+- `src/lib/t3-transport/types/transport.types.ts:55` — default `apiBaseUrl: 'http://localhost:9103/api'`
+- `src/lib/vue/.../T3DeviceApiExamples.ts` — example code (dead, can remove)
+- `src/lib/t3-hvac/Util/T3DeviceApiExamples.ts` — example code (dead, can remove)
+
+
