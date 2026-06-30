@@ -431,10 +431,10 @@ export class WizardModel {
     }
 
     async fetchTemplateProjects() {
+        const giteaSearchUrl = "https://envox.eu/gitea/api/v1/repos/search?q=eez-flow-template&topic=true";
         const result = await fetch(
-            "/gitea-eu/api/v1/repos/search?q=eez-flow-template&topic=true"
+            `/api/eez-studio/proxy-fetch?url=${encodeURIComponent(giteaSearchUrl)}`
         );
-        if (!result.ok) { this.templateProjects = []; return; }
         const data = await result.json();
         console.log("Wizard.tsx=> fetchTemplateProjects data", data);
 
@@ -453,7 +453,7 @@ export class WizardModel {
             (templateProject: TemplateProject) => {
                 let relativePath = templateProject.html_url.replace(/^https:\/\/envox\.hr\/gitea\//, "");
                 return Object.assign({}, templateProject, {
-                    _image_url: "/gitea-hr/" + relativePath + "/raw/branch/master/template/image.png"
+                    _image_url: `/api/eez-studio/proxy-fetch?url=${encodeURIComponent("https://envox.hr/gitea/" + relativePath + "/raw/branch/master/template/image.png")}`
                 });
             }
         );
@@ -478,11 +478,9 @@ export class WizardModel {
 
                 // Proxy the manifest.json URL to avoid CORS issues
                 const relativePath = templateProject.html_url.replace(/^https:\/\/envox\.hr\/gitea\//, "");
-                const manifestJsonUrl = "/gitea-hr/" + relativePath + "/raw/branch/master/template/manifest.json";
-                console.log(manifestJsonUrl);
-
+                const manifestJsonUrl = "https://envox.hr/gitea/" + relativePath + "/raw/branch/master/template/manifest.json";
                 const manifestJson = await (
-                    await fetch(manifestJsonUrl)
+                    await fetch(`/api/eez-studio/proxy-fetch?url=${encodeURIComponent(manifestJsonUrl)}`)
                 ).json();
 
                 /*
@@ -505,12 +503,9 @@ export class WizardModel {
                 );
 
                 // Build final URL with proxy prefix
-                const eezProjectUrl = "/gitea-hr/" + eezProjectUrlRelativePath + "/raw/branch/master/" + projectPath;
-
-                console.log(eezProjectUrl);
-
+                const eezProjectUrl = "https://envox.hr/gitea/" + eezProjectUrlRelativePath + "/raw/branch/master/" + projectPath;
                 const eezProjectJson = await (
-                    await fetch(eezProjectUrl, { cache: "no-store" })
+                    await fetch(`/api/eez-studio/proxy-fetch?url=${encodeURIComponent(eezProjectUrl)}`, { cache: "no-store" })
                 ).json();
 
                 const general = eezProjectJson.settings?.general;
