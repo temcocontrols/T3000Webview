@@ -207,6 +207,8 @@ async function onAddInstrument(onAddCallback: (instrumentId: string) => void) {
 }
 
 const Setup = observer(() => {
+    console.log("[add-instrument] Setup render: manufacturers=", setupState.manufacturers.length, "extensions=", setupState.extensionNodes.length, "installing=", !!setupState.extensionInstalling);
+
     if (setupState.extensionInstalling) {
         const buttonsContainerClassName = classNames(
             "d-flex justify-content-between mt-3 mb-5",

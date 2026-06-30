@@ -39,6 +39,8 @@ interface ICatalogVersion {
 class ExtensionsCatalog {
     catalog: IExtension[] = [];
     catalogVersion: ICatalogVersion;
+    private _loading = false;
+    private _downloading = false;
 
     constructor() {
         makeObservable(this, {
@@ -47,25 +49,32 @@ class ExtensionsCatalog {
     }
 
     load() {
+        if (this._loading) return;
+        this._loading = true;
+        console.log("[ext-catalog] load() called");
         this._loadCatalog()
             .then(catalog => {
+                console.log("[ext-catalog] _loadCatalog result:", Array.isArray(catalog) ? `array len=${catalog.length}` : typeof catalog);
                 runInAction(() => (this.catalog = catalog));
             })
-            .catch(error =>
+            .catch(error => {
+                console.error("[ext-catalog] _loadCatalog error:", error);
                 notification.error(
                     `Failed to load extensions catalog (${error})`
-                )
-            );
+                );
+            });
 
         this._loadCatalogVersion()
             .then(catalogVersion => {
+                console.log("[ext-catalog] _loadCatalogVersion result:", catalogVersion);
                 runInAction(() => (this.catalogVersion = catalogVersion));
 
                 this.checkNewVersionOfCatalog();
             })
-            .catch(error =>
-                notification.error(`Failed to load catalog version (${error})`)
-            );
+            .catch(error => {
+                console.error("[ext-catalog] _loadCatalogVersion error:", error);
+                notification.error(`Failed to load catalog version (${error})`);
+            });
     }
 
     get catalogPath() {
@@ -74,10 +83,15 @@ class ExtensionsCatalog {
 
     async _loadCatalog() {
         let catalogPath = this.catalogPath;
-        if (!(await fileExists(catalogPath))) {
+        console.log("[ext-catalog] _loadCatalog path:", catalogPath);
+        const exists = await fileExists(catalogPath);
+        console.log("[ext-catalog] _loadCatalog fileExists:", exists);
+        if (!exists) {
             return [];
         }
-        return (await readJsObjectFromFile(catalogPath)) as IExtension[];
+        const data = await readJsObjectFromFile(catalogPath);
+        console.log("[ext-catalog] _loadCatalog data:", Array.isArray(data) ? `array len=${data.length}` : typeof data);
+        return data as IExtension[];
     }
 
     /*
@@ -95,14 +109,18 @@ class ExtensionsCatalog {
         let catalogVersion;
 
         let catalogVersionPath = this.catalogVersionPath;
-        if (await fileExists(catalogVersionPath)) {
+        console.log("[ext-catalog] _loadCatalogVersion path:", catalogVersionPath);
+        const verExists = await fileExists(catalogVersionPath);
+        console.log("[ext-catalog] _loadCatalogVersion fileExists:", verExists);
+        if (verExists) {
             try {
                 catalogVersion = await readJsObjectFromFile(catalogVersionPath);
+                console.log("[ext-catalog] _loadCatalogVersion parsed:", catalogVersion);
                 catalogVersion.lastModified = new Date(
                     catalogVersion.lastModified
                 );
             } catch (err) {
-                console.error(err);
+                console.error("[ext-catalog] _loadCatalogVersion parse error:", err);
             }
         }
 
@@ -110,13 +128,16 @@ class ExtensionsCatalog {
     }
 
     async checkNewVersionOfCatalog(forceDownload: boolean = false) {
+        console.log("[ext-catalog] checkNewVersionOfCatalog forceDownload=", forceDownload);
         try {
             const catalogVersion = await this.downloadCatalogVersion();
+            console.log("[ext-catalog] remote version:", catalogVersion?.lastModified, "local:", this.catalogVersion?.lastModified);
 
-            if (
-                !this.catalogVersion ||
-                catalogVersion.lastModified > this.catalogVersion.lastModified
-            ) {
+            const needDownload = this.catalog.length === 0 || !this.catalogVersion || catalogVersion.lastModified > this.catalogVersion.lastModified;
+            console.log("[ext-catalog] needDownload:", needDownload);
+
+            if (needDownload) {
+                console.log("[ext-catalog] triggering downloadCatalog()...");
                 runInAction(() => (this.catalogVersion = catalogVersion));
                 this.downloadCatalog();
             } else {
@@ -136,13 +157,20 @@ class ExtensionsCatalog {
     } 
   
     downloadCatalogVersion() {
+        console.log("[ext-catalog] downloadCatalogVersion fetching:", DEFAULT_EXTENSIONS_CATALOG_VERSION_DOWNLOAD_URL);
         return new Promise<ICatalogVersion>((resolve, reject) => {
             var req = new XMLHttpRequest();
             req.responseType = "json";
             req.open("GET", DEFAULT_EXTENSIONS_CATALOG_VERSION_DOWNLOAD_URL);
 
             req.addEventListener("load", async () => {
+                console.log("[ext-catalog] downloadCatalogVersion response status:", req.status);
                 const catalogVersion = req.response;
+                if (!catalogVersion) {
+                    console.warn("[ext-catalog] downloadCatalogVersion empty response");
+                    resolve(null as any);
+                    return;
+                }
                 catalogVersion.lastModified = new Date(
                     catalogVersion.lastModified
                 );
@@ -183,6 +211,9 @@ class ExtensionsCatalog {
     */
 
     downloadCatalog() {
+        if (this._downloading) { console.log("[ext-catalog] downloadCatalog already in progress, skipping"); return; }
+        this._downloading = true;
+        console.log("[ext-catalog] downloadCatalog() starting...");
         var req = new XMLHttpRequest();
         req.responseType = "arraybuffer";
         req.open("GET", DEFAULT_EXTENSIONS_CATALOG_DOWNLOAD_URL);
@@ -204,24 +235,53 @@ class ExtensionsCatalog {
         });
 
         req.addEventListener("load", async () => {
-            const decompress = require("decompress");
+            try {
+                console.log("[ext-catalog] downloadCatalog response received, bytes:", req.response?.byteLength);
+                if (!req.response || req.response.byteLength === 0) {
+                    throw new Error("Downloaded catalog is empty");
+                }
+                const zip = await JSZip.loadAsync(req.response as ArrayBuffer);
+                const names = Object.keys(zip.files);
+                console.log("[ext-catalog] zip files:", names.length);
+                if (names.length === 0) throw new Error("Zip is empty");
+                const data = await zip.files[names[0]].async("uint8array");
+                const catalogJson = new TextDecoder("utf-8").decode(data);
+                console.log("[ext-catalog] extracted JSON, chars:", catalogJson.length);
+                const catalog = JSON.parse(catalogJson);
+                console.log("[ext-catalog] parsed:", Array.isArray(catalog) ? `array len=${catalog.length}` : typeof catalog);
 
-            const files = await decompress(Buffer.from(req.response));
+                // Clone before mobx wraps it — Proxy breaks JSON.stringify
+                const rawCatalog = JSON.parse(JSON.stringify(catalog));
+                console.log("[ext-catalog] clone len:", JSON.stringify(rawCatalog).length);
 
-            const catalog = JSON.parse(files[0].data);
+                runInAction(() => (this.catalog = catalog));
 
-            runInAction(() => (this.catalog = catalog));
+                console.log("[ext-catalog] saving to:", this.catalogPath);
+                await writeJsObjectToFile(this.catalogPath, rawCatalog);
+                console.log("[ext-catalog] save complete, verifying...");
+                const saved = await fileExists(this.catalogPath);
+                console.log("[ext-catalog] file-exists after save:", saved);
 
-            await writeJsObjectToFile(this.catalogPath, this.catalog);
+                this._downloading = false;
 
-            notification.update(progressToastId, {
-                type: notification.SUCCESS,
-                render: `The latest extensions catalog successfully downloaded.`,
-                autoClose: 5000
-            });
+                notification.update(progressToastId, {
+                    type: notification.SUCCESS,
+                    render: `The latest extensions catalog successfully downloaded.`,
+                    autoClose: 5000
+                });
+            } catch (err) {
+                this._downloading = false;
+                console.error("[ext-catalog] Failed to process extensions catalog zip", err);
+                notification.update(progressToastId, {
+                    type: notification.ERROR,
+                    render: `Failed to process extensions catalog.`,
+                    autoClose: 5000
+                });
+            }
         });
 
         req.addEventListener("error", error => {
+            this._downloading = false;
             console.error("ExtensionsCatalog download error", error);
             notification.update(progressToastId, {
                 type: notification.ERROR,
