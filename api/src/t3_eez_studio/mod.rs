@@ -159,17 +159,27 @@ async fn delete_file(
     Query(q): Query<PathQuery>,
 ) -> Result<StatusCode, StatusCode> {
     let full_path = resolve_path(&data_root().to_string_lossy(), &q.path);
+    // Try file first, then empty directory
     match fs::remove_file(&full_path).await {
         Ok(_) => {
             info!("delete_file: {}", full_path.display());
             Ok(StatusCode::OK)
         }
         Err(e) => {
-            error!("delete_file failed: {} — {:?}", full_path.display(), e);
             if e.kind() == std::io::ErrorKind::NotFound {
                 Ok(StatusCode::OK) // idempotent
             } else {
-                Err(StatusCode::INTERNAL_SERVER_ERROR)
+                // Might be a directory — try remove_dir (only works if empty)
+                match fs::remove_dir(&full_path).await {
+                    Ok(_) => {
+                        info!("delete_file (dir): {}", full_path.display());
+                        Ok(StatusCode::OK)
+                    }
+                    Err(e2) => {
+                        error!("delete_file failed: {} — {:?}", full_path.display(), e2);
+                        Err(StatusCode::INTERNAL_SERVER_ERROR)
+                    }
+                }
             }
         }
     }
@@ -231,6 +241,25 @@ async fn proxy_fetch(
         },
         Err(e) => {
             error!("proxy_fetch failed: {} — {:?}", q.url, e);
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+async fn proxy_fetch_binary(
+    Query(q): Query<ProxyFetchQuery>,
+) -> Result<Vec<u8>, StatusCode> {
+    let client = reqwest::Client::new();
+    match client.get(&q.url).send().await {
+        Ok(resp) => match resp.bytes().await {
+            Ok(body) => Ok(body.to_vec()),
+            Err(e) => {
+                error!("proxy_fetch_binary read failed: {} — {:?}", q.url, e);
+                Err(StatusCode::BAD_GATEWAY)
+            }
+        },
+        Err(e) => {
+            error!("proxy_fetch_binary failed: {} — {:?}", q.url, e);
             Err(StatusCode::BAD_GATEWAY)
         }
     }
@@ -308,5 +337,6 @@ pub fn bridge_routes() -> Router<T3AppState> {
         .route("/api/eez-studio/file-size", get(file_size))
         .route("/api/eez-studio/is-directory", get(is_directory))
         .route("/api/eez-studio/proxy-fetch", get(proxy_fetch))
+        .route("/api/eez-studio/proxy-fetch-binary", get(proxy_fetch_binary))
         .layer(axum::extract::DefaultBodyLimit::max(50 * 1024 * 1024)) // 50 MB — catalog JSON ~6 MB
 }
