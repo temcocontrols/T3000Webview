@@ -1189,6 +1189,9 @@ export class LVGLPageViewerRuntime extends LVGLPageRuntime {
     }
 
     async mount() {
+        // Attach build assetsMap to the WASM module for lvglCreate access
+        (this.wasm as any).assetsMap = (this.runtime as any).assetsMap;
+
         this.lvglGroupObjects = [];
 
         // init themes

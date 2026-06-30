@@ -78,7 +78,7 @@ const V9_LV_SIZE_CONTENT = V9_LV_COORD_SET_SPEC(V9_LV_COORD_MAX);
 ////////////////////////////////////////////////////////////////////////////////
 
 const version_8 = {
-    wasmFlowRuntime: "project-editor/flow/runtime/wasm/lvgl_runtime_v8.4.0.js",
+    wasmFlowRuntime: "/t3-eez-studio/wasm/lvgl/8.4.0/lvgl_runtime_v8.4.0.js",
 
     LV_COORD: {
         LV_COORD_MAX: V8_LV_COORD_MAX,

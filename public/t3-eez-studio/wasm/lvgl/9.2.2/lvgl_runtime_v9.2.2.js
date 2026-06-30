@@ -91,7 +91,7 @@ module["exports"] = function (postWorkerToRendererMessage) {
 
     Module.locateFile = function (path, scriptDirectory) {
         if (scriptDirectory) return scriptDirectory + path;
-        return new URL(path, import.meta.url).href;
+        var s=document.currentScript; return new URL(path,(s&&s.src)||location.href).href;
     };
 
     runWasmModule(Module);

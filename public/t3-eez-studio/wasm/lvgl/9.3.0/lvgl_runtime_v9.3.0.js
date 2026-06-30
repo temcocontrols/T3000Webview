@@ -91,7 +91,7 @@ module["exports"] = function (postWorkerToRendererMessage) {
 
     Module.locateFile = function (path, scriptDirectory) {
         if (scriptDirectory) return scriptDirectory + path;
-        return new URL(path, import.meta.url).href;
+        var s=document.currentScript; return new URL(path,(s&&s.src)||location.href).href;
     };
 
     runWasmModule(Module);
@@ -5295,31 +5295,31 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('onCOSStore');
 }
 var ASM_CONSTS = {
-  1084624: ($0) => { startToDebuggerMessage($0); },  
- 1084656: ($0, $1, $2) => { writeDebuggerBuffer($0, new Uint8Array(Module.HEAPU8.buffer, $1, $2)); },  
- 1084731: ($0, $1, $2) => { writeDebuggerBuffer($0, new Uint8Array(Module.HEAPU8.buffer, $1, $2)); },  
- 1084806: ($0) => { finishToDebuggerMessage($0); },  
- 1084839: ($0, $1) => { lvglCreateScreen($0, $1); },  
- 1084869: ($0, $1) => { lvglDeleteScreen($0, $1); },  
- 1084899: ($0) => { lvglScreenTick($0); },  
- 1084923: ($0, $1, $2, $3) => { lvglOnEventHandler($0, $1, $2, $3); },  
- 1084963: ($0, $1) => { return getLvglScreenByName($0, UTF8ToString($1)); },  
- 1085017: ($0, $1) => { return getLvglObjectByName($0, UTF8ToString($1)); },  
- 1085071: ($0, $1) => { return getLvglGroupByName($0, UTF8ToString($1)); },  
- 1085124: ($0, $1) => { return getLvglStyleByName($0, UTF8ToString($1)); },  
- 1085177: ($0, $1) => { return getLvglImageByName($0, UTF8ToString($1)); },  
- 1085230: ($0, $1) => { return getLvglFontByName($0, UTF8ToString($1)); },  
- 1085282: ($0, $1) => { return getLvglObjectNameFromIndex($0, $1); },  
- 1085329: ($0, $1, $2) => { lvglObjAddStyle($0, $1, $2); },  
- 1085362: ($0, $1, $2) => { lvglObjRemoveStyle($0, $1, $2); },  
- 1085398: ($0, $1) => { lvglSetColorTheme($0, UTF8ToString($1)); },  
- 1085443: ($0, $1, $2, $3, $4, $5) => { return eez_mqtt_init($0, UTF8ToString($1), UTF8ToString($2), $3, UTF8ToString($4), UTF8ToString($5)); },  
- 1085549: ($0, $1) => { return eez_mqtt_deinit($0, $1); },  
- 1085585: ($0, $1) => { return eez_mqtt_connect($0, $1); },  
- 1085622: ($0, $1) => { return eez_mqtt_disconnect($0, $1); },  
- 1085662: ($0, $1, $2) => { return eez_mqtt_subscribe($0, $1, UTF8ToString($2)); },  
- 1085719: ($0, $1, $2) => { return eez_mqtt_unsubscribe($0, $1, UTF8ToString($2)); },  
- 1085778: ($0, $1, $2, $3) => { return eez_mqtt_publish($0, $1, UTF8ToString($2), UTF8ToString($3)); }
+  1084656: ($0) => { startToDebuggerMessage($0); },  
+ 1084688: ($0, $1, $2) => { writeDebuggerBuffer($0, new Uint8Array(Module.HEAPU8.buffer, $1, $2)); },  
+ 1084763: ($0, $1, $2) => { writeDebuggerBuffer($0, new Uint8Array(Module.HEAPU8.buffer, $1, $2)); },  
+ 1084838: ($0) => { finishToDebuggerMessage($0); },  
+ 1084871: ($0, $1) => { lvglCreateScreen($0, $1); },  
+ 1084901: ($0, $1) => { lvglDeleteScreen($0, $1); },  
+ 1084931: ($0) => { lvglScreenTick($0); },  
+ 1084955: ($0, $1, $2, $3) => { lvglOnEventHandler($0, $1, $2, $3); },  
+ 1084995: ($0, $1) => { return getLvglScreenByName($0, UTF8ToString($1)); },  
+ 1085049: ($0, $1) => { return getLvglObjectByName($0, UTF8ToString($1)); },  
+ 1085103: ($0, $1) => { return getLvglGroupByName($0, UTF8ToString($1)); },  
+ 1085156: ($0, $1) => { return getLvglStyleByName($0, UTF8ToString($1)); },  
+ 1085209: ($0, $1) => { return getLvglImageByName($0, UTF8ToString($1)); },  
+ 1085262: ($0, $1) => { return getLvglFontByName($0, UTF8ToString($1)); },  
+ 1085314: ($0, $1) => { return getLvglObjectNameFromIndex($0, $1); },  
+ 1085361: ($0, $1, $2) => { lvglObjAddStyle($0, $1, $2); },  
+ 1085394: ($0, $1, $2) => { lvglObjRemoveStyle($0, $1, $2); },  
+ 1085430: ($0, $1) => { lvglSetColorTheme($0, UTF8ToString($1)); },  
+ 1085475: ($0, $1, $2, $3, $4, $5) => { return eez_mqtt_init($0, UTF8ToString($1), UTF8ToString($2), $3, UTF8ToString($4), UTF8ToString($5)); },  
+ 1085581: ($0, $1) => { return eez_mqtt_deinit($0, $1); },  
+ 1085617: ($0, $1) => { return eez_mqtt_connect($0, $1); },  
+ 1085654: ($0, $1) => { return eez_mqtt_disconnect($0, $1); },  
+ 1085694: ($0, $1, $2) => { return eez_mqtt_subscribe($0, $1, UTF8ToString($2)); },  
+ 1085751: ($0, $1, $2) => { return eez_mqtt_unsubscribe($0, $1, UTF8ToString($2)); },  
+ 1085810: ($0, $1, $2, $3) => { return eez_mqtt_publish($0, $1, UTF8ToString($2), UTF8ToString($3)); }
 };
 
 // Imports from the Wasm binary.
@@ -5341,6 +5341,7 @@ var _lv_indev_set_read_cb = Module['_lv_indev_set_read_cb'] = makeInvalidEarlyAc
 var _lv_fs_drv_init = Module['_lv_fs_drv_init'] = makeInvalidEarlyAccess('_lv_fs_drv_init');
 var _lv_fs_drv_register = Module['_lv_fs_drv_register'] = makeInvalidEarlyAccess('_lv_fs_drv_register');
 var _init = Module['_init'] = makeInvalidEarlyAccess('_init');
+var _free = Module['_free'] = makeInvalidEarlyAccess('_free');
 var _lv_init = Module['_lv_init'] = makeInvalidEarlyAccess('_lv_init');
 var _lv_display_get_default = Module['_lv_display_get_default'] = makeInvalidEarlyAccess('_lv_display_get_default');
 var _lv_palette_main = Module['_lv_palette_main'] = makeInvalidEarlyAccess('_lv_palette_main');
@@ -6778,7 +6779,6 @@ var _lv_mem_remove_pool = Module['_lv_mem_remove_pool'] = makeInvalidEarlyAccess
 var _lv_malloc_core = Module['_lv_malloc_core'] = makeInvalidEarlyAccess('_lv_malloc_core');
 var _lv_realloc_core = Module['_lv_realloc_core'] = makeInvalidEarlyAccess('_lv_realloc_core');
 var _lv_free_core = Module['_lv_free_core'] = makeInvalidEarlyAccess('_lv_free_core');
-var _free = Module['_free'] = makeInvalidEarlyAccess('_free');
 var _lv_mem_monitor_core = Module['_lv_mem_monitor_core'] = makeInvalidEarlyAccess('_lv_mem_monitor_core');
 var _lv_mem_test_core = Module['_lv_mem_test_core'] = makeInvalidEarlyAccess('_lv_mem_test_core');
 var _lv_calloc = Module['_lv_calloc'] = makeInvalidEarlyAccess('_lv_calloc');
@@ -7181,6 +7181,7 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['lv_fs_drv_init'] != 'undefined', 'missing Wasm export: lv_fs_drv_init');
   assert(typeof wasmExports['lv_fs_drv_register'] != 'undefined', 'missing Wasm export: lv_fs_drv_register');
   assert(typeof wasmExports['init'] != 'undefined', 'missing Wasm export: init');
+  assert(typeof wasmExports['free'] != 'undefined', 'missing Wasm export: free');
   assert(typeof wasmExports['lv_init'] != 'undefined', 'missing Wasm export: lv_init');
   assert(typeof wasmExports['lv_display_get_default'] != 'undefined', 'missing Wasm export: lv_display_get_default');
   assert(typeof wasmExports['lv_palette_main'] != 'undefined', 'missing Wasm export: lv_palette_main');
@@ -8618,7 +8619,6 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['lv_malloc_core'] != 'undefined', 'missing Wasm export: lv_malloc_core');
   assert(typeof wasmExports['lv_realloc_core'] != 'undefined', 'missing Wasm export: lv_realloc_core');
   assert(typeof wasmExports['lv_free_core'] != 'undefined', 'missing Wasm export: lv_free_core');
-  assert(typeof wasmExports['free'] != 'undefined', 'missing Wasm export: free');
   assert(typeof wasmExports['lv_mem_monitor_core'] != 'undefined', 'missing Wasm export: lv_mem_monitor_core');
   assert(typeof wasmExports['lv_mem_test_core'] != 'undefined', 'missing Wasm export: lv_mem_test_core');
   assert(typeof wasmExports['lv_calloc'] != 'undefined', 'missing Wasm export: lv_calloc');
@@ -9018,6 +9018,7 @@ function assignWasmExports(wasmExports) {
   _lv_fs_drv_init = Module['_lv_fs_drv_init'] = createExportWrapper('lv_fs_drv_init', 1);
   _lv_fs_drv_register = Module['_lv_fs_drv_register'] = createExportWrapper('lv_fs_drv_register', 1);
   _init = Module['_init'] = createExportWrapper('init', 9);
+  _free = Module['_free'] = createExportWrapper('free', 1);
   _lv_init = Module['_lv_init'] = createExportWrapper('lv_init', 0);
   _lv_display_get_default = Module['_lv_display_get_default'] = createExportWrapper('lv_display_get_default', 0);
   _lv_palette_main = Module['_lv_palette_main'] = createExportWrapper('lv_palette_main', 2);
@@ -10455,7 +10456,6 @@ function assignWasmExports(wasmExports) {
   _lv_malloc_core = Module['_lv_malloc_core'] = createExportWrapper('lv_malloc_core', 1);
   _lv_realloc_core = Module['_lv_realloc_core'] = createExportWrapper('lv_realloc_core', 2);
   _lv_free_core = Module['_lv_free_core'] = createExportWrapper('lv_free_core', 1);
-  _free = Module['_free'] = createExportWrapper('free', 1);
   _lv_mem_monitor_core = Module['_lv_mem_monitor_core'] = createExportWrapper('lv_mem_monitor_core', 1);
   _lv_mem_test_core = Module['_lv_mem_test_core'] = createExportWrapper('lv_mem_test_core', 0);
   _lv_calloc = Module['_lv_calloc'] = createExportWrapper('lv_calloc', 2);

@@ -220,6 +220,7 @@ export class WasmRuntime extends RemoteRuntime {
         }
 
         this.assetsMap = result.GUI_ASSETS_DATA_MAP_JS as AssetsMap;
+        console.log("[wasm-runtime] assetsMap loaded, flowIndexes:", !!this.assetsMap?.flowIndexes, "flows:", this.assetsMap?.flows?.length);
         if (!this.assetsMap) {
             this.stopRuntimeWithError("Build error");
             this.projectStore.setEditorMode();

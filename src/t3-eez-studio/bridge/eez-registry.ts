@@ -22,6 +22,8 @@ import _moment from "moment";
 import "moment-duration-format";
 // i10n — used by getMoment()
 import * as _i10n from "eez-studio-shared/i10n";
+// lv_img_conv_v9 — LVGL image converter used by build pipeline
+import * as _lvImgConvV9 from "project-editor/lvgl/lv_img_conv_v9/index.js";
 
 const reg: Record<string, any> = (globalThis as any).__eezModules || {};
 (globalThis as any).__eezModules = reg;
@@ -36,3 +38,5 @@ reg["shortcuts/shortcuts-store"] = _shortcutsStore;
 reg["moment"] = _moment;
 reg["moment-duration-format"] = function install(m: any) { /* already applied via import */ };
 reg["eez-studio-shared/i10n"] = _i10n;
+reg["./lv_img_conv_v9/index.js"] = (_lvImgConvV9 as any).default || _lvImgConvV9;
+console.log("[eez-registry] lv_img_conv_v9 registered, LVGLImage:", typeof (reg["./lv_img_conv_v9/index.js"] as any)?.LVGLImage);

@@ -142,7 +142,7 @@ const ipcSyncDefaults: Record<string, any> = {
         createReadStream: () => ({ on:()=>{}, pipe:()=>{}, read:()=>null }),
         openSync: () => 0, closeSync: () => {}, readSync: () => 0, writeSync: () => {},
         watchFile: () => {}, unwatchFile: () => {}, watch: () => {},
-        promises: { readdir:()=>Promise.resolve([]), mkdir:()=>Promise.resolve(), stat:()=>Promise.resolve({}) },
+        promises: { readdir:()=>Promise.resolve([]), mkdir:()=>Promise.resolve(), stat:()=>Promise.resolve({}), readFile:()=>Promise.resolve(""), writeFile:()=>Promise.resolve() },
     };
     if (path === "path") return { isAbsolute:(p:string)=>p.startsWith("/"), resolve:(...p:string[])=>p.join("/"), relative:(f:string,t:string)=>t, join:(...p:string[])=>p.join("/"), sep:"/", basename:()=>"", dirname:()=>".", extname:()=>"" };
     if (path === "os") return { platform:()=>"browser", type:()=>"browser", homedir:()=>"/", tmpdir:()=>"/tmp" };

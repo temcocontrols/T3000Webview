@@ -432,10 +432,9 @@ export class WizardModel {
 
     async fetchTemplateProjects() {
         const result = await fetch(
-            // "https://envox.eu/gitea/api/v1/repos/search?q=eez-flow-template&topic=true"
             "/gitea-eu/api/v1/repos/search?q=eez-flow-template&topic=true"
         );
-
+        if (!result.ok) { this.templateProjects = []; return; }
         const data = await result.json();
         console.log("Wizard.tsx=> fetchTemplateProjects data", data);
 
