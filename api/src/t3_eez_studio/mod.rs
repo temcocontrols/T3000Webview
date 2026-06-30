@@ -7,9 +7,12 @@ use axum::{
     routing::{delete, get, post},
     Json, Router,
 };
+use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::Mutex;
 use tokio::fs;
 use tracing::{error, info};
 
@@ -318,6 +321,143 @@ async fn exec_command(Json(req): Json<ExecRequest>) -> Json<ExecResponse> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Store — SQLite-backed persistence (replaces Electron's better-sqlite3)
+////////////////////////////////////////////////////////////////////////////////
+
+lazy_static::lazy_static! {
+    static ref STORE_DB: Mutex<rusqlite::Connection> = {
+        let db_path = data_root().join("storage.db");
+        info!("store_db: opening {}", db_path.display());
+        let conn = rusqlite::Connection::open(&db_path)
+            .expect("Failed to open store database");
+        conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")
+            .expect("Failed to set pragmas");
+        Mutex::new(conn)
+    };
+}
+
+#[derive(Debug, Deserialize)]
+struct StoreRequest {
+    action: String,
+    sql: String,
+    #[serde(default)]
+    params: Vec<Value>,
+}
+
+async fn store_handler(
+    Json(req): Json<StoreRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = STORE_DB.lock().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    match req.action.as_str() {
+        "run" => {
+            let mut stmt = db.prepare(&req.sql).map_err(|e| {
+                error!("store run prepare: {}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+            let params: Vec<rusqlite::types::Value> = req.params.iter().map(|v| match v {
+                Value::Null => rusqlite::types::Value::Null,
+                Value::Number(n) => {
+                    if let Some(i) = n.as_i64() { rusqlite::types::Value::Integer(i) }
+                    else { rusqlite::types::Value::Real(n.as_f64().unwrap_or(0.0)) }
+                }
+                Value::String(s) => rusqlite::types::Value::Text(s.clone()),
+                _ => rusqlite::types::Value::Null,
+            }).collect();
+            let params_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p as &dyn rusqlite::types::ToSql).collect();
+            let info = stmt.insert(&params_refs[..]).or_else(|_| {
+                stmt.execute(&params_refs[..]).map(|n| n as i64)
+            }).map_err(|e| {
+                error!("store run: {}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+            Ok(Json(serde_json::json!({
+                "lastInsertRowid": info as i64,
+                "changes": db.changes() as i64
+            })))
+        }
+        "get" => {
+            let mut stmt = db.prepare(&req.sql).map_err(|e| {
+                error!("store get prepare: {}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+            let params: Vec<rusqlite::types::Value> = req.params.iter().map(|v| match v {
+                Value::Null => rusqlite::types::Value::Null,
+                Value::Number(n) => {
+                    if let Some(i) = n.as_i64() { rusqlite::types::Value::Integer(i) }
+                    else { rusqlite::types::Value::Real(n.as_f64().unwrap_or(0.0)) }
+                }
+                Value::String(s) => rusqlite::types::Value::Text(s.clone()),
+                _ => rusqlite::types::Value::Null,
+            }).collect();
+            let params_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p as &dyn rusqlite::types::ToSql).collect();
+            let result = stmt.query_row(&params_refs[..], |row| {
+                let col_count = row.as_ref().column_count();
+                let mut map = serde_json::Map::new();
+                for i in 0..col_count {
+                    let name = row.as_ref().column_name(i).unwrap_or("?").to_string();
+                    let val: rusqlite::types::Value = row.get(i).unwrap_or(rusqlite::types::Value::Null);
+                    map.insert(name, value_to_json(val));
+                }
+                Ok(serde_json::Value::Object(map))
+            }).optional().map_err(|e| {
+                error!("store get: {}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+            Ok(Json(result.unwrap_or(serde_json::Value::Null)))
+        }
+        "all" => {
+            let mut stmt = db.prepare(&req.sql).map_err(|e| {
+                error!("store all prepare: {}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+            let params: Vec<rusqlite::types::Value> = req.params.iter().map(|v| match v {
+                Value::Null => rusqlite::types::Value::Null,
+                Value::Number(n) => {
+                    if let Some(i) = n.as_i64() { rusqlite::types::Value::Integer(i) }
+                    else { rusqlite::types::Value::Real(n.as_f64().unwrap_or(0.0)) }
+                }
+                Value::String(s) => rusqlite::types::Value::Text(s.clone()),
+                _ => rusqlite::types::Value::Null,
+            }).collect();
+            let params_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p as &dyn rusqlite::types::ToSql).collect();
+            let rows = stmt.query_map(&params_refs[..], |row| {
+                let col_count = row.as_ref().column_count();
+                let mut map = serde_json::Map::new();
+                for i in 0..col_count {
+                    let name = row.as_ref().column_name(i).unwrap_or("?").to_string();
+                    let val: rusqlite::types::Value = row.get(i).unwrap_or(rusqlite::types::Value::Null);
+                    map.insert(name, value_to_json(val));
+                }
+                Ok(serde_json::Value::Object(map))
+            }).map_err(|e| {
+                error!("store all: {}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+            let result: Vec<serde_json::Value> = rows.filter_map(|r| r.ok()).collect();
+            Ok(Json(serde_json::Value::Array(result)))
+        }
+        "exec" => {
+            db.execute_batch(&req.sql).map_err(|e| {
+                error!("store exec: {}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+            Ok(Json(serde_json::json!({"ok": true})))
+        }
+        _ => Err(StatusCode::BAD_REQUEST),
+    }
+}
+
+fn value_to_json(v: rusqlite::types::Value) -> serde_json::Value {
+    match v {
+        rusqlite::types::Value::Null => serde_json::Value::Null,
+        rusqlite::types::Value::Integer(i) => serde_json::Value::Number((i).into()),
+        rusqlite::types::Value::Real(f) => serde_json::json!(f),
+        rusqlite::types::Value::Text(s) => serde_json::Value::String(s),
+        rusqlite::types::Value::Blob(b) => serde_json::Value::Array(b.iter().map(|&x| serde_json::Value::Number(x.into())).collect()),
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Router
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -338,5 +478,7 @@ pub fn bridge_routes() -> Router<T3AppState> {
         .route("/api/eez-studio/is-directory", get(is_directory))
         .route("/api/eez-studio/proxy-fetch", get(proxy_fetch))
         .route("/api/eez-studio/proxy-fetch-binary", get(proxy_fetch_binary))
+        .route("/api/eez-studio/store", post(store_handler))
+        .route("/api/eez-studio/store", post(store_handler))
         .layer(axum::extract::DefaultBodyLimit::max(50 * 1024 * 1024)) // 50 MB — catalog JSON ~6 MB
 }

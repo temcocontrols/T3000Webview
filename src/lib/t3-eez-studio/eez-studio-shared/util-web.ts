@@ -233,9 +233,13 @@ export async function renameFile(
     oldPath: string,
     newPath: string
 ): Promise<void> {
+    console.log("[ext-install] renameFile:", oldPath, "→", newPath);
     // Try as directory first (most common: extension temp → final)
     const isDir = await getBridgeAPI().isDirectory(oldPath);
+    console.log("[ext-install] renameFile isDir:", isDir);
     if (isDir) {
+        // Remove existing destination if present (leftover from previous failed install)
+        try { await getBridgeAPI().deleteFile(newPath); } catch {}
         // Recursively copy all files, then delete source
         await copyDirRecursive(oldPath, newPath);
         await removeFolder(oldPath);
@@ -247,8 +251,10 @@ export async function renameFile(
 }
 
 async function copyDirRecursive(src: string, dest: string): Promise<void> {
-    await getBridgeAPI().makeFolder(dest);
+    console.log("[ext-install] copyDirRecursive: makeFolder", dest);
+    try { await getBridgeAPI().makeFolder(dest); } catch (e) { console.warn("[ext-install] makeFolder failed for", dest, e); }
     const entries = await getBridgeAPI().listFiles(src);
+    console.log("[ext-install] copyDirRecursive: entries in", src, "=", entries.length);
     for (const name of entries) {
         const srcPath = src + "/" + name;
         const destPath = dest + "/" + name;

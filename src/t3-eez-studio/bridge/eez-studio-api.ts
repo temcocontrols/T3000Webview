@@ -50,8 +50,9 @@ export function checkBackendHealth(): Promise<boolean> {
 
 async function api(path: string, init?: RequestInit): Promise<any> {
     if (backendHealth === false) {
-        return { ok: false, json: () => ({}), text: () => "", arrayBuffer: () => new ArrayBuffer(0) } as any;
+        return { ok: false, status: 0, json: () => ({}), text: () => "", arrayBuffer: () => new ArrayBuffer(0) } as any;
     }
+    let status = 0;
     try {
         const opts = { ...init };
         if (opts.body && typeof opts.body === "string") {
@@ -68,12 +69,11 @@ async function api(path: string, init?: RequestInit): Promise<any> {
             }
             return res;
         }
-        // Capture status for error reporting
-        const status = res.status;
+        status = res.status;
     } catch {
         // fetch failed — let checkBackendHealth() own the status
     }
-    return { ok: false, status: (typeof status !== 'undefined' ? status : 0), json: () => ({}), text: () => "", arrayBuffer: () => new ArrayBuffer(0) } as any;
+    return { ok: false, status, json: () => ({}), text: () => "", arrayBuffer: () => new ArrayBuffer(0) } as any;
 }
 
 // Helper: raise on non-2xx so write failures propagate to caller

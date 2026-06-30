@@ -37,7 +37,7 @@ import {
     getValidFileNameFromFileName
 } from "eez-studio-shared/util-electron";
 // Browser-compatible temp file + binary write (aliased util-electron may resolve to Node.js version)
-import { getTempFilePath, writeBinaryData } from "eez-studio-shared/util-web";
+import { getTempFilePath, writeBinaryData, deleteFile } from "eez-studio-shared/util-web";
 import { stringCompare } from "eez-studio-shared/string";
 
 import {
@@ -723,6 +723,8 @@ async function finishInstall(extensionZipPackageData: any) {
         }
     });
 
+    // Clean up temp ZIP file
+    try { await deleteFile(tempFilePath); } catch {}
     console.log("[ext-install] installExtension result:", extension?.id);
     return extension;
     } catch(e) {

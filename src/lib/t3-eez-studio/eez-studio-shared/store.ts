@@ -563,6 +563,10 @@ export function createStore({
 
     function createObject(object: any, options?: IStoreOperationOptions) {
         if (isRenderer()) {
+            // Browser: no Electron main process, execute directly (better-sqlite3 stub proxies to Rust SQLite)
+            if ((typeof process !== "undefined") && (process as any).platform === "browser") {
+                return execCreateObject(object, options);
+            }
             const { ipcRenderer } =
                 require("electron") as typeof ElectronModule;
             return ipcRenderer.sendSync(
@@ -579,6 +583,9 @@ export function createStore({
 
     function updateObject(object: any, options?: IStoreOperationOptions) {
         if (isRenderer()) {
+            if ((typeof process !== "undefined") && (process as any).platform === "browser") {
+                return execUpdateObject(object, options);
+            }
             const { ipcRenderer } =
                 require("electron") as typeof ElectronModule;
             ipcRenderer.sendSync("shared/store/update-object/" + storeName, {
@@ -592,6 +599,9 @@ export function createStore({
 
     function deleteObject(object: any, options?: IStoreOperationOptions) {
         if (isRenderer()) {
+            if ((typeof process !== "undefined") && (process as any).platform === "browser") {
+                return execDeleteObject(object, options);
+            }
             const { ipcRenderer } =
                 require("electron") as typeof ElectronModule;
             ipcRenderer.sendSync("shared/store/delete-object/" + storeName, {
@@ -1099,6 +1109,11 @@ class UndoManager {
 }
 
 export let undoManager: UndoManager;
+
+// Browser: no main process — init directly
+if ((typeof process !== "undefined") && (process as any).platform === "browser") {
+    undoManager = new UndoManager();
+}
 
 if (!isRenderer()) {
     undoManager = new UndoManager();
