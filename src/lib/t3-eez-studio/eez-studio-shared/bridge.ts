@@ -57,6 +57,7 @@ export interface BridgeAPI {
 
     // Network
     proxyFetch(url: string): Promise<string>;
+    proxyFetchBinary(url: string): Promise<ArrayBuffer>;
 }
 
 let _bridgeAPI: BridgeAPI | null = null;
@@ -67,4 +68,8 @@ export function setBridgeAPI(bridge: BridgeAPI): void {
 
 export function getBridgeAPI(): BridgeAPI | null {
     return _bridgeAPI;
+}
+
+export function isBridgeInitialized(): boolean {
+    return _bridgeAPI !== null;
 }

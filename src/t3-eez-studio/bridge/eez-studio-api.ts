@@ -64,14 +64,16 @@ async function api(path: string, init?: RequestInit): Promise<any> {
         if (res.ok) {
             const ct = res.headers.get("content-type") || "";
             if (ct.includes("text/html")) {
-                return { ok: true, json: () => ({}), text: () => "", arrayBuffer: () => new ArrayBuffer(0) } as any;
+                return { ok: true, status: 200, json: () => ({}), text: () => "", arrayBuffer: () => new ArrayBuffer(0) } as any;
             }
             return res;
         }
+        // Capture status for error reporting
+        const status = res.status;
     } catch {
         // fetch failed — let checkBackendHealth() own the status
     }
-    return { ok: false, json: () => ({}), text: () => "", arrayBuffer: () => new ArrayBuffer(0) } as any;
+    return { ok: false, status: (typeof status !== 'undefined' ? status : 0), json: () => ({}), text: () => "", arrayBuffer: () => new ArrayBuffer(0) } as any;
 }
 
 // Helper: raise on non-2xx so write failures propagate to caller
@@ -117,6 +119,7 @@ const t3: BridgeAPI = {
     saveProject: (p,d) => api(`/write-text-file?path=${enc(p)}`,{method:"POST",body:JSON.stringify(d,null,2)}).then(noop),
     buildProject: (p, _cb) => api("/build-project",{method:"POST",body:JSON.stringify({filePath:p})}).then(noop),
     proxyFetch: url => api(`/proxy-fetch?url=${enc(url)}`).then(r=>r.text()),
+    proxyFetchBinary: url => api(`/proxy-fetch-binary?url=${enc(url)}`).then(r=>r.arrayBuffer()),
 };
 
 export function initEezBridge() {

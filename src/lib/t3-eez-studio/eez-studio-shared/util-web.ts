@@ -21,6 +21,21 @@ export function isRenderer(): boolean {
     return true;
 }
 
+// App stub — Electron app object equivalents (no-ops in browser)
+export const app = {
+    getPath: (p: string) => p === "userData" ? "/userData" : p === "home" ? "/project" : "/",
+    getVersion: () => "0.0.0",
+    relaunch: () => {},
+    exit: () => {},
+    whenReady: () => Promise.resolve(),
+    on: () => {},
+    getName: () => "EEZ Studio",
+    getAppPath: () => "/",
+    isPackaged: false,
+    commandLine: { appendSwitch: () => {} },
+    getLocale: () => "en"
+};
+
 // In the browser, process is always available (bundled), but we aren't in Electron.
 // We detect dev mode by checking Electron's execPath, NODE_ENV, or CLI mode flag.
 export const isDev: boolean =
@@ -96,6 +111,15 @@ export async function fileExists(filePath: string): Promise<boolean> {
     return getBridgeAPI().fileExists(filePath);
 }
 
+export function fileExistsSync(_filePath: string): boolean {
+    return false; // sync check not possible via bridge
+}
+
+// Low-level file descriptor stubs (not used in browser)
+export async function openFile(_filePath: string): Promise<any> { return 0; }
+export async function readFile(_fd: any, _buffer: any, _offset: number, _length: number, _position: number): Promise<{ bytesRead: number; buffer: any }> { return { bytesRead: 0, buffer: _buffer }; }
+export async function closeFile(_fd: any): Promise<void> { }
+
 export async function deleteFile(filePath: string): Promise<void> {
     return getBridgeAPI().deleteFile(filePath);
 }
@@ -112,15 +136,25 @@ export async function zipExtract(
     zipFilePath: string,
     destFolderPath: string
 ): Promise<void> {
+    console.log("[ext-install] zipExtract:", zipFilePath, "→", destFolderPath);
     // In browser, we fetch the zip and extract with JSZip
     const data = await getBridgeAPI().readFile(zipFilePath);
-    const JSZip = require("jszip");
+    console.log("[ext-install] zipExtract read data, bytes:", data?.byteLength);
+    const JSZip = (await import("jszip")).default;
     const zip = await JSZip.loadAsync(data);
 
     const promises: Promise<void>[] = [];
     zip.forEach((relativePath: string, file: any) => {
+        // JSZip may return raw binary filenames — decode comma-separated ASCII codes
+        let name = relativePath;
+        if (name.indexOf(",") !== -1 && /^\d+(,\d+)*$/.test(name)) {
+            try {
+                const bytes = new Uint8Array(name.split(",").map(Number));
+                name = new TextDecoder("utf-8").decode(bytes);
+            } catch {}
+        }
         if (!file.dir) {
-            const fullPath = destFolderPath + "/" + relativePath;
+            const fullPath = destFolderPath + "/" + name;
             promises.push(
                 file.async("arraybuffer").then((buf: ArrayBuffer) =>
                     getBridgeAPI().writeFile(fullPath, buf)
@@ -128,9 +162,7 @@ export async function zipExtract(
             );
         } else {
             promises.push(
-                getBridgeAPI().makeFolder(
-                    destFolderPath + "/" + relativePath
-                )
+                getBridgeAPI().makeFolder(destFolderPath + "/" + name)
             );
         }
     });
@@ -201,9 +233,32 @@ export async function renameFile(
     oldPath: string,
     newPath: string
 ): Promise<void> {
-    const data = await getBridgeAPI().readFile(oldPath);
-    await getBridgeAPI().writeFile(newPath, data);
-    await getBridgeAPI().deleteFile(oldPath);
+    // Try as directory first (most common: extension temp → final)
+    const isDir = await getBridgeAPI().isDirectory(oldPath);
+    if (isDir) {
+        // Recursively copy all files, then delete source
+        await copyDirRecursive(oldPath, newPath);
+        await removeFolder(oldPath);
+    } else {
+        const data = await getBridgeAPI().readFile(oldPath);
+        await getBridgeAPI().writeFile(newPath, data);
+        await getBridgeAPI().deleteFile(oldPath);
+    }
+}
+
+async function copyDirRecursive(src: string, dest: string): Promise<void> {
+    await getBridgeAPI().makeFolder(dest);
+    const entries = await getBridgeAPI().listFiles(src);
+    for (const name of entries) {
+        const srcPath = src + "/" + name;
+        const destPath = dest + "/" + name;
+        if (await getBridgeAPI().isDirectory(srcPath)) {
+            await copyDirRecursive(srcPath, destPath);
+        } else {
+            const data = await getBridgeAPI().readFile(srcPath);
+            await getBridgeAPI().writeFile(destPath, data);
+        }
+    }
 }
 
 export async function readFolder(
@@ -387,6 +442,7 @@ export async function writeJsObjectToFile(
 ////////////////////////////////////////////////////////////////////////////////
 
 export async function getTempFilePath(options?: any): Promise<string> {
+    console.log("[ext-install] getTempFilePath (util-web) called");
     const id = Math.random().toString(36).substring(2, 10);
     const ext = options?.ext || options?.extension || "";
     return "/eez-temp/" + id + (ext ? "." + ext : "");

@@ -44,8 +44,10 @@ export const CONF_NODE_MODULE_PROPERTY_NAME = "node-module";
 async function loadExtension(
     extensionFolderPath: string
 ): Promise<IExtension | undefined> {
+    console.log("[ext-install] loadExtension:", extensionFolderPath);
     let packageJsonFilePath = extensionFolderPath + "/" + "package.json";
     if (await fileExists(packageJsonFilePath)) {
+        console.log("[ext-install] package.json exists, reading...");
         try {
             const packageJson = await readJsObjectFromFile(packageJsonFilePath);
             const packageJsonEezStudio =
@@ -69,6 +71,11 @@ async function loadExtension(
                         // this is project editor extension
                         extensionType = "pext";
                         extension = require(extensionFolderPath).default;
+                    } else {
+                        // Pure data extension (e.g. instrument "iext") — no JS to load
+                        extension = {} as IExtension;
+                        extensionType = (packageJsonEezStudio as any).extensionType
+                            || (packageJsonEezStudio.properties ? "iext" : undefined);
                     }
                 } catch (err) {
                     console.log(err);
@@ -251,8 +258,10 @@ export async function importExtensionToFolder(
 }
 
 export async function importExtensionToTempFolder(extensionFilePath: string) {
+    console.log("[ext-install] importExtensionToTempFolder:", extensionFilePath);
     const tmpExtensionFolderPath =
         extensionsFolderPath + path.sep + guid() + "_tmp";
+    console.log("[ext-install] tmpExtensionFolderPath:", tmpExtensionFolderPath);
     try {
         const extension = await importExtensionToFolder(
             extensionFilePath,
@@ -380,7 +389,9 @@ export async function installExtension(
         ): Promise<boolean>;
     }
 ) {
+    console.log("[ext-install] installExtension called, file:", extensionFilePath);
     const result = await importExtensionToTempFolder(extensionFilePath);
+    console.log("[ext-install] importExtensionToTempFolder result:", result ? "ok" : "undefined");
     if (!result) {
         notFound();
         return undefined;

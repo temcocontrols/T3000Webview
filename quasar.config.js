@@ -92,6 +92,12 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['@t3-shared'] = require('path').resolve(__dirname, 'src/shared');
         viteConf.resolve.alias['@t3-mobile'] = require('path').resolve(__dirname, 'src/t3-mobile');
 
+        // Replace Electron-only util-electron.ts with browser-safe util-web.ts
+        // MUST come before the broad 'eez-studio-shared' alias (prefix match wins)
+        const utilWeb = require('path').resolve(__dirname, 'src/lib/t3-eez-studio/eez-studio-shared/util-web.ts');
+        viteConf.resolve.alias['eez-studio-shared/util-electron'] = utilWeb;
+        viteConf.resolve.alias['eez-studio-shared/util-electron.ts'] = utilWeb;
+
         // EEZ Studio source aliases (copied into src/lib/t3-eez-studio)
         const eezPath = (p) => require('path').resolve(__dirname, 'src/lib/t3-eez-studio', p);
         viteConf.resolve.alias['eez-studio-shared'] = eezPath('eez-studio-shared');
@@ -132,11 +138,6 @@ module.exports = configure(function (/* ctx */) {
 
         // Buffer polyfill for browser (DataBuffer, lz4 compression)
         viteConf.resolve.alias['buffer'] = require('path').resolve(__dirname, 'node_modules/buffer/index.js');
-
-        // Replace Electron-only util-electron.ts with browser-safe util-web.ts
-        const utilWeb = require('path').resolve(__dirname, 'src/lib/t3-eez-studio/eez-studio-shared/util-web.ts');
-        viteConf.resolve.alias['eez-studio-shared/util-electron'] = utilWeb;
-        viteConf.resolve.alias['eez-studio-shared/util-electron.ts'] = utilWeb;
 
         // Enable React JSX support
         viteConf.esbuild = viteConf.esbuild || {};
@@ -211,53 +212,12 @@ module.exports = configure(function (/* ctx */) {
 
         viteConf.server.proxy = {
           ...(viteConf.server.proxy || {}),
-          // Local backend proxy
+          // Local backend proxy — all external downloads now go through Rust backend
           "/api/eez-studio": {
             target: "http://localhost:9103",
             changeOrigin: true,
             secure: false,
             rewrite: path => path.replace(/^\/api\/eez-studio/, "/api/eez-studio")
-          },
-
-          // Remote Gitea (envox.eu)
-          "/gitea-eu": {
-            target: "https://envox.eu/gitea",
-            changeOrigin: true,
-            secure: true,
-            rewrite: path => path.replace(/^\/gitea-eu/, "")
-          },
-
-          // Remote Gitea (envox.hr)
-          "/gitea-hr": {
-            target: "https://envox.hr/gitea",
-            changeOrigin: true,
-            secure: true,
-            rewrite: path => path.replace(/^\/gitea-hr/, "")
-          },
-
-          "/ghraw-examples": {
-            target: "https://raw.githubusercontent.com/eez-open/eez-project-examples/master/build",
-            changeOrigin: true,
-            secure: true,
-            rewrite: path => path.replace(/^\/ghraw-examples/, "")
-          },
-
-          "/ghraw": {
-            target: "https://raw.githubusercontent.com/eez-open/studio-extensions/master/build",
-            changeOrigin: true,
-            secure: true,
-            rewrite: path => path.replace(/^\/ghraw/, ""),
-            configure: (proxy, options) => {
-              proxy.on("proxyReq", (proxyReq, req) => {
-                console.log("[ProxyReq]", req.url, "→", proxyReq.path);
-              });
-              proxy.on("proxyRes", (proxyRes, req) => {
-                console.log("[ProxyRes]", req.url, "→", proxyRes.statusCode);
-              });
-              proxy.on("error", (err, req) => {
-                console.error("[ProxyError]", req.url, err);
-              });
-            }
           }
 
         };
