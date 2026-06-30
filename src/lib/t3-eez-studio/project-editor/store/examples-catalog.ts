@@ -28,11 +28,12 @@ export const EEZ_PROJECT_EXAMPLES_REPOSITORY =
 // export const CATALOG_DOWNLOAD_URL =
 //   "https://raw.githubusercontent.com/eez-open/eez-project-examples/master/build/catalog.zip";
 
+const GITHUB_EXAMPLES_BASE = "https://raw.githubusercontent.com/eez-open/eez-project-examples/master/build";
 export const CATALOG_VERSION_DOWNLOAD_URL =
-  "/ghraw-examples/catalog-version.json";
+  `/api/eez-studio/proxy-fetch?url=${encodeURIComponent(GITHUB_EXAMPLES_BASE + "/catalog-version.json")}`;
 
 export const CATALOG_DOWNLOAD_URL =
-  "/ghraw-examples/catalog.zip";
+  `/api/eez-studio/proxy-fetch-binary?url=${encodeURIComponent(GITHUB_EXAMPLES_BASE + "/catalog.zip")}`;
 
 interface ICatalogVersion {
     lastModified: Date;

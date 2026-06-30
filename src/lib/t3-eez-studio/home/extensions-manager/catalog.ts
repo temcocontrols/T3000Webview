@@ -23,11 +23,12 @@ export const DEFAULT_EXTENSIONS_CATALOG_DOWNLOAD_URL =
     "https://github.com/eez-open/studio-extensions/raw/master/build/catalog.zip";
 */
 
+const GITHUB_EXT_BASE = "https://raw.githubusercontent.com/eez-open/studio-extensions/master/build";
 export let DEFAULT_EXTENSIONS_CATALOG_VERSION_DOWNLOAD_URL =
-    "/ghraw/catalog-version.json";
+    `/api/eez-studio/proxy-fetch?url=${encodeURIComponent(GITHUB_EXT_BASE + "/catalog-version.json")}`;
 
 export const DEFAULT_EXTENSIONS_CATALOG_DOWNLOAD_URL =
-    "/ghraw/catalog.zip";
+    `/api/eez-studio/proxy-fetch-binary?url=${encodeURIComponent(GITHUB_EXT_BASE + "/catalog.zip")}`;
 
 // export const DEFAULT_EXTENSIONS_CATALOG_VERSION_DOWNLOAD_URL = "catalog-version.json"; //override with local file
 // export const DEFAULT_EXTENSIONS_CATALOG_DOWNLOAD_URL = "catalog.zip";

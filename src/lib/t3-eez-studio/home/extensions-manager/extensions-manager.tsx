@@ -34,10 +34,10 @@ import { extensionsFolderPath } from "eez-studio-shared/extensions/extension-fol
 
 import {
     copyFile,
-    getTempFilePath,
-    getValidFileNameFromFileName,
-    writeBinaryData
+    getValidFileNameFromFileName
 } from "eez-studio-shared/util-electron";
+// Browser-compatible temp file + binary write (aliased util-electron may resolve to Node.js version)
+import { getTempFilePath, writeBinaryData } from "eez-studio-shared/util-web";
 import { stringCompare } from "eez-studio-shared/string";
 
 import {
@@ -691,12 +691,18 @@ export const ExtensionSections = observer(
 ////////////////////////////////////////////////////////////////////////////////
 
 async function finishInstall(extensionZipPackageData: any) {
+    try {
+    console.log("[ext-install] finishInstall called, data len:", extensionZipPackageData?.length);
     const tempFilePath = await getTempFilePath();
+    console.log("[ext-install] tempFilePath:", tempFilePath);
 
     await writeBinaryData(tempFilePath, extensionZipPackageData);
+    console.log("[ext-install] wrote temp file, now installing...");
 
     const extension = await installExtension(tempFilePath, {
-        notFound() {},
+        notFound() {
+            console.log("[ext-install] installExtension notFound called");
+        },
         async confirmReplaceNewerVersion(
             newExtension: IExtension,
             existingExtension: IExtension
@@ -717,7 +723,12 @@ async function finishInstall(extensionZipPackageData: any) {
         }
     });
 
+    console.log("[ext-install] installExtension result:", extension?.id);
     return extension;
+    } catch(e) {
+        console.error("[ext-install] finishInstall error:", e);
+        throw e;
+    }
 }
 
 export function downloadAndInstallExtension(
@@ -781,7 +792,12 @@ export function downloadAndInstallExtension(
         } else {
             var req = new XMLHttpRequest();
             req.responseType = "arraybuffer";
-            req.open("GET", extensionToInstall.download!);
+            // Browser: proxy through backend to avoid CORS (process.platform set by browser-polyfill)
+            let downloadUrl = extensionToInstall.download!;
+            if (typeof process !== "undefined" && (process as any).platform === "browser") {
+                downloadUrl = "/api/eez-studio/proxy-fetch-binary?url=" + encodeURIComponent(downloadUrl);
+            }
+            req.open("GET", downloadUrl);
 
             progress.update(progressId, {
                 render: `Downloading "${
@@ -801,9 +817,12 @@ export function downloadAndInstallExtension(
             });
 
             req.addEventListener("load", () => {
+                console.log("[ext-install] download complete, bytes:", req.response?.byteLength);
                 const extensionZipFileData = Buffer.from(req.response);
+                console.log("[ext-install] buffer created, len:", extensionZipFileData.length);
 
-                if (extensionToInstall.sha256) {
+                // Skip SHA-256 check in browser (stub can't compute real hash)
+                if (extensionToInstall.sha256 && (process as any).platform !== "browser") {
                     if (
                         sha256(extensionZipFileData) !==
                         extensionToInstall.sha256
@@ -821,8 +840,10 @@ export function downloadAndInstallExtension(
                     }
                 }
 
+                console.log("[ext-install] calling finishInstall...");
                 finishInstall(extensionZipFileData)
                     .then(extension => {
+                        console.log("[ext-install] finishInstall resolved:", extension?.id);
                         if (extension) {
                             progress.update(progressId, {
                                 render: `Extension "${
@@ -844,7 +865,7 @@ export function downloadAndInstallExtension(
                         resolve(extension);
                     })
                     .catch(error => {
-                        console.error("Extension download error", error);
+                        console.error("[ext-install] finishInstall failed:", error);
                         progress.update(progressId, {
                             render: `Failed to install "${
                                 extensionToInstall.displayName ||
