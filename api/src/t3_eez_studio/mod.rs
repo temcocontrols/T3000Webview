@@ -14,7 +14,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Mutex;
 use tokio::fs;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::app_state::T3AppState;
 
@@ -325,31 +325,113 @@ async fn exec_command(Json(req): Json<ExecRequest>) -> Json<ExecResponse> {
 ////////////////////////////////////////////////////////////////////////////////
 
 lazy_static::lazy_static! {
-    static ref STORE_DB: Mutex<rusqlite::Connection> = {
+    static ref STORE_DB: Option<Mutex<rusqlite::Connection>> = {
         let db_path = data_root().join("storage.db");
         info!("store_db: opening {}", db_path.display());
-        let conn = rusqlite::Connection::open(&db_path)
-            .expect("Failed to open store database");
-        conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")
-            .expect("Failed to set pragmas");
-        Mutex::new(conn)
+        match rusqlite::Connection::open(&db_path) {
+            Ok(conn) => {
+                if conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;").is_err() {
+                    warn!("store_db: failed to set pragmas, continuing");
+                }
+                info!("store_api: SQLite store ready at {}", db_path.display());
+                Some(Mutex::new(conn))
+            }
+            Err(e) => {
+                warn!("store_db: failed to open {}: {} — store unavailable", db_path.display(), e);
+                None
+            }
+        }
     };
 }
 
 #[derive(Debug, Deserialize)]
 struct StoreRequest {
     action: String,
+    #[serde(default)]
+    sql: String,
+    #[serde(default)]
+    params: Vec<Value>,
+    #[serde(default)]
+    statements: Vec<BatchStatement>,
+    /// Optional SQL to run before the main statement (used to fold BEGIN into first DML)
+    #[serde(default)]
+    prefix: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct BatchStatement {
     sql: String,
     #[serde(default)]
     params: Vec<Value>,
 }
 
+fn bind_params_returning(stmt: &mut rusqlite::Statement, params: &[Value]) -> Result<usize, StatusCode> {
+    bind_params_inner(stmt, params)
+}
+
+fn bind_params_inner(stmt: &mut rusqlite::Statement, params: &[Value]) -> Result<usize, StatusCode> {
+    let converted: Vec<rusqlite::types::Value> = params.iter().map(|v| match v {
+        Value::Null => rusqlite::types::Value::Null,
+        Value::Number(n) => {
+            if let Some(i) = n.as_i64() { rusqlite::types::Value::Integer(i) }
+            else { rusqlite::types::Value::Real(n.as_f64().unwrap_or(0.0)) }
+        }
+        Value::String(s) => rusqlite::types::Value::Text(s.clone()),
+        _ => rusqlite::types::Value::Null,
+    }).collect();
+    let refs: Vec<&dyn rusqlite::types::ToSql> = converted.iter().map(|p| p as &dyn rusqlite::types::ToSql).collect();
+    stmt.execute(&refs[..]).map_err(|e| {
+        error!("store bind_params: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })
+}
+
 async fn store_handler(
     Json(req): Json<StoreRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    let db = STORE_DB.lock().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    info!("store: action={} sql={:.80}", req.action, req.sql);
+    let store = STORE_DB.as_ref().ok_or_else(|| {
+        warn!("store: DB not available");
+        StatusCode::SERVICE_UNAVAILABLE
+    })?;
+    let db = store.lock().map_err(|_| {
+        error!("store: mutex poisoned");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
     match req.action.as_str() {
+        "batch" => {
+            db.execute_batch("BEGIN IMMEDIATE").map_err(|e| {
+                error!("store batch begin: {}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+            let mut last_insert_rowid: i64 = 0;
+            let mut total_changes: i64 = 0;
+            for stmt_req in &req.statements {
+                let mut stmt = db.prepare(&stmt_req.sql).map_err(|e| {
+                    error!("store batch prepare: {}", e);
+                    StatusCode::INTERNAL_SERVER_ERROR
+                })?;
+                let changed = bind_params_returning(&mut stmt, &stmt_req.params)?;
+                total_changes += changed as i64;
+                last_insert_rowid = db.last_insert_rowid();
+            }
+            db.execute_batch("COMMIT").map_err(|e| {
+                error!("store batch commit: {}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+            Ok(Json(serde_json::json!({
+                "lastInsertRowid": last_insert_rowid,
+                "changes": total_changes
+            })))
+        }
         "run" => {
+            // If prefix is set (e.g. "BEGIN IMMEDIATE"), run it first via execute_batch
+            if let Some(ref prefix_sql) = req.prefix {
+                db.execute_batch(prefix_sql).map_err(|e| {
+                    error!("store run prefix: {}", e);
+                    StatusCode::INTERNAL_SERVER_ERROR
+                })?;
+            }
             let mut stmt = db.prepare(&req.sql).map_err(|e| {
                 error!("store run prepare: {}", e);
                 StatusCode::INTERNAL_SERVER_ERROR
@@ -437,6 +519,7 @@ async fn store_handler(
             Ok(Json(serde_json::Value::Array(result)))
         }
         "exec" => {
+            info!("store exec: {:.100}", req.sql);
             db.execute_batch(&req.sql).map_err(|e| {
                 error!("store exec: {}", e);
                 StatusCode::INTERNAL_SERVER_ERROR
@@ -478,7 +561,6 @@ pub fn bridge_routes() -> Router<T3AppState> {
         .route("/api/eez-studio/is-directory", get(is_directory))
         .route("/api/eez-studio/proxy-fetch", get(proxy_fetch))
         .route("/api/eez-studio/proxy-fetch-binary", get(proxy_fetch_binary))
-        .route("/api/eez-studio/store", post(store_handler))
         .route("/api/eez-studio/store", post(store_handler))
         .layer(axum::extract::DefaultBodyLimit::max(50 * 1024 * 1024)) // 50 MB — catalog JSON ~6 MB
 }

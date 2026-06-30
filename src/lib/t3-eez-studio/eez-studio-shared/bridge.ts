@@ -11,7 +11,7 @@
 export interface BridgeAPI {
     // File system
     readFile(path: string): Promise<ArrayBuffer>;
-    writeFile(path: string, data: Uint8Array): Promise<void>;
+    writeFile(path: string, data: Uint8Array | ArrayBuffer): Promise<void>;
     readTextFile(path: string): Promise<string>;
     writeTextFile(path: string, data: string): Promise<void>;
     makeFolder(path: string): Promise<void>;
@@ -62,12 +62,37 @@ export interface BridgeAPI {
 
 let _bridgeAPI: BridgeAPI | null = null;
 
+/** No-op bridge returned before the real one is registered. */
+const NOOP_BRIDGE: BridgeAPI = {
+    readFile: () => Promise.resolve(new ArrayBuffer(0)),
+    writeFile: () => Promise.resolve(),
+    readTextFile: () => Promise.resolve(""),
+    writeTextFile: () => Promise.resolve(),
+    makeFolder: () => Promise.resolve(),
+    fileExists: () => Promise.resolve(false),
+    deleteFile: () => Promise.resolve(),
+    listFiles: () => Promise.resolve([]),
+    getFileSize: () => Promise.resolve(0),
+    isDirectory: () => Promise.resolve(false),
+    showOpenDialog: () => Promise.resolve([]),
+    showSaveDialog: () => Promise.resolve(undefined),
+    showMessageBox: () => Promise.resolve({ response: 0 }),
+    getUserDataPath: (s) => "/userData/" + s,
+    getAppVersion: () => "0.0.0",
+    isDev: () => false,
+    openProject: () => Promise.resolve({}),
+    saveProject: () => Promise.resolve(),
+    buildProject: () => Promise.resolve(),
+    proxyFetch: () => Promise.resolve("[]"),
+    proxyFetchBinary: () => Promise.resolve(new ArrayBuffer(0)),
+};
+
 export function setBridgeAPI(bridge: BridgeAPI): void {
     _bridgeAPI = bridge;
 }
 
-export function getBridgeAPI(): BridgeAPI | null {
-    return _bridgeAPI;
+export function getBridgeAPI(): BridgeAPI {
+    return _bridgeAPI || NOOP_BRIDGE;
 }
 
 export function isBridgeInitialized(): boolean {

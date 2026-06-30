@@ -93,10 +93,10 @@ export async function writeBinaryData(
     if (typeof data === "string") {
         buffer = new TextEncoder().encode(data).buffer;
     } else if (data instanceof Uint8Array) {
-        buffer = data.buffer.slice(
+        buffer = (data.buffer.slice(
             data.byteOffset,
             data.byteOffset + data.byteLength
-        );
+        ) as ArrayBuffer);
     } else {
         buffer = data;
     }
@@ -136,7 +136,7 @@ export async function zipExtract(
     zipFilePath: string,
     destFolderPath: string
 ): Promise<void> {
-    console.log("[ext-install] zipExtract:", zipFilePath, "→", destFolderPath);
+    console.log("[ext-install] zipExtract:", zipFilePath, "->", destFolderPath);
     // In browser, we fetch the zip and extract with JSZip
     const data = await getBridgeAPI().readFile(zipFilePath);
     console.log("[ext-install] zipExtract read data, bytes:", data?.byteLength);
@@ -233,7 +233,7 @@ export async function renameFile(
     oldPath: string,
     newPath: string
 ): Promise<void> {
-    console.log("[ext-install] renameFile:", oldPath, "→", newPath);
+    console.log("[ext-install] renameFile:", oldPath, "->", newPath);
     // Try as directory first (most common: extension temp → final)
     const isDir = await getBridgeAPI().isDirectory(oldPath);
     console.log("[ext-install] renameFile isDir:", isDir);
@@ -459,13 +459,12 @@ export async function getTempDirPath(
 ): Promise<[string, () => void]> {
     const id = Math.random().toString(36).substring(2, 10);
     const dirPath = "/eez-temp/" + id;
-    await getBridgeAPI().makeFolder(dirPath);
+    const b = getBridgeAPI();
+    if (b) await b.makeFolder(dirPath);
     const cleanup = async () => {
         try {
             await removeFolder(dirPath);
-        } catch (_) {
-            // ignore
-        }
+        } catch (_) { }
     };
     return [dirPath, cleanup];
 }

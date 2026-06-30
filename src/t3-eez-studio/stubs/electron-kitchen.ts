@@ -20,7 +20,7 @@ function writeMRU(value: any[]) {
 
 const ipcSyncDefaults: Record<string, any> = {
     getDbPaths: [],
-    getActiveDbPath: "/storage.db",
+    getActiveDbPath: "/userData/storage.db",
     getSettings: {},
     getMRU: [],
     getReservedKeybindings: [],

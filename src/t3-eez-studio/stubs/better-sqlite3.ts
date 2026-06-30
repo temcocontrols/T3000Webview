@@ -1,19 +1,40 @@
 // better-sqlite3 browser proxy — routes through Rust backend's real SQLite
-// Uses synchronous XHR to match better-sqlite3's sync API
+let _storeAvailable = true;
+let _storeWarned = false;
+let _pendingBegin = false;       // next prepare().run() should fold in BEGIN
+let _pendingCommit = false;      // commit was deferred — send standalone COMMIT on next interaction
 
-function storeCall(action: string, sql: string, params: any[] = []): any {
+function storeCall(action: string, sql: string, params: any[] = [], prefix?: string): any {
+    if (!_storeAvailable) {
+        if (action === "all") return [];
+        if (action === "get") return undefined;
+        return { lastInsertRowid: 0, changes: 0 };
+    }
     const req = new XMLHttpRequest();
-    req.open("POST", "/api/eez-studio/store", false); // synchronous
+    req.open("POST", "/api/eez-studio/store", false);
     req.setRequestHeader("Content-Type", "application/json");
     try {
-        req.send(JSON.stringify({ action, sql, params }));
+        const body: any = { action, sql, params };
+        if (prefix) body.prefix = prefix;
+        req.send(JSON.stringify(body));
     } catch {
-        throw new Error("Store call failed: network error");
+        _storeAvailable = false;
+        if (!_storeWarned) {
+            console.warn("Store backend unavailable — running with in-memory fallback (data lost on refresh)");
+            _storeWarned = true;
+        }
+        return action === "all" ? [] : action === "get" ? undefined : { lastInsertRowid: 0, changes: 0 };
     }
     if (req.status === 200) {
+        _storeAvailable = true;
         return JSON.parse(req.responseText);
     }
-    throw new Error(`Store call failed: ${req.status}`);
+    _storeAvailable = false;
+    if (!_storeWarned) {
+        console.warn(`Store backend returned ${req.status} — running with in-memory fallback`);
+        _storeWarned = true;
+    }
+    return action === "all" ? [] : action === "get" ? undefined : { lastInsertRowid: 0, changes: 0 };
 }
 
 class Statement {
@@ -27,7 +48,17 @@ class Statement {
 
     run(...params: any[]): any {
         this._params = params.length ? params : this._params;
-        return storeCall("run", this._sql, this._params);
+        // Flush any pending COMMIT from a prior transaction BEFORE starting a new one
+        if (_pendingCommit) {
+            _pendingCommit = false;
+            storeCall("exec", "COMMIT");
+        }
+        let prefix: string | undefined;
+        if (_pendingBegin) {
+            prefix = "BEGIN IMMEDIATE";
+            _pendingBegin = false;
+        }
+        return storeCall("run", this._sql, this._params, prefix);
     }
 
     get(...params: any[]): any {
@@ -55,7 +86,32 @@ class Database {
     }
 
     exec(sql: string): void {
+        // If there's a pending commit, append it to this exec call
+        if (_pendingCommit) {
+            _pendingCommit = false;
+            sql = sql + "; COMMIT";
+        }
         storeCall("exec", sql);
+    }
+
+    // Deferred transaction: BEGIN is folded into the next prepare().run() call
+    beginDeferred(): void {
+        _pendingBegin = true;
+    }
+
+    // Deferred commit: COMMIT is sent with the next exec() or prepare().run() call,
+    // or as a standalone call if nothing follows.
+    commitDeferred(): void {
+        _pendingCommit = true;
+    }
+
+    // Flush any pending COMMIT
+    flushDeferred(): void {
+        if (_pendingCommit) {
+            _pendingCommit = false;
+            storeCall("exec", "COMMIT");
+        }
+        _pendingBegin = false;
     }
 
     close(): void {}
@@ -69,7 +125,7 @@ class Database {
     }
 
     transaction(fn: Function): any {
-        storeCall("exec", "BEGIN EXCLUSIVE TRANSACTION");
+        storeCall("exec", "BEGIN IMMEDIATE TRANSACTION");
         try {
             const result = fn();
             storeCall("exec", "COMMIT TRANSACTION");

@@ -96,7 +96,7 @@ const t3: BridgeAPI = {
     showOpenDialog: (o) => new Promise(r => {
         const i = document.createElement("input");
         i.type = "file";
-        if (o.properties && o.properties.includes("openDirectory")) {
+        if (o?.properties?.includes("openDirectory")) {
             (i as any).webkitdirectory = true;
         }
         i.onchange = () => r(Array.from(i.files || []).map((f: any) => f.webkitRelativePath || f.name));
@@ -126,3 +126,7 @@ export function initEezBridge() {
     setBridgeAPI(t3);
     checkBackendHealth(); // fire-and-forget: detect backend status early
 }
+
+// Auto-register the bridge at module-load time so getBridgeAPI() never returns
+// null, even when code runs before the first React render.
+setBridgeAPI(t3);

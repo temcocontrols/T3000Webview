@@ -701,7 +701,7 @@ export function createStore({
     ////////////////////////////////////////////////////////////////////////////////
 
     (function setupTable() {
-        db.exec(`BEGIN EXCLUSIVE TRANSACTION`);
+        db.exec(`BEGIN IMMEDIATE TRANSACTION`);
 
         let version;
 
@@ -985,13 +985,13 @@ class UndoManager {
 
         let transaction = this.undoStack[this.undoStack.length - 1];
 
-        db.exec(`BEGIN EXCLUSIVE TRANSACTION`);
+        (db as any).beginDeferred();
 
         for (let i = transaction.commands.length - 1; i >= 0; i--) {
             transaction.commands[i].undo.exec();
         }
 
-        db.exec(`COMMIT TRANSACTION`);
+        (db as any).commitDeferred();
 
         for (let i = transaction.commands.length - 1; i >= 0; i--) {
             sendMessage(
@@ -1016,13 +1016,13 @@ class UndoManager {
 
         let transaction = this.redoStack[this.redoStack.length - 1];
 
-        db.exec(`BEGIN EXCLUSIVE TRANSACTION`);
+        (db as any).beginDeferred();
 
         for (let i = 0; i < transaction.commands.length; i++) {
             transaction.commands[i].redo.exec();
         }
 
-        db.exec(`COMMIT TRANSACTION`);
+        (db as any).commitDeferred();
 
         for (let i = 0; i < transaction.commands.length; i++) {
             sendMessage(
@@ -1046,7 +1046,8 @@ class UndoManager {
             label: label,
             commands: []
         };
-        db.exec(`BEGIN EXCLUSIVE TRANSACTION`);
+        // Deferred: BEGIN is folded into the first prepare().run() call to save an HTTP round-trip
+        (db as any).beginDeferred();
     }
 
     execCommand(command: ICommand) {
@@ -1064,7 +1065,8 @@ class UndoManager {
             return;
         }
 
-        db.exec(`COMMIT TRANSACTION`);
+        // Deferred: COMMIT piggybacks on the next exec() or prepare().run() call
+        (db as any).commitDeferred();
 
         this.undoStack.push(this.currentTransaction);
 
