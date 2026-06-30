@@ -138,29 +138,45 @@ export class ExtractFont implements IFontExtract {
         //
 
         try {
-            const workerResult = await new Promise<any>((resolve, reject) => {
-                const workerPath = path.join(
-                    __dirname,
-                    "lvgl-worker.js"
-                );
-                const worker = new Worker(workerPath);
+            let workerResult: any;
 
-                worker.onmessage = (e: MessageEvent) => {
-                    worker.terminate();
-                    if (e.data.error) {
-                        reject(new Error(e.data.error));
-                    } else {
-                        resolve(e.data);
-                    }
-                };
+            if (typeof window !== "undefined") {
+                // Browser: use backend API for font extraction
+                const resp = await fetch("/api/eez-studio/extract-font", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ args, output })
+                });
+                if (!resp.ok) {
+                    throw new Error(`Font extraction failed (HTTP ${resp.status})`);
+                }
+                workerResult = await resp.json();
+            } else {
+                // Electron: use Worker
+                workerResult = await new Promise<any>((resolve, reject) => {
+                    const workerPath = path.join(
+                        __dirname,
+                        "lvgl-worker.js"
+                    );
+                    const worker = new Worker(workerPath);
 
-                worker.onerror = (e: ErrorEvent) => {
-                    worker.terminate();
-                    reject(new Error(e.message));
-                };
+                    worker.onmessage = (e: MessageEvent) => {
+                        worker.terminate();
+                        if (e.data.error) {
+                            reject(new Error(e.data.error));
+                        } else {
+                            resolve(e.data);
+                        }
+                    };
 
-                worker.postMessage({ args, output });
-            });
+                    worker.onerror = (e: ErrorEvent) => {
+                        worker.terminate();
+                        reject(new Error(e.message));
+                    };
+
+                    worker.postMessage({ args, output });
+                });
+            }
 
             this.fontData = workerResult.fontData;
             const lvglBinFile = workerResult.lvglBinFile;

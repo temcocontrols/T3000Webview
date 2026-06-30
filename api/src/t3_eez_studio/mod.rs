@@ -269,6 +269,77 @@ async fn proxy_fetch_binary(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Font extraction — runs lv_font_conv via Node.js child process
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Deserialize)]
+struct FontExtractRequest {
+    args: Value,
+    output: String,
+}
+
+async fn extract_font(
+    Json(req): Json<FontExtractRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let script_path = std::env::current_dir()
+        .unwrap_or_else(|_| PathBuf::from("."))
+        .join("extract-font.mjs");
+
+    if !script_path.exists() {
+        error!("extract_font: script not found at {}", script_path.display());
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    let input = serde_json::to_string(&serde_json::json!({
+        "args": req.args,
+        "output": req.output,
+    })).map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    let mut child = Command::new("node")
+        .arg(&script_path)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|e| {
+            error!("extract_font: failed to spawn node: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    // Write input to stdin
+    if let Some(ref mut stdin) = child.stdin {
+        use std::io::Write;
+        stdin.write_all(input.as_bytes()).map_err(|e| {
+            error!("extract_font: failed to write stdin: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    }
+
+    let result = child.wait_with_output().map_err(|e| {
+        error!("extract_font: node process error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    if !result.status.success() {
+        let stderr = String::from_utf8_lossy(&result.stderr);
+        error!("extract_font: node exited with {}: {}", result.status, stderr);
+        // Try to parse error from stderr (might be JSON or plain text)
+        if let Ok(err_val) = serde_json::from_str::<Value>(&stderr) {
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    let stdout = String::from_utf8_lossy(&result.stdout);
+    let parsed: Value = serde_json::from_str(&stdout).map_err(|e| {
+        error!("extract_font: failed to parse output: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    Ok(Json(parsed))
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Health check — used by browser frontend to detect backend availability
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -570,6 +641,7 @@ pub fn bridge_routes() -> Router<T3AppState> {
         .route("/api/eez-studio/is-directory", get(is_directory))
         .route("/api/eez-studio/proxy-fetch", get(proxy_fetch))
         .route("/api/eez-studio/proxy-fetch-binary", get(proxy_fetch_binary))
+        .route("/api/eez-studio/extract-font", post(extract_font))
         .route("/api/eez-studio/store", post(store_handler))
         .layer(axum::extract::DefaultBodyLimit::max(50 * 1024 * 1024)) // 50 MB — catalog JSON ~6 MB
 }
