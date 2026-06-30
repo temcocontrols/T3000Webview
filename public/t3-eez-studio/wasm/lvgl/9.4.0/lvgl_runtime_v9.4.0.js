@@ -90,13 +90,24 @@ module["exports"] = function (postWorkerToRendererMessage) {
     };
 
     Module.locateFile = function (path, scriptDirectory) {
-        if (scriptDirectory) return scriptDirectory + path;
-        var s=document.currentScript; return new URL(path,(s&&s.src)||location.href).href;
+        // Prefer the explicit URL set by the host (handles Vite/Quasar path rewriting)
+        if (typeof globalThis !== "undefined" && globalThis.__lvglWasmUrl && path.endsWith(".wasm")) {
+            return globalThis.__lvglWasmUrl;
+        }
+        // Fallback: locate next to the loading script
+        var scripts = document.getElementsByTagName("script");
+        var src = scripts[scripts.length - 1].src;
+        return src.substring(0, src.lastIndexOf("/") + 1) + path;
     };
 
     runWasmModule(Module);
 
     return Module;
+}
+
+// Browser global (script-tag loading) – needed by DirectWasmRuntime
+if (typeof globalThis !== "undefined") {
+    globalThis.LVGLWasmRuntime = module["exports"];
 }
 
 function runWasmModule(Module) {

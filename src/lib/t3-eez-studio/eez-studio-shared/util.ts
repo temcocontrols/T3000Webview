@@ -176,7 +176,7 @@ export function compareVersions(v1: string, v2: string) {
         return 0; // treat missing values as equal
     }
 
-    console.log("compareVersions", v1, v2);
+    // console.log("compareVersions", v1, v2);
 
     const v1Parts = v1.toString().split(".");
     const v2Parts = v2.toString().split(".");

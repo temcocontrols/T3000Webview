@@ -818,8 +818,9 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
                         this.createStyles();
 
                         const pageObj = this.page.lvglCreate(this, 0);
-                        if (!pageObj) {
-                            console.error("pageObj is undefined");
+                        if (pageObj == null) {
+                            console.error("pageObj is null/undefined");
+                            return;
                         }
 
                         for (const callback of this.postCreateCallbacks) {
@@ -1191,6 +1192,7 @@ export class LVGLPageViewerRuntime extends LVGLPageRuntime {
     async mount() {
         // Attach build assetsMap to the WASM module for lvglCreate access
         (this.wasm as any).assetsMap = (this.runtime as any).assetsMap;
+        console.log("[lvgl-mount] attached assetsMap, flowIndexes:", !!((this.wasm as any).assetsMap?.flowIndexes), "flows:", (this.wasm as any).assetsMap?.flows?.length);
 
         this.lvglGroupObjects = [];
 
@@ -1818,8 +1820,8 @@ export class LVGLStylesEditorRuntime extends LVGLPageRuntime {
                     }
 
                     const pageObj = this.page.lvglCreate(this, 0);
-                    if (!pageObj) {
-                        console.error("pageObj is undefined");
+                    if (pageObj == null) {
+                        console.error("pageObj is null/undefined");
                         return;
                     }
 
