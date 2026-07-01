@@ -1348,11 +1348,12 @@ The **Firmware JSON** strips all editor-only data, keeping only what the control
 |---|---|
 | `label` | `long_mode`, `recolor` |
 | `button` | *(uses `style` + `events`)* |
-| `arc`, `bar` | `min`, `max`, `value`, `value_type` |
-| `image` | `src` |
+| `arc`, `bar`, `slider` | `min`, `max`, `value`, `value_type`, `value_left`, `value_left_type`, `mode` |
+| `image` | `src`, `rotation`, `pivot_x`, `pivot_y` |
 | `switch` | `checked`, `checked_type` |
 | `panel` | *(uses `children`)* |
 | `dropdown` | `options`, `selected` |
+| `user_widget` | `widget` |
 
 ### B.4 Final Format
 
@@ -1443,6 +1444,40 @@ Based on `Smart Home (LVGL 9.x).eez-project` — `heating_screen` transformed:
           "DEFAULT": { "arc_color": "#00AAFF", "arc_width": 4, "bg_opa": 30 }
         }
       },
+      "lock_switch": {
+        "type": "Widget",
+        "sub_type": "switch",
+        "x_pos": 520, "y_pos": 300, "width": 60, "height": 30,
+        "obj_text": "",
+        "text_type": "literal",
+        "checked": "zones[selected_zone].locked",
+        "checked_type": "expression",
+        "style": {
+          "DEFAULT": { "bg_img_src": "switch_off" },
+          "CHECKED": { "bg_img_src": "switch_on" }
+        }
+      },
+      "header_1": {
+        "type": "Widget",
+        "sub_type": "user_widget",
+        "x_pos": 0, "y_pos": 0, "width": 800, "height": 75,
+        "obj_text": "",
+        "text_type": "literal",
+        "widget": "header"
+      },
+      "lighting_slider": {
+        "type": "Widget",
+        "sub_type": "slider",
+        "x_pos": 176, "y_pos": 392, "width": 192, "height": 38,
+        "obj_text": "",
+        "text_type": "literal",
+        "min": 0, "max": 100,
+        "value": "zones[selected_zone].lighting_percent",
+        "value_type": "expression",
+        "style": {
+          "DEFAULT": { "bg_opa": 0, "border_opa": 0 }
+        }
+      },
       "heating_temperature_panel": {
         "type": "Widget",
         "sub_type": "panel",
@@ -1487,6 +1522,7 @@ Based on `Smart Home (LVGL 9.x).eez-project` — `heating_screen` transformed:
 | `LVGLSwitchWidget` | `"switch"` |
 | `LVGLPanelWidget` | `"panel"` |
 | `LVGLDropdownWidget` | `"dropdown"` |
+| `LVGLSliderWidget` | `"slider"` |
 | `LVGLUserWidgetWidget` | `"user_widget"` + `"widget": "<name>"` |
 | `LVGLScreenWidget` | *(unwrapped — children promoted to `widgets{}`)* |
 | `LVGLActionComponent` | *(removed)* |
