@@ -158,13 +158,14 @@ module.exports = configure(function (/* ctx */) {
         // Optimize deps — noDiscovery prevents scanning the massive EEZ tree
         viteConf.optimizeDeps = viteConf.optimizeDeps || {};
         viteConf.optimizeDeps.noDiscovery = true;
-        // Include pngjs + lz4js so the lv_img_conv_v9 sandbox can require() them
+        // Include deps needed at runtime by lv_img_conv_v9 sandbox.
+        // pngjs is loaded via <script> tag — NOT via Vite import()
         viteConf.optimizeDeps.include = (viteConf.optimizeDeps.include || []).concat([
-          'pngjs', 'lz4js', 'util', 'stream', 'events'
+          'util', 'stream', 'events', 'buffer', 'lz4js'
         ]);
         // Native Node.js modules that can't be bundled for browser
         viteConf.optimizeDeps.exclude = (viteConf.optimizeDeps.exclude || []).concat([
-          'quantize'
+          'quantize', 'pngjs'
         ]);
 
         viteConf.resolve = viteConf.resolve || {};

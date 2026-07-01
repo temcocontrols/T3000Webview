@@ -53,10 +53,38 @@ struct IsDirectoryResponse {
 // Helpers
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Resolve a user-supplied path to an absolute path under T3Web/t3-eez
+/// Resolve a user-supplied path to an absolute path under T3Web/t3-eez.
+///
+/// `PathBuf::join` does NOT normalise `..` components, so we do it manually.
+/// Additionally, the LVGL WASM runtime prepends a virtual `/wasm/` prefix to
+/// paths — if `..` components would escape `data_root()`, we cap them so the
+/// result always stays within `data_root()`.
 fn resolve_path(base: &str, user_path: &str) -> PathBuf {
     let cleaned = user_path.trim_start_matches('/').trim_start_matches('\\');
-    PathBuf::from(base).join(cleaned)
+    let joined = PathBuf::from(base).join(cleaned);
+
+    let root = PathBuf::from(base);
+    let root_depth = root.components().count();
+
+    let mut normalized = PathBuf::new();
+    let mut depth: usize = 0;
+    for component in joined.components() {
+        match component {
+            std::path::Component::ParentDir => {
+                // Don't pop past data_root() — cap at the root boundary
+                if depth > root_depth {
+                    normalized.pop();
+                    depth -= 1;
+                }
+            }
+            std::path::Component::CurDir => {}
+            other => {
+                normalized.push(other);
+                depth += 1;
+            }
+        }
+    }
+    normalized
 }
 
 fn data_root() -> PathBuf {
@@ -73,6 +101,7 @@ async fn read_text_file(
     Query(q): Query<PathQuery>,
 ) -> Result<String, StatusCode> {
     let full_path = resolve_path(&data_root().to_string_lossy(), &q.path);
+    info!("read_text_file: raw={} → resolved={}", q.path, full_path.display());
     match fs::read_to_string(&full_path).await {
         Ok(content) => Ok(content),
         Err(e) => {

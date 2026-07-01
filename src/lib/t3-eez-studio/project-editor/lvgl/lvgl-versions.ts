@@ -31,19 +31,52 @@ async function getLVGLImageClass(): Promise<any> {
     if (!resp.ok) throw new Error("Failed to fetch lv_img_conv_v9: " + resp.status);
     const src = await resp.text();
 
-    // Load npm deps via Vite's ESM import (works in browser)
-    const [pngjsModule, lz4jsModule] = await Promise.all([
-        import("pngjs"),
+    // Load lz4js (pure JS — safe via Vite import) and pngjs via script tag
+    // to completely bypass Vite pre-bundling (which fails on util.inherits).
+    const [lz4jsModule] = await Promise.all([
         import("lz4js")
     ]);
 
-    // Polyfill Node.js builtins for the browser
-    // pngjs depends on util, stream, events, and Buffer
+    // Ensure the full Buffer polyfill is globally available before loading
+    // pngjs, so its internal sliced buffers get readUInt32BE etc.
+    var _savedGlobalBuffer = (window as any).Buffer;
+    (window as any).Buffer = (await import("buffer")).Buffer;
+
+    // Load pngjs/browser.js UMD via script tag — it sets window.png.
+    // Use Vite's ?url import for the resolved static file URL (no bundling).
+    var _pngjs: any = (window as any).png;  // may already be cached
+    if (!_pngjs || typeof _pngjs.PNG !== "function") {
+        const pngjsUrl = (await import("pngjs/browser.js?url") as any).default;
+        _pngjs = await new Promise((resolve, reject) => {
+            var s = document.createElement("script");
+            s.src = pngjsUrl;
+            s.onload = () => {
+                var mod = (window as any).png;
+                if (mod && typeof mod.PNG === "function") resolve(mod);
+                else reject(new Error("pngjs UMD did not set window.png.PNG"));
+            };
+            s.onerror = (e: any) => reject(new Error("Failed to load pngjs/browser.js: " + e));
+            document.head.appendChild(s);
+        });
+    }
+    console.log("[DIAG-LVGL-PNGJS] loaded via script, PNG:", typeof _pngjs?.PNG);
+
+    // Polyfill Node.js builtins for the browser.
     var EE = (await import("events")).EventEmitter;
-    var StreamTransform = function() { EE.call(this); };
-    StreamTransform.prototype = Object.create(EE.prototype);
-    StreamTransform.prototype.constructor = StreamTransform;
-    StreamTransform.prototype._transform = function(_chunk: any, _enc: any, cb: any) { cb(); };
+
+    var _utilInherits = function(ctor: any, superCtor: any) {
+        if (typeof superCtor !== "function") {
+            throw new TypeError("The super constructor to `inherits` must be a function, got " + String(superCtor));
+        }
+        ctor.super_ = superCtor;
+        Object.setPrototypeOf(ctor.prototype, superCtor.prototype);
+    };
+
+    // Minimal stream polyfill for lv_img_conv_v9 (it references stream only
+    // for pngjs calls; pngjs/browser.js handles its own stream internally).
+    function _DummyStream(this: any) { EE.call(this); }
+    _DummyStream.prototype = Object.create(EE.prototype);
+    _DummyStream.prototype.constructor = _DummyStream;
 
     const polyfills: Record<string, any> = {
         fs: {
@@ -60,28 +93,30 @@ async function getLVGLImageClass(): Promise<any> {
         os: { tmpdir: function() { return "/tmp"; }, homedir: function() { return "/"; } },
         child_process: { spawnSync: function() { throw new Error("child_process not available"); } },
         events: { EventEmitter: EE },
-        stream: { Transform: StreamTransform },
-        util: {
-            inherits: function(ctor: any, superCtor: any) {
-                ctor.super_ = superCtor;
-                ctor.prototype = Object.create(superCtor.prototype, {
-                    constructor: { value: ctor, enumerable: false, writable: true, configurable: true }
-                });
-            }
-        },
-        pngjs: (pngjsModule as any).default || pngjsModule,
+        stream: { Transform: _DummyStream, Readable: _DummyStream, Writable: _DummyStream, Duplex: _DummyStream, PassThrough: _DummyStream, Stream: _DummyStream },
+        util: { inherits: _utilInherits },
+        pngjs: _pngjs,
         lz4js: (lz4jsModule as any).default || lz4jsModule,
         quantize: null,
     };
 
     // Execute the raw source in a sandboxed scope
     var moduleObj: any = { exports: {} };
+    var _requireLog: string[] = [];
     var fakeRequire = function(name: string) {
+        _requireLog.push("require(" + name + ")");
         if (polyfills.hasOwnProperty(name)) return polyfills[name];
         throw new Error("lv_img_conv_v9 require(\"" + name + "\") not polyfilled");
     };
-    var fn = new Function("module", "exports", "require", "__filename", "__dirname", src);
-    fn(moduleObj, moduleObj.exports, fakeRequire, url, url.replace(/\/[^/]+$/, ""));
+    try {
+        var fn = new Function("module", "exports", "require", "__filename", "__dirname", src);
+        fn(moduleObj, moduleObj.exports, fakeRequire, url, url.replace(/\/[^/]+$/, ""));
+        console.log("[DIAG-LVGL-SANDBOX] require log:", _requireLog.join(" → "));
+    } catch (e: any) {
+        console.error("[DIAG-LVGL-SANDBOX] init error:", e.message || e);
+        console.error("[DIAG-LVGL-SANDBOX] require log before crash:", _requireLog.join(" → "));
+        throw e;
+    }
 
     _cachedLVGLImage = moduleObj.exports.LVGLImage;
     if (!_cachedLVGLImage) throw new Error("LVGLImage not found in lv_img_conv_v9 module");
