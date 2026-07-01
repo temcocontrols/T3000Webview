@@ -1291,7 +1291,7 @@ The `.eez-project` JSON is the **editor format** — it contains everything EEZ 
 
 The hardware controller does not need any of this. It has fonts and images pre-loaded in flash, already knows its display resolution and LVGL version, and renders widgets from properties — not from editor metadata.
 
-The **Firmware JSON** strips all editor-only data, keeping only what the controller needs: widget positions, style overrides, event bindings, and font/image **names** (not binaries). This reduces payload size by two orders of magnitude and produces a consistent, easy-to-parse structure.
+The **Firmware JSON** strips all editor-only data, keeping only what the controller needs: widget positions, style overrides, event bindings, and font/image **names** (not binaries). Each screen is a separate JSON file — transferred individually so memory usage stays low and screens can be updated independently.
 
 ### B.2 What Changed
 
@@ -1602,5 +1602,7 @@ void parse_widgets(cJSON *widgets, lv_obj_t *parent) {
     }
 }
 ```
+
+
 
 
