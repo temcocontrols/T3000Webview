@@ -9,13 +9,30 @@ The `.eez-project` file is a JSON document that describes a complete LVGL UI pro
 - The Rust backend (provides font extraction & file management)
 - The embedded firmware (creates LVGL widgets dynamically on the device)
 
+### Two Output Formats
+
+EEZ Studio produces **two different JSON formats** — one for the editor, one for the device:
+
 ```mermaid
-flowchart LR
-    A[EEZ Studio Browser] -->|Export .eez-project JSON| B[BACnet Transfer]
-    B --> C[Hardware Firmware]
-    C -->|Parse JSON| D[EEZ Embedded Runtime]
-    D -->|Create widgets| E[LVGL Display]
+flowchart TD
+    A[EEZ Studio Browser]
+    A -->|"Save" button| B[.eez-project JSON]
+    A -->|"Deploy to Device" button| C[Firmware JSON]
+    B --> D[Disk / Editor reload]
+    C --> E[BACnet Transfer]
+    E --> F[Hardware Firmware]
+    F -->|Parse JSON| G[EEZ Embedded Runtime]
+    G -->|Create widgets| H[LVGL Display]
+
+    H -.->|"Import from Device"| I[Reverse transform]
+    I -.-> A
 ```
+
+| Button | Output | Consumer | Size (Smart Home example) |
+|---|---|---|---|
+| **Save** | `.eez-project` JSON | Editor (reopen), build system | ~1.79 MB (full embedded assets) |
+| **Deploy to Device** | Per-screen firmware JSON | Hardware firmware | ~30 KB per screen (stripped) |
+| **Import from Device** | `.eez-project` JSON (reconstructed) | Editor (open existing device UI) | Reverse of Deploy |
 
 ---
 
@@ -1263,3 +1280,267 @@ register_font(font->name, lvgl_font);
 | Image encoding | Raw base64, format specified via `format` string | `data:image/png;base64,...` data URI, always PNG |
 | LVGL version | `"8.4.0"` | `"9.0"`, `"9.2.2"`, `"9.3.0"`, `"9.4.0"`, `"9.5.0"` |
 | Rendering engine field | Not present | `renderingEngine: "LVGL"` |
+
+---
+
+## Appendix B: Firmware JSON Format (Deploy to Device)
+
+### B.1 Why
+
+The `.eez-project` JSON is **1.79 MB** — far too large for BACnet transfer to a memory-constrained controller.
+
+| What | .eez-project | Firmware JSON | Savings |
+|---|---|---|---|
+| Fonts | 801 KB (base64 TTF) | 0.2 KB (name+size) | 99.9% |
+| Bitmaps | 700 KB (base64 PNG) | 0.3 KB (name only) | 99.9% |
+| Settings | Present | Stripped | 100% |
+| Editor internals | `objID`, unit fields, flags | Stripped | — |
+| **Total** | **~1.79 MB** | **~7 KB per screen** | **99.6%** |
+
+The firmware has fonts and images pre-loaded in flash — only names are needed.
+
+### B.2 What Changed
+
+| .eez-project field | Firmware JSON | Action |
+|---|---|---|
+| `type: "LVGLLabelWidget"` | `type: "Widget"` + `sub_type: "label"` | Fixed `type` + type in `sub_type` |
+| `type: "LVGLButtonWidget"` | `type: "Widget"` + `sub_type: "button"` | Same rule for all |
+| `type: "LVGLScreenWidget"` | *(unwrapped)* | Children promoted to screen root |
+| `type: "LVGLActionComponent"` | *(removed)* | Flow logic, not UI |
+| `left`, `top` | `x_pos`, `y_pos` | Renamed (present on every widget) |
+| `width`, `height` | `width`, `height` | Unchanged |
+| `text`, `textType` | `obj_text`, `text_type` | Renamed (present on every widget) |
+| `identifier` | *(becomes key name)* | `"heating_button_1": {...}` |
+| `eventHandlers[]` | `events: { EVENT: {...} }` | Array → flat object |
+| `localStyles.definition` | `style` | Flattened one level |
+| `embeddedFontFile` (base64 TTF) | `{name, size}` in `fonts[]` | Stripped, names only |
+| `image` (base64 PNG) | `"name"` in `bitmaps[]` | Stripped, names only |
+| `settings`, `themes`, `lvglStyles` | *(removed)* | Hardware-known |
+| `objID`, `*Unit`, `*FlagType`, `states`, `timeline` | *(removed)* | Editor-only |
+
+### B.3 Consistent Widget Structure
+
+**Every widget has these 8 fields always present:**
+
+| Field | Type | Always | Arc example | Label example |
+|---|---|---|---|---|
+| `type` | string | `"Widget"` | `"Widget"` | `"Widget"` |
+| `sub_type` | string | ✅ | `"arc"` | `"label"` |
+| `x_pos` | number | ✅ | `480` | `208` |
+| `y_pos` | number | ✅ | `120` | `160` |
+| `width` | number | ✅ | `80` | `200` |
+| `height` | number | ✅ | `80` | `23` |
+| `obj_text` | string | ✅ | `""` | `"zones[...].temperature"` |
+| `text_type` | string | ✅ | `"literal"` | `"expression"` |
+
+**Optional on any widget:**
+- `style` — per-state overrides (`DEFAULT`, `PRESSED`, `CHECKED`, `DISABLED`)
+- `events` — handlers (`CLICKED`, `VALUE_CHANGED`, `PRESSED`, etc.)
+- `children` — nested widgets (same structure recursively)
+
+**Type-specific — appended only when needed:**
+
+| `sub_type` | Extra fields |
+|---|---|
+| `label` | `long_mode`, `recolor` |
+| `button` | *(uses `style` + `events`)* |
+| `arc`, `bar` | `min`, `max`, `value`, `value_type` |
+| `image` | `src` |
+| `switch` | `checked`, `checked_type` |
+| `panel` | *(uses `children`)* |
+| `dropdown` | `options`, `selected` |
+
+### B.4 Final Format
+
+Based on `Smart Home (LVGL 9.x).eez-project` — `heating_screen` transformed:
+
+```json
+{
+  "heating_screen": {
+    "fonts": [
+      { "name": "regular_16", "size": 16 },
+      { "name": "regular_21", "size": 21 },
+      { "name": "regular_36", "size": 36 },
+      { "name": "bold_17",    "size": 17 },
+      { "name": "bold_21",    "size": 21 },
+      { "name": "bold_23",    "size": 23 }
+    ],
+    "bitmaps": [
+      "background_1", "background_2", "background_3",
+      "heating_button", "heating_button_hoover",
+      "security_button", "security_button_hoover",
+      "lighting_button", "lighting_button_hoover",
+      "face_0", "face_1", "face_2",
+      "arrow_next", "arrow_prev", "arrow_next_hover", "arrow_prev_hoover",
+      "switch_on", "switch_off", "light_bulb", "slider_lighting",
+      "save", "saved", "checkmark", "big_checkmark",
+      "header_menu", "button_main", "account_box",
+      "temperature_background", "power_background",
+      "watch", "slider_indicator", "slider_knob",
+      "garage_arrows", "garage_arrows_hoover",
+      "arrow_account", "arrow_account_hoover"
+    ],
+    "widgets": {
+      "background": {
+        "type": "Widget",
+        "sub_type": "image",
+        "x_pos": 0, "y_pos": 0, "width": 800, "height": 480,
+        "obj_text": "",
+        "text_type": "literal",
+        "src": "background_1"
+      },
+      "heating_button_1": {
+        "type": "Widget",
+        "sub_type": "button",
+        "x_pos": 31, "y_pos": 90, "width": 111, "height": 114,
+        "obj_text": "",
+        "text_type": "literal",
+        "style": {
+          "DEFAULT":  { "bg_img_src": "heating_button", "bg_opa": 0, "border_opa": 0, "shadow_opa": 0 },
+          "PRESSED":  { "bg_img_src": "heating_button_hoover", "bg_opa": 255 },
+          "CHECKED":  { "bg_img_src": "heating_button_hoover" }
+        }
+      },
+      "security_button_1": {
+        "type": "Widget",
+        "sub_type": "button",
+        "x_pos": 31, "y_pos": 217, "width": 111, "height": 114,
+        "obj_text": "",
+        "text_type": "literal",
+        "style": {
+          "DEFAULT":  { "bg_img_src": "security_button", "bg_opa": 0, "border_opa": 0, "shadow_opa": 0 },
+          "PRESSED":  { "bg_img_src": "security_button_hoover", "bg_opa": 0 },
+          "CHECKED":  { "bg_img_src": "security_button_hoover" }
+        },
+        "events": {
+          "CLICKED": { "action": "flow", "user_data": 0 }
+        }
+      },
+      "temperature_label": {
+        "type": "Widget",
+        "sub_type": "label",
+        "x_pos": 208, "y_pos": 160, "width": 200, "height": 23,
+        "obj_text": "zones[selected_zone].temperature",
+        "text_type": "expression",
+        "style": {
+          "DEFAULT": { "text_font": "regular_36", "text_color": "#FF6B35", "text_align": "CENTER" }
+        }
+      },
+      "power_arc": {
+        "type": "Widget",
+        "sub_type": "arc",
+        "x_pos": 480, "y_pos": 120, "width": 80, "height": 80,
+        "obj_text": "",
+        "text_type": "literal",
+        "min": 0, "max": 100,
+        "value": "zones[selected_zone].power",
+        "value_type": "expression",
+        "style": {
+          "DEFAULT": { "arc_color": "#00AAFF", "arc_width": 4, "bg_opa": 30 }
+        }
+      },
+      "heating_temperature_panel": {
+        "type": "Widget",
+        "sub_type": "panel",
+        "x_pos": 164, "y_pos": 90, "width": 303, "height": 298,
+        "obj_text": "",
+        "text_type": "literal",
+        "children": {
+          "temp_background": {
+            "type": "Widget",
+            "sub_type": "image",
+            "x_pos": 2, "y_pos": 0, "width": 303, "height": 158,
+            "obj_text": "",
+            "text_type": "literal",
+            "src": "temperature_background"
+          },
+          "temperature_value": {
+            "type": "Widget",
+            "sub_type": "label",
+            "x_pos": 10, "y_pos": 30, "width": 100, "height": 30,
+            "obj_text": "zones[selected_zone].temperature",
+            "text_type": "expression",
+            "style": {
+              "DEFAULT": { "text_font": "regular_36", "text_color": "#FF6B35", "text_align": "CENTER" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### B.5 Widget Type Mapping
+
+| .eez-project type | Firmware `sub_type` |
+|---|---|
+| `LVGLLabelWidget` | `"label"` |
+| `LVGLButtonWidget` | `"button"` |
+| `LVGLArcWidget` | `"arc"` |
+| `LVGLBarWidget` | `"bar"` |
+| `LVGLImageWidget` | `"image"` |
+| `LVGLSwitchWidget` | `"switch"` |
+| `LVGLPanelWidget` | `"panel"` |
+| `LVGLDropdownWidget` | `"dropdown"` |
+| `LVGLScreenWidget` | *(unwrapped)* |
+| `LVGLActionComponent` | *(removed)* |
+
+### B.6 Firmware Parser Pseudocode
+
+```c
+void parse_widgets(cJSON *widgets) {
+    cJSON *w = NULL;
+    cJSON_ArrayForEach(w, widgets) {
+        // Base fields (EVERY widget has these)
+        char *sub_type = cJSON_GetObjectItem(w, "sub_type")->valuestring;
+        int x  = cJSON_GetObjectItem(w, "x_pos")->valueint;
+        int y  = cJSON_GetObjectItem(w, "y_pos")->valueint;
+        int wd = cJSON_GetObjectItem(w, "width")->valueint;
+        int ht = cJSON_GetObjectItem(w, "height")->valueint;
+        char *obj_text = cJSON_GetObjectItem(w, "obj_text")->valuestring;
+        char *text_type = cJSON_GetObjectItem(w, "text_type")->valuestring;
+
+        lv_obj_t *obj = lv_obj_create(parent);
+        lv_obj_set_pos(obj, x, y);
+        lv_obj_set_size(obj, wd, ht);
+
+        // Optional: style (same for all)
+        cJSON *style = cJSON_GetObjectItem(w, "style");
+        if (style) apply_style(obj, style);
+
+        // Optional: events (same for all)
+        cJSON *events = cJSON_GetObjectItem(w, "events");
+        if (events) register_events(obj, events);
+
+        // Type-specific (only this differs)
+        if (strcmp(sub_type, "label") == 0) {
+            label_set_text(obj, obj_text, text_type);
+        } else if (strcmp(sub_type, "arc") == 0) {
+            int min = cJSON_GetObjectItem(w, "min")->valueint;
+            int max = cJSON_GetObjectItem(w, "max")->valueint;
+            char *value = cJSON_GetObjectItem(w, "value")->valuestring;
+            lv_arc_set_range(obj, min, max);
+            bind_arc_value(obj, value);
+        } else if (strcmp(sub_type, "image") == 0) {
+            char *src = cJSON_GetObjectItem(w, "src")->valuestring;
+            lv_img_set_src(obj, lookup_image(src));
+        } else if (strcmp(sub_type, "switch") == 0) {
+            char *checked = cJSON_GetObjectItem(w, "checked")->valuestring;
+            bind_switch_state(obj, checked);
+        }
+
+        // Recurse children (same for all)
+        cJSON *children = cJSON_GetObjectItem(w, "children");
+        if (children) parse_widgets(children);
+    }
+}
+```
+
+### B.7 Buttons
+
+| Button | What it does |
+|---|---|
+| **Save** | Writes `.eez-project` JSON (unchanged, for editor) |
+| **Deploy to Device** | Runs transform → per-screen Firmware JSON → sends to controller |
+| **Import from Device** | Fetches firmware JSON from controller → reverse-transforms → opens in editor |
