@@ -1283,40 +1283,44 @@ register_font(font->name, lvgl_font);
 
 ---
 
-## Appendix B: Firmware JSON Format (Deploy to Device)
+## Appendix B: Firmware JSON Format
 
 ### B.1 Why
 
-The `.eez-project` JSON is **1.79 MB** — far too large for BACnet transfer to a memory-constrained controller.
+The `.eez-project` JSON is the **editor format** — it contains everything EEZ Studio needs to reopen and edit a project: embedded font binaries (base64 TTF), embedded image data (base64 PNG), editor-internal identifiers, build settings, and animation timelines.
 
-| What | .eez-project | Firmware JSON | Savings |
-|---|---|---|---|
-| Fonts | 801 KB (base64 TTF) | 0.2 KB (name+size) | 99.9% |
-| Bitmaps | 700 KB (base64 PNG) | 0.3 KB (name only) | 99.9% |
-| Settings | Present | Stripped | 100% |
-| Editor internals | `objID`, unit fields, flags | Stripped | — |
-| **Total** | **~1.79 MB** | **~7 KB per screen** | **99.6%** |
+The hardware controller does not need any of this. It has fonts and images pre-loaded in flash, already knows its display resolution and LVGL version, and renders widgets from properties — not from editor metadata.
 
-The firmware has fonts and images pre-loaded in flash — only names are needed.
+The **Firmware JSON** strips all editor-only data, keeping only what the controller needs: widget positions, style overrides, event bindings, and font/image **names** (not binaries). This reduces payload size by two orders of magnitude and produces a consistent, easy-to-parse structure.
 
 ### B.2 What Changed
 
 | .eez-project field | Firmware JSON | Action |
 |---|---|---|
 | `type: "LVGLLabelWidget"` | `type: "Widget"` + `sub_type: "label"` | Fixed `type` + type in `sub_type` |
-| `type: "LVGLButtonWidget"` | `type: "Widget"` + `sub_type: "button"` | Same rule for all |
-| `type: "LVGLScreenWidget"` | *(unwrapped)* | Children promoted to screen root |
+| `type: "LVGLButtonWidget"` | `type: "Widget"` + `sub_type: "button"` | Same rule for all widget types |
+| `type: "LVGLArcWidget"` | `type: "Widget"` + `sub_type: "arc"` | |
+| `type: "LVGLBarWidget"` | `type: "Widget"` + `sub_type: "bar"` | |
+| `type: "LVGLImageWidget"` | `type: "Widget"` + `sub_type: "image"` | |
+| `type: "LVGLSwitchWidget"` | `type: "Widget"` + `sub_type: "switch"` | |
+| `type: "LVGLPanelWidget"` | `type: "Widget"` + `sub_type: "panel"` | |
+| `type: "LVGLDropdownWidget"` | `type: "Widget"` + `sub_type: "dropdown"` | |
+| `type: "LVGLScreenWidget"` | *(unwrapped)* | Children promoted to `widgets{}` |
 | `type: "LVGLActionComponent"` | *(removed)* | Flow logic, not UI |
+| `type: "SetVariableActionComponent"` | *(removed)* | Flow logic, not UI |
 | `left`, `top` | `x_pos`, `y_pos` | Renamed (present on every widget) |
-| `width`, `height` | `width`, `height` | Unchanged |
-| `text`, `textType` | `obj_text`, `text_type` | Renamed (present on every widget) |
+| `width`, `height` | `width`, `height` | Unchanged (present on every widget) |
 | `identifier` | *(becomes key name)* | `"heating_button_1": {...}` |
+| `text`, `textType` | `obj_text`, `text_type` | Renamed (present on every widget) |
 | `eventHandlers[]` | `events: { EVENT: {...} }` | Array → flat object |
 | `localStyles.definition` | `style` | Flattened one level |
+| `children[]` | `children: {...}` | Named keys, same structure recursively |
 | `embeddedFontFile` (base64 TTF) | `{name, size}` in `fonts[]` | Stripped, names only |
 | `image` (base64 PNG) | `"name"` in `bitmaps[]` | Stripped, names only |
-| `settings`, `themes`, `lvglStyles` | *(removed)* | Hardware-known |
-| `objID`, `*Unit`, `*FlagType`, `states`, `timeline` | *(removed)* | Editor-only |
+| `settings`, `themes`, `lvglStyles`, `lvglGroups` | *(removed)* | Hardware-known or editor-only |
+| `objID`, `*Unit`, `*FlagType`, `states`, `timeline`, `groupIndex` | *(removed)* | Editor-only |
+| `customInputs`, `customOutputs`, `connectionLines` | *(removed)* | Flow wiring, not UI |
+| *(project root)* | `{ "screen_name": { ... } }` | Screen name becomes root key, contains `fonts` + `bitmaps` + `widgets` |
 
 ### B.3 Consistent Widget Structure
 
@@ -1483,16 +1487,38 @@ Based on `Smart Home (LVGL 9.x).eez-project` — `heating_screen` transformed:
 | `LVGLSwitchWidget` | `"switch"` |
 | `LVGLPanelWidget` | `"panel"` |
 | `LVGLDropdownWidget` | `"dropdown"` |
-| `LVGLScreenWidget` | *(unwrapped)* |
+| `LVGLUserWidgetWidget` | `"user_widget"` + `"widget": "<name>"` |
+| `LVGLScreenWidget` | *(unwrapped — children promoted to `widgets{}`)* |
 | `LVGLActionComponent` | *(removed)* |
+| `SetVariableActionComponent` | *(removed)* |
+| `WatchVariableActionComponent` | *(removed)* |
 
 ### B.6 Firmware Parser Pseudocode
 
 ```c
-void parse_widgets(cJSON *widgets) {
-    cJSON *w = NULL;
-    cJSON_ArrayForEach(w, widgets) {
-        // Base fields (EVERY widget has these)
+// ── Entry point: parse one screen JSON ──
+void parse_screen(cJSON *root) {
+    cJSON *screen = root->child;  // first key = screen name
+    if (!screen) return;
+
+    // Load fonts (register name → lv_font_t lookup)
+    cJSON *fonts = cJSON_GetObjectItem(screen, "fonts");
+    if (fonts) register_fonts(fonts);
+
+    // Load bitmaps (register name → lv_img_dsc_t lookup)
+    cJSON *bitmaps = cJSON_GetObjectItem(screen, "bitmaps");
+    if (bitmaps) register_bitmaps(bitmaps);
+
+    // Create all widgets
+    cJSON *widgets = cJSON_GetObjectItem(screen, "widgets");
+    if (widgets) parse_widgets(widgets, lv_scr_act());
+}
+
+// ── Recursively parse widgets (named keys) ──
+void parse_widgets(cJSON *widgets, lv_obj_t *parent) {
+    cJSON *w = widgets->child;  // iterate named children
+    for (; w; w = w->next) {
+        // ═══ Base fields — EVERY widget has these 8 ═══
         char *sub_type = cJSON_GetObjectItem(w, "sub_type")->valuestring;
         int x  = cJSON_GetObjectItem(w, "x_pos")->valueint;
         int y  = cJSON_GetObjectItem(w, "y_pos")->valueint;
@@ -1501,46 +1527,80 @@ void parse_widgets(cJSON *widgets) {
         char *obj_text = cJSON_GetObjectItem(w, "obj_text")->valuestring;
         char *text_type = cJSON_GetObjectItem(w, "text_type")->valuestring;
 
+        // ── Create base object ──
         lv_obj_t *obj = lv_obj_create(parent);
         lv_obj_set_pos(obj, x, y);
         lv_obj_set_size(obj, wd, ht);
 
-        // Optional: style (same for all)
+        // ── Optional: style (same for ALL types) ──
         cJSON *style = cJSON_GetObjectItem(w, "style");
         if (style) apply_style(obj, style);
 
-        // Optional: events (same for all)
+        // ── Type-specific create + props ──
+        if (strcmp(sub_type, "label") == 0) {
+            obj = lv_label_create(parent);
+            lv_label_set_text(obj, obj_text);
+            if (strcmp(text_type, "expression") == 0) {
+                bind_label_expression(obj, obj_text);
+            }
+            cJSON *lm = cJSON_GetObjectItem(w, "long_mode");
+            if (lm) lv_label_set_long_mode(obj, parse_long_mode(lm->valuestring));
+            if (cJSON_GetObjectItem(w, "recolor")) lv_label_set_recolor(obj, true);
+
+        } else if (strcmp(sub_type, "button") == 0) {
+            obj = lv_btn_create(parent);
+            // style + events already handled above
+
+        } else if (strcmp(sub_type, "arc") == 0 || strcmp(sub_type, "bar") == 0) {
+            if (sub_type[0] == 'a') obj = lv_arc_create(parent);
+            else obj = lv_bar_create(parent);
+            int min = cJSON_GetObjectItem(w, "min")->valueint;
+            int max = cJSON_GetObjectItem(w, "max")->valueint;
+            lv_arc_set_range(obj, min, max);   // same API for bar
+            cJSON *val = cJSON_GetObjectItem(w, "value");
+            if (val && cJSON_GetObjectItem(w, "value_type")) {
+                bind_value_expression(obj, val->valuestring);
+            }
+
+        } else if (strcmp(sub_type, "image") == 0) {
+            obj = lv_img_create(parent);
+            cJSON *src = cJSON_GetObjectItem(w, "src");
+            if (src) lv_img_set_src(obj, lookup_image(src->valuestring));
+
+        } else if (strcmp(sub_type, "switch") == 0) {
+            obj = lv_switch_create(parent);
+            cJSON *checked = cJSON_GetObjectItem(w, "checked");
+            if (checked) bind_switch_state(obj, checked->valuestring);
+
+        } else if (strcmp(sub_type, "dropdown") == 0) {
+            obj = lv_dropdown_create(parent);
+            cJSON *opts = cJSON_GetObjectItem(w, "options");
+            if (opts) {
+                lv_dropdown_clear_options(obj);
+                cJSON *opt = opts->child;
+                for (; opt; opt = opt->next)
+                    lv_dropdown_add_option(obj, opt->valuestring, LV_DROPDOWN_POS_LAST);
+            }
+            cJSON *sel = cJSON_GetObjectItem(w, "selected");
+            if (sel) lv_dropdown_set_selected(obj, sel->valueint);
+
+        } else if (strcmp(sub_type, "panel") == 0) {
+            // panel = plain container, position/size already set
+        }
+
+        // ═══ After setting size/pos on type-specific object ═══
+        lv_obj_set_pos(obj, x, y);
+        lv_obj_set_size(obj, wd, ht);
+
+        // ── Optional: events (same for ALL types) ──
         cJSON *events = cJSON_GetObjectItem(w, "events");
         if (events) register_events(obj, events);
 
-        // Type-specific (only this differs)
-        if (strcmp(sub_type, "label") == 0) {
-            label_set_text(obj, obj_text, text_type);
-        } else if (strcmp(sub_type, "arc") == 0) {
-            int min = cJSON_GetObjectItem(w, "min")->valueint;
-            int max = cJSON_GetObjectItem(w, "max")->valueint;
-            char *value = cJSON_GetObjectItem(w, "value")->valuestring;
-            lv_arc_set_range(obj, min, max);
-            bind_arc_value(obj, value);
-        } else if (strcmp(sub_type, "image") == 0) {
-            char *src = cJSON_GetObjectItem(w, "src")->valuestring;
-            lv_img_set_src(obj, lookup_image(src));
-        } else if (strcmp(sub_type, "switch") == 0) {
-            char *checked = cJSON_GetObjectItem(w, "checked")->valuestring;
-            bind_switch_state(obj, checked);
-        }
-
-        // Recurse children (same for all)
+        // ── Optional: children (same for ALL types) ──
         cJSON *children = cJSON_GetObjectItem(w, "children");
-        if (children) parse_widgets(children);
+        if (children) parse_widgets(children, obj);
     }
 }
 ```
 
-### B.7 Buttons
 
-| Button | What it does |
-|---|---|
-| **Save** | Writes `.eez-project` JSON (unchanged, for editor) |
-| **Deploy to Device** | Runs transform → per-screen Firmware JSON → sends to controller |
-| **Import from Device** | Fetches firmware JSON from controller → reverse-transforms → opens in editor |
