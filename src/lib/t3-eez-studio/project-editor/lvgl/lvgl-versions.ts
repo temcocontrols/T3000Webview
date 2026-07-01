@@ -676,7 +676,7 @@ export function getLvglWasmFlowRuntimeConstructor(
                     });
                     if (Module.FS) self.FS = Module.FS;
                     for (const key of Object.keys(Module)) {
-                        if (key.startsWith("_") && typeof Module[key] === "function") {
+                        if (typeof Module[key] === "function") {
                             (self as any)[key] = Module[key].bind(Module);
                         }
                     }

@@ -2538,6 +2538,16 @@ export class Font extends EezObject {
     getLvglBinFile() {
         const currentExtractFontParams = this._lvglExtractFontParams;
 
+        const hasDef = !!this._lvglFontDefinition;
+        const paramsMatch = !!this._lvglFontDefinitionExtractFontParams &&
+            JSON.stringify(this._lvglFontDefinitionExtractFontParams) ===
+            JSON.stringify(currentExtractFontParams);
+        console.log(
+            `[getLvglBinFile] ${this.name}: hasDef=${hasDef} ` +
+            `paramsMatch=${paramsMatch} ` +
+            `hasExtractParams=${!!this._lvglFontDefinitionExtractFontParams}`
+        );
+
         if (
             !this._lvglFontDefinitionExtractFontParams ||
             this._lvglFontDefinitionExtractFontParams !=
@@ -2551,7 +2561,9 @@ export class Font extends EezObject {
             });
         }
 
-        return this._lvglFontDefinition?.binFile;
+        const result = this._lvglFontDefinition?.binFile;
+        console.log(`[getLvglBinFile] ${this.name}: returning binFile=${!!result}`);
+        return result;
     }
 
     async getLvglBinFileAsync() {

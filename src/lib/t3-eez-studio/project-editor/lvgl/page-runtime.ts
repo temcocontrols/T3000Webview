@@ -329,7 +329,15 @@ export abstract class LVGLPageRuntime {
                         const bin = Buffer.from(lvglBinFile, "base64");
 
                         const fontMemPtr = this.wasm._malloc(bin.length);
+                        console.log(
+                            `[getFontPtr] ${font.name}: bin.length=${bin.length} ` +
+                            `fontMemPtr=${fontMemPtr} ` +
+                            `_malloc=${typeof this.wasm._malloc} ` +
+                            `stringToNewUTF8=${typeof this.wasm.stringToNewUTF8} ` +
+                            `_lvglLoadFont=${typeof this.wasm._lvglLoadFont}`
+                        );
                         if (!fontMemPtr) {
+                            console.error(`[getFontPtr] ${font.name}: _malloc returned 0`);
                             return 0;
                         }
                         for (let i = 0; i < bin.length; i++) {
@@ -337,6 +345,10 @@ export abstract class LVGLPageRuntime {
                         }
 
                         const fontPathStr = this.wasm.stringToNewUTF8("M:" + fontMemPtr);
+                        console.log(
+                            `[getFontPtr] ${font.name}: fontPathStr=${fontPathStr} ` +
+                            `path="M:${fontMemPtr}"`
+                        );
 
                         let fallbackUserFont = 0;
                         let fallbackBuiltinFont = -1;
@@ -363,6 +375,9 @@ export abstract class LVGLPageRuntime {
                             fontPathStr,
                             fallbackUserFont,
                             fallbackBuiltinFont
+                        );
+                        console.log(
+                            `[getFontPtr] ${font.name}: _lvglLoadFont returned fontPtr=${fontPtr}`
                         );
 
                         this.wasm._free(fontPathStr);

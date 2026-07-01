@@ -183,6 +183,7 @@ pub fn process_font(
         src_line_gap,
         min_y, max_y,
         monospaced, advance_width_format, advance_width_bits,
+        xy_bits, wh_bits,
         if no_compress { 0 } else { 1 }, // compression_id
         if lcd { 1 } else if lcd_v { 2 } else { 0 }, // subpixels_mode
         src_underline_pos, src_underline_thick,
@@ -291,6 +292,8 @@ fn build_head(
     monospaced: bool,
     advance_width_format: u8,
     advance_width_bits: u8,
+    xy_bits: u8,
+    wh_bits: u8,
     compression_id: u8,
     subpixels_mode: u8,
     underline_position: i16,
@@ -359,10 +362,8 @@ fn build_head(
     buf[o_bpp] = bpp;
 
     // xy_bits, wh_bits, advance_width_bits computed from actual glyph data
-    let xy = unsigned_bits((max_y - min_y).max(1) as u16).max(unsigned_bits((max_y - min_y).max(1) as u16));
-    let wh = unsigned_bits((max_y - min_y).max(1) as u16);
-    buf[o_xy_bits] = xy;
-    buf[o_wh_bits] = wh;
+    buf[o_xy_bits] = xy_bits;
+    buf[o_wh_bits] = wh_bits;
     buf[o_adv_w_bits] = advance_width_bits;
 
     buf[o_compression] = compression_id;
