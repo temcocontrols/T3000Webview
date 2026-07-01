@@ -4,6 +4,89 @@ import type { IEezObject } from "project-editor/core/object";
 import { ProjectEditor } from "project-editor/project-editor-interface";
 import type { Bitmap, BitmapData } from "project-editor/features/bitmap/bitmap";
 import type { IWasmFlowRuntime } from "eez-studio-types";
+
+// ── LVGL Image Converter (lv_img_conv_v9) ──────────────────────────────
+// Electron:  const { LVGLImage } = require("./lv_img_conv_v9/index.js")
+// Browser:   Vite cannot pre-bundle this CJS module because it requires
+//            Node builtins (fs/os/path/cp) that can't be converted to ESM.
+//            We bypass Vite by fetching the raw file and executing it with
+//            a polyfilled require() that provides browser-compatible stubs.
+// ────────────────────────────────────────────────────────────────────────
+
+let _cachedLVGLImage: any = null;
+
+async function getLVGLImageClass(): Promise<any> {
+    if (_cachedLVGLImage) return _cachedLVGLImage;
+
+    // Electron / Node.js: native require() works
+    if (typeof require !== "undefined" && typeof window === "undefined") {
+        const m = require("./lv_img_conv_v9/index.js");
+        _cachedLVGLImage = m.LVGLImage;
+        return _cachedLVGLImage;
+    }
+
+    // Browser: bypass Vite — fetch raw JS, execute with polyfilled require()
+    const url = new URL("./lv_img_conv_v9/index.js", import.meta.url).href;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error("Failed to fetch lv_img_conv_v9: " + resp.status);
+    const src = await resp.text();
+
+    // Load npm deps via Vite's ESM import (works in browser)
+    const [pngjsModule, lz4jsModule] = await Promise.all([
+        import("pngjs"),
+        import("lz4js")
+    ]);
+
+    // Polyfill Node.js builtins for the browser
+    // pngjs depends on util, stream, events, and Buffer
+    var EE = (await import("events")).EventEmitter;
+    var StreamTransform = function() { EE.call(this); };
+    StreamTransform.prototype = Object.create(EE.prototype);
+    StreamTransform.prototype.constructor = StreamTransform;
+    StreamTransform.prototype._transform = function(_chunk: any, _enc: any, cb: any) { cb(); };
+
+    const polyfills: Record<string, any> = {
+        fs: {
+            readFileSync: function() { throw new Error("fs.readFileSync not available in browser"); },
+            existsSync: function() { return false; },
+            mkdirSync: function() {},
+        },
+        path: {
+            basename: function(p: string) { var parts = p.replace(/\\/g, "/").split("/"); return parts[parts.length - 1]; },
+            dirname: function(p: string) { var parts = p.replace(/\\/g, "/").split("/"); parts.pop(); return parts.join("/") || "."; },
+            extname: function(p: string) { var m = p.match(/\.[^.]+$/); return m ? m[0] : ""; },
+            join: function() { return Array.prototype.join.call(arguments, "/"); },
+        },
+        os: { tmpdir: function() { return "/tmp"; }, homedir: function() { return "/"; } },
+        child_process: { spawnSync: function() { throw new Error("child_process not available"); } },
+        events: { EventEmitter: EE },
+        stream: { Transform: StreamTransform },
+        util: {
+            inherits: function(ctor: any, superCtor: any) {
+                ctor.super_ = superCtor;
+                ctor.prototype = Object.create(superCtor.prototype, {
+                    constructor: { value: ctor, enumerable: false, writable: true, configurable: true }
+                });
+            }
+        },
+        pngjs: (pngjsModule as any).default || pngjsModule,
+        lz4js: (lz4jsModule as any).default || lz4jsModule,
+        quantize: null,
+    };
+
+    // Execute the raw source in a sandboxed scope
+    var moduleObj: any = { exports: {} };
+    var fakeRequire = function(name: string) {
+        if (polyfills.hasOwnProperty(name)) return polyfills[name];
+        throw new Error("lv_img_conv_v9 require(\"" + name + "\") not polyfilled");
+    };
+    var fn = new Function("module", "exports", "require", "__filename", "__dirname", src);
+    fn(moduleObj, moduleObj.exports, fakeRequire, url, url.replace(/\/[^/]+$/, ""));
+
+    _cachedLVGLImage = moduleObj.exports.LVGLImage;
+    if (!_cachedLVGLImage) throw new Error("LVGLImage not found in lv_img_conv_v9 module");
+    return _cachedLVGLImage;
+}
 import {
     CF_ALPHA_1_BIT,
     CF_ALPHA_2_BIT,
@@ -304,12 +387,23 @@ const version_9 = {
             [CF_RAW_ALPHA.toString()]: "RAW_ALPHA"
         };
 
-        const { LVGLImage } = require("./lv_img_conv_v9/index.js");
+        // Load LVGLImage synchronously (Electron) or via await import (browser/Vite).
+        // Same path as Electron: const { LVGLImage } = require("./lv_img_conv_v9/index.js")
+        const LVGLImage = await getLVGLImageClass();
+        console.log("[DIAG-LVGL-BUILD] LVGLImage loaded, type=", typeof LVGLImage, "name=", LVGLImage?.name);
 
-        const embeddedImage = await bitmap.getEmbeddedImage();
+        // getEmbeddedImage returns a data-URI string in the browser (e.g.
+        // "data:image/png;base64,iVBOR..."). Convert to Buffer for lv_img_conv_v9.
+        let embedded: any = await bitmap.getEmbeddedImage();
+        console.log("[DIAG-LVGL-BUILD] embeddedImage raw: type=", typeof embedded, "len=", embedded?.length);
+        if (typeof embedded === "string" && embedded.startsWith("data:")) {
+            const b64 = embedded.includes(",") ? embedded.split(",")[1] : embedded;
+            embedded = Buffer.from(b64, "base64");
+            console.log("[DIAG-LVGL-BUILD] converted data URI to Buffer, len=", embedded.length);
+        }
 
         try {
-            const img = await new LVGLImage().from_png(embeddedImage, TO_IMAGE_MODE[bitmap.bpp.toString()], 0x000000, false, false, false, false);
+            const img = await new LVGLImage().from_png(embedded, TO_IMAGE_MODE[bitmap.bpp.toString()], 0x000000, false, false, false, false);
 
             let result;
             if (binFile) {

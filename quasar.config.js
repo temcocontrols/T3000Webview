@@ -130,6 +130,8 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['child_process'] = stub('child-process.ts');
         viteConf.resolve.alias['url'] = stub('url.ts');
         viteConf.resolve.alias['crypto'] = stub('crypto.ts');
+        // pngjs (used by lv_img_conv_v9) requires Node's util module
+        viteConf.resolve.alias['util'] = require('path').resolve(__dirname, 'node_modules/util/util.js');
         viteConf.resolve.alias['mousetrap'] = stub('mousetrap.ts');
         viteConf.resolve.alias['sha256'] = stub('sha256.ts');
         viteConf.resolve.alias['better-sqlite3'] = stub('better-sqlite3.ts');
@@ -156,9 +158,13 @@ module.exports = configure(function (/* ctx */) {
         // Optimize deps — noDiscovery prevents scanning the massive EEZ tree
         viteConf.optimizeDeps = viteConf.optimizeDeps || {};
         viteConf.optimizeDeps.noDiscovery = true;
+        // Include pngjs + lz4js so the lv_img_conv_v9 sandbox can require() them
+        viteConf.optimizeDeps.include = (viteConf.optimizeDeps.include || []).concat([
+          'pngjs', 'lz4js', 'util', 'stream', 'events'
+        ]);
         // Native Node.js modules that can't be bundled for browser
         viteConf.optimizeDeps.exclude = (viteConf.optimizeDeps.exclude || []).concat([
-          'quantize', 'pngjs'
+          'quantize'
         ]);
 
         viteConf.resolve = viteConf.resolve || {};
