@@ -312,7 +312,25 @@ struct FontExtractRequest {
 async fn extract_font(
     Json(req): Json<FontExtractRequest>,
 ) -> Result<Json<Value>, StatusCode> {
+    // ── Entry log ──────────────────────────────────────────────────────
+    info!("extract_font: RECEIVED request, output={}", req.output);
+    info!("extract_font: args keys: {:?}", req.args.as_object().map(|o| o.keys().collect::<Vec<_>>()));
+    info!("extract_font: args.size={:?}, args.bpp={:?}", req.args["size"], req.args["bpp"]);
+
     let font_entries = req.args["font"].as_array().ok_or(StatusCode::BAD_REQUEST)?;
+    info!("extract_font: font_entries count={}", font_entries.len());
+
+    for (i, entry) in font_entries.iter().enumerate() {
+        let has_b64 = entry["source_bin_base64"].is_string();
+        let b64_len = entry["source_bin_base64"].as_str().map(|s| s.len()).unwrap_or(0);
+        let has_ranges = entry["ranges"].is_array();
+        let ranges_count = entry["ranges"].as_array().map(|r| r.len()).unwrap_or(0);
+        info!(
+            "extract_font: entry[{}] has_b64={} b64_len={} has_ranges={} ranges_count={}",
+            i, has_b64, b64_len, has_ranges, ranges_count
+        );
+    }
+
     let size = req.args["size"].as_f64().unwrap_or(16.0) as f32;
     let bpp = req.args["bpp"].as_u64().unwrap_or(4) as u8;
     let no_compress = req.args["no_compress"].as_bool().unwrap_or(true);
@@ -360,9 +378,18 @@ async fn extract_font(
             source_bin_base64, size, bpp, &codepoints, &req.output,
             no_compress, lcd, lcd_v, no_kerning, no_prefilter,
         ).map_err(|e| {
-            error!("extract_font: {}", e);
+            error!("extract_font: process_font FAILED: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
+
+        info!(
+            "extract_font: process_font OK — glyphs={} ascent={} descent={} binFile_len={} sourceFile_len={}",
+            result.font_data.glyphs.len(),
+            result.font_data.ascent,
+            result.font_data.descent,
+            result.lvgl_bin_file.len(),
+            result.lvgl_source_file.len()
+        );
 
         for g in &result.font_data.glyphs {
             all_glyphs.push(serde_json::json!({
@@ -377,6 +404,13 @@ async fn extract_font(
         last_bin = result.lvgl_bin_file;
         last_source = result.lvgl_source_file;
     }
+
+    info!(
+        "extract_font: DONE — total_glyphs={} last_bin_len={} last_source_len={}",
+        all_glyphs.len(),
+        last_bin.len(),
+        last_source.len()
+    );
 
     Ok(Json(serde_json::json!({
         "fontData": { "ascent": font_ascent, "descent": font_descent, "glyphs": all_glyphs },

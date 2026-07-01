@@ -3163,7 +3163,10 @@ ${source}`;
                             }
                         }
                     } else if (!font.lvglUseFreeType) {
-                        const lvglSourceFile = await font.getLvglSourceFile();
+                        const lvglSourceFileBase64 = await font.getLvglSourceFile();
+                        const lvglSourceFile = lvglSourceFileBase64
+                            ? Buffer.from(lvglSourceFileBase64, "base64").toString("utf8")
+                            : undefined;
                         if (lvglSourceFile) {
                             const output = getName(
                                 "ui_font_",

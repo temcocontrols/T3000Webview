@@ -2497,6 +2497,12 @@ export class Font extends EezObject {
                 try {
                     result = await extractFont(extractFontParams);
                 } catch (err) {
+                    console.error(
+                        "[buildLvglFontDefinition] extractFont failed for",
+                        this.name,
+                        ":",
+                        err
+                    );
                 }
             }
 

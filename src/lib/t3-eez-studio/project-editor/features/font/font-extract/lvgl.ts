@@ -61,6 +61,8 @@ export class ExtractFont implements IFontExtract {
             }
         ];
 
+        const fontName = this.params.name || "font";
+
         // Diagnostic: verify embedded data is present before sending to backend
         console.log(
             `[lvgl] extractFont "${fontName}": embeddedFontFile=${!!this.params.embeddedFontFile} ` +
@@ -149,8 +151,6 @@ export class ExtractFont implements IFontExtract {
 
         extractBusy = true;
 
-        const fontName = this.params.name || "font";
-
         // show notification only if this takes longer than 1 second
         const NOTIFICATION_TIMEOUT = 3000;
         let toastId;
@@ -172,16 +172,31 @@ export class ExtractFont implements IFontExtract {
             if (typeof window !== "undefined") {
                 // Browser: font extraction via Rust backend API (pure Rust,
                 // self-contained in the DLL — no Node.js needed).
+                console.log(
+                    `[lvgl] extractFont "${fontName}": calling Rust backend ` +
+                    `/api/eez-studio/extract-font (proxy → localhost:9103)`
+                );
                 const resp = await fetch("/api/eez-studio/extract-font", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ args, output })
                 });
+                console.log(
+                    `[lvgl] extractFont "${fontName}": Rust backend response ` +
+                    `status=${resp.status} ok=${resp.ok}`
+                );
                 if (!resp.ok) {
                     const text = await resp.text().catch(() => "");
                     throw new Error(`Font extraction failed (HTTP ${resp.status}): ${text}`);
                 }
                 workerResult = await resp.json();
+                console.log(
+                    `[lvgl] extractFont "${fontName}": Rust backend returned ` +
+                    `lvglBinFile=${!!workerResult.lvglBinFile} ` +
+                    `(len=${(workerResult.lvglBinFile || "").length}) ` +
+                    `lvglSourceFile=${!!workerResult.lvglSourceFile} ` +
+                    `(len=${(workerResult.lvglSourceFile || "").length})`
+                );
             } else {
                 // Electron: use Worker with lv_font_conv
                 workerResult = await new Promise<any>((resolve, reject) => {
@@ -221,7 +236,7 @@ export class ExtractFont implements IFontExtract {
                     size: this.params.size,
                     threshold: this.params.threshold
                 },
-                embeddedFontFile: source_bin.toString("base64"),
+                embeddedFontFile: source_bin_base64,
                 bpp: this.params.bpp,
                 threshold: this.params.threshold,
                 height: this.fontData.ascent - this.fontData.descent,
