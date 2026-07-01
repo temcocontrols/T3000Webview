@@ -26,9 +26,15 @@ export class ExtractFont implements IFontExtract {
         let source_bin_base64: string;
         if (this.params.embeddedFontFile) {
             source_bin_base64 = this.params.embeddedFontFile;
-        } else {
+        } else if (fs.existsSync(this.params.absoluteFilePath)) {
             const source_bin = fs.readFileSync(this.params.absoluteFilePath);
             source_bin_base64 = Buffer.from(source_bin).toString("base64");
+        } else {
+            throw new Error(
+                `Font source not available: embeddedFontFile is missing and ` +
+                `file "${this.params.absoluteFilePath}" does not exist. ` +
+                `Re-import the font or ensure the project was saved with embedded fonts enabled.`
+            );
         }
 
         const range: number[] = [];
@@ -55,14 +61,26 @@ export class ExtractFont implements IFontExtract {
             }
         ];
 
+        // Diagnostic: verify embedded data is present before sending to backend
+        console.log(
+            `[lvgl] extractFont "${fontName}": embeddedFontFile=${!!this.params.embeddedFontFile} ` +
+            `(len=${(this.params.embeddedFontFile || "").length}), ` +
+            `source_bin_base64 len=${source_bin_base64.length}`
+        );
+
         if (this.params.additionalSources) {
             for (const additionalSource of this.params.additionalSources) {
                 let addSourceB64: string;
                 if (additionalSource.embeddedFontFile) {
                     addSourceB64 = additionalSource.embeddedFontFile;
-                } else {
+                } else if (fs.existsSync(additionalSource.absoluteFilePath)) {
                     const addSourceBin = fs.readFileSync(additionalSource.absoluteFilePath);
                     addSourceB64 = Buffer.from(addSourceBin).toString("base64");
+                } else {
+                    throw new Error(
+                        `Additional font source not available: embeddedFontFile is missing and ` +
+                        `file "${additionalSource.absoluteFilePath}" does not exist.`
+                    );
                 }
 
                 const addRange: number[] = [];

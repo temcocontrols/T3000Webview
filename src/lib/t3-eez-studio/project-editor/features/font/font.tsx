@@ -2797,10 +2797,13 @@ const feature: ProjectEditorFeature = {
                     });
                 }
 
-                if (
-                    project.settings.general.projectType != ProjectType.LVGL ||
-                    project.settings.general.embedFonts
-                ) {
+                // LVGL projects always embed fonts (firmware has no filesystem to load from).
+                // For non-LVGL projects, respect the embedFonts setting.
+                const shouldEmbed =
+                    project.settings.general.projectType == ProjectType.LVGL ||
+                    project.settings.general.embedFonts !== false;
+
+                if (shouldEmbed) {
                     if (font.embeddedFontFile) {
                         let embeddedFontFileIndex = -1;
 

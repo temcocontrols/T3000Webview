@@ -8,11 +8,19 @@ ctx.onmessage = async (e: MessageEvent) => {
     try {
         const { args, output } = e.data;
 
-        // Reconstruct Buffer objects from base64 strings
+        // Reconstruct Buffer objects from base64 strings.
+        // Guard: if source_bin_base64 is missing, fail with a clear message
+        // instead of letting lv_font_conv throw an opaque "source_bin is not defined".
         for (const f of args.font) {
             if (f.source_bin_base64) {
                 f.source_bin = Buffer.from(f.source_bin_base64, "base64");
                 delete f.source_bin_base64;
+            } else {
+                throw new Error(
+                    `Font source data missing for "${f.source_path}". ` +
+                    `The project's embedded font data may have been stripped — ` +
+                    `re-import the original .eez-project file to restore it.`
+                );
             }
         }
 

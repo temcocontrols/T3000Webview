@@ -300,6 +300,7 @@ export const FontEditor = observer(
                         absoluteFilePath: this.context.getAbsoluteFilePath(
                             result.values.filePath
                         ),
+                        embeddedFontFile: this.font.embeddedFontFile,
                         relativeFilePath: result.values.filePath,
                         renderingEngine: this.font.renderingEngine,
                         bpp: this.font.bpp,
