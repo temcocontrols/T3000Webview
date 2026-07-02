@@ -1,0 +1,246 @@
+/**
+ * firmware-export.ts — Transforms .eez-project → device JSON format.
+ *
+ * Produces per-screen JSON files following the Firmware JSON Format spec
+ * (see docs/t3000/architecture/lvgl-eez-project-json-format.md, Appendix B).
+ *
+ * Each output file goes to `<projectDir>/device-config/<screen_name>.json`.
+ */
+
+// ── Widget type mapping (LVGL prefix → firmware sub_type) ──
+const TYPE_MAP: Record<string, string> = {
+    LVGLLabelWidget: "label",
+    LVGLButtonWidget: "button",
+    LVGLArcWidget: "arc",
+    LVGLBarWidget: "bar",
+    LVGLImageWidget: "image",
+    LVGLSwitchWidget: "switch",
+    LVGLPanelWidget: "panel",
+    LVGLDropdownWidget: "dropdown",
+    LVGLSliderWidget: "slider",
+    LVGLUserWidgetWidget: "user_widget",
+};
+
+// ── Component types that are flow/action logic, not UI widgets ──
+const SKIP_TYPES = new Set([
+    "LVGLActionComponent",
+    "SetVariableActionComponent",
+    "WatchVariableActionComponent",
+    "OutputActionComponent",
+    "DelayActionComponent",
+    "AnimateActionComponent",
+    "IsTrueActionComponent",
+]);
+
+// ── Extract image source from widget ──
+function extractImageSrc(c: any): string | undefined {
+    // Direct image field (some widget types)
+    if (c.image && typeof c.image === "string" && c.image.length > 0) {
+        return c.image;
+    }
+    // From localStyles definition
+    const ls = c.localStyles;
+    if (ls?.definition) {
+        for (const part of Object.values(ls.definition) as any[]) {
+            for (const state of Object.values(part || {}) as any[]) {
+                if (state && typeof state === "object") {
+                    if (state.bg_img_src) return state.bg_img_src;
+                    if (state.src) return state.src;
+                }
+            }
+        }
+    }
+    return undefined;
+}
+
+// ── Recursively transform one component tree ──
+function transformComponent(c: any): Record<string, any> | null {
+    const t: string = c.type || "";
+    if (SKIP_TYPES.has(t)) return null;
+
+    // Unwrap screen widget — promote children directly
+    if (t === "LVGLScreenWidget") {
+        const result: Record<string, any> = {};
+        for (const child of c.children || []) {
+            const r = transformComponent(child);
+            if (r) Object.assign(result, r);
+        }
+        return result;
+    }
+
+    const mapped = TYPE_MAP[t];
+    if (!mapped) return null;
+
+    // Widget name = identifier, falling back to objID prefix
+    const ident: string =
+        c.identifier ||
+        (c.name ? c.name.replace(/\s+/g, "_") : "") ||
+        ("w_" + (c.objID || "").slice(0, 8));
+
+    // ═══ 8 base fields (EVERY widget has these) ═══
+    const obj: Record<string, any> = {
+        type: "Widget",
+        sub_type: mapped,
+        x_pos: c.left ?? 0,
+        y_pos: c.top ?? 0,
+        width: c.width ?? 0,
+        height: c.height ?? 0,
+        obj_text: "",
+        text_type: "literal",
+    };
+
+    // ── Style (optional, any widget) ──
+    const ls = c.localStyles;
+    if (ls?.definition) obj.style = ls.definition;
+
+    // ── Events (optional, any widget) ──
+    const events = c.eventHandlers;
+    if (events?.length) {
+        obj.events = {};
+        for (const e of events) {
+            const evtName = e.eventName || e.trigger || "?";
+            obj.events[evtName] = {
+                action: e.handlerType || "?",
+                user_data: e.userData ?? 0,
+            };
+        }
+    }
+
+    // ═══ Type-specific properties ═══
+    switch (mapped) {
+        case "label":
+            if (c.text != null && c.text !== "") {
+                obj.obj_text = c.text;
+                obj.text_type = c.textType || "literal";
+            }
+            if (c.longMode) obj.long_mode = c.longMode;
+            if (c.recolor) obj.recolor = true;
+            break;
+
+        case "button":
+            // innerAlign for button labels
+            if (c.innerAlign) obj.inner_align = c.innerAlign;
+            // checked state (toggle button)
+            if (c.checkedStateType === "expression") {
+                obj.checked = c.checkedState || "";
+                obj.checked_type = "expression";
+            }
+            break;
+
+        case "arc":
+        case "bar":
+        case "slider":
+            // Range
+            obj.min = c.min ?? c.rangeMin ?? 0;
+            obj.max = c.max ?? c.rangeMax ?? 100;
+            // Value
+            if (c.value != null) {
+                obj.value = c.value;
+                obj.value_type = c.valueType || "expression";
+            }
+            // Second value (range slider)
+            if (c.valueLeft != null) {
+                obj.value_left = c.valueLeft;
+                obj.value_left_type = c.valueLeftType || "expression";
+            }
+            // Slider mode
+            if (c.mode) obj.mode = c.mode;
+            break;
+
+        case "image":
+            // Image source
+            const src = extractImageSrc(c);
+            if (src) obj.src = src;
+            // Rotation / pivot (from animation properties)
+            if (c.rotation != null) obj.rotation = c.rotation;
+            if (c.pivotX != null) obj.pivot_x = c.pivotX;
+            if (c.pivotY != null) obj.pivot_y = c.pivotY;
+            break;
+
+        case "switch":
+            if (c.checkedStateType === "expression") {
+                obj.checked = c.checkedState || "";
+                obj.checked_type = "expression";
+            }
+            break;
+
+        case "dropdown":
+            if (c.options?.length) {
+                obj.options = c.options.map((o: any) =>
+                    typeof o === "string" ? o : o.label || o.text || "?"
+                );
+            }
+            if (c.selected != null) obj.selected = c.selected;
+            break;
+
+        case "user_widget":
+            // Reference the user widget by name
+            if (c.userWidgetPageName) obj.widget = c.userWidgetPageName;
+            break;
+    }
+
+    // ── State flags (optional) ──
+    if (c.disabledStateType === "expression" && c.disabledState) {
+        obj.disabled = c.disabledState;
+    }
+    if (c.hiddenFlagType === "expression" && c.hiddenFlag) {
+        obj.hidden = c.hiddenFlag;
+    }
+    if (c.clickableFlag != null && !c.clickableFlag) {
+        obj.clickable = false;
+    }
+
+    // ── Children (optional, recursive) ──
+    const children = c.children;
+    if (children?.length) {
+        obj.children = {};
+        for (const child of children) {
+            const r = transformComponent(child);
+            if (r) Object.assign(obj.children, r);
+        }
+    }
+
+    return { [ident]: obj };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Public API
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface DeviceScreen {
+    fonts: { name: string; size: number }[];
+    bitmaps: string[];
+    widgets: Record<string, any>;
+}
+
+/**
+ * Transform a loaded .eez-project into per-screen device JSON objects.
+ */
+export function transformToDeviceJson(
+    project: any
+): Record<string, DeviceScreen> {
+    const fonts = (project.fonts || []).map((f: any) => ({
+        name: f.name || "?",
+        size: f.source?.size ?? 0,
+    }));
+
+    const bitmaps: string[] = (project.bitmaps || []).map(
+        (b: any) => b.name || "?"
+    );
+
+    const result: Record<string, DeviceScreen> = {};
+
+    for (const page of project.userPages || []) {
+        const screenName: string = page.name || "unknown";
+
+        const widgets: Record<string, any> = {};
+        for (const comp of page.components || []) {
+            const r = transformComponent(comp);
+            if (r) Object.assign(widgets, r);
+        }
+
+        result[screenName] = { fonts, bitmaps, widgets };
+    }
+
+    return result;
+}
