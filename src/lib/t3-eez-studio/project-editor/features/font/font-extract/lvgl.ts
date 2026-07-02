@@ -197,10 +197,10 @@ export class ExtractFont implements IFontExtract {
                     `lvglSourceFile=${!!workerResult.lvglSourceFile} ` +
                     `(len=${(workerResult.lvglSourceFile || "").length})`
                 );
-                if (workerResult._diag) {
+                if (workerResult._diag_tables) {
                     console.log(
-                        `[lvgl] extractFont "${fontName}" DIAG:`,
-                        JSON.stringify(workerResult._diag)
+                        `[lvgl] extractFont "${fontName}" TABLES:`,
+                        JSON.stringify(workerResult._diag_tables)
                     );
                 }
             } else {

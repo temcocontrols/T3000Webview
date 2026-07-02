@@ -2413,6 +2413,7 @@ export class Font extends EezObject {
         ////////////////////////////////////////
 
         return {
+            _fmtVersion: 3, // bump to invalidate old cached binaries
             name: this.name,
             absoluteFilePath: projectStore.getAbsoluteFilePath(
                 this.source!.filePath
@@ -2537,6 +2538,14 @@ export class Font extends EezObject {
 
     getLvglBinFile() {
         const currentExtractFontParams = this._lvglExtractFontParams;
+
+        // Force re-extract if cached binary is from an older format version
+        const cachedVersion = (this._lvglFontDefinitionExtractFontParams as any)?._fmtVersion;
+        const currentVersion = (currentExtractFontParams as any)?._fmtVersion;
+        if (this._lvglFontDefinition && cachedVersion !== currentVersion) {
+            this._lvglFontDefinition = undefined;
+            this._lvglFontDefinitionExtractFontParams = undefined;
+        }
 
         const hasDef = !!this._lvglFontDefinition;
         const paramsMatch = !!this._lvglFontDefinitionExtractFontParams &&

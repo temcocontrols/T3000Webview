@@ -22,6 +22,9 @@ pub struct FontExtractOutput {
     pub lvgl_bin_file: String,
     #[serde(rename = "lvglSourceFile")]
     pub lvgl_source_file: String,
+    /// Raw hex dumps of key table fields for debugging.
+    #[serde(rename = "_diag_tables")]
+    pub diag_tables: serde_json::Value,
 }
 
 #[derive(Debug, Serialize)]
@@ -116,7 +119,7 @@ pub fn process_font(
             code,
             advance_width: metrics.advance_width as f64,
             x: metrics.xmin as i16,
-            y: -(metrics.ymin as i16), // flip sign: fontdue bottom-left origin → LVGL top-left
+            y: -(metrics.ymin as i16 + metrics.height as i16), // -(top of glyph) matches Electron: y = -glyphInfoY2
             width: w,
             height: h,
             pixels,
@@ -212,7 +215,7 @@ pub fn process_font(
 
     let cmap = build_cmap(&glyphs, &glyph_id);
     let glyf = build_glyf(&glyphs, &glyph_id, bpp, monospaced, advance_width_format, advance_width_bits, xy_bits, wh_bits, no_compress, no_prefilter, last_id);
-    let loca = build_loca(&glyf.offsets, glyf.offsets.len() as u32 + 1);
+    let loca = build_loca(&glyf.offsets, glyf.offsets.len() as u32);
     let kern = build_kern(&glyphs, &glyph_id, advance_width_format);
 
     // Concatenate binary
@@ -269,6 +272,45 @@ pub fn process_font(
         font_data,
         lvgl_bin_file,
         lvgl_source_file: BASE64.encode(lvgl_source_file.as_bytes()),
+        diag_tables: serde_json::json!({
+            "head": {
+                "index_to_loc": 1u8,
+                "glyph_id_fmt": if glyph_id.values().max().copied().unwrap_or(0) > 255 { 1 } else { 0 },
+                "adv_w_fmt": advance_width_format,
+                "bpp": bpp,
+                "xy_bits": xy_bits,
+                "wh_bits": wh_bits,
+                "adv_w_bits": advance_width_bits,
+                "tables_count": if has_kerning(&glyphs) { 4 } else { 3 },
+                "monospaced": monospaced,
+                "size_bytes": head.len()
+            },
+            "cmap": {
+                "min_code": glyphs.first().map(|g| g.code).unwrap_or(0),
+                "max_code": glyphs.last().map(|g| g.code).unwrap_or(0),
+                "range_len": glyphs.last().map_or(0, |g| g.code) - glyphs.first().map_or(0, |g| g.code) + 1,
+                "start_glyph_id": *glyph_id.get(&glyphs.first().map_or(0, |g| g.code)).unwrap_or(&0),
+                "subhead_offset": 28u32,
+                "first_data_bytes": (0..10).map(|i| {
+                    let code = glyphs.first().map_or(0, |g| g.code) + i;
+                    let gid = *glyph_id.get(&code).unwrap_or(&0);
+                    let start = *glyph_id.get(&glyphs.first().map_or(0, |g| g.code)).unwrap_or(&0);
+                    if gid >= start { (gid - start) as u32 } else { 0 }
+                }).collect::<Vec<u32>>()
+            },
+            "loca": {
+                "count": glyf.offsets.len() as u32,
+                "first_5": glyf.offsets.iter().take(5).copied().collect::<Vec<u32>>(),
+                "last_3": if glyf.offsets.len() >= 3 {
+                    glyf.offsets[glyf.offsets.len()-3..].to_vec()
+                } else { glyf.offsets.clone() }
+            },
+            "glyf": {
+                "glyph_count": glyphs.len(),
+                "last_id": last_id,
+                "total_glyf_data": glyf.data.len()
+            }
+        })
     })
 }
 
@@ -413,7 +455,9 @@ fn build_head(
 }
 
 fn build_cmap(glyphs: &[InternalGlyph], glyph_id: &BTreeMap<u32, u16>) -> Vec<u8> {
-    // Simple format-0 cmap: consecutive codepoints
+    // Matches lv_font_conv's table_cmap.js format 0.
+    // Data stores glyph ID DELTAS (glyph_id - start_glyph_id), not absolute IDs.
+    // Subheader glyphIdOffset = start_glyph_id (absolute first glyph ID).
     let codes: Vec<u32> = glyphs.iter().map(|g| g.code).collect();
     if codes.is_empty() {
         let mut buf = vec![0u8; 12];
@@ -427,24 +471,29 @@ fn build_cmap(glyphs: &[InternalGlyph], glyph_id: &BTreeMap<u32, u16>) -> Vec<u8
     let max_code = codes.iter().max().copied().unwrap();
     let range_len = max_code - min_code + 1;
 
-    // Sub-header (16 bytes): offset(4), rangeStart(4), rangeLen(2), glyphIdOffset(2), total(2), type(1)
+    // start_glyph_id = glyph ID of the FIRST character in the range
+    let start_glyph_id = *glyph_id.get(&min_code).unwrap_or(&0);
+
+    // Build data: id_delta for each code in range (missing codes → delta 0)
+    let mut data = vec![0u8; range_len as usize];
+    for code in min_code..=max_code {
+        let idx = (code - min_code) as usize;
+        let gid = *glyph_id.get(&code).unwrap_or(&0);
+        // id_delta = glyph_id - start_glyph_id (matches lv_font_conv)
+        let delta = if gid >= start_glyph_id { gid - start_glyph_id } else { 0 };
+        data[idx] = delta as u8;
+    }
+
+    // Sub-header (16 bytes): offset(4), rangeStart(4), rangeLen(2),
+    //   glyphIdOffset(2) = absolute start_glyph_id, total(2), type(1), pad(1)
     let subhead_offset = 12u32 + 16; // after main header + one subheader
     let mut subhead = vec![0u8; 16];
     subhead[0..4].copy_from_slice(&subhead_offset.to_le_bytes());
     subhead[4..8].copy_from_slice(&min_code.to_le_bytes());
     subhead[8..10].copy_from_slice(&(range_len as u16).to_le_bytes());
-    subhead[10..12].copy_from_slice(&1u16.to_le_bytes()); // glyphIdOffset starts at 1
+    subhead[10..12].copy_from_slice(&(start_glyph_id as u16).to_le_bytes());
     subhead[12..14].copy_from_slice(&(range_len as u16).to_le_bytes());
     subhead[14] = 0; // SUB_FORMAT_0
-
-    // Data: glyph IDs for each code in range
-    let mut data = vec![0u8; range_len as usize];
-    for &code in &codes {
-        let idx = (code - min_code) as usize;
-        if idx < data.len() {
-            data[idx] = *glyph_id.get(&code).unwrap_or(&0) as u8;
-        }
-    }
 
     let content_len = subhead.len() + data.len();
     let total_len = align4(12 + content_len);
@@ -514,8 +563,10 @@ fn build_glyf(
         }
 
         let buf = bs.into_vec();
-        bin_data.push(buf);
+        // Push offset BEFORE pushing data: offset[i] = offset[i-1] + data[i-1].len()
+        // This ensures glyph 0's empty data doesn't steal glyph 1's bytes.
         offsets.push(offsets.last().unwrap() + bin_data.last().unwrap().len() as u32);
+        bin_data.push(buf);
     }
 
     // Build final buffer
@@ -585,8 +636,8 @@ impl BitStream {
 }
 
 fn build_loca(offsets: &[u32], count: u32) -> Vec<u8> {
-    // Always uses u32 offsets (index_to_loc = 1).
-    // count should be last_id + 1 (glyphs count + 2), with sentinel 0xFFFFFFFF.
+    // Matches lv_font_conv's table_loca.js.
+    // count = last_id (no +1, no sentinel). Always uses u32 offsets (index_to_loc = 1).
     let header = 12;
     let data_len = count as usize * 4;
     let total = align4(header + data_len);
@@ -596,9 +647,8 @@ fn build_loca(offsets: &[u32], count: u32) -> Vec<u8> {
     buf[8..12].copy_from_slice(&count.to_le_bytes());
     for i in 0..count as usize {
         let pos = header + i * 4;
-        let val: u32 = if i < offsets.len() { offsets[i] } else { 0xFFFFFFFF };
         if pos + 4 <= total {
-            buf[pos..pos+4].copy_from_slice(&val.to_le_bytes());
+            buf[pos..pos+4].copy_from_slice(&offsets[i].to_le_bytes());
         }
     }
     buf

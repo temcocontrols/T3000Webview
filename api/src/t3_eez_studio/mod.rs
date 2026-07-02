@@ -344,6 +344,7 @@ async fn extract_font(
     let mut font_descent: i16 = 0;
     let mut last_bin = String::new();
     let mut last_source = String::new();
+    let mut last_diag_tables = serde_json::Value::Null;
 
     for entry in font_entries {
         let source_bin_base64 = entry["source_bin_base64"]
@@ -403,6 +404,7 @@ async fn extract_font(
         font_descent = result.font_data.descent;
         last_bin = result.lvgl_bin_file;
         last_source = result.lvgl_source_file;
+        last_diag_tables = result.diag_tables;
     }
 
     info!(
@@ -416,12 +418,18 @@ async fn extract_font(
         "_diag": {
             "bin_bytes": last_bin.len(),
             "glyph_count": all_glyphs.len(),
-            "first_3_glyphs": all_glyphs.iter().take(3).map(|g| serde_json::json!({
+            "first_5_glyphs": all_glyphs.iter().take(5).map(|g| serde_json::json!({
                 "code": g["code"],
+                "x": g["bbox"]["x"],
+                "y": g["bbox"]["y"],
                 "w": g["bbox"]["width"],
-                "h": g["bbox"]["height"]
-            })).collect::<Vec<_>>()
+                "h": g["bbox"]["height"],
+                "adv": g["advanceWidth"]
+            })).collect::<Vec<_>>(),
+            "ascent": font_ascent,
+            "descent": font_descent
         },
+        "_diag_tables": last_diag_tables,
         "fontData": { "ascent": font_ascent, "descent": font_descent, "glyphs": all_glyphs },
         "lvglBinFile": last_bin,
         "lvglSourceFile": last_source
