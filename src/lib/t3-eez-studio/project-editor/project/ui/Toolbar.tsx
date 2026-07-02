@@ -36,6 +36,10 @@ import {
 import { closest } from "eez-studio-shared/dom";
 import { Icon } from "eez-studio-ui/icon";
 import { dockerBuildState } from "project-editor/lvgl/docker-build/docker-build-state";
+import { transformToDeviceJson } from "project-editor/build/firmware-export";
+import { writeTextFile } from "project-editor/build/build";
+import { makeFolder } from "eez-studio-shared/util-electron";
+import * as notification from "eez-studio-ui/notification";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -854,6 +858,46 @@ const RunEditSwitchControls = observer(
             return previewStore.state === "building";
         }
 
+        handleDeploy = async () => {
+            const projectStore = this.context;
+            const project = projectStore.project;
+            const baseFolder = projectStore.filePath
+                ? projectStore.filePath.replace(/\\[^\\]+$/, "")
+                : "";
+
+            if (!baseFolder) {
+                notification.error("Save the project first before deploying.");
+                return;
+            }
+
+            try {
+                const deviceConfigDir = baseFolder + "\\device-config";
+                await makeFolder(deviceConfigDir);
+
+                const screens = transformToDeviceJson(project);
+                let count = 0;
+                for (const [screenName, screenData] of Object.entries(screens)) {
+                    const json = JSON.stringify(
+                        { [screenName]: screenData },
+                        null,
+                        2
+                    );
+                    const filePath = deviceConfigDir + "\\" + screenName + ".json";
+                    await writeTextFile(filePath, json);
+                    count++;
+                }
+
+                notification.success(
+                    `Deployed ${count} screen${count > 1 ? "s" : ""} to device-config\\`,
+                    { autoClose: 3000 }
+                );
+            } catch (err: any) {
+                notification.error(
+                    `Deploy failed: ${err?.message || err}`
+                );
+            }
+        };
+
         render() {
             const iconSize = 30;
             return (
@@ -931,6 +975,14 @@ const RunEditSwitchControls = observer(
                             loader={this.isFullSimulatorBuilding}
                         />
                     )}
+
+                    <ButtonAction
+                        text="Deploy"
+                        title="Export device JSON files to device-config\\ folder"
+                        icon="material:file_download"
+                        iconSize={iconSize}
+                        onClick={this.handleDeploy}
+                    />
                 </div>
             );
         }
