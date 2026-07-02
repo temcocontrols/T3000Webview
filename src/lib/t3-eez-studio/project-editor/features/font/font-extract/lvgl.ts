@@ -197,6 +197,12 @@ export class ExtractFont implements IFontExtract {
                     `lvglSourceFile=${!!workerResult.lvglSourceFile} ` +
                     `(len=${(workerResult.lvglSourceFile || "").length})`
                 );
+                if (workerResult._diag) {
+                    console.log(
+                        `[lvgl] extractFont "${fontName}" DIAG:`,
+                        JSON.stringify(workerResult._diag)
+                    );
+                }
             } else {
                 // Electron: use Worker with lv_font_conv
                 workerResult = await new Promise<any>((resolve, reject) => {

@@ -124,6 +124,21 @@ pub fn process_font(
         });
     }
 
+    // ── Diagnostic: log first 10 glyph metrics ──
+    let empty_count = glyphs.iter().filter(|g| g.pixels.is_empty()).count();
+    let non_empty = glyphs.len() - empty_count;
+    eprintln!(
+        "font_extract: {} total_glyphs={} non_empty={} empty={}",
+        font_name, glyphs.len(), non_empty, empty_count
+    );
+    for g in glyphs.iter().take(5) {
+        let pixel_total: usize = g.pixels.iter().map(|r| r.len()).sum();
+        eprintln!(
+            "  glyph code={} w={} h={} adv={:.1} x={} y={} pixels={}",
+            g.code, g.width, g.height, g.advance_width, g.x, g.y, pixel_total
+        );
+    }
+
     // Collect font metrics from ttf-parser
     let face = ttf_parser::Face::parse(&font_bytes, 0)
         .map_err(|e| format!("ttf_parser: {:?}", e))?;
@@ -197,7 +212,7 @@ pub fn process_font(
 
     let cmap = build_cmap(&glyphs, &glyph_id);
     let glyf = build_glyf(&glyphs, &glyph_id, bpp, monospaced, advance_width_format, advance_width_bits, xy_bits, wh_bits, no_compress, no_prefilter, last_id);
-    let loca = build_loca(&glyf.offsets, glyf.offsets.len() as u32);
+    let loca = build_loca(&glyf.offsets, glyf.offsets.len() as u32 + 1);
     let kern = build_kern(&glyphs, &glyph_id, advance_width_format);
 
     // Concatenate binary
@@ -207,6 +222,28 @@ pub fn process_font(
     bin.extend_from_slice(&loca);
     bin.extend_from_slice(&glyf.data);
     bin.extend_from_slice(&kern);
+
+    // ── Diagnostic: log binary sizes ──
+    eprintln!(
+        "font_extract: output={} size={} head={} cmap={} loca={} glyf={} kern={} glyphs={} xy_bits={} wh_bits={} adv_bits={}",
+        font_name,
+        bin.len(),
+        head.len(),
+        cmap.len(),
+        loca.len(),
+        glyf.data.len(),
+        kern.len(),
+        glyphs.len(),
+        xy_bits,
+        wh_bits,
+        advance_width_bits,
+    );
+    // Log first 5 loca offsets to verify they're correct
+    let first_offsets: Vec<u32> = glyf.offsets.iter().take(5).copied().collect();
+    eprintln!(
+        "font_extract: output={} first_loca_offsets={:?}",
+        font_name, first_offsets
+    );
 
     let lvgl_bin_file = BASE64.encode(&bin);
 
@@ -301,7 +338,7 @@ fn build_head(
     has_kern: bool,
     def_advance_width: i32,
     glyph_id_format_1: bool,
-    last_id: usize,
+    _last_id: usize,
 ) -> Vec<u8> {
     let o_size = 0usize;
     let o_label = o_size + 4;
@@ -355,7 +392,8 @@ fn build_head(
 
     buf[o_kerning_scale..o_kerning_scale+2].copy_from_slice(&16u16.to_le_bytes()); // FP12.4 = 1.0
 
-    let index_to_loc: u8 = if last_id > 65535 { 1 } else { 0 };
+    // Always use u32 loca entries (build_loca always writes 4 bytes per entry)
+    let index_to_loc: u8 = 1;
     buf[o_idx_to_loc] = index_to_loc;
     buf[o_glyph_id_fmt] = if glyph_id_format_1 { 1 } else { 0 };
     buf[o_adv_w_fmt] = advance_width_format;
@@ -445,36 +483,37 @@ fn build_glyf(
     sorted.sort_by_key(|&(id, _)| id);
 
     for (_id, g) in &sorted {
-        let mut buf = Vec::with_capacity(100 + g.width as usize * g.height as usize * 4);
+        let mut bs = BitStream::new();
 
         // Write advance width (if not monospaced)
         if !monospaced {
             let w = width_to_int(g.advance_width, advance_width_format);
-            write_bits(&mut buf, w as u32, advance_width_bits as u32);
+            bs.write_bits(w as u32, advance_width_bits as u32);
         }
 
         // Write bbox
-        write_bits(&mut buf, g.x as u32, xy_bits as u32);
-        write_bits(&mut buf, g.y as u32, xy_bits as u32);
-        write_bits(&mut buf, g.width as u32, wh_bits as u32);
-        write_bits(&mut buf, g.height as u32, wh_bits as u32);
+        bs.write_bits(g.x as u32, xy_bits as u32);
+        bs.write_bits(g.y as u32, xy_bits as u32);
+        bs.write_bits(g.width as u32, wh_bits as u32);
+        bs.write_bits(g.height as u32, wh_bits as u32);
 
         // Write pixel data
         if no_compress {
             for row in &g.pixels {
                 for &p in row {
-                    write_bits(&mut buf, p as u32, bpp as u32);
+                    bs.write_bits(p as u32, bpp as u32);
                 }
             }
         } else {
             // Simple compression: store raw for now (full RLE/LZ4 would match lv_font_conv)
             for row in &g.pixels {
                 for &p in row {
-                    write_bits(&mut buf, p as u32, bpp as u32);
+                    bs.write_bits(p as u32, bpp as u32);
                 }
             }
         }
 
+        let buf = bs.into_vec();
         bin_data.push(buf);
         offsets.push(offsets.last().unwrap() + bin_data.last().unwrap().len() as u32);
     }
@@ -505,32 +544,61 @@ fn build_glyf(
     }
 }
 
-fn write_bits(buf: &mut Vec<u8>, value: u32, bits: u32) {
-    // Simple bit writer — write value into whole bytes (MSB first).
-    // Each glyph field is byte-aligned for simplicity.
-    let v = value & ((1u32 << bits) - 1);
-    let bytes_needed = ((bits + 7) / 8) as usize;
-    let start = buf.len();
-    buf.resize(start + bytes_needed, 0);
-    for i in 0..bytes_needed {
-        let shift = (bytes_needed - 1 - i) * 8;
-        buf[start + i] = ((v >> shift) & 0xFF) as u8;
+// ═══════════════════════════════════════════════════════════════════════════
+// Stateful bit writer — matches lv_font_conv's BitStream (big-endian, MSB
+// first, tightly packed). Tracks bit position across write_bits() calls.
+// ═══════════════════════════════════════════════════════════════════════════
+struct BitStream {
+    buf: Vec<u8>,
+    bit_pos: usize,  // next bit position (0 = MSB of byte 0)
+}
+
+impl BitStream {
+    fn new() -> Self {
+        BitStream { buf: Vec::new(), bit_pos: 0 }
+    }
+
+    fn write_bits(&mut self, value: u32, bits: u32) {
+        if bits == 0 { return; }
+        let v = value & ((1u32 << bits) - 1);
+        let total = bits as usize;
+        // Ensure buffer is large enough
+        let last_bit = self.bit_pos + total - 1;
+        let needed_bytes = (last_bit / 8) + 1;
+        if needed_bytes > self.buf.len() {
+            self.buf.resize(needed_bytes, 0);
+        }
+        // Write bits MSB-first into the buffer starting at bit_pos
+        for i in 0..total {
+            let bit_val = (v >> (total - 1 - i)) & 1;
+            let global_bit = self.bit_pos + i;
+            let byte_idx = global_bit / 8;
+            let bit_in_byte = global_bit % 8;
+            self.buf[byte_idx] |= (bit_val as u8) << (7 - bit_in_byte);
+        }
+        self.bit_pos += total;
+    }
+
+    fn into_vec(self) -> Vec<u8> {
+        self.buf
     }
 }
 
 fn build_loca(offsets: &[u32], count: u32) -> Vec<u8> {
-    // Uses u32 offsets
+    // Always uses u32 offsets (index_to_loc = 1).
+    // count should be last_id + 1 (glyphs count + 2), with sentinel 0xFFFFFFFF.
     let header = 12;
-    let data_len = offsets.len() * 4;
+    let data_len = count as usize * 4;
     let total = align4(header + data_len);
     let mut buf = vec![0u8; total];
     buf[0..4].copy_from_slice(&(total as u32).to_le_bytes());
     buf[4..8].copy_from_slice(b"loca");
     buf[8..12].copy_from_slice(&count.to_le_bytes());
-    for (i, &off) in offsets.iter().enumerate() {
+    for i in 0..count as usize {
         let pos = header + i * 4;
+        let val: u32 = if i < offsets.len() { offsets[i] } else { 0xFFFFFFFF };
         if pos + 4 <= total {
-            buf[pos..pos+4].copy_from_slice(&off.to_le_bytes());
+            buf[pos..pos+4].copy_from_slice(&val.to_le_bytes());
         }
     }
     buf

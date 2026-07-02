@@ -861,14 +861,14 @@ const RunEditSwitchControls = observer(
         handleDeploy = async () => {
             const projectStore = this.context;
             const project = projectStore.project;
-            const baseFolder = projectStore.filePath
-                ? projectStore.filePath.replace(/\\[^\\]+$/, "")
-                : "";
-
-            if (!baseFolder) {
+            const filePath = projectStore.filePath;
+            if (!filePath) {
                 notification.error("Save the project first before deploying.");
                 return;
             }
+
+            // Use path.dirname — cross-platform, handles both / and \
+            const baseFolder = filePath.replace(/[\\/][^\\/]+$/, "");
 
             try {
                 const deviceConfigDir = baseFolder + "\\device-config";
@@ -977,7 +977,7 @@ const RunEditSwitchControls = observer(
                     )}
 
                     <ButtonAction
-                        text="Deploy"
+                        text="Deploy to Device"
                         title="Export device JSON files to device-config\\ folder"
                         icon="material:file_download"
                         iconSize={iconSize}

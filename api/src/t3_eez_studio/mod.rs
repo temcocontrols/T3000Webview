@@ -413,6 +413,15 @@ async fn extract_font(
     );
 
     Ok(Json(serde_json::json!({
+        "_diag": {
+            "bin_bytes": last_bin.len(),
+            "glyph_count": all_glyphs.len(),
+            "first_3_glyphs": all_glyphs.iter().take(3).map(|g| serde_json::json!({
+                "code": g["code"],
+                "w": g["bbox"]["width"],
+                "h": g["bbox"]["height"]
+            })).collect::<Vec<_>>()
+        },
         "fontData": { "ascent": font_ascent, "descent": font_descent, "glyphs": all_glyphs },
         "lvglBinFile": last_bin,
         "lvglSourceFile": last_source
