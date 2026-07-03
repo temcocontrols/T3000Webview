@@ -63,8 +63,11 @@ fn main() {
         "../../eez-studio/resources/eez-framework-amalgamation",
     );
 
-    // TODO: add more copy_resource_dir(…) calls here for additional static
-    //       resource directories needed at runtime.
+    copy_resource_dir(
+        &manifest_dir,
+        profile_root,
+        "../../eez-studio/resources/docker-build",
+    );
 
     println!("cargo:warning=Build complete");
 }

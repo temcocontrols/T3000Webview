@@ -49,6 +49,24 @@ struct IsDirectoryResponse {
     is_directory: bool,
 }
 
+#[derive(Debug, Serialize)]
+struct FileEntry {
+    name: String,
+    is_directory: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct ListFilesDetailedResponse {
+    entries: Vec<FileEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+struct DeleteRecursiveQuery {
+    path: String,
+    #[serde(default)]
+    force: bool,
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Helpers
 ////////////////////////////////////////////////////////////////////////////////
@@ -241,6 +259,46 @@ async fn file_size(
     match fs::metadata(&full_path).await {
         Ok(meta) => Ok(Json(FileSizeResponse { size: meta.len() })),
         Err(_) => Err(StatusCode::NOT_FOUND),
+    }
+}
+
+async fn list_files_detailed(
+    Query(q): Query<PathQuery>,
+) -> Result<Json<ListFilesDetailedResponse>, StatusCode> {
+    let full_path = resolve_path(&data_root().to_string_lossy(), &q.path);
+    let mut entries = Vec::new();
+    if let Ok(mut dir) = fs::read_dir(&full_path).await {
+        while let Ok(Some(entry)) = dir.next_entry().await {
+            if let Ok(name) = entry.file_name().into_string() {
+                let is_dir = entry.file_type().await.map(|ft| ft.is_dir()).unwrap_or(false);
+                entries.push(FileEntry { name, is_directory: is_dir });
+            }
+        }
+    }
+    Ok(Json(ListFilesDetailedResponse { entries }))
+}
+
+async fn delete_recursive(
+    Query(q): Query<DeleteRecursiveQuery>,
+) -> Result<StatusCode, StatusCode> {
+    let full_path = resolve_path(&data_root().to_string_lossy(), &q.path);
+    // force=true: don't error if path doesn't exist
+    if q.force && fs::metadata(&full_path).await.is_err() {
+        return Ok(StatusCode::OK);
+    }
+    match fs::remove_dir_all(&full_path).await {
+        Ok(_) => {
+            info!("delete_recursive: {}", full_path.display());
+            Ok(StatusCode::OK)
+        }
+        Err(e) => {
+            if q.force && e.kind() == std::io::ErrorKind::NotFound {
+                Ok(StatusCode::OK)
+            } else {
+                error!("delete_recursive failed: {} — {:?}", full_path.display(), e);
+                Err(StatusCode::INTERNAL_SERVER_ERROR)
+            }
+        }
     }
 }
 
@@ -472,7 +530,10 @@ async fn exec_command(Json(req): Json<ExecRequest>) -> Json<ExecResponse> {
     let mut cmd = Command::new(&req.cmd);
     cmd.args(&req.args);
     if let Some(ref cwd) = req.cwd {
-        cmd.current_dir(cwd);
+        // Resolve relative paths through data_root() (like other bridge endpoints)
+        // Absolute paths (e.g. from Electron) pass through unchanged
+        let resolved = resolve_path(&data_root().to_string_lossy(), cwd);
+        cmd.current_dir(&resolved);
     }
     match cmd.output() {
         Ok(output) => Json(ExecResponse {
@@ -734,8 +795,10 @@ pub fn bridge_routes() -> Router<T3AppState> {
         .route("/api/eez-studio/file-exists", get(file_exists))
         .route("/api/eez-studio/delete-file", delete(delete_file))
         .route("/api/eez-studio/list-files", get(list_files))
+        .route("/api/eez-studio/list-files-detailed", get(list_files_detailed))
         .route("/api/eez-studio/file-size", get(file_size))
         .route("/api/eez-studio/is-directory", get(is_directory))
+        .route("/api/eez-studio/delete-recursive", delete(delete_recursive))
         .route("/api/eez-studio/proxy-fetch", get(proxy_fetch))
         .route("/api/eez-studio/proxy-fetch-binary", get(proxy_fetch_binary))
         .route("/api/eez-studio/extract-font", post(extract_font))

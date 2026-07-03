@@ -60,8 +60,17 @@ export class DockerBuildManager {
 
     /**
      * Get the path to the docker-build resources
+     *
+     * Electron: path to resources/docker-build in the packaged app
+     * Browser: path relative to data_root() = T3Web/t3-eez/resources/docker-build
+     *          (copied by api/build.rs via copy_resource_dir)
      */
     private getDockerBuildPath(): string {
+        // Browser mode — bridge API resolves relative paths against data_root()
+        if (typeof (globalThis as any).process?.versions?.electron === "undefined") {
+            return "resources/docker-build";
+        }
+
         const isDev = process.env.NODE_ENV === "development" || !app.isPackaged;
 
         if (isDev) {

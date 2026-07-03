@@ -24,12 +24,12 @@ const UNAVAILABLE: Record<string, string> = {
     emcc: "Emscripten is not available.",
 };
 
-async function runViaBackend(cmd: string, args: string[]): Promise<SpawnResult> {
+async function runViaBackend(cmd: string, args: string[], cwd?: string): Promise<SpawnResult> {
     try {
         const resp = await fetch("/api/eez-studio/exec", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ cmd, args }),
+            body: JSON.stringify({ cmd, args, cwd: cwd || null }),
         });
         if (resp.ok) return await resp.json() as SpawnResult;
     } catch {}
@@ -37,12 +37,12 @@ async function runViaBackend(cmd: string, args: string[]): Promise<SpawnResult> 
     return { status: 1, stdout: "", stderr: msg };
 }
 
-function runSync(cmd: string, args: string[] = []): SpawnResult {
+function runSync(cmd: string, args: string[] = [], cwd?: string): SpawnResult {
     try {
         const xhr = new XMLHttpRequest();
         xhr.open("POST", "/api/eez-studio/exec", false); // false = synchronous
         xhr.setRequestHeader("Content-Type", "application/json");
-        xhr.send(JSON.stringify({ cmd, args }));
+        xhr.send(JSON.stringify({ cmd, args, cwd: cwd || null }));
         if (xhr.status === 200) {
             return JSON.parse(xhr.responseText) as SpawnResult;
         }
@@ -51,10 +51,11 @@ function runSync(cmd: string, args: string[] = []): SpawnResult {
     return { status: 1, stdout: "", stderr: msg };
 }
 
-export function spawn(cmd: string, args?: string[], _opts?: any): SpawnProcess {
+export function spawn(cmd: string, args?: string[], opts?: any): SpawnProcess {
     let result: SpawnResult = { status: -1, stdout: "", stderr: "" };
     let resolved = false;
-    runViaBackend(cmd, args || []).then(r => { result = r; resolved = true; });
+    const cwd = opts?.cwd as string | undefined;
+    runViaBackend(cmd, args || [], cwd).then(r => { result = r; resolved = true; });
     return {
         on(event: string, cb: Function) {
             const check = () => { if (!resolved) { setTimeout(check, 10); return; } if (event === "error" && result.status !== 0) cb(result.error || new Error(result.stderr)); if (event === "close") cb(result.status); };
@@ -66,7 +67,9 @@ export function spawn(cmd: string, args?: string[], _opts?: any): SpawnProcess {
     } as SpawnProcess;
 }
 
-export function spawnSync(cmd: string, args?: string[], _opts?: any): SpawnResult { return runSync(cmd, args); }
+export function spawnSync(cmd: string, args?: string[], opts?: any): SpawnResult {
+    return runSync(cmd, args || [], opts?.cwd as string | undefined);
+}
 
 export function exec(cmd: string, cb?: any) {
     const parts = cmd.split(/\s+/);
@@ -74,7 +77,12 @@ export function exec(cmd: string, cb?: any) {
     return {} as any;
 }
 
-export function execSync(cmd: string, _opts?: any): string { const parts = cmd.split(/\s+/); const r = runSync(parts[0], parts.slice(1)); if (r.status !== 0) throw r.error || new Error(r.stderr); return r.stdout; }
+export function execSync(cmd: string, opts?: any): string {
+    const parts = cmd.split(/\s+/);
+    const r = runSync(parts[0], parts.slice(1), opts?.cwd as string | undefined);
+    if (r.status !== 0) throw r.error || new Error(r.stderr);
+    return r.stdout;
+}
 
 export function execFile(file: string, args?: string[], opts?: any, cb?: any) {
     const callback = typeof opts === "function" ? opts : (typeof args === "function" ? args : cb);
