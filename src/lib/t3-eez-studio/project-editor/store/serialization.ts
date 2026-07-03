@@ -89,20 +89,8 @@ export function objectToJson(
     space?: number,
     toJsHook?: (jsObject: any, object: IEezObject) => void
 ) {
-    const saved = {
-        _eez_parent: (object as any)._eez_parent,
-        _eez_propertyInfo: (object as any)._eez_propertyInfo,
-        _eez_id: (object as any)._eez_id,
-        _eez_key: (object as any)._eez_key
-    };
-    delete (object as any)._eez_parent;
-    delete (object as any)._eez_propertyInfo;
-    delete (object as any)._eez_id;
-    delete (object as any)._eez_key;
-
-    // Create a clean shallow copy excluding runtime _-prefixed
-    // MobX observables (e.g. _lvglRuntime, _lvglObj) that hold
-    // non-observable class instances which toJS cannot process.
+    // Create a clean copy excluding all _-prefixed keys. Never mutate
+    // the original — MobX observables fire reactions on delete/assign.
     const cleanObj: any = {};
     for (const key of Object.keys(object as any)) {
         if (key[0] !== "_") {
@@ -111,8 +99,6 @@ export function objectToJson(
     }
 
     let jsObject = toJS(cleanObj);
-
-    Object.assign(object, saved);
 
     if (toJsHook) {
         toJsHook(jsObject, object);
@@ -186,6 +172,11 @@ function loadObjectInternal(
         typeof jsObjectOrString == "string"
             ? JSON.parse(jsObjectOrString)
             : jsObjectOrString;
+
+    if (jsObject == null) {
+        // Recursive call with undefined/null defaultValue — create empty object
+        jsObject = {};
+    }
 
     if (isLoadProject && aClass == ProjectEditor.ProjectClass) {
         let projectFeatures = ProjectEditor.extensions;
@@ -339,6 +330,10 @@ function loadObjectInternal(
 }
 
 function getObjID(object: EezObject, jsObject: any, key: string | undefined) {
+    if (!jsObject) {
+        return undefined;
+    }
+
     if (jsObject.objID != undefined) {
         return jsObject.objID;
     }

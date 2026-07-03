@@ -1688,11 +1688,7 @@ export function getJSON(projectStore: ProjectStore, tabWidth: number = 2) {
         }
     };
 
-    (projectStore.project as any)._store = undefined;
-
     const json = objectToJson(projectStore.project, tabWidth, toJsHook);
-
-    projectStore.project._store = projectStore;
 
     return json;
 }

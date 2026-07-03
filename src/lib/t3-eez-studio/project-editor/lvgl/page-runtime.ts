@@ -314,6 +314,12 @@ export abstract class LVGLPageRuntime {
             let cashedFont;
             
             if (!font.lvglUseFreeType) {
+                // During save, autorun may fire with plain toJS-converted
+                // font objects that lack methods.
+                if (typeof font.getLvglBinFile !== "function") {
+                    return 0;
+                }
+
                 cashedFont = this.fontsCache.get(font);
 
                 const lvglBinFile = font.getLvglBinFile();

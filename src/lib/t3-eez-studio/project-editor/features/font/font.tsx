@@ -2850,7 +2850,12 @@ const feature: ProjectEditorFeature = {
                         }
 
                         if (embeddedFontFileIndex != -1) {
-                            delete font.embeddedFontFile;
+                            try {
+                                delete font.embeddedFontFile;
+                            } catch (_) {
+                                // MobX observable: property is non-configurable.
+                                // embeddedFontFile stays in JSON; index dedup skipped.
+                            }
                             (font as any).embeddedFontFileIndex =
                                 embeddedFontFileIndex;
                         }
