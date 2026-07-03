@@ -2813,7 +2813,7 @@ const feature: ProjectEditorFeature = {
 
                 if (font.lvglRanges || font.lvglSymbols) {
                     font.glyphs = [];
-                } else {
+                } else if (font.glyphs) {
                     font.glyphs.forEach(glyph => {
                         if (glyph.glyphBitmap && glyph.glyphBitmap.pixelArray) {
                             (glyph.glyphBitmap as any).pixelArray =
