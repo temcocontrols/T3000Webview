@@ -49,6 +49,14 @@ struct IsDirectoryResponse {
     is_directory: bool,
 }
 
+/// Combined stat response — avoids separate file-size + is-directory calls
+#[derive(Debug, Serialize)]
+struct StatResponse {
+    exists: bool,
+    size: u64,
+    is_directory: bool,
+}
+
 #[derive(Debug, Serialize)]
 struct FileEntry {
     name: String,
@@ -299,6 +307,24 @@ async fn delete_recursive(
                 Err(StatusCode::INTERNAL_SERVER_ERROR)
             }
         }
+    }
+}
+
+async fn stat_file(
+    Query(q): Query<PathQuery>,
+) -> Json<StatResponse> {
+    let full_path = resolve_path(&data_root().to_string_lossy(), &q.path);
+    match fs::metadata(&full_path).await {
+        Ok(meta) => Json(StatResponse {
+            exists: true,
+            size: meta.len(),
+            is_directory: meta.is_dir(),
+        }),
+        Err(_) => Json(StatResponse {
+            exists: false,
+            size: 0,
+            is_directory: false,
+        }),
     }
 }
 
@@ -797,6 +823,7 @@ pub fn bridge_routes() -> Router<T3AppState> {
         .route("/api/eez-studio/list-files", get(list_files))
         .route("/api/eez-studio/list-files-detailed", get(list_files_detailed))
         .route("/api/eez-studio/file-size", get(file_size))
+        .route("/api/eez-studio/stat", get(stat_file))
         .route("/api/eez-studio/is-directory", get(is_directory))
         .route("/api/eez-studio/delete-recursive", delete(delete_recursive))
         .route("/api/eez-studio/proxy-fetch", get(proxy_fetch))

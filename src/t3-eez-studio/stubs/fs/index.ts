@@ -96,10 +96,9 @@ export function writeFileSync(p: string, data: string | Uint8Array | ArrayBuffer
 }
 
 export function statSync(p: string): { size: number; isFile(): boolean; isDirectory(): boolean; isSymbolicLink(): boolean } {
-    const sizeResp = _syncGetJson<{ size: number }>(`/api/eez-studio/file-size?path=${_enc(p)}`);
-    const isDirResp = _syncGetJson<{ is_directory: boolean }>(`/api/eez-studio/is-directory?path=${_enc(p)}`);
-    const size = sizeResp?.size ?? 0;
-    const isDir = isDirResp?.is_directory ?? false;
+    const resp = _syncGetJson<{ exists: boolean; size: number; is_directory: boolean }>(`/api/eez-studio/stat?path=${_enc(p)}`);
+    const size = resp?.size ?? 0;
+    const isDir = resp?.is_directory ?? false;
     return {
         size,
         isFile: () => !isDir,
