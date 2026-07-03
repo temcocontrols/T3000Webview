@@ -72,54 +72,114 @@ pub fn process_font(
         .decode(source_bin_base64)
         .map_err(|e| format!("base64 decode: {}", e))?;
 
-    let font = fontdue::Font::from_bytes(font_bytes.clone(), fontdue::FontSettings::default())
-        .map_err(|e| format!("font parse: {}", e))?;
+    // Use freetype via raw FFI (matches Electron's lv_font_conv pixel-for-pixel)
+    let mut library: freetype::freetype::FT_Library = std::ptr::null_mut();
+    let mut face: freetype::freetype::FT_Face = std::ptr::null_mut();
+    unsafe {
+        let err = freetype::freetype::FT_Init_FreeType(&mut library);
+        if err != 0 { return Err(format!("FT_Init_FreeType failed: {}", err)); }
+
+        let err = freetype::freetype::FT_New_Memory_Face(
+            library,
+            font_bytes.as_ptr(),
+            font_bytes.len() as _,
+            0,
+            &mut face,
+        );
+        if err != 0 { return Err(format!("FT_New_Memory_Face failed: {}", err)); }
+
+        // Electron's freetype WASM module uses size as pixels, not points.
+        // Match that: FT_Set_Pixel_Sizes(face, 0, size)
+        let err = freetype::freetype::FT_Set_Pixel_Sizes(
+            face,
+            0,
+            size as u32,
+        );
+        if err != 0 { return Err(format!("FT_Set_Pixel_Sizes failed: {}", err)); }
+    }
+
+    let face_ref = unsafe { &*face };
+    // Use scaled metrics from size->metrics (26.6 format), not face->ascender (font units)
+    let size_metrics = unsafe { &(*(*face).size).metrics };
+    eprintln!(
+        "font_extract(freetype): {} size={} face_asc={} size_asc={} size_desc={}",
+        font_name, size,
+        face_ref.ascender,
+        size_metrics.ascender, size_metrics.descender
+    );
+    let ascent = (size_metrics.ascender as f64 / 64.0).round() as u16;
+    let descent = (size_metrics.descender as f64 / 64.0).round() as i16;
+    let underline_position = (face_ref.underline_position as f64 / 64.0).round() as i16;
+    let underline_thickness = (face_ref.underline_thickness as f64 / 64.0).round() as u16;
 
     // Rasterize all requested glyphs
     let mut glyphs: Vec<InternalGlyph> = Vec::with_capacity(codepoints.len());
+    // Match lv_font_conv defaults: FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT | FT_LOAD_FORCE_AUTOHINT
+    const FT_LOAD_TARGET_LIGHT_VAL: u32 = 0x10000; // not in bindgen, value from freetype headers
+    let load_flags = (freetype::freetype::FT_LOAD_RENDER
+        | FT_LOAD_TARGET_LIGHT_VAL
+        | freetype::freetype::FT_LOAD_FORCE_AUTOHINT) as i32;
+
     for &code in codepoints {
-        let c = char::from_u32(code).unwrap_or('\0');
-        let (metrics, bitmap) = font.rasterize(c, size);
-        if bitmap.is_empty() || metrics.width == 0 || metrics.height == 0 {
-            // Skip glyphs with no visual representation (spaces, etc.)
-            // But still record metrics for advance width
-            glyphs.push(InternalGlyph {
-                code,
-                advance_width: metrics.advance_width as f64,
-                x: metrics.xmin as i16,
-                y: -(metrics.ymin as i16), // fontdue y grows up, LVGL expects down
-                width: 0,
-                height: 0,
-                pixels: vec![],
-                kerning: BTreeMap::new(),
-            });
-            continue;
+        unsafe {
+            let err = freetype::freetype::FT_Load_Char(
+                face,
+                code as _,
+                load_flags,
+            );
+            if err != 0 {
+                glyphs.push(InternalGlyph {
+                    code,
+                    advance_width: 0.0,
+                    x: 0,
+                    y: 0,
+                    width: 0,
+                    height: 0,
+                    pixels: vec![],
+                    kerning: BTreeMap::new(),
+                });
+                continue;
+            }
         }
 
-        let w = metrics.width as u16;
-        let h = metrics.height as u16;
+        let glyph = unsafe { &(*(*face).glyph) };
+        let bitmap = &glyph.bitmap;
+        let metrics = &glyph.metrics;
 
-        // Convert 8-bit coverage bitmap → bpp-bit grayscale
-        let pixels: Vec<Vec<u8>> = if bpp == 8 {
-            (0..h as usize)
-                .map(|row| bitmap[row * w as usize..(row + 1) * w as usize].to_vec())
-                .collect()
+        let w = bitmap.width as u16;
+        let h = bitmap.rows as u16;
+        let advance = metrics.horiAdvance as f64 / 64.0;
+        // y = bitmap_top - box_h  (LVGL convention: ofs_y from baseline)
+        let x = glyph.bitmap_left as i16;
+        let y = if w == 0 || h == 0 { 0 } else { (glyph.bitmap_top - h as i32) as i16 };
+
+        let pixels: Vec<Vec<u8>> = if w == 0 || h == 0 {
+            vec![]
         } else {
-            (0..h as usize)
-                .map(|row| {
-                    bitmap[row * w as usize..(row + 1) * w as usize]
-                        .iter()
-                        .map(|&p| p >> (8 - bpp))
-                        .collect()
-                })
-                .collect()
+            let buf = unsafe {
+                std::slice::from_raw_parts(bitmap.buffer, (w as usize) * (h as usize))
+            };
+            if bpp == 8 {
+                (0..h as usize)
+                    .map(|row| buf[row * w as usize..(row + 1) * w as usize].to_vec())
+                    .collect()
+            } else {
+                (0..h as usize)
+                    .map(|row| {
+                        buf[row * w as usize..(row + 1) * w as usize]
+                            .iter()
+                            .map(|&p| p >> (8 - bpp))
+                            .collect()
+                    })
+                    .collect()
+            }
         };
 
         glyphs.push(InternalGlyph {
             code,
-            advance_width: metrics.advance_width as f64,
-            x: metrics.xmin as i16,
-            y: -(metrics.ymin as i16 + metrics.height as i16), // -(top of glyph) matches Electron: y = -glyphInfoY2
+            advance_width: advance,
+            x,
+            y,
             width: w,
             height: h,
             pixels,
@@ -127,12 +187,16 @@ pub fn process_font(
         });
     }
 
-    // ── Diagnostic: log first 10 glyph metrics ──
-    let empty_count = glyphs.iter().filter(|g| g.pixels.is_empty()).count();
-    let non_empty = glyphs.len() - empty_count;
+    // Cleanup
+    unsafe {
+        freetype::freetype::FT_Done_Face(face);
+        freetype::freetype::FT_Done_FreeType(library);
+    }
+
+    // ── Diagnostic ──
     eprintln!(
-        "font_extract: {} total_glyphs={} non_empty={} empty={}",
-        font_name, glyphs.len(), non_empty, empty_count
+        "font_extract(freetype): {} total_glyphs={}",
+        font_name, glyphs.len()
     );
     for g in glyphs.iter().take(5) {
         let pixel_total: usize = g.pixels.iter().map(|r| r.len()).sum();
@@ -142,28 +206,11 @@ pub fn process_font(
         );
     }
 
-    // Collect font metrics from ttf-parser
-    let face = ttf_parser::Face::parse(&font_bytes, 0)
-        .map_err(|e| format!("ttf_parser: {:?}", e))?;
-    let scale = size as f64 / face.units_per_em() as f64;
-
-    let ascent = (face.ascender() as f64 * scale).round() as u16;
-    let descent = (face.descender() as f64 * scale).round() as i16;
-    let typo_ascent = face.typographic_ascender().unwrap_or(face.ascender());
-    let typo_descent = face.typographic_descender().unwrap_or(face.descender());
-    let typo_line_gap = face.typographic_line_gap().unwrap_or(0);
-    let underline_position = face.underline_metrics()
-        .map(|m| m.position).unwrap_or(0);
-    let underline_thickness = face.underline_metrics()
-        .map(|m| m.thickness).unwrap_or(0);
-
     let src_ascent = ascent as f64;
     let src_descent = descent as f64;
-    let src_typo_ascent = (typo_ascent as f64 * scale).round() as i32;
-    let src_typo_descent = (typo_descent as f64 * scale).round() as i32;
-    let src_line_gap = (typo_line_gap as f64 * scale).round() as u16;
-    let src_underline_pos = (underline_position as f64 * scale).round() as i16;
-    let src_underline_thick = (underline_thickness as f64 * scale).round() as u16;
+    let src_typo_ascent = ascent as i32;
+    let src_typo_descent = descent as i32;
+    let src_line_gap = 0u16;
 
     // Assign glyph IDs (1-based, 0 reserved)
     let mut glyph_id: BTreeMap<u32, u16> = BTreeMap::new();
@@ -204,7 +251,7 @@ pub fn process_font(
         xy_bits, wh_bits,
         if no_compress { 0 } else { 1 }, // compression_id
         if lcd { 1 } else if lcd_v { 2 } else { 0 }, // subpixels_mode
-        src_underline_pos, src_underline_thick,
+        underline_position, underline_thickness,
         has_kerning(&glyphs),
         if glyphs.first().map_or(true, |g| g.advance_width > 0.0) {
             width_to_int(glyphs[0].advance_width, advance_width_format)
@@ -296,7 +343,10 @@ pub fn process_font(
                     let gid = *glyph_id.get(&code).unwrap_or(&0);
                     let start = *glyph_id.get(&glyphs.first().map_or(0, |g| g.code)).unwrap_or(&0);
                     if gid >= start { (gid - start) as u32 } else { 0 }
-                }).collect::<Vec<u32>>()
+                }).collect::<Vec<u32>>(),
+                // Raw bytes of subheader (12..28) and first 32 data bytes (28..60)
+                "raw_subheader": cmap.get(12..28).map(|b| b.iter().map(|x| *x as u32).collect::<Vec<u32>>()).unwrap_or_default(),
+                "raw_data_first32": cmap.get(28..60).map(|b| b.iter().map(|x| *x as u32).collect::<Vec<u32>>()).unwrap_or_default()
             },
             "loca": {
                 "count": glyf.offsets.len() as u32,

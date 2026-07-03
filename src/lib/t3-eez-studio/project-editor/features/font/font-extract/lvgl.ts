@@ -203,6 +203,12 @@ export class ExtractFont implements IFontExtract {
                         JSON.stringify(workerResult._diag_tables)
                     );
                 }
+                if (workerResult._diag) {
+                    console.log(
+                        `[lvgl] extractFont "${fontName}" GLYPHS:`,
+                        JSON.stringify(workerResult._diag)
+                    );
+                }
             } else {
                 // Electron: use Worker with lv_font_conv
                 workerResult = await new Promise<any>((resolve, reject) => {
