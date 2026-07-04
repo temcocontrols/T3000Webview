@@ -124,6 +124,28 @@ async fn server_time_handler() -> Json<serde_json::Value> {
     }))
 }
 
+fn routes_wasm() -> Router {
+    Router::new().nest_service(
+        "/",
+        get_service(ServeDir::new(
+            crate::t3_eez_studio::data_root().join("resources").join("t3-eez-studio")
+        )).handle_error(|_| async move {
+            (StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        }),
+    )
+}
+
+fn routes_assets() -> Router {
+    Router::new().nest_service(
+        "/",
+        get_service(ServeDir::new(
+            crate::t3_eez_studio::data_root().join("resources").join("eez-studio-assets")
+        )).handle_error(|_| async move {
+            (StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        }),
+    )
+}
+
 fn routes_static() -> Router {
     Router::new().nest_service(
         "/",
@@ -229,18 +251,8 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         // .nest("/api", crate::t3_device::trend_routes::trend_data_routes())
         .with_state(app_state)
         // Serve WASM runtimes & font assets from the Rust resource tree (not public/)
-        // These routes match BEFORE the SPA fallback — same URLs as before, just
-        // served from T3Web/t3-eez/resources/ instead of dist/ (public/).
-        .nest_service("/t3-eez-studio", get_service(ServeDir::new(
-            crate::t3_eez_studio::data_root().join("resources").join("t3-eez-studio")
-        )).handle_error(|_| async move {
-            (StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-        }))
-        .nest_service("/eez-studio-assets", get_service(ServeDir::new(
-            crate::t3_eez_studio::data_root().join("resources").join("eez-studio-assets")
-        )).handle_error(|_| async move {
-            (StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-        }))
+        .nest("/t3-eez-studio", routes_wasm())
+        .nest("/eez-studio-assets", routes_assets())
         .fallback_service(routes_static())
         .layer(middleware::from_fn(propagate_flow_id))
         .layer(cors))
