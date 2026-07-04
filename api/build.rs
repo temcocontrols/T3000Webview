@@ -76,6 +76,54 @@ fn copy_selected_files(
     println!("cargo:warning=Copied selected files → {}", dst_dir.display());
 }
 
+/// Copy WASM runtimes and font assets from source repos into profile_root.
+/// Called once for release (target/) and once for dev (api/).
+fn copy_wasm_and_fonts(manifest_dir: &str, root: &Path) {
+    // Dashboard + GUI lite runtime → t3-eez-studio/wasm/
+    copy_selected_files(
+        manifest_dir, root,
+        "../../studio-wasm-libs/release/wasm",
+        &[
+            ("eez_runtime.js", "wasm/eez_runtime.js"),
+            ("eez_runtime.wasm", "wasm/eez_runtime.wasm"),
+            ("eez_gui_lite_runtime.js", "wasm/eez_gui_lite_runtime.js"),
+            ("eez_gui_lite_runtime.wasm", "wasm/eez_gui_lite_runtime.wasm"),
+        ],
+        "t3-eez-studio",
+    );
+    // LVGL per-version runtimes → t3-eez-studio/wasm/lvgl/{version}/
+    copy_selected_files(
+        manifest_dir, root,
+        "../../studio-wasm-libs/release/wasm",
+        &[
+            ("lvgl_runtime_v8.4.0.js", "wasm/lvgl/8.4.0/lvgl_runtime_v8.4.0.js"),
+            ("lvgl_runtime_v8.4.0.wasm", "wasm/lvgl/8.4.0/lvgl_runtime_v8.4.0.wasm"),
+            ("lvgl_runtime_v9.2.2.js", "wasm/lvgl/9.2.2/lvgl_runtime_v9.2.2.js"),
+            ("lvgl_runtime_v9.2.2.wasm", "wasm/lvgl/9.2.2/lvgl_runtime_v9.2.2.wasm"),
+            ("lvgl_runtime_v9.3.0.js", "wasm/lvgl/9.3.0/lvgl_runtime_v9.3.0.js"),
+            ("lvgl_runtime_v9.3.0.wasm", "wasm/lvgl/9.3.0/lvgl_runtime_v9.3.0.wasm"),
+            ("lvgl_runtime_v9.4.0.js", "wasm/lvgl/9.4.0/lvgl_runtime_v9.4.0.js"),
+            ("lvgl_runtime_v9.4.0.wasm", "wasm/lvgl/9.4.0/lvgl_runtime_v9.4.0.wasm"),
+            ("lvgl_runtime_v9.5.0.js", "wasm/lvgl/9.5.0/lvgl_runtime_v9.5.0.js"),
+            ("lvgl_runtime_v9.5.0.wasm", "wasm/lvgl/9.5.0/lvgl_runtime_v9.5.0.wasm"),
+        ],
+        "t3-eez-studio",
+    );
+    // Font assets → eez-studio-assets/
+    copy_selected_files(
+        manifest_dir, root,
+        "../../eez-studio/packages/eez-studio-ui/_stylesheets",
+        &[
+            ("FontAwesome5-Solid+Brands+Regular.woff", "FontAwesome5-Solid+Brands+Regular.woff"),
+            ("material-icons.css", "material-icons.css"),
+            ("MaterialIcons-Regular.woff2", "MaterialIcons-Regular.woff2"),
+            ("Roboto-Regular.ttf", "Roboto-Regular.ttf"),
+            ("RobotoMono-Regular.ttf", "RobotoMono-Regular.ttf"),
+        ],
+        "eez-studio-assets",
+    );
+}
+
 fn main() {
     // FFI — HandleWebViewMsg is loaded from T3000.exe at runtime; nothing to compile.
     println!("cargo:warning=HandleWebViewMsg will be loaded from T3000.exe at runtime");
@@ -109,52 +157,9 @@ fn main() {
         "../../eez-studio/resources/docker-build",
     );
 
-    // ── WASM runtimes — from studio-wasm-libs/release/wasm/ → release ──
-    copy_selected_files(
-        &manifest_dir,
-        profile_root,
-        "../../studio-wasm-libs/release/wasm",
-        &[
-            ("eez_runtime.js", "wasm/eez_runtime.js"),
-            ("eez_runtime.wasm", "wasm/eez_runtime.wasm"),
-            ("eez_gui_lite_runtime.js", "wasm/eez_gui_lite_runtime.js"),
-            ("eez_gui_lite_runtime.wasm", "wasm/eez_gui_lite_runtime.wasm"),
-        ],
-        "t3-eez-studio",
-    );
-    copy_selected_files(
-        &manifest_dir,
-        profile_root,
-        "../../studio-wasm-libs/release/wasm",
-        &[
-            ("lvgl_runtime_v8.4.0.js", "wasm/lvgl/8.4.0/lvgl_runtime_v8.4.0.js"),
-            ("lvgl_runtime_v8.4.0.wasm", "wasm/lvgl/8.4.0/lvgl_runtime_v8.4.0.wasm"),
-            ("lvgl_runtime_v9.2.2.js", "wasm/lvgl/9.2.2/lvgl_runtime_v9.2.2.js"),
-            ("lvgl_runtime_v9.2.2.wasm", "wasm/lvgl/9.2.2/lvgl_runtime_v9.2.2.wasm"),
-            ("lvgl_runtime_v9.3.0.js", "wasm/lvgl/9.3.0/lvgl_runtime_v9.3.0.js"),
-            ("lvgl_runtime_v9.3.0.wasm", "wasm/lvgl/9.3.0/lvgl_runtime_v9.3.0.wasm"),
-            ("lvgl_runtime_v9.4.0.js", "wasm/lvgl/9.4.0/lvgl_runtime_v9.4.0.js"),
-            ("lvgl_runtime_v9.4.0.wasm", "wasm/lvgl/9.4.0/lvgl_runtime_v9.4.0.wasm"),
-            ("lvgl_runtime_v9.5.0.js", "wasm/lvgl/9.5.0/lvgl_runtime_v9.5.0.js"),
-            ("lvgl_runtime_v9.5.0.wasm", "wasm/lvgl/9.5.0/lvgl_runtime_v9.5.0.wasm"),
-        ],
-        "t3-eez-studio",
-    );
-    // ── EEZ Studio font assets — from eez-studio/packages/ → release ────
-    copy_selected_files(
-        &manifest_dir,
-        profile_root,
-        "../../eez-studio/packages/eez-studio-ui/_stylesheets",
-        &[
-            ("FontAwesome5-Solid+Brands+Regular.woff", "FontAwesome5-Solid+Brands+Regular.woff"),
-            ("material-icons.css", "material-icons.css"),
-            ("MaterialIcons-Regular.woff2", "MaterialIcons-Regular.woff2"),
-            ("Roboto-Regular.ttf", "Roboto-Regular.ttf"),
-            ("RobotoMono-Regular.ttf", "RobotoMono-Regular.ttf"),
-        ],
-        "eez-studio-assets",
-    );
+    // WASM runtimes + font assets → release (target/)
+    copy_wasm_and_fonts(&manifest_dir, profile_root);
 
     println!("cargo:warning=Build complete");
-    
 }
+
