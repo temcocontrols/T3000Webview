@@ -113,7 +113,7 @@ fn resolve_path(base: &str, user_path: &str) -> PathBuf {
     normalized
 }
 
-fn data_root() -> PathBuf {
+pub(crate) fn data_root() -> PathBuf {
     std::env::current_dir()
         .unwrap_or_else(|_| PathBuf::from("."))
         .join("T3Web").join("t3-eez")

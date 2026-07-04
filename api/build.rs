@@ -36,6 +36,46 @@ fn copy_resource_dir(manifest_dir: &str, profile_root: &Path, relative_src: &str
     println!("cargo:warning=Copied {} files → {}", src.display(), dst.display());
 }
 
+/// Copy selected individual files from a source directory into the destination.
+/// Each entry in `files` is (source_filename, dest_filename_or_subpath).
+/// Destination: profile_root/T3Web/t3-eez/resources/{dest_rel}/
+fn copy_selected_files(
+    manifest_dir: &str,
+    profile_root: &Path,
+    relative_src_dir: &str,
+    files: &[(&str, &str)],
+    dest_rel: &str,
+) {
+    let src_dir = Path::new(manifest_dir).join(relative_src_dir);
+    let dst_dir = profile_root
+        .join("T3Web")
+        .join("t3-eez")
+        .join("resources")
+        .join(dest_rel);
+
+    if !src_dir.is_dir() {
+        println!("cargo:warning=Resource source dir not found, skipping: {}", src_dir.display());
+        return;
+    }
+
+    let _ = std::fs::create_dir_all(&dst_dir);
+
+    for &(src_name, dest_name) in files {
+        let src_file = src_dir.join(src_name);
+        let dst_file = dst_dir.join(dest_name);
+        if src_file.is_file() {
+            if let Some(parent) = dst_file.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            std::fs::copy(&src_file, &dst_file)
+                .unwrap_or_else(|e| panic!("Failed to copy {:?} → {:?}: {}", src_file, dst_file, e));
+        } else {
+            println!("cargo:warning=File not found, skipping: {}", src_file.display());
+        }
+    }
+    println!("cargo:warning=Copied selected files → {}", dst_dir.display());
+}
+
 fn main() {
     // FFI — HandleWebViewMsg is loaded from T3000.exe at runtime; nothing to compile.
     println!("cargo:warning=HandleWebViewMsg will be loaded from T3000.exe at runtime");
@@ -69,5 +109,52 @@ fn main() {
         "../../eez-studio/resources/docker-build",
     );
 
+    // ── WASM runtimes — from studio-wasm-libs/release/wasm/ → release ──
+    copy_selected_files(
+        &manifest_dir,
+        profile_root,
+        "../../studio-wasm-libs/release/wasm",
+        &[
+            ("eez_runtime.js", "wasm/eez_runtime.js"),
+            ("eez_runtime.wasm", "wasm/eez_runtime.wasm"),
+            ("eez_gui_lite_runtime.js", "wasm/eez_gui_lite_runtime.js"),
+            ("eez_gui_lite_runtime.wasm", "wasm/eez_gui_lite_runtime.wasm"),
+        ],
+        "t3-eez-studio",
+    );
+    copy_selected_files(
+        &manifest_dir,
+        profile_root,
+        "../../studio-wasm-libs/release/wasm",
+        &[
+            ("lvgl_runtime_v8.4.0.js", "wasm/lvgl/8.4.0/lvgl_runtime_v8.4.0.js"),
+            ("lvgl_runtime_v8.4.0.wasm", "wasm/lvgl/8.4.0/lvgl_runtime_v8.4.0.wasm"),
+            ("lvgl_runtime_v9.2.2.js", "wasm/lvgl/9.2.2/lvgl_runtime_v9.2.2.js"),
+            ("lvgl_runtime_v9.2.2.wasm", "wasm/lvgl/9.2.2/lvgl_runtime_v9.2.2.wasm"),
+            ("lvgl_runtime_v9.3.0.js", "wasm/lvgl/9.3.0/lvgl_runtime_v9.3.0.js"),
+            ("lvgl_runtime_v9.3.0.wasm", "wasm/lvgl/9.3.0/lvgl_runtime_v9.3.0.wasm"),
+            ("lvgl_runtime_v9.4.0.js", "wasm/lvgl/9.4.0/lvgl_runtime_v9.4.0.js"),
+            ("lvgl_runtime_v9.4.0.wasm", "wasm/lvgl/9.4.0/lvgl_runtime_v9.4.0.wasm"),
+            ("lvgl_runtime_v9.5.0.js", "wasm/lvgl/9.5.0/lvgl_runtime_v9.5.0.js"),
+            ("lvgl_runtime_v9.5.0.wasm", "wasm/lvgl/9.5.0/lvgl_runtime_v9.5.0.wasm"),
+        ],
+        "t3-eez-studio",
+    );
+    // ── EEZ Studio font assets — from eez-studio/packages/ → release ────
+    copy_selected_files(
+        &manifest_dir,
+        profile_root,
+        "../../eez-studio/packages/eez-studio-ui/_stylesheets",
+        &[
+            ("FontAwesome5-Solid+Brands+Regular.woff", "FontAwesome5-Solid+Brands+Regular.woff"),
+            ("material-icons.css", "material-icons.css"),
+            ("MaterialIcons-Regular.woff2", "MaterialIcons-Regular.woff2"),
+            ("Roboto-Regular.ttf", "Roboto-Regular.ttf"),
+            ("RobotoMono-Regular.ttf", "RobotoMono-Regular.ttf"),
+        ],
+        "eez-studio-assets",
+    );
+
     println!("cargo:warning=Build complete");
+    
 }
