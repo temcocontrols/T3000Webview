@@ -53,12 +53,12 @@ async function loadEezRuntimeBrowser(): Promise<any> {
         // Set wasmBinaryFile to the CORRECT dashboard WASM URL explicitly.
         const g = globalThis as any;
         g.wasmBinary = undefined;
-        g.wasmBinaryFile = "/wasm/eez_runtime.wasm";
+        g.wasmBinaryFile = "/t3-eez-studio/wasm/eez_runtime.wasm";
         g.wasmMemory = undefined;
         g.wasmExports = undefined;
 
         const s = document.createElement("script");
-        s.src = "/wasm/eez_runtime.js";
+        s.src = "/t3-eez-studio/wasm/eez_runtime.js";
         s.onload = () => {
             if (!getFactory()) {
                 reject(new Error("module.exports not found after script load"));

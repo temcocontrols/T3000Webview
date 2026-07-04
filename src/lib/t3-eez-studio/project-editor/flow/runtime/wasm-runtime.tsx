@@ -227,6 +227,14 @@ export class WasmRuntime extends RemoteRuntime {
             return;
         }
         console.log("Assets map:", this.assetsMap);
+        // Diagnostic: check if face_0 is in the assets map
+        if (this.assetsMap) {
+            const imageNames = this.assetsMap.images || this.assetsMap.bitmaps || [];
+            const found = Array.isArray(imageNames) 
+                ? imageNames.filter((i: any) => i && (i.name === "face_0" || i === "face_0"))
+                : [];
+            console.log("[wasm-runtime] image lookup for 'face_0':", found.length > 0 ? "FOUND" : "NOT FOUND", "total images:", Array.isArray(imageNames) ? imageNames.length : "N/A");
+        }
 
         runInAction(() => {
             this.displayWidth = this.assetsMap.displayWidth || 900;
