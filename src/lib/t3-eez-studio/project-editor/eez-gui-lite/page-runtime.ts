@@ -123,8 +123,18 @@ export class EezGuiLiteRuntime {
             return;
         }
 
-        const eezGuiLiteRuntimeConstructor = require("project-editor/flow/runtime/wasm/eez_gui_lite_runtime.js");
-        const wasm = eezGuiLiteRuntimeConstructor(async () => {
+        // Electron: CJS require; Browser: script tag fallback
+        let eezGuiLiteRuntimeConstructor: any;
+        try {
+            eezGuiLiteRuntimeConstructor = require("project-editor/flow/runtime/wasm/eez_gui_lite_runtime.js");
+            if (eezGuiLiteRuntimeConstructor && typeof eezGuiLiteRuntimeConstructor !== "function") {
+                eezGuiLiteRuntimeConstructor = eezGuiLiteRuntimeConstructor.default || eezGuiLiteRuntimeConstructor;
+            }
+        } catch {
+            eezGuiLiteRuntimeConstructor = (globalThis as any).EezGuiLiteRuntime;
+        }
+
+        const wasm = (eezGuiLiteRuntimeConstructor || (() => {}))(async () => {
             if (this.wasm != wasm) {
                 return;
             }
