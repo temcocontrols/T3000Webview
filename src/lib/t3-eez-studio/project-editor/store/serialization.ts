@@ -173,11 +173,6 @@ function loadObjectInternal(
             ? JSON.parse(jsObjectOrString)
             : jsObjectOrString;
 
-    if (jsObject == null) {
-        // Recursive call with undefined/null defaultValue — create empty object
-        jsObject = {};
-    }
-
     if (isLoadProject && aClass == ProjectEditor.ProjectClass) {
         let projectFeatures = ProjectEditor.extensions;
         for (let projectFeature of projectFeatures) {
@@ -260,6 +255,10 @@ function loadObjectInternal(
     ) {
         currentFlowWireIDToObjID = new Map<string, string>();
         flowsWireIDToObjID.set(object, currentFlowWireIDToObjID);
+    }
+
+    if (jsObject == null) {
+        jsObject = { name: "" };
     }
 
     for (const propertyInfo of classInfo.properties) {

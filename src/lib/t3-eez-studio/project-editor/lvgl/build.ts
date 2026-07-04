@@ -469,6 +469,9 @@ export class LVGLBuild extends Build {
         const names = new Set<string>();
 
         for (const font of this.fonts) {
+            if (!font || !font.name) {
+                continue;
+            }
             let name = getName("", font, NamingConvention.UnderscoreLowerCase);
 
             // make sure that name is unique
