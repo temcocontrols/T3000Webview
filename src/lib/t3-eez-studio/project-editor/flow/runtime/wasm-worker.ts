@@ -625,9 +625,12 @@ function getLvglImageByName(wasmModuleId: number, name: string) {
         return;
     }
 
-    return WasmFlowRuntime.postWorkerToRendererMessage({
-        getLvglImageByName: { name }
-    });
+    // Use synchronous message passing (SharedArrayBuffer + Atomics) so
+    // the C++ caller receives the return value immediately. The standard
+    // postWorkerToRendererMessage wraps initCb in setTimeout which is
+    // needed for main-thread but breaks blocking C++→JS bridge calls.
+    const syncFn = (WasmFlowRuntime as any)._syncPostMessage || WasmFlowRuntime.postWorkerToRendererMessage;
+    return syncFn({ getLvglImageByName: { name } });
 }
 
 function getLvglFontByName(wasmModuleId: number, name: string) {
@@ -838,6 +841,13 @@ export async function createWasmWorker(
     WasmFlowRuntime.hasWidgetHandle = hasWidgetHandle;
     WasmFlowRuntime.getWidgetHandle = getWidgetHandle;
     WasmFlowRuntime.getWidgetHandleInfo = getWidgetHandleInfo;
+
+    // Store synchronous message-passing function for C++→JS bridge calls.
+    // WasmFlowRuntime.postWorkerToRendererMessage wraps initCb in setTimeout
+    // (needed for main-thread to avoid starving the event loop), but C++
+    // bridge functions (getLvglImageByName etc.) need a BLOCKING synchronous
+    // call that returns the result immediately.
+    (WasmFlowRuntime as any)._syncPostMessage = postWorkerToRenderMessage;
 
     wasmFlowRuntimes.set(wasmModuleId, WasmFlowRuntime);
 
