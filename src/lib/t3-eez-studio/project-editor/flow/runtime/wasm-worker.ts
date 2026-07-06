@@ -48,12 +48,8 @@ async function loadEezRuntimeBrowser(): Promise<any> {
         if (getFactory()) return;
 
         // Scrub Emscripten globals leftover from prior WASM loads (e.g. LVGL).
-        // eez_runtime.js uses `var wasmBinaryFile` which won't redeclare, and
-        // `??=` won't overwrite a stale URL, causing the wrong .wasm to load.
-        // Set wasmBinaryFile to the CORRECT dashboard WASM URL explicitly.
         const g = globalThis as any;
         g.wasmBinary = undefined;
-        g.wasmBinaryFile = "/t3-eez-studio/wasm/eez_runtime.wasm";
         g.wasmMemory = undefined;
         g.wasmExports = undefined;
 
