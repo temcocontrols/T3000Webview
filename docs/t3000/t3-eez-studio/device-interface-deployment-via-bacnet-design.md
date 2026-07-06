@@ -1,32 +1,41 @@
-# Firmware Deployment via BACnet — Design
+# Device Interface Deployment via BACnet — Design
 
-Deploy firmware JSON (per-screen LVGL widget definitions) from EEZ Editor to T3000 hardware devices via BACnet private transfer.
+Send firmware screens from the EEZ Editor to T3000 hardware devices, and load them back for display in EEZ Studio.
+
+1. **Push firmware to device** — Transfer the screen definitions from the editor to the hardware controller.
+
+2. **Pull firmware from device** — Load the stored screen definitions back from the hardware for rendering in EEZ Studio.
 
 ---
 
 ## 1. Current State
 
-[`firmware-export.ts`](../../src/lib/t3-eez-studio/project-editor/build/firmware-export.ts) transforms `.eez-project` → per-screen JSON. "Deploy" button writes files to disk — **does not reach hardware**.
+[`firmware-export.ts`](../../src/lib/t3-eez-studio/project-editor/build/firmware-export.ts) transforms `.eez-project` → per-screen firmware JSON files (one per screen, ~30KB each). "Deploy" button writes files to disk — **does not reach hardware**. See [EEZ Project JSON Format](./lvgl-eez-project-json-format.md).
 
 The T3000 already pushes graphic data to devices over BACnet. Firmware deploy can reuse the same path:
 
-| What | Where | Does |
-|------|-------|------|
-| `write_webview_data()` | `BacnetScreen.cpp:164` | Reads zip → 200B chunks → BACnet `WritePrivateData_Blocking` |
-| `WEBVIEW_MESSAGE_TYPE` enum | `BacnetWebView.cpp:61` | Actions 0–17 (`SAVE_GRAPHIC_DATA=2`, `GET_WEBVIEW_LIST=17`, etc.) |
-| Rust `WebViewMessageType` | `t3_ffi_sync_service.rs:53` | Same actions, Rust side |
-| `call_handle_webview_msg()` | `t3_ffi_sync_service.rs:246` | Rust → C++ bridge (FFI) |
-| `BacnetWebView_HandleWebViewMsg()` | `BacnetWebView_Exports.cpp:97` | C++ export: receives JSON, dispatches to handler |
-
 **Existing pipe:** `Browser → HTTP → Rust → FFI → C++ → BACnet → Device`
+
+- `write_webview_data()` in `BacnetScreen.cpp:164` reads a zip file, chunks it into 200-byte blocks, and pushes it to the device via `WritePrivateData_Blocking`.
+- `WEBVIEW_MESSAGE_TYPE` in `BacnetWebView.cpp:61` defines actions 0–17 — Rust has the same enum in `t3_ffi_sync_service.rs:53`.
+- `call_handle_webview_msg()` in `t3_ffi_sync_service.rs:246` is the Rust → C++ bridge, calling `BacnetWebView_HandleWebViewMsg()` in `BacnetWebView_Exports.cpp:97` which dispatches to the handler.
 
 ---
 
-## 2. Recommended Approach: Leverage Existing Private Transfer + Add New Message Type
+## 2. Recommended Approach
 
-The cleanest path is to extend the existing `WEBVIEW_MESSAGE_TYPE` enum with a new firmware deploy action (18) and reuse the proven BACnet private transfer mechanism — the same 200-byte chunked `WritePrivateData_Blocking` pattern already used by `SAVE_GRAPHIC_DATA` (action 2).
+Extend the existing `WEBVIEW_MESSAGE_TYPE` enum with a new action (18) and reuse the same 200-byte chunked `WritePrivateData_Blocking` pattern from `SAVE_GRAPHIC_DATA` (action 2).
 
-### 2.1. Architecture
+### 2.1. Send Firmware to Device
+
+| Layer | Change |
+|-------|--------|
+| **Rust + C++ enum** | Add `DEPLOY_FIRMWARE = 18` to `WebViewMessageType` in [`t3_ffi_sync_service.rs:53`](../../api/src/t3_device/t3_ffi_sync_service.rs) and [`BacnetWebView.cpp:61`](../../../T3000_Building_Automation_System/T3000/BacnetWebView.cpp) |
+| **Rust route** | New `POST /api/devices/:id/deploy-firmware` — wraps firmware JSON with `action=18`, calls `call_handle_webview_msg()` |
+| **C++ handler** | New `case DEPLOY_FIRMWARE` in `HandleWebViewMsg()` — compresses JSON, chunks 200B blocks, pushes via `WritePrivateData_Blocking(WRITE_JSON_ITEM)` |
+| **Browser** | Wire "Deploy" button in `Toolbar.tsx` to the new endpoint |
+
+#### 2.1.1. Architecture
 
 ```
 ┌──────────┐  HTTP POST      ┌──────────┐  FFI (DLL export)   ┌──────────┐  BACnet chunks  ┌──────────┐
@@ -40,7 +49,7 @@ The cleanest path is to extend the existing `WEBVIEW_MESSAGE_TYPE` enum with a n
 
 **Why this path?** The T3000 already has `SAVE_GRAPHIC_DATA` (action=2) doing exactly this — receiving graphic JSON from browser, writing to disk, zipping, chunking into 200-byte blocks, and pushing to device via `WritePrivateData_Blocking`. Firmware deploy is the same pattern: we skip the disk step and send firmware JSON directly through the Rust→C++ bridge.
 
-### 2.2. New `WEBVIEW_MESSAGE_TYPE` Enum Extension
+#### 2.1.2. New `WEBVIEW_MESSAGE_TYPE` Enum Extension
 
 Both enums must stay in sync. Add to:
 
@@ -60,7 +69,7 @@ enum WEBVIEW_MESSAGE_TYPE {
 };
 ```
 
-### 2.3. JSON Message Format (Browser → Rust → C++)
+#### 2.1.3. JSON Message Format (Browser → Rust → C++)
 
 Browser sends to Rust endpoint; Rust wraps with action code and forwards to C++:
 
@@ -88,7 +97,7 @@ C++ responds:
 }
 ```
 
-### 2.4. C++ Handler (New in `HandleWebViewMsg`)
+#### 2.1.4. C++ Handler (New in `HandleWebViewMsg`)
 
 ```cpp
 // T3000/BacnetWebView.cpp — inside HandleWebViewMsg()
@@ -127,7 +136,7 @@ case WEBVIEW_MESSAGE_TYPE::DEPLOY_FIRMWARE:
 }
 ```
 
-### 2.5. BACnet Transfer — New `write_firmware_raw()` (Reuses Existing Pattern)
+#### 2.1.5. BACnet Transfer — New `write_firmware_raw()` (Reuses Existing Pattern)
 
 ```cpp
 // T3000/BacnetScreen.cpp — new function, variant of write_webview_data() line 164
@@ -183,7 +192,7 @@ Constants from `T3000/global_define.h`:
 - `SEND_COMMAND_DELAY_TIME` — ~50ms backoff between writes  
 - Each screen uses 10 slots (screen × 10 to screen × 10 + 9)
 
-### 2.6. Rust Route (New)
+#### 2.1.6. Rust Route (New)
 
 ```rust
 // NEW FILE: api/src/t3_device/firmware_deploy_routes.rs
@@ -249,7 +258,7 @@ use crate::t3_device::firmware_deploy_routes::create_firmware_deploy_routes;
 .merge(create_firmware_deploy_routes())
 ```
 
-### 2.7. Browser Side (Wire Deploy Button)
+#### 2.1.7. Browser Side (Wire Deploy Button)
 
 ```typescript
 // In Toolbar.tsx — the "Deploy to Device" button handler
@@ -273,6 +282,12 @@ async function handleDeploy(deviceId: number, serialNumber: number) {
     showNotification(`Deployed: ${result.deployed}, Failed: ${result.failed}`);
 }
 ```
+
+---
+
+### 2.2. Read Firmware from Device
+
+Reuse `GET_WEBVIEW_LIST` (action 17) — the existing read path. `Read_Webview_Data_Special()` in [`BacnetScreen.cpp:2249`](../../../T3000_Building_Automation_System/T3000/BacnetScreen.cpp) already handles chunked BACnet reads and reassembly. No new C++ or Rust code needed. On boot, the device firmware parses the stored JSON, creates LVGL widgets, evaluates expressions, and renders the UI.
 
 ---
 
@@ -339,18 +354,3 @@ Step 6: Device receives and stores
 ```
 
 ---
-
-## 6. Data Size & Transfer Time
-
-| Metric | Value |
-|--------|-------|
-| Per-screen JSON (uncompressed) | ~30 KB |
-| After ZIP compression (~50%) | ~15 KB |
-| 200-byte chunks per screen | ~75 chunks |
-| BACnet writes per screen (2 chunks/group) | ~38 writes |
-| Time per write (with `SEND_COMMAND_DELAY_TIME`) | ~50 ms |
-| **Per screen over BACnet MSTP** | **~2 seconds** |
-| **3 screens total** | **~6 seconds** |
-
----
-
