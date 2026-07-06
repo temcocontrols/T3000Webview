@@ -28,6 +28,13 @@ export function getExpressionPropertyData(
     propertyName: string
 ) {
     // Proxy returns () => {} for missing props, so check flowIndexes directly
+    const hasAssetsMap = !!runtime.wasm.assetsMap;
+    const hasFlowIndexes = !!runtime.wasm.assetsMap?.flowIndexes;
+    console.log("[LVGL-EXPR] getExpressionPropertyData | widget:", widget.type,
+        "| prop:", propertyName,
+        "| hasAssetsMap:", hasAssetsMap,
+        "| typeof assetsMap:", typeof runtime.wasm.assetsMap,
+        "| hasFlowIndexes:", hasFlowIndexes);
     if (!runtime.wasm.assetsMap?.flowIndexes) {
         return undefined;
     }

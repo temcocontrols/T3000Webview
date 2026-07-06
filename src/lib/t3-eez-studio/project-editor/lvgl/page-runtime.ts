@@ -810,8 +810,14 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
                 // Register project bitmaps into WASM for flow imageSetSrc
                 // Flow expects lv_image_dsc_t { header(4), data_size(4), data_ptr(4) } + pixel data
                 // Registered by assets-map index (flow passes "0","1",... which are indices into assetsMap.bitmaps)
+                const assetsMap = (this.projectStore.runtime as any)?.assetsMap;
+                // Attach assetsMap to the WASM instance so expression evaluation
+                // (getExpressionPropertyData) can find flowIndexes/componentIndexes
+                // to register tick callbacks for expression properties like
+                // {zones[selected_zone].temperature}.
+                (this.wasm as any).assetsMap = assetsMap;
+                console.log("[LVGL-EDITOR] assetsMap attached to wasm | hasFlowIndexes:", !!assetsMap?.flowIndexes);
                 if (typeof this.wasm._eez_flow_add_images === "function") {
-                    const assetsMap = (this.projectStore.runtime as any)?.assetsMap;
                     const bitmapNames: string[] = assetsMap?.bitmaps || [];
                     if (bitmapNames.length > 0) {
                         const numImages = bitmapNames.length;

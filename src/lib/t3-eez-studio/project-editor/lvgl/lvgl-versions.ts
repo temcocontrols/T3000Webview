@@ -634,11 +634,16 @@ export function getLvglWasmFlowRuntimeConstructor(
             this.HEAP8 = new Int8Array(0);
             this.FS = {};
             self.postWorkerToRendererMessage = (data: any) => {
-                // DirectWasmRuntime runs WASM on the main thread, so
-                // _mainLoop() → postWorkerToRendererMessage() would be
-                // synchronous and starve setTimeout callbacks. Defer to
-                // let the event loop process animationFrameLoop.
-                setTimeout(() => initCb(data), 0);
+                // C++ EM_ASM_INT bridge calls (getObjectVariableMemberValue,
+                // getLvglImageByName, etc.) need synchronous return values.
+                // The previous setTimeout wrapper was returning undefined to
+                // the C++ caller, silently breaking expression evaluation
+                // (e.g. {zones[selected_zone].temperature}).
+                // Call initCb synchronously — onWorkerMessage handles bridge
+                // calls synchronously (returning values) and delegates init
+                // to onWorkerMessageAsync.
+                console.log("[LVGL-BRIDGE] postWorkerToRendererMessage CALLED | data keys:", Object.keys(data || {}).join(","));
+                return initCb(data);
             };
             const proxyHandler = {
                 get(_t: any, prop: string | symbol) {
@@ -660,6 +665,18 @@ export function getLvglWasmFlowRuntimeConstructor(
                 (globalThis as any).__lvglWasmUrl = wasmUrl;
                 const Module = factory(undefined);
                 delete (globalThis as any).__lvglWasmUrl;
+                // Wire up C++→JS bridge so expression evaluation works.
+                // factory(undefined) leaves postWorkerToRendererMessage unset
+                // to avoid premature init in pre.js. Set it here so bridge
+                // calls (getObjectVariableMemberValue etc.) can evaluate
+                // expressions like {zones[selected_zone].temperature}.
+                if (typeof initCb === "function") {
+                    Module.postWorkerToRendererMessage = initCb;
+                    (Module as any)._syncPostMessage = initCb;
+                    console.log("[LVGL-BRIDGE] Module.postWorkerToRendererMessage wired | initCb type:", typeof initCb);
+                } else {
+                    console.warn("[LVGL-BRIDGE] initCb is not a function, bridge disabled");
+                }
                 Module.onRuntimeInitialized = () => {
                     // Use getters so HEAP stays in sync with WASM memory growth
                     Object.defineProperty(self, "HEAPU8", {

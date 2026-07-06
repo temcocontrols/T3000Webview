@@ -496,9 +496,15 @@ function getObjectVariableMemberValue(
 
     const WasmFlowRuntime = getWasmFlowRuntime(wasmModuleId);
     if (WasmFlowRuntime) {
-        value = WasmFlowRuntime.postWorkerToRendererMessage({
+        const syncFn = (WasmFlowRuntime as any)._syncPostMessage
+            || WasmFlowRuntime.postWorkerToRendererMessage;
+        console.log("[BRIDGE] getObjectVariableMemberValue | syncFn:", typeof syncFn,
+            "| hasSyncPostMsg:", !!(WasmFlowRuntime as any)._syncPostMessage,
+            "| arrayValuePtr:", arrayValuePtr, "| memberIndex:", memberIndex);
+        value = syncFn({
             getObjectVariableMemberValue: { arrayValuePtr, memberIndex }
         });
+        console.log("[BRIDGE] getObjectVariableMemberValue RESULT:", value);
     }
 
     return createWasmValue(WasmFlowRuntime, value);
