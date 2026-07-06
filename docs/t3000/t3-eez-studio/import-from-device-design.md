@@ -65,257 +65,115 @@ Right column shows radio list of devices. User selects one, clicks [Import from 
 </button>
 ```
 
-### Step 3 — Open Import Drawer
+### Step 3 — Create Project Skeleton
 
-Clicking Import replaces right column content with a step-by-step log drawer:
+Create the project folder and `device-import/` staging directory before any network I/O. This ensures the project container exists on disk even if the device never responds.
 
 ```tsx
-async function startImport(device: DeviceInfo) {
-    setImporting(true);
-    setImportLog([`📋 Importing from ${device.panel_name}`]);
-    
-    try {
-        // Step 3a: connect
-        appendLog("Connecting to device...");
-        
-        // Step 3b: fetch screens
-        appendLog("Fetching screens...");
-        const response = await fetch(`/api/devices/${device.panel_id}/import-screens`, { method: 'POST' });
-        const { screens } = await response.json();
-        appendLog(`Fetched ${screens.length} screens`);
-        
-        // Step 3c: create project
-        appendLog("Creating project...");
-        const project = firmwareToProject(screens, device);
-        
-        // Step 3d: save
-        const projectPath = await saveProject(device.panel_name, project);
-        appendLog(`Project saved: ${projectPath}`);
-        
-        // Step 3e: open editor
-        appendLog("Opening editor...");
-        openProject(projectPath);
-        appendLog("✅ Done");
-    } catch (err) {
-        appendLog(`❌ Failed: ${err.message}`);
-    } finally {
-        setImporting(false);
-    }
+// Step 3 — Create project skeleton
+const projectDir = `project/${device.panel_name}`;
+const stagingDir = `${projectDir}/device-import`;
+await fetch(`/api/files/mkdir?path=${encodeURIComponent(stagingDir)}`, { method: "POST" });
+```
+
+### Step 4 — Fetch Screens (One-by-One, Save-as-You-Go)
+
+Each screen is fetched individually over BACnet (200-byte chunks, slow). The screen JSON is written to `device-import/<name>.json` immediately — if the connection drops on screen 3 of 5, screens 1-2 are already safe on disk.
+
+The `device-import/` folder is **kept after import** — it's a local cache. Re-import reads from disk, skipping already-fetched screens (no BACnet re-fetch needed).
+
+**TODO:** Needs C++ `READ_FIRMWARE = 19` in `HandleWebViewMsg()` and Rust `POST /api/devices/:id/read-firmware` calling `call_handle_webview_msg(19, &mut buffer)`. See [device-interface-deployment-via-bacnet-design.md](./device-interface-deployment-via-bacnet-design.md).
+
+```tsx
+// Step 4 — Fetch screens one-by-one, save each to device-import/ immediately
+const stagingScreens: { name: string; json: any }[] = [];
+let screenIndex = 0;
+
+while (true) {
+    const resp = await fetch(
+        `/api/devices/${device.panel_id}/read-firmware`,
+        { method: "POST", body: JSON.stringify({ screenIndex }) }
+    );
+    if (resp.status === 404) break; // no more screens on device
+    const result = await resp.json();
+    const screen = result.screen;
+    if (!screen) break;
+    // Save to device-import/ NOW — safe if next fetch fails
+    const screenPath = `${stagingDir}/${screen.name}.json`;
+    await fetch(`/api/files/write?path=${encodeURIComponent(screenPath)}`,
+        { method: "PUT", body: JSON.stringify(screen.json) });
+    stagingScreens.push(screen);
+    screenIndex++;
 }
 ```
 
-### Step 4 — Rust Endpoint
+### Step 5 — Build .eez-project from device-import/
 
-**File:** `api/src/t3_device/firmware_import_routes.rs` (NEW)
+Read the raw device JSONs from `device-import/`, convert to `.eez-project` format, save to project root.
 
-Loop over screens, calling FFI once per screen (action 17 fetches one at a time):
+```tsx
+// Step 5 — Build .eez-project from staging
+const { firmwareToProject } = await import("project-editor/build/firmware-loader");
+const project = firmwareToProject(stagingScreens, {
+    panel_name: device.panel_name,
+    serial_number: device.panel_serial_number,
+});
+
+const projectPath = `${projectDir}/${device.panel_name}.eez-project`;
+await fetch(`/api/files/write?path=${encodeURIComponent(projectPath)}`,
+    { method: "PUT", body: JSON.stringify(project, null, 2) });
+```
+
+### Step 6 — Open in Editor
+
+```tsx
+// Step 6 — Open project in EEZ editor
+settingsController.addItemToMRU(projectPath, { projectType: "LVGL", hasFlowSupport: true });
+const readResp = await fetch(`/api/files/read?path=${encodeURIComponent(projectPath)}`);
+const projectJson = await readResp.json();
+await initProjectEditor(tabs, ProjectEditorTab);
+```
+
+### Step 7 — Rust Endpoint (TODO: depends on C++ READ_FIRMWARE = 19)
+
+Standard action-route pattern — identical to all existing BACnet bridge endpoints. Copy any existing action route, swap the action number to 19.
 
 ```rust
-// POST /api/devices/:id/import-screens
-async fn import_screens(
+// POST /api/devices/:id/read-firmware
+async fn read_firmware(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
+    Json(body): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
-    // 1. Get device info to find serial number
     let device = get_device_by_id(&state, device_id)?;
-    
-    // 2. For each screen (0-7 max), call action=17
-    let mut screens = Vec::new();
-    for screen_index in 0..8 {
-        let json = json!({
-            "action": WebViewMessageType::GET_WEBVIEW_LIST as i32,
-            "panelId": device_id,
-            "serialNumber": device.serial_number,
-            "entryType": 7,  // GRP = screen
-            "entryIndexStart": screen_index,
-            "entryIndexEnd": screen_index,
-            "objectinstance": device.object_instance,
-        });
-        
-        let mut buffer = vec![0u8; 65536];
-        let json_str = json.to_string();
-        buffer[..json_str.len()].copy_from_slice(json_str.as_bytes());
-        
-        match call_handle_webview_msg(
-            WebViewMessageType::GET_WEBVIEW_LIST as i32, &mut buffer
-        ) {
-            Ok(0) => {
-                let result: Value = serde_json::from_slice(&buffer).unwrap_or_default();
-                if let Some(data) = result["data"]["data"].as_str() {
-                    // data is the screen JSON string (unzipped by C++)
-                    let screen_json: Value = serde_json::from_str(data).unwrap_or_default();
-                    screens.push(json!({
-                        "name": format!("Screen {}", screen_index + 1),
-                        "json": screen_json,
-                    }));
-                }
-            }
-            _ => break, // no more screens
+    let screen_index = body.get("screenIndex").and_then(|v| v.as_u64()).unwrap_or(0);
+
+    let json = json!({
+        "action": WebViewMessageType::READ_FIRMWARE as i32,   // = 19
+        "panelId": device_id,
+        "serialNumber": device.panel_serial_number,
+        "objectinstance": device.object_instance,
+        "screenIndex": screen_index,
+    });
+
+    let mut buffer = vec![0u8; 65536];
+    let json_str = json.to_string();
+    buffer[..json_str.len()].copy_from_slice(json_str.as_bytes());
+
+    match call_handle_webview_msg(WebViewMessageType::READ_FIRMWARE as i32, &mut buffer) {
+        Ok(0) => {
+            let result: Value = serde_json::from_slice(&buffer).unwrap_or_default();
+            Ok(Json(result))
         }
+        Ok(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Err(_) => Err(StatusCode::SERVICE_UNAVAILABLE),
     }
-    
-    Ok(Json(json!({ "screens": screens })))
 }
 ```
 
 Register in `api/src/t3_device/routes.rs`:
 ```rust
-use crate::t3_device::firmware_import_routes::create_firmware_import_routes;
-// in Router builder:
-.merge(create_firmware_import_routes())
-```
-
-### Step 5 — Convert Firmware JSON → .eez-project
-
-**File:** `src/lib/t3-eez-studio/project-editor/build/firmware-loader.ts` (NEW)
-
-```typescript
-// firmware-loader.ts
-import type { DeviceScreen } from './firmware-export';
-
-const SUB_TYPE_MAP: Record<string, string> = {
-    label: 'LVGLLabelWidget',
-    button: 'LVGLButtonWidget',
-    arc: 'LVGLArcWidget',
-    bar: 'LVGLBarWidget',
-    image: 'LVGLImageWidget',
-    switch: 'LVGLSwitchWidget',
-    slider: 'LVGLSliderWidget',
-    dropdown: 'LVGLDropdownWidget',
-    panel: 'LVGLPanelWidget',
-    user_widget: 'LVGLUserWidgetWidget',
-};
-
-interface FirmwareWidget {
-    type: string;
-    sub_type: string;
-    x_pos: number; y_pos: number;
-    width: number; height: number;
-    obj_text: string; text_type: string;
-    style?: Record<string, any>;
-    events?: Record<string, any>;
-    children?: Record<string, FirmwareWidget>;
-    // type-specific
-    min?: number; max?: number; value?: string; value_type?: string;
-    src?: string;
-    long_mode?: string; recolor?: boolean;
-    checked?: string; checked_type?: string;
-    options?: string[]; selected?: string;
-    widget?: string;
-    disabled?: string; hidden?: string;
-}
-
-export function firmwareToProject(
-    screens: { name: string; json: any }[],
-    device: { panel_name: string; serial_number: number }
-) {
-    return {
-        settings: {
-            general: {
-                projectType: 'LVGL',
-                lvglVersion: '9.5.0',
-                hasFlowSupport: true,
-            }
-        },
-        importedFrom: {
-            device: device.panel_name,
-            serialNumber: device.serial_number,
-            importedAt: new Date().toISOString(),
-        },
-        userPages: screens.map(s => ({
-            name: s.name,
-            components: Object.entries(s.json.widgets || {}).map(
-                ([id, w]) => firmwareWidgetToComponent(id, w as FirmwareWidget)
-            ),
-        })),
-        fonts: (screens[0]?.json?.fonts || []).map((f: any) => ({
-            name: f.name,
-            source: { size: f.size },
-        })),
-        bitmaps: screens.flatMap(s => s.json?.bitmaps || []).map((b: string) => ({
-            name: b,
-            image: '',
-        })),
-        lvglStyles: [],
-        lvglGroups: [],
-        variables: {},
-        actions: [],
-        userWidgets: [],
-    };
-}
-
-function firmwareWidgetToComponent(id: string, w: FirmwareWidget) {
-    const type = SUB_TYPE_MAP[w.sub_type] || 'LVGLPanelWidget';
-    const comp: any = {
-        objID: id,
-        type,
-        left: w.x_pos, top: w.y_pos,
-        width: w.width, height: w.height,
-    };
-
-    if (type === 'LVGLLabelWidget') {
-        comp.text = w.obj_text;
-        comp.textType = w.text_type;
-        if (w.long_mode) comp.longMode = w.long_mode;
-        if (w.recolor) comp.recolor = w.recolor;
-    }
-    if (type === 'LVGLArcWidget' || type === 'LVGLBarWidget' || type === 'LVGLSliderWidget') {
-        comp.min = w.min ?? 0;
-        comp.max = w.max ?? 100;
-        comp.value = w.value || '';
-        comp.valueType = w.value_type || 'literal';
-    }
-    if (type === 'LVGLImageWidget' && w.src) {
-        comp.image = w.src;
-    }
-    if (w.style) comp.localStyles = { definition: w.style };
-    if (w.events) comp.eventHandlers = Object.entries(w.events).map(([name, e]) => ({
-        eventName: name,
-        handlerType: e.action,
-        userData: e.user_data,
-    }));
-
-    // Children (panel/dropdown)
-    if (w.children) {
-        comp.components = Object.entries(w.children).map(
-            ([cid, cw]) => firmwareWidgetToComponent(cid, cw)
-        );
-    }
-
-    return comp;
-}
-```
-
-### Step 6 — Save Project to Disk
-
-```typescript
-async function saveProject(deviceName: string, project: any): Promise<string> {
-    const dir = `${deviceName}`;
-    const fileName = `${deviceName}.eez-project`;
-    await fetch(`/api/files/write?path=project/${dir}/${fileName}`, {
-        method: 'PUT',
-        body: JSON.stringify(project),
-    });
-    return `project/${dir}/${fileName}`;
-}
-```
-
-### Step 7 — Open Project in Editor
-
-```typescript
-function openProject(projectPath: string) {
-    // Load via existing editor bootstrap
-    const fullUrl = `/api/files/read?path=${projectPath}`;
-    fetch(fullUrl)
-        .then(r => r.json())
-        .then(json => {
-            initProjectEditor(tabs, ProjectEditorTab);
-            const store = ProjectStore.create({ type: 'read-only' });
-            const project = loadProject(store, JSON.stringify(json), false);
-            store.setProject(project, projectPath);
-            tabs.openTab(ProjectEditorTab, { store });
-        });
-}
+// TODO: .route("/:id/read-firmware", post(read_firmware))
 ```
 
 ### Step 8 — Import History
@@ -366,18 +224,72 @@ const hasImportMeta = mruItem.filePath && /* check project JSON for importedFrom
 | Project type | LVGL with flow support |
 | LVGL version | `9.5.0` (fixed, matches hardware) |
 | File extension | `.eez-project` |
-| Save path | `<data_root>/project/<DeviceName>/<DeviceName>.eez-project` |
+| Project root | `<data_root>/project/<DeviceName>/` |
+| Project file | `<data_root>/project/<DeviceName>/<DeviceName>.eez-project` |
+| Staging cache | `<data_root>/project/<DeviceName>/device-import/*.json` (kept, never deleted) |
 | Metadata | `importedFrom: { device, serialNumber, importedAt }` |
+
+```
+project/<DeviceName>/
+  ├── <DeviceName>.eez-project     ← built from device-import/
+  └── device-import/               ← raw device JSONs (cache, kept)
+        ├── Screen1.json
+        ├── Screen2.json
+        └── Screen3.json
+```
 
 ---
 
-## 4. Files
+## 4. Flow Summary
 
-| # | File | Action |
-|---|------|--------|
-| 1 | `src/.../home/open-projects.tsx` | Add 2-column layout, device list, import button, drawer, history |
-| 2 | `src/.../build/firmware-loader.ts` | **NEW** — `firmwareToProject()` + widget type mapping |
-| 3 | `api/src/t3_device/firmware_import_routes.rs` | **NEW** — `POST /api/devices/:id/import-screens` |
-| 4 | `api/src/t3_device/routes.rs` | Register new route |
-| 5 | `src/.../build/firmware-export.ts` | Reference — existing reverse (editor → firmware) |
-| 6 | `api/src/t3_device/t3_ffi_sync_service.rs` | No changes — reuses `call_handle_webview_msg(action=17)` |
+```
+┌──────────┐     ┌──────────────┐     ┌──────────┐     ┌──────────┐
+│  Browser │     │     Rust     │     │   C++    │     │  Device  │
+│  (EEZ)   │     │   (api/)     │     │ (T3000)  │     │  (HW)    │
+└────┬─────┘     └──────┬───────┘     └────┬─────┘     └────┬─────┘
+     │                   │                 │                 │
+     │  1. mkdir         │                 │                 │
+     │  project/<name>/  │                 │                 │
+     │  device-import/   │                 │                 │
+     │──────────────────→│                 │                 │
+     │                   │                 │                 │
+     │  2. POST /devices │                 │                 │
+     │  /:id/read-firmware                │                 │
+     │  { screenIndex: 0 }                │                 │
+     │──────────────────→│                 │                 │
+     │                   │  call_handle_   │                 │
+     │                   │  webview_msg(19)│                 │
+     │                   │────────────────→│                 │
+     │                   │                 │  BACnet 200B    │
+     │                   │                 │  chunks          │
+     │                   │                 │────────────────→│
+     │                   │                 │←────────────────│
+     │                   │←────────────────│  screen JSON    │
+     │←──────────────────│                 │                 │
+     │  { screen }       │                 │                 │
+     │                   │                 │                 │
+     │  3. Save to       │                 │                 │
+     │  device-import/   │                 │                 │
+     │  Screen1.json     │                 │                 │
+     │──────────────────→│                 │                 │
+     │                   │                 │                 │
+     │  ... repeat for screenIndex 1..N ...                   │
+     │  404 → no more    │                 │                 │
+     │                   │                 │                 │
+     │  4. firmwareToProject()             │                 │
+     │  device-import/*.json → .eez-project│                 │
+     │                   │                 │                 │
+     │  5. Save .eez-project               │                 │
+     │  to project/<name>/                 │                 │
+     │──────────────────→│                 │                 │
+     │                   │                 │                 │
+     │  6. Open in EEZ Editor              │                 │
+     │                   │                 │                 │
+     ▼                   ▼                 ▼                 ▼
+```
+
+**Key behaviors:**
+- `device-import/` folder is created before any BACnet I/O (safe if device offline)
+- Each screen saved to `device-import/` immediately on arrival (survives connection drop)
+- `device-import/` is never deleted — re-import rebuilds `.eez-project` from cache
+- `READ_FIRMWARE = 19` is the only C++ TODO blocking this feature

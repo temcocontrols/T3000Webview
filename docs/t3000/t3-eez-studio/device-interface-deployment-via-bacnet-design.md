@@ -287,7 +287,12 @@ async function handleDeploy(deviceId: number, serialNumber: number) {
 
 ### 2.2. Read Firmware from Device
 
-Reuse `GET_WEBVIEW_LIST` (action 17) — the existing read path. `Read_Webview_Data_Special()` in [`BacnetScreen.cpp:2249`](../../../T3000_Building_Automation_System/T3000/BacnetScreen.cpp) already handles chunked BACnet reads and reassembly. No new C++ or Rust code needed. On boot, the device firmware parses the stored JSON, creates LVGL widgets, evaluates expressions, and renders the UI.
+**Gap:** `GET_WEBVIEW_LIST` (action 17) reads the graphic editor format, not firmware JSON. To read firmware screens back, we need either:
+
+- A new action (e.g., `READ_FIRMWARE = 19`) in C++ that reads firmware JSON from the device, or
+- Extend the existing `Read_Webview_Data_Special()` to return firmware JSON instead of graphic format
+
+The device firmware, on boot, parses the stored JSON and creates LVGL widgets from the definitions.
 
 ---
 
