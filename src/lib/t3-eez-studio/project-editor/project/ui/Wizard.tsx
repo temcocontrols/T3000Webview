@@ -3,6 +3,8 @@ import fs from "fs";
 import { rmdir } from "fs/promises";
 import path from "path";
 import React from "react";
+import showdown from "showdown";
+import packageJSON from "../../../package.json";
 import ReactDOM from "react-dom";
 import { SimpleGitProgressEvent } from "simple-git";
 import classNames from "classnames";
@@ -591,9 +593,7 @@ export class WizardModel {
         const _newExamples: IProjectType[] = [];
         map.set("_newExamples", _newExamples);
 
-        const packageJSON: {
-            version: string;
-        } = require("../../../../package.json");
+        const { version } = packageJSON;
 
         const examples = (Array.isArray(examplesCatalog.catalog) ? examplesCatalog.catalog : [])
             .slice()
@@ -601,7 +601,7 @@ export class WizardModel {
                 example =>
                     !example.minStudioVersion ||
                     compareVersions(
-                        packageJSON.version,
+                        version,
                         example.minStudioVersion
                     ) >= 0
             )
@@ -2739,7 +2739,6 @@ function PlatformDescription({ wizardModel }: { wizardModel: WizardModel }) {
         return null;
     }
 
-    const showdown = require("showdown");
     const converter = new showdown.Converter();
     const html = {
         __html: converter.makeHtml(
