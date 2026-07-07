@@ -130,6 +130,43 @@ const ipcSyncDefaults: Record<string, any> = {
     getTimeFormat: "HH:mm:ss",
 };
 
+// jsPanel polyfill — Electron uses jsPanel for floating dialogs; browser uses DOM
+const _jsPanelLayouts: Record<string, any[]> = {};
+(globalThis as any).jsPanel = {
+    layout: {
+        save(opts: any) {
+            try {
+                const els = document.querySelectorAll(opts.selector);
+                const data: any[] = [];
+                els.forEach(el => {
+                    const r = el.getBoundingClientRect();
+                    data.push({ left: r.left, top: r.top, width: r.width, height: r.height });
+                });
+                _jsPanelLayouts[opts.storagename] = data;
+            } catch {}
+        },
+        getAll(key: string) {
+            return _jsPanelLayouts[key] || [];
+        }
+    },
+    create(config: any) {
+        const el = config.content || document.createElement("div");
+        if (config.container) {
+            const container = document.querySelector(config.container);
+            if (container) container.appendChild(el);
+            else document.body.appendChild(el);
+        } else {
+            document.body.appendChild(el);
+        }
+        return { close: () => el.remove(), on: () => {}, config };
+    },
+    modal: {
+        create(config: any) {
+            return (globalThis as any).jsPanel.create(config);
+        }
+    }
+};
+
 // Global require() polyfill — returns browser-compatible mocks
 (globalThis as any).require = ((globalThis as any).require || function require(path: string) {
     if (path === "fs") return {
