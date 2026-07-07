@@ -876,6 +876,7 @@ export class Page extends Flow {
     get isRuntimeSelectedPage() {
         const projectStore = getProjectStore(this);
         return (
+            !projectStore.projectTypeTraits.isDashboard &&
             projectStore.runtime &&
             (projectStore.runtime instanceof ProjectEditor.WasmRuntimeClass || projectStore.runtime instanceof ProjectEditor.EezGuiLiteWasmRuntimeClass) &&
             projectStore.runtime.selectedPage == this
@@ -885,6 +886,7 @@ export class Page extends Flow {
     get isRuntimePageWithoutFlowState() {
         const projectStore = getProjectStore(this);
         return (
+            !projectStore.projectTypeTraits.isDashboard &&
             projectStore.runtime &&
             (projectStore.runtime instanceof ProjectEditor.WasmRuntimeClass || projectStore.runtime instanceof ProjectEditor.EezGuiLiteWasmRuntimeClass) &&
             !projectStore.runtime.getFlowState(this)

@@ -34,6 +34,16 @@ async function loadEezRuntimeBrowser(): Promise<any> {
     // eez_runtime.js is a CommonJS module: it sets module.exports to a factory
     // function(postWorkerToRendererMessage) that creates+returns the real Module.
     // We load via script tag, then return module.exports (the factory).
+    // Clear stale globals from any prior load so ?v= cache buster takes effect.
+    const g = globalThis as any;
+    g.module = { exports: {} };
+    g.wasmBinary = undefined;
+    g.wasmBinaryFile = undefined;
+    g.wasmMemory = undefined;
+    g.wasmExports = undefined;
+
+    const s = document.createElement("script");
+    s.src = "/t3-eez-studio/wasm/eez_runtime.js?v=" + Date.now();
     return new Promise((resolve, reject) => {
         function getFactory() {
             const exports = (globalThis as any).module?.exports;
@@ -44,17 +54,6 @@ async function loadEezRuntimeBrowser(): Promise<any> {
             return false;
         }
 
-        // Module already loaded?
-        if (getFactory()) return;
-
-        // Scrub Emscripten globals leftover from prior WASM loads (e.g. LVGL).
-        const g = globalThis as any;
-        g.wasmBinary = undefined;
-        g.wasmMemory = undefined;
-        g.wasmExports = undefined;
-
-        const s = document.createElement("script");
-        s.src = "/t3-eez-studio/wasm/eez_runtime.js";
         s.onload = () => {
             if (!getFactory()) {
                 reject(new Error("module.exports not found after script load"));

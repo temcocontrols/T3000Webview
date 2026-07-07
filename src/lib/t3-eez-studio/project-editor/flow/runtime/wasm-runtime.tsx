@@ -715,6 +715,12 @@ export class WasmRuntime extends RemoteRuntime {
 
         this.ctx.clearRect(0, 0, this.displayWidth, this.displayHeight);
         if (this.projectStore.projectTypeTraits.isLVGL || this.projectStore.projectTypeTraits.isDashboard) {
+            // FORCE green — if canvas is green, WASM buffer is empty. If still black, canvas is hidden.
+            if (!(this as any)._diagDone) {
+                (this as any)._diagDone = true;
+                this.ctx.fillStyle = "#00FF00";
+                this.ctx.fillRect(0, 0, this.displayWidth, this.displayHeight);
+            }
             // LVGL and Dashboard render the full screen buffer — no per-page centering
             this.ctx.putImageData(imgData, 0, 0);
         } else {
