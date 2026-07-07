@@ -1,4 +1,6 @@
 import React from "react";
+// ES import (not require) — Vite bundles real showdown; polyfill stub returns raw text
+import showdown from "showdown";
 
 import {
     registerClass,
@@ -73,7 +75,6 @@ export class MarkdownWidget extends Widget {
         width: number,
         height: number
     ): React.ReactNode {
-        const showdown = require("showdown");
         const converter = new showdown.Converter();
         const html = { __html: converter.makeHtml(this.text || "") };
         return (
