@@ -229,7 +229,10 @@ export function getTextValue(
                 }
             }
 
-            if (flowContext.projectStore.runtime) {
+            if (
+                flowContext.projectStore.runtime &&
+                !flowContext.projectStore.projectTypeTraits.isDashboard
+            ) {
                 return "";
             }
 
