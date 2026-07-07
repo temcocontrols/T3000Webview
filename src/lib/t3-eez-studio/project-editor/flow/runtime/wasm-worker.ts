@@ -43,7 +43,7 @@ async function loadEezRuntimeBrowser(): Promise<any> {
     g.wasmExports = undefined;
 
     const s = document.createElement("script");
-    s.src = "/t3-eez-studio/wasm/eez_runtime.js?v=" + Date.now();
+    s.src = "/t3-eez-studio/wasm/eez_runtime.js";
     return new Promise((resolve, reject) => {
         function getFactory() {
             const exports = (globalThis as any).module?.exports;
