@@ -359,3 +359,144 @@ Step 6: Device receives and stores
 ```
 
 ---
+## 6. Device-Hosted REST API (Direct Communication)
+
+### 6.1. Motivation
+
+The BACnet path routes everything through T3000 (`Browser → Rust → C++ → BACnet → Device`). The new requirement is:
+
+- **ESP32 hosts an embedded HTTP REST API server** (e.g., ESP-IDF HTTP Server or Mongoose)
+- **Clients communicate directly** with the device — no mandatory T3000 hop
+- **T3000 can still read/write** device data, but as a peer HTTP client, not a mandatory gateway
+- **Delta updates**: after the initial full sync, send only changed keys to reduce payload
+
+### 6.2. Architecture Comparison
+
+```
+BEFORE (BACnet-only):                          AFTER (REST API primary):
+┌──────────┐  HTTP   ┌──────────┐  FFI  ┌──────┐  BACnet  ┌──────────┐
+│ Browser  │ ──────→ │  Rust    │ ────→ │ C++  │ ───────→ │  Device  │
+│ (EEZ)    │ ←────── │  (api/)  │ ←──── │(T3000)│ ←────── │  (ESP32) │
+└──────────┘  JSON   └──────────┘       └──────┘ chunks   └──────────┘
+
+┌──────────┐  HTTP (REST)                          ┌──────────┐
+│ Browser  │ ────────────────────────────────────→ │  Device  │
+│ (EEZ)    │ ←──────────────────────────────────── │  (ESP32) │
+└──────────┘  JSON (direct)                        └──────────┘
+     │                                                    │
+     └── GET/PUT /api/v1/screens ──────────────────────────┘
+                                                    
+┌──────────┐  HTTP (REST)                          ┌──────────┐
+│ T3000    │ ────────────────────────────────────→ │  Device  │
+│ (Rust)   │ ←──────────────────────────────────── │  (ESP32) │
+└──────────┘  peer client                          └──────────┘
+```
+
+### 6.3. Default Flow: Full Sync
+
+The primary design is full sync — send all, load all. Delta is an optimization layered on top.
+
+| Step | Endpoint | Purpose |
+|------|----------|---------|
+| **Load from device** | `GET /api/v1/screens` | Pull ALL screens from device → populate EEZ Editor |
+| **Deploy to device** | `PUT /api/v1/screens` | Push ALL screens to device in one request |
+
+```
+First connect / Import:
+  Browser ── GET /api/v1/screens ──→ Device
+  Browser ←── {screens: [{name:"Home", json:{...}}, ...]} ── Device
+
+First deploy:
+  Browser ── PUT /api/v1/screens {screens: [...]} ──→ Device
+  Browser ←── {deployed: 3, status: "ok"} ── Device
+```
+
+### 6.4. Full API Surface
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `GET` | `/api/v1/screens` | **Load all** — full JSON for every screen |
+| `PUT` | `/api/v1/screens` | **Deploy all** — full JSON for every screen (body: `{screens: [...]}`) |
+| `GET` | `/api/v1/screens/:name` | Load single screen |
+| `PUT` | `/api/v1/screens/:name` | Deploy/replace single screen |
+| `PATCH` | `/api/v1/screens/:name` | Delta update — only changed keys (optimization, see §6.5) |
+| `PATCH` | `/api/v1/screens/:name/widgets/:id` | Delta single widget (optimization) |
+| `POST` | `/api/v1/screens/:name/actions` | Execute action (button press, setpoint change, etc.) |
+
+### 6.5. Delta Update Protocol (`PATCH` — Optimization)
+
+After the initial full sync is established, subsequent updates can send only modified key paths:
+
+```
+PATCH /api/v1/screens/Home
+{
+  "changes": [
+    { "path": "widgets.temp_label.obj_text",           "value": "zones[2].temperature" },
+    { "path": "widgets.fan_switch.state",               "value": 1 },
+    { "path": "widgets.mode_btn.style.checked.bg_color", "value": 4278190080 }
+  ]
+}
+```
+
+The device merges these changes into its stored JSON and hot-reloads only the affected widgets — avoiding a full screen rebuild.
+
+Response:
+```json
+{
+  "applied": 3,
+  "rejected": 0,
+  "status": "ok"
+}
+```
+
+### 6.6. Mixed-Mode: REST Primary + BACnet Fallback
+
+- **Primary path**: Browser → HTTP → ESP32 REST API (direct, no T3000)
+- **Fallback path**: Browser → T3000 → BACnet → Device (when device is not on the same local network, or behind a BACnet router)
+
+The EEZ Editor detects reachability at connect time:
+
+```
+1. Try GET http://<device-ip>/api/v1/screens
+   ├─ 200 OK → Use REST API (direct mode)
+   └─ Timeout / Unreachable → Fall back to BACnet path through T3000
+```
+
+### 6.7. Device-Side Implementation Notes
+
+**ESP32 HTTP Server options:**
+- ESP-IDF HTTP Server (`esp_http_server.h`) — lightweight, built-in
+- Mongoose — single-file embedded networking library
+- ESPAsyncWebServer — popular Arduino-compatible option
+
+**Storage:**
+- Screens stored as individual JSON files in SPIFFS/LittleFS: `/screens/<name>.json`
+- On `PUT /api/v1/screens`, each screen is written to flash and validated
+- On boot, device reads all screen JSONs and builds LVGL widgets
+
+**Concurrency:**
+- The HTTP server runs on a dedicated FreeRTOS task
+- Screen updates are queued; the LVGL task applies them on the next render cycle
+- Mutex guards the shared screen JSON state
+
+### 6.8. Data Flow Summary (REST API Path)
+
+```
+Step 1: User clicks "Deploy" in EEZ Editor
+    → firmware-export.ts transforms .eez-project → per-screen JSON
+
+Step 2: Browser sends directly to device
+    → PUT http://<device-ip>/api/v1/screens
+    → Body: { screens: [{name:"Home", json:{...}}, ...] }
+
+Step 3: ESP32 HTTP server receives
+    → Validates JSON structure
+    → Writes each screen to flash: /screens/<name>.json
+
+Step 4: ESP32 applies changes
+    → Queues screen update for LVGL task
+    → LVGL task rebuilds affected widgets on next render cycle
+
+Step 5: Device responds
+    → { deployed: 3, failed: 0, status: "ok" }
+```
