@@ -215,6 +215,17 @@ export class TextDashboardWidget extends Widget {
             node = null;
         }
 
+        // Fallback: if WASM evaluation returned empty, parse data directly as JSON string
+        if (!text && !node && this.data) {
+            try {
+                const parsed = JSON.parse(this.data);
+                text = typeof parsed === "string" ? parsed : String(parsed);
+            } catch {
+                // data might not be JSON, use raw value
+                text = this.data.replace(/^"|"$/g, "");
+            }
+        }
+
         const style: React.CSSProperties = {};
         this.styleHook(style, flowContext);
 
