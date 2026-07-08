@@ -3069,7 +3069,11 @@ export function timelineStyleHook(
 
     if (flowContext.flowState) {
         timelinePosition = flowContext.flowState.timelinePosition;
+        if (timelinePosition > 0) {
+            console.log("[timeline] flowState.timelinePosition:", timelinePosition.toFixed(3), "widget:", widget.type, widget.name || "");
+        }
     } else {
+        console.log("[timeline] NO flowState — widget:", widget.type, widget.name || "", "runtime:", !!flowContext.projectStore.runtime);
         const editor = flowContext.projectStore.editorsStore.getEditorByObject(
             flowContext.document.flow.object
         );

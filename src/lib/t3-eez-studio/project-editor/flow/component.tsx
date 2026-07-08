@@ -3988,6 +3988,7 @@ export class Widget extends Component {
             event.preventDefault();
             event.stopPropagation();
 
+            console.log("[onClick] widget:", (this as any).type, "| runtime:", !!flowContext.projectStore.runtime, "| flowState:", !!flowContext.flowState);
             if (flowContext.projectStore.runtime) {
                 flowContext.projectStore.runtime.executeWidgetAction(
                     flowContext,

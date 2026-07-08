@@ -651,6 +651,9 @@ export class WasmRuntime extends RemoteRuntime {
             return;
         }
 
+        // dashboard animations: tick in seconds from start (matches flowState.timelinePosition)
+        runInAction(() => { this.tickTime = (Date.now() - this.stateChangeTickTime) / 1000; });
+
         if (this.componentProperties.selectedPage != this.selectedPage) {
             this.componentProperties.selectedPage = this.selectedPage;
             this.componentProperties.reset();
@@ -1164,19 +1167,22 @@ export class WasmRuntime extends RemoteRuntime {
         value: any,
         valueType: ValueType
     ) {
-        const flowState = flowContext.flowState!;
+        const flowState = flowContext.flowState;
 
-        const flowStateIndex = this.flowStateToFlowIndexMap.get(flowState);
+        let flowStateIndex = this.flowStateToFlowIndexMap.get(flowState!);
         if (flowStateIndex == undefined) {
-            console.error("Unexpected!");
-            return;
+            // No flow state yet — the first action (e.g., ShowPage) will
+            // trigger onPageChanged() in the WASM which creates flow states.
+            // Use 0 as a sentinel; the WASM will assign the correct index.
+            console.log("[executeWidgetAction] no flowState yet, using index 0 for widget:", widget.type);
+            flowStateIndex = 0;
         }
 
         const flow = ProjectEditor.getFlow(widget);
         const flowPath = getObjectPathAsString(flow);
         const flowIndex = this.assetsMap.flowIndexes[flowPath];
         if (flowIndex == undefined) {
-            console.error("Unexpected!");
+            console.error("[executeWidgetAction] UNEXPECTED: flowIndex undefined, path:", flowPath);
             return;
         }
 
@@ -1184,7 +1190,7 @@ export class WasmRuntime extends RemoteRuntime {
         let componentIndex =
             this.assetsMap.flows[flowIndex].componentIndexes[componentPath];
         if (componentIndex == undefined) {
-            console.error("Unexpected!");
+            console.error("[executeWidgetAction] UNEXPECTED: componentIndex undefined, path:", componentPath);
             return;
         }
 
@@ -1192,7 +1198,7 @@ export class WasmRuntime extends RemoteRuntime {
             this.assetsMap.flows[flowIndex].components[componentIndex]
                 .outputIndexes[actionName];
         if (outputIndex == undefined) {
-            // console.error("Unexpected!");
+            console.log("[executeWidgetAction] outputIndex undefined for action:", actionName, "widget:", widget.type);
             return;
         }
 
@@ -1200,6 +1206,8 @@ export class WasmRuntime extends RemoteRuntime {
             this.assetsMap.flows[flowIndex].components[componentIndex].outputs[
                 outputIndex
             ];
+
+        console.log("[executeWidgetAction] sending: flowStateIdx=", flowStateIndex, "flowIdx=", flowIndex, "compIdx=", componentIndex, "outIdx=", outputIndex, "actionFlowIdx=", output.actionFlowIndex, "widget=", widget.type);
 
         if (output.actionFlowIndex != -1) {
             console.log("output.actionFlowIndex", output.actionFlowIndex);

@@ -42,8 +42,12 @@ async function loadEezRuntimeBrowser(): Promise<any> {
     g.wasmMemory = undefined;
     g.wasmExports = undefined;
 
+    // Electron's eez_runtime.js uses __dirname + "/" + path for locateFile.
+    // Set __dirname to point to where our server serves the WASM files.
+    (g as any).__dirname = "/t3-eez-studio/wasm";
+
     const s = document.createElement("script");
-    s.src = "/t3-eez-studio/wasm/eez_runtime.js";
+    s.src = "/t3-eez-studio/wasm/eez_runtime.js?v=2";
     return new Promise((resolve, reject) => {
         function getFactory() {
             const exports = (globalThis as any).module?.exports;

@@ -176,7 +176,8 @@ export abstract class RuntimeBase implements IRuntime {
             showNextQueueTask: action,
             freeMemory: observable,
             totalMemory: observable,
-            isRTL: observable
+            isRTL: observable,
+            tickTime: observable
         });
 
         this.selectedPage = this.projectStore.project.pages[0];
