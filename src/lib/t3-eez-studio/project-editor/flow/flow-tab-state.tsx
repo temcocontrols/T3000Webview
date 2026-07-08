@@ -31,7 +31,11 @@ export abstract class FlowTabState implements IEditorState {
 
     get flowState() {
         if (this.projectStore.runtime) {
-            return this.projectStore.runtime.getFlowState(this.flow);
+            const result = this.projectStore.runtime.getFlowState(this.flow);
+            if (!result && this.projectStore.runtime.flowStates.length > 0) {
+                console.log("[flowTabState.flowState] getFlowState returned undefined. flow:", (this.flow as any)?.name, "runtime.flowStates.length:", this.projectStore.runtime.flowStates.length, "flowStates[0].flow:", (this.projectStore.runtime.flowStates[0] as any)?.flow?.name, "same?:", this.projectStore.runtime.flowStates.some((fs: any) => fs.flow === this.flow));
+            }
+            return result;
         }
         return undefined;
     }

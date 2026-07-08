@@ -236,9 +236,18 @@ export class WasmRuntime extends RemoteRuntime {
             console.log("[wasm-runtime] image lookup for 'face_0':", found.length > 0 ? "FOUND" : "NOT FOUND", "total images:", Array.isArray(imageNames) ? imageNames.length : "N/A");
         }
 
+        const fallbackDisplayWidth =
+            this.selectedPage?.width ||
+            this.projectStore.project.settings.general.displayWidth ||
+            900;
+        const fallbackDisplayHeight =
+            this.selectedPage?.height ||
+            this.projectStore.project.settings.general.displayHeight ||
+            600;
+
         runInAction(() => {
-            this.displayWidth = this.assetsMap.displayWidth || 900;
-            this.displayHeight = this.assetsMap.displayHeight || 600;
+            this.displayWidth = this.assetsMap.displayWidth || fallbackDisplayWidth;
+            this.displayHeight = this.assetsMap.displayHeight || fallbackDisplayHeight;
         });
 
         this.assetsData = result.GUI_ASSETS_DATA;
@@ -612,11 +621,12 @@ export class WasmRuntime extends RemoteRuntime {
             }
 
             if (workerToRenderMessage.messageToDebugger) {
-                this.debuggerConnection.onMessageToDebugger(
-                    arrayBufferToBinaryString(
-                        workerToRenderMessage.messageToDebugger
-                    )
+                console.log("[wasm-runtime] else branch: messageToDebugger len:", workerToRenderMessage.messageToDebugger.length);
+                const binaryStr = arrayBufferToBinaryString(
+                    workerToRenderMessage.messageToDebugger
                 );
+                console.log("[wasm-runtime] binaryStr len:", binaryStr.length, "first 80:", JSON.stringify(binaryStr.substring(0, 80)));
+                this.debuggerConnection.onMessageToDebugger(binaryStr);
             }
 
             this.screen = workerToRenderMessage.screen;
@@ -1170,13 +1180,6 @@ export class WasmRuntime extends RemoteRuntime {
         const flowState = flowContext.flowState;
 
         let flowStateIndex = this.flowStateToFlowIndexMap.get(flowState!);
-        if (flowStateIndex == undefined) {
-            // No flow state yet — the first action (e.g., ShowPage) will
-            // trigger onPageChanged() in the WASM which creates flow states.
-            // Use 0 as a sentinel; the WASM will assign the correct index.
-            console.log("[executeWidgetAction] no flowState yet, using index 0 for widget:", widget.type);
-            flowStateIndex = 0;
-        }
 
         const flow = ProjectEditor.getFlow(widget);
         const flowPath = getObjectPathAsString(flow);
@@ -1184,6 +1187,22 @@ export class WasmRuntime extends RemoteRuntime {
         if (flowIndex == undefined) {
             console.error("[executeWidgetAction] UNEXPECTED: flowIndex undefined, path:", flowPath);
             return;
+        }
+
+        if (flowStateIndex == undefined) {
+            // flowContext.flowState is not mapped — find the C-side flowState
+            // index from flowStateMap by matching the widget's flow index.
+            for (const [idx, entry] of this.flowStateMap) {
+                if (entry.flowIndex === flowIndex) {
+                    flowStateIndex = idx;
+                    break;
+                }
+            }
+            if (flowStateIndex == undefined) {
+                console.error("[executeWidgetAction] cannot find flowState for widget:", widget.type, "flowIndex:", flowIndex);
+                return;
+            }
+            console.log("[executeWidgetAction] resolved flowStateIndex from flowStateMap:", flowStateIndex, "for widget:", widget.type);
         }
 
         const componentPath = getObjectPathAsString(widget);
@@ -1903,15 +1922,18 @@ class ComponentProperties {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-function arrayBufferToBinaryString(data: Uint8Array) {
-    const buffer = Buffer.from(data);
-    return buffer.toString("binary");
+// Use web-native APIs instead of Node's Buffer to avoid polyfill issues in browser.
+// latin-1 (iso-8859-1) is byte-for-byte identical to the "binary" encoding in Node's Buffer.
+const _latin1Decoder = new TextDecoder("latin1");
+
+function arrayBufferToBinaryString(data: Uint8Array): string {
+    return _latin1Decoder.decode(data);
 }
 
-function binaryStringToArrayBuffer(data: string) {
-    const buffer = Buffer.from(data, "binary");
-    return buffer.buffer.slice(
-        buffer.byteOffset,
-        buffer.byteOffset + buffer.byteLength
-    );
+function binaryStringToArrayBuffer(data: string): ArrayBuffer {
+    const bytes = new Uint8Array(data.length);
+    for (let i = 0; i < data.length; i++) {
+        bytes[i] = data.charCodeAt(i) & 0xff;
+    }
+    return bytes.buffer;
 }

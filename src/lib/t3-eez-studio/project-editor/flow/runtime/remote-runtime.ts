@@ -777,6 +777,9 @@ export abstract class DebuggerConnectionBase {
     counter = 0;
 
     onMessageToDebugger(data: string) {
+        if (data.length > 0) {
+            console.log("[onMessageToDebugger] data len:", data.length, "first 80:", JSON.stringify(data.substring(0, 80)));
+        }
         this.dataAccumulated += data;
 
         while (true) {
@@ -1220,7 +1223,7 @@ export abstract class DebuggerConnectionBase {
                         const flowInAssetsMap =
                             runtime.assetsMap.flows[flowIndex];
                         if (!flowInAssetsMap) {
-                            console.error("UNEXPECTED!");
+                            console.error("[FLOW_STATE_CREATED] UNEXPECTED: no flowInAssetsMap for flowIndex=", flowIndex);
                             return;
                         }
 
@@ -1228,9 +1231,10 @@ export abstract class DebuggerConnectionBase {
                             flowInAssetsMap.path
                         ) as Flow;
                         if (!flow) {
-                            console.error("UNEXPECTED!");
+                            console.error("[FLOW_STATE_CREATED] UNEXPECTED: getObjectFromStringPath returned null for path:", flowInAssetsMap.path);
                             return;
                         }
+                        console.log("[FLOW_STATE_CREATED] flowStateIndex=", flowStateIndex, "flowIndex=", flowIndex, "path=", flowInAssetsMap.path, "flow resolved:", !!flow, "flow===runtime.selectedPage:", flow === runtime.selectedPage);
 
                         if (this.getFlowState(flowStateIndex).flowState) {
                             console.error("UNEXPECTED!");
@@ -1301,6 +1305,7 @@ export abstract class DebuggerConnectionBase {
                                 flowState
                             )
                         );
+                        console.log("[FLOW_STATE_CREATED] pushed to flowStates. runtime.flowStates.length:", runtime.flowStates.length, "parentFlowState?", !!parentFlowState);
                     }
                     break;
 

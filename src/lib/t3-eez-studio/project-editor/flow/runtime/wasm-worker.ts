@@ -29,6 +29,8 @@ import { LVGLVersion } from "project-editor/project/project";
 // Dashboard runtime loader — Electron uses require(), browser loads via script tag
 let eez_flow_runtime_constructor: any = undefined;
 let _eezRuntimeLoading: Promise<any> | null = null;
+const EEZ_RUNTIME_CACHE_BUSTER = Date.now().toString();
+let _eezRuntimeFetchPatched = false;
 
 async function loadEezRuntimeBrowser(): Promise<any> {
     // eez_runtime.js is a CommonJS module: it sets module.exports to a factory
@@ -42,12 +44,45 @@ async function loadEezRuntimeBrowser(): Promise<any> {
     g.wasmMemory = undefined;
     g.wasmExports = undefined;
 
+    // Keep JS and WASM fetches on the same revision to avoid EM_ASM table
+    // mismatches when browser cache serves stale wasm with a fresh JS glue.
+    if (!_eezRuntimeFetchPatched && typeof g.fetch === "function") {
+        const originalFetch = g.fetch.bind(g);
+        const wasmPath = "/t3-eez-studio/wasm/eez_runtime.wasm";
+        const wasmPathWithVersion = `${wasmPath}?v=${EEZ_RUNTIME_CACHE_BUSTER}`;
+
+        g.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+            const url =
+                typeof input === "string"
+                    ? input
+                    : input instanceof URL
+                      ? input.toString()
+                      : input?.url;
+
+            if (
+                typeof url === "string" &&
+                (url === wasmPath ||
+                    url.endsWith("/eez_runtime.wasm") ||
+                    url.includes("/eez_runtime.wasm?"))
+            ) {
+                return originalFetch(wasmPathWithVersion, {
+                    ...init,
+                    cache: "no-store"
+                });
+            }
+
+            return originalFetch(input as any, init);
+        };
+
+        _eezRuntimeFetchPatched = true;
+    }
+
     // Electron's eez_runtime.js uses __dirname + "/" + path for locateFile.
     // Set __dirname to point to where our server serves the WASM files.
     (g as any).__dirname = "/t3-eez-studio/wasm";
 
     const s = document.createElement("script");
-    s.src = "/t3-eez-studio/wasm/eez_runtime.js?v=2";
+    s.src = `/t3-eez-studio/wasm/eez_runtime.js?v=${EEZ_RUNTIME_CACHE_BUSTER}`;
     return new Promise((resolve, reject) => {
         function getFactory() {
             const exports = (globalThis as any).module?.exports;
@@ -518,11 +553,9 @@ function operationBlobToString(
 
     const WasmFlowRuntime = getWasmFlowRuntime(wasmModuleId);
     if (WasmFlowRuntime) {
-        value = Buffer.from(
-            WasmFlowRuntime.HEAP8.buffer,
-            blobPtr,
-            len
-        ).toString("utf8");
+        value = new TextDecoder("utf-8").decode(
+            new Uint8Array(WasmFlowRuntime.HEAP8.buffer, blobPtr, len)
+        );
     }
 
     return createWasmValue(WasmFlowRuntime, value);
@@ -1212,6 +1245,12 @@ export async function createWasmWorker(
         if (messageToDebugger != undefined) {
             workerToRenderMessage.messageToDebugger = messageToDebugger;
             wasmModuleToMessageToDebugger.delete(wasmModuleId);
+            console.log("[wasm-worker] flushing messageToDebugger len:", messageToDebugger.length, "first bytes:", Array.from(messageToDebugger.subarray(0, Math.min(30, messageToDebugger.length))));
+        } else {
+            // Log when there's init data but no debugger messages - helps diagnose missing FLOW_STATE_CREATED
+            if (rendererToWorkerMessage.init) {
+                console.warn("[wasm-worker] init path: wasmModuleToMessageToDebugger is EMPTY for id:", wasmModuleId, "map keys:", Array.from(wasmModuleToMessageToDebugger.keys()));
+            }
         }
 
         postWorkerToRenderMessage(workerToRenderMessage);
