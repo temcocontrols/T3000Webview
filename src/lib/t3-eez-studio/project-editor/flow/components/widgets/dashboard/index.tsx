@@ -2039,6 +2039,11 @@ export class ButtonDashboardWidget extends Widget {
             node = null;
         }
 
+        // Fallback: if WASM evaluation returned empty, parse data directly
+        if (!text && !node && this.data) {
+            try { const p = JSON.parse(this.data); text = typeof p === "string" ? p : String(p); } catch { text = this.data.replace(/^"|"$/g, ""); }
+        }
+
         let buttonEnabled = getBooleanValue(
             flowContext,
             this,
@@ -2059,7 +2064,20 @@ export class ButtonDashboardWidget extends Widget {
                         this.style.getConditionalClassNames(flowContext),
                         this.style.getDynamicCSSClassName(flowContext)
                     )}
-                    style={{ opacity: style.opacity }}
+                    style={{
+                        opacity: style.opacity,
+                        ...(buttonStyle.borderSize ? {
+                            borderWidth: `${buttonStyle.borderSize}px`,
+                            borderStyle: buttonStyle.borderStyle || "solid",
+                            borderColor: buttonStyle.borderColor || "currentColor",
+                        } : {}),
+                        ...(buttonStyle.borderRadius ? {
+                            borderRadius: `${buttonStyle.borderRadius}px`,
+                        } : {}),
+                        ...(buttonStyle.padding ? {
+                            padding: buttonStyle.padding,
+                        } : {}),
+                    }}
                     disabled={!buttonEnabled}
                     onClick={this.onClick(flowContext)}
                 >
