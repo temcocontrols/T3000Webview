@@ -889,7 +889,15 @@ export class Page extends Flow {
             !projectStore.projectTypeTraits.isDashboard &&
             projectStore.runtime &&
             (projectStore.runtime instanceof ProjectEditor.WasmRuntimeClass || projectStore.runtime instanceof ProjectEditor.EezGuiLiteWasmRuntimeClass) &&
-            !projectStore.runtime.getFlowState(this)
+            !projectStore.projectTypeTraits.isDashboard && !projectStore.runtime.getFlowState(this) &&
+            !((() => {
+                const pageName = (this as any).name;
+                const found = (projectStore.runtime.flowStates as any[]).some(
+                    (fs: any) => fs.flow?.name === pageName
+                );
+                console.log("[isRuntimeSelectedPage] page:", pageName, "getFlowState:", !!projectStore.runtime.getFlowState(this), "nameMatch:", found, "flowStates.length:", projectStore.runtime.flowStates.length);
+                return found;
+            })())
         );
     }
 
