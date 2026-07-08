@@ -229,11 +229,16 @@ export function getTextValue(
                 }
             }
 
-            if (
-                flowContext.projectStore.runtime &&
-                !flowContext.projectStore.projectTypeTraits.isDashboard
-            ) {
-                return "";
+            if (flowContext.projectStore.runtime) {
+                if (!(flowContext as any)._textNoFlowStateLogged) {
+                    (flowContext as any)._textNoFlowStateLogged = true;
+                    console.log("[getTextValue] NO flowState for widget:", (widget as any).type, "data:", data,
+                        "runtime flowStates.length:", flowContext.projectStore.runtime.flowStates.length,
+                        "selectedPage:", (flowContext.projectStore.runtime as any).selectedPage?.name);
+                }
+                if (!flowContext.projectStore.projectTypeTraits.isDashboard) {
+                    return "";
+                }
             }
 
             if (name) {

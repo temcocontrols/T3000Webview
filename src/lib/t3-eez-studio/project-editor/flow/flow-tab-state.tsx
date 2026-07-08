@@ -32,10 +32,25 @@ export abstract class FlowTabState implements IEditorState {
     get flowState() {
         if (this.projectStore.runtime) {
             const result = this.projectStore.runtime.getFlowState(this.flow);
-            if (!result && this.projectStore.runtime.flowStates.length > 0) {
-                console.log("[flowTabState.flowState] getFlowState returned undefined. flow:", (this.flow as any)?.name, "runtime.flowStates.length:", this.projectStore.runtime.flowStates.length, "flowStates[0].flow:", (this.projectStore.runtime.flowStates[0] as any)?.flow?.name, "same?:", this.projectStore.runtime.flowStates.some((fs: any) => fs.flow === this.flow));
+            if (result) return result;
+            // Fallback: if reference identity fails, match by name.
+            // In browser mode the project object loaded by getObjectFromStringPath
+            // can be a different JS reference than the object held by the tab,
+            // so === equality silently misses. Name is unique per project.
+            const flowName = (this.flow as any)?.name;
+            if (flowName && this.projectStore.runtime.flowStates.length > 0) {
+                const topLevel: any[] = this.projectStore.runtime.flowStates as any;
+                const byName = topLevel.find((fs: any) => fs.flow?.name === flowName);
+                if (byName) return byName;
+                // Also search one level of children (user-widget sub-flows)
+                for (const parent of topLevel) {
+                    const child = (parent.flowStates as any[] | undefined)?.find(
+                        (fs: any) => fs.flow?.name === flowName
+                    );
+                    if (child) return child;
+                }
             }
-            return result;
+            return undefined;
         }
         return undefined;
     }
