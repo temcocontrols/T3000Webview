@@ -130,6 +130,16 @@ button {
   transition: all var(--transition-fast);
 }
 
+/* Restore browser default button appearance for EEZ dashboard buttons
+   (matches Electron where user agent stylesheet is not overridden) */
+.eez-widget.ButtonDashboardWidget button {
+  border: revert;
+  border-radius: revert;
+  padding: revert;
+  font-family: revert;
+  font-size: revert;
+}
+
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
