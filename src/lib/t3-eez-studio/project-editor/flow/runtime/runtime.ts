@@ -350,6 +350,34 @@ export abstract class RuntimeBase implements IRuntime {
             }
         }
 
+        // Fallback: match by name when reference identity fails (browser mode)
+        const flowName = (flow as any)?.name;
+        if (flowName) {
+            for (let flowState of this.flowStates) {
+                if ((flowState.flow as any)?.name === flowName) {
+                    console.log("[getFlowState-RuntimeBase] name fallback MATCH:", flowName);
+                    return flowState;
+                }
+            }
+            for (let flowState of this.flowStates) {
+                const childFlowState = flowState.getFlowStateByName(flowName);
+                if (childFlowState) {
+                    console.log("[getFlowState-RuntimeBase] child name fallback MATCH:", flowName);
+                    return childFlowState;
+                }
+            }
+            // Dashboard early-fallback: flowStates not populated yet but page matches selectedPage
+            const selectedPage = (this as any).selectedPage;
+            if (selectedPage && (selectedPage as any).name === flowName) {
+                // flowStates hasn't arrived yet but we know this is the active page.
+                // Return undefined for now — once flowStates is populated via runInAction,
+                // the MobX observer chain will re-evaluate and this method will match by name.
+                // To avoid a blank WasmCanvas flash, we log and let the caller handle it.
+                console.log("[getFlowState-RuntimeBase] early-fallback: flow matches selectedPage but flowStates empty, page:", flowName);
+            }
+            console.log("[getFlowState-RuntimeBase] name fallback FAILED:", flowName, "flowStates.length:", this.flowStates.length, "names:", this.flowStates.map((fs: any) => fs.flow?.name));
+        }
+
         return undefined;
     }
 
@@ -936,6 +964,29 @@ export class FlowState implements IFlowState {
             }
         }
 
+        // Fallback: match by name when reference identity fails (browser mode)
+        const flowName = (flow as any)?.name;
+        if (flowName) {
+            for (let flowState of this.flowStates) {
+                if ((flowState.flow as any)?.name === flowName) {
+                    return flowState;
+                }
+            }
+        }
+
+        return undefined;
+    }
+
+    getFlowStateByName(flowName: string): FlowState | undefined {
+        for (let flowState of this.flowStates) {
+            if ((flowState.flow as any)?.name === flowName) {
+                return flowState;
+            }
+        }
+        for (let flowState of this.flowStates) {
+            const child = flowState.getFlowStateByName(flowName);
+            if (child) return child;
+        }
         return undefined;
     }
 

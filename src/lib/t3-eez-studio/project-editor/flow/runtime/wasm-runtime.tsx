@@ -614,18 +614,27 @@ export class WasmRuntime extends RemoteRuntime {
             }
 
             if (workerToRenderMessage.propertyValues) {
-                // console.log(workerToRenderMessage.propertyValues);
+                if (!(this as any)._pvLogCount) (this as any)._pvLogCount = 0;
+                if (++(this as any)._pvLogCount <= 5 || (this as any)._pvLogCount % 120 === 0) {
+                    const evalSent = this.componentProperties.evalProperties?.length ?? 0;
+                    console.log("[wasm-runtime] propertyValues:", workerToRenderMessage.propertyValues.length, "evalProps registered:", evalSent,
+                        "sample:", workerToRenderMessage.propertyValues.slice(0, 2).map((p: any) => `vi=${p.propertyValueIndex} ${p.valueWithType?.valueType}=${JSON.stringify(p.valueWithType?.value)}`));
+                }
                 this.componentProperties.valuesFromWorker(
                     workerToRenderMessage.propertyValues
                 );
+            } else {
+                if (!(this as any)._pvEmptyCount) (this as any)._pvEmptyCount = 0;
+                if (++(this as any)._pvEmptyCount <= 5) {
+                    const evalSent = this.componentProperties.evalProperties?.length ?? 0;
+                    console.log("[wasm-runtime] NO propertyValues. evalProps registered:", evalSent);
+                }
             }
 
             if (workerToRenderMessage.messageToDebugger) {
-                console.log("[wasm-runtime] else branch: messageToDebugger len:", workerToRenderMessage.messageToDebugger.length);
                 const binaryStr = arrayBufferToBinaryString(
                     workerToRenderMessage.messageToDebugger
                 );
-                console.log("[wasm-runtime] binaryStr len:", binaryStr.length, "first 80:", JSON.stringify(binaryStr.substring(0, 80)));
                 this.debuggerConnection.onMessageToDebugger(binaryStr);
             }
 

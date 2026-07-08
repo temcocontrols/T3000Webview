@@ -778,7 +778,11 @@ export abstract class DebuggerConnectionBase {
 
     onMessageToDebugger(data: string) {
         if (data.length > 0) {
-            console.log("[onMessageToDebugger] data len:", data.length, "first 80:", JSON.stringify(data.substring(0, 80)));
+            // Log first few calls and periodically; also always log non-timeline messages
+            const hasNonTimeline = data.replace(/8\t[^\n]+\n/g, '').length > 0;
+            if (hasNonTimeline) {
+                console.log("[onMessageToDebugger] non-timeline data:", JSON.stringify(data.substring(0, 120)));
+            }
         }
         this.dataAccumulated += data;
 

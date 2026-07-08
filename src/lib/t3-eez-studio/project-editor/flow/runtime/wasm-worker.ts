@@ -1226,6 +1226,18 @@ export async function createWasmWorker(
 
         workerToRenderMessage.propertyValues = propertyValues;
 
+        // Diagnostic: log eval cycle (first 3 then every 60 frames)
+        if (!(postRendererToWorkerMessage as any)._evalDbg) (postRendererToWorkerMessage as any)._evalDbg = 0;
+        const _n = ++(postRendererToWorkerMessage as any)._evalDbg;
+        if (_n <= 3 || _n % 60 === 0) {
+            // console.log("[wasm-worker] frame", _n, "evalProperties:", rendererToWorkerMessage.evalProperties?.length ?? 0, "propertyValues:", propertyValues?.length ?? 0);
+        }
+
+        if (!(postRendererToWorkerMessage as any)._evalLogCount) (postRendererToWorkerMessage as any)._evalLogCount = 0;
+        if (++(postRendererToWorkerMessage as any)._evalLogCount <= 3 || (postRendererToWorkerMessage as any)._evalLogCount % 60 === 0) {
+            // console.log("[wasm-worker] evalProperties sent:", rendererToWorkerMessage.evalProperties?.length ?? 0, "propertyValues returned:", propertyValues?.length ?? 0);
+        }
+
         var buf_addr = WasmFlowRuntime._getSyncedBuffer();
         if (buf_addr != 0) {
             const w = WasmFlowRuntime.assetsMap.displayWidth;
@@ -1245,7 +1257,7 @@ export async function createWasmWorker(
         if (messageToDebugger != undefined) {
             workerToRenderMessage.messageToDebugger = messageToDebugger;
             wasmModuleToMessageToDebugger.delete(wasmModuleId);
-            console.log("[wasm-worker] flushing messageToDebugger len:", messageToDebugger.length, "first bytes:", Array.from(messageToDebugger.subarray(0, Math.min(30, messageToDebugger.length))));
+            // console.log("[wasm-worker] flushing messageToDebugger len:", messageToDebugger.length, "first bytes:", Array.from(messageToDebugger.subarray(0, Math.min(30, messageToDebugger.length))));
         } else {
             // Log when there's init data but no debugger messages - helps diagnose missing FLOW_STATE_CREATED
             if (rendererToWorkerMessage.init) {
