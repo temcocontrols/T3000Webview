@@ -3070,10 +3070,10 @@ export function timelineStyleHook(
     if (flowContext.flowState) {
         timelinePosition = flowContext.flowState.timelinePosition;
         if (timelinePosition > 0) {
-            console.log("[timeline] flowState.timelinePosition:", timelinePosition.toFixed(3), "widget:", widget.type, widget.name || "");
+            // console.log("[timeline] flowState.timelinePosition:", timelinePosition.toFixed(3), "widget:", widget.type, widget.name || "");
         }
     } else {
-        console.log("[timeline] NO flowState — widget:", widget.type, widget.name || "", "runtime:", !!flowContext.projectStore.runtime);
+        // console.log("[timeline] NO flowState — widget:", widget.type, widget.name || "", "runtime:", !!flowContext.projectStore.runtime, "flowStates.length:", flowContext.projectStore.runtime?.flowStates?.length ?? 0);
         const editor = flowContext.projectStore.editorsStore.getEditorByObject(
             flowContext.document.flow.object
         );
