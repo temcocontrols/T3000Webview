@@ -88,6 +88,8 @@ fn copy_wasm_and_fonts(manifest_dir: &str, root: &Path) {
             ("eez_runtime.wasm", "wasm/eez_runtime.wasm"),
             ("eez_gui_lite_runtime.js", "wasm/eez_gui_lite_runtime.js"),
             ("eez_gui_lite_runtime.wasm", "wasm/eez_gui_lite_runtime.wasm"),
+            ("lz4.js", "wasm/lz4.js"),
+            ("lz4.wasm", "wasm/lz4.wasm"),
         ],
         "t3-eez-studio",
     );
@@ -148,7 +150,7 @@ fn main() {
     copy_resource_dir(
         &manifest_dir,
         profile_root,
-        "../../eez-studio/resources/eez-framework-amalgamation",
+        "../../studio-wasm-libs/release/eez-framework-amalgamation",
     );
 
     copy_resource_dir(
