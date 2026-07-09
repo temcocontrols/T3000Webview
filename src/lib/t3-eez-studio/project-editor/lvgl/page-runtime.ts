@@ -1330,7 +1330,6 @@ export class LVGLPageViewerRuntime extends LVGLPageRuntime {
                             for (let j = 0; j < bitmapData.pixels.length; j++) {
                                 this.wasm.HEAP8[imgDscPtr + 12 + j] = bitmapData.pixels[j];
                             }
-                            (window as any).__imgPtrToName[imgDscPtr] = name;
                         } else {
                             // fallback 1x1 black image
                             imgDscPtr = this.wasm._malloc(12 + 4);
@@ -1338,7 +1337,6 @@ export class LVGLPageViewerRuntime extends LVGLPageRuntime {
                             this.wasm.HEAP32[(imgDscPtr >> 2) + 1] = 4;
                             this.wasm.HEAP32[(imgDscPtr >> 2) + 2] = imgDscPtr + 12;
                             this.wasm.HEAP32[(imgDscPtr >> 2) + 3] = 0;
-                            (window as any).__imgPtrToName[imgDscPtr] = name;
                         }
                         dataCache.set(name, imgDscPtr);
                     }
