@@ -539,8 +539,7 @@ export class WasmRuntime extends RemoteRuntime {
                 assetsMap: this.assetsMap,
                 globalVariableValues,
                 displayWidth: this.displayWidth,
-                displayHeight: this.displayHeight,
-                startFlow: this.projectStore.projectTypeTraits.isDashboard || this.projectStore.projectTypeTraits.isLVGL
+                displayHeight: this.displayHeight
             };
 
             await this.worker.postMessage(message);
