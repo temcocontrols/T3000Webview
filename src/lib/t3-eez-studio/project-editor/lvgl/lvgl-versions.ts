@@ -642,7 +642,6 @@ export function getLvglWasmFlowRuntimeConstructor(
                 // Call initCb synchronously — onWorkerMessage handles bridge
                 // calls synchronously (returning values) and delegates init
                 // to onWorkerMessageAsync.
-                console.log("[LVGL-BRIDGE] postWorkerToRendererMessage CALLED | data keys:", Object.keys(data || {}).join(","));
                 return initCb(data);
             };
             const proxyHandler = {
@@ -673,7 +672,6 @@ export function getLvglWasmFlowRuntimeConstructor(
                 if (typeof initCb === "function") {
                     Module.postWorkerToRendererMessage = initCb;
                     (Module as any)._syncPostMessage = initCb;
-                    console.log("[LVGL-BRIDGE] Module.postWorkerToRendererMessage wired | initCb type:", typeof initCb);
                 } else {
                     console.warn("[LVGL-BRIDGE] initCb is not a function, bridge disabled");
                 }
