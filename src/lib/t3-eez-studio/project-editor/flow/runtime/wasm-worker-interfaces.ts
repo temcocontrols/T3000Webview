@@ -12,6 +12,7 @@ export interface RendererToWorkerMessage {
         globalVariableValues: IGlobalVariable[];
         displayWidth: number;
         displayHeight: number;
+        startFlow?: boolean;
     };
 
     // mouse data from Canvas

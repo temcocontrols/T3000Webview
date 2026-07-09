@@ -1281,8 +1281,57 @@ export class LVGLPageViewerRuntime extends LVGLPageRuntime {
 
     async mount() {
         // Attach build assetsMap to the WASM module for lvglCreate access
-        (this.wasm as any).assetsMap = (this.runtime as any).assetsMap;
-        console.log("[lvgl-mount] attached assetsMap, flowIndexes:", !!((this.wasm as any).assetsMap?.flowIndexes), "flows:", (this.wasm as any).assetsMap?.flows?.length);
+        const assetsMap = (this.runtime as any).assetsMap;
+        (this.wasm as any).assetsMap = assetsMap;
+
+        // Register project bitmaps into WASM memory for image widgets
+        // (edit mode does this in LVGLPageEditorRuntime; run mode also needs it)
+        if (typeof this.wasm._eez_flow_add_images === "function") {
+            const bitmapNames: string[] = assetsMap?.bitmaps || [];
+            if (bitmapNames.length > 0) {
+                const numImages = bitmapNames.length;
+                const imagesPtr = this.wasm._malloc(numImages * 8);
+                const LV_IMAGE_HEADER_MAGIC = 0x19;
+                const dataCache = new Map<string, number>();
+                for (let i = 0; i < bitmapNames.length; i++) {
+                    const name = bitmapNames[i];
+                    let imgDscPtr = dataCache.get(name);
+                    if (imgDscPtr === undefined) {
+                        const bitmap = findBitmap(this.project, name);
+                        if (bitmap) {
+                            const bitmapData = ProjectEditor.getBitmapData(bitmap, 32);
+                            let cf = 0x10;
+                            if (bitmapData.bpp === 24) cf = 0x11;
+                            else if (bitmapData.bpp === 16) cf = 0x09;
+                            const header = (LV_IMAGE_HEADER_MAGIC << 0) | (cf << 8) | 0;
+                            imgDscPtr = this.wasm._malloc(12 + bitmapData.pixels.length);
+                            this.wasm.HEAP32[(imgDscPtr >> 2) + 0] = header;
+                            this.wasm.HEAP32[(imgDscPtr >> 2) + 1] = bitmapData.pixels.length;
+                            this.wasm.HEAP32[(imgDscPtr >> 2) + 2] = imgDscPtr + 12;
+                            for (let j = 0; j < bitmapData.pixels.length; j++) {
+                                this.wasm.HEAP8[imgDscPtr + 12 + j] = bitmapData.pixels[j];
+                            }
+                        } else {
+                            // fallback 1x1 black image
+                            imgDscPtr = this.wasm._malloc(12 + 4);
+                            this.wasm.HEAP32[(imgDscPtr >> 2) + 0] = (LV_IMAGE_HEADER_MAGIC << 0) | (0x10 << 8);
+                            this.wasm.HEAP32[(imgDscPtr >> 2) + 1] = 4;
+                            this.wasm.HEAP32[(imgDscPtr >> 2) + 2] = imgDscPtr + 12;
+                            this.wasm.HEAP32[(imgDscPtr >> 2) + 3] = 0;
+                        }
+                        dataCache.set(name, imgDscPtr);
+                    }
+                    this.wasm.HEAP32[(imagesPtr >> 2) + i * 2] = this.wasm.stringToNewUTF8(String(i));
+                    this.wasm.HEAP32[(imagesPtr >> 2) + i * 2 + 1] = imgDscPtr;
+                }
+                this.wasm._eez_flow_add_images(imagesPtr, numImages);
+                console.log("[lvgl-mount] registered", numImages, "images in WASM");
+            } else {
+                console.log("[lvgl-mount] no bitmaps in assetsMap — skipping image registration");
+            }
+        } else {
+            console.log("[lvgl-mount] _eez_flow_add_images NOT FOUND — old WASM, images may not work");
+        }
 
         this.lvglGroupObjects = [];
 
@@ -1431,10 +1480,11 @@ export class LVGLPageViewerRuntime extends LVGLPageRuntime {
         const pagePath = getObjectPathAsString(this.page);
         const pageIndex = this.runtime.assetsMap.flowIndexes[pagePath];
 
+        const flowState = this.wasm._lvglGetFlowState(0, pageIndex);
         this.lvglCreateContext = {
             page: this.page,
             pageIndex,
-            flowState: this.wasm._lvglGetFlowState(0, pageIndex)
+            flowState
         };
 
         this.createStyles();

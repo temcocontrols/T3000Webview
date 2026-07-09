@@ -307,9 +307,6 @@ export class SimulatorLVGLCode implements LVGLCode {
                     : unescapeCString(value);
         }
 
-        console.log("[LVGL-TEXT] stringProperty | type:", type, "| value:", value,
-            "| hasAssetsMap:", !!this.runtime.wasm.assetsMap,
-            "| result str:", JSON.stringify(str));
         const strPtr = this.runtime.wasm.stringToNewUTF8(str);
         this.allocated.push(strPtr);
         return strPtr;
@@ -658,10 +655,6 @@ export class SimulatorLVGLCode implements LVGLCode {
         const widget = this.widget;
         const obj = this.obj;
         const flowState = this.runtime.lvglCreateContext.flowState;
-        console.log("[LVGL-TICK] addToTick | widget:", widget.type,
-            "| prop:", propertyName,
-            "| hasPropExpr:", !!propExpr,
-            "| flowState:", flowState);
         if (propExpr) {
             this.runtime.addTickCallback((_flowState: number) => {
                 this.widget = widget;

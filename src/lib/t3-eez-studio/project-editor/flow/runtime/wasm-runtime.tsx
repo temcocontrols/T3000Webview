@@ -220,20 +220,10 @@ export class WasmRuntime extends RemoteRuntime {
         }
 
         this.assetsMap = result.GUI_ASSETS_DATA_MAP_JS as AssetsMap;
-        console.log("[wasm-runtime] assetsMap loaded, flowIndexes:", !!this.assetsMap?.flowIndexes, "flows:", this.assetsMap?.flows?.length);
         if (!this.assetsMap) {
             this.stopRuntimeWithError("Build error");
             this.projectStore.setEditorMode();
             return;
-        }
-        console.log("Assets map:", this.assetsMap);
-        // Diagnostic: check if face_0 is in the assets map
-        if (this.assetsMap) {
-            const imageNames = this.assetsMap.images || this.assetsMap.bitmaps || [];
-            const found = Array.isArray(imageNames) 
-                ? imageNames.filter((i: any) => i && (i.name === "face_0" || i === "face_0"))
-                : [];
-            console.log("[wasm-runtime] image lookup for 'face_0':", found.length > 0 ? "FOUND" : "NOT FOUND", "total images:", Array.isArray(imageNames) ? imageNames.length : "N/A");
         }
 
         const fallbackDisplayWidth =
@@ -252,7 +242,7 @@ export class WasmRuntime extends RemoteRuntime {
 
         this.assetsData = result.GUI_ASSETS_DATA;
 
-        if (this.projectStore.projectTypeTraits.isDashboard) {
+        if (this.projectStore.projectTypeTraits.isDashboard || this.projectStore.projectTypeTraits.isLVGL) {
             await this.loadGlobalVariables();
         }
 
@@ -531,23 +521,13 @@ export class WasmRuntime extends RemoteRuntime {
             const message: RendererToWorkerMessage = {};
 
             let globalVariableValues: IGlobalVariable[];
-            if (this.projectStore.projectTypeTraits.isDashboard) {
+            if (this.projectStore.projectTypeTraits.isDashboard || this.projectStore.projectTypeTraits.isLVGL) {
                 globalVariableValues = this.globalVariables.map(
                     globalVariable => {
-                        if (globalVariable.kind == "basic") {
-                            return {
-                                kind: "basic",
-                                globalVariableIndex:
-                                    globalVariable.globalVariableIndex,
-                                value: globalVariable.value
-                            };
-                        }
-                        return {
-                            kind: "array",
-                            globalVariableIndex:
-                                globalVariable.globalVariableIndex,
-                            value: globalVariable.value
-                        };
+                        const gv = globalVariable.kind == "basic"
+                            ? { kind: "basic" as const, globalVariableIndex: globalVariable.globalVariableIndex, value: globalVariable.value }
+                            : { kind: "array" as const, globalVariableIndex: globalVariable.globalVariableIndex, value: globalVariable.value };
+                        return gv;
                     }
                 );
             } else {
@@ -559,7 +539,8 @@ export class WasmRuntime extends RemoteRuntime {
                 assetsMap: this.assetsMap,
                 globalVariableValues,
                 displayWidth: this.displayWidth,
-                displayHeight: this.displayHeight
+                displayHeight: this.displayHeight,
+                startFlow: this.projectStore.projectTypeTraits.isDashboard || this.projectStore.projectTypeTraits.isLVGL
             };
 
             await this.worker.postMessage(message);
@@ -614,21 +595,9 @@ export class WasmRuntime extends RemoteRuntime {
             }
 
             if (workerToRenderMessage.propertyValues) {
-                if (!(this as any)._pvLogCount) (this as any)._pvLogCount = 0;
-                if (++(this as any)._pvLogCount <= 5 || (this as any)._pvLogCount % 120 === 0) {
-                    const evalSent = this.componentProperties.evalProperties?.length ?? 0;
-                    console.log("[wasm-runtime] propertyValues:", workerToRenderMessage.propertyValues.length, "evalProps registered:", evalSent,
-                        "sample:", workerToRenderMessage.propertyValues.slice(0, 2).map((p: any) => `vi=${p.propertyValueIndex} ${p.valueWithType?.valueType}=${JSON.stringify(p.valueWithType?.value)}`));
-                }
                 this.componentProperties.valuesFromWorker(
                     workerToRenderMessage.propertyValues
                 );
-            } else {
-                if (!(this as any)._pvEmptyCount) (this as any)._pvEmptyCount = 0;
-                if (++(this as any)._pvEmptyCount <= 5) {
-                    const evalSent = this.componentProperties.evalProperties?.length ?? 0;
-                    console.log("[wasm-runtime] NO propertyValues. evalProps registered:", evalSent);
-                }
             }
 
             if (workerToRenderMessage.messageToDebugger) {
@@ -660,7 +629,11 @@ export class WasmRuntime extends RemoteRuntime {
             return;
         }
 
-        this.worker.wasm._mainLoop();
+        try {
+            this.worker.wasm._mainLoop();
+        } catch (e) {
+            console.error("_mainLoop crashed:", e);
+        }
 
         this.mainLoopTimeoutId = setTimeout(this.runMainLoop);
     };
@@ -763,6 +736,8 @@ export class WasmRuntime extends RemoteRuntime {
     async loadGlobalVariables() {
         await this.projectStore.runtimeSettings.loadPersistentVariables();
 
+        console.log("[TRACE-LVGL] loadGlobalVariables: allGlobalVariables count:", this.projectStore.project.allGlobalVariables.length, "assetsMap.globalVariables count:", this.assetsMap?.globalVariables?.length);
+
         let firstDashboardInstrument = true;
 
         for (const variable of this.projectStore.project.allGlobalVariables) {
@@ -853,7 +828,7 @@ export class WasmRuntime extends RemoteRuntime {
                         studioModified: false
                     });
                 }
-            } else if (variable.persistent) {
+            } else if (variable.persistent || this.projectStore.projectTypeTraits.isLVGL) {
                 if (isStructType(variable.type) || isArrayType(variable.type)) {
                     const arrayValue = createJsArrayValue(
                         +this.assetsMap.typeIndexes[variable.type],
@@ -913,6 +888,12 @@ export class WasmRuntime extends RemoteRuntime {
 
     getUpdatedObjectGlobalVariableValues(): IGlobalVariable[] {
         const updatedGlobalVariableValues: IGlobalVariable[] = [];
+
+        // LVGL manages globals internally via the flow engine; _getGlobalVariable
+        // does not exist in the LVGL runtime and would return undefined pointers.
+        if (this.projectStore.projectTypeTraits.isLVGL) {
+            return updatedGlobalVariableValues;
+        }
 
         for (const globalVariable of this.globalVariables) {
             const engineValuePtr = this.worker.wasm._getGlobalVariable(

@@ -1102,6 +1102,11 @@ export async function createWasmWorker(
 
             WasmFlowRuntime._free(ptr);
 
+            // Start flow engine if requested (Dashboard projects need this)
+            if (rendererToWorkerMessage.init.startFlow) {
+                WasmFlowRuntime._startFlow();
+            }
+
             initObjectGlobalVariableValues(
                 WasmFlowRuntime,
                 rendererToWorkerMessage.init.globalVariableValues
