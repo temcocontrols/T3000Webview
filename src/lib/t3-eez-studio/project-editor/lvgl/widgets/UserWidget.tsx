@@ -457,6 +457,7 @@ export class LVGLUserWidgetWidget extends LVGLWidget {
                 }
             });
         } else {
+            console.log("[RUNTIME:UW] toLVGLCode runtime path, widget:", this.identifier || this.userWidgetPageName);
             const simulatorCode = code as SimulatorLVGLCode;
 
             const runtime = simulatorCode.pageRuntime;

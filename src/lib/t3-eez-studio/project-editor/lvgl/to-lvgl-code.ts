@@ -327,9 +327,12 @@ export class SimulatorLVGLCode implements LVGLCode {
     image(image: string) {
         const bitmap = findBitmap(ProjectEditor.getProject(this.widget), image);
         if (!bitmap || !bitmap.image) {
+            console.log("[RUNTIME:IMG] FAIL", image, "found:", !!bitmap, "hasImage:", !!bitmap?.image);
             return 0;
         }
-        return this.runtime.getBitmapPtr(bitmap);
+        const ptr = this.runtime.getBitmapPtr(bitmap);
+        console.log("[RUNTIME:IMG] OK", image, "ptr:", ptr);
+        return ptr;
     }
 
     or(...args: any) {
@@ -346,6 +349,7 @@ export class SimulatorLVGLCode implements LVGLCode {
 
     createScreen() {
         if (this.customWidget) {
+            console.log("[RUNTIME:UW] createScreen userWidget, widgetIndex:", this.customWidget.widgetIndex);
             this.obj = this.runtime.wasm._lvglCreateUserWidget(
                 this.parentObj,
                 this.customWidget.widgetIndex,
@@ -354,6 +358,7 @@ export class SimulatorLVGLCode implements LVGLCode {
                 this.customWidget.width,
                 this.customWidget.height
             );
+            console.log("[RUNTIME:UW] _lvglCreateUserWidget obj:", this.obj);
         } else {
             const rect = this.widget.getLvglCreateRect();
 
@@ -455,7 +460,9 @@ export class SimulatorLVGLCode implements LVGLCode {
 
     callFreeFunction(func: string, ...args: any[]): any {
         const result = (this.runtime.wasm as any)["_" + func](...args);
-        // console.log("callFreeFunction", func, ...args, "->", result);
+        if (func.startsWith("_evalBoolean")) {
+            console.log("[RT:EVAL]", func, "ci:", args[1], "pi:", args[2], "result:", result);
+        }
         return result;
     }
 
@@ -656,6 +663,7 @@ export class SimulatorLVGLCode implements LVGLCode {
         const obj = this.obj;
         const flowState = this.runtime.lvglCreateContext.flowState;
         if (propExpr) {
+            console.log("[RUNTIME:TICK] registered:", propertyName, "ci:", propExpr.componentIndex, "pi:", propExpr.propertyIndex);
             this.runtime.addTickCallback((_flowState: number) => {
                 this.widget = widget;
                 this.obj = obj;
@@ -664,6 +672,8 @@ export class SimulatorLVGLCode implements LVGLCode {
                 this.propertyIndex = propExpr.propertyIndex;
                 callback();
             });
+        } else {
+            console.log("[RUNTIME:TICK] SKIPPED:", propertyName, "(getExpressionPropertyData returned undefined)");
         }
     }
 

@@ -1226,6 +1226,12 @@ export class LVGLPageViewerRuntime extends LVGLPageRuntime {
     constructor(private runtime: WasmRuntime) {
         super(runtime.selectedPage);
         this.wasm = runtime.worker.wasm;
+        // Attach assetsMap to the WASM module immediately, before any
+        // lvglCreateScreen messages arrive from the worker during _init().
+        // Otherwise, getExpressionPropertyData fails and all tick callbacks
+        // (hiddenFlag, text, value, disabledState) are silently skipped for
+        // the first page, causing images/user-widgets to never update.
+        (this.wasm as any).assetsMap = (this.runtime as any).assetsMap;
 
         this.pages.forEach(page =>
             this.pageStates.set(page, {
@@ -1283,6 +1289,7 @@ export class LVGLPageViewerRuntime extends LVGLPageRuntime {
         // Attach build assetsMap to the WASM module for lvglCreate access
         const assetsMap = (this.runtime as any).assetsMap;
         (this.wasm as any).assetsMap = assetsMap;
+        console.log("[RUNTIME:MOUNT] assetsMap keys:", Object.keys(assetsMap || {}), "flowIndexes keys:", Object.keys(assetsMap?.flowIndexes || {}));
 
         // Register project bitmaps into WASM memory for image widgets
         // (edit mode does this in LVGLPageEditorRuntime; run mode also needs it)
@@ -1709,11 +1716,14 @@ export class LVGLPageViewerRuntime extends LVGLPageRuntime {
     }
 
     lvglScreenTick() {
+        let tickCount = 0;
         for (let tickCallback of this.tickCallbacks) {
             if (this.runtime.selectedPage == tickCallback.page) {
                 tickCallback.callback(tickCallback.flowState);
+                tickCount++;
             }
         }
+        console.log("[RUNTIME:SCREEN-TICK] fired", tickCount, "of", this.tickCallbacks.length, "callbacks");
     }
 
     override addEventHandler(

@@ -1522,6 +1522,7 @@ export class LVGLWidget extends Widget {
 
     override lvglCreate(runtime: LVGLPageRuntime, parentObj: number, customWidget?: ICustomWidgetCreateParams) {
         const code = runtime.toLVGLCode;
+        console.log("[RUNTIME:CREATE]", this.constructor.name, "code:", code.constructor.name);
         code.startWidget(this, parentObj, customWidget);
         this.toLVGLCode(code);
 
@@ -1850,6 +1851,8 @@ export class LVGLWidget extends Widget {
                     this.hiddenFlag as string,
                     "Failed to evaluate Hidden flag"
                 );
+
+                console.log("[RUNTIME:HIDE] expr:", this.hiddenFlag, "val:", JSON.stringify(new_val), "type:", typeof new_val, "class:", code.constructor.name);
 
                 const cur_val = code.callObjectFunctionWithAssignment(
                     "bool",

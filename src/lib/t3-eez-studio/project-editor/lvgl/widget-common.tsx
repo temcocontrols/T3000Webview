@@ -31,6 +31,7 @@ export function getExpressionPropertyData(
     const hasAssetsMap = !!runtime.wasm.assetsMap;
     const hasFlowIndexes = !!runtime.wasm.assetsMap?.flowIndexes;
     if (!runtime.wasm.assetsMap?.flowIndexes) {
+        console.log("[RUNTIME:GEPD] FAIL: no assetsMap.flowIndexes | hasAssetsMap:", hasAssetsMap, "hasFlowIndexes:", hasFlowIndexes, "prop:", propertyName);
         return undefined;
     }
 
@@ -40,6 +41,7 @@ export function getExpressionPropertyData(
         propertyType !== "literal" && propertyType !== "translated-literal";
 
     if (!isExpr) {
+        console.log("[RUNTIME:GEPD] SKIP: not expr | propertyType:", propertyType, "prop:", propertyName);
         return undefined;
     }
 
@@ -47,21 +49,25 @@ export function getExpressionPropertyData(
     const pagePath = getObjectPathAsString(page);
     const flowIndex = runtime.wasm.assetsMap.flowIndexes[pagePath];
     if (flowIndex == undefined) {
+        console.log("[RUNTIME:GEPD] FAIL: no flowIndex for page:", pagePath, "prop:", propertyName);
         return undefined;
     }
     const flow = runtime.wasm.assetsMap.flows[flowIndex];
     const componentPath = getObjectPathAsString(widget);
     const componentIndex = flow.componentIndexes[componentPath];
     if (componentIndex == undefined) {
+        console.log("[RUNTIME:GEPD] FAIL: no componentIndex for:", componentPath, "prop:", propertyName);
         return undefined;
     }
 
     const component = flow.components[componentIndex];
     const propertyIndex = component.propertyIndexes[propertyName];
     if (propertyIndex == undefined) {
+        console.log("[RUNTIME:GEPD] FAIL: no propertyIndex for:", propertyName, "in component:", componentPath);
         return undefined;
     }
 
+    console.log("[RUNTIME:GEPD] OK:", propertyName, "ci:", componentIndex, "pi:", propertyIndex);
     return { componentIndex, propertyIndex };
 }
 
