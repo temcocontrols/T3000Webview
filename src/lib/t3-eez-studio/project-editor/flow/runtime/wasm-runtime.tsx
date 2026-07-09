@@ -534,12 +534,29 @@ export class WasmRuntime extends RemoteRuntime {
                 globalVariableValues = [];
             }
 
+            const bitmapDataList: any[] = [];
+            if (this.projectStore.project.bitmaps) {
+                for (const bmp of this.projectStore.project.bitmaps) {
+                    try {
+                        const bd = ProjectEditor.getBitmapData(bmp, 32);
+                        bitmapDataList.push({
+                            name: bmp.name,
+                            width: bd.width,
+                            height: bd.height,
+                            bpp: bd.bpp,
+                            pixels: Array.from(bd.pixels)
+                        });
+                    } catch(e) {}
+                }
+            }
+
             message.init = {
                 assetsData: this.assetsData,
                 assetsMap: this.assetsMap,
                 globalVariableValues,
                 displayWidth: this.displayWidth,
-                displayHeight: this.displayHeight
+                displayHeight: this.displayHeight,
+                bitmapsData: bitmapDataList
             };
 
             await this.worker.postMessage(message);
@@ -687,12 +704,6 @@ export class WasmRuntime extends RemoteRuntime {
 
     updateCanvasContext() {
         if (!this.lastScreen || !this.ctx) {
-            // Diagnostic: fill canvas red to confirm it's reachable even without screen data
-            if (this.ctx && !this._diagFilled) {
-                this._diagFilled = true;
-                this.ctx.fillStyle = "red";
-                this.ctx.fillRect(0, 0, this.displayWidth, this.displayHeight);
-            }
             return;
         }
 
@@ -709,13 +720,6 @@ export class WasmRuntime extends RemoteRuntime {
 
         this.ctx.clearRect(0, 0, this.displayWidth, this.displayHeight);
         if (this.projectStore.projectTypeTraits.isLVGL || this.projectStore.projectTypeTraits.isDashboard) {
-            // FORCE green — if canvas is green, WASM buffer is empty. If still black, canvas is hidden.
-            if (!(this as any)._diagDone) {
-                (this as any)._diagDone = true;
-                this.ctx.fillStyle = "#00FF00";
-                this.ctx.fillRect(0, 0, this.displayWidth, this.displayHeight);
-            }
-            // LVGL and Dashboard render the full screen buffer — no per-page centering
             this.ctx.putImageData(imgData, 0, 0);
         } else {
             this.ctx.putImageData(

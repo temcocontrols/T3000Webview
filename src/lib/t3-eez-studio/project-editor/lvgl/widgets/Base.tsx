@@ -4,6 +4,7 @@ import { observer } from "mobx-react";
 import { MenuItem } from "@electron/remote";
 
 import { Rect } from "eez-studio-shared/geometry";
+import { findBitmap } from "project-editor/project/project";
 
 import { humanize } from "eez-studio-shared/string";
 import { Checkbox } from "project-editor/ui-components/PropertyGrid/Checkbox";
@@ -1522,7 +1523,6 @@ export class LVGLWidget extends Widget {
 
     override lvglCreate(runtime: LVGLPageRuntime, parentObj: number, customWidget?: ICustomWidgetCreateParams) {
         const code = runtime.toLVGLCode;
-        console.log("[RUNTIME:CREATE]", this.constructor.name, "code:", code.constructor.name);
         code.startWidget(this, parentObj, customWidget);
         this.toLVGLCode(code);
 
@@ -1571,8 +1571,8 @@ export class LVGLWidget extends Widget {
 
         let left = this.leftUnit == "%" ? LV_PCT(this.left) : this.left;
         let top = this.topUnit == "%" ? LV_PCT(this.top) : this.top;
-        let width = this.widthUnit == "content" ? LV_SIZE_CONTENT : this.widthUnit == "%" ? LV_PCT(this.width) : this.width;
-        let height = this.heightUnit == "content" ? LV_SIZE_CONTENT : this.heightUnit == "%" ? LV_PCT(this.height) : this.height;
+        let width = this.widthUnit == "content" ? this.width : this.widthUnit == "%" ? LV_PCT(this.width) : this.width;
+        let height = this.heightUnit == "content" ? this.height : this.heightUnit == "%" ? LV_PCT(this.height) : this.height;
 
         return { left, top, width, height };
     }
@@ -1844,6 +1844,7 @@ export class LVGLWidget extends Widget {
 
         if (this.hiddenFlagType == "expression") {
             code.addToTick("hiddenFlag", () => {
+                console.log("[RUNTIME:HIDE:ENTER] expr:", this.hiddenFlag, "flowState:", code.flowState, "ci:", code.componentIndex, "pi:", code.propertyIndex);
 
                 const new_val = code.evalBooleanProperty(
                     "bool",
@@ -1852,7 +1853,7 @@ export class LVGLWidget extends Widget {
                     "Failed to evaluate Hidden flag"
                 );
 
-                console.log("[RUNTIME:HIDE] expr:", this.hiddenFlag, "val:", JSON.stringify(new_val), "type:", typeof new_val, "class:", code.constructor.name);
+                console.log("[RUNTIME:HIDE:RESULT] expr:", this.hiddenFlag, "val:", JSON.stringify(new_val), "type:", typeof new_val, "class:", code.constructor.name);
 
                 const cur_val = code.callObjectFunctionWithAssignment(
                     "bool",

@@ -260,14 +260,13 @@ export abstract class LVGLPageRuntime {
     getBitmapPtrByName(bitmapName: string) {
         let bitmap = findBitmap(this.project, bitmapName);
         if (!bitmap) {
-            // Flow may pass a numeric index into assetsMap.bitmaps instead of a name.
-            // Resolve the index to the actual bitmap name via the WASM-attached assets map.
-            const assetsMap = (this.wasm as any).assetsMap;
-            const bitmaps: string[] | undefined = assetsMap?.bitmaps;
-            if (bitmaps) {
+            // Flow passes a 0-based index into the unique bitmaps list (project.bitmaps).
+            // Use project.bitmaps (deduplicated, 36 entries) NOT assetsMap.bitmaps (136 with duplicates).
+            const uniqueBitmaps = this.project.bitmaps;
+            if (uniqueBitmaps) {
                 const idx = parseInt(bitmapName);
-                if (!isNaN(idx) && idx >= 0 && idx < bitmaps.length) {
-                    bitmap = findBitmap(this.project, bitmaps[idx]);
+                if (!isNaN(idx) && idx >= 0 && idx < uniqueBitmaps.length) {
+                    bitmap = findBitmap(this.project, uniqueBitmaps[idx].name);
                 }
             }
         }
@@ -793,7 +792,6 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
                     this.page._lvglObj = undefined;
                 });
 
-                console.log("[wasm] calling _init with", this.displayWidth, "x", this.displayHeight);
                 this.wasm._init(
                     0,
                     0,
@@ -806,6 +804,13 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
                     false
                 );
                 console.log("[wasm] _init done");
+
+                // lv_bin_decoder_init() is only called in flowInit (worker),
+                // not in the main thread (where is_editor=true, flowInit skipped).
+                // Without it, LVGL 9.2 can't decode binary image format (magic 0x19).
+                if (typeof this.wasm._lv_bin_decoder_init === "function") {
+                    this.wasm._lv_bin_decoder_init();
+                }
 
                 // Register project bitmaps into WASM for flow imageSetSrc
                 // Flow expects lv_image_dsc_t { header(4), data_size(4), data_ptr(4) } + pixel data
@@ -1091,6 +1096,11 @@ export class LVGLNonActivePageViewerRuntime extends LVGLPageRuntime {
                     false
                 );
 
+                // lv_bin_decoder_init() for LVGL 9.2 binary image decoding
+                if (typeof this.wasm._lv_bin_decoder_init === "function") {
+                    this.wasm._lv_bin_decoder_init();
+                }
+
                 this.requestAnimationFrameId = window.requestAnimationFrame(
                     this.tick
                 );
@@ -1289,10 +1299,14 @@ export class LVGLPageViewerRuntime extends LVGLPageRuntime {
         // Attach build assetsMap to the WASM module for lvglCreate access
         const assetsMap = (this.runtime as any).assetsMap;
         (this.wasm as any).assetsMap = assetsMap;
-        console.log("[RUNTIME:MOUNT] assetsMap keys:", Object.keys(assetsMap || {}), "flowIndexes keys:", Object.keys(assetsMap?.flowIndexes || {}));
+        
 
-        // Register project bitmaps into WASM memory for image widgets
-        // (edit mode does this in LVGLPageEditorRuntime; run mode also needs it)
+        // Register project bitmaps into WASM memory for flow imageSetSrc.
+        // MUST match the 12-byte format used by LVGLPageEditorRuntime.mount():
+        //   HEAP32[0] = magic(8) | cf(8) | flags(16)   (lv_image_header_t)
+        //   HEAP32[1] = data_size
+        //   HEAP32[2] = pointer to pixel data (at offset 12)
+        //   pixels start at byte offset 12
         if (typeof this.wasm._eez_flow_add_images === "function") {
             const bitmapNames: string[] = assetsMap?.bitmaps || [];
             if (bitmapNames.length > 0) {
@@ -1307,7 +1321,7 @@ export class LVGLPageViewerRuntime extends LVGLPageRuntime {
                         const bitmap = findBitmap(this.project, name);
                         if (bitmap) {
                             const bitmapData = ProjectEditor.getBitmapData(bitmap, 32);
-                            let cf = 0x10;
+                            let cf = 0x10; // LV_COLOR_FORMAT_ARGB8888
                             if (bitmapData.bpp === 24) cf = 0x11;
                             else if (bitmapData.bpp === 16) cf = 0x09;
                             const header = (LV_IMAGE_HEADER_MAGIC << 0) | (cf << 8) | 0;
@@ -1332,12 +1346,7 @@ export class LVGLPageViewerRuntime extends LVGLPageRuntime {
                     this.wasm.HEAP32[(imagesPtr >> 2) + i * 2 + 1] = imgDscPtr;
                 }
                 this.wasm._eez_flow_add_images(imagesPtr, numImages);
-                console.log("[lvgl-mount] registered", numImages, "images in WASM");
-            } else {
-                console.log("[lvgl-mount] no bitmaps in assetsMap — skipping image registration");
             }
-        } else {
-            console.log("[lvgl-mount] _eez_flow_add_images NOT FOUND — old WASM, images may not work");
         }
 
         this.lvglGroupObjects = [];
@@ -1723,7 +1732,7 @@ export class LVGLPageViewerRuntime extends LVGLPageRuntime {
                 tickCount++;
             }
         }
-        console.log("[RUNTIME:SCREEN-TICK] fired", tickCount, "of", this.tickCallbacks.length, "callbacks");
+        
     }
 
     override addEventHandler(
@@ -1894,6 +1903,11 @@ export class LVGLStylesEditorRuntime extends LVGLPageRuntime {
                     -(new Date().getTimezoneOffset() / 60) * 100,
                     false
                 );
+
+                // lv_bin_decoder_init() for LVGL 9.2 binary image decoding
+                if (typeof this.wasm._lv_bin_decoder_init === "function") {
+                    this.wasm._lv_bin_decoder_init();
+                }
 
                 this.requestAnimationFrameId = window.requestAnimationFrame(
                     this.tick

@@ -133,6 +133,9 @@ async function loadEezRuntime(): Promise<any> {
 
 const wasmFlowRuntimes = new Map<number, IWasmFlowRuntime>();
 
+// Worker-local image cache: name/index → worker WASM pointer
+const workerImagePtrCache = new Map<string, number>();
+
 function getWasmFlowRuntime(wasmModuleId: number) {
     return wasmFlowRuntimes.get(wasmModuleId)!;
 }
@@ -660,15 +663,22 @@ function getLvglStyleByName(wasmModuleId: number, name: string) {
 function getLvglImageByName(wasmModuleId: number, name: string) {
     const WasmFlowRuntime = getWasmFlowRuntime(wasmModuleId);
     if (!WasmFlowRuntime) {
+        console.log("[IMG:WORKER] getLvglImageByName FAIL: no runtime for wasmModuleId=", wasmModuleId, "name=", name);
         return;
     }
+
+    // Check worker-local cache first (preloaded bitmaps)
+    const cachedPtr = workerImagePtrCache.get(name);
+    console.log("[IMG:WORKER] getLvglImageByName name=\"" + name + "\" cachedPtr=" + (cachedPtr ?? "MISS") + " cacheKeys=" + JSON.stringify([...workerImagePtrCache.keys()]));
 
     // Use synchronous message passing (SharedArrayBuffer + Atomics) so
     // the C++ caller receives the return value immediately. The standard
     // postWorkerToRendererMessage wraps initCb in setTimeout which is
     // needed for main-thread but breaks blocking C++→JS bridge calls.
     const syncFn = (WasmFlowRuntime as any)._syncPostMessage || WasmFlowRuntime.postWorkerToRendererMessage;
-    return syncFn({ getLvglImageByName: { name } });
+    const result = syncFn({ getLvglImageByName: { name } });
+    console.log("[IMG:WORKER] getLvglImageByName name=\"" + name + "\" result=" + result);
+    return result;
 }
 
 function getLvglFontByName(wasmModuleId: number, name: string) {
@@ -1083,10 +1093,52 @@ export async function createWasmWorker(
             WasmFlowRuntime.assetsMap.displayWidth = WasmFlowRuntime.assetsMap.displayWidth || displayWidth;
             WasmFlowRuntime.assetsMap.displayHeight = WasmFlowRuntime.assetsMap.displayHeight || displayHeight;
 
+            // Pre-allocate images in WORKER WASM memory before flow _init
+            const bitmapsData = rendererToWorkerMessage.init.bitmapsData;
+            if (bitmapsData && bitmapsData.length > 0) {
+                console.log("[TRACE:WORKER] preloading", bitmapsData.length, "bitmaps into worker WASM");
+                const LV_IMAGE_HEADER_MAGIC = 0x19;
+                for (let i = 0; i < bitmapsData.length; i++) {
+                    const bd = bitmapsData[i];
+                    let cf = 0x10; // ARGB8888
+                    if (bd.bpp === 24) cf = 0x11;
+                    else if (bd.bpp === 16) cf = 0x09;
+                    const header = (LV_IMAGE_HEADER_MAGIC << 0) | (cf << 8) | 0;
+                    const imgPtr = WasmFlowRuntime._malloc(20 + bd.pixels.length);
+                    WasmFlowRuntime.HEAP32[imgPtr >> 2] = header;
+                    WasmFlowRuntime.HEAP32[(imgPtr >> 2) + 1] = bd.width | (bd.height << 16);
+                    WasmFlowRuntime.HEAP32[(imgPtr >> 2) + 2] = 4 * bd.width; // stride
+                    WasmFlowRuntime.HEAP32[(imgPtr >> 2) + 3] = bd.pixels.length;
+                    WasmFlowRuntime.HEAP32[(imgPtr >> 2) + 4] = imgPtr + 20;
+                    for (let j = 0; j < bd.pixels.length; j++) {
+                        WasmFlowRuntime.HEAP8[imgPtr + 20 + j] = bd.pixels[j];
+                    }
+                    // Cache by both name and 0-based index (flow passes "0", "1", etc.)
+                    console.log("[IMG:WORKER] preloaded bitmap i=" + i + " name=\"" + bd.name + "\" w=" + bd.width + " h=" + bd.height + " bpp=" + bd.bpp + " ptr=" + imgPtr + " pixelsLen=" + bd.pixels.length);
+                    workerImagePtrCache.set(bd.name, imgPtr);
+                    workerImagePtrCache.set(String(i), imgPtr);
+                }
+            } else {
+                console.log("[IMG:WORKER] no bitmapsData to preload");
+            }
+
             //
             const assets = rendererToWorkerMessage.init.assetsData;
+            console.log("[IMG:WORKER] loading assetsData len=" + assets.length);
             var ptr = WasmFlowRuntime._malloc(assets.length);
             WasmFlowRuntime.HEAPU8.set(assets, ptr);
+            console.log("[IMG:WORKER] assetsData copied to WASM ptr=" + ptr);
+
+            // Call init with real assets but intercept to skip create_screens
+            // (The flow's create_screens in eez_flow_init creates worker-side LVGL objects)
+            // Temporarily no-op the screen-creation bridges during _init so
+            // create_screens() + replacePageHook don't duplicate renderer screens.
+            const savedCreateScreen = (global as any).lvglCreateScreen;
+            const savedDeleteScreen = (global as any).lvglDeleteScreen;
+            const savedScreenTick = (global as any).lvglScreenTick;
+            (global as any).lvglCreateScreen = () => {};
+            (global as any).lvglDeleteScreen = () => {};
+            (global as any).lvglScreenTick = () => {};
 
             WasmFlowRuntime._init(
                 wasmModuleId,
@@ -1099,6 +1151,13 @@ export async function createWasmWorker(
                 -(new Date().getTimezoneOffset() / 60) * 100,
                 screensLifetimeSupport
             );
+
+            // Restore real bridge functions
+            (global as any).lvglCreateScreen = savedCreateScreen;
+            (global as any).lvglDeleteScreen = savedDeleteScreen;
+            (global as any).lvglScreenTick = savedScreenTick;
+
+            console.log("[IMG:WORKER] _init completed successfully");
 
             WasmFlowRuntime._free(ptr);
 
