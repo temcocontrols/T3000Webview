@@ -992,20 +992,35 @@ const SettingsSectionHeader = ({
 ////////////////////////////////////////////////////////////////////////////////
 
 const cardStyle: React.CSSProperties = {
-    border: `1px solid var(--fluent-colorNeutralStroke1, #d1d1d1)`,
-    borderRadius: "8px",
-    padding: "16px",
+    border: "1px solid #edebe9",
+    borderRadius: "4px",
     display: "flex",
     flexDirection: "column",
-    gap: "12px",
     minHeight: 0,
+    overflow: "hidden",
 };
 
 const cardTitleStyle: React.CSSProperties = {
-    fontSize: "14px",
+    fontSize: "13px",
     fontWeight: 600,
-    color: "var(--fluent-colorNeutralForeground1, #242424)",
-    marginBottom: "4px",
+    color: "#323130",
+    padding: "0 12px",
+    borderBottom: "1px solid #edebe9",
+    backgroundColor: "#f5f5f5",
+    minHeight: "32px",
+    display: "flex",
+    alignItems: "center",
+    flexShrink: 0,
+};
+
+const cardBodyStyle: React.CSSProperties = {
+    padding: "8px 12px",
+    flex: 1,
+    minHeight: 0,
+    overflow: "auto",
+    scrollbarWidth: "thin",
+    scrollbarColor: "#c1c1c1 transparent",
+    fontSize: "12px",
 };
 
 export const Settings = observer(
@@ -1015,26 +1030,26 @@ export const Settings = observer(
                 <div style={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: "16px",
-                    padding: "16px",
+                    gap: "8px",
+                    padding: "12px",
                     flex: 1,
                     minHeight: 0,
                     overflow: "hidden",
                 }}>
                     {/* Row 1: 2 columns �?Databases + External Tools */}
-                    <div style={{ display: "flex", gap: "16px", flex: 2, minHeight: 0 }}>
+                    <div style={{ display: "flex", gap: "12px", flex: 1, minHeight: 0 }}>
                         {/* Databases */}
                         <div style={{ ...cardStyle, flex: 1, minWidth: 0, minHeight: 0 }}>
                             <div style={cardTitleStyle}>Databases</div>
-                            <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+                            <div style={cardBodyStyle}>
                                 <Databases />
                             </div>
                         </div>
 
                         {/* External Tools */}
-                        <div style={{ ...cardStyle, flex: 1, minWidth: 0, minHeight: 0, overflow: "auto" }}>
+                        <div style={{ ...cardStyle, flex: 1, minWidth: 0 }}>
                             <div style={cardTitleStyle}>External Tools</div>
-                            <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                            <div style={{ ...cardBodyStyle, display: "flex", gap: "12px", alignItems: "flex-start" }}>
                                 <div style={{ fontSize: "13px", fontWeight: 500, minWidth: "70px", paddingTop: "3px", color: "var(--fluent-colorNeutralForeground1, #242424)" }}>Python</div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <PythonSettings />
@@ -1044,31 +1059,22 @@ export const Settings = observer(
                     </div>
 
                     {/* Row 2: Project Editor + Localization + Appearance */}
-                    <div style={{ display: "flex", gap: "16px", flex: 1, minHeight: 0 }}>
+                    <div style={{ display: "flex", gap: "12px", flex: 0.6, minHeight: 0 }}>
                         {/* Project Editor */}
-                        <div style={{ ...cardStyle, flex: 2, minWidth: 0, minHeight: 0, overflow: "auto" }}>
+                        <div style={{ ...cardStyle, flex: 2, minWidth: 0 }}>
                             <div style={cardTitleStyle}>Project Editor</div>
-                            <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                            <div style={{ ...cardBodyStyle, display: "flex", gap: "12px", alignItems: "flex-start" }}>
                                 <div style={{ fontSize: "13px", fontWeight: 500, minWidth: "120px", paddingTop: "3px", color: "var(--fluent-colorNeutralForeground1, #242424)" }}>Project Templates</div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <TemplateSettings />
                                 </div>
                             </div>
-                            <PropertyList>
-                                <BooleanProperty
-                                    name="Show components palette"
-                                    value={settingsController.showComponentsPaletteInProjectEditor}
-                                    onChange={action(value => {
-                                        settingsController.showComponentsPaletteInProjectEditor = value;
-                                    })}
-                                    checkboxStyleSwitch={true}
-                                />
-                            </PropertyList>
                         </div>
 
                         {/* Localization */}
-                        <div style={{ ...cardStyle, flex: 1, minWidth: 0, minHeight: 0, overflow: "auto" }}>
+                        <div style={{ ...cardStyle, flex: 1, minWidth: 0 }}>
                             <div style={cardTitleStyle}>Localization</div>
+                            <div style={{ ...cardBodyStyle, fontSize: "12px" }}>
                             <PropertyList>
                                 <SelectProperty
                                     name="Locale"
@@ -1110,11 +1116,13 @@ export const Settings = observer(
                                     ))}
                                 </SelectProperty>
                             </PropertyList>
+                            </div>
                         </div>
 
                         {/* Appearance + Restart */}
-                        <div style={{ ...cardStyle, width: "220px", flexShrink: 0, minHeight: 0, overflow: "auto" }}>
+                        <div style={{ ...cardStyle, width: "220px", flexShrink: 0 }}>
                             <div style={cardTitleStyle}>Appearance</div>
+                            <div style={cardBodyStyle}>
                             <PropertyList>
                                 <BooleanProperty
                                     name="Dark theme"
@@ -1135,6 +1143,7 @@ export const Settings = observer(
                                 >
                                     Restart
                                 </button>
+                            </div>
                             </div>
                         </div>
                     </div>
