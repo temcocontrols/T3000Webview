@@ -76,34 +76,38 @@ const stagingDir = `${projectDir}/device-import`;
 await fetch(`/api/files/mkdir?path=${encodeURIComponent(stagingDir)}`, { method: "POST" });
 ```
 
-### Step 4 — Fetch Screens (One-by-One, Save-as-You-Go)
+### Step 4 — Fetch Screens via REST API (Primary) with BACnet Fallback
 
-Each screen is fetched individually over BACnet (200-byte chunks, slow). The screen JSON is written to `device-import/<name>.json` immediately — if the connection drops on screen 3 of 5, screens 1-2 are already safe on disk.
+Uses `DeviceRestClient` (`src/lib/t3-eez-studio/project-editor/build/device-rest-client.ts`) which probes the device for REST API availability and falls back to BACnet through T3000 if unreachable.
 
-The `device-import/` folder is **kept after import** — it's a local cache. Re-import reads from disk, skipping already-fetched screens (no BACnet re-fetch needed).
+**Primary path (REST):** `GET http://<device-ip>/api/v1/screens` — single request, all screens returned at once.
+**Fallback path (BACnet):** `POST /api/devices/:id/read-firmware` through T3000 — 200-byte chunks, per-screen.
 
-**TODO:** Needs C++ `READ_FIRMWARE = 19` in `HandleWebViewMsg()` and Rust `POST /api/devices/:id/read-firmware` calling `call_handle_webview_msg(19, &mut buffer)`. See [device-interface-deployment-via-bacnet-design.md](./device-interface-deployment-via-bacnet-design.md).
+The screen JSONs are written to `device-import/<name>.json` immediately — if the connection drops mid-transfer, already-fetched screens are safe on disk.
+
+The `device-import/` folder is **kept after import** — it's a local cache. Re-import reads from disk, skipping already-fetched screens (no re-fetch needed).
 
 ```tsx
-// Step 4 — Fetch screens one-by-one, save each to device-import/ immediately
-const stagingScreens: { name: string; json: any }[] = [];
-let screenIndex = 0;
+// Step 4 — Probe device, fetch all screens, save each to device-import/
+import { DeviceRestClient } from "project-editor/build/device-rest-client";
 
-while (true) {
-    const resp = await fetch(
-        `/api/devices/${device.panel_id}/read-firmware`,
-        { method: "POST", body: JSON.stringify({ screenIndex }) }
-    );
-    if (resp.status === 404) break; // no more screens on device
-    const result = await resp.json();
-    const screen = result.screen;
-    if (!screen) break;
-    // Save to device-import/ NOW — safe if next fetch fails
+const client = new DeviceRestClient();
+
+// Probe: tries REST first, falls back to BACnet if unreachable
+const conn = await client.connect(device.ip, device.panel_id, device.serial_number);
+addLog(`Connected via ${conn.mode.toUpperCase()}`);
+
+// Fetch all screens in one call (REST) or progressive loop (BACnet)
+const result = await client.loadAllScreens();
+addLog(`Loaded ${result.screens.length} screens`);
+
+// Save each screen to device-import/ immediately
+const stagingScreens: FirmwareScreen[] = [];
+for (const screen of result.screens) {
     const screenPath = `${stagingDir}/${screen.name}.json`;
     await fetch(`/api/files/write?path=${encodeURIComponent(screenPath)}`,
         { method: "PUT", body: JSON.stringify(screen.json) });
     stagingScreens.push(screen);
-    screenIndex++;
 }
 ```
 
@@ -134,47 +138,22 @@ const projectJson = await readResp.json();
 await initProjectEditor(tabs, ProjectEditorTab);
 ```
 
-### Step 7 — Rust Endpoint (TODO: depends on C++ READ_FIRMWARE = 19)
+### Step 7 — Transport Layer (Implemented: DeviceRestClient)
 
-Standard action-route pattern — identical to all existing BACnet bridge endpoints. Copy any existing action route, swap the action number to 19.
+The transport is handled entirely by `DeviceRestClient` at `src/lib/t3-eez-studio/project-editor/build/device-rest-client.ts`. It encapsulates both paths:
 
-```rust
-// POST /api/devices/:id/read-firmware
-async fn read_firmware(
-    State(state): State<T3AppState>,
-    Path(device_id): Path<i32>,
-    Json(body): Json<Value>,
-) -> Result<Json<Value>, StatusCode> {
-    let device = get_device_by_id(&state, device_id)?;
-    let screen_index = body.get("screenIndex").and_then(|v| v.as_u64()).unwrap_or(0);
+| Path | Load (Import) | Deploy |
+|------|--------------|--------|
+| **REST (primary)** | `GET http://<ip>/api/v1/screens` | `PUT http://<ip>/api/v1/screens` |
+| **BACnet (fallback)** | `POST /api/devices/:id/read-firmware` (through T3000) | `POST /api/devices/:id/deploy-firmware` (through T3000) |
 
-    let json = json!({
-        "action": WebViewMessageType::READ_FIRMWARE as i32,   // = 19
-        "panelId": device_id,
-        "serialNumber": device.panel_serial_number,
-        "objectinstance": device.object_instance,
-        "screenIndex": screen_index,
-    });
+**Connection probe** (`client.connect(ip, panelId, serialNumber)`):
+1. Tries `HEAD http://<ip>/api/v1/screens` with 2s timeout
+2. If reachable → REST mode
+3. If unreachable → BACnet fallback (requires panelId + serialNumber)
+4. If neither works → error
 
-    let mut buffer = vec![0u8; 65536];
-    let json_str = json.to_string();
-    buffer[..json_str.len()].copy_from_slice(json_str.as_bytes());
-
-    match call_handle_webview_msg(WebViewMessageType::READ_FIRMWARE as i32, &mut buffer) {
-        Ok(0) => {
-            let result: Value = serde_json::from_slice(&buffer).unwrap_or_default();
-            Ok(Json(result))
-        }
-        Ok(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
-        Err(_) => Err(StatusCode::SERVICE_UNAVAILABLE),
-    }
-}
-```
-
-Register in `api/src/t3_device/routes.rs`:
-```rust
-// TODO: .route("/:id/read-firmware", post(read_firmware))
-```
+**No new Rust endpoints needed** — the REST path goes directly to the ESP32 device. The BACnet fallback path reuses the existing T3000 bridge infrastructure (actions 18/19).
 
 ### Step 8 — Import History
 
@@ -242,54 +221,45 @@ project/<DeviceName>/
 
 ## 4. Flow Summary
 
+### Primary: REST API (direct to ESP32 device)
+
 ```
-┌──────────┐     ┌──────────────┐     ┌──────────┐     ┌──────────┐
-│  Browser │     │     Rust     │     │   C++    │     │  Device  │
-│  (EEZ)   │     │   (api/)     │     │ (T3000)  │     │  (HW)    │
-└────┬─────┘     └──────┬───────┘     └────┬─────┘     └────┬─────┘
-     │                   │                 │                 │
-     │  1. mkdir         │                 │                 │
-     │  project/<name>/  │                 │                 │
-     │  device-import/   │                 │                 │
-     │──────────────────→│                 │                 │
-     │                   │                 │                 │
-     │  2. POST /devices │                 │                 │
-     │  /:id/read-firmware                │                 │
-     │  { screenIndex: 0 }                │                 │
-     │──────────────────→│                 │                 │
-     │                   │  call_handle_   │                 │
-     │                   │  webview_msg(19)│                 │
-     │                   │────────────────→│                 │
-     │                   │                 │  BACnet 200B    │
-     │                   │                 │  chunks          │
-     │                   │                 │────────────────→│
-     │                   │                 │←────────────────│
-     │                   │←────────────────│  screen JSON    │
-     │←──────────────────│                 │                 │
-     │  { screen }       │                 │                 │
-     │                   │                 │                 │
-     │  3. Save to       │                 │                 │
-     │  device-import/   │                 │                 │
-     │  Screen1.json     │                 │                 │
-     │──────────────────→│                 │                 │
-     │                   │                 │                 │
-     │  ... repeat for screenIndex 1..N ...                   │
-     │  404 → no more    │                 │                 │
-     │                   │                 │                 │
-     │  4. firmwareToProject()             │                 │
-     │  device-import/*.json → .eez-project│                 │
-     │                   │                 │                 │
-     │  5. Save .eez-project               │                 │
-     │  to project/<name>/                 │                 │
-     │──────────────────→│                 │                 │
-     │                   │                 │                 │
-     │  6. Open in EEZ Editor              │                 │
-     │                   │                 │                 │
-     ▼                   ▼                 ▼                 ▼
+┌──────────┐                         ┌──────────┐
+│ Browser  │  GET /api/v1/screens    │  ESP32   │
+│ (EEZ)    │ ──────────────────────→ │  Device  │
+│          │ ←────────────────────── │          │
+└──────────┘  { screens: [...] }     └──────────┘
+     │
+     │  1. mkdir project/<name>/device-import/
+     │  2. DeviceRestClient.connect(ip) → HEAD probe → REST mode
+     │  3. GET /api/v1/screens → all screens in one response
+     │  4. Save each to device-import/<name>.json (cache)
+     │  5. firmwareToProject() → .eez-project
+     │  6. Save .eez-project to project/<name>/
+     │  7. Open in EEZ Editor
+     ▼
+```
+
+### Fallback: BACnet through T3000 (device unreachable via REST)
+
+```
+┌──────────┐  HTTP     ┌──────────┐  FFI   ┌──────────┐  BACnet  ┌──────────┐
+│ Browser  │ ────────→ │  Rust    │ ─────→ │   C++    │ ───────→ │  Device  │
+│ (EEZ)    │ ←──────── │  (api/)  │ ←───── │ (T3000)  │ ←─────── │  (HW)    │
+└──────────┘           └──────────┘        └──────────┘  chunks  └──────────┘
+     │
+     │  1. mkdir project/<name>/device-import/
+     │  2. DeviceRestClient.connect(ip, panelId, serial) → HEAD probe fails → BACnet mode
+     │  3. POST /api/devices/:id/read-firmware → T3000 → BACnet → device
+     │  4. Save each screen to device-import/<name>.json (cache)
+     │  5-7. Same as REST path
+     ▼
 ```
 
 **Key behaviors:**
-- `device-import/` folder is created before any BACnet I/O (safe if device offline)
+- `DeviceRestClient` probes REST first, falls back to BACnet automatically
+- `device-import/` folder is created before any network I/O (safe if device offline)
 - Each screen saved to `device-import/` immediately on arrival (survives connection drop)
 - `device-import/` is never deleted — re-import rebuilds `.eez-project` from cache
-- `READ_FIRMWARE = 19` is the only C++ TODO blocking this feature
+- REST path: single `GET` returns all screens at once
+- BACnet path: 200-byte chunked transfer through T3000
