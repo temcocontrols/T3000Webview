@@ -228,7 +228,7 @@ module.exports = configure(function (/* ctx */) {
             rewrite: path => path.replace(/^\/api\/eez-studio/, "/api/eez-studio")
           },
           // WASM runtimes & LVGL served from Rust resource tree (not public/)
-          "/t3-eez-studio": {
+          "/eez-studio-wasm": {
             target: "http://localhost:9103",
             changeOrigin: true,
             secure: false,
